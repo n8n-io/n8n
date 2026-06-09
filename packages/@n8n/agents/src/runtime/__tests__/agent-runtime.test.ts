@@ -2955,6 +2955,127 @@ describe('external abort signal', () => {
 		expect(result.finishReason).toBe('error');
 	});
 
+	it('marks tool ctx abortSignal as aborted when a generate run is aborted', async () => {
+		const external = new AbortController();
+		let toolSignal: AbortSignal | undefined;
+		let toolStarted!: () => void;
+		const waitForToolStart = new Promise<void>((resolve) => {
+			toolStarted = resolve;
+		});
+		let toolObservedAbort!: () => void;
+		const waitForToolAbort = new Promise<void>((resolve) => {
+			toolObservedAbort = resolve;
+		});
+		const abortAwareTool: BuiltTool = {
+			name: 'wait_for_abort',
+			description: 'Waits until the run aborts',
+			inputSchema: z.object({}),
+			handler: async (_input, ctx) => {
+				toolSignal = (ctx as ToolContext).abortSignal;
+				toolStarted();
+				await new Promise<void>((resolve) => {
+					toolSignal?.addEventListener(
+						'abort',
+						() => {
+							toolObservedAbort();
+							resolve();
+						},
+						{ once: true },
+					);
+				});
+				return { aborted: toolSignal?.aborted };
+			},
+		};
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'wait_for_abort', args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const { runtime } = createRuntimeWithTools([abortAwareTool], 1);
+		const resultPromise = runtime.generate('start tool', { abortSignal: external.signal });
+
+		await waitForToolStart;
+		expect(toolSignal?.aborted).toBe(false);
+
+		external.abort();
+		await waitForToolAbort;
+		expect(toolSignal?.aborted).toBe(true);
+
+		await resultPromise;
+	});
+
+	it('marks tool ctx abortSignal as aborted when a stream run is aborted', async () => {
+		const external = new AbortController();
+		let toolSignal: AbortSignal | undefined;
+		let toolStarted!: () => void;
+		const waitForToolStart = new Promise<void>((resolve) => {
+			toolStarted = resolve;
+		});
+		let toolObservedAbort!: () => void;
+		const waitForToolAbort = new Promise<void>((resolve) => {
+			toolObservedAbort = resolve;
+		});
+		const abortAwareTool: BuiltTool = {
+			name: 'wait_for_abort',
+			description: 'Waits until the run aborts',
+			inputSchema: z.object({}),
+			handler: async (_input, ctx) => {
+				toolSignal = (ctx as ToolContext).abortSignal;
+				toolStarted();
+				await new Promise<void>((resolve) => {
+					toolSignal?.addEventListener(
+						'abort',
+						() => {
+							toolObservedAbort();
+							resolve();
+						},
+						{ once: true },
+					);
+				});
+				return { aborted: toolSignal?.aborted };
+			},
+		};
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'checking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'wait_for_abort',
+									args: {},
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'wait_for_abort', input: {} }]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('done'));
+
+		const { runtime } = createRuntimeWithTools([abortAwareTool], 1);
+		const { stream } = await runtime.stream('start tool', { abortSignal: external.signal });
+		const collectPromise = collectChunks(stream);
+
+		await waitForToolStart;
+		expect(toolSignal?.aborted).toBe(false);
+
+		external.abort();
+		await waitForToolAbort;
+		expect(toolSignal?.aborted).toBe(true);
+
+		await collectPromise;
+	});
+
 	it('removes external abort listener after a stream completes', async () => {
 		const external = new AbortController();
 		const removeListener = vi.spyOn(external.signal, 'removeEventListener');
