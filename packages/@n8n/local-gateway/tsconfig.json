@@ -8,5 +8,6 @@
 		"module": "nodenext",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"exclude": ["src/renderer/**/*.ts"]
 }

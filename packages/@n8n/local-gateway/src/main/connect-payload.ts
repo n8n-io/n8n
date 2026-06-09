@@ -1,10 +1,11 @@
+import { APP_URL_SCHEME } from '../shared/constants';
 import type { ConnectPayload } from '../shared/types';
 
-/** Registered with the OS for deeplinks (`n8n-computer-use://…`). */
-export const DEEP_LINK_PROTOCOL = 'n8n-computer-use';
+/** Registered with the OS for deeplinks (`n8n://…`). Alias of the shared app scheme. */
+export const DEEP_LINK_PROTOCOL = APP_URL_SCHEME;
 
 /**
- * Parses `n8n-computer-use://connect?url=…&token=…`. Host must be `connect`. Requires non-empty `token=` after trim.
+ * Parses `n8n://connect?url=…&token=…`. Host must be `connect`. Requires non-empty `token=` after trim.
  */
 export function parseConnectPayload(value: string): ConnectPayload | null {
 	let parsed: URL;

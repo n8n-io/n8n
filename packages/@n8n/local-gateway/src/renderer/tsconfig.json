@@ -1,0 +1,7 @@
+{
+	"extends": "../../tsconfig.renderer.json",
+	"compilerOptions": {
+		"strict": true
+	},
+	"include": ["**/*.ts", "../shared/**/*.ts"]
+}
