@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref, nextTick } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -49,6 +49,16 @@ vi.mock('@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelE
 	useEvaluationsWizardSidepanelExperiment: () => ({ isFeatureEnabled }),
 }));
 
+const mockIsLicensed = ref(true);
+const mockEnsureLicenseLoaded = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../composables/useEvaluationsLicense', () => ({
+	useEvaluationsLicense: () => ({
+		isLicensed: computed(() => mockIsLicensed.value),
+		isResolved: computed(() => true),
+		ensureLicenseLoaded: mockEnsureLicenseLoaded,
+	}),
+}));
+
 const listEvaluationConfigs = vi.fn();
 vi.mock('../../evaluation.api', () => ({
 	listEvaluationConfigs: (...args: unknown[]) => listEvaluationConfigs(...args),
@@ -67,6 +77,9 @@ describe('EvaluationsCanvasInfoCard', () => {
 		mockActive.value = true;
 		mockWorkflowId.value = `wf-${Math.random().toString(36).slice(2, 8)}`;
 		isFeatureEnabled.value = true;
+		mockIsLicensed.value = true;
+		mockEnsureLicenseLoaded.mockReset();
+		mockEnsureLicenseLoaded.mockResolvedValue(undefined);
 		wizardOpen.mockReset();
 		wizardIsOpen.value = false;
 		listEvaluationConfigs.mockReset();
@@ -176,5 +189,25 @@ describe('EvaluationsCanvasInfoCard', () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		await nextTick();
 		expect(queryByTestId('evaluations-canvas-info-card')).not.toBeInTheDocument();
+	});
+
+	it('hides when the user is unlicensed (limit 0) even with all other conditions met', async () => {
+		mockIsLicensed.value = false;
+		const { queryByTestId } = renderComponent();
+		await nextTick();
+		expect(queryByTestId('evaluations-canvas-info-card')).not.toBeInTheDocument();
+		expect(listEvaluationConfigs).not.toHaveBeenCalled();
+	});
+
+	it('shows when the user is licensed (limit -1) with all other conditions met', async () => {
+		mockIsLicensed.value = true;
+		const { findByTestId } = renderComponent();
+		await findByTestId('evaluations-canvas-info-card');
+	});
+
+	it('calls ensureLicenseLoaded on mount', async () => {
+		renderComponent();
+		await nextTick();
+		expect(mockEnsureLicenseLoaded).toHaveBeenCalled();
 	});
 });

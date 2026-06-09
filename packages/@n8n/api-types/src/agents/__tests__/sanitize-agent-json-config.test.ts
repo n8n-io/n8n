@@ -406,4 +406,151 @@ describe('sanitizeAgentJsonConfig', () => {
 			).toBe(false);
 		},
 	);
+
+	it('preserves sub-agent model mappings by difficulty', () => {
+		const config = {
+			...baseConfig,
+			subAgents: {
+				maxChildren: 3,
+				agents: [{ agentId: 'agent-2' }],
+				modelsByDifficulty: {
+					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
+					medium: { model: 'anthropic/claude-haiku-4-5', credential: 'cred-anthropic' },
+					high: {
+						model: 'openrouter/anthropic/claude-sonnet-4-5',
+						credential: 'cred-openrouter',
+					},
+				},
+			},
+		};
+
+		expect(sanitizeAgentJsonConfig(config)).toEqual(config);
+		expect(AgentJsonConfigSchema.safeParse(config).success).toBe(true);
+	});
+
+	it('strips unknown sub-agent difficulty model keys', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
+					extreme: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('strips unknown fields from sub-agent difficulty model mappings', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: {
+						model: 'openai/gpt-4o-mini',
+						credential: 'cred-openai',
+						label: 'Cheap model',
+						provider: 'openai',
+					},
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('keeps invalid sub-agent difficulty model values for validation errors', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: {
+						model: 'gpt-4o-mini',
+						credential: 'cred-openai',
+					},
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: {
+						model: 'gpt-4o-mini',
+						credential: 'cred-openai',
+					},
+				},
+			},
+		});
+
+		const result = AgentJsonConfigSchema.safeParse(sanitized);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(
+			result.error.issues.some(
+				(issue) => issue.path.join('.') === 'subAgents.modelsByDifficulty.low.model',
+			),
+		).toBe(true);
+	});
+
+	it('allows cleared sub-agent difficulty model credentials in draft config', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					low: {
+						model: 'openai/gpt-4o-mini',
+						credential: '   ',
+					},
+				},
+			},
+		});
+
+		expect(result.success).toBe(true);
+		if (!result.success) return;
+		expect(result.data.subAgents?.modelsByDifficulty?.low?.credential).toBe('');
+	});
+
+	it('preserves existing sub-agent refs and maxChildren with model mappings', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			subAgents: {
+				maxChildren: 4,
+				agents: [{ agentId: 'agent-2' }],
+				modelsByDifficulty: {
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			subAgents: {
+				maxChildren: 4,
+				agents: [{ agentId: 'agent-2' }],
+				modelsByDifficulty: {
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
 });

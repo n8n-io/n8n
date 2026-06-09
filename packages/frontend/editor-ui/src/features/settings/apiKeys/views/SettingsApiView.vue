@@ -1,12 +1,15 @@
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 import { useToast } from '@/app/composables/useToast';
-import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { DOCS_DOMAIN, MODAL_CONFIRM } from '@/app/constants';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
+import { DOCS_DOMAIN } from '@/app/constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -15,25 +18,29 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useApiKeysStore } from '../apiKeys.store';
 import { storeToRefs } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-
-import { ElCol, ElRow } from 'element-plus';
+import type { ApiKey } from '@n8n/api-types';
 import {
 	N8nActionBox,
 	N8nButton,
 	N8nHeading,
-	N8nLink,
-	N8nPagination,
+	N8nIcon,
+	N8nInput,
+	N8nTabs,
 	N8nText,
 } from '@n8n/design-system';
 import { I18nT } from 'vue-i18n';
-import ApiKeyCard from '../components/ApiKeyCard.vue';
+
+import ApiKeyTable from '../components/ApiKeyTable.vue';
+import ApiKeyScopesModal from '../components/ApiKeyScopesModal.vue';
+import RevokeApiKeyConfirmModal from '../components/RevokeApiKeyConfirmModal.vue';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const cloudPlanStore = useCloudPlanStore();
+const usersStore = useUsersStore();
+const rbacStore = useRBACStore();
 
 const { showError, showMessage } = useToast();
-const { confirm } = useMessage();
 const documentTitle = useDocumentTitle();
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
@@ -41,8 +48,43 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
-const { fetchApiKeys, setPage, deleteApiKey, getApiKeyAvailableScopes } = apiKeysStore;
-const { apiKeys, apiKeysCount, page, pageSize } = storeToRefs(apiKeysStore);
+const {
+	fetchApiKeys,
+	setOwnership,
+	setLabelFilter,
+	applyTableOptions,
+	deleteApiKey,
+	getApiKeyAvailableScopes,
+} = apiKeysStore;
+const {
+	apiKeys,
+	apiKeysCount,
+	totalCountForOwnership,
+	ownership,
+	labelFilter,
+	totalMineCount,
+	totalAllCount,
+	hasAnyKeys,
+	tableOptions,
+} = storeToRefs(apiKeysStore);
+
+const searchQuery = ref(labelFilter.value);
+
+const onSearch = useDebounceFn(async (value: string) => {
+	try {
+		loading.value = true;
+		await setLabelFilter(value.trim());
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.view.error'));
+	} finally {
+		loading.value = false;
+	}
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
+function onSearchInput(value: string) {
+	searchQuery.value = value;
+	void onSearch(value);
+}
 const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsStore;
 const { baseUrl } = useRootStore();
 
@@ -50,7 +92,50 @@ const { isPublicApiEnabled } = settingsStore;
 
 const apiDocsURL = ref('');
 
-const onCreateApiKey = async () => {
+const scopesModalApiKey = ref<ApiKey | null>(null);
+const revokeApiKey = ref<ApiKey | null>(null);
+const revoking = ref(false);
+
+const canManageAllKeys = computed(() => rbacStore.hasScope('apiKey:manage'));
+
+// Badges show the unfiltered totals so a search-narrowed "Mine (0)" doesn't read
+// as "I have no keys" when the user really has keys that just don't match.
+const tabOptions = computed(() => [
+	{
+		label: i18n.baseText('settings.api.tabs.mine'),
+		value: 'mine' as const,
+		tag: String(totalMineCount.value),
+	},
+	{
+		label: i18n.baseText('settings.api.tabs.all'),
+		value: 'all' as const,
+		tag: String(totalAllCount.value),
+	},
+]);
+
+async function onTabChange(newOwnership: 'mine' | 'all') {
+	try {
+		loading.value = true;
+		await setOwnership(newOwnership);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.view.error'));
+	} finally {
+		loading.value = false;
+	}
+}
+
+async function onTableUpdate() {
+	try {
+		loading.value = true;
+		await applyTableOptions();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.api.view.error'));
+	} finally {
+		loading.value = false;
+	}
+}
+
+const onCreateApiKey = () => {
 	telemetry.track('User clicked create API key button');
 
 	uiStore.openModalWithData({
@@ -68,7 +153,15 @@ onMounted(async () => {
 
 	if (!isPublicApiEnabled) return;
 
+	// Reset the Pinia store so a stale page/filter/sort from a prior visit can't
+	// drive the first fetch into an empty page or wrong tab.
+	apiKeysStore.$reset();
+	searchQuery.value = '';
 	await getApiKeysAndScopes();
+});
+
+onBeforeUnmount(() => {
+	apiKeysStore.$reset();
 });
 
 function onUpgrade() {
@@ -86,139 +179,137 @@ async function getApiKeysAndScopes() {
 	}
 }
 
-async function onPageChange(newPage: number) {
-	try {
-		loading.value = true;
-		await setPage(newPage);
-	} catch (error) {
-		showError(error, i18n.baseText('settings.api.view.error'));
-	} finally {
-		loading.value = false;
-	}
-}
-
-async function onDelete(id: string) {
-	const confirmed = await confirm(
-		i18n.baseText('settings.api.delete.description'),
-		i18n.baseText('settings.api.delete.title'),
-		{
-			confirmButtonText: i18n.baseText('settings.api.delete.button'),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-		},
-	);
-
-	if (confirmed === MODAL_CONFIRM) {
-		try {
-			await deleteApiKey(id);
-			showMessage({
-				title: i18n.baseText('settings.api.delete.toast'),
-				type: 'success',
-			});
-		} catch (e) {
-			showError(e, i18n.baseText('settings.api.delete.error'));
-		} finally {
-			telemetry.track('User clicked delete API key button');
-		}
-	}
-}
-
-function onEdit(id: string) {
+function onEdit(apiKey: ApiKey) {
 	uiStore.openModalWithData({
 		name: API_KEY_CREATE_OR_EDIT_MODAL_KEY,
-		data: { mode: 'edit', activeId: id },
+		data: { mode: 'edit', activeId: apiKey.id },
 	});
+}
+
+function onRevokeRequest(apiKey: ApiKey) {
+	revokeApiKey.value = apiKey;
+}
+
+async function onRevokeConfirm() {
+	if (!revokeApiKey.value) return;
+	const apiKey = revokeApiKey.value;
+	revoking.value = true;
+	try {
+		await deleteApiKey(apiKey.id);
+		showMessage({ title: i18n.baseText('settings.api.revoke.toast'), type: 'success' });
+		revokeApiKey.value = null;
+	} catch (e) {
+		showError(e, i18n.baseText('settings.api.delete.error'));
+	} finally {
+		revoking.value = false;
+		telemetry.track('User clicked delete API key button');
+	}
+}
+
+function onOpenScopes(apiKey: ApiKey) {
+	scopesModalApiKey.value = apiKey;
 }
 </script>
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.header">
+		<div :class="$style.heading">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.api') }}
 			</N8nHeading>
 		</div>
-		<p v-if="isPublicApiEnabled && apiKeys.length" :class="$style.topHint">
-			<N8nText>
-				<I18nT keypath="settings.api.view.info" tag="span" scope="global">
-					<template #apiAction>
-						<a
-							data-test-id="api-docs-link"
-							href="https://docs.n8n.io/api"
-							target="_blank"
-							v-text="i18n.baseText('settings.api.view.info.api')"
-						/>
-					</template>
-					<template #webhookAction>
-						<a
-							data-test-id="webhook-docs-link"
-							href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
-							target="_blank"
-							v-text="i18n.baseText('settings.api.view.info.webhook')"
-						/>
-					</template>
-				</I18nT>
-			</N8nText>
+
+		<p v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.description">
+			<I18nT keypath="settings.api.view.info" tag="span" scope="global">
+				<template #apiPlayground>
+					<a
+						:class="$style.docLink"
+						data-test-id="api-playground-link"
+						:href="apiDocsURL"
+						target="_blank"
+						v-text="i18n.baseText('settings.api.view.info.apiPlayground')"
+					/>
+				</template>
+				<template #webhook>
+					<a
+						:class="$style.docLink"
+						data-test-id="webhook-docs-link"
+						href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+						target="_blank"
+						v-text="i18n.baseText('settings.api.view.info.webhook')"
+					/>
+				</template>
+				<template #documentation>
+					<a
+						:class="$style.docLink"
+						data-test-id="api-docs-link"
+						href="https://docs.n8n.io/api"
+						target="_blank"
+						v-text="i18n.baseText('settings.api.view.info.documentation')"
+					/>
+				</template>
+			</I18nT>
 		</p>
 
-		<div :class="$style.apiKeysContainer">
-			<template v-if="apiKeys.length">
-				<ElRow
-					v-for="(apiKey, index) in apiKeys"
-					:key="apiKey.id"
-					:gutter="10"
-					:class="[{ [$style.destinationItem]: index !== apiKeys.length - 1 }]"
-				>
-					<ElCol>
-						<ApiKeyCard :api-key="apiKey" @delete="onDelete" @edit="onEdit" />
-					</ElCol>
-				</ElRow>
-			</template>
-		</div>
-
-		<div v-if="apiKeysCount > pageSize" :class="$style.pagination">
-			<N8nPagination
-				:current-page="page"
-				:page-size="pageSize"
-				:total="apiKeysCount"
-				layout="total, prev, pager, next"
-				data-test-id="api-keys-pagination"
-				@current-change="onPageChange"
-			/>
-		</div>
-
-		<div v-if="isPublicApiEnabled && apiKeys.length" :class="$style.BottomHint">
-			<N8nText size="small" color="text-light">
-				{{
-					i18n.baseText(
-						`settings.api.view.${settingsStore.isSwaggerUIEnabled ? 'tryapi' : 'more-details'}`,
-					)
-				}}
-			</N8nText>
-			{{ ' ' }}
-			<N8nLink
-				v-if="isSwaggerUIEnabled"
-				data-test-id="api-playground-link"
-				:to="apiDocsURL"
-				:new-window="true"
-				size="small"
+		<div v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.toolbar">
+			<N8nInput
+				:model-value="searchQuery"
+				:placeholder="i18n.baseText('settings.api.search.placeholder')"
+				:class="$style.search"
+				size="medium"
+				clearable
+				data-test-id="api-keys-search"
+				@update:model-value="onSearchInput"
 			>
-				{{ i18n.baseText('settings.api.view.apiPlayground') }}
-			</N8nLink>
-			<N8nLink
-				v-else
-				data-test-id="api-endpoint-docs-link"
-				:to="apiDocsURL"
-				:new-window="true"
-				size="small"
-			>
-				{{ i18n.baseText(`settings.api.view.external-docs`) }}
-			</N8nLink>
-		</div>
-		<div class="mt-m text-right">
-			<N8nButton v-if="isPublicApiEnabled && apiKeys.length" size="large" @click="onCreateApiKey">
+				<template #prefix>
+					<N8nIcon icon="search" />
+				</template>
+			</N8nInput>
+			<N8nButton size="medium" @click="onCreateApiKey">
 				{{ i18n.baseText('settings.api.create.button') }}
 			</N8nButton>
 		</div>
+
+		<N8nTabs
+			v-if="isPublicApiEnabled && canManageAllKeys && hasAnyKeys"
+			:model-value="ownership"
+			:options="tabOptions"
+			data-test-id="api-keys-tabs"
+			:class="$style.tabs"
+			@update:model-value="onTabChange"
+		/>
+
+		<ApiKeyTable
+			v-if="isPublicApiEnabled && hasAnyKeys && totalCountForOwnership > 0 && apiKeysCount > 0"
+			v-model:table-options="tableOptions"
+			:api-keys="apiKeys"
+			:items-length="apiKeysCount"
+			:loading="loading"
+			:current-user-id="usersStore.currentUser?.id"
+			:class="$style.table"
+			@edit="onEdit"
+			@revoke="onRevokeRequest"
+			@open-scopes="onOpenScopes"
+			@update:options="onTableUpdate"
+		/>
+
+		<N8nText
+			v-else-if="isPublicApiEnabled && hasAnyKeys && labelFilter.trim()"
+			color="text-light"
+			:class="$style.noResults"
+			data-test-id="api-keys-no-results"
+		>
+			{{ i18n.baseText('settings.api.search.noResults') }}
+		</N8nText>
+
+		<N8nText
+			v-else-if="isPublicApiEnabled && hasAnyKeys && ownership === 'mine'"
+			color="text-light"
+			:class="$style.noResults"
+			data-test-id="api-keys-empty-mine"
+		>
+			{{ i18n.baseText('settings.api.empty.mine') }}
+		</N8nText>
 
 		<N8nActionBox
 			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
@@ -230,70 +321,85 @@ function onEdit(id: string) {
 		/>
 
 		<N8nActionBox
-			v-if="isPublicApiEnabled && !apiKeys.length"
+			v-if="isPublicApiEnabled && !hasAnyKeys"
 			:button-text="
 				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')
 			"
 			:description="i18n.baseText('settings.api.create.description')"
 			@click:button="onCreateApiKey"
 		/>
+
+		<ApiKeyScopesModal
+			:api-key="scopesModalApiKey"
+			:open="!!scopesModalApiKey"
+			@update:open="scopesModalApiKey = null"
+		/>
+
+		<RevokeApiKeyConfirmModal
+			:api-key="revokeApiKey"
+			:open="!!revokeApiKey"
+			:loading="revoking"
+			:revoking-for-other="
+				!!revokeApiKey?.owner && revokeApiKey.owner.id !== usersStore.currentUser?.id
+			"
+			@confirm="onRevokeConfirm"
+			@cancel="revokeApiKey = null"
+			@update:open="revokeApiKey = null"
+		/>
 	</div>
 </template>
 
 <style lang="scss" module>
-.header {
-	display: flex;
-	align-items: center;
-	white-space: nowrap;
-	margin-bottom: var(--spacing--xl);
-
-	*:first-child {
-		flex-grow: 1;
-	}
-}
-
-.card {
-	position: relative;
-}
-
-.destinationItem {
+.heading {
 	margin-bottom: var(--spacing--2xs);
 }
 
-.delete {
-	position: absolute;
-	display: inline-block;
-	top: var(--spacing--sm);
-	right: var(--spacing--sm);
+.description {
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
+	line-height: var(--line-height--xl);
+	margin: 0 0 var(--spacing--lg);
 }
 
-.topHint {
-	margin-top: none;
-	margin-bottom: var(--spacing--sm);
-	color: var(--color--text--tint-1);
+.docLink {
+	color: var(--color--text);
+	text-decoration: underline;
 
-	span {
-		font-size: var(--font-size--sm);
-		line-height: var(--line-height--lg);
-		font-weight: var(--font-weight--regular);
+	&::after {
+		content: '↗';
+		margin-left: 2px;
 	}
 }
 
-.BottomHint {
-	margin-bottom: var(--spacing--sm);
-	margin-top: var(--spacing--sm);
-}
-
-.apiKeysContainer {
-	max-height: 45vh;
-	overflow-y: auto;
-	overflow-x: hidden;
-	scrollbar-width: none;
-}
-
-.pagination {
+.toolbar {
 	display: flex;
-	justify-content: flex-end;
-	margin-top: var(--spacing--sm);
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	margin-bottom: var(--spacing--sm);
+}
+
+.search {
+	max-width: 320px;
+	flex: 1 1 auto;
+}
+
+.container {
+	display: flex;
+	flex-direction: column;
+}
+
+.table {
+	margin-bottom: var(--spacing--lg);
+}
+
+.noResults {
+	display: block;
+	padding: var(--spacing--lg) 0;
+	text-align: center;
+}
+
+.tabs {
+	margin-bottom: var(--spacing--sm);
 }
 </style>
