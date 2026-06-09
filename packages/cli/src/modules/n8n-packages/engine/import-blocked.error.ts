@@ -14,7 +14,5 @@ export function toImportBlockedError(
 		return new ConflictError(message, undefined, { issues });
 	}
 
-	const error = new UnprocessableRequestError(message);
-	Object.assign(error, { meta: { issues } });
-	return error;
+	return new UnprocessableRequestError(message, undefined, { issues });
 }

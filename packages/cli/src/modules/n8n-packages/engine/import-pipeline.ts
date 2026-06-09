@@ -59,16 +59,15 @@ export class ImportPipeline {
 	}
 
 	async run(request: ImportPackageRequest): Promise<ImportResult> {
-		const reader = new TarPackageReader(request.packageBuffer, this.maxUncompressedPackageBytes);
-
-		const manifest = await this.packageParser.getManifest(reader);
-		const workflowsForImport = await this.packageParser.getWorkflows(reader);
-
 		const { target, project } = await this.resolveTarget(
 			request.user,
 			request.projectId,
 			request.folderId,
 		);
+
+		const reader = new TarPackageReader(request.packageBuffer, this.maxUncompressedPackageBytes);
+		const manifest = await this.packageParser.getManifest(reader);
+		const workflowsForImport = await this.packageParser.getWorkflows(reader);
 
 		const credentialRequest: CredentialBindingRequest = {
 			requirements: manifest.requirements?.credentials,
@@ -101,7 +100,6 @@ export class ImportPipeline {
 			return this.buildPlanResult(packageSummary, workflowPlan, blockingIssues);
 		}
 
-		// One gate for every subsystem: a real import aborts if anything blocks it.
 		if (blockingIssues.length > 0) {
 			throw toImportBlockedError(blockingIssues);
 		}

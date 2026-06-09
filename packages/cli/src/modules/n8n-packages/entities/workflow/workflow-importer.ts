@@ -23,10 +23,9 @@ export interface WorkflowImportResult {
 }
 
 /**
- * Coordinates importing a batch of prepared workflows under a given conflict
- * policy: selects the policy handler, matches each workflow against existing
- * ones in the destination project, runs the policy pre-flight check, then
- * dispatches each workflow to the handler.
+ * Imports a batch of prepared workflows in two phases:
+ * {@link plan} matches each workflow against the destination project and decides what action create/update/skip
+ * {@link apply} writes that plan into n8n
  */
 @Service()
 export class WorkflowImporter {
@@ -113,6 +112,7 @@ export class WorkflowImporter {
 					item.existing.id,
 					{ publicApi: true, publishIfActive: true, source: 'import' },
 				);
+				// update() doesn't re-hydrate parentFolder; carry over the existing folder for the result.
 				workflow.parentFolder = item.existing.parentFolder;
 				return { status: 'updated', workflow, sourceWorkflowId: item.sourceWorkflowId };
 			}
@@ -142,7 +142,7 @@ function toPlanItem(
 		case 'skip':
 			return { action, ...prepared, existing };
 		case 'create':
-			// `fail` policy decided 'create' despite a match; the conflict gate rejects it first.
+			// Only `fail` reaches here with a match; it records a conflict the gate rejects first.
 			return { action, ...prepared };
 	}
 }

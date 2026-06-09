@@ -2,9 +2,8 @@ import type { CredentialResolution, CredentialResolutionFailure } from './creden
 import type { CredentialMissingMode } from '../../n8n-packages.types';
 
 /**
- * Decides which unresolved credential references block the import, per missing-mode
- * policy. Pure: it classifies failures only. Any writes a mode implies (e.g.
- * `create-stub`) happen later in the apply phase, not here.
+ * Classifies which unresolved credential references block the import, per missing-mode
+ * policy. Read-only — never writes. `must-preexist` is the only mode today.
  */
 /* eslint-disable @typescript-eslint/naming-convention -- API credential missing mode keys */
 const BLOCKING_FAILURES: Record<
