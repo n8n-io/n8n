@@ -295,14 +295,89 @@ describe('classifier derivations — exported helpers', () => {
 			expect(result).toBeNull();
 		});
 
-		test('returns null for non-cronExpression interval modes', () => {
+		test('returns null for sub-minute interval modes (seconds/minutes are not 5-field cron expressible)', () => {
+			expect(
+				deriveNextRunAt(
+					node({
+						type: SCHEDULE_TYPE,
+						parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 5 }] } },
+					}),
+				),
+			).toBeNull();
+			expect(
+				deriveNextRunAt(
+					node({
+						type: SCHEDULE_TYPE,
+						parameters: { rule: { interval: [{ field: 'seconds', secondsInterval: 30 }] } },
+					}),
+				),
+			).toBeNull();
+		});
+
+		test('returns ISO string for structured "days" interval (default field, triggerAtHour only)', () => {
 			const result = deriveNextRunAt(
 				node({
 					type: SCHEDULE_TYPE,
-					parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 5 }] } },
+					parameters: { rule: { interval: [{ triggerAtHour: 7 }] } },
 				}),
+				{ now: new Date('2024-06-01T00:00:00Z'), timezone: 'UTC' },
 			);
-			expect(result).toBeNull();
+			// Default field='days', triggerAtHour=7, triggerAtMinute=0
+			// → cron '0 7 */1 * *' → next run is today at 07:00 UTC
+			expect(result).toBe('2024-06-01T07:00:00.000Z');
+		});
+
+		test('returns ISO string for explicit "days" interval with triggerAtMinute', () => {
+			const result = deriveNextRunAt(
+				node({
+					type: SCHEDULE_TYPE,
+					parameters: {
+						rule: {
+							interval: [{ field: 'days', daysInterval: 1, triggerAtHour: 9, triggerAtMinute: 30 }],
+						},
+					},
+				}),
+				{ now: new Date('2024-06-01T00:00:00Z'), timezone: 'UTC' },
+			);
+			expect(result).toBe('2024-06-01T09:30:00.000Z');
+		});
+
+		test('returns ISO string for "hours" interval with step', () => {
+			const result = deriveNextRunAt(
+				node({
+					type: SCHEDULE_TYPE,
+					parameters: {
+						rule: { interval: [{ field: 'hours', hoursInterval: 4, triggerAtMinute: 15 }] },
+					},
+				}),
+				{ now: new Date('2024-06-01T01:00:00Z'), timezone: 'UTC' },
+			);
+			// cron '15 */4 * * *' → next match after 01:00 is 04:15
+			expect(result).toBe('2024-06-01T04:15:00.000Z');
+		});
+
+		test('returns ISO string for "weeks" interval with triggerAtDayOfWeek list', () => {
+			// 2024-06-01 is a Saturday (cron weekday 6)
+			const result = deriveNextRunAt(
+				node({
+					type: SCHEDULE_TYPE,
+					parameters: {
+						rule: {
+							interval: [
+								{
+									field: 'weeks',
+									triggerAtHour: 9,
+									triggerAtMinute: 0,
+									triggerAtDayOfWeek: [1, 3, 5],
+								},
+							],
+						},
+					},
+				}),
+				{ now: new Date('2024-06-01T00:00:00Z'), timezone: 'UTC' },
+			);
+			// Next Mon/Wed/Fri at 09:00 UTC after Sat 2024-06-01 is Mon 2024-06-03
+			expect(result).toBe('2024-06-03T09:00:00.000Z');
 		});
 
 		test('returns null for an invalid cron expression', () => {

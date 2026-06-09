@@ -87,9 +87,59 @@ export function deriveSourceLabel(displayName: string): string {
 }
 
 /**
- * Compute the next run time for a schedule trigger node. Only the
- * `cronExpression` mode is supported; other interval forms return null
- * (the classifier treats null as "ambiguous, fall through to no preview").
+ * Translate the first entry of a Schedule Trigger node's `rule.interval`
+ * array into a 5-field cron expression. Supports the structured forms n8n's
+ * Schedule Trigger UI produces (`field: 'days' | 'weeks' | 'months' | 'hours' | 'cronExpression'`,
+ * plus default 'days' when `field` is omitted) and rejects sub-minute
+ * granularities (`seconds`/`minutes`) since they're not expressible in
+ * 5-field cron and the BFF preview only needs minute-resolution.
+ *
+ * Returns null when the entry is missing, malformed, or sub-minute.
+ */
+export function toCronExpression(entry: Record<string, unknown> | undefined): string | null {
+	if (!entry) return null;
+	const field = typeof entry.field === 'string' ? entry.field : 'days';
+
+	if (field === 'cronExpression') {
+		const expr = entry.expression;
+		return typeof expr === 'string' && expr.trim().length > 0 ? expr.trim() : null;
+	}
+
+	// Sub-minute granularities are not expressible in 5-field cron.
+	if (field === 'seconds' || field === 'minutes') return null;
+
+	const minute = typeof entry.triggerAtMinute === 'number' ? entry.triggerAtMinute : 0;
+	const hour = typeof entry.triggerAtHour === 'number' ? entry.triggerAtHour : 0;
+
+	if (field === 'hours') {
+		const step = typeof entry.hoursInterval === 'number' ? entry.hoursInterval : 1;
+		return `${minute} */${step} * * *`;
+	}
+	if (field === 'days') {
+		const step = typeof entry.daysInterval === 'number' ? entry.daysInterval : 1;
+		return `${minute} ${hour} */${step} * *`;
+	}
+	if (field === 'weeks') {
+		const weekdays = Array.isArray(entry.triggerAtDayOfWeek)
+			? (entry.triggerAtDayOfWeek as unknown[]).filter((d) => typeof d === 'number').join(',')
+			: '*';
+		return `${minute} ${hour} * * ${weekdays || '*'}`;
+	}
+	if (field === 'months') {
+		const step = typeof entry.monthsInterval === 'number' ? entry.monthsInterval : 1;
+		const dayOfMonth =
+			typeof entry.triggerAtDayOfMonth === 'number' ? entry.triggerAtDayOfMonth : 1;
+		return `${minute} ${hour} ${dayOfMonth} */${step} *`;
+	}
+	return null;
+}
+
+/**
+ * Compute the next run time for a schedule trigger node. Supports n8n's
+ * structured rule forms (`field: 'days' | 'weeks' | 'months' | 'hours' | 'cronExpression'`)
+ * via {@link toCronExpression}. Sub-minute granularities and malformed
+ * inputs return null (the classifier treats null as "ambiguous, fall
+ * through to no preview").
  *
  * Exported for unit testing.
  */
@@ -97,20 +147,18 @@ export function deriveNextRunAt(
 	node: INode,
 	options: { timezone?: string; now?: Date } = {},
 ): string | null {
-	const interval = node.parameters?.rule;
+	const rule = node.parameters?.rule;
 	if (
-		!interval ||
-		typeof interval !== 'object' ||
-		!('interval' in interval) ||
-		!Array.isArray((interval as { interval: unknown[] }).interval)
+		!rule ||
+		typeof rule !== 'object' ||
+		!('interval' in rule) ||
+		!Array.isArray((rule as { interval: unknown[] }).interval)
 	) {
 		return null;
 	}
-	const entries = (interval as { interval: Array<Record<string, unknown>> }).interval;
-	const first = entries[0];
-	if (!first || first.field !== 'cronExpression') return null;
-	const expression = first.expression;
-	if (typeof expression !== 'string' || expression.trim().length === 0) return null;
+	const entries = (rule as { interval: Array<Record<string, unknown>> }).interval;
+	const expression = toCronExpression(entries[0]);
+	if (!expression) return null;
 
 	// Lazy-load: cron-parser is only needed for desktop-assistant tasks
 	// classification; avoid pulling it into the boot path for every cli build.
