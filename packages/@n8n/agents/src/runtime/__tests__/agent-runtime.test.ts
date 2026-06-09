@@ -3258,6 +3258,127 @@ describe('external abort signal', () => {
 		expect(result.finishReason).toBe('error');
 	});
 
+	it('marks tool ctx abortSignal as aborted when a generate run is aborted', async () => {
+		const external = new AbortController();
+		let toolSignal: AbortSignal | undefined;
+		let toolStarted!: () => void;
+		const waitForToolStart = new Promise<void>((resolve) => {
+			toolStarted = resolve;
+		});
+		let toolObservedAbort!: () => void;
+		const waitForToolAbort = new Promise<void>((resolve) => {
+			toolObservedAbort = resolve;
+		});
+		const abortAwareTool: BuiltTool = {
+			name: 'wait_for_abort',
+			description: 'Waits until the run aborts',
+			inputSchema: z.object({}),
+			handler: async (_input, ctx) => {
+				toolSignal = (ctx as ToolContext).abortSignal;
+				toolStarted();
+				await new Promise<void>((resolve) => {
+					toolSignal?.addEventListener(
+						'abort',
+						() => {
+							toolObservedAbort();
+							resolve();
+						},
+						{ once: true },
+					);
+				});
+				return { aborted: toolSignal?.aborted };
+			},
+		};
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'wait_for_abort', args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const { runtime } = createRuntimeWithTools([abortAwareTool], 1);
+		const resultPromise = runtime.generate('start tool', { abortSignal: external.signal });
+
+		await waitForToolStart;
+		expect(toolSignal?.aborted).toBe(false);
+
+		external.abort();
+		await waitForToolAbort;
+		expect(toolSignal?.aborted).toBe(true);
+
+		await resultPromise;
+	});
+
+	it('marks tool ctx abortSignal as aborted when a stream run is aborted', async () => {
+		const external = new AbortController();
+		let toolSignal: AbortSignal | undefined;
+		let toolStarted!: () => void;
+		const waitForToolStart = new Promise<void>((resolve) => {
+			toolStarted = resolve;
+		});
+		let toolObservedAbort!: () => void;
+		const waitForToolAbort = new Promise<void>((resolve) => {
+			toolObservedAbort = resolve;
+		});
+		const abortAwareTool: BuiltTool = {
+			name: 'wait_for_abort',
+			description: 'Waits until the run aborts',
+			inputSchema: z.object({}),
+			handler: async (_input, ctx) => {
+				toolSignal = (ctx as ToolContext).abortSignal;
+				toolStarted();
+				await new Promise<void>((resolve) => {
+					toolSignal?.addEventListener(
+						'abort',
+						() => {
+							toolObservedAbort();
+							resolve();
+						},
+						{ once: true },
+					);
+				});
+				return { aborted: toolSignal?.aborted };
+			},
+		};
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'checking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'wait_for_abort',
+									args: {},
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'wait_for_abort', input: {} }]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('done'));
+
+		const { runtime } = createRuntimeWithTools([abortAwareTool], 1);
+		const { stream } = await runtime.stream('start tool', { abortSignal: external.signal });
+		const collectPromise = collectChunks(stream);
+
+		await waitForToolStart;
+		expect(toolSignal?.aborted).toBe(false);
+
+		external.abort();
+		await waitForToolAbort;
+		expect(toolSignal?.aborted).toBe(true);
+
+		await collectPromise;
+	});
+
 	it('removes external abort listener after a stream completes', async () => {
 		const external = new AbortController();
 		const removeListener = vi.spyOn(external.signal, 'removeEventListener');
@@ -3329,8 +3450,7 @@ describe('tool systemInstruction merging', () => {
 
 	function getSystemMessageText(): string {
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const messages = callArgs.messages as Array<Record<string, unknown>>;
-		const systemMsg = messages[0];
+		const systemMsg = callArgs.system as Record<string, unknown>;
 		expect(systemMsg.role).toBe('system');
 		return String(systemMsg.content);
 	}
@@ -3451,8 +3571,7 @@ describe('instruction providerOptions', () => {
 		});
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const messages = callArgs.messages as Array<Record<string, unknown>>;
-		const systemMsg = messages[0];
+		const systemMsg = callArgs.system as Record<string, unknown>;
 		expect(systemMsg.role).toBe('system');
 		expect(systemMsg.providerOptions).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -3704,10 +3823,10 @@ describe('AgentRuntime — observation log jobs', () => {
 		});
 
 		const callArgs = (generateText.mock.calls[0] as [unknown])[0] as {
-			messages: Array<{ content: string }>;
+			system: { content: string };
 			tools: Record<string, unknown>;
 		};
-		const systemPrompt = callArgs.messages[0]?.content ?? '';
+		const systemPrompt = callArgs.system?.content ?? '';
 		expect(systemPrompt).not.toContain('<episodic_memory>');
 		expect(systemPrompt).not.toContain('Postgres');
 		expect(systemPrompt).not.toContain('SQLite');
@@ -3827,16 +3946,16 @@ describe('AgentRuntime — observation log jobs', () => {
 
 		const generateTextMock = generateText as MockedFunction<
 			(input: {
+				system: { content: string };
 				messages: Array<{
 					role: string;
 					content: unknown;
 				}>;
 			}) => unknown
 		>;
-		const [{ messages }] = generateTextMock.mock.calls[0];
-		const systemPrompt = messages[0].content;
-		expect(systemPrompt).toContain('Resource one memory.');
-		expect(systemPrompt).toContain('Resource two memory.');
+		const [{ system, messages }] = generateTextMock.mock.calls[0];
+		expect(system.content).toContain('Resource one memory.');
+		expect(system.content).toContain('Resource two memory.');
 		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
 
 		await runtime.dispose();
