@@ -179,7 +179,11 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (dualStack) options.family = 0;
 
-		if (tls) options.tls = { servername: tlsConfig.serverName || undefined };
+		if (tls)
+			options.tls = {
+				servername: tlsConfig.serverName || undefined,
+				rejectUnauthorized: tlsConfig.rejectUnauthorized,
+			};
 
 		// Add keep-alive configuration
 		if (keepAlive) {

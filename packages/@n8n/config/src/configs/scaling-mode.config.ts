@@ -24,6 +24,14 @@ class RedisTlsConfig {
 	/** SNI extension servername for TLS handshake. */
 	@Env('QUEUE_BULL_REDIS_TLS_SERVERNAME')
 	serverName: string = '';
+
+	/**
+	 * When TLS enabled validate certificates.
+	 * - true (default): Recommended for secure production deployments to ensure redis connections are not vulnerable to MITM attacks.
+	 * - false: Accept any certificate presented by the server for local development or self-signed certificate scenarios.
+	 */
+	@Env('QUEUE_BULL_REDIS_TLS_VALIDATE_CERTIFICATE')
+	rejectUnauthorized: boolean = true;
 }
 
 @Config
