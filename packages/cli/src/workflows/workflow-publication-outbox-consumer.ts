@@ -198,9 +198,7 @@ export class WorkflowPublicationOutboxConsumer {
 	 * published (`newVersion`, null if its history row no longer exists) and the
 	 * currently published version (`oldVersion`, null on a first publication).
 	 */
-	private async resolveVersions(
-		record: WorkflowPublicationOutbox,
-	): Promise<{
+	private async resolveVersions(record: WorkflowPublicationOutbox): Promise<{
 		workflow: WorkflowEntity | null;
 		oldVersion: WorkflowHistory | null;
 		newVersion: WorkflowHistory | null;
