@@ -154,6 +154,15 @@ describe('MessageFormatter', () => {
 			expect(MessageFormatter.isErrorResult({ data: 'value', count: 42 })).toBe(false);
 		});
 
+		it('should not flag tool outputs with a non-envelope error field as errors', () => {
+			expect(MessageFormatter.isErrorResult({ error: 'no errors found' })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: false })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: 0 })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: null })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: { code: 500 } })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: { message: 42 } })).toBe(false);
+		});
+
 		it('should not flag null/undefined as errors', () => {
 			expect(MessageFormatter.isErrorResult(null)).toBe(false);
 			expect(MessageFormatter.isErrorResult(undefined)).toBe(false);

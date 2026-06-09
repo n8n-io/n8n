@@ -37,7 +37,13 @@ export class MessageFormatter {
 	 */
 	static isErrorResult(result: unknown): boolean {
 		if (typeof result === 'object' && result !== null && 'error' in result) {
-			return true;
+			const { error } = result as { error: unknown };
+			return (
+				typeof error === 'object' &&
+				error !== null &&
+				'message' in error &&
+				typeof (error as { message: unknown }).message === 'string'
+			);
 		}
 		if (typeof result === 'string') {
 			return /^(\w+Error: |HTTP \d{3} There was an error: |There was an error: )/.test(result);
