@@ -311,7 +311,7 @@ describe('NodeCredentials', () => {
 			undefined,
 			httpNode.name,
 			httpNode,
-			{ hideAskAssistant: false },
+			{ hideAskAssistant: false, closeOnSave: true },
 		);
 	});
 
@@ -844,7 +844,7 @@ describe('NodeCredentials', () => {
 					name: slackNode.name,
 					type: slackNode.type,
 				}),
-				{ hideAskAssistant: false },
+				{ hideAskAssistant: false, closeOnSave: true },
 			);
 		});
 

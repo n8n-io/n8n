@@ -651,6 +651,7 @@ export type ModalState = {
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
+	closeOnSave?: boolean;
 	projectId?: string;
 	suggestedName?: string;
 	nodeName?: string;
