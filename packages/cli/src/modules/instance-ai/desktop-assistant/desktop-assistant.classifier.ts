@@ -139,8 +139,10 @@ export function toCronExpression(entry: Record<string, unknown> | undefined): st
 		return `${minute} ${hour} */${step} * *`;
 	}
 	if (field === 'weeks') {
-		const weekdays = Array.isArray(entry.triggerAtDayOfWeek)
-			? (entry.triggerAtDayOfWeek as unknown[]).filter((d) => typeof d === 'number').join(',')
+		// n8n's Schedule Trigger stores the selected weekdays under `triggerAtDay`
+		// (verified in packages/nodes-base/nodes/Schedule/test/GenericFunctions.test.ts).
+		const weekdays = Array.isArray(entry.triggerAtDay)
+			? (entry.triggerAtDay as unknown[]).filter((d) => typeof d === 'number').join(',')
 			: '*';
 		return `${minute} ${hour} * * ${weekdays || '*'}`;
 	}

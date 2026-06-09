@@ -451,7 +451,7 @@ describe('classifier derivations — exported helpers', () => {
 			expect(result).toBe('2024-06-01T04:15:00.000Z');
 		});
 
-		test('returns ISO string for "weeks" interval with triggerAtDayOfWeek list', () => {
+		test('returns ISO string for "weeks" interval with triggerAtDay list', () => {
 			// 2024-06-01 is a Saturday (cron weekday 6)
 			const result = deriveNextRunAt(
 				node({
@@ -463,7 +463,7 @@ describe('classifier derivations — exported helpers', () => {
 									field: 'weeks',
 									triggerAtHour: 9,
 									triggerAtMinute: 0,
-									triggerAtDayOfWeek: [1, 3, 5],
+									triggerAtDay: [1, 3, 5],
 								},
 							],
 						},
