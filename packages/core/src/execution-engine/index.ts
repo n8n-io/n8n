@@ -30,6 +30,20 @@ export type EvalLlmMockHandler = (
 	node: INode,
 ) => Promise<EvalMockHttpResponse | undefined>;
 
+/**
+ * Rewrites an outbound HTTP request so it is proxied through the n8n AI Gateway.
+ * Receives the request options and the executing node. Returns rewritten request
+ * options (new URL + auth) when the node is gateway-managed and the request targets
+ * a managed provider host, or `undefined` to leave the request untouched.
+ *
+ * Enables gateway support for nodes (including community nodes) that hard-code their
+ * base URL and therefore cannot be redirected via a credential `urlField` override.
+ */
+export type GatewayHttpRewriter = (
+	requestOptions: IHttpRequestOptions,
+	node: INode,
+) => Promise<IHttpRequestOptions | undefined>;
+
 declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
 		hooks?: ExecutionLifecycleHooks;
@@ -49,6 +63,11 @@ declare module 'n8n-workflow' {
 		 * Only set by the eval execution service — never present in normal executions.
 		 */
 		evalLlmMockHandler?: EvalLlmMockHandler;
+		/**
+		 * Reroutes outbound HTTP requests from gateway-managed nodes through the AI Gateway.
+		 * Set only when the AI Gateway is licensed; absent otherwise.
+		 */
+		gatewayHttpRewriter?: GatewayHttpRewriter;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import type { PushMessage, PushType } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
@@ -56,6 +56,7 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { UrlService } from '@/services/url.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
@@ -739,6 +740,14 @@ export async function getBase({
 	const ssrfConfig = Container.get(SsrfProtectionConfig);
 	if (ssrfConfig.enabled) {
 		additionalData.ssrfBridge = Container.get(SsrfProtectionService);
+	}
+
+	// Reroute outbound HTTP from gateway-managed nodes (incl. community nodes that
+	// hard-code their base URL) through the AI Gateway. Reads userId/workflowId/
+	// projectId/executionId from `additionalData` at request time.
+	if (Container.get(LicenseState).isAiGatewayLicensed()) {
+		additionalData.gatewayHttpRewriter =
+			Container.get(AiGatewayService).buildHttpRewriter(additionalData);
 	}
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {

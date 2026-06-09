@@ -2,6 +2,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { LicenseState } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
@@ -175,6 +176,33 @@ describe('AiGatewayService', () => {
 				apiKey: 'mock-jwt-token',
 				host: `${BASE_URL}/v1/gateway/google`,
 			});
+		});
+
+		it('omits the URL field for providers that have no urlField (community nodes)', async () => {
+			const noUrlConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				providerConfig: {
+					browserbaseApi: {
+						gatewayPath: '/v1/gateway/browserbase',
+						apiKeyField: 'browserbaseApiKey',
+						hosts: ['api.browserbase.com'],
+					},
+				},
+			};
+			fetchMock
+				.mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue(noUrlConfig) })
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
+				});
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'browserbaseApi',
+				userId: USER_ID,
+			});
+
+			expect(result).toEqual({ browserbaseApiKey: 'mock-jwt-token' });
 		});
 
 		it('fetches token from gateway with HeadersMetadataDto headers and licenseCert body', async () => {
@@ -773,6 +801,162 @@ describe('AiGatewayService', () => {
 				(c[0] as string).includes('/v1/gateway/credentials'),
 			);
 			expect(credentialsCalls).toHaveLength(1);
+		});
+	});
+
+	describe('buildHttpRewriter()', () => {
+		const REWRITE_CONFIG = {
+			...MOCK_GATEWAY_CONFIG,
+			providerConfig: {
+				...MOCK_GATEWAY_CONFIG.providerConfig,
+				browserbaseApi: {
+					gatewayPath: '/v1/gateway/browserbase',
+					apiKeyField: 'browserbaseApiKey',
+					hosts: ['api.browserbase.com', 'api.stagehand.browserbase.com'],
+				},
+			},
+		};
+
+		function mockRewriteConfigThenToken(token = 'jwt-1') {
+			fetchMock
+				.mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue(REWRITE_CONFIG) })
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token, expiresIn: 3600 }),
+				});
+		}
+
+		const managedNode = {
+			credentials: { browserbaseApi: { id: 'c1', name: 'BB', __aiGatewayManaged: true } },
+		} as unknown as INode;
+
+		const additionalData = (overrides: Partial<IWorkflowExecuteAdditionalData> = {}) =>
+			({ userId: USER_ID, ...overrides }) as IWorkflowExecuteAdditionalData;
+
+		it('rewrites a managed-node request to a host-preserving proxy URL and injects Bearer auth', async () => {
+			mockRewriteConfigThenToken('jwt-1');
+			const service = makeService();
+			const rewriter = service.buildHttpRewriter(additionalData());
+
+			const result = await rewriter(
+				{
+					method: 'POST',
+					url: 'https://api.browserbase.com/v1/fetch',
+					headers: { 'x-bb-api-key': 'jwt-1' },
+				},
+				managedNode,
+			);
+
+			expect(result).toEqual({
+				method: 'POST',
+				url: `${BASE_URL}/v1/gateway/proxy/api.browserbase.com/v1/fetch`,
+				baseURL: undefined,
+				headers: { 'x-bb-api-key': 'jwt-1', Authorization: 'Bearer jwt-1' },
+			});
+		});
+
+		it('matches the host case-insensitively', async () => {
+			mockRewriteConfigThenToken();
+			const service = makeService();
+			const rewriter = service.buildHttpRewriter(additionalData());
+
+			const result = await rewriter(
+				{ method: 'GET', url: 'https://API.Browserbase.com/v1/fetch' },
+				managedNode,
+			);
+
+			expect(result?.url).toBe(`${BASE_URL}/v1/gateway/proxy/api.browserbase.com/v1/fetch`);
+		});
+
+		it('preserves the query string when rewriting', async () => {
+			mockRewriteConfigThenToken();
+			const service = makeService();
+			const rewriter = service.buildHttpRewriter(additionalData());
+
+			const result = await rewriter(
+				{ method: 'GET', url: 'https://api.stagehand.browserbase.com/v1/sessions?live=true' },
+				managedNode,
+			);
+
+			expect(result?.url).toBe(
+				`${BASE_URL}/v1/gateway/proxy/api.stagehand.browserbase.com/v1/sessions?live=true`,
+			);
+		});
+
+		it('embeds execution context in the proxy path when executionId and workflowId are present', async () => {
+			mockRewriteConfigThenToken();
+			const service = makeService();
+			const rewriter = service.buildHttpRewriter(
+				additionalData({ executionId: '29021', workflowId: 'R9JFXwkUCL1jZBuw' }),
+			);
+
+			const result = await rewriter(
+				{ method: 'POST', url: 'https://api.browserbase.com/v1/fetch' },
+				managedNode,
+			);
+
+			expect(result?.url).toBe(
+				`${BASE_URL}/v1/gateway/proxy/exec/29021/R9JFXwkUCL1jZBuw/api.browserbase.com/v1/fetch`,
+			);
+		});
+
+		it('resolves a relative url against baseURL before matching the host', async () => {
+			mockRewriteConfigThenToken();
+			const service = makeService();
+			const rewriter = service.buildHttpRewriter(additionalData());
+
+			const result = await rewriter(
+				{ method: 'GET', baseURL: 'https://api.browserbase.com', url: '/v1/fetch' },
+				managedNode,
+			);
+
+			expect(result?.url).toBe(`${BASE_URL}/v1/gateway/proxy/api.browserbase.com/v1/fetch`);
+			expect(result?.baseURL).toBeUndefined();
+		});
+
+		it('leaves the request untouched when the node has no gateway-managed credential', async () => {
+			const service = makeService();
+			const unmanagedNode = {
+				credentials: { browserbaseApi: { id: 'c1', name: 'BB' } },
+			} as unknown as INode;
+			const rewriter = service.buildHttpRewriter(additionalData());
+
+			const result = await rewriter(
+				{ method: 'POST', url: 'https://api.browserbase.com/v1/fetch' },
+				unmanagedNode,
+			);
+
+			expect(result).toBeUndefined();
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('leaves the request untouched when the target host is not a managed provider host', async () => {
+			fetchMock.mockResolvedValueOnce({
+				ok: true,
+				json: jest.fn().mockResolvedValue(REWRITE_CONFIG),
+			});
+			const service = makeService();
+			const rewriter = service.buildHttpRewriter(additionalData());
+
+			const result = await rewriter(
+				{ method: 'GET', url: 'https://example.com/whatever' },
+				managedNode,
+			);
+
+			expect(result).toBeUndefined();
+		});
+
+		it('leaves the request untouched when the node has no credentials', async () => {
+			const service = makeService();
+			const rewriter = service.buildHttpRewriter(additionalData());
+
+			const result = await rewriter(
+				{ method: 'GET', url: 'https://api.browserbase.com/v1/fetch' },
+				{} as unknown as INode,
+			);
+
+			expect(result).toBeUndefined();
+			expect(fetchMock).not.toHaveBeenCalled();
 		});
 	});
 });
