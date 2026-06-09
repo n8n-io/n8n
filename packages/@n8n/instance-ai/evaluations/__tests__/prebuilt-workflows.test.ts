@@ -7,6 +7,7 @@ import type { Mock } from 'vitest';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
 import {
+	cleanupPrebuiltWorkflows,
 	fetchPrebuiltBuild,
 	loadPrebuiltManifest,
 	pickPrebuiltWorkflowId,
@@ -151,5 +152,47 @@ describe('fetchPrebuiltBuild', () => {
 		expect(result.success).toBe(false);
 		expect(result.error).toContain('Wodd');
 		expect(result.error).toContain('plain string failure');
+	});
+});
+
+describe('cleanupPrebuiltWorkflows', () => {
+	function makeLogger(): EvalLogger & { info: Mock; warn: Mock } {
+		return {
+			info: vi.fn(),
+			verbose: vi.fn(),
+			success: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+			isVerbose: false,
+		};
+	}
+
+	it('deletes each workflow ID once', async () => {
+		const deleteWorkflow = vi.fn().mockResolvedValue(undefined);
+		const client = { deleteWorkflow } as unknown as N8nClient;
+		const logger = makeLogger();
+
+		await cleanupPrebuiltWorkflows(client, ['W1', 'W1', 'W2'], logger);
+
+		expect(deleteWorkflow).toHaveBeenCalledTimes(2);
+		expect(deleteWorkflow).toHaveBeenNthCalledWith(1, 'W1');
+		expect(deleteWorkflow).toHaveBeenNthCalledWith(2, 'W2');
+		expect(logger.info).toHaveBeenCalledWith('Deleted 2/2 prebuilt workflow(s)');
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('continues deleting after a workflow deletion fails', async () => {
+		const deleteWorkflow = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('HTTP 404'))
+			.mockResolvedValueOnce(undefined);
+		const client = { deleteWorkflow } as unknown as N8nClient;
+		const logger = makeLogger();
+
+		await cleanupPrebuiltWorkflows(client, ['W1', 'W2'], logger);
+
+		expect(deleteWorkflow).toHaveBeenCalledTimes(2);
+		expect(logger.warn).toHaveBeenCalledWith('Failed to delete prebuilt workflow W1: HTTP 404');
+		expect(logger.info).toHaveBeenCalledWith('Deleted 1/2 prebuilt workflow(s)');
 	});
 });

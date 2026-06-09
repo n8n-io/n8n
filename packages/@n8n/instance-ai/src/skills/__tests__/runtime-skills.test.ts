@@ -1,9 +1,18 @@
 import { createSkillLoadTool } from '@n8n/agents';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 
 describe('Instance AI runtime skills', () => {
+	it('points the workflow-builder skill at the SDK language reference', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
+	});
+
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
 		expect(existsSync(INSTANCE_AI_SKILLS_DIR)).toBe(true);
 

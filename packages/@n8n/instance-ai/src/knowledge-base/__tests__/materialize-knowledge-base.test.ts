@@ -98,6 +98,10 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			),
 		).toContain('# Workflow Builder Guardrails');
 
+		expect(
+			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`),
+		).toContain('# Workflow SDK language reference');
+
 		const rootIndex = jsonParse<{
 			bestPractices: { indexFile: string; entries: Array<{ id: string }> };
 			templates: { indexFile: string; entries: unknown[] };
@@ -117,6 +121,10 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			expect.objectContaining({
 				id: 'workflow-builder-guardrails',
 				file: 'reference/workflow-builder-guardrails.md',
+			}),
+			expect.objectContaining({
+				id: 'workflow-sdk-language',
+				file: 'reference/workflow-sdk-language.md',
 			}),
 		]);
 		expect(rootIndex.bestPractices.entries.some((entry) => entry.id === 'scheduling')).toBe(true);

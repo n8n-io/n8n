@@ -4,6 +4,7 @@ import {
 	WorkflowTechnique,
 	type WorkflowTechniqueType as BestPracticesGuideId,
 } from '@n8n/workflow-sdk/prompts/best-practices';
+import { SDK_LANGUAGE_REFERENCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { join as posixJoin } from 'node:path/posix';
@@ -131,7 +132,11 @@ function addTemplatesToKnowledgeBaseFiles(
 }
 
 const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
-	Pick<KnowledgeBaseReferenceIndexEntry, 'id' | 'description'> & { fileName: string }
+	Pick<KnowledgeBaseReferenceIndexEntry, 'id' | 'description'> & {
+		fileName: string;
+		/** When set, content comes from this string instead of a source file. */
+		content?: string;
+	}
 > = [
 	{
 		id: 'trigger-input-data-shapes',
@@ -144,6 +149,13 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		description:
 			'Workflow builder guardrails for source preservation, fan-out/fan-in, effects, and Code nodes',
 		fileName: 'workflow-builder-guardrails.md',
+	},
+	{
+		id: 'workflow-sdk-language',
+		description:
+			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset',
+		fileName: 'workflow-sdk-language.md',
+		content: SDK_LANGUAGE_REFERENCE,
 	},
 ];
 
@@ -158,12 +170,10 @@ async function addReferenceFilesToKnowledgeBase(
 	const referenceEntries: KnowledgeBaseReferenceIndexEntry[] = [];
 
 	for (const entry of KNOWLEDGE_BASE_REFERENCE_ENTRIES) {
-		const sourcePath = join(referenceSourceDir, entry.fileName);
 		const relativeFilePath = posixJoin(KNOWLEDGE_BASE_REFERENCE_DIR, entry.fileName);
-		files.set(
-			posixJoin(rootDir, relativeFilePath),
-			withTrailingNewline(await readFile(sourcePath, 'utf-8')),
-		);
+		const content =
+			entry.content ?? (await readFile(join(referenceSourceDir, entry.fileName), 'utf-8'));
+		files.set(posixJoin(rootDir, relativeFilePath), withTrailingNewline(content));
 		referenceEntries.push({
 			id: entry.id,
 			description: entry.description,
