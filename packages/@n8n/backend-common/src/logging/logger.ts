@@ -72,6 +72,18 @@ export class Logger implements LoggerType {
 		this.internalLogger = internalLogger;
 	}
 
+	/**
+	 * Prepend a Winston format to every log record before it reaches any transport.
+	 * Useful for injecting cross-cutting metadata (e.g. trace context) after the
+	 * logger has already been fully initialised.
+	 */
+	prependFormat(format: winston.Logform.Format) {
+		const existing = this.internalLogger.format;
+		this.internalLogger.format = existing
+			? winston.format.combine(format, existing)
+			: format;
+	}
+
 	/** Create a logger that injects the given scopes into its log metadata. */
 	scoped(scopes: LogScope | LogScope[]) {
 		scopes = Array.isArray(scopes) ? scopes : [scopes];
@@ -142,7 +154,9 @@ export class Logger implements LoggerType {
 	private jsonConsoleFormat() {
 		return winston.format.combine(
 			winston.format.timestamp(),
-			winston.format.metadata(),
+			// Exclude OTEL trace-correlation fields from being moved into the nested
+			// metadata object so log forwarders see them at the record root.
+			winston.format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'traceId', 'spanId'] }),
 			winston.format.json(),
 			this.scopeFilter(),
 		);
