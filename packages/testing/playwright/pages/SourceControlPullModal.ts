@@ -11,6 +11,18 @@ export class SourceControlPullModal {
 		return this.container.getByTestId('force-pull');
 	}
 
+	async pullAndOverride(): Promise<void> {
+		const responsePromise = this.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/source-control/pull-workfolder') &&
+				response.request().method() === 'POST' &&
+				response.status() === 200,
+		);
+
+		await this.getPullAndOverrideButton().click();
+		await responsePromise;
+	}
+
 	getWorkflowsTab(): Locator {
 		return this.container.getByTestId('source-control-pull-modal-tab-workflow');
 	}

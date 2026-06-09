@@ -5,22 +5,37 @@ import { type GitRepoHelper, setupGitRepo } from '../../../utils/source-control-
 
 test.use({ capability: 'source-control' });
 
-async function expectPullSuccess(n8n: n8nPage) {
-	expect(
-		await n8n.notifications.waitForNotificationAndClose('Pulled successfully', { timeout: 30000 }),
-	).toBe(true);
+async function addManualTriggerNode(n8n: n8nPage, workflowId: string) {
+	const workflow = await n8n.api.workflows.getWorkflow(workflowId);
+
+	if (!workflow.versionId) {
+		throw new Error(`Workflow ${workflowId} is missing versionId`);
+	}
+
+	await n8n.api.workflows.update(workflowId, workflow.versionId, {
+		name: workflow.name,
+		active: workflow.active,
+		nodes: [
+			{
+				id: 'manual-trigger',
+				name: MANUAL_TRIGGER_NODE_NAME,
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		],
+		connections: {},
+		settings: workflow.settings,
+	});
 }
 
-// Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
-// https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
 test.describe(
-	'Pull resources from Git @capability:source-control',
+	'Pull resources from Git @capability:source-control @licensed @db:reset',
 	{
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},
 	() => {
-		test.fixme();
-
 		let gitRepo: GitRepoHelper;
 
 		test.beforeEach(async ({ n8n, services }) => {
@@ -70,7 +85,9 @@ test.describe(
 			// pull all resources
 			await n8n.navigate.toHome();
 			await n8n.sideBar.getSourceControlPullButton().click();
-			await expectPullSuccess(n8n);
+			await expect(n8n.sourceControlPullModal.container).toBeVisible();
+			await n8n.sourceControlPullModal.pullAndOverride();
+			await expect(n8n.sourceControlPullModal.container).toBeHidden({ timeout: 30000 });
 
 			// check that all new resources are pulled
 			await n8n.navigate.toProjectSettings(project.id);
@@ -110,9 +127,7 @@ test.describe(
 			await n8n.api.sourceControl.disconnect();
 
 			// modify workflow
-			await n8n.navigate.toWorkflow(workflow.id);
-			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await addManualTriggerNode(n8n, workflow.id);
 
 			// add new workflow
 			await n8n.api.workflows.createInProject(project.id, {
@@ -140,8 +155,8 @@ test.describe(
 			).toBeVisible();
 
 			// click on pull & override button
-			await n8n.sourceControlPullModal.getPullAndOverrideButton().click();
-			await expectPullSuccess(n8n);
+			await n8n.sourceControlPullModal.pullAndOverride();
+			await expect(n8n.sourceControlPullModal.container).toBeHidden({ timeout: 30000 });
 
 			// check pulled resources
 			await n8n.navigate.toWorkflow(workflow.id);

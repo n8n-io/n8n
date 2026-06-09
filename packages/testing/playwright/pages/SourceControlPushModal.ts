@@ -1,6 +1,10 @@
 import type { GitCommitInfo, SourceControlledFile } from '@n8n/api-types';
 import type { Locator, Page } from '@playwright/test';
 
+function exactText(name: string): RegExp {
+	return new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+}
+
 export interface PushResult {
 	files: SourceControlledFile[];
 	commit: GitCommitInfo | null;
@@ -58,13 +62,14 @@ export class SourceControlPushModal {
 
 	// File items
 	getFileInModal(fileName: string): Locator {
-		return this.container.getByTestId('push-modal-item').filter({ hasText: fileName }).first();
+		return this.container
+			.getByTestId('push-modal-item')
+			.filter({ has: this.container.getByText(exactText(fileName)) })
+			.first();
 	}
 
 	getFileCheckboxByName(fileName: string): Locator {
-		return this.container
-			.locator('[data-test-id="source-control-push-modal-file-checkbox"]')
-			.filter({ has: this.container.getByText(fileName, { exact: true }) });
+		return this.getFileInModal(fileName).getByTestId('source-control-push-modal-file-checkbox');
 	}
 
 	async selectAllFilesInModal(): Promise<void> {
@@ -80,7 +85,7 @@ export class SourceControlPushModal {
 	}
 
 	getStatusBadge(fileName: string, status: 'New' | 'Modified' | 'Deleted'): Locator {
-		return this.getFileCheckboxByName(fileName).getByText(status);
+		return this.getFileInModal(fileName).getByText(status, { exact: true });
 	}
 
 	async selectFile(fileName: string): Promise<void> {
