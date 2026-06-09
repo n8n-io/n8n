@@ -197,6 +197,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 					size="small"
 					:icon="isCollapsed ? 'chevrons-up-down' : 'chevrons-down-up'"
 					:aria-label="toggleLabel"
+					:aria-expanded="!isCollapsed"
 					data-test-id="canvas-node-group-toggle"
 					@click.stop="onToggleClick"
 				/>

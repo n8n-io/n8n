@@ -74,6 +74,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: true }) });
 			const toggle = wrapper.getByTestId('canvas-node-group-toggle');
 			expect(toggle.getAttribute('aria-label')).toBe('Expand');
+			expect(toggle.getAttribute('aria-expanded')).toBe('false');
 			expect(toggle.querySelector('svg')).toBeTruthy();
 		});
 
@@ -81,6 +82,7 @@ describe('CanvasNodeGroupTitleBar', () => {
 			const wrapper = render({ data: makeData({ isCollapsed: false }) });
 			const toggle = wrapper.getByTestId('canvas-node-group-toggle');
 			expect(toggle.getAttribute('aria-label')).toBe('Collapse');
+			expect(toggle.getAttribute('aria-expanded')).toBe('true');
 		});
 
 		it('emits toggle when chevron is clicked', async () => {
