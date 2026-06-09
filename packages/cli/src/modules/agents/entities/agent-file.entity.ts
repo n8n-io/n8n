@@ -5,6 +5,8 @@ import { Agent } from './agent.entity';
 
 @Entity({ name: 'agent_files' })
 @Index(['agentId', 'createdAt'])
+@Index(['agentId', 'fileName'], { unique: true })
+@Index(['agentId', 'binaryDataId'], { unique: true })
 export class AgentFile extends WithTimestampsAndStringId {
 	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })

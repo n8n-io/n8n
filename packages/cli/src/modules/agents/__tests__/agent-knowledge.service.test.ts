@@ -1,9 +1,11 @@
 import { mock } from 'jest-mock-extended';
+import { QueryFailedError } from '@n8n/typeorm';
 import { mkdtemp, writeFile, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { OperationalError } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
@@ -238,8 +240,8 @@ describe('AgentKnowledgeService', () => {
 
 		const storedFile = agentFileRepository.all()[0];
 		const storageFileName = fromVolumeStorageReference(storedFile.binaryDataId);
-		expect(storageFileName).toBe(`${storedFile.id}.txt`);
-		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/${storageFileName}`)?.toString('utf-8')).toBe(
+		expect(storageFileName).toBe('notes.txt');
+		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/notes.txt`)?.toString('utf-8')).toBe(
 			'hello world',
 		);
 		await expect(access(tempFilePath)).rejects.toThrow();
@@ -271,10 +273,8 @@ describe('AgentKnowledgeService', () => {
 		]);
 
 		expect(result.map((entry) => entry.fileName)).toEqual(['guide.md', 'data.csv']);
-		for (const storedFile of agentFileRepository.all()) {
-			const storageFileName = fromVolumeStorageReference(storedFile.binaryDataId);
-			expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/${storageFileName}`)).toBeDefined();
-		}
+		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/guide.md`)?.toString('utf-8')).toBe('# Title');
+		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/data.csv`)?.toString('utf-8')).toBe('a,b');
 	});
 
 	it('converts pdf uploads to text while preserving the original display metadata', async () => {
@@ -300,8 +300,8 @@ describe('AgentKnowledgeService', () => {
 		});
 
 		const storedFile = agentFileRepository.all()[0];
-		expect(fromVolumeStorageReference(storedFile.binaryDataId)).toBe(`${storedFile.id}.txt`);
-		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/${storedFile.id}.txt`)?.toString('utf-8')).toBe(
+		expect(fromVolumeStorageReference(storedFile.binaryDataId)).toBe('report.txt');
+		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/report.txt`)?.toString('utf-8')).toBe(
 			'extracted pdf text',
 		);
 	});
@@ -461,6 +461,139 @@ describe('AgentKnowledgeService', () => {
 			OperationalError,
 		);
 		expect(agentFileRepository.all()).toHaveLength(1);
+	});
+
+	it('rejects uploading a duplicate display filename already stored for the agent', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		await agentFileRepository.save(
+			makeAgentFile({
+				id: 'file-1',
+				fileName: 'notes.txt',
+				binaryDataId: toVolumeStorageReference('notes.txt'),
+			}),
+		);
+		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+		const tempFilePath = path.join(tempDirectory, 'notes.txt');
+		await writeFile(tempFilePath, 'hello');
+
+		await expect(
+			service.uploadFiles(agentId, projectId, [
+				makeMulterFile({
+					originalname: 'notes.txt',
+					path: tempFilePath,
+					buffer: undefined,
+				}),
+			]),
+		).rejects.toThrow(BadRequestError);
+		expect(agentFileRepository.all()).toHaveLength(1);
+		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
+	});
+
+	it('rejects duplicate display filenames within the same upload batch', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+		const firstPath = path.join(tempDirectory, 'first.txt');
+		const secondPath = path.join(tempDirectory, 'second.txt');
+		await writeFile(firstPath, 'first');
+		await writeFile(secondPath, 'second');
+
+		await expect(
+			service.uploadFiles(agentId, projectId, [
+				makeMulterFile({
+					originalname: 'notes.txt',
+					path: firstPath,
+					buffer: undefined,
+				}),
+				makeMulterFile({
+					originalname: 'notes.txt',
+					path: secondPath,
+					buffer: undefined,
+				}),
+			]),
+		).rejects.toThrow(BadRequestError);
+		expect(agentFileRepository.all()).toEqual([]);
+		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
+	});
+
+	it('maps DB unique constraint races to duplicate filename validation errors', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+		const tempFilePath = path.join(tempDirectory, 'notes.txt');
+		await writeFile(tempFilePath, 'hello');
+		agentFileRepository.save = jest
+			.fn()
+			.mockRejectedValue(
+				new QueryFailedError(
+					'INSERT INTO agent_files',
+					[],
+					Object.assign(new Error('duplicate key'), { code: '23505' }),
+				),
+			);
+
+		await expect(
+			service.uploadFiles(agentId, projectId, [
+				makeMulterFile({
+					originalname: 'notes.txt',
+					path: tempFilePath,
+					buffer: undefined,
+				}),
+			]),
+		).rejects.toThrow(BadRequestError);
+		expect(filesystem.writeCalls).toEqual([]);
+	});
+
+	it('rejects pdf uploads that collide with an existing text file storage path', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		await agentFileRepository.save(
+			makeAgentFile({
+				id: 'file-1',
+				fileName: 'report.txt',
+				binaryDataId: toVolumeStorageReference('report.txt'),
+			}),
+		);
+		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+		const tempFilePath = path.join(tempDirectory, 'report.pdf');
+		await writeFile(tempFilePath, '%PDF-1.4');
+
+		await expect(
+			service.uploadFiles(agentId, projectId, [
+				makeMulterFile({
+					originalname: 'report.pdf',
+					mimetype: 'application/pdf',
+					path: tempFilePath,
+					buffer: undefined,
+				}),
+			]),
+		).rejects.toThrow(BadRequestError);
+		expect(agentFileRepository.all()).toHaveLength(1);
+		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
+	});
+
+	it('rejects batches where pdf and text uploads map to the same storage path', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+		const textPath = path.join(tempDirectory, 'report.txt');
+		const pdfPath = path.join(tempDirectory, 'report.pdf');
+		await writeFile(textPath, 'text version');
+		await writeFile(pdfPath, '%PDF-1.4');
+
+		await expect(
+			service.uploadFiles(agentId, projectId, [
+				makeMulterFile({
+					originalname: 'report.txt',
+					path: textPath,
+					buffer: undefined,
+				}),
+				makeMulterFile({
+					originalname: 'report.pdf',
+					mimetype: 'application/pdf',
+					path: pdfPath,
+					buffer: undefined,
+				}),
+			]),
+		).rejects.toThrow(BadRequestError);
+		expect(agentFileRepository.all()).toEqual([]);
+		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
 	it('creates separate DB rows for concurrent uploads', async () => {

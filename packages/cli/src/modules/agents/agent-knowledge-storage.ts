@@ -51,12 +51,14 @@ export function fromVolumeStorageReference(binaryDataId: string): string {
 	return binaryDataId.slice(DAYTONA_VOLUME_STORAGE_PREFIX.length);
 }
 
-export function storageFileNameForAgentFile(fileId: string, originalFileName: string): string {
-	const extension = path.extname(originalFileName).toLowerCase();
+export function storageFileNameForOriginalFileName(originalFileName: string): string {
+	const sanitizedName = sanitizeStorageFileName(originalFileName);
+	const extension = path.extname(sanitizedName).toLowerCase();
 	if (extension === '.pdf') {
-		return `${fileId}.txt`;
+		const baseName = path.basename(sanitizedName, path.extname(sanitizedName));
+		return `${baseName}.txt`;
 	}
-	return `${fileId}${extension}`;
+	return sanitizedName;
 }
 
 export function toAgentFileDto(file: AgentFile): AgentFileDto {

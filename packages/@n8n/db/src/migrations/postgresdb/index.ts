@@ -204,6 +204,7 @@ import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/17840
 import { AddScopeColumnToOAuthTables1784000000026 } from '../common/1784000000026-AddScopeColumnToOAuthTables';
 import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
 import type { Migration } from '../migration-types';
+import { AddUniqueAgentFileNames1784000000029 } from '../common/1784000000029-AddUniqueAgentFileNames';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -411,4 +412,5 @@ export const postgresMigrations: Migration[] = [
 	AddScopeColumnToOAuthTables1784000000026,
 	CreateWorkflowPublicationOutboxTable1784000000027,
 	AddProjectIdToInstanceAiThread1784000000028,
+	AddUniqueAgentFileNames1784000000029,
 ];

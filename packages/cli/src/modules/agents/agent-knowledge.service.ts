@@ -1,6 +1,7 @@
 import type { AgentFileDto } from '@n8n/api-types';
 import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Service } from '@n8n/di';
+import { QueryFailedError } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils';
 import { readFile, unlink } from 'node:fs/promises';
 import path from 'node:path';
@@ -13,7 +14,7 @@ import {
 	fromVolumeStorageReference,
 	isFilesystemNotFoundError,
 	KNOWLEDGE_FILES_DIR,
-	storageFileNameForAgentFile,
+	storageFileNameForOriginalFileName,
 	toAgentFileDto,
 	toVolumeStorageReference,
 	type AgentKnowledgeFilesystem,
@@ -24,6 +25,22 @@ import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
 const MAX_AGENT_FILE_METADATA_LENGTH = 255;
+
+function isUniqueConstraintError(error: unknown): boolean {
+	if (!(error instanceof QueryFailedError)) return false;
+
+	const driverError = error.driverError;
+	if (!driverError || typeof driverError !== 'object') return false;
+
+	const code =
+		'code' in driverError && typeof driverError.code === 'string' ? driverError.code : undefined;
+
+	if (code === '23505') return true;
+	if (code === 'SQLITE_CONSTRAINT_UNIQUE') return true;
+	if (code === 'SQLITE_CONSTRAINT' && /UNIQUE constraint/i.test(error.message)) return true;
+
+	return false;
+}
 
 @Service()
 export class AgentKnowledgeService {
@@ -41,6 +58,7 @@ export class AgentKnowledgeService {
 		try {
 			await this.ensureAgentBelongsToProject(agentId, projectId);
 			this.validateUploadMetadata(files);
+			await this.validateUploadBatch(agentId, files);
 			const uploadedFiles: AgentFile[] = [];
 
 			await this.agentKnowledgeSandboxService.withKnowledgeFilesystem(
@@ -125,7 +143,7 @@ export class AgentKnowledgeService {
 		}
 
 		const fileId = generateNanoId();
-		const storageFileName = storageFileNameForAgentFile(fileId, file.originalname);
+		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
 		const agentFile = this.agentFileRepository.create({
 			id: fileId,
 			agentId,
@@ -134,7 +152,15 @@ export class AgentKnowledgeService {
 			mimeType: file.mimetype,
 			fileSizeBytes: file.size,
 		});
-		const savedFile = await this.agentFileRepository.save(agentFile);
+		let savedFile: AgentFile;
+		try {
+			savedFile = await this.agentFileRepository.save(agentFile);
+		} catch (error) {
+			if (isUniqueConstraintError(error)) {
+				throw this.duplicateFileNameError(file.originalname);
+			}
+			throw error;
+		}
 
 		try {
 			const content = await this.readUploadedFileContent(file);
@@ -196,6 +222,50 @@ export class AgentKnowledgeService {
 			this.validateMetadataLength('File name', file.originalname);
 			this.validateMetadataLength('MIME type', file.mimetype);
 		}
+	}
+
+	private async validateUploadBatch(agentId: string, files: Express.Multer.File[]) {
+		const existingFiles = await this.agentFileRepository.findByAgentId(agentId);
+		const existingFileNames = new Set(existingFiles.map((file) => file.fileName));
+		const existingStorageNames = new Set<string>();
+
+		for (const file of existingFiles) {
+			try {
+				existingStorageNames.add(fromVolumeStorageReference(file.binaryDataId));
+			} catch {
+				// Ignore unknown legacy storage references during duplicate checks.
+			}
+		}
+
+		const batchFileNames = new Set<string>();
+		const batchStorageNames = new Set<string>();
+
+		for (const file of files) {
+			if (batchFileNames.has(file.originalname)) {
+				throw this.duplicateFileNameError(file.originalname);
+			}
+			batchFileNames.add(file.originalname);
+
+			if (existingFileNames.has(file.originalname)) {
+				throw this.duplicateFileNameError(file.originalname);
+			}
+
+			const storageFileName = storageFileNameForOriginalFileName(file.originalname);
+			if (batchStorageNames.has(storageFileName)) {
+				throw this.duplicateFileNameError(file.originalname);
+			}
+			batchStorageNames.add(storageFileName);
+
+			if (existingStorageNames.has(storageFileName)) {
+				throw this.duplicateFileNameError(file.originalname);
+			}
+		}
+	}
+
+	private duplicateFileNameError(fileName: string): BadRequestError {
+		return new BadRequestError(
+			`A knowledge file named "${fileName}" already exists for this agent`,
+		);
 	}
 
 	private validateMetadataLength(label: string, value: string) {
