@@ -10,7 +10,7 @@ ARG NODE_VERSION
 RUN apk add --no-cache busybox-binsh && \
     # Install fonts
     apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
-    for i in 1 2 3; do update-ms-fonts && break; echo "update-ms-fonts attempt $i failed, retrying..."; sleep 5; done && \
+    update-ms-fonts && \
     fc-cache -f && \
     apk del .build-deps-fonts && \
     find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; && \
