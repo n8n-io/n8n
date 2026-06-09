@@ -1885,7 +1885,9 @@ describe('WorkflowExecute', () => {
 				execute: async () => [[{ json: { ran: true } }]],
 			}) as unknown as INodeType;
 
-		async function runResumedSubError(nodeOverrides: Partial<INode> = {}): Promise<IRun> {
+		async function runResumedSubError(
+			nodeOverrides: Partial<INode> = {},
+		): Promise<{ result: IRun; runNodeCalls: number }> {
 			const subNode: INode = {
 				...createNodeData({ name: SUB_NODE, type: 'sub' }),
 				...nodeOverrides,
@@ -1903,6 +1905,11 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(
 				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
 				'manual',
+			);
+
+			const runNodeSpy = vi.spyOn(
+				workflowExecute as unknown as { runNode: WorkflowExecute['runNode'] },
+				'runNode',
 			);
 
 			const runExecutionData = createRunExecutionData({
@@ -1928,13 +1935,14 @@ describe('WorkflowExecute', () => {
 			// @ts-expect-error private data
 			workflowExecute.runExecutionData = runExecutionData;
 
-			return await workflowExecute.processRunExecutionData(workflow);
+			const result = await workflowExecute.processRunExecutionData(workflow);
+			return { result, runNodeCalls: runNodeSpy.mock.calls.length };
 		}
 
 		const lastRun = (result: IRun) => result.data.resultData.runData[SUB_NODE].at(-1)!;
 
 		it('should halt the parent execution when onError = stopWorkflow', async () => {
-			const result = await runResumedSubError({ onError: 'stopWorkflow' });
+			const { result } = await runResumedSubError({ onError: 'stopWorkflow' });
 
 			expect(result.status).toBe('error');
 			expect(result.data.resultData.error?.message).toBe(SUB_ERROR);
@@ -1942,7 +1950,7 @@ describe('WorkflowExecute', () => {
 		});
 
 		it('should not re-run the sub-workflow when the node has retryOnFail', async () => {
-			const result = await runResumedSubError({
+			const { result, runNodeCalls } = await runResumedSubError({
 				onError: 'stopWorkflow',
 				retryOnFail: true,
 				maxTries: 2,
@@ -1951,10 +1959,13 @@ describe('WorkflowExecute', () => {
 
 			expect(result.status).toBe('error');
 			expect(result.data.resultData.error?.message).toBe(SUB_ERROR);
+			// The error already happened in sub-workflow, so the node must run
+			// exactly once; retryOnFail must not rexexecute it.
+			expect(runNodeCalls).toBe(1);
 		});
 
 		it('should route the error to the error output onError = continueErrorOutput', async () => {
-			const result = await runResumedSubError({ onError: 'continueErrorOutput' });
+			const { result } = await runResumedSubError({ onError: 'continueErrorOutput' });
 
 			expect(result.status).toBe('success');
 			expect(result.data.resultData.error).toBeUndefined();
@@ -1968,7 +1979,7 @@ describe('WorkflowExecute', () => {
 		it.each([{ onError: 'continueRegularOutput' as const }, { continueOnFail: true }])(
 			'should emit an error item in `json.error` and continues with %o',
 			async (nodeOverrides) => {
-				const result = await runResumedSubError(nodeOverrides);
+				const { result } = await runResumedSubError(nodeOverrides);
 
 				expect(result.status).toBe('success');
 				expect(result.data.resultData.error).toBeUndefined();
