@@ -144,6 +144,15 @@ export class WorkflowPublicationOutboxConsumer {
 			return;
 		}
 
+		if (!workflow.active || workflow.activeVersionId === null) {
+			this.logger.debug('Workflow is no longer active, marking outbox record as completed', {
+				workflowId,
+				outboxId: record.id,
+			});
+			await this.finalizePublication(record);
+			return;
+		}
+
 		if (!newVersion) {
 			this.logger.warn('Published version not found, marking outbox record as completed', {
 				workflowId,

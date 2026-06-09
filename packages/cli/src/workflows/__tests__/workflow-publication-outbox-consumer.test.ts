@@ -229,6 +229,20 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(activeWorkflowManager.removeTriggerNodes).not.toHaveBeenCalled();
 		});
 
+		test('marks completed when workflow is no longer active', async () => {
+			workflowRepository.findOneBy.mockResolvedValue(
+				makeWorkflow({ active: false, activeVersionId: null }),
+			);
+
+			await consumer.processRecord(makeRecord());
+
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+			expect(outboxRepository.manager.upsert).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.getEnabledTriggerNodes).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.addTriggerNodes).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.removeTriggerNodes).not.toHaveBeenCalled();
+		});
+
 		test('marks failed when the published version is not found', async () => {
 			workflowHistoryRepository.findOneBy.mockResolvedValue(null);
 
