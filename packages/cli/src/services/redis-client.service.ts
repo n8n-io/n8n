@@ -181,7 +181,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (tls)
 			options.tls = {
-				servername: tlsConfig.serverName || undefined,
+				servername: tlsConfig.serverName || undefined, // empty string → undefined so ioredis defaults to host-based SNI
 				rejectUnauthorized: tlsConfig.rejectUnauthorized,
 			};
 
