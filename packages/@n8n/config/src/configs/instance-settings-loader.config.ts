@@ -119,4 +119,29 @@ export class InstanceSettingsLoaderConfig {
 
 	@Env('N8N_MCP_ACCESS_ENABLED')
 	mcpAccessEnabled: boolean = false;
+
+	// --- Community packages ---
+
+	/**
+	 * When true, the set of installed community packages is reconciled from env
+	 * vars on every startup: missing packages are installed, version mismatches
+	 * are corrected, and packages not in the list are uninstalled. The
+	 * community-packages UI is locked while this mode is on.
+	 */
+	@Env('N8N_COMMUNITY_PACKAGES_MANAGED_BY_ENV')
+	communityPackagesManagedByEnv: boolean = false;
+
+	/**
+	 * JSON-encoded array of community packages to reconcile on boot.
+	 *
+	 * @example
+	 * ```json
+	 * [
+	 *   { "name": "n8n-nodes-foo", "version": "1.2.3" },
+	 *   { "name": "n8n-nodes-bar", "version": "0.5.0", "checksum": "sha512-..." }
+	 * ]
+	 * ```
+	 */
+	@Env('N8N_COMMUNITY_PACKAGES')
+	communityPackages: string = '';
 }

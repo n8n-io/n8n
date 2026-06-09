@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-cli",
-  "version": "0.29.0",
+  "version": "0.35.0",
   "description": "Official CLI for developing community nodes for n8n",
   "bin": {
     "n8n-node": "bin/n8n-node.mjs"
@@ -25,6 +25,7 @@
     "lint": "eslint src --quiet",
     "lintfix": "eslint src --fix",
     "build": "tsc -p tsconfig.build.json && pnpm copy-templates",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && pnpm copy-templates",
     "publish:dry": "pnpm run build && pnpm pub --dry-run",
     "test": "vitest run",
     "test:unit": "vitest run",
@@ -73,6 +74,7 @@
     "vitest-mock-extended": "catalog:"
   },
   "peerDependencies": {
-    "eslint": ">= 9"
-  }
+    "eslint": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

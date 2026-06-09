@@ -3,6 +3,7 @@ import type {
 	AuthorizationParams,
 	OAuthServerProvider,
 } from '@modelcontextprotocol/sdk/server/auth/provider';
+import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
 import type {
 	OAuthClientInformationFull,
@@ -19,6 +20,7 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from './mcp-oauth-token.service';
+import { McpClientLimitReachedError } from './mcp.errors';
 import { OAuthSessionService } from './oauth-session.service';
 
 export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
@@ -91,17 +93,40 @@ export class McpOAuthService implements OAuthServerProvider {
 		};
 	}
 
+	/** Returns true when the instance is already at or above the registered-client cap. */
+	async isClientLimitReached(): Promise<boolean> {
+		const clientCount = await this.oauthClientRepository.count();
+		return clientCount >= this.globalConfig.endpoints.mcpMaxRegisteredClients;
+	}
+
+	async getInstanceClientStats(): Promise<{
+		count: number;
+		limit: number;
+		atCapacity: boolean;
+	}> {
+		const count = await this.oauthClientRepository.count();
+		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
+		return { count, limit, atCapacity: count >= limit };
+	}
+
 	/**
 	 * Check count after insert to avoid race condition between count() and insert().
 	 * If over limit, rolls back by deleting the just-inserted client.
+	 *
+	 * Throws `McpClientLimitReachedError` (a `ServerError` subclass), which the
+	 * MCP SDK's register handler will surface as a 500 with our descriptive body
+	 * — matching the response shape of the pre-check guard at the route layer.
 	 */
 	private async enforceClientLimit(clientId: string): Promise<void> {
 		const clientCount = await this.oauthClientRepository.count();
-		if (clientCount > this.globalConfig.endpoints.mcpMaxRegisteredClients) {
+		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
+		if (clientCount > limit) {
 			await this.oauthClientRepository.delete({ id: clientId });
-			throw new Error(
-				`Maximum number of registered clients (${this.globalConfig.endpoints.mcpMaxRegisteredClients}) reached`,
+			this.logger.warn(
+				'MCP OAuth client registration rejected: instance limit reached (post-insert rollback)',
+				{ limit, clientCount },
 			);
+			throw new McpClientLimitReachedError(limit);
 		}
 	}
 
@@ -139,15 +164,32 @@ export class McpOAuthService implements OAuthServerProvider {
 		this.logger.debug('Starting OAuth authorization', { clientId: client.client_id });
 
 		try {
+			const resource = this.resolveAndValidateResourceIndicator(params.resource?.toString());
+
 			this.oauthSessionService.createSession(res, {
 				clientId: client.client_id,
 				redirectUri: params.redirectUri,
 				codeChallenge: params.codeChallenge,
 				state: params.state ?? null,
+				resource,
 			});
 
 			res.redirect('/oauth/consent');
 		} catch (error) {
+			if (error instanceof InvalidResourceIndicatorError) {
+				this.logger.warn('Rejecting OAuth authorization request with invalid resource', {
+					clientId: client.client_id,
+					resource: error.resource,
+					expectedResource: error.expectedResource,
+				});
+				this.oauthSessionService.clearSession(res);
+				res.status(400).json({
+					error: 'invalid_target',
+					error_description: 'Invalid resource indicator',
+				});
+				return;
+			}
+
 			this.logger.error('Error in authorize method', { error, clientId: client.client_id });
 			this.oauthSessionService.clearSession(res);
 			res.status(500).json({ error: 'server_error', error_description: 'Internal server error' });
@@ -169,16 +211,41 @@ export class McpOAuthService implements OAuthServerProvider {
 		authorizationCode: string,
 		_codeVerifier?: string,
 		redirectUri?: string,
+		resource?: URL,
 	): Promise<OAuthTokens> {
-		const authRecord = await this.authorizationCodeService.validateAndConsumeAuthorizationCode(
+		const authRecord = await this.authorizationCodeService.findAuthorizationCode(
 			authorizationCode,
 			client.client_id,
 			redirectUri,
 		);
 
+		if (!authRecord) {
+			throw new OAuthError('invalid_grant', 'Invalid authorization code');
+		}
+
+		const resourceStr = resource?.toString();
+		const tokenResource = this.resolveAndValidateResourceIndicator(resourceStr);
+
+		// RFC 8707: if both the token request and the auth code specify a resource, they must match
+		// (token substitution defense). Otherwise either supplies the other, falling back to canonical.
+		let finalResource: string | undefined;
+		const codeResource = authRecord.resource ?? undefined;
+
+		if (tokenResource && codeResource) {
+			if (tokenResource !== codeResource) {
+				throw new InvalidResourceIndicatorError(tokenResource, codeResource);
+			}
+			finalResource = tokenResource;
+		} else {
+			finalResource = tokenResource ?? codeResource;
+		}
+
+		await this.authorizationCodeService.markAuthorizationCodeAsUsed(authorizationCode);
+
 		const { accessToken, refreshToken } = this.tokenService.generateTokenPair(
 			authRecord.userId,
 			client.client_id,
+			finalResource,
 		);
 
 		await this.tokenService.saveTokenPair(
@@ -188,29 +255,53 @@ export class McpOAuthService implements OAuthServerProvider {
 			authRecord.userId,
 		);
 
-		this.logger.info('Authorization code exchanged for tokens', {
-			clientId: client.client_id,
-			userId: authRecord.userId,
-		});
-
 		return {
 			access_token: accessToken,
 			token_type: 'Bearer',
-			expires_in: 3600,
+			expires_in: this.tokenService.getAccessTokenExpirySeconds(),
 			refresh_token: refreshToken,
 		};
 	}
 
+	// `resource` (when present) is normalized and validated before rotation; if omitted,
+	// the token service falls back to the canonical resource URL. `_scopes` is part of
+	// the SDK contract but unused — OAuth 2.1 refresh tokens reuse the original grant's scopes.
 	async exchangeRefreshToken(
 		client: OAuthClientInformationFull,
 		refreshToken: string,
 		_scopes?: string[],
+		resource?: URL,
 	): Promise<OAuthTokens> {
-		return await this.tokenService.validateAndRotateRefreshToken(refreshToken, client.client_id);
+		const resourceStr = resource?.toString();
+		return await this.tokenService.validateAndRotateRefreshToken(
+			refreshToken,
+			client.client_id,
+			this.resolveAndValidateResourceIndicator(resourceStr),
+		);
 	}
 
 	async verifyAccessToken(token: string): Promise<AuthInfo> {
 		return await this.tokenService.verifyAccessToken(token);
+	}
+
+	private getCanonicalMcpResourceUrl(): string {
+		return this.tokenService.getCanonicalResourceUrl();
+	}
+
+	// Exact-match required by RFC 8707 §2.1. Prefix/wildcard matching would open the door
+	// to malicious-host or path-traversal indicators like ".../mcp-server/http/../admin".
+	private resolveAndValidateResourceIndicator(resource: string | undefined): string | undefined {
+		if (resource === undefined) {
+			return undefined;
+		}
+
+		const canonicalResource = this.getCanonicalMcpResourceUrl();
+		const normalizedResource = resource.replace(/\/$/, '');
+		if (normalizedResource !== canonicalResource) {
+			throw new InvalidResourceIndicatorError(resource, canonicalResource);
+		}
+
+		return normalizedResource;
 	}
 
 	async revokeToken(
@@ -282,5 +373,16 @@ export class McpOAuthService implements OAuthServerProvider {
 			clientId,
 			clientName: client.name,
 		});
+	}
+}
+
+// Per RFC 8707 §3.2 the error code MUST be 'invalid_target'. Don't change to 'invalid_resource':
+// it isn't in the registered OAuth error set and compliant MCP clients will fail the negotiation.
+class InvalidResourceIndicatorError extends OAuthError {
+	constructor(
+		readonly resource: string,
+		readonly expectedResource: string,
+	) {
+		super('invalid_target', 'Invalid resource indicator');
 	}
 }

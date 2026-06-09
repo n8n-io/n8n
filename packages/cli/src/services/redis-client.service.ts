@@ -1,11 +1,9 @@
-import { Logger } from '@n8n/backend-common';
+import { inTest, Logger, TypedEmitter } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Debounce } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import ioRedis from 'ioredis';
 import type { Cluster, ClusterOptions, RedisOptions } from 'ioredis';
-
-import { TypedEmitter } from '@/typed-emitter';
 
 import type { RedisClientType } from '../scaling/redis/redis.types';
 
@@ -42,6 +40,13 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 	/** Whether any client has lost connection to Redis. */
 	private lostConnection = false;
+
+	/**
+	 * Whether to exit the process when Redis stays unreachable past the timeout.
+	 * Disabled under test so a client that can never reach Redis (e.g. no Redis
+	 * in DB-test runs) does not call `process.exit` and kill the test worker.
+	 */
+	private readonly exitOnRedisUnreachable = !inTest;
 
 	constructor(
 		private readonly logger: Logger,
@@ -243,8 +248,10 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 				if (cumulativeTimeout > this.config.maxTimeout) {
 					const maxTimeout = Math.round(this.config.maxTimeout / 1000) + 's';
 					this.logger.error(`Unable to connect to Redis after trying to connect for ${maxTimeout}`);
-					this.logger.error('Exiting process due to Redis connection error');
-					process.exit(1);
+					if (this.exitOnRedisUnreachable) {
+						this.logger.error('Exiting process due to Redis connection error');
+						process.exit(1);
+					}
 				}
 			}
 

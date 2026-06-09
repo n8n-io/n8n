@@ -32,12 +32,7 @@ import type {
 	IRunExecutionData,
 	IRunExecutionDataAll,
 } from 'n8n-workflow';
-import {
-	createEmptyRunExecutionData,
-	ManualExecutionCancelledError,
-	migrateRunExecutionData,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import {
 	AnnotationTagEntity,
@@ -57,6 +52,7 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '../entities/types-db';
+import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { separate } from '../utils/separate';
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
@@ -362,6 +358,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				{
 					status: 'crashed',
 					stoppedAt: new Date(),
+					waitTill: null,
 				},
 			);
 			this.logger.info('Marked executions as `crashed`', { executionIds });
@@ -381,7 +378,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			await manager.update(
 				ExecutionEntity,
 				{ id: executionId },
-				{ status: 'running', startedAt: effectiveStartedAt },
+				{ status: 'running', startedAt: effectiveStartedAt, waitTill: null },
 			);
 
 			return effectiveStartedAt;
@@ -607,7 +604,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const waitTill = new Date(Date.now() + 70000);
 		const where: FindOptionsWhere<ExecutionEntity> = {
 			waitTill: LessThanOrEqual(waitTill),
-			status: Not('crashed'),
+			status: 'waiting',
 		};
 
 		const dbType = this.globalConfig.database.type;
@@ -726,42 +723,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		);
 	}
 
-	async getExecutionInWorkflowsForPublicApi(
-		id: string,
-		workflowIds: string[],
-		includeData?: boolean,
-	): Promise<IExecutionBase | undefined> {
-		return await this.findSingleExecution(id, {
-			where: {
-				workflowId: In(workflowIds),
-			},
-			includeData,
-			unflattenData: true,
-		});
-	}
-
-	async findWithUnflattenedData(executionId: string, accessibleWorkflowIds: string[]) {
-		return await this.findSingleExecution(executionId, {
-			where: {
-				workflowId: In(accessibleWorkflowIds),
-			},
-			includeData: true,
-			unflattenData: true,
-			includeAnnotation: true,
-		});
-	}
-
-	async findIfSharedUnflatten(executionId: string, sharedWorkflowIds: string[]) {
-		return await this.findSingleExecution(executionId, {
-			where: {
-				workflowId: In(sharedWorkflowIds),
-			},
-			includeData: true,
-			unflattenData: true,
-			includeAnnotation: true,
-		});
-	}
-
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
 		return await this.findSingleExecution(executionId, {
 			where: {
@@ -782,37 +743,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async stopBeforeRun(execution: IExecutionResponse) {
 		execution.status = 'canceled';
 		execution.stoppedAt = new Date();
+		execution.waitTill = null;
 
 		await this.update(
 			{ id: execution.id },
-			{ status: execution.status, stoppedAt: execution.stoppedAt },
+			{ status: execution.status, stoppedAt: execution.stoppedAt, waitTill: execution.waitTill },
 		);
 
 		return execution;
 	}
 
-	async stopDuringRun(execution: IExecutionResponse) {
-		const error = new ManualExecutionCancelledError(execution.id);
-
-		execution.data = execution.data || createEmptyRunExecutionData();
-
-		execution.data.resultData.error = {
-			...error,
-			message: error.message,
-			stack: error.stack,
-		};
-
-		execution.stoppedAt = new Date();
-		execution.waitTill = null;
-		execution.status = 'canceled';
-
-		await this.updateExistingExecution(execution.id, execution);
-
-		return execution;
-	}
-
 	async cancelMany(executionIds: string[]) {
-		await this.update({ id: In(executionIds) }, { status: 'canceled', stoppedAt: new Date() });
+		await this.update(
+			{ id: In(executionIds) },
+			{ status: 'canceled', stoppedAt: new Date(), waitTill: null },
+		);
 	}
 
 	// ----------------------------------
@@ -986,6 +931,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			vote,
 			projectId,
 			workflowVersionId,
+			isArchived,
+			workflowBooleanSettings,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -1087,6 +1034,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			qb.innerJoin(WorkflowEntity, 'w', 'w.id = execution.workflowId')
 				.innerJoin(SharedWorkflow, 'sw', 'sw.workflowId = w.id')
 				.andWhere('sw.projectId = :projectId', { projectId });
+		}
+
+		if (isArchived !== undefined) {
+			qb.andWhere('workflow.isArchived = :isArchived', { isArchived });
+		}
+
+		if (workflowBooleanSettings?.length) {
+			for (const { key, value } of workflowBooleanSettings) {
+				applyWorkflowBooleanSettingFilter(qb, this.globalConfig, key, value);
+			}
 		}
 
 		return qb;

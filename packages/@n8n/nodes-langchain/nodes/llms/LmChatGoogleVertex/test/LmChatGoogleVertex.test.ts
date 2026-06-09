@@ -1,23 +1,23 @@
 import { ChatVertexAI } from '@langchain/google-vertexai';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import { makeN8nLlmFailedAttemptHandler } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { LmChatGoogleVertex } from '../LmChatGoogleVertex.node';
 
-jest.mock('@langchain/google-vertexai');
-jest.mock('@n8n/ai-utilities');
-jest.mock('n8n-nodes-base/dist/utils/utilities', () => ({
-	formatPrivateKey: jest.fn().mockImplementation((key: string) => key),
+vi.mock('@langchain/google-vertexai');
+vi.mock('@n8n/ai-utilities');
+vi.mock('n8n-nodes-base/dist/utils/utilities', () => ({
+	formatPrivateKey: vi.fn().mockImplementation((key: string) => key),
 }));
 
-const MockedChatVertexAI = jest.mocked(ChatVertexAI);
-const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
-const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
+const MockedChatVertexAI = vi.mocked(ChatVertexAI);
+const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 
 describe('LmChatGoogleVertex - Thinking Budget', () => {
 	let lmChatGoogleVertex: LmChatGoogleVertex;
-	let mockContext: jest.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -32,36 +32,36 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			mockNode,
-		) as jest.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
-		mockContext.getCredentials = jest.fn().mockResolvedValue({
+		mockContext.getCredentials = vi.fn().mockResolvedValue({
 			privateKey: 'test-private-key',
 			email: 'test@n8n.io',
 			region: 'us-central1',
 		});
-		mockContext.getNode = jest.fn().mockReturnValue(mockNode);
-		mockContext.getNodeParameter = jest.fn();
+		mockContext.getNode = vi.fn().mockReturnValue(mockNode);
+		//@ts-expect-error - Mocking
+		mockContext.getNodeParameter = vi.fn();
 
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as unknown as N8nLlmTracing);
-		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
+		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 
 		return mockContext;
 	};
 
 	beforeEach(() => {
 		lmChatGoogleVertex = new LmChatGoogleVertex();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('supplyData - thinking budget parameter passing', () => {
 		it('should not include thinkingBudget in model config when not specified', async () => {
 			const mockContext = setupMockContext();
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'modelName') return 'gemini-2.5-flash';
 				if (paramName === 'projectId') return 'test-project';
 				if (paramName === 'options') {
@@ -102,7 +102,7 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			const mockContext = setupMockContext();
 			const expectedThinkingBudget = 1024;
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'modelName') return 'gemini-2.5-flash';
 				if (paramName === 'projectId') return 'test-project';
 				if (paramName === 'options') {

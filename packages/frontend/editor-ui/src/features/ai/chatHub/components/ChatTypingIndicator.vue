@@ -3,6 +3,8 @@
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .typing {
 	display: inline-flex;
 	gap: 6px;
@@ -14,7 +16,7 @@
 	border-radius: 50%;
 	background: currentColor;
 	opacity: 0.35;
-	animation: blink 1.2s infinite;
+	@include motion.typing-blink;
 }
 
 .typing i:nth-child(2) {
@@ -23,18 +25,5 @@
 
 .typing i:nth-child(3) {
 	animation-delay: 0.4s;
-}
-
-@keyframes blink {
-	0%,
-	80%,
-	100% {
-		opacity: 0.35;
-		transform: translateY(0);
-	}
-	40% {
-		opacity: 1;
-		transform: translateY(-2px);
-	}
 }
 </style>

@@ -5,9 +5,10 @@ import type {
 	IHttpRequestOptions,
 	INode,
 	IWorkflowSettings,
-	Result,
+	OauthJweProxyProvider,
 } from 'n8n-workflow';
-import type { LookupFunction } from 'node:net';
+
+import type { SsrfBridge } from '@/ssrf';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import type { ExternalSecretsProxy } from './external-secrets-proxy';
@@ -28,19 +29,6 @@ export type EvalLlmMockHandler = (
 	requestOptions: IHttpRequestOptions,
 	node: INode,
 ) => Promise<EvalMockHttpResponse | undefined>;
-
-export type SsrfCheckResult = Result<void, Error>;
-
-/**
- * Narrow interface for SSRF protection, satisfied structurally by SsrfProtectionService.
- * Defined here so packages/core can use it without importing from packages/cli.
- */
-export interface SsrfBridge {
-	validateIp(ip: string): SsrfCheckResult;
-	validateUrl(url: string | URL): Promise<SsrfCheckResult>;
-	validateRedirectSync(url: string): void;
-	createSecureLookup(): LookupFunction;
-}
 
 declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
@@ -63,6 +51,7 @@ declare module 'n8n-workflow' {
 		evalLlmMockHandler?: EvalLlmMockHandler;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
+		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider
 		// that only data tables belonging to their respective projects are shown.
@@ -77,10 +66,26 @@ declare module 'n8n-workflow' {
 		 * Contains workflow-level configuration including credential resolver ID.
 		 */
 		workflowSettings?: IWorkflowSettings;
+		/** Encrypted credential context for a manual editor-triggered execution. */
+		encryptedRunnerIdentity?: string;
+	}
+
+	interface IWorkflowExecutionDataProcess {
+		/**
+		 * Invoked by `WorkflowRunner` once `additionalData` is fully built, just
+		 * before the workflow runs. Function fields don't survive queue
+		 * serialization, so callers using this hook must stay on the main process.
+		 *
+		 * @internal
+		 */
+		configureAdditionalData?: (
+			additionalData: IWorkflowExecuteAdditionalData,
+		) => Promise<void> | void;
 	}
 }
 
-export * from './active-workflows';
+export * from './active-workflow-triggers';
+export * from './scheduled-task-manager';
 export type * from './interfaces';
 export * from './routing-node';
 export * from './node-execution-context';
@@ -93,3 +98,12 @@ export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-s
 export { ExecutionContextService } from './execution-context.service';
 export { establishExecutionContext } from './execution-context';
 export { isEngineRequest } from './requests-response';
+export {
+	synthesizeBinaryFixture,
+	type FixtureSizeHint,
+	type SynthesizeBinaryFixtureOptions,
+} from './eval-mock-fixtures';
+// Exposed so eval-mode credential helpers (e.g. `EvalMockedCredentialsHelper`)
+// can reuse the same schema-driven cred synthesizer the wire-server URL
+// rewrite expects. See its `getDecrypted` catch path for the consumer.
+export { buildEvalMockCredentials } from './eval-mock-helpers';

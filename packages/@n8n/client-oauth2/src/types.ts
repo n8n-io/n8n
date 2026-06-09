@@ -22,6 +22,8 @@ export interface OAuth2CredentialData {
 	};
 	useDynamicClientRegistration?: boolean;
 	serverUrl?: string;
+	jweEnabled?: boolean;
+	inlineJwks?: boolean;
 }
 
 /**

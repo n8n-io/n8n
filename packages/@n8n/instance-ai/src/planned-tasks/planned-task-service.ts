@@ -6,7 +6,22 @@ import type {
 	PlannedTaskRecord,
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
+	PlannedWorkflowVerification,
 } from '../types';
+
+/**
+ * Thrown when a submitted task graph fails structural validation (duplicate
+ * IDs, unknown deps, missing checkpoint deps, dependency cycles, etc.).
+ * Callers — notably `plan.tool.ts` — should catch this specifically and surface
+ * the message back to the LLM so it can retry with a corrected graph. Storage,
+ * abort, or programming errors are NOT this class and must propagate.
+ */
+export class PlanValidationError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'PlanValidationError';
+	}
+}
 
 function hasDuplicateIds(tasks: PlannedTask[]): boolean {
 	return new Set(tasks.map((task) => task.id)).size !== tasks.length;
@@ -14,7 +29,7 @@ function hasDuplicateIds(tasks: PlannedTask[]): boolean {
 
 function validateDependencies(tasks: PlannedTask[]): void {
 	if (hasDuplicateIds(tasks)) {
-		throw new Error('Plan contains duplicate task IDs');
+		throw new PlanValidationError('Plan contains duplicate task IDs');
 	}
 
 	const knownIds = new Set(tasks.map((task) => task.id));
@@ -22,15 +37,15 @@ function validateDependencies(tasks: PlannedTask[]): void {
 	for (const task of tasks) {
 		for (const depId of task.deps) {
 			if (!knownIds.has(depId)) {
-				throw new Error(`Task "${task.id}" depends on unknown task "${depId}"`);
+				throw new PlanValidationError(`Task "${task.id}" depends on unknown task "${depId}"`);
 			}
 		}
 		if (task.kind === 'delegate' && (!task.tools || task.tools.length === 0)) {
-			throw new Error(`Delegate task "${task.id}" must include at least one tool`);
+			throw new PlanValidationError(`Delegate task "${task.id}" must include at least one tool`);
 		}
 		if (task.kind === 'checkpoint') {
 			if (task.deps.length === 0) {
-				throw new Error(
+				throw new PlanValidationError(
 					`Checkpoint task "${task.id}" must depend on at least one build-workflow task`,
 				);
 			}
@@ -38,7 +53,7 @@ function validateDependencies(tasks: PlannedTask[]): void {
 				(depId) => byId.get(depId)?.kind === 'build-workflow',
 			);
 			if (!dependsOnBuildWorkflow) {
-				throw new Error(
+				throw new PlanValidationError(
 					`Checkpoint task "${task.id}" must depend on at least one build-workflow task`,
 				);
 			}
@@ -51,7 +66,7 @@ function validateDependencies(tasks: PlannedTask[]): void {
 	const visit = (taskId: string) => {
 		if (visited.has(taskId)) return;
 		if (visiting.has(taskId)) {
-			throw new Error(`Plan contains a dependency cycle involving "${taskId}"`);
+			throw new PlanValidationError(`Plan contains a dependency cycle involving "${taskId}"`);
 		}
 
 		visiting.add(taskId);
@@ -108,7 +123,11 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 	async createPlan(
 		threadId: string,
 		tasks: PlannedTask[],
-		metadata: { planRunId: string; messageGroupId?: string },
+		metadata: {
+			planRunId: string;
+			messageGroupId?: string;
+			postBuildRunApprovalRequired?: boolean;
+		},
 	): Promise<PlannedTaskGraph> {
 		validateDependencies(tasks);
 
@@ -118,6 +137,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		const graph: PlannedTaskGraph = {
 			planRunId: metadata.planRunId,
 			messageGroupId: metadata.messageGroupId,
+			postBuildRunApprovalRequired: metadata.postBuildRunApprovalRequired ?? undefined,
 			status: 'awaiting_approval',
 			tasks: tasks.map<PlannedTaskRecord>((task) => ({
 				...task,
@@ -131,7 +151,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 
 	/**
 	 * Transition a graph from `awaiting_approval` → `active` after the user
-	 * approves the plan. Callers (create-tasks, submit-plan) must invoke this
+	 * approves the plan. Callers must invoke this
 	 * before schedulePlannedTasks() so tick() can begin dispatching. No-op on
 	 * any other status (a cancelled plan stays cancelled, an already-active
 	 * plan doesn't regress).
@@ -140,6 +160,22 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		return await this.storage.update(threadId, (graph) => {
 			if (graph.status === 'awaiting_approval') {
 				return { ...graph, status: 'active' };
+			}
+			return graph;
+		});
+	}
+
+	/**
+	 * Transition a graph from `awaiting_approval` → `cancelled` after the user
+	 * denies the plan outright (distinct from request-changes, which keeps the
+	 * graph in `awaiting_approval` so the agent can revise). No-op on any other
+	 * status — an active or completed graph is not retroactively cancellable
+	 * from approval flow.
+	 */
+	async denyPlan(threadId: string): Promise<PlannedTaskGraph | null> {
+		return await this.storage.update(threadId, (graph) => {
+			if (graph.status === 'awaiting_approval') {
+				return { ...graph, status: 'cancelled' };
 			}
 			return graph;
 		});
@@ -279,6 +315,21 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 		threadId: string,
 		taskId: string,
 	): Promise<CheckpointSettleResult> {
+		return await this.revertRunningTaskToPlanned(threadId, taskId, 'checkpoint');
+	}
+
+	async revertBuildWorkflowToPlanned(
+		threadId: string,
+		taskId: string,
+	): Promise<CheckpointSettleResult> {
+		return await this.revertRunningTaskToPlanned(threadId, taskId, 'build-workflow');
+	}
+
+	private async revertRunningTaskToPlanned(
+		threadId: string,
+		taskId: string,
+		expectedKind: PlannedTaskRecord['kind'],
+	): Promise<CheckpointSettleResult> {
 		let result: CheckpointSettleResult = { ok: false, reason: 'not-found' };
 
 		await this.storage.update(threadId, (graph) => {
@@ -287,7 +338,7 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 				result = { ok: false, reason: 'not-found' };
 				return graph;
 			}
-			if (task.kind !== 'checkpoint') {
+			if (task.kind !== expectedKind) {
 				result = { ok: false, reason: 'wrong-kind', actual: { kind: task.kind } };
 				return graph;
 			}
@@ -388,7 +439,10 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 
 	async tick(
 		threadId: string,
-		options: { availableSlots?: number } = {},
+		options: {
+			availableSlots?: number;
+			pendingWorkflowVerification?: PlannedWorkflowVerification;
+		} = {},
 	): Promise<PlannedTaskSchedulerAction> {
 		// Use atomic update so the graph status transition (active → awaiting_replan
 		// or active → completed) cannot race with concurrent markSucceeded/markFailed.
@@ -408,6 +462,15 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			}
 
 			if (graph.tasks.length > 0 && graph.tasks.every(isSuccess)) {
+				if (options.pendingWorkflowVerification) {
+					action = {
+						type: 'orchestrate-workflow-verification',
+						graph,
+						verification: options.pendingWorkflowVerification,
+					};
+					return graph;
+				}
+
 				const nextGraph: PlannedTaskGraph = { ...graph, status: 'completed' };
 				action = { type: 'synthesize', graph: nextGraph };
 				return nextGraph;
@@ -417,6 +480,15 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			// treat as completed so the orchestrator can synthesize partial results.
 			const hasWorkLeft = graph.tasks.some((t) => t.status === 'planned' || t.status === 'running');
 			if (graph.tasks.length > 0 && !hasWorkLeft) {
+				if (options.pendingWorkflowVerification) {
+					action = {
+						type: 'orchestrate-workflow-verification',
+						graph,
+						verification: options.pendingWorkflowVerification,
+					};
+					return graph;
+				}
+
 				const nextGraph: PlannedTaskGraph = { ...graph, status: 'completed' };
 				action = { type: 'synthesize', graph: nextGraph };
 				return nextGraph;
@@ -445,6 +517,12 @@ export class PlannedTaskCoordinator implements PlannedTaskService {
 			const readyCheckpoint = readyTasks.find((t) => t.kind === 'checkpoint');
 			if (readyCheckpoint) {
 				action = { type: 'orchestrate-checkpoint', graph, tasks: [readyCheckpoint] };
+				return graph;
+			}
+
+			const readyBuildWorkflow = readyTasks.find((t) => t.kind === 'build-workflow');
+			if (readyBuildWorkflow) {
+				action = { type: 'orchestrate-build-workflow', graph, tasks: [readyBuildWorkflow] };
 				return graph;
 			}
 

@@ -20,3 +20,14 @@ export class ProvisioningConfigPatchDto extends Z.class({
 	scopesUseExpressionMapping: z.boolean().optional().nullable(),
 	deleteProjectRules: z.boolean().optional(),
 }) {}
+
+export type ProvisioningMode =
+	| 'disabled'
+	| 'instance_role'
+	| 'instance_and_project_roles'
+	| 'expression_based';
+
+export type ProvisioningModeFlags = Pick<
+	ProvisioningConfigDto,
+	'scopesProvisionInstanceRole' | 'scopesProvisionProjectRoles' | 'scopesUseExpressionMapping'
+>;

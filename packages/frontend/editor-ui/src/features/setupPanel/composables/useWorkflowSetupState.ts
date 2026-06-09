@@ -1,11 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
-import {
-	type ICredentialDataDecryptedObject,
-	type INode,
-	isResourceLocatorValue,
-} from 'n8n-workflow';
+import { type INode, isResourceLocatorValue } from 'n8n-workflow';
 import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 
@@ -17,10 +13,7 @@ import {
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import {
 	getNodeCredentialTypes,
@@ -42,6 +35,7 @@ import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { groupSetupCards } from '@/features/setupPanel/composables/groupSetupCards';
+import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -63,9 +57,8 @@ export const useWorkflowSetupState = (
 	const nodeHelpers = useNodeHelpers();
 	const environmentsStore = useEnvironmentsStore();
 	const templatesStore = useTemplatesStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const { isCredentialTypeTestable, testCredentialInBackground } = useCredentialTestInBackground();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore.value.allNodes);
 
@@ -229,22 +222,6 @@ export const useWorkflowSetupState = (
 	const getCredentialDisplayName = (credentialType: string): string => {
 		const credentialTypeInfo = credentialsStore.getCredentialTypeByName(credentialType);
 		return credentialTypeInfo?.displayName ?? credentialType;
-	};
-
-	/**
-	 * Checks whether a credential type has a test mechanism defined.
-	 * Returns true if either the credential type itself defines a `test` block
-	 * or any node with access declares `testedBy` for it.
-	 * Non-testable types (e.g. Header Auth) are considered complete when just set.
-	 */
-	const isCredentialTypeTestable = (credentialTypeName: string): boolean => {
-		const credType = credentialsStore.getCredentialTypeByName(credentialTypeName);
-		if (credType?.test) return true;
-
-		const nodesWithAccess = credentialsStore.getNodesWithAccess(credentialTypeName);
-		return nodesWithAccess.some((node) =>
-			node.credentials?.some((cred) => cred.name === credentialTypeName && cred.testedBy),
-		);
 	};
 
 	const isTriggerNode = (node: INodeUi): boolean => {
@@ -707,63 +684,6 @@ export const useWorkflowSetupState = (
 	const isAllComplete = computed(() => {
 		return setupCards.value.length > 0 && setupCards.value.every((card) => isCardComplete(card));
 	});
-
-	/**
-	 * Tests a saved credential in the background.
-	 * Fetches the credential's redacted data first so the backend can unredact and test.
-	 * Skips if the credential is already tested OK or has a test in flight.
-	 * The result is tracked automatically in the credentials store as a side effect of testCredential.
-	 */
-	async function testCredentialInBackground(
-		credentialId: string,
-		credentialName: string,
-		credentialType: string,
-	) {
-		if (!isCredentialTypeTestable(credentialType)) {
-			return;
-		}
-
-		if (
-			credentialsStore.isCredentialTestedOk(credentialId) ||
-			credentialsStore.isCredentialTestPending(credentialId)
-		) {
-			return;
-		}
-
-		try {
-			const credentialResponse = await credentialsStore.getCredentialData({ id: credentialId });
-			if (!credentialResponse?.data || typeof credentialResponse.data === 'string') {
-				return;
-			}
-
-			// Re-check after the async fetch — another caller (e.g. CredentialEdit) may have
-			// started or completed a test while we were fetching credential data.
-			if (
-				credentialsStore.isCredentialTestedOk(credentialId) ||
-				credentialsStore.isCredentialTestPending(credentialId)
-			) {
-				return;
-			}
-
-			const { ownedBy, sharedWithProjects, oauthTokenData, ...data } = credentialResponse.data;
-
-			// OAuth credentials can't be tested via the API — the presence of token data
-			// means the OAuth flow completed successfully, which is the equivalent of a passing test.
-			if (oauthTokenData) {
-				credentialsStore.credentialTestResults.set(credentialId, 'success');
-				return;
-			}
-
-			await credentialsStore.testCredential({
-				id: credentialId,
-				name: credentialName,
-				type: credentialType,
-				data: data as ICredentialDataDecryptedObject,
-			});
-		} catch {
-			// Test failure is tracked in the store as a side effect
-		}
-	}
 
 	/**
 	 * Resolves the node names affected by a credential operation.

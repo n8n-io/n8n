@@ -13,7 +13,7 @@ import type { Client } from 'langsmith';
 import type { Example, KVMap } from 'langsmith/schemas';
 import { z } from 'zod';
 
-import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
+import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
 
 /**
@@ -22,7 +22,6 @@ import type { EvalLogger } from '../harness/logger';
  * workflow a scenario belongs to (metadata is hidden by default).
  */
 export const datasetExampleInputsSchema = z.object({
-	prompt: z.string(),
 	testCaseFile: z.string(),
 	scenarioName: z.string(),
 	scenarioDescription: z.string(),
@@ -59,8 +58,9 @@ export async function syncDataset(
 	datasetName: string,
 	logger: EvalLogger,
 	filter?: string,
+	exclude?: string,
 ): Promise<string> {
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(filter);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(filter, exclude);
 
 	// Round-robin ordering ensures evaluate() triggers diverse builds early
 	// rather than burning all concurrency slots on one test case.
@@ -92,15 +92,15 @@ export async function syncDataset(
 		existingByDerivedId.set(`${inputs.data.testCaseFile}/${inputs.data.scenarioName}`, example);
 	}
 
-	// Diff and sync
-	const toCreate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
-	const toUpdate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
+	// Diff and sync. `split` is multi-valued so a case can belong to multiple
+	// logical groupings (e.g. ['pr', 'full']) in addition to its per-file slug.
+	const toCreate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string[] }> = [];
+	const toUpdate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string[] }> = [];
 
 	for (const scenario of scenarios) {
 		const derivedId = `${scenario.testCaseFile}/${scenario.scenarioName}`;
 
 		const inputs: DatasetExampleInputs = {
-			prompt: scenario.prompt,
 			testCaseFile: scenario.testCaseFile,
 			scenarioName: scenario.scenarioName,
 			scenarioDescription: scenario.scenarioDescription,
@@ -115,17 +115,20 @@ export async function syncDataset(
 			triggerType: scenario.triggerType,
 		};
 
+		const split = [scenario.testCaseFile, ...scenario.datasets];
+
 		const existingExample = existingByDerivedId.get(derivedId);
 		if (existingExample) {
 			if (
 				hasInputsChanged(existingExample.inputs, inputs) ||
-				hasMetadataChanged(existingExample.metadata, metadata)
+				hasMetadataChanged(existingExample.metadata, metadata) ||
+				hasSplitChanged(existingExample.split, split)
 			) {
 				toUpdate.push({
 					id: existingExample.id,
 					inputs,
 					metadata,
-					split: scenario.testCaseFile,
+					split,
 				});
 			}
 		} else {
@@ -133,7 +136,7 @@ export async function syncDataset(
 				id: randomUUID(),
 				inputs,
 				metadata,
-				split: scenario.testCaseFile,
+				split,
 			});
 		}
 	}
@@ -176,7 +179,6 @@ export async function syncDataset(
 // ---------------------------------------------------------------------------
 
 interface FlatScenario {
-	prompt: string;
 	testCaseFile: string;
 	scenarioName: string;
 	scenarioDescription: string;
@@ -185,6 +187,8 @@ interface FlatScenario {
 	complexity?: 'simple' | 'medium' | 'complex';
 	tags?: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
+	/** Logical groupings (e.g. ['pr', 'full']) — written into the LangSmith example's splits alongside the file slug. */
+	datasets: string[];
 }
 
 /**
@@ -193,32 +197,18 @@ interface FlatScenario {
  * Input:  [tc1(s1,s2,s3), tc2(s1,s2), tc3(s1)]
  * Output: [tc1/s1, tc2/s1, tc3/s1, tc1/s2, tc2/s2, tc1/s3]
  */
-function buildRoundRobinScenarios(
-	testCasesWithFiles: Array<{
-		testCase: {
-			prompt: string;
-			complexity?: 'simple' | 'medium' | 'complex';
-			tags?: string[];
-			triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-			scenarios: Array<{
-				name: string;
-				description: string;
-				dataSetup: string;
-				successCriteria: string;
-			}>;
-		};
-		fileSlug: string;
-	}>,
-): FlatScenario[] {
+function buildRoundRobinScenarios(testCasesWithFiles: WorkflowTestCaseWithFile[]): FlatScenario[] {
 	const result: FlatScenario[] = [];
-	const maxScenarios = Math.max(...testCasesWithFiles.map((tc) => tc.testCase.scenarios.length), 0);
+	const maxScenarios = Math.max(
+		...testCasesWithFiles.map((tc) => tc.testCase.executionScenarios.length),
+		0,
+	);
 
 	for (let i = 0; i < maxScenarios; i++) {
 		for (const { testCase, fileSlug } of testCasesWithFiles) {
-			const scenario = testCase.scenarios[i];
+			const scenario = testCase.executionScenarios[i];
 			if (scenario) {
 				result.push({
-					prompt: testCase.prompt,
 					testCaseFile: fileSlug,
 					scenarioName: scenario.name,
 					scenarioDescription: scenario.description,
@@ -227,6 +217,7 @@ function buildRoundRobinScenarios(
 					complexity: testCase.complexity,
 					tags: testCase.tags,
 					triggerType: testCase.triggerType,
+					datasets: testCase.datasets,
 				});
 			}
 		}
@@ -240,7 +231,6 @@ function buildRoundRobinScenarios(
 
 const existingInputsSchema = z
 	.object({
-		prompt: z.string().default(''),
 		testCaseFile: z.string().default(''),
 		scenarioName: z.string().default(''),
 		scenarioDescription: z.string().default(''),
@@ -265,7 +255,6 @@ function hasInputsChanged(existing: unknown, incoming: DatasetExampleInputs): bo
 	if (!parsed.success) return true;
 	const e = parsed.data;
 	return (
-		e.prompt !== incoming.prompt ||
 		e.testCaseFile !== incoming.testCaseFile ||
 		e.dataSetup !== incoming.dataSetup ||
 		e.successCriteria !== incoming.successCriteria ||
@@ -283,4 +272,13 @@ function hasMetadataChanged(existing: unknown, incoming: DatasetExampleMetadata)
 		e.triggerType !== (incoming.triggerType ?? '') ||
 		JSON.stringify(e.tags) !== JSON.stringify(incoming.tags ?? [])
 	);
+}
+
+// Split (file slug + datasets/tiers) is order-insensitive — compare as sets so a
+// reorder isn't a change, but adding/removing a tier is and triggers a re-sync.
+function hasSplitChanged(existing: string | string[] | undefined, incoming: string[]): boolean {
+	const current = existing === undefined ? [] : Array.isArray(existing) ? existing : [existing];
+	if (current.length !== incoming.length) return true;
+	const incomingSet = new Set(incoming);
+	return !current.every((s) => incomingSet.has(s));
 }

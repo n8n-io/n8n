@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { StatusSnapshot } from './daemon-controller';
-import type { AppSettings } from './settings-store';
+import type { AppSettings, StatusSnapshot } from '../shared/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
 	getSettings: async (): Promise<AppSettings> =>
@@ -13,11 +12,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 	getDaemonStatus: async (): Promise<StatusSnapshot> =>
 		await (ipcRenderer.invoke('daemon:status') as Promise<StatusSnapshot>),
 
-	startDaemon: async (): Promise<{ ok: boolean }> =>
-		await (ipcRenderer.invoke('daemon:start') as Promise<{ ok: boolean }>),
-
-	stopDaemon: async (): Promise<{ ok: boolean }> =>
-		await (ipcRenderer.invoke('daemon:stop') as Promise<{ ok: boolean }>),
+	disconnectGateway: async (): Promise<{ ok: boolean }> =>
+		await (ipcRenderer.invoke('gateway:disconnect') as Promise<{ ok: boolean }>),
 
 	onStatusChanged: (onChangeCallback: (snapshot: StatusSnapshot) => void): void => {
 		ipcRenderer.on('statusChanged', (_event, snapshot: StatusSnapshot) =>

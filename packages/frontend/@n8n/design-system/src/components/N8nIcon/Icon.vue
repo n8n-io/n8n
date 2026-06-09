@@ -125,6 +125,8 @@ const resolvedComponent = computed(
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/motion';
+
 .strokeWidth {
 	rect,
 	path {
@@ -133,15 +135,6 @@ const resolvedComponent = computed(
 }
 
 .spin {
-	animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
-	}
+	@include motion.spin;
 }
 </style>

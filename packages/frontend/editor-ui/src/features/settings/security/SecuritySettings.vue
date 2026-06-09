@@ -13,6 +13,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { RedactionFloor } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { EnterpriseEditionFeature } from '@/app/constants';
@@ -20,6 +21,8 @@ import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
+import DataRedactionSection from './DataRedactionSection.vue';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -28,6 +31,7 @@ const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const { isEnabled: isRedactionEnforcementFlagEnabled } = useRedactionEnforcementFeatureFlag();
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
@@ -64,7 +68,7 @@ function goToUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
 }
 
-const { state } = useAsyncState(async () => {
+const { state, isReady, error } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
 	return {
 		personalSpacePublishing: settings.personalSpacePublishing,
@@ -73,10 +77,18 @@ const { state } = useAsyncState(async () => {
 		sharedPersonalWorkflowsCount: settings.sharedPersonalWorkflowsCount,
 		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
 		managedByEnv: settings.managedByEnv,
+		initialRedactionFloor: (settings.redactionEnforcement?.floor ?? 'off') as RedactionFloor,
 	};
 }, undefined);
 
 const isManagedByEnv = computed(() => state.value?.managedByEnv ?? false);
+
+// The security settings endpoint is gated by an enterprise license and 403s on
+// unlicensed instances, leaving `state` undefined. The data redaction section
+// still needs to render so the licensed-feature upgrade prompt is reachable, so
+// we render once the request settles (resolved or failed) rather than waiting
+// for a defined `state`.
+const isSecuritySettingsSettled = computed(() => isReady.value || error.value !== undefined);
 
 async function updatePersonalSpaceSetting(
 	key: 'personalSpacePublishing' | 'personalSpaceSharing',
@@ -231,6 +243,12 @@ const sharingCountText = computed(() => {
 				</div>
 			</div>
 		</div>
+
+		<DataRedactionSection
+			v-if="isRedactionEnforcementFlagEnabled && isSecuritySettingsSettled"
+			:initial-floor="state?.initialRedactionFloor ?? 'off'"
+			:managed-by-env="isManagedByEnv"
+		/>
 
 		<N8nHeading tag="h2" size="large" class="mb-l">
 			{{ i18n.baseText('settings.security.personalSpace.title') }}

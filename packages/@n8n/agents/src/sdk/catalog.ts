@@ -1,5 +1,16 @@
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 
+const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
+	'amazon-bedrock': 'aws-bedrock',
+	azure: 'azure-openai',
+	'azure-cognitive-services': 'azure-openai',
+};
+
+const AGENT_PROVIDER_NAMES: Record<string, string> = {
+	'aws-bedrock': 'AWS Bedrock',
+	'azure-openai': 'Azure OpenAI',
+};
+
 /** Cost per million tokens. */
 export interface ModelCost {
 	/** Cost per million input tokens (USD). */
@@ -26,6 +37,8 @@ export interface ModelInfo {
 	id: string;
 	/** Human-readable name (e.g. 'Claude Sonnet 4.5'). */
 	name: string;
+	/** Release date in ISO date format when available from models.dev. */
+	releaseDate?: string;
 	/** Whether the model supports reasoning / thinking. */
 	reasoning: boolean;
 	/** Whether the model supports tool calling. */
@@ -52,6 +65,7 @@ export type ProviderCatalog = Record<string, ProviderInfo>;
 interface ModelsDevModel {
 	id: string;
 	name: string;
+	release_date?: string;
 	reasoning?: boolean;
 	tool_call?: boolean;
 	cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
@@ -62,6 +76,10 @@ interface ModelsDevProvider {
 	id: string;
 	name: string;
 	models?: Record<string, ModelsDevModel>;
+}
+
+function toAgentProviderId(modelsDevProviderId: string): string {
+	return MODELS_DEV_PROVIDER_ALIASES[modelsDevProviderId] ?? modelsDevProviderId;
 }
 
 /**
@@ -96,6 +114,7 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 			const info: ModelInfo = {
 				id: model.id,
 				name: model.name,
+				...(model.release_date !== undefined && { releaseDate: model.release_date }),
 				reasoning: model.reasoning ?? false,
 				toolCall: model.tool_call ?? false,
 			};
@@ -116,10 +135,14 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 			models[modelId] = info;
 		}
 
-		catalog[key] = {
-			id: provider.id,
-			name: provider.name,
-			models,
+		const providerId = toAgentProviderId(key);
+		catalog[providerId] = {
+			id: providerId,
+			name: catalog[providerId]?.name ?? AGENT_PROVIDER_NAMES[providerId] ?? provider.name,
+			models: {
+				...(catalog[providerId]?.models ?? {}),
+				...models,
+			},
 		};
 	}
 

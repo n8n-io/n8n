@@ -15,24 +15,31 @@ jobs:
   test:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: SQLite Pooled
-            runner: blacksmith-2vcpu-ubuntu-2204
+            runner: blacksmith-4vcpu-ubuntu-2204
             test-cmd: pnpm test:sqlite
             migration-cmd: pnpm test:sqlite:migrations
+            collectCoverage: 'false'
           - name: Postgres 16
+            # 4vcpu is enough since persistent-worker + template-DB make PG16
+            # complete in ~480s, which is now close to the SQLite leg (~360s)
+            # — the matrix wall is bounded by the slower leg, so the larger
+            # 8vcpu runner buys headroom we can't cash in anywhere.
             runner: blacksmith-4vcpu-ubuntu-2204
             test-cmd: pnpm test:postgres:integration:tc
             migration-cmd: pnpm test:postgres:migrations:tc
             TEST_IMAGE_POSTGRES: 'postgres:16'
+            collectCoverage: 'true'
     env:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
+      COVERAGE_ENABLED: ${{ matrix.collectCoverage }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ inputs.ref }}
 
@@ -47,5 +54,16 @@ jobs:
         run: ${{ matrix.test-cmd }}
 
       - name: Run Migration Tests
+        if: matrix.migration-cmd != ''
         working-directory: packages/cli
         run: ${{ matrix.migration-cmd }}
+
+      - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: backend-integration-postgres
+          name: backend-integration-postgres
+          files: ./packages/cli/coverage/cobertura-coverage.xml
+          fail_ci_if_error: false

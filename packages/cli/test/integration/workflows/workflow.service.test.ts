@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import {
 	createWorkflowWithHistory,
 	testDb,
@@ -44,6 +45,7 @@ let workflowService: WorkflowService;
 let workflowPublishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 let workflowHistoryService: WorkflowHistoryService;
+const loggerMock = mock<Logger>();
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
 const nodeTypes = mockInstance(NodeTypes);
@@ -60,7 +62,7 @@ beforeAll(async () => {
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowHistoryService = Container.get(WorkflowHistoryService);
 	workflowService = new WorkflowService(
-		mock(),
+		loggerMock,
 		Container.get(SharedWorkflowRepository),
 		workflowRepository,
 		mock(),
@@ -84,6 +86,7 @@ beforeAll(async () => {
 		webhookServiceMock,
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
+		mock(), // redactionEnforcementService
 	);
 });
 
@@ -91,6 +94,7 @@ beforeEach(() => {
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
+	workflowValidationService.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
 	webhookServiceMock.findWebhookConflicts.mockReset();
 	webhookServiceMock.findWebhookConflicts.mockResolvedValue([]);
 });
@@ -148,7 +152,29 @@ describe('update()', () => {
 
 	test('should save workflow history version with backfilled data when connection change', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflowWithHistory({}, owner);
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: [
+					{
+						id: 'uuid-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [240, 300],
+						parameters: {},
+					},
+					{
+						id: 'uuid-2',
+						name: 'Code Node',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 1,
+						position: [500, 300],
+						parameters: {},
+					},
+				],
+			},
+			owner,
+		);
 
 		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
@@ -281,7 +307,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1',
 				name: 'test',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -290,7 +316,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1-2',
 				name: 'test2',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -308,9 +334,9 @@ describe('activateWorkflow()', () => {
 			{
 				id: '123',
 				webhookId: 'version2',
-				name: '',
+				name: 'updatedNode',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -330,7 +356,7 @@ describe('activateWorkflow()', () => {
 					webhookId: 'version2',
 					name: 'newNode',
 					typeVersion: 0,
-					type: '',
+					type: 'n8n-nodes-base.webhook',
 					position: [1, 2],
 					parameters: {},
 				},
@@ -354,7 +380,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1',
 				name: 'test',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -363,7 +389,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version1-2',
 				name: 'test2',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -382,7 +408,7 @@ describe('activateWorkflow()', () => {
 				webhookId: 'version2',
 				name: 'newNode',
 				typeVersion: 0,
-				type: '',
+				type: 'n8n-nodes-base.webhook',
 				position: [1, 2],
 				parameters: {},
 			},
@@ -587,6 +613,64 @@ describe('workflow_published_version table population', () => {
 			const count = await workflowPublishedVersionRepository.count();
 			expect(count).toBe(0);
 		});
+	});
+});
+
+describe('activateWorkflow trigger cleanup', () => {
+	test('should tear down triggers before the rollback and surface the original activation error', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// Capture state at the moment cleanup runs. The rollback must happen
+		// after remove(), so the workflow is still active here; that ordering is what
+		// lets clearWebhooks resolve the active version before it becomes null
+		let activeWhenRemoved: boolean | undefined;
+		activeWorkflowManager.remove.mockImplementationOnce(async () => {
+			activeWhenRemoved = (await workflowRepository.findById(workflow.id))?.active;
+		});
+		activeWorkflowManager.add.mockRejectedValueOnce(
+			new Error('activation failed mid registration'),
+		);
+
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+			'activation failed mid registration',
+		);
+
+		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWhenRemoved).toBe(true);
+		expect(loggerMock.warn).toHaveBeenCalledWith(
+			expect.stringContaining('Rolled back partial activation'),
+			{ workflowId: workflow.id },
+		);
+
+		const reloaded = await workflowRepository.findById(workflow.id);
+		expect(reloaded?.active).toBe(false);
+		expect(reloaded?.activeVersionId).toBeNull();
+	});
+
+	test('should rollback and surface the original error when cleanup itself fails', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		activeWorkflowManager.add.mockRejectedValueOnce(
+			new Error('activation failed mid registration'),
+		);
+		activeWorkflowManager.remove.mockRejectedValueOnce(new Error('cleanup blew up'));
+
+		// A failing cleanup is logged but must not hide the original error
+		// nor block the rollback
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+			'activation failed mid registration',
+		);
+
+		expect(loggerMock.error).toHaveBeenCalledWith(
+			expect.stringContaining('Failed to roll back partial activation'),
+			expect.objectContaining({ workflowId: workflow.id }),
+		);
+
+		const reloaded = await workflowRepository.findById(workflow.id);
+		expect(reloaded?.active).toBe(false);
+		expect(reloaded?.activeVersionId).toBeNull();
 	});
 });
 

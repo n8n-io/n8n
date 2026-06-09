@@ -1,20 +1,20 @@
-import { mockDeep } from 'jest-mock-extended';
 import { NodeOperationError, type IExecuteFunctions, type INode } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as image from './image';
-import * as text from './text';
 import { router } from './router';
+import * as text from './text';
 
-jest.mock('./image');
-jest.mock('./text');
+vi.mock('./image');
+vi.mock('./text');
 
 describe('Ollama Router', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const mockImageExecute = jest.fn();
-	const mockTextExecute = jest.fn();
+	const mockImageExecute = vi.fn();
+	const mockTextExecute = vi.fn();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		(image as any).analyze = { execute: mockImageExecute };
 		(text as any).message = { execute: mockTextExecute };
 

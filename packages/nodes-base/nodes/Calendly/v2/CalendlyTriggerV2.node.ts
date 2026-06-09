@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+
 import {
 	type IHookFunctions,
 	type IWebhookFunctions,
@@ -7,9 +9,37 @@ import {
 	type IWebhookResponseData,
 	type INodeTypeBaseDescription,
 	NodeConnectionTypes,
+	NodeOperationError,
 } from 'n8n-workflow';
 
+import { verifySignature } from '../CalendlyTriggerHelpers';
 import { calendlyApiRequest } from '../GenericFunctions';
+
+function isDataObject(value: unknown): value is IDataObject {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getStringField(data: IDataObject | undefined, key: string): string | undefined {
+	const value = data?.[key];
+	return typeof value === 'string' ? value : undefined;
+}
+
+function getStringArrayField(data: IDataObject, key: string): string[] | undefined {
+	const value = data[key];
+	if (!Array.isArray(value)) return undefined;
+
+	const strings: string[] = [];
+	for (const item of value) {
+		if (typeof item !== 'string') return undefined;
+		strings.push(item);
+	}
+
+	return strings;
+}
+
+function isValidCalendlyWebhookUrl(webhookUrl: string | undefined): webhookUrl is string {
+	return webhookUrl?.startsWith('https://') === true;
+}
 
 export class CalendlyTriggerV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -91,33 +121,49 @@ export class CalendlyTriggerV2 implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string[];
-				const scope = this.getNodeParameter('scope', 0) as string;
 
-				const { resource } = await calendlyApiRequest.call(this, 'GET', '/users/me');
+				const scope = this.getNodeParameter('scope', 0) as string;
+				const userResponse = await calendlyApiRequest.call(this, 'GET', '/users/me');
+				const user = isDataObject(userResponse.resource) ? userResponse.resource : undefined;
+				const organization = getStringField(user, 'current_organization');
+				const userUri = getStringField(user, 'uri');
+
+				if (organization === undefined || (scope === 'user' && userUri === undefined)) return false;
 
 				const qs: IDataObject = {};
 
 				if (scope === 'user') {
 					qs.scope = 'user';
-					qs.organization = resource.current_organization;
-					qs.user = resource.uri;
+					qs.organization = organization;
+					qs.user = userUri;
 				}
 
 				if (scope === 'organization') {
 					qs.scope = 'organization';
-					qs.organization = resource.current_organization;
+					qs.organization = organization;
 				}
 
 				const endpoint = '/webhook_subscriptions';
-				const { collection } = await calendlyApiRequest.call(this, 'GET', endpoint, {}, qs);
+				const subscriptionsResponse = await calendlyApiRequest.call(this, 'GET', endpoint, {}, qs);
+				const collection = Array.isArray(subscriptionsResponse.collection)
+					? subscriptionsResponse.collection
+					: [];
 
 				for (const webhook of collection) {
+					if (!isDataObject(webhook)) continue;
+
+					const callbackUrl = getStringField(webhook, 'callback_url');
+					const webhookEvents = getStringArrayField(webhook, 'events');
+					const webhookUri = getStringField(webhook, 'uri');
+
 					if (
-						webhook.callback_url === webhookUrl &&
-						events.length === webhook.events.length &&
-						events.every((event: string) => webhook.events.includes(event))
+						callbackUrl === webhookUrl &&
+						webhookUri !== undefined &&
+						webhookEvents !== undefined &&
+						events.length === webhookEvents.length &&
+						events.every((event) => webhookEvents.includes(event))
 					) {
-						webhookData.webhookURI = webhook.uri;
+						webhookData.webhookURI = webhookUri;
 						return true;
 					}
 				}
@@ -128,49 +174,66 @@ export class CalendlyTriggerV2 implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events') as string[];
+
+				if (!isValidCalendlyWebhookUrl(webhookUrl)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Calendly requires a public HTTPS webhook URL',
+						{
+							description:
+								'Set the n8n webhook URL to a public HTTPS address, or use a tunnel while testing locally.',
+						},
+					);
+				}
+
 				const scope = this.getNodeParameter('scope', 0) as string;
+				const userResponse = await calendlyApiRequest.call(this, 'GET', '/users/me');
+				const user = isDataObject(userResponse.resource) ? userResponse.resource : undefined;
+				const organization = getStringField(user, 'current_organization');
+				const userUri = getStringField(user, 'uri');
 
-				const { resource } = await calendlyApiRequest.call(this, 'GET', '/users/me');
+				if (organization === undefined || (scope === 'user' && userUri === undefined)) return false;
 
+				const webhookSecret = randomBytes(32).toString('hex');
 				const body: IDataObject = {
 					url: webhookUrl,
 					events,
-					organization: resource.current_organization,
+					organization,
 					scope,
+					signing_key: webhookSecret,
 				};
 
 				if (scope === 'user') {
-					body.user = resource.uri;
+					body.user = userUri;
 				}
 
 				const endpoint = '/webhook_subscriptions';
 				const responseData = await calendlyApiRequest.call(this, 'POST', endpoint, body);
+				const subscription = isDataObject(responseData.resource)
+					? responseData.resource
+					: undefined;
+				const subscriptionUri = getStringField(subscription, 'uri');
 
-				if (responseData?.resource === undefined || responseData?.resource?.uri === undefined) {
-					return false;
-				}
+				if (subscriptionUri === undefined) return false;
 
-				webhookData.webhookURI = responseData.resource.uri;
+				webhookData.webhookURI = subscriptionUri;
+				webhookData.webhookSecret = webhookSecret;
+
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
+				const { webhookURI } = webhookData;
 
-				if (webhookData.webhookURI !== undefined) {
+				if (typeof webhookURI === 'string') {
 					try {
-						await calendlyApiRequest.call(
-							this,
-							'DELETE',
-							'',
-							{},
-							{},
-							webhookData.webhookURI as string,
-						);
+						await calendlyApiRequest.call(this, 'DELETE', '', {}, {}, webhookURI);
 					} catch (error) {
 						return false;
 					}
 
 					delete webhookData.webhookURI;
+					delete webhookData.webhookSecret;
 				}
 
 				return true;
@@ -179,6 +242,14 @@ export class CalendlyTriggerV2 implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData();
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],

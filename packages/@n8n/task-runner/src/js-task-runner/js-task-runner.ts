@@ -2,13 +2,7 @@ import isObject from 'lodash/isObject';
 import set from 'lodash/set';
 import { DateTime, Duration, Interval } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
-import {
-	WorkflowDataProxy,
-	Workflow,
-	ObservableObject,
-	Expression,
-	jsonStringify,
-} from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow, Expression, jsonStringify } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -251,8 +245,6 @@ export class JsTaskRunner extends TaskRunner {
 			...workflowParams,
 			nodeTypes: this.nodeTypes,
 		});
-
-		workflow.staticData = ObservableObject.create(workflow.staticData);
 
 		const result =
 			settings.nodeMode === 'runOnceForAllItems'

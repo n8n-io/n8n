@@ -85,6 +85,12 @@ onMounted(() => {
 	overflow: auto;
 	grid-area: content;
 	isolation: isolate;
+
+	// Lift the stacking context while the workflow preview iframe NDV is
+	// fullscreen so its `z-index` can paint above the sidebar.
+	&:has([data-test-id='workflow-preview-iframe'][data-ndv-open]) {
+		isolation: auto;
+	}
 }
 
 .contentWrapper {

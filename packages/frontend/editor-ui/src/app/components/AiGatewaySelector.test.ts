@@ -8,6 +8,8 @@ import AiGatewaySelector from './AiGatewaySelector.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
 
@@ -41,7 +43,9 @@ describe('AiGatewaySelector', () => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflowExecutionData = null;
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData(null);
 	});
 
 	describe('rendering', () => {
@@ -162,7 +166,9 @@ describe('AiGatewaySelector', () => {
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 			mockFetchBalance.mockClear();
 
-			workflowsStore.workflowExecutionData = { finished: true } as never;
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setWorkflowExecutionData({ id: 'exec-1', finished: true } as never);
 
 			await vi.waitFor(() => expect(mockFetchBalance).toHaveBeenCalledOnce());
 		});
@@ -171,7 +177,13 @@ describe('AiGatewaySelector', () => {
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 			mockFetchBalance.mockClear();
 
-			workflowsStore.workflowExecutionData = { finished: false, stoppedAt: new Date() } as never;
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setWorkflowExecutionData({
+				id: 'exec-1',
+				finished: false,
+				stoppedAt: new Date(),
+			} as never);
 
 			await vi.waitFor(() => expect(mockFetchBalance).toHaveBeenCalledOnce());
 		});
@@ -180,7 +192,13 @@ describe('AiGatewaySelector', () => {
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 			mockFetchBalance.mockClear();
 
-			workflowsStore.workflowExecutionData = { finished: false, stoppedAt: undefined } as never;
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setWorkflowExecutionData({
+				id: 'exec-1',
+				finished: false,
+				stoppedAt: undefined,
+			} as never);
 
 			await new Promise((r) => setTimeout(r, 10));
 			expect(mockFetchBalance).not.toHaveBeenCalled();
@@ -190,17 +208,23 @@ describe('AiGatewaySelector', () => {
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 			mockFetchBalance.mockClear();
 
-			workflowsStore.workflowExecutionData = { finished: true } as never;
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setWorkflowExecutionData({ id: 'exec-1', finished: true } as never);
 			await vi.waitFor(() => expect(mockFetchBalance).toHaveBeenCalledTimes(1));
 
-			workflowsStore.workflowExecutionData = { finished: true } as never;
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setWorkflowExecutionData({ id: 'exec-2', finished: true } as never);
 			await vi.waitFor(() => expect(mockFetchBalance).toHaveBeenCalledTimes(2));
 		});
 
 		it('should not call fetchWallet when execution finishes but gateway is disabled', async () => {
 			renderComponent({ props: { aiGatewayEnabled: false, readonly: false } });
 
-			workflowsStore.workflowExecutionData = { finished: true } as never;
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setWorkflowExecutionData({ id: 'exec-1', finished: true } as never);
 
 			await new Promise((r) => setTimeout(r, 10));
 			expect(mockFetchBalance).not.toHaveBeenCalled();

@@ -3,14 +3,14 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
-import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '../executions.constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
-	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -19,13 +19,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isFullExecutionResponse } from '@/app/utils/typeGuards';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { isTrimmedNodeExecutionData } from 'n8n-workflow';
 
-/**
- * @param providedWorkflowState - Optional workflow state to use instead of injecting.
- *   This is needed when called from the same component that provides WorkflowStateKey
- *   (e.g., WorkflowLayout), since Vue's provide/inject works parent-to-child only.
- */
-export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => {
+export const useExecutionDebugging = () => {
 	const telemetry = useTelemetry();
 
 	const router = useRouter();
@@ -33,10 +29,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	const message = useMessage();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
-	const workflowState = providedWorkflowState ?? injectWorkflowState();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 	const { markStateDirty } = uiStore;
@@ -64,7 +57,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 		// Using the pinned data of the workflow to check if the node is pinned
 		// because workflowsStore.getCurrentWorkflow() returns a cached workflow without the updated pinned data
-		const workflowPinnedNodeNames = Object.keys(workflowDocumentStore.value.pinData);
+		const workflowPinnedNodeNames = Object.keys(workflowDocumentStore.value.pinnedDataByNodeName);
 		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
 			workflowPinnedNodeNames.includes(name),
 		);
@@ -106,7 +99,9 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 		// Set execution data
 		workflowDocumentStore.value.resetAllNodesIssues();
-		workflowState.setWorkflowExecutionData(execution);
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId).setWorkflowExecutionData(
+			execution,
+		);
 
 		// Pin data of all nodes which do not have a parent node
 		const pinnableNodes = workflowNodes.filter(
@@ -121,6 +116,10 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 				// Get the first main output that has data, preserving all execution data including binary
 				const nodeData = taskData.data.main.find((output) => output && output.length > 0);
 				if (nodeData) {
+					// Pinning a placeholder would round-trip it through the next manual run and persist it to DB.
+					if (isTrimmedNodeExecutionData(nodeData)) {
+						return;
+					}
 					pinnings++;
 					workflowDocumentStore.value.pinNodeData(node.name, nodeData);
 
@@ -175,7 +174,9 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			event.stopPropagation();
 			return;
 		}
-		workflowsStore.isInDebugMode = false;
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setIsInDebugMode(false);
 	};
 
 	return {

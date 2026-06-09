@@ -6,19 +6,12 @@ import type {
 	KnownNodesAndCredentials,
 	LoadedClass,
 	LoadedNodesAndCredentials,
-	LoadingDetails,
 } from 'n8n-workflow';
 import path from 'node:path';
 
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from '../dist/errors';
 import { LazyPackageDirectoryLoader } from '../dist/nodes-loader/lazy-package-directory-loader';
 import { TestDataNode } from './test-data-node';
-
-/** This rewrites the nodes/credentials source path to load the typescript code instead of the compiled javascript code */
-const fixSourcePath = (loadInfo: LoadingDetails) => {
-	if (!loadInfo) return;
-	loadInfo.sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
-};
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -89,7 +82,6 @@ export class LoadNodesAndCredentials {
 			if (credentialType in loader.known.credentials) {
 				const loaded = loader.getCredential(credentialType);
 				this.loaded.credentials[credentialType] = loaded;
-				fixSourcePath(loader.known.credentials[credentialType]);
 			}
 		}
 
@@ -112,7 +104,6 @@ export class LoadNodesAndCredentials {
 		if (!loader) {
 			throw new UnrecognizedNodeTypeError(packageName, nodeType);
 		}
-		fixSourcePath(loader.known.nodes[nodeType]);
 		return loader.getNode(nodeType);
 	}
 }

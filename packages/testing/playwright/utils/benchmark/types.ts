@@ -15,10 +15,17 @@ export type BenchmarkDimensions = Record<string, string | number>;
 /** Known trigger types. Must be set explicitly — no default to avoid silently wrong data. */
 export type TriggerType = 'kafka' | 'webhook';
 
-/** Load profile for steady-rate or preloaded burst tests. */
+/** A single stage in a staged-rate ramp test: publish at this rate for this duration. */
+export interface PublishStage {
+	ratePerSecond: number;
+	durationSeconds: number;
+}
+
+/** Load profile for steady-rate, preloaded burst, or staged ramp tests. */
 export type LoadProfile =
 	| { type: 'steady'; ratePerSecond: number; durationSeconds: number }
-	| { type: 'preloaded'; count: number };
+	| { type: 'preloaded'; count: number }
+	| { type: 'staged'; stages: PublishStage[] };
 
 // --- Payload sizes ---
 
@@ -81,6 +88,19 @@ export interface PublishResult {
 	actualDurationMs: number;
 }
 
+/** Per-stage publish record returned by `publishStaged`. */
+export interface StagedPublishResult {
+	totalPublished: number;
+	stages: Array<{
+		stage: PublishStage;
+		result: PublishResult;
+		/** Wall-clock when this stage started publishing. */
+		startTimeMs: number;
+		/** Wall-clock when this stage finished publishing. */
+		endTimeMs: number;
+	}>;
+}
+
 export interface DrainResult {
 	drained: boolean;
 	/** Number of messages confirmed consumed (via consumer group lag tracking) */
@@ -100,12 +120,26 @@ export interface TriggerSetupContext {
 }
 
 /**
+ * Workflow shape descriptors carried by the handle. The driver knows these
+ * at setup time; the harness reads them for reporting/dimensions instead of
+ * requiring callers to pass them again.
+ */
+export interface TriggerScenario {
+	nodeCount: number;
+	nodeOutputSize?: NodeOutputSize;
+	payloadSize?: PayloadSize;
+}
+
+/**
  * Handle returned by TriggerDriver.setup() — provides load generation
  * and completion tracking for a single benchmark run.
  */
 export interface TriggerHandle {
 	/** Workflow definition to create via API */
 	workflow: Partial<IWorkflowBase>;
+
+	/** Scenario shape used when building the workflow. Surfaced for harness reporting. */
+	scenario: TriggerScenario;
 
 	/** Preload messages/requests before activation */
 	preload(count: number): Promise<PreloadResult>;
@@ -115,6 +149,13 @@ export interface TriggerHandle {
 		ratePerSecond: number;
 		durationSeconds: number;
 	}): Promise<PublishResult>;
+
+	/**
+	 * Publish through a sequence of rate stages (ramp tests).
+	 * Optional: drivers that don't support staged loads omit this method;
+	 * the staged executor will throw a clear error if invoked on them.
+	 */
+	publishStaged?(stages: PublishStage[]): Promise<StagedPublishResult>;
 
 	/** Wait for trigger to be ready after activation (e.g., consumer group joined) */
 	waitForReady(options?: { timeoutMs?: number }): Promise<void>;

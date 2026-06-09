@@ -92,6 +92,8 @@ const warningTooltip = computed<string | undefined>(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .fileRow {
 	display: flex;
 	align-items: center;
@@ -141,16 +143,7 @@ const warningTooltip = computed<string | undefined>(() => {
 .iconIndexing {
 	color: var(--color--text--tint-1);
 	flex-shrink: 0;
-	animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
-	}
+	@include motion.spin;
 }
 
 .statusText {

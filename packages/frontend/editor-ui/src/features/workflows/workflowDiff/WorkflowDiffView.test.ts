@@ -98,6 +98,11 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		loadNodeTypesIfNotLoaded: vi.fn().mockResolvedValue(undefined),
 		getNodeType: vi.fn().mockReturnValue({ name: 'Test', version: 1 }),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	}),
 }));
 
@@ -136,6 +141,7 @@ vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
 		nodeExecutionRunDataOutputMapById: computed(() => ({})),
 		nodeExecutionWaitingForNextById: computed(() => ({})),
 		nodeHasIssuesById: computed(() => ({})),
+		nodeDisplaySizeById: computed(() => ({})),
 		nodes: computed(() => []),
 		connections: computed(() => []),
 	}),

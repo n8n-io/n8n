@@ -7,7 +7,6 @@
 // falls back to a direct loop with the same eval-results.json output.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import { mkdirSync, writeFileSync } from 'fs';
 import { Client } from 'langsmith';
 import { evaluate } from 'langsmith/evaluation';
@@ -15,106 +14,74 @@ import type { EvaluationResult } from 'langsmith/evaluation';
 import type { Example, Run } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
 import { join } from 'path';
-import { z } from 'zod';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { parseCliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
+import {
+	isPlainObject,
+	parseTargetOutput,
+	reshapeLangSmithRuns,
+	type TargetOutput,
+} from './reshape';
+import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
+import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { N8nClient } from '../clients/n8n-client';
+import {
+	compareBuckets,
+	type ComparisonOutcome,
+	type ComparisonResult,
+	type ExperimentBucket,
+	type ScenarioCounts,
+} from '../comparison/compare';
+import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
+import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
 import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { createLogger } from '../harness/logger';
 import type { EvalLogger } from '../harness/logger';
 import {
+	cleanupPrebuiltWorkflows,
+	fetchPrebuiltBuild,
+	loadPrebuiltManifest,
+	pickPrebuiltWorkflowId,
+	type PrebuiltManifest,
+} from '../harness/prebuilt-workflows';
+import {
 	buildWorkflow,
 	executeScenario,
 	cleanupBuild,
+	runWorkflowChecks,
 	runWorkflowTestCase,
 	runWithConcurrency,
 	type BuildResult,
 } from '../harness/runner';
 import { syncDataset, type DatasetExampleInputs } from '../langsmith/dataset-sync';
+import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
+	BuildExpectationResult,
 	MultiRunEvaluation,
-	ScenarioResult,
-	TestScenario,
+	ExecutionScenario,
+	TranscriptTurn,
+	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
 
-const targetOutputSchema = z.object({
-	buildSuccess: z.boolean().default(false),
-	passed: z.boolean().default(false),
-	score: z.number().default(0),
-	reasoning: z.string().default(''),
-	workflowId: z.string().optional(),
-	failureCategory: z.string().optional(),
-	rootCause: z.string().optional(),
-	execErrors: z.array(z.string()).default([]),
-	evalResult: z.unknown().optional(),
-	/** Only set on the scenario that initiated the build. */
-	buildDurationMs: z.number().optional(),
-	execDurationMs: z.number().default(0),
-	nodeCount: z.number().default(0),
-});
-
-type TargetOutput = Omit<z.infer<typeof targetOutputSchema>, 'evalResult'> & {
-	evalResult?: InstanceAiEvalExecutionResult;
-};
-
-function isPlainObject(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
-function isEvalResult(v: unknown): v is InstanceAiEvalExecutionResult {
-	if (!isPlainObject(v)) return false;
-	return (
-		typeof v.nodeResults === 'object' &&
-		v.nodeResults !== null &&
-		Array.isArray(v.errors) &&
-		typeof v.hints === 'object' &&
-		v.hints !== null
-	);
-}
-
-/** Safe-parse a run's outputs. Returns `undefined` if the row is malformed
- *  or missing, so callers can skip it instead of treating it as a genuine
- *  failed evaluation. Every field in the schema has a default, so an empty
- *  or nullish raw value would otherwise parse successfully into a "failed"
- *  shape (passed:false, score:0) — masking infra errors as builder regressions.
- */
-function parseTargetOutput(raw: unknown): TargetOutput | undefined {
-	if (!isPlainObject(raw) || Object.keys(raw).length === 0) return undefined;
-	const parsed = targetOutputSchema.safeParse(raw);
-	if (!parsed.success) return undefined;
-	return {
-		...parsed.data,
-		evalResult: isEvalResult(parsed.data.evalResult) ? parsed.data.evalResult : undefined,
-	};
-}
-
-const runInputsSchema = z
-	.object({
-		prompt: z.string().default(''),
-		testCaseFile: z.string().default(''),
-		scenarioName: z.string().default(''),
-		/** 0-based iteration index; injected during multi-run expansion. */
-		_iteration: z.number().int().nonnegative().default(0),
-	})
-	.passthrough();
-
 /** Target input shape with the iteration index we inject for multi-run. */
 type TargetInputs = DatasetExampleInputs & { _iteration?: number };
 
 interface Lane {
 	client: N8nClient;
+	/** Base URL the client was constructed with, forwarded for the HTML report. */
+	baseUrl: string;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	seedResult: { seededTypes: string[]; credentialIds: string[] };
@@ -124,11 +91,43 @@ interface RunConfig {
 	args: ReturnType<typeof parseCliArgs>;
 	lanes: Lane[];
 	logger: EvalLogger;
+	prebuiltManifest?: PrebuiltManifest;
+	prebuiltWorkflowIdsToDelete?: Set<string>;
 }
 
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
+
+	const prebuiltManifest = args.prebuiltWorkflows
+		? loadPrebuiltManifest(args.prebuiltWorkflows)
+		: undefined;
+	if (prebuiltManifest) {
+		// Multi-lane is for distributing the orchestrator build phase across
+		// n8n instances. Prebuilt workflows live on a single instance — fetching
+		// them from any other lane's URL would 404 — and prebuilt mode skips
+		// builds anyway, so multi-lane buys nothing. Refuse the combination
+		// rather than silently fetching from one lane and ignoring the rest.
+		if (args.baseUrls.length > 1) {
+			throw new Error(
+				'--prebuilt-workflows is incompatible with multiple --base-url values. Prebuilt workflows live on a single n8n instance; pass exactly one --base-url.',
+			);
+		}
+		const slugCount = Object.keys(prebuiltManifest).length;
+		logger.info(`Loaded prebuilt manifest: ${String(slugCount)} test case(s)`);
+
+		// Warn on slugs that don't match a local test-case file. Common cause
+		// is typos in the manifest — without this check, the typo silently
+		// falls through to an orchestrator build (or no run at all), and the
+		// user thinks the prebuilt path ran when it didn't.
+		const localSlugs = new Set(loadWorkflowTestCasesWithFiles().map((tc) => tc.fileSlug));
+		const orphanSlugs = Object.keys(prebuiltManifest).filter((slug) => !localSlugs.has(slug));
+		if (orphanSlugs.length > 0) {
+			logger.warn(
+				`Prebuilt manifest references ${String(orphanSlugs.length)} slug(s) with no matching local test case (will be ignored): ${orphanSlugs.join(', ')}`,
+			);
+		}
+	}
 
 	// One lane per base URL. The LangSmith path then uses a work-stealing
 	// allocator (lane-allocator.ts) to dispatch builds across lanes; the direct
@@ -148,34 +147,81 @@ async function main(): Promise<void> {
 			const seedResult = await seedCredentials(client, undefined, logger);
 			logger.info(`Seeded ${String(seedResult.credentialIds.length)} credential(s)${tag}`);
 
+			logger.info(`Seeding MCP registry...${tag}`);
+			const mcpSeedResult = await seedMcpRegistry(client, logger);
+			if (mcpSeedResult.seeded) {
+				logger.info(`Seeded ${String(mcpSeedResult.count)} MCP registry server(s)${tag}`);
+			} else {
+				logger.info(`Skipped MCP registry seed (test endpoint unavailable)${tag}`);
+			}
+
 			const preRunWorkflowIds = await snapshotWorkflowIds(client);
 			const claimedWorkflowIds = new Set<string>();
-			return { client, preRunWorkflowIds, claimedWorkflowIds, seedResult };
+			return { client, baseUrl, preRunWorkflowIds, claimedWorkflowIds, seedResult };
 		}),
 	);
 
 	const startTime = Date.now();
+	const prebuiltWorkflowIdsToDelete = args.deletePrebuiltWorkflows ? new Set<string>() : undefined;
 
 	try {
 		const hasLangSmith = Boolean(process.env.LANGSMITH_API_KEY);
 
 		let evaluation: MultiRunEvaluation;
+		let experimentName: string | undefined;
+		let outcome: ComparisonOutcome | undefined;
+		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
-			evaluation = await runWithLangSmith({ args, lanes, logger });
+			const langsmithRun = await runWithLangSmith({
+				args,
+				lanes,
+				logger,
+				prebuiltManifest,
+				prebuiltWorkflowIdsToDelete,
+			});
+			evaluation = langsmithRun.evaluation;
+			experimentName = langsmithRun.experimentName;
+			outcome = langsmithRun.outcome;
+			slugByTestCase = langsmithRun.slugByTestCase;
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			evaluation = await runDirectLoop({ args, lanes, logger });
+			const directRun = await runDirectLoop({
+				args,
+				lanes,
+				logger,
+				prebuiltManifest,
+				prebuiltWorkflowIdsToDelete,
+			});
+			evaluation = directRun.evaluation;
+			slugByTestCase = directRun.slugByTestCase;
 		}
 
 		const totalDuration = Date.now() - startTime;
-		const outputPath = writeEvalResults(evaluation, totalDuration, args.outputDir);
-		console.log(`Results: ${outputPath}`);
-		const htmlPath = writeWorkflowReport(flattenRunsForReport(evaluation));
-		console.log(`Report:  ${htmlPath}`);
-		printSummary(evaluation);
+		const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
+		const { jsonPath, prCommentPath } = writeEvalResults(
+			evaluation,
+			totalDuration,
+			args.outputDir,
+			experimentName,
+			outcome,
+			commitSha,
+			slugByTestCase,
+			ciRunUrl(),
+		);
+		console.log(`Results:    ${jsonPath}`);
+		console.log(`PR comment: ${prCommentPath}`);
+		const reportResults = flattenRunsForReport(evaluation);
+		const htmlPath = writeWorkflowReport(reportResults);
+		console.log(`Report:     ${htmlPath}`);
+		console.log(
+			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase }),
+		);
 	} finally {
+		if (prebuiltWorkflowIdsToDelete && lanes[0]) {
+			await cleanupPrebuiltWorkflows(lanes[0].client, prebuiltWorkflowIdsToDelete, logger);
+		}
 		await Promise.all(
 			lanes.map(async (lane) => {
 				await cleanupCredentials(lane.client, lane.seedResult.credentialIds).catch(() => {});
@@ -188,26 +234,60 @@ async function main(): Promise<void> {
 // LangSmith mode: evaluate() with dataset sync, tracing, experiments
 // ---------------------------------------------------------------------------
 
-async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> {
-	const { args, lanes, logger } = config;
+async function runWithLangSmith(config: RunConfig): Promise<{
+	evaluation: MultiRunEvaluation;
+	experimentName: string;
+	outcome: ComparisonOutcome;
+	slugByTestCase: Map<WorkflowTestCase, string>;
+}> {
+	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
 
 	const lsClient = new Client();
-	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter);
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
+	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
+
+	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
+	// the LangSmith target() output schema doesn't carry the full transcript.
+	const transcriptByThreadId = new Map<string, TranscriptTurn[]>();
+	// Build-expectation verdicts, judged once per build and merged the same way —
+	// fired during getOrBuild, awaited before reshapeLangSmithRuns.
+	const buildExpectationsByThreadId = new Map<string, Promise<BuildExpectationResult[]>>();
+
+	// LangSmith dataset rows carry only per-scenario fields. The conversation and
+	// build expectations for the build are sourced locally, keyed by fileSlug.
+	const conversationByFileSlug = new Map<
+		string,
+		{
+			conversation: WorkflowTestCase['conversation'];
+			messageBudget?: number;
+			buildExpectations?: string[];
+		}
+	>();
+	for (const { testCase, fileSlug } of testCasesWithFiles) {
+		conversationByFileSlug.set(fileSlug, {
+			conversation: testCase.conversation,
+			messageBudget: testCase.messageBudget,
+			buildExpectations: testCase.buildExpectations,
+		});
+	}
 
 	// LaneState carries the allocator-managed counters (activeBuilds,
-	// inflightPrompts) plus the lane's traced LangSmith wrappers. `runner` is
+	// inflightKeys) plus the lane's traced LangSmith wrappers. `runner` is
 	// the underlying Lane (n8n client, credential state) — named distinctly so
 	// it doesn't shadow the iteration variable `lane` in lanes.map().
 	interface LaneState {
 		runner: Lane;
 		activeBuilds: number;
-		inflightPrompts: Set<string>;
-		tracedBuild: (prompt: string) => Promise<BuildResult>;
+		inflightKeys: Set<string>;
+		tracedBuild: (buildArgs: {
+			conversation: WorkflowTestCase['conversation'];
+			messageBudget?: number;
+		}) => Promise<BuildResult>;
 		tracedExecute: (execArgs: {
 			workflowId: string;
-			scenario: TestScenario;
+			scenario: ExecutionScenario;
 			workflowJsons: BuildResult['workflowJsons'];
+			buildTrace?: BuildResult['buildTrace'];
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	}
 
@@ -217,12 +297,16 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		return {
 			runner: lane,
 			activeBuilds: 0,
-			inflightPrompts: new Set<string>(),
+			inflightKeys: new Set<string>(),
 			tracedBuild: traceable(
-				async (prompt: string) =>
+				async (buildArgs: {
+					conversation: WorkflowTestCase['conversation'];
+					messageBudget?: number;
+				}) =>
 					await buildWorkflow({
 						client: lane.client,
-						prompt,
+						conversation: buildArgs.conversation,
+						messageBudget: buildArgs.messageBudget,
 						timeoutMs: args.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
 						claimedWorkflowIds: lane.claimedWorkflowIds,
@@ -239,8 +323,9 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			tracedExecute: traceable(
 				async (execArgs: {
 					workflowId: string;
-					scenario: TestScenario;
+					scenario: ExecutionScenario;
 					workflowJsons: BuildResult['workflowJsons'];
+					buildTrace?: BuildResult['buildTrace'];
 				}) =>
 					await executeScenario(
 						lane.client,
@@ -249,6 +334,9 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 						execArgs.workflowJsons,
 						logger,
 						args.timeoutMs,
+						undefined,
+						execArgs.buildTrace,
+						args.pinAiRoots,
 					),
 				{
 					name: 'scenario_execution',
@@ -261,7 +349,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	});
 
 	// Work-stealing: each build acquires a lane that isn't already running its
-	// prompt, runs there (capped per-lane), then releases. Scenarios re-use the
+	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use the
 	// lane that built their workflow.
 	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS);
 	const buildCache = new Map<
@@ -271,31 +359,98 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	const buildDurations = new Map<string, number>();
 
 	async function getOrBuild(
-		prompt: string,
 		iteration: number,
+		fileSlug: string,
 	): Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }> {
-		const key = `${String(iteration)}:${prompt}`;
+		// Cache key on (iteration, fileSlug) — every scenario in a test-case file
+		// shares this build, and prebuilt + orchestrator-built paths use the same key.
+		const key = `${String(iteration)}:${fileSlug}`;
 		const existing = buildCache.get(key);
 		if (existing) return await existing;
 		const promise = (async () => {
-			const lane = await allocator.acquire(prompt);
-			try {
+			const prebuiltId = pickPrebuiltWorkflowId(prebuiltManifest, fileSlug, iteration);
+			if (prebuiltId !== undefined) {
+				// Prebuilt path: no orchestrator concurrency to manage — just
+				// fetch the workflow. main() rejects multi-lane + prebuilt at
+				// startup, so laneStates always has exactly one entry here.
+				const lane = laneStates[0];
 				const start = Date.now();
-				const build = await lane.tracedBuild(prompt);
+				const build = await fetchPrebuiltBuild(lane.runner.client, prebuiltId, logger);
+				if (build.success && build.workflowId) {
+					prebuiltWorkflowIdsToDelete?.add(build.workflowId);
+				}
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
+				stashTranscript(build);
+				stashBuildExpectations(fileSlug, build);
+				if (build.success && !build.workflowChecks) {
+					// No transcript in prebuilt mode — checks run with empty prompt context.
+					build.workflowChecks = await runWorkflowChecks({
+						workflow: build.workflowJsons[0],
+						prompt: '',
+						agentText: undefined,
+						logger,
+					});
+				}
+				return { build, lane, buildDurationMs };
+			}
+			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
+			// the build cache dedupes scenarios within one file.
+			const lane = await allocator.acquire(fileSlug);
+			const entry = conversationByFileSlug.get(fileSlug);
+			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
+			try {
+				const start = Date.now();
+				const build = await lane.tracedBuild({
+					conversation: entry.conversation,
+					messageBudget: entry.messageBudget,
+				});
+				const buildDurationMs = Date.now() - start;
+				buildDurations.set(key, buildDurationMs);
+				stashTranscript(build);
+				stashBuildExpectations(fileSlug, build);
 				return { build, lane, buildDurationMs };
 			} finally {
-				allocator.release(lane, prompt);
+				allocator.release(lane, fileSlug);
 			}
 		})();
 		buildCache.set(key, promise);
 		return await promise;
 	}
 
+	function stashTranscript(build: BuildResult): void {
+		if (build.threadId && build.transcript) {
+			transcriptByThreadId.set(build.threadId, build.transcript);
+		}
+	}
+
+	// Judge build expectations once per build (off the scenario critical path);
+	// reshapeLangSmithRuns awaits and merges the verdicts by threadId.
+	function stashBuildExpectations(fileSlug: string, build: BuildResult): void {
+		const expectations = conversationByFileSlug.get(fileSlug)?.buildExpectations;
+		// Judge whenever there's a transcript — even on build failure, matching the
+		// direct-loop runner; the judge prompt handles the "no workflow produced" case.
+		if (!build.threadId || !expectations?.length || !build.transcript?.length) {
+			return;
+		}
+		buildExpectationsByThreadId.set(
+			build.threadId,
+			verifyBuildExpectations(expectations, {
+				transcript: build.transcript,
+				workflowJson: build.workflowJsons[0],
+				metrics: build.conversationMetrics,
+			}).catch((error: unknown) =>
+				allFailVerdicts(
+					expectations,
+					`judge error: ${error instanceof Error ? error.message : String(error)}`,
+				),
+			),
+		);
+	}
+
 	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
 		const iteration = inputs._iteration ?? 0;
-		const scenario: TestScenario = {
+		const scenario: ExecutionScenario = {
 			name: inputs.scenarioName,
 			description: inputs.scenarioDescription,
 			dataSetup: inputs.dataSetup,
@@ -306,7 +461,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			build,
 			lane: builtOnLane,
 			buildDurationMs,
-		} = await getOrBuild(inputs.prompt, iteration);
+		} = await getOrBuild(iteration, inputs.testCaseFile);
 
 		if (!build.success || !build.workflowId) {
 			return {
@@ -319,37 +474,67 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 				buildDurationMs,
 				execDurationMs: 0,
 				nodeCount: 0,
+				threadId: build.threadId,
+				workflowChecks: build.workflowChecks,
+				buildTrace: build.buildTrace,
 			};
 		}
 
 		const execStart = Date.now();
 		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
+		const maxExecAttempts = 5;
 		let result;
-		try {
-			result = await builtOnLane.tracedExecute({
-				workflowId: build.workflowId,
-				scenario,
-				workflowJsons: build.workflowJsons,
-			});
-		} catch (error: unknown) {
-			// Mirror direct mode's per-scenario guard — without this, n8n API errors
-			// or verifier timeouts from executeWithLlmMock / verifyChecklist would
-			// escape to LangSmith, come back as a Run with null outputs, and be
-			// misclassified as builder regressions by the feedback extractor.
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-			return {
-				buildSuccess: true,
-				workflowId: build.workflowId,
-				passed: false,
-				score: 0,
-				reasoning: `Scenario execution error: ${errorMessage}`,
-				failureCategory: 'framework_issue',
-				execErrors: [errorMessage],
-				buildDurationMs,
-				execDurationMs: Date.now() - execStart,
-				nodeCount,
-			};
+		for (let attempt = 1; ; attempt++) {
+			try {
+				result = await builtOnLane.tracedExecute({
+					workflowId: build.workflowId,
+					scenario,
+					workflowJsons: build.workflowJsons,
+					buildTrace: build.buildTrace,
+				});
+				break;
+			} catch (error: unknown) {
+				const baseError = error instanceof Error ? error : new Error(String(error));
+				const cause = baseError.cause;
+				const causeText =
+					cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : undefined;
+				const errorMessage =
+					causeText && causeText !== baseError.message
+						? `${baseError.message}: ${causeText}`
+						: baseError.message;
+				const isTransient =
+					/fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(
+						errorMessage,
+					);
+				if (isTransient && attempt < maxExecAttempts) {
+					logger.warn(
+						`    [${scenario.name}] execution attempt ${attempt}/${maxExecAttempts} failed (${errorMessage}); retrying`,
+					);
+					await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+					continue;
+				}
+				// Mirror direct mode's per-scenario guard — without this, n8n API errors
+				// or verifier timeouts from executeWithLlmMock / verifyChecklist would
+				// escape to LangSmith, come back as a Run with null outputs, and be
+				// misclassified as builder regressions by the feedback extractor.
+				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+				return {
+					buildSuccess: true,
+					workflowId: build.workflowId,
+					passed: false,
+					score: 0,
+					reasoning: `Scenario execution error: ${errorMessage}`,
+					failureCategory: 'framework_issue',
+					execErrors: [errorMessage],
+					buildDurationMs,
+					execDurationMs: Date.now() - execStart,
+					nodeCount,
+					threadId: build.threadId,
+					workflowChecks: build.workflowChecks,
+					workflowJson: build.workflowJsons[0],
+					buildTrace: build.buildTrace,
+				};
+			}
 		}
 		const execDurationMs = Date.now() - execStart;
 
@@ -371,6 +556,10 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			buildDurationMs,
 			execDurationMs,
 			nodeCount,
+			threadId: build.threadId,
+			workflowChecks: build.workflowChecks,
+			workflowJson: build.workflowJsons[0],
+			buildTrace: build.buildTrace,
 		};
 	};
 
@@ -402,6 +591,17 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
 		}
+		// Skip N/A so LangSmith column averages reduce to per-check pass-rate.
+		if (output.workflowChecks) {
+			for (const outcome of output.workflowChecks) {
+				if (outcome.status === 'n_a') continue;
+				feedback.push({
+					key: `evals.workflows.${outcome.dimension}.${outcome.name}`,
+					score: outcome.status === 'pass' ? 1 : 0,
+					comment: outcome.comment ?? undefined,
+				});
+			}
+		}
 		return feedback;
 	};
 
@@ -415,7 +615,14 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	// JSON files are the source of truth; the dataset accumulates orphans (the
 	// sync is additive — see langsmith/dataset-sync.ts) and we don't want to
 	// run scenarios whose JSON file no longer exists.
-	const sourceExamples = filteredExamplesIterable(lsClient, datasetName, args.filter, logger);
+	const sourceExamples = filteredExamplesIterable(
+		lsClient,
+		datasetName,
+		args.filter,
+		args.exclude,
+		args.tier,
+		logger,
+	);
 	const evaluateData =
 		args.iterations > 1
 			? expandExamplesForIterations(sourceExamples, args.iterations)
@@ -431,6 +638,8 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			client: lsClient,
 			metadata: {
 				filter: args.filter ?? 'all',
+				exclude: args.exclude ?? null,
+				prebuilt: prebuiltManifest !== undefined,
 				concurrency: args.concurrency,
 				maxBuilds: MAX_CONCURRENT_BUILDS,
 				lanes: lanes.length,
@@ -443,10 +652,17 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		logger.info(`Experiment: ${experimentResults.experimentName}`);
 		await lsClient.awaitPendingTraceBatches();
 
+		const buildExpectationsResolved = new Map<string, BuildExpectationResult[]>();
+		for (const [threadId, verdictsPromise] of buildExpectationsByThreadId) {
+			buildExpectationsResolved.set(threadId, await verdictsPromise);
+		}
 		const allRunResults = reshapeLangSmithRuns(
 			experimentResults.results,
 			testCasesWithFiles,
 			args.iterations,
+			transcriptByThreadId,
+			buildExpectationsResolved,
+			lanes[0]?.baseUrl,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
@@ -466,7 +682,24 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			logger,
 		});
 
-		return evaluation;
+		const outcome = await tryRunComparison({
+			lsClient,
+			prExperimentName: experimentResults.experimentName,
+			evaluation,
+			testCasesWithFiles,
+			logger,
+		});
+
+		const slugByTestCase = new Map<WorkflowTestCase, string>(
+			testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
+		);
+
+		return {
+			evaluation,
+			experimentName: experimentResults.experimentName,
+			outcome,
+			slugByTestCase,
+		};
 	} finally {
 		if (!args.keepWorkflows) {
 			await Promise.all(
@@ -507,10 +740,16 @@ function filteredExamplesIterable(
 	lsClient: Client,
 	datasetName: string,
 	filter: string | undefined,
+	exclude: string | undefined,
+	tier: string | undefined,
 	logger: EvalLogger,
 ): AsyncIterable<Example> {
-	const slugs = loadWorkflowTestCasesWithFiles(filter).map((tc) => tc.fileSlug);
-	const label = filter ? `Filter "${filter}"` : 'Local test cases';
+	const slugs = loadWorkflowTestCasesWithFiles(filter, exclude, tier).map((tc) => tc.fileSlug);
+	const labelParts: string[] = [];
+	if (filter) labelParts.push(`filter "${filter}"`);
+	if (exclude) labelParts.push(`exclude "${exclude}"`);
+	if (tier) labelParts.push(`tier "${tier}"`);
+	const label = labelParts.length > 0 ? labelParts.join(' + ') : 'Local test cases';
 	if (slugs.length === 0) {
 		logger.info(`${label} matched no local test case files`);
 		return (async function* () {})();
@@ -615,90 +854,27 @@ async function writePerRunPassMetrics(config: {
 	);
 }
 
-/**
- * Convert LangSmith's flat `Run[]` into the `WorkflowTestCaseResult[][]` shape
- * the aggregator expects (outer: runs, inner: test cases). Groups by
- * (testCaseFile, scenarioName), then reconstructs per-iteration test case
- * results. Scenarios with no matching run get a build_failure stub.
- */
-function reshapeLangSmithRuns(
-	rows: Array<{ run: Run }>,
-	testCasesWithFiles: WorkflowTestCaseWithFile[],
-	numIterations: number,
-): WorkflowTestCaseResult[][] {
-	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
-	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
-	const byKey = new Map<string, Run>();
-	for (const { run } of rows) {
-		const inputs = runInputsSchema.safeParse(run.inputs ?? {});
-		if (!inputs.success) continue;
-		const key = `${String(inputs.data._iteration)}/${inputs.data.testCaseFile}/${inputs.data.scenarioName}`;
-		byKey.set(key, run);
-	}
-
-	const allRunResults: WorkflowTestCaseResult[][] = [];
-	for (let iter = 0; iter < numIterations; iter++) {
-		const runResults: WorkflowTestCaseResult[] = [];
-		for (const { testCase, fileSlug } of testCasesWithFiles) {
-			const scenarioResults: ScenarioResult[] = [];
-			let workflowBuildSuccess = false;
-			let workflowId: string | undefined;
-			let buildError: string | undefined;
-
-			for (const scenario of testCase.scenarios) {
-				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
-				const output = run ? parseTargetOutput(run.outputs) : undefined;
-				if (!run || !output) {
-					scenarioResults.push({
-						scenario,
-						success: false,
-						score: 0,
-						reasoning: run ? 'Malformed run output — skipped' : 'No run result for this scenario',
-					});
-					continue;
-				}
-				if (output.buildSuccess) workflowBuildSuccess = true;
-				if (output.workflowId) workflowId = output.workflowId;
-				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
-				scenarioResults.push({
-					scenario,
-					success: output.passed,
-					evalResult: output.evalResult,
-					score: output.score,
-					reasoning: output.reasoning,
-					failureCategory: output.failureCategory,
-					rootCause: output.rootCause,
-				});
-			}
-
-			runResults.push({
-				testCase,
-				workflowBuildSuccess,
-				workflowId,
-				scenarioResults,
-				buildError,
-			});
-		}
-		allRunResults.push(runResults);
-	}
-	return allRunResults;
-}
-
 // ---------------------------------------------------------------------------
 // Direct mode: simple loop, no LangSmith dependency
 // ---------------------------------------------------------------------------
 
-async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
-	const { args, lanes, logger } = config;
+async function runDirectLoop(config: RunConfig): Promise<{
+	evaluation: MultiRunEvaluation;
+	slugByTestCase: Map<WorkflowTestCase, string>;
+}> {
+	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
 
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
+	const slugByTestCase = new Map<WorkflowTestCase, string>(
+		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
+	);
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases found in evaluations/data/workflows/');
-		return { totalRuns: 0, testCases: [] };
+		return { evaluation: { totalRuns: 0, testCases: [] }, slugByTestCase };
 	}
 
 	const totalScenarios = testCasesWithFiles.reduce(
-		(sum, { testCase }) => sum + testCase.scenarios.length,
+		(sum, { testCase }) => sum + testCase.executionScenarios.length,
 		0,
 	);
 	logger.info(
@@ -711,41 +887,60 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 	const indexed = testCasesWithFiles.map((tc, origIdx) => ({ tc, origIdx }));
 	const buckets = partitionRoundRobin(indexed, lanes.length);
 
-	const allRunResults: WorkflowTestCaseResult[][] = [];
-	for (let iter = 0; iter < args.iterations; iter++) {
-		if (args.iterations > 1) {
-			logger.info(`--- Iteration #${String(iter + 1)}/${String(args.iterations)} ---`);
-		}
-		const laneResults = await Promise.all(
-			lanes.map(async (lane, laneIdx) => {
-				const bucket = buckets[laneIdx];
-				const laneTag =
-					lanes.length > 1 ? ` [lane ${String(laneIdx + 1)}/${String(lanes.length)}]` : '';
-				const results = await runWithConcurrency(
-					bucket,
-					async ({ tc }) =>
-						await runWorkflowTestCase({
-							client: lane.client,
-							testCase: tc.testCase,
-							timeoutMs: args.timeoutMs,
-							seededCredentialTypes: lane.seedResult.seededTypes,
-							preRunWorkflowIds: lane.preRunWorkflowIds,
-							claimedWorkflowIds: lane.claimedWorkflowIds,
-							logger,
-							keepWorkflows: args.keepWorkflows,
-							laneTag,
-						}),
-					MAX_CONCURRENT_BUILDS,
-				);
-				return bucket.map((b, i) => ({ origIdx: b.origIdx, result: results[i] }));
-			}),
-		);
-		const flat = laneResults.flat();
-		flat.sort((a, b) => a.origIdx - b.origIdx);
-		allRunResults.push(flat.map((x) => x.result));
-	}
+	// Iterations are independent — run them in parallel.
+	const allRunResults: WorkflowTestCaseResult[][] = await Promise.all(
+		Array.from({ length: args.iterations }, async (_unused, iter) => {
+			if (args.iterations > 1) {
+				logger.info(`--- Iteration #${String(iter + 1)}/${String(args.iterations)} starting ---`);
+			}
+			const laneResults = await Promise.all(
+				lanes.map(async (lane, laneIdx) => {
+					const bucket = buckets[laneIdx];
+					const laneTag =
+						lanes.length > 1 ? ` [lane ${String(laneIdx + 1)}/${String(lanes.length)}]` : '';
+					const results = await runWithConcurrency(
+						bucket,
+						async ({ tc }) => {
+							const prebuiltWorkflowId = pickPrebuiltWorkflowId(
+								prebuiltManifest,
+								tc.fileSlug,
+								iter,
+							);
+							const result = await runWorkflowTestCase({
+								client: lane.client,
+								baseUrl: lane.baseUrl,
+								testCase: tc.testCase,
+								timeoutMs: args.timeoutMs,
+								seededCredentialTypes: lane.seedResult.seededTypes,
+								preRunWorkflowIds: lane.preRunWorkflowIds,
+								claimedWorkflowIds: lane.claimedWorkflowIds,
+								logger,
+								keepWorkflows: args.keepWorkflows,
+								laneTag,
+								prebuiltWorkflowId,
+								pinAiRoots: args.pinAiRoots,
+							});
+							if (
+								prebuiltWorkflowId !== undefined &&
+								result.workflowBuildSuccess &&
+								result.workflowId
+							) {
+								prebuiltWorkflowIdsToDelete?.add(result.workflowId);
+							}
+							return result;
+						},
+						MAX_CONCURRENT_BUILDS,
+					);
+					return bucket.map((b, i) => ({ origIdx: b.origIdx, result: results[i] }));
+				}),
+			);
+			const flat = laneResults.flat();
+			flat.sort((a, b) => a.origIdx - b.origIdx);
+			return flat.map((x) => x.result);
+		}),
+	);
 
-	return aggregateResults(allRunResults, args.iterations);
+	return { evaluation: aggregateResults(allRunResults, args.iterations), slugByTestCase };
 }
 
 // ---------------------------------------------------------------------------
@@ -757,21 +952,30 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
  * HTML report. Previously we rendered only `tc.runs[0]`, which silently hid
  * iterations 2..N — a flaky scenario that passed once and failed twice would
  * appear clean in the uploaded artifact. For multi-iteration runs we prefix
- * each prompt with its iteration number so the cards are distinguishable at
- * a glance.
+ * the opening user turn with its iteration number so the cards are
+ * distinguishable at a glance.
  */
 function flattenRunsForReport(evaluation: MultiRunEvaluation): WorkflowTestCaseResult[] {
 	if (evaluation.totalRuns <= 1) {
 		return evaluation.testCases.map((tc) => tc.runs[0]);
 	}
 	return evaluation.testCases.flatMap((tc) =>
-		tc.runs.map((run, iter) => ({
-			...run,
-			testCase: {
-				...run.testCase,
-				prompt: `[iter ${String(iter + 1)}/${String(evaluation.totalRuns)}] ${run.testCase.prompt}`,
-			},
-		})),
+		tc.runs.map((run, iter) => {
+			const [opening, ...rest] = run.testCase.conversation;
+			return {
+				...run,
+				testCase: {
+					...run.testCase,
+					conversation: [
+						{
+							...opening,
+							text: `[iter ${String(iter + 1)}/${String(evaluation.totalRuns)}] ${opening.text}`,
+						},
+						...rest,
+					],
+				},
+			};
+		}),
 	);
 }
 
@@ -792,7 +996,7 @@ interface AggregateMetrics {
 
 function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetrics {
 	const { totalRuns, testCases } = evaluation;
-	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
+	const allScenarios = testCases.flatMap((tc) => tc.executionScenarios);
 	const total = allScenarios.length;
 	const kIndex = Math.max(totalRuns - 1, 0);
 	const built = testCases.filter((tc) => tc.buildSuccessCount > 0).length;
@@ -813,7 +1017,7 @@ function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetri
 /** Pass rate of each iteration formatted as e.g. "37% / 37% / 37%". */
 function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 	const { totalRuns, testCases } = evaluation;
-	const allScenarios = testCases.flatMap((tc) => tc.scenarios);
+	const allScenarios = testCases.flatMap((tc) => tc.executionScenarios);
 	if (allScenarios.length === 0) return '';
 	const rates: string[] = [];
 	for (let i = 0; i < totalRuns; i++) {
@@ -823,18 +1027,35 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 	return rates.join(' / ');
 }
 
+// GitHub Actions run URL (for the PR comment's re-run link); undefined outside CI.
+function ciRunUrl(): string | undefined {
+	const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
+	if (!GITHUB_SERVER_URL || !GITHUB_REPOSITORY || !GITHUB_RUN_ID) return undefined;
+	return `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
+}
+
 function writeEvalResults(
 	evaluation: MultiRunEvaluation,
 	duration: number,
-	outputDir?: string,
-): string {
+	outputDir: string | undefined,
+	experimentName: string | undefined,
+	outcome: ComparisonOutcome | undefined,
+	commitSha: string | undefined,
+	slugByTestCase: Map<WorkflowTestCase, string> | undefined,
+	runUrl: string | undefined,
+): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
+
+	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
+
+	const checksSummary = aggregateWorkflowChecks(evaluation);
 
 	const report = {
 		timestamp: new Date().toISOString(),
 		duration,
 		totalRuns,
+		experimentName,
 		summary: {
 			testCases: testCases.length,
 			built: metrics.built,
@@ -842,18 +1063,38 @@ function writeEvalResults(
 			passAtK: metrics.passAtK,
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
+			...(checksSummary ? { workflowChecks: checksSummary } : {}),
 		},
+		// Structured comparison payload only — the rendered markdown lives in
+		// the sibling `eval-pr-comment.md` file so consumers can pick the format
+		// they want without re-running the eval. `comparisonStatus` records why
+		// the comparison was skipped when applicable, so JSON consumers can
+		// distinguish "no baseline yet" from "regression detection broke".
+		comparison: result
+			? {
+					baseline: result.baseline.experimentName,
+					result: serializeComparison(result),
+				}
+			: undefined,
+		comparisonStatus: outcome?.kind ?? 'not_attempted',
+		comparisonError: outcome?.kind === 'fetch_failed' ? outcome.error : undefined,
 		testCases: testCases.map((tc) => ({
-			name: tc.testCase.prompt.slice(0, 70),
+			name: tc.testCase.conversation[0].text.slice(0, 70),
+			testCaseFile: slugByTestCase?.get(tc.testCase),
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
-			scenarios: tc.scenarios.map((sa) => ({
+			workflowChecksPerRun: tc.runs.map((run) =>
+				run.workflowChecks ? statusMap(run.workflowChecks) : null,
+			),
+			buildExpectationResultsPerRun: tc.runs.map((run) => run.buildExpectationResults ?? null),
+			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,
 				totalRuns,
 				passAtK: sa.passAtK[metrics.kIndex] ?? 0,
 				passHatK: sa.passHatK[metrics.kIndex] ?? 0,
-				runs: sa.runs.map((sr) => ({
+				runs: sa.runs.map((sr, runIndex) => ({
+					workflowId: tc.runs[runIndex]?.workflowId ?? null,
 					passed: sr.success,
 					score: sr.score,
 					reasoning: sr.reasoning,
@@ -868,74 +1109,137 @@ function writeEvalResults(
 
 	const targetDir = outputDir ?? process.cwd();
 	mkdirSync(targetDir, { recursive: true });
-	const outputPath = join(targetDir, 'eval-results.json');
-	writeFileSync(outputPath, JSON.stringify(report, null, 2));
-	return outputPath;
+	const jsonPath = join(targetDir, 'eval-results.json');
+	writeFileSync(jsonPath, JSON.stringify(report, null, 2));
+
+	// Always write the rendered PR comment — the markdown formatter handles
+	// both with-comparison and no-baseline cases. CI consumes this file
+	// directly; local users get a copy-pasteable artifact.
+	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
+	writeFileSync(
+		prCommentPath,
+		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, runUrl }),
+	);
+
+	return { jsonPath, prCommentPath };
+}
+
+/**
+ * Convert ComparisonResult into a JSON-serializable shape (Maps don't survive
+ * JSON.stringify by default).
+ */
+function serializeComparison(result: ComparisonResult): {
+	pr: { experimentName: string };
+	baseline: { experimentName: string };
+	aggregate: ComparisonResult['aggregate'];
+	scenarios: ComparisonResult['scenarios'];
+	prOnly: ComparisonResult['prOnly'];
+	baselineOnly: ComparisonResult['baselineOnly'];
+	failureCategories: ComparisonResult['failureCategories'];
+} {
+	return {
+		pr: result.pr,
+		baseline: result.baseline,
+		aggregate: result.aggregate,
+		scenarios: result.scenarios,
+		prOnly: result.prOnly,
+		baselineOnly: result.baselineOnly,
+		failureCategories: result.failureCategories,
+	};
 }
 
 // ---------------------------------------------------------------------------
-// Console summary
+// Comparison vs the pinned baseline experiment
 // ---------------------------------------------------------------------------
 
-function printSummary(evaluation: MultiRunEvaluation): void {
-	const { totalRuns, testCases } = evaluation;
-	const multiRun = totalRuns > 1;
-	const metrics = computeAggregateMetrics(evaluation);
+/**
+ * Best-effort comparison. Returns a tagged outcome so the PR comment can
+ * distinguish "no baseline yet" / "this run IS the baseline" from a real
+ * regression-detection outage (LangSmith down, fetch failure). Never throws
+ * — the eval run is not gated on the comparison.
+ */
+async function tryRunComparison(config: {
+	lsClient: Client;
+	prExperimentName: string;
+	evaluation: MultiRunEvaluation;
+	testCasesWithFiles: WorkflowTestCaseWithFile[];
+	logger: EvalLogger;
+}): Promise<ComparisonOutcome> {
+	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, logger } = config;
 
-	console.log('\n=== Workflow Eval Results ===\n');
-	for (const tc of testCases) {
-		console.log(`${tc.testCase.prompt.slice(0, 70)}...`);
-
-		if (multiRun) {
-			console.log(`  Build: ${String(tc.buildSuccessCount)}/${String(totalRuns)} runs`);
-		} else {
-			const r = tc.runs[0];
-			const buildStatus = r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
-			console.log(`  Workflow: ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
-			if (r.buildError) {
-				console.log(`  Error: ${r.buildError.slice(0, 200)}`);
-			}
+	try {
+		const baselineName = await findLatestBaseline(lsClient);
+		if (!baselineName) {
+			logger.verbose(
+				'No baseline experiment found — skipping comparison. ' +
+					'Run with --experiment-name instance-ai-baseline to create one.',
+			);
+			return { kind: 'no_baseline' };
+		}
+		if (baselineName === prExperimentName) {
+			logger.verbose('Current run is the baseline — skipping comparison.');
+			return { kind: 'self_baseline', experimentName: baselineName };
 		}
 
-		for (const sa of tc.scenarios) {
-			if (multiRun) {
-				const passAtK = Math.round((sa.passAtK[metrics.kIndex] ?? 0) * 100);
-				const passHatK = Math.round((sa.passHatK[metrics.kIndex] ?? 0) * 100);
-				console.log(
-					`  ${sa.scenario.name}: ${String(sa.passCount)}/${String(totalRuns)} passed` +
-						` | pass@${String(totalRuns)}: ${String(passAtK)}% | pass^${String(totalRuns)}: ${String(passHatK)}%`,
-				);
-			} else {
-				const sr = sa.runs[0];
-				const icon = sr.success ? '✓' : '✗';
-				const category = sr.failureCategory ? ` [${sr.failureCategory}]` : '';
-				console.log(
-					`  ${icon} ${sr.scenario.name}: ${sr.success ? 'PASS' : 'FAIL'}${category} (${String(sr.score * 100)}%)`,
-				);
-				if (!sr.success) {
-					const execErrors = sr.evalResult?.errors ?? [];
-					if (execErrors.length > 0) {
-						console.log(`    Error: ${execErrors.join('; ').slice(0, 200)}`);
-					}
-					console.log(`    Diagnosis: ${sr.reasoning.slice(0, 200)}`);
+		logger.info(`Comparing against baseline: ${baselineName}`);
+		const baseline = await fetchBaselineBucket(lsClient, baselineName);
+		const pr = bucketFromEvaluation(evaluation, testCasesWithFiles, prExperimentName);
+		return { kind: 'ok', result: compareBuckets(pr, baseline) };
+	} catch (error: unknown) {
+		const msg = error instanceof Error ? error.message : String(error);
+		logger.warn(`Comparison vs baseline failed: ${msg}`);
+		return { kind: 'fetch_failed', error: msg };
+	}
+}
+
+/**
+ * Project the in-memory MultiRunEvaluation onto the bucket shape used by
+ * fetchBaselineBucket, keyed by `${fileSlug}/${scenarioName}`.
+ *
+ * Looks up `fileSlug` by test case reference rather than array index — the
+ * comparison key depends on getting the right slug, and zipping by index
+ * silently miscompares if anything ever reorders the aggregate.
+ */
+function bucketFromEvaluation(
+	evaluation: MultiRunEvaluation,
+	testCasesWithFiles: WorkflowTestCaseWithFile[],
+	experimentName: string,
+): ExperimentBucket {
+	const slugByTestCase = new Map(
+		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
+	);
+	const scenarios = new Map<string, ScenarioCounts>();
+	const failureCategoryTotals: Record<string, number> = {};
+	let trialTotal = 0;
+	for (const tc of evaluation.testCases) {
+		const fileSlug = slugByTestCase.get(tc.testCase);
+		if (!fileSlug) {
+			throw new Error(
+				`bucketFromEvaluation: no fileSlug for test case "${tc.testCase.conversation[0].text.slice(0, 60)}"`,
+			);
+		}
+		const total = tc.runs.length;
+		for (const sa of tc.executionScenarios) {
+			const key = `${fileSlug}/${sa.scenario.name}`;
+			const failureCategories: Record<string, number> = {};
+			for (const sr of sa.runs) {
+				trialTotal++;
+				if (!sr.success && sr.failureCategory) {
+					failureCategories[sr.failureCategory] = (failureCategories[sr.failureCategory] ?? 0) + 1;
+					failureCategoryTotals[sr.failureCategory] =
+						(failureCategoryTotals[sr.failureCategory] ?? 0) + 1;
 				}
 			}
+			scenarios.set(key, {
+				testCaseFile: fileSlug,
+				scenarioName: sa.scenario.name,
+				passed: sa.passCount,
+				total,
+				failureCategories,
+			});
 		}
-		console.log('');
 	}
-
-	if (multiRun) {
-		console.log(
-			`${String(metrics.built)}/${String(testCases.length)} built | pass@${String(totalRuns)}: ${String(Math.round(metrics.passAtK * 100))}% | pass^${String(totalRuns)}: ${String(Math.round(metrics.passHatK * 100))}% | iterations: ${metrics.passRatePerIter}`,
-		);
-	} else {
-		const allScenarios = testCases.flatMap((tc) => tc.scenarios);
-		const passed = allScenarios.filter((s) => s.runs[0]?.success).length;
-		const total = metrics.scenariosTotal;
-		console.log(
-			`${String(metrics.built)}/${String(testCases.length)} built | ${String(passed)}/${String(total)} passed (${String(total > 0 ? Math.round((passed / total) * 100) : 0)}%)`,
-		);
-	}
+	return { experimentName, scenarios, failureCategoryTotals, trialTotal };
 }
 
 main().catch((error) => {

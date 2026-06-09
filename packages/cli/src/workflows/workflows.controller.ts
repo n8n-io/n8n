@@ -56,11 +56,11 @@ import type { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { AuthService } from '@/auth/auth.service';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import { SsrfBlockedIpError, SsrfProtectionService } from 'n8n-core';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 
@@ -68,6 +68,7 @@ import * as utils from '@/utils';
 export class WorkflowsController {
 	constructor(
 		private readonly logger: Logger,
+		private readonly authService: AuthService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly namingService: NamingService,
 		private readonly workflowRepository: WorkflowRepository,
@@ -523,11 +524,14 @@ export class WorkflowsController {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found`);
 		}
 
+		const n8nAuthCookie = this.authService.getCookieToken(req);
+
 		const result = await this.workflowExecutionService.executeManually(
 			dbWorkflow,
 			req.body,
 			req.user,
 			req.headers['push-ref'],
+			n8nAuthCookie,
 		);
 
 		if ('executionId' in result) {

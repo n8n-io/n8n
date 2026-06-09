@@ -1,4 +1,3 @@
-import type { LicenseState } from '@n8n/backend-common';
 import {
 	mockLogger,
 	createTeamProject,
@@ -41,20 +40,15 @@ describe('InsightsPruningService', () => {
 	let insightsConfig: InsightsConfig;
 	let insightsByPeriodRepository: InsightsByPeriodRepository;
 	let insightsPruningService: InsightsPruningService;
-	let licenseState: LicenseState;
 
 	beforeAll(async () => {
 		insightsConfig = Container.get(InsightsConfig);
 		insightsConfig.maxAgeDays = 10;
 		insightsConfig.pruneCheckIntervalHours = 1;
 		insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
-		licenseState = mock<LicenseState>({
-			getInsightsRetentionMaxAge: () => insightsConfig.maxAgeDays,
-		});
 		insightsPruningService = new InsightsPruningService(
 			insightsByPeriodRepository,
 			insightsConfig,
-			licenseState,
 			mockLogger(),
 		);
 	});
@@ -103,55 +97,25 @@ describe('InsightsPruningService', () => {
 		expect(await insightsByPeriodRepository.count()).toBe(1);
 	});
 
-	test.each<{ config: number; license: number; result: number }>([
-		{
-			config: -1,
-			license: -1,
-			result: Number.MAX_SAFE_INTEGER,
-		},
-		{
-			config: -1,
-			license: 5,
-			result: 5,
-		},
-		{
-			config: 5,
-			license: -1,
-			result: 5,
-		},
-		{
-			config: 5,
-			license: 10,
-			result: 5,
-		},
-		{
-			config: 10,
-			license: 5,
-			result: 5,
-		},
+	test.each<{ config: number; result: number }>([
+		{ config: -1, result: 730 },
+		{ config: 0, result: 365 },
+		{ config: 5, result: 5 },
+		{ config: 365, result: 365 },
+		{ config: 730, result: 730 },
+		{ config: 2000, result: 730 },
 	])(
-		'pruningMaxAgeInDays is minimal age between license and config max age',
-		async ({ config, license, result }) => {
-			// ARRANGE
-			const licenseState = mock<LicenseState>({
-				getInsightsRetentionMaxAge() {
-					return license;
-				},
-			});
+		'pruningMaxAgeInDays uses N8N_INSIGHTS_MAX_AGE_DAYS: -1 maps to cap, other values below 1 use default, finite values capped at 730',
+		async ({ config, result }) => {
 			const insightsPruningService = new InsightsPruningService(
 				insightsByPeriodRepository,
 				mock<InsightsConfig>({
 					maxAgeDays: config,
 				}),
-				licenseState,
 				mockLogger(),
 			);
 
-			// ACT
-			const maxAge = insightsPruningService.pruningMaxAgeInDays;
-
-			// ASSERT
-			expect(maxAge).toBe(result);
+			expect(insightsPruningService.pruningMaxAgeInDays).toBe(result);
 		},
 	);
 });

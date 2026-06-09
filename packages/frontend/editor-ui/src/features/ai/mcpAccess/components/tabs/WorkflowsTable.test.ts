@@ -1,4 +1,4 @@
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
@@ -60,6 +60,44 @@ describe('WorkflowsTable', () => {
 
 			expect(container.querySelector('.n8n-loading')).toBeInTheDocument();
 			expect(queryByTestId('mcp-workflow-table')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Pagination', () => {
+		const createWorkflows = (count: number) =>
+			Array.from({ length: count }, (_, index) =>
+				createWorkflow({ id: `workflow-${index + 1}`, name: `Workflow ${index + 1}` }),
+			);
+
+		it('should render pagination when total count exceeds page size', () => {
+			const { getByTestId } = createComponent({
+				props: {
+					workflows: createWorkflows(10),
+					totalCount: 11,
+					loading: false,
+				},
+			});
+
+			expect(getByTestId('pagination')).toBeVisible();
+		});
+
+		it('should emit table options when page changes', async () => {
+			const { getByTestId, emitted } = createComponent({
+				props: {
+					workflows: createWorkflows(10),
+					totalCount: 20,
+					loading: false,
+				},
+			});
+
+			await userEvent.click(within(getByTestId('pagination')).getByLabelText('page 2'));
+
+			await waitFor(() => {
+				expect(emitted('update:options')).toBeTruthy();
+			});
+			expect(emitted('update:options').at(-1)).toEqual([
+				expect.objectContaining({ page: 1, itemsPerPage: 10 }),
+			]);
 		});
 	});
 

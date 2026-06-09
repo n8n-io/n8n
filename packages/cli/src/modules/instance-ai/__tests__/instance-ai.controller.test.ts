@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 jest.mock('@n8n/instance-ai', () => ({
-	createMemory: jest.fn(),
 	workflowLoopStateSchema: z.string(),
 	attemptRecordSchema: z.object({}),
 	workflowBuildOutcomeSchema: z.string(),
@@ -17,19 +16,19 @@ jest.mock('@n8n/instance-ai', () => ({
 	})),
 }));
 
+// The controller imports validation helpers via the parsers subpath so they
+// don't pull in native agent. Re-export the real implementation for the test.
+jest.mock('@n8n/instance-ai/parsers', () => jest.requireActual('@n8n/instance-ai/parsers'));
+
 jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
-}));
-
-jest.mock('../eval/sub-agent-eval.service', () => ({
-	SubAgentEvalService: jest.fn(),
 }));
 
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
-	InstanceAiConfirmRequestDto,
+	InstanceAiConfirmRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiUserPreferencesUpdateRequest,
@@ -39,12 +38,10 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
-	InstanceAiEvalSubAgentRequest,
-	InstanceAiEvalSubAgentResponse,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -54,13 +51,15 @@ import { mock } from 'jest-mock-extended';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
+import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
-import type { SubAgentEvalService } from '../eval/sub-agent-eval.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
+import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
@@ -82,6 +81,7 @@ function scopeOf(handlerName: string): { scope: Scope; globalOnly: boolean } | u
 
 describe('InstanceAiController', () => {
 	const instanceAiService = mock<InstanceAiService>();
+	const gatewayService = mock<InstanceAiGatewayService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const settingsService = mock<InstanceAiSettingsService>();
 	const eventBus = mock<InProcessEventBus>();
@@ -94,18 +94,23 @@ describe('InstanceAiController', () => {
 		port: 5678,
 	});
 
-	const subAgentEvalService = mock<SubAgentEvalService>();
+	const userRepository = mock<UserRepository>();
+	const credentialsService = mock<CredentialsService>();
+	const projectService = mock<ProjectService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
+		gatewayService,
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
-		subAgentEvalService,
 		eventBus,
 		moduleRegistry,
 		push,
 		urlService,
+		userRepository,
+		credentialsService,
+		projectService,
 		globalConfig,
 	);
 
@@ -120,7 +125,6 @@ describe('InstanceAiController', () => {
 	describe('chat', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
 			message: 'hello',
-			researchMode: false,
 			timeZone: 'Europe/Helsinki',
 		});
 
@@ -140,7 +144,6 @@ describe('InstanceAiController', () => {
 				req.user,
 				THREAD_ID,
 				payload.message,
-				payload.researchMode,
 				payload.attachments,
 				payload.timeZone,
 				payload.pushRef,
@@ -173,7 +176,6 @@ describe('InstanceAiController', () => {
 				req.user,
 				THREAD_ID,
 				payloadWithPushRef.message,
-				payloadWithPushRef.researchMode,
 				payloadWithPushRef.attachments,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
@@ -191,6 +193,40 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should reject unsupported attachment types before starting a run', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			const badPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'see attached',
+				attachments: [{ data: '', mimeType: 'application/zip', fileName: 'archive.zip' }],
+				timeZone: 'UTC',
+			});
+
+			await expect(controller.chat(req, res, THREAD_ID, badPayload)).rejects.toMatchObject({
+				message: expect.stringContaining('archive.zip'),
+			});
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
+		});
+
+		it('should accept supported attachment types and start the run', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-3');
+			const goodPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'see attached',
+				attachments: [
+					{ data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
+					{ data: '', mimeType: 'image/png', fileName: 'photo.png' },
+				],
+				timeZone: 'UTC',
+			});
+
+			await expect(controller.chat(req, res, THREAD_ID, goodPayload)).resolves.toEqual({
+				runId: 'run-3',
+			});
+			expect(instanceAiService.startRun).toHaveBeenCalled();
 		});
 	});
 
@@ -228,28 +264,17 @@ describe('InstanceAiController', () => {
 					textContent: '',
 					reasoning: '',
 					toolCalls: [],
-					children: [
+					children: [],
+					timeline: [],
+					planItems: [
 						{
-							agentId: 'agent-planner-1',
-							role: 'planner',
-							status: 'active',
-							textContent: '',
-							reasoning: '',
-							toolCalls: [],
-							children: [],
-							timeline: [],
-							planItems: [
-								{
-									id: 'task-1',
-									title: 'Build workflow',
-									kind: 'build-workflow',
-									spec: 'Create the workflow',
-									deps: [],
-								},
-							],
+							id: 'task-1',
+							title: 'Build workflow',
+							kind: 'build-workflow',
+							spec: 'Create the workflow',
+							deps: [],
 						},
 					],
-					timeline: [{ type: 'child', agentId: 'agent-planner-1' }],
 				},
 			});
 
@@ -270,11 +295,15 @@ describe('InstanceAiController', () => {
 
 			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
 
+			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID, {
+				delivery: 'event',
+			});
+
 			const runSyncFrame = (sseRes.write as jest.Mock).mock.calls
 				.map(([frame]) => String(frame))
 				.find((frame) => frame.startsWith('event: run-sync'));
 
-			expect(runSyncFrame).toContain('"agent-planner-1"');
+			expect(runSyncFrame).toContain('"agent-root"');
 			expect(runSyncFrame).toContain('"planItems"');
 		});
 
@@ -497,39 +526,34 @@ describe('InstanceAiController', () => {
 
 		it('should resolve confirmation', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(true);
-			const body = mock<InstanceAiConfirmRequestDto>({ approved: true });
+			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: true };
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			const result = await controller.confirm(req, res, 'req-1', body);
+			const result = await controller.confirm(reqWithBody, res, 'req-1');
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
-				USER_ID,
-				'req-1',
-				expect.objectContaining({ approved: true }),
-			);
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(USER_ID, 'req-1', body);
 		});
 
 		it('should pass resourceDecision through to resolveConfirmation', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(true);
-			const body = mock<InstanceAiConfirmRequestDto>({
-				approved: true,
+			const body: InstanceAiConfirmRequest = {
+				kind: 'resourceDecision',
 				resourceDecision: 'allowOnce',
-			});
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			await controller.confirm(req, res, 'req-1', body);
+			await controller.confirm(reqWithBody, res, 'req-1');
 
-			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
-				USER_ID,
-				'req-1',
-				expect.objectContaining({ resourceDecision: 'allowOnce' }),
-			);
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(USER_ID, 'req-1', body);
 		});
 
 		it('should throw NotFoundError when confirmation not found', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(false);
-			const body = mock<InstanceAiConfirmRequestDto>({ approved: false });
+			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: false };
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			await expect(controller.confirm(req, res, 'req-1', body)).rejects.toThrow(NotFoundError);
+			await expect(controller.confirm(reqWithBody, res, 'req-1')).rejects.toThrow(NotFoundError);
 		});
 	});
 
@@ -552,12 +576,12 @@ describe('InstanceAiController', () => {
 
 		it('should disconnect all gateways when enabled is set to false', async () => {
 			settingsService.updateAdminSettings.mockResolvedValue({} as never);
-			instanceAiService.disconnectAllGateways.mockReturnValue(['user-a', 'user-b']);
+			gatewayService.disconnectAllGateways.mockReturnValue(['user-a', 'user-b']);
 			const payload = { enabled: false } as InstanceAiAdminSettingsUpdateRequest;
 
 			await controller.updateAdminSettings(req, res, payload);
 
-			expect(instanceAiService.disconnectAllGateways).toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'instanceAiGatewayStateChanged',
@@ -569,12 +593,12 @@ describe('InstanceAiController', () => {
 
 		it('should disconnect all gateways when localGatewayDisabled is set to true', async () => {
 			settingsService.updateAdminSettings.mockResolvedValue({} as never);
-			instanceAiService.disconnectAllGateways.mockReturnValue(['user-c']);
+			gatewayService.disconnectAllGateways.mockReturnValue(['user-c']);
 			const payload = { localGatewayDisabled: true } as InstanceAiAdminSettingsUpdateRequest;
 
 			await controller.updateAdminSettings(req, res, payload);
 
-			expect(instanceAiService.disconnectAllGateways).toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'instanceAiGatewayStateChanged',
@@ -592,7 +616,7 @@ describe('InstanceAiController', () => {
 
 			await controller.updateAdminSettings(req, res, payload);
 
-			expect(instanceAiService.disconnectAllGateways).not.toHaveBeenCalled();
+			expect(gatewayService.disconnectAllGateways).not.toHaveBeenCalled();
 		});
 	});
 
@@ -671,25 +695,37 @@ describe('InstanceAiController', () => {
 
 		it('should create thread with provided threadId', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			const threadResult = mock<InstanceAiEnsureThreadResponse>();
 			memoryService.ensureThread.mockResolvedValue(threadResult);
-			const payload = mock<InstanceAiEnsureThreadRequest>({ threadId: 'custom-id' });
+			const payload = mock<InstanceAiEnsureThreadRequest>({
+				threadId: 'custom-id',
+				projectId: 'project-1',
+			});
 
 			const result = await controller.ensureThread(req, res, payload);
 
 			expect(result).toBe(threadResult);
-			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id');
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, 'custom-id', 'project-1');
 		});
 
 		it('should generate a UUID when threadId is not provided', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			projectService.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			memoryService.ensureThread.mockResolvedValue(mock<InstanceAiEnsureThreadResponse>());
-			const payload = mock<InstanceAiEnsureThreadRequest>({ threadId: undefined });
+			const payload = mock<InstanceAiEnsureThreadRequest>({
+				threadId: undefined,
+				projectId: 'project-1',
+			});
 
 			await controller.ensureThread(req, res, payload);
 
 			// The controller generates a UUID — just verify ensureThread was called with some string
-			expect(memoryService.ensureThread).toHaveBeenCalledWith(USER_ID, expect.any(String));
+			expect(memoryService.ensureThread).toHaveBeenCalledWith(
+				USER_ID,
+				expect.any(String),
+				'project-1',
+			);
 		});
 	});
 
@@ -763,6 +799,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
 
 			expect(result).toMatchObject({ nextEventId: 42 });
+			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID);
 			expect(memoryService.getRichMessages).toHaveBeenCalledWith(USER_ID, THREAD_ID, {
 				limit: 50,
 				page: 0,
@@ -798,55 +835,6 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('runSubAgentEval', () => {
-		const originalNodeEnv = process.env.NODE_ENV;
-		const originalE2ETests = process.env.E2E_TESTS;
-
-		afterEach(() => {
-			process.env.NODE_ENV = originalNodeEnv;
-			if (originalE2ETests === undefined) {
-				delete process.env.E2E_TESTS;
-			} else {
-				process.env.E2E_TESTS = originalE2ETests;
-			}
-		});
-
-		it('should delegate to SubAgentEvalService.run and return the response', async () => {
-			process.env.NODE_ENV = 'test';
-			process.env.E2E_TESTS = 'true';
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-			const expectedResponse = mock<InstanceAiEvalSubAgentResponse>({
-				text: 'done',
-				toolCalls: [],
-				toolResults: [],
-				capturedWorkflowIds: [],
-				durationMs: 100,
-			});
-			subAgentEvalService.run.mockResolvedValue(expectedResponse);
-
-			const result = await controller.runSubAgentEval(req, res, payload);
-
-			expect(subAgentEvalService.run).toHaveBeenCalledWith(req.user, payload);
-			expect(result).toBe(expectedResponse);
-		});
-
-		it('should throw ForbiddenError when E2E_TESTS is not set', async () => {
-			process.env.NODE_ENV = 'test';
-			delete process.env.E2E_TESTS;
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-
-			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);
-		});
-
-		it('should throw ForbiddenError when NODE_ENV is production', async () => {
-			process.env.NODE_ENV = 'production';
-			process.env.E2E_TESTS = 'true';
-			const payload = mock<InstanceAiEvalSubAgentRequest>({ role: 'builder', prompt: 'hi' });
-
-			await expect(controller.runSubAgentEval(req, res, payload)).rejects.toThrow(ForbiddenError);
-		});
-	});
-
 	describe('createGatewayLink', () => {
 		it('should require instanceAi:gateway scope', () => {
 			expect(scopeOf('createGatewayLink')).toEqual({
@@ -855,8 +843,14 @@ describe('InstanceAiController', () => {
 			});
 		});
 
-		it('should return token and command', async () => {
-			instanceAiService.generatePairingToken.mockReturnValue('pairing-token');
+		it('should return token, command, and token expiry', async () => {
+			const nowSpy = jest
+				.spyOn(Date, 'now')
+				.mockReturnValue(new Date('2026-01-01T00:00:00.000Z').getTime());
+			gatewayService.generatePairingToken.mockReturnValue('pairing-token');
+			gatewayService.getGatewayApiKeyExpiresAt.mockReturnValue(
+				new Date('2026-01-01T00:05:00.000Z'),
+			);
 			urlService.getInstanceBaseUrl.mockReturnValue('https://myinstance.n8n.cloud');
 
 			const result = await controller.createGatewayLink(req);
@@ -864,8 +858,15 @@ describe('InstanceAiController', () => {
 			expect(result).toEqual({
 				token: 'pairing-token',
 				command: 'npx @n8n/computer-use https://myinstance.n8n.cloud pairing-token',
+				expiresAt: '2026-01-01T00:05:00.000Z',
+				ttlSeconds: 300,
 			});
-			expect(instanceAiService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.generatePairingToken).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.getGatewayApiKeyExpiresAt).toHaveBeenCalledWith(
+				USER_ID,
+				'pairing-token',
+			);
+			nowSpy.mockRestore();
 		});
 	});
 
@@ -878,15 +879,15 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should initialize gateway with valid key and body', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.consumePairingToken.mockReturnValue(null);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/home/user' });
 			const payload = { rootPath: '/home/user', tools: [], toolCategories: [] };
 
 			const result = await controller.gatewayInit(gatewayReq, res, payload);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.initGateway).toHaveBeenCalledWith(
+			expect(gatewayService.initGateway).toHaveBeenCalledWith(
 				USER_ID,
 				expect.objectContaining({ rootPath: '/home/user' }),
 			);
@@ -905,8 +906,8 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should return sessionKey when pairing token is consumed', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.consumePairingToken.mockReturnValue('new-session-key');
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.consumePairingToken.mockReturnValue('new-session-key');
 			const gatewayReq = makeGatewayReq('pairing-token', { rootPath: '/tmp' });
 
 			const result = await controller.gatewayInit(gatewayReq, res, {
@@ -919,7 +920,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should accept static env var key', async () => {
-			instanceAiService.consumePairingToken.mockReturnValue(null);
+			gatewayService.consumePairingToken.mockReturnValue(null);
 			const gatewayReq = makeGatewayReq('static-key', { rootPath: '/tmp' });
 
 			const result = await controller.gatewayInit(gatewayReq, res, {
@@ -929,7 +930,7 @@ describe('InstanceAiController', () => {
 			});
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.initGateway).toHaveBeenCalledWith('env-gateway', expect.anything());
+			expect(gatewayService.initGateway).toHaveBeenCalledWith('env-gateway', expect.anything());
 		});
 
 		it('should throw ForbiddenError with missing API key', async () => {
@@ -945,7 +946,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should throw ForbiddenError with invalid API key', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(undefined);
+			gatewayService.getUserIdForApiKey.mockReturnValue(undefined);
 			const gatewayReq = makeGatewayReq('wrong-key', { rootPath: '/tmp' });
 
 			await expect(
@@ -981,25 +982,25 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should reject with ForbiddenError when the gateway has not been initialized', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.getLocalGateway.mockReturnValue(mock<LocalGateway>({ isConnected: false }));
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.getLocalGateway.mockReturnValue(mock<LocalGateway>({ isConnected: false }));
 
 			await expect(
 				controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes()),
 			).rejects.toThrow(ForbiddenError);
 
-			expect(instanceAiService.clearDisconnectTimer).not.toHaveBeenCalled();
+			expect(gatewayService.clearDisconnectTimer).not.toHaveBeenCalled();
 		});
 
 		it('should clear a pending disconnect timer when SSE reconnects while still connected', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			const gateway = mock<LocalGateway>({ isConnected: true });
 			gateway.onRequest.mockReturnValue(() => {});
-			instanceAiService.getLocalGateway.mockReturnValue(gateway);
+			gatewayService.getLocalGateway.mockReturnValue(gateway);
 
 			await controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes());
 
-			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
 		});
 	});
 
@@ -1012,8 +1013,8 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should resolve gateway request', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.resolveGatewayRequest.mockReturnValue(true);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.resolveGatewayRequest.mockReturnValue(true);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
 			const result = controller.gatewayResponse(gatewayReq, res, 'req-1', {
@@ -1021,7 +1022,7 @@ describe('InstanceAiController', () => {
 			});
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.resolveGatewayRequest).toHaveBeenCalledWith(
+			expect(gatewayService.resolveGatewayRequest).toHaveBeenCalledWith(
 				USER_ID,
 				'req-1',
 				{ content: [] },
@@ -1030,8 +1031,8 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should throw NotFoundError when request not found', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.resolveGatewayRequest.mockReturnValue(false);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.resolveGatewayRequest.mockReturnValue(false);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
 			expect(() =>
@@ -1046,7 +1047,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should disconnect gateway and send push notification', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			const gatewayReq = {
 				headers: { 'x-gateway-key': 'session-key' },
 			} as unknown as Request;
@@ -1054,9 +1055,9 @@ describe('InstanceAiController', () => {
 			const result = controller.gatewayDisconnect(gatewayReq);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
-			expect(instanceAiService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
-			expect(instanceAiService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				{
 					type: 'instanceAiGatewayStateChanged',
@@ -1088,9 +1089,9 @@ describe('InstanceAiController', () => {
 			const result = await controller.gatewayDisconnectSession(req);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
-			expect(instanceAiService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
-			expect(instanceAiService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
+			expect(gatewayService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				{
 					type: 'instanceAiGatewayStateChanged',
@@ -1102,10 +1103,73 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('gatewayCreateCredential', () => {
+		const makeGatewayReq = (key: string) =>
+			({ headers: { 'x-gateway-key': key } }) as unknown as Request;
+
+		const payload = {
+			name: 'My Slack Cred',
+			type: 'slackApi',
+			data: { accessToken: 'xoxb-token' },
+		};
+
+		it('should have no access scope (skipAuth)', () => {
+			expect(scopeOf('gatewayCreateCredential')).toBeUndefined();
+		});
+
+		it('should create credential and return credentialId', async () => {
+			const user = mock<User>({ id: USER_ID });
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(user);
+			credentialsService.createUnmanagedCredential.mockResolvedValue(
+				mock<Awaited<ReturnType<CredentialsService['createUnmanagedCredential']>>>({
+					id: 'cred-1',
+				}),
+			);
+
+			const result = await controller.gatewayCreateCredential(
+				makeGatewayReq('session-key'),
+				res,
+				payload,
+			);
+
+			expect(result).toEqual({ credentialId: 'cred-1' });
+			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(payload, user);
+		});
+
+		it('should throw ForbiddenError when using the static env-var key', async () => {
+			const gatewayReq = makeGatewayReq('static-key');
+
+			await expect(controller.gatewayCreateCredential(gatewayReq, res, payload)).rejects.toThrow(
+				ForbiddenError,
+			);
+		});
+
+		it('should throw ForbiddenError when the user is not found', async () => {
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(null);
+
+			await expect(
+				controller.gatewayCreateCredential(makeGatewayReq('session-key'), res, payload),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should throw ForbiddenError when the gateway is disabled', async () => {
+			const user = mock<User>({ id: USER_ID });
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			userRepository.findOne.mockResolvedValue(user);
+			settingsService.isLocalGatewayDisabledForUser.mockResolvedValue(true);
+
+			await expect(
+				controller.gatewayCreateCredential(makeGatewayReq('session-key'), res, payload),
+			).rejects.toThrow(ForbiddenError);
+		});
+	});
+
 	describe('getGatewayKeyHeader', () => {
 		it('should extract first element from array header', () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.resolveGatewayRequest.mockReturnValue(true);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.resolveGatewayRequest.mockReturnValue(true);
 			const gatewayReq = {
 				headers: { 'x-gateway-key': ['key1', 'key2'] },
 				body: { result: { content: [] } },
@@ -1114,7 +1178,7 @@ describe('InstanceAiController', () => {
 			controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } });
 
 			// validateGatewayApiKey receives 'key1' (the first element)
-			expect(instanceAiService.getUserIdForApiKey).toHaveBeenCalledWith('key1');
+			expect(gatewayService.getUserIdForApiKey).toHaveBeenCalledWith('key1');
 		});
 	});
 });

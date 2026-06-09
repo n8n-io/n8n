@@ -90,7 +90,7 @@ export class RespondToWebhook implements INodeType {
 			name: 'Respond to Webhook',
 		},
 		builderHint: {
-			message:
+			searchHint:
 				'Only works with webhook node (n8n-nodes-base.webhook) with responseMode set to "responseNode"',
 			relatedNodes: [
 				{

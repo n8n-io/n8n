@@ -33,6 +33,7 @@ import * as utils from '../shared/utils/';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
 
@@ -765,6 +766,7 @@ describe('GET /workflows/:id/:versionId', () => {
 			description: 'Version Description',
 			nodes: versionData.nodes,
 			connections: versionData.connections,
+			nodeGroups: [],
 			authors: 'Test User',
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			createdAt: expect.any(String),
@@ -1415,6 +1417,28 @@ describe('POST /workflows', () => {
 	test('should create workflow', async () => {
 		const payload = {
 			...mockPostWorkflowPayload(),
+			nodes: [
+				triggerNode,
+				{
+					id: 'uuid-5678',
+					parameters: {},
+					name: 'Tagged NoOp',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [460, 300],
+					customTelemetryTags: {
+						tag: [
+							{ key: 'node-env', value: 'production' },
+							{ key: 'node-team', value: 'engineering' },
+						],
+					},
+				},
+			],
+			connections: {
+				Start: {
+					main: [[{ node: 'Tagged NoOp', type: 'main', index: 0 }]],
+				},
+			},
 			staticData: null,
 			settings: {
 				saveExecutionProgress: true,
@@ -1426,6 +1450,10 @@ describe('POST /workflows', () => {
 				executionOrder: 'v1',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'category', value: 'data-cleaning' },
+				],
 			},
 		};
 
@@ -1468,6 +1496,8 @@ describe('POST /workflows', () => {
 
 		expect(sharedWorkflow?.workflow.name).toBe(name);
 		expect(sharedWorkflow?.workflow.createdAt.toISOString()).toBe(createdAt);
+		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
+		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
@@ -1618,6 +1648,145 @@ describe('POST /workflows', () => {
 	});
 });
 
+describe('POST /workflows redaction floor enforcement', () => {
+	const redactionTrigger = {
+		id: 'uuid-redaction',
+		parameters: {},
+		name: 'Start',
+		type: 'n8n-nodes-base.manualTrigger',
+		typeVersion: 1,
+		position: [240, 300],
+	} as const;
+
+	const postWorkflow = async (settings: Record<string, unknown>) =>
+		await authOwnerAgent.post('/workflows').send({
+			name: 'redaction-floor',
+			nodes: [redactionTrigger],
+			connections: {},
+			settings,
+		});
+
+	beforeEach(() => {
+		// Floor = Production, with data redaction licensed so accepted policies are
+		// persisted/seeded rather than stripped on save. The spy survives the global
+		// restoreMocks reset by being set per-test.
+		license.enable('feat:dataRedaction');
+		jest
+			.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
+			.mockResolvedValue('production');
+	});
+
+	const savedRedactionPolicy = async (workflowId: string) =>
+		(await workflowRepository.findOneBy({ id: workflowId }))?.settings?.redactionPolicy;
+
+	test('rejects a workflow whose redaction policy is weaker than the floor with 422', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'none' });
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body.message).toBe(
+			'Workflow redaction policy cannot be weaker than the instance floor.',
+		);
+	});
+
+	test('seeds the floor policy when the redaction policy is omitted', async () => {
+		const response = await postWorkflow({ executionOrder: 'v1' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
+	});
+
+	test('persists a redaction policy that exceeds the floor', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'all' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('all');
+	});
+
+	test('rejects manual-only, which does not redact production, with 422', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'manual-only' });
+
+		expect(response.statusCode).toBe(422);
+	});
+
+	test('persists non-manual, which exactly meets the production floor', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'non-manual' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
+	});
+});
+
+describe('PUT /workflows/:id redaction floor enforcement', () => {
+	const redactionTrigger = {
+		id: 'uuid-redaction',
+		parameters: {},
+		name: 'Start',
+		type: 'n8n-nodes-base.manualTrigger',
+		typeVersion: 1,
+		position: [240, 300],
+	} as const;
+
+	const putWorkflow = async (id: string, settings: Record<string, unknown>) =>
+		await authOwnerAgent.put(`/workflows/${id}`).send({
+			name: 'redaction-floor',
+			nodes: [redactionTrigger],
+			connections: {},
+			staticData: null,
+			settings,
+		});
+
+	beforeEach(() => {
+		license.enable('feat:dataRedaction');
+		jest
+			.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
+			.mockResolvedValue('production');
+	});
+
+	const savedRedactionPolicy = async (workflowId: string) =>
+		(await workflowRepository.findOneBy({ id: workflowId }))?.settings?.redactionPolicy;
+
+	// Parity with POST: the update endpoint already enforced the floor; these prove the
+	// two endpoints reject and accept the same payloads (the ticket's consistency claim).
+	test('rejects a sub-floor redaction policy with 422', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { redactionPolicy: 'none' });
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body.message).toBe(
+			'Workflow redaction policy cannot be weaker than the instance floor.',
+		);
+		expect(await savedRedactionPolicy(workflow.id)).toBeUndefined();
+	});
+
+	test('rejects manual-only, which does not redact production, with 422', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { redactionPolicy: 'manual-only' });
+
+		expect(response.statusCode).toBe(422);
+	});
+
+	test('does not seed a redaction policy when the update omits it', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { executionOrder: 'v1' });
+
+		expect(response.statusCode).toBe(200);
+		// Unlike create, update never seeds — an absent field leaves the policy unset.
+		expect(await savedRedactionPolicy(workflow.id)).toBeUndefined();
+	});
+
+	test('persists a redaction policy that meets the floor', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { redactionPolicy: 'all' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(workflow.id)).toBe('all');
+	});
+});
+
 describe('PUT /workflows/:id', () => {
 	test('should fail due to missing API Key', testWithAPIKey('put', '/workflows/1', null));
 
@@ -1749,6 +1918,12 @@ describe('PUT /workflows/:id', () => {
 					type: 'n8n-nodes-base.cron',
 					typeVersion: 1,
 					position: [400, 300],
+					customTelemetryTags: {
+						tag: [
+							{ key: 'node-env', value: 'production' },
+							{ key: 'node-team', value: 'engineering' },
+						],
+					},
 				},
 			],
 			connections: {},
@@ -1762,6 +1937,10 @@ describe('PUT /workflows/:id', () => {
 				timezone: 'America/New_York',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'category', value: 'data-cleaning' },
+				],
 			},
 		};
 
@@ -1803,6 +1982,8 @@ describe('PUT /workflows/:id', () => {
 		});
 
 		expect(sharedWorkflow?.workflow.name).toBe(payload.name);
+		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
+		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
 			workflow.updatedAt.getTime(),
 		);
