@@ -588,12 +588,9 @@ function onDeleteSelection() {
 
 	for (const node of selectedNodesAndGroups.value) {
 		if (!isCanvasGroupNode(node)) continue;
-
+		// Only collapsed group title bars are selectable, so any group node
+		// here represents the whole group as a single surface.
 		const data = node.data as CanvasGroupNodeData;
-		// Only collapsed group title bars are selectable
-		if (!data.isCollapsed) continue;
-
-		// Grouped nodes get ungrouped
 		workflowDocumentStore.value.deleteGroup(data.group.id);
 	}
 }
