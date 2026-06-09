@@ -1,5 +1,5 @@
 import type { ProjectRelation } from '@n8n/api-types';
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	type Project,
 	type ProjectRepository,
@@ -35,6 +35,7 @@ describe('ProjectService', () => {
 	const agentRepository = mock<AgentRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const ownershipService = mock<OwnershipService>();
+	const logger = mock<Logger>();
 	const projectService = new ProjectService(
 		sharedWorkflowRepository,
 		projectRepository,
@@ -44,6 +45,7 @@ describe('ProjectService', () => {
 		mock(),
 		moduleRegistry,
 		ownershipService,
+		logger,
 	);
 
 	beforeEach(() => {

@@ -755,7 +755,7 @@ function truncateOperationOutput(text: string): { text: string; truncated: boole
 }
 
 function buildScopedKnowledgeShellCommand(command: string): string {
-	return `if [ ! -d ${KNOWLEDGE_FILES_DIR} ]; then exit 0; fi; cd ${KNOWLEDGE_FILES_DIR} && ${command}`;
+	return `if [ ! -d ${KNOWLEDGE_FILES_DIR} ]; then echo 'Agent knowledge files directory is unavailable' >&2; exit 2; fi; cd ${KNOWLEDGE_FILES_DIR} && ${command}`;
 }
 
 function readCommandStderr(artifacts: { stdout?: string; stderr?: string } | undefined): string {
