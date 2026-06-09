@@ -357,6 +357,15 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-max-iterations-input"]').exists()).toBe(true);
 	});
 
+	it('initialises max-iterations input to the default when unset in config', () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig() },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.find('[data-testid="agent-max-iterations-input"]');
+		expect(Number(input.element.getAttribute('value'))).toBe(30);
+	});
+
 	it('initialises max-iterations input from config', () => {
 		const config = makeConfig({ config: { maxIterations: 42 } } as Partial<AgentJsonConfig>);
 		const wrapper = mount(AgentAdvancedPanel, {

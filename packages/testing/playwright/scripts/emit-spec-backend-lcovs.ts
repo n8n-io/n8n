@@ -7,22 +7,22 @@
  * resolves each entry's dist URL to the checkout's `packages/<x>/src/*.ts` (the
  * same resolution the shard emitter uses), and emits one lcov per spec tagged
  * with the spec id in `TN:`. These join the frontend per-spec lcovs in
- * `coverage/by-spec/` and let the impact map attribute backend source files to
- * the specs that exercise them — so a backend change selects E2E specs instead
- * of running the whole suite.
+ * `coverage/by-spec/` so the impact map attributes backend source files to the
+ * specs that exercise them.
  *
- * Best-effort: a spec with no resolvable backend coverage is simply skipped
- * (fail-open — no backend rows, never a failure).
+ * Thin wrapper over the generic @n8n/test-impact build kernel; the n8n-specific
+ * dist→source resolution is injected via `feedRaws`. Best-effort: a spec with no
+ * resolvable backend coverage is skipped (fail-open).
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { CoverageReport } from 'monocart-coverage-reports';
+import { emitPerSpecLcovs } from '@n8n/test-impact';
+import type { CoverageReport } from 'monocart-coverage-reports';
 
 import {
 	buildPackageMap,
 	createBackendResolveStats,
-	forceSpecTn,
 	formatBackendStats,
 	resolveBackendEntries,
 } from './backend-coverage-resolver';
@@ -31,57 +31,35 @@ import { BACKEND_BY_SPEC_DIR, coverageOptions } from '../coverage-options';
 const OUT_DIR = join(coverageOptions.outputDir ?? './coverage', 'by-spec');
 
 async function main() {
-	if (!existsSync(BACKEND_BY_SPEC_DIR)) {
-		console.log(`emit-spec-backend-lcovs: ${BACKEND_BY_SPEC_DIR} absent — no per-spec backend raw`);
-		return;
-	}
-	mkdirSync(OUT_DIR, { recursive: true });
 	const pkgMap = buildPackageMap();
 	const stats = createBackendResolveStats();
-	const dirs = readdirSync(BACKEND_BY_SPEC_DIR).filter((d) =>
-		statSync(join(BACKEND_BY_SPEC_DIR, d)).isDirectory(),
-	);
-	let emitted = 0;
-	for (const slug of dirs) {
-		const dir = join(BACKEND_BY_SPEC_DIR, slug);
-		const specMarker = join(dir, '.spec');
-		if (!existsSync(specMarker)) continue;
-		const spec = readFileSync(specMarker, 'utf8').trim();
-		const rawFiles = readdirSync(dir).filter((f) => f.startsWith('raw-') && f.endsWith('.json'));
-		if (!rawFiles.length) continue;
 
-		const report = new CoverageReport({
-			...coverageOptions,
-			name: spec,
-			outputDir: dir,
-			reports: ['lcovonly'],
-		});
-		let added = 0;
-		for (const rf of rawFiles) {
-			let parsed: { result?: Array<{ url: string }> };
-			try {
-				parsed = JSON.parse(readFileSync(join(dir, rf), 'utf8'));
-			} catch {
-				continue;
+	const emit = await emitPerSpecLcovs({
+		bySpecDir: BACKEND_BY_SPEC_DIR,
+		outDir: OUT_DIR,
+		coverageOptions,
+		suffix: '-backend',
+		feedRaws: async (report: CoverageReport, rawFiles, dir) => {
+			let added = 0;
+			for (const rf of rawFiles) {
+				let parsed: { result?: Array<{ url: string }> };
+				try {
+					parsed = JSON.parse(readFileSync(join(dir, rf), 'utf8'));
+				} catch {
+					continue;
+				}
+				const entries = resolveBackendEntries(parsed, pkgMap, stats);
+				if (entries.length) {
+					await report.add(entries as never);
+					added += entries.length;
+				}
 			}
-			const entries = resolveBackendEntries(parsed, pkgMap, stats);
-			if (entries.length) {
-				await report.add(entries as never);
-				added += entries.length;
-			}
-		}
-		if (!added) continue;
+			return added > 0;
+		},
+	});
 
-		const result = await report.generate();
-		const lcovPath = join(dir, 'lcov.info');
-		if (!result || !result.files?.length || !existsSync(lcovPath)) continue;
-		// Force every record's TN to the real spec id so the merge attributes it.
-		const lcov = forceSpecTn(readFileSync(lcovPath, 'utf8'), spec);
-		writeFileSync(join(OUT_DIR, `${slug}-backend.lcov`), lcov);
-		emitted++;
-	}
 	console.log(
-		`emit-spec-backend-lcovs: ${dirs.length} dirs → ${emitted} per-spec backend lcov(s) in ${OUT_DIR} ` +
+		`emit-spec-backend-lcovs: ${emit.dirs} dirs → ${emit.emitted} per-spec backend lcov(s) in ${OUT_DIR} ` +
 			`(${formatBackendStats(stats)})`,
 	);
 }

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/extension-sdk",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "type": "module",
   "files": [
     "dist",
@@ -58,7 +58,7 @@
     "zod-to-json-schema": "catalog:",
     "tsx": "catalog:"
   },
-  "license": "https://docs.n8n.io/sustainable-use-license/",
+  "license": "LicenseRef-n8n-sustainable-use",
   "dependencies": {
     "zod": "catalog:"
   }

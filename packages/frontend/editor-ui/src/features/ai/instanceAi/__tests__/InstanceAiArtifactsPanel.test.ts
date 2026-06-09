@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import { defineComponent, h, nextTick, reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -16,6 +17,7 @@ vi.mock('../instanceAi.store', () => ({
 }));
 
 const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
+	pinia: createTestingPinia(),
 	global: {
 		stubs: {
 			ConnectionsCard: defineComponent({
@@ -45,14 +47,6 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(getByTestId('instance-ai-artifacts-sidebar')).toBeInTheDocument();
 		expect(getByTestId('instance-ai-artifacts-sidebar-group')).toBeInTheDocument();
-		expect(getByTestId('instance-ai-artifacts-sidebar-pin')).toHaveAttribute(
-			'aria-label',
-			'Unpin panel',
-		);
-		expect(getByTestId('instance-ai-artifacts-sidebar-pin')).toHaveAttribute(
-			'aria-pressed',
-			'true',
-		);
 		expect(getByText('No artifacts yet')).toBeInTheDocument();
 		expect(queryByText('To-do list')).not.toBeInTheDocument();
 		expect(queryByText('No tasks yet')).not.toBeInTheDocument();
@@ -65,24 +59,6 @@ describe('InstanceAiArtifactsPanel', () => {
 		await nextTick();
 
 		expect(getByTestId('connections-card')).toHaveAttribute('data-portal-target-tag', 'ASIDE');
-	});
-
-	it('emits when the pin button is clicked and reflects the unpinned label', async () => {
-		const { emitted, getByTestId } = renderComponent({ props: { isPinned: false } });
-		const pinButton = getByTestId('instance-ai-artifacts-sidebar-pin');
-
-		expect(pinButton).toHaveAttribute('aria-label', 'Pin panel');
-		expect(pinButton).toHaveAttribute('aria-pressed', 'false');
-
-		await fireEvent.click(pinButton);
-
-		expect(emitted('togglePinned')).toHaveLength(1);
-	});
-
-	it('hides the pin button when pinning is unavailable', () => {
-		const { queryByTestId } = renderComponent({ props: { isPinningAvailable: false } });
-
-		expect(queryByTestId('instance-ai-artifacts-sidebar-pin')).not.toBeInTheDocument();
 	});
 
 	it('opens artifacts in preview and shows tasks without progress counts', async () => {

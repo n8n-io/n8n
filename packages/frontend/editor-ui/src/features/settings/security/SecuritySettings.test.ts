@@ -562,6 +562,9 @@ describe('SecuritySettings', () => {
 				expect(getByRole('dialog')).toBeInTheDocument();
 			});
 
+			expect(getByRole('dialog')).toHaveTextContent('manage data redaction permission');
+			expect(getByRole('dialog')).not.toHaveTextContent('Workflow editors');
+
 			await userEvent.click(getByRole('button', { name: 'Enable' }));
 
 			await waitFor(() => {
@@ -615,6 +618,9 @@ describe('SecuritySettings', () => {
 			await waitFor(() => {
 				expect(getByRole('dialog')).toBeInTheDocument();
 			});
+
+			expect(getByRole('dialog')).toHaveTextContent('manage data redaction permission');
+			expect(getByRole('dialog')).not.toHaveTextContent('Workflow editors');
 
 			await userEvent.click(getByRole('button', { name: 'Disable' }));
 
@@ -785,6 +791,50 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
 					'Manual and production executions',
 				);
+			});
+		});
+
+		describe('when security settings endpoint is unlicensed (403)', () => {
+			beforeEach(() => {
+				enableRedactionEnforcementFlag(true);
+				settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+				// Reproduce the 403: useAsyncState keeps state === undefined.
+				getSecuritySettings.mockRejectedValue(new Error('Forbidden'));
+			});
+
+			it('should still render the data redaction section when the endpoint 403s', async () => {
+				const { getByTestId } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
+			});
+
+			it('should show the Upgrade badges and disabled scope dropdown when endpoint 403s', async () => {
+				const { getByTestId, getAllByText } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+				expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+				// One badge on the toggle row, one on the scope row.
+				expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
+				// Defaults to floor 'off' when state never resolves.
+				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+			});
+
+			it('should not show an error toast when the endpoint 403s', async () => {
+				const { getByTestId } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(showError).not.toHaveBeenCalled();
 			});
 		});
 	});

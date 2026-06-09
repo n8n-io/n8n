@@ -2,13 +2,18 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { proxyFetch } from '@n8n/ai-utilities';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import type { Mock, MockedClass, MockedFunction } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 import { expect } from 'vitest';
 
 import type { McpAuthenticationOption } from '../types';
-import { connectMcpClient, getAuthHeaders, tryRefreshOAuth2Token } from '../utils';
+import {
+	connectMcpClient,
+	getAuthHeaders,
+	mapToNodeOperationError,
+	tryRefreshOAuth2Token,
+} from '../utils';
 
 vi.mock('@modelcontextprotocol/sdk/client/index.js');
 vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
@@ -16,7 +21,7 @@ vi.mock('@modelcontextprotocol/sdk/client/sse.js');
 vi.mock('@n8n/ai-utilities', async () => {
 	const actual = await vi.importActual('@n8n/ai-utilities');
 	return {
-		...actual,
+		...(actual as Record<string, unknown>),
 		proxyFetch: vi.fn(),
 	};
 });
@@ -184,6 +189,7 @@ describe('utils', () => {
 	describe('connectMcpClient', () => {
 		const mockClient = {
 			connect: vi.fn(),
+			close: vi.fn(),
 		};
 
 		const mockedProxyFetch = proxyFetch as MockedFunction<typeof proxyFetch>;
@@ -191,6 +197,8 @@ describe('utils', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
 			vi.restoreAllMocks();
+			mockClient.close = vi.fn();
+			mockClient.close.mockResolvedValue(undefined);
 
 			MockedClient.mockImplementation(function () {
 				return mockClient as unknown as Client;
@@ -201,6 +209,31 @@ describe('utils', () => {
 			['httpStreamable', StreamableHTTPClientTransport],
 			['sse', SSEClientTransport],
 		] as const)('%s transport', (transport, TransportClass) => {
+			it('should return cancelled without creating a transport when signal is already aborted', async () => {
+				const abort = new AbortController();
+				abort.abort();
+				const addEventListener = vi.spyOn(abort.signal, 'addEventListener');
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('cancelled');
+					expect(result.error.error.message).toBe('Execution was cancelled');
+				}
+				expect(TransportClass).not.toHaveBeenCalled();
+				expect(mockClient.connect).not.toHaveBeenCalled();
+				expect(addEventListener).toHaveBeenCalledWith('abort', expect.any(Function), {
+					once: true,
+				});
+			});
+
 			it('should connect successfully and pass a custom fetch', async () => {
 				mockClient.connect.mockResolvedValue(undefined);
 
@@ -216,6 +249,95 @@ describe('utils', () => {
 
 				const [, opts] = (TransportClass as Mock).mock.calls[0];
 				expect(opts.fetch).toBeTypeOf('function');
+			});
+
+			it('should connect successfully without a signal and not pass requestInit', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+				});
+
+				expect(result.ok).toBe(true);
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				expect(opts).not.toHaveProperty('requestInit');
+			});
+
+			it('should pass the abort signal in requestInit when a signal is provided', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				const abort = new AbortController();
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(true);
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				expect(opts.requestInit).toEqual({ signal: abort.signal });
+			});
+
+			it('should attach a once abort listener that closes the client and swallows close rejection', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				mockClient.close.mockRejectedValueOnce(new Error('close failed'));
+				const abort = new AbortController();
+				const addEventListener = vi.spyOn(abort.signal, 'addEventListener');
+
+				// Save a reference to the original close mock before it gets wrapped
+				const closeSpy = mockClient.close;
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(true);
+				expect(addEventListener).toHaveBeenCalledWith('abort', expect.any(Function), {
+					once: true,
+				});
+
+				// Trigger the abort; the listener will call client.close (the wrapper)
+				expect(() => abort.abort()).not.toThrow();
+				await Promise.resolve();
+
+				// The original close function should have been called exactly once
+				expect(closeSpy).toHaveBeenCalledTimes(1);
+			});
+
+			it('should remove the abort listener on normal close, preventing double-close on later abort', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				const abort = new AbortController();
+
+				// Save a reference to the original close mock before it gets wrapped
+				const closeSpy = mockClient.close;
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(true);
+				if (result.ok) {
+					// Normal close – triggers the wrapper, which removes the listener and calls originalClose
+					await result.result.close();
+				}
+				abort.abort(); // listener already removed, should not call close again
+				await Promise.resolve();
+
+				// Original close called exactly once (not twice)
+				expect(closeSpy).toHaveBeenCalledTimes(1);
 			});
 
 			it('should return auth error on 401 during connect', async () => {
@@ -237,6 +359,106 @@ describe('utils', () => {
 
 			it('should return connection error on non-auth failure', async () => {
 				mockClient.connect.mockRejectedValueOnce(new Error('Connection refused'));
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('connection');
+				}
+			});
+
+			it('should remove the abort listener when connect fails with an auth error', async () => {
+				mockClient.connect.mockRejectedValueOnce(new Error('Request failed with status 401'));
+				const abort = new AbortController();
+				const removeEventListener = vi.spyOn(abort.signal, 'removeEventListener');
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('auth');
+				}
+				expect(removeEventListener).toHaveBeenCalledWith('abort', expect.any(Function));
+			});
+
+			it('should remove the abort listener when connect fails with a connection error', async () => {
+				mockClient.connect.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+				const abort = new AbortController();
+				const removeEventListener = vi.spyOn(abort.signal, 'removeEventListener');
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('connection');
+				}
+				expect(removeEventListener).toHaveBeenCalledWith('abort', expect.any(Function));
+			});
+
+			it('should return cancelled when connect throws AbortError with a signal', async () => {
+				const abortError = new Error('The operation was aborted');
+				abortError.name = 'AbortError';
+				mockClient.connect.mockRejectedValueOnce(abortError);
+				const abort = new AbortController();
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('cancelled');
+					expect(result.error.error).toBe(abortError);
+				}
+			});
+
+			it('should return cancelled when the signal is aborted while connect fails', async () => {
+				const abort = new AbortController();
+				mockClient.connect.mockImplementationOnce(async () => {
+					abort.abort();
+					throw new Error('connect failed after cancellation');
+				});
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('cancelled');
+				}
+			});
+
+			it('should return connection when connect throws AbortError without a signal', async () => {
+				const abortError = new Error('The operation was aborted');
+				abortError.name = 'AbortError';
+				mockClient.connect.mockRejectedValueOnce(abortError);
 
 				const result = await connectMcpClient({
 					serverTransport: transport,
@@ -410,6 +632,17 @@ describe('utils', () => {
 				expect(result.ok).toBe(true);
 				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 			});
+		});
+	});
+
+	describe('mapToNodeOperationError', () => {
+		it('should map cancelled connection errors to an execution cancellation message', () => {
+			const node = mockDeep<INode>();
+			const error = new Error('abort');
+
+			const result = mapToNodeOperationError(node, { type: 'cancelled', error });
+
+			expect(result.message).toBe('Execution was cancelled');
 		});
 	});
 });

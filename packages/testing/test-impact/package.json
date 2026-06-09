@@ -1,0 +1,50 @@
+{
+  "name": "@n8n/test-impact",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Test Impact Analysis: coverage-map selection + shard orchestration for n8n CI. Framework-agnostic core.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "build": "tsc",
+    "build:unchecked": "tsc --noCheck",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "testing",
+    "test-impact-analysis",
+    "coverage",
+    "ci",
+    "sharding"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "monocart-coverage-reports": "^2.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "fast-check": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

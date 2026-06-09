@@ -6,15 +6,16 @@
 import { useI18n } from '@n8n/i18n';
 import type { CanvasRenderData } from '../canvas.utils';
 import type { Ref } from 'vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type {
 	CanvasConnection,
 	CanvasConnectionData,
 	CanvasNode,
 	CanvasNodeData,
 } from '../canvas.types';
-import { CanvasConnectionMode } from '../canvas.types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import {
+	computeNodeDisplaySize,
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
@@ -37,10 +38,12 @@ export function useCanvasMapping({
 	nodes,
 	connections,
 	renderData,
+	isExperimentalNdvActive = ref(false),
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	renderData: Ref<CanvasRenderData>;
+	isExperimentalNdvActive?: Ref<boolean>;
 }) {
 	const i18n = useI18n();
 
@@ -48,6 +51,28 @@ export function useCanvasMapping({
 		if (!tasks) return null;
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
 	}
+
+	// Display size by node id. WorkflowCanvas uses this for group bounds so
+	// they wrap each node's actual rendered size. Sticky notes are omitted —
+	// their own width/height parameters are read by the group mapper directly.
+	const nodeDisplaySizeById = computed(() => {
+		const rd = renderData.value;
+		const dimensionsById: Record<string, { width: number; height: number }> = {};
+
+		for (const node of nodes.value) {
+			const render = rd.renderTypeByNodeId.get(node.id)?.value;
+
+			if (render?.type !== CanvasNodeRenderType.Default) continue;
+
+			dimensionsById[node.id] = computeNodeDisplaySize(
+				node.id,
+				render.options,
+				rd,
+				isExperimentalNdvActive.value,
+			);
+		}
+		return dimensionsById;
+	});
 
 	const mappedNodes = computed<CanvasNode[]>(() => {
 		const connectionsBySourceNode = connections.value;
@@ -223,5 +248,6 @@ export function useCanvasMapping({
 	return {
 		nodes: mappedNodes,
 		connections: mappedConnections,
+		nodeDisplaySizeById,
 	};
 }
