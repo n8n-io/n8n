@@ -246,7 +246,9 @@ async function main(): Promise<void> {
 			slugByTestCase = langsmithRun.slugByTestCase;
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			evaluation = await runDirectLoop({ args, lanes, logger, prebuiltManifest });
+			const directRun = await runDirectLoop({ args, lanes, logger, prebuiltManifest });
+			evaluation = directRun.evaluation;
+			slugByTestCase = directRun.slugByTestCase;
 		}
 
 		const totalDuration = Date.now() - startTime;
@@ -933,13 +935,19 @@ function reshapeLangSmithRuns(
 // Direct mode: simple loop, no LangSmith dependency
 // ---------------------------------------------------------------------------
 
-async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
+async function runDirectLoop(config: RunConfig): Promise<{
+	evaluation: MultiRunEvaluation;
+	slugByTestCase: Map<WorkflowTestCase, string>;
+}> {
 	const { args, lanes, logger, prebuiltManifest } = config;
 
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
+	const slugByTestCase = new Map(
+		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
+	);
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases found in evaluations/data/workflows/');
-		return { totalRuns: 0, testCases: [] };
+		return { evaluation: { totalRuns: 0, testCases: [] }, slugByTestCase };
 	}
 
 	const totalScenarios = testCasesWithFiles.reduce(
@@ -995,7 +1003,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 		}),
 	);
 
-	return aggregateResults(allRunResults, args.iterations);
+	return { evaluation: aggregateResults(allRunResults, args.iterations), slugByTestCase };
 }
 
 // ---------------------------------------------------------------------------
