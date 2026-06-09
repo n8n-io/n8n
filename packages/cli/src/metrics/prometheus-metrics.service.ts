@@ -71,6 +71,7 @@ export class PrometheusMetricsService {
 			apiMethod: this.globalConfig.endpoints.metrics.includeApiMethodLabel,
 			apiStatusCode: this.globalConfig.endpoints.metrics.includeApiStatusCodeLabel,
 			workflowName: this.globalConfig.endpoints.metrics.includeWorkflowNameLabel,
+			executionMode: this.globalConfig.endpoints.metrics.includeExecutionModeLabel,
 		},
 	};
 
@@ -477,6 +478,9 @@ export class PrometheusMetricsService {
 		}
 		if (this.includes.labels.workflowName) {
 			labels.workflow_name = String(payload.workflowName ?? 'unknown');
+		}
+		if (this.includes.labels.executionMode) {
+			labels.execution_mode = String(payload.mode ?? 'unknown');
 		}
 		return labels;
 	}
