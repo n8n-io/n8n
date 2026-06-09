@@ -32,12 +32,10 @@ export interface EvalModelConfig {
 
 function getModelId(model?: string): string {
 	const modelId =
-		model ?? process.env.N8N_INSTANCE_AI_EVAL_MODEL ?? process.env.N8N_INSTANCE_AI_MODEL;
-	if (!modelId) {
-		throw new Error(
-			'Missing eval model. Set N8N_INSTANCE_AI_MODEL or N8N_INSTANCE_AI_EVAL_MODEL in your environment.',
-		);
-	}
+		model ??
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL ??
+		process.env.N8N_INSTANCE_AI_MODEL ??
+		SONNET_MODEL;
 	return modelId;
 }
 

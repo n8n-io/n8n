@@ -54,8 +54,9 @@ describe('eval agent model config', () => {
 	it('keeps the legacy Anthropic key fallback for eval models', () => {
 		process.env.N8N_AI_ANTHROPIC_KEY = 'legacy-anthropic-key';
 
-		const config = resolveEvalModelConfig('anthropic/claude-sonnet-4-6');
+		const config = resolveEvalModelConfig();
 
+		expect(config.modelId).toBe('anthropic/claude-sonnet-4-6');
 		expect(config.apiKey).toBe('legacy-anthropic-key');
 	});
 
