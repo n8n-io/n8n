@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
@@ -72,7 +72,7 @@ import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
-import type { McpAppsTelemetryVariant } from './mcp.types';
+import type { McpAppsTelemetryVariant, McpClientInfo } from './mcp.types';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { ExecutionService } from '@/executions/execution.service';
@@ -128,6 +128,7 @@ export class McpService {
 		private readonly executionService: ExecutionService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
+		private readonly licenseState: LicenseState,
 		private readonly postHogClient: PostHogClient,
 	) {}
 
@@ -189,7 +190,7 @@ export class McpService {
 		}
 	}
 
-	async getServer(user: User, mcpAppsEnabled: boolean) {
+	async getServer(user: User, mcpAppsEnabled: boolean, clientInfo?: McpClientInfo) {
 		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const server = new McpServer(
@@ -390,7 +391,7 @@ export class McpService {
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
-			await this.registerBuilderTools(server, user, dataTableOps, mcpAppsEnabled);
+			await this.registerBuilderTools(server, user, dataTableOps, mcpAppsEnabled, clientInfo);
 		}
 
 		return server;
@@ -401,6 +402,7 @@ export class McpService {
 		user: User,
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
 		mcpAppsEnabled: boolean,
+		clientInfo?: McpClientInfo,
 	) {
 		await this.nodeCatalogService.initialize();
 
@@ -449,7 +451,11 @@ export class McpService {
 				instanceOrigin: appTelemetry.instanceOrigin,
 				telemetry: appTelemetry.telemetry,
 				onResourceRead: () => {
-					this.telemetry.track(MCP_PREVIEW_RENDER_REQUESTED_EVENT, { user_id: user.id });
+					this.telemetry.track(MCP_PREVIEW_RENDER_REQUESTED_EVENT, {
+						user_id: user.id,
+						client_name: clientInfo?.name,
+						client_version: clientInfo?.version,
+					});
 				},
 			});
 			registerMcpAppTool(
@@ -472,6 +478,7 @@ export class McpService {
 		const searchProjectsTool = createSearchProjectsTool(
 			user,
 			this.projectRepository,
+			this.licenseState,
 			this.telemetry,
 		);
 		server.registerTool(

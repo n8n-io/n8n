@@ -9,7 +9,6 @@ import {
 	type SandboxConfig as SharedSandboxConfig,
 	type SandboxInstance,
 	type SandboxProvider,
-	loadDaytona,
 } from '@n8n/agents/sandbox';
 import { randomUUID } from 'node:crypto';
 
@@ -89,25 +88,15 @@ export async function createSandbox(
 		});
 	}
 
-	const mode = config.getAuthToken ? 'proxy' : 'direct';
 	const logger = options.logger ?? config.logger ?? NOOP_LOGGER;
 	const snapshotManager = new SnapshotManager(
 		typeof config.image === 'string' ? config.image : undefined,
 		logger,
 		config.n8nVersion,
-		options.errorReporter,
 	);
 
-	const snapshot =
-		mode === 'direct'
-			? await snapshotManager.ensureSnapshot(
-					new (loadDaytona().Daytona)({
-						apiKey: config.daytonaApiKey,
-						apiUrl: config.daytonaApiUrl,
-					}),
-					mode,
-				)
-			: await snapshotManager.ensureSnapshot(undefined, mode);
+	const isProxyMode = config.getAuthToken !== undefined;
+	const snapshot = isProxyMode ? (snapshotManager.snapshotName() ?? undefined) : undefined;
 	const image = await snapshotManager.ensureImage();
 
 	return await createSharedSandbox(

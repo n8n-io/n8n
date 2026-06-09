@@ -7,6 +7,7 @@ import {
 	extractAnswerText,
 	formatDeltaPercent,
 	formatDuration,
+	formatMetricAverage,
 	formatMetricLabel,
 	formatMetricPercent,
 	formatMetricRawScore,
@@ -1286,6 +1287,24 @@ describe('utils', () => {
 			it('rescales custom 0–1 values to percent', () => {
 				expect(formatMetricPercent(0.5, { category: 'custom' })).toBe('50%');
 			});
+		});
+	});
+
+	describe('formatMetricAverage', () => {
+		it('returns the "X / 5" average form for AI-based metrics', () => {
+			expect(formatMetricAverage(5, { category: 'aiBased' })).toBe('5 / 5');
+			expect(formatMetricAverage(4.2, { category: 'aiBased' })).toBe('4.2 / 5');
+			expect(formatMetricAverage(1, { category: 'aiBased' })).toBe('1 / 5');
+		});
+		it('returns the 0-1 average to two decimals for normalized metrics', () => {
+			expect(formatMetricAverage(0.75, { category: 'categorization' })).toBe('0.75');
+			expect(formatMetricAverage(1, { category: 'toolsUsed' })).toBe('1.00');
+			expect(formatMetricAverage(0, { category: 'toolsUsed' })).toBe('0.00');
+			expect(formatMetricAverage(0.5, { category: 'custom' })).toBe('0.50');
+		});
+		it('returns a dash for missing or NaN values', () => {
+			expect(formatMetricAverage(undefined, { category: 'aiBased' })).toBe('–');
+			expect(formatMetricAverage(NaN, { category: 'categorization' })).toBe('–');
 		});
 	});
 
