@@ -45,6 +45,7 @@ type TestTriggerNodeOptions = {
 	timezone?: string;
 	workflowStaticData?: IDataObject;
 	credential?: ICredentialDataDecryptedObject;
+	credentials?: Record<string, ICredentialDataDecryptedObject>;
 	helpers?: Partial<ITriggerFunctions['helpers']>;
 	workflow?: { id?: string; name?: string; active?: boolean };
 };
@@ -122,8 +123,8 @@ export async function testTriggerNode(
 		getTimezone: () => timezone,
 		getNode: () => node,
 		getWorkflow: () => workflowMetadata,
-		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
-			(options.credential ?? {}) as T,
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>(type: string) =>
+			(options.credentials?.[type] ?? options.credential ?? {}) as T,
 		getMode: () => options.mode ?? 'trigger',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
 		getWorkflowSettings: () => ({}),
@@ -219,8 +220,8 @@ export async function testWebhookTriggerNode(
 		getWorkflowSettings: () => ({}),
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 		getChildNodes: () => options.childNodes ?? [],
-		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
-			(options.credential ?? {}) as T,
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>(type: string) =>
+			(options.credentials?.[type] ?? options.credential ?? {}) as T,
 	});
 
 	const responseData = await trigger.webhook?.call(webhookFunctions);

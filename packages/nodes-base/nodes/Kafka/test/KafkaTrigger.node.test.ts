@@ -307,6 +307,94 @@ describe('KafkaTrigger Node', () => {
 		]);
 	});
 
+	it('should use the schema registry credential when selected', async () => {
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				credentials: {
+					kafka: { id: '1', name: 'Kafka account' },
+					schemaRegistryApi: { id: '2', name: 'Schema Registry account' },
+				},
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: true,
+					schemaRegistryUrl: '',
+					options: { parallelProcessing: true },
+				},
+			},
+			credentials: {
+				kafka: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+				schemaRegistryApi: {
+					url: 'https://schema-registry.local:8081',
+					authentication: 'basicAuth',
+					username: 'registry-user',
+					password: 'registry-password',
+				},
+			},
+		});
+
+		await publishMessage({
+			value: Buffer.from('test-message'),
+		});
+
+		expect(SchemaRegistry).toHaveBeenCalledWith({
+			host: 'https://schema-registry.local:8081',
+			auth: { username: 'registry-user', password: 'registry-password' },
+		});
+		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('test-message'));
+		expect(emit).toHaveBeenCalledWith([
+			[
+				{
+					json: {
+						message: { data: 'decoded-data' },
+						topic: 'test-topic',
+					},
+				},
+			],
+		]);
+	});
+
+	it('should fail activation when the schema registry credential is missing the password', async () => {
+		await expect(
+			testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					credentials: {
+						kafka: { id: '1', name: 'Kafka account' },
+						schemaRegistryApi: { id: '2', name: 'Schema Registry account' },
+					},
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: true,
+						schemaRegistryUrl: '',
+						options: { parallelProcessing: true },
+					},
+				},
+				credentials: {
+					kafka: {
+						brokers: 'localhost:9092',
+						clientId: 'n8n-kafka',
+						ssl: false,
+						authentication: false,
+					},
+					schemaRegistryApi: {
+						url: 'https://schema-registry.local:8081',
+						authentication: 'basicAuth',
+						username: 'registry-user',
+						password: '',
+					},
+				},
+			}),
+		).rejects.toThrow('Username and password are required for Schema Registry Basic Auth');
+	});
+
 	it('should parse JSON message when jsonParseMessage is true', async () => {
 		const { emit } = await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
