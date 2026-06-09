@@ -2,11 +2,11 @@ import type { SharedCredentialsRepository, User, UserRepository } from '@n8n/db'
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@/services/role.service.js';
 
-import { DynamicCredentialUserEntry } from '../../database/entities/dynamic-credential-user-entry';
-import type { DynamicCredentialUserEntryRepository } from '../../database/repositories/dynamic-credential-user-entry.repository';
-import { CredentialConnectionStatusService } from '../credential-connection-status.service';
+import { DynamicCredentialUserEntry } from '../../database/entities/dynamic-credential-user-entry.js';
+import type { DynamicCredentialUserEntryRepository } from '../../database/repositories/dynamic-credential-user-entry.repository.js';
+import { CredentialConnectionStatusService } from '../credential-connection-status.service.js';
 
 /** Build a minimal User-shaped object that satisfies `hasGlobalScope`. */
 const makeUser = (id: string, globalScopes: string[] = []): User =>

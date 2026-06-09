@@ -10,12 +10,7 @@ export {
 	exampleCategorizations,
 	formatTechniqueList,
 	formatExampleCategorizations,
-<<<<<<< HEAD
-} from './discovery.prompt';
-=======
 } from './discovery.prompt.js';
-export type { DiscoveryPromptOptions } from './discovery.prompt.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 export {
 	buildResponderPrompt,
 	buildRecursionErrorWithWorkflowGuidance,

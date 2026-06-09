@@ -29,14 +29,9 @@ import {
 
 import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 
-<<<<<<< HEAD
-import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
-import { McpService } from '../mcp.service';
-import { NodeCatalogService } from '@/node-catalog';
-=======
+import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants.js';
 import { McpService } from '../mcp.service.js';
 import { NodeCatalogService } from '@/node-catalog/index.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 import { ActiveExecutions } from '@/active-executions.js';
 import { CollaborationService } from '@/collaboration/collaboration.service.js';

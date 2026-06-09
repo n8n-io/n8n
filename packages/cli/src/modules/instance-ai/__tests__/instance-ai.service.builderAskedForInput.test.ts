@@ -25,7 +25,7 @@ jest.mock('@n8n/instance-ai', () => {
 	};
 });
 
-import { InstanceAiService } from '../instance-ai.service';
+import { InstanceAiService } from '../instance-ai.service.js';
 
 /**
  * `trackConfirmationRequest` emits the 'Builder asked for input' telemetry event.

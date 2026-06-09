@@ -9,20 +9,12 @@ import {
 import type { DistributiveOmit } from '@n8n/utils';
 import type { Response } from 'express';
 
-<<<<<<< HEAD
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
-import { SecuritySettingsService } from '@/services/security-settings.service';
-=======
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
 import { EventService } from '@/events/event.service.js';
+import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service.js';
 import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag.js';
 import { SecuritySettingsService } from '@/services/security-settings.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 /**
  * The `instance-policies-updated` payload without the `user` envelope. Kept as a

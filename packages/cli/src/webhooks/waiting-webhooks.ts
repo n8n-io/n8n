@@ -22,26 +22,15 @@ import type {
 
 import { EventService } from '@/events/event.service.js';
 
-<<<<<<< HEAD
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
-import { NodeTypes } from '@/node-types';
-import { applyCors } from '@/utils/cors.util';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { preserveInputOverride } from '@/workflow-helpers';
-=======
 import { ConflictError } from '@/errors/response-errors/conflict.error.js';
 import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils.js';
 import { NodeTypes } from '@/node-types.js';
 import { applyCors } from '@/utils/cors.util.js';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
 import { preserveInputOverride } from '@/workflow-helpers.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the

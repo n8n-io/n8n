@@ -9,14 +9,9 @@ import { WorkflowAccessError } from '../mcp.errors.js';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types.js';
 import { getMcpWorkflow } from './workflow-validation.utils.js';
 
-<<<<<<< HEAD
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-=======
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import type { Telemetry } from '@/telemetry/index.js';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow the execution belongs to'),

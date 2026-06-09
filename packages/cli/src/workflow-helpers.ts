@@ -18,14 +18,9 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-<<<<<<< HEAD
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-=======
 import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
 import { OwnershipService } from './services/ownership.service.js';
 

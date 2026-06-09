@@ -23,14 +23,9 @@ import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	serverToCredentialDescription,
 	serverToNodeDescription,
-<<<<<<< HEAD
 	type IsKnownCredentialType,
-} from './node-description-transform';
-import type { McpRegistryServer } from './registry/mcp-registry.types';
-=======
 } from './node-description-transform.js';
 import type { McpRegistryServer } from './registry/mcp-registry.types.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 /**
  * Synthetic node loader: turns each registry server into a node type, all

@@ -9,18 +9,11 @@ import { BINARY_ENCODING, sleep, jsonStringify, ensureError, UnexpectedError } f
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
-<<<<<<< HEAD
-import { ActiveExecutions } from '@/active-executions';
-import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
-import { EventService } from '@/events/event.service';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { assertNever } from '@/utils';
-=======
 import { ActiveExecutions } from '@/active-executions.js';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants.js';
 import { EventService } from '@/events/event.service.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import { assertNever } from '@/utils.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants.js';
 import { JobProcessor } from './job-processor.js';

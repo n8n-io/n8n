@@ -31,18 +31,8 @@ import { EventService } from '@/events/event.service.js';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
-<<<<<<< HEAD
-} from '@/executions/pre-execution-checks';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ExternalHooks } from '@/external-hooks';
-import { AgentsService } from '@/modules/agents/agents.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { Telemetry } from '@/telemetry';
-=======
 } from '@/executions/pre-execution-checks/index.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import { ExternalHooks } from '@/external-hooks.js';
 import { AgentsService } from '@/modules/agents/agents.service.js';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service.js';
@@ -50,7 +40,6 @@ import { OwnershipService } from '@/services/ownership.service.js';
 import { UrlService } from '@/services/url.service.js';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service.js';
 import { Telemetry } from '@/telemetry/index.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	executeAgent,
 	executeWorkflow,

@@ -27,8 +27,8 @@ import {
 import { In, LessThan, Like } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store.js';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity.js';

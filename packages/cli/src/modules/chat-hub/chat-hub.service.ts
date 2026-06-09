@@ -25,16 +25,10 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
-<<<<<<< HEAD
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-=======
 import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 import { ChatHubAgentService } from './chat-hub-agent.service.js';
 import { ChatHubExecutionService } from './chat-hub-execution.service.js';

@@ -11,20 +11,9 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
-<<<<<<< HEAD
-=======
-import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
-
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-<<<<<<< HEAD
-=======
-import { UrlService } from '@/services/url.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	MAX_STEPS,
 	createInstanceAgent,
@@ -104,31 +93,30 @@ import { nanoid } from 'nanoid';
 import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
-<<<<<<< HEAD
-import { InProcessEventBus } from './event-bus/in-process-event-bus';
-import { InstanceAiGatewayService } from './instance-ai-gateway.service';
-import { InstanceAiMemoryService } from './instance-ai-memory.service';
-import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { InstanceAiAdapterService } from './instance-ai.adapter.service';
-import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
-import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
-import { InstanceAiMcpRegistryService } from './mcp';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
+import { InProcessEventBus } from './event-bus/in-process-event-bus.js';
+import { InstanceAiGatewayService } from './instance-ai-gateway.service.js';
+import { InstanceAiMemoryService } from './instance-ai-memory.service.js';
+import { InstanceAiSettingsService } from './instance-ai-settings.service.js';
+import { InstanceAiAdapterService } from './instance-ai.adapter.service.js';
+import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages.js';
+import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness/index.js';
+import { InstanceAiMcpRegistryService } from './mcp/index.js';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository.js';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository.js';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
-} from './run-trace-metadata';
-import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from './sandbox-provider';
-import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
-import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
-import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
-import { TraceReplayState } from './trace-replay-state';
+} from './run-trace-metadata.js';
+import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from './sandbox-provider.js';
+import { DbIterationLogStorage } from './storage/db-iteration-log-storage.js';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage.js';
+import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store.js';
+import { TypeORMAgentMemory } from './storage/typeorm-agent-memory.js';
+import { TraceReplayState } from './trace-replay-state.js';
 import {
 	parseWorkflowBuildOutcome,
 	WorkflowVerificationObligationService,
-} from './workflow-verification-obligation-service';
+} from './workflow-verification-obligation-service.js';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -139,46 +127,18 @@ import {
 	type PlannedTaskView,
 	type PlannedWorkflowVerificationGate,
 	type PlannedWorkflowVerificationTracker,
-} from './planned-task-action-runner';
-import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
+} from './planned-task-action-runner.js';
+import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector.js';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { Push } from '@/push';
-import { AiService } from '@/services/ai.service';
-import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
-import { UrlService } from '@/services/url.service';
-import { Telemetry } from '@/telemetry';
-=======
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants.js';
 import { EventService } from '@/events/event.service.js';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
-import { AiService } from '@/services/ai.service.js';
 import { Push } from '@/push/index.js';
-import { Telemetry } from '@/telemetry/index.js';
-import { InProcessEventBus } from './event-bus/in-process-event-bus.js';
-import type { LocalGateway } from './filesystem/index.js';
-import { LocalGatewayRegistry } from './filesystem/index.js';
-import { InstanceAiSettingsService } from './instance-ai-settings.service.js';
-import { InstanceAiAdapterService } from './instance-ai.adapter.service.js';
-import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages.js';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage.js';
-import { DbIterationLogStorage } from './storage/db-iteration-log-storage.js';
-import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store.js';
-import { TypeORMAgentMemory } from './storage/typeorm-agent-memory.js';
+import { AiService } from '@/services/ai.service.js';
 import { ProxyTokenManager } from '@/services/proxy-token-manager.js';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository.js';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository.js';
-import { TraceReplayState } from './trace-replay-state.js';
-import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness/index.js';
-import { InstanceAiMcpRegistryService } from './mcp/index.js';
-import {
-	buildInstanceAiRunTraceMetadata,
-	type InstanceAiRunTraceMetadataOptions,
-} from './run-trace-metadata.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service.js';
+import { UrlService } from '@/services/url.service.js';
+import { Telemetry } from '@/telemetry/index.js';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);

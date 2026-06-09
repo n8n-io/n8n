@@ -31,18 +31,11 @@ import { In } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
-<<<<<<< HEAD
-import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialsFinderService } from './credentials-finder.service';
-import { CredentialsService } from './credentials.service';
-import { EnterpriseCredentialsService } from './credentials.service.ee';
-import { getExternalSecretExpressionPaths } from './external-secrets.utils';
-=======
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy.js';
 import { CredentialsFinderService } from './credentials-finder.service.js';
 import { CredentialsService } from './credentials.service.js';
 import { EnterpriseCredentialsService } from './credentials.service.ee.js';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error.js';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';

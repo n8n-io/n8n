@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import nock from 'nock';
 
-import { InfisicalProvider } from '../infisical';
+import { InfisicalProvider } from '../infisical.js';
 
 const SITE_URL = 'https://app.infisical.com';
 const PROJECT_ID = 'project-123';

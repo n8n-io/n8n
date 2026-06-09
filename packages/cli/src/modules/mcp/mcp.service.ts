@@ -56,30 +56,9 @@ import { createValidateNodeTool } from './tools/workflow-builder/validate-node.t
 import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool.js';
 import { NodeCatalogService } from '@/node-catalog/index.js';
 
-<<<<<<< HEAD
-import { ActiveExecutions } from '@/active-executions';
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { N8N_VERSION } from '@/constants';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
-import { UrlService } from '@/services/url.service';
-import { Telemetry } from '@/telemetry';
-import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
-import type { McpAppsTelemetryVariant } from './mcp.types';
-import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
-import { createTestWorkflowTool } from './tools/test-workflow.tool';
-import { ExecutionService } from '@/executions/execution.service';
-=======
 import { ActiveExecutions } from '@/active-executions.js';
 import { CollaborationService } from '@/collaboration/collaboration.service.js';
+import { N8N_VERSION } from '@/constants.js';
 import { CredentialsService } from '@/credentials/credentials.service.js';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service.js';
 import { NodeTypes } from '@/node-types.js';
@@ -92,11 +71,11 @@ import { WorkflowRunner } from '@/workflow-runner.js';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service.js';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 import { WorkflowService } from '@/workflows/workflow.service.js';
+import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants.js';
 import type { McpAppsTelemetryVariant } from './mcp.types.js';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool.js';
 import { createTestWorkflowTool } from './tools/test-workflow.tool.js';
 import { ExecutionService } from '@/executions/execution.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 /**
  * Pending MCP execution response, used for queue mode support.
@@ -211,7 +190,13 @@ export class McpService {
 	}
 
 	async getServer(user: User, mcpAppsEnabled: boolean) {
-		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
+		// Load the SDK's CommonJS build to match this package's module format.
+		// `await import(...)` would pull the ESM build, which bundles its own zod
+		// instance; schemas created with the CLI's (CommonJS) zod would then fail
+		// validation across the boundary. `require` keeps the SDK and its zod on
+		// the same instance as the rest of the CLI.
+		const { McpServer } =
+			require('@modelcontextprotocol/sdk/server/mcp.js') as typeof import('@modelcontextprotocol/sdk/server/mcp.js');
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const server = new McpServer(
 			{

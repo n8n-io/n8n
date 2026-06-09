@@ -12,12 +12,8 @@ import {
 
 import type { WaitingWebhookRequest } from '../webhook.types.js';
 
-<<<<<<< HEAD
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WaitingForms } from '@/webhooks/waiting-forms';
-=======
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import { WaitingForms } from '@/webhooks/waiting-forms.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 class TestWaitingForms extends WaitingForms {
 	exposeCreateWorkflow(workflowData: IWorkflowBase): Workflow {

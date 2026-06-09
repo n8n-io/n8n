@@ -1,10 +1,6 @@
-<<<<<<< HEAD
 import { z } from 'zod';
 
-import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
-=======
 import type { McpRegistryServerEntity } from './mcp-registry-server.entity.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 type McpRegistryServerUpsertRow = Pick<
 	McpRegistryServerEntity,

@@ -2,12 +2,8 @@ import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agen
 import { z } from 'zod';
 
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-<<<<<<< HEAD
 import type { ButtonStyle } from 'chat';
-import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
-=======
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 export type IntegrationMessageTarget =
 	| {

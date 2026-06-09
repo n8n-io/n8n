@@ -49,41 +49,13 @@ import { Publisher } from '@/scaling/pubsub/publisher.service.js';
 import { Telemetry } from '@/telemetry/index.js';
 import { TtlMap } from '@/utils/ttl-map.js';
 
-<<<<<<< HEAD
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
-import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
-import { generateAgentResourceId } from './utils/agent-resource-id';
-import { streamAgentChunks } from './utils/agent-stream';
-import { describeStructuredOutputError } from './utils/structured-output-error';
-import { AgentExecutionService } from './agent-execution.service';
-import { AgentSkillsService } from './agent-skills.service';
-import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
-import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
-import { Agent } from './entities/agent.entity';
-import { AgentTask } from './entities/agent-task.entity';
-import { ExecutionRecorder } from './execution-recorder';
-import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { syncAgentIntegrations } from './integrations/integrations-sync';
-import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { N8nMemory } from './integrations/n8n-memory';
-import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
-import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
-import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
-import { AgentHistoryRepository } from './repositories/agent-history.repository';
-import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
-import { AgentTaskRepository } from './repositories/agent-task.repository';
-import { AgentRepository } from './repositories/agent.repository';
-import { type ToolRegistry } from './tool-registry';
-import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
-=======
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider.js';
 import { markAgentDraftDirty } from './utils/agent-draft.utils.js';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope.js';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper.js';
 import { generateAgentResourceId } from './utils/agent-resource-id.js';
+import { streamAgentChunks } from './utils/agent-stream.js';
+import { describeStructuredOutputError } from './utils/structured-output-error.js';
 import { AgentExecutionService } from './agent-execution.service.js';
 import { AgentSkillsService } from './agent-skills.service.js';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names.js';
@@ -105,7 +77,6 @@ import { AgentRepository } from './repositories/agent.repository.js';
 import { type ToolRegistry } from './tool-registry.js';
 import { ChatIntegrationService } from './integrations/chat-integration.service.js';
 import { AgentKnowledgeService } from './agent-knowledge.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 type AgentToolEntries = Agent['tools'];
 

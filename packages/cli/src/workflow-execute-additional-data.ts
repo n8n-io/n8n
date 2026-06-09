@@ -41,24 +41,14 @@ import type {
 	IRunExecutionData,
 } from 'n8n-workflow';
 
-<<<<<<< HEAD
-import { ActiveExecutions } from '@/active-executions';
-import { CredentialsHelper } from '@/credentials-helper';
-import { EventService } from '@/events/event.service';
-import type { AiEventPayload } from '@/events/maps/ai.event-map';
-import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { isManualOrChatExecution } from '@/executions/execution.utils';
-import { FailedRunFactory } from '@/executions/failed-run-factory';
-=======
 import { ActiveExecutions } from '@/active-executions.js';
 import { CredentialsHelper } from '@/credentials-helper.js';
 import { EventService } from '@/events/event.service.js';
 import type { AiEventPayload } from '@/events/maps/ai.event-map.js';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import { isManualOrChatExecution } from '@/executions/execution.utils.js';
 import { FailedRunFactory } from '@/executions/failed-run-factory.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,

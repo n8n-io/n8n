@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
 export async function saveExecutionProgress(
 	workflowId: string,

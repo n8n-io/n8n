@@ -22,22 +22,10 @@ import { JobProcessor } from '../job-processor.js';
 import type { Job } from '../scaling.types.js';
 import type { NodeTypes } from '@/node-types.js';
 
-<<<<<<< HEAD
-import { CredentialsHelper } from '@/credentials-helper';
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { ExternalHooks } from '@/external-hooks';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { ManualExecutionService } from '@/manual-execution.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowHookContextService } from '@/workflow-hook-context.service';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-=======
 import { CredentialsHelper } from '@/credentials-helper.js';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee.js';
 import { ExternalHooks } from '@/external-hooks.js';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import type { ManualExecutionService } from '@/manual-execution.service.js';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service.js';
 import { OwnershipService } from '@/services/ownership.service.js';
@@ -45,7 +33,6 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service.js';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {

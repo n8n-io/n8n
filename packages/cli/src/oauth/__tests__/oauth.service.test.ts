@@ -29,18 +29,11 @@ import {
 	shouldSkipAuthOnOAuthCallback,
 	type CreateCsrfStateData,
 	type OAuth1CredentialData,
-<<<<<<< HEAD
-} from '@/oauth/oauth.service';
-import type { OAuthRequest } from '@/requests';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-=======
 } from '@/oauth/oauth.service.js';
 import type { OAuthRequest } from '@/requests.js';
+import { CacheService } from '@/services/cache/cache.service.js';
 import { UrlService } from '@/services/url.service.js';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 jest.mock('@/workflow-execute-additional-data');
 jest.mock('axios');

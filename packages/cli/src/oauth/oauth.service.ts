@@ -51,14 +51,13 @@ import {
 	type CreateCsrfStateData,
 	type CsrfState,
 	type OAuth1CredentialData,
-<<<<<<< HEAD
-} from './types';
-import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { EventService } from '@/events/event.service';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
-import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
-import { CacheService } from '@/services/cache/cache.service';
+} from './types.js';
+import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface.js';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import { EventService } from '@/events/event.service.js';
+import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy.js';
+import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service.js';
+import { CacheService } from '@/services/cache/cache.service.js';
 
 /**
  * Per-flow OAuth state stored in CacheService, keyed by the CSRF state token.
@@ -73,14 +72,6 @@ export type OauthFlowState = {
 };
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
-=======
-} from './types.js';
-import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface.js';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
-import { EventService } from '@/events/event.service.js';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy.js';
-import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 export function shouldSkipAuthOnOAuthCallback() {
 	const value = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK?.toLowerCase() ?? 'false';

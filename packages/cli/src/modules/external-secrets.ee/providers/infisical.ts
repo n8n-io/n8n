@@ -4,14 +4,9 @@ import type { AxiosInstance } from 'axios';
 import axios from 'axios';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
-<<<<<<< HEAD
-import { DOCS_HELP_NOTICE } from '../constants';
-import type { SecretsProviderSettings } from '../types';
-import { SecretsProvider } from '../types';
-=======
-import { SecretsProvider } from '../types.js';
+import { DOCS_HELP_NOTICE } from '../constants.js';
 import type { SecretsProviderSettings } from '../types.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
+import { SecretsProvider } from '../types.js';
 
 type InfisicalAuthMethod = 'universalAuth';
 

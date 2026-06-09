@@ -7,16 +7,12 @@ import type {
 	Themed,
 } from 'n8n-workflow';
 
-<<<<<<< HEAD
 import {
 	mcpRegistryExtendsCredentialSchema,
 	type McpRegistryExtendsCredential,
 	type McpRegistryIcon,
 	type McpRegistryServer,
-} from './registry/mcp-registry.types';
-=======
-import type { McpRegistryIcon, McpRegistryServer } from './registry/mcp-registry.types.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
+} from './registry/mcp-registry.types.js';
 
 export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';

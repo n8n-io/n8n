@@ -11,12 +11,12 @@ import {
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
 
-import type { InProcessEventBus } from './event-bus/in-process-event-bus';
-import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import type { InProcessEventBus } from './event-bus/in-process-event-bus.js';
+import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory.js';
 import {
 	parseWorkflowBuildOutcome,
 	type WorkflowVerificationObligationService,
-} from './workflow-verification-obligation-service';
+} from './workflow-verification-obligation-service.js';
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
 

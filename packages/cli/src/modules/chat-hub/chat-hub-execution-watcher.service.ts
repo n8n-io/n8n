@@ -8,12 +8,8 @@ import {
 import { Service } from '@n8n/di';
 import { v4 as uuidv4 } from 'uuid';
 
-<<<<<<< HEAD
-import { ChatExecutionManager } from '@/chat/chat-execution-manager';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-=======
 import { ChatExecutionManager } from '@/chat/chat-execution-manager.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
 import {
 	ChatHubExecutionStore,

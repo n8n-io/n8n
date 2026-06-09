@@ -38,18 +38,10 @@ import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
 	getIntegrationToolConnectionDescriptors,
-<<<<<<< HEAD
-} from './integrations/integration-tools';
-import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { N8nMemory } from './integrations/n8n-memory';
-import { createGetEnvironmentTool } from './tools/environment-tool';
-=======
 } from './integrations/integration-tools.js';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage.js';
 import { N8nMemory } from './integrations/n8n-memory.js';
 import { createGetEnvironmentTool } from './tools/environment-tool.js';
-import { createRichInteractionTool } from './integrations/rich-interaction-tool.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	buildFromJson,
 	type MemoryFactory,

@@ -20,20 +20,11 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-<<<<<<< HEAD
-import { createPlannerAgent, invokePlannerNode } from '@/agents/planner.agent';
-import { LLMServiceError } from '@/errors';
-import type { ParentGraphState } from '@/parent-graph-state';
-import { buildDiscoveryPrompt } from '@/prompts';
-import { createGetDocumentationTool } from '@/tools/get-documentation.tool';
-=======
 import { createPlannerAgent, invokePlannerNode } from '@/agents/planner.agent.js';
 import { LLMServiceError } from '@/errors/index.js';
 import type { ParentGraphState } from '@/parent-graph-state.js';
 import { buildDiscoveryPrompt } from '@/prompts/index.js';
 import { createGetDocumentationTool } from '@/tools/get-documentation.tool.js';
-import { createGetWorkflowExamplesTool } from '@/tools/get-workflow-examples.tool.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	createIntrospectTool,
 	extractIntrospectionEventsFromMessages,

@@ -41,20 +41,8 @@ import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
-<<<<<<< HEAD
-} from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { FailedRunFactory } from '@/executions/failed-run-factory';
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
-import { ExternalHooks } from '@/external-hooks';
-import { ManualExecutionService } from '@/manual-execution.service';
-import { NodeTypes } from '@/node-types';
-import type { ScalingService } from '@/scaling/scaling.service';
-import type { Job, JobData } from '@/scaling/scaling.types';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-=======
 } from '@/execution-lifecycle/execution-lifecycle-hooks.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import { FailedRunFactory } from '@/executions/failed-run-factory.js';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/index.js';
 import { ExternalHooks } from '@/external-hooks.js';
@@ -64,7 +52,6 @@ import type { ScalingService } from '@/scaling/scaling.service.js';
 import type { Job, JobData } from '@/scaling/scaling.types.js';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 import { EventService } from './events/event.service.js';
 /** Interval between keepalive writes on streaming responses to prevent proxy timeouts */

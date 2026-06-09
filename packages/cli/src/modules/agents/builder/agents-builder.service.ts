@@ -19,19 +19,8 @@ import { composeJsonConfig } from '../json-config/agent-config-composition.js';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage.js';
 import { N8nMemory } from '../integrations/n8n-memory.js';
 import type { AgentJsonConfig } from '@n8n/api-types';
-<<<<<<< HEAD
-import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
-import { streamAgentChunks } from '../utils/agent-stream';
-import { buildAgentPreviewPath } from './agent-builder-preview-path';
-import { buildBuilderPrompt } from './agents-builder-prompts';
-import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
-import { AGENT_THREAD_PREFIX } from './builder-tool-names';
-import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
-import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
-import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
-import { getBuilderRuntimeSkills } from './skills';
-=======
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository.js';
+import { streamAgentChunks } from '../utils/agent-stream.js';
 import { buildAgentPreviewPath } from './agent-builder-preview-path.js';
 import { buildBuilderPrompt } from './agents-builder-prompts.js';
 import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service.js';
@@ -40,7 +29,6 @@ import { AgentsBuilderSettingsService } from './agents-builder-settings.service.
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry.js';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations.js';
 import { getBuilderRuntimeSkills } from './skills/index.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {

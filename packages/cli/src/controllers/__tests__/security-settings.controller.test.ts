@@ -3,12 +3,12 @@ import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { N8N_ENV_FEAT_REDACTION_ENFORCEMENT } from '@/modules/redaction/redaction-enforcement.feature-flag';
-import type { SecuritySettingsService } from '@/services/security-settings.service';
+import type { EventService } from '@/events/event.service.js';
+import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service.js';
+import { N8N_ENV_FEAT_REDACTION_ENFORCEMENT } from '@/modules/redaction/redaction-enforcement.feature-flag.js';
+import type { SecuritySettingsService } from '@/services/security-settings.service.js';
 
-import { SecuritySettingsController } from '../security-settings.controller';
+import { SecuritySettingsController } from '../security-settings.controller.js';
 
 describe('SecuritySettingsController', () => {
 	const securitySettingsService = mock<SecuritySettingsService>();

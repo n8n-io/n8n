@@ -25,24 +25,14 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-<<<<<<< HEAD
-import { ActiveExecutions } from '@/active-executions';
-import { ChatExecutionManager } from '@/chat/chat-execution-manager';
-import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ExecutionService } from '@/executions/execution.service';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-=======
 import { ActiveExecutions } from '@/active-executions.js';
 import { ChatExecutionManager } from '@/chat/chat-execution-manager.js';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error.js';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import { ExecutionService } from '@/executions/execution.service.js';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 import { ChatHubExecutionStore } from './chat-hub-execution-store.service.js';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service.js';

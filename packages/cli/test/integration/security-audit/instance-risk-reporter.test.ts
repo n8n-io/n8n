@@ -7,16 +7,10 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
 import { v4 as uuid } from 'uuid';
 
-<<<<<<< HEAD
-import * as constants from '@/constants';
-import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants';
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
-import { toReportTitle } from '@/security-audit/utils';
-=======
+import * as constants from '@/constants.js';
 import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants.js';
 import { SecurityAuditService } from '@/security-audit/security-audit.service.js';
 import { toReportTitle } from '@/security-audit/utils.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 import {
 	getRiskSection,

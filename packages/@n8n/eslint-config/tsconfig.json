@@ -5,6 +5,7 @@
 		"outDir": "dist",
 		"types": ["vitest/globals", "node"],
 		"esModuleInterop": true,
+		"module": "NodeNext",
 		"moduleResolution": "nodenext",
 		"declaration": true
 	},

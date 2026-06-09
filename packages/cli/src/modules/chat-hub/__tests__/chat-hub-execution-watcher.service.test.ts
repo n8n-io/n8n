@@ -4,16 +4,10 @@ import type { WorkflowExecuteAfterContext, WorkflowExecuteResumeContext } from '
 import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 
-<<<<<<< HEAD
-import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-execution-watcher.service';
-import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service';
-=======
 import type { ChatExecutionManager } from '@/chat/chat-execution-manager.js';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import { ChatHubExecutionWatcherService } from '@/modules/chat-hub/chat-hub-execution-watcher.service.js';
 import type { ChatHubExecutionService } from '@/modules/chat-hub/chat-hub-execution.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import type {
 	ChatHubExecutionStore,
 	ChatHubExecutionContext,

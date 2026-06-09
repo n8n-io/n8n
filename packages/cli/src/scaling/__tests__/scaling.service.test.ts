@@ -7,12 +7,8 @@ import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 
-<<<<<<< HEAD
-import type { ActiveExecutions } from '@/active-executions';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-=======
 import type { ActiveExecutions } from '@/active-executions.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants.js';
 import type { JobProcessor } from '../job-processor.js';

@@ -28,7 +28,7 @@ import { UserService } from '@/services/user.service.js';
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
 	normalizeSandboxProvider,
-} from './sandbox-provider';
+} from './sandbox-provider.js';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 

@@ -15,14 +15,9 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-<<<<<<< HEAD
-import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
-import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
-import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-=======
+import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface.js';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service.js';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 import type { OwnershipService } from '../ownership.service.js';
 

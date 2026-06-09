@@ -2,21 +2,14 @@ import { Service } from '@n8n/di';
 import type { SentMessage } from 'chat';
 import { z } from 'zod';
 
-<<<<<<< HEAD
-import { ChatIntegrationRegistry } from './agent-chat-integration';
-import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';
+import { ChatIntegrationRegistry } from './agent-chat-integration.js';
+import { ChatIntegrationService, type ChatInstance } from './chat-integration.service.js';
 import {
 	ComponentMapper,
 	INTERACTIVE_CARD_RESUME_JSON_SCHEMA,
 	type ShortenCallback,
-} from './component-mapper';
-import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
-=======
-import { ChatIntegrationRegistry } from './agent-chat-integration.js';
-import { ChatIntegrationService, type ChatInstance } from './chat-integration.service.js';
-import { ComponentMapper, RICH_INTERACTION_RESUME_JSON_SCHEMA } from './component-mapper.js';
+} from './component-mapper.js';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	connectionUnavailable,
 	integrationError,

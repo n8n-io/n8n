@@ -2,14 +2,9 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionRepository, User } from '@n8n/db';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
-<<<<<<< HEAD
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-=======
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import { Telemetry } from '@/telemetry/index.js';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
 import { createGetExecutionTool } from '../tools/get-execution.tool.js';

@@ -3,14 +3,9 @@ import type { IExecutionResponse } from '@n8n/db';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
 
-<<<<<<< HEAD
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowRunner } from '@/workflow-runner';
-=======
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
 import { WorkflowRunner } from '@/workflow-runner.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	CHAT_NODE_TYPE,

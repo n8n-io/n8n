@@ -19,26 +19,7 @@ import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstructi
 import { AgentSkillsService } from '../agent-skills.service.js';
 import type { AgentsToolsService } from '../agents-tools.service.js';
 import type { Logger } from '@n8n/backend-common';
-<<<<<<< HEAD
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
-import type { ActiveExecutions } from '@/active-executions';
-import type { EphemeralNodeExecutor } from '@/node-execution';
-import type { OauthService } from '@/oauth/oauth.service';
-import type { UrlService } from '@/services/url.service';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
-import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { AgentTaskService } from '../agent-task.service';
-import { AgentsService, chatThreadId } from '../agents.service';
-import type { AgentHistory } from '../entities/agent-history.entity';
-import type { Agent } from '../entities/agent.entity';
-import { ChatIntegrationService } from '../integrations/chat-integration.service';
-import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
-import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
-import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
-=======
-import type { ExecutionRepository, UserRepository, WorkflowRepository } from '@n8n/db';
 import type { ActiveExecutions } from '@/active-executions.js';
 import type { EphemeralNodeExecutor } from '@/node-execution/index.js';
 import type { OauthService } from '@/oauth/oauth.service.js';
@@ -55,7 +36,6 @@ import { ChatIntegrationService } from '../integrations/chat-integration.service
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor.js';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor.js';
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,

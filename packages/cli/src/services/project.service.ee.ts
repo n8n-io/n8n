@@ -120,7 +120,7 @@ export class ProjectService {
 	}
 
 	private get connectionStatusProxy() {
-		return import('@/credentials/credential-connection-status-proxy').then(
+		return import('@/credentials/credential-connection-status-proxy.js').then(
 			({ CredentialConnectionStatusProxy }) => Container.get(CredentialConnectionStatusProxy),
 		);
 	}

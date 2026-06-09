@@ -1,9 +1,9 @@
 import type { InstanceAiGatewayCapabilities } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
-import type { Telemetry } from '@/telemetry';
+import type { Telemetry } from '@/telemetry/index.js';
 
-import { InstanceAiGatewayService } from '../instance-ai-gateway.service';
+import { InstanceAiGatewayService } from '../instance-ai-gateway.service.js';
 
 const CAPABILITIES: InstanceAiGatewayCapabilities = {
 	rootPath: '/home/user/project',

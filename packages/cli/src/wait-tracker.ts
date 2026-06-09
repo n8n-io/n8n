@@ -5,18 +5,11 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
-<<<<<<< HEAD
-import { ActiveExecutions } from '@/active-executions';
-import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowRunner } from '@/workflow-runner';
-=======
 import { ActiveExecutions } from '@/active-executions.js';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 import { OwnershipService } from '@/services/ownership.service.js';
 import { WorkflowRunner } from '@/workflow-runner.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 import {
 	shouldRestartParentExecution,
 	updateParentExecutionWithChildResults,

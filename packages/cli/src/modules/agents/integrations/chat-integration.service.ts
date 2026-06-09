@@ -22,21 +22,12 @@ import { AgentChatBridge } from './agent-chat-bridge.js';
 import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
-<<<<<<< HEAD
-} from './agent-chat-integration';
-import { ComponentMapper, type ShortenCallback } from './component-mapper';
-import { loadChatSdk, loadMemoryState } from './esm-loader';
-import { buildIntegrationConnectionId } from './integration-tools';
-import type { Agent } from '../entities/agent.entity';
-import { AgentRepository } from '../repositories/agent.repository';
-=======
 } from './agent-chat-integration.js';
-import { ComponentMapper } from './component-mapper.js';
+import { ComponentMapper, type ShortenCallback } from './component-mapper.js';
 import { loadChatSdk, loadMemoryState } from './esm-loader.js';
 import { buildIntegrationConnectionId } from './integration-tools.js';
 import type { Agent } from '../entities/agent.entity.js';
 import { AgentRepository } from '../repositories/agent.repository.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 
 // ---------------------------------------------------------------------------
 // Chat SDK local interfaces

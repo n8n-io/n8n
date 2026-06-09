@@ -26,16 +26,9 @@ export {
 	exampleCategorizations,
 	formatTechniqueList,
 	formatExampleCategorizations,
-<<<<<<< HEAD
-} from './agents/discovery.prompt';
-export { buildSupervisorPrompt } from './agents/supervisor.prompt';
-export { buildPlannerPrompt, buildPlannerContext } from './agents/planner.prompt';
-=======
-	type DiscoveryPromptOptions,
 } from './agents/discovery.prompt.js';
 export { buildSupervisorPrompt } from './agents/supervisor.prompt.js';
 export { buildPlannerPrompt, buildPlannerContext } from './agents/planner.prompt.js';
->>>>>>> 566376fa25 (chore: switch to NodeNext module resolution + add import extensions (no-changelog))
 export {
 	buildResponderPrompt,
 	buildRecursionErrorWithWorkflowGuidance,
