@@ -288,9 +288,7 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private isKnowledgeBaseEnabled(): boolean {
-		return (
-			this.agentsConfig.sandboxEnabled === true && this.agentsConfig.sandboxProvider === 'daytona'
-		);
+		return this.agentsConfig.sandboxEnabled && this.agentsConfig.sandboxProvider === 'daytona';
 	}
 
 	private makeToolResolver(projectId: string, userId: string): ToolResolver {

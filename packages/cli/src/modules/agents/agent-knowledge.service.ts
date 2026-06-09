@@ -184,12 +184,16 @@ export class AgentKnowledgeService {
 	}
 
 	private async readUploadedFileContent(file: Express.Multer.File): Promise<string> {
-		const extension = path.extname(file.originalname).toLowerCase();
-		if (extension === '.pdf') {
-			return await this.extractPdfText(file.path!);
+		if (!file.path) {
+			throw new BadRequestError('Uploaded file path is missing');
 		}
 
-		const fileBuffer = await readFile(file.path!);
+		const extension = path.extname(file.originalname).toLowerCase();
+		if (extension === '.pdf') {
+			return await this.extractPdfText(file.path);
+		}
+
+		const fileBuffer = await readFile(file.path);
 		return fileBuffer.toString('utf-8');
 	}
 

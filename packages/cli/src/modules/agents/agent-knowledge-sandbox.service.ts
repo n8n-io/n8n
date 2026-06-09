@@ -7,12 +7,55 @@ import { randomUUID } from 'node:crypto';
 
 import { OperationalError } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
 import {
 	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
 	assertKnowledgePathSegment,
 	buildKnowledgeVolumeSubpath,
+	KNOWLEDGE_FILES_DIR,
 	type AgentKnowledgeFilesystem,
 } from './agent-knowledge-storage';
+
+const MAX_COMMAND_LENGTH = 2_000;
+const MAX_COMMAND_OUTPUT_CHARS = 20_000;
+const MIN_DEFAULT_OPERATION_TIMEOUT_MS = 10_000;
+const MAX_OPERATION_TIMEOUT_MS = 120_000;
+const ALLOWED_KNOWLEDGE_COMMANDS = new Set([
+	'awk',
+	'cat',
+	'cut',
+	'echo',
+	'grep',
+	'head',
+	'printf',
+	'rg',
+	'sed',
+	'sort',
+	'tail',
+	'tr',
+	'uniq',
+	'wc',
+]);
+
+export interface AgentKnowledgeCommandResult {
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+}
+
+export interface AgentKnowledgeCommandOptions {
+	command: string;
+	timeoutMs?: number;
+}
+
+export interface AgentKnowledgeCommandOperationResult {
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+	stdoutTruncated: boolean;
+	stderrTruncated: boolean;
+}
 
 export const SEARCH_KNOWLEDGE_SANDBOX_CREATED = 'sandbox created' as const;
 export const SEARCH_KNOWLEDGE_SANDBOX_REUSED = 'sandbox reused' as const;
@@ -91,6 +134,103 @@ export class AgentKnowledgeSandboxService {
 		const { sandbox } = await this.acquireSandbox(projectId, agentId);
 		const filesystem = this.createFilesystemAdapter(sandbox);
 		return await operation(filesystem);
+	}
+
+	async runKnowledgeCommand(
+		projectId: string,
+		agentId: string,
+		options: AgentKnowledgeCommandOptions,
+	): Promise<AgentKnowledgeCommandOperationResult> {
+		const command = validateKnowledgeCommand(options.command);
+		const timeoutMs = resolveKnowledgeOperationTimeout(options.timeoutMs);
+		const startedAt = Date.now();
+
+		try {
+			const result = await this.executeKnowledgeCommand(projectId, agentId, command, timeoutMs);
+			const stdout = truncateCommandOutput(result.stdout);
+			const stderr = truncateCommandOutput(result.stderr);
+			const commandResult: AgentKnowledgeCommandOperationResult = {
+				exitCode: result.exitCode,
+				stdout: stdout.text,
+				stderr: stderr.text,
+				stdoutTruncated: stdout.truncated,
+				stderrTruncated: stderr.truncated,
+			};
+
+			this.logKnowledgeOperation({
+				projectId,
+				agentId,
+				operation: 'command',
+				exitCode: commandResult.exitCode,
+				durationMs: Date.now() - startedAt,
+				timeoutMs,
+				command,
+				stdoutTruncated: commandResult.stdoutTruncated,
+				stderrTruncated: commandResult.stderrTruncated,
+			});
+
+			return commandResult;
+		} catch (error) {
+			this.logKnowledgeOperationFailure({
+				projectId,
+				agentId,
+				operation: 'command',
+				durationMs: Date.now() - startedAt,
+				timeoutMs,
+				error,
+				command,
+			});
+			throw error;
+		}
+	}
+
+	private logKnowledgeOperation(params: Record<string, unknown>): void {
+		this.logger.info('Agent knowledge operation executed', params);
+	}
+
+	private logKnowledgeOperationFailure(
+		params: {
+			projectId: string;
+			agentId: string;
+			operation: 'command';
+			durationMs: number;
+			timeoutMs?: number;
+			error: unknown;
+		} & Record<string, unknown>,
+	): void {
+		const { projectId, agentId, operation, durationMs, timeoutMs, error, ...metadata } = params;
+		this.logger.warn('Agent knowledge operation failed', {
+			projectId,
+			agentId,
+			operation,
+			durationMs,
+			timeoutMs,
+			error,
+			...metadata,
+		});
+	}
+
+	private async executeKnowledgeCommand(
+		projectId: string,
+		agentId: string,
+		command: string,
+		timeoutMs?: number,
+	): Promise<AgentKnowledgeCommandResult> {
+		const { sandbox } = await this.acquireSandbox(projectId, agentId);
+		const timeoutSeconds = Math.ceil((timeoutMs ?? this.agentsConfig.sandboxTimeout) / 1000);
+		const scopedCommand = buildScopedKnowledgeShellCommand(command);
+		const result = await sandbox.process.executeCommand(
+			scopedCommand,
+			undefined,
+			undefined,
+			timeoutSeconds,
+		);
+
+		return {
+			exitCode: result.exitCode,
+			stdout: result.artifacts?.stdout ?? result.result ?? '',
+			stderr: readCommandStderr(result.artifacts),
+		};
 	}
 
 	private createFilesystemAdapter(sandbox: Sandbox): AgentKnowledgeFilesystem {
@@ -187,10 +327,7 @@ export class AgentKnowledgeSandboxService {
 	}
 
 	private assertKnowledgeSandboxEnabled(): void {
-		if (
-			this.agentsConfig.sandboxEnabled !== true ||
-			this.agentsConfig.sandboxProvider !== 'daytona'
-		) {
+		if (!this.agentsConfig.sandboxEnabled || this.agentsConfig.sandboxProvider !== 'daytona') {
 			throw new OperationalError('Agent knowledge sandbox is not enabled');
 		}
 	}
@@ -200,4 +337,224 @@ export class AgentKnowledgeSandboxService {
 			throw new OperationalError('Agent knowledge Daytona volume is not configured');
 		}
 	}
+}
+
+function resolveKnowledgeOperationTimeout(timeoutMs: number | undefined): number | undefined {
+	if (timeoutMs === undefined) {
+		return undefined;
+	}
+
+	return Math.min(Math.max(timeoutMs, MIN_DEFAULT_OPERATION_TIMEOUT_MS), MAX_OPERATION_TIMEOUT_MS);
+}
+
+function validateKnowledgeCommand(command: string): string {
+	const trimmed = command.trim();
+	if (!trimmed) {
+		throw new BadRequestError('Invalid knowledge command');
+	}
+
+	if (trimmed.length > MAX_COMMAND_LENGTH) {
+		throw new BadRequestError('Invalid knowledge command');
+	}
+
+	assertAllowedKnowledgeCommand(trimmed);
+
+	return trimmed;
+}
+
+function assertAllowedKnowledgeCommand(command: string): void {
+	const segments = splitPipeline(command);
+	for (const segment of segments) {
+		const tokens = tokenizeCommandSegment(segment);
+		const executable = tokens[0];
+		if (!executable || !ALLOWED_KNOWLEDGE_COMMANDS.has(executable)) {
+			throw new BadRequestError('Knowledge command is not allowed');
+		}
+
+		assertReadOnlyCommandArguments(executable, tokens.slice(1));
+	}
+}
+
+function assertReadOnlyCommandArguments(command: string, args: string[]): void {
+	if (
+		command === 'sed' &&
+		args.some(
+			(arg) =>
+				arg.startsWith('-i') ||
+				arg === '--in-place' ||
+				arg.startsWith('--in-place=') ||
+				isUnsafeSedArgument(arg),
+		)
+	) {
+		throw new BadRequestError('Knowledge command is not allowed');
+	}
+
+	if (command === 'sort' && args.some((arg) => arg === '-o' || arg.startsWith('--output'))) {
+		throw new BadRequestError('Knowledge command is not allowed');
+	}
+
+	if (command === 'awk' && args.some(isUnsafeAwkArgument)) {
+		throw new BadRequestError('Knowledge command is not allowed');
+	}
+}
+
+function isUnsafeAwkArgument(arg: string): boolean {
+	return /\bsystem\s*\(/.test(arg) || arg.includes('>>') || /(^|[^<>=])>([^=]|$)/.test(arg);
+}
+
+function isUnsafeSedArgument(arg: string): boolean {
+	return (
+		/(^|[;\s])(?:[0-9,$]+)?[we]\s+\S/.test(arg) ||
+		/\/[we]\s+\S/.test(arg) ||
+		/\/e($|[;\s])/.test(arg)
+	);
+}
+
+function splitPipeline(command: string): string[] {
+	const segments: string[] = [];
+	let current = '';
+	let quote: '"' | "'" | undefined;
+
+	for (let index = 0; index < command.length; index++) {
+		const character = command[index];
+		const next = command[index + 1];
+
+		if (quote) {
+			if (
+				quote === '"' &&
+				(character === '`' || (character === '$' && (next === '(' || next === '{')))
+			) {
+				throw new BadRequestError('Knowledge command is not allowed');
+			}
+			if (quote === '"' && character === '\\' && next) {
+				current += character + next;
+				index++;
+				continue;
+			}
+			if (character === quote) {
+				quote = undefined;
+			}
+			current += character;
+			continue;
+		}
+
+		if (character === '"' || character === "'") {
+			quote = character;
+			current += character;
+			continue;
+		}
+
+		if (character === '|') {
+			if (next === '|') {
+				throw new BadRequestError('Knowledge command is not allowed');
+			}
+			segments.push(current.trim());
+			current = '';
+			continue;
+		}
+
+		assertAllowedShellCharacter(character, next);
+		current += character;
+	}
+
+	if (quote) {
+		throw new BadRequestError('Knowledge command is not allowed');
+	}
+
+	segments.push(current.trim());
+	if (segments.some((segment) => segment.length === 0)) {
+		throw new BadRequestError('Knowledge command is not allowed');
+	}
+
+	return segments;
+}
+
+function assertAllowedShellCharacter(character: string, next?: string): void {
+	if (character === '\n' || character === '\r') {
+		throw new BadRequestError('Knowledge command is not allowed');
+	}
+
+	if (';&<>`(){}'.includes(character)) {
+		throw new BadRequestError('Knowledge command is not allowed');
+	}
+
+	if (character === '$' && (next === '(' || next === '{')) {
+		throw new BadRequestError('Knowledge command is not allowed');
+	}
+}
+
+function tokenizeCommandSegment(segment: string): string[] {
+	const tokens: string[] = [];
+	let current = '';
+	let quote: '"' | "'" | undefined;
+
+	for (let index = 0; index < segment.length; index++) {
+		const character = segment[index];
+		const next = segment[index + 1];
+
+		if (quote) {
+			if (quote === '"' && character === '\\' && next) {
+				current += next;
+				index++;
+				continue;
+			}
+			if (character === quote) {
+				quote = undefined;
+				continue;
+			}
+			current += character;
+			continue;
+		}
+
+		if (character === '"' || character === "'") {
+			quote = character;
+			continue;
+		}
+
+		if (/\s/.test(character)) {
+			if (current) {
+				tokens.push(current);
+				current = '';
+			}
+			continue;
+		}
+
+		if (character === '\\' && next) {
+			current += next;
+			index++;
+			continue;
+		}
+
+		current += character;
+	}
+
+	if (quote) {
+		throw new BadRequestError('Knowledge command is not allowed');
+	}
+	if (current) {
+		tokens.push(current);
+	}
+
+	return tokens;
+}
+
+function truncateCommandOutput(text: string): { text: string; truncated: boolean } {
+	if (text.length <= MAX_COMMAND_OUTPUT_CHARS) {
+		return { text, truncated: false };
+	}
+
+	return { text: text.slice(0, MAX_COMMAND_OUTPUT_CHARS), truncated: true };
+}
+
+function buildScopedKnowledgeShellCommand(command: string): string {
+	return `if [ ! -d ${KNOWLEDGE_FILES_DIR} ]; then exit 0; fi; cd ${KNOWLEDGE_FILES_DIR} && ${command}`;
+}
+
+function readCommandStderr(artifacts: { stdout?: string } | undefined): string {
+	if (!artifacts || !('stderr' in artifacts)) {
+		return '';
+	}
+
+	const stderr = artifacts.stderr;
+	return typeof stderr === 'string' ? stderr : '';
 }

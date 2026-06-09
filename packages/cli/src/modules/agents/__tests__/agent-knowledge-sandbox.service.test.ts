@@ -1,8 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
+import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
-import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from '../agent-knowledge-storage';
+import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
+
+import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH, KNOWLEDGE_FILES_DIR } from '../agent-knowledge-storage';
 import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
 	AgentKnowledgeSandboxService,
@@ -17,11 +19,23 @@ interface MockFilesystem {
 	deleteFile: jest.Mock;
 }
 
+interface MockProcess {
+	executeCommand: jest.Mock<
+		Promise<{
+			exitCode: number;
+			result?: string;
+			artifacts?: { stdout?: string; stderr?: string };
+		}>,
+		[string, string | undefined, Record<string, string> | undefined, number]
+	>;
+}
+
 interface MockSandbox {
 	state?: string;
 	volumes?: Array<{ volumeId: string; mountPath: string; subpath?: string }>;
 	start: jest.Mock<Promise<void>, [number]>;
 	fs: MockFilesystem;
+	process: MockProcess;
 }
 
 interface MockSandboxPage {
@@ -36,7 +50,7 @@ const createMock = jest.fn<
 >();
 
 class MockDaytona {
-	constructor(public readonly config: { apiUrl?: string; apiKey?: string }) {}
+	constructor(readonly config: { apiUrl?: string; apiKey?: string }) {}
 
 	list = listMock;
 	create = createMock;
@@ -55,7 +69,10 @@ const expectedVolumeMount = {
 	subpath: 'agent-knowledge/projects/project-1/agents/agent-1/knowledge',
 };
 
-function makeService(configOverrides: Partial<AgentsConfig> = {}): AgentKnowledgeSandboxService {
+function makeService(
+	configOverrides: Partial<AgentsConfig> = {},
+	logger: Logger = mock<Logger>(),
+): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
 			sandboxEnabled: true,
@@ -67,7 +84,7 @@ function makeService(configOverrides: Partial<AgentsConfig> = {}): AgentKnowledg
 			daytonaVolumeId: volumeId,
 			...configOverrides,
 		} as AgentsConfig,
-		mock<Logger>(),
+		logger,
 	);
 }
 
@@ -86,6 +103,19 @@ function makeSandbox(state = 'started', volumes = [expectedVolumeMount]): MockSa
 		volumes,
 		start: jest.fn<Promise<void>, [number]>(async () => {}),
 		fs: makeFilesystem(),
+		process: {
+			executeCommand: jest.fn<
+				Promise<{
+					exitCode: number;
+					result?: string;
+					artifacts?: { stdout?: string; stderr?: string };
+				}>,
+				[string, string | undefined, Record<string, string> | undefined, number]
+			>(async () => ({
+				exitCode: 0,
+				artifacts: { stdout: '', stderr: '' },
+			})),
+		},
 	};
 }
 
@@ -230,6 +260,34 @@ describe('AgentKnowledgeSandboxService', () => {
 		},
 	);
 
+	it('clamps command operation timeout bounds', async () => {
+		const sandbox = makeSandbox('started');
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		const service = makeService();
+
+		await service.runKnowledgeCommand('project-1', 'agent-1', {
+			command: 'wc -l notes.txt',
+			timeoutMs: 1_000,
+		});
+		expect(sandbox.process.executeCommand).toHaveBeenLastCalledWith(
+			expect.any(String),
+			undefined,
+			undefined,
+			10,
+		);
+
+		await service.runKnowledgeCommand('project-1', 'agent-1', {
+			command: 'wc -l notes.txt',
+			timeoutMs: 300_000,
+		});
+		expect(sandbox.process.executeCommand).toHaveBeenLastCalledWith(
+			expect.any(String),
+			undefined,
+			undefined,
+			120,
+		);
+	});
+
 	it('passes the mounted filesystem to withKnowledgeFilesystem callbacks', async () => {
 		const sandbox = makeSandbox('started');
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
@@ -237,7 +295,7 @@ describe('AgentKnowledgeSandboxService', () => {
 
 		await service.withKnowledgeFilesystem('project-1', 'agent-1', async (filesystem) => {
 			await filesystem.writeFile('/home/daytona/workspace/agent-knowledge/files/note.txt', 'hello');
-			return filesystem.readFile('/home/daytona/workspace/agent-knowledge/files/note.txt');
+			return await filesystem.readFile('/home/daytona/workspace/agent-knowledge/files/note.txt');
 		});
 
 		expect(sandbox.fs.uploadFile).toHaveBeenCalledWith(
@@ -246,6 +304,198 @@ describe('AgentKnowledgeSandboxService', () => {
 		);
 		expect(sandbox.fs.downloadFile).toHaveBeenCalledWith(
 			'/home/daytona/workspace/agent-knowledge/files/note.txt',
+		);
+	});
+
+	it.each([
+		'rg --files | rg -i "9000|quic|rfc" | head -20',
+		'grep -n -i "flow control" rfc-9000-quic.txt | head -40',
+		'rg -n --no-heading --color=never "ClientHello" rfc-8446-tls-13.txt | head -20',
+		'awk \'NR >= 10 && NR <= 20 { print NR ":" $0 }\' rfc-9110-http-semantics.txt',
+		"sed -n '10,20p' rfc-9110-http-semantics.txt",
+		'wc -l rfc-9000-quic.txt',
+	])('runKnowledgeCommand allows read-only discovery command: %s', async (command) => {
+		const sandbox = makeSandbox('started');
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: { stdout: '42:flow control\n', stderr: '' },
+		});
+		const service = makeService();
+
+		await expect(service.runKnowledgeCommand('project-1', 'agent-1', { command })).resolves.toEqual(
+			{
+				exitCode: 0,
+				stdout: '42:flow control\n',
+				stderr: '',
+				stdoutTruncated: false,
+				stderrTruncated: false,
+			},
+		);
+
+		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
+			`if [ ! -d ${KNOWLEDGE_FILES_DIR} ]; then exit 0; fi; cd ${KNOWLEDGE_FILES_DIR} && ${command}`,
+			undefined,
+			undefined,
+			300,
+		);
+	});
+
+	it.each([
+		'rm -rf .',
+		'find . -delete',
+		'grep term file > out.txt',
+		'cat file | tee copy.txt',
+		'sh -c "grep term file"',
+		'node -e "console.log(1)"',
+		'curl https://example.com',
+		'python script.py',
+		"sed -i 's/a/b/' file",
+		"sed --in-place 's/a/b/' file",
+		"sed -n '1w out.txt' file",
+		"sed 's/a/b/e' file",
+		'sort -o sorted.txt source.txt',
+		'awk \'BEGIN { system("rm file") }\' notes.txt',
+		'awk \'{ print > "out.txt" }\' notes.txt',
+		'grep $(rm file) notes.txt',
+		'grep term file; wc -l file',
+		'grep term file && wc -l file',
+		'grep term file || wc -l file',
+		'grep `rm file` notes.txt',
+		'grep "$(rm file)" notes.txt',
+	])('rejects disallowed or destructive command before sandbox execution: %s', async (command) => {
+		const sandbox = makeSandbox('started');
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		const service = makeService();
+
+		await expect(service.runKnowledgeCommand('project-1', 'agent-1', { command })).rejects.toThrow(
+			BadRequestError,
+		);
+		expect(listMock).not.toHaveBeenCalled();
+		expect(createMock).not.toHaveBeenCalled();
+		expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
+	});
+
+	it('runKnowledgeCommand returns non-zero exit codes without throwing', async () => {
+		const sandbox = makeSandbox('started');
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 2,
+			artifacts: { stdout: '', stderr: 'command failed' },
+		});
+		const service = makeService();
+
+		await expect(
+			service.runKnowledgeCommand('project-1', 'agent-1', { command: 'grep missing notes.txt' }),
+		).resolves.toEqual({
+			exitCode: 2,
+			stdout: '',
+			stderr: 'command failed',
+			stdoutTruncated: false,
+			stderrTruncated: false,
+		});
+	});
+
+	it('runKnowledgeCommand truncates oversized stdout and stderr', async () => {
+		const sandbox = makeSandbox('started');
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		const oversizedOutput = 'x'.repeat(20_001);
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: { stdout: oversizedOutput, stderr: oversizedOutput },
+		});
+		const service = makeService();
+
+		await expect(
+			service.runKnowledgeCommand('project-1', 'agent-1', { command: 'cat large.txt' }),
+		).resolves.toEqual({
+			exitCode: 0,
+			stdout: 'x'.repeat(20_000),
+			stderr: 'x'.repeat(20_000),
+			stdoutTruncated: true,
+			stderrTruncated: true,
+		});
+	});
+
+	it.each(['', '   '])('rejects empty knowledge commands before executing: %j', async (command) => {
+		const sandbox = makeSandbox('started');
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		const service = makeService();
+
+		await expect(service.runKnowledgeCommand('project-1', 'agent-1', { command })).rejects.toThrow(
+			BadRequestError,
+		);
+		expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
+	});
+
+	it('rejects knowledge commands longer than the max length before executing', async () => {
+		const sandbox = makeSandbox('started');
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		const service = makeService();
+
+		await expect(
+			service.runKnowledgeCommand('project-1', 'agent-1', {
+				command: 'a'.repeat(2_001),
+			}),
+		).rejects.toThrow(BadRequestError);
+		expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
+	});
+
+	it('logs command operation metadata without logging stdout or stderr', async () => {
+		const logger = mock<Logger>();
+		const sandbox = makeSandbox('started');
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: { stdout: 'secret output', stderr: 'secret error' },
+		});
+		const service = makeService({}, logger);
+
+		await service.runKnowledgeCommand('project-1', 'agent-1', { command: 'wc -l *.csv' });
+
+		expect(logger.info).toHaveBeenCalledWith(
+			'Agent knowledge operation executed',
+			expect.objectContaining({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				operation: 'command',
+				exitCode: 0,
+				command: 'wc -l *.csv',
+				stdoutTruncated: false,
+				stderrTruncated: false,
+			}),
+		);
+		expect(logger.info).not.toHaveBeenCalledWith(
+			'Agent knowledge operation executed',
+			expect.objectContaining({ stdout: expect.anything() }),
+		);
+		expect(logger.info).not.toHaveBeenCalledWith(
+			'Agent knowledge operation executed',
+			expect.objectContaining({ stderr: expect.anything() }),
+		);
+	});
+
+	it('logs a failure when sandbox command execution throws', async () => {
+		const logger = mock<Logger>();
+		const sandbox = makeSandbox('started');
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		const executionError = new Error('sandbox command failed');
+		sandbox.process.executeCommand.mockRejectedValue(executionError);
+		const service = makeService({}, logger);
+
+		await expect(
+			service.runKnowledgeCommand('project-1', 'agent-1', { command: 'wc -l notes.txt' }),
+		).rejects.toThrow('sandbox command failed');
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Agent knowledge operation failed',
+			expect.objectContaining({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				operation: 'command',
+				command: 'wc -l notes.txt',
+				error: executionError,
+			}),
 		);
 	});
 });

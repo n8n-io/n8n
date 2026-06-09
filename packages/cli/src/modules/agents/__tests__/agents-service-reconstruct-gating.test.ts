@@ -63,6 +63,7 @@ function makeReconstructionService(
 	overrides: {
 		logger?: Logger;
 		agentsConfig?: Partial<AgentsConfig>;
+		agentKnowledgeSandboxService?: AgentKnowledgeSandboxService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -86,7 +87,7 @@ function makeReconstructionService(
 			modules,
 			...(overrides.agentsConfig ?? {}),
 		} as unknown as AgentsConfig,
-		mock<AgentKnowledgeSandboxService>(),
+		overrides.agentKnowledgeSandboxService ?? mock<AgentKnowledgeSandboxService>(),
 	);
 }
 
@@ -513,16 +514,41 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		return names;
 	}
 
+	function getInjectedToolBuilder(name: string): { build: () => BuiltTool } | undefined {
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as { name?: string; build?: () => BuiltTool };
+				if (tool.name === name && tool.build) return { build: tool.build.bind(tool) };
+			}
+		}
+		return undefined;
+	}
+
 	function setup(agentsConfig: Partial<AgentsConfig>) {
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
-		const service = makeReconstructionService(agentsToolsService, [], { agentsConfig });
-		return { service, credentialProvider };
+		const agentKnowledgeSandboxService = mock<AgentKnowledgeSandboxService>();
+		agentKnowledgeSandboxService.runKnowledgeCommand.mockResolvedValue({
+			exitCode: 0,
+			stdout: '',
+			stderr: '',
+			stdoutTruncated: false,
+			stderrTruncated: false,
+		});
+		const service = makeReconstructionService(agentsToolsService, [], {
+			agentsConfig,
+			agentKnowledgeSandboxService,
+		});
+		return {
+			service,
+			credentialProvider,
+			agentKnowledgeSandboxService,
+		};
 	}
 
-	it('injects search_knowledge when the Daytona knowledge base gate is enabled', async () => {
-		const { service, credentialProvider } = setup({
+	it('injects search_knowledge with the sandbox service when the Daytona gate is enabled', async () => {
+		const { service, credentialProvider, agentKnowledgeSandboxService } = setup({
 			sandboxEnabled: true,
 			sandboxProvider: 'daytona',
 		});
@@ -530,6 +556,20 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
 		expect(getInjectedToolNames()).toContain('search_knowledge');
+		const tool = getInjectedToolBuilder('search_knowledge')?.build();
+		if (!tool?.handler) {
+			throw new Error('Expected search_knowledge tool to be injected with a handler');
+		}
+
+		await tool.handler({ command: 'wc -l notes.txt' }, {} as never);
+		expect(agentKnowledgeSandboxService.runKnowledgeCommand).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			{
+				command: 'wc -l notes.txt',
+				timeoutMs: undefined,
+			},
+		);
 	});
 
 	it.each([
