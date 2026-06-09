@@ -2,7 +2,7 @@
 import { useConsentStore } from '@/app/stores/consent.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { onMounted, computed, ref } from 'vue';
+import { onMounted, computed, ref, watch } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
 import {
 	N8nButton,
@@ -32,10 +32,14 @@ const loading = computed(() => consentStore.isLoading);
 
 const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
 const allowDisabled = computed(
-	() =>
-		loading.value ||
-		error.value !== null ||
-		(!!clentDetails.value?.redirectUri && !redirectUriTrusted.value),
+	() => loading.value || error.value !== null || !clentDetails.value || !redirectUriTrusted.value,
+);
+
+watch(
+	() => clentDetails.value?.redirectUri,
+	() => {
+		redirectUriTrusted.value = false;
+	},
 );
 
 const handleAllow = async () => {
@@ -50,8 +54,9 @@ const handleAllow = async () => {
 
 const handleDeny = async () => {
 	try {
-		await consentStore.approveConsent(false);
-		window.location.href = window.BASE_PATH ?? '/';
+		const response = await consentStore.approveConsent(false);
+		waitingForRedirect.value = true;
+		window.location.href = response.redirectUrl;
 	} catch (err) {
 		toast.showError(err, i18n.baseText('oauth.consentView.error.deny'));
 	}
@@ -134,23 +139,20 @@ onMounted(async () => {
 						data-test-id="consent-redirect-warning"
 					>
 						<div :class="$style['redirect-warning-content']">
-							<N8nText size="small" :bold="true">
+							<N8nText :bold="true">
 								{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
 							</N8nText>
 							<N8nText
-								size="small"
 								:bold="true"
 								:class="$style['redirect-warning-url']"
 								data-test-id="consent-redirect-uri"
 							>
 								{{ clentDetails.redirectUri }}
 							</N8nText>
-							<div data-test-id="consent-redirect-trust-checkbox">
-								<N8nCheckbox
-									v-model="redirectUriTrusted"
-									:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
-								/>
-							</div>
+							<N8nCheckbox
+								v-model="redirectUriTrusted"
+								:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
+							/>
 						</div>
 					</N8nCallout>
 				</div>
