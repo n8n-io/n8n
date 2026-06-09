@@ -6,9 +6,9 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm run typecheck:tsgo",
     "typecheck:tsgo": "tsgo --noEmit",
-    "build": "pnpm run build:typescript && pnpm run build:data && pnpm run build:agent-library",
+    "build": "pnpm run build:typescript:tsgo && pnpm run build:data && pnpm run build:agent-library",
     "build:tsgo": "pnpm run build:typescript:tsgo && pnpm run build:data && pnpm run build:agent-library",
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json && pnpm run build:data && pnpm run build:agent-library",
     "build:data": "node scripts/build.mjs",
