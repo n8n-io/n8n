@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -67,10 +67,6 @@ export class AgentKnowledgeCommandService {
 
 	async run(workspaceRoot: string, request: AgentKnowledgeCommandRequest) {
 		const root = await realpath(workspaceRoot);
-		if (request.command === 'cat') {
-			const file = await this.safePath(root, request.file);
-			return await this.readFileCommand(file);
-		}
 		const { executable, args } = await this.toSpawnArgs(root, request);
 		return await this.spawnCommand(root, executable, args, request.command);
 	}
@@ -188,7 +184,8 @@ export class AgentKnowledgeCommandService {
 				return { executable: 'git', args };
 			}
 			case 'cat': {
-				throw new Error('cat is handled internally');
+				const file = await this.safePath(root, request.file);
+				return { executable: 'cat', args: [path.relative(root, file)] };
 			}
 			case 'sed': {
 				const file = await this.safePath(root, request.file);
@@ -223,31 +220,6 @@ export class AgentKnowledgeCommandService {
 			throw new Error('Path escapes the knowledge workspace');
 		}
 		return actual;
-	}
-
-	private async readFileCommand(file: string): Promise<AgentKnowledgeCommandResult> {
-		try {
-			const buffer = await readFile(file);
-			const truncated = buffer.length > MAX_OUTPUT_BYTES;
-			const stdout = truncated
-				? truncateBufferToUtf8String(buffer, MAX_OUTPUT_BYTES)
-				: buffer.toString('utf8');
-			return {
-				command: 'cat',
-				exitCode: 0,
-				stdout,
-				stderr: '',
-				truncated,
-			};
-		} catch (error) {
-			return {
-				command: 'cat',
-				exitCode: 1,
-				stdout: '',
-				stderr: error instanceof Error ? error.message : String(error),
-				truncated: false,
-			};
-		}
 	}
 
 	private hasControlCharacters(value: string) {
