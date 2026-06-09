@@ -21,7 +21,6 @@ import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
 import DataRedactionSection from './DataRedactionSection.vue';
 
 const $style = useCssModule();
@@ -31,7 +30,6 @@ const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
-const { isEnabled: isRedactionEnforcementFlagEnabled } = useRedactionEnforcementFeatureFlag();
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
@@ -245,7 +243,7 @@ const sharingCountText = computed(() => {
 		</div>
 
 		<DataRedactionSection
-			v-if="isRedactionEnforcementFlagEnabled && isSecuritySettingsSettled"
+			v-if="isSecuritySettingsSettled"
 			:initial-floor="state?.initialRedactionFloor ?? 'off'"
 			:managed-by-env="isManagedByEnv"
 		/>

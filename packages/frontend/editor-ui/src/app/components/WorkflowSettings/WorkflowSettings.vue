@@ -62,7 +62,6 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -80,7 +79,6 @@ const { trackMcpAccessEnabledForWorkflow } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
-const { isEnabled: isRedactionEnforcementFlagEnabled } = useRedactionEnforcementFeatureFlag();
 const instanceRedactionFloor = ref<RedactionFloor>('off');
 // Stored redaction policy captured on open, before the floor-coercion watch can mutate it. (ENT-35)
 const originalRedactionPolicy = ref<WorkflowSettings.RedactionPolicy | undefined>(undefined);
@@ -254,14 +252,10 @@ const isDataRedactionLicensed = computed(
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
 const isProductionRedactionLockedByFloor = computed(
-	() =>
-		isRedactionEnforcementFlagEnabled.value &&
-		(instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all'),
+	() => instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all',
 );
 
-const isManualRedactionLockedByFloor = computed(
-	() => isRedactionEnforcementFlagEnabled.value && instanceRedactionFloor.value === 'all',
-);
+const isManualRedactionLockedByFloor = computed(() => instanceRedactionFloor.value === 'all');
 
 type RedactionLockReason = 'floor' | 'permission' | null;
 
@@ -944,7 +938,7 @@ onMounted(async () => {
 
 	// Fetch the instance redaction floor AFTER workflowSettings has been assigned, so
 	// the floor-coercion watch sees the loaded settings (not the initial empty object).
-	if (isRedactionEnforcementFlagEnabled.value) {
+	if (isDataRedactionLicensed.value) {
 		try {
 			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
 			instanceRedactionFloor.value = response.redactionEnforcement?.floor ?? 'off';
