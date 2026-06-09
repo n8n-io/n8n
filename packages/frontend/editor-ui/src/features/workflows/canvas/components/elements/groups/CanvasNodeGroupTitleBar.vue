@@ -121,7 +121,7 @@ const { getSelectedNodes, removeSelectedNodes } = useVueFlow();
 // Clear unrelated pre-existing selection before VueFlow snapshots which
 // nodes to drag — otherwise those nodes ride along with the group drag.
 // Preserve the selection when this title bar is itself part of it
-// (intentional multi-select drag of collapsed groups).
+// (intentional multi-select drag).
 function onWrapperPointerDown(event: PointerEvent) {
 	// Clicks on .nodrag children (chevron, title edit, ungroup) aren't drag intent.
 	const target = event.target as HTMLElement | null;
