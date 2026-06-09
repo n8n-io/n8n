@@ -137,6 +137,32 @@ describe('buildTranscriptFromEvents', () => {
 				approved: false,
 			});
 		});
+
+		it('captures the userInput sent with a plan rejection', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('confirmation-request', {
+						payload: { requestId: 'r1', toolName: 'submit-plan' },
+					}),
+				],
+				proxyResponses: new Map([
+					[
+						'r1',
+						{
+							kind: 'approval' as const,
+							approved: false,
+							userInput: 'Use #engineering, not #news',
+						},
+					],
+				]),
+			});
+			expect(turns[0].toolInteractions[0]).toMatchObject({
+				kind: 'confirmation',
+				approved: false,
+				userInput: 'Use #engineering, not #news',
+			});
+		});
 	});
 
 	describe('plain tool-call dedupe', () => {

@@ -1,0 +1,31 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every day, fetch the top story from Hacker News and post its title and URL to Slack #news (C04NEWS0001)."
+		},
+		{
+			"role": "user",
+			"text": "Actually, I changed my mind — post to #engineering (C04ENGINEER1) instead of #news, and make it the top 3 stories, not just one."
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["build", "slack", "http", "schedule", "behavior", "self-correction"],
+	"triggerType": "schedule",
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "API returns several stories, the top 3 are posted to the corrected channel",
+			"dataSetup": "The schedule trigger fires. The Hacker News HTTP request returns a list of at least 5 stories, each with a title and url — e.g. 'Show HN: A new Rust web framework', 'Why we migrated off Kubernetes', 'The state of WebAssembly in 2026', 'Postgres 18 is out', 'Ask HN: best note-taking setup?'. The Slack post-message node returns a success response.",
+			"successCriteria": "The workflow executes without errors. The stories are posted to #engineering (C04ENGINEER1) — the corrected channel — and NOT to #news (C04NEWS0001). Exactly the top 3 stories are included (the corrected count), not a single story. Each posted entry includes a title and a URL."
+		},
+		{
+			"name": "fewer-than-three-stories",
+			"description": "The API returns fewer than 3 stories",
+			"dataSetup": "The schedule trigger fires. The Hacker News HTTP request returns only 2 stories, each with a title and url. The Slack post-message node returns a success response.",
+			"successCriteria": "The workflow handles having fewer than 3 stories gracefully — it posts the 2 available stories to #engineering (C04ENGINEER1) without erroring on the missing third."
+		}
+	],
+	"datasets": ["full"]
+}

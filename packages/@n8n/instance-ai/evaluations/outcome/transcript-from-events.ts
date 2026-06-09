@@ -158,11 +158,13 @@ function handleConfirmationRequest(
 
 	const toolName =
 		getString(payload, 'toolName') ?? getString(payload, 'agentId') ?? 'confirmation';
+	const userInput = response?.kind === 'approval' ? response.userInput : undefined;
 	out.push({
 		kind: 'confirmation',
 		toolName,
 		resumeReason: inferResumeReason(payload, response),
 		approved: inferApproval(response),
+		...(userInput ? { userInput } : {}),
 	});
 }
 

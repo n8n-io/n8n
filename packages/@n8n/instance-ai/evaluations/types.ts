@@ -240,7 +240,14 @@ export type ToolInteraction =
 			skippedNodes: SetupWizardSkippedNode[];
 			reason?: string;
 	  }
-	| { kind: 'confirmation'; toolName: string; resumeReason: string; approved?: boolean }
+	| {
+			kind: 'confirmation';
+			toolName: string;
+			resumeReason: string;
+			approved?: boolean;
+			/** Free-text the user sent with the decision (e.g. a plan-rejection reason). */
+			userInput?: string;
+	  }
 	| { kind: 'tool-call'; toolName: string };
 
 export interface PlanTask {
