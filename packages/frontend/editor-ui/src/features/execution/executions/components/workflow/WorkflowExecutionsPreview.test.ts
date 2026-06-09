@@ -16,7 +16,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import type { FrontendSettings } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
-import { nextTick, computed } from 'vue';
+import { nextTick, computed, ref } from 'vue';
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 
 const showMessage = vi.fn();
@@ -24,6 +24,17 @@ const showError = vi.fn();
 const showToast = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError, showToast }),
+}));
+
+// Force the add-to-dataset action available so tests can assert the
+// execution status/mode gating in the component itself.
+vi.mock('@/features/ai/evaluation.ee/composables/useAddExecutionToDataset', () => ({
+	useAddExecutionToDataset: () => ({
+		isFeatureEnabled: ref(true),
+		hasDataTableConfig: ref(true),
+		fetchDataTableConfigs: vi.fn(),
+		openModal: vi.fn(),
+	}),
 }));
 
 const routes = [
@@ -147,6 +158,30 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		});
 
 		expect(getByTestId('stop-execution')).toBeDisabled();
+	});
+
+	it('shows the add-to-dataset button for a successful non-evaluation execution', () => {
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeInTheDocument();
+	});
+
+	it('hides the add-to-dataset button for evaluation-mode executions', () => {
+		const { queryByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'evaluation' } },
+		});
+
+		expect(queryByTestId('execution-preview-add-to-dataset-button')).toBeNull();
+	});
+
+	it('hides the add-to-dataset button for non-successful executions', () => {
+		const { queryByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'error', mode: 'manual' } },
+		});
+
+		expect(queryByTestId('execution-preview-add-to-dataset-button')).toBeNull();
 	});
 
 	it('should display vote buttons when annotation is enabled', async () => {
