@@ -3253,12 +3253,12 @@ describe('AgentsService', () => {
 			});
 		});
 
-		it('returns false for multi-main steer requests when no local stream was aborted', () => {
+		it('returns true for multi-main steer requests when no local stream was aborted', () => {
 			enableMultiMain();
 
 			const interrupted = service.requestAgentStreamAbort('missing-stream-key', 'new message');
 
-			expect(interrupted).toBe(false);
+			expect(interrupted).toBe(true);
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'agent-stream-abort',
 				payload: { streamKey: 'missing-stream-key', steerMessage: 'new message' },
@@ -3279,16 +3279,23 @@ describe('AgentsService', () => {
 			});
 		});
 
-		it('returns false for multi-main abort requests when no local stream was aborted', () => {
+		it('returns true for multi-main abort requests when no local stream was aborted but command was published', () => {
 			enableMultiMain();
 
 			const interrupted = service.requestAgentStreamAbort('missing-stream-key');
 
-			expect(interrupted).toBe(false);
+			expect(interrupted).toBe(true);
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'agent-stream-abort',
 				payload: { streamKey: 'missing-stream-key' },
 			});
+		});
+
+		it('returns false for local abort requests when no local stream was aborted', () => {
+			const interrupted = service.requestAgentStreamAbort('missing-stream-key');
+
+			expect(interrupted).toBe(false);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
 		it('handles peer stream abort commands without re-publishing', () => {
