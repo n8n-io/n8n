@@ -11,6 +11,7 @@ import type {
 	ExecutionBaseError,
 	ExecutionStatus,
 	ExecutionStorageLocation,
+	ExecutionError,
 	GenericValue,
 	IConnection,
 	IDataObject,
@@ -971,6 +972,22 @@ export class WorkflowExecute {
 	/**
 	 * Handles re-throwing errors from previous node execution attempts
 	 */
+	/**
+	 * Rethrows an already-failed node's error so it logs and displays correctly.
+	 * Structured node errors are thrown as-is; anything else (e.g. a DB-deserialized
+	 * error that is no longer a real `Error`) is wrapped so its stack and
+	 * `instanceof Error` behave like a normally-thrown node failure.
+	 */
+	private rethrowNodeError(error: ExecutionError): never {
+		if (error.name === 'NodeOperationError' || error.name === 'NodeApiError') {
+			throw error;
+		}
+
+		const wrapped = new Error(error.message);
+		wrapped.stack = error.stack;
+		throw wrapped;
+	}
+
 	private rethrowLastNodeError(runExecutionData: IRunExecutionData, node: INode): void {
 		if (
 			runExecutionData.resultData.lastNodeExecuted === node.name &&
@@ -979,16 +996,7 @@ export class WorkflowExecute {
 			// The node did already fail. So throw an error here that it displays and logs it correctly.
 			// Does get used by webhook and trigger nodes in case they throw an error that it is possible
 			// to log the error and display in Editor-UI.
-			if (
-				runExecutionData.resultData.error.name === 'NodeOperationError' ||
-				runExecutionData.resultData.error.name === 'NodeApiError'
-			) {
-				throw runExecutionData.resultData.error;
-			}
-
-			const error = new Error(runExecutionData.resultData.error.message);
-			error.stack = runExecutionData.resultData.error.stack;
-			throw error;
+			this.rethrowNodeError(runExecutionData.resultData.error);
 		}
 	}
 
@@ -1284,7 +1292,6 @@ export class WorkflowExecute {
 		const { node } = executionData;
 		let inputData = executionData.data;
 
-		// @TODO check this again before ready
 		if (executionData.metadata?.resumeError) {
 			const { resumeError } = executionData.metadata;
 			// see `processRunExecutionData` line 1980
@@ -1292,10 +1299,10 @@ export class WorkflowExecute {
 				node.continueOnFail === true ||
 				['continueRegularOutput', 'continueErrorOutput'].includes(node.onError ?? '');
 			if (!continuesOnError) {
-				throw resumeError;
+				this.rethrowNodeError(resumeError);
 			}
 
-			return { data: [[{ json: { error: resumeError.message }, pairedItem: { item: 0 } }]] };
+			return { data: [[{ json: { error: resumeError.message } }]] };
 		}
 
 		if (node.disabled === true) {
@@ -1422,7 +1429,6 @@ export class WorkflowExecute {
 			const executionStackEntry = this.runExecutionData.executionData.nodeExecutionStack[0];
 			// If the node has `resumeError`, keep enabled to ensure it goes through
 			// normal error handling instead of passing its input through
-			// @TODO double check this
 			if (!executionStackEntry.metadata?.resumeError) {
 				executionStackEntry.node.disabled = true;
 			}
@@ -1737,13 +1743,17 @@ export class WorkflowExecute {
 					const isErrorValue = (v: unknown) => v !== undefined && v !== null && v !== false;
 					const checkFailure = (data: IRunNodeResponse | EngineRequest) =>
 						!isEngineRequest(data) && isErrorValue(data.data?.[0]?.[0]?.json?.error);
-					if (executionData.node.retryOnFail === true) {
+					// A node resuming with a sub-workflow error has already failed in the sub-workflow;
+					// there is nothing to re-run, so don't apply retryOnFail (it would just re-throw the
+					// same error after pointless waits without re-executing anything).
+					const isResumedError = executionData.metadata?.resumeError !== undefined;
+					if (executionData.node.retryOnFail === true && !isResumedError) {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
 						maxTries = Math.min(5, Math.max(2, executionData.node.maxTries || 3));
 					}
 
 					let waitBetweenTries = 0;
-					if (executionData.node.retryOnFail === true) {
+					if (executionData.node.retryOnFail === true && !isResumedError) {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
 						waitBetweenTries = Math.min(
 							5000,
