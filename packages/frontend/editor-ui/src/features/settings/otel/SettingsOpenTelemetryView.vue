@@ -69,17 +69,27 @@ function envTooltip(field: keyof typeof OTEL_FIELD_ENV_VARS): string {
 
 async function save(): Promise<boolean> {
 	try {
+		const wasEnabled = otelStore.savedSettings.enabled;
 		await otelStore.saveSettings();
+		const isNowEnabled = otelStore.settings.enabled;
 
-		if (otelStore.settings.enabled) {
+		if (!wasEnabled && isNowEnabled) {
 			telemetry.track('Activated otel via UI', {
 				includeNodeSpans: otelStore.settings.includeNodeSpans,
 				productionExecutionsOnly: otelStore.settings.productionExecutionsOnly,
 				tracesSampleRate: otelStore.settings.tracesSampleRate,
 				injectOutbound: otelStore.settings.injectOutbound,
 			});
-		} else {
+		} else if (wasEnabled && !isNowEnabled) {
 			telemetry.track('Disabled otel via UI');
+		} else {
+			telemetry.track('Updated otel via UI', {
+				enabled: isNowEnabled,
+				includeNodeSpans: otelStore.settings.includeNodeSpans,
+				productionExecutionsOnly: otelStore.settings.productionExecutionsOnly,
+				tracesSampleRate: otelStore.settings.tracesSampleRate,
+				injectOutbound: otelStore.settings.injectOutbound,
+			});
 		}
 
 		toast.showMessage({

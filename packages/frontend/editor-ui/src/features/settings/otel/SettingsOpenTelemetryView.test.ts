@@ -198,7 +198,51 @@ describe('SettingsOpenTelemetryView', () => {
 		});
 	});
 
-	it('tracks "Activated otel via UI" with props when saving with enabled=true', async () => {
+	it('tracks "Activated otel via UI" with props when enabled changes false → true', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+		updateOtelSettingsMock.mockResolvedValue(
+			makeSettings({ enabled: true, tracesSampleRate: 0.5 }),
+		);
+
+		const { getByTestId, getByText } = render();
+		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-enabled-toggle'));
+		await waitFor(() => expect(getByText('Enabled')).toBeInTheDocument());
+		await userEvent.click(getByText('Enabled'));
+
+		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
+		await userEvent.click(getByTestId('otel-save-button'));
+
+		await waitFor(() => {
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'Activated otel via UI',
+				expect.objectContaining({ tracesSampleRate: 0.5 }),
+			);
+		});
+	});
+
+	it('tracks "Disabled otel via UI" without props when enabled changes true → false', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
+		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+
+		const { getByTestId, getByText } = render();
+		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-enabled-toggle'));
+		await waitFor(() => expect(getByText('Disabled')).toBeInTheDocument());
+		await userEvent.click(getByText('Disabled'));
+
+		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
+		await userEvent.click(getByTestId('otel-save-button'));
+
+		await waitFor(() => {
+			expect(telemetryTrack).toHaveBeenCalledWith('Disabled otel via UI');
+			expect(telemetryTrack).not.toHaveBeenCalledWith('Activated otel via UI', expect.anything());
+		});
+	});
+
+	it('tracks "Updated otel via UI" with props when enabled state does not change', async () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
 		updateOtelSettingsMock.mockResolvedValue(
 			makeSettings({ enabled: true, tracesSampleRate: 0.5 }),
@@ -213,31 +257,11 @@ describe('SettingsOpenTelemetryView', () => {
 
 		await waitFor(() => {
 			expect(telemetryTrack).toHaveBeenCalledWith(
-				'Activated otel via UI',
-				expect.objectContaining({
-					tracesSampleRate: 0.5,
-					includeNodeSpans: expect.any(Boolean),
-					productionExecutionsOnly: expect.any(Boolean),
-					injectOutbound: expect.any(Boolean),
-				}),
+				'Updated otel via UI',
+				expect.objectContaining({ enabled: true, tracesSampleRate: 0.5 }),
 			);
-		});
-	});
-
-	it('tracks "Disabled otel via UI" without props when saving with enabled=false', async () => {
-		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
-		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
-
-		const { getByTestId } = render();
-		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
-
-		await dirtyEndpoint(getByTestId);
-		await waitFor(() => expect(getByTestId('otel-save-button')).toBeInTheDocument());
-		await userEvent.click(getByTestId('otel-save-button'));
-
-		await waitFor(() => {
-			expect(telemetryTrack).toHaveBeenCalledWith('Disabled otel via UI');
 			expect(telemetryTrack).not.toHaveBeenCalledWith('Activated otel via UI', expect.anything());
+			expect(telemetryTrack).not.toHaveBeenCalledWith('Disabled otel via UI');
 		});
 	});
 
