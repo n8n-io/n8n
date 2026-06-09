@@ -117,6 +117,9 @@ const createNewCredential = () => {
 		false,
 		props.projectId,
 		props.suggestedCredentialName,
+		undefined,
+		undefined,
+		{ closeOnSave: true },
 	);
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', undefined);
