@@ -16,6 +16,7 @@ from src.constants import (
     ENV_GRANT_TOKEN,
     ENV_MAX_CONCURRENCY,
     ENV_MAX_PAYLOAD_SIZE,
+    ENV_RUNNER_ENV_ALLOW,
     ENV_STDLIB_ALLOW,
     ENV_TASK_BROKER_URI,
     ENV_TASK_TIMEOUT,
@@ -57,6 +58,7 @@ class TaskRunnerConfig:
     external_allow: set[str]
     builtins_deny: set[str]
     env_deny: bool
+    env_allow: set[str]
 
     @property
     def is_auto_shutdown_enabled(self) -> bool:
@@ -119,4 +121,7 @@ class TaskRunnerConfig:
                 ).split(",")
             ),
             env_deny=read_bool_env(ENV_BLOCK_RUNNER_ENV_ACCESS, True),
+            env_allow=parse_allowlist(
+                read_str_env(ENV_RUNNER_ENV_ALLOW, ""), ENV_RUNNER_ENV_ALLOW
+            ),
         )
