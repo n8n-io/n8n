@@ -35,8 +35,15 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 			expect(prompt).toMatch(/do not ask follow-up questions/i);
 		});
 
-		it('forbids conversational output', () => {
-			expect(prompt).toMatch(/do not produce conversational output/i);
+		it('forbids conversational output and tells the model text is not shown to the user', () => {
+			expect(prompt).toMatch(/output tool calls only/i);
+			expect(prompt).toMatch(/does not read any text content/i);
+		});
+
+		it('enumerates specific forbidden conversational patterns', () => {
+			expect(prompt).toMatch(/greetings/i);
+			expect(prompt).toMatch(/narration/i);
+			expect(prompt).toMatch(/summaries/i);
 		});
 
 		it('instructs the orchestrator to stop without producing a result when ambiguous', () => {
@@ -77,6 +84,11 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 
 		it('instructs the orchestrator to stop without producing a workflow when ambiguous', () => {
 			expect(prompt).toMatch(/stop without producing a workflow/i);
+		});
+
+		it('forbids conversational output and tells the model text is not shown to the user', () => {
+			expect(prompt).toMatch(/output tool calls only/i);
+			expect(prompt).toMatch(/does not read any text content/i);
 		});
 
 		it('does not reference dropped derived events', () => {
