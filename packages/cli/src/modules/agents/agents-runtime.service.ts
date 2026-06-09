@@ -410,10 +410,46 @@ export class AgentsRuntimeService {
 		const { threadId, resourceId } = memory;
 		const { logger, agentExecutionService } = this;
 
+		const streamAndRecordTurn = async function* ({
+			stream,
+			control,
+			userMessage,
+			hitlStatus,
+			warningMessage,
+		}: {
+			stream: ReadableStream<StreamChunk>;
+			control: AgentStreamControl | undefined;
+			userMessage: string;
+			hitlStatus?: (recorder: ExecutionRecorder) => 'resumed' | 'suspended' | undefined;
+			warningMessage: string;
+		}): AsyncGenerator<StreamChunk> {
+			const recorder = new ExecutionRecorder(toolRegistry);
+			yield* processAgentStream(stream, recorder, control);
+
+			if (control?.wasAborted()) return;
+
+			void agentExecutionService
+				.recordMessage({
+					threadId,
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userMessage,
+					record: recorder.getMessageRecord(),
+					hitlStatus: typeof hitlStatus === 'function' ? hitlStatus(recorder) : hitlStatus,
+				})
+				.catch((error) => {
+					logger.warn(warningMessage, {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+		};
+
 		yield* this.streamSteerableTurns({
 			streamKey,
-			async *initialTurn(control: AgentStreamControl | undefined) {
-				const recorder = new ExecutionRecorder(toolRegistry);
+			async *initialTurn(control) {
 				const resultStream = await agentInstance.resume('stream', resumeData, {
 					runId,
 					toolCallId,
@@ -421,57 +457,28 @@ export class AgentsRuntimeService {
 					abortSignal: control?.signal,
 				});
 
-				yield* processAgentStream(resultStream.stream, recorder, control);
-
-				if (control?.wasAborted()) return;
-
-				void agentExecutionService
-					.recordMessage({
-						threadId,
-						agentId,
-						agentName: agentInstance.name,
-						projectId,
-						userMessage: '',
-						record: recorder.getMessageRecord(),
-						hitlStatus: 'resumed',
-					})
-					.catch((error) => {
-						logger.warn('Failed to record resumed agent execution', {
-							agentId,
-							threadId,
-							error: error instanceof Error ? error.message : String(error),
-						});
-					});
+				yield* streamAndRecordTurn({
+					stream: resultStream.stream,
+					control,
+					userMessage: '',
+					hitlStatus: () => 'resumed',
+					warningMessage: 'Failed to record resumed agent execution',
+				});
 			},
-			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
-				const recorder = new ExecutionRecorder(toolRegistry);
+			async *streamTurn(turnMessage, control) {
 				const resultStream = await agentInstance.stream(turnMessage, {
 					persistence: { threadId, resourceId },
 					executionCounter,
 					abortSignal: control?.signal,
 				});
 
-				yield* processAgentStream(resultStream.stream, recorder, control);
-
-				if (control?.wasAborted()) return;
-
-				void agentExecutionService
-					.recordMessage({
-						threadId,
-						agentId,
-						agentName: agentInstance.name,
-						projectId,
-						userMessage: turnMessage,
-						record: recorder.getMessageRecord(),
-						hitlStatus: recorder.suspended ? 'suspended' : undefined,
-					})
-					.catch((error) => {
-						logger.warn('Failed to record agent execution after steer', {
-							agentId,
-							threadId,
-							error: error instanceof Error ? error.message : String(error),
-						});
-					});
+				yield* streamAndRecordTurn({
+					stream: resultStream.stream,
+					control,
+					userMessage: turnMessage,
+					hitlStatus: (recorder) => (recorder.suspended ? 'suspended' : undefined),
+					warningMessage: 'Failed to record agent execution after steer',
+				});
 			},
 		});
 	}
