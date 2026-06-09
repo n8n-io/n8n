@@ -3329,8 +3329,7 @@ describe('tool systemInstruction merging', () => {
 
 	function getSystemMessageText(): string {
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const messages = callArgs.messages as Array<Record<string, unknown>>;
-		const systemMsg = messages[0];
+		const systemMsg = callArgs.system as Record<string, unknown>;
 		expect(systemMsg.role).toBe('system');
 		return String(systemMsg.content);
 	}
@@ -3451,8 +3450,7 @@ describe('instruction providerOptions', () => {
 		});
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const messages = callArgs.messages as Array<Record<string, unknown>>;
-		const systemMsg = messages[0];
+		const systemMsg = callArgs.system as Record<string, unknown>;
 		expect(systemMsg.role).toBe('system');
 		expect(systemMsg.providerOptions).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -3704,10 +3702,10 @@ describe('AgentRuntime — observation log jobs', () => {
 		});
 
 		const callArgs = (generateText.mock.calls[0] as [unknown])[0] as {
-			messages: Array<{ content: string }>;
+			system: { content: string };
 			tools: Record<string, unknown>;
 		};
-		const systemPrompt = callArgs.messages[0]?.content ?? '';
+		const systemPrompt = callArgs.system?.content ?? '';
 		expect(systemPrompt).not.toContain('<episodic_memory>');
 		expect(systemPrompt).not.toContain('Postgres');
 		expect(systemPrompt).not.toContain('SQLite');
@@ -3827,16 +3825,16 @@ describe('AgentRuntime — observation log jobs', () => {
 
 		const generateTextMock = generateText as MockedFunction<
 			(input: {
+				system: { content: string };
 				messages: Array<{
 					role: string;
 					content: unknown;
 				}>;
 			}) => unknown
 		>;
-		const [{ messages }] = generateTextMock.mock.calls[0];
-		const systemPrompt = messages[0].content;
-		expect(systemPrompt).toContain('Resource one memory.');
-		expect(systemPrompt).toContain('Resource two memory.');
+		const [{ system, messages }] = generateTextMock.mock.calls[0];
+		expect(system.content).toContain('Resource one memory.');
+		expect(system.content).toContain('Resource two memory.');
 		expect(JSON.stringify(messages)).not.toContain('remember resource-one preference');
 
 		await runtime.dispose();
