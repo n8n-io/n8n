@@ -74,7 +74,7 @@ describe('GlobalConfig', () => {
 		canvasOnly: false,
 		editorBaseUrl: '',
 		dataTable: {
-			maxSize: 50 * 1024 * 1024,
+			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
 			cleanupIntervalMs: 60 * 1000,
 			fileMaxAgeMs: 2 * 60 * 1000,
