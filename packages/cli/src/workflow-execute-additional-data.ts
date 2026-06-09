@@ -17,6 +17,8 @@ import {
 } from 'n8n-workflow';
 import type {
 	AiEvent,
+	GatewayToolCallResult,
+	GatewayToolsResult,
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
@@ -369,6 +371,54 @@ export async function executeAgent(
 	);
 }
 
+async function getGatewayTools(userId: string): Promise<GatewayToolsResult> {
+	const { InstanceAiGatewayService } = await import(
+		'@/modules/instance-ai/instance-ai-gateway.service'
+	);
+	const gatewayService = Container.get(InstanceAiGatewayService);
+	const gateway = gatewayService.getLocalGateway(userId);
+
+	if (!gateway.isConnected) {
+		throw new Error(
+			"Device is offline. Start the n8n CLI on the device to continue. Run 'npx @n8n/computer-use' to connect.",
+		);
+	}
+
+	const tools = gateway.getAvailableTools();
+	const status = gateway.getStatus();
+	return {
+		tools: tools.map((t) => ({
+			name: t.name,
+			description: t.description,
+			inputSchema: t.inputSchema as Record<string, unknown>,
+			annotations: t.annotations as Record<string, unknown> | undefined,
+		})),
+		hostIdentifier: status.hostIdentifier,
+		directory: status.directory,
+		toolCategories: status.toolCategories,
+	};
+}
+
+async function callGatewayTool(
+	userId: string,
+	toolName: string,
+	args: Record<string, unknown>,
+): Promise<GatewayToolCallResult> {
+	const { InstanceAiGatewayService } = await import(
+		'@/modules/instance-ai/instance-ai-gateway.service'
+	);
+	const gatewayService = Container.get(InstanceAiGatewayService);
+	const gateway = gatewayService.getLocalGateway(userId);
+
+	if (!gateway.isConnected) {
+		throw new Error(
+			"Device is offline. Start the n8n CLI on the device to continue. Run 'npx @n8n/computer-use' to connect.",
+		);
+	}
+
+	return await gateway.callTool({ name: toolName, arguments: args });
+}
+
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
 	const { AgentsService } = await import('@/modules/agents/agents.service');
 	const agentsService = Container.get(AgentsService);
@@ -488,6 +538,8 @@ async function startExecution(
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
 		additionalDataIntegrated.executeAgent = additionalData.executeAgent;
 		additionalDataIntegrated.listAgents = additionalData.listAgents;
+		additionalDataIntegrated.getGatewayTools = additionalData.getGatewayTools;
+		additionalDataIntegrated.callGatewayTool = additionalData.callGatewayTool;
 		// Propagate the root execution mode so nested subworkflows retain the original
 		// mode (e.g. 'manual') even though their own WorkflowExecute runs as 'integrated'
 		additionalDataIntegrated.rootExecutionMode =
@@ -662,6 +714,8 @@ export async function getBase({
 		executeWorkflow,
 		executeAgent,
 		listAgents,
+		getGatewayTools,
+		callGatewayTool,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
 		instanceBaseUrl: `${instanceBaseUrl}/`,
 		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,

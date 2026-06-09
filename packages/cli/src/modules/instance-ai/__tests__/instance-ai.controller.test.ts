@@ -1166,6 +1166,15 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('gatewayDeviceCredential', () => {
+		it('should require instanceAi:gateway scope', () => {
+			expect(scopeOf('gatewayDeviceCredential')).toEqual({
+				scope: 'instanceAi:gateway',
+				globalOnly: true,
+			});
+		});
+	});
+
 	describe('getGatewayKeyHeader', () => {
 		it('should extract first element from array header', () => {
 			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);

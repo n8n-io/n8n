@@ -184,6 +184,7 @@ import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
 import IconLucideMinus from '~icons/lucide/minus';
+import IconLucideMonitor from '~icons/lucide/monitor';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
@@ -675,6 +676,7 @@ export const updatedIconSet = {
 	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
 	minus: IconLucideMinus,
+	monitor: IconLucideMonitor,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
 	'notebook-pen': IconLucideNotebookPen,

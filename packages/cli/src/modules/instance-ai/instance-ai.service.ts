@@ -11,7 +11,14 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
-import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
+import {
+	AiBuilderTemporaryWorkflowRepository,
+	CredentialsRepository,
+	ProjectRepository,
+	UserRepository,
+	type CredentialsEntity,
+	type User,
+} from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
@@ -86,6 +93,7 @@ import {
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
+import type { Scope } from '@n8n/permissions';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings, SsrfProtectionService } from 'n8n-core';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
@@ -131,6 +139,7 @@ import {
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { Push } from '@/push';
@@ -176,6 +185,20 @@ function isTextMessagePart(part: unknown): part is { type: 'text'; text: string 
 }
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
+const DEVICE_CONNECTION_CREDENTIAL_TYPE = 'deviceConnectionApi';
+const DEFAULT_DEVICE_NAME = 'Unknown Device';
+
+type DeviceCredentialResponse = {
+	id: string;
+	name: string;
+	type: string;
+	createdAt: Date;
+	updatedAt: Date;
+	scopes: Scope[];
+	isManaged: boolean;
+	isGlobal: boolean;
+	isResolvable: boolean;
+};
 
 type RuntimeSandboxEntry = {
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
@@ -661,6 +684,9 @@ export class InstanceAiService {
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
+		private readonly credentialsService: CredentialsService,
+		private readonly credentialsRepository: CredentialsRepository,
+		private readonly projectRepository: ProjectRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.workflowObligations = new WorkflowVerificationObligationService(this.agentMemory);
@@ -1900,6 +1926,133 @@ export class InstanceAiService {
 	clearTraceEvents(slug: string): void {
 		this.deleteTraceContextsForSlug(slug);
 		this.traceReplay.clearEvents(slug);
+	}
+
+	/**
+	 * Ensure a DeviceConnectionApi credential exists for the user.
+	 * Called on gateway init — creates the credential on first connection,
+	 * skips on reconnections where it already exists.
+	 */
+	async ensureDeviceCredential(userId: string, hostIdentifier: string | null): Promise<void> {
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
+
+		const existing = await this.credentialsRepository.findBy({
+			type: DEVICE_CONNECTION_CREDENTIAL_TYPE,
+			shared: { projectId: personalProject.id },
+		});
+
+		if (existing.length > 0) {
+			return;
+		}
+
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
+		const deviceName = hostIdentifier ?? DEFAULT_DEVICE_NAME;
+
+		await this.credentialsService.createUnmanagedCredential(
+			{
+				name: deviceName,
+				type: DEVICE_CONNECTION_CREDENTIAL_TYPE,
+				data: { deviceOwnerId: userId, deviceName },
+			},
+			user,
+		);
+	}
+
+	async ensureDeviceCredentialForProject(
+		user: User,
+		projectId?: string,
+	): Promise<DeviceCredentialResponse> {
+		const targetProjectId =
+			projectId ?? (await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
+
+		const existingCredential = await this.findDeviceCredentialForUser(user, targetProjectId);
+		if (existingCredential) {
+			return await this.toDeviceCredentialResponse(user, existingCredential);
+		}
+
+		const gatewayStatus = this.gatewayService.getLocalGateway(user.id).getStatus();
+		const deviceName = gatewayStatus.hostIdentifier ?? DEFAULT_DEVICE_NAME;
+		const credential = await this.credentialsService.createUnmanagedCredential(
+			{
+				name: deviceName,
+				type: DEVICE_CONNECTION_CREDENTIAL_TYPE,
+				data: { deviceOwnerId: user.id, deviceName },
+				projectId: targetProjectId,
+			},
+			user,
+		);
+
+		const project = await this.projectRepository.findOneBy({ id: targetProjectId });
+		this.eventService.emit('credentials-created', {
+			user,
+			credentialType: credential.type,
+			credentialId: credential.id,
+			publicApi: false,
+			projectId: project?.id,
+			projectType: project?.type,
+			uiContext: 'computer-use-node',
+			isDynamic: credential.isResolvable ?? false,
+			usesExternalSecrets: false,
+		});
+
+		return {
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
+			createdAt: credential.createdAt,
+			updatedAt: credential.updatedAt,
+			scopes: credential.scopes,
+			isManaged: credential.isManaged,
+			isGlobal: credential.isGlobal,
+			isResolvable: credential.isResolvable,
+		};
+	}
+
+	private async findDeviceCredentialForUser(
+		user: User,
+		projectId: string,
+	): Promise<CredentialsEntity | null> {
+		const availableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			user,
+			{ projectId },
+		);
+		const availableCredentialIds = new Set(availableCredentials.map((credential) => credential.id));
+		const candidates = await this.credentialsRepository.findBy({
+			type: DEVICE_CONNECTION_CREDENTIAL_TYPE,
+			shared: { projectId },
+		});
+
+		for (const credential of candidates) {
+			if (!availableCredentialIds.has(credential.id)) continue;
+			const data = await this.credentialsService.decrypt(credential, true);
+			if (data.deviceOwnerId === user.id) {
+				return credential;
+			}
+		}
+
+		return null;
+	}
+
+	private async toDeviceCredentialResponse(
+		user: User,
+		credential: CredentialsEntity,
+	): Promise<DeviceCredentialResponse> {
+		const scopes = await this.credentialsService.getCredentialScopes(user, credential.id);
+
+		return {
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
+			createdAt: credential.createdAt,
+			updatedAt: credential.updatedAt,
+			scopes,
+			isManaged: credential.isManaged,
+			isGlobal: credential.isGlobal,
+			isResolvable: credential.isResolvable,
+		};
 	}
 
 	/**

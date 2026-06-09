@@ -1026,6 +1026,12 @@ export interface FunctionsBase {
 	isNodeFeatureEnabled(featureName: string): boolean;
 	getExecutionContext: () => IExecutionContext | undefined;
 	listAgents?(): Promise<Array<{ id: string; name: string }>>;
+	getGatewayTools?(userId?: string): Promise<GatewayToolsResult>;
+	callGatewayTool?(
+		toolName: string,
+		args: Record<string, unknown>,
+		userId?: string,
+	): Promise<GatewayToolCallResult>;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
@@ -2018,6 +2024,26 @@ export interface ExecuteAgentOptions {
 	parentWorkflowId: string;
 	parentWorkflowSettings?: IWorkflowSettings;
 	executionMode?: WorkflowExecuteMode;
+}
+
+export interface GatewayToolInfo {
+	name: string;
+	description?: string;
+	inputSchema: Record<string, unknown>;
+	annotations?: Record<string, unknown>;
+}
+
+export interface GatewayToolsResult {
+	tools: GatewayToolInfo[];
+	hostIdentifier: string | null;
+	directory: string | null;
+	toolCategories: Array<{ name: string; enabled: boolean }>;
+}
+
+export interface GatewayToolCallResult {
+	content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
+	structuredContent?: Record<string, unknown>;
+	isError?: boolean;
 }
 
 export interface ExecuteAgentData {
@@ -3264,6 +3290,13 @@ export interface IWorkflowExecuteAdditionalData {
 		outputSchema?: JSONSchema7,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
+	getGatewayTools?: (userId: string) => Promise<GatewayToolsResult>;
+	callGatewayTool?: (
+		userId: string,
+		toolName: string,
+		args: Record<string, unknown>,
+	) => Promise<GatewayToolCallResult>;
+
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
 	executionId?: string;
 	restartExecutionId?: string;

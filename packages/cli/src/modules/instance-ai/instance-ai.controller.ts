@@ -14,6 +14,7 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiDeviceCredentialRequest,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -739,6 +740,11 @@ export class InstanceAiController {
 			[userId],
 		);
 
+		// Best-effort: auto-create a Device Connection credential for the user
+		void Promise.resolve(
+			this.instanceAiService.ensureDeviceCredential(userId, payload.hostIdentifier ?? null),
+		).catch(() => {});
+
 		// Try to consume a pairing token and upgrade to a session key
 		const sessionKey = key ? this.gatewayService.consumePairingToken(userId, key) : null;
 		if (sessionKey) {
@@ -824,6 +830,86 @@ export class InstanceAiController {
 			[userId],
 		);
 		return { ok: true };
+	}
+
+	@Post('/gateway/device-credential')
+	@GlobalScope('instanceAi:gateway')
+	async gatewayDeviceCredential(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiDeviceCredentialRequest,
+	) {
+		await this.assertGatewayEnabled(req.user.id);
+		const gateway = this.gatewayService.getLocalGateway(req.user.id);
+
+		if (!gateway.isConnected) {
+			throw new BadRequestError(
+				"Device is offline. Start the n8n CLI on the device to continue. Run 'npx @n8n/computer-use' to connect.",
+			);
+		}
+
+		return await this.instanceAiService.ensureDeviceCredentialForProject(
+			req.user,
+			payload.projectId,
+		);
+	}
+
+	// ── Computer Use node endpoints (workflow → gateway) ─────────────────────
+
+	/**
+	 * List available tools on the connected device.
+	 * Called by the Computer Use workflow node to discover tools.
+	 * Uses standard session auth — the gateway is resolved from the authenticated user.
+	 */
+	@Get('/gateway/tools')
+	@GlobalScope('instanceAi:gateway')
+	async gatewayTools(req: AuthenticatedRequest) {
+		const gateway = this.gatewayService.getLocalGateway(req.user.id);
+
+		if (!gateway.isConnected) {
+			throw new BadRequestError(
+				"Device is offline. Start the n8n CLI on the device to continue. Run 'npx @n8n/computer-use' to connect.",
+			);
+		}
+
+		const tools = gateway.getAvailableTools();
+		const status = gateway.getStatus();
+		return {
+			tools,
+			hostIdentifier: status.hostIdentifier,
+			directory: status.directory,
+			toolCategories: status.toolCategories,
+		};
+	}
+
+	/**
+	 * Dispatch a tool call to the connected device and return the result.
+	 * Called by the Computer Use workflow node during execution.
+	 * Uses standard session auth — the gateway is resolved from the authenticated user.
+	 */
+	@Post('/gateway/call-tool')
+	@GlobalScope('instanceAi:gateway')
+	async gatewayCallTool(req: AuthenticatedRequest) {
+		const gateway = this.gatewayService.getLocalGateway(req.user.id);
+
+		if (!gateway.isConnected) {
+			throw new BadRequestError(
+				"Device is offline. Start the n8n CLI on the device to continue. Run 'npx @n8n/computer-use' to connect.",
+			);
+		}
+
+		const body = req.body as { name?: string; arguments?: Record<string, unknown> };
+		if (!body.name || typeof body.name !== 'string') {
+			throw new BadRequestError('Missing required field: name');
+		}
+
+		const toolCall = {
+			name: body.name,
+			arguments: body.arguments ?? {},
+		};
+
+		const result = await gateway.callTool(toolCall);
+		return result;
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────
