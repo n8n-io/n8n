@@ -227,6 +227,14 @@ export class AgentKnowledgeSandboxService {
 				}
 				await sandbox.fs.uploadFile(buffer, filePath);
 			},
+			uploadFiles: async (files) => {
+				if (files.length === 0) {
+					return;
+				}
+				await sandbox.fs.uploadFiles(
+					files.map((file) => ({ source: file.source, destination: file.destination })),
+				);
+			},
 			deleteFile: async (filePath, recursive) => await sandbox.fs.deleteFile(filePath, recursive),
 			ensureDir: async (dirPath) => await sandbox.fs.createFolder(dirPath, '755'),
 		};

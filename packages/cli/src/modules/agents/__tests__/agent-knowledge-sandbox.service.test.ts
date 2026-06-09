@@ -17,6 +17,7 @@ import {
 interface MockFilesystem {
 	downloadFile: jest.Mock;
 	uploadFile: jest.Mock;
+	uploadFiles: jest.Mock;
 	createFolder: jest.Mock;
 	deleteFile: jest.Mock;
 }
@@ -133,6 +134,9 @@ function makeFilesystem(): MockFilesystem {
 	return {
 		downloadFile: jest.fn<Promise<Buffer>, [string]>(async () => Buffer.from('')),
 		uploadFile: jest.fn<Promise<void>, [Buffer, string]>(async () => {}),
+		uploadFiles: jest.fn<Promise<void>, [Array<{ source: Buffer | string; destination: string }>]>(
+			async () => {},
+		),
 		createFolder: jest.fn<Promise<void>, [string, string]>(async () => {}),
 		deleteFile: jest.fn<Promise<void>, [string, boolean?]>(async () => {}),
 	};
@@ -550,6 +554,29 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(sandbox.fs.downloadFile).toHaveBeenCalledWith(
 			'/home/daytona/workspace/agent-knowledge/files/note.txt',
 		);
+	});
+
+	it('delegates batch uploads to sandbox.fs.uploadFiles', async () => {
+		const sandbox = makeSandbox('started');
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		const service = makeService();
+		const uploads = [
+			{
+				source: '/tmp/notes.txt',
+				destination: `${KNOWLEDGE_FILES_DIR}/notes.txt`,
+			},
+			{
+				source: Buffer.from('extracted pdf text', 'utf-8'),
+				destination: `${KNOWLEDGE_FILES_DIR}/report.txt`,
+			},
+		];
+
+		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async (filesystem) => {
+			await filesystem.uploadFiles(uploads);
+		});
+
+		expect(sandbox.fs.uploadFiles).toHaveBeenCalledTimes(1);
+		expect(sandbox.fs.uploadFiles).toHaveBeenCalledWith(uploads);
 	});
 
 	it.each([

@@ -3,10 +3,8 @@ import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils';
-import { readFile, unlink } from 'node:fs/promises';
+import { unlink } from 'node:fs/promises';
 import path from 'node:path';
-import { OperationalError } from 'n8n-workflow';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -17,6 +15,7 @@ import {
 	storageFileNameForOriginalFileName,
 	toAgentFileDto,
 	toVolumeStorageReference,
+	type AgentKnowledgeFileUpload,
 	type AgentKnowledgeFilesystem,
 } from './agent-knowledge-storage';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
@@ -67,10 +66,17 @@ export class AgentKnowledgeService {
 				agentId,
 				userId,
 				async (filesystem) => {
+					const volumeUploads: AgentKnowledgeFileUpload[] = [];
 					try {
 						for (const file of files) {
-							uploadedFiles.push(await this.uploadFileToVolume(agentId, file, filesystem));
+							const storageFileName = storageFileNameForOriginalFileName(file.originalname);
+							const agentFile = await this.reserveAgentFile(agentId, file, storageFileName);
+							uploadedFiles.push(agentFile);
+							const upload = await this.prepareVolumeUpload(file, storageFileName);
+							volumeUploads.push(upload);
 						}
+						await filesystem.ensureDir(KNOWLEDGE_FILES_DIR);
+						await filesystem.uploadFiles(volumeUploads);
 					} catch (error) {
 						await this.cleanupUploadedFiles(filesystem, uploadedFiles);
 						throw error;
@@ -142,17 +148,12 @@ export class AgentKnowledgeService {
 		await this.agentFileRepository.delete({ agentId });
 	}
 
-	private async uploadFileToVolume(
+	private async reserveAgentFile(
 		agentId: string,
 		file: Express.Multer.File,
-		filesystem: AgentKnowledgeFilesystem,
+		storageFileName: string,
 	): Promise<AgentFile> {
-		if (!file.path) {
-			throw new OperationalError('Uploaded file is missing a temp path');
-		}
-
 		const fileId = generateNanoId();
-		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
 		const agentFile = this.agentFileRepository.create({
 			id: fileId,
 			agentId,
@@ -161,25 +162,38 @@ export class AgentKnowledgeService {
 			mimeType: file.mimetype,
 			fileSizeBytes: file.size,
 		});
-		let savedFile: AgentFile;
+
 		try {
-			savedFile = await this.agentFileRepository.save(agentFile);
+			return await this.agentFileRepository.save(agentFile);
 		} catch (error) {
 			if (isUniqueConstraintError(error)) {
 				throw this.duplicateFileNameError(file.originalname);
 			}
 			throw error;
 		}
+	}
 
-		try {
-			const content = await this.readUploadedFileContent(file);
-			await filesystem.ensureDir(KNOWLEDGE_FILES_DIR);
-			await filesystem.writeFile(this.storagePathFor(storageFileName), content);
-			return savedFile;
-		} catch (error) {
-			await this.agentFileRepository.delete({ id: fileId, agentId }).catch(() => {});
-			throw error;
+	private async prepareVolumeUpload(
+		file: Express.Multer.File,
+		storageFileName: string,
+	): Promise<AgentKnowledgeFileUpload> {
+		if (!file.path) {
+			throw new BadRequestError('Uploaded file path is missing');
 		}
+
+		const extension = path.extname(file.originalname).toLowerCase();
+		if (extension === '.pdf') {
+			const extractedText = await this.extractPdfText(file.path);
+			return {
+				source: Buffer.from(extractedText, 'utf-8'),
+				destination: this.storagePathFor(storageFileName),
+			};
+		}
+
+		return {
+			source: file.path,
+			destination: this.storagePathFor(storageFileName),
+		};
 	}
 
 	private async cleanupUploadedFiles(
@@ -190,20 +204,6 @@ export class AgentKnowledgeService {
 			await this.deleteVolumeFile(filesystem, file).catch(() => {});
 			await this.agentFileRepository.delete({ id: file.id, agentId: file.agentId }).catch(() => {});
 		}
-	}
-
-	private async readUploadedFileContent(file: Express.Multer.File): Promise<string> {
-		if (!file.path) {
-			throw new BadRequestError('Uploaded file path is missing');
-		}
-
-		const extension = path.extname(file.originalname).toLowerCase();
-		if (extension === '.pdf') {
-			return await this.extractPdfText(file.path);
-		}
-
-		const fileBuffer = await readFile(file.path);
-		return fileBuffer.toString('utf-8');
 	}
 
 	private async extractPdfText(filePath: string): Promise<string> {

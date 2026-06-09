@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import { QueryFailedError } from '@n8n/typeorm';
-import { mkdtemp, writeFile, access } from 'node:fs/promises';
+import { access, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { OperationalError } from 'n8n-workflow';
@@ -12,6 +12,7 @@ import {
 	fromVolumeStorageReference,
 	KNOWLEDGE_FILES_DIR,
 	toVolumeStorageReference,
+	type AgentKnowledgeFileUpload,
 	type AgentKnowledgeFilesystem,
 } from '../agent-knowledge-storage';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
@@ -70,6 +71,7 @@ class InMemoryKnowledgeFilesystem implements AgentKnowledgeFilesystem {
 	private readonly files = new Map<string, Buffer>();
 	readonly deleteCalls: Array<{ filePath: string; recursive?: boolean }> = [];
 	readonly writeCalls: string[] = [];
+	readonly uploadFileCalls: AgentKnowledgeFileUpload[] = [];
 
 	async readFile(filePath: string): Promise<Buffer> {
 		const content = this.files.get(filePath);
@@ -85,6 +87,18 @@ class InMemoryKnowledgeFilesystem implements AgentKnowledgeFilesystem {
 		this.writeCalls.push(filePath);
 		const buffer = typeof content === 'string' ? Buffer.from(content, 'utf-8') : content;
 		this.files.set(filePath, buffer);
+	}
+
+	async uploadFiles(files: AgentKnowledgeFileUpload[]): Promise<void> {
+		this.uploadFileCalls.push(...files);
+		for (const file of files) {
+			if (typeof file.source === 'string') {
+				const content = await readFile(file.source);
+				this.files.set(file.destination, content);
+				continue;
+			}
+			this.files.set(file.destination, file.source);
+		}
 	}
 
 	async deleteFile(filePath: string, recursive?: boolean): Promise<void> {
@@ -255,6 +269,13 @@ describe('AgentKnowledgeService', () => {
 		const storedFile = agentFileRepository.all()[0];
 		const storageFileName = fromVolumeStorageReference(storedFile.binaryDataId);
 		expect(storageFileName).toBe('notes.txt');
+		expect(filesystem.uploadFileCalls).toEqual([
+			{
+				source: tempFilePath,
+				destination: `${KNOWLEDGE_FILES_DIR}/notes.txt`,
+			},
+		]);
+		expect(filesystem.writeCalls).toEqual([]);
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/notes.txt`)?.toString('utf-8')).toBe(
 			'hello world',
 		);
@@ -292,6 +313,16 @@ describe('AgentKnowledgeService', () => {
 		);
 
 		expect(result.map((entry) => entry.fileName)).toEqual(['guide.md', 'data.csv']);
+		expect(filesystem.uploadFileCalls).toEqual([
+			{
+				source: markdownPath,
+				destination: `${KNOWLEDGE_FILES_DIR}/guide.md`,
+			},
+			{
+				source: csvPath,
+				destination: `${KNOWLEDGE_FILES_DIR}/data.csv`,
+			},
+		]);
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/guide.md`)?.toString('utf-8')).toBe('# Title');
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/data.csv`)?.toString('utf-8')).toBe('a,b');
 	});
@@ -325,6 +356,12 @@ describe('AgentKnowledgeService', () => {
 
 		const storedFile = agentFileRepository.all()[0];
 		expect(fromVolumeStorageReference(storedFile.binaryDataId)).toBe('report.txt');
+		expect(filesystem.uploadFileCalls).toEqual([
+			{
+				source: Buffer.from('extracted pdf text', 'utf-8'),
+				destination: `${KNOWLEDGE_FILES_DIR}/report.txt`,
+			},
+		]);
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/report.txt`)?.toString('utf-8')).toBe(
 			'extracted pdf text',
 		);
@@ -335,7 +372,7 @@ describe('AgentKnowledgeService', () => {
 		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
 		const tempFilePath = path.join(tempDirectory, 'notes.txt');
 		await writeFile(tempFilePath, 'hello world');
-		filesystem.writeFile = jest.fn().mockRejectedValue(new Error('volume write failed'));
+		filesystem.uploadFiles = jest.fn().mockRejectedValue(new Error('volume write failed'));
 
 		await expect(
 			service.uploadFiles(
@@ -355,22 +392,42 @@ describe('AgentKnowledgeService', () => {
 		expect(agentFileRepository.all()).toEqual([]);
 	});
 
-	it('removes earlier files from DB and volume when a later upload fails', async () => {
+	it('removes the DB row when upload preparation fails after reservation', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+		const tempFilePath = path.join(tempDirectory, 'report.pdf');
+		await writeFile(tempFilePath, '%PDF-1.4');
+		loadMock.mockRejectedValue(new Error('pdf extraction failed'));
+
+		await expect(
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'report.pdf',
+						mimetype: 'application/pdf',
+						path: tempFilePath,
+						size: 8,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
+		).rejects.toThrow('pdf extraction failed');
+
+		expect(agentFileRepository.all()).toEqual([]);
+		expect(filesystem.uploadFileCalls).toEqual([]);
+	});
+
+	it('removes reserved files from DB and volume when batch upload fails', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
 		const firstPath = path.join(tempDirectory, 'first.txt');
 		const secondPath = path.join(tempDirectory, 'second.txt');
 		await writeFile(firstPath, 'first');
 		await writeFile(secondPath, 'second');
-		const writeFileToVolume = filesystem.writeFile.bind(filesystem);
-		let writeCount = 0;
-		filesystem.writeFile = jest.fn(async (filePath: string, content: Buffer | string) => {
-			writeCount += 1;
-			if (writeCount === 2) {
-				throw new Error('volume write failed');
-			}
-			await writeFileToVolume(filePath, content);
-		});
+		filesystem.uploadFiles = jest.fn().mockRejectedValue(new Error('volume write failed'));
 
 		await expect(
 			service.uploadFiles(
@@ -395,8 +452,8 @@ describe('AgentKnowledgeService', () => {
 		).rejects.toThrow('volume write failed');
 
 		expect(agentFileRepository.all()).toEqual([]);
-		expect(filesystem.writeCalls).toHaveLength(1);
-		expect(filesystem.get(filesystem.writeCalls[0])).toBeUndefined();
+		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/first.txt`)).toBeUndefined();
+		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/second.txt`)).toBeUndefined();
 	});
 
 	it('lists DB-backed files without touching the sandbox service', async () => {
@@ -590,7 +647,7 @@ describe('AgentKnowledgeService', () => {
 				userId,
 			),
 		).rejects.toThrow(BadRequestError);
-		expect(filesystem.writeCalls).toEqual([]);
+		expect(filesystem.uploadFileCalls).toEqual([]);
 	});
 
 	it('rejects pdf uploads that collide with an existing text file storage path', async () => {

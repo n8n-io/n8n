@@ -12,11 +12,34 @@ export const AGENT_KNOWLEDGE_VOLUME_SUBPATH_PREFIX = 'agent-knowledge';
 
 const DAYTONA_VOLUME_STORAGE_PREFIX = 'daytona-volume:';
 
+export interface AgentKnowledgeFileUpload {
+	/** Local temp file path when `string`; in-memory content when `Buffer`. */
+	source: Buffer | string;
+	destination: string;
+}
+
 export interface AgentKnowledgeFilesystem {
 	readFile(filePath: string): Promise<Buffer>;
 	writeFile(filePath: string, content: Buffer | string): Promise<void>;
+	uploadFiles(files: AgentKnowledgeFileUpload[]): Promise<void>;
 	deleteFile(filePath: string, recursive?: boolean): Promise<void>;
 	ensureDir(dirPath: string): Promise<void>;
+}
+
+function hasControlCharacter(value: string): boolean {
+	for (const character of value) {
+		if (character.charCodeAt(0) < 32) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function sanitizePathCharacter(character: string): string {
+	if (character === '/' || character === '\\' || character.charCodeAt(0) < 32) {
+		return '_';
+	}
+	return character;
 }
 
 export function buildKnowledgeVolumeSubpath(
@@ -33,7 +56,7 @@ export function assertKnowledgePathSegment(segment: string, label: string): void
 		segment === '.' ||
 		segment === '..' ||
 		/[\\/]/.test(segment) ||
-		/[\u0000-\u001f]/.test(segment)
+		hasControlCharacter(segment)
 	) {
 		throw new Error(`Invalid ${label} for agent knowledge storage`);
 	}
@@ -41,7 +64,7 @@ export function assertKnowledgePathSegment(segment: string, label: string): void
 
 export function sanitizeStorageFileName(originalName: string): string {
 	const basename = path.basename(originalName);
-	return basename.replace(/[\u0000-\u001f\\/]/g, '_');
+	return Array.from(basename, sanitizePathCharacter).join('');
 }
 
 export function toVolumeStorageReference(storageFileName: string): string {
