@@ -18,9 +18,7 @@ jest.mock('fs/promises', () => ({
 	unlink: jest.fn().mockResolvedValue(undefined),
 }));
 
-// Wire a controllable stub for `multer()` so we can simulate what `single()`
-// does without spinning up a real HTTP stack: each test decides whether the
-// multer middleware succeeds, fails, or what file it claims to have written.
+// Controllable stub for multer().single() — each test sets its behaviour.
 const multerSingleMiddleware = jest.fn();
 jest.mock('multer', () => {
 	class MulterError extends Error {}
@@ -170,8 +168,7 @@ describe('MulterUploadMiddleware', () => {
 		});
 
 		test('runs the post-stream check even when an explicit per-file cap is configured', async () => {
-			// multer's per-file limit doesn't protect against orphan accumulation:
-			// many small files can still push the temp dir past the overall quota.
+			// multer's per-file limit doesn't protect against orphan accumulation.
 			const { middleware, sizeValidator } = buildMiddleware({
 				uploadMaxFileSize: 1024,
 			});
@@ -238,6 +235,43 @@ describe('MulterUploadMiddleware', () => {
 
 			expect(req.fileUploadError).toBeInstanceOf(BadRequestError);
 			expect(fs.unlink).toHaveBeenCalledWith(filePath);
+		});
+
+		test('serializes concurrent quota checks so they observe consistent temp dir state', async () => {
+			const { middleware, sizeValidator } = buildMiddleware();
+			sizeValidator.getCachedSizeData.mockResolvedValue({
+				totalBytes: 30 * 1024 * 1024,
+			} as never);
+
+			const present = new Set<string>();
+			fs.readdir.mockImplementation(async () => Array.from(present));
+			fs.stat.mockImplementation(async () => ({
+				isFile: () => true,
+				size: 15 * 1024 * 1024,
+			}));
+			fs.unlink.mockImplementation(async (target: string) => {
+				present.delete(target.split('/').pop()!);
+			});
+
+			let callIndex = 0;
+			multerSingleMiddleware.mockImplementation((req, _res, cb) => {
+				const name = callIndex++ === 0 ? 'upload-a' : 'upload-b';
+				present.add(name);
+				(req as AuthenticatedRequestWithFile).file = {
+					path: `${UPLOAD_DIR}/${name}`,
+					size: 15 * 1024 * 1024,
+				} as Express.Multer.File;
+				cb(null);
+			});
+
+			const [first, second] = await Promise.all([runHandler(middleware), runHandler(middleware)]);
+
+			// First check sees both files (over quota) and unlinks itself.
+			// Second check then sees only its own bytes left and passes.
+			expect(first.fileUploadError).toBeInstanceOf(BadRequestError);
+			expect(second.fileUploadError).toBeUndefined();
+			expect(fs.unlink).toHaveBeenCalledWith(`${UPLOAD_DIR}/upload-a`);
+			expect(fs.unlink).not.toHaveBeenCalledWith(`${UPLOAD_DIR}/upload-b`);
 		});
 
 		test('forwards multer errors without running the quota check', async () => {

@@ -27,6 +27,8 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 
 	private readonly uploadDir: string;
 
+	private quotaCheckChain: Promise<void> = Promise.resolve();
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly sizeValidator: DataTableSizeValidator,
@@ -97,7 +99,7 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 
 				if (authedReq.file) {
 					try {
-						await this.enforceQuotaPostUpload(authedReq.file.path);
+						await this.enqueueQuotaCheck(authedReq.file.path);
 					} catch (err) {
 						authedReq.fileUploadError = err as Error;
 					}
@@ -105,6 +107,15 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 				next();
 			});
 		};
+	}
+
+	private async enqueueQuotaCheck(uploadPath: string): Promise<void> {
+		// .catch on the shared chain so one rejection doesn't kill the queue.
+		const next = this.quotaCheckChain
+			.catch(() => {})
+			.then(async () => await this.enforceQuotaPostUpload(uploadPath));
+		this.quotaCheckChain = next.catch(() => {});
+		await next;
 	}
 
 	private async enforceQuotaPostUpload(uploadPath: string): Promise<void> {
