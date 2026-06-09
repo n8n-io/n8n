@@ -87,6 +87,7 @@ export class AgentsBuilderService {
 		message: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		abortSignal?: AbortSignal,
 	): AsyncGenerator<StreamChunk> {
 		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
 
@@ -100,6 +101,7 @@ export class AgentsBuilderService {
 		yield* this.agentsRuntimeService.streamSteerableTurns({
 			message,
 			streamKey,
+			abortSignal,
 			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
 				const resultStream = await builder.stream(turnMessage, {
 					persistence: { threadId: builderThreadId(agentId), resourceId },
@@ -140,6 +142,7 @@ export class AgentsBuilderService {
 		resumeData: unknown,
 		credentialProvider: CredentialProvider,
 		user: User,
+		abortSignal?: AbortSignal,
 	): AsyncGenerator<StreamChunk> {
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -160,6 +163,7 @@ export class AgentsBuilderService {
 
 		yield* this.agentsRuntimeService.streamSteerableTurns({
 			streamKey,
+			abortSignal,
 			async *initialTurn(control: AgentStreamControl | undefined) {
 				const resultStream = await builder.resume('stream', resumeData, {
 					runId,

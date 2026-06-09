@@ -575,7 +575,7 @@ export class AgentsController {
 			req.user,
 		);
 
-		const { send } = initSseStream(res);
+		const { send, abortSignal, cleanup } = initSseStream(res);
 
 		// If the client supplied a sessionId and a thread already exists under that id,
 		// the thread must belong to this (project, agent). Otherwise a caller could
@@ -585,6 +585,7 @@ export class AgentsController {
 			const existing = await this.agentExecutionService.findThreadById(sessionId);
 			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
 				send({ type: 'error', message: 'Session not found' });
+				cleanup();
 				res.end();
 				return;
 			}
@@ -604,6 +605,7 @@ export class AgentsController {
 				errorCode: 'agent_misconfigured',
 				missing,
 			});
+			cleanup();
 			res.end();
 			return;
 		}
@@ -619,6 +621,7 @@ export class AgentsController {
 						threadId,
 						resourceId: draftChatMemoryResourceId(req.user.id),
 					},
+					abortSignal,
 				}),
 				send,
 			);
@@ -630,6 +633,7 @@ export class AgentsController {
 			send({ type: 'error', message: errorMessage });
 		}
 
+		cleanup();
 		res.end();
 	}
 
@@ -643,7 +647,7 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
-		const { send } = initSseStream(res);
+		const { send, abortSignal, cleanup } = initSseStream(res);
 
 		try {
 			const suspended = await pumpChunks(
@@ -655,6 +659,7 @@ export class AgentsController {
 					resumeData,
 					userId: req.user.id,
 					usePublishedVersion: false,
+					abortSignal,
 				}),
 				send,
 			);
@@ -666,6 +671,7 @@ export class AgentsController {
 			send({ type: 'error', message: errorMessage });
 		}
 
+		cleanup();
 		res.end();
 	}
 
@@ -779,7 +785,7 @@ export class AgentsController {
 			req.user,
 		);
 
-		const { send } = initSseStream(res);
+		const { send, abortSignal, cleanup } = initSseStream(res);
 
 		try {
 			const suspended = await pumpChunks(
@@ -789,6 +795,7 @@ export class AgentsController {
 					message,
 					credentialProvider,
 					req.user,
+					abortSignal,
 				),
 				send,
 				makeBuilderToolEvents(send),
@@ -810,6 +817,7 @@ export class AgentsController {
 			});
 		}
 
+		cleanup();
 		res.end();
 	}
 
@@ -836,7 +844,7 @@ export class AgentsController {
 			req.user,
 		);
 
-		const { send } = initSseStream(res);
+		const { send, abortSignal, cleanup } = initSseStream(res);
 
 		try {
 			const suspended = await pumpChunks(
@@ -848,6 +856,7 @@ export class AgentsController {
 					resumeData,
 					credentialProvider,
 					req.user,
+					abortSignal,
 				),
 				send,
 				makeBuilderToolEvents(send),
@@ -861,6 +870,7 @@ export class AgentsController {
 			send({ type: 'error', message: errorMessage });
 		}
 
+		cleanup();
 		res.end();
 	}
 

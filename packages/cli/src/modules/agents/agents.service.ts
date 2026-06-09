@@ -103,6 +103,7 @@ export interface ExecuteForChatConfig {
 	userId: string;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	abortSignal?: AbortSignal;
 }
 
 export interface ExecuteForChatPublishedConfig {
@@ -112,6 +113,7 @@ export interface ExecuteForChatPublishedConfig {
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
 	integrationType?: string;
+	abortSignal?: AbortSignal;
 }
 
 export interface ResumeForChatConfig {
@@ -131,6 +133,7 @@ export interface ResumeForChatConfig {
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
+	abortSignal?: AbortSignal;
 }
 
 export interface ExecuteForTaskPublishedConfig {
@@ -169,6 +172,7 @@ interface StreamChatResponseConfig {
 	source?: string;
 	taskId?: string;
 	taskVersionId?: string;
+	abortSignal?: AbortSignal;
 }
 
 interface GetRuntimeParams {
@@ -786,6 +790,7 @@ export class AgentsService {
 			integrationType,
 			userId,
 			usePublishedVersion = true,
+			abortSignal,
 		} = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
@@ -829,6 +834,7 @@ export class AgentsService {
 			memory: memoryScope,
 			streamKey,
 			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
+			abortSignal,
 		});
 	}
 
@@ -1024,7 +1030,7 @@ export class AgentsService {
 	 *
 	 */
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, userId, memory } = config;
+		const { agentId, projectId, message, userId, memory, abortSignal } = config;
 
 		const runtime = await this.getRuntime({ agentId, projectId, n8nUserId: userId });
 
@@ -1037,6 +1043,7 @@ export class AgentsService {
 			memory,
 			projectId: runtime.projectId,
 			streamKey: testChatAgentStreamKey(projectId, agentId, userId, memory.threadId),
+			abortSignal,
 		});
 	}
 
