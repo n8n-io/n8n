@@ -43,7 +43,7 @@ vi.mock('../json-config/from-json-config', async () => {
 	return {
 		...actual,
 		buildFromJson: (...args: unknown[]) => buildFromJsonMock(...args),
-	}
+	};
 });
 
 const buildMcpClientForServerMock = vi

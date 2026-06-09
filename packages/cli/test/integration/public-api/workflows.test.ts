@@ -36,7 +36,6 @@ import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
-
 mockInstance(Telemetry);
 
 let ownerPersonalProject: Project;

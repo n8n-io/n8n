@@ -5,7 +5,12 @@ import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase, IRun, INode, IExecuteData, ITaskData } from 'n8n-workflow';
-import { createDeferredPromise, createRunExecutionData, UnexpectedError, WAIT_INDEFINITELY } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	createRunExecutionData,
+	UnexpectedError,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock, captor } from 'vitest-mock-extended';
 
