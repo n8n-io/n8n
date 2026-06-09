@@ -308,21 +308,17 @@ function classifyOne(input: ClassifierInput): {
 	//  2. Activation-required is desktop-assistant-only — plenty of user-built
 	//     workflows are intentionally inactive (templates, drafts) and shouldn't
 	//     be nagged.
-	//  3. Active schedule/poll workflows go to upcoming regardless of source.
-	//     These have time-based "next run" semantics that are valuable to
-	//     surface for the user-built case too. Webhook workflows are kept
-	//     tag-gated since they have no time preview and would spam upcoming
-	//     with every user-built webhook.
+	//  3. Active autonomous-trigger workflows (schedule/poll/webhook) go to
+	//     upcoming regardless of source. readyToRun is reserved for
+	//     manually-triggered workflows; anything that fires on its own —
+	//     time-based or webhook-driven — belongs in upcoming.
 	//  4. Tagged manual-trigger workflows go to readyToRun.
 	//  5. Everything else user-built falls through to readyToRun.
-	const isTimeBasedRecurring = summary.kind === 'schedule' || summary.kind === 'poll';
 	if (missingCredential) {
 		bucket = 'actionNeeded';
 	} else if (tagged && !input.active && isScheduleOrPoll) {
 		bucket = 'actionNeeded';
-	} else if (input.active && isTimeBasedRecurring) {
-		bucket = 'upcoming';
-	} else if (tagged && input.active && summary.kind === 'webhook') {
+	} else if (input.active && isScheduleOrPoll) {
 		bucket = 'upcoming';
 	} else if (tagged && trigger?.type === MANUAL_TRIGGER_TYPE) {
 		bucket = 'readyToRun';

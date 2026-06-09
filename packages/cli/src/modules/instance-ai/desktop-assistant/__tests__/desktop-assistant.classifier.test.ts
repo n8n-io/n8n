@@ -109,7 +109,7 @@ describe('classifyWorkflowsForDesktopAssistant — bucketing rules', () => {
 		expect(result.readyToRun[0].source).toBe('user-built');
 	});
 
-	test('webhook trigger, untagged → readyToRun (user-built), not in da buckets', () => {
+	test('webhook trigger, untagged, active → upcoming (autonomous trigger, regardless of source)', () => {
 		const result = classifyWorkflowsForDesktopAssistant([
 			input({
 				workflowId: 'wf-1',
@@ -118,10 +118,11 @@ describe('classifyWorkflowsForDesktopAssistant — bucketing rules', () => {
 				tags: [],
 			}),
 		]);
-		expect(result.readyToRun).toHaveLength(1);
-		expect(result.readyToRun[0].source).toBe('user-built');
+		expect(result.upcoming).toHaveLength(1);
+		expect(result.upcoming[0].source).toBe('user-built');
+		expect(result.upcoming[0].trigger.kind).toBe('webhook');
 		expect(result.actionNeeded).toHaveLength(0);
-		expect(result.upcoming).toHaveLength(0);
+		expect(result.readyToRun).toHaveLength(0);
 	});
 
 	test('precedence: actionNeeded beats upcoming when both apply via missing credential', () => {
@@ -222,7 +223,7 @@ describe('classifyWorkflowsForDesktopAssistant — bucketing rules', () => {
 		expect(result.readyToRun).toHaveLength(0);
 	});
 
-	test('an active user-built webhook workflow stays in readyToRun (no time-based preview)', () => {
+	test('an active user-built webhook workflow goes to upcoming (autonomous trigger; readyToRun is for manually-triggered workflows)', () => {
 		const result = classifyWorkflowsForDesktopAssistant([
 			input({
 				workflowId: 'wf-user-webhook',
@@ -231,9 +232,10 @@ describe('classifyWorkflowsForDesktopAssistant — bucketing rules', () => {
 				tags: [],
 			}),
 		]);
-		expect(result.readyToRun).toHaveLength(1);
-		expect(result.readyToRun[0].source).toBe('user-built');
-		expect(result.upcoming).toHaveLength(0);
+		expect(result.upcoming).toHaveLength(1);
+		expect(result.upcoming[0].source).toBe('user-built');
+		expect(result.upcoming[0].trigger.kind).toBe('webhook');
+		expect(result.readyToRun).toHaveLength(0);
 	});
 
 	test('disabled nodes do not contribute missing credentials to actionNeeded', () => {
