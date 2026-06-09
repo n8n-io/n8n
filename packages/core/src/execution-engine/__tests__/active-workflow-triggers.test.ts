@@ -500,7 +500,7 @@ describe('ActiveWorkflowTriggers', () => {
 
 			expect(triggersAndPollers.runTriggerFunction).toHaveBeenCalledTimes(2);
 
-			await activeWorkflowTriggers.removeTriggers(workflowId, ['a', 'b']);
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a', 'b']));
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 		});
 	});
@@ -534,7 +534,7 @@ describe('ActiveWorkflowTriggers', () => {
 		it('closes only the targeted trigger and deregisters its cron, leaving others active', async () => {
 			await addTriggerNodesAB();
 
-			await activeWorkflowTriggers.removeTriggers(workflowId, ['a']);
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a']));
 
 			expect(responseA.closeFunction).toHaveBeenCalled();
 			expect(responseB.closeFunction).not.toHaveBeenCalled();
@@ -546,7 +546,7 @@ describe('ActiveWorkflowTriggers', () => {
 			await addTriggerNodesAB();
 			scheduledTaskManager.hasCrons.mockReturnValue(false);
 
-			await activeWorkflowTriggers.removeTriggers(workflowId, ['a', 'b']);
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a', 'b']));
 
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
 		});
@@ -555,7 +555,7 @@ describe('ActiveWorkflowTriggers', () => {
 			await addTriggerNodesAB();
 			scheduledTaskManager.hasCrons.mockReturnValue(true);
 
-			await activeWorkflowTriggers.removeTriggers(workflowId, ['a', 'b']);
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a', 'b']));
 
 			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
 		});
@@ -580,7 +580,7 @@ describe('ActiveWorkflowTriggers', () => {
 				getPollFunctions,
 			);
 
-			await activeWorkflowTriggers.removeTriggers(workflowId, ['p']);
+			await activeWorkflowTriggers.removeTriggers(workflowId, new Set(['p']));
 
 			expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(workflowId, 'p');
 		});
