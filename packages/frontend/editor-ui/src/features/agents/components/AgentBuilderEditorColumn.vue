@@ -16,6 +16,7 @@ import AgentJsonEditor from './AgentJsonEditor.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
+import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -128,17 +129,18 @@ const i18n = useI18n();
 						<AgentInfoPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
+							:project-id="projectId"
 							embedded
 							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>
 
 					<N8nCard variant="outlined" :class="$style.card">
-						<AgentMemoryPanel
+						<AgentSubAgentsPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
-							embedded
-							data-testid="agent-memory-panel"
+							:project-id="projectId"
+							:agent-id="agentId"
 							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>
@@ -153,6 +155,16 @@ const i18n = useI18n();
 							data-testid="agent-files-card"
 							@upload-files="emit('upload-files', $event)"
 							@delete-file="emit('delete-file', $event)"
+						/>
+					</N8nCard>
+
+					<N8nCard variant="outlined" :class="$style.card">
+						<AgentMemoryPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							embedded
+							data-testid="agent-memory-panel"
+							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>
 

@@ -32,6 +32,7 @@ import {
 	type OAuth1CredentialData,
 } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
+import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
@@ -54,6 +55,7 @@ describe('OauthService', () => {
 	const oauthJweServiceProxy = mockInstance(OAuthJweServiceProxy);
 	const browserBindingService = mockInstance(OAuthBrowserBindingService);
 	const eventService = mockInstance(EventService);
+	const cacheService = mockInstance(CacheService);
 
 	let service: OauthService;
 
@@ -99,6 +101,7 @@ describe('OauthService', () => {
 			oauthJweServiceProxy,
 			browserBindingService,
 			eventService,
+			cacheService,
 		);
 	});
 
@@ -889,9 +892,9 @@ describe('OauthService', () => {
 				origin: 'static-credential',
 				createdAt: Date.now(),
 			};
-			const decrypted = { csrfSecret };
+			const flowState = { csrfSecret };
 
-			const result = (service as any).verifyCsrfState(decrypted, state);
+			const result = (service as any).verifyCsrfState(flowState, state);
 
 			expect(result).toBe(true);
 		});
@@ -907,14 +910,18 @@ describe('OauthService', () => {
 				origin: 'dynamic-credential',
 				createdAt: Date.now(),
 			};
-			const decrypted = { csrfSecret };
+			const flowState = { csrfSecret };
 
-			const result = (service as any).verifyCsrfState(decrypted, state);
+			const result = (service as any).verifyCsrfState(flowState, state);
 
 			expect(result).toBe(true);
 		});
 
-		it('should return false when CSRF state is expired', () => {
+		it('does not gate on createdAt — expiry is enforced by the cache TTL, not here', () => {
+			// Expiry now lives at the cache layer (TTL = MAX_CSRF_AGE): an expired flow is
+			// evicted and reaches verifyCsrfState as `undefined`. So given a present flowState,
+			// a stale createdAt is no longer a rejection reason at this layer. The real expiry
+			// path is covered by the cache-miss test below + the storeOauthFlowState TTL test.
 			const csrfSecret = 'csrf-secret';
 			const token = new (require('csrf'))();
 			const stateToken = token.create(csrfSecret);
@@ -926,14 +933,14 @@ describe('OauthService', () => {
 				origin: 'static-credential',
 				createdAt: expiredTime,
 			};
-			const decrypted = { csrfSecret };
+			const flowState = { csrfSecret };
 
-			const result = (service as any).verifyCsrfState(decrypted, state);
+			const result = (service as any).verifyCsrfState(flowState, state);
 
-			expect(result).toBe(false);
+			expect(result).toBe(true);
 		});
 
-		it('should return false when csrfSecret is missing', () => {
+		it('should return false when flowState is undefined (cache miss / replay)', () => {
 			const token = new (require('csrf'))();
 			const csrfSecret = 'csrf-secret';
 			const stateToken = token.create(csrfSecret);
@@ -944,9 +951,8 @@ describe('OauthService', () => {
 				origin: 'static-credential',
 				createdAt: Date.now(),
 			};
-			const decrypted = {};
 
-			const result = (service as any).verifyCsrfState(decrypted, state);
+			const result = (service as any).verifyCsrfState(undefined, state);
 
 			expect(result).toBe(false);
 		});
@@ -958,11 +964,45 @@ describe('OauthService', () => {
 				origin: 'static-credential',
 				createdAt: Date.now(),
 			};
-			const decrypted = { csrfSecret: 'csrf-secret' };
+			const flowState = { csrfSecret: 'csrf-secret' };
 
-			const result = (service as any).verifyCsrfState(decrypted, state);
+			const result = (service as any).verifyCsrfState(flowState, state);
 
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('storeOauthFlowState / consumeOauthFlowState', () => {
+		it('stores the flow state in the cache under the token key with MAX_CSRF_AGE TTL', async () => {
+			await service.storeOauthFlowState('the-token', {
+				csrfSecret: 'csrf-secret',
+				codeVerifier: 'code-verifier',
+			});
+
+			expect(cacheService.set).toHaveBeenCalledWith(
+				'oauth:flow:the-token',
+				{ csrfSecret: 'csrf-secret', codeVerifier: 'code-verifier' },
+				5 * Time.minutes.toMilliseconds,
+			);
+		});
+
+		it('reads then deletes the flow state on consume (replay protection)', async () => {
+			cacheService.get.mockResolvedValue({ csrfSecret: 'csrf-secret' });
+
+			const result = await service.consumeOauthFlowState('the-token');
+
+			expect(cacheService.get).toHaveBeenCalledWith('oauth:flow:the-token');
+			expect(cacheService.delete).toHaveBeenCalledWith('oauth:flow:the-token');
+			expect(result).toEqual({ csrfSecret: 'csrf-secret' });
+		});
+
+		it('returns undefined and does not delete when cache misses', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+
+			const result = await service.consumeOauthFlowState('the-token');
+
+			expect(result).toBeUndefined();
+			expect(cacheService.delete).not.toHaveBeenCalled();
 		});
 	});
 
@@ -984,7 +1024,7 @@ describe('OauthService', () => {
 			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
 
 			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
-			const mockDecryptedData = { csrfSecret: 'csrf-secret' };
+			const mockDecryptedData = { someField: 'value' };
 			const mockOAuthCredentials = { clientId: 'client-id' };
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
 
@@ -998,6 +1038,10 @@ describe('OauthService', () => {
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			cacheService.get.mockResolvedValue({
+				csrfSecret: 'csrf-secret',
+				codeVerifier: 'code-verifier',
+			});
 
 			jest.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
 
@@ -1013,6 +1057,47 @@ describe('OauthService', () => {
 				userId: 'user-id',
 				origin: 'static-credential',
 			});
+			// Flow state read from cache and consumed (replay protection)
+			expect(result[4]).toEqual({ csrfSecret: 'csrf-secret', codeVerifier: 'code-verifier' });
+			expect(cacheService.delete).toHaveBeenCalledWith(`oauth:flow:${stateToken}`);
+		});
+
+		it('should reject the callback when the flow state is missing (replay / unknown state)', async () => {
+			const token = new (require('csrf'))();
+			const stateToken = token.create('csrf-secret');
+
+			const csrfData = {
+				cid: 'credential-id',
+				userId: 'user-id',
+				origin: 'static-credential' as const,
+			};
+			const state = {
+				token: stateToken,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			const encodedState = Buffer.from(JSON.stringify(state)).toString('base64');
+
+			const mockCredential = mock<CredentialsEntity>({ id: 'credential-id' });
+			const mockDecryptedData = {};
+			const mockOAuthCredentials = { clientId: 'client-id' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: { state: encodedState },
+				user: mock<User>({ id: 'user-id' }),
+			});
+
+			cipher.decryptV2.mockResolvedValue(JSON.stringify(csrfData));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(mockCredential);
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			cacheService.get.mockResolvedValue(undefined);
+
+			await expect(service.resolveCredential(req)).rejects.toThrow(
+				'The OAuth callback state is invalid!',
+			);
 		});
 
 		it('should throw NotFoundError when credential is not found', async () => {
@@ -1108,6 +1193,7 @@ describe('OauthService', () => {
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			cacheService.get.mockResolvedValue({ csrfSecret: 'csrf-secret' });
 
 			const verifySpy = jest.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
 
@@ -1180,6 +1266,7 @@ describe('OauthService', () => {
 			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
 			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
 			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			cacheService.get.mockResolvedValue({ csrfSecret: 'csrf-secret' });
 
 			const verifySpy = jest.spyOn(service as any, 'verifyCsrfState').mockReturnValue(true);
 
@@ -1251,16 +1338,18 @@ describe('OauthService', () => {
 			);
 		});
 
-		it('should remove csrfSecret from credential data', async () => {
+		it('should not persist csrfSecret on the credential when given oauth token data', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: 'credential-id',
 				name: 'Test Credential',
 				type: 'googleOAuth2Api',
 				data: 'encrypted-data',
 			});
+			// csrfSecret no longer lives on credential.data — the only path that used to
+			// strip it on save is gone. This test guards that we still never persist it
+			// even if some caller mistakenly includes it.
 			const oauthTokenData = {
 				access_token: 'access-token',
-				csrfSecret: 'csrf-secret',
 			};
 			const authToken = 'token123'; // Controller splits 'Bearer token123' and passes just 'token123'
 			const credentialResolverId = 'resolver-id';
@@ -1274,7 +1363,6 @@ describe('OauthService', () => {
 				credentialResolverId,
 			);
 
-			// Verify that storeIfNeeded was called with data that doesn't include csrfSecret
 			const callArgs = dynamicCredentialsProxy.storeIfNeeded.mock.calls[0];
 			const staticData = callArgs[3] as any;
 			expect(staticData).not.toHaveProperty('csrfSecret');
@@ -1655,12 +1743,13 @@ describe('OauthService', () => {
 			});
 
 			expect(authUri).toContain('https://example.domain/oauth2/auth');
-			expect(service.encryptAndSaveData).toHaveBeenCalled();
-			const callArgs = (service.encryptAndSaveData as jest.Mock).mock.calls[0];
-			expect(callArgs[0]).toBe(credential);
-			expect(callArgs[1]).toHaveProperty('csrfSecret');
-			expect(typeof callArgs[1].csrfSecret).toBe('string');
-			expect(callArgs[2] || []).toEqual([]);
+			// CSRF/PKCE state must not be persisted to the credential; it lives in the cache.
+			expect(service.encryptAndSaveData).not.toHaveBeenCalled();
+			expect(cacheService.set).toHaveBeenCalledWith(
+				expect.stringMatching(/^oauth:flow:/),
+				expect.objectContaining({ csrfSecret: expect.any(String) }),
+				expect.any(Number),
+			);
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.authenticate', [
 				expect.objectContaining({
 					state: expect.any(String), // base64State
@@ -1735,12 +1824,16 @@ describe('OauthService', () => {
 			});
 
 			expect(authUri).toContain('code_challenge=code_challenge');
-			expect(service.encryptAndSaveData).toHaveBeenCalled();
-			const callArgs = (service.encryptAndSaveData as jest.Mock).mock.calls[0];
-			expect(callArgs[0]).toBe(credential);
-			expect(callArgs[1]).toHaveProperty('csrfSecret');
-			expect(callArgs[1]).toHaveProperty('codeVerifier', 'code_verifier');
-			expect(callArgs[2] || []).toEqual([]);
+			// CSRF + PKCE state both go to the cache, not to the credential
+			expect(service.encryptAndSaveData).not.toHaveBeenCalled();
+			expect(cacheService.set).toHaveBeenCalledWith(
+				expect.stringMatching(/^oauth:flow:/),
+				expect.objectContaining({
+					csrfSecret: expect.any(String),
+					codeVerifier: 'code_verifier',
+				}),
+				expect.any(Number),
+			);
 		});
 
 		it('should generate auth URI with auth query parameters', async () => {
@@ -1854,6 +1947,7 @@ describe('OauthService', () => {
 				'oauth2.dynamicClientRegistration',
 				expect.any(Array),
 			);
+			// DCR-driven fields still get persisted to the credential, but CSRF/PKCE do not.
 			expect(service.encryptAndSaveData).toHaveBeenCalled();
 			const callArgs = (service.encryptAndSaveData as jest.Mock).mock.calls[0];
 			expect(callArgs[0]).toBe(credential);
@@ -1863,9 +1957,16 @@ describe('OauthService', () => {
 			expect(callArgs[1]).toHaveProperty('clientSecret', 'registered_client_secret');
 			expect(callArgs[1]).toHaveProperty('scope', 'openid profile');
 			expect(callArgs[1]).toHaveProperty('grantType', 'pkce');
-			expect(callArgs[1]).toHaveProperty('csrfSecret');
-			expect(callArgs[1]).toHaveProperty('codeVerifier', 'code_verifier');
-			expect(callArgs[2] || []).toEqual([]);
+			expect(callArgs[1]).not.toHaveProperty('csrfSecret');
+			expect(callArgs[1]).not.toHaveProperty('codeVerifier');
+			expect(cacheService.set).toHaveBeenCalledWith(
+				expect.stringMatching(/^oauth:flow:/),
+				expect.objectContaining({
+					csrfSecret: expect.any(String),
+					codeVerifier: 'code_verifier',
+				}),
+				expect.any(Number),
+			);
 		});
 
 		it('should throw BadRequestError when OAuth2 server metadata is invalid', async () => {
@@ -2027,7 +2128,9 @@ describe('OauthService', () => {
 
 			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-			jest.spyOn(service, 'createCsrfState').mockResolvedValue(['csrf-secret', 'base64-state']);
+			jest
+				.spyOn(service, 'createCsrfState')
+				.mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
 
 			await service.generateAOauth2AuthUri(credential, {
 				cid: credential.id,
@@ -2054,7 +2157,9 @@ describe('OauthService', () => {
 
 				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 				jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-				jest.spyOn(service, 'createCsrfState').mockResolvedValue(['csrf-secret', 'base64-state']);
+				jest
+					.spyOn(service, 'createCsrfState')
+					.mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
 				browserBindingService.isEnabled.mockReturnValue(true);
 
 				const csrfData: CreateCsrfStateData = {
@@ -2077,7 +2182,9 @@ describe('OauthService', () => {
 
 				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 				jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-				jest.spyOn(service, 'createCsrfState').mockResolvedValue(['csrf-secret', 'base64-state']);
+				jest
+					.spyOn(service, 'createCsrfState')
+					.mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
 				browserBindingService.isEnabled.mockReturnValue(false);
 
 				const csrfData: CreateCsrfStateData = {
@@ -2102,7 +2209,9 @@ describe('OauthService', () => {
 
 				jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
 				jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
-				jest.spyOn(service, 'createCsrfState').mockResolvedValue(['csrf-secret', 'base64-state']);
+				jest
+					.spyOn(service, 'createCsrfState')
+					.mockResolvedValue(['csrf-secret', 'base64-state', 'state-token']);
 				browserBindingService.isEnabled.mockReturnValue(true);
 				browserBindingService.ensureBindingCookie.mockReturnValue('nonce-value');
 				browserBindingService.computeHash.mockReturnValue('hash-value');
@@ -3666,10 +3775,16 @@ describe('OauthService', () => {
 			});
 
 			expect(authUri).toContain('https://example.domain/oauth/authorize?oauth_token=random-token');
-			expect(service.encryptAndSaveData).toHaveBeenCalledWith(
-				credential,
-				expect.objectContaining({ csrfSecret: expect.any(String) }),
-				[],
+			// Neither csrfSecret nor the request-token secret may be persisted to the
+			// credential — both live in the per-flow cache entry.
+			expect(service.encryptAndSaveData).not.toHaveBeenCalled();
+			expect(cacheService.set).toHaveBeenCalledWith(
+				expect.stringMatching(/^oauth:flow:/),
+				expect.objectContaining({
+					csrfSecret: expect.any(String),
+					oauthTokenSecret: 'random-secret',
+				}),
+				expect.any(Number),
 			);
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth1.authenticate', expect.any(Array));
 		});
@@ -3721,7 +3836,12 @@ describe('OauthService', () => {
 			});
 
 			expect(authUri).toContain('https://example.domain/oauth/authorize?oauth_token=random-token');
-			expect(service.encryptAndSaveData).toHaveBeenCalled();
+			expect(service.encryptAndSaveData).not.toHaveBeenCalled();
+			expect(cacheService.set).toHaveBeenCalledWith(
+				expect.stringMatching(/^oauth:flow:/),
+				expect.objectContaining({ csrfSecret: expect.any(String) }),
+				expect.any(Number),
+			);
 		});
 
 		it('should handle request token URL errors', async () => {
@@ -3746,6 +3866,92 @@ describe('OauthService', () => {
 					userId: 'user-id',
 				}),
 			).rejects.toThrow('Request token failed');
+		});
+
+		it('should preserve pre-existing query params on the authorization URL', async () => {
+			const axios = require('axios');
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'trelloOAuth1Api' });
+			const oauthCredentials: OAuth1CredentialData = {
+				consumerKey: 'consumer_key',
+				consumerSecret: 'consumer_secret',
+				requestTokenUrl: 'https://trello.com/1/OAuthGetRequestToken',
+				authUrl:
+					'https://trello.com/1/OAuthAuthorizeToken?scope=read,write,account&expiration=never&name=n8n',
+				accessTokenUrl: 'https://trello.com/1/OAuthGetAccessToken',
+				signatureMethod: 'HMAC-SHA1',
+			};
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.mocked(axios.request).mockResolvedValue({
+				data: 'oauth_token=random-token&oauth_token_secret=random-secret',
+			});
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const authUri = await service.generateAOauth1AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			const parsed = new URL(authUri);
+			expect(parsed.searchParams.get('scope')).toBe('read,write,account');
+			expect(parsed.searchParams.get('expiration')).toBe('never');
+			expect(parsed.searchParams.get('name')).toBe('n8n');
+			expect(parsed.searchParams.get('oauth_token')).toBe('random-token');
+		});
+	});
+
+	describe('getOAuth1AccessToken', () => {
+		const oauthCredentials: OAuth1CredentialData = {
+			consumerKey: 'consumer_key',
+			consumerSecret: 'consumer_secret',
+			requestTokenUrl: 'https://trello.com/1/OAuthGetRequestToken',
+			authUrl: 'https://trello.com/1/OAuthAuthorizeToken',
+			accessTokenUrl: 'https://trello.com/1/OAuthGetAccessToken',
+			signatureMethod: 'HMAC-SHA1',
+		};
+
+		it('should send a signed request to the access token endpoint and parse the response', async () => {
+			const axios = require('axios');
+			jest.mocked(axios.request).mockResolvedValue({
+				data: 'oauth_token=access-token&oauth_token_secret=access-secret',
+			});
+
+			const result = await service.getOAuth1AccessToken(oauthCredentials, {
+				oauthToken: 'request-token',
+				oauthVerifier: 'verifier',
+				oauthTokenSecret: 'request-secret',
+			});
+
+			expect(result).toEqual({
+				oauth_token: 'access-token',
+				oauth_token_secret: 'access-secret',
+			});
+
+			const requestConfig = jest.mocked(axios.request).mock.calls.at(-1)?.[0];
+			expect(requestConfig.method).toBe('POST');
+			expect(requestConfig.url).toBe('https://trello.com/1/OAuthGetAccessToken');
+			// The request must carry an OAuth1 signature and the request token in the
+			// Authorization header.
+			expect(requestConfig.headers.Authorization).toMatch(/^OAuth /);
+			expect(requestConfig.headers.Authorization).toContain('oauth_signature');
+			expect(requestConfig.headers.Authorization).toContain('oauth_token');
+			// The verifier travels in the form-encoded body.
+			expect(requestConfig.headers['content-type']).toBe('application/x-www-form-urlencoded');
+			expect(requestConfig.data).toBe('oauth_verifier=verifier');
+		});
+
+		it('should throw when the access token endpoint returns a non-string response', async () => {
+			const axios = require('axios');
+			jest.mocked(axios.request).mockResolvedValue({ data: { not: 'a string' } });
+
+			await expect(
+				service.getOAuth1AccessToken(oauthCredentials, {
+					oauthToken: 'request-token',
+					oauthVerifier: 'verifier',
+					oauthTokenSecret: 'request-secret',
+				}),
+			).rejects.toThrow(BadRequestError);
 		});
 	});
 

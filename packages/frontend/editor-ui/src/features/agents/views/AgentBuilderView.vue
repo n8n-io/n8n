@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n } from '@n8n/i18n';
 import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_FILE_SIZE_MB } from '@n8n/api-types';
 import type { AgentFileDto } from '@n8n/api-types';
@@ -45,6 +46,7 @@ import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { mcpServerToNode } from '../composables/useMcpServerAdapter';
+import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -53,10 +55,12 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
+	PROJECT_AGENTS,
 } from '../constants';
 import { agentsEventBus } from '../agents.eventBus';
 import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
+import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
 import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
@@ -126,6 +130,7 @@ const {
 	activeChatSessionId,
 	continueSessionId,
 	effectiveSessionId,
+	currentSessionHasMessages,
 	currentSessionTitle,
 	sessionMenu,
 	setSessionInUrl,
@@ -218,6 +223,29 @@ const projectName = computed<string | null>(() => {
 	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
 	return match?.name ?? null;
 });
+
+const projectRoute = computed<RouteLocationRaw>(() => ({
+	name: PROJECT_AGENTS,
+	params: { projectId: projectId.value },
+}));
+
+const agentRoute = computed<RouteLocationRaw>(() => ({
+	name: AGENT_BUILDER_VIEW,
+	params: { projectId: projectId.value, agentId: agentId.value },
+}));
+
+const previewBreadcrumbItems = computed<PathItem[]>(() => [
+	{
+		id: projectId.value,
+		label: projectName.value ?? locale.baseText('agents.builder.header.projectFallback'),
+		href: router.resolve(projectRoute.value).href,
+	},
+	{
+		id: agentId.value,
+		label: agent.value?.name ?? '…',
+		href: router.resolve(agentRoute.value).href,
+	},
+]);
 
 // A fetch/mutation captures its target agent + project at call time. By the
 // time an awaited call resolves the user may have switched to a different agent
@@ -451,6 +479,7 @@ async function onReverted(updated: AgentResource) {
 	tasksReloadKey.value += 1;
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
+	builderTelemetry.captureTasksBaseline();
 }
 
 /**
@@ -530,11 +559,12 @@ const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	save: saveConfig,
 	onSaved: () => {
 		builderTelemetry.flushConfigEdits();
-		// Diff the saved tool/skill lists against the last baseline. No-op when
+		// Diff the saved capability lists against the last baseline. No-op when
 		// nothing new landed, so calling on every save also handles the build-chat
 		// path (which has already advanced both baselines via `onConfigUpdated`).
 		builderTelemetry.trackToolsAdded();
 		builderTelemetry.trackSkillsAdded();
+		builderTelemetry.trackTasksChanged();
 	},
 	onError: (error: unknown) => {
 		// Intentionally keep pending parts: `localConfig` still holds the
@@ -623,6 +653,7 @@ async function onConfigUpdated() {
 	tasksReloadKey.value += 1;
 	builderTelemetry.trackToolsAdded();
 	builderTelemetry.trackSkillsAdded();
+	builderTelemetry.trackTasksChanged();
 }
 
 const headerActions = computed(() =>
@@ -652,6 +683,7 @@ async function onHeaderAction(action: string) {
 
 		try {
 			await deleteAgent(rootStore.restApiContext, capturedProjectId, agentId.value);
+			removeProjectAgentFromListCache(capturedProjectId, agentId.value);
 		} catch (error) {
 			showError(error, 'Could not delete agent');
 			return;
@@ -720,6 +752,7 @@ async function initialize() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value), fetchAgentFiles()]);
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
+	builderTelemetry.captureTasksBaseline();
 	// Keep agent credential pickers aligned with the workflow editor: load only
 	// credentials the current user can use in this project context.
 	credentialsStore.setCredentials([]);
@@ -1073,27 +1106,42 @@ function onSwitchAgent(nextAgentId: string) {
 		query: isPreviewMode.value ? {} : route.query,
 	});
 }
+
+function onPreviewBreadcrumbSelect(item: PathItem) {
+	if (item.id === projectId.value) {
+		void router.push(projectRoute.value);
+	} else if (item.id === agentId.value) {
+		void router.push(agentRoute.value);
+	}
+}
 </script>
 
 <template>
 	<div :class="$style.root">
+		<AgentBuilderPreviewHeader
+			v-if="isPreviewMode"
+			:breadcrumb-items="previewBreadcrumbItems"
+			:session-title="currentSessionTitle"
+			:session-id="effectiveSessionId"
+			:has-session="currentSessionHasMessages"
+			:session-options="sessionOptions"
+			@breadcrumb-select="onPreviewBreadcrumbSelect"
+			@session-select="onSessionPick"
+			@new-chat="onNewChat"
+			@close-preview="closePreview"
+		/>
 		<AgentBuilderHeader
+			v-else
 			:agent="agent"
 			:project-id="projectId"
 			:agent-id="agentId"
 			:project-name="projectName"
 			:header-actions="headerActions"
 			:save-status="saveStatus"
-			:mode="isPreviewMode ? 'preview' : 'edit'"
-			:current-session-title="currentSessionTitle"
-			:session-options="sessionOptions"
 			:before-revert-to-published="settleAutosave"
 			:is-version-history-open="isVersionHistoryOpen"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
-			@new-chat="onNewChat"
-			@close-preview="closePreview"
-			@session-select="onSessionPick"
 			@published="onPublished"
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
@@ -1208,9 +1256,14 @@ function onSwitchAgent(nextAgentId: string) {
 				ref="versionHistoryPanel"
 				:project-id="projectId"
 				:agent-id="agentId"
+				:has-unpublished-changes="
+					Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
+				"
+				:agent-name="agent?.name ?? agentName"
 				@close="onCloseVersionHistory"
 				@reverted="onReverted"
 				@published="onPublished"
+				@unpublished="onUnpublished"
 			/>
 		</div>
 	</div>

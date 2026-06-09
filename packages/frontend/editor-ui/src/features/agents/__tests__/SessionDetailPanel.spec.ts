@@ -8,9 +8,6 @@ import type { TimelineItem } from '../session-timeline.types';
 vi.mock('../components/WorkflowExecutionLogViewer.vue', () => ({
 	default: { template: '<div data-test-id="wf-log-viewer"></div>' },
 }));
-vi.mock('../components/RichInteractionCard.vue', () => ({
-	default: { template: '<div data-test-id="rich-card"></div>' },
-}));
 vi.mock('../components/ToolIoView.vue', () => ({
 	default: { template: '<div data-test-id="tool-io-view"></div>' },
 }));
@@ -114,18 +111,6 @@ describe('SessionDetailPanel — workflow branches', () => {
 });
 
 describe('SessionDetailPanel — other kinds', () => {
-	it('renders the rich-interaction card for rich_interaction tool calls', () => {
-		const w = mountIt({
-			kind: 'tool',
-			executionId: 'e1',
-			timestamp: 0,
-			toolName: 'rich_interaction',
-			toolInput: { widget: 'x' },
-			toolOutput: { ok: true },
-		});
-		expect(w.find('[data-test-id="rich-card"]').exists()).toBe(true);
-	});
-
 	it('renders Input/Output JSON sections for generic tool calls', () => {
 		const w = mountIt({
 			kind: 'tool',
@@ -214,6 +199,36 @@ describe('SessionDetailPanel — other kinds', () => {
 	it('renders markdown for user messages', () => {
 		const w = mountIt({ kind: 'user', executionId: 'e1', timestamp: 0, content: 'hi' });
 		expect(w.find('[data-test-id="markdown"]').exists()).toBe(true);
+	});
+
+	it('renders plain-text agent messages as markdown', () => {
+		const w = mountIt({ kind: 'agent', executionId: 'e1', timestamp: 0, content: 'Hello there' });
+		expect(w.find('[data-test-id="markdown"]').exists()).toBe(true);
+		expect(w.find('pre').exists()).toBe(false);
+	});
+
+	it('pretty-prints an agent message whose content is structured JSON output', () => {
+		const w = mountIt({
+			kind: 'agent',
+			executionId: 'e1',
+			timestamp: 0,
+			content: '{"city":"Tokyo","country":"Japan","population_millions":14.04}',
+		});
+		// JSON output is rendered in a <pre>, not via markdown.
+		expect(w.find('[data-test-id="markdown"]').exists()).toBe(false);
+		const pre = w.find('pre');
+		expect(pre.exists()).toBe(true);
+		expect(pre.text()).toContain('city');
+		expect(pre.text()).toContain('Tokyo');
+		expect(pre.text()).toContain('population_millions');
+		// Pretty-printed across multiple lines rather than a single raw string.
+		expect(pre.text().split('\n').length).toBeGreaterThan(1);
+	});
+
+	it('keeps markdown for an agent message that is valid JSON but not an object', () => {
+		const w = mountIt({ kind: 'agent', executionId: 'e1', timestamp: 0, content: '42' });
+		expect(w.find('[data-test-id="markdown"]').exists()).toBe(true);
+		expect(w.find('pre').exists()).toBe(false);
 	});
 
 	it('emits close when the close button is clicked', async () => {

@@ -1,11 +1,12 @@
 {
   "name": "@n8n/chat-hub",
-  "version": "1.17.0",
+  "version": "1.19.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -29,5 +30,6 @@
   },
   "dependencies": {
     "@n8n/api-types": "workspace:*"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

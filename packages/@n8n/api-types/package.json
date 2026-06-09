@@ -1,11 +1,12 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.24.0",
+  "version": "1.26.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -37,5 +38,6 @@
   },
   "peerDependencies": {
     "zod": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

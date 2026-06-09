@@ -35,6 +35,8 @@ export interface CliArgs {
 	prebuiltWorkflows?: string;
 	/** Keep built workflows after evaluation instead of deleting them */
 	keepWorkflows: boolean;
+	/** Delete successfully used workflows from --prebuilt-workflows after evaluation */
+	deletePrebuiltWorkflows: boolean;
 	/** Directory to write eval-results.json (defaults to cwd) */
 	outputDir?: string;
 	/** LangSmith dataset name (synced from JSON test cases before each run) */
@@ -51,6 +53,11 @@ export interface CliArgs {
 	 *  wire-server interception path. Useful for A/B comparison or when a
 	 *  specific root needs to stay on the pinned baseline. CSV of node names. */
 	pinAiRoots?: string[];
+	/** Filter test cases by the `datasets` field (e.g. `pr`, `full`). When set,
+	 *  only test cases whose `datasets` array contains this value will run, and
+	 *  LangSmith examples are queried via the matching split. Defaults to
+	 *  unset → run everything matched by `--filter` / `--exclude`. */
+	tier?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -67,12 +74,14 @@ const cliArgsSchema = z.object({
 	exclude: z.string().optional(),
 	prebuiltWorkflows: z.string().optional(),
 	keepWorkflows: z.boolean().default(false),
+	deletePrebuiltWorkflows: z.boolean().default(false),
 	outputDir: z.string().optional(),
 	dataset: z.string().default('instance-ai-workflow-evals'),
 	concurrency: z.number().int().positive().default(16),
 	experimentName: z.string().optional(),
 	iterations: z.number().int().positive().default(1),
 	pinAiRoots: z.array(z.string().min(1)).optional(),
+	tier: z.string().min(1).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -82,6 +91,12 @@ const cliArgsSchema = z.object({
 export function parseCliArgs(argv: string[]): CliArgs {
 	const raw = parseRawArgs(argv);
 	const validated = cliArgsSchema.parse(raw);
+	if (validated.deletePrebuiltWorkflows && !validated.prebuiltWorkflows) {
+		throw new Error('--delete-prebuilt-workflows requires --prebuilt-workflows');
+	}
+	if (validated.deletePrebuiltWorkflows && validated.keepWorkflows) {
+		throw new Error('--delete-prebuilt-workflows cannot be used with --keep-workflows');
+	}
 
 	return {
 		timeoutMs: validated.timeoutMs,
@@ -93,12 +108,14 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		exclude: validated.exclude,
 		prebuiltWorkflows: validated.prebuiltWorkflows,
 		keepWorkflows: validated.keepWorkflows,
+		deletePrebuiltWorkflows: validated.deletePrebuiltWorkflows,
 		outputDir: validated.outputDir,
 		dataset: validated.dataset,
 		concurrency: validated.concurrency,
 		experimentName: validated.experimentName,
 		iterations: validated.iterations,
 		pinAiRoots: validated.pinAiRoots,
+		tier: validated.tier,
 	};
 }
 
@@ -116,12 +133,14 @@ interface RawArgs {
 	exclude?: string;
 	prebuiltWorkflows?: string;
 	keepWorkflows: boolean;
+	deletePrebuiltWorkflows: boolean;
 	outputDir?: string;
 	dataset: string;
 	concurrency: number;
 	experimentName?: string;
 	iterations: number;
 	pinAiRoots?: string[];
+	tier?: string;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -130,6 +149,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		baseUrls: ['http://localhost:5678'],
 		verbose: false,
 		keepWorkflows: false,
+		deletePrebuiltWorkflows: false,
 		outputDir: undefined,
 		dataset: 'instance-ai-workflow-evals',
 		concurrency: 16,
@@ -190,6 +210,10 @@ function parseRawArgs(argv: string[]): RawArgs {
 				result.keepWorkflows = true;
 				break;
 
+			case '--delete-prebuilt-workflows':
+				result.deletePrebuiltWorkflows = true;
+				break;
+
 			case '--output-dir':
 				result.outputDir = nextArg(argv, i, '--output-dir');
 				i++;
@@ -224,6 +248,11 @@ function parseRawArgs(argv: string[]): RawArgs {
 				i++;
 				break;
 			}
+
+			case '--tier':
+				result.tier = nextArg(argv, i, '--tier');
+				i++;
+				break;
 
 			default:
 				// Fail loudly on unknown flags. Strip any =value payload before

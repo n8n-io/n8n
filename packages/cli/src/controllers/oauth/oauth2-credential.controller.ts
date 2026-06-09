@@ -46,7 +46,7 @@ export class OAuth2CredentialController {
 				);
 			}
 
-			const [credential, decryptedDataOriginal, oauthCredentials, state] =
+			const [credential, decryptedDataOriginal, oauthCredentials, state, flowState] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
 
 			if (typeof state.resource === 'string') {
@@ -61,7 +61,7 @@ export class OAuth2CredentialController {
 			const body: Record<string, string> = { ...(oAuthOptions.body ?? {}) };
 
 			if (isPkce) {
-				body.code_verifier = decryptedDataOriginal.codeVerifier as string;
+				body.code_verifier = flowState.codeVerifier as string;
 			}
 
 			if (isBodyAuth) {
@@ -113,7 +113,7 @@ export class OAuth2CredentialController {
 			}
 
 			if (!state.origin || state.origin === 'static-credential') {
-				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, ['csrfSecret']);
+				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData });
 
 				this.logger.debug('OAuth2 callback successful for credential', {
 					credentialId: credential.id,

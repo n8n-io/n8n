@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	computeIdleRanges,
+	builtinToolLabelKey,
 	itemFilterKey,
 	sessionBounds,
 	kindColorToken,
@@ -129,6 +130,20 @@ describe('formatDuration', () => {
 	});
 });
 
+describe('builtinToolLabelKey', () => {
+	it('uses the chat display key for native and fallback web search tools', () => {
+		expect(builtinToolLabelKey('web_search')).toBe('agents.chat.toolNames.webSearch');
+		expect(builtinToolLabelKey('anthropic.web_search_20250305')).toBe(
+			'agents.chat.toolNames.webSearch',
+		);
+		expect(builtinToolLabelKey('openai.web_search')).toBe('agents.chat.toolNames.webSearch');
+	});
+
+	it('does not label unrelated tools as web search', () => {
+		expect(builtinToolLabelKey('custom_web_search')).toBeNull();
+	});
+});
+
 import { flattenExecutionsToTimelineItems } from '../session-timeline.utils';
 import type {
 	AgentExecution,
@@ -244,7 +259,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(tool?.workflowId).toBeUndefined();
 	});
 
-	it('maps workflow and rich-interaction timeline calls from the same execution', () => {
+	it('maps workflow and tool timeline calls from the same execution', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([
 				{
@@ -264,10 +279,12 @@ describe('flattenExecutionsToTimelineItems', () => {
 				{
 					type: 'tool-call',
 					kind: 'tool',
-					name: 'rich_interaction',
-					toolCallId: 'tc-card',
-					input: { components: [{ type: 'image', url: 'https://example.com/giphy.gif' }] },
-					output: { displayOnly: true },
+					name: 'card_sender',
+					toolCallId: 'tc-tool',
+					input: {
+						card: { components: [{ type: 'image', url: 'https://example.com/giphy.gif' }] },
+					},
+					output: { ok: true },
 					startTime: 1600,
 					endTime: 1700,
 					success: true,
@@ -276,7 +293,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		]);
 
 		expect(items.filter((i) => i.toolName === 'giphy-gif-search')).toHaveLength(1);
-		expect(items.filter((i) => i.toolName === 'rich_interaction')).toHaveLength(1);
+		expect(items.filter((i) => i.toolName === 'card_sender')).toHaveLength(1);
 		expect(items.find((i) => i.toolName === 'giphy-gif-search')).toMatchObject({
 			kind: 'workflow',
 			workflowName: 'Giphy GIF Search',

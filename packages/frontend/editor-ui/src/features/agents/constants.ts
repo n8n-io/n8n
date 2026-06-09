@@ -15,6 +15,7 @@ export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
 export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';
 export const AGENT_TASK_MODAL_KEY = 'agentTaskModal';
 export const AGENT_ADD_TRIGGER_MODAL_KEY = 'agentAddTriggerModal';
+export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY = 'agentEpisodicMemoryCredentialModal';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
@@ -48,6 +49,7 @@ export const TOOL_CALL_STATE = {
 	RUNNING: 'running',
 	SUSPENDED: 'suspended',
 	DONE: 'done',
+	CANCELLED: 'cancelled',
 	ERROR: 'error',
 } as const;
 export type ToolCallState = (typeof TOOL_CALL_STATE)[keyof typeof TOOL_CALL_STATE];

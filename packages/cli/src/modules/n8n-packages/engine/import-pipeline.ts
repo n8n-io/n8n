@@ -12,10 +12,14 @@ import { EventService } from '@/events/event.service';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import * as WorkflowHelpers from '@/workflow-helpers';
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 
+import { CredentialImporter } from '../entities/credential/credential-importer';
+import { resolvedBindingsToSummaries } from '../entities/credential/credential.types';
+import type { PreparedWorkflow } from '../entities/workflow/workflow-conflict-policy.types';
+import { WorkflowImporter } from '../entities/workflow/workflow-importer';
 import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
+import { createBindings, serializeBindings } from '../n8n-packages.types';
 import type { ImportPackageRequest, ImportResult } from '../n8n-packages.types';
 import { packageManifestSchema } from '../spec/manifest.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
@@ -27,23 +31,19 @@ interface ImportTarget {
 	folderId: string | null;
 }
 
-interface PreparedWorkflow {
-	entity: WorkflowEntity;
-	sourceId: string;
-}
-
 @Service()
 export class ImportPipeline {
 	private readonly maxUncompressedPackageBytes: number;
 
 	constructor(
 		private readonly workflowSerializer: WorkflowSerializer,
-		private readonly workflowCreationService: WorkflowCreationService,
+		private readonly credentialImporter: CredentialImporter,
 		globalConfig: GlobalConfig,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly eventService: EventService,
+		private readonly workflowImporter: WorkflowImporter,
 	) {
 		this.maxUncompressedPackageBytes = globalConfig.endpoints.payloadSizeMax * MEGABYTE_IN_BYTES;
 	}
@@ -53,29 +53,44 @@ export class ImportPipeline {
 
 		const manifest = await this.loadPackageManifest(reader);
 
-		const { target } = await this.resolveTarget(request.user, request.projectId, request.folderId);
+		const { target, project } = await this.resolveTarget(
+			request.user,
+			request.projectId,
+			request.folderId,
+		);
 
 		// Validates every workflow first so a malformed package aborts before the first DB write.
 		const prepared = await this.prepareWorkflows(manifest.workflows ?? [], reader);
 
-		const created: WorkflowEntity[] = [];
-		for (const { entity, sourceId } of prepared) {
-			const saved = await this.workflowCreationService.createWorkflow(request.user, entity, {
-				projectId: target.projectId,
-				parentFolderId: target.folderId ?? undefined,
-				publicApi: true,
-				source: 'import',
-				sourceWorkflowId: sourceId,
-			});
-			created.push(saved);
-		}
+		const credentialResolution = await this.credentialImporter.resolveForImport({
+			requirements: manifest.requirements?.credentials,
+			matchingMode: request.credentialMatchingMode,
+			missingMode: request.credentialMissingMode,
+			targetProject: project,
+			user: request.user,
+		});
 
+		const { outcomes, bindings } = await this.workflowImporter.importWorkflows(
+			prepared,
+			request.workflowConflictPolicy,
+			{
+				user: request.user,
+				projectId: target.projectId,
+				folderId: target.folderId,
+			},
+			createBindings({ credentials: credentialResolution.successes }),
+		);
+
+		const matchedCredentials = resolvedBindingsToSummaries(credentialResolution.successes);
+
+		const imported = outcomes.filter(({ status }) => status !== 'skipped');
 		this.eventService.emit('workflows-imported', {
 			user: request.user,
 			projectId: target.projectId,
-			workflowIds: created.map((w) => w.id),
+			workflowIds: imported.map(({ workflow }) => workflow.id),
 			packageSourceId: manifest.sourceId,
 			packageVersion: manifest.packageFormatVersion,
+			matchedCredentialIds: matchedCredentials.map((m) => m.targetId),
 		});
 
 		return {
@@ -84,14 +99,16 @@ export class ImportPipeline {
 				sourceId: manifest.sourceId,
 				exportedAt: manifest.exportedAt,
 			},
-			workflows: created.map((w) => ({
-				sourceId: w.sourceWorkflowId ?? '',
-				localId: w.id,
-				name: w.name,
+			workflows: outcomes.map(({ workflow, sourceWorkflowId, status }) => ({
+				sourceWorkflowId,
+				localId: workflow.id,
+				name: workflow.name,
 				projectId: target.projectId,
-				parentFolderId: w.parentFolder?.id ?? null,
-				activeVersionId: w.activeVersionId ?? null,
+				parentFolderId: workflow.parentFolder?.id ?? null,
+				activeVersionId: workflow.activeVersionId ?? null,
+				status,
 			})),
+			bindings: serializeBindings(bindings),
 		};
 	}
 
@@ -145,7 +162,7 @@ export class ImportPipeline {
 
 			WorkflowHelpers.validateWorkflowStructure(entity);
 
-			prepared.push({ entity, sourceId: entry.id });
+			prepared.push({ entity, sourceWorkflowId: entry.id });
 		}
 
 		return prepared;

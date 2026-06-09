@@ -47,7 +47,8 @@ export class McpServerMiddlewareService {
 		}
 
 		if (decoded?.meta?.isOAuth === true) {
-			return await this.mcpAuthTokenService.verifyOAuthAccessToken(token);
+			const expectedAudience = this.mcpAuthTokenService.getCanonicalResourceUrl();
+			return await this.mcpAuthTokenService.verifyOAuthAccessToken(token, expectedAudience);
 		}
 
 		return await this.mcpServerApiKeyService.verifyApiKey(token);

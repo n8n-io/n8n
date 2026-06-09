@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity, User, Project } from '@n8n/db';
 import {
 	ExecutionRepository,
@@ -19,6 +19,7 @@ import type {
 	INodeExecutionData,
 	INode,
 	ITaskData,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -31,13 +32,13 @@ import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks } from '@/external-hooks';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { Telemetry } from '@/telemetry';
 import {
 	executeAgent,
@@ -50,6 +51,7 @@ import {
 	triggerReturnsLastRunOnly,
 } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 const EXECUTION_ID = '123';
 const LAST_NODE_EXECUTED = 'Last node executed';
@@ -113,6 +115,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	Container.set(CredentialsHelper, credentialsHelper);
 	Container.set(ExternalSecretsProxy, externalSecretsProxy);
 	const executionRepository = mockInstance(ExecutionRepository);
+	mockInstance(ExecutionPersistence);
 	mockInstance(ExecutionDataRepository);
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
@@ -339,6 +342,199 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				expect(result.executionId).toBe(EXECUTION_ID);
 				expect(result.data).toBeDefined();
+			});
+		});
+
+		describe('sub-workflow execution timeouts', () => {
+			const now = Date.now();
+			const getDeadlineFromNow = (offsetSeconds: number) => now + offsetSeconds * 1000;
+			const WorkflowExecuteMock: jest.Mock = jest.requireMock('n8n-core').WorkflowExecute;
+
+			let dateSpy: jest.SpyInstance;
+			beforeEach(() => {
+				dateSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+				WorkflowExecuteMock.mockClear();
+			});
+			afterEach(() => {
+				dateSpy.mockRestore();
+			});
+
+			const getSubWorkflowDeadline = () =>
+				(WorkflowExecuteMock.mock.calls[0][0] as IWorkflowExecuteAdditionalData)
+					.executionTimeoutTimestamp;
+
+			const executeWorkflowWithTimeout = async (opts: {
+				doNotWaitToFinish: boolean;
+				subTimeout?: number;
+				parentDeadline?: number;
+				globalTimeout?: number;
+				globalMaxTimeout?: number;
+			}) => {
+				Container.set(ExecutionsConfig, {
+					timeout: opts.globalTimeout ?? -1,
+					maxTimeout: opts.globalMaxTimeout ?? 3600,
+				} as ExecutionsConfig);
+
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>({ executionTimeoutTimestamp: opts.parentDeadline }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mock<IWorkflowBase>({
+							id: 'sub-id',
+							name: 'Sub Workflow',
+							nodes: [],
+							connections: {},
+							// Pass executionTimeout through even when undefined so jest-mock-extended
+							// keeps it as a real `undefined` rather than auto-mocking it into a function.
+							settings: { executionTimeout: opts.subTimeout },
+						}),
+						doNotWaitToFinish: opts.doNotWaitToFinish,
+					}),
+				);
+
+				if (opts.doNotWaitToFinish) {
+					await new Promise(setImmediate);
+				}
+			};
+
+			describe('doNotWaitToFinish: false (parent waits for sub-workflow result)', () => {
+				it('should use parent deadline when sub-workflow timeout exceeds it', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: 120,
+						parentDeadline: getDeadlineFromNow(10),
+						doNotWaitToFinish: false,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(10));
+				});
+
+				it('should use sub-workflow timeout when shorter than parent deadline', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: 5,
+						parentDeadline: getDeadlineFromNow(60),
+						doNotWaitToFinish: false,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(5));
+				});
+
+				it('should use sub-workflow timeout when parent has no deadline', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: 120,
+						doNotWaitToFinish: false,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(120));
+				});
+
+				it('should cap sub-workflow timeout at global max timeout', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: 7200,
+						parentDeadline: getDeadlineFromNow(7200),
+						doNotWaitToFinish: false,
+						globalMaxTimeout: 3600,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(3600));
+				});
+
+				it('should not cap sub-workflow timeout when global max timeout is disabled (<=0)', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: 7200,
+						doNotWaitToFinish: false,
+						globalMaxTimeout: -1,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(7200));
+				});
+
+				it('should cap the global default timeout at the global max timeout', async () => {
+					await executeWorkflowWithTimeout({
+						doNotWaitToFinish: false,
+						globalTimeout: 20,
+						globalMaxTimeout: 10,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(10));
+				});
+
+				it('should not cap the global default timeout when global max timeout is disabled (<=0)', async () => {
+					await executeWorkflowWithTimeout({
+						doNotWaitToFinish: false,
+						globalTimeout: 600,
+						globalMaxTimeout: -1,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(600));
+				});
+
+				it('should fall back to global default when sub-workflow has no timeout', async () => {
+					await executeWorkflowWithTimeout({
+						parentDeadline: getDeadlineFromNow(60),
+						doNotWaitToFinish: false,
+						globalTimeout: 30,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(30));
+				});
+
+				it('should use parent deadline when sub-workflow has no timeout, and global is unlimited', async () => {
+					await executeWorkflowWithTimeout({
+						parentDeadline: getDeadlineFromNow(10),
+						doNotWaitToFinish: false,
+						globalTimeout: -1,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(10));
+				});
+
+				it('should set no timeout when neither sub-workflow nor global timeout is set and parent has no deadline', async () => {
+					await executeWorkflowWithTimeout({
+						globalTimeout: -1,
+						doNotWaitToFinish: false,
+					});
+					expect(getSubWorkflowDeadline()).toBeUndefined();
+				});
+
+				it('should ignore the global default timeout when the sub-workflow timeout is explicitly disabled (-1)', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: -1,
+						doNotWaitToFinish: false,
+						globalTimeout: 600,
+					});
+					expect(getSubWorkflowDeadline()).toBeUndefined();
+				});
+
+				it('should use parent deadline, not the global default, when the sub-workflow timeout is explicitly disabled (-1)', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: -1,
+						parentDeadline: getDeadlineFromNow(60),
+						doNotWaitToFinish: false,
+						globalTimeout: 600,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(60));
+				});
+			});
+
+			describe('doNotWaitToFinish: true (sub-workflow timeout independent of parent)', () => {
+				it('should use sub-workflow own timeout regardless of parent deadline', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: 120,
+						parentDeadline: getDeadlineFromNow(10),
+						doNotWaitToFinish: true,
+					});
+					expect(getSubWorkflowDeadline()).toBe(getDeadlineFromNow(120));
+				});
+
+				it('should set no timeout when sub-workflow has no timeout and global timeout is unlimited', async () => {
+					await executeWorkflowWithTimeout({
+						parentDeadline: getDeadlineFromNow(10),
+						doNotWaitToFinish: true,
+						globalTimeout: -1,
+					});
+					expect(getSubWorkflowDeadline()).toBeUndefined();
+				});
+
+				it('should ignore the global default timeout when the sub-workflow timeout is explicitly disabled (-1)', async () => {
+					await executeWorkflowWithTimeout({
+						subTimeout: -1,
+						parentDeadline: getDeadlineFromNow(10),
+						doNotWaitToFinish: true,
+						globalTimeout: 600,
+					});
+					expect(getSubWorkflowDeadline()).toBeUndefined();
+				});
 			});
 		});
 	});
@@ -800,7 +996,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				workflowId: 'workflow-1',
 			});
 
-			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData);
+			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual');
 
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 			expect(ownershipService.getPersonalProjectOwnerCached).not.toHaveBeenCalled();
@@ -812,6 +1008,43 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'user-1',
 				'project-1',
 				'user-1',
+				true,
+				undefined,
+			);
+		});
+
+		it('forwards the outputSchema to executeForWorkflow', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+			const outputSchema = {
+				type: 'object' as const,
+				properties: { answer: { type: 'string' as const } },
+				required: ['answer'],
+			};
+
+			await executeAgent(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'manual',
+				outputSchema,
+			);
+
+			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				'user-1',
+				'project-1',
+				'user-1',
+				true,
+				outputSchema,
 			);
 		});
 
@@ -828,7 +1061,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<User>({ id: 'owner-1' }),
 			);
 
-			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData);
+			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual');
 
 			expect(ownershipService.getWorkflowProjectCached).toHaveBeenCalledWith('workflow-1');
 			expect(ownershipService.getPersonalProjectOwnerCached).toHaveBeenCalledWith('project-1');
@@ -839,6 +1072,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 				THREAD_ID,
 				'owner-1',
 				'project-1',
+				undefined,
+				true,
 				undefined,
 			);
 		});
@@ -855,7 +1090,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
 
 			await expect(
-				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData),
+				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
 			).rejects.toThrow('Cannot execute agent without a userId in additional data');
 			expect(agentsService.executeForWorkflow).not.toHaveBeenCalled();
 		});
@@ -868,9 +1103,68 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			await expect(
-				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData),
+				executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
 			).rejects.toThrow('Cannot execute agent without a userId in additional data');
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+		});
+
+		it.each<WorkflowExecuteMode>(['manual', 'chat'])(
+			'runs draft agent for %s executions',
+			async (mode) => {
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					userId: 'user-1',
+					projectId: 'project-1',
+					workflowId: 'workflow-1',
+				});
+
+				await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
+
+				// agentsService.executeForWorkflow should with 8th parameter true
+				expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+					AGENT_ID,
+					MESSAGE,
+					EXEC_ID,
+					THREAD_ID,
+					'user-1',
+					'project-1',
+					'user-1',
+					true,
+					undefined,
+				);
+			},
+		);
+
+		it.each<WorkflowExecuteMode>([
+			'cli',
+			'error',
+			'integrated',
+			'internal',
+			'retry',
+			'trigger',
+			'webhook',
+			'evaluation',
+			'agent',
+		])('runs published agent for %s executions', async (mode) => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+
+			await executeAgent(AGENT_ID, MESSAGE, EXEC_ID, THREAD_ID, additionalData, mode);
+
+			// agentsService.executeForWorkflow should with 8th parameter true
+			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				'user-1',
+				'project-1',
+				'user-1',
+				false,
+				undefined,
+			);
 		});
 	});
 

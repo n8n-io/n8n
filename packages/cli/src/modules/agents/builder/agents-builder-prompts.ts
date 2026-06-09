@@ -66,6 +66,7 @@ export function getBuilderSkillRoutingSection(): string {
 			'  deciding whether Slack, Linear, Telegram, or another external product should\n' +
 			'  be a chat integration/trigger or a node/workflow tool.',
 		'- `agent-builder-mcp`: MCP servers — the preferred way to add external integrations. Load this skill first when the user asks for a service integration.',
+		'- `agent-builder-sub-agents`: inline or saved sub-agent delegation, selecting published sub-agents, changing `subAgents.maxChildren`, or configuring inline models by difficulty.',
 		'- `agent-builder-target-skills`: creating skills for the target agent.',
 		'- `agent-builder-target-tasks`: creating recurring scheduled tasks for the target agent.',
 	];

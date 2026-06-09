@@ -12,19 +12,23 @@ final response.
 for a single agent turn. It uses the Vercel AI SDK directly (`generateText` /
 `streamText`) and is responsible for:
 
-- Building the LLM message context (memory history, semantic recall, working
+- Building the LLM message context (memory history, working
   memory in the system prompt, user input)
 - Stripping orphaned tool-call/tool-result pairs before LLM calls
   (`stripOrphanedToolMessages`)
 - Running the agentic tool-call loop (default **20** iterations,
   `MAX_LOOP_ITERATIONS`)
-- **Configurable tool-call concurrency** — tools in one LLM turn run in batches
-  of `toolCallConcurrency` (default `1`; `Infinity` runs all executable calls
-  in parallel)
+- **Configurable tool-call concurrency** — ordinary tool calls in one LLM turn
+  run in batches of `toolCallConcurrency` (default `1`; `Infinity` runs all
+  executable calls in parallel).
+- **Delegated child-run fan-out** — consecutive `delegate_subagent` calls use
+  the effective `maxChildren` policy as their batch size, so a parent with
+  `maxChildren: 10` can start up to ten child runs in parallel even when regular
+  tool concurrency is `1`. In n8n, `subAgents.maxChildren` overrides the SDK default.
+  There is no separate delegation concurrency knob.
 - Suspending and resuming runs for Human-in-the-Loop (HITL) **and** for tools
   that return a branded suspend result (`suspendSchema` / `resumeSchema`)
-- Persisting new messages to a memory store at the end of each completed turn,
-  optionally saving **embeddings** for semantic recall
+- Persisting new messages to a memory store at the end of each completed turn
 - Extracting and persisting **working memory** from assistant output when
   configured
 - Optional **structured output** (`Output.object` + Zod), **thinking** /
@@ -65,11 +69,48 @@ graph TD
 | `on(event, handler)` | Register a lifecycle event handler |
 | `abort()` | Cancel the currently running agent |
 | `getState()` | Return the latest `SerializableAgentState` snapshot |
-| `asTool(description)` | Wrap the agent as a `BuiltTool` for multi-agent composition |
 
 `ExecutionOptions` includes `abortSignal?: AbortSignal`, forwarded into
 `AgentEventBus.resetAbort()` so callers can cancel via an external signal as
 well as `agent.abort()`.
+
+---
+
+## Inline Sub-Agent Delegation
+
+`createDelegateSubAgentTool()` can be registered directly on an `Agent` without
+a host `runSubAgent` callback. In that mode, `Agent.build()` completes the tool
+with the SDK's inline child runner after the parent model and effective tool
+surface have been resolved.
+
+```typescript
+const agent = new Agent('parent')
+  .model('anthropic/claude-sonnet-4-5')
+  .instructions('...')
+  .tool(searchTool)
+  .tool(createDelegateSubAgentTool());
+```
+
+The model selects the default inline path by passing `subAgentId: "inline"`.
+When a host supplies a `runSubAgent` callback, `Agent.build()` routes every
+delegation (including `"inline"`) through that callback and passes
+`helpers.runInlineSubAgent` so the host can reuse the SDK inline runner. Without a
+host callback, `"inline"` is handled by the SDK inline runner directly. Both paths
+return the same `DelegateSubAgentToolOutput` shape and emit the same sub-agent
+lifecycle events.
+
+`maxChildren` limits how many consecutive `delegate_subagent` tool calls the runtime
+may execute in parallel (batch width). It does not cap the total number of child
+delegations over a parent run; extra delegate calls are queued in batches.
+
+Inline children:
+
+- reuse the parent model config for this first implementation
+- start from the parent agent's effective local/deferred tool list
+- always drop SDK-blocked tools such as `delegate_subagent`, `write_todos`, and memory recall
+- may drop additional host-blocked local/deferred tool names configured on the delegate tool
+- inherit parent provider tools after the same blocklist filtering
+- run in a fresh context using the shared delegated-task prompt
 
 ---
 
@@ -187,18 +228,6 @@ interface SerializableAgentState {
 `suspendPayload`, `resumeSchema`) from calls not yet executed (`suspended:
 false`) when a batch stops at the first suspension.
 
----
-
-## asTool()
-
-`agent.asTool(description)` wraps the agent as a `BuiltTool`. The handler calls
-`agent.generate(input, { telemetry: ctx.parentTelemetry })`, collects assistant
-text, and returns `{ result: string }`. When the sub-run produces usage,
-results are wrapped so the parent runtime can merge **`SubAgentUsage`** and
-**`totalCost`** into the parent `GenerateResult` / stream `finish` chunk.
-
----
-
 ## Message types
 
 | Type | Definition | Purpose |
@@ -305,7 +334,7 @@ suspension / persistence, repeat until finish or max iterations.
 
 ## HITL and suspend/resume
 
-**HITL (approval):** tools can require approval (`requiresApproval` /
+**HITL (approval):** tools can require approval (`requireApproval` /
 `needsApprovalFn`). The runtime treats approval outcomes like resume data:
 `approve()` / `deny()` delegate to `resume()` with `{ approved: true | false }`.
 
@@ -364,8 +393,7 @@ implement TTL or eviction as needed.
 ## Memory persistence
 
 At end of turn, `saveToMemory()` uses `list.turnDelta()` and
-`saveMessagesToThread`. If **semantic recall** is configured with an embedder
-and `memory.saveEmbeddings`, new messages are embedded and stored.
+`saveMessagesToThread`.
 
 **Working memory:** when configured, the runtime injects an `update_working_memory`
 tool into the agent's tool set. The current state is included in the system prompt
@@ -395,7 +423,7 @@ readable side immediately; the loop writes chunks in the background.
 | `tool-call-delta` | Streaming tool name / arguments |
 | `message` | Full assistant or tool message |
 | `tool-call-suspended` | Suspension: `runId`, `toolCallId`, tool metadata, optional `resumeSchema`, `suspendPayload` |
-| `finish` | `finishReason`, `usage` (with optional **cost**), `model`, optional **`structuredOutput`**, **`subAgentUsage`**, **`totalCost`** |
+| `finish` | `finishReason`, `usage` (with optional **cost**), `model`, optional **`structuredOutput`** |
 | `error` | Failure or abort |
 
 ---
@@ -412,7 +440,7 @@ src/
     memory-store.ts               — saveMessagesToThread helper
     messages.ts                   — AI SDK message conversion
     model-factory.ts              — createModel / createEmbeddingModel
-    tool-adapter.ts               — buildToolMap, executeTool, toAiSdkTools, suspend / agent-result guards
+    tool-adapter.ts               — buildToolMap, executeTool, toAiSdkTools, suspend guards
     stream.ts                     — convertChunk, toTokenUsage
     runtime-helpers.ts            — normalizeInput, usage merge, stream error helpers, …
     working-memory.ts             — instruction text, update_working_memory tool builder

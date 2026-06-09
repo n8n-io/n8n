@@ -51,6 +51,7 @@ import { ExpandInsightsWorkflowIdLength1766500000000 } from './1766500000000-Exp
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { ExpandVariablesValueColumnToText1777420800000 } from './1777420800000-ExpandVariablesValueColumnToText';
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
+import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -195,8 +196,13 @@ import { UseSlugAsPrimaryKeyInMcpRegistryServer1784000000016 } from '../common/1
 import { AddLastUsedAtToApiKey1784000000017 } from '../common/1784000000017-AddLastUsedAtToApiKey';
 import { CreateAgentFilesTable1784000000018 } from '../common/1784000000018-CreateAgentFilesTable';
 import { AddCustomTelemetryTagsToProject1784000000019 } from '../common/1784000000019-AddCustomTelemetryTagsToProject';
-import { CreateWorkflowPublicationOutboxTable1784000000020 } from '../common/1784000000020-CreateWorkflowPublicationOutboxTable';
 import { CreateAgentTaskDefinitionTable1784000000021 } from '../common/1784000000021-CreateAgentTaskDefinitionTable';
+import { AddSubAgentLinkageToAgentExecutionThreads1784000000022 } from '../common/1784000000022-AddSubAgentLinkageToAgentExecutionThreads';
+import { CreateInstanceAiMcpRegistryConnectionTable1784000000023 } from '../common/1784000000023-CreateInstanceAiMcpRegistryConnectionTable';
+import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/1784000000024-AddResourceToOAuthAuthorizationCodes';
+import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
+import { AddScopeColumnToOAuthTables1784000000026 } from '../common/1784000000026-AddScopeColumnToOAuthTables';
+import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -397,6 +403,12 @@ export const postgresMigrations: Migration[] = [
 	AddLastUsedAtToApiKey1784000000017,
 	CreateAgentFilesTable1784000000018,
 	AddCustomTelemetryTagsToProject1784000000019,
-	CreateWorkflowPublicationOutboxTable1784000000020,
 	CreateAgentTaskDefinitionTable1784000000021,
+	AddSubAgentLinkageToAgentExecutionThreads1784000000022,
+	CreateInstanceAiMcpRegistryConnectionTable1784000000023,
+	AddResourceToOAuthAuthorizationCodes1784000000024,
+	MigrateRedactionEnforcementToFloor1784000000025,
+	AddScopeColumnToOAuthTables1784000000026,
+	CreateWorkflowPublicationOutboxTable1784000000027,
+	AddProjectIdToInstanceAiThread1784000000028,
 ];

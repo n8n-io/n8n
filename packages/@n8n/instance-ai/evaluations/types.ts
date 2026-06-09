@@ -150,6 +150,12 @@ export interface EventOutcome {
 	agentActivities: AgentActivity[];
 }
 
+export interface BuildTrace {
+	finalText: string;
+	toolCalls: CapturedToolCall[];
+	agentActivities: AgentActivity[];
+}
+
 // ---------------------------------------------------------------------------
 // Workflow evaluation test cases
 // ---------------------------------------------------------------------------
@@ -184,6 +190,10 @@ export interface WorkflowTestCase {
 	executionScenarios: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Optional NL assertions about the build conversation; LLM-judged, informational only. */
+	buildExpectations?: string[];
+	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
+	datasets: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -202,6 +212,15 @@ export interface ExecutionScenarioResult {
 	rootCause?: string;
 }
 
+/** Verdict for one author-written build expectation. Informational only. */
+export interface BuildExpectationResult {
+	expectation: string;
+	pass: boolean;
+	reason: string;
+	/** Judge returned no verdict (flaky/partial). Rendered neutrally, kept out of the count. */
+	incomplete?: boolean;
+}
+
 export interface WorkflowTestCaseResult {
 	testCase: WorkflowTestCase;
 	workflowId?: string;
@@ -214,6 +233,13 @@ export interface WorkflowTestCaseResult {
 	threadId?: string;
 	transcript?: TranscriptTurn[];
 	workflowChecks?: CheckOutcome[];
+	/** Captured build-time sub-agent/tool activity for builder debugging. */
+	buildTrace?: BuildTrace;
+	/** Per-expectation verdicts from the build-expectations judge. Not consumed by pass@k. */
+	buildExpectationResults?: BuildExpectationResult[];
+	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
+	 *  configs each get their own URL for canvas/execution links. */
+	n8nBaseUrl?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -222,9 +248,12 @@ export interface WorkflowTestCaseResult {
 
 export interface TranscriptTurn {
 	userMessage?: string;
-	agentText: string;
-	toolInteractions: ToolInteraction[];
+	/** Agent narration and tool interactions, interleaved in the order they occurred. */
+	steps: TranscriptStep[];
 }
+
+/** One ordered step within a turn: a slice of agent narration or a tool interaction. */
+export type TranscriptStep = ToolInteraction | { kind: 'agent-text'; text: string };
 
 export type ToolInteraction =
 	| { kind: 'plan'; tasks: PlanTask[] }
@@ -235,8 +264,25 @@ export type ToolInteraction =
 			skippedNodes: SetupWizardSkippedNode[];
 			reason?: string;
 	  }
-	| { kind: 'confirmation'; toolName: string; resumeReason: string; approved?: boolean }
-	| { kind: 'tool-call'; toolName: string };
+	| {
+			kind: 'confirmation';
+			toolName: string;
+			resumeReason: string;
+			approved?: boolean;
+			/** Prompt the agent showed when requesting confirmation. */
+			message?: string;
+			/** Free-text the user sent with their decision (e.g. plan-review feedback). */
+			feedback?: string;
+	  }
+	| {
+			kind: 'tool-call';
+			toolName: string;
+			toolCallId?: string;
+			args?: Record<string, unknown>;
+			/** Tool output (success) or error message — paired to the call by toolCallId. */
+			result?: unknown;
+			error?: string;
+	  };
 
 export interface PlanTask {
 	title?: string;

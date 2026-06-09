@@ -1,4 +1,4 @@
-import { nextTick, type ShallowRef } from 'vue';
+import { nextTick, ref, type ShallowRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
@@ -19,7 +19,6 @@ import { buildExecutionResponseFromSchema } from '@/features/execution/execution
 import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions/executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -27,16 +26,25 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 interface PostMessageHandlerDeps {
-	workflowState: WorkflowState;
 	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>;
 }
 
-export function usePostMessageHandler({
-	workflowState,
-	currentWorkflowDocumentStore,
-}: PostMessageHandlerDeps) {
+// Shared by the demo-route postMessage handler and NodeView controls in this iframe.
+// setup() initializes it from the route, and cleanup() must reset it on unmount.
+const canOpenNDV = ref(true);
+
+export function usePostMessageControls() {
+	return { canOpenNDV };
+}
+
+function canOpenNDVFromRouteQuery(queryValue: unknown) {
+	return queryValue !== 'false';
+}
+
+export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMessageHandlerDeps) {
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
@@ -77,9 +85,13 @@ export function usePostMessageHandler({
 		workflow: WorkflowDataUpdate;
 		projectId?: string;
 		tidyUp?: boolean;
+		canOpenNDV?: boolean;
 		suppressNotifications?: boolean;
 		allowErrorNotifications?: boolean;
 	}) {
+		canOpenNDV.value =
+			canOpenNDVFromRouteQuery(route.query.canOpenNDV) && json.canOpenNDV !== false;
+
 		uiStore.setNotificationsSuppressed(json.suppressNotifications === true, {
 			allowErrors: json.allowErrorNotifications === true,
 		});
@@ -105,7 +117,10 @@ export function usePostMessageHandler({
 		// "execution starting"). The user-triggered execution flow will handle
 		// activeExecutionId itself.
 		if (window !== window.parent && route.query.canExecute !== 'true') {
-			workflowState.setActiveExecutionId(null);
+			const workflowDocumentStore = currentWorkflowDocumentStore.value;
+			if (workflowDocumentStore) {
+				useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setActiveExecutionId(null);
+			}
 		}
 
 		if (json.tidyUp === true) {
@@ -201,8 +216,13 @@ export function usePostMessageHandler({
 
 		await importWorkflowExact(json);
 
-		workflowState.setWorkflowExecutionData(data);
-		currentWorkflowDocumentStore.value?.setPinData({});
+		const workflowDocumentStore = currentWorkflowDocumentStore.value;
+		if (workflowDocumentStore) {
+			useWorkflowExecutionStateStore(workflowDocumentStore.documentId).setWorkflowExecutionData(
+				data,
+			);
+			workflowDocumentStore.setPinData({});
+		}
 
 		canvasStore.stopLoading();
 
@@ -272,12 +292,14 @@ export function usePostMessageHandler({
 	}
 
 	function setup() {
+		canOpenNDV.value = canOpenNDVFromRouteQuery(route.query.canOpenNDV);
 		window.addEventListener('message', onPostMessageReceived);
 		emitPostMessageReady();
 	}
 
 	function cleanup() {
 		window.removeEventListener('message', onPostMessageReceived);
+		canOpenNDV.value = true;
 	}
 
 	return {

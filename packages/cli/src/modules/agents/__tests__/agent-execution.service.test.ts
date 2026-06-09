@@ -19,6 +19,8 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 		projectId: 'project-1',
 		title: null,
 		emoji: null,
+		parentThreadId: null,
+		parentAgentId: null,
 		sessionNumber: 1,
 		totalPromptTokens: 0,
 		totalCompletionTokens: 0,
@@ -71,6 +73,52 @@ describe('AgentExecutionService', () => {
 	});
 
 	describe('recordMessage', () => {
+		it('passes thread metadata when creating a subagent execution session', async () => {
+			const thread = makeThread({ parentThreadId: 'parent-thread-1' });
+			const record: MessageRecord = {
+				assistantResponse: 'Done',
+				model: 'anthropic/claude-sonnet-4-5',
+				finishReason: 'stop',
+				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+				totalCost: 0.01,
+				toolCalls: [],
+				timeline: [],
+				startTime: Date.parse('2026-05-07T10:00:00Z'),
+				duration: 1234,
+				error: null,
+			};
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({ thread, created: true });
+			agentExecutionRepository.create.mockImplementation((entity) => entity as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Goal:\nResearch API behavior.',
+				record,
+				source: 'subagent',
+				threadMetadata: {
+					parentThreadId: 'parent-thread-1',
+					parentAgentId: 'parent-agent-1',
+				},
+			});
+
+			expect(agentExecutionThreadRepository.findOrCreate).toHaveBeenCalledWith(
+				'thread-1',
+				'agent-1',
+				'Agent',
+				'project-1',
+				{
+					parentThreadId: 'parent-thread-1',
+					parentAgentId: 'parent-agent-1',
+				},
+				undefined,
+				undefined,
+			);
+		});
+
 		it('stamps the task snapshot version on newly created task sessions', async () => {
 			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
 				thread: makeThread({ title: 'Task run' }),
@@ -96,9 +144,60 @@ describe('AgentExecutionService', () => {
 				'agent-1',
 				'Agent',
 				'project-1',
+				undefined,
 				'task-1',
 				'version-1',
 			);
+		});
+
+		it('syncs a generated title from memory on later messages when the thread has no title yet', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread({ title: null }),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+			memoryBackend.getThread.mockResolvedValue({
+				id: 'thread-1',
+				resourceId: 'user-1',
+				title: 'Workflow builder chat',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Follow up',
+				record: makeMessageRecord(),
+			});
+
+			expect(agentExecutionThreadRepository.update).toHaveBeenCalledWith('thread-1', {
+				title: 'Workflow builder chat',
+			});
+		});
+
+		it('does not sync title from memory when the thread already has a title', async () => {
+			agentExecutionThreadRepository.findOrCreate.mockResolvedValue({
+				thread: makeThread({ title: 'Existing title' }),
+				created: false,
+			});
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			agentExecutionRepository.save.mockResolvedValue({ id: 'execution-1' } as AgentExecution);
+
+			await service.recordMessage({
+				threadId: 'thread-1',
+				agentId: 'agent-1',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Follow up',
+				record: makeMessageRecord(),
+			});
+
+			expect(memoryBackend.getThread).not.toHaveBeenCalled();
+			expect(agentExecutionThreadRepository.update).not.toHaveBeenCalled();
 		});
 	});
 

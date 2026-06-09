@@ -11,4 +11,5 @@ export class OidcConfigDto extends Z.class({
 	loginEnabled: z.boolean().optional().default(false),
 	prompt: z.enum(OIDC_PROMPT_VALUES).optional().default('select_account'),
 	authenticationContextClassReference: z.array(z.string()).default([]),
+	additionalScopes: z.string().default(''),
 }) {}

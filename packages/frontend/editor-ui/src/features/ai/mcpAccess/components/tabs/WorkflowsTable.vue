@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { WorkflowListItem, UserAction } from '@/Interface';
-import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import {
 	N8nActionToggle,
 	N8nButton,
@@ -21,18 +21,51 @@ import { getResourcePermissions } from '@n8n/permissions';
 
 type Props = {
 	workflows: WorkflowListItem[];
+	totalCount?: number;
 	loading: boolean;
 };
 
 const props = defineProps<Props>();
 
+const tableOptions = defineModel<TableOptions>('tableOptions', {
+	default: () => ({
+		page: 0,
+		itemsPerPage: 10,
+		sortBy: [],
+	}),
+});
+
+const tablePage = computed({
+	get: () => tableOptions.value.page,
+	set: (page: number) => {
+		tableOptions.value = { ...tableOptions.value, page };
+	},
+});
+
+const tableItemsPerPage = computed({
+	get: () => tableOptions.value.itemsPerPage,
+	set: (itemsPerPage: number) => {
+		tableOptions.value = { ...tableOptions.value, itemsPerPage };
+	},
+});
+
+const tableSortBy = computed({
+	get: () => tableOptions.value.sortBy,
+	set: (sortBy: TableOptions['sortBy']) => {
+		tableOptions.value = { ...tableOptions.value, sortBy };
+	},
+});
+
 const emit = defineEmits<{
 	removeMcpAccess: [workflow: WorkflowListItem];
 	connectWorkflows: [];
 	updateDescription: [workflow: WorkflowListItem];
+	'update:options': [payload: TableOptions];
 }>();
 
 const i18n = useI18n();
+
+const itemsLength = computed(() => props.totalCount ?? props.workflows.length);
 
 const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 	{
@@ -110,20 +143,25 @@ const onConnectClick = () => {
 </script>
 
 <template>
-	<div :class="$style['workflow-table-container']">
+	<div>
 		<div v-if="props.loading">
 			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
 		<div v-else class="mt-s mb-xl">
 			<N8nDataTableServer
+				v-model:sort-by="tableSortBy"
+				v-model:page="tablePage"
+				v-model:items-per-page="tableItemsPerPage"
 				:class="$style['workflow-table']"
 				data-test-id="mcp-workflow-table"
 				:headers="tableHeaders"
 				:items="props.workflows"
-				:items-length="props.workflows.length"
+				:items-length="itemsLength"
+				:page-sizes="[10, 25, 50]"
+				@update:options="emit('update:options', $event)"
 			>
-				<template v-if="props.workflows.length === 0" #cover>
+				<template v-if="itemsLength === 0" #cover>
 					<div :class="$style['empty-state']">
 						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
 							{{ i18n.baseText('settings.mcp.workflows.table.empty.title') }}
@@ -219,12 +257,6 @@ const onConnectClick = () => {
 </template>
 
 <style module lang="scss">
-.workflow-table-container {
-	:global(.table-pagination) {
-		display: none;
-	}
-}
-
 .header {
 	display: flex;
 	justify-content: space-between;
@@ -232,6 +264,12 @@ const onConnectClick = () => {
 }
 
 .workflow-table {
+	margin-bottom: var(--spacing--sm);
+
+	:global(.table-scroll) {
+		overflow-y: hidden;
+	}
+
 	tr:last-child {
 		border-bottom: none !important;
 	}
