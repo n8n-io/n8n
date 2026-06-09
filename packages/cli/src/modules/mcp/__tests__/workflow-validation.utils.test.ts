@@ -122,6 +122,24 @@ describe('getMcpWorkflow', () => {
 
 			expect(findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, ['workflow:publish'], {
 				includeActiveVersion: true,
+				includeTags: undefined,
+			});
+		});
+
+		test('passes includeTags option to workflowFinderService', async () => {
+			const workflow = createWorkflow({ settings: { availableInMCP: true } });
+			const findWorkflowForUser = jest.fn().mockResolvedValue(workflow);
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser,
+			});
+
+			await getMcpWorkflow('wf-1', user, ['workflow:read'], workflowFinderService, {
+				includeTags: true,
+			});
+
+			expect(findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, ['workflow:read'], {
+				includeActiveVersion: undefined,
+				includeTags: true,
 			});
 		});
 	});
