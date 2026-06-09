@@ -29,6 +29,8 @@ describe('RedisClientService', () => {
 					timeoutThreshold: 10000,
 					clusterNodes: '',
 					keepAlive: undefined,
+					dualStack: false,
+					ipV6: false,
 				},
 			},
 		},
