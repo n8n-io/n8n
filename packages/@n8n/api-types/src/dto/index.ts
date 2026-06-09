@@ -32,6 +32,23 @@ export {
 	type InstanceAiResourceDecision,
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
+
+export {
+	DesktopAssistantTaskRequestDto,
+	type DesktopAssistantTaskRequest,
+	type DesktopAssistantTaskResponse,
+} from './desktop-assistant/desktop-assistant-task-request.dto';
+export {
+	DesktopAssistantPromoteRequestDto,
+	type DesktopAssistantPromoteRequest,
+	type DesktopAssistantPromoteResponse,
+} from './desktop-assistant/desktop-assistant-promote-request.dto';
+export type {
+	DesktopAssistantTasksResponse,
+	DesktopAssistantTaskCard,
+	DesktopAssistantTriggerSummary,
+	DesktopAssistantTaskIcon,
+} from './desktop-assistant/desktop-assistant-tasks-response.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
 export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';

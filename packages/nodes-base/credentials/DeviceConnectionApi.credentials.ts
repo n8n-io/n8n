@@ -5,6 +5,8 @@ export class DeviceConnectionApi implements ICredentialType {
 
 	displayName = 'Device Connection';
 
+	documentationUrl = 'deviceconnection';
+
 	icon: Icon = 'node:@n8n/n8n-nodes-langchain.computerUse';
 
 	properties: INodeProperties[] = [

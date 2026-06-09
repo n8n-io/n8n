@@ -178,6 +178,7 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export type { DesktopAssistantPromptMode } from './agent/system-prompt';
 export type {
 	AgentDbMessage,
 	AgentMessage,

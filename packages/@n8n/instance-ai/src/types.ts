@@ -29,6 +29,7 @@ import type {
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
 
+import type { DesktopAssistantPromptMode } from './agent/system-prompt';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
@@ -1336,4 +1337,6 @@ export interface CreateInstanceAgentOptions {
 	disableDeferredTools?: boolean;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
 	timeZone?: string;
+	/** Optional prompt-mode override used by the desktop-assistant entry points. */
+	promptMode?: DesktopAssistantPromptMode;
 }

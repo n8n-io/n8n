@@ -162,6 +162,7 @@
     "convict": "6.2.5",
     "cookie-parser": "1.4.7",
     "cron": "catalog:",
+    "cron-parser": "catalog:",
     "csv-parse": "catalog:",
     "csrf": "3.1.0",
     "dotenv": "17.2.3",

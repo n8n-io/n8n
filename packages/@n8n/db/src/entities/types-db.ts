@@ -199,7 +199,9 @@ export namespace ExecutionSummaries {
 		retryOf: string;
 		retrySuccessId: string;
 		status: ExecutionStatus[];
-		workflowId: string;
+		/** Single workflow id, or a list of workflow ids (used by BFF endpoints
+		 * that pre-resolve a marker like a tag to a set of workflow ids). */
+		workflowId: string | string[];
 		waitTill: boolean;
 		metadata: Array<{ key: string; value: string; exactMatch?: boolean }>;
 		startedAfter: string;
