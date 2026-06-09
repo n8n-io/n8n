@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
 import type { AiService } from '../../../services/ai.service';
@@ -68,10 +69,11 @@ jest.mock('@n8n/agents/sandbox', () => ({
 
 const volumeId = 'vol-1';
 const userId = 'user-1';
+const instanceId = 'instance-1';
 const expectedVolumeMount = {
 	volumeId,
 	mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
-	subpath: 'agent-knowledge/projects/project-1/agents/agent-1/knowledge',
+	subpath: `agent-knowledge/instances/${instanceId}/projects/project-1/agents/agent-1/knowledge`,
 };
 
 function makeAiService(overrides: Partial<AiService> = {}): AiService {
@@ -104,6 +106,7 @@ function makeService(
 	configOverrides: Partial<AgentsConfig> = {},
 	logger: Logger = mock<Logger>(),
 	aiService: AiService = makeAiService(),
+	instanceSettings: InstanceSettings = mock<InstanceSettings>({ instanceId }),
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
@@ -118,6 +121,7 @@ function makeService(
 		} as AgentsConfig,
 		logger,
 		aiService,
+		instanceSettings,
 	);
 }
 
@@ -370,6 +374,21 @@ describe('AgentKnowledgeSandboxService', () => {
 			1,
 			100,
 		);
+	});
+
+	it('rejects before calling Daytona when the instance id is invalid', async () => {
+		const service = makeService(
+			{},
+			mock<Logger>(),
+			makeAiService(),
+			mock<InstanceSettings>({ instanceId: '../other-instance' }),
+		);
+
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).rejects.toThrow(
+			'Invalid instance id for agent knowledge storage',
+		);
+		expect(listMock).not.toHaveBeenCalled();
+		expect(createMock).not.toHaveBeenCalled();
 	});
 
 	it('rejects before calling Daytona when the volume id is missing', async () => {

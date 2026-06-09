@@ -19,8 +19,12 @@ export interface AgentKnowledgeFilesystem {
 	ensureDir(dirPath: string): Promise<void>;
 }
 
-export function buildKnowledgeVolumeSubpath(projectId: string, agentId: string): string {
-	return `${AGENT_KNOWLEDGE_VOLUME_SUBPATH_PREFIX}/projects/${projectId}/agents/${agentId}/knowledge`;
+export function buildKnowledgeVolumeSubpath(
+	instanceId: string,
+	projectId: string,
+	agentId: string,
+): string {
+	return `${AGENT_KNOWLEDGE_VOLUME_SUBPATH_PREFIX}/instances/${instanceId}/projects/${projectId}/agents/${agentId}/knowledge`;
 }
 
 export function assertKnowledgePathSegment(segment: string, label: string): void {

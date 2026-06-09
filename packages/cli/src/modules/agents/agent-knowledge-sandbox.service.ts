@@ -4,6 +4,7 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Sandbox, SandboxState } from '@daytonaio/sdk';
 import { nanoid } from 'nanoid';
+import { InstanceSettings } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
 import { OperationalError } from 'n8n-workflow';
@@ -140,6 +141,7 @@ export class AgentKnowledgeSandboxService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
 		private readonly aiService: AiService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async ensureSandbox(
@@ -329,12 +331,13 @@ export class AgentKnowledgeSandboxService {
 		return {
 			volumeId: this.agentsConfig.daytonaVolumeId,
 			mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
-			subpath: buildKnowledgeVolumeSubpath(projectId, agentId),
+			subpath: buildKnowledgeVolumeSubpath(this.instanceSettings.instanceId, projectId, agentId),
 		};
 	}
 
 	private assertValidPathSegments(projectId: string, agentId: string): void {
 		try {
+			assertKnowledgePathSegment(this.instanceSettings.instanceId, 'instance id');
 			assertKnowledgePathSegment(projectId, 'project id');
 			assertKnowledgePathSegment(agentId, 'agent id');
 		} catch (error) {
