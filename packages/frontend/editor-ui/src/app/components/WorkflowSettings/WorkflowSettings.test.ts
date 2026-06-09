@@ -1751,7 +1751,7 @@ describe('WorkflowSettingsVue', () => {
 				).not.toBeInTheDocument();
 			});
 
-			it('persists coerced redactionPolicy on save under floor "production"', async () => {
+			it('does not persist the floor-coerced production value when the user made no redaction change under floor "production"', async () => {
 				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'none' });
 
 				const { getByRole } = createComponent({ pinia });
@@ -1761,15 +1761,17 @@ describe('WorkflowSettingsVue', () => {
 				await userEvent.click(getByRole('button', { name: 'Save' }));
 				expect(toast.showError).not.toHaveBeenCalled();
 
+				// The floor coerces the production select to "Redact" for display only — the workflow's
+				// own stored policy must be preserved, not overwritten with the floor's value. (ENT-35)
 				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 					expect.any(String),
 					expect.objectContaining({
-						settings: expect.objectContaining({ redactionPolicy: 'non-manual' }),
+						settings: expect.objectContaining({ redactionPolicy: 'none' }),
 					}),
 				);
 			});
 
-			it('persists coerced redactionPolicy on save under floor "all"', async () => {
+			it('does not persist the floor-coerced values when the user made no redaction change under floor "all"', async () => {
 				setUpFloor({ floor: 'all', flagEnabled: true, redactionPolicy: 'none' });
 
 				const { getByRole } = createComponent({ pinia });
@@ -1782,7 +1784,55 @@ describe('WorkflowSettingsVue', () => {
 				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 					expect.any(String),
 					expect.objectContaining({
+						settings: expect.objectContaining({ redactionPolicy: 'none' }),
+					}),
+				);
+			});
+
+			it('persists "all" when the user genuinely enables manual redaction under floor "production"', async () => {
+				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'none' });
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				// Production is floor-locked to "Redact"; manual stays editable. Turning manual on
+				// implies production (IAM-697), so the genuine, intended save is "all".
+				const manualSelect = getByTestId('workflow-settings-redact-manual-select');
+				await userEvent.click(within(manualSelect).getByRole('combobox'));
+				await waitFor(async () => {
+					const options = within(document.body as HTMLElement).getAllByRole('option');
+					const redactOption = options.find((o) => o.textContent?.trim() === 'Redact');
+					expect(redactOption).toBeTruthy();
+					await userEvent.click(redactOption!);
+				});
+				await flushPromises();
+
+				toast.showError.mockClear();
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+				expect(toast.showError).not.toHaveBeenCalled();
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
 						settings: expect.objectContaining({ redactionPolicy: 'all' }),
+					}),
+				);
+			});
+
+			it('preserves an existing stricter stored policy on save under floor "production"', async () => {
+				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'non-manual' });
+
+				const { getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				toast.showError.mockClear();
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+				expect(toast.showError).not.toHaveBeenCalled();
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({ redactionPolicy: 'non-manual' }),
 					}),
 				);
 			});

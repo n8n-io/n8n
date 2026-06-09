@@ -6,6 +6,8 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
+import { useTelemetry } from '@/app/composables/useTelemetry';
+
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
@@ -47,6 +49,7 @@ import { VIEWS } from '@/app/constants/navigation';
 const wizardStore = useEvaluationsWizardSidepanelStore();
 const locale = useI18n();
 const router = useRouter();
+const telemetry = useTelemetry();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
@@ -333,6 +336,26 @@ const showLoadingState = computed(
 	() => isRunning.value || (activeStep.value === 3 && !latestRun.value),
 );
 
+// Fire once per run when the results step settles on a finished run, so the
+// "view detailed results" navigation isn't the only signal that a user saw
+// their scores inline. Deduped by run id so the watcher re-firing (poll
+// updates, case prefetch) doesn't emit repeats.
+const trackedResultsRunId = ref<string | null>(null);
+watch(
+	[activeStep, latestRun, showLoadingState],
+	([step, run, loading]) => {
+		if (step !== 3 || loading || !run || trackedResultsRunId.value === run.id) return;
+		trackedResultsRunId.value = run.id;
+		telemetry.track('User viewed evaluation results', {
+			workflow_id: workflowDocumentStore.value?.workflowId,
+			run_id: run.id,
+			test_case_count: latestRunCases.value.length,
+			metric_count: getUserDefinedMetricNames(run.metrics).length,
+		});
+	},
+	{ immediate: true },
+);
+
 // step0Complete: system chosen (node or slice)
 const step0Complete = computed(() => {
 	if (isSliceMode.value) {
@@ -403,7 +426,7 @@ async function handleNext() {
 		return;
 	}
 	if (current === 2) {
-		const ok = await persistAndDispatch();
+		const ok = await persistAndDispatch('initial');
 		if (!ok) return;
 		wizardStore.goNext();
 	}
@@ -418,7 +441,7 @@ function handleBack() {
 }
 
 async function handleRunAgain() {
-	await persistAndDispatch();
+	await persistAndDispatch('run_again');
 }
 
 function handleViewResults() {
