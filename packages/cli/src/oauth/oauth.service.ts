@@ -707,7 +707,12 @@ export class OauthService {
 			);
 
 			if (oauthCredentials.useDynamicClientRegistration) {
-				authorizationServerUrl = protectedResourceMetadata.authorization_servers[0];
+				const discoveredAuthorizationServerUrl =
+					protectedResourceMetadata.authorization_servers[0]?.trim();
+				if (!discoveredAuthorizationServerUrl) {
+					throw new InvalidOAuthUrlError('OAuth url is not a valid URL.');
+				}
+				authorizationServerUrl = discoveredAuthorizationServerUrl;
 				this.validateAuthServerUrlOrThrow(authorizationServerUrl);
 			}
 

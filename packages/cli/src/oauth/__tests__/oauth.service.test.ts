@@ -25,6 +25,7 @@ import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.servic
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import {
 	InvalidTargetError,
+	InvalidOAuthUrlError,
 	OauthService,
 	OauthVersion,
 	shouldSkipAuthOnOAuthCallback,
@@ -3416,6 +3417,24 @@ describe('OauthService', () => {
 			});
 		};
 
+		describe('discoverAndResolveResource', () => {
+			it('should throw InvalidOAuthUrlError when discovered authorization server URL is empty', async () => {
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: [''],
+						resource: 'https://mcp.example.com',
+					},
+				});
+
+				await expect(
+					(service as any).discoverAndResolveResource(
+						makeDcrCredentials(),
+						{ cid: '1', origin: 'static-credential' } as any,
+						'https://mcp.example.com',
+					),
+				).rejects.toThrow(InvalidOAuthUrlError);
+			});
+		});
 		describe('InvalidTargetError', () => {
 			it('should expose OAuth invalid_target response metadata', () => {
 				const error = new InvalidTargetError('Invalid resource');
