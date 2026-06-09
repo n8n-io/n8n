@@ -39,6 +39,40 @@ describe('createSandbox', () => {
 		expect(result?.provider).toBe('daytona');
 	});
 
+	it('passes ephemeral through to the DaytonaSandbox', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://api.daytona.io',
+			daytonaApiKey: 'test-key',
+			ephemeral: true,
+			timeout: 60_000,
+		};
+
+		const result = await createSandbox(config);
+
+		expect(result).toBeInstanceOf(DaytonaSandbox);
+		expect((result as unknown as { options: { ephemeral?: boolean } }).options.ephemeral).toBe(
+			true,
+		);
+	});
+
+	it('omits ephemeral from the DaytonaSandbox when not configured', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://api.daytona.io',
+			daytonaApiKey: 'test-key',
+			timeout: 60_000,
+		};
+
+		const result = await createSandbox(config);
+
+		expect(
+			(result as unknown as { options: { ephemeral?: boolean } }).options.ephemeral,
+		).toBeUndefined();
+	});
+
 	it('passes getAuthToken through to DaytonaSandbox in proxy mode', async () => {
 		const getAuthToken = vi.fn().mockResolvedValue('jwt-token-123');
 		const config: SandboxConfig = {

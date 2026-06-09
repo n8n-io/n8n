@@ -73,6 +73,13 @@ export class InstanceAiConfig {
 	sandboxNamePrefix: string = '';
 
 	/**
+	 * When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of
+	 * lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_EPHEMERAL')
+	sandboxEphemeral: boolean = false;
+
+	/**
 	 * Skew (milliseconds) used to proactively refresh the Daytona proxy JWT before it expires.
 	 * Refresh fires when the cached token's remaining lifetime falls below this threshold.
 	 * Only used in proxy mode (when a `getAuthToken` callback is configured); ignored for static API keys.
