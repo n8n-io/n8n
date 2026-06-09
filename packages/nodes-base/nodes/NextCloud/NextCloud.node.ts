@@ -1005,11 +1005,11 @@ export class NextCloud implements INodeType {
 							if (shareType === 0) {
 								bodyParameters.shareWith = this.getNodeParameter('user', i) as string;
 							} else if (shareType === 7) {
-								bodyParameters.shareWith = this.getNodeParameter('circleId', i) as number;
+								bodyParameters.shareWith = this.getNodeParameter('circleId', i) as string;
 							} else if (shareType === 4) {
 								bodyParameters.shareWith = this.getNodeParameter('email', i) as string;
 							} else if (shareType === 1) {
-								bodyParameters.shareWith = this.getNodeParameter('groupId', i) as number;
+								bodyParameters.shareWith = this.getNodeParameter('groupId', i) as string;
 							}
 
 							body = new URLSearchParams(bodyParameters as Record<string, string>).toString();

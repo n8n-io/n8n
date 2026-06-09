@@ -142,8 +142,8 @@ describe('NextCloud GenericFunctions', () => {
 		);
 	});
 
-	it('strips non-standard WebDAV path for OCS requests', async () => {
-		const customUrl = 'https://custom.example.com/dav';
+	it('strips non-standard WebDAV path for OCS requests while preserving subpath', async () => {
+		const customUrl = 'https://custom.example.com/nextcloud/remote.php/webdav';
 		const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
 		getCredentials.mockResolvedValue({ webDavUrl: customUrl });
 		requestWithAuthentication.mockResolvedValue('<ocs />');
@@ -160,7 +160,7 @@ describe('NextCloud GenericFunctions', () => {
 		);
 
 		expect(requestOptions(requestWithAuthentication).uri).toBe(
-			'https://custom.example.com/ocs/v1.php/cloud/users',
+			'https://custom.example.com/nextcloud/ocs/v1.php/cloud/users',
 		);
 	});
 
@@ -212,5 +212,46 @@ describe('NextCloud GenericFunctions', () => {
 
 		await expect(promise).rejects.toThrow(NodeOperationError);
 		await expect(promise).rejects.toThrow("NextCloud responded with a 'Fatal error'");
+	});
+
+	it('strips standard remote.php/webdav path for OCS requests', async () => {
+		const { functions, requestWithAuthentication } = buildFunctions();
+		requestWithAuthentication.mockResolvedValue('<ocs />');
+
+		await nextCloudApiRequest.call(
+			functions,
+			'POST',
+			'ocs/v1.php/cloud/users',
+			'',
+			{},
+			undefined,
+			undefined,
+			false,
+		);
+
+		expect(requestOptions(requestWithAuthentication).uri).toBe(
+			'https://nextcloud.example.com/ocs/v1.php/cloud/users',
+		);
+	});
+
+	it('handles non-standard WebDAV URLs with subpath gracefully', async () => {
+		const customUrl = 'https://custom.example.com/nextcloud/dav';
+		const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
+		getCredentials.mockResolvedValue({ webDavUrl: customUrl });
+		requestWithAuthentication.mockResolvedValue({ status: 'ok' });
+
+		await nextCloudApiRequest.call(
+			functions,
+			'GET',
+			'/test.txt',
+			'',
+			undefined,
+			undefined,
+			undefined,
+			true,
+		);
+
+		expect(requestOptions(requestWithAuthentication).uri).toBe(`${customUrl}//test.txt`);
+		expect(requestOptions(requestWithAuthentication).uri).toEqual(expect.stringContaining('/dav'));
 	});
 });
