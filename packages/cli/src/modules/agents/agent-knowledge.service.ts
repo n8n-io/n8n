@@ -209,7 +209,16 @@ export class AgentKnowledgeService {
 	private async extractPdfText(filePath: string): Promise<string> {
 		const loader = new N8nPdfLoader(filePath, { splitPages: false });
 		const documents = await loader.load();
-		return documents.map((document: { pageContent: string }) => document.pageContent).join('\n\n');
+		const extractedText = documents
+			.map((document: { pageContent: string }) => document.pageContent)
+			.join('\n\n')
+			.trim();
+		if (!extractedText) {
+			throw new BadRequestError(
+				'PDF contains no extractable text and cannot be added to knowledge',
+			);
+		}
+		return extractedText;
 	}
 
 	private async deleteVolumeFile(

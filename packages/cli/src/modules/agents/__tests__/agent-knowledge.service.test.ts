@@ -322,6 +322,34 @@ describe('AgentKnowledgeService', () => {
 		);
 	});
 
+	it('rejects pdf uploads when no text can be extracted', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		loadMock.mockResolvedValue([{ pageContent: ' \n\t' }]);
+		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+		const tempFilePath = path.join(tempDirectory, 'scan.pdf');
+		await writeFile(tempFilePath, '%PDF-1.4');
+
+		await expect(
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'scan.pdf',
+						mimetype: 'application/pdf',
+						path: tempFilePath,
+						size: 8,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
+		).rejects.toThrow('PDF contains no extractable text');
+		expect(agentFileRepository.all()).toEqual([]);
+		expect(filesystem.uploadFileCalls).toEqual([]);
+		await expect(access(tempFilePath)).rejects.toThrow();
+	});
+
 	it('removes the DB row when volume sync fails after create', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));

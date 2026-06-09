@@ -57,6 +57,7 @@ import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
@@ -288,7 +289,7 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private isKnowledgeBaseEnabled(): boolean {
-		return this.agentsConfig.sandboxEnabled && this.agentsConfig.sandboxProvider === 'daytona';
+		return isAgentKnowledgeBaseEnabled(this.agentsConfig);
 	}
 
 	private makeToolResolver(projectId: string, userId: string): ToolResolver {

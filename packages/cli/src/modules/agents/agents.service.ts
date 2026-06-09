@@ -79,6 +79,7 @@ import { AgentRepository } from './repositories/agent.repository';
 import { type ToolRegistry } from './tool-registry';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -301,7 +302,7 @@ export class AgentsService {
 	 * Gates the file endpoints. Public so the controller can guard its file endpoints.
 	 */
 	isKnowledgeBaseEnabled(): boolean {
-		return this.agentsConfig.sandboxEnabled && this.agentsConfig.sandboxProvider === 'daytona';
+		return isAgentKnowledgeBaseEnabled(this.agentsConfig);
 	}
 
 	/**

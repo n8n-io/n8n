@@ -75,13 +75,13 @@ export class AgentsModule implements ModuleInterface {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const { isAgentKnowledgeBaseEnabled } = await import('./agent-knowledge-gate');
 		return {
 			enabled: true,
 			modules: [...config.modules],
-			knowledgeBaseEnabled: config.sandboxEnabled && config.sandboxProvider === 'daytona',
+			knowledgeBaseEnabled: isAgentKnowledgeBaseEnabled(config),
 		};
 	}
 

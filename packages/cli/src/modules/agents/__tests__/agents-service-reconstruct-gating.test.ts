@@ -533,6 +533,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		const { service, credentialProvider } = setup({
 			sandboxEnabled: true,
 			sandboxProvider: 'daytona',
+			daytonaVolumeId: 'volume-1',
 		});
 
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
@@ -543,11 +544,12 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 	});
 
 	it.each([
-		{ sandboxEnabled: false, sandboxProvider: 'daytona' as const },
-		{ sandboxEnabled: true, sandboxProvider: 'n8n-sandbox' as const },
-		{ sandboxEnabled: false, sandboxProvider: 'n8n-sandbox' as const },
+		{ sandboxEnabled: false, sandboxProvider: 'daytona' as const, daytonaVolumeId: 'volume-1' },
+		{ sandboxEnabled: true, sandboxProvider: 'n8n-sandbox' as const, daytonaVolumeId: 'volume-1' },
+		{ sandboxEnabled: false, sandboxProvider: 'n8n-sandbox' as const, daytonaVolumeId: 'volume-1' },
+		{ sandboxEnabled: true, sandboxProvider: 'daytona' as const, daytonaVolumeId: '' },
 	])(
-		'does not inject search_knowledge when sandboxEnabled=$sandboxEnabled and sandboxProvider=$sandboxProvider',
+		'does not inject search_knowledge when sandboxEnabled=$sandboxEnabled, sandboxProvider=$sandboxProvider, daytonaVolumeId=$daytonaVolumeId',
 		async (agentsConfig) => {
 			const { service, credentialProvider } = setup(agentsConfig);
 

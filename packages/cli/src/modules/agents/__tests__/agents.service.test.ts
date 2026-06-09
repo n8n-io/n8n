@@ -216,17 +216,22 @@ describe('AgentsService', () => {
 	});
 
 	describe('isKnowledgeBaseEnabled', () => {
-		it('only enables the knowledge base for Daytona sandbox config', () => {
+		it('only enables the knowledge base for Daytona sandbox config with a volume', () => {
 			expect(service.isKnowledgeBaseEnabled()).toBe(false);
 
 			agentsConfig.sandboxEnabled = true;
 			agentsConfig.sandboxProvider = 'n8n-sandbox';
+			agentsConfig.daytonaVolumeId = 'volume-1';
 			expect(service.isKnowledgeBaseEnabled()).toBe(false);
 
 			agentsConfig.sandboxProvider = 'daytona';
 			expect(service.isKnowledgeBaseEnabled()).toBe(true);
 
+			agentsConfig.daytonaVolumeId = '';
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+
 			agentsConfig.sandboxEnabled = false;
+			agentsConfig.daytonaVolumeId = 'volume-1';
 			expect(service.isKnowledgeBaseEnabled()).toBe(false);
 		});
 	});
