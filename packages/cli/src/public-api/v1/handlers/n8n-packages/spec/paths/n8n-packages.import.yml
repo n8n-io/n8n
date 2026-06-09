@@ -73,7 +73,7 @@ post:
               description: >
                 `new-version` updates matching workflows and creates a new version,
                 `fail` rejects the import when any matching workflow exists, and
-                `skip` leaves matching workflows untouched while importing the rest.
+                      description: Workflow id on the target instance (newly created for `created`, existing for `updated`/`skipped`).
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
