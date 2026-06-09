@@ -41,6 +41,7 @@ describe('parseCliArgs --base-url', () => {
 describe('parseCliArgs --prebuilt-workflows', () => {
 	it('is undefined by default', () => {
 		expect(parseCliArgs([]).prebuiltWorkflows).toBeUndefined();
+		expect(parseCliArgs([]).deletePrebuiltWorkflows).toBe(false);
 	});
 
 	it('accepts a path argument', () => {
@@ -50,6 +51,32 @@ describe('parseCliArgs --prebuilt-workflows', () => {
 
 	it('throws when no value is provided', () => {
 		expect(() => parseCliArgs(['--prebuilt-workflows'])).toThrow(/Missing value/);
+	});
+
+	it('accepts deleting prebuilt workflows when a manifest is provided', () => {
+		const args = parseCliArgs([
+			'--prebuilt-workflows',
+			'./mcp-manifest.json',
+			'--delete-prebuilt-workflows',
+		]);
+		expect(args.deletePrebuiltWorkflows).toBe(true);
+	});
+
+	it('rejects deleting prebuilt workflows without a manifest', () => {
+		expect(() => parseCliArgs(['--delete-prebuilt-workflows'])).toThrow(
+			/--delete-prebuilt-workflows requires --prebuilt-workflows/,
+		);
+	});
+
+	it('rejects deleting and keeping workflows at the same time', () => {
+		expect(() =>
+			parseCliArgs([
+				'--prebuilt-workflows',
+				'./mcp-manifest.json',
+				'--delete-prebuilt-workflows',
+				'--keep-workflows',
+			]),
+		).toThrow(/--delete-prebuilt-workflows cannot be used with --keep-workflows/);
 	});
 });
 

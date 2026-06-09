@@ -2793,6 +2793,10 @@ export function useCanvasOperations() {
 
 		// If it is JSON check if it looks on the first look like data we can use
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
+			toast.showError(
+				new Error(i18n.baseText('nodeView.showError.importWorkflowData.invalidStructure')),
+				i18n.baseText('nodeView.showError.importWorkflowData.title'),
+			);
 			return {};
 		}
 
