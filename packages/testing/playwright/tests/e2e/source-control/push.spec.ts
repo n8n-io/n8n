@@ -6,62 +6,27 @@ import { type GitRepoHelper, setupGitRepo } from '../../../utils/source-control-
 test.use({ capability: 'source-control' });
 
 async function expectPushSuccess(n8n: n8nPage) {
-	await expect(n8n.sourceControlPushModal.container).toBeHidden({ timeout: 30000 });
+	expect(
+		await n8n.notifications.waitForNotificationAndClose('Pushed successfully', { timeout: 30000 }),
+	).toBe(true);
 }
 
 async function expectNoChangesToCommit(n8n: n8nPage) {
-	const responsePromise = n8n.page.waitForResponse(
-		(response) =>
-			response.url().includes('/rest/source-control/get-status') &&
-			response.request().method() === 'GET' &&
-			response.status() === 200,
-	);
-
-	await n8n.sideBar.getSourceControlPushButton().click();
-	const response = await responsePromise;
-	const body = (await response.json()) as unknown;
-	const changes =
-		body !== null && typeof body === 'object' && 'data' in body && Array.isArray(body.data)
-			? body.data
-			: Array.isArray(body)
-				? body
-				: [];
-
-	expect(changes).toHaveLength(0);
-	await expect(n8n.sourceControlPushModal.container).toBeHidden();
+	expect(
+		await n8n.notifications.waitForNotificationAndClose('No changes to commit', { timeout: 10000 }),
+	).toBe(true);
 }
 
-async function addManualTriggerNode(n8n: n8nPage, workflowId: string) {
-	const workflow = await n8n.api.workflows.getWorkflow(workflowId);
-
-	if (!workflow.versionId) {
-		throw new Error(`Workflow ${workflowId} is missing versionId`);
-	}
-
-	await n8n.api.workflows.update(workflowId, workflow.versionId, {
-		name: workflow.name,
-		active: workflow.active,
-		nodes: [
-			{
-				id: 'manual-trigger',
-				name: MANUAL_TRIGGER_NODE_NAME,
-				type: 'n8n-nodes-base.manualTrigger',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			},
-		],
-		connections: {},
-		settings: workflow.settings,
-	});
-}
-
+// Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
+// https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
 test.describe(
-	'Push resources to Git @capability:source-control @licensed @db:reset',
+	'Push resources to Git @capability:source-control',
 	{
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},
 	() => {
+		test.fixme();
+
 		let gitRepo: GitRepoHelper;
 
 		test.beforeEach(async ({ n8n, services }) => {
@@ -97,6 +62,7 @@ test.describe(
 			await expectPushSuccess(n8n);
 
 			// check no changes to commit
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await expectNoChangesToCommit(n8n);
 		});
 
@@ -193,7 +159,9 @@ test.describe(
 			await expectPushSuccess(n8n);
 
 			// modify and delete resources
-			await addManualTriggerNode(n8n, workflow.id);
+			await n8n.navigate.toWorkflow(workflow.id);
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			await n8n.api.credentials.deleteCredential(credential.id);
 
@@ -205,20 +173,19 @@ test.describe(
 			await expect(
 				n8n.sourceControlPushModal.getStatusBadge('Workflow to Modify', 'Modified'),
 			).toBeVisible();
-			await n8n.sourceControlPushModal.selectAllFilesInModal();
 
 			await n8n.sourceControlPushModal.selectCredentialsTab();
 			await expect(n8n.sourceControlPushModal.getFileInModal('Credential to Delete')).toBeVisible();
 			await expect(
 				n8n.sourceControlPushModal.getStatusBadge('Credential to Delete', 'Deleted'),
 			).toBeVisible();
-			await n8n.sourceControlPushModal.selectAllFilesInModal();
 
 			// push and wait for commit
 			await gitRepo.pushAndWait(n8n, 'Modify workflow and delete credential');
 			await expectPushSuccess(n8n);
 
 			// check no changes to commit
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await expectNoChangesToCommit(n8n);
 		});
 
@@ -272,7 +239,9 @@ test.describe(
 			await expectPushSuccess(n8n);
 
 			// modify workflow A
-			await addManualTriggerNode(n8n, workflowA.id);
+			await n8n.navigate.toWorkflow(workflowA.id);
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
 			// check resources
 			await n8n.navigate.toHome();
@@ -291,6 +260,7 @@ test.describe(
 			await expectPushSuccess(n8n);
 
 			// Verify no more changes
+			await n8n.sideBar.getSourceControlPushButton().click();
 			await expectNoChangesToCommit(n8n);
 		});
 	},

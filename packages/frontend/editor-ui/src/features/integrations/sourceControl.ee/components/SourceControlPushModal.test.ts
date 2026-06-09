@@ -222,9 +222,7 @@ describe('SourceControlPushModal', () => {
 		});
 
 		await waitFor(() => {
-			const rows = getAllByTestId('push-modal-item');
 			const files = getAllByTestId('source-control-push-modal-file-checkbox');
-			expect(rows).toHaveLength(2);
 			expect(files).toHaveLength(2);
 		});
 

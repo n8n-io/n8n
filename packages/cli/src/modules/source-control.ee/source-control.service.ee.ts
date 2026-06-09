@@ -145,28 +145,30 @@ export class SourceControlService {
 		});
 	}
 
-	private async ensureReadyForOperation(): Promise<void> {
-		await this.sourceControlPreferencesService.loadFromDbAndApplySourceControlPreferences();
-
-		if (!this.sourceControlPreferencesService.isSourceControlLicensedAndEnabled()) {
-			throw new UserError('Source control is not connected');
-		}
-
-		this.gitService.resetService();
-		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
-		await this.initGitService();
-
-		const preferences = this.sourceControlPreferencesService.getPreferences();
-		const branches = await this.gitService.getCurrentBranch();
-		if (branches.current === '' || branches.current !== preferences.branchName) {
-			throw new UserError('Branch is not set up correctly');
-		}
-	}
-
 	async sanityCheck(): Promise<void> {
 		try {
-			await this.ensureReadyForOperation();
-		} catch {
+			const foldersExisted = sourceControlFoldersExistCheck(
+				[this.gitFolder, this.sshFolder],
+				false,
+			);
+
+			if (!foldersExisted) {
+				throw new UserError('No folders exist');
+			}
+
+			if (!this.gitService.git) {
+				await this.initGitService();
+			}
+
+			const branches = await this.gitService.getCurrentBranch();
+			if (
+				branches.current === '' ||
+				branches.current !==
+					this.sourceControlPreferencesService.sourceControlPreferences.branchName
+			) {
+				throw new UserError('Branch is not set up correctly');
+			}
+		} catch (error) {
 			throw new BadRequestError(
 				'Source control is not properly set up, please disconnect and reconnect.',
 			);

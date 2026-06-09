@@ -1155,7 +1155,6 @@ onMounted(async () => {
 												{ [$style.rowNoBorder]: index === activeRows.length - 1 },
 											]"
 											:style="{ paddingLeft: `${row.depth * 16}px` }"
-											data-test-id="push-modal-item"
 											:data-workflow-id="
 												row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow
 													? row.file.id
