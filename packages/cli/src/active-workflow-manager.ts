@@ -893,20 +893,10 @@ export class ActiveWorkflowManager {
 	 * after the published version has been advanced.
 	 */
 	async addTriggerNodes(
-		workflowId: WorkflowId,
+		dbWorkflow: WorkflowEntity,
 		version: { nodes: INode[]; connections: IConnections },
-		nodeIds: string[],
+		nodeIds: Set<INode['id']>,
 	) {
-		if (nodeIds.length === 0) return;
-
-		const dbWorkflow = await this.workflowRepository.findById(workflowId);
-
-		if (!dbWorkflow) {
-			throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`, {
-				level: 'warning',
-			});
-		}
-
 		const { nodes, connections } = version;
 		dbWorkflow.nodes = nodes;
 		dbWorkflow.connections = connections;
@@ -927,13 +917,11 @@ export class ActiveWorkflowManager {
 			workflowSettings: dbWorkflow.settings,
 		});
 
-		const nodeIdSet = new Set(nodeIds);
-
 		let triggerCount = 0;
 		await workflow.expression.acquireIsolate();
 		try {
 			if (this.shouldAddWebhooks('update')) {
-				await this.addWebhooks(workflow, additionalData, 'trigger', 'update', nodeIdSet);
+				await this.addWebhooks(workflow, additionalData, 'trigger', 'update', nodeIds);
 			}
 
 			if (this.shouldAddNonWebhookTriggers()) {
@@ -946,7 +934,7 @@ export class ActiveWorkflowManager {
 					executionMode: 'trigger',
 					additionalData,
 					resolveWorkflowData,
-					nodeIds: nodeIdSet,
+					nodeIds,
 				});
 			}
 
@@ -955,9 +943,10 @@ export class ActiveWorkflowManager {
 			await workflow.expression.releaseIsolate();
 		}
 
-		await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
-
-		await this.workflowStaticDataService.saveStaticData(workflow);
+		await Promise.all([
+			this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount),
+			this.workflowStaticDataService.saveStaticData(workflow),
+		]);
 	}
 
 	/**
@@ -967,22 +956,14 @@ export class ActiveWorkflowManager {
 	 * so the right webhooks are deregistered.
 	 */
 	async removeTriggerNodes(
-		workflowId: WorkflowId,
+		dbWorkflow: WorkflowEntity,
 		version: { nodes: INode[]; connections: IConnections },
-		nodeIds: string[],
+		nodeIds: Set<INode['id']>,
 	) {
-		if (nodeIds.length === 0) return;
-
-		const dbWorkflow = await this.workflowRepository.findById(workflowId);
-
-		if (!dbWorkflow) {
-			throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`, {
-				level: 'warning',
-			});
-		}
+		if (nodeIds.size === 0) return;
 
 		const workflow = new Workflow({
-			id: workflowId,
+			id: dbWorkflow.id,
 			name: dbWorkflow.name,
 			nodes: version.nodes,
 			connections: version.connections,
@@ -997,12 +978,10 @@ export class ActiveWorkflowManager {
 			workflowSettings: dbWorkflow.settings,
 		});
 
-		const nodeIdSet = new Set(nodeIds);
+		const removedNodeNames = await this.deregisterWebhooks(workflow, additionalData, nodeIds);
+		await this.webhookService.deleteWorkflowWebhooksForNodes(dbWorkflow.id, removedNodeNames);
 
-		const removedNodeNames = await this.deregisterWebhooks(workflow, additionalData, nodeIdSet);
-		await this.webhookService.deleteWorkflowWebhooksForNodes(workflowId, removedNodeNames);
-
-		await this.activeWorkflowTriggers.removeTriggers(workflowId, nodeIds);
+		await this.activeWorkflowTriggers.removeTriggers(dbWorkflow.id, nodeIds);
 	}
 
 	@OnPubSubEvent('display-workflow-activation', { instanceType: 'main' })

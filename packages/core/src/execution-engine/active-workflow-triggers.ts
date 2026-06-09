@@ -183,19 +183,23 @@ export class ActiveWorkflowTriggers {
 	 * deregisters its poll crons. Drops the workflow from the active set only
 	 * when no triggers or crons remain for it.
 	 */
-	async removeTriggers(workflowId: string, nodeIds: string[]) {
-		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
+	async removeTriggers(workflowId: string, nodeIds: Set<INode['id']>) {
+		const activeTriggers = this.activeTriggersByWorkflowId.get(workflowId);
+		if (!activeTriggers) {
+			return;
+		}
 
 		for (const nodeId of nodeIds) {
-			const response = triggers?.get(nodeId);
+			this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
+
+			const response = activeTriggers.get(nodeId);
 			if (response) {
 				await this.closeTrigger(response, workflowId);
 			}
-			triggers?.delete(nodeId);
-			this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
+			activeTriggers.delete(nodeId);
 		}
 
-		if (triggers?.isEmpty && !this.scheduledTaskManager.hasCrons(workflowId)) {
+		if (activeTriggers.isEmpty && !this.scheduledTaskManager.hasCrons(workflowId)) {
 			this.activeTriggersByWorkflowId.delete(workflowId);
 		}
 	}

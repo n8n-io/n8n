@@ -8,8 +8,8 @@ import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
  * an unchanged trigger appears in neither.
  */
 export interface TriggerDiff {
-	toAdd: string[];
-	toRemove: string[];
+	toAdd: Set<INode['id']>;
+	toRemove: Set<INode['id']>;
 }
 
 /**
@@ -24,20 +24,20 @@ export function computeTriggerDiff(
 ): TriggerDiff {
 	const diff = compareWorkflowsNodes(oldTriggerNodes, newTriggerNodes);
 
-	const toAdd: string[] = [];
-	const toRemove: string[] = [];
+	const toAdd: Set<INode['id']> = new Set();
+	const toRemove: Set<INode['id']> = new Set();
 
 	for (const [nodeId, { status }] of diff) {
 		switch (status) {
 			case NodeDiffStatus.Added:
-				toAdd.push(nodeId);
+				toAdd.add(nodeId);
 				break;
 			case NodeDiffStatus.Deleted:
-				toRemove.push(nodeId);
+				toRemove.add(nodeId);
 				break;
 			case NodeDiffStatus.Modified:
-				toRemove.push(nodeId);
-				toAdd.push(nodeId);
+				toRemove.add(nodeId);
+				toAdd.add(nodeId);
 				break;
 			case NodeDiffStatus.Eq:
 				break;

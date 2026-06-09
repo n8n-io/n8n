@@ -92,14 +92,12 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		const removed = scheduleNode('removed');
 		const added = scheduleNode('added');
 
-		// Currently published version runs `unchanged` + `removed`.
+		// Currently active version runs `unchanged` + `removed`.
 		const workflow = await createWorkflowWithHistory(
 			{ active: true, nodes: [unchanged, removed] },
 			owner,
 		);
-		const oldVersionId = workflow.versionId;
-		await setActiveVersion(workflow.id, oldVersionId);
-		await publishedVersionRepository.setPublishedVersion(workflow.id, oldVersionId);
+		await setActiveVersion(workflow.id, workflow.versionId);
 		await activeWorkflowManager.add(workflow.id, 'activate');
 
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(unchanged.id)).toBe(true);
@@ -112,7 +110,6 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			nodes: [unchanged, added],
 			connections: {},
 		});
-		await setActiveVersion(workflow.id, newVersionId);
 
 		await outboxRepository.enqueue(workflow.id, newVersionId);
 		const record = await outboxRepository.claimNextPendingRecord();
@@ -139,9 +136,7 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 
 		const trigger = scheduleNode('only');
 		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
-		const oldVersionId = workflow.versionId;
-		await setActiveVersion(workflow.id, oldVersionId);
-		await publishedVersionRepository.setPublishedVersion(workflow.id, oldVersionId);
+		await setActiveVersion(workflow.id, workflow.versionId);
 		await activeWorkflowManager.add(workflow.id, 'activate');
 
 		// New version keeps the same trigger (a non-trigger node could have changed).
@@ -151,7 +146,6 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			nodes: [trigger],
 			connections: {},
 		});
-		await setActiveVersion(workflow.id, newVersionId);
 
 		await outboxRepository.enqueue(workflow.id, newVersionId);
 		const record = await outboxRepository.claimNextPendingRecord();
