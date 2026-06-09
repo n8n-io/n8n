@@ -543,7 +543,11 @@ type WorkspaceServiceInternals = {
 	sandboxes: Map<string, unknown>;
 	sandboxCreations: Map<string, Promise<unknown>>;
 	resolveSandboxConfig: jest.MockedFunction<(user: User) => Promise<SandboxConfig>>;
-	instanceAiConfig?: { builderSandboxTtlMs?: number };
+	instanceAiConfig: {
+		builderSandboxTtlMs?: number;
+		daytonaRuntimeMaterialize?: boolean;
+		daytonaSnapshotName?: string;
+	};
 	sandboxTtlMs: number;
 	getOrCreateWorkspace: (
 		threadId: string,
@@ -869,6 +873,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
 		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+		service.instanceAiConfig = {};
 
 		let resolveSandbox!: (sandbox: unknown) => void;
 		const sandboxPromise = new Promise((resolve) => {
@@ -961,6 +966,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			...daytonaSandboxConfig,
 			namePrefix: 'Acme Eval',
 		}));
+		service.instanceAiConfig = {};
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
 			init: jest.fn(async () => {}),
@@ -993,6 +999,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
 		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+		service.instanceAiConfig = {};
 
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -1026,6 +1033,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sandboxes = new Map();
 		service.sandboxCreations = new Map();
 		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+		service.instanceAiConfig = {};
 
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
