@@ -15,11 +15,8 @@ export interface WorkflowImportOutcome {
 export interface PreparedWorkflow {
 	entity: WorkflowEntity;
 	sourceWorkflowId: string;
-	/**
-	 * Source workflow's published (active) version id, captured before deserialize
-	 * drops it; null when the source was never published. Needed for the publishing policy.
-	 */
-	sourcePublishedId: string | null;
+	/** Wire 'active' before deserialize drops it; needed for workflowPublishingPolicy. */
+	sourcePublished: boolean;
 }
 
 export interface WorkflowConflict {

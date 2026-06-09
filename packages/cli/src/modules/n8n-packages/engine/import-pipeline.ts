@@ -165,7 +165,7 @@ export class ImportPipeline {
 			prepared.push({
 				entity,
 				sourceWorkflowId: entry.id,
-				sourcePublishedId: wire.activeVersionId,
+				sourcePublished: wire.active,
 			});
 		}
 

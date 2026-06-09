@@ -17,7 +17,7 @@ const wire = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkflow =
 	connections: {},
 	versionId: 'version-from-source',
 	parentFolderId: 'folder-from-source',
-	activeVersionId: 'version-from-source',
+	active: true,
 	isArchived: false,
 	...overrides,
 });
@@ -69,6 +69,6 @@ describe('WorkflowSerializer.deserialize', () => {
 		expect(partial).not.toHaveProperty('versionId');
 		expect(partial).not.toHaveProperty('parentFolder');
 		expect(partial).not.toHaveProperty('parentFolderId');
-		expect(partial).not.toHaveProperty('activeVersionId');
+		expect(partial).not.toHaveProperty('active');
 	});
 });

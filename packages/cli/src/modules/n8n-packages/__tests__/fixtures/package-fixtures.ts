@@ -39,7 +39,7 @@ export function serializedWorkflow(
 		connections: {},
 		versionId: 'wire-version-id',
 		parentFolderId: null,
-		activeVersionId: null,
+		active: false,
 		isArchived: false,
 		...overrides,
 	};
