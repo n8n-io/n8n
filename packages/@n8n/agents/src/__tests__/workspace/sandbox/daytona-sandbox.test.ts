@@ -160,13 +160,13 @@ const {
 	};
 });
 
-vi.mock('../lazy-daytona', () => ({
+vi.mock('../../../workspace/sandbox/lazy-daytona', () => ({
 	loadDaytona: () => ({ Daytona, DaytonaError, DaytonaNotFoundError }),
 }));
 
-import type { ErrorReporter, Logger } from '../../logger';
-import { DaytonaFilesystem } from '../daytona-filesystem';
-import { DaytonaSandbox } from '../daytona-sandbox';
+import { DaytonaFilesystem } from '../../../workspace/filesystem/daytona-filesystem';
+import { DaytonaSandbox } from '../../../workspace/sandbox/daytona-sandbox';
+import type { ErrorReporter, Logger } from '../../../workspace/sandbox/logger';
 
 function base64url(input: string): string {
 	return Buffer.from(input, 'utf8').toString('base64url');
@@ -199,7 +199,7 @@ beforeEach(() => {
 });
 
 describe('DaytonaSandbox (creation strategies)', () => {
-	it('falls back from snapshot creation to image creation and preserves sandbox labels', async () => {
+	it('falls back from snapshot creation to image creation and preserves caller-provided labels', async () => {
 		const logger = makeLogger();
 		const errorReporter: ErrorReporter = { error: vi.fn() };
 		const snapshotError = new Error('snapshot missing');
@@ -232,7 +232,6 @@ describe('DaytonaSandbox (creation strategies)', () => {
 				ephemeral: true,
 				labels: {
 					'n8n-builder': 'builder-run',
-					'n8n-instance-ai-sandbox-id': 'sandbox-id',
 					run_id: 'run-1',
 					thread_id: 'thread-1',
 				},
@@ -246,7 +245,6 @@ describe('DaytonaSandbox (creation strategies)', () => {
 				image: 'node:20',
 				labels: {
 					'n8n-builder': 'builder-run',
-					'n8n-instance-ai-sandbox-id': 'sandbox-id',
 					run_id: 'run-1',
 					thread_id: 'thread-1',
 				},

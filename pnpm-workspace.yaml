@@ -6,15 +6,19 @@ packages:
   - packages/testing/**
 
 catalog:
-  '@ai-sdk/amazon-bedrock': ^4.0.95
-  '@ai-sdk/anthropic': 3.0.58
-  '@ai-sdk/azure': ^3.0.54
-  '@ai-sdk/cohere': ^3.0.30
-  '@ai-sdk/deepseek': ^2.0.29
-  '@ai-sdk/gateway': ^3.0.104
-  '@ai-sdk/groq': ^3.0.35
-  '@ai-sdk/mistral': ^3.0.30
-  '@ai-sdk/openai-compatible': ^2.0.37
+  '@ai-sdk/amazon-bedrock': ^4.0.113
+  '@ai-sdk/anthropic': ^3.0.81
+  '@ai-sdk/azure': ^3.0.70
+  '@ai-sdk/cohere': ^3.0.36
+  '@ai-sdk/deepseek': ^2.0.35
+  '@ai-sdk/gateway': ^3.0.125
+  '@ai-sdk/google': ^3.0.80
+  '@ai-sdk/groq': ^3.0.39
+  '@ai-sdk/mistral': ^3.0.37
+  '@ai-sdk/openai': ^3.0.68
+  '@ai-sdk/openai-compatible': ^2.0.48
+  '@ai-sdk/provider-utils': ^4.0.27
+  '@ai-sdk/xai': ^3.0.93
   '@azure/identity': 4.13.0
   '@chat-adapter/linear': ^4.28.1
   '@chat-adapter/slack': ^4.28.1

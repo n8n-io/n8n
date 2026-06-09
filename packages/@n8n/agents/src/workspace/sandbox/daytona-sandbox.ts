@@ -8,18 +8,13 @@ import type {
 	SandboxState,
 	VolumeMount,
 } from '@daytonaio/sdk';
-import {
-	BaseSandbox,
-	type CommandResult,
-	type ExecuteCommandOptions,
-	type ProviderStatus,
-	type SandboxInfo,
-} from '@n8n/agents';
 import { randomUUID } from 'node:crypto';
 
+import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
+import { BaseSandbox } from './base-sandbox';
 import { DaytonaAuthManager } from './daytona-auth-manager';
 import { loadDaytona } from './lazy-daytona';
-import type { ErrorReporter, Logger } from '../logger';
+import type { ErrorReporter, Logger } from './logger';
 
 const SANDBOX_STATE_STARTED = 'started';
 const SANDBOX_STATE_STOPPED = 'stopped';
@@ -430,13 +425,10 @@ export class DaytonaSandbox extends BaseSandbox {
 	}> {
 		const base: CreateSandboxBaseParams = {
 			language: this.language,
-			labels: {
-				...this.options.labels,
-				'n8n-instance-ai-sandbox-id': this.id,
-			},
 			autoStopInterval: this.options.autoStopInterval ?? 15,
 			name: this.sandboxName,
 		};
+		if (this.options.labels !== undefined) base.labels = this.options.labels;
 		if (this.options.ephemeral !== undefined) base.ephemeral = this.options.ephemeral;
 		if (this.options.autoArchiveInterval !== undefined) {
 			base.autoArchiveInterval = this.options.autoArchiveInterval;

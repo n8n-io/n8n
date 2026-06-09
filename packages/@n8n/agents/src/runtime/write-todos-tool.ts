@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { SUB_AGENT_TASK_DIFFICULTIES } from './delegate-sub-agent-tool';
 import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
 import { Tool } from '../sdk/tool';
 import type { BuiltTool } from '../types/sdk/tool';
@@ -7,6 +8,8 @@ import type { BuiltTool } from '../types/sdk/tool';
 export const WRITE_TODOS_TOOL_NAME = 'write_todos';
 
 const todoStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'blocked', 'cancelled']);
+
+const todoDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
 
 const todoDelegateHintSchema = z
 	.object({
@@ -27,6 +30,9 @@ const todoItemSchema = z.object({
 	id: z.string().min(1).describe('Stable identifier for this task within the current plan.'),
 	content: z.string().min(1).describe('Concrete, self-contained task description.'),
 	status: todoStatusSchema,
+	difficulty: todoDifficultySchema.describe(
+		'Task difficulty: "low", "medium", or "high". Use the same value when delegating this task with delegate_subagent.',
+	),
 	delegateHint: todoDelegateHintSchema,
 });
 
@@ -72,8 +78,9 @@ const WRITE_TODOS_SYSTEM_INSTRUCTION = [
 	"- You would only create a todo list to restate the user's request.",
 	'HOW TO USE write_todos:',
 	'- Write concrete, self-contained tasks, not vague phases.',
+	'- Assign difficulty to every task: low for simple mechanical or localized work, medium for normal implementation or review requiring judgment, high for complex, broad, ambiguous, or high-risk work.',
 	'- Mark the first active task, or independent active tasks, as in_progress immediately.',
-	'- For sub-agent-worthy work, create one todo per bounded workstream, then call delegate_subagent separately for that task.',
+	'- For sub-agent-worthy work, create one todo per bounded workstream, then call delegate_subagent separately for that task; pass the same difficulty on the delegate call.',
 	'- Do not delegate the entire user request as one task.',
 	'- Update task status as soon as work completes; do not batch completions at the end.',
 	'- Revise the list when new information changes the plan.',

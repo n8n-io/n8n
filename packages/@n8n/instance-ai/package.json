@@ -57,7 +57,6 @@
     "@n8n/agents": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/mcp-browser": "workspace:*",
-    "@n8n/sandbox-client": "0.0.4",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
