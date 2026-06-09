@@ -65,8 +65,15 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 	switch (interaction.kind) {
 		case 'plan': {
 			if (interaction.tasks.length === 0) return null;
-			const titles = interaction.tasks.map((t, i) => t.title ?? `Task ${String(i + 1)}`).join('; ');
-			return `Plan (${String(interaction.tasks.length)}): ${titles}`;
+			// Include task descriptions, not just titles — an expectation about plan
+			// content can't be graded from titles alone (the report shows both).
+			const items = interaction.tasks
+				.map((t, i) => {
+					const title = t.title ?? `Task ${String(i + 1)}`;
+					return t.description ? `${title}: ${t.description}` : title;
+				})
+				.join('; ');
+			return cap(`Plan (${String(interaction.tasks.length)}): ${items}`);
 		}
 		case 'ask-user': {
 			if (interaction.questions.length === 0) return null;
@@ -79,8 +86,9 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 			}
 			const qs = interaction.questions
 				.map((q) => {
+					const opts = q.options && q.options.length > 0 ? ` [${q.options.join(' / ')}]` : '';
 					const answer = answerByQId.get(q.id);
-					return `Q: ${q.question}${answer ? ` -> A: ${answer}` : ''}`;
+					return `Q: ${q.question}${opts}${answer ? ` -> A: ${answer}` : ''}`;
 				})
 				.join(' | ');
 			return `Asked user: ${qs}`;
@@ -112,7 +120,13 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 						? ' (approved)'
 						: ' (rejected)'
 					: '';
-			return `Resume ${interaction.toolName}: ${interaction.resumeReason}${decision}`;
+			// The agent's confirmation prompt and especially the user's free-text
+			// feedback (e.g. why a plan was rejected) are core conversation evidence —
+			// the report surfaces both, so the judge must see them too.
+			const parts = [`Resume ${interaction.toolName}: ${interaction.resumeReason}${decision}`];
+			if (interaction.message) parts.push(`prompt: ${cap(interaction.message)}`);
+			if (interaction.feedback) parts.push(`user feedback: ${cap(interaction.feedback)}`);
+			return parts.join(' — ');
 		}
 		case 'tool-call': {
 			// Args/result are the evidence for expectations like "used an HTTP Request
