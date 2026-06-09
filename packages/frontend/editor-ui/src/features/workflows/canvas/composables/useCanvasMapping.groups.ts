@@ -175,9 +175,7 @@ export function mapGroupsToVueFlowNodes({
 }
 
 /**
- * Build a Map<nodeId, IWorkflowGroup> for nodes inside a collapsed group.
- * Used to look up "is this endpoint of a connection currently hidden inside a
- * collapsed group, and if so, which group does it belong to?".
+ * Reverse index: hidden node id → its collapsed group.
  */
 export function buildCollapsedGroupByNodeId(
 	allGroups: IWorkflowGroup[],
