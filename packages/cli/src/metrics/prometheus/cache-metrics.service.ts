@@ -22,24 +22,17 @@ export class PrometheusCacheMetricsService implements PrometheusMetricsCollector
 	}
 
 	init() {
-		const cache = this.cacheService.isRedis() ? 'redis' : 'memory';
+		this.initializeCounter('metrics.cache.hit', 'hits');
+		this.initializeCounter('metrics.cache.miss', 'misses');
+		this.initializeCounter('metrics.cache.update', 'updates');
+	}
 
-		const [hitsConfig, missesConfig, updatesConfig] = ['hits', 'misses', 'updates'].map((kind) => ({
+	private initializeCounter(eventName: Parameters<CacheService['on']>[0], kind: string) {
+		const counter = new promClient.Counter({
 			name: `${this.config.prefix}cache_${kind}_total`,
 			help: `Total number of cache ${kind}.`,
-			labelNames: ['cache'],
-		}));
-
-		const cacheHitsTotal = new promClient.Counter(hitsConfig);
-		cacheHitsTotal.inc({ cache }, 0);
-		this.cacheService.on('metrics.cache.hit', () => cacheHitsTotal.inc({ cache }, 1));
-
-		const cacheMissesTotal = new promClient.Counter(missesConfig);
-		cacheMissesTotal.inc({ cache }, 0);
-		this.cacheService.on('metrics.cache.miss', () => cacheMissesTotal.inc({ cache }, 1));
-
-		const cacheUpdatesTotal = new promClient.Counter(updatesConfig);
-		cacheUpdatesTotal.inc({ cache }, 0);
-		this.cacheService.on('metrics.cache.update', () => cacheUpdatesTotal.inc({ cache }, 1));
+		});
+		counter.inc(0);
+		this.cacheService.on(eventName, () => counter.inc(1));
 	}
 }

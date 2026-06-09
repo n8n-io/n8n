@@ -20,7 +20,6 @@ describe('PrometheusCacheMetricsService', () => {
 
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_', includeCacheMetrics: true });
-		cacheService.isRedis.mockReturnValue(false);
 		service = new PrometheusCacheMetricsService(cacheService, config);
 		mockCounterInc = jest.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
@@ -54,7 +53,6 @@ describe('PrometheusCacheMetricsService', () => {
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_hits_total',
 				help: 'Total number of cache hits.',
-				labelNames: ['cache'],
 			});
 		});
 
@@ -64,7 +62,6 @@ describe('PrometheusCacheMetricsService', () => {
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_misses_total',
 				help: 'Total number of cache misses.',
-				labelNames: ['cache'],
 			});
 		});
 
@@ -74,22 +71,14 @@ describe('PrometheusCacheMetricsService', () => {
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_updates_total',
 				help: 'Total number of cache updates.',
-				labelNames: ['cache'],
 			});
 		});
 
-		it('should seed all 3 counters at 0 with the cache label', () => {
+		it('should seed all 3 counters at 0', () => {
 			service.init();
 
-			expect(mockCounterInc).toHaveBeenCalledWith({ cache: 'memory' }, 0);
+			expect(mockCounterInc).toHaveBeenCalledWith(0);
 			expect(mockCounterInc).toHaveBeenCalledTimes(3);
-		});
-
-		it('should use redis as cache label when cache backend is redis', () => {
-			cacheService.isRedis.mockReturnValue(true);
-			service.init();
-
-			expect(mockCounterInc).toHaveBeenCalledWith({ cache: 'redis' }, 0);
 		});
 
 		it('should apply custom prefix to metric names', () => {
@@ -114,7 +103,7 @@ describe('PrometheusCacheMetricsService', () => {
 
 			expect(hitHandler).toBeDefined();
 			hitHandler!();
-			expect(mockCounterInc).toHaveBeenCalledWith({ cache: 'memory' }, 1);
+			expect(mockCounterInc).toHaveBeenCalledWith(1);
 		});
 
 		it('should register a listener for metrics.cache.miss that increments the counter', () => {
@@ -123,7 +112,7 @@ describe('PrometheusCacheMetricsService', () => {
 			const missHandler = getCacheCall('metrics.cache.miss');
 			expect(missHandler).toBeDefined();
 			missHandler!();
-			expect(mockCounterInc).toHaveBeenCalledWith({ cache: 'memory' }, 1);
+			expect(mockCounterInc).toHaveBeenCalledWith(1);
 		});
 
 		it('should register a listener for metrics.cache.update that increments the counter', () => {
@@ -132,7 +121,7 @@ describe('PrometheusCacheMetricsService', () => {
 			const updateHandler = getCacheCall('metrics.cache.update');
 			expect(updateHandler).toBeDefined();
 			updateHandler!();
-			expect(mockCounterInc).toHaveBeenCalledWith({ cache: 'memory' }, 1);
+			expect(mockCounterInc).toHaveBeenCalledWith(1);
 		});
 	});
 });
