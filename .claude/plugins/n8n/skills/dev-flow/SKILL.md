@@ -93,10 +93,9 @@ said "fully autonomous", skip that too.
 
 Every loop in this skill is **bounded** to avoid spinning forever:
 - Cap each convergence loop at **3 rounds** by default.
-- If a loop hasn't converged after its cap — the plan reviewer still returns `VERDICT: CHANGES`,
-  reviews keep finding `[BLOCKER]`/`[MAJOR]` issues, or CI won't go green — **stop and escalate to
-  the user** with a crisp summary of what's unresolved and why. Don't loop silently or lower the
-  bar to "pass".
+- If a loop hasn't converged after its cap — plan or implementation reviews keep finding
+  `[BLOCKER]`/`[MAJOR]` issues, or CI won't go green — **stop and escalate to the user** with a
+  crisp summary of what's unresolved and why. Don't loop silently or lower the bar to "pass".
 - Track loop state in the todo list so the flow is resumable after an interruption.
 
 ---
@@ -125,16 +124,29 @@ affected packages and designs the approach per n8n conventions. Save its plan to
 `.claude/plans/<TICKET-ID>.md` — this single path is the source of truth the implementer and
 reviewers read from. Fallback: the `/n8n:plan <TICKET-ID>` command, which writes the same file.
 
-**2b. Adversarial plan review loop.** Dispatch the **`n8n:autodev-plan-reviewer`** agent (an
-independent reviewer that did not write the plan) to critique it: does the plan satisfy the ticket?
-Affected packages right? Edge cases, data flow, migration/rollback, test strategy, security
-surface, simpler alternatives? It responds with `VERDICT: APPROVED` or `VERDICT: CHANGES` plus a
-prioritized list of actionable items.
+**2b. Parallel multi-angle plan review loop.** Review the plan from several independent angles **in
+parallel** — dispatch the subagents in a single turn so they run concurrently, each told the input
+is an **implementation plan** (not a diff) and pointed at `.claude/plans/<TICKET-ID>.md`. Each
+returns findings tagged `[BLOCKER]` / `[MAJOR]` / `[MINOR]` against the concrete part of the plan,
+with a fix. Cover these lenses (same agents as Phase 4, in plan mode), adding the Vue lens **only
+when the plan targets frontend** (`.vue`, `packages/frontend/**`, `@n8n/design-system`):
 
-Then loop: on `VERDICT: CHANGES`, feed the items back to the planner to revise the plan file →
-re-review → repeat until the reviewer returns **`VERDICT: APPROVED`** (consensus that development
-can start), or the 3-round cap is hit (then escalate). If `n8n:autodev-plan-reviewer` isn't
-available, fall back to a skeptic subagent or `plan-eng-review`.
+1. **Correctness & completeness** — does the plan satisfy the ticket and every AC, are affected
+   files right, edge cases/migrations/compat covered, simpler alternative? (`n8n:autodev-plan-reviewer`;
+   fallback skeptic subagent / `plan-eng-review`)
+2. **Architecture & approach** — soundness, coupling, fit with existing patterns, over-engineering.
+   (`n8n:autodev-architecture-reviewer`; fallback `architecture-auditor`)
+3. **Security & risk** — does the proposed approach widen the attack surface or miss authz/validation?
+   (`n8n:autodev-security-reviewer`; fallback `security-auditor`)
+4. **Test strategy** — is the planned testing adequate and does it name the high-value cases?
+   (`n8n:autodev-test-reviewer`; fallback `expert-test-developer`)
+5. **Frontend / Vue** *(only if the plan targets frontend)* — proposed components/stores, design-system
+   and i18n approach. (`n8n:autodev-vue-reviewer`; fallback `expert-vue3-developer`)
+
+Collect and dedupe findings. Then loop: feed the `[BLOCKER]`/`[MAJOR]` items back to the planner to
+revise the plan file → re-run the affected lenses → repeat until **no `[BLOCKER]` or `[MAJOR]`
+findings remain** (consensus that development can start), or the 3-round cap is hit (then escalate).
+Record `[MINOR]` items in the plan as known trade-offs rather than blocking on them.
 
 The converged plan file is the source of truth for the rest of the flow.
 

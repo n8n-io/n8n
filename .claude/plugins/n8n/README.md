@@ -40,7 +40,7 @@ mostly-autonomous loop. It delegates to a purpose-built agent set:
 | Agent | Role |
 |-------|------|
 | `n8n:autodev-planner` | Produce a reviewable implementation plan |
-| `n8n:autodev-plan-reviewer` | Critique the plan (`VERDICT: APPROVED`/`CHANGES`) |
+| `n8n:autodev-plan-reviewer` | Plan review: correctness & completeness (lead lens) |
 | `n8n:autodev-implementer` | Execute the plan, get build/tests green |
 | `n8n:autodev-architecture-reviewer` | Review diff: boundaries, coupling, data flow |
 | `n8n:autodev-security-reviewer` | Review diff: injection, authz, secrets, SSRF |
