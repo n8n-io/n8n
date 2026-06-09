@@ -1238,7 +1238,7 @@ export class TelemetryEventRelay extends EventRelay {
 	private async serverStarted() {
 		const cpus = os.cpus();
 		const otel = await this.getOtelTelemetryInfo();
-		const instanceSettings = this.getInstanceSettingsTelemetryInfo();
+		const settingsManagedByEnvVars = this.getSettingsManagedByEnvVarsTelemetryInfo();
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
@@ -1365,7 +1365,7 @@ export class TelemetryEventRelay extends EventRelay {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
 			otel,
-			instance_settings: instanceSettings,
+			settings_managed_by_env_vars: settingsManagedByEnvVars,
 		});
 	}
 
@@ -1379,7 +1379,7 @@ export class TelemetryEventRelay extends EventRelay {
 		};
 	}
 
-	private getInstanceSettingsTelemetryInfo() {
+	private getSettingsManagedByEnvVarsTelemetryInfo() {
 		const config = this.globalConfig.instanceSettingsLoader;
 
 		return {

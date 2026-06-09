@@ -2154,14 +2154,14 @@ describe('TelemetryEventRelay', () => {
 			);
 			expect(telemetry.identify).toHaveBeenCalledWith(
 				expect.not.objectContaining({
-					instance_settings: expect.anything(),
+					settings_managed_by_env_vars: expect.anything(),
 				}),
 			);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'Instance started',
 				expect.objectContaining({
 					earliest_workflow_created: firstWorkflow.createdAt,
-					instance_settings: {
+					settings_managed_by_env_vars: {
 						owner_managed_by_env: true,
 						sso_managed_by_env: true,
 						security_policy_managed_by_env: true,
@@ -2204,7 +2204,7 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'Instance started',
 				expect.objectContaining({
-					instance_settings: {
+					settings_managed_by_env_vars: {
 						owner_managed_by_env: true,
 						sso_managed_by_env: true,
 						security_policy_managed_by_env: true,
@@ -2216,13 +2216,13 @@ describe('TelemetryEventRelay', () => {
 			);
 			expect(telemetry.identify).toHaveBeenCalledWith(
 				expect.not.objectContaining({
-					instance_settings: expect.anything(),
+					settings_managed_by_env_vars: expect.anything(),
 				}),
 			);
 			expect(telemetry.groupIdentify).toHaveBeenCalledWith(
 				expect.objectContaining({
 					traits: expect.not.objectContaining({
-						instance_settings: expect.anything(),
+						settings_managed_by_env_vars: expect.anything(),
 					}),
 				}),
 			);
