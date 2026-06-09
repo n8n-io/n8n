@@ -609,7 +609,6 @@ export function useCanvasMapping({
 		const connectionsBySourceNode = connections.value;
 		const connectionsByDestinationNode =
 			workflowUtils.mapConnectionsByDestination(connectionsBySourceNode);
-		const hiddenNodes = collapsedNodeIds.value;
 
 		return nodes.value.map<CanvasNode>((node) => {
 			const outputConnections = connectionsBySourceNode[node.name] ?? {};
@@ -652,7 +651,7 @@ export function useCanvasMapping({
 				data,
 				...additionalNodePropertiesById.value[node.id],
 				draggable: node.draggable,
-				hidden: hiddenNodes.has(node.id) ? true : undefined,
+				hidden: collapsedNodeIds.value.has(node.id) ? true : undefined,
 			};
 		});
 	});
