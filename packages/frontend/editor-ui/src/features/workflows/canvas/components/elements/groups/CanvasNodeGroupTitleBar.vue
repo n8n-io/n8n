@@ -257,9 +257,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	}
 
 	.wrapper.selected & {
-		/* stylelint-disable-next-line @n8n/css-var-naming */
-		box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
-			var(--canvas--color--selected-transparent);
+		@include styles.canvas-node-selected-ring;
 	}
 }
 
