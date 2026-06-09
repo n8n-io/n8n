@@ -114,6 +114,9 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
 		expect(loaded?.instructions).toContain('workflows(action="get-json", workflowId)');
+		expect(loaded?.instructions).toContain(
+			'knowledge-base/reference/workflow-builder-guardrails.md',
+		);
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain('Do not call `delegate`');
 	});
@@ -140,6 +143,12 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('Do not call `create-tasks` just to get approval');
 		expect(loaded?.instructions).toContain('planningContext.source: "planning-skill"');
 		expect(loaded?.instructions).toContain('Do not spawn another agent');
+		expect(loaded?.instructions).toContain('`Required effects`');
+		expect(loaded?.instructions).toContain('`Explicit constraints`');
+		expect(loaded?.instructions).toContain('`Empty/invalid behavior`');
+		expect(loaded?.instructions).toContain('`Verify required effects`');
+		expect(loaded?.instructions).toContain("Never ask for the user's timezone");
+		expect(loaded?.instructions).toContain('Trust already-collected briefing context');
 		expect(loaded?.instructions).toContain('Do not add\nroutine "verify this workflow"');
 		expect(loaded?.instructions).toContain('Checkpoint tasks are exceptional semantic checks');
 		expect(loaded?.instructions).not.toContain('submit-plan');

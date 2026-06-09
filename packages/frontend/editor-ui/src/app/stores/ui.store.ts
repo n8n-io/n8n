@@ -207,6 +207,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			mode: '',
 			activeId: null,
 			showAuthSelector: false,
+			closeOnSave: false,
 		} as ModalState,
 		[DELETE_FOLDER_MODAL_KEY]: {
 			open: false,
@@ -526,6 +527,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
 			projectId: undefined,
 			contextNode: undefined,
+			closeOnSave: false,
 			hideAskAssistant: options.hideAskAssistant,
 		} as NewCredentialsModal;
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -539,13 +541,14 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		suggestedName?: string,
 		nodeName?: string,
 		contextNode?: INodeUi,
-		options: { hideAskAssistant?: boolean } = {},
+		options: { hideAskAssistant?: boolean; closeOnSave?: boolean } = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
 		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
 			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
 			forceManualMode,
+			closeOnSave: options.closeOnSave ?? false,
 			projectId,
 			suggestedName,
 			nodeName,
