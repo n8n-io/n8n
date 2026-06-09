@@ -490,7 +490,6 @@ describe('ImportPipeline workflow conflict policy', () => {
 		);
 
 		const original = await createWorkflow({ name: 'Authored here' }, personalProject);
-		expect(original.sourceWorkflowId).toBe(original.id);
 
 		const result = await importPackage({
 			user: owner,

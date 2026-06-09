@@ -15,9 +15,8 @@ export interface PreparedWorkflow {
 export type WorkflowPlannedAction = 'create' | 'update' | 'skip';
 
 /**
- * A conflict policy's verdict for one workflow, given whether a version already
- * exists in the target. `blocked` marks a workflow that aborts a real import
- * (only the `fail` policy sets it).
+ * A conflict policy's verdict for one workflow. `blocked` aborts the import and
+ * is set only by the `fail` policy.
  */
 export interface WorkflowDecision {
 	action: WorkflowPlannedAction;
@@ -31,8 +30,7 @@ export interface WorkflowDecision {
  */
 export type WorkflowPlanItem =
 	| ({ action: 'create' } & PreparedWorkflow)
-	| ({ action: 'update'; existing: WorkflowEntity } & PreparedWorkflow)
-	| ({ action: 'skip'; existing: WorkflowEntity } & PreparedWorkflow);
+	| ({ action: 'update' | 'skip'; existing: WorkflowEntity } & PreparedWorkflow);
 
 export interface WorkflowConflict {
 	sourceWorkflowId: string;
@@ -41,8 +39,8 @@ export interface WorkflowConflict {
 }
 
 /**
- * The full decision a conflict policy made for a batch: the per-workflow action
- * to apply, plus any blocking conflicts that must abort a non-dry-run import.
+ * The planned actions for a batch of workflows, plus any conflicts that abort
+ * the import before anything is written.
  */
 export interface WorkflowImportPlan {
 	items: WorkflowPlanItem[];
