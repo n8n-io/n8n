@@ -49,6 +49,38 @@ describe('isDirty', () => {
 
 		expect(isDirty(node, runData)).toBe(true);
 	});
+
+	test('node is dirty if parameters changed since last execution (configHash mismatch)', () => {
+		// Simulate a node that was executed with original parameters
+		const originalNode = createNodeData({ name: 'Node1', parameters: { value: 'original' } });
+		const originalHash = computeNodeConfigHash(originalNode);
+		// Now the node has been modified by the user
+		const modifiedNode = createNodeData({ name: 'Node1', parameters: { value: 'modified' } });
+		const runData: IRunData = {
+			[modifiedNode.name]: [
+				toITaskData([{ data: { value: 1 } }], { configHash: originalHash }),
+			],
+		};
+		expect(isDirty(modifiedNode, runData)).toBe(true);
+	});
+	test('node is not dirty if parameters have not changed (configHash matches)', () => {
+		const node = createNodeData({ name: 'Node1', parameters: { value: 'same' } });
+		const hash = computeNodeConfigHash(node);
+		const runData: IRunData = {
+			[node.name]: [toITaskData([{ data: { value: 1 } }], { configHash: hash })],
+		};
+		expect(isDirty(node, runData)).toBe(false);
+	});
+	test('node is not dirty when configHash is missing (backwards compatibility)', () => {
+		const node = createNodeData({ name: 'Node1', parameters: { value: 'anything' } });
+		// Old run data without configHash — should fall through to existing logic
+		const runData: IRunData = {
+			[node.name]: [toITaskData([{ data: { value: 1 } }])],
+		};
+		// Should not be dirty because it has run data and no error
+		expect(isDirty(node, runData)).toBe(false);
+	});
+
 });
 
 describe('findStartNodes', () => {

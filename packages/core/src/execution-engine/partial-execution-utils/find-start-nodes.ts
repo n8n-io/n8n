@@ -5,7 +5,7 @@ import { getIncomingData, getIncomingDataFromAnyRun } from './get-incoming-data'
 
 /**
  * A node is dirty if either of the following is true:
- *   - it's properties or options changed since last execution (not implemented yet)
+ *   - it's properties or options changed since last execution
  *   - one of it's parents is disabled
  *   - it has an error (not implemented yet)
  *   - it neither has run data nor pinned data
@@ -13,6 +13,18 @@ import { getIncomingData, getIncomingDataFromAnyRun } from './get-incoming-data'
 export function isDirty(node: INode, runData: IRunData = {}, pinData: IPinData = {}): boolean {
 	// TODO: implement
 	const propertiesOrOptionsChanged = false;
+	// Check if node properties or options changed since last execution by
+	// comparing the stored config hash against the current node configuration.
+	// If the run data has no configHash (e.g. old execution data), this check
+	// is skipped and we fall through to the existing logic.
+	const nodeRunData = runData?.[node.name];
+	let propertiesOrOptionsChanged = false;
+	if (nodeRunData && nodeRunData.length > 0) {
+		const lastRun = nodeRunData[nodeRunData.length - 1];
+		if (lastRun.configHash !== undefined) {
+			propertiesOrOptionsChanged = computeNodeConfigHash(node) !== lastRun.configHash;
+		}
+	}
 
 	if (propertiesOrOptionsChanged) {
 		return true;

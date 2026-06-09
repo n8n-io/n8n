@@ -3016,6 +3016,9 @@ export interface ITaskData extends ITaskStartedData {
 	metadata?: ITaskMetadata;
 	/** True when at least one credential used by this node was resolved dynamically */
 	usedDynamicCredentials?: boolean;
+	/** Hash of node config (parameters, type, credentials, settings) at execution time.
+	 * Used by isDirty to detect configuration changes since last execution. */
+	configHash?: string;
 }
 
 export interface ISourceData {
