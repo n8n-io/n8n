@@ -391,6 +391,7 @@ export class McpService {
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
+			// @ts-expect-error - Type mismatch while moving between commonjs and esm
 			await this.registerBuilderTools(server, user, dataTableOps, mcpAppsEnabled, clientInfo);
 		}
 
