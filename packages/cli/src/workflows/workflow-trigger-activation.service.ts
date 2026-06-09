@@ -182,6 +182,41 @@ export class WorkflowTriggerActivationService {
 	}
 
 	/**
+	 * Recomputes the persisted trigger count for a workflow version without
+	 * registering any triggers. Used when publication only removes triggers.
+	 */
+	async updateWorkflowTriggerCount(
+		dbWorkflow: WorkflowEntity,
+		version: { nodes: INode[]; connections: IConnections },
+	) {
+		const workflow = new Workflow({
+			id: dbWorkflow.id,
+			name: dbWorkflow.name,
+			nodes: version.nodes,
+			connections: version.connections,
+			active: true,
+			nodeTypes: this.nodeTypes,
+			staticData: dbWorkflow.staticData,
+			settings: dbWorkflow.settings,
+		});
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+			workflowSettings: dbWorkflow.settings,
+		});
+
+		let triggerCount = 0;
+		await workflow.expression.acquireIsolate();
+		try {
+			triggerCount = this.countTriggers(workflow, additionalData);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
+
+		await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
+	}
+
+	/**
 	 * Deregisters only the given trigger nodes (webhook and non-webhook) of the
 	 * given workflow version, leaving the rest active. The "remove" side of a
 	 * publication trigger diff; the caller passes the currently published version

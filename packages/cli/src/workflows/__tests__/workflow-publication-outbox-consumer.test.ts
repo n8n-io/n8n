@@ -129,6 +129,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		triggerActivationService.getEnabledTriggerNodes.mockReturnValue([]);
 		triggerActivationService.addTriggerNodes.mockResolvedValue(undefined);
 		triggerActivationService.removeTriggerNodes.mockResolvedValue(undefined);
+		triggerActivationService.updateWorkflowTriggerCount.mockResolvedValue(undefined);
 		outboxRepository.claimNextPendingRecord.mockResolvedValue(null);
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
@@ -229,6 +230,20 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(triggerActivationService.removeTriggerNodes).not.toHaveBeenCalled();
 		});
 
+		test('marks completed when workflow is no longer active', async () => {
+			workflowRepository.findOneBy.mockResolvedValue(
+				makeWorkflow({ active: false, activeVersionId: null }),
+			);
+
+			await consumer.processRecord(makeRecord());
+
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+			expect(outboxRepository.manager.upsert).not.toHaveBeenCalled();
+			expect(triggerActivationService.getEnabledTriggerNodes).not.toHaveBeenCalled();
+			expect(triggerActivationService.addTriggerNodes).not.toHaveBeenCalled();
+			expect(triggerActivationService.removeTriggerNodes).not.toHaveBeenCalled();
+		});
+
 		test('marks failed when the published version is not found', async () => {
 			workflowHistoryRepository.findOneBy.mockResolvedValue(null);
 
@@ -282,6 +297,10 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 				new Set(['b']),
 			);
 			expect(triggerActivationService.addTriggerNodes).not.toHaveBeenCalled();
+			expect(triggerActivationService.updateWorkflowTriggerCount).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				newVersion,
+			);
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
 		});
 
