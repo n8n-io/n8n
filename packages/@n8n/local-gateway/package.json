@@ -5,13 +5,12 @@
   "private": true,
   "main": "dist/main/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.renderer.json && tsc -p tsconfig.build.json && pnpm copy:renderer && pnpm copy:assets",
-    "build:unchecked": "tsc -p tsconfig.renderer.json --noCheck && tsc -p tsconfig.build.json --noCheck && pnpm copy:renderer && pnpm copy:assets",
+    "build": "tsc -p tsconfig.build.json && vite build --config vite.renderer.config.mts && pnpm copy:assets",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && vite build --config vite.renderer.config.mts && pnpm copy:assets",
     "lint": "eslint . --quiet",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "copy:assets": "node scripts/copy-assets.js",
-    "copy:renderer": "node scripts/copy-renderer.js",
-    "dev": "pnpm copy:assets && pnpm copy:renderer && concurrently \"tsc -p tsconfig.renderer.json --watch\" \"tsc -p tsconfig.build.json --watch\"",
+    "dev": "pnpm copy:assets && concurrently \"vite build --watch --config vite.renderer.config.mts\" \"tsc -p tsconfig.build.json --watch\"",
     "start": "electron dist/main/index.js",
     "dist:mac": "pnpm build && electron-builder --mac --config electron-builder.config.js",
     "dist:win": "pnpm build && electron-builder --win --config electron-builder.config.js",
@@ -24,19 +23,26 @@
   },
   "dependencies": {
     "@n8n/computer-use": "workspace:*",
-    "electron-store": "^8.2.0"
+    "@n8n/design-system": "workspace:*",
+    "electron-store": "^8.2.0",
+    "vue": "catalog:frontend"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",
+    "@iconify/json": "^2.2.349",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
+    "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:",
     "concurrently": "^8.2.0",
     "electron": "^41.3.0",
     "electron-builder": "^26.9.0",
     "rimraf": "catalog:",
+    "sass-embedded": "catalog:",
+    "unplugin-icons": "catalog:frontend",
+    "vite": "catalog:",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
