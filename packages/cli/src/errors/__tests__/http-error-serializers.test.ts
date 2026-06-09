@@ -1,14 +1,14 @@
-import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-classifier';
+import { UnexpectedError, UserError } from 'n8n-workflow';
+
 import { classifyHttpError } from '@/errors/http-error-classifier';
 import {
 	serializeInternalRestError,
 	serializePublicApiError,
 } from '@/errors/http-error-serializers';
-import { toCredentialResolutionFailedError } from '@/modules/n8n-packages/entities/credential/credential-resolution-error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { toCredentialResolutionFailedError } from '@/modules/n8n-packages/entities/credential/credential-resolution-error';
 
 describe('http-error-serializers', () => {
 	it('serializePublicApiError: minimal message for ResponseError', () => {
@@ -123,25 +123,6 @@ describe('http-error-serializers', () => {
 		expect(serializeInternalRestError(descriptor)).toEqual({
 			status: 500,
 			body: { code: 0, message: 'secret' },
-		});
-	});
-
-	it('should serialize a string errorCode correctly (RFC 8707 invalid_target)', () => {
-		const descriptor: HttpErrorDescriptor = {
-			kind: HttpErrorKind.responseError,
-			status: 400,
-			message: 'Invalid resource',
-			code: 'invalid_target',
-		};
-
-		const result = serializeInternalRestError(descriptor);
-
-		expect(result).toEqual({
-			status: 400,
-			body: {
-				code: 'invalid_target',
-				message: 'Invalid resource',
-			},
 		});
 	});
 });

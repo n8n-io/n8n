@@ -3421,7 +3421,7 @@ describe('OauthService', () => {
 				const error = new InvalidTargetError('Invalid resource');
 
 				expect(error.name).toBe('InvalidTargetError');
-				expect(error.errorCode).toBe('invalid_target');
+				expect(error.errorCode).toBe(400);
 				expect(error.httpStatusCode).toBe(400);
 			});
 		});

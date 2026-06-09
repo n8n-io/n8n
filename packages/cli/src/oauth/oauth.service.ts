@@ -84,7 +84,7 @@ export { OauthVersion, type OAuth1CredentialData, type CreateCsrfStateData, type
 
 export class InvalidTargetError extends BadRequestError {
 	constructor(message: string) {
-		super(message, 'invalid_target');
+		super(message, undefined, 'invalid_target');
 		this.name = 'InvalidTargetError';
 	}
 }
@@ -155,7 +155,6 @@ export class OauthService {
 	 * If a real‑world server is discovered that requires exact preservation of
 	 * a trailing slash, this normalization should be revisited.
 	 *
-	 * For the reviewer, will be removed and made a general comment right after the review.
 	 */
 	private normalizeResourceUrl(url: string): string {
 		return url.trim().replace(/\/+$/, '');
@@ -750,7 +749,6 @@ export class OauthService {
 		}
 
 		return { authorizationServerUrl, discoveredResource };
-
 	}
 	/**
 	 * Mutates `csrfData` to include a `bindingHash` when browser binding is
@@ -769,7 +767,6 @@ export class OauthService {
 		csrfData.bindingHash = this.browserBindingService.computeHash(nonce);
 	}
 
-	// eslint-disable-next-line complexity
 	async generateAOauth2AuthUri(
 		credential: CredentialsEntity,
 		csrfData: CreateCsrfStateData,
@@ -795,132 +792,19 @@ export class OauthService {
 				authorizationServerUrl!,
 			);
 			authorizationServerUrl = resolvedAuthUrl;
+		} else if (oauthCredentials.resourceUrl) {
+			// Static credential with no serverUrl – validate resource URL and wire it through
+			const resolvedResource = this.validateResourceUrlOrThrow(oauthCredentials.resourceUrl);
+			oauthCredentials.resource = resolvedResource;
+			csrfData.resource = resolvedResource;
 		}
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
-			const dcrAuthorizationServerUrl = authorizationServerUrl ?? oauthCredentials.serverUrl;
-			const issuerUrl = new URL(dcrAuthorizationServerUrl);
-			const pathComponent = issuerUrl.pathname.replace(/\/$/, ''); // Remove trailing slash
-
-			// Build discovery URLs in priority order per MCP specification
-			// If the path already contains /.well-known/, skip path-insertion variants to avoid
-			// double well-known paths (e.g. /.well-known/openid-configuration/.well-known/openid-configuration)
-			const pathIsWellKnown = pathComponent.startsWith('/.well-known');
-			const discoveryUrls =
-				pathComponent && !pathIsWellKnown
-					? [
-							// 1. RFC 8414: OAuth 2.0 Authorization Server Metadata (path insertion)
-							`${issuerUrl.origin}/.well-known/oauth-authorization-server${pathComponent}`,
-							// 2. OpenID Connect Discovery 1.0 (path insertion)
-							`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
-							// 3. OpenID Connect Discovery 1.0 (path appending)
-							`${dcrAuthorizationServerUrl}/.well-known/openid-configuration`,
-							// 4. RFC 8414 origin-only fallback (matches MCP TypeScript SDK behavior)
-							`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
-						]
-					: [
-							// For root-level issuers or already-well-known paths
-							`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
-							`${issuerUrl.origin}/.well-known/openid-configuration`,
-						];
-
-			let data: unknown;
-			let lastError: Error | undefined;
-
-			// Try each discovery URL until one succeeds
-			for (const url of discoveryUrls) {
-				try {
-					// Validate each URL before making request (defense-in-depth)
-					this.validateOAuthUrlOrThrow(url);
-
-					const response = await axios.get<unknown>(url, {
-						validateStatus: (status) => status === 200,
-					});
-					data = response.data;
-					break; // Success - exit loop
-				} catch (error) {
-					lastError = error as Error;
-					// Continue to next URL
-				}
-			}
-
-			if (!data) {
-				throw new BadRequestError(
-					`Failed to discover OAuth2 authorization server metadata. Tried: ${discoveryUrls.join(', ')}. Last error: ${lastError?.message}`,
-				);
-			}
-
-			// Validate the metadata response
-			const metadataValidation = oAuthAuthorizationServerMetadataSchema.safeParse(data);
-			if (!metadataValidation.success) {
-				throw new BadRequestError(
-					`Invalid OAuth2 server metadata: ${metadataValidation.error.issues.map((e) => e.message).join(', ')}`,
-				);
-			}
-
-			const { authorization_endpoint, token_endpoint, registration_endpoint, scopes_supported } =
-				metadataValidation.data;
-			oauthCredentials.authUrl = authorization_endpoint;
-			oauthCredentials.accessTokenUrl = token_endpoint;
-			toUpdate.authUrl = authorization_endpoint;
-			toUpdate.accessTokenUrl = token_endpoint;
-			const scope = scopes_supported ? scopes_supported.join(' ') : undefined;
-			if (scope) {
-				oauthCredentials.scope = scope;
-				toUpdate.scope = scope;
-			}
-
-			const { grantType, authentication } = this.selectGrantTypeAndAuthenticationMethod(
-				metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],
-				metadataValidation.data.token_endpoint_auth_methods_supported ?? ['client_secret_basic'],
-				metadataValidation.data.code_challenge_methods_supported ?? [],
+			await this.performDynamicClientRegistration(
+				oauthCredentials,
+				authorizationServerUrl!,
+				toUpdate,
 			);
-			oauthCredentials.grantType = grantType;
-			toUpdate.grantType = grantType;
-			if (authentication) {
-				oauthCredentials.authentication = authentication;
-				toUpdate.authentication = authentication;
-			}
-
-			const { grant_types, token_endpoint_auth_method } = this.mapGrantTypeAndAuthenticationMethod(
-				grantType,
-				authentication,
-			);
-			const registerPayload = {
-				redirect_uris: [`${this.getBaseUrl(OauthVersion.V2)}/callback`],
-				token_endpoint_auth_method,
-				grant_types,
-				response_types: ['code'],
-				client_name: 'n8n',
-				client_uri: 'https://n8n.io/',
-				scope,
-				...(oauthCredentials.jweEnabled === true
-					? await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.inlineJwks === true)
-					: {}),
-			};
-
-			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);
-
-			const { data: registerResult } = await axios.post<unknown>(
-				registration_endpoint,
-				registerPayload,
-			);
-			const registrationValidation =
-				dynamicClientRegistrationResponseSchema.safeParse(registerResult);
-			if (!registrationValidation.success) {
-				throw new BadRequestError(
-					`Invalid client registration response: ${registrationValidation.error.issues.map((e) => e.message).join(', ')}`,
-				);
-			}
-
-			const { client_id, client_secret } = registrationValidation.data;
-			oauthCredentials.clientId = client_id;
-			toUpdate.clientId = client_id;
-			if (client_secret) {
-				oauthCredentials.clientSecret = client_secret;
-				toUpdate.clientSecret = client_secret;
-			}
 		}
 
 		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
@@ -968,6 +852,136 @@ export class OauthService {
 		});
 
 		return returnUri.toString();
+	}
+
+	private async performDynamicClientRegistration(
+		oauthCredentials: OAuth2CredentialData,
+		authorizationServerUrl: string,
+		toUpdate: ICredentialDataDecryptedObject,
+	): Promise<void> {
+		// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
+		const dcrAuthorizationServerUrl = authorizationServerUrl ?? oauthCredentials.serverUrl;
+		const issuerUrl = new URL(dcrAuthorizationServerUrl);
+		const pathComponent = issuerUrl.pathname.replace(/\/$/, ''); // Remove trailing slash
+
+		// Build discovery URLs in priority order per MCP specification
+		// If the path already contains /.well-known/, skip path-insertion variants to avoid
+		// double well-known paths (e.g. /.well-known/openid-configuration/.well-known/openid-configuration)
+		const pathIsWellKnown = pathComponent.startsWith('/.well-known');
+		const discoveryUrls =
+			pathComponent && !pathIsWellKnown
+				? [
+						// 1. RFC 8414: OAuth 2.0 Authorization Server Metadata (path insertion)
+						`${issuerUrl.origin}/.well-known/oauth-authorization-server${pathComponent}`,
+						// 2. OpenID Connect Discovery 1.0 (path insertion)
+						`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
+						// 3. OpenID Connect Discovery 1.0 (path appending)
+						`${dcrAuthorizationServerUrl}/.well-known/openid-configuration`,
+						// 4. RFC 8414 origin-only fallback (matches MCP TypeScript SDK behavior)
+						`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
+					]
+				: [
+						// For root-level issuers or already-well-known paths
+						`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
+						`${issuerUrl.origin}/.well-known/openid-configuration`,
+					];
+
+		let data: unknown;
+		let lastError: Error | undefined;
+
+		// Try each discovery URL until one succeeds
+		for (const url of discoveryUrls) {
+			try {
+				// Validate each URL before making request (defense-in-depth)
+				this.validateOAuthUrlOrThrow(url);
+
+				const response = await axios.get<unknown>(url, {
+					validateStatus: (status) => status === 200,
+				});
+				data = response.data;
+				break; // Success - exit loop
+			} catch (error) {
+				lastError = error as Error;
+				// Continue to next URL
+			}
+		}
+
+		if (!data) {
+			throw new BadRequestError(
+				`Failed to discover OAuth2 authorization server metadata. Tried: ${discoveryUrls.join(', ')}. Last error: ${lastError?.message}`,
+			);
+		}
+
+		// Validate the metadata response
+		const metadataValidation = oAuthAuthorizationServerMetadataSchema.safeParse(data);
+		if (!metadataValidation.success) {
+			throw new BadRequestError(
+				`Invalid OAuth2 server metadata: ${metadataValidation.error.issues.map((e) => e.message).join(', ')}`,
+			);
+		}
+
+		const { authorization_endpoint, token_endpoint, registration_endpoint, scopes_supported } =
+			metadataValidation.data;
+		oauthCredentials.authUrl = authorization_endpoint;
+		oauthCredentials.accessTokenUrl = token_endpoint;
+		toUpdate.authUrl = authorization_endpoint;
+		toUpdate.accessTokenUrl = token_endpoint;
+		const scope = scopes_supported ? scopes_supported.join(' ') : undefined;
+		if (scope) {
+			oauthCredentials.scope = scope;
+			toUpdate.scope = scope;
+		}
+
+		const { grantType, authentication } = this.selectGrantTypeAndAuthenticationMethod(
+			metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],
+			metadataValidation.data.token_endpoint_auth_methods_supported ?? ['client_secret_basic'],
+			metadataValidation.data.code_challenge_methods_supported ?? [],
+		);
+		oauthCredentials.grantType = grantType;
+		toUpdate.grantType = grantType;
+		if (authentication) {
+			oauthCredentials.authentication = authentication;
+			toUpdate.authentication = authentication;
+		}
+
+		const { grant_types, token_endpoint_auth_method } = this.mapGrantTypeAndAuthenticationMethod(
+			grantType,
+			authentication,
+		);
+		const registerPayload = {
+			redirect_uris: [`${this.getBaseUrl(OauthVersion.V2)}/callback`],
+			token_endpoint_auth_method,
+			grant_types,
+			response_types: ['code'],
+			client_name: 'n8n',
+			client_uri: 'https://n8n.io/',
+			scope,
+			...(oauthCredentials.jweEnabled === true
+				? await this.oauthJweServiceProxy.getDcrJweFields(oauthCredentials.inlineJwks === true)
+				: {}),
+		};
+
+		await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);
+
+		const { data: registerResult } = await axios.post<unknown>(
+			registration_endpoint,
+			registerPayload,
+		);
+		const registrationValidation =
+			dynamicClientRegistrationResponseSchema.safeParse(registerResult);
+		if (!registrationValidation.success) {
+			throw new BadRequestError(
+				`Invalid client registration response: ${registrationValidation.error.issues.map((e) => e.message).join(', ')}`,
+			);
+		}
+
+		const { client_id, client_secret } = registrationValidation.data;
+		oauthCredentials.clientId = client_id;
+		toUpdate.clientId = client_id;
+		if (client_secret) {
+			oauthCredentials.clientSecret = client_secret;
+			toUpdate.clientSecret = client_secret;
+		}
 	}
 
 	async generateAOauth1AuthUri(

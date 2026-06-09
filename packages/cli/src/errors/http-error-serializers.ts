@@ -16,7 +16,7 @@ function pickPublicConflictMeta(meta: Record<string, unknown> = {}) {
 }
 
 export type InternalRestErrorBody = {
-	code: number | string;
+	code: number;
 	message: string;
 	hint?: string;
 	stacktrace?: string;

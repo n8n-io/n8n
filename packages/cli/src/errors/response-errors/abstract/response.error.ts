@@ -21,7 +21,7 @@ export abstract class ResponseError extends BaseError {
 		// The HTTP status code of  response
 		readonly httpStatusCode: number,
 		// The error code in the response
-		readonly errorCode: number | string = httpStatusCode,
+		readonly errorCode: number = httpStatusCode,
 		// The error hint the response
 		readonly hint: string | undefined = undefined,
 		cause?: unknown,
