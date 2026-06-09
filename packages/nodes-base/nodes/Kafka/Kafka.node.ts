@@ -322,6 +322,28 @@ export class Kafka implements INodeType {
 				} as SASLOptions;
 			}
 
+			// Resolve the registry configuration once, before the producer is set
+			// up, so credential misconfiguration surfaces with its own error
+			// message and never leaks a connected producer. The registry client
+			// and schema ID are loop-invariant (`eventName` is read at index 0)
+			let schemaRegistry: { registry: SchemaRegistry; schemaId: number } | undefined;
+
+			if (useSchemaRegistry) {
+				const registryOptions = await getSchemaRegistryOptions(
+					this,
+					this.getNodeParameter('schemaRegistryUrl', 0) as string,
+				);
+				const registry = new SchemaRegistry(registryOptions);
+
+				try {
+					const eventName = this.getNodeParameter('eventName', 0) as string;
+					const schemaId = await registry.getLatestSchemaId(eventName);
+					schemaRegistry = { registry, schemaId };
+				} catch (exception) {
+					throw new NodeOperationError(this.getNode(), 'Verify your Schema Registry configuration');
+				}
+			}
+
 			const kafka = new apacheKafka(config);
 
 			const producer = kafka.producer();
@@ -330,15 +352,6 @@ export class Kafka implements INodeType {
 
 			let message: string | Buffer;
 
-			// Resolve registry options once, before the item loop, so credential
-			// misconfiguration surfaces with its own error message
-			const registryOptions = useSchemaRegistry
-				? await getSchemaRegistryOptions(
-						this,
-						this.getNodeParameter('schemaRegistryUrl', 0) as string,
-					)
-				: undefined;
-
 			for (let i = 0; i < length; i++) {
 				if (sendInputData) {
 					message = JSON.stringify(items[i].json);
@@ -346,14 +359,12 @@ export class Kafka implements INodeType {
 					message = this.getNodeParameter('message', i) as string;
 				}
 
-				if (useSchemaRegistry && registryOptions) {
+				if (schemaRegistry) {
 					try {
-						const eventName = this.getNodeParameter('eventName', 0) as string;
-
-						const registry = new SchemaRegistry(registryOptions);
-						const id = await registry.getLatestSchemaId(eventName);
-
-						message = await registry.encode(id, JSON.parse(message));
+						message = await schemaRegistry.registry.encode(
+							schemaRegistry.schemaId,
+							JSON.parse(message),
+						);
 					} catch (exception) {
 						throw new NodeOperationError(
 							this.getNode(),

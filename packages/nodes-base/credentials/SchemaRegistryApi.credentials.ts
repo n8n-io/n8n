@@ -82,12 +82,17 @@ export class SchemaRegistryApi implements ICredentialType {
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
 		if (credentials.authentication === 'basicAuth') {
-			const username = typeof credentials.username === 'string' ? credentials.username : '';
-			const password = typeof credentials.password === 'string' ? credentials.password : '';
-			requestOptions.headers = {
-				...requestOptions.headers,
-				Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
-			};
+			const { username, password } = credentials;
+			// Only send credentials when both fields are filled in; credentials
+			// created via the public API may have empty fields
+			if (
+				typeof username === 'string' &&
+				username !== '' &&
+				typeof password === 'string' &&
+				password !== ''
+			) {
+				requestOptions.auth = { username, password };
+			}
 		}
 		return requestOptions;
 	}

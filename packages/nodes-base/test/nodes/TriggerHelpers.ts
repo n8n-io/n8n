@@ -19,6 +19,7 @@ import {
 	type ITriggerFunctions,
 	type IWebhookFunctions,
 	type IWorkflowExecuteAdditionalData,
+	type Logger,
 	type NodeTypeAndVersion,
 	type VersionedNodeType,
 	type Workflow,
@@ -111,15 +112,16 @@ export async function testTriggerNode(
 		name: options.workflow?.name,
 		active: options.workflow?.active ?? false,
 	};
+	const triggerLogger = mock<Logger>({
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+	});
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers,
 		emit,
-		logger: mock({
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		}),
+		logger: triggerLogger,
 		getTimezone: () => timezone,
 		getNode: () => node,
 		getWorkflow: () => workflowMetadata,
@@ -141,6 +143,7 @@ export async function testTriggerNode(
 		close: jest.fn(response?.closeFunction),
 		manualTriggerFunction: options.mode === 'manual' ? response?.manualTriggerFunction : undefined,
 		emit,
+		logger: triggerLogger,
 	};
 }
 

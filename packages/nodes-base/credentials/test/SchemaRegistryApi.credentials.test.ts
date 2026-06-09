@@ -15,7 +15,7 @@ describe('SchemaRegistryApi Credential', () => {
 	});
 
 	describe('authenticate', () => {
-		it('should set the Basic Authorization header and preserve existing headers for basicAuth', async () => {
+		it('should set basic auth and preserve existing headers for basicAuth', async () => {
 			const requestOptions: IHttpRequestOptions = {
 				headers: {
 					'Content-Type': 'application/json',
@@ -33,13 +33,35 @@ describe('SchemaRegistryApi Credential', () => {
 				requestOptions,
 			);
 
+			expect(result.auth).toEqual({
+				username: 'registry-user',
+				password: 'registry-password',
+			});
 			expect(result.headers).toEqual({
 				'Content-Type': 'application/json',
-				Authorization: `Basic ${Buffer.from('registry-user:registry-password').toString('base64')}`,
 			});
 		});
 
-		it('should set the Authorization header when no headers exist for basicAuth', async () => {
+		it('should not set auth when the basicAuth username is empty', async () => {
+			const requestOptions: IHttpRequestOptions = {
+				url: '/subjects',
+			};
+
+			const result = await credential.authenticate(
+				{
+					url: 'https://schema-registry.local:8081',
+					authentication: 'basicAuth',
+					username: '',
+					password: 'registry-password',
+				} satisfies ICredentialDataDecryptedObject,
+				requestOptions,
+			);
+
+			expect(result).toBe(requestOptions);
+			expect(result).not.toHaveProperty('auth');
+		});
+
+		it('should not set auth when the basicAuth password is empty', async () => {
 			const requestOptions: IHttpRequestOptions = {
 				url: '/subjects',
 			};
@@ -49,14 +71,13 @@ describe('SchemaRegistryApi Credential', () => {
 					url: 'https://schema-registry.local:8081',
 					authentication: 'basicAuth',
 					username: 'registry-user',
-					password: 'registry-password',
+					password: '',
 				} satisfies ICredentialDataDecryptedObject,
 				requestOptions,
 			);
 
-			expect(result.headers).toEqual({
-				Authorization: `Basic ${Buffer.from('registry-user:registry-password').toString('base64')}`,
-			});
+			expect(result).toBe(requestOptions);
+			expect(result).not.toHaveProperty('auth');
 		});
 
 		it('should leave the request untouched when authentication is none', async () => {
@@ -76,10 +97,10 @@ describe('SchemaRegistryApi Credential', () => {
 			);
 
 			expect(result).toBe(requestOptions);
+			expect(result).not.toHaveProperty('auth');
 			expect(result.headers).toEqual({
 				'Content-Type': 'application/json',
 			});
-			expect(result.headers).not.toHaveProperty('Authorization');
 		});
 	});
 });

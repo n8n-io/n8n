@@ -56,7 +56,7 @@ interface KafkaCredentials {
 	saslMechanism?: 'plain' | 'scram-sha-256' | 'scram-sha-512';
 }
 
-export interface SchemaRegistryCredentials {
+interface SchemaRegistryCredentials {
 	url: string;
 	authentication: 'none' | 'basicAuth';
 	username?: string;
@@ -290,15 +290,17 @@ export function disconnectEventListeners(
 
 /**
  * Builds a sanitized log payload from a schema registry error, so raw error
- * payloads (which may embed URLs with credentials) are never logged
+ * payloads are never logged: only the message (with any URL userinfo redacted,
+ * since registry client errors embed full request URLs) and, when present, the
+ * status
  * @param error - The caught error
- * @returns Log metadata with only the error message and status
+ * @returns Log metadata with the redacted error message and optional status
  */
 function sanitizeRegistryError(error: unknown) {
 	const ensured = ensureError(error);
 	return {
-		message: ensured.message,
-		status: 'status' in ensured ? ensured.status : undefined,
+		message: ensured.message.replace(/\/\/[^@/]+@/g, '//***@'),
+		...('status' in ensured ? { status: ensured.status } : {}),
 	};
 }
 
@@ -320,19 +322,21 @@ export async function getSchemaRegistryOptions(
 		);
 
 	if (!ctx.getNode().credentials?.schemaRegistryApi) {
-		if (!fallbackUrl?.trim()) {
+		const host = fallbackUrl.trim();
+		if (!host) {
 			throw emptyConfigError();
 		}
-		return { host: fallbackUrl };
+		return { host };
 	}
 
 	const credentials = await ctx.getCredentials<SchemaRegistryCredentials>('schemaRegistryApi');
 
-	if (!credentials.url?.trim()) {
+	const host = credentials.url?.trim();
+	if (!host) {
 		throw emptyConfigError();
 	}
 
-	const options: SchemaRegistryOptions = { host: credentials.url };
+	const options: SchemaRegistryOptions = { host };
 
 	if (credentials.authentication === 'basicAuth') {
 		if (!(credentials.username && credentials.password)) {

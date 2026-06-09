@@ -360,6 +360,90 @@ describe('KafkaTrigger Node', () => {
 		]);
 	});
 
+	it('should use the schema registry credential without auth when authentication is none', async () => {
+		await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				credentials: {
+					kafka: { id: '1', name: 'Kafka account' },
+					schemaRegistryApi: { id: '2', name: 'Schema Registry account' },
+				},
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: true,
+					schemaRegistryUrl: '',
+					options: { parallelProcessing: true },
+				},
+			},
+			credentials: {
+				kafka: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+				schemaRegistryApi: {
+					url: 'https://unauthenticated-registry.local:8081',
+					authentication: 'none',
+				},
+			},
+		});
+
+		expect(SchemaRegistry).toHaveBeenCalledWith({
+			host: 'https://unauthenticated-registry.local:8081',
+		});
+	});
+
+	it('should emit the original message and log a sanitized warning when decoding fails', async () => {
+		mockRegistryDecode.mockRejectedValue(
+			Object.assign(
+				new Error(
+					'request to https://registry-user:registry-password@schema-registry.local:8081/schemas/ids/1 failed',
+				),
+				{ status: 404 },
+			),
+		);
+
+		const { emit, logger } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: true,
+					schemaRegistryUrl: 'http://localhost:8081',
+					options: { parallelProcessing: true },
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await publishMessage({
+			value: Buffer.from('raw-message'),
+		});
+
+		expect(mockRegistryDecode).toHaveBeenCalledWith(Buffer.from('raw-message'));
+		// The raw message is still emitted
+		expect(emit).toHaveBeenCalledWith([
+			[{ json: { message: 'raw-message', topic: 'test-topic' } }],
+		]);
+		// The warning is sanitized: message with URL userinfo redacted plus status,
+		// never the raw error object
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Could not decode message with Schema Registry, returning original message',
+			{
+				message: 'request to https://***@schema-registry.local:8081/schemas/ids/1 failed',
+				status: 404,
+			},
+		);
+	});
+
 	it('should fail activation when the schema registry credential is missing the password', async () => {
 		await expect(
 			testTriggerNode(KafkaTrigger, {

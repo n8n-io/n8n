@@ -635,6 +635,28 @@ describe('Kafka Utils', () => {
 				expect(ctx.getCredentials).not.toHaveBeenCalled();
 			});
 
+			it('should trim the fallback URL', async () => {
+				const ctx = createRegistryContext();
+
+				const result = await getSchemaRegistryOptions(ctx, '  https://fallback-registry.local  ');
+
+				expect(result).toEqual({ host: 'https://fallback-registry.local' });
+			});
+
+			it('should trim the credential URL', async () => {
+				const ctx = createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: '  https://schema-registry.local:8081  ',
+						authentication: 'none',
+					},
+				});
+
+				const result = await getSchemaRegistryOptions(ctx, '');
+
+				expect(result).toEqual({ host: 'https://schema-registry.local:8081' });
+			});
+
 			it('should return host and auth for a basicAuth credential', async () => {
 				const ctx = createRegistryContext({
 					nodeCredentials: schemaRegistryNodeCredentials,
@@ -764,6 +786,29 @@ describe('Kafka Utils', () => {
 				expect(ctx.logger.warn).toHaveBeenCalledWith('Could not connect to Schema Registry', {
 					message: 'connect ECONNREFUSED',
 					status: 503,
+				});
+			});
+
+			it('should redact URL userinfo and omit status in the warn payload when absent', async () => {
+				const ctx = createRegistryContext({
+					params: {
+						useSchemaRegistry: true,
+						schemaRegistryUrl: 'https://fallback-registry.local',
+					},
+				});
+				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+					throw new Error(
+						'request to https://registry-user:registry-password@fallback-registry.local/subjects failed',
+					);
+				});
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeUndefined();
+				const [logMessage, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				expect(logMessage).toBe('Could not connect to Schema Registry');
+				expect(logPayload).toStrictEqual({
+					message: 'request to https://***@fallback-registry.local/subjects failed',
 				});
 			});
 
