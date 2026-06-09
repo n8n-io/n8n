@@ -224,6 +224,62 @@ describe('McpOAuthService', () => {
 			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
 		});
 
+		it('persists the validated requested scopes on the session', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: '',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				scopes: ['instanceAi:message', 'workflow:read'],
+			};
+			const res = mock<Response>();
+
+			await service.authorize(client, params, res);
+
+			expect(oauthSessionService.createSession).toHaveBeenCalledWith(
+				res,
+				expect.objectContaining({ scopes: ['instanceAi:message', 'workflow:read'] }),
+			);
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+		});
+
+		it('rejects an authorization request with an unsupported scope', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: '',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				scopes: ['bogus:scope'],
+			};
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			await service.authorize(client, params, res);
+
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'invalid_scope' }));
+		});
+
 		it('should handle null state parameter', async () => {
 			const client = {
 				client_id: 'client-123',

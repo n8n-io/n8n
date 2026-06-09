@@ -12,6 +12,7 @@ import {
 	Get,
 	Post,
 	Body,
+	GlobalScope,
 	Licensed,
 	RestController,
 	RootLevelController,
@@ -362,6 +363,71 @@ describe('ControllerRegistry', () => {
 			const { headers, body } = await agent.get('/rest/test/args/1234').expect(200);
 			expect(headers.testing).toBe('true');
 			expect(body.data).toEqual({ url: '/args/1234', id: '1234' });
+		});
+	});
+
+	describe('OAuth scope ceiling', () => {
+		@RestController('/test')
+		// @ts-expect-error tsc complains about unused class
+		class TestController {
+			@Get('/ceiling-scoped')
+			@GlobalScope('workflow:list')
+			scoped() {
+				return { ok: true };
+			}
+
+			@Get('/ceiling-unscoped')
+			unscoped() {
+				return { ok: true };
+			}
+		}
+
+		// Simulate the auth middleware resolving a user (and, for OAuth, a scope ceiling).
+		const setAuth = (opts: { roleScopes: string[]; granted?: string[] }) => {
+			authMiddleware.mockImplementation(async (req, _res, next) => {
+				req.user = {
+					id: 'user-1',
+					role: { slug: 'test', scopes: opts.roleScopes.map((slug) => ({ slug })) },
+				};
+				if (opts.granted) {
+					req.authInfo = { usedMfa: false, oauthGrantedScopes: opts.granted };
+				}
+				next();
+			});
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+		};
+
+		it('returns 403 when an OAuth token lacks the route scope (ceiling)', async () => {
+			// User actually has the scope, but the token wasn't granted it.
+			setAuth({ roleScopes: ['workflow:list'], granted: ['workflow:read'] });
+			await agent.get('/rest/test/ceiling-scoped').expect(403);
+		});
+
+		it('returns 403 when the token has the scope but the user does not (intersection)', async () => {
+			setAuth({ roleScopes: [], granted: ['workflow:list'] });
+			await agent.get('/rest/test/ceiling-scoped').expect(403);
+		});
+
+		it('allows when both the token ceiling and the user grant the scope', async () => {
+			setAuth({ roleScopes: ['workflow:list'], granted: ['workflow:list'] });
+			const { body } = await agent.get('/rest/test/ceiling-scoped').expect(200);
+			expect(body.data).toEqual({ ok: true });
+		});
+
+		it('denies OAuth tokens on authenticated routes without a scope (deny-by-default)', async () => {
+			setAuth({ roleScopes: ['workflow:list'], granted: ['workflow:list'] });
+			await agent.get('/rest/test/ceiling-unscoped').expect(403);
+		});
+
+		it('does not affect cookie/session requests on unscoped routes', async () => {
+			setAuth({ roleScopes: [] }); // no oauthGrantedScopes => not an OAuth request
+			const { body } = await agent.get('/rest/test/ceiling-unscoped').expect(200);
+			expect(body.data).toEqual({ ok: true });
+		});
+
+		it('does not apply the ceiling to cookie/session requests on scoped routes', async () => {
+			setAuth({ roleScopes: ['workflow:list'] }); // user has the scope, no ceiling
+			await agent.get('/rest/test/ceiling-scoped').expect(200);
 		});
 	});
 

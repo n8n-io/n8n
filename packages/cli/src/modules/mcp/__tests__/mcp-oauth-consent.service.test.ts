@@ -23,6 +23,22 @@ let service: McpOAuthConsentService;
 const DEFAULT_GRANTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 const user = mock<User>({ id: 'user-123' });
 
+// A user whose global role grants the given scopes.
+const userWithScopes = (globalSlugs: string[]) =>
+	mock<User>({ id: 'user-123', role: { scopes: globalSlugs.map((slug) => ({ slug })) } as never });
+
+// Stub the project-membership scope query to return the given scope slugs.
+const mockProjectScopes = (slugs: string[]) => {
+	const qb = {
+		innerJoin: jest.fn().mockReturnThis(),
+		where: jest.fn().mockReturnThis(),
+		select: jest.fn().mockReturnThis(),
+		distinct: jest.fn().mockReturnThis(),
+		getRawMany: jest.fn().mockResolvedValue(slugs.map((slug) => ({ slug }))),
+	};
+	projectRepository.createQueryBuilder.mockReturnValue(qb as never);
+};
+
 describe('McpOAuthConsentService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
@@ -293,6 +309,61 @@ describe('McpOAuthConsentService', () => {
 
 			expect(result.redirectUrl).toContain('error=access_denied');
 			expect(result.redirectUrl).not.toContain('state=');
+		});
+
+		it('downscopes requested n8n scopes to what the user actually holds (global ∪ project)', async () => {
+			const sessionToken = 'valid-session-token';
+			const scopedUser = userWithScopes(['instanceAi:message']); // global role scope
+			mockProjectScopes(['workflow:execute']); // scope held via a project membership
+			oauthSessionService.verifySession.mockReturnValue({
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-abc',
+				state: null,
+				scopes: ['instanceAi:message', 'workflow:execute', 'workflow:read'],
+			});
+			userConsentRepository.upsert.mockResolvedValue(mock());
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue('code');
+
+			await service.handleConsentDecision(sessionToken, scopedUser, true);
+
+			// workflow:read is dropped — the user holds it nowhere.
+			expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
+				'client-123',
+				'user-123',
+				'https://example.com/callback',
+				'challenge-abc',
+				null,
+				['instanceAi:message', 'workflow:execute'],
+				undefined,
+			);
+		});
+
+		it('passes non-RBAC tool scopes through and drops unheld n8n scopes', async () => {
+			const sessionToken = 'valid-session-token';
+			const scopedUser = userWithScopes([]); // no global scopes
+			mockProjectScopes([]); // no project scopes
+			oauthSessionService.verifySession.mockReturnValue({
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-abc',
+				state: null,
+				scopes: ['tool:listWorkflows', 'workflow:read'],
+			});
+			userConsentRepository.upsert.mockResolvedValue(mock());
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue('code');
+
+			await service.handleConsentDecision(sessionToken, scopedUser, true);
+
+			expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
+				'client-123',
+				'user-123',
+				'https://example.com/callback',
+				'challenge-abc',
+				null,
+				['tool:listWorkflows'],
+				undefined,
+			);
 		});
 	});
 });
