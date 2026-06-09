@@ -6222,6 +6222,7 @@
 	"agents.sort.lastCreated": "Sort by last created",
 	"agents.sort.nameAsc": "Sort by name (A-Z)",
 	"agents.sort.nameDesc": "Sort by name (Z-A)",
+	"agents.noResults": "No agents found",
 	"agents.builder.save": "Save",
 	"agents.builder.deleteAgent": "Delete agent",
 	"agents.delete.modal.title": "Delete \"{name}\"?",

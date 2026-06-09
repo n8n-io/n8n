@@ -10,6 +10,7 @@ import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
+	type ListAgentsQueryDto,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
@@ -399,6 +400,13 @@ export class AgentsService {
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {
 		return await this.agentRepository.findByProjectId(projectId);
+	}
+
+	async findByProjectIdPaginated(
+		projectId: string,
+		options: ListAgentsQueryDto,
+	): Promise<{ count: number; data: Agent[] }> {
+		return await this.agentRepository.findByProjectIdPaginated(projectId, options);
 	}
 
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
