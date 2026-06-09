@@ -11,8 +11,8 @@ import nock from 'nock';
 import type { SecureContextOptions } from 'tls';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+import type { SsrfBridge } from '@/ssrf';
 
 import { parseRequestObject, proxyRequestToAxios } from '../legacy-request-adapter';
 
