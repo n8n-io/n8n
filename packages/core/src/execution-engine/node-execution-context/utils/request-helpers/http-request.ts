@@ -4,18 +4,17 @@ import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import type { AgentOptions } from 'https';
 import isEmpty from 'lodash/isEmpty';
-import { isObjectEmpty } from 'n8n-workflow';
 import type {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
 	IRequestOptions,
 } from 'n8n-workflow';
+import { isObjectEmpty } from 'n8n-workflow';
 import { stringify } from 'qs';
 
 import type { SsrfBridge } from '@/execution-engine';
 
-import { applyDefaultOutboundUserAgent } from '../outbound-user-agent';
 import {
 	buildTargetUrl,
 	digestAuthAxiosConfig,
@@ -28,6 +27,7 @@ import {
 	throwIfDomainNotAllowed,
 	validateUrlSsrf,
 } from './axios-utils';
+import { applyDefaultOutboundUserAgent } from './outbound-user-agent';
 
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
