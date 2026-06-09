@@ -187,6 +187,8 @@ export class WorkflowPublicationOutboxConsumer {
 		try {
 			if (toAdd.size > 0) {
 				await this.activeWorkflowManager.addTriggerNodes(workflow, newVersion, toAdd);
+			} else if (toRemove.size > 0) {
+				await this.activeWorkflowManager.updateWorkflowTriggerCount(workflow, newVersion);
 			}
 		} catch (e) {
 			const error = ensureError(e);

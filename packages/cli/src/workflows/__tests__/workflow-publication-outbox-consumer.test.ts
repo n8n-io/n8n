@@ -129,6 +129,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		activeWorkflowManager.getEnabledTriggerNodes.mockReturnValue([]);
 		activeWorkflowManager.addTriggerNodes.mockResolvedValue(undefined);
 		activeWorkflowManager.removeTriggerNodes.mockResolvedValue(undefined);
+		activeWorkflowManager.updateWorkflowTriggerCount.mockResolvedValue(undefined);
 		outboxRepository.claimNextPendingRecord.mockResolvedValue(null);
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
@@ -296,6 +297,10 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 				new Set(['b']),
 			);
 			expect(activeWorkflowManager.addTriggerNodes).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.updateWorkflowTriggerCount).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				newVersion,
+			);
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
 		});
 
