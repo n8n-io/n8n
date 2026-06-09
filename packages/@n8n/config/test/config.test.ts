@@ -577,7 +577,6 @@ describe('GlobalConfig', () => {
 			sandboxProvider: '',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxTimeout: 300000,
-			sandboxNamePrefix: '',
 			daytonaVolumeId: '',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',

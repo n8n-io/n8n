@@ -157,18 +157,6 @@ export class AgentKnowledgeSandboxService {
 				stderrTruncated: stderr.truncated,
 			};
 
-			this.logKnowledgeOperation({
-				projectId,
-				agentId,
-				operation: 'command',
-				exitCode: commandResult.exitCode,
-				durationMs: Date.now() - startedAt,
-				timeoutMs,
-				command,
-				stdoutTruncated: commandResult.stdoutTruncated,
-				stderrTruncated: commandResult.stderrTruncated,
-			});
-
 			return commandResult;
 		} catch (error) {
 			this.logKnowledgeOperationFailure({
@@ -182,10 +170,6 @@ export class AgentKnowledgeSandboxService {
 			});
 			throw error;
 		}
-	}
-
-	private logKnowledgeOperation(params: Record<string, unknown>): void {
-		this.logger.info('Agent knowledge operation executed', params);
 	}
 
 	private logKnowledgeOperationFailure(
@@ -297,6 +281,7 @@ export class AgentKnowledgeSandboxService {
 				labels,
 				language: 'typescript',
 				image,
+				ephemeral: true,
 				autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
 				volumes: [volumeMount],
 			},

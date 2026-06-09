@@ -61,10 +61,6 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
 	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
 
-	/** Prefix prepended to every Daytona sandbox name. */
-	@Env('N8N_AGENTS_AI_SANDBOX_NAME_PREFIX')
-	sandboxNamePrefix: string = '';
-
 	/** Daytona volume ID for the agent knowledge base. */
 	@Env('N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_ID')
 	daytonaVolumeId: string = '';

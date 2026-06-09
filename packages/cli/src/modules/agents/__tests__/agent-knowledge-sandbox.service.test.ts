@@ -229,6 +229,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		expect(params.language).toBe('typescript');
 		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
+		expect(params.ephemeral).toBe(true);
 		expect(params.autoStopInterval).toBe(5);
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 		expect(options).toEqual({ timeout: 300 });
@@ -439,40 +440,6 @@ describe('AgentKnowledgeSandboxService', () => {
 			}),
 		).rejects.toThrow(BadRequestError);
 		expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
-	});
-
-	it('logs command operation metadata without logging stdout or stderr', async () => {
-		const logger = mock<Logger>();
-		const sandbox = makeSandbox('started');
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		sandbox.process.executeCommand.mockResolvedValue({
-			exitCode: 0,
-			artifacts: { stdout: 'secret output', stderr: 'secret error' },
-		});
-		const service = makeService({}, logger);
-
-		await service.runKnowledgeCommand('project-1', 'agent-1', { command: 'wc -l *.csv' });
-
-		expect(logger.info).toHaveBeenCalledWith(
-			'Agent knowledge operation executed',
-			expect.objectContaining({
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				operation: 'command',
-				exitCode: 0,
-				command: 'wc -l *.csv',
-				stdoutTruncated: false,
-				stderrTruncated: false,
-			}),
-		);
-		expect(logger.info).not.toHaveBeenCalledWith(
-			'Agent knowledge operation executed',
-			expect.objectContaining({ stdout: expect.anything() }),
-		);
-		expect(logger.info).not.toHaveBeenCalledWith(
-			'Agent knowledge operation executed',
-			expect.objectContaining({ stderr: expect.anything() }),
-		);
 	});
 
 	it('logs a failure when sandbox command execution throws', async () => {
