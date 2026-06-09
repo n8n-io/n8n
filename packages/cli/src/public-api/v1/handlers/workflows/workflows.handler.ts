@@ -13,7 +13,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowPublishBehavior, WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service';
@@ -309,7 +309,7 @@ const workflowHandlers: WorkflowHandlers = {
 					{
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
-						publishIfActive: true,
+						publishBehavior: WorkflowPublishBehavior.PublishCurrentVersion,
 						source: 'api',
 					},
 				);

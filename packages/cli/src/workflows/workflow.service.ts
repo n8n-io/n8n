@@ -72,6 +72,21 @@ import { WorkflowValidationService } from './workflow-validation.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 
+/** What a {@link WorkflowService.update} call should do about activation. */
+/* eslint-disable @typescript-eslint/naming-convention */
+export const WorkflowPublishBehavior = {
+	/** Reactivate only when the workflow is already published and its settings changed (default UI-save behavior). */
+	ReactivateIfPublished: 'reactivate-if-published',
+	/** Publish the latest version (only if the workflow was already published). */
+	PublishCurrentVersion: 'publish-current-version',
+	/** Leave activation untouched; the caller owns publish/unpublish. */
+	Skip: 'skip',
+} as const;
+/* eslint-enable @typescript-eslint/naming-convention */
+
+export type WorkflowPublishBehavior =
+	(typeof WorkflowPublishBehavior)[keyof typeof WorkflowPublishBehavior];
+
 @Service()
 export class WorkflowService {
 	constructor(
@@ -310,8 +325,7 @@ export class WorkflowService {
 			parentFolderId?: string;
 			forceSave?: boolean;
 			publicApi?: boolean;
-			publishIfActive?: boolean;
-			skipActivation?: boolean;
+			publishBehavior?: WorkflowPublishBehavior;
 			aiBuilderAssisted?: boolean;
 			expectedChecksum?: string;
 			autosaved?: boolean;
@@ -324,8 +338,7 @@ export class WorkflowService {
 			parentFolderId,
 			forceSave = false,
 			publicApi = false,
-			publishIfActive = false,
-			skipActivation = false,
+			publishBehavior = WorkflowPublishBehavior.ReactivateIfPublished,
 			aiBuilderAssisted = false,
 			autosaved = false,
 			source = 'ui',
@@ -503,7 +516,8 @@ export class WorkflowService {
 			);
 		}
 
-		const publishCurrent = workflow.activeVersionId && publishIfActive;
+		const publishCurrent =
+			workflow.activeVersionId && publishBehavior === WorkflowPublishBehavior.PublishCurrentVersion;
 		if (publishCurrent) {
 			updatePayload.active = true;
 			updatePayload.activeVersionId = workflowUpdateData.versionId;
@@ -568,7 +582,11 @@ export class WorkflowService {
 		});
 
 		// Activate workflow if requested, or reactivate when settings changed on a published workflow.
-		if (!skipActivation && updatedWorkflow.activeVersionId && (publishCurrent || settingsChanged)) {
+		if (
+			publishBehavior !== WorkflowPublishBehavior.Skip &&
+			updatedWorkflow.activeVersionId &&
+			(publishCurrent || settingsChanged)
+		) {
 			await this.activateWorkflow(user, workflowId, {
 				versionId: updatedWorkflow.activeVersionId,
 				source,

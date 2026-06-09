@@ -47,7 +47,8 @@ export const serializedWorkflowSchema = z.object({
 	settings: z.record(z.unknown()).optional(),
 	versionId: z.string(),
 	parentFolderId: z.string().nullable(),
-	active: z.boolean(),
+	/** Published (active) version id of the source workflow, or null if it was never published. */
+	activeVersionId: z.string().nullable(),
 	isArchived: z.boolean(),
 });
 

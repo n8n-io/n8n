@@ -2,7 +2,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowPublishBehavior, WorkflowService } from '@/workflows/workflow.service';
 
 import { WorkflowConflictPolicyHandler } from './workflow-conflict-policy-handler';
 import type { WorkflowImportOutcome, WorkflowMatchContext } from './workflow-conflict-policy.types';
@@ -30,7 +30,7 @@ export class WorkflowConflictPolicyNewVersionHandler extends WorkflowConflictPol
 
 		const workflow = await this.workflowService.update(context.user, entity, match.id, {
 			publicApi: true,
-			publishIfActive: true,
+			publishBehavior: WorkflowPublishBehavior.PublishCurrentVersion,
 			source: 'import',
 		});
 		workflow.parentFolder = match.parentFolder;

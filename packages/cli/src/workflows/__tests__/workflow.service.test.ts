@@ -18,7 +18,7 @@ import type { RoleService } from '@/services/role.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowPublishBehavior, WorkflowService } from '@/workflows/workflow.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
@@ -783,7 +783,7 @@ describe('WorkflowService', () => {
 		});
 	});
 
-	describe('update() skipActivation', () => {
+	describe('update() publishBehavior', () => {
 		const userHasScopesMock = jest.mocked(userHasScopes);
 		let workflowService: WorkflowService;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
@@ -844,7 +844,7 @@ describe('WorkflowService', () => {
 			return { existingWorkflow, updatedWorkflow };
 		}
 
-		test('should reactivate when publishIfActive is true and skipActivation is not set', async () => {
+		test("should reactivate when publishBehavior is 'publish-current-version'", async () => {
 			setupPublishedWorkflow();
 
 			const user = mock<User>();
@@ -855,7 +855,7 @@ describe('WorkflowService', () => {
 					connections: {},
 				} as unknown as WorkflowEntity,
 				'workflow-1',
-				{ forceSave: true, publishIfActive: true },
+				{ forceSave: true, publishBehavior: WorkflowPublishBehavior.PublishCurrentVersion },
 			);
 
 			expect(activateWorkflowSpy).toHaveBeenCalledWith(user, 'workflow-1', {
@@ -864,24 +864,7 @@ describe('WorkflowService', () => {
 			});
 		});
 
-		test('should not reactivate when publishIfActive is true and skipActivation is true', async () => {
-			setupPublishedWorkflow();
-
-			const user = mock<User>();
-			await workflowService.update(
-				user,
-				{
-					nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', parameters: {} }],
-					connections: {},
-				} as unknown as WorkflowEntity,
-				'workflow-1',
-				{ forceSave: true, publishIfActive: true, skipActivation: true },
-			);
-
-			expect(activateWorkflowSpy).not.toHaveBeenCalled();
-		});
-
-		test('should not reactivate on settings change when skipActivation is true', async () => {
+		test('should reactivate on settings change with the default publishBehavior', async () => {
 			setupPublishedWorkflow();
 
 			const user = mock<User>();
@@ -889,7 +872,24 @@ describe('WorkflowService', () => {
 				user,
 				{ settings: { executionOrder: 'v1' } } as unknown as WorkflowEntity,
 				'workflow-1',
-				{ forceSave: true, skipActivation: true },
+				{ forceSave: true },
+			);
+
+			expect(activateWorkflowSpy).toHaveBeenCalledWith(user, 'workflow-1', {
+				versionId: 'v2',
+				source: 'ui',
+			});
+		});
+
+		test("should not reactivate on settings change when publishBehavior is 'skip'", async () => {
+			setupPublishedWorkflow();
+
+			const user = mock<User>();
+			await workflowService.update(
+				user,
+				{ settings: { executionOrder: 'v1' } } as unknown as WorkflowEntity,
+				'workflow-1',
+				{ forceSave: true, publishBehavior: WorkflowPublishBehavior.Skip },
 			);
 
 			expect(activateWorkflowSpy).not.toHaveBeenCalled();
