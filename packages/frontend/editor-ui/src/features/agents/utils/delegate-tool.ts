@@ -1,4 +1,5 @@
-import type { useI18n } from '@n8n/i18n';
+import type { BaseTextKey, useI18n } from '@n8n/i18n';
+import { SUB_AGENT_TASK_DIFFICULTIES } from '@n8n/api-types';
 import { z } from 'zod';
 
 /**
@@ -20,6 +21,7 @@ export const DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE =
 const delegateInputSchema = z.object({
 	subAgentId: z.string().min(1),
 	taskName: z.string().optional(),
+	difficulty: z.enum(SUB_AGENT_TASK_DIFFICULTIES).optional(),
 });
 
 const delegateOutputSchema = z.object({
@@ -29,10 +31,18 @@ const delegateOutputSchema = z.object({
 	status: z.enum(['completed', 'failed', 'suspended']).optional(),
 	answer: z.string().optional(),
 	error: z.string().optional(),
+	model: z.string().optional(),
 });
 
 export type DelegateInput = z.infer<typeof delegateInputSchema>;
 export type DelegateOutput = z.infer<typeof delegateOutputSchema>;
+export type DelegateDifficulty = NonNullable<DelegateInput['difficulty']>;
+
+export const SUB_AGENT_DIFFICULTY_I18N_KEY: Record<DelegateDifficulty, BaseTextKey> = {
+	low: 'agents.chat.difficulty.low',
+	medium: 'agents.chat.difficulty.medium',
+	high: 'agents.chat.difficulty.high',
+};
 
 export function isDelegateSubAgentTool(toolName: string | undefined): boolean {
 	return toolName === DELEGATE_SUB_AGENT_TOOL_NAME;
@@ -51,6 +61,19 @@ export function parseDelegateInput(input: unknown): DelegateInput | undefined {
 export function parseDelegateOutput(output: unknown): DelegateOutput | undefined {
 	const result = delegateOutputSchema.safeParse(output);
 	return result.success ? result.data : undefined;
+}
+
+export function getDelegateDifficulty(input: unknown): DelegateDifficulty | undefined {
+	return parseDelegateInput(input)?.difficulty;
+}
+
+/** One-line localized difficulty label for a delegate tool call. */
+export function getDelegateDifficultySummary(
+	input: unknown,
+	i18n: Pick<ReturnType<typeof useI18n>, 'baseText'>,
+): string | undefined {
+	const difficulty = getDelegateDifficulty(input);
+	return difficulty ? i18n.baseText(SUB_AGENT_DIFFICULTY_I18N_KEY[difficulty]) : undefined;
 }
 
 /** Localize a delegate tool error when it is a known i18n key. */

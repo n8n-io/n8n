@@ -597,7 +597,7 @@ type ShutdownServiceInternals = {
 	finalizeRemainingMessageTraceRoots: jest.MockedFunction<
 		(threadId: string, options: unknown) => Promise<void>
 	>;
-	gatewayRegistry: { disconnectAll: jest.MockedFunction<() => void> };
+	gatewayService: { disconnectAll: jest.MockedFunction<() => void> };
 	sandboxes: Map<
 		string,
 		{
@@ -709,6 +709,12 @@ type TerminalGuardOrderServiceInternals = {
 	liveness: { consumeRunTimeout: jest.Mock };
 	telemetry: { track: jest.Mock };
 	logger: { warn: jest.Mock; error: jest.Mock };
+	instanceAiConfig: {
+		outputRedactionEnabled: boolean;
+		outputRedactionSecrets: boolean;
+		outputRedactionPii: string;
+		outputRedactionPlaceholder: string;
+	};
 	traceContextsByRunId: Map<string, { threadId: string; messageGroupId?: string }>;
 	threadPushRef: Map<string, string>;
 	finalizeRunTracing: jest.Mock;
@@ -781,6 +787,12 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.liveness = { consumeRunTimeout: jest.fn(() => ({ timedOut: false })) };
 	service.telemetry = { track: jest.fn() };
 	service.logger = { warn: jest.fn(), error: jest.fn() };
+	service.instanceAiConfig = {
+		outputRedactionEnabled: true,
+		outputRedactionSecrets: true,
+		outputRedactionPii: 'credit-card',
+		outputRedactionPlaceholder: '[REDACTED]',
+	};
 	service.traceContextsByRunId = new Map([
 		['run-1', { threadId: 'thread-a', messageGroupId: 'group-1' }],
 	]);
@@ -1065,7 +1077,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				isLocalGatewayDisabledForUser: jest.Mock;
 				getPermissions: jest.Mock;
 			};
-			gatewayRegistry: { findGateway: jest.Mock };
+			gatewayService: { findGateway: jest.Mock };
 			aiService: { isProxyEnabled: jest.Mock };
 			adapterService: {
 				createContext: jest.Mock;
@@ -1108,7 +1120,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			isLocalGatewayDisabledForUser: jest.fn(async () => false),
 			getPermissions: jest.fn(() => ({})),
 		};
-		service.gatewayRegistry = { findGateway: jest.fn(() => undefined) };
+		service.gatewayService = { findGateway: jest.fn(() => undefined) };
 		service.aiService = { isProxyEnabled: jest.fn(() => false) };
 		service.adapterService = {
 			createContext: jest.fn(() => ({})),
@@ -1119,7 +1131,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		};
 		service.resolveAgentModelConfig = jest.fn(async () => 'model-1');
 		service.ensureThreadExists = jest.fn(async () => {});
-		service.agentMemory = {};
+		service.agentMemory = { getThreadProjectId: jest.fn(async () => 'project-1') };
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
@@ -1256,7 +1268,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.finalizeRemainingMessageTraceRoots = jest.fn(
 			async (_threadId: string, _options: unknown) => {},
 		);
-		service.gatewayRegistry = { disconnectAll: jest.fn() };
+		service.gatewayService = { disconnectAll: jest.fn() };
 		service.sandboxes = new Map([['thread-a', { sandbox: { id: 'sandbox-a' }, workspace }]]);
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: jest.fn() };
@@ -3050,5 +3062,60 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			'setup-claim-1',
 		);
 		expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
+	});
+});
+
+describe('getSandboxConfigFromEnv', () => {
+	type SandboxConfigService = {
+		instanceAiConfig: {
+			sandboxEnabled: boolean;
+			sandboxProvider: string;
+			daytonaApiUrl: string;
+			daytonaApiKey: string;
+			sandboxImage: string;
+			sandboxTimeout: number;
+			sandboxNamePrefix: string;
+			sandboxEphemeral: boolean;
+			daytonaTokenRefreshSkewMs: number;
+		};
+		getSandboxConfigFromEnv: () => SandboxConfig;
+	};
+
+	function createSandboxConfigService(
+		overrides: Partial<SandboxConfigService['instanceAiConfig']>,
+	): SandboxConfigService {
+		const service = Object.create(InstanceAiService.prototype) as SandboxConfigService;
+		service.instanceAiConfig = {
+			sandboxEnabled: true,
+			sandboxProvider: 'daytona',
+			daytonaApiUrl: 'https://api.daytona.io',
+			daytonaApiKey: 'key',
+			sandboxImage: 'img',
+			sandboxTimeout: 1000,
+			sandboxNamePrefix: '',
+			sandboxEphemeral: false,
+			daytonaTokenRefreshSkewMs: 1000,
+			...overrides,
+		};
+		return service;
+	}
+
+	it('marks daytona sandboxes ephemeral when the env flag is set', () => {
+		const service = createSandboxConfigService({ sandboxEphemeral: true });
+
+		expect(service.getSandboxConfigFromEnv()).toMatchObject({
+			enabled: true,
+			provider: 'daytona',
+			ephemeral: true,
+		});
+	});
+
+	it('keeps daytona sandboxes non-ephemeral by default', () => {
+		const service = createSandboxConfigService({ sandboxEphemeral: false });
+
+		expect(service.getSandboxConfigFromEnv()).toMatchObject({
+			provider: 'daytona',
+			ephemeral: false,
+		});
 	});
 });
