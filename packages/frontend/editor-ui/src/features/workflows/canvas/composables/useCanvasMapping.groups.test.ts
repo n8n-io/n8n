@@ -287,26 +287,6 @@ describe('reanchorCollapsedConnections (AC #10)', () => {
 		expect(result[0].target).toBe('b');
 	});
 
-	it('dedupes two edges from the same external endpoint to two members of the same collapsed group', () => {
-		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
-		const result = reanchorCollapsedConnections(
-			[makeEdge('external', 'm1'), makeEdge('external', 'm2')],
-			collapsedMap,
-		);
-		expect(result).toHaveLength(1);
-		// The merged edge is flagged so getConnectionLabel can drop the label.
-		expect((result[0].data as { merged?: boolean }).merged).toBe(true);
-	});
-
-	it('keeps distinct external endpoints as separate edges', () => {
-		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
-		const result = reanchorCollapsedConnections(
-			[makeEdge('extA', 'm1'), makeEdge('extB', 'm1')],
-			collapsedMap,
-		);
-		expect(result).toHaveLength(2);
-	});
-
 	it('preserves data.source.type so non-main edges still render dashed (AC #10)', () => {
 		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
 		const aiEdge = makeEdge('external', 'm1');

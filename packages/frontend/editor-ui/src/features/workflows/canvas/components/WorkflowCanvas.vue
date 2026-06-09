@@ -10,7 +10,7 @@ import { computed, provide, ref, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
-import { useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
+import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
@@ -102,7 +102,7 @@ const mappedNodes = computed(() => [
 	...mappedGroupVueFlowNodes.value,
 ]);
 
-provide('nodeGroupView', nodeGroupView);
+provide(NodeGroupViewKey, nodeGroupView);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {

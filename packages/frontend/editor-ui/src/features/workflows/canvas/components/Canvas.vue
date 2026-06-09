@@ -74,7 +74,7 @@ import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.v
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useCanvasNodeGroupDrag } from '../composables/useCanvasNodeGroupDrag';
-import { useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
+import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -256,10 +256,7 @@ const workflowGraphNodes = computed(() =>
 
 const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
-const injectedNodeGroupView = inject<ReturnType<typeof useCanvasNodeGroupView> | null>(
-	'nodeGroupView',
-	null,
-);
+const injectedNodeGroupView = inject(NodeGroupViewKey, null);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -589,10 +586,14 @@ function onDeleteSelection() {
 	// Regular workflow nodes go through the existing delete flow
 	if (hasSelection.value) emit('delete:nodes', selectedNodeIds.value);
 
-	// If collapsed group was selected, delete the group itself - the nodes will remain ungrouped
 	for (const node of selectedNodesAndGroups.value) {
 		if (!isCanvasGroupNode(node)) continue;
+
 		const data = node.data as CanvasGroupNodeData;
+		// Only collapsed group title bars are selectable
+		if (!data.isCollapsed) continue;
+
+		// Grouped nodes get ungrouped
 		workflowDocumentStore.value.deleteGroup(data.group.id);
 	}
 }

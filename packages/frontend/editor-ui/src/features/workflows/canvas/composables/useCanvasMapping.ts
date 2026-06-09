@@ -24,7 +24,7 @@ import type {
 	ExecutionOutputMap,
 } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
-import type { useCanvasNodeGroupView } from './useCanvasNodeGroupView';
+import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
 import {
 	buildCollapsedGroupByNodeId,
 	reanchorCollapsedConnections,
@@ -75,7 +75,7 @@ export function useCanvasMapping({
 	connections: Ref<IConnections>;
 	workflowObject: Ref<WorkflowObjectAccessors>;
 	renderData: Ref<CanvasRenderData>;
-	nodeGroupView?: ReturnType<typeof useCanvasNodeGroupView>;
+	nodeGroupView?: CanvasNodeGroupView;
 	isExperimentalNdvActive?: Ref<boolean>;
 }) {
 	const i18n = useI18n();
@@ -669,10 +669,7 @@ export function useCanvasMapping({
 		const reanchored = reanchorCollapsedConnections(raw, collapsedGroupByNodeIdIndex.value);
 		return reanchored.map((connection) => {
 			const type = getConnectionType(connection);
-			// A merged connection bundles multiple underlying edges, so its
-			// item count would be ambiguous — drop the label.
-			const merged = (connection.data as { merged?: boolean } | undefined)?.merged === true;
-			const label = merged ? '' : getConnectionLabel(connection);
+			const label = getConnectionLabel(connection);
 			const data = getConnectionData(connection);
 
 			return {

@@ -1,11 +1,6 @@
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type {
-	CanvasConnection,
-	CanvasConnectionData,
-	CanvasGroupNode,
-	CanvasGroupNodeData,
-} from '../canvas.types';
+import type { CanvasConnection, CanvasGroupNode, CanvasGroupNodeData } from '../canvas.types';
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
@@ -201,22 +196,15 @@ export function buildCollapsedGroupByNodeId(
 /**
  * Re-anchor connections crossing a collapsed group's boundary onto the
  * group's title bar (left / right handles). Edges fully inside a collapsed
- * group are dropped. Edges that converge on the same external endpoint
- * (same node + same handle) collapse into a single rendered line and are
- * marked `merged` so the renderer drops their label.
+ * group are dropped. External-only edges pass through unchanged.
  */
-export interface CanvasConnectionWithMergeFlag extends CanvasConnection {
-	data?: CanvasConnectionData & { merged?: boolean };
-}
-
 export function reanchorCollapsedConnections(
 	connections: CanvasConnection[],
 	collapsedGroupByNodeId: Map<string, IWorkflowGroup>,
-): CanvasConnectionWithMergeFlag[] {
-	if (collapsedGroupByNodeId.size === 0) return connections as CanvasConnectionWithMergeFlag[];
+): CanvasConnection[] {
+	if (collapsedGroupByNodeId.size === 0) return connections;
 
-	const byKey = new Map<string, CanvasConnectionWithMergeFlag>();
-	const result: CanvasConnectionWithMergeFlag[] = [];
+	const result: CanvasConnection[] = [];
 
 	for (const conn of connections) {
 		const sourceGroup = collapsedGroupByNodeId.get(conn.source);
@@ -238,19 +226,7 @@ export function reanchorCollapsedConnections(
 		const sourceHandle = sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle;
 		const targetHandle = targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle;
 
-		const dedupeKey = `${sourceId}|${sourceHandle}|${targetId}|${targetHandle}`;
-		const existing = byKey.get(dedupeKey);
-
-		if (existing) {
-			// Mark the first-seen edge as merged so the renderer drops its label.
-			existing.data = {
-				...(existing.data as CanvasConnectionData),
-				merged: true,
-			};
-			continue;
-		}
-
-		const rewritten: CanvasConnectionWithMergeFlag = {
+		result.push({
 			...conn,
 			id: createCanvasConnectionId({
 				source: sourceId,
@@ -262,10 +238,7 @@ export function reanchorCollapsedConnections(
 			target: targetId,
 			sourceHandle,
 			targetHandle,
-		};
-
-		byKey.set(dedupeKey, rewritten);
-		result.push(rewritten);
+		});
 	}
 
 	return result;

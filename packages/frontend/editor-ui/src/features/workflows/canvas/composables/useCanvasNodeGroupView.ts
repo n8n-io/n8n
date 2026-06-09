@@ -1,16 +1,24 @@
-import { computed, getCurrentScope, onScopeDispose, ref, type ComputedRef, type Ref } from 'vue';
+import {
+	computed,
+	getCurrentScope,
+	onScopeDispose,
+	ref,
+	type ComputedRef,
+	type InjectionKey,
+	type Ref,
+} from 'vue';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { NodeGroupChangeEvent } from '@/app/stores/workflowDocument/useWorkflowDocumentNodeGroups';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 
-export type GroupChangeUnsubscribe = () => void;
-
 export interface UseCanvasNodeGroupViewDeps {
 	allGroups: ComputedRef<IWorkflowGroup[]> | Ref<IWorkflowGroup[]>;
-	onNodeGroupsChange: (
-		handler: (event: NodeGroupChangeEvent) => unknown,
-	) => GroupChangeUnsubscribe | unknown;
+	onNodeGroupsChange: (handler: (event: NodeGroupChangeEvent) => void) => { off: () => void };
 }
+
+export type CanvasNodeGroupView = ReturnType<typeof useCanvasNodeGroupView>;
+
+export const NodeGroupViewKey: InjectionKey<CanvasNodeGroupView> = Symbol('nodeGroupView');
 
 /**
  * Canvas view-state for group collapse/expand. Lives separately from the
@@ -51,7 +59,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	// Default collapse state per change action: SET (workflow load /
 	// replacement) collapses every group; ADD (new group) starts expanded;
 	// DELETE removes the id; UPDATE leaves collapse state alone.
-	const unsubscribe = deps.onNodeGroupsChange((event) => {
+	const subscription = deps.onNodeGroupsChange((event) => {
 		if (event.action === CHANGE_ACTION.SET) {
 			expandedIds.value.clear();
 		} else if (event.action === CHANGE_ACTION.ADD) {
@@ -61,10 +69,10 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		}
 	});
 
-	// `onNodeGroupsChange` returns an unsubscribe; release it with the
-	// surrounding scope so handlers don't outlive their owner.
-	if (getCurrentScope() && typeof unsubscribe === 'function') {
-		onScopeDispose(unsubscribe as GroupChangeUnsubscribe);
+	// Release the subscription with the surrounding scope so the handler
+	// doesn't outlive its owner.
+	if (getCurrentScope()) {
+		onScopeDispose(() => subscription.off());
 	}
 
 	return {
