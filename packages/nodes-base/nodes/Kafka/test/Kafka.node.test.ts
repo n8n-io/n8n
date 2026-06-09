@@ -9,7 +9,10 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 jest.mock('kafkajs');
 jest.mock('@kafkajs/confluent-schema-registry');
 
-const errorWorkflow = (eventName: string): WorkflowTestData['input']['workflowData'] => ({
+const errorWorkflow = (
+	eventName: string,
+	message = '{"foo":"bar"}',
+): WorkflowTestData['input']['workflowData'] => ({
 	nodes: [
 		{
 			parameters: {},
@@ -23,7 +26,7 @@ const errorWorkflow = (eventName: string): WorkflowTestData['input']['workflowDa
 			parameters: {
 				topic: 'error-test-topic',
 				sendInputData: false,
-				message: '{"foo":"bar"}',
+				message,
 				useSchemaRegistry: true,
 				schemaRegistryUrl: '',
 				eventName,
@@ -132,6 +135,28 @@ describe('Kafka Node', () => {
 		credentials: {
 			schemaRegistryApi: schemaRegistryCredential,
 		},
+	});
+
+	harness.setupTest({
+		description: 'should fail with the generic message when encoding a message fails',
+		input: { workflowData: errorWorkflow('test-event-name', 'not-json') },
+		output: {
+			nodeData: {},
+			error: 'Verify your Schema Registry configuration',
+		},
+		credentials: {
+			schemaRegistryApi: schemaRegistryCredential,
+		},
+	});
+
+	test('should only connect the producer once the schema registry is resolved', async () => {
+		// Cumulative count across all the workflows above: 3 node executions from
+		// the two successful workflows, plus 1 from the encode-failure workflow
+		// (encoding fails inside the loop, after the producer has connected).
+		// The two registry-resolution error workflows (missing password, failing
+		// schema lookup) must NOT contribute: registry misconfiguration surfaces
+		// before `producer.connect()`, so no connected producer is ever leaked.
+		expect(mockProducerConnect).toHaveBeenCalledTimes(4);
 	});
 
 	test('should publish the correct kafka messages', async () => {

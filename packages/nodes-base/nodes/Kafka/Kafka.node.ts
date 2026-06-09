@@ -333,9 +333,9 @@ export class Kafka implements INodeType {
 					this,
 					this.getNodeParameter('schemaRegistryUrl', 0) as string,
 				);
-				const registry = new SchemaRegistry(registryOptions);
 
 				try {
+					const registry = new SchemaRegistry(registryOptions);
 					const eventName = this.getNodeParameter('eventName', 0) as string;
 					const schemaId = await registry.getLatestSchemaId(eventName);
 					schemaRegistry = { registry, schemaId };

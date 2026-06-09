@@ -812,9 +812,43 @@ describe('Kafka Utils', () => {
 				});
 			});
 
+			it('should redact userinfo up to the last @ when the password contains an unencoded @', async () => {
+				const ctx = createRegistryContext({
+					params: {
+						useSchemaRegistry: true,
+						schemaRegistryUrl: 'https://fallback-registry.local',
+					},
+				});
+				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+					throw new Error(
+						'request to https://registry-user:p@ssw0rd@fallback-registry.local/subjects failed',
+					);
+				});
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeUndefined();
+				const [, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				expect(logPayload).toStrictEqual({
+					message: 'request to https://***@fallback-registry.local/subjects failed',
+				});
+			});
+
 			it('should rethrow misconfiguration errors instead of warning', async () => {
 				const ctx = createRegistryContext({
 					params: { useSchemaRegistry: true, schemaRegistryUrl: '' },
+				});
+
+				await expect(setSchemaRegistry(ctx)).rejects.toThrow(NodeOperationError);
+				await expect(setSchemaRegistry(ctx)).rejects.toThrow(
+					'Select a Schema Registry credential or enter a Schema Registry URL',
+				);
+				expect(ctx.logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('should rethrow misconfiguration errors when the fallback URL is whitespace-only', async () => {
+				const ctx = createRegistryContext({
+					params: { useSchemaRegistry: true, schemaRegistryUrl: '   ' },
 				});
 
 				await expect(setSchemaRegistry(ctx)).rejects.toThrow(NodeOperationError);

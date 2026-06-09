@@ -299,7 +299,7 @@ export function disconnectEventListeners(
 function sanitizeRegistryError(error: unknown) {
 	const ensured = ensureError(error);
 	return {
-		message: ensured.message.replace(/\/\/[^@/]+@/g, '//***@'),
+		message: ensured.message.replace(/\/\/[^/\s]+@/g, '//***@'),
 		...('status' in ensured ? { status: ensured.status } : {}),
 	};
 }
