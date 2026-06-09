@@ -40,17 +40,24 @@ export function composePromoteMessage(originalPrompt: string, name: string | und
  * not start with an emoji, `emoji` is `undefined` and `rest` is the original
  * input.
  *
- * Supports common cases including zero-width-joiner sequences (e.g. 👨‍💻)
- * and emoji-variation selectors. We intentionally keep the regex narrow to
- * `Extended_Pictographic` so plain text starting with a number or symbol is not
- * mistaken for an emoji.
+ * Handles:
+ *  - Plain pictographics (🍌)
+ *  - Variation-selector-16 presentation (⚠️)
+ *  - Skin-tone modifiers attached without ZWJ (👍🏽)
+ *  - ZWJ sequences with optional modifiers (👨‍💻, 👨🏽‍💻)
+ *  - Flag sequences as pairs of Regional_Indicator codepoints (🇩🇪)
+ *
+ * Intentionally narrow to emoji classes so plain text starting with a number
+ * or punctuation is not mistaken for an emoji.
  */
+const LEADING_EMOJI_REGEX =
+	/^(?:\p{Regional_Indicator}\p{Regional_Indicator}|\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F)?(?:\u200d\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F)?)*)\s*/u;
+
 export function splitLeadingEmoji(input: string): { emoji?: string; rest: string } {
-	const match = input.match(
-		/^(\p{Extended_Pictographic}(?:\u200d\p{Extended_Pictographic})*\uFE0F?)\s*/u,
-	);
+	const match = input.match(LEADING_EMOJI_REGEX);
 	if (!match) return { rest: input };
-	return { emoji: match[1], rest: input.slice(match[0].length) };
+	const emoji = match[0].replace(/\s+$/, '');
+	return { emoji, rest: input.slice(match[0].length) };
 }
 
 /** Clamp a user-supplied history `limit` into a sane bounded range. */

@@ -44,4 +44,25 @@ describe('splitLeadingEmoji', () => {
 	test('does not mistake leading whitespace for an emoji', () => {
 		expect(splitLeadingEmoji('   🍌 Banana')).toEqual({ rest: '   🍌 Banana' });
 	});
+
+	test('extracts a base emoji + skin-tone modifier as one cluster', () => {
+		expect(splitLeadingEmoji('👍🏽 Banana')).toEqual({
+			emoji: '👍🏽',
+			rest: 'Banana',
+		});
+	});
+
+	test('extracts a flag sequence (paired regional indicators)', () => {
+		expect(splitLeadingEmoji('🇩🇪 Banana')).toEqual({
+			emoji: '🇩🇪',
+			rest: 'Banana',
+		});
+	});
+
+	test('extracts a ZWJ sequence whose base carries a skin-tone modifier', () => {
+		expect(splitLeadingEmoji('👨🏽‍💻 Coding')).toEqual({
+			emoji: '👨🏽‍💻',
+			rest: 'Coding',
+		});
+	});
 });
