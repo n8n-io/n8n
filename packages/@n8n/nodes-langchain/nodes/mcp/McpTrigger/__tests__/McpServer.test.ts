@@ -398,7 +398,7 @@ describe('McpServer', () => {
 				}),
 			);
 			// Verify isError is NOT present
-			const sentMessage = (transport.send as jest.Mock).mock.calls[0][0] as {
+			const sentMessage = transport.send.mock.calls[0][0] as unknown as {
 				result: { isError?: boolean };
 			};
 			expect(sentMessage.result.isError).toBeUndefined();
