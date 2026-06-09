@@ -44,6 +44,14 @@ const WEBHOOK_TRIGGER_TYPE = 'n8n-nodes-base.webhook';
 
 const TRIGGER_TYPE_SUFFIXES = ['Trigger', 'trigger'];
 
+type Bucket = 'actionNeeded' | 'upcoming' | 'readyToRun';
+
+/** Strip a trailing " Trigger" word (case-insensitive). Used to turn
+ *  display names like "Gmail Trigger" into the service name "Gmail". */
+function stripTriggerSuffix(displayName: string): string {
+	return displayName.replace(/\s+trigger\s*$/i, '').trim();
+}
+
 /**
  * Loose poll-trigger heuristic. Real polling triggers in `n8n-nodes-base`
  * all end in "Trigger" and are not the schedule/webhook/manual trigger
@@ -87,9 +95,7 @@ function runsLocally(nodes: INode[]): boolean {
  * Exported for unit testing.
  */
 export function deriveSourceLabel(displayName: string): string {
-	const stripped = displayName.replace(/\s+trigger\s*$/i, '').trim();
-	const lower = stripped.toLowerCase();
-	return `On new ${lower} message`;
+	return `On new ${stripTriggerSuffix(displayName).toLowerCase()} message`;
 }
 
 /**
@@ -273,17 +279,13 @@ function findMissingCredentialNode(
 }
 
 function deriveDescription(
-	bucket: 'actionNeeded' | 'upcoming' | 'readyToRun',
-	trigger: INode | undefined,
+	bucket: Bucket,
 	summary: DesktopAssistantTriggerSummary,
 	missingCredential: { serviceName: string } | undefined,
 ): string {
 	if (bucket === 'actionNeeded') {
 		if (missingCredential) {
-			// Strip a trailing " Trigger" so we get "Gmail needs credential", not
-			// "Gmail Trigger needs credential".
-			const service = missingCredential.serviceName.replace(/\s+Trigger\s*$/i, '');
-			return `${service} needs credential`;
+			return `${stripTriggerSuffix(missingCredential.serviceName)} needs credential`;
 		}
 		return 'Activation required';
 	}
@@ -293,16 +295,16 @@ function deriveDescription(
 		}
 		return `Next run at ${summary.nextRunAt}`;
 	}
-	// readyToRun
+	// readyToRun — manual and "other" triggers have no useful one-liner; only
+	// poll/webhook surface their source label.
 	if (summary.kind === 'poll' || summary.kind === 'webhook') {
 		return summary.sourceLabel;
 	}
-	if (trigger?.type === MANUAL_TRIGGER_TYPE) return '';
 	return '';
 }
 
 function classifyOne(input: ClassifierInput): {
-	bucket: 'actionNeeded' | 'upcoming' | 'readyToRun' | null;
+	bucket: Bucket | null;
 	card: DesktopAssistantTaskCard;
 } {
 	const trigger = findFirstTrigger(input.nodes);
@@ -310,7 +312,7 @@ function classifyOne(input: ClassifierInput): {
 	const tagged = hasDesktopAssistantTag(input.tags);
 	const missingCredential = findMissingCredentialNode(input);
 
-	let bucket: 'actionNeeded' | 'upcoming' | 'readyToRun' | null = null;
+	let bucket: Bucket | null = null;
 
 	const isScheduleOrPoll =
 		summary.kind === 'schedule' || summary.kind === 'poll' || summary.kind === 'webhook';
@@ -341,8 +343,7 @@ function classifyOne(input: ClassifierInput): {
 		bucket = 'readyToRun';
 	}
 
-	const description =
-		bucket === null ? '' : deriveDescription(bucket, trigger, summary, missingCredential);
+	const description = bucket === null ? '' : deriveDescription(bucket, summary, missingCredential);
 
 	const card: DesktopAssistantTaskCard = {
 		workflowId: input.workflowId,

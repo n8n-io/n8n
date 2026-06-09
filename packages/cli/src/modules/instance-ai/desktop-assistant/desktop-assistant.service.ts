@@ -55,6 +55,12 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 const PROMOTE_FINALIZE_TIMEOUT_MS = 5 * 60 * 1000;
 
+const EMPTY_HISTORY = Object.freeze({
+	results: [],
+	estimated: false,
+	count: 0,
+} satisfies Awaited<ReturnType<ExecutionService['findRangeWithCount']>>);
+
 /**
  * BFF for the n8n personal-automation desktop assistant.
  *
@@ -209,9 +215,8 @@ export class DesktopAssistantService {
 		user: User,
 		body: DesktopAssistantTaskRequest,
 	): Promise<DesktopAssistantTaskResponse> {
-		if (!body.prompt || body.prompt.trim().length === 0) {
-			throw new BadRequestError('A non-empty prompt is required');
-		}
+		// The DTO already enforces a non-empty trimmed prompt via Zod; no
+		// redundant validation needed here.
 		const threadId = randomUUID();
 		const projectId = await this.resolvePersonalProjectId(user);
 		await this.memoryService.ensureThread(user.id, threadId, projectId);
@@ -309,7 +314,7 @@ export class DesktopAssistantService {
 		const finalise = (workflowId: string) => {
 			handled = true;
 			unsubscribe();
-			this.finalizePromotedWorkflow(user, threadId, workflowId).catch((error: unknown) => {
+			this.finalizePromotedWorkflow(threadId, workflowId).catch((error: unknown) => {
 				this.logger.warn('Failed to finalise promoted workflow', {
 					threadId,
 					workflowId,
@@ -360,11 +365,7 @@ export class DesktopAssistantService {
 		return unsubscribe;
 	}
 
-	private async finalizePromotedWorkflow(
-		_user: User,
-		threadId: string,
-		workflowId: string,
-	): Promise<void> {
+	private async finalizePromotedWorkflow(threadId: string, workflowId: string): Promise<void> {
 		await this.applyDesktopAssistantTag(workflowId);
 		await this.writeDesktopAssistantMeta(workflowId, threadId);
 		await this.memoryService.updateThread(threadId, {
@@ -456,9 +457,7 @@ export class DesktopAssistantService {
 		const accessibleWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
 		});
-		if (accessibleWorkflowIds.length === 0 || tagId === null) {
-			return { results: [], estimated: false, count: 0 };
-		}
+		if (accessibleWorkflowIds.length === 0 || tagId === null) return EMPTY_HISTORY;
 
 		const taggedWorkflowIds = await this.workflowTagMappingRepository
 			.find({
@@ -467,9 +466,7 @@ export class DesktopAssistantService {
 			})
 			.then((rows) => rows.map((r) => r.workflowId));
 
-		if (taggedWorkflowIds.length === 0) {
-			return { results: [], estimated: false, count: 0 };
-		}
+		if (taggedWorkflowIds.length === 0) return EMPTY_HISTORY;
 
 		// Skip executions of archived workflows — if the user archived a
 		// desktop-assistant workflow it should drop out of the history view too.
@@ -478,9 +475,7 @@ export class DesktopAssistantService {
 			select: { id: true },
 		});
 		const liveTaggedWorkflowIds = liveTaggedRows.map((row) => row.id);
-		if (liveTaggedWorkflowIds.length === 0) {
-			return { results: [], estimated: false, count: 0 };
-		}
+		if (liveTaggedWorkflowIds.length === 0) return EMPTY_HISTORY;
 
 		const sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
 		return await this.executionService.findRangeWithCount({
