@@ -1,3 +1,4 @@
+import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
@@ -128,6 +129,7 @@ export const createUpdateWorkflowTool = (
 	collaborationService: CollaborationService,
 	dataTableOps: DataTableUserOperations,
 	tagService: TagService,
+	globalConfig: GlobalConfig,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -168,6 +170,12 @@ export const createUpdateWorkflowTool = (
 			const hasTagOperations = operations.some(
 				(op) => op.type === 'addTags' || op.type === 'removeTags',
 			);
+
+			if (hasTagOperations && globalConfig.tags.disabled) {
+				throw new Error(
+					'Tag operations are not supported on this instance because tags are disabled.',
+				);
+			}
 
 			const existingWorkflow = await getMcpWorkflow(
 				workflowId,

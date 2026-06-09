@@ -526,6 +526,7 @@ export class McpService {
 			this.collaborationService,
 			dataTableOps,
 			this.tagService,
+			this.globalConfig,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

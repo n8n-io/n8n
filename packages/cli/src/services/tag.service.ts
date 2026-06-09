@@ -2,7 +2,7 @@ import type { TagEntity, ITagWithCountDb } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { In, QueryFailedError } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -90,6 +90,10 @@ export class TagService {
 	 * Resolve a set of tag names to their entities, creating any that don't exist.
 	 * Names are trimmed and de-duplicated before lookup. Returns one entity per
 	 * unique input name, in the same order as the de-duplicated input.
+	 *
+	 * Race-safe: if two callers concurrently create a tag with the same novel
+	 * name, the loser of the unique-index race re-fetches the now-existing row
+	 * instead of surfacing a raw DB error.
 	 */
 	async findOrCreateByNames(names: string[]): Promise<TagEntity[]> {
 		const uniqueNames = Array.from(new Set(names.map((n) => n.trim()).filter((n) => n.length > 0)));
@@ -105,8 +109,15 @@ export class TagService {
 				result.push(hit);
 				continue;
 			}
-			const created = await this.save(this.toEntity({ name }), 'create');
-			result.push(created);
+			try {
+				const created = await this.save(this.toEntity({ name }), 'create');
+				result.push(created);
+			} catch (error) {
+				if (!(error instanceof QueryFailedError)) throw error;
+				const raced = await this.tagRepository.findOneBy({ name });
+				if (!raced) throw error;
+				result.push(raced);
+			}
 		}
 		return result;
 	}

@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type IConnections, type INode } from 'n8n-workflow';
 
@@ -64,6 +65,7 @@ describe('update-workflow MCP tool', () => {
 	let dataTableOps: DataTableOpsMock;
 	let tagService: TagService;
 	let findOrCreateByNamesMock: jest.Mock;
+	let globalConfig: GlobalConfig;
 
 	const buildExistingWorkflow = () =>
 		Object.assign(new WorkflowEntity(), {
@@ -128,6 +130,7 @@ describe('update-workflow MCP tool', () => {
 
 		findOrCreateByNamesMock = jest.fn();
 		tagService = mockInstance(TagService, { findOrCreateByNames: findOrCreateByNamesMock });
+		globalConfig = mockInstance(GlobalConfig, { tags: { disabled: false } });
 	});
 
 	const createTool = () =>
@@ -143,6 +146,7 @@ describe('update-workflow MCP tool', () => {
 			collaborationService,
 			dataTableOps as never,
 			tagService,
+			globalConfig,
 		);
 
 	const callHandler = async (
@@ -1030,6 +1034,20 @@ describe('update-workflow MCP tool', () => {
 					['workflow:update'],
 					expect.objectContaining({ includeTags: false }),
 				);
+			});
+
+			test('rejects tag operations when tags are disabled instance-wide', async () => {
+				globalConfig = mockInstance(GlobalConfig, { tags: { disabled: true } });
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['anything'] }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				expect(workflowService.update).not.toHaveBeenCalled();
+				expect(findWorkflowMock).not.toHaveBeenCalled();
 			});
 		});
 	});

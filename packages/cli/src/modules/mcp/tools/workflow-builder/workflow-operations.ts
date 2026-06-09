@@ -644,12 +644,19 @@ export function toWorkflowSlice(
 	workflow: IWorkflowBase,
 	options: { includeTags?: boolean } = {},
 ): WorkflowSlice {
-	const tags = (workflow as { tags?: Array<{ name: string }> }).tags;
+	let tagNames: string[] | undefined;
+	if (options.includeTags) {
+		const tags = (workflow as { tags?: Array<{ name: string }> }).tags;
+		if (tags === undefined) {
+			throw new Error('toWorkflowSlice: includeTags=true requires the tags relation to be loaded.');
+		}
+		tagNames = tags.map((t) => t.name);
+	}
 	return {
 		name: workflow.name ?? '',
 		description: (workflow as { description?: string }).description,
 		nodes: workflow.nodes,
 		connections: workflow.connections,
-		tagNames: options.includeTags ? (tags ?? []).map((t) => t.name) : undefined,
+		tagNames,
 	};
 }

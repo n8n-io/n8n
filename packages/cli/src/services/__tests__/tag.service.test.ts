@@ -1,4 +1,6 @@
 import type { TagEntity, TagRepository } from '@n8n/db';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { FindOperator, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import type { ExternalHooks } from '@/external-hooks';
@@ -55,9 +57,39 @@ describe('TagService', () => {
 
 			await tagService.findOrCreateByNames(['production', 'production', '  production  ']);
 
-			expect(tagRepository.find).toHaveBeenCalledWith({
-				where: { name: expect.objectContaining({ _value: ['production'] }) },
-			});
+			expect(tagRepository.find).toHaveBeenCalledTimes(1);
+			const findArg = tagRepository.find.mock.calls[0][0] as unknown as {
+				where: { name: FindOperator<string[]> };
+			};
+			expect(findArg.where.name).toBeInstanceOf(FindOperator);
+			expect(findArg.where.name.type).toBe('in');
+			expect(findArg.where.name.value).toEqual(['production']);
+		});
+
+		test('returns the now-existing row when a concurrent caller wins the create race', async () => {
+			tagRepository.find.mockResolvedValue([]);
+			const racedTag = makeTag({ id: 'tag-raced', name: 'critical' });
+
+			tagRepository.create.mockReturnValue(racedTag);
+			tagRepository.save.mockRejectedValueOnce(
+				new QueryFailedError('insert', undefined, new Error('UNIQUE')),
+			);
+			tagRepository.findOneBy.mockResolvedValue(racedTag);
+
+			const result = await tagService.findOrCreateByNames(['critical']);
+
+			expect(result).toEqual([racedTag]);
+			expect(tagRepository.findOneBy).toHaveBeenCalledWith({ name: 'critical' });
+		});
+
+		test('rethrows when the loser of the race cannot find the row afterwards', async () => {
+			tagRepository.find.mockResolvedValue([]);
+			tagRepository.create.mockReturnValue(makeTag({ name: 'critical' }));
+			const err = new QueryFailedError('insert', undefined, new Error('boom'));
+			tagRepository.save.mockRejectedValueOnce(err);
+			tagRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(tagService.findOrCreateByNames(['critical'])).rejects.toBe(err);
 		});
 
 		test('creates missing tags and merges with existing', async () => {
