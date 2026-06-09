@@ -91,15 +91,24 @@ export class DesktopAssistantService {
 			return { actionNeeded: [], upcoming: [], readyToRun: [] };
 		}
 
-		const workflows = await this.workflowFinderService.findWorkflowsByIdsForUser(
+		// Filter archived workflows out of the desktop assistant view. Archive is a
+		// user signal of "I'm done with this"; it should not surface in the
+		// always-on assistant card. workflowFinderService doesn't filter for us,
+		// so we drop archived rows after the share check.
+		const sharedWorkflows = await this.workflowFinderService.findWorkflowsByIdsForUser(
 			accessibleWorkflowIds,
 			user,
 			['workflow:read'],
 		);
+		const workflows = sharedWorkflows.filter((wf) => !wf.isArchived);
+		const liveWorkflowIds = workflows.map((wf) => wf.id);
+		if (liveWorkflowIds.length === 0) {
+			return { actionNeeded: [], upcoming: [], readyToRun: [] };
+		}
 
 		// Fetch tags for each workflow in one round-trip via the join column.
 		const workflowsWithTags = await this.workflowRepository.find({
-			where: { id: In(accessibleWorkflowIds) },
+			where: { id: In(liveWorkflowIds) },
 			relations: { tags: true },
 			select: { id: true, tags: { name: true } },
 		});
@@ -116,8 +125,7 @@ export class DesktopAssistantService {
 		]);
 		const accessibleCredentialIds = new Set(credentials.map((c) => c.id));
 
-		const lastExecutionByWorkflowId =
-			await this.fetchLastExecutionByWorkflowId(accessibleWorkflowIds);
+		const lastExecutionByWorkflowId = await this.fetchLastExecutionByWorkflowId(liveWorkflowIds);
 
 		const inputs: ClassifierInput[] = workflows.map((workflow) => {
 			// Icon priority: explicit `meta.desktopAssistant.icon` wins, then any
@@ -447,12 +455,23 @@ export class DesktopAssistantService {
 			return { results: [], estimated: false, count: 0 };
 		}
 
+		// Skip executions of archived workflows — if the user archived a
+		// desktop-assistant workflow it should drop out of the history view too.
+		const liveTaggedRows = await this.workflowRepository.find({
+			where: { id: In(taggedWorkflowIds), isArchived: false },
+			select: { id: true },
+		});
+		const liveTaggedWorkflowIds = liveTaggedRows.map((row) => row.id);
+		if (liveTaggedWorkflowIds.length === 0) {
+			return { results: [], estimated: false, count: 0 };
+		}
+
 		const sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
 		return await this.executionService.findRangeWithCount({
 			kind: 'range',
 			user,
 			sharingOptions,
-			workflowId: taggedWorkflowIds,
+			workflowId: liveTaggedWorkflowIds,
 			range: {
 				limit: clampLimit(query.limit),
 				firstId: query.firstId,
