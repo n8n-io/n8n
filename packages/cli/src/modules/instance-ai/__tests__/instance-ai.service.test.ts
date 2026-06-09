@@ -709,6 +709,12 @@ type TerminalGuardOrderServiceInternals = {
 	liveness: { consumeRunTimeout: jest.Mock };
 	telemetry: { track: jest.Mock };
 	logger: { warn: jest.Mock; error: jest.Mock };
+	instanceAiConfig: {
+		outputRedactionEnabled: boolean;
+		outputRedactionSecrets: boolean;
+		outputRedactionPii: string;
+		outputRedactionPlaceholder: string;
+	};
 	traceContextsByRunId: Map<string, { threadId: string; messageGroupId?: string }>;
 	threadPushRef: Map<string, string>;
 	finalizeRunTracing: jest.Mock;
@@ -781,6 +787,12 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.liveness = { consumeRunTimeout: jest.fn(() => ({ timedOut: false })) };
 	service.telemetry = { track: jest.fn() };
 	service.logger = { warn: jest.fn(), error: jest.fn() };
+	service.instanceAiConfig = {
+		outputRedactionEnabled: true,
+		outputRedactionSecrets: true,
+		outputRedactionPii: 'credit-card',
+		outputRedactionPlaceholder: '[REDACTED]',
+	};
 	service.traceContextsByRunId = new Map([
 		['run-1', { threadId: 'thread-a', messageGroupId: 'group-1' }],
 	]);
