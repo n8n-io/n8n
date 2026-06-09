@@ -290,7 +290,7 @@ test.describe(
 				await expect(n8n.canvas.getNodeGroupFrame(PERSISTED_GROUP_TITLE)).toBeHidden();
 			});
 
-			test('deleting a re-anchored edge removes the underlying workflow connection', async ({
+			test('deleting a remapped collapsed-group connection clears it from workflow data', async ({
 				n8n,
 			}) => {
 				await n8n.canvas.deleteConnectionBetweenNodes('Set B', 'Set C');

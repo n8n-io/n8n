@@ -65,7 +65,7 @@ describe('CanvasEdge', () => {
 		expect(emitted()).toHaveProperty('add');
 	});
 
-	describe('canonical connection for re-anchored edges', () => {
+	describe('canonical connection for remapped collapsed-group connections', () => {
 		const RE_ANCHORED_PROPS = {
 			source: 'group:g1',
 			target: 'real-target-id',

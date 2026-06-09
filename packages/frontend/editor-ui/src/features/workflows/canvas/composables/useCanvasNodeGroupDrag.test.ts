@@ -200,7 +200,7 @@ describe('useCanvasNodeGroupDrag', () => {
 		]);
 	});
 
-	describe('multi-select drag (AC #11)', () => {
+	describe('multi-select drag', () => {
 		it('propagates Δ to the group nodes when the title bar is part of a multi-select drag', () => {
 			const { drag } = setup();
 			const groupNode = makeGroupGraphNode('group:g1', 0, 0);

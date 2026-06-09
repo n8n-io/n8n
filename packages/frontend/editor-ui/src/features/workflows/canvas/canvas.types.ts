@@ -6,6 +6,7 @@ import type {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import type {
+	Connection,
 	DefaultEdge,
 	Node,
 	NodeProps,
@@ -160,13 +161,8 @@ export interface CanvasConnectionData {
 	target: CanvasConnectionPort;
 	status?: 'success' | 'error' | 'pinned' | 'running';
 	maxConnections?: number;
-	// Real node ids + handle strings preserved across collapsed-group re-anchoring so edge mutations can resolve back to workflow nodes
-	canonical?: {
-		source: string;
-		target: string;
-		sourceHandle?: string | null;
-		targetHandle?: string | null;
-	};
+	// Real workflow endpoints, kept across collapsed-group remapping so mutations target the right nodes.
+	canonical?: Connection;
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;

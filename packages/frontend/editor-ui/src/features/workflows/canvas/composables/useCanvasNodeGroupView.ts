@@ -1,18 +1,8 @@
-import {
-	computed,
-	getCurrentScope,
-	onScopeDispose,
-	ref,
-	type ComputedRef,
-	type InjectionKey,
-	type Ref,
-} from 'vue';
-import type { IWorkflowGroup } from 'n8n-workflow';
+import { getCurrentScope, onScopeDispose, ref, type InjectionKey } from 'vue';
 import type { NodeGroupChangeEvent } from '@/app/stores/workflowDocument/useWorkflowDocumentNodeGroups';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 
 export interface UseCanvasNodeGroupViewDeps {
-	allGroups: ComputedRef<IWorkflowGroup[]> | Ref<IWorkflowGroup[]>;
 	onNodeGroupsChange: (handler: (event: NodeGroupChangeEvent) => void) => { off: () => void };
 }
 
@@ -44,16 +34,6 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		applySetExpanded(id, !expandedIds.value.has(id));
 	}
 
-	function collapseAll() {
-		expandedIds.value.clear();
-	}
-
-	function expandAll() {
-		for (const group of deps.allGroups.value) {
-			expandedIds.value.add(group.id);
-		}
-	}
-
 	const isGroupCollapsed = (id: string) => !expandedIds.value.has(id);
 
 	// Default collapse state per change action: SET (workflow load /
@@ -76,11 +56,8 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	}
 
 	return {
-		expandedIds: computed(() => expandedIds.value),
 		isGroupCollapsed,
 		toggleCollapsed,
 		setCollapsed,
-		collapseAll,
-		expandAll,
 	};
 }

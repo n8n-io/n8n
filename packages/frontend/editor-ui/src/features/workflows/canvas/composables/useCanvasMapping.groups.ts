@@ -176,7 +176,7 @@ export function mapGroupsToVueFlowNodes({
 
 /**
  * Build a Map<nodeId, IWorkflowGroup> for nodes inside a collapsed group.
- * Used to look up "is this endpoint of an edge currently hidden inside a
+ * Used to look up "is this endpoint of a connection currently hidden inside a
  * collapsed group, and if so, which group does it belong to?".
  */
 export function buildCollapsedGroupByNodeId(
@@ -194,11 +194,12 @@ export function buildCollapsedGroupByNodeId(
 }
 
 /**
- * Re-anchor connections crossing a collapsed group's boundary onto the
- * group's title bar (left / right handles). Edges fully inside a collapsed
- * group are dropped. External-only edges pass through unchanged.
+ * Visually remap collapsed-group connections to the group header handles
+ * (left / right) so VueFlow can draw them while the member nodes are hidden.
+ * Connections fully inside a collapsed group are dropped.
+ * External-only connections pass through unchanged.
  */
-export function reanchorCollapsedConnections(
+export function remapCollapsedGroupConnections(
 	connections: CanvasConnection[],
 	collapsedGroupByNodeId: Map<string, IWorkflowGroup>,
 ): CanvasConnection[] {
@@ -216,7 +217,7 @@ export function reanchorCollapsedConnections(
 		}
 
 		if (!sourceGroup && !targetGroup) {
-			// External-only edge — keep as-is.
+			// External-only connection — keep as-is.
 			result.push(conn);
 			continue;
 		}
@@ -226,7 +227,7 @@ export function reanchorCollapsedConnections(
 		const sourceHandle = sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle;
 		const targetHandle = targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle;
 
-		// Preserve canonical endpoints so edge mutations can resolve back to real workflow nodes after the visual rewrite.
+		// Stash the canonical endpoints so connection mutations can resolve back to real workflow nodes
 		const canonical = {
 			source: conn.source,
 			target: conn.target,

@@ -97,7 +97,7 @@ const segments = computed(() => renderData.value.segments);
 const labelPosition = computed(() => renderData.value.labelPosition);
 
 const connection = computed<Connection>(() => {
-	// Prefer canonical workflow ids over synthetic `group:<id>` ones written by re-anchoring.
+	// Prefer canonical workflow ids over synthetic `group:<id>` remap targets
 	const canonical = props.data?.canonical;
 	return {
 		source: canonical?.source ?? props.source,

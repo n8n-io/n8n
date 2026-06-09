@@ -27,7 +27,7 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
 import {
 	buildCollapsedGroupByNodeId,
-	reanchorCollapsedConnections,
+	remapCollapsedGroupConnections,
 } from './useCanvasMapping.groups';
 import {
 	checkOverlap,
@@ -666,8 +666,8 @@ export function useCanvasMapping({
 
 	const mappedConnections = computed<CanvasConnection[]>(() => {
 		const raw = mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []);
-		const reanchored = reanchorCollapsedConnections(raw, collapsedGroupByNodeIdIndex.value);
-		return reanchored.map((connection) => {
+		const remapped = remapCollapsedGroupConnections(raw, collapsedGroupByNodeIdIndex.value);
+		return remapped.map((connection) => {
 			const type = getConnectionType(connection);
 			const label = getConnectionLabel(connection);
 			const data = getConnectionData(connection);

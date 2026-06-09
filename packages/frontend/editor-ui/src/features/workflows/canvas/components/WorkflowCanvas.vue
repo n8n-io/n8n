@@ -63,9 +63,7 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
-const allGroupsRef = computed(() => workflowDocumentStore.value.allGroups);
 const nodeGroupView = useCanvasNodeGroupView({
-	allGroups: allGroupsRef,
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 });
 const readOnlyRef = computed(() => props.readOnly ?? false);

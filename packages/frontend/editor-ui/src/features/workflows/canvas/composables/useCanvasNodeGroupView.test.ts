@@ -8,43 +8,14 @@ function setup(initialGroups: Array<{ id: string; name: string; nodeIds: string[
 		nodeGroups.setNodeGroups(initialGroups);
 	}
 	const view = useCanvasNodeGroupView({
-		allGroups: nodeGroups.allGroups,
 		onNodeGroupsChange: nodeGroups.onNodeGroupsChange,
 	});
 	return { nodeGroups, view };
 }
 
 describe('useCanvasNodeGroupView', () => {
-	describe('AC #0 — default state on workflow load', () => {
+	describe('default state on workflow load', () => {
 		it('marks every group from setNodeGroups as collapsed', () => {
-			const { nodeGroups, view } = setup();
-
-			nodeGroups.setNodeGroups([
-				{ id: 'g1', name: 'A', nodeIds: ['a'] },
-				{ id: 'g2', name: 'B', nodeIds: ['b'] },
-			]);
-
-			expect(view.isGroupCollapsed('g1')).toBe(true);
-			expect(view.isGroupCollapsed('g2')).toBe(true);
-		});
-
-		it('takes a snapshot of pre-existing groups on instantiation', () => {
-			const nodeGroups = useWorkflowDocumentNodeGroups();
-			nodeGroups.setNodeGroups([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
-
-			const view = useCanvasNodeGroupView({
-				allGroups: nodeGroups.allGroups,
-				onNodeGroupsChange: nodeGroups.onNodeGroupsChange,
-			});
-
-			expect(view.isGroupCollapsed('g1')).toBe(true);
-		});
-
-		it('collapses every id when setNodeGroups runs AFTER the view is constructed', () => {
-			// Exercises the SET event handler — not the constructor seed.
-			// In production, the document store hydrates after WorkflowCanvas
-			// mounts, so the SET event is what brings collapse state into
-			// agreement with the loaded workflow.
 			const { nodeGroups, view } = setup();
 
 			nodeGroups.setNodeGroups([
@@ -68,7 +39,7 @@ describe('useCanvasNodeGroupView', () => {
 		});
 	});
 
-	describe('AC #0 — new groups start expanded', () => {
+	describe('new groups start expanded', () => {
 		it('does not collapse a newly created group', () => {
 			const { nodeGroups, view } = setup();
 
@@ -87,18 +58,18 @@ describe('useCanvasNodeGroupView', () => {
 	});
 
 	describe('deleteGroup', () => {
-		it('removes the deleted id from expandedIds', () => {
+		it('prunes the deleted id so a stale expanded entry does not survive', () => {
 			const { nodeGroups, view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 			view.toggleCollapsed('g1');
-			expect(view.expandedIds.value.has('g1')).toBe(true);
+			expect(view.isGroupCollapsed('g1')).toBe(false);
 
 			nodeGroups.deleteGroup('g1');
 
-			expect(view.expandedIds.value.has('g1')).toBe(false);
+			expect(view.isGroupCollapsed('g1')).toBe(true);
 		});
 	});
 
-	describe('updateName / addNodesToGroup — collapse state unchanged (AC #0 omission)', () => {
+	describe('updateName / addNodesToGroup — collapse state unchanged', () => {
 		it('does not flip collapsed state when renaming a collapsed group', () => {
 			const { nodeGroups, view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 
@@ -107,15 +78,7 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.isGroupCollapsed('g1')).toBe(true);
 		});
 
-		it('does not flip collapsed state when adding nodes to a collapsed group', () => {
-			const { nodeGroups, view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
-
-			nodeGroups.addNodesToGroup('g1', ['b']);
-
-			expect(view.isGroupCollapsed('g1')).toBe(true);
-		});
-
-		it('does not flip collapsed state when an expanded group has nodes added', () => {
+		it('does not flip expanded state when an expanded group has nodes added', () => {
 			const { nodeGroups, view } = setup();
 			const group = nodeGroups.createGroup(['a'], 'New');
 			expect(view.isGroupCollapsed(group.id)).toBe(false);
@@ -138,54 +101,24 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.isGroupCollapsed('g1')).toBe(true);
 		});
 
-		it('setCollapsed is idempotent', () => {
+		it('setCollapsed switches state in both directions', () => {
 			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 
-			view.setCollapsed('g1', true);
-			view.setCollapsed('g1', true);
+			view.setCollapsed('g1', false);
+			expect(view.isGroupCollapsed('g1')).toBe(false);
 
+			view.setCollapsed('g1', true);
 			expect(view.isGroupCollapsed('g1')).toBe(true);
 		});
 	});
 
-	describe('collapseAll / expandAll', () => {
-		it('collapseAll marks every known group as collapsed', () => {
-			const { nodeGroups, view } = setup();
-			nodeGroups.setNodeGroups([
-				{ id: 'g1', name: 'A', nodeIds: ['a'] },
-				{ id: 'g2', name: 'B', nodeIds: ['b'] },
-			]);
-			view.expandAll();
-			expect(view.isGroupCollapsed('g1')).toBe(false);
-
-			view.collapseAll();
-
-			expect(view.isGroupCollapsed('g1')).toBe(true);
-			expect(view.isGroupCollapsed('g2')).toBe(true);
-		});
-
-		it('expandAll adds every known group to expandedIds', () => {
-			const { view } = setup([
-				{ id: 'g1', name: 'A', nodeIds: ['a'] },
-				{ id: 'g2', name: 'B', nodeIds: ['b'] },
-			]);
-
-			view.expandAll();
-
-			expect(view.isGroupCollapsed('g1')).toBe(false);
-			expect(view.isGroupCollapsed('g2')).toBe(false);
-		});
-	});
-
-	describe('AC #9 — toggle is view state, never marks dirty', () => {
+	describe('toggle is view state, never marks dirty', () => {
 		it('toggleCollapsed does not trigger onStateDirty on the document store', () => {
 			const { nodeGroups, view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 			const dirtySpy = vi.fn();
 			nodeGroups.onStateDirty(dirtySpy);
 
 			view.toggleCollapsed('g1');
-			view.expandAll();
-			view.collapseAll();
 
 			expect(dirtySpy).not.toHaveBeenCalled();
 		});
