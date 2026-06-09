@@ -42,6 +42,7 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	ITaskData,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION, WAIT_INDEFINITELY } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
@@ -656,7 +657,7 @@ export function useCanvasMapping({
 		});
 	});
 
-	const collapsedGroupByNodeIdIndex = computed(() => {
+	const collapsedGroupByNodeIdIndex = computed<Map<string, IWorkflowGroup>>(() => {
 		if (!nodeGroupView) return new Map();
 		return buildCollapsedGroupByNodeId(workflowDocumentStore.value.allGroups, (id) =>
 			nodeGroupView.isGroupCollapsed(id),
