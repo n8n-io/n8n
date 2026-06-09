@@ -969,9 +969,14 @@ export class WorkflowExecute {
 		return [];
 	}
 
-	/**
-	 * Handles re-throwing errors from previous node execution attempts
-	 */
+	/** Whether the node is configured to continue when it errors. */
+	private continuesOnError(node: INode): boolean {
+		return (
+			node.continueOnFail === true ||
+			['continueRegularOutput', 'continueErrorOutput'].includes(node.onError ?? '')
+		);
+	}
+
 	/**
 	 * Rethrows an already-failed node's error so it logs and displays correctly.
 	 * Structured node errors are thrown as-is; anything else (e.g. a DB-deserialized
@@ -988,6 +993,7 @@ export class WorkflowExecute {
 		throw wrapped;
 	}
 
+	/** Handles re-throwing errors from previous node execution attempts */
 	private rethrowLastNodeError(runExecutionData: IRunExecutionData, node: INode): void {
 		if (
 			runExecutionData.resultData.lastNodeExecuted === node.name &&
@@ -1294,11 +1300,9 @@ export class WorkflowExecute {
 
 		if (executionData.metadata?.resumeError) {
 			const { resumeError } = executionData.metadata;
-			// see `processRunExecutionData` line 1980
-			const continuesOnError =
-				node.continueOnFail === true ||
-				['continueRegularOutput', 'continueErrorOutput'].includes(node.onError ?? '');
-			if (!continuesOnError) {
+			// Route the resumed sub-workflow error like a live node failure would be
+			// (see the onError handling in `processRunExecutionData`).
+			if (!this.continuesOnError(node)) {
 				this.rethrowNodeError(resumeError);
 			}
 
@@ -2027,13 +2031,7 @@ export class WorkflowExecute {
 						const aiToolDefaultsToContinue =
 							isAiToolExecution && executionData.node.onError !== 'stopWorkflow';
 
-						if (
-							executionData.node.continueOnFail === true ||
-							['continueRegularOutput', 'continueErrorOutput'].includes(
-								executionData.node.onError || '',
-							) ||
-							aiToolDefaultsToContinue
-						) {
+						if (this.continuesOnError(executionData.node) || aiToolDefaultsToContinue) {
 							// Workflow should continue running even if node errors
 							if (isAiToolExecution) {
 								// Surface the error on the ai_tool channel so the agent receives it
