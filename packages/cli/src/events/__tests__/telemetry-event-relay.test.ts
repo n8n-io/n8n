@@ -826,6 +826,7 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('API key deleted', {
 				user_id: 'user123',
 				public_api: true,
+				is_own: true,
 			});
 		});
 	});

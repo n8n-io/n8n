@@ -521,11 +521,12 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private publicApiKeyDeleted(event: RelayEventMap['public-api-key-deleted']) {
-		const { user, publicApi } = event;
+		const { user, publicApi, isOwn } = event;
 
 		this.telemetry.track('API key deleted', {
 			user_id: user.id,
 			public_api: publicApi,
+			is_own: isOwn,
 		});
 	}
 
