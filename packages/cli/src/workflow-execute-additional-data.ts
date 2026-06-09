@@ -2,7 +2,7 @@
 
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -190,41 +190,17 @@ export async function getPublishedWorkflowData(
 		return workflowData!;
 	}
 
-	// Behind the flag, the published nodes/connections come from the
-	// workflow_published_version mapping rather than the activeVersion relation,
-	// while metadata (settings, tags) still comes from the workflow entity.
-	if (Container.get(WorkflowsConfig).useWorkflowPublicationService && workflowInfo.id) {
-		// Only consult the published-version mapping when the workflow actually
-		// has a published version; otherwise it is simply not active. This keeps
-		// the service's null branch meaning "mapping missing for a published
-		// workflow" (a real bug) rather than firing for unpublished workflows.
-		if (!workflowData || !('activeVersionId' in workflowData) || !workflowData.activeVersionId) {
-			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
-				extra: { workflowId: workflowInfo.id },
-			});
+	// Resolve the production (published) version's nodes/connections via the
+	// shared selector; metadata (settings, tags) still comes from the workflow
+	// entity. A null result means the workflow is not active.
+	if (workflowData && 'activeVersion' in workflowData) {
+		const version = await Container.get(WorkflowPublishedDataService).resolveProductionVersion(
+			workflowData,
+			workflowData.id,
+		);
+		if (version) {
+			return { ...workflowData, nodes: version.nodes, connections: version.connections };
 		}
-		const publishedData = await Container.get(
-			WorkflowPublishedDataService,
-		).getPublishedWorkflowData(workflowInfo.id);
-		if (publishedData === null) {
-			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
-				extra: { workflowId: workflowInfo.id },
-			});
-		}
-		return {
-			...workflowData,
-			nodes: publishedData.publishedVersion.nodes,
-			connections: publishedData.publishedVersion.connections,
-		};
-	}
-
-	// For workflows from database, ensure active version exists and use it
-	if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
-		return {
-			...workflowData,
-			nodes: workflowData.activeVersion.nodes,
-			connections: workflowData.activeVersion.connections,
-		};
 	}
 
 	throw new UnexpectedError('Workflow is not active and cannot be executed.', {

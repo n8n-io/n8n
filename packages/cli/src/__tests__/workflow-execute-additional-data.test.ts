@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import type { WorkflowEntity, User, Project, WorkflowHistory } from '@n8n/db';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import type { WorkflowEntity, User, Project } from '@n8n/db';
 import {
 	ExecutionRepository,
 	ExecutionDataRepository,
@@ -128,10 +128,19 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(DataTableProxyService);
 	mockInstance(WorkflowHookContextService);
 	const workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
-	const workflowsConfig = Container.get(WorkflowsConfig);
-	afterEach(() => {
-		// Keep the default (flag off) for every test; flag-on tests opt in.
-		workflowsConfig.useWorkflowPublicationService = false;
+	beforeEach(() => {
+		// Default to the flag-off behavior (read from the activeVersion relation);
+		// individual tests override resolveProductionVersion as needed. Reset first
+		// so call history does not leak between tests.
+		workflowPublishedDataService.resolveProductionVersion.mockReset();
+		workflowPublishedDataService.resolveProductionVersion.mockImplementation(async (workflow) =>
+			workflow.activeVersionId
+				? {
+						nodes: workflow.activeVersion?.nodes ?? [],
+						connections: workflow.activeVersion?.connections ?? {},
+					}
+				: null,
+		);
 	});
 
 	const urlService = mockInstance(UrlService);
@@ -642,7 +651,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 	describe('getPublishedWorkflowData', () => {
 		beforeEach(() => {
 			workflowRepository.get.mockClear();
-			workflowPublishedDataService.getPublishedWorkflowData.mockClear();
 		});
 
 		it('should load and use active version when workflow is active', async () => {
@@ -809,9 +817,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(result.settings).toEqual(parentSettings);
 		});
 
-		it('uses published_version mapping nodes/connections when the flag is on', async () => {
-			workflowsConfig.useWorkflowPublicationService = true;
-
+		it('returns the resolved production version nodes/connections', async () => {
 			const mappingNodes: INode[] = [
 				mock<INode>({
 					id: 'mapping-node',
@@ -823,68 +829,39 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			];
 			const mappingConnections = { 'Mapping Node': {} };
-			// activeVersion relation carries different nodes, so a match on the
-			// mapping's nodes proves the mapping is the source under the flag.
-			const relationNodes: INode[] = [
-				mock<INode>({
-					id: 'relation-node',
-					name: 'Relation Node',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 1,
-					parameters: {},
-					position: [0, 0],
+			workflowRepository.get.mockResolvedValue(
+				mock<WorkflowEntity>({
+					id: 'workflow-123',
+					name: 'Test Workflow',
+					active: true,
+					activeVersionId: 'version-456',
+					activeVersion: mock({ nodes: [], connections: {} }),
 				}),
-			];
-
-			const workflowEntity = mock<WorkflowEntity>({
-				id: 'workflow-123',
-				name: 'Test Workflow',
-				active: true,
-				activeVersionId: 'version-456',
-				nodes: [],
-				connections: {},
-				activeVersion: mock({ nodes: relationNodes, connections: { 'Relation Node': {} } }),
-			});
-			workflowRepository.get.mockResolvedValue(workflowEntity);
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
-				workflow: workflowEntity,
-				publishedVersion: mock<WorkflowHistory>({
-					nodes: mappingNodes,
-					connections: mappingConnections,
-				}),
+			);
+			workflowPublishedDataService.resolveProductionVersion.mockResolvedValue({
+				nodes: mappingNodes,
+				connections: mappingConnections,
 			});
 
 			const result = await getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
 
-			expect(workflowPublishedDataService.getPublishedWorkflowData).toHaveBeenCalledWith(
+			expect(workflowPublishedDataService.resolveProductionVersion).toHaveBeenCalledTimes(1);
+			expect(workflowPublishedDataService.resolveProductionVersion.mock.calls[0][1]).toBe(
 				'workflow-123',
 			);
 			expect(result.nodes).toEqual(mappingNodes);
 			expect(result.connections).toEqual(mappingConnections);
 		});
 
-		it('throws when the mapping is missing for a published workflow (flag on)', async () => {
-			workflowsConfig.useWorkflowPublicationService = true;
-			workflowRepository.get.mockResolvedValue(
-				mock<WorkflowEntity>({ id: 'workflow-123', activeVersionId: 'version-456' }),
-			);
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
-
-			await expect(
-				getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id'),
-			).rejects.toThrow('Workflow is not active and cannot be executed.');
-		});
-
-		it('does not consult the mapping when the workflow has no published version (flag on)', async () => {
-			workflowsConfig.useWorkflowPublicationService = true;
+		it('throws when the resolver reports the workflow is not active', async () => {
 			workflowRepository.get.mockResolvedValue(
 				mock<WorkflowEntity>({ id: 'workflow-123', activeVersionId: null, activeVersion: null }),
 			);
+			workflowPublishedDataService.resolveProductionVersion.mockResolvedValue(null);
 
 			await expect(
 				getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id'),
 			).rejects.toThrow('Workflow is not active and cannot be executed.');
-			expect(workflowPublishedDataService.getPublishedWorkflowData).not.toHaveBeenCalled();
 		});
 	});
 

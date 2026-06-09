@@ -1,3 +1,4 @@
+import { WorkflowsConfig } from '@n8n/config';
 import {
 	WorkflowPublishedVersionRepository,
 	type WorkflowEntity,
@@ -5,14 +6,50 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, type IConnections, type INode, type IWorkflowBase } from 'n8n-workflow';
 
 @Service()
 export class WorkflowPublishedDataService {
 	constructor(
 		private readonly errorReporter: ErrorReporter,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
+		private readonly workflowsConfig: WorkflowsConfig,
 	) {}
+
+	/**
+	 * Resolves the nodes/connections to execute for a workflow's production
+	 * (published) version, centralizing the source-of-truth selection that every
+	 * production execution path shares:
+	 *
+	 * - Returns `null` when the workflow has no published version — the caller
+	 *   decides how to react (throw, log-and-skip, etc.). The `activeVersionId`
+	 *   pre-check means an unpublished workflow never reaches the published-version
+	 *   lookup, so its `null` branch keeps meaning "real bug" for trigger reads.
+	 * - Behind the flag, reads from the `workflow_published_version` mapping;
+	 *   otherwise from the `activeVersion` relation on the passed-in workflow
+	 *   (which the caller must have loaded).
+	 */
+	async resolveProductionVersion(
+		workflow: Pick<IWorkflowBase, 'activeVersionId' | 'activeVersion'>,
+		workflowId: string,
+	): Promise<{ nodes: INode[]; connections: IConnections } | null> {
+		if (!workflow.activeVersionId) return null;
+
+		if (this.workflowsConfig.useWorkflowPublicationService) {
+			const published = await this.getPublishedWorkflowData(workflowId);
+			if (!published) return null;
+			return {
+				nodes: published.publishedVersion.nodes,
+				connections: published.publishedVersion.connections,
+			};
+		}
+
+		if (!workflow.activeVersion) return null;
+		return {
+			nodes: workflow.activeVersion.nodes,
+			connections: workflow.activeVersion.connections,
+		};
+	}
 
 	/**
 	 * Resolves a workflow's published version: returns the workflow entity and
