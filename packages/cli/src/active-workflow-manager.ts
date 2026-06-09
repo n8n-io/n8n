@@ -1105,8 +1105,8 @@ export class ActiveWorkflowManager {
 	 * Stop running active, poll, and schedule triggers for a workflow.
 	 */
 	async removeNonWebhookTriggers(workflowId: WorkflowId) {
-		if (!this.activeWorkflowTriggers.isActive(workflowId)) return;
-
+		// `activeWorkflowTriggers.remove` is idempotent and always deregisters the workflow's
+		// crons, to ensure they stop running on a deactivated workflow
 		const wasRemoved = await this.activeWorkflowTriggers.remove(workflowId);
 
 		if (wasRemoved) {
