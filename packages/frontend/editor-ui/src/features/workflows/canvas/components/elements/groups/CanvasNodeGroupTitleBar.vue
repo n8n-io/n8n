@@ -110,7 +110,7 @@ watch(
 	},
 );
 
-const toggleTooltip = computed(() =>
+const toggleLabel = computed(() =>
 	isCollapsed.value
 		? i18n.baseText('canvas.nodeGroup.expand')
 		: i18n.baseText('canvas.nodeGroup.collapse'),
@@ -190,18 +190,16 @@ function onWrapperPointerDown(event: PointerEvent) {
 			</div>
 
 			<div :class="$style.content" data-test-id="canvas-node-group-header">
-				<N8nTooltip :content="toggleTooltip" :show-after="500" placement="bottom">
-					<N8nIconButton
-						class="nodrag"
-						:class="$style.toggle"
-						variant="ghost"
-						size="small"
-						:icon="isCollapsed ? 'chevrons-up-down' : 'chevrons-down-up'"
-						:aria-label="toggleTooltip"
-						data-test-id="canvas-node-group-toggle"
-						@click.stop="onToggleClick"
-					/>
-				</N8nTooltip>
+				<N8nIconButton
+					class="nodrag"
+					:class="$style.toggle"
+					variant="ghost"
+					size="small"
+					:icon="isCollapsed ? 'chevrons-up-down' : 'chevrons-down-up'"
+					:aria-label="toggleLabel"
+					data-test-id="canvas-node-group-toggle"
+					@click.stop="onToggleClick"
+				/>
 				<div :class="$style.title" data-test-id="canvas-node-group-title">
 					<N8nTooltip
 						:content="group.name"
