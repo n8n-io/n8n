@@ -96,12 +96,16 @@ const segments = computed(() => renderData.value.segments);
 
 const labelPosition = computed(() => renderData.value.labelPosition);
 
-const connection = computed<Connection>(() => ({
-	source: props.source,
-	target: props.target,
-	sourceHandle: props.sourceHandleId,
-	targetHandle: props.targetHandleId,
-}));
+const connection = computed<Connection>(() => {
+	// Prefer canonical workflow ids over synthetic `group:<id>` ones written by re-anchoring.
+	const canonical = props.data?.canonical;
+	return {
+		source: canonical?.source ?? props.source,
+		target: canonical?.target ?? props.target,
+		sourceHandle: canonical?.sourceHandle ?? props.sourceHandleId,
+		targetHandle: canonical?.targetHandle ?? props.targetHandleId,
+	};
+});
 
 const edgeColor = computed(() => {
 	if (status.value === 'success') {

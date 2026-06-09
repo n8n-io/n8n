@@ -160,6 +160,13 @@ export interface CanvasConnectionData {
 	target: CanvasConnectionPort;
 	status?: 'success' | 'error' | 'pinned' | 'running';
 	maxConnections?: number;
+	// Real node ids + handle strings preserved across collapsed-group re-anchoring so edge mutations can resolve back to workflow nodes
+	canonical?: {
+		source: string;
+		target: string;
+		sourceHandle?: string | null;
+		targetHandle?: string | null;
+	};
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;

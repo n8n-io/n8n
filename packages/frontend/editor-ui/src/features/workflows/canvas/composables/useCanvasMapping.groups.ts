@@ -226,6 +226,14 @@ export function reanchorCollapsedConnections(
 		const sourceHandle = sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle;
 		const targetHandle = targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle;
 
+		// Preserve canonical endpoints so edge mutations can resolve back to real workflow nodes after the visual rewrite.
+		const canonical = {
+			source: conn.source,
+			target: conn.target,
+			sourceHandle: conn.sourceHandle,
+			targetHandle: conn.targetHandle,
+		};
+
 		result.push({
 			...conn,
 			id: createCanvasConnectionId({
@@ -238,6 +246,7 @@ export function reanchorCollapsedConnections(
 			target: targetId,
 			sourceHandle,
 			targetHandle,
+			data: conn.data ? { ...conn.data, canonical } : undefined,
 		});
 	}
 

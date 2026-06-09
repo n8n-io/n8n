@@ -298,6 +298,25 @@ describe('reanchorCollapsedConnections (AC #10)', () => {
 		expect(result[0].data?.source.type).toBe('ai_tool');
 	});
 
+	it('stashes the canonical endpoints on data so mutations can resolve real workflow nodes', () => {
+		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
+		const result = reanchorCollapsedConnections([makeEdge('external', 'm1')], collapsedMap);
+		expect(result[0].source).toBe('external');
+		expect(result[0].target).toBe('group:g1');
+		expect(result[0].data?.canonical).toEqual({
+			source: 'external',
+			target: 'm1',
+			sourceHandle: 'outputs/main/0',
+			targetHandle: 'inputs/main/0',
+		});
+	});
+
+	it('does not set canonical on edges that were not re-anchored', () => {
+		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
+		const result = reanchorCollapsedConnections([makeEdge('a', 'b')], collapsedMap);
+		expect(result[0].data?.canonical).toBeUndefined();
+	});
+
 	it('structural invariant: no edge references a collapsed member as endpoint', () => {
 		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
 		const result = reanchorCollapsedConnections(

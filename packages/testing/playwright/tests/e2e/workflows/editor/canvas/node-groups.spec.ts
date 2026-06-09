@@ -289,6 +289,17 @@ test.describe(
 				await n8n.canvas.toggleNodeGroup(PERSISTED_GROUP_TITLE);
 				await expect(n8n.canvas.getNodeGroupFrame(PERSISTED_GROUP_TITLE)).toBeHidden();
 			});
+
+			test('deleting a re-anchored edge removes the underlying workflow connection', async ({
+				n8n,
+			}) => {
+				await n8n.canvas.deleteConnectionBetweenNodes('Set B', 'Set C');
+				await expect(n8n.canvas.connectionBetweenNodes('Set B', 'Set C')).toBeHidden();
+
+				await n8n.canvas.toggleNodeGroup(PERSISTED_GROUP_TITLE);
+				await expect(n8n.canvas.nodeByName('Set B')).toBeVisible();
+				await expect(n8n.canvas.connectionBetweenNodes('Set B', 'Set C')).toBeHidden();
+			});
 		});
 
 		test.describe('Newly created groups start expanded', () => {
