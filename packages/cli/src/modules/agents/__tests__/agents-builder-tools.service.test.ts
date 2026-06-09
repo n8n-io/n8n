@@ -14,6 +14,7 @@ import type { CredentialTypes } from '@/credential-types';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
+	ToolCallAbortError,
 } from '../builder/agents-builder-tools.service';
 import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
@@ -27,6 +28,12 @@ const ctx = {
 	suspend: jest.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
+
+function makeAbortedCtx() {
+	const abortController = new AbortController();
+	abortController.abort();
+	return { ...ctx, abortSignal: abortController.signal };
+}
 
 function makeService() {
 	const agentsService = mock<AgentsService>();
@@ -235,6 +242,26 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		it('patch_config does not update when the tool call was aborted', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			await expect(
+				getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						operations: JSON.stringify([
+							{ op: 'add', path: '/description', value: 'Updated description' },
+						]),
+					},
+					makeAbortedCtx(),
+				),
+			).rejects.toThrow(ToolCallAbortError);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+		});
+
 		it('patch_config rejects stale baseConfigHash without updating', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
@@ -335,6 +362,25 @@ describe('AgentsBuilderToolsService', () => {
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
+		});
+
+		it('write_config does not update when the tool call was aborted', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig = { ...currentConfig, instructions: 'Help with support tickets.' };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			await expect(
+				getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					makeAbortedCtx(),
+				),
+			).rejects.toThrow(ToolCallAbortError);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
 		it('write_config strips legacy schedule integrations before saving', async () => {
@@ -697,6 +743,32 @@ describe('AgentsBuilderToolsService', () => {
 				descriptor,
 			});
 		});
+
+		it('does not store a custom tool when the tool call was aborted', async () => {
+			const { service, agentsService, secureRuntime } = makeService();
+			const descriptor = {
+				name: 'seo_analyzer',
+				description: 'Analyze SEO issues',
+				systemInstruction: null,
+				inputSchema: null,
+				outputSchema: null,
+				hasSuspend: false,
+				hasResume: false,
+				hasToMessage: false,
+				requireApproval: false,
+				providerOptions: null,
+			};
+			secureRuntime.describeToolSecurely.mockResolvedValue(descriptor);
+
+			await expect(
+				getBuildCustomTool(service).handler!(
+					{ code: 'export default new Tool("seo_analyzer")' },
+					makeAbortedCtx(),
+				),
+			).rejects.toThrow(ToolCallAbortError);
+
+			expect(agentsService.buildCustomTool).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('create_skill tool', () => {
@@ -774,6 +846,23 @@ describe('AgentsBuilderToolsService', () => {
 					instructions: 'Extract decisions and action items.',
 				},
 			});
+		});
+
+		it('does not create a skill when the tool call was aborted', async () => {
+			const { service, agentsService } = makeService();
+
+			await expect(
+				getCreateSkillTool(service).handler!(
+					{
+						name: 'Summarize Meetings',
+						description: 'Use when summarizing meeting notes',
+						body: 'Extract decisions and action items.',
+					},
+					makeAbortedCtx(),
+				),
+			).rejects.toThrow(ToolCallAbortError);
+
+			expect(agentsService.createSkill).not.toHaveBeenCalled();
 		});
 
 		it('enforces name and body size limits via the input schema', () => {
@@ -863,6 +952,17 @@ describe('AgentsBuilderToolsService', () => {
 				enabled: true,
 			});
 			expect(result).toEqual({ ok: true, task: makeTaskDto() });
+		});
+
+		it('does not create a task when the tool call was aborted', async () => {
+			const { service, agentTaskService, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(publishedAgent);
+
+			await expect(
+				getCreateTaskTool(service).handler!(taskInput, makeAbortedCtx()),
+			).rejects.toThrow(ToolCallAbortError);
+
+			expect(agentTaskService.create).not.toHaveBeenCalled();
 		});
 
 		it('enables the task even when the agent is not published', async () => {

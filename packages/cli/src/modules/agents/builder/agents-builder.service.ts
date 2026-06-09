@@ -1,10 +1,10 @@
 import {
-	type Agent as RuntimeAgent,
+	isSavePartialAbortError,
 	type CredentialProvider,
+	type Agent as RuntimeAgent,
 	type SerializableAgentState,
 	type StreamChunk,
 	type StreamResult,
-	isSavePartialAbortError,
 } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -13,18 +13,10 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
-import { buildAgentPreviewPath } from './agent-builder-preview-path';
-import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
-import { buildBuilderPrompt } from './agents-builder-prompts';
-import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
-import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
-import { AGENT_THREAD_PREFIX } from './builder-tool-names';
-import { getBuilderRuntimeSkills } from './skills';
 import {
 	AgentsRuntimeService,
 	builderRuntimeCacheKey,
 	type AgentStreamControl,
-	type CachedAgentRuntime,
 } from '../agents-runtime.service';
 import { AgentsService } from '../agents.service';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -33,6 +25,13 @@ import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
 import { streamAgentChunks } from '../utils/agent-stream';
+import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
+import { buildBuilderPrompt } from './agents-builder-prompts';
+import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
+import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
+import { AGENT_THREAD_PREFIX } from './builder-tool-names';
+import { getBuilderRuntimeSkills } from './skills';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeCatalogService } from '@/node-catalog';
@@ -89,12 +88,7 @@ export class AgentsBuilderService {
 		credentialProvider: CredentialProvider,
 		user: User,
 	): AsyncGenerator<StreamChunk> {
-		const { agent: builder } = await this.getBuilderRuntime(
-			agentId,
-			projectId,
-			credentialProvider,
-			user,
-		);
+		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
 
 		this.logger.debug('Starting builder agent stream', { agentId, projectId });
 
@@ -155,12 +149,7 @@ export class AgentsBuilderService {
 			throw new UserError(`Builder checkpoint ${runId} not found`);
 		}
 
-		const { agent: builder } = await this.getBuilderRuntime(
-			agentId,
-			projectId,
-			credentialProvider,
-			user,
-		);
+		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
 
 		this.logger.debug('Resuming builder agent', { agentId, runId, toolCallId });
 
@@ -285,23 +274,6 @@ export class AgentsBuilderService {
 		}
 
 		return builder;
-	}
-
-	private async getBuilderRuntime(
-		agentId: string,
-		projectId: string,
-		credentialProvider: CredentialProvider,
-		user: User,
-	): Promise<CachedAgentRuntime> {
-		return await this.agentsRuntimeService.getOrCreateRuntime(
-			builderRuntimeCacheKey({ projectId, agentId, userId: user.id }),
-			async () => ({
-				agent: await this.createBuilderAgent(agentId, projectId, credentialProvider, user),
-				agentId,
-				projectId,
-				toolRegistry: new Map(),
-			}),
-		);
 	}
 
 	/**
