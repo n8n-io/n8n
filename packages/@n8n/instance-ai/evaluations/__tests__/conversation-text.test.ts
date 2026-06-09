@@ -1,5 +1,5 @@
 import type { TranscriptTurn } from '../types';
-import { userTurnsAsText } from '../utils/conversation-text';
+import { transcriptAsText, userTurnsAsText } from '../utils/conversation-text';
 
 describe('userTurnsAsText', () => {
 	it('returns empty string on empty transcript', () => {
@@ -21,5 +21,46 @@ describe('userTurnsAsText', () => {
 			{ userMessage: 'a webhook', steps: [{ kind: 'agent-text', text: 'done' }] },
 		];
 		expect(userTurnsAsText(transcript)).toBe('Turn 1: build it\n\nTurn 2: a webhook');
+	});
+});
+
+describe('transcriptAsText', () => {
+	it('surfaces tool-call args and result so the judge sees what each call did', () => {
+		const transcript: TranscriptTurn[] = [
+			{
+				userMessage: 'fetch the rows',
+				steps: [
+					{
+						kind: 'tool-call',
+						toolName: 'add-nodes',
+						args: { nodeType: 'n8n-nodes-base.httpRequest' },
+						result: { added: 1 },
+					},
+				],
+			},
+		];
+		const text = transcriptAsText(transcript);
+		expect(text).toContain('Tool: add-nodes');
+		expect(text).toContain('n8n-nodes-base.httpRequest');
+		expect(text).toContain('"added":1');
+	});
+
+	it('prefers the error over the result and caps long fields', () => {
+		const transcript: TranscriptTurn[] = [
+			{
+				steps: [
+					{
+						kind: 'tool-call',
+						toolName: 'httpRequest',
+						args: { url: 'x'.repeat(5000) },
+						error: 'boom',
+					},
+				],
+			},
+		];
+		const text = transcriptAsText(transcript);
+		expect(text).toContain('error: boom');
+		expect(text).not.toContain('result:');
+		expect(text).toContain('more chars)');
 	});
 });

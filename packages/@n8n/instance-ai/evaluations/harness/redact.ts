@@ -48,6 +48,47 @@ export function redactSecrets(value: unknown, depth = 0): unknown {
 	return value;
 }
 
+// ---------------------------------------------------------------------------
+// Content-based redaction for free text.
+//
+// `redactSecrets` only masks values under secret-shaped *keys*. Tool errors
+// arrive pre-flattened to a string (an HTTP client serializing its request
+// config/headers into the message), so a token can sit inline with no key to
+// match. Scrub those by content — conservatively: only the value after a
+// recognized secret marker is masked, so surrounding error context survives.
+// Patterns run in order; the Authorization rule consumes the whole header
+// value first so a "Bearer <token>" inside it isn't half-masked.
+// ---------------------------------------------------------------------------
+
+const SECRET_TEXT_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
+	// "Authorization: Bearer xyz" / "authorization=<opaque>" — keep the key and any
+	// scheme word, mask just the credential token so trailing context survives.
+	[
+		/\b((?:proxy-)?authorization\s*[:=]\s*)((?:bearer|basic|digest|negotiate)\s+)?\S+/gi,
+		'$1$2[REDACTED]',
+	],
+	// Scheme-prefixed credentials standing on their own: "Bearer eyJ...", "Basic dXNlcg==".
+	[/\b(bearer|basic)\s+[\w.+/=~-]+/gi, '$1 [REDACTED]'],
+	// Secret-shaped key/value pairs: "api_key=abc", '"token":"abc"', "password: abc".
+	[
+		/\b(api[-_]?key|access[-_]?key|x-api-key|access[-_]?token|refresh[-_]?token|client[-_]?secret|private[-_]?key|secret|token|password|passwd|cookie|set-cookie|session[-_]?id)("?\s*[:=]\s*"?)[^\s"',&}]+/gi,
+		'$1$2[REDACTED]',
+	],
+];
+
+/**
+ * Masks secret values embedded in a free-text string — complements
+ * `redactSecrets` (key-based) for values that arrive inline with no key to
+ * match, chiefly tool-error messages. Conservative: preserves the message
+ * around each match so error context survives for the report and the judge.
+ */
+export function redactSecretsInText(text: string): string {
+	return SECRET_TEXT_PATTERNS.reduce(
+		(acc, [pattern, replacement]) => acc.replace(pattern, replacement),
+		text,
+	);
+}
+
 /**
  * Truncates serializable values to a max stringified length, redacting
  * secrets first. Returns the redacted value when it fits, the truncated

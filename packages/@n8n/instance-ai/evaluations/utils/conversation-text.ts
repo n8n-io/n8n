@@ -34,17 +34,29 @@ export function agentTextOf(turn: TranscriptTurn): string {
 	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
 }
 
-// Cap per-step narration so a long multi-turn build doesn't blow up judge token cost.
+// Cap each serialized field so a long multi-turn build — or one large tool
+// result — doesn't blow up judge token cost. Matches the report's output cap.
 const MAX_STEP_CHARS = 2000;
+
+function cap(text: string): string {
+	return text.length > MAX_STEP_CHARS
+		? `${text.slice(0, MAX_STEP_CHARS)}… (${String(text.length - MAX_STEP_CHARS)} more chars)`
+		: text;
+}
+
+function capJson(value: unknown): string {
+	let str: string;
+	try {
+		str = typeof value === 'string' ? value : (JSON.stringify(value) ?? String(value));
+	} catch {
+		str = '<unserializable>';
+	}
+	return cap(str);
+}
 
 function describeStep(step: TranscriptStep): string | null {
 	if (step.kind === 'agent-text') {
-		if (!step.text) return null;
-		const text =
-			step.text.length > MAX_STEP_CHARS
-				? `${step.text.slice(0, MAX_STEP_CHARS)}… (${String(step.text.length - MAX_STEP_CHARS)} more chars)`
-				: step.text;
-		return `Assistant: ${text}`;
+		return step.text ? `Assistant: ${cap(step.text)}` : null;
 	}
 	return describeInteraction(step);
 }
@@ -102,7 +114,20 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 					: '';
 			return `Resume ${interaction.toolName}: ${interaction.resumeReason}${decision}`;
 		}
-		case 'tool-call':
-			return `Tool: ${interaction.toolName}`;
+		case 'tool-call': {
+			// Args/result are the evidence for expectations like "used an HTTP Request
+			// node, not the Airtable node" — the judge can't grade those from the tool
+			// name alone. All three fields are already secret-redacted upstream.
+			const parts = [`Tool: ${interaction.toolName}`];
+			if (interaction.args && Object.keys(interaction.args).length > 0) {
+				parts.push(`args: ${capJson(interaction.args)}`);
+			}
+			if (interaction.error) {
+				parts.push(`error: ${cap(interaction.error)}`);
+			} else if (interaction.result !== undefined) {
+				parts.push(`result: ${capJson(interaction.result)}`);
+			}
+			return parts.join(' ');
+		}
 	}
 }

@@ -532,21 +532,26 @@ function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 
 function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
 	if (!results || results.length === 0) return '';
-	const passCount = results.filter((r) => r.pass).length;
-	const total = results.length;
-	const statusClass = passCount < total ? 'fail' : 'pass';
-	const openAttr = passCount < total ? 'open' : '';
+	// `incomplete` = the judge returned no verdict (flaky/partial). Keep it out of
+	// the pass/fail count so it reads as neutral, not as a builder regression.
+	const passCount = results.filter((r) => r.pass && !r.incomplete).length;
+	const failCount = results.filter((r) => !r.pass && !r.incomplete).length;
+	const incompleteCount = results.filter((r) => r.incomplete).length;
+	const scored = passCount + failCount;
+	const statusClass = failCount > 0 ? 'fail' : 'pass';
+	const openAttr = failCount > 0 ? 'open' : '';
+	const summary = `${String(passCount)}/${String(scored)}${incompleteCount > 0 ? ` · ${String(incompleteCount)} no verdict` : ''}`;
 	const items = results
 		.map((r) => {
-			const cls = r.pass ? 'pass' : 'fail';
-			const icon = r.pass ? '&#10003;' : '&#10007;';
+			const cls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
+			const icon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
 			const judgment = r.reason
 				? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
 				: '';
 			return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
 		})
 		.join('');
-	return `<details class="section" ${openAttr}><summary>Build expectations <span class="${statusClass}">${String(passCount)}/${String(total)}</span></summary><ul class="check-list">${items}</ul></details>`;
+	return `<details class="section" ${openAttr}><summary>Build expectations <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
 }
 
 // ---------------------------------------------------------------------------

@@ -20,7 +20,7 @@ import type {
 	TranscriptTurn,
 } from '../types';
 import { splitEventsIntoTurns } from './event-parser';
-import { redactSecrets } from '../harness/redact';
+import { redactSecrets, redactSecretsInText } from '../harness/redact';
 import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe-extract';
 
 type ProxyResponses = Map<string, InstanceAiConfirmRequest>;
@@ -121,7 +121,9 @@ function collectToolOutcomes(events: CapturedEvent[]): Map<string, ToolOutcome> 
 		const callId = getString(payload, 'toolCallId');
 		if (!callId) continue;
 		if (event.type === 'tool-error') {
-			map.set(callId, { error: getString(payload, 'error') ?? 'tool error' });
+			// Errors arrive as a flat string, so key-based redaction can't reach a
+			// token embedded in the message — scrub by content before the report/judge.
+			map.set(callId, { error: redactSecretsInText(getString(payload, 'error') ?? 'tool error') });
 		} else {
 			// Redact secret-shaped keys before the result reaches the report/judge.
 			map.set(callId, { result: redactSecrets(payload.result) });

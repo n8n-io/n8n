@@ -211,6 +211,12 @@ export interface BuildExpectationResult {
 	expectation: string;
 	pass: boolean;
 	reason: string;
+	/**
+	 * The judge returned no verdict for this expectation (flaky/partial response or
+	 * total judge failure) rather than a genuine fail. Rendered neutrally and kept
+	 * out of the pass/fail count so a flaky judge doesn't read as a builder regression.
+	 */
+	incomplete?: boolean;
 }
 
 export interface WorkflowTestCaseResult {

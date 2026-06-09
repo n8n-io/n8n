@@ -38,6 +38,26 @@ describe('build expectations in the workflow report', () => {
 		expect(html).toContain('&#10007;'); // fail icon
 	});
 
+	it('renders an incomplete verdict neutrally and keeps it out of the count', () => {
+		const html = generateWorkflowReport([
+			resultWith([
+				{ expectation: 'posts to Slack', pass: true, reason: 'has Slack node' },
+				{
+					expectation: 'asked before building',
+					pass: false,
+					reason: 'no verdict returned',
+					incomplete: true,
+				},
+			]),
+		]);
+
+		// 1 graded pass, 0 graded fails, 1 no-verdict — not "1/2" (which would read as a fail).
+		expect(html).toContain('1/1 · 1 no verdict');
+		expect(html).toContain('⌀'); // neutral no-verdict icon
+		expect(html).toContain('expectation n_a');
+		expect(html).not.toContain('&#10007;'); // no genuine-fail icon
+	});
+
 	it('omits the section entirely when there are no expectation results', () => {
 		const html = generateWorkflowReport([resultWith(undefined)]);
 		expect(html).not.toContain('Build expectations');

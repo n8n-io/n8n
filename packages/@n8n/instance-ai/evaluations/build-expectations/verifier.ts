@@ -105,12 +105,14 @@ export async function verifyBuildExpectations(
 		}
 
 		if (byIndex.size > 0) {
-			// Re-attach the original expectation text by index; synthesize a fail for any omitted.
+			// Re-attach the original expectation text by index. Any expectation the
+			// judge omitted is marked `incomplete` (not a genuine fail) so a partial
+			// response doesn't render as a builder regression.
 			return expectations.map((expectation, i) => {
 				const verdict = byIndex.get(i);
 				return verdict
 					? { expectation, pass: verdict.pass, reason: verdict.reason }
-					: { expectation, pass: false, reason: 'no verdict returned' };
+					: { expectation, pass: false, reason: 'no verdict returned', incomplete: true };
 			});
 		}
 
@@ -124,12 +126,18 @@ export async function verifyBuildExpectations(
 }
 
 /**
- * All-fail verdicts for every expectation, sharing one reason. Used as the
- * verifier's own fallback and by callers' `.catch()`, so a judge error still
- * renders the report section (with the reason) instead of silently dropping it.
+ * Verdicts for every expectation when the judge produced nothing — its own
+ * exhausted-attempts fallback and callers' `.catch()`. Marked `incomplete` (not
+ * a genuine fail): the report section still renders with the reason, but a dead
+ * judge shows as neutral "no verdict" rather than every expectation failing.
  */
 export function allFailVerdicts(expectations: string[], reason: string): BuildExpectationResult[] {
-	return expectations.map((expectation) => ({ expectation, pass: false, reason }));
+	return expectations.map((expectation) => ({
+		expectation,
+		pass: false,
+		reason,
+		incomplete: true,
+	}));
 }
 
 // ---------------------------------------------------------------------------

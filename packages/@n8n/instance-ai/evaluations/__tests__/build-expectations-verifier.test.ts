@@ -81,7 +81,7 @@ describe('verifyBuildExpectations', () => {
 
 		expect(results).toEqual([
 			{ expectation: 'first', pass: true, reason: 'ok' },
-			{ expectation: 'second', pass: false, reason: 'no verdict returned' },
+			{ expectation: 'second', pass: false, reason: 'no verdict returned', incomplete: true },
 		]);
 	});
 
@@ -123,8 +123,8 @@ describe('verifyBuildExpectations', () => {
 		const results = await verifyBuildExpectations(['a', 'b'], { transcript: TRANSCRIPT });
 
 		expect(results).toEqual([
-			{ expectation: 'a', pass: false, reason: 'judge produced no result' },
-			{ expectation: 'b', pass: false, reason: 'judge produced no result' },
+			{ expectation: 'a', pass: false, reason: 'judge produced no result', incomplete: true },
+			{ expectation: 'b', pass: false, reason: 'judge produced no result', incomplete: true },
 		]);
 	});
 

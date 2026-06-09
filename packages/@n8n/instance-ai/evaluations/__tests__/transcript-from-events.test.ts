@@ -90,6 +90,29 @@ describe('buildTranscriptFromEvents', () => {
 				result: { id: 'c1', token: '[REDACTED]' },
 			});
 		});
+
+		it('scrubs a secret embedded in a paired tool-error string', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('tool-call', {
+						payload: { toolName: 'httpRequest', toolCallId: 'tc3', args: {} },
+					}),
+					evt('tool-error', {
+						payload: {
+							toolCallId: 'tc3',
+							error: 'Request failed: Authorization: Bearer sk-leaked.token (401)',
+						},
+					}),
+				],
+			});
+			const step = turns[0].steps[0];
+			expect(step.kind).toBe('tool-call');
+			const error = step.kind === 'tool-call' ? (step.error ?? '') : '';
+			expect(error).not.toContain('sk-leaked.token');
+			expect(error).toContain('[REDACTED]');
+			expect(error).toContain('(401)');
+		});
 	});
 
 	describe('ask-user routing', () => {
