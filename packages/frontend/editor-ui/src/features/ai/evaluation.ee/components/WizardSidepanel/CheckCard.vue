@@ -11,6 +11,7 @@ defineProps<{
 	title: string;
 	description?: string;
 	badge?: string;
+	badgeIcon?: IconName;
 	selected?: boolean;
 	readonly?: boolean;
 	removable?: boolean;
@@ -33,7 +34,14 @@ defineEmits<{
 		@keydown.enter.self.prevent="!readonly && $emit('toggle')"
 		@keydown.space.self.prevent="!readonly && $emit('toggle')"
 	>
-		<CheckHeader :icon="icon" :icon-bg="iconBg" :icon-fg="iconFg" :title="title" :badge="badge">
+		<CheckHeader
+			:icon="icon"
+			:icon-bg="iconBg"
+			:icon-fg="iconFg"
+			:title="title"
+			:badge="badge"
+			:badge-icon="badgeIcon"
+		>
 			<template v-if="description" #description>
 				<N8nText size="small" color="text-base" :class="$style.description">
 					{{ description }}

@@ -5,6 +5,7 @@ import { useI18n } from '@mcp-apps/i18n';
 
 withDefaults(
 	defineProps<{
+		label?: string;
 		variant?: 'solid' | 'subtle';
 		size?: 'small' | 'medium';
 	}>(),
@@ -23,7 +24,7 @@ const { t } = useI18n();
 
 <template>
 	<N8nButton :variant="variant" :size="size" @click="emit('click')">
-		{{ t('workflowPreview.openButton') }}
+		{{ label ?? t('workflowPreview.openButton') }}
 		<template #icon>
 			<N8nIcon icon="arrow-up-right" />
 		</template>

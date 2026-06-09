@@ -1,4 +1,4 @@
-import type { WorkflowSettings } from 'n8n-workflow';
+import type { WorkflowSettings } from './interfaces';
 
 /**
  * Redaction expressed as two independent channels:
