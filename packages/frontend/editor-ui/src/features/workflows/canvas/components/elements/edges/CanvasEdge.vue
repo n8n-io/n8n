@@ -10,6 +10,7 @@ import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getEdgeRenderData } from './utils';
 import { useCanvas } from '../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
+import { resolveCanonicalConnection } from '../../../canvas.utils';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
@@ -96,16 +97,15 @@ const segments = computed(() => renderData.value.segments);
 
 const labelPosition = computed(() => renderData.value.labelPosition);
 
-const connection = computed<Connection>(() => {
-	// Prefer canonical workflow ids over synthetic `group:<id>` remap targets
-	const canonical = props.data?.canonical;
-	return {
-		source: canonical?.source ?? props.source,
-		target: canonical?.target ?? props.target,
-		sourceHandle: canonical?.sourceHandle ?? props.sourceHandleId,
-		targetHandle: canonical?.targetHandle ?? props.targetHandleId,
-	};
-});
+const connection = computed<Connection>(() =>
+	resolveCanonicalConnection({
+		source: props.source,
+		target: props.target,
+		sourceHandle: props.sourceHandleId,
+		targetHandle: props.targetHandleId,
+		data: props.data,
+	}),
+);
 
 const edgeColor = computed(() => {
 	if (status.value === 'success') {

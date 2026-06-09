@@ -65,64 +65,27 @@ describe('CanvasEdge', () => {
 		expect(emitted()).toHaveProperty('add');
 	});
 
-	describe('canonical connection for remapped collapsed-group connections', () => {
-		const RE_ANCHORED_PROPS = {
-			source: 'group:g1',
+	it('routes the emit payload through resolveCanonicalConnection', async () => {
+		const canonical = {
+			source: 'real-source-id',
 			target: 'real-target-id',
-			sourceHandleId: 'right',
-			targetHandleId: 'inputs/main/0',
-			data: {
-				...DEFAULT_PROPS.data,
-				canonical: {
-					source: 'real-source-id',
-					target: 'real-target-id',
-					sourceHandle: 'outputs/main/0',
-					targetHandle: 'inputs/main/0',
-				},
-			},
-		} satisfies Partial<CanvasEdgeProps>;
-
-		it('emits the canonical Connection on delete when data.canonical is present', async () => {
-			const { emitted, getByTestId } = renderComponent({
-				props: { ...RE_ANCHORED_PROPS, hovered: true },
-			});
-			await userEvent.hover(getByTestId('edge-label'));
-			await userEvent.click(getByTestId('delete-connection-button'));
-
-			expect(emitted().delete[0]).toEqual([RE_ANCHORED_PROPS.data.canonical]);
-		});
-
-		it('emits the canonical Connection on add when data.canonical is present', async () => {
-			const { emitted, getByTestId } = renderComponent({
-				props: { ...RE_ANCHORED_PROPS, hovered: true },
-			});
-			await userEvent.hover(getByTestId('edge-label'));
-			await userEvent.click(getByTestId('add-connection-button'));
-
-			expect(emitted().add[0]).toEqual([RE_ANCHORED_PROPS.data.canonical]);
-		});
-
-		it('falls back to the rendered source/target when data.canonical is absent', async () => {
-			const props = {
-				source: 'real-source-id',
+			sourceHandle: 'outputs/main/0',
+			targetHandle: 'inputs/main/0',
+		};
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				source: 'group:g1',
 				target: 'real-target-id',
-				sourceHandleId: 'outputs/main/0',
+				sourceHandleId: 'right',
 				targetHandleId: 'inputs/main/0',
+				data: { ...DEFAULT_PROPS.data, canonical },
 				hovered: true,
-			} satisfies Partial<CanvasEdgeProps>;
-			const { emitted, getByTestId } = renderComponent({ props });
-			await userEvent.hover(getByTestId('edge-label'));
-			await userEvent.click(getByTestId('delete-connection-button'));
-
-			expect(emitted().delete[0]).toEqual([
-				{
-					source: 'real-source-id',
-					target: 'real-target-id',
-					sourceHandle: 'outputs/main/0',
-					targetHandle: 'inputs/main/0',
-				},
-			]);
+			},
 		});
+		await userEvent.hover(getByTestId('edge-label'));
+		await userEvent.click(getByTestId('delete-connection-button'));
+
+		expect(emitted().delete[0]).toEqual([canonical]);
 	});
 
 	it('should not render toolbar actions when readOnly', async () => {
