@@ -13,7 +13,7 @@ import type {
 import { isObjectEmpty } from 'n8n-workflow';
 import { stringify } from 'qs';
 
-import type { SsrfBridge } from '@/execution-engine';
+import type { SsrfBridge } from '@/ssrf';
 
 import {
 	buildTargetUrl,
