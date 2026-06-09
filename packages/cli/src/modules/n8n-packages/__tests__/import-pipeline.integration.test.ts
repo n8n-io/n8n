@@ -37,40 +37,24 @@ import {
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
-import type { AppliedImportResult, PlannedImportResult } from '../n8n-packages.types';
+import type { ImportResult } from '../n8n-packages.types';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 type OptionalImportFields =
 	| 'credentialMatchingMode'
 	| 'credentialMissingMode'
-	| 'workflowConflictPolicy'
-	| 'dryRun';
+	| 'workflowConflictPolicy';
 
 type ImportPackageParams = Omit<ImportPackageRequest, OptionalImportFields> &
 	Partial<Pick<ImportPackageRequest, OptionalImportFields>>;
 
-async function runImport(params: ImportPackageParams) {
+async function importPackage(params: ImportPackageParams): Promise<ImportResult> {
 	return await Container.get(N8nPackagesService).importPackage({
 		credentialMatchingMode: 'id-only',
 		credentialMissingMode: 'must-preexist',
 		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
-		dryRun: false,
 		...params,
 	});
-}
-
-async function importPackage(params: ImportPackageParams): Promise<AppliedImportResult> {
-	const result = await runImport(params);
-	if (result.dryRun) throw new Error('expected an applied import result, got a dry-run plan');
-	return result;
-}
-
-async function planPackage(
-	params: Omit<ImportPackageParams, 'dryRun'>,
-): Promise<PlannedImportResult> {
-	const result = await runImport({ ...params, dryRun: true });
-	if (!result.dryRun) throw new Error('expected a dry-run plan, got an applied import result');
-	return result;
 }
 
 /**
@@ -806,120 +790,5 @@ describe('ImportPipeline credential resolution', () => {
 		});
 
 		expect(await Container.get(WorkflowRepository).count()).toBe(0);
-	});
-});
-
-describe('ImportPipeline dry-run', () => {
-	it('reports planned actions and writes nothing', async () => {
-		const owner = await createOwner();
-		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			owner.id,
-		);
-		const existing = await seedExistingWorkflow(
-			personalProject,
-			'Existing workflow',
-			'wf-existing',
-		);
-		const workflowRepo = Container.get(WorkflowRepository);
-		const countBefore = await workflowRepo.count();
-
-		const result = await planPackage({
-			user: owner,
-			packageBuffer: await buildImportPackageBuffer([
-				serializedWorkflow({ id: 'wf-existing', name: 'Imported replacement' }),
-				serializedWorkflow({ id: 'wf-fresh', name: 'Fresh workflow' }),
-			]),
-			workflowConflictPolicy: 'new-version',
-		});
-
-		expect(result.dryRun).toBe(true);
-		expect(result.blockingIssues).toEqual([]);
-		expect(result.workflows).toEqual(
-			expect.arrayContaining([
-				{
-					sourceWorkflowId: 'wf-existing',
-					name: 'Imported replacement',
-					action: 'update',
-					existingWorkflowId: existing.id,
-				},
-				{
-					sourceWorkflowId: 'wf-fresh',
-					name: 'Fresh workflow',
-					action: 'create',
-					existingWorkflowId: null,
-				},
-			]),
-		);
-
-		// Nothing was written.
-		expect(await workflowRepo.count()).toBe(countBefore);
-	});
-
-	it('reports conflicts under the fail policy instead of throwing', async () => {
-		const owner = await createOwner();
-		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			owner.id,
-		);
-		const existing = await seedExistingWorkflow(
-			personalProject,
-			'Existing workflow',
-			'wf-existing',
-		);
-
-		const result = await planPackage({
-			user: owner,
-			packageBuffer: await buildImportPackageBuffer([
-				serializedWorkflow({ id: 'wf-existing', name: 'Conflicting workflow' }),
-				serializedWorkflow({ id: 'wf-fresh', name: 'Fresh workflow' }),
-			]),
-			workflowConflictPolicy: 'fail',
-		});
-
-		expect(result.blockingIssues).toEqual([
-			{
-				type: 'workflow-conflict',
-				sourceWorkflowId: 'wf-existing',
-				existingWorkflowId: existing.id,
-				name: 'Existing workflow',
-			},
-		]);
-	});
-
-	it('reports unresolved credentials instead of throwing', async () => {
-		const owner = await createOwner();
-		const workflowRepo = Container.get(WorkflowRepository);
-
-		const result = await planPackage({
-			user: owner,
-			packageBuffer: await buildImportPackageBuffer(
-				[
-					serializedWorkflowWithCredential({
-						id: 'wf-missing-cred',
-						name: 'Needs a credential',
-						credentialId: 'missing-cred',
-						credentialName: 'Missing',
-					}),
-				],
-				{ sourceId: 'dry-run-credential-test' },
-			),
-			workflowConflictPolicy: 'new-version',
-		});
-
-		expect(result.blockingIssues).toEqual([
-			expect.objectContaining({
-				type: 'credential-unresolved',
-				kind: 'not_found',
-				sourceId: 'missing-cred',
-			}),
-		]);
-		expect(result.workflows).toEqual([
-			{
-				sourceWorkflowId: 'wf-missing-cred',
-				name: 'Needs a credential',
-				action: 'create',
-				existingWorkflowId: null,
-			},
-		]);
-		expect(await workflowRepo.count()).toBe(0);
 	});
 });

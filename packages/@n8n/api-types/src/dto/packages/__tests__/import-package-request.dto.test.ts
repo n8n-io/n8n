@@ -9,7 +9,6 @@ describe('ImportPackageRequestDto', () => {
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'fail',
-				dryRun: false,
 			});
 		}
 	});
@@ -26,7 +25,6 @@ describe('ImportPackageRequestDto', () => {
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'fail',
-				dryRun: false,
 			});
 		}
 	});
@@ -45,7 +43,6 @@ describe('ImportPackageRequestDto', () => {
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'new-version',
-				dryRun: false,
 			});
 		}
 	});
@@ -63,25 +60,7 @@ describe('ImportPackageRequestDto', () => {
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'skip',
-				dryRun: false,
 			});
-		}
-	});
-
-	it.each([
-		{ input: 'true', expected: true },
-		{ input: 'TRUE', expected: true },
-		{ input: '  true  ', expected: true },
-		{ input: 'false', expected: false },
-		{ input: 'anything-else', expected: false },
-	])('coerces dryRun "$input" to $expected', ({ input, expected }) => {
-		const result = ImportPackageRequestDto.safeParse({
-			workflowConflictPolicy: 'fail',
-			dryRun: input,
-		});
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data.dryRun).toBe(expected);
 		}
 	});
 

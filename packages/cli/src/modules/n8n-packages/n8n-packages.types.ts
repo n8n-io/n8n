@@ -32,8 +32,6 @@ export interface ImportPackageRequest {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
 	workflowConflictPolicy: WorkflowConflictPolicy;
-	/** When true, compute and report what the import would do without writing anything. */
-	dryRun: boolean;
 }
 
 export interface ImportedWorkflowSummary {
@@ -46,18 +44,10 @@ export interface ImportedWorkflowSummary {
 	status: 'created' | 'updated' | 'skipped';
 }
 
-/** What a dry-run determined would happen to a single workflow, without writing it. */
-export interface PlannedWorkflowSummary {
-	sourceWorkflowId: string;
-	name: string;
-	action: 'create' | 'update' | 'skip';
-	existingWorkflowId: string | null;
-}
-
 /**
  * A reason the import cannot proceed, produced by some policy from any subsystem.
  * Discriminated by `type` so new gates add a variant rather than a new throw site.
- * A real run aborts when any are present; a dry-run reports them all.
+ * The import aborts when any are present.
  */
 export type BlockingIssue =
 	| {
@@ -110,20 +100,9 @@ export interface ImportPackageSummary {
 	exportedAt: string;
 }
 
-/** Result of an applied (non-dry-run) import: workflows were written to the database. */
-export interface AppliedImportResult {
-	dryRun: false;
+/** Result of an import: the workflows written to the database. */
+export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
 	bindings: SerializedBindings;
 }
-
-/** Result of a dry-run import: nothing was written, only what *would* happen is reported. */
-export interface PlannedImportResult {
-	dryRun: true;
-	package: ImportPackageSummary;
-	workflows: PlannedWorkflowSummary[];
-	blockingIssues: BlockingIssue[];
-}
-
-export type ImportResult = AppliedImportResult | PlannedImportResult;

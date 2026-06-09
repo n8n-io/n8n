@@ -25,13 +25,11 @@ import { N8nPackageParser } from './n8n-package-parser';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { createBindings, serializeBindings } from '../n8n-packages.types';
 import type {
-	AppliedImportResult,
 	BlockingIssue,
 	ImportPackageRequest,
 	ImportPackageSummary,
 	ImportResult,
 	PackageImportBindings,
-	PlannedImportResult,
 } from '../n8n-packages.types';
 
 const MEGABYTE_IN_BYTES = 1024 * 1024;
@@ -96,10 +94,6 @@ export class ImportPipeline {
 			exportedAt: manifest.exportedAt,
 		};
 
-		if (request.dryRun) {
-			return this.buildPlanResult(packageSummary, workflowPlan, blockingIssues);
-		}
-
 		if (blockingIssues.length > 0) {
 			throw toImportBlockedError(blockingIssues);
 		}
@@ -120,7 +114,7 @@ export class ImportPipeline {
 			matchedCredentialIds: [...credentialPlan.successes.values()],
 		});
 
-		return this.buildAppliedResult(packageSummary, target.projectId, outcomes, bindings);
+		return this.buildResult(packageSummary, target.projectId, outcomes, bindings);
 	}
 
 	/** Folds every subsystem's blocking conditions into one uniformly-typed list. */
@@ -146,32 +140,13 @@ export class ImportPipeline {
 		return [...workflowConflicts, ...credentialFailures];
 	}
 
-	private buildPlanResult(
-		packageSummary: ImportPackageSummary,
-		workflowPlan: WorkflowImportPlan,
-		blockingIssues: BlockingIssue[],
-	): PlannedImportResult {
-		return {
-			dryRun: true,
-			package: packageSummary,
-			workflows: workflowPlan.items.map((item) => ({
-				sourceWorkflowId: item.sourceWorkflowId,
-				name: item.entity.name,
-				action: item.action,
-				existingWorkflowId: item.action === 'create' ? null : item.existing.id,
-			})),
-			blockingIssues,
-		};
-	}
-
-	private buildAppliedResult(
+	private buildResult(
 		packageSummary: ImportPackageSummary,
 		projectId: string,
 		outcomes: WorkflowImportOutcome[],
 		bindings: PackageImportBindings,
-	): AppliedImportResult {
+	): ImportResult {
 		return {
-			dryRun: false,
 			package: packageSummary,
 			workflows: outcomes.map(({ workflow, sourceWorkflowId, status }) => ({
 				sourceWorkflowId,

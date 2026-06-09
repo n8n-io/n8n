@@ -3,7 +3,7 @@ import { CredentialTypes } from '@/credential-types';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
-import { ProjectRepository, WorkflowRepository } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
@@ -132,7 +132,6 @@ describe('POST /n8n-packages/import', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({
-			dryRun: false,
 			package: {
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'http-integration-source',
@@ -156,37 +155,6 @@ describe('POST /n8n-packages/import', () => {
 		});
 
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
-	});
-
-	test('dryRun reports the plan as a 200 without writing anything', async () => {
-		const tarBuffer = await buildImportPackage();
-
-		const response = await authOwnerAgent
-			.post('/n8n-packages/import')
-			.field('workflowConflictPolicy', 'fail')
-			.field('dryRun', 'true')
-			.attach('package', tarBuffer, 'import.n8np');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual({
-			dryRun: true,
-			package: {
-				sourceN8nVersion: '1.0.0',
-				sourceId: 'http-integration-source',
-				exportedAt: expect.any(String),
-			},
-			workflows: [
-				{
-					sourceWorkflowId: 'wf-http-source',
-					name: 'HTTP Imported',
-					action: 'create',
-					existingWorkflowId: null,
-				},
-			],
-			blockingIssues: [],
-		});
-
-		expect(await Container.get(WorkflowRepository).count()).toBe(0);
 	});
 
 	test('returns 409 with conflict metadata when a workflow already exists under fail policy', async () => {
