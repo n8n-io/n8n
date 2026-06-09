@@ -1,4 +1,4 @@
-import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -48,6 +48,25 @@ describe('AgentKnowledgeCommandService', () => {
 
 			expect(result.truncated).toBe(true);
 			expect(Buffer.byteLength(result.stdout)).toBeLessThanOrEqual(64 * 1024);
+		});
+	});
+
+	it('returns command-style errors when internal file reads fail', async () => {
+		await withTempWorkspace(async (workspaceRoot) => {
+			await mkdir(path.join(workspaceRoot, 'folder'));
+
+			const result = await service.run(workspaceRoot, {
+				command: 'cat',
+				file: 'folder',
+			});
+
+			expect(result).toMatchObject({
+				command: 'cat',
+				exitCode: 1,
+				stdout: '',
+				truncated: false,
+			});
+			expect(result.stderr).not.toBe('');
 		});
 	});
 
