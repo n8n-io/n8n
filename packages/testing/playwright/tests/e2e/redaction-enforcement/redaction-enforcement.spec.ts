@@ -45,11 +45,15 @@ test.describe(
 	'Redaction enforcement',
 	{ annotation: [{ type: 'owner', description: 'Enterprise Node & Partnerships' }] },
 	() => {
+		// The redaction floor is a single instance-global value, so these tests cannot
+		// run in parallel against the shared instance without racing on it. Force serial
+		// execution; each test then sets the floor it needs from a clean baseline.
+		test.describe.configure({ mode: 'serial' });
+
 		test.beforeEach(async ({ api }) => {
 			await api.enableFeature('personalSpacePolicy');
 			await api.enableFeature('dataRedaction');
-			// The floor is instance-global state shared across tests, so reset it to a
-			// known-clean value before each test rather than relying on prior cleanup.
+			// Reset the instance-global floor to a known-clean value before each test.
 			await api.securitySettings.setRedactionFloor('off');
 		});
 
@@ -202,7 +206,7 @@ test.describe(
 		});
 
 		test.describe('when floor is "off" and workflow redaction is "non-manual"', () => {
-			test('redacts production executions ', async ({ api, n8n }) => {
+			test('redacts production executions', async ({ api, n8n }) => {
 				const { executionId, workflowId, workflow } = await executeProductionWorkflow(api, {
 					redactionPolicy: 'non-manual',
 				});
