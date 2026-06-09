@@ -38,6 +38,10 @@ import type {
 import { BackgroundTaskTracker } from './background-task-tracker';
 import { DeferredToolManager } from './deferred-tool-manager';
 import {
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	getInlineDelegateSubAgentToolOptions,
+} from './delegate-sub-agent-tool';
+import {
 	createRecallMemoryTool,
 	getEpisodicMemoryScope,
 	hasEpisodicMemoryStore,
@@ -73,6 +77,7 @@ import {
 import { ScopedMemoryTaskRunner } from './scoped-memory-task-runner';
 import { convertChunk } from './stream';
 import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
+import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
 import { generateThreadTitle } from './title-generation';
 import {
 	buildToolMap,
@@ -1862,8 +1867,53 @@ export class AgentRuntime {
 		return merged;
 	}
 
+	private isDelegateSubAgentCall(toolName: string): boolean {
+		return toolName === DELEGATE_SUB_AGENT_TOOL_NAME;
+	}
+
+	private getToolCallBatchSize(toolName: string, toolMap: Map<string, BuiltTool>): number {
+		if (!this.isDelegateSubAgentCall(toolName)) return this.concurrency;
+
+		const tool = toolMap.get(toolName);
+		const delegateOptions = tool ? getInlineDelegateSubAgentToolOptions(tool) : undefined;
+		return delegateOptions?.policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN;
+	}
+
+	private takeNextToolCallBatch<T extends { toolName: string }>(
+		calls: T[],
+		start: number,
+		toolMap: Map<string, BuiltTool>,
+	): T[] {
+		const first = calls[start];
+		if (!first) {
+			throw new Error('Unable to build tool-call batch');
+		}
+
+		const isDelegateBatch = this.isDelegateSubAgentCall(first.toolName);
+		const batchSize = this.getToolCallBatchSize(first.toolName, toolMap);
+		if (
+			batchSize < 1 ||
+			Number.isNaN(batchSize) ||
+			(isDelegateBatch && !Number.isFinite(batchSize))
+		) {
+			throw new Error(`Invalid tool-call batch size for ${first.toolName}: ${batchSize}`);
+		}
+		const batch: T[] = [];
+
+		for (let i = start; i < calls.length && batch.length < batchSize; i++) {
+			const candidate = calls[i];
+			if (this.isDelegateSubAgentCall(candidate.toolName) !== isDelegateBatch) break;
+			batch.push(candidate);
+		}
+
+		return batch;
+	}
+
 	/**
-	 * Execute tool calls concurrently in batches of `this.concurrency`.
+	 * Execute tool calls concurrently in batches.
+	 *
+	 * Regular tools use `toolCallConcurrency`. Consecutive `delegate_subagent`
+	 * calls use the effective `maxChildren` policy from the built delegate tool.
 	 * Provider-executed calls are skipped.
 	 *
 	 * Returns successes, suspension info, and a pending map (for persistence).
@@ -1902,19 +1952,19 @@ export class AgentRuntime {
 		}
 		const executableCallsById = new Map(executableCalls.map((tc) => [tc.toolCallId, tc]));
 		const unexecutedIds = new Set(executableCalls.map((tc) => tc.toolCallId));
-		const batchSize = this.concurrency;
 		const results: ToolCallSuccess[] = [];
 		const suspensions: ToolCallSuspension[] = [];
 		const errors: ToolCallError[] = [];
 		const pending: Record<string, PendingToolCall> = {};
 
-		for (let batchStart = 0; batchStart < executableCalls.length; batchStart += batchSize) {
+		for (let batchStart = 0; batchStart < executableCalls.length; ) {
 			if (ctx.isAborted()) {
 				this.updateState({ status: 'cancelled' });
 				throw new Error('Agent run was aborted');
 			}
 
-			const batch = executableCalls.slice(batchStart, batchStart + batchSize);
+			const batch = this.takeNextToolCallBatch(executableCalls, batchStart, toolMap);
+			batchStart += batch.length;
 
 			const settledResults = await Promise.allSettled(
 				batch.map(
@@ -2313,6 +2363,7 @@ export class AgentRuntime {
 						persistence,
 						emitEvent: (event) => this.eventBus.emit(event),
 						abortSignal,
+						executionCounter,
 					}),
 			);
 		} catch (error) {

@@ -33,7 +33,8 @@ export type PubSubEventName =
 	| 'agent-chat-integration-changed'
 	| 'agent-config-changed'
 	| 'agent-stream-abort'
-	| 'agent-tasks-changed';
+	| 'agent-tasks-changed'
+	| 'redaction-floor-changed';
 
 export type PubSubEventFilter =
 	| {

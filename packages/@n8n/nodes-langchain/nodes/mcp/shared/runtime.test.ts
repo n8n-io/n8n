@@ -17,10 +17,13 @@ import { buildMcpToolName } from '../McpClientTool/utils';
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
 jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
-jest.mock('@n8n/ai-utilities', () => ({
-	...jest.requireActual('@n8n/ai-utilities'),
-	proxyFetch: jest.fn(),
-}));
+vi.mock('@n8n/ai-utilities', async () => {
+	const actual = await vi.importActual('@n8n/ai-utilities');
+	return {
+		...(actual as Record<string, unknown>),
+		proxyFetch: vi.fn(),
+	};
+});
 
 const baseConfig: ResolvedMcpConfig = {
 	authentication: 'none',
@@ -74,6 +77,93 @@ describe('runtime', () => {
 	});
 
 	describe('buildMcpToolkit', () => {
+		it('passes the execution cancel signal to connectMcpClient while connecting', async () => {
+			const abort = new AbortController();
+			const connectMcpClientForCredential = vi.fn().mockResolvedValue({
+				ok: true,
+				result: {
+					close: vi.fn(),
+				},
+			});
+			const getAllTools = vi.fn().mockResolvedValue([sampleTool]);
+
+			vi.resetModules();
+			vi.doMock('./utils', async () => {
+				const actual = await vi.importActual('./utils');
+				return {
+					...(actual as Record<string, unknown>),
+					connectMcpClientForCredential,
+					getAllTools,
+					getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
+				};
+			});
+			const { buildMcpToolkit: buildMcpToolkitWithMockedUtils } = await import('./runtime');
+			const ctx = createSupplyDataCtx({
+				getExecutionCancelSignal: jest.fn(() => abort.signal),
+			});
+
+			await buildMcpToolkitWithMockedUtils(ctx, 0, baseConfig);
+
+			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ signal: abort.signal }),
+			);
+			vi.doUnmock('./utils');
+		});
+
+		it('passes undefined as signal when getExecutionCancelSignal returns no signal', async () => {
+			const connectMcpClientForCredential = vi.fn().mockResolvedValue({
+				ok: true,
+				result: {
+					close: vi.fn(),
+				},
+			});
+			const getAllTools = vi.fn().mockResolvedValue([sampleTool]);
+
+			vi.resetModules();
+			vi.doMock('./utils', async () => {
+				const actual = await vi.importActual('./utils');
+				return {
+					...(actual as Record<string, unknown>),
+					connectMcpClientForCredential,
+					getAllTools,
+					getAuthHeaders: vi.fn().mockResolvedValue({ headers: undefined }),
+				};
+			});
+			const { buildMcpToolkit: buildMcpToolkitWithMockedUtils } = await import('./runtime');
+			const ctx = createSupplyDataCtx({
+				getExecutionCancelSignal: jest.fn(() => undefined),
+			});
+
+			await buildMcpToolkitWithMockedUtils(ctx, 0, baseConfig);
+
+			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ signal: undefined }),
+			);
+			vi.doUnmock('./utils');
+		});
+
+		it('surfaces a cancelled connection result without listing tools', async () => {
+			const abortError = new Error('aborted');
+			abortError.name = 'AbortError';
+			jest.spyOn(Client.prototype, 'connect').mockRejectedValue(abortError);
+			const listTools = jest.spyOn(Client.prototype, 'listTools');
+			const abort = new AbortController();
+			const ctx = createSupplyDataCtx({
+				getExecutionCancelSignal: jest.fn(() => abort.signal),
+			});
+
+			await expect(buildMcpToolkit(ctx, 0, baseConfig)).rejects.toThrow('Execution was cancelled');
+
+			expect(listTools).not.toHaveBeenCalled();
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiTool,
+				0,
+				expect.any(NodeOperationError),
+			);
+		});
+
 		it('throws when execution is already cancelled', async () => {
 			const abort = new AbortController();
 			abort.abort();

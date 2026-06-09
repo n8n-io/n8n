@@ -70,6 +70,7 @@ export namespace PubSub {
 		export type AgentConfigChanged = ToCommand<'agent-config-changed'>;
 		export type AgentStreamAbort = ToCommand<'agent-stream-abort'>;
 		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
+		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -103,7 +104,8 @@ export namespace PubSub {
 		| Commands.AgentChatIntegrationChanged
 		| Commands.AgentConfigChanged
 		| Commands.AgentStreamAbort
-		| Commands.AgentTasksChanged;
+		| Commands.AgentTasksChanged
+		| Commands.RedactionFloorChanged;
 
 	// ----------------------------------
 	//         worker responses

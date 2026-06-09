@@ -3,7 +3,7 @@
 
 /**
  * Resolve changed files → the E2E specs that must run, using the coverage
- * impact map. Prints the janitor select-e2e JSON ({ specs, unmapped, mode }).
+ * impact map. Prints the janitor select JSON ({ specs, unmapped, mode }).
  *
  *   node select-affected-e2e.mjs <changed-file> [<changed-file> ...]
  *   CHANGED_FILES=a.ts,b.vue node select-affected-e2e.mjs
@@ -57,7 +57,7 @@ export function resolveMapPath(opts = {}) {
  * @returns {string[]}
  */
 export function buildArgs({ changedFiles, mapPath, allSpecs }) {
-	const args = ['select-e2e', `--changed-files=${changedFiles}`];
+	const args = ['select', `--changed-files=${changedFiles}`];
 	if (mapPath) args.push(`--map=${mapPath}`);
 	if (allSpecs) args.push(`--all-specs=${allSpecs}`);
 	return args;
