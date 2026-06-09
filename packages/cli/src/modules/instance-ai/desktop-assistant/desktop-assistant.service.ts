@@ -120,11 +120,18 @@ export class DesktopAssistantService {
 			await this.fetchLastExecutionByWorkflowId(accessibleWorkflowIds);
 
 		const inputs: ClassifierInput[] = workflows.map((workflow) => {
-			const emojiIcon = readDesktopAssistantMeta(workflow.meta)?.icon;
+			// Icon priority: explicit `meta.desktopAssistant.icon` wins, then any
+			// leading emoji the orchestrator put on the workflow name (the
+			// `desktop-assistant-promote` and recurring one-shot prompts both
+			// instruct picking one), then the classifier falls back to a node-type
+			// icon. The display name strips the leading emoji so the desktop card
+			// shows it once, in the icon slot.
+			const metaIcon = readDesktopAssistantMeta(workflow.meta)?.icon;
+			const { emoji: nameEmoji, rest: displayName } = splitLeadingEmoji(workflow.name);
 			const lastExec = lastExecutionByWorkflowId.get(workflow.id);
 			return {
 				workflowId: workflow.id,
-				name: workflow.name,
+				name: displayName || workflow.name,
 				active: workflow.active,
 				nodes: workflow.nodes,
 				tags: tagsByWorkflowId.get(workflow.id) ?? [],
@@ -136,7 +143,7 @@ export class DesktopAssistantService {
 							startedAt: lastExec.startedAt,
 						}
 					: undefined,
-				emojiIcon,
+				emojiIcon: metaIcon ?? nameEmoji,
 				accessibleCredentialIds,
 			};
 		});
@@ -424,9 +431,28 @@ function composeOneShotMessage(body: DesktopAssistantTaskRequest): string {
 function composePromoteMessage(originalPrompt: string, name: string | undefined): string {
 	const trimmedName = name?.trim();
 	const intro = trimmedName
-		? `Promote this idea into a real workflow named "${trimmedName}":`
-		: 'Promote this idea into a real workflow:';
+		? `Promote this idea into a real workflow. Use the name "${trimmedName}" (prepend a fitting emoji if it does not already start with one):`
+		: 'Promote this idea into a real workflow. Pick a short descriptive name for it as part of the build, and start that name with a single emoji that captures what the workflow does:';
 	return `${intro}\n\n${originalPrompt}`;
+}
+
+/**
+ * Extract a leading emoji cluster from a string. Returns `{ emoji, rest }` where
+ * `rest` has the emoji and any following whitespace stripped. If the string does
+ * not start with an emoji, `emoji` is `undefined` and `rest` is the original
+ * input.
+ *
+ * Supports common cases including zero-width-joiner sequences (e.g. 👨‍💻)
+ * and emoji-variation selectors. We intentionally keep the regex narrow to
+ * `Extended_Pictographic` so plain text starting with a number or symbol is not
+ * mistaken for an emoji.
+ */
+export function splitLeadingEmoji(input: string): { emoji?: string; rest: string } {
+	const match = input.match(
+		/^(\p{Extended_Pictographic}(?:\u200d\p{Extended_Pictographic})*\uFE0F?)\s*/u,
+	);
+	if (!match) return { rest: input };
+	return { emoji: match[1], rest: input.slice(match[0].length) };
 }
 
 function clampLimit(limit: number | undefined): number {

@@ -3,11 +3,15 @@
  *
  * These tests pin the contract that the desktop assistant relies on:
  * - One-shot mode tells the orchestrator to run fire-and-forget (no follow-up
- *   questions, emit events only, hand off when ambiguous).
- * - Promote mode tells the orchestrator to build a workflow and pick an emoji.
+ *   questions, no conversational output, stop on ambiguity).
+ * - Promote mode tells the orchestrator to build a workflow and pick a short
+ *   descriptive name that starts with a representative emoji.
  *
  * The wording is intentionally not pinned exactly; we assert the protected
- * concepts survive copy edits but intent-shifting edits fail loudly.
+ * concepts survive copy edits but intent-shifting edits fail loudly. The
+ * desktop assistant no longer subscribes to derived `gate-chosen` /
+ * `workflow.created` / `handoff-to-editor` events — those references were
+ * removed from the prompts when the abstraction layer was dropped.
  */
 
 import { getSystemPrompt } from '../system-prompt';
@@ -35,12 +39,19 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 			expect(prompt).toMatch(/do not produce conversational output/i);
 		});
 
-		it('directs ambiguous requests to handoff-to-editor', () => {
-			expect(prompt).toMatch(/handoff-to-editor/i);
+		it('instructs the orchestrator to stop without producing a result when ambiguous', () => {
+			expect(prompt).toMatch(/stop without producing a result/i);
 		});
 
-		it('references the gate-chosen signal', () => {
-			expect(prompt).toMatch(/gate-chosen/i);
+		it('does not reference dropped derived events', () => {
+			expect(prompt).not.toMatch(/gate-chosen/i);
+			expect(prompt).not.toMatch(/workflow\.created/i);
+			expect(prompt).not.toMatch(/handoff-to-editor/i);
+		});
+
+		it('instructs an emoji-prefixed workflow name on the recurring build path', () => {
+			expect(prompt).toMatch(/short descriptive label/i);
+			expect(prompt).toMatch(/starts with a single emoji/i);
 		});
 	});
 
@@ -51,9 +62,9 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 			expect(prompt).toMatch(/Desktop Assistant.+Promote/i);
 		});
 
-		it('asks the orchestrator to pick an emoji icon', () => {
-			expect(prompt).toMatch(/emoji/i);
-			expect(prompt).toMatch(/icon/i);
+		it('instructs an emoji-prefixed workflow name', () => {
+			expect(prompt).toMatch(/short descriptive label/i);
+			expect(prompt).toMatch(/starts with a single emoji/i);
 		});
 
 		it('forbids follow-up questions', () => {
@@ -64,8 +75,14 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 			expect(prompt).toMatch(/workflow-builder/i);
 		});
 
-		it('directs ambiguous requests to handoff-to-editor', () => {
-			expect(prompt).toMatch(/handoff-to-editor/i);
+		it('instructs the orchestrator to stop without producing a workflow when ambiguous', () => {
+			expect(prompt).toMatch(/stop without producing a workflow/i);
+		});
+
+		it('does not reference dropped derived events', () => {
+			expect(prompt).not.toMatch(/gate-chosen/i);
+			expect(prompt).not.toMatch(/workflow\.created/i);
+			expect(prompt).not.toMatch(/handoff-to-editor/i);
 		});
 	});
 

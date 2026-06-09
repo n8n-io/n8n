@@ -9,12 +9,14 @@ import type { LocalGatewayStatus } from '../types';
  * Optional prompt-mode override used by the desktop-assistant entry points.
  *
  * - `desktop-assistant-one-shot` — ad-hoc task triggered from the desktop app.
- *   The orchestrator must run fire-and-forget: no follow-up questions, no
- *   conversational output, fall back to a handoff-to-editor signal when the
- *   request is too ambiguous to act on.
+ *   The orchestrator runs fire-and-forget: no follow-up questions, no
+ *   conversational output, and stops without producing a result when the
+ *   request is too ambiguous to act on (the desktop client will surface a
+ *   handoff card based on the absence of progress).
  * - `desktop-assistant-promote` — promotion of an existing Instance AI thread
  *   into a real, editable workflow. Same fire-and-forget rules apply, plus
- *   the orchestrator is asked to pick a single emoji icon for the workflow.
+ *   the orchestrator picks a short descriptive workflow name that starts
+ *   with a single representative emoji.
  */
 export type DesktopAssistantPromptMode = 'desktop-assistant-one-shot' | 'desktop-assistant-promote';
 
@@ -43,15 +45,13 @@ function getDesktopAssistantPromptSection(promptMode?: DesktopAssistantPromptMod
 		return `
 ## Desktop Assistant — One-Shot Task
 
-You are running as a one-shot task triggered from the n8n desktop assistant. The user is not watching a chat; they expect the task to either complete or be handed off to the editor without further input.
+You are running as a one-shot task triggered from the n8n desktop assistant. The user is not watching a chat; they expect the task to either complete on its own or end without further input.
 
 - Do NOT produce conversational output. Do NOT write summaries, greetings, or acknowledgements.
 - Do NOT ask follow-up questions. The user cannot answer them in this surface.
-- If the request is unambiguous and within your capabilities, execute it directly using the appropriate tools, and emit a \`gate-chosen\` signal first (\`gate: 'one-shot'\`) with a short rationale.
-- If the request implies a recurring or scheduled workflow, emit \`gate-chosen\` (\`gate: 'recurring'\`) and build the workflow via the workflow-builder. Pick reasonable defaults; do not ask for parameters.
-- If the request is ambiguous, too complex, or requires context you do not have, emit \`handoff-to-editor\` immediately with a one-line \`reason\`. Do not attempt partial work.
-
-The SSE event stream is the user-visible surface; text content in the assistant message is ignored.
+- If the request is unambiguous and within your capabilities, execute it directly using the appropriate tools.
+- If the request implies a recurring or scheduled workflow, build it via the workflow-builder skill. Pick reasonable defaults; do not ask for parameters. When you create the workflow, set its \`name\` to a short descriptive label (3–8 words) that starts with a single emoji representing the workflow's purpose. Examples: \`"🍌 Daily banana prices email"\`, \`"💬 Slack alerts for Stripe refunds"\`, \`"📅 Weekly backup of Notion"\`.
+- If the request is ambiguous, too complex, or requires context you do not have, stop without producing a result. Do not attempt partial work. The user will open the editor.
 `;
 	}
 	// 'desktop-assistant-promote'
@@ -61,8 +61,8 @@ The SSE event stream is the user-visible surface; text content in the assistant 
 You are promoting an existing thread into a real, editable n8n workflow on behalf of the desktop assistant.
 
 - Build the workflow directly via the workflow-builder skill. Do NOT ask follow-up questions.
-- Pick a single emoji that represents the workflow's purpose and include it in the \`workflow.created\` event payload as \`icon\`.
-- If the original intent is ambiguous or requires context you do not have, emit \`handoff-to-editor\` immediately with a one-line \`reason\` instead of producing a low-quality stub.
+- When you create the workflow, set its \`name\` to a short descriptive label (3–8 words) that starts with a single emoji representing the workflow's purpose. Examples: \`"🍌 Daily banana prices email"\`, \`"💬 Slack alerts for Stripe refunds"\`, \`"📅 Weekly backup of Notion"\`. If the user's prompt already provided a name, use that name and prepend a fitting emoji.
+- If the original intent is ambiguous or requires context you do not have, stop without producing a workflow. Do not produce a low-quality stub.
 - Do NOT produce conversational output. Do NOT write summaries, greetings, or acknowledgements.
 - The thread already contains the user's original prompt; ground the build on that prompt.
 `;
