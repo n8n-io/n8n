@@ -666,15 +666,16 @@ describe('NextCloud Node', () => {
 		});
 
 		it('returns an internal link from the WebDAV file id', async () => {
-			const { executeFunctions, requestWithAuthentication } = buildExecuteFunctions({
-				parameters: {
-					resource,
-					operation: 'share',
-					path,
-					shareType: 200,
-					options: {},
-				},
-			});
+			const { constructExecutionMetaData, executeFunctions, requestWithAuthentication } =
+				buildExecuteFunctions({
+					parameters: {
+						resource,
+						operation: 'share',
+						path,
+						shareType: 200,
+						options: {},
+					},
+				});
 			requestWithAuthentication.mockResolvedValue(webDavFilePropfindResponse);
 
 			const result = await executeNode(executeFunctions);
@@ -688,19 +689,24 @@ describe('NextCloud Node', () => {
 				},
 			});
 			expectWebDavUri(requestOptions(requestWithAuthentication).uri);
+			expect(constructExecutionMetaData).toHaveBeenCalledWith(
+				[{ json: { link: `${baseUrl}/f/55555` } }],
+				{ itemData: { item: 0 } },
+			);
 			expect(result).toEqual([[{ json: { link: `${baseUrl}/f/55555` }, pairedItem: { item: 0 } }]]);
 		});
 
 		it('returns an internal link from folder PROPFIND with multiple responses', async () => {
-			const { executeFunctions, requestWithAuthentication } = buildExecuteFunctions({
-				parameters: {
-					resource: 'folder',
-					operation: 'share',
-					path: '/projects',
-					shareType: 200,
-					options: {},
-				},
-			});
+			const { constructExecutionMetaData, executeFunctions, requestWithAuthentication } =
+				buildExecuteFunctions({
+					parameters: {
+						resource: 'folder',
+						operation: 'share',
+						path: '/projects',
+						shareType: 200,
+						options: {},
+					},
+				});
 			requestWithAuthentication.mockResolvedValue(webDavFolderPropfindResponse);
 
 			const result = await executeNode(executeFunctions);
@@ -715,6 +721,10 @@ describe('NextCloud Node', () => {
 			});
 			expectWebDavUri(requestOptions(requestWithAuthentication).uri);
 			// Should use the first response (folder) fileid, not the child file
+			expect(constructExecutionMetaData).toHaveBeenCalledWith(
+				[{ json: { link: `${baseUrl}/f/77777` } }],
+				{ itemData: { item: 0 } },
+			);
 			expect(result).toEqual([[{ json: { link: `${baseUrl}/f/77777` }, pairedItem: { item: 0 } }]]);
 		});
 	});

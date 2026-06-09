@@ -890,6 +890,7 @@ export class NextCloud implements INodeType {
 
 		let resource: string = '';
 		let operation: string = '';
+		let lastOperationWasDownload = false;
 
 		for (let i = 0; i < items.length; i++) {
 			// Reinitialize per-iteration so state from a previous item never leaks.
@@ -936,6 +937,7 @@ export class NextCloud implements INodeType {
 						//         list
 						// ----------------------------------
 
+						// PROPFIND is not in the IHttpRequestMethods enum but is required for WebDAV PROPFIND requests
 						requestMethod = 'PROPFIND' as IHttpRequestMethods;
 						endpoint = this.getNodeParameter('path', i) as string;
 					}
@@ -977,6 +979,7 @@ export class NextCloud implements INodeType {
 
 						if (shareType === 200) {
 							// Internal Link: not a real OCS share, derive the link from oc:fileid via PROPFIND.
+							// PROPFIND is not in the IHttpRequestMethods enum but is required for WebDAV PROPFIND requests
 							requestMethod = 'PROPFIND' as IHttpRequestMethods;
 							endpoint = sharePath;
 							headers['Content-Type'] = 'application/xml';
@@ -1249,10 +1252,11 @@ export class NextCloud implements INodeType {
 							'',
 						);
 						const internalLink = `${webDavBase}/f/${fileid}`;
-						returnData.push({
-							json: { link: internalLink },
-							pairedItem: { item: i },
-						});
+						const executionData = this.helpers.constructExecutionMetaData(
+							wrapData({ link: internalLink }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} else {
 						if (typeof responseData !== 'string') {
 							throw new NodeOperationError(
@@ -1460,11 +1464,12 @@ export class NextCloud implements INodeType {
 				}
 				throw error;
 			}
+			if (resource === 'file' && operation === 'download') {
+				lastOperationWasDownload = true;
+			}
 		}
 
-		// After the loop, resource and operation have the values from the last iteration
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		if (resource! === 'file' && operation! === 'download') {
+		if (lastOperationWasDownload) {
 			// For file downloads the files get attached to the existing items
 			return [items];
 		} else {

@@ -44,11 +44,10 @@ export async function nextCloudApiRequest(
 		options.encoding = null;
 	}
 
-	options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
-
-	if (!useWebDavEndpoint) {
-		options.uri = options.uri.replace('/remote.php/webdav', '');
-	}
+	// Preserve the existing WebDAV path behavior: endpoints may start with '/', producing '//'.
+	options.uri = useWebDavEndpoint
+		? `${credentials.webDavUrl}/${encodeURI(endpoint)}`
+		: `${new URL(credentials.webDavUrl).origin}/${encodeURI(endpoint)}`;
 
 	const credentialType =
 		authenticationMethod === 'accessToken' ? 'nextCloudApi' : 'nextCloudOAuth2Api';

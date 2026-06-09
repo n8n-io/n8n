@@ -77,6 +77,27 @@ describe('NextCloud GenericFunctions', () => {
 		);
 	});
 
+	it('handles non-standard WebDAV URLs gracefully', async () => {
+		const customUrl = 'https://custom.example.com/dav';
+		const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
+		getCredentials.mockResolvedValue({ webDavUrl: customUrl });
+		requestWithAuthentication.mockResolvedValue({ status: 'ok' });
+
+		await nextCloudApiRequest.call(
+			functions,
+			'GET',
+			'/test.txt',
+			'',
+			undefined,
+			undefined,
+			undefined,
+			true,
+		);
+
+		expect(requestOptions(requestWithAuthentication).uri).toBe(`${customUrl}//test.txt`);
+		expect(requestOptions(requestWithAuthentication).uri).toEqual(expect.stringContaining('/dav'));
+	});
+
 	it('uses OAuth2 credentials when OAuth2 authentication is selected', async () => {
 		const { functions, getCredentials, requestWithAuthentication } = buildFunctions('oAuth2');
 		requestWithAuthentication.mockResolvedValue({ status: 'ok' });
@@ -118,6 +139,28 @@ describe('NextCloud GenericFunctions', () => {
 		});
 		expect(requestOptions(requestWithAuthentication).uri).not.toEqual(
 			expect.stringContaining('/remote.php/webdav'),
+		);
+	});
+
+	it('strips non-standard WebDAV path for OCS requests', async () => {
+		const customUrl = 'https://custom.example.com/dav';
+		const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
+		getCredentials.mockResolvedValue({ webDavUrl: customUrl });
+		requestWithAuthentication.mockResolvedValue('<ocs />');
+
+		await nextCloudApiRequest.call(
+			functions,
+			'POST',
+			'ocs/v1.php/cloud/users',
+			'',
+			{},
+			undefined,
+			undefined,
+			false,
+		);
+
+		expect(requestOptions(requestWithAuthentication).uri).toBe(
+			'https://custom.example.com/ocs/v1.php/cloud/users',
 		);
 	});
 
