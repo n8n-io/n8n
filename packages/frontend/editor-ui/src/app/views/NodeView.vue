@@ -364,6 +364,10 @@ function initializeRoute() {
 		route.query.action === 'openEvaluationsWizard' &&
 		isEvaluationsWizardSidepanelEnabled.value
 	) {
+		telemetry.track('User opened evaluations wizard', {
+			workflow_id: workflowId.value,
+			source: 'empty_state',
+		});
 		evaluationsWizardSidepanelStore.open(0);
 	}
 
