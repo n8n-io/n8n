@@ -3052,3 +3052,58 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 		expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
 	});
 });
+
+describe('getSandboxConfigFromEnv', () => {
+	type SandboxConfigService = {
+		instanceAiConfig: {
+			sandboxEnabled: boolean;
+			sandboxProvider: string;
+			daytonaApiUrl: string;
+			daytonaApiKey: string;
+			sandboxImage: string;
+			sandboxTimeout: number;
+			sandboxNamePrefix: string;
+			sandboxEphemeral: boolean;
+			daytonaTokenRefreshSkewMs: number;
+		};
+		getSandboxConfigFromEnv: () => SandboxConfig;
+	};
+
+	function createSandboxConfigService(
+		overrides: Partial<SandboxConfigService['instanceAiConfig']>,
+	): SandboxConfigService {
+		const service = Object.create(InstanceAiService.prototype) as SandboxConfigService;
+		service.instanceAiConfig = {
+			sandboxEnabled: true,
+			sandboxProvider: 'daytona',
+			daytonaApiUrl: 'https://api.daytona.io',
+			daytonaApiKey: 'key',
+			sandboxImage: 'img',
+			sandboxTimeout: 1000,
+			sandboxNamePrefix: '',
+			sandboxEphemeral: false,
+			daytonaTokenRefreshSkewMs: 1000,
+			...overrides,
+		};
+		return service;
+	}
+
+	it('marks daytona sandboxes ephemeral when the env flag is set', () => {
+		const service = createSandboxConfigService({ sandboxEphemeral: true });
+
+		expect(service.getSandboxConfigFromEnv()).toMatchObject({
+			enabled: true,
+			provider: 'daytona',
+			ephemeral: true,
+		});
+	});
+
+	it('keeps daytona sandboxes non-ephemeral by default', () => {
+		const service = createSandboxConfigService({ sandboxEphemeral: false });
+
+		expect(service.getSandboxConfigFromEnv()).toMatchObject({
+			provider: 'daytona',
+			ephemeral: false,
+		});
+	});
+});
