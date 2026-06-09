@@ -353,9 +353,11 @@ export class AgentRuntimeReconstructionService {
 		agent.tool(createGetEnvironmentTool());
 
 		if (this.isKnowledgeBaseEnabled()) {
-			const { createSearchKnowledgeTool } = await import('./tools/knowledge/search-knowledge.tool');
+			const { createKnowledgeRetrievalTools } = await import(
+				'./tools/knowledge/search-knowledge.tool'
+			);
 			agent.tool(
-				createSearchKnowledgeTool({
+				createKnowledgeRetrievalTools({
 					projectId,
 					agentId,
 					userId,

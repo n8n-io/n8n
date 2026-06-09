@@ -16,48 +16,39 @@ import {
 	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
 	assertKnowledgePathSegment,
 	buildKnowledgeVolumeSubpath,
+	fromVolumeStorageReference,
 	KNOWLEDGE_FILES_DIR,
 	type AgentKnowledgeFilesystem,
 } from './agent-knowledge-storage';
+import {
+	assertValidKnowledgeFilePath,
+	DEFAULT_FIND_FILES_LIMIT,
+	DEFAULT_SEARCH_TEXT_LIMIT,
+	MAX_CONTEXT_LINES,
+	MAX_OPERATION_OUTPUT_CHARS,
+	MAX_READ_LINE_CHARS,
+	MAX_SEARCH_LINE_CHARS,
+	parseFindKnowledgeFilesRequest,
+	parseReadKnowledgeRequest,
+	parseSearchKnowledgeRequest,
+	truncateKnowledgeText,
+	type AgentKnowledgeFileReference,
+	type AgentKnowledgeLine,
+	type FindKnowledgeFilesRequest,
+	type FindKnowledgeFilesResult,
+	type ReadKnowledgeRangeResult,
+	type ReadKnowledgeRequest,
+	type ReadKnowledgeResult,
+	type SearchKnowledgeMatch,
+	type SearchKnowledgeRequest,
+	type SearchKnowledgeResult,
+} from './agent-knowledge-retrieval';
+import { AgentFileRepository } from './repositories/agent-file.repository';
 
-const MAX_COMMAND_LENGTH = 2_000;
-const MAX_COMMAND_OUTPUT_CHARS = 20_000;
-const MIN_DEFAULT_OPERATION_TIMEOUT_MS = 10_000;
-const MAX_OPERATION_TIMEOUT_MS = 120_000;
-const ALLOWED_KNOWLEDGE_COMMANDS = new Set([
-	'awk',
-	'cat',
-	'cut',
-	'echo',
-	'grep',
-	'head',
-	'printf',
-	'rg',
-	'sed',
-	'sort',
-	'tail',
-	'tr',
-	'uniq',
-	'wc',
-]);
-
-export interface AgentKnowledgeCommandResult {
+interface AgentKnowledgeCommandResult {
 	exitCode: number;
 	stdout: string;
 	stderr: string;
-}
-
-export interface AgentKnowledgeCommandOptions {
-	command: string;
-	timeoutMs?: number;
-}
-
-export interface AgentKnowledgeCommandOperationResult {
-	exitCode: number;
-	stdout: string;
-	stderr: string;
-	stdoutTruncated: boolean;
-	stderrTruncated: boolean;
 }
 
 export const SEARCH_KNOWLEDGE_SANDBOX_CREATED = 'sandbox created' as const;
@@ -97,6 +88,12 @@ interface AgentKnowledgeDaytonaConnection {
 	apiKey?: string;
 	image: string;
 	mode: 'direct' | 'proxy';
+}
+
+interface AgentKnowledgeReferenceLookup {
+	files: AgentKnowledgeFileReference[];
+	byFile: Map<string, AgentKnowledgeFileReference>;
+	byId: Map<string, AgentKnowledgeFileReference>;
 }
 
 function buildScopeLabels(
@@ -142,6 +139,7 @@ export class AgentKnowledgeSandboxService {
 		private readonly logger: Logger,
 		private readonly aiService: AiService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly agentFileRepository: AgentFileRepository,
 	) {}
 
 	async ensureSandbox(
@@ -164,43 +162,122 @@ export class AgentKnowledgeSandboxService {
 		return await operation(filesystem);
 	}
 
-	async runKnowledgeCommand(
+	async findKnowledgeFiles(
 		projectId: string,
 		agentId: string,
-		userId: string,
-		options: AgentKnowledgeCommandOptions,
-	): Promise<AgentKnowledgeCommandOperationResult> {
-		const command = validateKnowledgeCommand(options.command);
-		const timeoutMs = resolveKnowledgeOperationTimeout(options.timeoutMs);
+		request: FindKnowledgeFilesRequest,
+	): Promise<FindKnowledgeFilesResult> {
+		const validatedRequest = parseFindKnowledgeFilesRequest(request);
+		this.assertKnowledgeSandboxEnabled();
+		this.assertKnowledgeVolumeConfigured();
+		this.assertValidPathSegments(projectId, agentId);
 
-		const result = await this.executeKnowledgeCommand(
-			projectId,
-			agentId,
-			userId,
-			command,
-			timeoutMs,
-		);
-		const stdout = truncateCommandOutput(result.stdout);
-		const stderr = truncateCommandOutput(result.stderr);
+		const limit = validatedRequest.limit ?? DEFAULT_FIND_FILES_LIMIT;
+		const offset = validatedRequest.offset ?? 0;
+		const query = validatedRequest.query?.toLocaleLowerCase();
+		const files = await this.loadKnowledgeFileReferences(agentId);
+		const filteredFiles = query
+			? files.filter(
+					(file) =>
+						file.file.toLocaleLowerCase().includes(query) ||
+						file.displayName.toLocaleLowerCase().includes(query),
+				)
+			: files;
 
 		return {
-			exitCode: result.exitCode,
-			stdout: stdout.text,
-			stderr: stderr.text,
-			stdoutTruncated: stdout.truncated,
-			stderrTruncated: stderr.truncated,
+			files: filteredFiles.slice(offset, offset + limit),
+			limit,
+			offset,
+			hasMore: filteredFiles.length > offset + limit,
 		};
 	}
 
-	private async executeKnowledgeCommand(
+	async searchKnowledge(
+		projectId: string,
+		agentId: string,
+		userId: string,
+		request: SearchKnowledgeRequest,
+	): Promise<SearchKnowledgeResult> {
+		const validatedRequest = parseSearchKnowledgeRequest(request);
+		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+		const limit = validatedRequest.limit ?? DEFAULT_SEARCH_TEXT_LIMIT;
+		const offset = validatedRequest.offset ?? 0;
+		const scopedFiles = this.resolveSearchScope(validatedRequest, references);
+
+		if (references.files.length === 0 || scopedFiles?.length === 0) {
+			return { matches: [], limit, offset, hasMore: false, truncated: false };
+		}
+
+		const command = buildSearchKnowledgeCommand(validatedRequest, scopedFiles);
+		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
+		const stdout = truncateOperationOutput(result.stdout);
+		const stderr = truncateOperationOutput(result.stderr);
+
+		if (result.exitCode === 1) {
+			return {
+				matches: [],
+				limit,
+				offset,
+				hasMore: false,
+				truncated: stdout.truncated || stderr.truncated,
+			};
+		}
+
+		if (result.exitCode !== 0) {
+			throw new OperationalError(
+				`Agent knowledge search failed${stderr.text ? `: ${stderr.text}` : ''}`,
+			);
+		}
+
+		const parsed = parseRipgrepJsonOutput(stdout.text, references.byFile);
+		const matches = parsed.matches.slice(offset, offset + limit);
+
+		return {
+			matches,
+			limit,
+			offset,
+			hasMore: parsed.matches.length > offset + limit || stdout.truncated,
+			truncated: stdout.truncated || stderr.truncated || parsed.incomplete,
+		};
+	}
+
+	async readKnowledge(
+		projectId: string,
+		agentId: string,
+		userId: string,
+		request: ReadKnowledgeRequest,
+	): Promise<ReadKnowledgeResult> {
+		const validatedRequest = parseReadKnowledgeRequest(request);
+		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+		const file = this.resolveRequiredFile(validatedRequest, references);
+		const command = buildReadKnowledgeCommand(file.file, validatedRequest);
+		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
+		const stdout = truncateOperationOutput(result.stdout);
+		const stderr = truncateOperationOutput(result.stderr);
+
+		if (result.exitCode !== 0) {
+			throw new OperationalError(
+				`Agent knowledge read failed${stderr.text ? `: ${stderr.text}` : ''}`,
+			);
+		}
+
+		return {
+			file: file.file,
+			fileId: file.fileId,
+			displayName: file.displayName,
+			ranges: parseReadKnowledgeOutput(stdout.text, file, validatedRequest),
+			truncated: stdout.truncated || stderr.truncated,
+		};
+	}
+
+	private async executeKnowledgeOperation(
 		projectId: string,
 		agentId: string,
 		userId: string,
 		command: string,
-		timeoutMs?: number,
 	): Promise<AgentKnowledgeCommandResult> {
 		const { sandbox } = await this.acquireSandbox(projectId, agentId, userId);
-		const timeoutSeconds = Math.ceil((timeoutMs ?? this.agentsConfig.sandboxTimeout) / 1000);
+		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command);
 		const result = await sandbox.process.executeCommand(
 			scopedCommand,
@@ -214,6 +291,95 @@ export class AgentKnowledgeSandboxService {
 			stdout: result.artifacts?.stdout ?? result.result ?? '',
 			stderr: readCommandStderr(result.artifacts),
 		};
+	}
+
+	private async loadKnowledgeReferenceLookup(
+		projectId: string,
+		agentId: string,
+	): Promise<AgentKnowledgeReferenceLookup> {
+		this.assertKnowledgeSandboxEnabled();
+		this.assertKnowledgeVolumeConfigured();
+		this.assertValidPathSegments(projectId, agentId);
+
+		const files = await this.loadKnowledgeFileReferences(agentId);
+		return {
+			files,
+			byFile: new Map(files.map((file) => [file.file, file])),
+			byId: new Map(files.map((file) => [file.fileId, file])),
+		};
+	}
+
+	private async loadKnowledgeFileReferences(
+		agentId: string,
+	): Promise<AgentKnowledgeFileReference[]> {
+		const files = await this.agentFileRepository.findByAgentId(agentId);
+		return files.map((file) => ({
+			file: fromVolumeStorageReference(file.binaryDataId),
+			fileId: file.id,
+			displayName: file.fileName,
+			mimeType: file.mimeType,
+			fileSizeBytes: file.fileSizeBytes,
+			createdAt: file.createdAt.toISOString(),
+		}));
+	}
+
+	private resolveSearchScope(
+		request: SearchKnowledgeRequest,
+		references: AgentKnowledgeReferenceLookup,
+	): AgentKnowledgeFileReference[] | undefined {
+		const selected = new Map<string, AgentKnowledgeFileReference>();
+		const addByFile = (filePath: string) => {
+			const normalized = assertValidKnowledgeFilePath(filePath);
+			const file = references.byFile.get(normalized);
+			if (!file) {
+				throw new BadRequestError('Knowledge file not found');
+			}
+			selected.set(file.file, file);
+		};
+		const addById = (fileId: string) => {
+			const file = references.byId.get(fileId);
+			if (!file) {
+				throw new BadRequestError('Knowledge file not found');
+			}
+			selected.set(file.file, file);
+		};
+
+		if (request.file) addByFile(request.file);
+		for (const file of request.files ?? []) addByFile(file);
+		if (request.fileId) addById(request.fileId);
+		for (const fileId of request.fileIds ?? []) addById(fileId);
+
+		return selected.size > 0 ? [...selected.values()] : undefined;
+	}
+
+	private resolveRequiredFile(
+		request: ReadKnowledgeRequest,
+		references: AgentKnowledgeReferenceLookup,
+	): AgentKnowledgeFileReference {
+		if (request.file && request.fileId) {
+			const normalized = assertValidKnowledgeFilePath(request.file);
+			const fileByPath = references.byFile.get(normalized);
+			const fileById = references.byId.get(request.fileId);
+			if (!fileByPath || !fileById || fileByPath.fileId !== fileById.fileId) {
+				throw new BadRequestError('Knowledge file not found');
+			}
+			return fileByPath;
+		}
+
+		if (request.file) {
+			const normalized = assertValidKnowledgeFilePath(request.file);
+			const fileByPath = references.byFile.get(normalized);
+			if (!fileByPath) {
+				throw new BadRequestError('Knowledge file not found');
+			}
+			return fileByPath;
+		}
+
+		const file = references.byId.get(request.fileId ?? '');
+		if (!file) {
+			throw new BadRequestError('Knowledge file not found');
+		}
+		return file;
 	}
 
 	private createFilesystemAdapter(sandbox: Sandbox): AgentKnowledgeFilesystem {
@@ -381,218 +547,218 @@ export class AgentKnowledgeSandboxService {
 	}
 }
 
-function resolveKnowledgeOperationTimeout(timeoutMs: number | undefined): number | undefined {
-	if (timeoutMs === undefined) {
-		return undefined;
-	}
+function buildSearchKnowledgeCommand(
+	request: SearchKnowledgeRequest,
+	files: AgentKnowledgeFileReference[] | undefined,
+): string {
+	const args = [
+		'rg',
+		'--json',
+		'--fixed-strings',
+		'--line-number',
+		'--color=never',
+		...(request.caseSensitive === true ? [] : ['--ignore-case']),
+		...(request.contextLines && request.contextLines > 0
+			? ['--context', String(request.contextLines)]
+			: []),
+		'--',
+		quoteShellArg(request.query),
+		...(files?.map((file) => quoteShellArg(`./${file.file}`)) ?? [quoteShellArg('.')]),
+	];
 
-	return Math.min(Math.max(timeoutMs, MIN_DEFAULT_OPERATION_TIMEOUT_MS), MAX_OPERATION_TIMEOUT_MS);
+	return args.join(' ');
 }
 
-function validateKnowledgeCommand(command: string): string {
-	const trimmed = command.trim();
-	if (!trimmed) {
-		throw new BadRequestError('Invalid knowledge command');
-	}
-
-	if (trimmed.length > MAX_COMMAND_LENGTH) {
-		throw new BadRequestError('Invalid knowledge command');
-	}
-
-	assertAllowedKnowledgeCommand(trimmed);
-
-	return trimmed;
-}
-
-function assertAllowedKnowledgeCommand(command: string): void {
-	const segments = splitPipeline(command);
-	for (const segment of segments) {
-		const tokens = tokenizeCommandSegment(segment);
-		const executable = tokens[0];
-		if (!executable || !ALLOWED_KNOWLEDGE_COMMANDS.has(executable)) {
-			throw new BadRequestError('Knowledge command is not allowed');
-		}
-
-		assertReadOnlyCommandArguments(executable, tokens.slice(1));
-	}
-}
-
-function assertReadOnlyCommandArguments(command: string, args: string[]): void {
-	if (
-		command === 'sed' &&
-		args.some(
-			(arg) =>
-				arg.startsWith('-i') ||
-				arg === '--in-place' ||
-				arg.startsWith('--in-place=') ||
-				isUnsafeSedArgument(arg),
+function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRequest): string {
+	const script = request.ranges
+		.map(
+			(range, index) =>
+				`NR >= ${range.startLine} && NR <= ${range.endLine} { printf "${index}\\t%d\\t%s\\n", NR, $0 }`,
 		)
-	) {
-		throw new BadRequestError('Knowledge command is not allowed');
-	}
+		.join(' ');
 
-	if (command === 'sort' && args.some((arg) => arg === '-o' || arg.startsWith('--output'))) {
-		throw new BadRequestError('Knowledge command is not allowed');
-	}
-
-	if (command === 'awk' && args.some(isUnsafeAwkArgument)) {
-		throw new BadRequestError('Knowledge command is not allowed');
-	}
+	return `awk ${quoteShellArg(script)} ${quoteShellArg(`./${file}`)}`;
 }
 
-function isUnsafeAwkArgument(arg: string): boolean {
-	return /\bsystem\s*\(/.test(arg) || arg.includes('>>') || /(^|[^<>=])>([^=]|$)/.test(arg);
-}
+function parseRipgrepJsonOutput(
+	output: string,
+	filesByPath: Map<string, AgentKnowledgeFileReference>,
+): { matches: SearchKnowledgeMatch[]; incomplete: boolean } {
+	const matches: SearchKnowledgeMatch[] = [];
+	const contextBeforeByFile = new Map<string, AgentKnowledgeLine[]>();
+	let incomplete = false;
 
-function isUnsafeSedArgument(arg: string): boolean {
-	return (
-		/(^|[;\s])(?:[0-9,$]+)?[we]\s+\S/.test(arg) ||
-		/\/[we]\s+\S/.test(arg) ||
-		/\/e($|[;\s])/.test(arg)
-	);
-}
+	for (const line of output.split(/\r?\n/)) {
+		if (!line) continue;
 
-function splitPipeline(command: string): string[] {
-	const segments: string[] = [];
-	let current = '';
-	let quote: '"' | "'" | undefined;
+		let event: unknown;
+		try {
+			event = JSON.parse(line);
+		} catch {
+			incomplete = true;
+			continue;
+		}
 
-	for (let index = 0; index < command.length; index++) {
-		const character = command[index];
-		const next = command[index + 1];
+		if (!isRecord(event) || !isRecord(event.data)) continue;
 
-		if (quote) {
-			if (
-				quote === '"' &&
-				(character === '`' || (character === '$' && (next === '(' || next === '{')))
-			) {
-				throw new BadRequestError('Knowledge command is not allowed');
-			}
-			if (quote === '"' && character === '\\' && next) {
-				current += character + next;
-				index++;
+		if (event.type === 'match') {
+			const file = resolveRipgrepFile(event.data, filesByPath);
+			const lineNumber = readNumber(event.data.line_number);
+			const text = readRipgrepText(event.data);
+			if (!file || lineNumber === undefined || text === undefined) continue;
+
+			const contextBefore = contextBeforeByFile.get(file.file) ?? [];
+			const truncatedText = truncateKnowledgeText(
+				stripTrailingNewline(text),
+				MAX_SEARCH_LINE_CHARS,
+			);
+			const startLine =
+				contextBefore.length > 0 ? Math.min(contextBefore[0].lineNumber, lineNumber) : lineNumber;
+			const match: SearchKnowledgeMatch = {
+				file: file.file,
+				fileId: file.fileId,
+				displayName: file.displayName,
+				lineNumber,
+				text: truncatedText.text,
+				textTruncated: truncatedText.truncated,
+				...(contextBefore.length > 0 ? { contextBefore: [...contextBefore] } : {}),
+				citation: {
+					file: file.file,
+					fileId: file.fileId,
+					displayName: file.displayName,
+					startLine,
+					endLine: lineNumber,
+				},
+			};
+			matches.push(match);
+			contextBeforeByFile.set(file.file, []);
+			continue;
+		}
+
+		if (event.type === 'context') {
+			const file = resolveRipgrepFile(event.data, filesByPath);
+			const lineNumber = readNumber(event.data.line_number);
+			const text = readRipgrepText(event.data);
+			if (!file || lineNumber === undefined || text === undefined) continue;
+
+			const lineEntry = makeKnowledgeLine(lineNumber, text, MAX_SEARCH_LINE_CHARS);
+			const lastMatch = matches[matches.length - 1];
+			if (lastMatch?.file === file.file && lineNumber > lastMatch.lineNumber) {
+				lastMatch.contextAfter = [...(lastMatch.contextAfter ?? []), lineEntry];
+				lastMatch.citation.endLine = Math.max(lastMatch.citation.endLine, lineNumber);
 				continue;
 			}
-			if (character === quote) {
-				quote = undefined;
-			}
-			current += character;
-			continue;
-		}
 
-		if (character === '"' || character === "'") {
-			quote = character;
-			current += character;
-			continue;
+			const contextBefore = contextBeforeByFile.get(file.file) ?? [];
+			contextBefore.push(lineEntry);
+			contextBeforeByFile.set(file.file, contextBefore.slice(-MAX_CONTEXT_LINES));
 		}
-
-		if (character === '|') {
-			if (next === '|') {
-				throw new BadRequestError('Knowledge command is not allowed');
-			}
-			segments.push(current.trim());
-			current = '';
-			continue;
-		}
-
-		assertAllowedShellCharacter(character, next);
-		current += character;
 	}
 
-	if (quote) {
-		throw new BadRequestError('Knowledge command is not allowed');
-	}
-
-	segments.push(current.trim());
-	if (segments.some((segment) => segment.length === 0)) {
-		throw new BadRequestError('Knowledge command is not allowed');
-	}
-
-	return segments;
+	return { matches, incomplete };
 }
 
-function assertAllowedShellCharacter(character: string, next?: string): void {
-	if (character === '\n' || character === '\r') {
-		throw new BadRequestError('Knowledge command is not allowed');
+function parseReadKnowledgeOutput(
+	output: string,
+	file: AgentKnowledgeFileReference,
+	request: ReadKnowledgeRequest,
+): ReadKnowledgeRangeResult[] {
+	const ranges = request.ranges.map<ReadKnowledgeRangeResult>((range) => ({
+		startLine: range.startLine,
+		endLine: range.endLine,
+		lines: [],
+		citation: {
+			file: file.file,
+			fileId: file.fileId,
+			displayName: file.displayName,
+			startLine: range.startLine,
+			endLine: range.endLine,
+		},
+	}));
+
+	for (const line of output.split(/\r?\n/)) {
+		if (!line) continue;
+		const [rangeIndexText, lineNumberText, ...textParts] = line.split('\t');
+		const rangeIndex = Number(rangeIndexText);
+		const lineNumber = Number(lineNumberText);
+		if (!Number.isInteger(rangeIndex) || !Number.isInteger(lineNumber) || !ranges[rangeIndex]) {
+			continue;
+		}
+
+		ranges[rangeIndex].lines.push(
+			makeKnowledgeLine(lineNumber, textParts.join('\t'), MAX_READ_LINE_CHARS),
+		);
 	}
 
-	if (';&<>`(){}'.includes(character)) {
-		throw new BadRequestError('Knowledge command is not allowed');
-	}
-
-	if (character === '$' && (next === '(' || next === '{')) {
-		throw new BadRequestError('Knowledge command is not allowed');
-	}
+	return ranges;
 }
 
-function tokenizeCommandSegment(segment: string): string[] {
-	const tokens: string[] = [];
-	let current = '';
-	let quote: '"' | "'" | undefined;
-
-	for (let index = 0; index < segment.length; index++) {
-		const character = segment[index];
-		const next = segment[index + 1];
-
-		if (quote) {
-			if (quote === '"' && character === '\\' && next) {
-				current += next;
-				index++;
-				continue;
-			}
-			if (character === quote) {
-				quote = undefined;
-				continue;
-			}
-			current += character;
-			continue;
-		}
-
-		if (character === '"' || character === "'") {
-			quote = character;
-			continue;
-		}
-
-		if (/\s/.test(character)) {
-			if (current) {
-				tokens.push(current);
-				current = '';
-			}
-			continue;
-		}
-
-		if (character === '\\' && next) {
-			current += next;
-			index++;
-			continue;
-		}
-
-		current += character;
-	}
-
-	if (quote) {
-		throw new BadRequestError('Knowledge command is not allowed');
-	}
-	if (current) {
-		tokens.push(current);
-	}
-
-	return tokens;
+function makeKnowledgeLine(
+	lineNumber: number,
+	text: string,
+	maxLength: number,
+): AgentKnowledgeLine {
+	const truncated = truncateKnowledgeText(stripTrailingNewline(text), maxLength);
+	return { lineNumber, text: truncated.text, truncated: truncated.truncated };
 }
 
-function truncateCommandOutput(text: string): { text: string; truncated: boolean } {
-	if (text.length <= MAX_COMMAND_OUTPUT_CHARS) {
+function resolveRipgrepFile(
+	data: Record<string, unknown>,
+	filesByPath: Map<string, AgentKnowledgeFileReference>,
+): AgentKnowledgeFileReference | undefined {
+	const path = readTextObject(data.path);
+	if (!path) return undefined;
+	return filesByPath.get(normalizeRipgrepPath(path));
+}
+
+function readRipgrepText(data: Record<string, unknown>): string | undefined {
+	return readTextObject(data.lines);
+}
+
+function readTextObject(value: unknown): string | undefined {
+	if (!isRecord(value) || typeof value.text !== 'string') return undefined;
+	return value.text;
+}
+
+function readNumber(value: unknown): number | undefined {
+	return typeof value === 'number' && Number.isInteger(value) ? value : undefined;
+}
+
+function normalizeRipgrepPath(filePath: string): string {
+	if (filePath.startsWith(`${KNOWLEDGE_FILES_DIR}/`)) {
+		return filePath.slice(KNOWLEDGE_FILES_DIR.length + 1);
+	}
+	if (filePath.startsWith('./')) {
+		return filePath.slice(2);
+	}
+	return filePath;
+}
+
+function stripTrailingNewline(text: string): string {
+	return text.replace(/\r?\n$/, '');
+}
+
+function quoteShellArg(value: string): string {
+	return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function truncateOperationOutput(text: string): { text: string; truncated: boolean } {
+	if (text.length <= MAX_OPERATION_OUTPUT_CHARS) {
 		return { text, truncated: false };
 	}
 
-	return { text: text.slice(0, MAX_COMMAND_OUTPUT_CHARS), truncated: true };
+	return { text: text.slice(0, MAX_OPERATION_OUTPUT_CHARS), truncated: true };
 }
 
 function buildScopedKnowledgeShellCommand(command: string): string {
 	return `if [ ! -d ${KNOWLEDGE_FILES_DIR} ]; then exit 0; fi; cd ${KNOWLEDGE_FILES_DIR} && ${command}`;
 }
 
-function readCommandStderr(artifacts: { stdout?: string } | undefined): string {
+function readCommandStderr(artifacts: { stdout?: string; stderr?: string } | undefined): string {
 	if (!artifacts || !('stderr' in artifacts)) {
 		return '';
 	}

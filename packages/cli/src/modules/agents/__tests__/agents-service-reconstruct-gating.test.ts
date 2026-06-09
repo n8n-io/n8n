@@ -529,12 +529,25 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
 		const agentKnowledgeSandboxService = mock<AgentKnowledgeSandboxService>();
-		agentKnowledgeSandboxService.runKnowledgeCommand.mockResolvedValue({
-			exitCode: 0,
-			stdout: '',
-			stderr: '',
-			stdoutTruncated: false,
-			stderrTruncated: false,
+		agentKnowledgeSandboxService.findKnowledgeFiles.mockResolvedValue({
+			files: [],
+			limit: 20,
+			offset: 0,
+			hasMore: false,
+		});
+		agentKnowledgeSandboxService.searchKnowledge.mockResolvedValue({
+			matches: [],
+			limit: 20,
+			offset: 0,
+			hasMore: false,
+			truncated: false,
+		});
+		agentKnowledgeSandboxService.readKnowledge.mockResolvedValue({
+			file: 'notes.txt',
+			fileId: 'file-1',
+			displayName: 'notes.txt',
+			ranges: [],
+			truncated: false,
 		});
 		const service = makeReconstructionService(agentsToolsService, [], {
 			agentsConfig,
@@ -556,19 +569,41 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
 		expect(getInjectedToolNames()).toContain('search_knowledge');
-		const tool = getInjectedToolBuilder('search_knowledge')?.build();
-		if (!tool?.handler) {
-			throw new Error('Expected search_knowledge tool to be injected with a handler');
+		expect(getInjectedToolNames()).toContain('find_knowledge_files');
+		expect(getInjectedToolNames()).toContain('read_knowledge');
+		const findFilesTool = getInjectedToolBuilder('find_knowledge_files')?.build();
+		const searchTool = getInjectedToolBuilder('search_knowledge')?.build();
+		const readTool = getInjectedToolBuilder('read_knowledge')?.build();
+		if (!findFilesTool?.handler || !searchTool?.handler || !readTool?.handler) {
+			throw new Error('Expected knowledge retrieval tools to be injected with handlers');
 		}
 
-		await tool.handler({ command: 'wc -l notes.txt' }, {} as never);
-		expect(agentKnowledgeSandboxService.runKnowledgeCommand).toHaveBeenCalledWith(
+		await findFilesTool.handler({ query: 'notes' }, {} as never);
+		expect(agentKnowledgeSandboxService.findKnowledgeFiles).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			{ query: 'notes' },
+		);
+
+		await searchTool.handler({ query: 'flow control' }, {} as never);
+		expect(agentKnowledgeSandboxService.searchKnowledge).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			'user-1',
+			{ query: 'flow control' },
+		);
+
+		await readTool.handler(
+			{ file: 'notes.txt', ranges: [{ startLine: 1, endLine: 3 }] },
+			{} as never,
+		);
+		expect(agentKnowledgeSandboxService.readKnowledge).toHaveBeenCalledWith(
 			'project-1',
 			'agent-1',
 			'user-1',
 			{
-				command: 'wc -l notes.txt',
-				timeoutMs: undefined,
+				file: 'notes.txt',
+				ranges: [{ startLine: 1, endLine: 3 }],
 			},
 		);
 	});
@@ -585,6 +620,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 			await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
 			expect(getInjectedToolNames()).not.toContain('search_knowledge');
+			expect(getInjectedToolNames()).not.toContain('find_knowledge_files');
+			expect(getInjectedToolNames()).not.toContain('read_knowledge');
 		},
 	);
 });
