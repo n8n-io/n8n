@@ -12,7 +12,7 @@ const props = defineProps<{
 	disabled: boolean;
 }>();
 
-interface SubmitSuggestionPayload {
+interface InsertSuggestionPayload {
 	promptKey: BaseTextKey;
 	suggestionId: string;
 	suggestionKind: 'prompt';
@@ -21,7 +21,7 @@ interface SubmitSuggestionPayload {
 
 const emit = defineEmits<{
 	'preview-change': [promptKey: BaseTextKey | null];
-	'submit-suggestion': [payload: SubmitSuggestionPayload];
+	'insert-suggestion': [payload: InsertSuggestionPayload];
 	'workflow-preview': [workflowFile: string | null];
 }>();
 
@@ -88,7 +88,7 @@ function handleSuggestionClick(suggestion: WorkflowPreviewSuggestion) {
 	});
 
 	clearPreview();
-	emit('submit-suggestion', {
+	emit('insert-suggestion', {
 		promptKey: suggestion.promptKey,
 		suggestionId: suggestion.id,
 		suggestionKind: 'prompt',
