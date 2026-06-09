@@ -97,9 +97,9 @@ export function createGetResourceLocatorOptionsTool(
 
 				const property = findNodeParameterProperty(nodeType.properties, parameterPath);
 				const lookup = property ? getDynamicNodeParameterLookup(property) : null;
-				if (lookup?.kind !== 'resourceLocator') {
+				if (!lookup || lookup.kind === 'loadOptionsRouting') {
 					const error = new ValidationError(
-						`Parameter "${parameterPath}" on node "${node.name}" is not a resource locator with list search capability`,
+						`Parameter "${parameterPath}" on node "${node.name}" is not a resource locator or load-options parameter with list search capability`,
 						{ extra: { nodeId, parameterPath } },
 					);
 					reporter.error(error);

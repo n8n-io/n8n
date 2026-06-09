@@ -215,6 +215,15 @@ export function toLoadedOptionParameterValue(option: INodePropertyOptions): Node
 	return option.value;
 }
 
+function escapeXmlText(value: string): string {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&apos;');
+}
+
 export function formatResourceLocatorOptionsForLLM(
 	options: INodeListSearchItems[],
 	parameterPath: string,
@@ -224,15 +233,15 @@ export function formatResourceLocatorOptionsForLLM(
 	}
 
 	const parts: string[] = [
-		`<resource_locator_options parameter="${parameterPath}">`,
+		`<resource_locator_options parameter="${escapeXmlText(parameterPath)}">`,
 		`<total_count>${options.length}</total_count>`,
 		'<options>',
 	];
 
 	options.forEach((opt, index) => {
 		parts.push(`  <option index="${index}">`);
-		parts.push(`    <display_name>${opt.name}</display_name>`);
-		parts.push(`    <id>${String(opt.value)}</id>`);
+		parts.push(`    <display_name>${escapeXmlText(opt.name)}</display_name>`);
+		parts.push(`    <id>${escapeXmlText(String(opt.value))}</id>`);
 		parts.push('  </option>');
 	});
 

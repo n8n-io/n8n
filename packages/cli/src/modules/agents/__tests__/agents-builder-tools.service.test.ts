@@ -497,6 +497,92 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		it('write_config allows unrelated edits when an existing dynamic selector already uses $fromAI', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig: AgentJsonConfig = {
+				...baseConfig,
+				integrations: [],
+				tools: [makeLinearToolWithFromAiTeamId()],
+			};
+			const updatedConfig = {
+				...currentConfig,
+				instructions: 'Help with approved support tickets.',
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+			expect(result).toEqual({
+				ok: true,
+				config: normalizedConfig,
+				configHash: getAgentConfigHash(normalizedConfig),
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+		});
+
+		it('patch_config allows unrelated edits when an existing dynamic selector already uses $fromAI', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig: AgentJsonConfig = {
+				...baseConfig,
+				integrations: [],
+				tools: [makeLinearToolWithFromAiTeamId()],
+			};
+			const updatedConfig = {
+				...currentConfig,
+				description: 'Updated description',
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([
+						{ op: 'add', path: '/description', value: 'Updated description' },
+					]),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+			expect(result).toEqual({
+				ok: true,
+				config: normalizedConfig,
+				configHash: getAgentConfigHash(normalizedConfig),
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+		});
+
 		it('write_config adds OpenAI native web search defaults', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };

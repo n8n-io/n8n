@@ -106,7 +106,11 @@ function rejectIfUnsupportedNativeWebSearch(
 type FromAiParameterPath = {
 	parameterPath: string;
 	jsonPointer: string;
+	value: string;
 };
+
+type AgentConfigTool = NonNullable<AgentJsonConfig['tools']>[number];
+type AgentConfigNodeTool = Extract<AgentConfigTool, { type: 'node' }>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -114,6 +118,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function escapeJsonPointerPart(part: string): string {
 	return part.replaceAll('~', '~0').replaceAll('/', '~1');
+}
+
+function unescapeJsonPointerPart(part: string): string {
+	return part.replaceAll('~1', '/').replaceAll('~0', '~');
 }
 
 function collectFromAiParameterPaths(
@@ -128,6 +136,7 @@ function collectFromAiParameterPaths(
 			{
 				parameterPath: pathParts.join('.'),
 				jsonPointer: jsonPointerParts.map(escapeJsonPointerPart).join('/'),
+				value,
 			},
 		];
 	}
@@ -143,6 +152,74 @@ function collectFromAiParameterPaths(
 	return Object.entries(value).flatMap(([key, nested]) =>
 		collectFromAiParameterPaths(nested, [...pathParts, key], [...jsonPointerParts, key]),
 	);
+}
+
+function isNodeTool(tool: AgentConfigTool | undefined): tool is AgentConfigNodeTool {
+	return tool?.type === 'node';
+}
+
+function hasSameNodeType(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
+	return (
+		left.node.nodeType === right.node.nodeType &&
+		left.node.nodeTypeVersion === right.node.nodeTypeVersion
+	);
+}
+
+function hasSameNodeToolIdentity(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
+	return left.name === right.name && hasSameNodeType(left, right);
+}
+
+function findPreviousNodeTool(
+	previousConfig: AgentJsonConfig | null,
+	currentTool: AgentConfigNodeTool,
+	currentToolIndex: number,
+): AgentConfigNodeTool | null {
+	const previousTools = previousConfig?.tools ?? [];
+	const sameIndexTool = previousTools[currentToolIndex];
+	if (isNodeTool(sameIndexTool) && hasSameNodeToolIdentity(sameIndexTool, currentTool)) {
+		return sameIndexTool;
+	}
+
+	const matchingTools = previousTools.filter(
+		(tool): tool is AgentConfigNodeTool =>
+			isNodeTool(tool) && hasSameNodeToolIdentity(tool, currentTool),
+	);
+
+	return matchingTools.length === 1 ? matchingTools[0] : null;
+}
+
+function getValueAtJsonPointer(value: unknown, jsonPointer: string): unknown {
+	const pointerParts = jsonPointer.split('/').map(unescapeJsonPointerPart);
+	let current: unknown = value;
+
+	for (const part of pointerParts) {
+		if (Array.isArray(current)) {
+			const index = Number(part);
+			if (!Number.isInteger(index)) return undefined;
+
+			current = current[index];
+			continue;
+		}
+
+		if (!isRecord(current)) return undefined;
+
+		current = current[part];
+	}
+
+	return current;
+}
+
+function isExistingFromAiValue(
+	previousConfig: AgentJsonConfig | null,
+	currentTool: AgentConfigNodeTool,
+	currentToolIndex: number,
+	jsonPointer: string,
+	value: string,
+): boolean {
+	const previousTool = findPreviousNodeTool(previousConfig, currentTool, currentToolIndex);
+	if (!previousTool) return false;
+
+	return getValueAtJsonPointer(previousTool.node.nodeParameters, jsonPointer) === value;
 }
 
 function canonicalizeJson(value: unknown): unknown {
@@ -267,6 +344,7 @@ export class AgentsBuilderToolsService {
 
 	private rejectIfDynamicSelectorUsesFromAi(
 		config: AgentJsonConfig,
+		previousConfig: AgentJsonConfig | null,
 	): { errors: ConfigValidationError[] } | null {
 		const errors: ConfigValidationError[] = [];
 
@@ -287,9 +365,12 @@ export class AgentsBuilderToolsService {
 			}
 
 			const reportedDynamicPaths = new Set<string>();
-			for (const { parameterPath, jsonPointer } of fromAiPaths) {
+			for (const { parameterPath, jsonPointer, value } of fromAiPaths) {
 				const dynamicPath = this.getDynamicSelectorPath(nodeTypeDescription, parameterPath);
 				if (!dynamicPath || reportedDynamicPaths.has(dynamicPath)) continue;
+				if (isExistingFromAiValue(previousConfig, tool, toolIndex, jsonPointer, value)) {
+					continue;
+				}
 
 				reportedDynamicPaths.add(dynamicPath);
 				errors.push({
@@ -397,7 +478,10 @@ export class AgentsBuilderToolsService {
 					if (unsupportedNativeWebSearch) {
 						return { ok: false, errors: unsupportedNativeWebSearch.errors };
 					}
-					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(zodResult.data);
+					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+						zodResult.data,
+						snapshot.config,
+					);
 					if (dynamicSelectorFromAi) {
 						return { ok: false, errors: dynamicSelectorFromAi.errors };
 					}
@@ -509,7 +593,10 @@ export class AgentsBuilderToolsService {
 					if (unsupportedNativeWebSearch) {
 						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch.errors };
 					}
-					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(zodResult.data);
+					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+						zodResult.data,
+						snapshot.config,
+					);
 					if (dynamicSelectorFromAi) {
 						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi.errors };
 					}
