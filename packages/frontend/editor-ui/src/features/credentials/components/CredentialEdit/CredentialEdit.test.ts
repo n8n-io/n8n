@@ -12,6 +12,7 @@ import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import type { NewCredentialsModal } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -823,12 +824,16 @@ describe('CredentialEdit', () => {
 	});
 
 	describe('saving credentials', () => {
-		const createPiniaForSaveTest = () =>
+		const createPiniaForSaveTest = (credentialModalState: Partial<NewCredentialsModal> = {}) =>
 			createTestingPinia({
 				initialState: {
 					[STORES.UI]: {
 						modalsById: {
-							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+							[CREDENTIAL_EDIT_MODAL_KEY]: {
+								open: true,
+								showAuthSelector: false,
+								...credentialModalState,
+							},
 						},
 					},
 					[STORES.SETTINGS]: {
@@ -852,8 +857,11 @@ describe('CredentialEdit', () => {
 				},
 			});
 
-		const setupNewCredential = (credentialType: ICredentialType) => {
-			const pinia = createPiniaForSaveTest();
+		const setupNewCredential = (
+			credentialType: ICredentialType,
+			credentialModalState: Partial<NewCredentialsModal> = {},
+		) => {
+			const pinia = createPiniaForSaveTest(credentialModalState);
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.state.credentialTypes = {
 				[credentialType.name]: credentialType,
@@ -873,101 +881,16 @@ describe('CredentialEdit', () => {
 			return { credentialsStore, pinia, uiStore };
 		};
 
-		test('closes the modal after saving credentials that cannot be tested', async () => {
-			const credentialType = {
-				name: 'testApi',
-				displayName: 'Test API',
-				properties: [],
-			} as ICredentialType;
-			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType);
-
-			const { getByTestId } = renderComponent({
-				props: {
-					activeId: credentialType.name,
-					modalName: CREDENTIAL_EDIT_MODAL_KEY,
-					mode: 'new',
-				},
-				pinia,
-			});
-
-			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
-			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
-
-			await waitFor(() => {
-				expect(credentialsStore.createNewCredential).toHaveBeenCalled();
-				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
-			});
-			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
-		});
-
-		test('closes the modal after saving credentials with a successful connection test', async () => {
-			const credentialType = {
-				name: 'testApi',
-				displayName: 'Test API',
-				properties: [],
-				test: { request: {} },
-			} as unknown as ICredentialType;
-			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType);
-			credentialsStore.testCredential.mockResolvedValue({
-				status: 'OK',
-				message: 'Connected',
-			});
-
-			const { getByTestId } = renderComponent({
-				props: {
-					activeId: credentialType.name,
-					modalName: CREDENTIAL_EDIT_MODAL_KEY,
-					mode: 'new',
-				},
-				pinia,
-			});
-
-			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
-			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
-
-			await waitFor(() => {
-				expect(credentialsStore.testCredential).toHaveBeenCalled();
-				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
-			});
-		});
-
-		test('keeps the modal open when the connection test fails after saving', async () => {
-			const credentialType = {
-				name: 'testApi',
-				displayName: 'Test API',
-				properties: [],
-				test: { request: {} },
-			} as unknown as ICredentialType;
-			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType);
-			credentialsStore.testCredential.mockResolvedValue({
-				status: 'Error',
-				message: 'Could not connect',
-			});
-
-			const { getByTestId } = renderComponent({
-				props: {
-					activeId: credentialType.name,
-					modalName: CREDENTIAL_EDIT_MODAL_KEY,
-					mode: 'new',
-				},
-				pinia,
-			});
-
-			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
-			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
-
-			await waitFor(() => expect(credentialsStore.testCredential).toHaveBeenCalled());
-			expect(uiStore.closeModal).not.toHaveBeenCalled();
-		});
-
-		test('closes the modal only after a successful OAuth callback', async () => {
+		const setupExistingOAuthCredential = (
+			credentialModalState: Partial<NewCredentialsModal> = {},
+		) => {
 			vi.stubGlobal('BroadcastChannel', BroadcastChannelMock);
 			vi.stubGlobal(
 				'open',
 				vi.fn(() => ({ close: vi.fn() })),
 			);
 
-			const pinia = createPiniaForSaveTest();
+			const pinia = createPiniaForSaveTest(credentialModalState);
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.state.credentialTypes = {
 				[oAuth2Api.name]: oAuth2Api,
@@ -1009,13 +932,139 @@ describe('CredentialEdit', () => {
 			credentialsStore.fetchAllCredentials.mockResolvedValue([]);
 			const uiStore = mockedStore(useUIStore);
 
-			const { getByTestId } = renderComponent({
+			const renderResult = renderComponent({
 				props: {
 					activeId: 'oauth-cred',
 					modalName: CREDENTIAL_EDIT_MODAL_KEY,
 					mode: 'edit',
 				},
 				pinia,
+			});
+
+			return { credentialsStore, uiStore, ...renderResult };
+		};
+
+		test('closes the modal after saving credentials that cannot be tested when closeOnSave is enabled', async () => {
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType;
+			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType, {
+				closeOnSave: true,
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+			await waitFor(() => {
+				expect(credentialsStore.createNewCredential).toHaveBeenCalled();
+				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
+			});
+			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+		});
+
+		test('keeps the modal open after saving credentials by default', async () => {
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType;
+			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+			await waitFor(() => expect(credentialsStore.createNewCredential).toHaveBeenCalled());
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
+			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+		});
+
+		test('closes the modal after saving credentials with a successful connection test when closeOnSave is enabled', async () => {
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+				test: { request: {} },
+			} as unknown as ICredentialType;
+			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType, {
+				closeOnSave: true,
+			});
+			credentialsStore.testCredential.mockResolvedValue({
+				status: 'OK',
+				message: 'Connected',
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+			await waitFor(() => {
+				expect(credentialsStore.testCredential).toHaveBeenCalled();
+				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
+			});
+		});
+
+		test('keeps the modal open when the connection test fails after saving', async () => {
+			const credentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+				test: { request: {} },
+			} as unknown as ICredentialType;
+			const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType, {
+				closeOnSave: true,
+			});
+			credentialsStore.testCredential.mockResolvedValue({
+				status: 'Error',
+				message: 'Could not connect',
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: credentialType.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+
+			await waitFor(() => expect(credentialsStore.getNewCredentialName).toHaveBeenCalled());
+			await userEvent.click(within(getByTestId('credential-save-button')).getByRole('button'));
+
+			await waitFor(() => expect(credentialsStore.testCredential).toHaveBeenCalled());
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
+		});
+
+		test('closes the modal only after a successful OAuth callback when closeOnSave is enabled', async () => {
+			const { credentialsStore, uiStore, getByTestId } = setupExistingOAuthCredential({
+				closeOnSave: true,
 			});
 
 			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
@@ -1030,6 +1079,21 @@ describe('CredentialEdit', () => {
 			await waitFor(() =>
 				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY),
 			);
+		});
+
+		test('keeps the modal open after a successful OAuth callback by default', async () => {
+			const { credentialsStore, uiStore, getByTestId } = setupExistingOAuthCredential();
+
+			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
+			await userEvent.click(getByTestId('quick-connect-button'));
+
+			await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalled());
+
+			broadcastMessageListener?.({ data: 'success' } as MessageEvent);
+
+			await waitFor(() => expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled());
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
 		});
 	});
 
