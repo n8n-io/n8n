@@ -66,7 +66,7 @@ function isPollOrWebhookTrigger(node: INode | undefined): boolean {
 }
 
 function findFirstTrigger(nodes: INode[]): INode | undefined {
-	return nodes.find((node) => {
+	const triggers = nodes.filter((node) => {
 		if (node.disabled) return false;
 		return (
 			node.type === SCHEDULE_TRIGGER_TYPE ||
@@ -75,6 +75,13 @@ function findFirstTrigger(nodes: INode[]): INode | undefined {
 			TRIGGER_TYPE_SUFFIXES.some((suffix) => node.type.endsWith(suffix))
 		);
 	});
+	if (triggers.length === 0) return undefined;
+	// A workflow that has BOTH a manual trigger and an autonomous one (schedule/
+	// poll/webhook) is usually a recurring workflow with manual as a debugging
+	// entry point, not the other way around. Prefer the autonomous trigger so
+	// the classifier puts the workflow in the right bucket (upcoming / action-
+	// needed) instead of readyToRun.
+	return triggers.find((t) => t.type !== MANUAL_TRIGGER_TYPE) ?? triggers[0];
 }
 
 function hasDesktopAssistantTag(tags: Array<{ name: string }>): boolean {

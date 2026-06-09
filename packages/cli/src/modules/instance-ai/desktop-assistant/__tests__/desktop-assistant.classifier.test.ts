@@ -261,6 +261,26 @@ describe('classifyWorkflowsForDesktopAssistant — bucketing rules', () => {
 		expect(result.readyToRun).toHaveLength(0);
 	});
 
+	test('multi-trigger workflow [manualTrigger, scheduleTrigger] uses the autonomous trigger for classification', () => {
+		const result = classifyWorkflowsForDesktopAssistant([
+			input({
+				workflowId: 'wf-multi',
+				active: true,
+				nodes: [
+					node({ type: MANUAL_TYPE }),
+					node({
+						type: SCHEDULE_TYPE,
+						parameters: { rule: { interval: [{ triggerAtHour: 9 }] } },
+					}),
+				],
+				tags: [],
+			}),
+		]);
+		expect(result.upcoming).toHaveLength(1);
+		expect(result.upcoming[0].trigger.kind).toBe('schedule');
+		expect(result.readyToRun).toHaveLength(0);
+	});
+
 	test('an active user-built webhook workflow goes to upcoming (autonomous trigger; readyToRun is for manually-triggered workflows)', () => {
 		const result = classifyWorkflowsForDesktopAssistant([
 			input({
