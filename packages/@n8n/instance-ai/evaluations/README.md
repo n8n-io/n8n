@@ -52,7 +52,8 @@ You need an n8n instance running with Instance AI enabled, a seeded owner accoun
 
 1. **Create `.env.local`** at the repo root with at minimum:
    ```env
-   N8N_INSTANCE_AI_MODEL_API_KEY=sk-ant-...
+   N8N_INSTANCE_AI_MODEL=openai/gpt-5.5
+   OPENAI_API_KEY=sk-proj-...
    N8N_EVAL_EMAIL=nathan@n8n.io
    N8N_EVAL_PASSWORD=PlaywrightTest123
    # Optional — see "Environment variables" for the full list
@@ -165,7 +166,7 @@ Every run produces:
 
 - **Console** — live progress, per-scenario pass/fail with `[failure_category]` tag, and a grouped summary.
 - **`eval-results.json`** — structured results in `--output-dir` (or cwd). Consumed by the CI PR comment.
-- **`.data/workflow-eval-report.html`** — self-contained debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
+- **`.data/workflow-eval-report.html`** — self-contained debugging view with a green/red stage review for prompt, planner, builder, and verifier behavior, generalized prompt-improvement suggestions for failures, per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
 - **LangSmith experiment** — only when `LANGSMITH_API_KEY` is set. See the caveat in [Environment variables](#environment-variables).
 
 ### Workflow checks (per built workflow)
@@ -228,7 +229,10 @@ Operational details:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `N8N_INSTANCE_AI_MODEL_API_KEY` | Yes | Anthropic API key for the agent, mock generation, and verification |
+| `N8N_INSTANCE_AI_MODEL` | Yes | Model used by Instance AI and, by default, the eval helper calls for mock generation and verification |
+| `N8N_INSTANCE_AI_MODEL_API_KEY` | No | Generic eval-model API key override |
+| `OPENAI_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `openai/` |
+| `ANTHROPIC_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `anthropic/` |
 | `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
 | `N8N_EVAL_PASSWORD` | No | n8n login password (defaults to E2E test owner) |
 | `LANGSMITH_API_KEY` | No | Enables experiment tracking + tracing. **See caveat below.** |
