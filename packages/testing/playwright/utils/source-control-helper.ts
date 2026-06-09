@@ -1,5 +1,6 @@
 import type { GitCommitInfo, SourceControlledFile } from '@n8n/api-types';
 import { expect } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import type { GiteaHelper } from 'n8n-containers';
 
 import type { n8nPage } from '../pages/n8nPage';
@@ -60,9 +61,10 @@ const initSourceControlPreferences = async (api: ApiHelpers) => {
 const initSourceControlSSHKey = async ({ api, gitea }: { api: ApiHelpers; gitea: GiteaHelper }) => {
 	const preferences = await getSourceControlPreferences(api);
 	const sshKey = preferences.data.publicKey;
+	const sshKeyHash = createHash('sha256').update(sshKey).digest('hex').slice(0, 12);
 
 	try {
-		await gitea.addSSHKey('n8n-source-control', sshKey);
+		await gitea.addSSHKey(`n8n-source-control-${sshKeyHash}`, sshKey);
 	} catch {
 		// Key might already exist in Gitea - this is fine if we're reusing keys
 	}
