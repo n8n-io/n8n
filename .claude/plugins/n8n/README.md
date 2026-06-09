@@ -46,8 +46,11 @@ mostly-autonomous loop. It delegates to a purpose-built agent set:
 | `n8n:autodev-security-reviewer` | Review diff: injection, authz, secrets, SSRF |
 | `n8n:autodev-conventions-reviewer` | Review diff: n8n patterns, code quality |
 | `n8n:autodev-test-reviewer` | Review diff: high-value missing tests, test quality |
+| `n8n:autodev-vue-reviewer` | Review diff: Vue 3 + Pinia, design-system/i18n conventions (frontend diffs only) |
 
-Reviewers tag findings `[BLOCKER]`/`[MAJOR]`/`[MINOR]`; loops converge until no
+The four review lenses run in parallel; the Vue lens is added as a fifth **only
+when the diff touches frontend code** (`.vue`, `packages/frontend/**`, or
+`@n8n/design-system`). Reviewers tag findings `[BLOCKER]`/`[MAJOR]`/`[MINOR]`; loops converge until no
 `[BLOCKER]`/`[MAJOR]` remain (capped at 3 rounds, then escalate). The skill
 never merges and confirms before opening a PR. Security fixes get neutral
 branch/commit/test naming per AGENTS.md.

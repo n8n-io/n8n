@@ -37,6 +37,7 @@ agents; fall back to the generic equivalents only if one isn't available:**
 | Review: security | `n8n:autodev-security-reviewer` | `security-auditor` |
 | Review: best practices & patterns | `n8n:autodev-conventions-reviewer` | `code-reviewer` + `n8n:conventions` |
 | Review: testing | `n8n:autodev-test-reviewer` | `expert-test-developer` + `/check-tests` |
+| Review: frontend/Vue (only if diff touches frontend) | `n8n:autodev-vue-reviewer` | `expert-vue3-developer` + `n8n:design-system` |
 
 Confirm availability at runtime (the Agent tool lists available agent types) and use the fallback
 when a preferred agent is missing.
@@ -183,8 +184,10 @@ green before moving to review.
 
 When implementation is in a green, committed state, review the diff from several independent angles
 **in parallel** — dispatch the subagents in a single turn so they run concurrently. Each returns
-findings tagged `[BLOCKER]` / `[MAJOR]` / `[MINOR]` with file:line and a concrete fix. Cover these
-four lenses:
+findings tagged `[BLOCKER]` / `[MAJOR]` / `[MINOR]` with file:line and a concrete fix. Always cover
+these four lenses, and add the fifth (Vue) **only when the diff touches frontend code** — i.e. any
+`.vue` file, `packages/frontend/**`, `editor-ui`, or `@n8n/design-system`. On backend-only tickets,
+skip it rather than dispatch a no-op reviewer:
 
 1. **Architecture** — structure, coupling, data flow, fit with existing design.
    (`n8n:autodev-architecture-reviewer`; fallback `architecture-auditor`)
@@ -198,6 +201,9 @@ four lenses:
    `expert-test-developer`. `/check-tests` is a good starting scan; for logic-heavy files,
    `n8n:mutant-score` to measure mutation coverage and `n8n:mutant-fix` to add tests that kill
    surviving mutants.)
+5. **Frontend / Vue** *(only when the diff touches frontend)* — Vue 3 + Pinia reactivity, design-system
+   and i18n conventions, a11y, component health. (`n8n:autodev-vue-reviewer`; fallback
+   `expert-vue3-developer` + the `n8n:design-system` skill)
 
 Optionally add automated second opinions if available in the environment (e.g. a `cubic`/`/run-review`
 pass), but don't depend on them.
