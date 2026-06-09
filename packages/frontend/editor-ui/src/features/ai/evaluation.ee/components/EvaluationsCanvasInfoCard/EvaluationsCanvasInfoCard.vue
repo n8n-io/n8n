@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useAiRootNodes } from '../../composables/useAiRootNodes';
@@ -42,6 +43,7 @@ const marqueeMetrics = computed(() =>
 // nature of evaluation configs.
 
 const locale = useI18n();
+const telemetry = useTelemetry();
 const wizardStore = useEvaluationsWizardSidepanelStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const rootStore = useRootStore();
@@ -172,6 +174,10 @@ function dismiss() {
 }
 
 function openWizard() {
+	telemetry.track('User opened evaluations wizard', {
+		workflow_id: workflowId.value,
+		source: 'canvas_info_card',
+	});
 	wizardStore.open(0);
 }
 </script>

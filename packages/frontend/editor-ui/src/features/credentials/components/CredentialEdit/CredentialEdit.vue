@@ -174,6 +174,11 @@ const hideAskAssistant = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
 });
 
+const closeOnSave = computed<boolean>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
+});
+
 const activeNodeType = computed(() => {
 	const activeNode = contextNode.value;
 
@@ -1037,9 +1042,17 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 			await testCredential(credentialDetails);
 			isTesting.value = false;
+
+			if (testedSuccessfully.value && closeOnSave.value) {
+				closeDialog();
+			}
 		} else {
 			authError.value = '';
 			testedSuccessfully.value = false;
+
+			if (!isOAuthType.value && closeOnSave.value) {
+				closeDialog();
+			}
 		}
 
 		const trackProperties: ITelemetryTrackProperties = {
@@ -1287,9 +1300,10 @@ async function oAuthCredentialAuthorize() {
 	const types = parentTypes.value;
 
 	try {
-		// We exclude sharedWithProjects because it's not needed for the authorization and it causes the request to be too large
-		const { sharedWithProjects, ...sanitizedCredData } = credentialData.value;
-		const credData = { id: credential.id, ...sanitizedCredData };
+		// The authorization endpoints only need the credential id; the backend re-fetches the
+		// stored credential by id. Sending more (homeProject, scopes, etc.) bloats the GET query
+		// string and can exceed proxy header size limits.
+		const credData = { id: credential.id };
 
 		if (credentialTypeName.value === 'oAuth2Api' || types.includes('oAuth2Api')) {
 			if (isValidCredentialResponse(credData)) {
@@ -1394,6 +1408,10 @@ async function oAuthCredentialAuthorize() {
 			// Close the window
 			if (oauthPopup) {
 				oauthPopup.close();
+			}
+
+			if (closeOnSave.value) {
+				closeDialog();
 			}
 		}
 	};
