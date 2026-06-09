@@ -263,8 +263,9 @@ export class AgentKnowledgeSandboxService {
 					await sandbox.start(timeoutSeconds);
 				}
 
+				const reusableSandbox = await this.resolveReusableSandbox(daytona, sandbox, connection);
 				this.logger.debug('Reused agent knowledge sandbox', { projectId, agentId });
-				return { sandbox, reused: true };
+				return { sandbox: reusableSandbox, reused: true };
 			}
 
 			if (page >= listedSandboxes.totalPages) {
@@ -333,6 +334,18 @@ export class AgentKnowledgeSandboxService {
 			mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
 			subpath: buildKnowledgeVolumeSubpath(this.instanceSettings.instanceId, projectId, agentId),
 		};
+	}
+
+	private async resolveReusableSandbox(
+		daytona: { get: (name: string) => Promise<Sandbox> },
+		sandbox: Sandbox,
+		connection: AgentKnowledgeDaytonaConnection,
+	): Promise<Sandbox> {
+		if (connection.mode !== 'proxy') {
+			return sandbox;
+		}
+
+		return await daytona.get(sandbox.name);
 	}
 
 	private assertValidPathSegments(projectId: string, agentId: string): void {

@@ -33,6 +33,8 @@ interface MockProcess {
 }
 
 interface MockSandbox {
+	id: string;
+	name: string;
 	state?: string;
 	volumes?: Array<{ volumeId: string; mountPath: string; subpath?: string }>;
 	start: jest.Mock<Promise<void>, [number]>;
@@ -50,6 +52,7 @@ const createMock = jest.fn<
 	Promise<MockSandbox>,
 	[Record<string, unknown>, { timeout?: number }?]
 >();
+const getMock = jest.fn<Promise<MockSandbox>, [string]>();
 const daytonaInstances: MockDaytona[] = [];
 
 class MockDaytona {
@@ -59,6 +62,7 @@ class MockDaytona {
 
 	list = listMock;
 	create = createMock;
+	get = getMock;
 }
 
 jest.mock('@n8n/agents/sandbox', () => ({
@@ -134,8 +138,14 @@ function makeFilesystem(): MockFilesystem {
 	};
 }
 
-function makeSandbox(state = 'started', volumes = [expectedVolumeMount]): MockSandbox {
+function makeSandbox(
+	state = 'started',
+	volumes = [expectedVolumeMount],
+	overrides: Partial<Pick<MockSandbox, 'id' | 'name'>> = {},
+): MockSandbox {
 	return {
+		id: overrides.id ?? 'sandbox-id',
+		name: overrides.name ?? 'agents-knowledgebase-sandbox',
 		state,
 		volumes,
 		start: jest.fn<Promise<void>, [number]>(async () => {}),
@@ -162,6 +172,9 @@ describe('AgentKnowledgeSandboxService', () => {
 		daytonaInstances.length = 0;
 		listMock.mockResolvedValue({ items: [], totalPages: 1 });
 		createMock.mockResolvedValue(makeSandbox('started'));
+		getMock.mockResolvedValue(
+			makeSandbox('started', [expectedVolumeMount], { name: 'hydrated-sandbox' }),
+		);
 	});
 
 	it('returns sandbox reused when list yields a started sandbox with matching volume mount', async () => {
@@ -374,6 +387,81 @@ describe('AgentKnowledgeSandboxService', () => {
 			1,
 			100,
 		);
+	});
+
+	it('rehydrates reusable sandboxes via daytona.get in proxy mode', async () => {
+		const listedSandbox = makeSandbox('started', [expectedVolumeMount], {
+			name: 'listed-sandbox',
+		});
+		const hydratedSandbox = makeSandbox('started', [expectedVolumeMount], {
+			name: 'hydrated-sandbox',
+		});
+		listMock.mockResolvedValue({ items: [listedSandbox], totalPages: 1 });
+		getMock.mockResolvedValue(hydratedSandbox);
+		const mockClient = makeProxyClient();
+		const aiService = makeAiService({
+			isProxyEnabled: jest.fn().mockReturnValue(true),
+			getClient: jest.fn().mockResolvedValue(mockClient),
+		});
+		const service = makeService({}, mock<Logger>(), aiService);
+
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
+			SEARCH_KNOWLEDGE_SANDBOX_REUSED,
+		);
+		expect(getMock).toHaveBeenCalledWith('listed-sandbox');
+		expect(createMock).not.toHaveBeenCalled();
+	});
+
+	it('does not rehydrate reusable sandboxes in direct mode', async () => {
+		const listedSandbox = makeSandbox('started', [expectedVolumeMount], {
+			name: 'listed-sandbox',
+		});
+		listMock.mockResolvedValue({ items: [listedSandbox], totalPages: 1 });
+		const service = makeService();
+
+		await service.runKnowledgeCommand('project-1', 'agent-1', userId, {
+			command: 'rg --files | head -50',
+		});
+
+		expect(getMock).not.toHaveBeenCalled();
+		expect(listedSandbox.process.executeCommand).toHaveBeenCalled();
+	});
+
+	it('executes commands on the rehydrated sandbox in proxy mode', async () => {
+		const listedSandbox = makeSandbox('started', [expectedVolumeMount], {
+			name: 'listed-sandbox',
+		});
+		const hydratedSandbox = makeSandbox('started', [expectedVolumeMount], {
+			name: 'hydrated-sandbox',
+		});
+		hydratedSandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: { stdout: 'file.txt\n', stderr: '' },
+		});
+		listMock.mockResolvedValue({ items: [listedSandbox], totalPages: 1 });
+		getMock.mockResolvedValue(hydratedSandbox);
+		const mockClient = makeProxyClient();
+		const aiService = makeAiService({
+			isProxyEnabled: jest.fn().mockReturnValue(true),
+			getClient: jest.fn().mockResolvedValue(mockClient),
+		});
+		const service = makeService({}, mock<Logger>(), aiService);
+
+		await expect(
+			service.runKnowledgeCommand('project-1', 'agent-1', userId, {
+				command: 'rg --files | head -50',
+			}),
+		).resolves.toEqual({
+			exitCode: 0,
+			stdout: 'file.txt\n',
+			stderr: '',
+			stdoutTruncated: false,
+			stderrTruncated: false,
+		});
+
+		expect(getMock).toHaveBeenCalledWith('listed-sandbox');
+		expect(listedSandbox.process.executeCommand).not.toHaveBeenCalled();
+		expect(hydratedSandbox.process.executeCommand).toHaveBeenCalled();
 	});
 
 	it('rejects before calling Daytona when the instance id is invalid', async () => {
