@@ -57,6 +57,11 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 	return undefined;
 }
 
+/** A workflow-builder sub-agent node, identified by kind or role. */
+function isBuilderNode(node: InstanceAiAgentNode): boolean {
+	return node.kind === 'builder' || node.role === 'workflow-builder';
+}
+
 /**
  * Walks an agent tree depth-first (most recent last) and returns the agentId
  * and workflowId of the latest workflow-builder sub-agent that was spawned
@@ -70,9 +75,8 @@ export function getLatestBuilderTarget(node: InstanceAiAgentNode): BuilderTarget
 		const child = node.children[i];
 		const nested = getLatestBuilderTarget(child);
 		if (nested) return nested;
-		const isBuilder = child.kind === 'builder' || child.role === 'workflow-builder';
 		if (
-			isBuilder &&
+			isBuilderNode(child) &&
 			child.targetResource?.type === 'workflow' &&
 			typeof child.targetResource.id === 'string'
 		) {
@@ -115,15 +119,18 @@ export function getLatestWorkflowSetupResult(
 	return undefined;
 }
 
-const WORKFLOW_UPDATE_ACTIONS = new Set(['update', 'restore-version']);
+const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
  * (from args) and toolCallId from the latest successful `workflows` tool call
- * that mutated the workflow definition (action=update / restore-version). Like
- * the setup tools, these modify an existing workflow but surface under tool name
- * 'workflows' — invisible to getLatestBuildResult — and don't reliably return
- * the workflowId in the result, so it is read from the call args.
+ * that mutated the workflow definition (action=update / restore-version / setup).
+ * These modify an existing workflow but surface under tool name 'workflows' —
+ * invisible to getLatestBuildResult — and don't reliably return the workflowId in
+ * the result, so it is read from the call args. `setup` is the current path for
+ * credential/parameter configuration (the inline setup card); the legacy
+ * setup-workflow / apply-workflow-credentials tools are handled by
+ * getLatestWorkflowSetupResult.
  */
 export function getLatestWorkflowUpdateResult(
 	node: InstanceAiAgentNode,
@@ -138,7 +145,7 @@ export function getLatestWorkflowUpdateResult(
 		if (
 			tc.toolName === 'workflows' &&
 			typeof args?.action === 'string' &&
-			WORKFLOW_UPDATE_ACTIONS.has(args.action) &&
+			WORKFLOW_MUTATING_ACTIONS.has(args.action) &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
@@ -166,13 +173,13 @@ const WORKFLOW_EDITING_TOOLS = new Set([
  *   1. An active workflow-builder sub-agent targeting the workflow (covers the
  *      whole build window: read file → edit → submit-workflow → verify).
  *   2. An in-flight workflow-mutating tool call targeting the workflow — the
- *      build/setup tools, or a `workflows` update / restore-version action.
+ *      build/setup tools, or a `workflows` update / restore-version / setup action.
  *      Read-only `workflows` actions (get-json, get, list, …) don't lock.
  */
 export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
 	// Signal 1: workflow-builder sub-agent active with our workflow id
 	if (
-		node.role === 'workflow-builder' &&
+		isBuilderNode(node) &&
 		node.status === 'active' &&
 		node.targetResource?.type === 'workflow' &&
 		node.targetResource.id === workflowId
@@ -189,7 +196,7 @@ export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: st
 		if (
 			tc.toolName === 'workflows' &&
 			typeof args?.action === 'string' &&
-			WORKFLOW_UPDATE_ACTIONS.has(args.action)
+			WORKFLOW_MUTATING_ACTIONS.has(args.action)
 		) {
 			return true;
 		}

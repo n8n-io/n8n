@@ -222,10 +222,11 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		},
 	);
 
-	// --- Refresh preview when a `workflows` update / restore-version completes ---
-	// The `workflows` tool's update + restore-version actions mutate the workflow
-	// definition but surface under tool name 'workflows', so getLatestBuildResult
-	// doesn't detect them. Refresh the preview so the canvas shows the latest state.
+	// --- Refresh preview when a `workflows` update / restore-version / setup completes ---
+	// The `workflows` tool's update / restore-version / setup actions mutate the
+	// workflow definition but surface under tool name 'workflows', so
+	// getLatestBuildResult doesn't detect them. Refresh the preview so the canvas
+	// shows the latest state.
 
 	const latestUpdateResult = computed(() => {
 		for (let i = thread.messages.length - 1; i >= 0; i--) {

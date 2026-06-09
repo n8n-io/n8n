@@ -840,12 +840,38 @@ describe('getLatestWorkflowUpdateResult', () => {
 			toolCallId: 'tc-restore-1',
 		});
 	});
+
+	test('returns workflowId from args for a successful setup (result omits workflowId)', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-setup-1',
+					toolName: 'workflows',
+					args: { action: 'setup', workflowId: 'wf-3' },
+					result: { success: true, completedNodes: [] },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toEqual({
+			workflowId: 'wf-3',
+			toolCallId: 'tc-setup-1',
+		});
+	});
 });
 
 describe('isAgentEditingWorkflow', () => {
 	test('locks while a workflow-builder sub-agent is active on the workflow', () => {
 		const node = makeAgentNode({
 			role: 'workflow-builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-1' },
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+	});
+
+	test('locks while a kind-only builder sub-agent is active on the workflow', () => {
+		const node = makeAgentNode({
+			kind: 'builder',
 			status: 'active',
 			targetResource: { type: 'workflow', id: 'wf-1' },
 		});
@@ -875,8 +901,8 @@ describe('isAgentEditingWorkflow', () => {
 		}
 	});
 
-	test('locks while a workflows update / restore-version is in flight on the workflow', () => {
-		for (const action of ['update', 'restore-version']) {
+	test('locks while a workflows update / restore-version / setup is in flight on the workflow', () => {
+		for (const action of ['update', 'restore-version', 'setup']) {
 			const node = makeAgentNode({
 				toolCalls: [
 					makeToolCall({
