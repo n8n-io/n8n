@@ -143,9 +143,9 @@ jobs:
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: false # Disabled - BuildKit's syft SBOM under-resolves npm licenses; the sbom-attestation job attests an enriched, license-gated CycloneDX SBOM instead
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
+          push: ${{ inputs.force_gzip_compression != true && needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
-          outputs: ${{ inputs.force_gzip_compression == true && 'type=image,compression=gzip,force-compression=true' || '' }}
+          outputs: ${{ inputs.force_gzip_compression == true && format('type=image,push={0},compression=gzip,force-compression=true', needs.determine-build-context.outputs.push_enabled) || '' }}
 
       - name: Build and push task runners Docker image (Alpine)
         id: build-runners
@@ -160,9 +160,9 @@ jobs:
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: false # Disabled - BuildKit's syft SBOM under-resolves npm licenses; the sbom-attestation job attests an enriched, license-gated CycloneDX SBOM instead
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
+          push: ${{ inputs.force_gzip_compression != true && needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_tags }}
-          outputs: ${{ inputs.force_gzip_compression == true && 'type=image,compression=gzip,force-compression=true' || '' }}
+          outputs: ${{ inputs.force_gzip_compression == true && format('type=image,push={0},compression=gzip,force-compression=true', needs.determine-build-context.outputs.push_enabled) || '' }}
 
       - name: Build and push task runners Docker image (distroless)
         id: build-runners-distroless
@@ -177,9 +177,9 @@ jobs:
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
           sbom: false # Disabled - BuildKit's syft SBOM under-resolves npm licenses; the sbom-attestation job attests an enriched, license-gated CycloneDX SBOM instead
-          push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
+          push: ${{ inputs.force_gzip_compression != true && needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
-          outputs: ${{ inputs.force_gzip_compression == true && 'type=image,compression=gzip,force-compression=true' || '' }}
+          outputs: ${{ inputs.force_gzip_compression == true && format('type=image,push={0},compression=gzip,force-compression=true', needs.determine-build-context.outputs.push_enabled) || '' }}
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
