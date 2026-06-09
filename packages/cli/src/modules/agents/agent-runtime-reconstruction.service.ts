@@ -358,6 +358,7 @@ export class AgentRuntimeReconstructionService {
 				createSearchKnowledgeTool({
 					projectId,
 					agentId,
+					userId,
 					sandboxService: this.agentKnowledgeSandboxService,
 				}),
 			);

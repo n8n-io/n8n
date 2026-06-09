@@ -54,6 +54,7 @@ export class AgentKnowledgeService {
 		agentId: string,
 		projectId: string,
 		files: Express.Multer.File[],
+		userId: string,
 	): Promise<AgentFileDto[]> {
 		try {
 			await this.ensureAgentBelongsToProject(agentId, projectId);
@@ -64,6 +65,7 @@ export class AgentKnowledgeService {
 			await this.agentKnowledgeSandboxService.withKnowledgeFilesystem(
 				projectId,
 				agentId,
+				userId,
 				async (filesystem) => {
 					try {
 						for (const file of files) {
@@ -88,7 +90,12 @@ export class AgentKnowledgeService {
 		return files.map((file) => toAgentFileDto(file));
 	}
 
-	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
+	async deleteFile(
+		agentId: string,
+		projectId: string,
+		fileId: string,
+		userId: string,
+	): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 
 		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId);
@@ -99,6 +106,7 @@ export class AgentKnowledgeService {
 		await this.agentKnowledgeSandboxService.withKnowledgeFilesystem(
 			projectId,
 			agentId,
+			userId,
 			async (filesystem) => {
 				await this.deleteVolumeFile(filesystem, file);
 			},
@@ -106,7 +114,7 @@ export class AgentKnowledgeService {
 		await this.agentFileRepository.delete({ id: fileId, agentId });
 	}
 
-	async deleteAllFilesForAgent(agentId: string): Promise<void> {
+	async deleteAllFilesForAgent(agentId: string, userId: string): Promise<void> {
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
 		if (!agent) return;
 
@@ -116,6 +124,7 @@ export class AgentKnowledgeService {
 		await this.agentKnowledgeSandboxService.withKnowledgeFilesystem(
 			agent.projectId,
 			agentId,
+			userId,
 			async (filesystem) => {
 				const errors: unknown[] = [];
 				for (const file of files) {

@@ -234,7 +234,7 @@ export class ProjectService {
 			]);
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
-				await agentKnowledgeService.deleteAllFilesForAgent(agent.id);
+				await agentKnowledgeService.deleteAllFilesForAgent(agent.id, user.id);
 			}
 		}
 

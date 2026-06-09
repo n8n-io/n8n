@@ -3092,7 +3092,7 @@ describe('AgentsService', () => {
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.delete(agentId, projectId);
+			await service.delete(agentId, projectId, 'user-1');
 
 			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 			expect(memoryBackend.deleteThreadsByPrefix).toHaveBeenCalledWith(chatThreadId(agentId));
@@ -3104,9 +3104,9 @@ describe('AgentsService', () => {
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.delete(agentId, projectId);
+			await service.delete(agentId, projectId, 'user-1');
 
-			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(agentId);
+			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(agentId, 'user-1');
 			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
 				agentRepository.remove.mock.invocationCallOrder[0],
 			);
@@ -3117,7 +3117,7 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
 
-			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+			await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
 
 			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		});
@@ -3126,7 +3126,7 @@ describe('AgentsService', () => {
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await service.delete(agentId, projectId);
+			await service.delete(agentId, projectId, 'user-1');
 
 			expect(taskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		});
@@ -3136,7 +3136,7 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			memoryBackend.deleteThreadsByPrefix.mockRejectedValueOnce(new Error('db down'));
 
-			await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+			await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
 		});
 	});
 

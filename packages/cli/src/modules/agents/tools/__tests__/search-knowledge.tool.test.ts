@@ -16,6 +16,7 @@ function isZodSchema(schema: unknown): schema is ZodTypeAny {
 describe('createSearchKnowledgeTool', () => {
 	const projectId = 'project-1';
 	const agentId = 'agent-1';
+	const userId = 'user-1';
 
 	function makeTool(
 		overrides: {
@@ -25,6 +26,7 @@ describe('createSearchKnowledgeTool', () => {
 		return createSearchKnowledgeTool({
 			projectId,
 			agentId,
+			userId,
 			sandboxService: overrides.sandboxService ?? mock<AgentKnowledgeSandboxService>(),
 		}).build();
 	}
@@ -71,7 +73,7 @@ describe('createSearchKnowledgeTool', () => {
 			command: 'wc -l *.csv',
 			result: { stdout: '3\n' },
 		});
-		expect(sandboxService.runKnowledgeCommand).toHaveBeenCalledWith(projectId, agentId, {
+		expect(sandboxService.runKnowledgeCommand).toHaveBeenCalledWith(projectId, agentId, userId, {
 			command: 'wc -l *.csv',
 			timeoutMs: undefined,
 		});

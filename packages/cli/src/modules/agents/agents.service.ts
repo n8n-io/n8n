@@ -743,7 +743,7 @@ export class AgentsService {
 		}));
 	}
 
-	async delete(agentId: string, projectId: string): Promise<boolean> {
+	async delete(agentId: string, projectId: string, userId: string): Promise<boolean> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
@@ -753,7 +753,7 @@ export class AgentsService {
 		// Best-effort cleanup of knowledge files from Daytona volume storage.
 		// Failure here must not block agent deletion.
 		try {
-			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId);
+			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId, userId);
 		} catch (error) {
 			this.logger.warn('Failed to delete knowledge files on agent delete', {
 				agentId,

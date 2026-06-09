@@ -446,7 +446,7 @@ export class AgentsController {
 				throw new BadRequestError('No files uploaded');
 			}
 
-			return await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
+			return await this.agentKnowledgeService.uploadFiles(agentId, projectId, files, req.user.id);
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
 			// path hands them to AgentKnowledgeService (which cleans up its own temp
@@ -459,14 +459,14 @@ export class AgentsController {
 	@Delete('/:agentId/files/:fileId')
 	@ProjectScope('agent:update')
 	async deleteFile(
-		_req: AuthenticatedRequest<{ projectId: string }>,
+		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
 		this.assertKnowledgeBaseEnabled();
-		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
+		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId, req.user.id);
 		return { success: true };
 	}
 
@@ -477,7 +477,7 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		const deleted = await this.agentsService.delete(agentId, req.params.projectId);
+		const deleted = await this.agentsService.delete(agentId, req.params.projectId, req.user.id);
 
 		if (!deleted) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);

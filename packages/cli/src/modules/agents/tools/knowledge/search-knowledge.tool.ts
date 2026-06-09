@@ -48,10 +48,12 @@ const SEARCH_KNOWLEDGE_SYSTEM_INSTRUCTION = [
 export function createSearchKnowledgeTool({
 	projectId,
 	agentId,
+	userId,
 	sandboxService,
 }: {
 	projectId: string;
 	agentId: string;
+	userId: string;
 	sandboxService: AgentKnowledgeSandboxService;
 }) {
 	return new Tool('search_knowledge')
@@ -63,7 +65,7 @@ export function createSearchKnowledgeTool({
 		.output(searchKnowledgeOutputSchema)
 		.handler(async (input) => {
 			const command = input.command.trim();
-			const result = await sandboxService.runKnowledgeCommand(projectId, agentId, {
+			const result = await sandboxService.runKnowledgeCommand(projectId, agentId, userId, {
 				command,
 				timeoutMs: input.timeoutMs,
 			});

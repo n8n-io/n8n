@@ -68,6 +68,7 @@ export type SearchKnowledgeSandboxResult =
 const LABEL_KNOWLEDGE_BASE = 'n8n-agents-knowledgebase';
 const LABEL_PROJECT_ID = 'n8n-project-id';
 const LABEL_AGENT_ID = 'n8n-agent-id';
+const LABEL_USER_ID = 'n8n-user-id';
 
 const SANDBOX_STATE_STARTED: SandboxState = 'started';
 
@@ -88,11 +89,16 @@ interface KnowledgeVolumeMount {
 	subpath: string;
 }
 
-function buildScopeLabels(projectId: string, agentId: string): Record<string, string> {
+function buildScopeLabels(
+	projectId: string,
+	agentId: string,
+	userId: string,
+): Record<string, string> {
 	return {
 		[LABEL_KNOWLEDGE_BASE]: 'true',
 		[LABEL_PROJECT_ID]: projectId,
 		[LABEL_AGENT_ID]: agentId,
+		[LABEL_USER_ID]: userId,
 	};
 }
 
@@ -121,17 +127,22 @@ export class AgentKnowledgeSandboxService {
 		private readonly logger: Logger,
 	) {}
 
-	async ensureSandbox(projectId: string, agentId: string): Promise<SearchKnowledgeSandboxResult> {
-		const { reused } = await this.acquireSandbox(projectId, agentId);
+	async ensureSandbox(
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<SearchKnowledgeSandboxResult> {
+		const { reused } = await this.acquireSandbox(projectId, agentId, userId);
 		return reused ? SEARCH_KNOWLEDGE_SANDBOX_REUSED : SEARCH_KNOWLEDGE_SANDBOX_CREATED;
 	}
 
 	async withKnowledgeFilesystem<T>(
 		projectId: string,
 		agentId: string,
+		userId: string,
 		operation: (filesystem: AgentKnowledgeFilesystem) => Promise<T>,
 	): Promise<T> {
-		const { sandbox } = await this.acquireSandbox(projectId, agentId);
+		const { sandbox } = await this.acquireSandbox(projectId, agentId, userId);
 		const filesystem = this.createFilesystemAdapter(sandbox);
 		return await operation(filesystem);
 	}
@@ -139,68 +150,39 @@ export class AgentKnowledgeSandboxService {
 	async runKnowledgeCommand(
 		projectId: string,
 		agentId: string,
+		userId: string,
 		options: AgentKnowledgeCommandOptions,
 	): Promise<AgentKnowledgeCommandOperationResult> {
 		const command = validateKnowledgeCommand(options.command);
 		const timeoutMs = resolveKnowledgeOperationTimeout(options.timeoutMs);
-		const startedAt = Date.now();
 
-		try {
-			const result = await this.executeKnowledgeCommand(projectId, agentId, command, timeoutMs);
-			const stdout = truncateCommandOutput(result.stdout);
-			const stderr = truncateCommandOutput(result.stderr);
-			const commandResult: AgentKnowledgeCommandOperationResult = {
-				exitCode: result.exitCode,
-				stdout: stdout.text,
-				stderr: stderr.text,
-				stdoutTruncated: stdout.truncated,
-				stderrTruncated: stderr.truncated,
-			};
-
-			return commandResult;
-		} catch (error) {
-			this.logKnowledgeOperationFailure({
-				projectId,
-				agentId,
-				operation: 'command',
-				durationMs: Date.now() - startedAt,
-				timeoutMs,
-				error,
-				command,
-			});
-			throw error;
-		}
-	}
-
-	private logKnowledgeOperationFailure(
-		params: {
-			projectId: string;
-			agentId: string;
-			operation: 'command';
-			durationMs: number;
-			timeoutMs?: number;
-			error: unknown;
-		} & Record<string, unknown>,
-	): void {
-		const { projectId, agentId, operation, durationMs, timeoutMs, error, ...metadata } = params;
-		this.logger.warn('Agent knowledge operation failed', {
+		const result = await this.executeKnowledgeCommand(
 			projectId,
 			agentId,
-			operation,
-			durationMs,
+			userId,
+			command,
 			timeoutMs,
-			error,
-			...metadata,
-		});
+		);
+		const stdout = truncateCommandOutput(result.stdout);
+		const stderr = truncateCommandOutput(result.stderr);
+
+		return {
+			exitCode: result.exitCode,
+			stdout: stdout.text,
+			stderr: stderr.text,
+			stdoutTruncated: stdout.truncated,
+			stderrTruncated: stderr.truncated,
+		};
 	}
 
 	private async executeKnowledgeCommand(
 		projectId: string,
 		agentId: string,
+		userId: string,
 		command: string,
 		timeoutMs?: number,
 	): Promise<AgentKnowledgeCommandResult> {
-		const { sandbox } = await this.acquireSandbox(projectId, agentId);
+		const { sandbox } = await this.acquireSandbox(projectId, agentId, userId);
 		const timeoutSeconds = Math.ceil((timeoutMs ?? this.agentsConfig.sandboxTimeout) / 1000);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command);
 		const result = await sandbox.process.executeCommand(
@@ -236,6 +218,7 @@ export class AgentKnowledgeSandboxService {
 	private async acquireSandbox(
 		projectId: string,
 		agentId: string,
+		userId: string,
 	): Promise<{ sandbox: Sandbox; reused: boolean }> {
 		this.assertKnowledgeSandboxEnabled();
 		this.assertKnowledgeVolumeConfigured();
@@ -246,7 +229,7 @@ export class AgentKnowledgeSandboxService {
 			apiUrl: this.agentsConfig.daytonaApiUrl || undefined,
 			apiKey: this.agentsConfig.daytonaApiKey || undefined,
 		});
-		const labels = buildScopeLabels(projectId, agentId);
+		const labels = buildScopeLabels(projectId, agentId, userId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const volumeMount = this.buildVolumeMount(projectId, agentId);
 

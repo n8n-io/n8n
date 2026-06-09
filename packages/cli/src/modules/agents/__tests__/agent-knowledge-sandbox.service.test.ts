@@ -63,6 +63,7 @@ jest.mock('@n8n/agents/sandbox', () => ({
 }));
 
 const volumeId = 'vol-1';
+const userId = 'user-1';
 const expectedVolumeMount = {
 	volumeId,
 	mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
@@ -131,7 +132,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		const service = makeService();
 
-		await expect(service.ensureSandbox('project-1', 'agent-1')).resolves.toBe(
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
 			SEARCH_KNOWLEDGE_SANDBOX_REUSED,
 		);
 		expect(createMock).not.toHaveBeenCalled();
@@ -143,7 +144,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		const service = makeService();
 
-		await expect(service.ensureSandbox('project-1', 'agent-1')).resolves.toBe(
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
 			SEARCH_KNOWLEDGE_SANDBOX_REUSED,
 		);
 		expect(sandbox.start).toHaveBeenCalledWith(300);
@@ -155,7 +156,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		const service = makeService();
 
-		await expect(service.ensureSandbox('project-1', 'agent-1')).resolves.toBe(
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
 			SEARCH_KNOWLEDGE_SANDBOX_REUSED,
 		);
 		expect(sandbox.start).toHaveBeenCalledWith(300);
@@ -174,7 +175,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		const service = makeService();
 
-		await expect(service.ensureSandbox('project-1', 'agent-1')).resolves.toBe(
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
 			SEARCH_KNOWLEDGE_SANDBOX_CREATED,
 		);
 		expect(createMock).toHaveBeenCalledTimes(1);
@@ -187,7 +188,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		const service = makeService();
 
-		await expect(service.ensureSandbox('project-1', 'agent-1')).resolves.toBe(
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
 			SEARCH_KNOWLEDGE_SANDBOX_CREATED,
 		);
 		expect(createMock).toHaveBeenCalledTimes(1);
@@ -203,7 +204,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		const service = makeService();
 
-		await expect(service.ensureSandbox('project-1', 'agent-1')).resolves.toBe(
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
 			SEARCH_KNOWLEDGE_SANDBOX_REUSED,
 		);
 		expect(listMock).toHaveBeenCalledTimes(2);
@@ -213,7 +214,7 @@ describe('AgentKnowledgeSandboxService', () => {
 	it('creates a sandbox with scoped labels, volume mount, and expected params when list is empty', async () => {
 		const service = makeService();
 
-		await expect(service.ensureSandbox('project-1', 'agent-1')).resolves.toBe(
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
 			SEARCH_KNOWLEDGE_SANDBOX_CREATED,
 		);
 
@@ -226,6 +227,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			'n8n-agents-knowledgebase': 'true',
 			'n8n-project-id': 'project-1',
 			'n8n-agent-id': 'agent-1',
+			'n8n-user-id': userId,
 		});
 		expect(params.language).toBe('typescript');
 		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
@@ -238,7 +240,7 @@ describe('AgentKnowledgeSandboxService', () => {
 	it('rejects before calling Daytona when the volume id is missing', async () => {
 		const service = makeService({ daytonaVolumeId: '' });
 
-		await expect(service.ensureSandbox('project-1', 'agent-1')).rejects.toThrow(
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).rejects.toThrow(
 			'Agent knowledge Daytona volume is not configured',
 		);
 		expect(listMock).not.toHaveBeenCalled();
@@ -253,7 +255,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		async (configOverrides) => {
 			const service = makeService(configOverrides);
 
-			await expect(service.ensureSandbox('project-1', 'agent-1')).rejects.toThrow(
+			await expect(service.ensureSandbox('project-1', 'agent-1', userId)).rejects.toThrow(
 				'Agent knowledge sandbox is not enabled',
 			);
 			expect(listMock).not.toHaveBeenCalled();
@@ -266,7 +268,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		const service = makeService();
 
-		await service.runKnowledgeCommand('project-1', 'agent-1', {
+		await service.runKnowledgeCommand('project-1', 'agent-1', userId, {
 			command: 'wc -l notes.txt',
 			timeoutMs: 1_000,
 		});
@@ -277,7 +279,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			10,
 		);
 
-		await service.runKnowledgeCommand('project-1', 'agent-1', {
+		await service.runKnowledgeCommand('project-1', 'agent-1', userId, {
 			command: 'wc -l notes.txt',
 			timeoutMs: 300_000,
 		});
@@ -294,7 +296,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		const service = makeService();
 
-		await service.withKnowledgeFilesystem('project-1', 'agent-1', async (filesystem) => {
+		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async (filesystem) => {
 			await filesystem.writeFile('/home/daytona/workspace/agent-knowledge/files/note.txt', 'hello');
 			return await filesystem.readFile('/home/daytona/workspace/agent-knowledge/files/note.txt');
 		});
@@ -324,15 +326,15 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		const service = makeService();
 
-		await expect(service.runKnowledgeCommand('project-1', 'agent-1', { command })).resolves.toEqual(
-			{
-				exitCode: 0,
-				stdout: '42:flow control\n',
-				stderr: '',
-				stdoutTruncated: false,
-				stderrTruncated: false,
-			},
-		);
+		await expect(
+			service.runKnowledgeCommand('project-1', 'agent-1', userId, { command }),
+		).resolves.toEqual({
+			exitCode: 0,
+			stdout: '42:flow control\n',
+			stderr: '',
+			stdoutTruncated: false,
+			stderrTruncated: false,
+		});
 
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
 			`if [ ! -d ${KNOWLEDGE_FILES_DIR} ]; then exit 0; fi; cd ${KNOWLEDGE_FILES_DIR} && ${command}`,
@@ -369,9 +371,9 @@ describe('AgentKnowledgeSandboxService', () => {
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		const service = makeService();
 
-		await expect(service.runKnowledgeCommand('project-1', 'agent-1', { command })).rejects.toThrow(
-			BadRequestError,
-		);
+		await expect(
+			service.runKnowledgeCommand('project-1', 'agent-1', userId, { command }),
+		).rejects.toThrow(BadRequestError);
 		expect(listMock).not.toHaveBeenCalled();
 		expect(createMock).not.toHaveBeenCalled();
 		expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
@@ -387,7 +389,9 @@ describe('AgentKnowledgeSandboxService', () => {
 		const service = makeService();
 
 		await expect(
-			service.runKnowledgeCommand('project-1', 'agent-1', { command: 'grep missing notes.txt' }),
+			service.runKnowledgeCommand('project-1', 'agent-1', userId, {
+				command: 'grep missing notes.txt',
+			}),
 		).resolves.toEqual({
 			exitCode: 2,
 			stdout: '',
@@ -408,7 +412,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		const service = makeService();
 
 		await expect(
-			service.runKnowledgeCommand('project-1', 'agent-1', { command: 'cat large.txt' }),
+			service.runKnowledgeCommand('project-1', 'agent-1', userId, { command: 'cat large.txt' }),
 		).resolves.toEqual({
 			exitCode: 0,
 			stdout: 'x'.repeat(20_000),
@@ -423,9 +427,9 @@ describe('AgentKnowledgeSandboxService', () => {
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		const service = makeService();
 
-		await expect(service.runKnowledgeCommand('project-1', 'agent-1', { command })).rejects.toThrow(
-			BadRequestError,
-		);
+		await expect(
+			service.runKnowledgeCommand('project-1', 'agent-1', userId, { command }),
+		).rejects.toThrow(BadRequestError);
 		expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
 	});
 
@@ -435,34 +439,10 @@ describe('AgentKnowledgeSandboxService', () => {
 		const service = makeService();
 
 		await expect(
-			service.runKnowledgeCommand('project-1', 'agent-1', {
+			service.runKnowledgeCommand('project-1', 'agent-1', userId, {
 				command: 'a'.repeat(2_001),
 			}),
 		).rejects.toThrow(BadRequestError);
 		expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
-	});
-
-	it('logs a failure when sandbox command execution throws', async () => {
-		const logger = mock<Logger>();
-		const sandbox = makeSandbox('started');
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		const executionError = new Error('sandbox command failed');
-		sandbox.process.executeCommand.mockRejectedValue(executionError);
-		const service = makeService({}, logger);
-
-		await expect(
-			service.runKnowledgeCommand('project-1', 'agent-1', { command: 'wc -l notes.txt' }),
-		).rejects.toThrow('sandbox command failed');
-
-		expect(logger.warn).toHaveBeenCalledWith(
-			'Agent knowledge operation failed',
-			expect.objectContaining({
-				projectId: 'project-1',
-				agentId: 'agent-1',
-				operation: 'command',
-				command: 'wc -l notes.txt',
-				error: executionError,
-			}),
-		);
 	});
 });

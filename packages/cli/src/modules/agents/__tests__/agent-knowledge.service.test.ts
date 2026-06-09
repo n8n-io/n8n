@@ -32,6 +32,7 @@ jest.mock('@n8n/ai-utilities', () => ({
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
+const userId = 'user-1';
 
 function makeMulterFile(overrides: Partial<Express.Multer.File> = {}): Express.Multer.File {
 	return {
@@ -170,7 +171,7 @@ describe('AgentKnowledgeService', () => {
 		agentFileRepository = new InMemoryAgentFileRepository();
 		agentKnowledgeSandboxService = mock<AgentKnowledgeSandboxService>();
 		agentKnowledgeSandboxService.withKnowledgeFilesystem.mockImplementation(
-			async (_projectId, _agentId, operation) => await operation(filesystem),
+			async (_projectId, _agentId, _userId, operation) => await operation(filesystem),
 		);
 		service = new AgentKnowledgeService(
 			agentRepository,
@@ -187,9 +188,12 @@ describe('AgentKnowledgeService', () => {
 		await writeFile(tempFilePath, 'hello');
 
 		await expect(
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({ path: tempFilePath, buffer: undefined }),
-			]),
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[makeMulterFile({ path: tempFilePath, buffer: undefined })],
+				userId,
+			),
 		).rejects.toThrow(NotFoundError);
 		await expect(access(tempFilePath)).rejects.toThrow();
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
@@ -202,13 +206,18 @@ describe('AgentKnowledgeService', () => {
 		await writeFile(tempFilePath, 'hello');
 
 		await expect(
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({
-					originalname: `${'a'.repeat(256)}.txt`,
-					path: tempFilePath,
-					buffer: undefined,
-				}),
-			]),
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: `${'a'.repeat(256)}.txt`,
+						path: tempFilePath,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
 		).rejects.toThrow('File name must be 255 characters or less');
 		await expect(access(tempFilePath)).rejects.toThrow();
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
@@ -220,15 +229,20 @@ describe('AgentKnowledgeService', () => {
 		const tempFilePath = path.join(tempDirectory, 'notes.txt');
 		await writeFile(tempFilePath, 'hello world');
 
-		const result = await service.uploadFiles(agentId, projectId, [
-			makeMulterFile({
-				originalname: 'notes.txt',
-				mimetype: 'text/plain',
-				path: tempFilePath,
-				size: 11,
-				buffer: undefined,
-			}),
-		]);
+		const result = await service.uploadFiles(
+			agentId,
+			projectId,
+			[
+				makeMulterFile({
+					originalname: 'notes.txt',
+					mimetype: 'text/plain',
+					path: tempFilePath,
+					size: 11,
+					buffer: undefined,
+				}),
+			],
+			userId,
+		);
 
 		expect(result).toHaveLength(1);
 		expect(result[0]).toMatchObject({
@@ -255,22 +269,27 @@ describe('AgentKnowledgeService', () => {
 		await writeFile(markdownPath, '# Title');
 		await writeFile(csvPath, 'a,b');
 
-		const result = await service.uploadFiles(agentId, projectId, [
-			makeMulterFile({
-				originalname: 'guide.md',
-				mimetype: 'text/markdown',
-				path: markdownPath,
-				size: 7,
-				buffer: undefined,
-			}),
-			makeMulterFile({
-				originalname: 'data.csv',
-				mimetype: 'text/csv',
-				path: csvPath,
-				size: 3,
-				buffer: undefined,
-			}),
-		]);
+		const result = await service.uploadFiles(
+			agentId,
+			projectId,
+			[
+				makeMulterFile({
+					originalname: 'guide.md',
+					mimetype: 'text/markdown',
+					path: markdownPath,
+					size: 7,
+					buffer: undefined,
+				}),
+				makeMulterFile({
+					originalname: 'data.csv',
+					mimetype: 'text/csv',
+					path: csvPath,
+					size: 3,
+					buffer: undefined,
+				}),
+			],
+			userId,
+		);
 
 		expect(result.map((entry) => entry.fileName)).toEqual(['guide.md', 'data.csv']);
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/guide.md`)?.toString('utf-8')).toBe('# Title');
@@ -283,15 +302,20 @@ describe('AgentKnowledgeService', () => {
 		const tempFilePath = path.join(tempDirectory, 'report.pdf');
 		await writeFile(tempFilePath, '%PDF-1.4');
 
-		const result = await service.uploadFiles(agentId, projectId, [
-			makeMulterFile({
-				originalname: 'report.pdf',
-				mimetype: 'application/pdf',
-				path: tempFilePath,
-				size: 8,
-				buffer: undefined,
-			}),
-		]);
+		const result = await service.uploadFiles(
+			agentId,
+			projectId,
+			[
+				makeMulterFile({
+					originalname: 'report.pdf',
+					mimetype: 'application/pdf',
+					path: tempFilePath,
+					size: 8,
+					buffer: undefined,
+				}),
+			],
+			userId,
+		);
 
 		expect(result[0]).toMatchObject({
 			fileName: 'report.pdf',
@@ -314,14 +338,19 @@ describe('AgentKnowledgeService', () => {
 		filesystem.writeFile = jest.fn().mockRejectedValue(new Error('volume write failed'));
 
 		await expect(
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({
-					originalname: 'notes.txt',
-					path: tempFilePath,
-					size: 11,
-					buffer: undefined,
-				}),
-			]),
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'notes.txt',
+						path: tempFilePath,
+						size: 11,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
 		).rejects.toThrow('volume write failed');
 		expect(agentFileRepository.all()).toEqual([]);
 	});
@@ -344,20 +373,25 @@ describe('AgentKnowledgeService', () => {
 		});
 
 		await expect(
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({
-					originalname: 'first.txt',
-					path: firstPath,
-					size: 5,
-					buffer: undefined,
-				}),
-				makeMulterFile({
-					originalname: 'second.txt',
-					path: secondPath,
-					size: 6,
-					buffer: undefined,
-				}),
-			]),
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'first.txt',
+						path: firstPath,
+						size: 5,
+						buffer: undefined,
+					}),
+					makeMulterFile({
+						originalname: 'second.txt',
+						path: secondPath,
+						size: 6,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
 		).rejects.toThrow('volume write failed');
 
 		expect(agentFileRepository.all()).toEqual([]);
@@ -419,7 +453,7 @@ describe('AgentKnowledgeService', () => {
 		);
 		await filesystem.writeFile(`${KNOWLEDGE_FILES_DIR}/file-1.txt`, 'hello');
 
-		await expect(service.deleteFile(agentId, projectId, 'file-1')).resolves.toBeUndefined();
+		await expect(service.deleteFile(agentId, projectId, 'file-1', userId)).resolves.toBeUndefined();
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/file-1.txt`)).toBeUndefined();
 		expect(agentFileRepository.all()).toEqual([]);
 		expect(storedFile.id).toBe('file-1');
@@ -428,7 +462,9 @@ describe('AgentKnowledgeService', () => {
 	it('treats unknown delete ids as idempotent', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 
-		await expect(service.deleteFile(agentId, projectId, 'missing-id')).resolves.toBeUndefined();
+		await expect(
+			service.deleteFile(agentId, projectId, 'missing-id', userId),
+		).resolves.toBeUndefined();
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
@@ -442,7 +478,7 @@ describe('AgentKnowledgeService', () => {
 		);
 		filesystem.deleteFile = jest.fn().mockRejectedValue(new Error('volume unavailable'));
 
-		await expect(service.deleteFile(agentId, projectId, 'file-1')).rejects.toThrow(
+		await expect(service.deleteFile(agentId, projectId, 'file-1', userId)).rejects.toThrow(
 			'volume unavailable',
 		);
 		expect(agentFileRepository.all()).toHaveLength(1);
@@ -457,7 +493,7 @@ describe('AgentKnowledgeService', () => {
 			}),
 		);
 
-		await expect(service.deleteFile(agentId, projectId, 'file-1')).rejects.toThrow(
+		await expect(service.deleteFile(agentId, projectId, 'file-1', userId)).rejects.toThrow(
 			OperationalError,
 		);
 		expect(agentFileRepository.all()).toHaveLength(1);
@@ -477,13 +513,18 @@ describe('AgentKnowledgeService', () => {
 		await writeFile(tempFilePath, 'hello');
 
 		await expect(
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({
-					originalname: 'notes.txt',
-					path: tempFilePath,
-					buffer: undefined,
-				}),
-			]),
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'notes.txt',
+						path: tempFilePath,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
 		).rejects.toThrow(BadRequestError);
 		expect(agentFileRepository.all()).toHaveLength(1);
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
@@ -498,18 +539,23 @@ describe('AgentKnowledgeService', () => {
 		await writeFile(secondPath, 'second');
 
 		await expect(
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({
-					originalname: 'notes.txt',
-					path: firstPath,
-					buffer: undefined,
-				}),
-				makeMulterFile({
-					originalname: 'notes.txt',
-					path: secondPath,
-					buffer: undefined,
-				}),
-			]),
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'notes.txt',
+						path: firstPath,
+						buffer: undefined,
+					}),
+					makeMulterFile({
+						originalname: 'notes.txt',
+						path: secondPath,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
 		).rejects.toThrow(BadRequestError);
 		expect(agentFileRepository.all()).toEqual([]);
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
@@ -531,13 +577,18 @@ describe('AgentKnowledgeService', () => {
 			);
 
 		await expect(
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({
-					originalname: 'notes.txt',
-					path: tempFilePath,
-					buffer: undefined,
-				}),
-			]),
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'notes.txt',
+						path: tempFilePath,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
 		).rejects.toThrow(BadRequestError);
 		expect(filesystem.writeCalls).toEqual([]);
 	});
@@ -556,14 +607,19 @@ describe('AgentKnowledgeService', () => {
 		await writeFile(tempFilePath, '%PDF-1.4');
 
 		await expect(
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({
-					originalname: 'report.pdf',
-					mimetype: 'application/pdf',
-					path: tempFilePath,
-					buffer: undefined,
-				}),
-			]),
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'report.pdf',
+						mimetype: 'application/pdf',
+						path: tempFilePath,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
 		).rejects.toThrow(BadRequestError);
 		expect(agentFileRepository.all()).toHaveLength(1);
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
@@ -578,19 +634,24 @@ describe('AgentKnowledgeService', () => {
 		await writeFile(pdfPath, '%PDF-1.4');
 
 		await expect(
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({
-					originalname: 'report.txt',
-					path: textPath,
-					buffer: undefined,
-				}),
-				makeMulterFile({
-					originalname: 'report.pdf',
-					mimetype: 'application/pdf',
-					path: pdfPath,
-					buffer: undefined,
-				}),
-			]),
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'report.txt',
+						path: textPath,
+						buffer: undefined,
+					}),
+					makeMulterFile({
+						originalname: 'report.pdf',
+						mimetype: 'application/pdf',
+						path: pdfPath,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
 		).rejects.toThrow(BadRequestError);
 		expect(agentFileRepository.all()).toEqual([]);
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
@@ -605,22 +666,32 @@ describe('AgentKnowledgeService', () => {
 		await writeFile(secondPath, 'second');
 
 		await Promise.all([
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({
-					originalname: 'first.txt',
-					path: firstPath,
-					size: 5,
-					buffer: undefined,
-				}),
-			]),
-			service.uploadFiles(agentId, projectId, [
-				makeMulterFile({
-					originalname: 'second.txt',
-					path: secondPath,
-					size: 6,
-					buffer: undefined,
-				}),
-			]),
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'first.txt',
+						path: firstPath,
+						size: 5,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
+			service.uploadFiles(
+				agentId,
+				projectId,
+				[
+					makeMulterFile({
+						originalname: 'second.txt',
+						path: secondPath,
+						size: 6,
+						buffer: undefined,
+					}),
+				],
+				userId,
+			),
 		]);
 
 		expect(
@@ -640,7 +711,9 @@ describe('AgentKnowledgeService', () => {
 	it('rejects deleting files for agents outside the project', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-		await expect(service.deleteFile(agentId, projectId, 'file-1')).rejects.toThrow(NotFoundError);
+		await expect(service.deleteFile(agentId, projectId, 'file-1', userId)).rejects.toThrow(
+			NotFoundError,
+		);
 	});
 
 	it('deletes all DB-tracked volume files and rows for an agent', async () => {
@@ -662,7 +735,7 @@ describe('AgentKnowledgeService', () => {
 		await filesystem.writeFile(`${KNOWLEDGE_FILES_DIR}/file-1.txt`, 'hello');
 		await filesystem.writeFile(`${KNOWLEDGE_FILES_DIR}/file-2.md`, '# Title');
 
-		await expect(service.deleteAllFilesForAgent(agentId)).resolves.toBeUndefined();
+		await expect(service.deleteAllFilesForAgent(agentId, userId)).resolves.toBeUndefined();
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/file-1.txt`)).toBeUndefined();
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/file-2.md`)).toBeUndefined();
 		expect(agentFileRepository.all()).toEqual([]);
@@ -692,7 +765,7 @@ describe('AgentKnowledgeService', () => {
 		);
 		await filesystem.writeFile(`${KNOWLEDGE_FILES_DIR}/file-2.md`, '# Title');
 
-		await expect(service.deleteAllFilesForAgent(agentId)).rejects.toThrow(OperationalError);
+		await expect(service.deleteAllFilesForAgent(agentId, userId)).rejects.toThrow(OperationalError);
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/file-2.md`)).toBeUndefined();
 		expect(agentFileRepository.all()).toHaveLength(2);
 	});
@@ -700,7 +773,7 @@ describe('AgentKnowledgeService', () => {
 	it('resolves deleteAllFilesForAgent when the agent no longer exists', async () => {
 		agentRepository.findOne.mockResolvedValue(null);
 
-		await expect(service.deleteAllFilesForAgent(agentId)).resolves.toBeUndefined();
+		await expect(service.deleteAllFilesForAgent(agentId, userId)).resolves.toBeUndefined();
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 });

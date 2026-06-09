@@ -565,6 +565,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		expect(agentKnowledgeSandboxService.runKnowledgeCommand).toHaveBeenCalledWith(
 			'project-1',
 			'agent-1',
+			'user-1',
 			{
 				command: 'wc -l notes.txt',
 				timeoutMs: undefined,
