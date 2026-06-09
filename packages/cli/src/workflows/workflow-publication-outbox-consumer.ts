@@ -16,8 +16,8 @@ import { ErrorReporter } from 'n8n-core';
 import { ensureError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { computeTriggerDiff } from '@/workflows/trigger-diff';
+import { WorkflowTriggerActivationService } from '@/workflows/workflow-trigger-activation.service';
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It polls for
@@ -46,7 +46,7 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly triggerActivationService: WorkflowTriggerActivationService,
 		private readonly activationErrorsService: ActivationErrorsService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
@@ -155,8 +155,8 @@ export class WorkflowPublicationOutboxConsumer {
 		}
 
 		const { toAdd, toRemove } = computeTriggerDiff(
-			this.activeWorkflowManager.getEnabledTriggerNodes(oldVersion),
-			this.activeWorkflowManager.getEnabledTriggerNodes(newVersion),
+			this.triggerActivationService.getEnabledTriggerNodes(oldVersion),
+			this.triggerActivationService.getEnabledTriggerNodes(newVersion),
 		);
 
 		// No trigger changed: advance the published version and finish. Unchanged
@@ -170,14 +170,14 @@ export class WorkflowPublicationOutboxConsumer {
 		// Must happen BEFORE advancing the version, using the currently
 		// published version so the right webhooks are deregistered.
 		if (toRemove.size > 0 && oldVersion) {
-			await this.activeWorkflowManager.removeTriggerNodes(workflow, oldVersion, toRemove);
+			await this.triggerActivationService.removeTriggerNodes(workflow, oldVersion, toRemove);
 		}
 
 		await this.advancePublishedVersion(record);
 
 		try {
 			if (toAdd.size > 0) {
-				await this.activeWorkflowManager.addTriggerNodes(workflow, newVersion, toAdd);
+				await this.triggerActivationService.addTriggerNodes(workflow, newVersion, toAdd);
 			}
 		} catch (e) {
 			const error = ensureError(e);
