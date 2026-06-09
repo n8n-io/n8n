@@ -7,6 +7,14 @@ import { RedisClientService } from '@/services/redis-client.service';
 
 type EventHandler = (...args: unknown[]) => void;
 
+/**
+ * The service disables process exit under test by default. Re-enable it so the
+ * cumulative-timeout accounting tests can assert on the exit decision.
+ */
+const enableExitOnRedisUnreachable = (service: RedisClientService) => {
+	(service as unknown as { exitOnRedisUnreachable: boolean }).exitOnRedisUnreachable = true;
+};
+
 jest.mock('ioredis', () => {
 	return jest.fn().mockImplementation(() => {
 		return {
@@ -129,6 +137,7 @@ describe('RedisClientService', () => {
 			const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 			const service = new RedisClientService(logger, globalConfig);
+			enableExitOnRedisUnreachable(service);
 			service.createClient({ type: 'client(bull)' });
 			service.createClient({ type: 'subscriber(bull)' });
 
@@ -168,6 +177,7 @@ describe('RedisClientService', () => {
 			const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 			const service = new RedisClientService(logger, globalConfig);
+			enableExitOnRedisUnreachable(service);
 			service.createClient({ type: 'client(bull)' });
 			service.createClient({ type: 'subscriber(bull)' });
 
@@ -219,6 +229,7 @@ describe('RedisClientService', () => {
 			const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 			const service = new RedisClientService(logger, globalConfig);
+			enableExitOnRedisUnreachable(service);
 			service.createClient({ type: 'client(bull)' });
 
 			const mockClient = mockedRedis.mock.results[0].value;
@@ -240,6 +251,29 @@ describe('RedisClientService', () => {
 
 			// Disconnect window 2: drop at 25s, within 30s of the last failed retry.
 			dateNowSpy.mockReturnValue(T0 + 25_000);
+			retryStrategy();
+
+			expect(exitSpy).not.toHaveBeenCalled();
+
+			dateNowSpy.mockRestore();
+			exitSpy.mockRestore();
+		});
+
+		it('should not exit the process under test even when the timeout is exceeded', () => {
+			const T0 = 1_700_000_000_000;
+			const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(T0);
+			const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+			// No enableExitOnRedisUnreachable() — exercise the default test behaviour.
+			const service = new RedisClientService(logger, globalConfig);
+			service.createClient({ type: 'client(bull)' });
+
+			const retryStrategy = mockedRedis.mock.calls[0][0].retryStrategy as () => number;
+
+			// Fail continuously well past the timeout threshold.
+			dateNowSpy.mockReturnValue(T0 + 1_000);
+			retryStrategy();
+			dateNowSpy.mockReturnValue(T0 + 12_001);
 			retryStrategy();
 
 			expect(exitSpy).not.toHaveBeenCalled();
