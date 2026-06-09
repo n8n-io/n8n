@@ -225,6 +225,9 @@ catalogs:
     basic-auth:
       specifier: 2.0.1
       version: 2.0.1
+    cache-manager:
+      specifier: 5.2.3
+      version: 5.2.3
     callsites:
       specifier: 3.1.0
       version: 3.1.0
@@ -3156,7 +3159,7 @@ importers:
         specifier: 4.16.4
         version: 4.16.4(patch_hash=a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42)
       cache-manager:
-        specifier: 5.2.3
+        specifier: 'catalog:'
         version: 5.2.3
       change-case:
         specifier: 4.1.2
@@ -3552,6 +3555,9 @@ importers:
       axios:
         specifier: 1.16.1
         version: 1.16.1(debug@4.4.3)
+      cache-manager:
+        specifier: 'catalog:'
+        version: 5.2.3
       callsites:
         specifier: 'catalog:'
         version: 3.1.0

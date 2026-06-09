@@ -4,6 +4,7 @@ import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -40,12 +41,19 @@ export function useWizardPersistence() {
 	const rootStore = useRootStore();
 	const toast = useToast();
 	const locale = useI18n();
+	const telemetry = useTelemetry();
 	const sliceInputs = useSliceInputs();
 	const evaluationStore = useEvaluationStore();
 
 	const isPersisting = ref(false);
 
-	async function persistAndDispatch(): Promise<boolean> {
+	/**
+	 * @param trigger Whether this is the initial run from the wizard's setup
+	 * flow ('initial') or a re-run from the results step ('run_again').
+	 */
+	async function persistAndDispatch(
+		trigger: 'initial' | 'run_again' = 'initial',
+	): Promise<boolean> {
 		if (isPersisting.value) return false;
 
 		const wf = workflowDocumentStore.value;
@@ -185,6 +193,14 @@ export function useWizardPersistence() {
 				compileFromConfig: true,
 			});
 			wizardStore.setActiveRunId(dispatched?.testRunId ?? null);
+			telemetry.track('User ran evaluation', {
+				workflow_id: workflowId,
+				run_id: dispatched?.testRunId ?? null,
+				metric_count: wizardStore.selectedMetricKeys.length,
+				custom_check_count: wizardStore.customChecks.length,
+				slice_mode: wizardStore.isSliceMode,
+				trigger,
+			});
 			await evaluationStore.fetchTestRuns(workflowId);
 			return true;
 		} catch (error) {

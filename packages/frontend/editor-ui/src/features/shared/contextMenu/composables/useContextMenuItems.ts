@@ -41,6 +41,18 @@ export type ContextMenuAction =
 	| 'extract_sub_workflow'
 	| 'focus_ai_on_selected';
 
+/**
+ * Actions that, once selected, hand off to another floating layer (e.g. a
+ * popover) which then takes focus. For these the context menu must not restore
+ * focus on close — otherwise the restore lands outside the freshly-opened layer
+ * and immediately dismisses it.
+ */
+const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>(['change_color']);
+
+export function isFocusHandoffAction(action: ContextMenuAction): boolean {
+	return FOCUS_HANDOFF_ACTIONS.has(action);
+}
+
 type Item = ActionDropdownItem<ContextMenuAction>;
 
 export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
