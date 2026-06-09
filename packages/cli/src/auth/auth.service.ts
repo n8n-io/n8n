@@ -4,7 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { createHash } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
@@ -152,6 +152,10 @@ export class AuthService {
 				}
 			}
 
+			if (!req.user) {
+				await this.tryAuthenticateOAuthBearer(req);
+			}
+
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const shouldSkipAuth = (allowSkipPreviewAuth && isPreviewMode) || allowUnauthenticated;
 
@@ -159,6 +163,49 @@ export class AuthService {
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
+	}
+
+	/**
+	 * Authenticate a request via an `Authorization: Bearer <token>` OAuth access token, resolving
+	 * it to `req.user` and attaching the token's granted scopes as a scope ceiling on `req.authInfo`.
+	 * Only OAuth tokens (`meta.isOAuth`) are handled here; anything else is left for cookie auth.
+	 *
+	 * The MCP module owns OAuth token verification, so its services are resolved lazily to avoid a
+	 * static import from core auth into the module.
+	 */
+	private async tryAuthenticateOAuthBearer(req: AuthenticatedRequest): Promise<void> {
+		const authHeader = req.headers.authorization;
+		if (!authHeader?.startsWith('Bearer ')) return;
+
+		const token = authHeader.slice('Bearer '.length).trim();
+		if (!token) return;
+
+		let decoded: { meta?: { isOAuth?: boolean } };
+		try {
+			decoded = this.jwtService.decode(token);
+		} catch {
+			return;
+		}
+		if (decoded?.meta?.isOAuth !== true) return;
+
+		try {
+			const { McpSettingsService } = await import('@/modules/mcp/mcp.settings.service');
+			if (!(await Container.get(McpSettingsService).getEnabled())) return;
+
+			const { McpOAuthTokenService } = await import('@/modules/mcp/mcp-oauth-token.service');
+			const tokenService = Container.get(McpOAuthTokenService);
+			const result = await tokenService.verifyOAuthAccessToken(
+				token,
+				tokenService.getCanonicalResourceUrl(),
+			);
+
+			if (!result.user || result.user.disabled) return;
+
+			req.user = result.user;
+			req.authInfo = { usedMfa: false, oauthGrantedScopes: result.scopes ?? [] };
+		} catch (error) {
+			this.logger.debug('OAuth bearer authentication failed', { error });
+		}
 	}
 
 	getCookieToken(req: Request) {

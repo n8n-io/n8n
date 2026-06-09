@@ -208,6 +208,10 @@ export class ControllerRegistry {
 
 		if (route.accessScope) {
 			middlewares.push(this.createScopedMiddleware(route.accessScope));
+		} else if (!route.skipAuth) {
+			// Authenticated routes with no scope decorator have no ceiling to enforce, so an OAuth
+			// token would otherwise reach them unrestricted. Deny OAuth-authenticated requests here.
+			middlewares.push(this.createOAuthUnscopedDenyMiddleware());
 		}
 
 		middlewares.push(...controllerMiddlewares);
@@ -229,12 +233,37 @@ export class ControllerRegistry {
 		};
 	}
 
+	private createOAuthUnscopedDenyMiddleware(): RequestHandler {
+		return (req, res, next) => {
+			if (isAuthenticatedRequest(req) && req.authInfo?.oauthGrantedScopes) {
+				res.status(403).json({
+					status: 'error',
+					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
+				});
+				return;
+			}
+			next();
+		};
+	}
+
 	private createScopedMiddleware(accessScope: AccessScope): RequestHandler {
 		return async (req, res, next) => {
 			if (!isAuthenticatedRequest(req)) throw new UnauthenticatedError();
 			if (!req.user) throw new UnauthenticatedError();
 
 			const { scope, globalOnly } = accessScope;
+
+			// OAuth tokens carry a scope ceiling: the route's scope must be in the granted set
+			// before the user's real permission is even checked, so effective access is the
+			// intersection of (token-granted ∩ user permission).
+			const grantedScopes = req.authInfo?.oauthGrantedScopes;
+			if (grantedScopes && !grantedScopes.includes(scope)) {
+				res.status(403).json({
+					status: 'error',
+					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
+				});
+				return;
+			}
 
 			try {
 				if (!(await userHasScopes(req.user, [scope], globalOnly, req.params))) {

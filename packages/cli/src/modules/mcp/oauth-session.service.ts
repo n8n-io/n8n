@@ -10,6 +10,8 @@ export interface OAuthSessionPayload {
 	codeChallenge: string;
 	state: string | null;
 	resource?: string;
+	/** Validated scopes requested by the client (subset of SUPPORTED_SCOPES). */
+	scopes?: string[];
 }
 
 const COOKIE_NAME = 'n8n-oauth-session';

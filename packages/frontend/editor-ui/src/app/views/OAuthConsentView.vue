@@ -2,6 +2,7 @@
 import { useConsentStore } from '@/app/stores/consent.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { onMounted, computed, ref } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
 import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8n/design-system';
@@ -21,6 +22,13 @@ const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
 
 const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+
+// Human-readable label per scope, falling back to the raw slug for any unmapped scope.
+const permissionLabels = computed<string[]>(() =>
+	(clentDetails.value?.scopes ?? []).map(
+		(scope) => i18n.baseText(`oauth.consentView.scope.${scope}` as BaseTextKey) || scope,
+	),
+);
 
 const handleAllow = async () => {
 	try {
@@ -91,14 +99,8 @@ onMounted(async () => {
 							})
 						}}
 					</N8nText>
-					<ul :class="$style['permission-list']">
-						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
-						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
-						<li>{{ i18n.baseText('oauth.consentView.action.executeWorkflows') }}</li>
-						<li>{{ i18n.baseText('oauth.consentView.action.executionDetails') }}</li>
-						<li>{{ i18n.baseText('oauth.consentView.action.createUpdateWorkflows') }}</li>
-						<li>{{ i18n.baseText('oauth.consentView.action.createDataTables') }}</li>
-						<li>{{ i18n.baseText('oauth.consentView.action.searchProjectsAndFolders') }}</li>
+					<ul v-if="permissionLabels.length" :class="$style['permission-list']">
+						<li v-for="label in permissionLabels" :key="label">{{ label }}</li>
 					</ul>
 					<p :class="$style['docs-link']">
 						<span

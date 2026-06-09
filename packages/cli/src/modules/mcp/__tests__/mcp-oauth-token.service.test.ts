@@ -125,7 +125,8 @@ describe('McpOAuthTokenService', () => {
 			const clientId = 'client-123';
 			const userId = 'user-456';
 
-			await service.saveTokenPair(accessToken, refreshToken, clientId, userId);
+			const scopes = ['workflow:read', 'workflow:execute'];
+			await service.saveTokenPair(accessToken, refreshToken, clientId, userId, scopes);
 
 			const mockManager = accessTokenRepository.manager as any;
 			expect(mockManager.transaction).toHaveBeenCalled();
@@ -141,6 +142,7 @@ describe('McpOAuthTokenService', () => {
 				token: refreshToken,
 				clientId,
 				userId,
+				scope: scopes,
 				expiresAt: expect.any(Number),
 			});
 		});
@@ -154,6 +156,7 @@ describe('McpOAuthTokenService', () => {
 				token: refreshToken,
 				clientId,
 				userId: 'user-456',
+				scope: ['workflow:read'],
 				expiresAt: Date.now() + 1000000, // Valid
 			});
 
@@ -186,6 +189,7 @@ describe('McpOAuthTokenService', () => {
 				token: refreshToken,
 				clientId,
 				userId: 'user-456',
+				scope: ['workflow:read'],
 				expiresAt: Date.now() + 1000000,
 			});
 
@@ -246,7 +250,8 @@ describe('McpOAuthTokenService', () => {
 			expect(result).toEqual({
 				token: accessToken,
 				clientId,
-				scopes: [],
+				// Token minted without explicit scopes falls back to the legacy MCP scopes.
+				scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
 				extra: {
 					userId,
 				},
@@ -292,7 +297,8 @@ describe('McpOAuthTokenService', () => {
 			await expect(service.verifyAccessToken(canonicalAudienceToken, audience)).resolves.toEqual({
 				token: canonicalAudienceToken,
 				clientId: 'client-456',
-				scopes: [],
+				// Legacy token without a `scope` claim falls back to the MCP scopes.
+				scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
 				extra: {
 					userId: 'user-123',
 				},
@@ -391,7 +397,12 @@ describe('McpOAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			expect(result).toEqual({ user, authType: 'oauth' });
+			expect(result).toEqual({
+				user,
+				authType: 'oauth',
+				// No explicit scopes minted → legacy MCP scopes surface on the token.
+				scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
+			});
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { id: userId },
 				relations: ['role'],

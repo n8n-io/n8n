@@ -409,6 +409,7 @@ describe('McpOAuthService', () => {
 			const authRecord = {
 				userId: 'user-456',
 				clientId: 'client-123',
+				scope: ['workflow:read'],
 				resource: 'https://n8n.example.com/mcp-server/http',
 			} as AuthorizationCode;
 
@@ -439,12 +440,14 @@ describe('McpOAuthService', () => {
 				'user-456',
 				'client-123',
 				'https://n8n.example.com/mcp-server/http',
+				['workflow:read'],
 			);
 			expect(tokenService.saveTokenPair).toHaveBeenCalledWith(
 				'access-token-123',
 				'refresh-token-456',
 				'client-123',
 				'user-456',
+				['workflow:read'],
 			);
 			expect(result).toEqual({
 				access_token: 'access-token-123',
@@ -470,6 +473,7 @@ describe('McpOAuthService', () => {
 			const authRecord = {
 				userId: 'user-456',
 				clientId: 'client-123',
+				scope: ['workflow:execute'],
 				resource: null,
 			} as AuthorizationCode;
 
@@ -493,6 +497,7 @@ describe('McpOAuthService', () => {
 				'user-456',
 				'client-123',
 				undefined,
+				['workflow:execute'],
 			);
 		});
 

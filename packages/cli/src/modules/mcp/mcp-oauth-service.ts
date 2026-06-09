@@ -3,7 +3,7 @@ import type {
 	AuthorizationParams,
 	OAuthServerProvider,
 } from '@modelcontextprotocol/sdk/server/auth/provider';
-import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import { InvalidScopeError, OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
 import type {
 	OAuthClientInformationFull,
@@ -20,10 +20,28 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from './mcp-oauth-token.service';
+import type { McpOAuthSeedClient } from './mcp-oauth.config';
 import { McpClientLimitReachedError } from './mcp.errors';
 import { OAuthSessionService } from './oauth-session.service';
 
-export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
+/** MCP tool scopes — gated by the MCP server itself, not by n8n RBAC. */
+export const MCP_TOOL_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
+
+/**
+ * n8n RBAC scopes grantable to OAuth clients (e.g. the native app). These map 1:1 to the
+ * scope slugs enforced by `@GlobalScope`/`@ProjectScope` decorators, so a token carrying them
+ * is downscoped to the intersection of (granted ∩ the user's real permission) at request time.
+ */
+export const N8N_OAUTH_SCOPES = [
+	'instanceAi:message',
+	'instanceAi:gateway',
+	'workflow:read',
+	'workflow:execute',
+	'execution:read',
+	'execution:list',
+];
+
+export const SUPPORTED_SCOPES = [...MCP_TOOL_SCOPES, ...N8N_OAUTH_SCOPES];
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
@@ -91,6 +109,29 @@ export class McpOAuthService implements OAuthServerProvider {
 				return client;
 			},
 		};
+	}
+
+	/**
+	 * Seed pre-registered OAuth clients (insert-if-absent) so a published app can ship a stable
+	 * `client_id` without dynamic client registration. Bypasses the DCR client-limit guard.
+	 */
+	async seedClients(clients: McpOAuthSeedClient[]): Promise<void> {
+		for (const client of clients) {
+			const existing = await this.oauthClientRepository.findOneBy({ id: client.id });
+			if (existing) continue;
+
+			await this.oauthClientRepository.insert({
+				id: client.id,
+				name: client.name,
+				redirectUris: client.redirectUris,
+				grantTypes: client.grantTypes,
+				tokenEndpointAuthMethod: client.tokenEndpointAuthMethod,
+				clientSecret: client.clientSecret,
+				clientSecretExpiresAt: null,
+			});
+
+			this.logger.info('Seeded pre-registered OAuth client', { clientId: client.id });
+		}
 	}
 
 	/** Returns true when the instance is already at or above the registered-client cap. */
@@ -165,6 +206,7 @@ export class McpOAuthService implements OAuthServerProvider {
 
 		try {
 			const resource = this.resolveAndValidateResourceIndicator(params.resource?.toString());
+			const scopes = this.validateRequestedScopes(params.scopes);
 
 			this.oauthSessionService.createSession(res, {
 				clientId: client.client_id,
@@ -172,10 +214,21 @@ export class McpOAuthService implements OAuthServerProvider {
 				codeChallenge: params.codeChallenge,
 				state: params.state ?? null,
 				resource,
+				scopes,
 			});
 
 			res.redirect('/oauth/consent');
 		} catch (error) {
+			if (error instanceof InvalidScopeError) {
+				this.logger.warn('Rejecting OAuth authorization request with invalid scope', {
+					clientId: client.client_id,
+					requestedScopes: params.scopes,
+				});
+				this.oauthSessionService.clearSession(res);
+				res.status(400).json({ error: error.errorCode, error_description: error.message });
+				return;
+			}
+
 			if (error instanceof InvalidResourceIndicatorError) {
 				this.logger.warn('Rejecting OAuth authorization request with invalid resource', {
 					clientId: client.client_id,
@@ -246,6 +299,7 @@ export class McpOAuthService implements OAuthServerProvider {
 			authRecord.userId,
 			client.client_id,
 			finalResource,
+			authRecord.scope,
 		);
 
 		await this.tokenService.saveTokenPair(
@@ -253,6 +307,7 @@ export class McpOAuthService implements OAuthServerProvider {
 			refreshToken,
 			client.client_id,
 			authRecord.userId,
+			authRecord.scope,
 		);
 
 		return {
@@ -286,6 +341,22 @@ export class McpOAuthService implements OAuthServerProvider {
 
 	private getCanonicalMcpResourceUrl(): string {
 		return this.tokenService.getCanonicalResourceUrl();
+	}
+
+	/**
+	 * Validate the client's requested scopes against the supported set. The MCP SDK parses the
+	 * `scope` param but does not validate it, so we reject any unknown scope here. Returns the
+	 * de-duplicated scopes, or undefined when none were requested.
+	 */
+	private validateRequestedScopes(scopes: string[] | undefined): string[] | undefined {
+		if (!scopes || scopes.length === 0) return undefined;
+
+		const unsupported = scopes.filter((scope) => !SUPPORTED_SCOPES.includes(scope));
+		if (unsupported.length > 0) {
+			throw new InvalidScopeError(`Unsupported scope(s): ${unsupported.join(', ')}`);
+		}
+
+		return [...new Set(scopes)];
 	}
 
 	// Exact-match required by RFC 8707 §2.1. Prefix/wildcard matching would open the door

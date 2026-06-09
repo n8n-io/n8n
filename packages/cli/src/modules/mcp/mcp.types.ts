@@ -146,4 +146,6 @@ export type UserWithContext = {
 	actor?: User;
 	context?: TelemetryAuthContext;
 	authType?: Mcpauth_type;
+	/** Scopes granted to the token, when authenticated via OAuth. */
+	scopes?: string[];
 };

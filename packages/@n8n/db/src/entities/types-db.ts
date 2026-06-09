@@ -424,6 +424,10 @@ export type AuthenticationInformation = {
 	usedMfa: boolean;
 	// Indicates the user is logged in but hasn't completed required MFA enrollment
 	mfaEnrollmentRequired?: boolean;
+	// Set when the request was authenticated via an OAuth bearer token. Acts as a scope ceiling:
+	// the request may only exercise scopes in this list, intersected with the user's real
+	// permissions. Absent for cookie/session and API-key auth.
+	oauthGrantedScopes?: string[];
 };
 
 /**

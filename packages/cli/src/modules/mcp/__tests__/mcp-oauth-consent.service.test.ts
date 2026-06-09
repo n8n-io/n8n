@@ -1,5 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { mock } from 'jest-mock-extended';
 
@@ -14,7 +16,12 @@ let oauthSessionService: jest.Mocked<OAuthSessionService>;
 let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
 let userConsentRepository: jest.Mocked<UserConsentRepository>;
 let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
+let projectRepository: jest.Mocked<ProjectRepository>;
 let service: McpOAuthConsentService;
+
+// Granted scopes default to the MCP tool scopes when a session requests no scopes.
+const DEFAULT_GRANTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
+const user = mock<User>({ id: 'user-123' });
 
 describe('McpOAuthConsentService', () => {
 	beforeAll(() => {
@@ -27,6 +34,7 @@ describe('McpOAuthConsentService', () => {
 			UserConsentRepository,
 		) as jest.Mocked<UserConsentRepository>;
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
+		projectRepository = mockInstance(ProjectRepository) as jest.Mocked<ProjectRepository>;
 
 		service = new McpOAuthConsentService(
 			logger,
@@ -34,6 +42,7 @@ describe('McpOAuthConsentService', () => {
 			oauthClientRepository,
 			userConsentRepository,
 			authorizationCodeService,
+			projectRepository,
 		);
 	});
 
@@ -63,6 +72,7 @@ describe('McpOAuthConsentService', () => {
 			expect(result).toEqual({
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
 			});
 			expect(oauthSessionService.verifySession).toHaveBeenCalledWith(sessionToken);
 			expect(oauthClientRepository.findOne).toHaveBeenCalledWith({
@@ -123,6 +133,7 @@ describe('McpOAuthConsentService', () => {
 			expect(result).toEqual({
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
 			});
 		});
 	});
@@ -130,7 +141,6 @@ describe('McpOAuthConsentService', () => {
 	describe('handleConsentDecision', () => {
 		it('should handle user denial', async () => {
 			const sessionToken = 'valid-session-token';
-			const userId = 'user-123';
 			const sessionPayload = {
 				clientId: 'client-123',
 				redirectUri: 'https://example.com/callback',
@@ -140,7 +150,7 @@ describe('McpOAuthConsentService', () => {
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 
-			const result = await service.handleConsentDecision(sessionToken, userId, false);
+			const result = await service.handleConsentDecision(sessionToken, user, false);
 
 			expect(result.redirectUrl).toContain('error=access_denied');
 			expect(result.redirectUrl).toContain(
@@ -156,7 +166,6 @@ describe('McpOAuthConsentService', () => {
 
 		it('should handle user approval and generate authorization code', async () => {
 			const sessionToken = 'valid-session-token';
-			const userId = 'user-123';
 			const sessionPayload = {
 				clientId: 'client-123',
 				redirectUri: 'https://example.com/callback',
@@ -170,7 +179,7 @@ describe('McpOAuthConsentService', () => {
 			userConsentRepository.upsert.mockResolvedValue(mock());
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
-			const result = await service.handleConsentDecision(sessionToken, userId, true);
+			const result = await service.handleConsentDecision(sessionToken, user, true);
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).toContain('state=state-xyz');
@@ -188,17 +197,18 @@ describe('McpOAuthConsentService', () => {
 				'https://example.com/callback',
 				'challenge-abc',
 				'state-xyz',
+				DEFAULT_GRANTED_SCOPES,
 				'https://n8n.example.com/mcp-server/http',
 			);
 			expect(logger.info).toHaveBeenCalledWith('Consent approved', {
 				clientId: 'client-123',
 				userId: 'user-123',
+				grantedScopes: DEFAULT_GRANTED_SCOPES,
 			});
 		});
 
 		it('should handle approval without state parameter', async () => {
 			const sessionToken = 'valid-session-token';
-			const userId = 'user-123';
 			const sessionPayload = {
 				clientId: 'client-123',
 				redirectUri: 'https://example.com/callback',
@@ -211,7 +221,7 @@ describe('McpOAuthConsentService', () => {
 			userConsentRepository.upsert.mockResolvedValue(mock());
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
-			const result = await service.handleConsentDecision(sessionToken, userId, true);
+			const result = await service.handleConsentDecision(sessionToken, user, true);
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).not.toContain('state=');
@@ -221,13 +231,13 @@ describe('McpOAuthConsentService', () => {
 				'https://example.com/callback',
 				'challenge-abc',
 				null,
+				DEFAULT_GRANTED_SCOPES,
 				undefined,
 			);
 		});
 
 		it('should handle re-authorization for existing consent by upserting', async () => {
 			const sessionToken = 'valid-session-token';
-			const userId = 'user-123';
 			const sessionPayload = {
 				clientId: 'client-123',
 				redirectUri: 'https://example.com/callback',
@@ -241,9 +251,9 @@ describe('McpOAuthConsentService', () => {
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			// First authorization
-			await service.handleConsentDecision(sessionToken, userId, true);
+			await service.handleConsentDecision(sessionToken, user, true);
 			// Re-authorization with same userId + clientId should not throw
-			await service.handleConsentDecision(sessionToken, userId, true);
+			await service.handleConsentDecision(sessionToken, user, true);
 
 			expect(userConsentRepository.upsert).toHaveBeenCalledTimes(2);
 			expect(userConsentRepository.upsert).toHaveBeenCalledWith(
@@ -258,20 +268,18 @@ describe('McpOAuthConsentService', () => {
 
 		it('should throw error when session verification fails', async () => {
 			const sessionToken = 'invalid-session-token';
-			const userId = 'user-123';
 
 			oauthSessionService.verifySession.mockImplementation(() => {
 				throw new Error('Invalid session');
 			});
 
-			await expect(service.handleConsentDecision(sessionToken, userId, true)).rejects.toThrow(
+			await expect(service.handleConsentDecision(sessionToken, user, true)).rejects.toThrow(
 				'Invalid or expired session',
 			);
 		});
 
 		it('should handle denial without state parameter', async () => {
 			const sessionToken = 'valid-session-token';
-			const userId = 'user-123';
 			const sessionPayload = {
 				clientId: 'client-123',
 				redirectUri: 'https://example.com/callback',
@@ -281,7 +289,7 @@ describe('McpOAuthConsentService', () => {
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 
-			const result = await service.handleConsentDecision(sessionToken, userId, false);
+			const result = await service.handleConsentDecision(sessionToken, user, false);
 
 			expect(result.redirectUrl).toContain('error=access_denied');
 			expect(result.redirectUrl).not.toContain('state=');

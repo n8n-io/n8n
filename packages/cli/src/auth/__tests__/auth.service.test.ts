@@ -12,12 +12,21 @@ import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 
+import { Container } from '@n8n/di';
+
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { MfaService } from '@/mfa/mfa.service';
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { McpOAuthTokenService } from '@/modules/mcp/mcp-oauth-token.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 import type { License } from '@/license';
+
+// The bearer branch resolves these lazily via Container.get; stub the modules so the dynamic
+// imports don't pull the real MCP services into this unit test.
+jest.mock('@/modules/mcp/mcp.settings.service', () => ({ McpSettingsService: class {} }));
+jest.mock('@/modules/mcp/mcp-oauth-token.service', () => ({ McpOAuthTokenService: class {} }));
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';
@@ -1452,6 +1461,97 @@ describe('AuthService', () => {
 					'Unauthorized',
 				);
 			});
+		});
+	});
+
+	describe('OAuth bearer authentication', () => {
+		const res = mock<Response>();
+		const next = jest.fn() as NextFunction;
+
+		const mcpSettingsService = mock<McpSettingsService>();
+		const mcpTokenService = mock<McpOAuthTokenService>();
+		const oauthUser = mock<User>({ id: 'oauth-user', disabled: false });
+
+		// Tokens are decoded (not verified) to route by `meta.isOAuth`.
+		const oauthToken = jwtService.sign({ sub: 'oauth-user', meta: { isOAuth: true } });
+		const nonOauthToken = jwtService.sign({ sub: 'oauth-user' });
+
+		const mockReqWithBearer = (token?: string) =>
+			mock<AuthenticatedRequest>({
+				cookies: {},
+				user: undefined,
+				headers: token ? { authorization: `Bearer ${token}` } : {},
+			});
+
+		let containerGetSpy: jest.SpyInstance;
+
+		beforeEach(() => {
+			res.status.mockReturnThis();
+			containerGetSpy = jest.spyOn(Container, 'get').mockImplementation(((cls: unknown) => {
+				if (cls === McpSettingsService) return mcpSettingsService;
+				if (cls === McpOAuthTokenService) return mcpTokenService;
+				throw new Error('unexpected Container.get');
+			}) as never);
+			mcpTokenService.getCanonicalResourceUrl.mockReturnValue('https://n8n.test/mcp-server/http');
+		});
+
+		afterEach(() => {
+			containerGetSpy.mockRestore();
+		});
+
+		it('authenticates a valid OAuth bearer token and attaches the scope ceiling', async () => {
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpTokenService.verifyOAuthAccessToken.mockResolvedValue({
+				user: oauthUser,
+				authType: 'oauth',
+				scopes: ['instanceAi:message'],
+			});
+			const req = mockReqWithBearer(oauthToken);
+
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
+			await middleware(req, res, next);
+
+			expect(req.user).toBe(oauthUser);
+			expect(req.authInfo).toEqual({
+				usedMfa: false,
+				oauthGrantedScopes: ['instanceAi:message'],
+			});
+			expect(next).toHaveBeenCalled();
+		});
+
+		it('rejects an OAuth bearer token when MCP access is disabled', async () => {
+			mcpSettingsService.getEnabled.mockResolvedValue(false);
+			const req = mockReqWithBearer(oauthToken);
+
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
+			await middleware(req, res, next);
+
+			expect(req.user).toBeUndefined();
+			expect(mcpTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(401);
+		});
+
+		it('ignores a bearer token that is not an OAuth token', async () => {
+			const req = mockReqWithBearer(nonOauthToken);
+
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
+			await middleware(req, res, next);
+
+			expect(req.user).toBeUndefined();
+			expect(mcpSettingsService.getEnabled).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(401);
+		});
+
+		it('does not authenticate when the token resolves to no user', async () => {
+			mcpSettingsService.getEnabled.mockResolvedValue(true);
+			mcpTokenService.verifyOAuthAccessToken.mockResolvedValue({ user: null });
+			const req = mockReqWithBearer(oauthToken);
+
+			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
+			await middleware(req, res, next);
+
+			expect(req.user).toBeUndefined();
+			expect(res.status).toHaveBeenCalledWith(401);
 		});
 	});
 });

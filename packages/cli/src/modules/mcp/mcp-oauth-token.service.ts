@@ -27,6 +27,9 @@ export class McpOAuthTokenService {
 	// Pre-RFC-8707 audience value. Do not modify — existing tokens were signed with this string
 	// and changing it would force all active clients to re-authenticate.
 	private readonly LEGACY_MCP_AUDIENCE = 'mcp-server-api';
+	// Scopes assigned to grants that predate the scope column / `scope` JWT claim. Mirrors the
+	// migration default so legacy access tokens (no claim) keep their original MCP capability.
+	private readonly LEGACY_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 	private readonly MCP_RESOURCE_PATH = '/mcp-server/http';
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
@@ -60,6 +63,7 @@ export class McpOAuthTokenService {
 		userId: string,
 		clientId: string,
 		resource?: string,
+		scopes?: string[],
 	): { accessToken: string; refreshToken: string } {
 		const audience = resource ?? this.getCanonicalResourceUrl();
 
@@ -70,6 +74,7 @@ export class McpOAuthTokenService {
 			jti: randomUUID(),
 			iat: Math.floor(Date.now() / 1000),
 			exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY_SECONDS,
+			scope: scopes ?? this.LEGACY_SCOPES,
 			meta: {
 				isOAuth: true,
 			},
@@ -85,6 +90,7 @@ export class McpOAuthTokenService {
 		refreshToken: string,
 		clientId: string,
 		userId: string,
+		scopes: string[],
 	): Promise<void> {
 		await this.accessTokenRepository.manager.transaction(async (transactionManager) => {
 			await transactionManager.insert(this.accessTokenRepository.target, {
@@ -97,6 +103,7 @@ export class McpOAuthTokenService {
 				token: refreshToken,
 				clientId,
 				userId,
+				scope: scopes,
 				expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
 			});
 		});
@@ -132,10 +139,14 @@ export class McpOAuthTokenService {
 				throw new Error('Invalid refresh token');
 			}
 
+			// OAuth 2.1: a rotated refresh token reuses the original grant's scopes.
+			const grantedScopes = refreshTokenRecord.scope ?? this.LEGACY_SCOPES;
+
 			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
 				refreshTokenRecord.userId,
 				clientId,
 				resource,
+				grantedScopes,
 			);
 
 			await trx.insert(AccessToken, {
@@ -148,6 +159,7 @@ export class McpOAuthTokenService {
 				token: newRefreshToken,
 				clientId,
 				userId: refreshTokenRecord.userId,
+				scope: grantedScopes,
 				expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
 			});
 
@@ -192,7 +204,8 @@ export class McpOAuthTokenService {
 		return {
 			token,
 			clientId,
-			scopes: [],
+			// Legacy tokens minted before the `scope` claim fall back to the original MCP scopes.
+			scopes: this.getStringArrayClaim(decoded, 'scope') ?? this.LEGACY_SCOPES,
 			extra: {
 				userId,
 			},
@@ -220,7 +233,7 @@ export class McpOAuthTokenService {
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
 			}
 
-			return { user, authType: 'oauth' };
+			return { user, authType: 'oauth', scopes: authInfo.scopes };
 		} catch (error) {
 			const errorForSure = ensureError(error);
 			const reason =
@@ -302,5 +315,14 @@ export class McpOAuthTokenService {
 		if (!payload || typeof payload !== 'object') return null;
 		const claimValue = (payload as Record<string, unknown>)[claim];
 		return typeof claimValue === 'string' ? claimValue : null;
+	}
+
+	private getStringArrayClaim(payload: unknown, claim: string): string[] | null {
+		if (!payload || typeof payload !== 'object') return null;
+		const claimValue = (payload as Record<string, unknown>)[claim];
+		if (!Array.isArray(claimValue) || !claimValue.every((v) => typeof v === 'string')) {
+			return null;
+		}
+		return claimValue;
 	}
 }
