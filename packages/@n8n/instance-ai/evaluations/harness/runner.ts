@@ -19,9 +19,11 @@ import {
 } from './chat-loop';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
+import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
+import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { verifyChecklist } from '../checklist/verifier';
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
@@ -30,6 +32,7 @@ import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/wo
 import type {
 	ChecklistItem,
 	CapturedEvent,
+	BuildExpectationResult,
 	ConversationMetrics,
 	ConversationTurn,
 	ExecutionScenarioResult,
@@ -131,8 +134,26 @@ export async function runWorkflowTestCase(
 		result.workflowChecks = build.workflowChecks;
 	}
 
+	// Optional author build expectations — informational, judged concurrently with scenarios.
+	const wantsExpectations =
+		(testCase.buildExpectations?.length ?? 0) > 0 && (build.transcript?.length ?? 0) > 0;
+	const expectationsPromise: Promise<BuildExpectationResult[]> = wantsExpectations
+		? verifyBuildExpectations(testCase.buildExpectations!, {
+				transcript: build.transcript!,
+				workflowJson: build.workflowJsons[0],
+				metrics: build.conversationMetrics,
+			}).catch((error: unknown) => {
+				logger.warn(
+					`  Build expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				return allFailVerdicts(testCase.buildExpectations!, 'judge error');
+			})
+		: Promise.resolve<BuildExpectationResult[]>([]);
+
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
+		const expectationResults = await expectationsPromise;
+		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
 		return result;
 	}
 
@@ -141,7 +162,7 @@ export async function runWorkflowTestCase(
 	result.workflowJson = build.workflowJsons[0];
 
 	const scenarioStart = Date.now();
-	result.executionScenarioResults = await runWithConcurrency(
+	const scenariosPromise = runWithConcurrency(
 		testCase.executionScenarios,
 		async (scenario) => {
 			try {
@@ -167,6 +188,12 @@ export async function runWorkflowTestCase(
 		},
 		MAX_CONCURRENT_SCENARIOS,
 	);
+	const [scenarioResults, expectationResults] = await Promise.all([
+		scenariosPromise,
+		expectationsPromise,
+	]);
+	result.executionScenarioResults = scenarioResults;
+	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
@@ -623,36 +650,6 @@ export interface VerificationArtifact {
 	workflowContext: string;
 	/** Scenario + execution trace + errors. Fresh per scenario. */
 	scenarioContext: string;
-}
-
-/** Render the per-build workflow structure: nodes, connections, all configs. */
-function buildWorkflowContextBlock(wf: WorkflowResponse | undefined): string {
-	if (!wf) return '## Workflow structure\n\n(no workflow built)';
-	const lines: string[] = ['## Workflow structure', ''];
-	for (const node of wf.nodes) {
-		lines.push(`- **${node.name ?? '(unnamed)'}** (${node.type})`);
-	}
-	lines.push('');
-	lines.push('**All node configs:**');
-	lines.push(
-		'```json',
-		JSON.stringify(
-			wf.nodes.map((node) => ({
-				name: node.name ?? '(unnamed)',
-				type: node.type,
-				typeVersion: node.typeVersion,
-				...(node.disabled !== undefined ? { disabled: node.disabled } : {}),
-				parameters: node.parameters ?? {},
-			})),
-			null,
-			2,
-		),
-		'```',
-		'',
-	);
-	lines.push('**Connections:**');
-	lines.push('```json', JSON.stringify(wf.connections, null, 2), '```');
-	return lines.join('\n');
 }
 
 function isObjectRecord(v: unknown): v is Record<string, unknown> {
