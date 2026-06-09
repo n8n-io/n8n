@@ -79,6 +79,7 @@ import GroupVariantSwitcher from './elements/groups/GroupVariantSwitcher.vue';
 import WorkflowOverviewPanel from './elements/overview/WorkflowOverviewPanel.vue';
 import { useWorkflowOverview } from './elements/overview/useWorkflowOverview';
 import { useGroupCardVariant } from './elements/nodes/render-types/group-card-variants/useGroupCardVariant';
+import { useRoute } from 'vue-router';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -205,8 +206,26 @@ const isCanvasNodeGroupingEnabled = computed(() => true);
 // three-dots menu via the shared useWorkflowOverview singleton). Only shown in
 // the V4 group-card variant.
 const { isVisible: isOverviewVisible } = useWorkflowOverview();
-const { activeVariantId } = useGroupCardVariant();
+const { activeVariantId, setVariant, variants } = useGroupCardVariant();
 const isOverviewVariant = computed(() => activeVariantId.value === 'v4');
+
+// PROTOTYPE (external usability build): lock the collapsed-group variant so
+// testers see one variant with no controls. Defaults to V3; a `?variant=<id>`
+// query param overrides it (for our own A/B testing). When locked, the
+// bottom-right switcher is hidden and the resolved variant is forced on load,
+// so it wins over any stale localStorage value.
+const lockVariantForTesting = true;
+const route = useRoute();
+const lockedVariantId = computed<string>(() => {
+	const requested = route.query.variant;
+	const id = Array.isArray(requested) ? requested[0] : requested;
+	return typeof id === 'string' && variants.some((variant) => variant.id === id) ? id : 'v3';
+});
+if (lockVariantForTesting) {
+	setVariant(lockedVariantId.value);
+	// React to in-session URL changes (e.g. editing ?variant=) without a reload.
+	watch(lockedVariantId, (id) => setVariant(id));
+}
 
 const vueFlow = useVueFlow(props.id);
 const {
@@ -1275,9 +1294,10 @@ defineExpose({
 			@extract-workflow="emit('extract-workflow', $event)"
 		/>
 
-		<!-- PROTOTYPE: facilitator control to flip collapsed group-card variants. -->
+		<!-- PROTOTYPE: facilitator control to flip collapsed group-card variants.
+			Hidden in the locked external usability build (variant is forced). -->
 		<Panel
-			v-if="showNodeGroups && isCanvasNodeGroupingEnabled"
+			v-if="showNodeGroups && isCanvasNodeGroupingEnabled && !lockVariantForTesting"
 			:position="PanelPosition.BottomRight"
 		>
 			<GroupVariantSwitcher />

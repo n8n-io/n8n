@@ -60,7 +60,6 @@ const parameters = computed(() => config.value?.parameters ?? []);
 		/>
 		<div :class="$style.content">
 			<span :class="$style.title" data-test-id="canvas-collapsed-group-title">{{ title }}</span>
-			<p v-if="description" :class="$style.description">{{ description }}</p>
 
 			<div v-if="services.length" :class="$style.serviceRow">
 				<span :class="$style.sectionLabel">{{ servicesLabel }}</span>
@@ -112,15 +111,6 @@ const parameters = computed(() => config.value?.parameters ?? []);
 	min-width: 0;
 
 	white-space: nowrap;
-}
-
-.description {
-	margin: 0;
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--regular);
-	line-height: var(--line-height--md);
-	color: var(--color--text--tint-1);
-	overflow-wrap: anywhere;
 }
 
 .sectionLabel {
