@@ -18,7 +18,7 @@ export class WorkflowActiveTriggersState {
 	}
 
 	/** All recorded trigger responses, in insertion order. */
-	get triggerResponses(): ITriggerResponse[] {
-		return Array.from(this.triggersByNodeId.values());
+	get triggerResponses(): IterableIterator<ITriggerResponse> {
+		return this.triggersByNodeId.values();
 	}
 }

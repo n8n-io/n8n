@@ -98,7 +98,6 @@ declare module 'n8n-workflow' {
 }
 
 export * from './active-workflow-triggers';
-export * from './workflow-active-triggers-state';
 export type * from './interfaces';
 export * from './routing-node';
 export * from './node-execution-context';

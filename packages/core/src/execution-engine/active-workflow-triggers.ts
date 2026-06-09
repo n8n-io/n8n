@@ -28,8 +28,8 @@ import { TriggersAndPollers } from './triggers-and-pollers';
 import { WorkflowActiveTriggersState } from './workflow-active-triggers-state';
 
 /**
- * Holds the in-memory state of which "active" triggers (trigger and poll
- * triggers) have been activated on this specific main instance. Webhook
+ * Holds the in-memory state of which non-webhook triggers (active, schedule
+ * and poll triggers) have been activated on this specific main instance. Webhook
  * triggers are not tracked here — they live in the `webhook_entity` table.
  */
 @Service()
