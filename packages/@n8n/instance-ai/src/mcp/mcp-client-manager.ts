@@ -196,7 +196,7 @@ export class McpClientManager {
 		logger: Logger | undefined,
 		source: string,
 	): Promise<McpToolRegistry> {
-		const client = new McpClient(buildNativeMcpConfigs(configs), true);
+		const client = new McpClient(buildNativeMcpConfigs(configs));
 		this.clientsByKey.set(clientKey, client);
 
 		const registry = toolsToRegistry(await client.listTools());

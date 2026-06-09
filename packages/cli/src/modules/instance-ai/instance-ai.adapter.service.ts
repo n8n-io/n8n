@@ -63,7 +63,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
@@ -246,16 +246,18 @@ export class InstanceAiAdapterService {
 			searchProxyConfig?: ServiceProxyConfig;
 			pushRef?: string;
 			threadId?: string;
+			projectId?: string;
 		},
 	): InstanceAiContext {
-		const { searchProxyConfig, pushRef, threadId } = options ?? {};
+		const { searchProxyConfig, pushRef, threadId, projectId } = options ?? {};
 		return {
 			userId: user.id,
-			workflowService: this.createWorkflowAdapter(user, threadId),
+			projectId,
+			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(user),
+			credentialService: this.createCredentialAdapter(user, projectId),
 			nodeService: this.createNodeAdapter(user),
-			dataTableService: this.createDataTableAdapter(user),
+			dataTableService: this.createDataTableAdapter(user, projectId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -300,7 +302,7 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	private createProjectScopeHelpers(user: User) {
+	private createProjectScopeHelpers(user: User, boundProjectId?: string) {
 		const { projectRepository } = this;
 		let personalProjectIdPromise: Promise<string> | null = null;
 
@@ -319,15 +321,29 @@ export class InstanceAiAdapterService {
 		};
 
 		const resolveProjectId = async (scopes: Scope[], providedProjectId?: string) => {
-			const projectId = providedProjectId ?? (await getPersonalProjectId());
+			const projectId = providedProjectId ?? boundProjectId ?? (await getPersonalProjectId());
 			await assertProjectScope(scopes, projectId);
 			return projectId;
 		};
 
-		return { getPersonalProjectId, assertProjectScope, resolveProjectId };
+		const resolveBoundProjectId = async (scopes: Scope[]) => {
+			if (!boundProjectId) {
+				throw new UnexpectedError(
+					'Cannot create a resource: this Instance AI run has no bound project.',
+				);
+			}
+			await assertProjectScope(scopes, boundProjectId);
+			return boundProjectId;
+		};
+
+		return { getPersonalProjectId, assertProjectScope, resolveProjectId, resolveBoundProjectId };
 	}
 
-	private createWorkflowAdapter(user: User, threadId?: string): InstanceAiWorkflowService {
+	private createWorkflowAdapter(
+		user: User,
+		threadId?: string,
+		boundProjectId?: string,
+	): InstanceAiWorkflowService {
 		const {
 			workflowService,
 			workflowFinderService,
@@ -337,13 +353,14 @@ export class InstanceAiAdapterService {
 			workflowHistoryService,
 			enterpriseWorkflowService,
 			executionRepository,
+			executionPersistence,
 			license,
 			allowSendingParameterValues,
 			telemetry,
 		} = this;
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
-		const { resolveProjectId } = this.createProjectScopeHelpers(user);
+		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
 		const redactParameters = !allowSendingParameterValues;
 
 		return {
@@ -351,6 +368,7 @@ export class InstanceAiAdapterService {
 				const filter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
 					...(options?.query ? { query: options.query } : {}),
+					...(options?.scope !== 'instance' && boundProjectId ? { projectId: boundProjectId } : {}),
 				};
 
 				const { workflows } = await workflowService.getMany(user, {
@@ -508,7 +526,7 @@ export class InstanceAiAdapterService {
 				});
 				if (!latest) return null;
 
-				const execution = await executionRepository.findSingleExecution(latest.id, {
+				const execution = await executionPersistence.findSingleExecution(latest.id, {
 					includeData: true,
 					unflattenData: true,
 				});
@@ -520,7 +538,7 @@ export class InstanceAiAdapterService {
 				options?: { projectId?: string; markAsAiTemporary?: boolean },
 			) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectId(['workflow:create'], options?.projectId);
+				const projectId = await resolveBoundProjectId(['workflow:create']);
 
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
@@ -1045,11 +1063,7 @@ export class InstanceAiAdapterService {
 					}
 				}
 
-				const result = await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				const result = await extractExecutionResult(executionId, allowSendingParameterValues);
 				trackBuilderExecutedWorkflow(result.status);
 				return result;
 			},
@@ -1060,11 +1074,7 @@ export class InstanceAiAdapterService {
 				if (isRunning) {
 					return { executionId, status: 'running' } satisfies ExecutionResult;
 				}
-				return await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				return await extractExecutionResult(executionId, allowSendingParameterValues);
 			},
 
 			async getResult(executionId: string) {
@@ -1073,11 +1083,7 @@ export class InstanceAiAdapterService {
 				if (activeExecutions.has(executionId)) {
 					await activeExecutions.getPostExecutePromise(executionId);
 				}
-				return await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				return await extractExecutionResult(executionId, allowSendingParameterValues);
 			},
 
 			async stop(executionId: string) {
@@ -1106,12 +1112,7 @@ export class InstanceAiAdapterService {
 
 			async getDebugInfo(executionId: string) {
 				await assertExecutionAccess(executionId);
-				return await extractExecutionDebugInfo(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-					nodeTypes,
-				);
+				return await extractExecutionDebugInfo(executionId, allowSendingParameterValues, nodeTypes);
 			},
 
 			async getNodeOutput(executionId, nodeName, options) {
@@ -1126,7 +1127,7 @@ export class InstanceAiAdapterService {
 					} satisfies NodeOutputResult;
 				}
 
-				return await extractNodeOutput(executionRepository, executionId, nodeName, options);
+				return await extractNodeOutput(executionId, nodeName, options);
 			},
 
 			getResolvedNodeParameters: async (
@@ -1149,26 +1150,34 @@ export class InstanceAiAdapterService {
 					} satisfies ResolvedNodeParametersResult;
 				}
 
-				return await extractResolvedNodeParameters(
-					executionRepository,
-					nodeTypes,
-					executionId,
-					nodeName,
-					options,
-				);
+				return await extractResolvedNodeParameters(nodeTypes, executionId, nodeName, options);
 			},
 		};
 	}
 
-	private createCredentialAdapter(user: User): InstanceAiCredentialService {
+	private createCredentialAdapter(
+		user: User,
+		boundProjectId?: string,
+	): InstanceAiCredentialService {
 		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
 
 		return {
 			async list(options) {
-				// Setup flows scope to a workflow or project so the candidates match what
-				// the save path will accept. `preventTampering` (workflow.service.ee.ts)
-				// uses `getCredentialsAUserCanUseInAWorkflow` for the same intersection,
-				// so the editor's credential picker and the AI's setup card stay aligned.
+				// In a project-bound thread the credential list is always the bound
+				// project's usable set (project-shared + global) — the same intersection
+				// `preventTampering` (workflow.service.ee.ts) accepts. A caller-supplied
+				// workflowId/projectId must not broaden it.
+				if (boundProjectId) {
+					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						projectId: boundProjectId,
+					});
+					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
+					return filtered.map((c): CredentialSummary => ({ id: c.id, name: c.name, type: c.type }));
+				}
+
+				// Unbound runs (temporary-workflow archiving, the only caller without a
+				// bound project) scope to the caller-supplied workflow or project so the
+				// candidates still match what the save path will accept.
 				if (options?.workflowId || options?.projectId) {
 					const scoped = options.workflowId
 						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
@@ -1434,11 +1443,14 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createDataTableAdapter(user: User): InstanceAiDataTableService {
+	private createDataTableAdapter(user: User, boundProjectId?: string): InstanceAiDataTableService {
 		const { dataTableService, dataTableRepository } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('data tables');
 
-		const { resolveProjectId } = this.createProjectScopeHelpers(user);
+		const { resolveProjectId, resolveBoundProjectId } = this.createProjectScopeHelpers(
+			user,
+			boundProjectId,
+		);
 
 		const logger = this.logger;
 
@@ -1528,9 +1540,9 @@ export class InstanceAiAdapterService {
 				);
 			},
 
-			async create(name, columns, options) {
+			async create(name, columns) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectId(['dataTable:create'], options?.projectId);
+				const projectId = await resolveBoundProjectId(['dataTable:create']);
 				const result = await dataTableService.createDataTable(projectId, { name, columns });
 
 				return {
@@ -2763,11 +2775,10 @@ function wrapResultDataEntries(data: Record<string, unknown>): Record<string, un
 }
 
 export async function extractExecutionResult(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
 ): Promise<ExecutionResult> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -2906,12 +2917,11 @@ const MAX_ITEM_CHARS = 50_000;
  * Each item is capped at MAX_ITEM_CHARS to prevent a single giant JSON blob from flooding context.
  */
 export async function extractNodeOutput(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	nodeName: string,
 	options?: { startIndex?: number; maxItems?: number },
 ): Promise<NodeOutputResult> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -3136,12 +3146,11 @@ function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): 
 
 /** Extract structured debug info from a completed execution. */
 export async function extractExecutionDebugInfo(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
 	nodeTypes?: NodeTypes,
 ): Promise<ExecutionDebugInfo> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -3154,11 +3163,7 @@ export async function extractExecutionDebugInfo(
 		};
 	}
 
-	const baseResult = await extractExecutionResult(
-		executionRepository,
-		executionId,
-		includeOutputData,
-	);
+	const baseResult = await extractExecutionResult(executionId, includeOutputData);
 
 	const runData = execution.data?.resultData?.runData;
 	const nodeTrace: ExecutionDebugInfo['nodeTrace'] = [];
@@ -3232,13 +3237,10 @@ export async function extractExecutionDebugInfo(
 				nodeName: _omitName,
 				suppressed: _omitSuppressed,
 				...bundle
-			} = await extractResolvedNodeParameters(
-				executionRepository,
-				nodeTypes,
-				executionId,
-				failedNode.name,
-				{ itemIndex: failedItemIndex, runIndex: failedRunIndex },
-			);
+			} = await extractResolvedNodeParameters(nodeTypes, executionId, failedNode.name, {
+				itemIndex: failedItemIndex,
+				runIndex: failedRunIndex,
+			});
 			failedNode.resolvedParameters = bundle;
 		} catch {
 			// debug must always succeed — silently skip the resolved-params view.

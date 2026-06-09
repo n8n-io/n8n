@@ -1,6 +1,8 @@
 import type { IAllExecuteFunctions, INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
+import { requestOAuth2 } from '../request-helpers/oauth';
+
 const { mockGetToken, mockSign, mockCreateToken, MockClientOAuth2 } = vi.hoisted(() => ({
 	mockGetToken: vi.fn(),
 	mockSign: vi.fn(),
@@ -11,8 +13,6 @@ const { mockGetToken, mockSign, mockCreateToken, MockClientOAuth2 } = vi.hoisted
 vi.mock('@n8n/client-oauth2', () => ({
 	ClientOAuth2: MockClientOAuth2,
 }));
-
-import { requestOAuth2 } from '../request-helper-functions';
 
 describe('createOAuth2Client - scope handling', () => {
 	const mockThis = mockDeep<IAllExecuteFunctions>();

@@ -5,6 +5,7 @@ import { N8nIcon } from '@n8n/design-system';
 import type { InstanceAiMessage } from '@n8n/api-types';
 import { useThread } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
+import { collectActiveBuilderAgents, isActiveBuilderAgent } from '../builderAgents';
 
 const thread = useThread();
 const i18n = useI18n();
@@ -18,7 +19,16 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?: string } | null {
-	const lastMsg = [...messages].reverse().find((m) => m.role === 'assistant' && m.isStreaming);
+	// Match the still-streaming orchestrator message, or — once it has handed off
+	// to a background builder — the message that owns the active builder, so the
+	// label keeps tracking work after `isStreaming` flips false.
+	const lastMsg = [...messages]
+		.reverse()
+		.find(
+			(m) =>
+				m.role === 'assistant' &&
+				(m.isStreaming || (m.agentTree?.children.some(isActiveBuilderAgent) ?? false)),
+		);
 	if (!lastMsg?.agentTree) return { label: i18n.baseText('instanceAi.statusBar.thinking') };
 
 	const tree = lastMsg.agentTree;
@@ -52,7 +62,11 @@ const activity = computed(() => {
 	return deriveActivity(thread.messages);
 });
 
-const isVisible = computed(() => thread.isStreaming);
+// Stay visible while the orchestrator streams, and also while a builder runs in
+// the background after the orchestrator run has ended (isStreaming === false).
+const isVisible = computed(
+	() => thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0,
+);
 
 const formattedElapsed = computed(() => {
 	const s = elapsed.value;
@@ -93,30 +107,28 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<div>
-		<Transition name="status-bar">
-			<div
-				v-if="isVisible && activity"
-				:class="[$style.bar, { [$style.muted]: thread.isAwaitingConfirmation }]"
-				data-test-id="instance-ai-status-bar"
-			>
-				<N8nIcon
-					v-if="thread.isAwaitingConfirmation"
-					:class="$style.glyph"
-					icon="circle-pause"
-					size="xsmall"
-				/>
-				<span v-else :class="$style.dot" />
-				<span :class="$style.label">{{ activity.label }}</span>
-				<span v-if="activity.detail" :class="$style.separator">&middot;</span>
-				<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
-				<template v-if="!thread.isAwaitingConfirmation">
-					<span :class="$style.separator">&middot;</span>
-					<span :class="$style.elapsed">{{ formattedElapsed }}</span>
-				</template>
-			</div>
-		</Transition>
-	</div>
+	<Transition name="status-bar">
+		<div
+			v-if="isVisible && activity"
+			:class="[$style.bar, { [$style.muted]: thread.isAwaitingConfirmation }]"
+			data-test-id="instance-ai-status-bar"
+		>
+			<N8nIcon
+				v-if="thread.isAwaitingConfirmation"
+				:class="$style.glyph"
+				icon="circle-pause"
+				size="xsmall"
+			/>
+			<span v-else :class="$style.dot" />
+			<span :class="$style.label">{{ activity.label }}</span>
+			<span v-if="activity.detail" :class="$style.separator">&middot;</span>
+			<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
+			<template v-if="!thread.isAwaitingConfirmation">
+				<span :class="$style.separator">&middot;</span>
+				<span :class="$style.elapsed">{{ formattedElapsed }}</span>
+			</template>
+		</div>
+	</Transition>
 </template>
 
 <style lang="scss" module>
