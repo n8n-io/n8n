@@ -21,8 +21,10 @@
     }
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "dev": "tsdown --watch",
     "build": "tsdown",
+    "build:unchecked": "pnpm run build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
@@ -58,5 +60,5 @@
   "peerDependencies": {
     "vue": "catalog:frontend"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

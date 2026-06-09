@@ -41,6 +41,7 @@ const props = withDefaults(
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
 		suggestions?: readonly InstanceAiEmptyStateSuggestion[];
+		isWorkflowBuilderAvailable?: boolean;
 		// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 		suggestionsComponent?: Component;
 		suggestionCatalogVersion?: string;
@@ -54,6 +55,7 @@ const props = withDefaults(
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
+		isWorkflowBuilderAvailable: true,
 	},
 );
 
@@ -61,6 +63,7 @@ const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
 	'cancel-plan-edit': [];
+	'workflow-preview': [workflowFile: string | null];
 }>();
 
 const i18n = useI18n();
@@ -92,7 +95,9 @@ const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length >
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-const isGatedBySetup = computed(() => props.isAwaitingConfirmation);
+const isGatedBySetup = computed(
+	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
+);
 const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGatedBySetup.value);
 const canShowSuggestions = computed(
 	() =>
@@ -112,6 +117,9 @@ const resolvedSuggestionCatalogVersion = computed(
 const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 
 const placeholder = computed(() => {
+	if (!props.isWorkflowBuilderAvailable) {
+		return i18n.baseText('instanceAi.input.workflowBuilderUnavailablePlaceholder');
+	}
 	if (isGatedBySetup.value) {
 		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
 	}
@@ -144,6 +152,7 @@ watch(
 		}
 
 		previewPromptKey.value = null;
+		emit('workflow-preview', null);
 	},
 	{ immediate: true },
 );
@@ -315,7 +324,7 @@ const resizable = computed(() => {
 		<ChatInputBase
 			ref="chatInputRef"
 			v-model="inputText"
-			:class="props.isPlanEditMode && $style.planEditInput"
+			:class="{ [$style.planEditInput]: props.isPlanEditMode, [$style.inputWrapper]: true }"
 			:placeholder="placeholder"
 			:is-streaming="props.isPlanEditMode ? false : props.isStreaming"
 			:can-submit="canSubmit"
@@ -370,10 +379,12 @@ const resizable = computed(() => {
 				</div>
 			</template>
 		</ChatInputBase>
+		<slot name="footer"></slot>
 		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
 			<component
 				:is="resolvedSuggestionsComponent"
 				v-if="canShowSuggestions && props.suggestions"
+				:class="$style.suggestions"
 				:suggestions="props.suggestions"
 				:disabled="isBusy || isGatedBySetup"
 				@preview-change="previewPromptKey = $event"
@@ -381,6 +392,7 @@ const resizable = computed(() => {
 				@cycle-suggestions="handleSuggestionsCycled"
 				@insert-suggestion="handleSuggestionInsert"
 				@submit-suggestion="handleSuggestionSubmit"
+				@workflow-preview="emit('workflow-preview', $event)"
 			/>
 		</Transition>
 	</div>
@@ -390,7 +402,17 @@ const resizable = computed(() => {
 .composer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	> * + * {
+		margin-top: var(--spacing--xs);
+	}
+}
+
+.inputWrapper {
+	z-index: 1;
+}
+
+.suggestions {
+	margin-top: var(--spacing--lg);
 }
 
 .attachments {

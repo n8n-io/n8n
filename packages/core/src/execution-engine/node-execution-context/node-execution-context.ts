@@ -258,6 +258,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		if (!this.additionalData.listAgents || !this.additionalData.userId) {
 			return [];
 		}
+
 		return await this.additionalData.listAgents(this.additionalData.userId);
 	}
 

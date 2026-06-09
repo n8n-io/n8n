@@ -18,6 +18,7 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json",
+    "build:unchecked": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -37,5 +38,6 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "vitest": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

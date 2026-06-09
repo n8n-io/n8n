@@ -741,14 +741,14 @@ describe('ProjectSettings', () => {
 		});
 	});
 
-	describe('Custom telemetry tags', () => {
+	describe('Custom span attributes', () => {
 		beforeEach(() => {
-			settingsStore.isOtelEnabled = true;
+			settingsStore.isOtelCustomSpanAttributesEnabled = true;
 			projectsStore.updateProject.mockResolvedValue(undefined);
 		});
 
 		it('should not render telemetry tags section when OTel is disabled', () => {
-			settingsStore.isOtelEnabled = false;
+			settingsStore.isOtelCustomSpanAttributesEnabled = false;
 			const { queryByTestId } = renderComponent();
 			expect(queryByTestId('project-telemetry-tag-add')).not.toBeInTheDocument();
 		});
@@ -763,7 +763,7 @@ describe('ProjectSettings', () => {
 			expect(queryAllByTestId('project-telemetry-tag-key')).toHaveLength(0);
 		});
 
-		it('should add a new tag row when clicking Add tag', async () => {
+		it('should add a new attribute row when clicking Add attribute', async () => {
 			const { getByTestId, getAllByTestId } = renderComponent();
 			await userEvent.click(getByTestId('project-telemetry-tag-add'));
 			await nextTick();
@@ -843,7 +843,7 @@ describe('ProjectSettings', () => {
 		});
 
 		it('should not include customTelemetryTags in payload when OTel is disabled', async () => {
-			settingsStore.isOtelEnabled = false;
+			settingsStore.isOtelCustomSpanAttributesEnabled = false;
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
 			const { getByTestId } = renderComponent();
 

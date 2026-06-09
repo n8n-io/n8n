@@ -26,7 +26,10 @@ jobs:
             shards: '[{"shard":1,"images":""}]'
           - lane: webhook
             grep: '@bench:webhook'
-            shards: '[{"shard":1,"images":""}]'
+            # 2 shards — webhook lane grew from 6 to 9 spec files with the
+            # dedicated-proc topology (DEVP-200). Single shard pushed wall time
+            # past 40 min; two shards halves that. Bump to 3 if specs grow further.
+            shards: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
           - lane: kafka
             grep: '@bench:kafka'
             shards: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
@@ -39,4 +42,5 @@ jobs:
       runner: blacksmith-8vcpu-ubuntu-2204
       timeout-minutes: 120
       artifact-prefix: 'benchmark-${{ matrix.lane }}'
+      currents-project-id: 'LRxcNt'
     secrets: inherit

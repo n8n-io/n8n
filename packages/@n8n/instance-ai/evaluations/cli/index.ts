@@ -55,6 +55,7 @@ import {
 	type BuildResult,
 } from '../harness/runner';
 import { syncDataset, type DatasetExampleInputs } from '../langsmith/dataset-sync';
+import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
@@ -212,6 +213,14 @@ async function main(): Promise<void> {
 			const seedResult = await seedCredentials(client, undefined, logger);
 			logger.info(`Seeded ${String(seedResult.credentialIds.length)} credential(s)${tag}`);
 
+			logger.info(`Seeding MCP registry...${tag}`);
+			const mcpSeedResult = await seedMcpRegistry(client, logger);
+			if (mcpSeedResult.seeded) {
+				logger.info(`Seeded ${String(mcpSeedResult.count)} MCP registry server(s)${tag}`);
+			} else {
+				logger.info(`Skipped MCP registry seed (test endpoint unavailable)${tag}`);
+			}
+
 			const preRunWorkflowIds = await snapshotWorkflowIds(client);
 			const claimedWorkflowIds = new Set<string>();
 			return { client, baseUrl, preRunWorkflowIds, claimedWorkflowIds, seedResult };
@@ -250,6 +259,7 @@ async function main(): Promise<void> {
 			outcome,
 			commitSha,
 			slugByTestCase,
+			ciRunUrl(),
 		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
@@ -482,34 +492,56 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 
 		const execStart = Date.now();
 		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
+		const maxExecAttempts = 5;
 		let result;
-		try {
-			result = await builtOnLane.tracedExecute({
-				workflowId: build.workflowId,
-				scenario,
-				workflowJsons: build.workflowJsons,
-				buildTrace: build.buildTrace,
-			});
-		} catch (error: unknown) {
-			// Mirror direct mode's per-scenario guard — without this, n8n API errors
-			// or verifier timeouts from executeWithLlmMock / verifyChecklist would
-			// escape to LangSmith, come back as a Run with null outputs, and be
-			// misclassified as builder regressions by the feedback extractor.
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-			return {
-				buildSuccess: true,
-				workflowId: build.workflowId,
-				passed: false,
-				score: 0,
-				reasoning: `Scenario execution error: ${errorMessage}`,
-				failureCategory: 'framework_issue',
-				execErrors: [errorMessage],
-				buildDurationMs,
-				execDurationMs: Date.now() - execStart,
-				nodeCount,
-				workflowChecks: build.workflowChecks,
-			};
+		for (let attempt = 1; ; attempt++) {
+			try {
+				result = await builtOnLane.tracedExecute({
+					workflowId: build.workflowId,
+					scenario,
+					workflowJsons: build.workflowJsons,
+					buildTrace: build.buildTrace,
+				});
+				break;
+			} catch (error: unknown) {
+				const baseError = error instanceof Error ? error : new Error(String(error));
+				const cause = baseError.cause;
+				const causeText =
+					cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : undefined;
+				const errorMessage =
+					causeText && causeText !== baseError.message
+						? `${baseError.message}: ${causeText}`
+						: baseError.message;
+				const isTransient =
+					/fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(
+						errorMessage,
+					);
+				if (isTransient && attempt < maxExecAttempts) {
+					logger.warn(
+						`    [${scenario.name}] execution attempt ${attempt}/${maxExecAttempts} failed (${errorMessage}); retrying`,
+					);
+					await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+					continue;
+				}
+				// Mirror direct mode's per-scenario guard — without this, n8n API errors
+				// or verifier timeouts from executeWithLlmMock / verifyChecklist would
+				// escape to LangSmith, come back as a Run with null outputs, and be
+				// misclassified as builder regressions by the feedback extractor.
+				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+				return {
+					buildSuccess: true,
+					workflowId: build.workflowId,
+					passed: false,
+					score: 0,
+					reasoning: `Scenario execution error: ${errorMessage}`,
+					failureCategory: 'framework_issue',
+					execErrors: [errorMessage],
+					buildDurationMs,
+					execDurationMs: Date.now() - execStart,
+					nodeCount,
+					workflowChecks: build.workflowChecks,
+				};
+			}
 		}
 		const execDurationMs = Date.now() - execStart;
 
@@ -1055,6 +1087,13 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 	return rates.join(' / ');
 }
 
+// GitHub Actions run URL (for the PR comment's re-run link); undefined outside CI.
+function ciRunUrl(): string | undefined {
+	const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
+	if (!GITHUB_SERVER_URL || !GITHUB_REPOSITORY || !GITHUB_RUN_ID) return undefined;
+	return `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
+}
+
 function writeEvalResults(
 	evaluation: MultiRunEvaluation,
 	duration: number,
@@ -1063,6 +1102,7 @@ function writeEvalResults(
 	outcome: ComparisonOutcome | undefined,
 	commitSha: string | undefined,
 	slugByTestCase: Map<WorkflowTestCase, string> | undefined,
+	runUrl: string | undefined,
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
@@ -1135,7 +1175,7 @@ function writeEvalResults(
 	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
 	writeFileSync(
 		prCommentPath,
-		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase }),
+		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, runUrl }),
 	);
 
 	return { jsonPath, prCommentPath };

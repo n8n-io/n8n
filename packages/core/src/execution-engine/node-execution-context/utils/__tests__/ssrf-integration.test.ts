@@ -15,7 +15,8 @@ import { mock } from 'vitest-mock-extended';
 import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
-import { getRequestHelperFunctions, httpRequest } from '../request-helper-functions';
+import { getRequestHelperFunctions } from '../request-helper-functions';
+import { httpRequest } from '../request-helpers/http-request';
 
 type DnsResolverLike = {
 	lookup(hostname: string, options?: LookupOptions): Promise<LookupAddress[]>;

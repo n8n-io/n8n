@@ -9,7 +9,7 @@ import { integrationMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentChatIntegration } from './agent-chat-integration';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
-import { RICH_INTERACTION_RESUME_JSON_SCHEMA, type ComponentMapper } from './component-mapper';
+import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import {
 	buildIntegrationConnectionId,
@@ -27,6 +27,7 @@ interface SlackThreadContext {
 	channelId: string;
 	threadTs: string;
 	hasRealThreadTs: boolean;
+	isDm: boolean;
 }
 
 interface SlackAssistantStatusAdapter {
@@ -36,6 +37,10 @@ interface SlackAssistantStatusAdapter {
 		status: string,
 		loadingMessages?: string[],
 	): Promise<void>;
+}
+
+interface SlackAssistantStatusHandle {
+	clearBeforeResponse(): Promise<void>;
 }
 
 interface AgentExecutor {
@@ -59,6 +64,14 @@ interface AgentExecutor {
 
 const SLACK_THINKING_STATUS = 'Thinking...';
 const SLACK_STATUS_RETRY_DELAY_MS = 750;
+const APPROVAL_INPUT_MAX_LENGTH = 1500;
+
+interface ApprovalSuspendPayload {
+	type: 'approval';
+	toolName: string;
+	displayName?: string;
+	args?: unknown;
+}
 
 function isIntegrationActionSuspendPayload(value: unknown): boolean {
 	return (
@@ -67,6 +80,68 @@ function isIntegrationActionSuspendPayload(value: unknown): boolean {
 		'type' in value &&
 		value.type === 'integration_action'
 	);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isApprovalSuspendPayload(value: unknown): value is ApprovalSuspendPayload {
+	return (
+		isRecord(value) &&
+		value.type === 'approval' &&
+		typeof value.toolName === 'string' &&
+		value.toolName.length > 0
+	);
+}
+
+function truncateApprovalInput(value: string): string {
+	if (value.length <= APPROVAL_INPUT_MAX_LENGTH) return value;
+	return `${value.slice(0, APPROVAL_INPUT_MAX_LENGTH)}...`;
+}
+
+function stringifyApprovalInput(value: unknown): string | undefined {
+	if (value === undefined) return undefined;
+
+	if (typeof value === 'string') {
+		return truncateApprovalInput(value);
+	}
+
+	try {
+		const serialized = JSON.stringify(value, null, 2);
+		return truncateApprovalInput(serialized ?? String(value));
+	} catch {
+		return truncateApprovalInput(String(value));
+	}
+}
+
+function getApprovalToolLabel(payload: ApprovalSuspendPayload): string {
+	return typeof payload.displayName === 'string' && payload.displayName.length > 0
+		? payload.displayName
+		: payload.toolName;
+}
+
+function buildApprovalCardPayload(payload: ApprovalSuspendPayload): {
+	title: string;
+	components: Array<{ type: string; [key: string]: unknown }>;
+} {
+	const toolLabel = getApprovalToolLabel(payload);
+	const fields: Array<{ label: string; value: string }> = [{ label: 'Tool', value: toolLabel }];
+	const input = stringifyApprovalInput(payload.args);
+
+	if (input) {
+		fields.push({ label: 'Input', value: input });
+	}
+
+	return {
+		title: 'Approval required',
+		components: [
+			{ type: 'section', text: `The agent wants to run this tool: ${toolLabel}` },
+			{ type: 'fields', fields },
+			{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
+			{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
+		],
+	};
 }
 
 function toIntegrationMessageSubject(
@@ -137,20 +212,6 @@ export class AgentChatBridge {
 
 	/** Resolved integration for this platform (may be undefined for unknown types). */
 	private readonly integrationImpl: AgentChatIntegration | undefined;
-
-	/**
-	 * In-flight `rich_interaction` tool inputs keyed by toolCallId. Populated on
-	 * the `tool-call` chunk; consumed on the matching `tool-result` chunk when
-	 * the result carries `displayOnly: true` (display-only render path) or
-	 * cleared on `tool-call-suspended` (interactive HITL path, where the
-	 * suspendPayload itself carries the components).
-	 *
-	 * Storing the input here is the cleanest way to render a display-only
-	 * card from the bridge without leaking chat-SDK semantics into the agent
-	 * framework: the framework just emits tool-call/tool-result; the bridge
-	 * decides which results trigger a card post.
-	 */
-	private readonly richInteractionInputs = new Map<string, unknown>();
 
 	constructor(
 		private readonly chat: Chat,
@@ -274,9 +335,7 @@ export class AgentChatBridge {
 	 * Returns a callback shortener function for platforms with short callback
 	 * data limits (Telegram). Returns undefined for other platforms.
 	 */
-	private getShortenCallback():
-		| ((actionId: string, value: string) => Promise<{ id: string; value: string }>)
-		| undefined {
+	getShortenCallback(): ShortenCallback | undefined {
 		if (!this.callbackStore) return undefined;
 		const store = this.callbackStore;
 		return async (actionId: string, value: string) => {
@@ -303,8 +362,8 @@ export class AgentChatBridge {
 		// startThinkingStatus (Slack assistant.threads.setStatus) and the lazy
 		// `message.subject` fetch are both remote round-trips on independent
 		// resources — run them concurrently.
-		const [, subject] = await Promise.all([
-			this.startThinkingStatus(thread, slackThreadContext, statusRetry.signal),
+		const [statusHandle, subject] = await Promise.all([
+			this.startThinkingStatus(thread, slackThreadContext, statusRetry),
 			this.resolveMessageSubject(message),
 		]);
 		await this.updateLatestMessageContext(threadId.id, message.author.userId, thread, {
@@ -331,6 +390,7 @@ export class AgentChatBridge {
 		try {
 			await this.consumeStream(stream, thread, {
 				forceBuffered: this.integration.type === 'slack' && !useNativeSlackThreadFeatures,
+				statusHandle,
 			});
 		} finally {
 			statusRetry.abort();
@@ -356,10 +416,12 @@ export class AgentChatBridge {
 	private async consumeStream(
 		stream: AsyncGenerator<StreamChunk>,
 		thread: Thread,
-		options: { forceBuffered?: boolean } = {},
+		options: { forceBuffered?: boolean; statusHandle?: SlackAssistantStatusHandle } = {},
 	): Promise<void> {
 		if (this.disableStreaming || options.forceBuffered) {
-			await this.consumeStreamBuffered(stream, thread);
+			await this.consumeStreamBuffered(stream, thread, {
+				statusHandle: options.statusHandle,
+			});
 			return;
 		}
 
@@ -442,45 +504,38 @@ export class AgentChatBridge {
 		const ensureStreamingPost = () => {
 			if (!streamingPost) startStreamingPost();
 		};
+		const responseLifecycle = this.createResponseLifecycle({
+			statusHandle: options.statusHandle,
+			ensureStreamingPost,
+			endStreamingPost,
+		});
 
 		try {
 			for await (const chunk of stream) {
 				switch (chunk.type) {
 					case 'text-delta': {
 						const { delta } = chunk;
-						ensureStreamingPost();
+						await responseLifecycle.startStreamingResponse();
 						textStream.yield?.(delta);
 						break;
 					}
 					case 'reasoning-delta': {
 						const { delta } = chunk;
-						ensureStreamingPost();
+						await responseLifecycle.startStreamingResponse();
 						textStream.yield?.(`_${delta}_`);
 						break;
 					}
-					case 'tool-call':
-						this.stashRichInteractionInput(chunk);
-						break;
 					case 'tool-call-suspended':
-						this.richInteractionInputs.delete(chunk.toolCallId);
-						await endStreamingPost();
+						await responseLifecycle.startDiscreteResponse();
 						await this.handleSuspension(chunk, thread);
 						// Don't start new streaming post — wait for next text delta
 						break;
-					case 'tool-result':
-						if (this.isRichInteractionDisplayOnly(chunk)) {
-							await endStreamingPost();
-							await this.handleDisplayOnly(chunk, thread);
-						} else {
-							this.richInteractionInputs.delete(chunk.toolCallId);
-						}
-						break;
 					case 'message':
-						await endStreamingPost();
+						await responseLifecycle.startDiscreteResponse();
 						await this.handleMessage(chunk, thread);
 						break;
 					case 'error':
-						await endStreamingPost();
+						await responseLifecycle.startDiscreteResponse();
 						await this.postErrorToThread(thread, chunk.error);
 						break;
 					default:
@@ -490,12 +545,37 @@ export class AgentChatBridge {
 				}
 			}
 		} finally {
-			// Always end the streaming post and drop stashed tool-call inputs so
-			// a stream that errors mid-flight between `tool-call` and the
-			// matching `tool-result` does not leak entries.
-			await endStreamingPost();
-			this.richInteractionInputs.clear();
+			await responseLifecycle.finish();
 		}
+	}
+
+	private createResponseLifecycle(options: {
+		statusHandle?: SlackAssistantStatusHandle;
+		ensureStreamingPost?: () => void;
+		endStreamingPost?: () => Promise<void>;
+	}) {
+		let responseStarted = false;
+
+		const clearStatusBeforeFirstResponse = async () => {
+			if (responseStarted) return;
+			responseStarted = true;
+			await options.statusHandle?.clearBeforeResponse();
+		};
+
+		return {
+			startStreamingResponse: async () => {
+				await clearStatusBeforeFirstResponse();
+				options.ensureStreamingPost?.();
+			},
+			startDiscreteResponse: async () => {
+				await options.endStreamingPost?.();
+				await clearStatusBeforeFirstResponse();
+			},
+			finish: async () => {
+				await options.endStreamingPost?.();
+				await clearStatusBeforeFirstResponse();
+			},
+		};
 	}
 
 	/**
@@ -506,14 +586,19 @@ export class AgentChatBridge {
 	private async consumeStreamBuffered(
 		stream: AsyncGenerator<StreamChunk>,
 		thread: Thread,
+		options: { statusHandle?: SlackAssistantStatusHandle } = {},
 	): Promise<void> {
 		let buffer = '';
+		const responseLifecycle = this.createResponseLifecycle({
+			statusHandle: options.statusHandle,
+		});
 
 		const flushBuffer = async () => {
 			const text = buffer;
 			buffer = '';
 			if (!text.trim()) return;
 			try {
+				await responseLifecycle.startDiscreteResponse();
 				// Chat SDK's streaming path wraps accumulated deltas as `{ markdown }`
 				// so the platform adapter applies its markdown parse-mode (Telegram:
 				// sendMessage with parse_mode=Markdown). A raw string bypasses that
@@ -537,28 +622,19 @@ export class AgentChatBridge {
 					case 'reasoning-delta':
 						buffer += `_${chunk.delta}_`;
 						break;
-					case 'tool-call':
-						this.stashRichInteractionInput(chunk);
-						break;
 					case 'tool-call-suspended':
-						this.richInteractionInputs.delete(chunk.toolCallId);
 						await flushBuffer();
+						await responseLifecycle.startDiscreteResponse();
 						await this.handleSuspension(chunk, thread);
-						break;
-					case 'tool-result':
-						if (this.isRichInteractionDisplayOnly(chunk)) {
-							await flushBuffer();
-							await this.handleDisplayOnly(chunk, thread);
-						} else {
-							this.richInteractionInputs.delete(chunk.toolCallId);
-						}
 						break;
 					case 'message':
 						await flushBuffer();
+						await responseLifecycle.startDiscreteResponse();
 						await this.handleMessage(chunk, thread);
 						break;
 					case 'error':
 						await flushBuffer();
+						await responseLifecycle.startDiscreteResponse();
 						await this.postErrorToThread(thread, chunk.error);
 						break;
 					default:
@@ -567,7 +643,7 @@ export class AgentChatBridge {
 			}
 		} finally {
 			await flushBuffer();
-			this.richInteractionInputs.clear();
+			await responseLifecycle.finish();
 		}
 	}
 
@@ -586,13 +662,6 @@ export class AgentChatBridge {
 			return;
 		}
 
-		// Rich interaction tool — use the structured payload directly.
-		// The payload IS the tool input (title, message, components array).
-		if (chunk.toolName === 'rich_interaction') {
-			await this.handleRichInteraction(chunk, thread);
-			return;
-		}
-
 		const payload = suspendPayload as RichSuspendPayload | Record<string, unknown> | undefined;
 		if (isIntegrationActionSuspendPayload(payload)) {
 			return;
@@ -608,7 +677,9 @@ export class AgentChatBridge {
 			components: Array<{ type: string; [key: string]: unknown }>;
 		};
 
-		if (hasComponents) {
+		if (isApprovalSuspendPayload(payload)) {
+			cardPayload = buildApprovalCardPayload(payload);
+		} else if (hasComponents) {
 			cardPayload = payload as RichSuspendPayload;
 		} else {
 			// Plain suspend payload — auto-generate approve/deny buttons
@@ -641,124 +712,6 @@ export class AgentChatBridge {
 				agentId: this.agentId,
 				runId,
 				toolCallId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	// ---------------------------------------------------------------------------
-	// Rich interaction handling
-	// ---------------------------------------------------------------------------
-
-	private async handleRichInteraction(
-		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
-		thread: Thread,
-	): Promise<void> {
-		const { runId, toolCallId, suspendPayload } = chunk;
-
-		const payload = suspendPayload as {
-			title?: string;
-			message?: string;
-			components?: Array<{ type: string; [key: string]: unknown }>;
-		};
-
-		if (!payload?.components?.length) {
-			this.logger.warn('[AgentChatBridge] rich_interaction has no components');
-			return;
-		}
-
-		try {
-			const card = await this.componentMapper.toCard(
-				payload as {
-					title?: string;
-					message?: string;
-					components: Array<{ type: string; [key: string]: unknown }>;
-				},
-				runId,
-				toolCallId,
-				RICH_INTERACTION_RESUME_JSON_SCHEMA,
-				this.getShortenCallback(),
-				this.integration.type,
-			);
-			await thread.post(card);
-		} catch (error) {
-			this.logger.error('[AgentChatBridge] Failed to post rich interaction card', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	// ---------------------------------------------------------------------------
-	// Display-only card handling (no suspension)
-	//
-	// `rich_interaction` returns `{ displayOnly: true }` from its handler when
-	// the card has no actionable components. The bridge stashes the tool-call
-	// input on the way down (carrying the components) and posts the card when
-	// the matching tool-result arrives carrying the marker. The framework
-	// itself stays free of any chat-rendering semantics.
-	// ---------------------------------------------------------------------------
-
-	private stashRichInteractionInput(chunk: Extract<StreamChunk, { type: 'tool-call' }>): void {
-		if (chunk.toolName !== 'rich_interaction') return;
-		this.richInteractionInputs.set(chunk.toolCallId, chunk.input);
-	}
-
-	private isRichInteractionDisplayOnly(
-		chunk: Extract<StreamChunk, { type: 'tool-result' }>,
-	): boolean {
-		if (chunk.toolName !== 'rich_interaction') return false;
-		const out = chunk.output;
-		return (
-			typeof out === 'object' &&
-			out !== null &&
-			'displayOnly' in out &&
-			(out as { displayOnly: unknown }).displayOnly === true
-		);
-	}
-
-	/**
-	 * Render the stashed `rich_interaction` input as a display-only card. No
-	 * resume callback can fire (no buttons/selects), so we pass a placeholder
-	 * runId — the unique IDs the component mapper builds for interactive
-	 * elements never get used.
-	 */
-	private async handleDisplayOnly(
-		chunk: Extract<StreamChunk, { type: 'tool-result' }>,
-		thread: Thread,
-	): Promise<void> {
-		const { toolCallId } = chunk;
-		const input = this.richInteractionInputs.get(toolCallId);
-		this.richInteractionInputs.delete(toolCallId);
-
-		const cardPayload = input as {
-			title?: string;
-			message?: string;
-			components?: Array<{ type: string; [key: string]: unknown }>;
-		};
-
-		if (!cardPayload?.components?.length) {
-			this.logger.warn('[AgentChatBridge] display-only rich_interaction has no components', {
-				toolCallId,
-			});
-			return;
-		}
-
-		try {
-			const card = await this.componentMapper.toCard(
-				cardPayload as {
-					title?: string;
-					message?: string;
-					components: Array<{ type: string; [key: string]: unknown }>;
-				},
-				'',
-				toolCallId,
-				RICH_INTERACTION_RESUME_JSON_SCHEMA,
-				this.getShortenCallback(),
-				this.integration.type,
-			);
-			await thread.post({ card });
-		} catch (error) {
-			this.logger.error('[AgentChatBridge] Failed to post display card', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
@@ -912,13 +865,29 @@ export class AgentChatBridge {
 	private async startThinkingStatus(
 		thread: Thread<unknown, unknown>,
 		slackThreadContext?: SlackThreadContext,
-		statusRetrySignal?: AbortSignal,
-	): Promise<void> {
+		statusRetry?: AbortController,
+	): Promise<SlackAssistantStatusHandle | undefined> {
 		if (this.integration.type !== 'slack') return;
 
 		if (slackThreadContext && !slackThreadContext.hasRealThreadTs) {
-			this.setSlackAssistantStatus(slackThreadContext, statusRetrySignal);
-			return;
+			const setStatus = this.setSlackAssistantStatus(slackThreadContext, statusRetry?.signal);
+			return slackThreadContext.isDm
+				? {
+						clearBeforeResponse: async () => {
+							// Cancel any pending status retry first: the retry waits out a
+							// delay before re-setting "Thinking...", and without this it could
+							// fire *after* we clear and leave a stale status behind.
+							statusRetry?.abort();
+							// Then wait for the set to settle. Aborting only cancels the
+							// retry's local wait — an *in-flight* "Thinking..." write can't
+							// be recalled, so we must let it land before we clear, otherwise
+							// its remote write could overwrite the clear and restore the
+							// stale status. (setStatus never rejects — it logs internally.)
+							await setStatus;
+							await this.clearSlackAssistantStatus(slackThreadContext);
+						},
+					}
+				: undefined;
 		}
 
 		try {
@@ -930,16 +899,39 @@ export class AgentChatBridge {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
+		return undefined;
 	}
 
-	private setSlackAssistantStatus(
+	/**
+	 * Kick off the "Thinking..." status set (with retry). Returns the in-flight
+	 * promise so callers can await it before clearing — see `clearBeforeResponse`
+	 * in `startThinkingStatus`. The returned promise never rejects; failures are
+	 * logged inside the retry helper.
+	 */
+	private async setSlackAssistantStatus(
 		context: SlackThreadContext,
 		statusRetrySignal?: AbortSignal,
-	): void {
+	): Promise<void> {
 		const adapter = this.getSlackAssistantStatusAdapter();
 		if (!adapter) return;
 
-		void this.setSlackAssistantStatusWithRetry(adapter, context, statusRetrySignal);
+		await this.setSlackAssistantStatusWithRetry(adapter, context, statusRetrySignal);
+	}
+
+	private async clearSlackAssistantStatus(context: SlackThreadContext): Promise<void> {
+		const adapter = this.getSlackAssistantStatusAdapter();
+		if (!adapter) return;
+
+		try {
+			await adapter.setAssistantStatus(context.channelId, context.threadTs, '');
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to clear Slack assistant status', {
+				agentId: this.agentId,
+				channelId: context.channelId,
+				threadTs: context.threadTs,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	private async setSlackAssistantStatusWithRetry(
@@ -965,6 +957,9 @@ export class AgentChatBridge {
 		}
 
 		if (!(await sleep(SLACK_STATUS_RETRY_DELAY_MS, statusRetrySignal))) return;
+		// The status may have been cleared while we were sleeping. Bail out so the
+		// retry doesn't re-set "Thinking..." over an already-cleared status.
+		if (statusRetrySignal?.aborted) return;
 
 		try {
 			await adapter.setAssistantStatus(context.channelId, context.threadTs, SLACK_THINKING_STATUS, [
@@ -997,6 +992,7 @@ export class AgentChatBridge {
 		if (!isRecord(raw)) return undefined;
 
 		const channelId = stringValue(raw.channel);
+		const channelType = stringValue(raw.channel_type);
 		const realThreadTs = stringValue(raw.thread_ts);
 		const threadTs = realThreadTs ?? stringValue(raw.ts);
 		if (!channelId || !threadTs) return undefined;
@@ -1005,6 +1001,7 @@ export class AgentChatBridge {
 			channelId,
 			threadTs,
 			hasRealThreadTs: realThreadTs !== undefined,
+			isDm: channelType === 'im',
 		};
 	}
 
@@ -1110,7 +1107,7 @@ export class AgentChatBridge {
 
 	/**
 	 * Handle a button/select action. Action IDs use one of two prefixes:
-	 * - `ri-sel:{selectId}:{runId}:{toolCallId}` — rich interaction select
+	 * - `ri-sel:{selectId}:{runId}:{toolCallId}` — interactive card select
 	 * - `resume:{runId}:{toolCallId}:{index}` — generic per-tool resume button
 	 */
 	private async handleAction(event: ActionEvent): Promise<void> {
@@ -1188,10 +1185,6 @@ function stripSlackSelfMention(text: string, userId: string): string {
 		.replace(new RegExp(`(^|\\s)@${escapedUserId}\\b`, 'gi'), '$1')
 		.replace(/\s+/g, ' ')
 		.trim();
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isSlackAssistantStatusAdapter(value: unknown): value is SlackAssistantStatusAdapter {

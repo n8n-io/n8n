@@ -13,6 +13,7 @@
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "lint": "eslint . --quiet",
@@ -45,5 +46,6 @@
     "@types/yargs-parser": "21.0.0",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

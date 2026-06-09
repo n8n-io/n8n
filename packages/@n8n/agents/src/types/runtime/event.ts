@@ -19,13 +19,15 @@ export interface SubAgentStartedPayload extends SubAgentLifecycleBase {
 }
 
 export interface SubAgentCompletedPayload extends SubAgentLifecycleBase {
-	status: 'completed' | 'failed';
+	status: 'completed' | 'failed' | 'suspended';
 	startedAt: number;
 	finishedAt: number;
 	durationMs: number;
 	runId?: string;
 	/** The child run's memory thread id (`persistence.threadId`), so consumers can correlate or continue it. */
 	threadId?: string;
+	/** Effective child model id used for this delegation. */
+	model?: string;
 	usage?: SubAgentLifecycleUsage;
 	finishReason?: FinishReason;
 	error?: string;
