@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_fd4b8b6aa97b3d::t_9f275d71fdc8d7 1022
+  s_fd4b8b6aa97b3d::t_a0818579d92ac3 861-863
+  s_fd4b8b6aa97b3d::t_0c1d80724a1780 14,20-25,28-31,248-275,278-280,287
+  s_fd4b8b6aa97b3d::t_18b66342ee48b6 825-860,864-893,895-925,927-956,958-963,970-1021,1023-1035
+  s_fd4b8b6aa97b3d::t_c13f96db55990d 964-966,968-969
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  h_df158766ffbd97 1025-1028,1032-1035,1391-1392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6369a6dd66f63624272f8e3d7cf3bef038a6458c",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fd4b8b6aa97b3d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ea795-115a-7440-bb84-fd6cb163e382",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}
