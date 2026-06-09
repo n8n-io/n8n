@@ -11,6 +11,16 @@ type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : 
 
 type Action = 'Create' | 'Update';
 
+// n8n supports postgres (SQLSTATE 23505) and sqlite (SQLITE_CONSTRAINT_UNIQUE,
+// or the older SQLITE_CONSTRAINT with a "UNIQUE constraint" message).
+function isUniqueConstraintViolation(error: unknown): error is QueryFailedError {
+	if (!(error instanceof QueryFailedError)) return false;
+	const driver = (error as { driverError?: { code?: unknown } }).driverError;
+	const code = driver && typeof driver.code !== 'undefined' ? String(driver.code) : undefined;
+	if (code === '23505' || code === 'SQLITE_CONSTRAINT_UNIQUE') return true;
+	return code === 'SQLITE_CONSTRAINT' && /UNIQUE constraint/i.test(error.message);
+}
+
 @Service()
 export class TagService {
 	constructor(
@@ -113,7 +123,7 @@ export class TagService {
 				const created = await this.save(this.toEntity({ name }), 'create');
 				result.push(created);
 			} catch (error) {
-				if (!(error instanceof QueryFailedError)) throw error;
+				if (!isUniqueConstraintViolation(error)) throw error;
 				const raced = await this.tagRepository.findOneBy({ name });
 				if (!raced) throw error;
 				result.push(raced);

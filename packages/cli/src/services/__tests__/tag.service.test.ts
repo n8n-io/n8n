@@ -66,14 +66,17 @@ describe('TagService', () => {
 			expect(findArg.where.name.value).toEqual(['production']);
 		});
 
-		test('returns the now-existing row when a concurrent caller wins the create race', async () => {
+		const uniqueViolationError = (code: string | number) => {
+			const driver = Object.assign(new Error('duplicate key'), { code });
+			return new QueryFailedError('insert', undefined, driver);
+		};
+
+		test('returns the now-existing row when a concurrent caller wins the create race (postgres)', async () => {
 			tagRepository.find.mockResolvedValue([]);
 			const racedTag = makeTag({ id: 'tag-raced', name: 'critical' });
 
 			tagRepository.create.mockReturnValue(racedTag);
-			tagRepository.save.mockRejectedValueOnce(
-				new QueryFailedError('insert', undefined, new Error('UNIQUE')),
-			);
+			tagRepository.save.mockRejectedValueOnce(uniqueViolationError('23505'));
 			tagRepository.findOneBy.mockResolvedValue(racedTag);
 
 			const result = await tagService.findOrCreateByNames(['critical']);
@@ -82,10 +85,33 @@ describe('TagService', () => {
 			expect(tagRepository.findOneBy).toHaveBeenCalledWith({ name: 'critical' });
 		});
 
+		test('recognises sqlite unique-constraint code', async () => {
+			tagRepository.find.mockResolvedValue([]);
+			const racedTag = makeTag({ id: 'tag-raced', name: 'critical' });
+
+			tagRepository.create.mockReturnValue(racedTag);
+			tagRepository.save.mockRejectedValueOnce(uniqueViolationError('SQLITE_CONSTRAINT_UNIQUE'));
+			tagRepository.findOneBy.mockResolvedValue(racedTag);
+
+			const result = await tagService.findOrCreateByNames(['critical']);
+
+			expect(result).toEqual([racedTag]);
+		});
+
+		test('rethrows unrelated QueryFailedError instead of masking it as a race', async () => {
+			tagRepository.find.mockResolvedValue([]);
+			tagRepository.create.mockReturnValue(makeTag({ name: 'critical' }));
+			const unrelated = new QueryFailedError('insert', undefined, new Error('connection lost'));
+			tagRepository.save.mockRejectedValueOnce(unrelated);
+
+			await expect(tagService.findOrCreateByNames(['critical'])).rejects.toBe(unrelated);
+			expect(tagRepository.findOneBy).not.toHaveBeenCalled();
+		});
+
 		test('rethrows when the loser of the race cannot find the row afterwards', async () => {
 			tagRepository.find.mockResolvedValue([]);
 			tagRepository.create.mockReturnValue(makeTag({ name: 'critical' }));
-			const err = new QueryFailedError('insert', undefined, new Error('boom'));
+			const err = uniqueViolationError('23505');
 			tagRepository.save.mockRejectedValueOnce(err);
 			tagRepository.findOneBy.mockResolvedValue(null);
 
