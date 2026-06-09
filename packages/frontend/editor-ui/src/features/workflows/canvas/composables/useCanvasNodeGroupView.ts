@@ -18,7 +18,7 @@ export const NodeGroupViewKey: InjectionKey<CanvasNodeGroupView> = Symbol('nodeG
 export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	const expandedIds = ref<Set<string>>(new Set());
 
-	function applySetExpanded(id: string, value: boolean) {
+	function setExpanded(id: string, value: boolean) {
 		if (value) {
 			expandedIds.value.add(id);
 		} else {
@@ -27,11 +27,11 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	}
 
 	function setCollapsed(id: string, value: boolean) {
-		applySetExpanded(id, !value);
+		setExpanded(id, !value);
 	}
 
 	function toggleCollapsed(id: string) {
-		applySetExpanded(id, !expandedIds.value.has(id));
+		setExpanded(id, !expandedIds.value.has(id));
 	}
 
 	const isGroupCollapsed = (id: string) => !expandedIds.value.has(id);
@@ -43,9 +43,9 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		if (event.action === CHANGE_ACTION.SET) {
 			expandedIds.value.clear();
 		} else if (event.action === CHANGE_ACTION.ADD) {
-			applySetExpanded(event.payload.group.id, true);
+			setExpanded(event.payload.group.id, true);
 		} else if (event.action === CHANGE_ACTION.DELETE) {
-			applySetExpanded(event.payload.id, false);
+			setExpanded(event.payload.id, false);
 		}
 	});
 
