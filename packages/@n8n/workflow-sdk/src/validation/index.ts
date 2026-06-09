@@ -4,7 +4,7 @@ import { mapConnectionsByDestination } from 'n8n-workflow';
 
 import { matchesDisplayOptions } from './display-options';
 import type { DisplayOptions, DisplayOptionsContext } from './display-options';
-import { resolveMainInputCount } from './input-resolver';
+import { resolveMainInputCount, resolveMainOutputCount } from './input-resolver';
 import { validateNodeConfig } from './schema-validator';
 import { isStickyNoteType, isHttpRequestType } from '../constants/node-types';
 import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
@@ -37,6 +37,7 @@ export type ValidationErrorCode =
 	| 'MISSING_EXPRESSION_PREFIX'
 	| 'INVALID_PARAMETER'
 	| 'INVALID_INPUT_INDEX'
+	| 'INVALID_OUTPUT_INDEX'
 	| 'SUBNODE_NOT_CONNECTED'
 	| 'SUBNODE_PARAMETER_MISMATCH'
 	| 'UNSUPPORTED_SUBNODE_INPUT'
@@ -506,6 +507,8 @@ export function validateWorkflow(
 		validateRequiredInputsConnected(json, options.nodeTypesProvider, errors);
 		// Validate that emitted connection types are actually exposed by the source node's mode
 		validateOutputUsage(json, options.nodeTypesProvider, warnings);
+		// Validate main output indices stay within the source node's effective output count
+		checkNodeMainOutputIndices(json, options.nodeTypesProvider, warnings);
 		// Reject placeholder() in slots that opt out via builderHint.placeholderSupported === false
 		validatePlaceholderSlots(json, options.nodeTypesProvider, errors);
 	}
@@ -1216,6 +1219,80 @@ function checkNodeInputIndices(
 					}
 				}
 			}
+		}
+	}
+}
+
+/**
+ * Check that each source node's outgoing `main` connections only use output
+ * indices the node actually exposes given its current parameters.
+ *
+ * Static main output count comes from the node description; the implicit error
+ * output that `NodeHelpers.getNodeOutputs` appends when
+ * `onError === 'continueErrorOutput'` adds one more. A connection from an index
+ * past that effective count is dead — the engine never produces data for it —
+ * but used to pass validation cleanly, which let LLM-built workflows wire noops
+ * to a disabled error branch on HTTP Request, IF, etc.
+ *
+ * Switch's `rules`-mode fallback is handled by
+ * `validateSwitchFallbackOutputConnections`; we skip Switch here to avoid
+ * double-reporting the same connection.
+ */
+function checkNodeMainOutputIndices(
+	json: WorkflowJSON,
+	nodeTypesProvider: INodeTypes,
+	warnings: ValidationWarning[],
+): void {
+	const nodesByName = new Map<string, NodeJSON>();
+	for (const node of json.nodes) {
+		if (node.name) {
+			nodesByName.set(node.name, node);
+		}
+	}
+
+	for (const [sourceName, nodeConnections] of Object.entries(json.connections)) {
+		const mainConnections = nodeConnections.main;
+		if (!Array.isArray(mainConnections)) continue;
+
+		const sourceNode = nodesByName.get(sourceName);
+		if (!sourceNode) continue;
+
+		// Switch fallback handling lives in validateSwitchFallbackOutputConnections.
+		// Skipping here keeps that case single-sourced and avoids confusing
+		// double warnings on the same connection.
+		if (sourceNode.type === 'n8n-nodes-base.switch') continue;
+
+		const version =
+			typeof sourceNode.typeVersion === 'string'
+				? parseFloat(sourceNode.typeVersion)
+				: (sourceNode.typeVersion ?? 1);
+
+		const staticCount = resolveMainOutputCount(nodeTypesProvider, sourceNode.type, version);
+		if (staticCount === undefined) continue;
+
+		const hasErrorOutput = sourceNode.onError === 'continueErrorOutput';
+		const effectiveCount = staticCount + (hasErrorOutput ? 1 : 0);
+
+		for (let outputIndex = 0; outputIndex < mainConnections.length; outputIndex++) {
+			const slot = mainConnections[outputIndex];
+			if (!Array.isArray(slot) || slot.length === 0) continue;
+			if (outputIndex < effectiveCount) continue;
+
+			const isMissingErrorOutput = !hasErrorOutput && outputIndex === staticCount;
+			const message = isMissingErrorOutput
+				? `'${sourceName}' has a connection from its error output (index ${outputIndex}), but 'onError' is '${sourceNode.onError ?? 'stopWorkflow'}'. Set 'onError' to 'continueErrorOutput' to expose this output, or remove the connection.`
+				: `'${sourceName}' has a connection from main output index ${outputIndex}, but the node only exposes ${effectiveCount} main output(s) (indices 0-${effectiveCount - 1}).`;
+
+			warnings.push(
+				new ValidationWarning(
+					'INVALID_OUTPUT_INDEX',
+					message,
+					sourceName,
+					undefined,
+					undefined,
+					'major',
+				),
+			);
 		}
 	}
 }

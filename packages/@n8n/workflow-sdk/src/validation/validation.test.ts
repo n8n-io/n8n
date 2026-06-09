@@ -3136,6 +3136,266 @@ describe('Validation', () => {
 		});
 	});
 
+	describe('INVALID_OUTPUT_INDEX validation', () => {
+		const mockNodeTypesProvider = {
+			getByNameAndVersion: (type: string) => {
+				if (type === 'n8n-nodes-base.httpRequest') {
+					return { description: { inputs: ['main'], outputs: ['main'] } };
+				}
+				if (type === 'n8n-nodes-base.noOp') {
+					return { description: { inputs: ['main'], outputs: ['main'] } };
+				}
+				if (type === 'n8n-nodes-base.manualTrigger') {
+					return { description: { inputs: [], outputs: ['main'] } };
+				}
+				if (type === 'n8n-nodes-base.code') {
+					// Stand-in for a node with dynamic outputs (e.g. expression-based)
+					return { description: { inputs: ['main'], outputs: '={{$parameter.outputs}}' } };
+				}
+				return { description: { inputs: ['main'], outputs: ['main'] } };
+			},
+			getByName: (type: string) => mockNodeTypesProvider.getByNameAndVersion(type),
+			getKnownTypes: () => ({}),
+		};
+
+		function createHttpWorkflow(args: {
+			onError?: 'continueErrorOutput' | 'continueRegularOutput' | 'stopWorkflow';
+		}): WorkflowJSON {
+			return {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'http-1',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 0] as [number, number],
+						parameters: { url: 'https://example.com' },
+						...(args.onError ? { onError: args.onError } : {}),
+					},
+					{
+						id: 'noop-1',
+						name: 'Error Handler',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 100] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+					},
+					'HTTP Request': {
+						main: [
+							[], // index 0 - the real main output, unused
+							[{ node: 'Error Handler', type: 'main', index: 0 }], // index 1 - error output
+						],
+					},
+				},
+			};
+		}
+
+		it('warns when a connection comes from the error output but onError is not continueErrorOutput', () => {
+			const result = validateWorkflow(createHttpWorkflow({}), {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_INDEX');
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('HTTP Request');
+			expect(warnings[0].message).toContain('error output');
+			expect(warnings[0].message).toContain("'stopWorkflow'");
+			expect(warnings[0].violationLevel).toBe('major');
+		});
+
+		it('does not warn when onError is continueErrorOutput', () => {
+			const result = validateWorkflow(createHttpWorkflow({ onError: 'continueErrorOutput' }), {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_INDEX');
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('reports the configured onError value in the warning message', () => {
+			const result = validateWorkflow(createHttpWorkflow({ onError: 'stopWorkflow' }), {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_INDEX');
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].message).toContain("'stopWorkflow'");
+		});
+
+		it('warns when an output index is past the static output count even on a multi-output node', () => {
+			const workflowJson: WorkflowJSON = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'http-1',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 0] as [number, number],
+						parameters: { url: 'https://example.com' },
+					},
+					{
+						id: 'noop-1',
+						name: 'Handler',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+					},
+					'HTTP Request': {
+						main: [
+							[],
+							[],
+							[{ node: 'Handler', type: 'main', index: 0 }], // index 2 - way past
+						],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_INDEX');
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].message).toContain('output index 2');
+			expect(warnings[0].message).not.toContain('error output');
+		});
+
+		it('does not double-report Switch fallback (handled by SWITCH_FALLBACK_OUTPUT_DISABLED)', () => {
+			// Reuse the Switch fixture: rules mode without fallbackOutput=extra, but
+			// the Switch node has dynamic outputs so resolveMainOutputCount returns
+			// undefined and this validator skips it cleanly anyway. The fallback
+			// warning still fires (via the dedicated Switch validator) but
+			// INVALID_OUTPUT_INDEX must not.
+			const workflowJson: WorkflowJSON = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'switch-1',
+						name: 'Route',
+						type: 'n8n-nodes-base.switch',
+						typeVersion: 3.4,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'rules', rules: { values: [{ outputKey: 'A' }] } },
+					},
+					{
+						id: 'noop-1',
+						name: 'Fallback',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Route', type: 'main', index: 0 }]],
+					},
+					Route: {
+						main: [[], [{ node: 'Fallback', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+			});
+
+			expect(result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_INDEX')).toHaveLength(0);
+		});
+
+		it('skips validation when no node types provider is given', () => {
+			const result = validateWorkflow(createHttpWorkflow({}));
+			expect(result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_INDEX')).toHaveLength(0);
+		});
+
+		it('skips nodes with dynamic (expression-based) outputs', () => {
+			const workflowJson: WorkflowJSON = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'code-1',
+						name: 'Code',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [200, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'noop-1',
+						name: 'Out',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Code', type: 'main', index: 0 }]],
+					},
+					Code: {
+						main: [[], [{ node: 'Out', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+			});
+
+			expect(result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_INDEX')).toHaveLength(0);
+		});
+	});
+
 	describe('validatePlaceholderSlots (builderHint.placeholderSupported=false)', () => {
 		const mockNodeTypesProviderWithPlaceholderOptOut = {
 			getByNameAndVersion: (_type: string, _version?: number) => ({

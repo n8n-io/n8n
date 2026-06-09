@@ -481,7 +481,9 @@ describe('ParseValidateHandler', () => {
 
 			expect(result.map((w) => w.code)).toEqual(['GRAPH_ERR', 'JSON_ERR']);
 			expect(mockFromJSON).toHaveBeenCalledWith(nonEmptyJson);
-			expect(mockValidateWorkflow).toHaveBeenCalledWith(nonEmptyJson);
+			expect(mockValidateWorkflow).toHaveBeenCalledWith(nonEmptyJson, {
+				nodeTypesProvider: undefined,
+			});
 		});
 	});
 });

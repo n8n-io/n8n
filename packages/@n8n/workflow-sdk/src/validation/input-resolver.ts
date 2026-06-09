@@ -39,3 +39,41 @@ export function resolveMainInputCount(
 		return undefined;
 	}
 }
+
+/**
+ * Resolves the number of static main outputs declared on a node type.
+ *
+ * Mirrors {@link resolveMainInputCount} for outputs. Returns undefined for
+ * expression-based outputs (which we can't evaluate without a `Workflow`
+ * instance) or unknown node types, matching the existing skip behaviour of
+ * input-side validation.
+ *
+ * Does NOT account for the framework-level error output that
+ * `NodeHelpers.getNodeOutputs` appends when `node.onError === 'continueErrorOutput'`.
+ * Callers that need the effective count must add 1 themselves for that case.
+ */
+export function resolveMainOutputCount(
+	nodeTypesProvider: INodeTypes,
+	nodeType: string,
+	version: number,
+): number | undefined {
+	try {
+		const nodeTypeObj = nodeTypesProvider.getByNameAndVersion(nodeType, version);
+		if (!nodeTypeObj?.description?.outputs) return undefined;
+
+		const outputs = nodeTypeObj.description.outputs;
+
+		// Expression-based outputs (dynamic) cannot be validated statically
+		if (typeof outputs === 'string') return undefined;
+
+		return outputs.filter((output) => {
+			if (typeof output === 'string') {
+				return output === 'main';
+			}
+			// INodeOutputConfiguration has a 'type' property
+			return output.type === 'main';
+		}).length;
+	} catch {
+		return undefined;
+	}
+}
