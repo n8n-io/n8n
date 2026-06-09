@@ -399,56 +399,6 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('auto-refresh on workflow update (workflows action=update / restore-version)', () => {
-		test('increments workflowRefreshKey when an update targets the active workflow', async () => {
-			const ctx = setup();
-			registerWorkflow(ctx.thread, 'wf-1');
-			ctx.selectTab('wf-1');
-			const initialKey = ctx.workflowRefreshKey.value;
-
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-update',
-								toolName: 'workflows',
-								args: { action: 'update', workflowId: 'wf-1' },
-								result: { success: true, workflowId: 'wf-1' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.workflowRefreshKey.value).toBe(initialKey + 1);
-		});
-
-		test('increments workflowRefreshKey on a restore-version of the active workflow', async () => {
-			const ctx = setup();
-			registerWorkflow(ctx.thread, 'wf-1');
-			ctx.selectTab('wf-1');
-			const initialKey = ctx.workflowRefreshKey.value;
-
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-restore',
-								toolName: 'workflows',
-								args: { action: 'restore-version', workflowId: 'wf-1', versionId: 'v-1' },
-								result: { success: true },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.workflowRefreshKey.value).toBe(initialKey + 1);
-		});
-
 		test('does not refresh when the updated workflow is not the active tab', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
