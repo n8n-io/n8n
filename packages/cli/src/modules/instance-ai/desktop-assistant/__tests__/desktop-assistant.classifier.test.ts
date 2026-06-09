@@ -188,10 +188,10 @@ describe('classifyWorkflowsForDesktopAssistant — bucketing rules', () => {
 		expect(result.actionNeeded[0].description).toBe('Gmail needs credential');
 	});
 
-	test('a user-built workflow that is intentionally inactive is NOT flagged for activation (only credentials matter)', () => {
+	test('an inactive user-built schedule workflow lands in actionNeeded (autonomous trigger is dormant, regardless of source)', () => {
 		const result = classifyWorkflowsForDesktopAssistant([
 			input({
-				workflowId: 'wf-template',
+				workflowId: 'wf-paused-schedule',
 				active: false,
 				nodes: [
 					node({ type: SCHEDULE_TYPE, parameters: { rule: { interval: [{ field: 'days' }] } } }),
@@ -199,8 +199,24 @@ describe('classifyWorkflowsForDesktopAssistant — bucketing rules', () => {
 				tags: [],
 			}),
 		]);
+		expect(result.actionNeeded).toHaveLength(1);
+		expect(result.actionNeeded[0].source).toBe('user-built');
+		expect(result.actionNeeded[0].description).toBe('Activation required');
+		expect(result.readyToRun).toHaveLength(0);
+	});
+
+	test('an inactive user-built MANUAL workflow stays in readyToRun (manual is normally inactive; not nagged)', () => {
+		const result = classifyWorkflowsForDesktopAssistant([
+			input({
+				workflowId: 'wf-manual-draft',
+				active: false,
+				nodes: [node({ type: MANUAL_TYPE })],
+				tags: [],
+			}),
+		]);
 		expect(result.actionNeeded).toHaveLength(0);
 		expect(result.readyToRun).toHaveLength(1);
+		expect(result.readyToRun[0].source).toBe('user-built');
 	});
 
 	test('a node whose type requires credentials but has no credentials field at all surfaces in actionNeeded via service hint', () => {

@@ -318,21 +318,21 @@ function classifyOne(input: ClassifierInput): {
 		summary.kind === 'schedule' || summary.kind === 'poll' || summary.kind === 'webhook';
 
 	// Bucketing precedence:
-	//  1. Missing credentials block execution regardless of source: a user-built
-	//     workflow with an unconfigured Gmail node belongs in actionNeeded just
-	//     as much as a desktop-assistant-promoted one.
-	//  2. Activation-required is desktop-assistant-only — plenty of user-built
-	//     workflows are intentionally inactive (templates, drafts) and shouldn't
-	//     be nagged.
-	//  3. Active autonomous-trigger workflows (schedule/poll/webhook) go to
-	//     upcoming regardless of source. readyToRun is reserved for
-	//     manually-triggered workflows; anything that fires on its own —
-	//     time-based or webhook-driven — belongs in upcoming.
+	//  1. Missing credentials block execution regardless of source.
+	//  2. Inactive autonomous-trigger workflows (schedule/poll/webhook) go to
+	//     actionNeeded — they were intended to run on their own but their
+	//     trigger is dormant. Manual-trigger workflows are excluded because
+	//     'inactive' is their normal resting state (the user fires them on
+	//     demand).
+	//  3. Active autonomous-trigger workflows go to upcoming regardless of
+	//     source. readyToRun is reserved for manually-triggered workflows;
+	//     anything that fires on its own — time-based or webhook-driven —
+	//     belongs in upcoming.
 	//  4. Tagged manual-trigger workflows go to readyToRun.
 	//  5. Everything else user-built falls through to readyToRun.
 	if (missingCredential) {
 		bucket = 'actionNeeded';
-	} else if (tagged && !input.active && isScheduleOrPoll) {
+	} else if (!input.active && isScheduleOrPoll) {
 		bucket = 'actionNeeded';
 	} else if (input.active && isScheduleOrPoll) {
 		bucket = 'upcoming';
