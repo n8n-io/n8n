@@ -25,9 +25,10 @@ const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentD
 
 // Human-readable label per scope, falling back to the raw slug for any unmapped scope.
 const permissionLabels = computed<string[]>(() =>
-	(clentDetails.value?.scopes ?? []).map(
-		(scope) => i18n.baseText(`oauth.consentView.scope.${scope}` as BaseTextKey) || scope,
-	),
+	(clentDetails.value?.scopes ?? []).map((scope) => {
+		const key = `oauth.consentView.scope.${scope}`;
+		return i18n.exists(key) ? i18n.baseText(key as BaseTextKey) : scope;
+	}),
 );
 
 const handleAllow = async () => {

@@ -175,9 +175,11 @@ export class AuthService {
 	 */
 	private async tryAuthenticateOAuthBearer(req: AuthenticatedRequest): Promise<void> {
 		const authHeader = req.headers.authorization;
-		if (!authHeader?.startsWith('Bearer ')) return;
+		// The Bearer scheme is case-insensitive (RFC 7235), matching the MCP server middleware.
+		const bearerMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
+		if (!bearerMatch) return;
 
-		const token = authHeader.slice('Bearer '.length).trim();
+		const token = bearerMatch[1].trim();
 		if (!token) return;
 
 		let decoded: { meta?: { isOAuth?: boolean } };

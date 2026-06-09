@@ -5,7 +5,7 @@ const clientSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	// Redirect URIs are matched exactly by the OAuth SDK (no dynamic loopback ports), so a native
-	// app must register its precise URI here (e.g. a custom scheme like `n8n-app://callback`).
+	// app must register its precise URI here (e.g. a custom scheme like `n8n://callback`).
 	redirectUris: z.array(z.string().url()).min(1),
 	grantTypes: z
 		.array(z.enum(['authorization_code', 'refresh_token']))
@@ -44,7 +44,7 @@ export class McpOAuthConfig {
 		{
 			id: 'n8n-app',
 			name: 'n8n App',
-			redirectUris: ['n8n-app://callback'],
+			redirectUris: ['n8n://callback'],
 			grantTypes: ['authorization_code', 'refresh_token'],
 			tokenEndpointAuthMethod: 'none',
 			clientSecret: null,

@@ -120,17 +120,24 @@ export class McpOAuthService implements OAuthServerProvider {
 			const existing = await this.oauthClientRepository.findOneBy({ id: client.id });
 			if (existing) continue;
 
-			await this.oauthClientRepository.insert({
-				id: client.id,
-				name: client.name,
-				redirectUris: client.redirectUris,
-				grantTypes: client.grantTypes,
-				tokenEndpointAuthMethod: client.tokenEndpointAuthMethod,
-				clientSecret: client.clientSecret,
-				clientSecretExpiresAt: null,
-			});
+			try {
+				await this.oauthClientRepository.insert({
+					id: client.id,
+					name: client.name,
+					redirectUris: client.redirectUris,
+					grantTypes: client.grantTypes,
+					tokenEndpointAuthMethod: client.tokenEndpointAuthMethod,
+					clientSecret: client.clientSecret,
+					clientSecretExpiresAt: null,
+				});
 
-			this.logger.info('Seeded pre-registered OAuth client', { clientId: client.id });
+				this.logger.info('Seeded pre-registered OAuth client', { clientId: client.id });
+			} catch (error) {
+				// A concurrent startup (e.g. multi-main) may have inserted the same client between
+				// the existence check and this insert. If it now exists, the duplicate is benign.
+				const inserted = await this.oauthClientRepository.findOneBy({ id: client.id });
+				if (!inserted) throw error;
+			}
 		}
 	}
 
