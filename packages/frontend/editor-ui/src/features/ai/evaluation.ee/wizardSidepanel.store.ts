@@ -5,9 +5,10 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
 import type { CannedMetricKey } from './evaluation.constants';
+import { DEFAULT_SELECTED_METRIC_KEYS } from './evaluation.constants';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 
-export type WizardStep = 0 | 1 | 2;
+export type WizardStep = 0 | 1 | 2 | 3;
 
 // Stored as the chat-hub provider key ('openai'); persistence converts to
 // the langchain node-type form ('@n8n/n8n-nodes-langchain.lmChatOpenAi').
@@ -31,7 +32,7 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			() => focusPanelStore.focusPanelActive && focusPanelStore.selectedTab === 'evaluations',
 		);
 		const activeStep = ref<WizardStep>(0);
-		const selectedMetricKeys = ref<CannedMetricKey[]>([]);
+		const selectedMetricKeys = ref<CannedMetricKey[]>([...DEFAULT_SELECTED_METRIC_KEYS]);
 		const judgeSelectionByMetric = ref<Partial<Record<CannedMetricKey, JudgeSelection>>>({});
 		const aiNodeName = ref<string>('');
 		const isSliceMode = ref(false);
@@ -44,10 +45,17 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 		// Pinned at dispatch — fetchTestRuns returns ALL of a workflow's runs,
 		// so "newest in map" can't identify the run THIS session started.
 		const activeRunId = ref<string | null>(null);
+		// The workflow the wizard state currently belongs to. Survives the pane's
+		// unmount (the focus panel closes between workflows), so a remount on a
+		// different workflow can still detect the switch and reset. Intentionally
+		// NOT cleared by resetState — it's bookkeeping, not wizard content.
+		const lastWorkflowId = ref<string>('');
 
 		function resetState() {
 			activeStep.value = 0;
-			selectedMetricKeys.value = [];
+			// Correctness is pre-selected for every fresh wizard ("we've selected it
+			// for you"). Hydration overrides this when a saved config exists.
+			selectedMetricKeys.value = [...DEFAULT_SELECTED_METRIC_KEYS];
 			judgeSelectionByMetric.value = {};
 			aiNodeName.value = '';
 			isSliceMode.value = false;
@@ -85,11 +93,15 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 				activeStep.value = 1;
 			} else if (activeStep.value === 1) {
 				activeStep.value = 2;
+			} else if (activeStep.value === 2) {
+				activeStep.value = 3;
 			}
 		}
 
 		function goBack() {
-			if (activeStep.value === 2) {
+			if (activeStep.value === 3) {
+				activeStep.value = 2;
+			} else if (activeStep.value === 2) {
 				activeStep.value = 1;
 			} else if (activeStep.value === 1) {
 				activeStep.value = 0;
@@ -161,6 +173,10 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			activeRunId.value = id;
 		}
 
+		function setLastWorkflowId(id: string) {
+			lastWorkflowId.value = id;
+		}
+
 		// Preserves user edits (including intentionally cleared fields).
 		function seedInputs(values: Record<string, string>) {
 			const next: Record<string, string> = { ...values };
@@ -184,9 +200,11 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			customChecks,
 			isCustomCheckModalOpen,
 			activeRunId,
+			lastWorkflowId,
 			open,
 			close,
 			toggle,
+			reset: resetState,
 			setStep,
 			goNext,
 			goBack,
@@ -203,6 +221,7 @@ export const useEvaluationsWizardSidepanelStore = defineStore(
 			addCustomCheck,
 			removeCustomCheck,
 			setActiveRunId,
+			setLastWorkflowId,
 		};
 	},
 );

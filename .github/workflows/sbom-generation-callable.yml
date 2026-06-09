@@ -56,6 +56,16 @@ jobs:
           # produce sbom-source.cdx.json + packages/cli/THIRD_PARTY_LICENSES.md.
           N8N_GENERATE_LICENSES: 'true'
 
+      # Release-blocking gate. build:deploy already enriches + gates the SBOM via
+      # the generate-licenses pipeline; re-run the gate here as an explicit,
+      # un-skippable check on the exact artifact we are about to attest, so an
+      # unlicensed or non-SPDX component can never reach the signed attestation.
+      - name: Gate SBOM on resolved SPDX licenses
+        run: |
+          node scripts/licenses/check-sbom-licenses.mjs \
+            sbom-source.cdx.json \
+            --allow-ref=LicenseRef-n8n-sustainable-use --allow-ref=LicenseRef-n8n-enterprise
+
       - name: Attest SBOM for release
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
@@ -74,11 +84,10 @@ jobs:
             --clobber
 
           COMPONENT_COUNT=$(jq '.components | length' sbom-source.cdx.json 2>/dev/null || echo "unknown")
-          MISSING_LICENSES=$(jq '[.components[] | select((.licenses // []) | length == 0)] | length' sbom-source.cdx.json 2>/dev/null || echo "unknown")
           VEX_STATEMENTS=$(jq '.statements | length' security/vex.openvex.json 2>/dev/null || echo "0")
           echo "SBOM, VEX, and license manifest attached to release"
           echo "  - SBOM: $COMPONENT_COUNT components from shipped artifact (no devDeps, no optional deps)"
-          echo "  - SBOM: $MISSING_LICENSES components missing license metadata"
+          echo "  - SBOM: all components carry a resolved SPDX license (gated before attest)"
           echo "  - VEX: $VEX_STATEMENTS CVE statements"
           echo "  - THIRD_PARTY_LICENSES.md: rendered from SBOM (same artefact served by /third-party-licenses endpoint)"
 

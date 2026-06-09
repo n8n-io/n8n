@@ -7,6 +7,7 @@ import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
+import type { JSONSchema7 } from 'json-schema';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
 import {
 	UnexpectedError,
@@ -45,6 +46,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
@@ -319,6 +321,7 @@ export async function executeAgent(
 	threadId: string,
 	additionalData: IWorkflowExecuteAdditionalData,
 	executionMode: WorkflowExecuteMode,
+	outputSchema?: JSONSchema7,
 ): Promise<ExecuteAgentData> {
 	let userId = additionalData.userId;
 	const telemetryUserId = additionalData.userId;
@@ -363,6 +366,7 @@ export async function executeAgent(
 		projectId,
 		telemetryUserId,
 		useDraftVersion,
+		outputSchema,
 	);
 }
 
@@ -545,7 +549,10 @@ async function startExecution(
 
 		activeExecutions.finalizeExecution(executionId, fullRunData);
 
-		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
+		await Container.get(ExecutionPersistence).updateExistingExecution(
+			executionId,
+			fullExecutionData,
+		);
 		throw objectToError(
 			{
 				...executionError,
@@ -677,8 +684,8 @@ export async function getBase({
 			);
 		},
 		async getRunExecutionData(executionId) {
-			const executionRepository = Container.get(ExecutionRepository);
-			const executionData = await executionRepository.findSingleExecution(executionId, {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionData = await executionPersistence.findSingleExecution(executionId, {
 				unflattenData: true,
 				includeData: true,
 			});
