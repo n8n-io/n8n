@@ -13,6 +13,10 @@ export {
 	type DeploymentKeySortDirection,
 	type ListDeploymentKeysOptions,
 } from './deployment-key.repository';
+export {
+	EvaluationCollectionRepository,
+	type EvaluationCollectionListItem,
+} from './evaluation-collection.repository';
 export { EvaluationConfigRepository } from './evaluation-config.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
@@ -43,6 +47,7 @@ export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository'
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
+export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
 export { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {

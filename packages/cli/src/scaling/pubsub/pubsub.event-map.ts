@@ -1,4 +1,9 @@
-import type { ChatHubMessageStatus, PushMessage, WorkerStatus } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	ChatHubMessageStatus,
+	PushMessage,
+	WorkerStatus,
+} from '@n8n/api-types';
 import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
@@ -27,6 +32,8 @@ export type PubSubCommandMap = {
 	// #endregion
 
 	'reload-source-control-config': never;
+
+	'reload-mcp-registry': never;
 
 	// #region Community packages
 
@@ -174,6 +181,15 @@ export type PubSubCommandMap = {
 		testRunId: string;
 	};
 
+	/**
+	 * Cancel every running test run inside an evaluation collection across all
+	 * main instances. Used when a user cancels a collection — each main checks
+	 * its in-flight runs and aborts those that belong to the collection.
+	 */
+	'cancel-collection': {
+		collectionId: string;
+	};
+
 	// #endregion
 
 	// #region Agents
@@ -186,8 +202,7 @@ export type PubSubCommandMap = {
 	 */
 	'agent-chat-integration-changed': {
 		agentId: string;
-		type: string;
-		credentialId: string;
+		integration: AgentIntegrationConfig;
 		action: 'connect' | 'disconnect';
 	};
 
@@ -205,6 +220,31 @@ export type PubSubCommandMap = {
 	'agent-config-changed': {
 		agentId: string;
 	};
+
+	/**
+	 * Reconcile an agent's scheduled task cron jobs across main instances.
+	 * Published by the main that handled a publish/unpublish/delete after the
+	 * change is persisted. Only the leader owns task crons, so every main runs
+	 * the same reconcile but registration is a no-op on followers.
+	 */
+	'agent-tasks-changed': {
+		agentId: string;
+	};
+
+	// #endregion
+
+	// #region Redaction
+
+	/**
+	 * Drop the cached instance redaction floor across main instances.
+	 * Published by the main that handled a redaction-floor update after the new
+	 * value is persisted; every other main clears its local cache key so the next
+	 * read re-loads the current value from the DB.
+	 *
+	 * Must NOT be added to SELF_SEND_COMMANDS: the originating main already
+	 * updates its own cache synchronously in set().
+	 */
+	'redaction-floor-changed': never;
 
 	// #endregion
 };

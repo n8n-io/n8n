@@ -14,6 +14,7 @@ export interface WebhookNotification {
 	resourceData: ResourceData;
 	tenantId: string;
 	subscriptionExpirationDateTime: string;
+	clientState?: string;
 }
 
 export interface ResourceData {

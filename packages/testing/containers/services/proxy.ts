@@ -17,6 +17,14 @@ import type { HelperContext, Service, ServiceResult } from './types';
 
 const HOSTNAME = 'proxyserver';
 const PORT = 1080;
+const MOCKSERVER_WAIT_STRATEGY = Wait.forAll([
+	Wait.forLogMessage(`INFO ${PORT} started on port: ${PORT}`),
+	Wait.forHttp('/mockserver/status', PORT)
+		.withMethod('PUT')
+		.forStatusCode(200)
+		.withStartupTimeout(60_000)
+		.withReadTimeout(250),
+]);
 
 export interface ProxyMeta {
 	host: string;
@@ -48,7 +56,9 @@ export const proxy: Service<ProxyResult> = {
 				.withNetwork(network)
 				.withNetworkAliases(HOSTNAME)
 				.withExposedPorts(PORT)
-				.withWaitStrategy(Wait.forLogMessage(`INFO ${PORT} started on port: ${PORT}`))
+				// Keep MockServer heap predictable under parallel container load.
+				.withEnvironment({ JVM_OPTIONS: '-Xmx512m -Xms512m' })
+				.withWaitStrategy(MOCKSERVER_WAIT_STRATEGY)
 				.withLabels({
 					'com.docker.compose.project': projectName,
 					'com.docker.compose.service': HOSTNAME,
@@ -169,6 +179,9 @@ export class ProxyServer {
 			strictBodyMatching?: boolean;
 			partialBodyMatching?: boolean;
 			sequential?: boolean;
+			repeatLastResponse?: boolean;
+			filter?: (expectation: Expectation, fileName: string) => boolean;
+			transform?: (expectation: Expectation, fileName: string) => Expectation;
 		} = {},
 	): Promise<void> {
 		try {
@@ -209,11 +222,15 @@ export class ProxyServer {
 							'ONLY_MATCHING_FIELDS';
 					}
 
+					if (options.filter && !options.filter(expectation, file)) {
+						continue;
+					}
+
 					if (options.sequential) {
 						expectation.times = { remainingTimes: 1 };
 					}
 
-					expectations.push(expectation);
+					expectations.push(options.transform?.(expectation, file) ?? expectation);
 				} catch (parseError) {
 					console.log(`Error parsing expectation from ${file}:`, parseError);
 				}
@@ -222,7 +239,7 @@ export class ProxyServer {
 			// In sequential mode, make the last LLM expectation unlimited so it
 			// acts as a fallback — returning the same final response for any extra
 			// calls caused by tool execution divergence during replay.
-			if (options.sequential && expectations.length > 0) {
+			if (options.sequential && options.repeatLastResponse !== false && expectations.length > 0) {
 				for (let i = expectations.length - 1; i >= 0; i--) {
 					const path = (expectations[i].httpRequest as { path?: string })?.path;
 					if (path === '/v1/messages') {
@@ -274,6 +291,14 @@ export class ProxyServer {
 		}
 	}
 
+	async reset(): Promise<void> {
+		try {
+			await this.withRetry(async () => await this.client.reset());
+		} catch (error) {
+			throw new Error(`Failed to reset ProxyServer: ${JSON.stringify(error)}`);
+		}
+	}
+
 	async createGetExpectation(
 		path: string,
 		responseBody: unknown,
@@ -320,6 +345,7 @@ export class ProxyServer {
 			dedupe?: boolean;
 			raw?: boolean;
 			clearDir?: boolean;
+			filter?: (expectation: Expectation) => boolean;
 			transform?: (expectation: Expectation) => Expectation;
 		},
 	): Promise<void> {
@@ -402,6 +428,10 @@ export class ProxyServer {
 						unlimited: true,
 					},
 				};
+
+				if (options?.filter && !options.filter(processedExpectation)) {
+					continue;
+				}
 
 				if (options?.transform) {
 					processedExpectation = options.transform(processedExpectation);

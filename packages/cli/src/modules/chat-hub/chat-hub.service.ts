@@ -12,7 +12,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { ExecutionRepository, User } from '@n8n/db';
+import { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -27,6 +27,7 @@ import {
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
@@ -55,7 +56,7 @@ export class ChatHubService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly sessionRepository: ChatHubSessionRepository,
 		private readonly messageRepository: ChatHubMessageRepository,
@@ -129,7 +130,7 @@ export class ChatHubService {
 			return false;
 		}
 
-		const execution = await this.executionRepository.findSingleExecution(
+		const execution = await this.executionPersistence.findSingleExecution(
 			previousMessage.executionId.toString(),
 			{
 				includeData: true,

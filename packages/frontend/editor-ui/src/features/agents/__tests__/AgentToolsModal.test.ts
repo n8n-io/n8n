@@ -32,8 +32,63 @@ vi.mock('virtual:node-popularity-data', () => ({
 		{ id: 'n8n-nodes-base.slack', popularity: 100 },
 		{ id: 'n8n-nodes-base.gmail', popularity: 90 },
 		{ id: 'n8n-nodes-base.github', popularity: 50 },
+		{ id: '@n8n/n8n-nodes-langchain.openAi', popularity: 45 },
 		{ id: 'toolWikipedia', popularity: 40 },
+		{ id: '@n8n/n8n-nodes-langchain.toolCode', popularity: 30 },
+		{ id: 'mcpClientTool', popularity: 20 },
+		{ id: 'toolCalculator', popularity: 10 },
+		{ id: 'toolThink', popularity: 9 },
 	],
+}));
+
+vi.mock('@n8n/design-system', () => ({
+	N8nPlugin: {
+		install: vi.fn(),
+	},
+	N8nButton: {
+		props: ['variant', 'size'],
+		template: '<button><slot /></button>',
+	},
+	N8nCollapsiblePanel: {
+		props: ['modelValue', 'disableAnimation'],
+		emits: ['update:modelValue'],
+		template: `
+			<section>
+				<button type="button" @click="$emit('update:modelValue', !modelValue)">
+					<slot name="title" />
+				</button>
+				<div v-show="modelValue"><slot /></div>
+			</section>
+		`,
+	},
+	N8nHeading: {
+		props: ['tag', 'size', 'color'],
+		template: '<component :is="tag || \'div\'"><slot /></component>',
+	},
+	N8nIcon: {
+		props: ['icon', 'size'],
+		template: '<span />',
+	},
+	N8nIconButton: {
+		props: ['icon', 'variant', 'text', 'ariaLabel'],
+		emits: ['click'],
+		template:
+			'<button type="button" :aria-label="ariaLabel" v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>',
+	},
+	N8nInput: {
+		props: ['modelValue', 'placeholder', 'clearable'],
+		emits: ['update:modelValue'],
+		template:
+			'<label><slot name="prefix" /><input :value="modelValue" :placeholder="placeholder" @input="$emit(\'update:modelValue\', $event.target.value)" /></label>',
+	},
+	N8nText: {
+		props: ['color', 'size'],
+		template: '<span><slot /></span>',
+	},
+	N8nTooltip: {
+		props: ['content'],
+		template: '<div><slot /></div>',
+	},
 }));
 
 vi.mock('@n8n/i18n', () => {
@@ -42,6 +97,9 @@ vi.mock('@n8n/i18n', () => {
 			if (opts?.interpolate) {
 				const { count, query } = opts.interpolate as { count?: number; query?: string };
 				if (key === 'agents.tools.availableTools') return `Available tools (${count})`;
+				if (key === 'agents.tools.availableAiTools') return `AI tools (${count})`;
+				if (key === 'agents.tools.availableN8nTools') return `n8n tools (${count})`;
+				if (key === 'agents.tools.availableExternalTools') return `External tools (${count})`;
 				if (key === 'agents.tools.availableWorkflows') return `Workflows (${count})`;
 				if (key === 'agents.tools.noResults.withQuery') return `No tools match “${query}”`;
 			}
@@ -54,6 +112,7 @@ vi.mock('@n8n/i18n', () => {
 				'agents.tools.configure': 'Configure',
 				'agents.tools.added': 'Tool added',
 				'agents.tools.addCredentials': 'Add credentials',
+				'agents.tools.needsApproval': 'Needs approval',
 			};
 			return map[key] ?? key;
 		},
@@ -135,6 +194,110 @@ const WIKIPEDIA: INodeTypeDescription = {
 	credentials: [],
 };
 
+function makeAiToolFixture(
+	name: string,
+	displayName: string,
+	description: string,
+): INodeTypeDescription {
+	return {
+		...SLACK,
+		displayName,
+		name,
+		description,
+		defaults: { name: displayName },
+		credentials: [],
+		codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Tools'],
+				Tools: ['Other Tools'],
+			},
+		},
+	};
+}
+
+const OPENAI: INodeTypeDescription = {
+	...SLACK,
+	displayName: 'OpenAI',
+	name: '@n8n/n8n-nodes-langchain.openAi',
+	description: 'Use OpenAI models',
+	defaults: { name: 'OpenAI' },
+	inputs: ['main'],
+	credentials: [],
+};
+
+const CODE_TOOL: INodeTypeDescription = {
+	...SLACK,
+	displayName: 'Code Tool',
+	name: '@n8n/n8n-nodes-langchain.toolCode',
+	description: 'Run custom code',
+	defaults: { name: 'Code Tool' },
+	credentials: [],
+	codex: {
+		categories: ['AI'],
+		subcategories: {
+			AI: ['Tools'],
+			Tools: ['Recommended Tools'],
+		},
+	},
+};
+
+const CALCULATOR = makeAiToolFixture('toolCalculator', 'Calculator', 'Do math');
+
+const THINK_TOOL = makeAiToolFixture('toolThink', 'Think Tool', 'Pause to think');
+
+const ANTHROPIC_TOOL = makeAiToolFixture(
+	'@n8n/n8n-nodes-langchain.anthropicTool',
+	'Anthropic Tool',
+	'Interact with Anthropic AI models',
+);
+
+const GOOGLE_GEMINI_TOOL = makeAiToolFixture(
+	'@n8n/n8n-nodes-langchain.googleGeminiTool',
+	'Google Gemini Tool',
+	'Interact with Google Gemini AI models',
+);
+
+const MINIMAX_TOOL = makeAiToolFixture(
+	'@n8n/n8n-nodes-langchain.minimaxTool',
+	'MiniMax Tool',
+	'Interact with MiniMax AI models',
+);
+
+const MOONSHOT_TOOL = makeAiToolFixture(
+	'@n8n/n8n-nodes-langchain.moonshotTool',
+	'Moonshot Kimi Tool',
+	'Interact with Moonshot Kimi AI models',
+);
+
+const OLLAMA_TOOL = makeAiToolFixture(
+	'@n8n/n8n-nodes-langchain.ollamaTool',
+	'Ollama Tool',
+	'Interact with Ollama AI models',
+);
+
+const CHAT_TOOL = makeAiToolFixture(
+	'@n8n/n8n-nodes-langchain.chatTool',
+	'Chat Tool',
+	'Send a message into the chat',
+);
+
+const MCP_TOOL: INodeTypeDescription = {
+	...SLACK,
+	displayName: 'GitHub MCP',
+	name: 'mcpClientTool',
+	description: 'Connect to an MCP server',
+	defaults: { name: 'GitHub MCP' },
+	credentials: [],
+	codex: {
+		categories: ['AI'],
+		subcategories: {
+			AI: ['Tools'],
+			Tools: ['Model Context Protocol'],
+		},
+	},
+};
+
 const NODE_WITH_INPUTS: INodeTypeDescription = {
 	...SLACK,
 	name: 'n8n-nodes-base.subagent',
@@ -188,8 +351,21 @@ function makeWorkflow(overrides: Partial<IWorkflowDb> = {}): IWorkflowDb {
 		updatedAt: '2026-01-02T00:00:00Z',
 		versionId: 'v-1',
 		activeVersionId: null,
+		nodes: [makeWorkflowNode('n8n-nodes-base.manualTrigger', 'Manual Trigger')],
+		connections: {},
 		...overrides,
 	} as IWorkflowDb;
+}
+
+function makeWorkflowNode(type: string, name: string): IWorkflowDb['nodes'][number] {
+	return {
+		id: name,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
 }
 
 describe('AgentToolsModal', () => {
@@ -211,6 +387,17 @@ describe('AgentToolsModal', () => {
 			if (name === GMAIL.name) return GMAIL;
 			if (name === GITHUB.name) return GITHUB;
 			if (name === WIKIPEDIA.name) return WIKIPEDIA;
+			if (name === OPENAI.name) return OPENAI;
+			if (name === CODE_TOOL.name) return CODE_TOOL;
+			if (name === CALCULATOR.name) return CALCULATOR;
+			if (name === THINK_TOOL.name) return THINK_TOOL;
+			if (name === ANTHROPIC_TOOL.name) return ANTHROPIC_TOOL;
+			if (name === GOOGLE_GEMINI_TOOL.name) return GOOGLE_GEMINI_TOOL;
+			if (name === MINIMAX_TOOL.name) return MINIMAX_TOOL;
+			if (name === MOONSHOT_TOOL.name) return MOONSHOT_TOOL;
+			if (name === OLLAMA_TOOL.name) return OLLAMA_TOOL;
+			if (name === CHAT_TOOL.name) return CHAT_TOOL;
+			if (name === MCP_TOOL.name) return MCP_TOOL;
 			if (name === NODE_WITH_INPUTS.name) return NODE_WITH_INPUTS;
 			return null;
 		});
@@ -252,8 +439,8 @@ describe('AgentToolsModal', () => {
 
 	function toolRef(
 		nodeType: string,
-		overrides: Partial<AgentJsonToolRef['node']> = {},
-	): AgentJsonToolRef {
+		overrides: Partial<Extract<AgentJsonToolRef, { type: 'node' }>['node']> = {},
+	): Extract<AgentJsonToolRef, { type: 'node' }> {
 		return {
 			type: 'node',
 			name: nodeType,
@@ -261,6 +448,7 @@ describe('AgentToolsModal', () => {
 				nodeType,
 				nodeTypeVersion: 1,
 				credentials: { slackApi: { id: 'c', name: 'cred' } },
+				nodeParameters: {},
 				...overrides,
 			},
 		};
@@ -279,7 +467,7 @@ describe('AgentToolsModal', () => {
 
 	it('lists available node-type tools, excluding nodes that take main inputs', () => {
 		const { getByTestId, queryByText } = renderComponent(defaultProps());
-		const available = getByTestId('agent-tools-available-list');
+		const available = getByTestId('agent-tools-available-external-list');
 		expect(available.textContent).toContain('Slack');
 		expect(available.textContent).toContain('Gmail');
 		expect(available.textContent).toContain('GitHub');
@@ -298,6 +486,14 @@ describe('AgentToolsModal', () => {
 		expect(connected.textContent).toContain(SLACK.name);
 	});
 
+	it('shows an approval badge for configured tools that require approval', () => {
+		const { getByTestId } = renderComponent(
+			defaultProps([{ ...toolRef(SLACK.name), requireApproval: true }]),
+		);
+		const connected = getByTestId('agent-tools-connected-list');
+		expect(connected.textContent).toContain('Needs approval');
+	});
+
 	it('surfaces the "Add credentials" chip on rows missing credentials', () => {
 		const tool = toolRef(GMAIL.name, { credentials: undefined });
 		const { queryByTestId } = renderComponent(defaultProps([tool]));
@@ -314,7 +510,7 @@ describe('AgentToolsModal', () => {
 		// Users can add a 2nd Slack tool with a different name + credentials.
 		// The config modal enforces tool-name uniqueness on save.
 		const { getByTestId } = renderComponent(defaultProps([toolRef(SLACK.name)]));
-		const available = getByTestId('agent-tools-available-list');
+		const available = getByTestId('agent-tools-available-external-list');
 		expect(available.textContent).toContain('Slack');
 		expect(available.textContent).toContain('Gmail');
 	});
@@ -327,7 +523,7 @@ describe('AgentToolsModal', () => {
 		await typeInSearch(container, 'gmail');
 
 		await waitFor(() => {
-			const available = getByTestId('agent-tools-available-list');
+			const available = getByTestId('agent-tools-available-external-list');
 			expect(available.textContent).toContain('Gmail');
 			expect(available.textContent).not.toContain('GitHub');
 		});
@@ -340,7 +536,7 @@ describe('AgentToolsModal', () => {
 
 		await waitFor(() => {
 			expect(queryByText(/No tools match.*zzzzz/)).not.toBeNull();
-			expect(queryByTestId('agent-tools-available-list')).toBeNull();
+			expect(queryByTestId('agent-tools-available-external-list')).toBeNull();
 		});
 	});
 
@@ -348,7 +544,7 @@ describe('AgentToolsModal', () => {
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderComponent(defaultProps([], onConfirm));
 
-		const available = getByTestId('agent-tools-available-list');
+		const available = getByTestId('agent-tools-available-external-list');
 		const addButton = available.querySelector('button');
 		expect(addButton).not.toBeNull();
 		await fireEvent.click(addButton!);
@@ -373,7 +569,7 @@ describe('AgentToolsModal', () => {
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderComponent(defaultProps([], onConfirm));
 
-		const available = getByTestId('agent-tools-available-list');
+		const available = getByTestId('agent-tools-available-external-list');
 		await fireEvent.click(available.querySelector('button')!);
 
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
@@ -411,7 +607,7 @@ describe('AgentToolsModal', () => {
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderComponent(defaultProps([existing], onConfirm));
 
-		const available = getByTestId('agent-tools-available-list');
+		const available = getByTestId('agent-tools-available-external-list');
 		await fireEvent.click(available.querySelector('button')!);
 
 		const [tools] = onConfirm.mock.calls[0];
@@ -422,7 +618,7 @@ describe('AgentToolsModal', () => {
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderComponent(defaultProps([], onConfirm));
 
-		const available = getByTestId('agent-tools-available-list');
+		const available = getByTestId('agent-tools-available-external-list');
 		await fireEvent.click(available.querySelector('button')!);
 
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -450,7 +646,73 @@ describe('AgentToolsModal', () => {
 	it('shows the available tools count in the section heading', () => {
 		const { getByTestId } = renderComponent(defaultProps());
 		const wrapper = getByTestId('agent-tools-list');
-		expect(wrapper.textContent).toContain('Available tools (3)');
+		expect(wrapper.textContent).toContain('External tools (3)');
+	});
+
+	it('groups available entries into workflows, AI tools, n8n tools, and external tools', async () => {
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [
+				SLACK.name,
+				CODE_TOOL.name,
+				MCP_TOOL.name,
+				NODE_WITH_INPUTS.name,
+			],
+		};
+		seedWorkflows([makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' })]);
+
+		const { getByTestId, queryByText } = renderComponent({
+			props: {
+				modalName: MODAL_NAME,
+				data: { tools: [], projectId: 'p-42', onConfirm: vi.fn() },
+			},
+		});
+
+		const workflows = await waitFor(() => getByTestId('agent-tools-available-workflows-list'));
+		const aiTools = getByTestId('agent-tools-available-ai-list');
+		const n8nTools = getByTestId('agent-tools-available-n8n-list');
+		const externalTools = getByTestId('agent-tools-available-external-list');
+		const wrapper = getByTestId('agent-tools-list');
+
+		expect(wrapper.textContent).toContain('Workflows (1)');
+		expect(wrapper.textContent).toContain('AI tools (1)');
+		expect(wrapper.textContent).toContain('n8n tools (1)');
+		expect(wrapper.textContent).toContain('External tools (2)');
+		expect(workflows.textContent).toContain('Daily sales digest');
+		expect(aiTools.textContent).toContain('OpenAI');
+		expect(n8nTools.textContent).toContain('Code Tool');
+		expect(externalTools.textContent).toContain('Slack');
+		expect(externalTools.textContent).toContain('GitHub MCP');
+		expect(queryByText('Subagent')).toBeNull();
+	});
+
+	it('keeps utility AI tools visible and hides generated AI model tool counterparts', () => {
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [
+				CALCULATOR.name,
+				THINK_TOOL.name,
+				ANTHROPIC_TOOL.name,
+				GOOGLE_GEMINI_TOOL.name,
+				MINIMAX_TOOL.name,
+				MOONSHOT_TOOL.name,
+				OLLAMA_TOOL.name,
+				CHAT_TOOL.name,
+				SLACK.name,
+			],
+		};
+
+		const { getByTestId, queryByText } = renderComponent(defaultProps());
+		const aiTools = getByTestId('agent-tools-available-ai-list');
+		const externalTools = getByTestId('agent-tools-available-external-list');
+
+		expect(aiTools.textContent).toContain('Calculator');
+		expect(aiTools.textContent).toContain('Think Tool');
+		expect(externalTools.textContent).toContain('Slack');
+		expect(queryByText('Anthropic Tool')).toBeNull();
+		expect(queryByText('Google Gemini Tool')).toBeNull();
+		expect(queryByText('MiniMax Tool')).toBeNull();
+		expect(queryByText('Moonshot Kimi Tool')).toBeNull();
+		expect(queryByText('Ollama Tool')).toBeNull();
+		expect(queryByText('Chat Tool')).toBeNull();
 	});
 
 	it('opens the config modal with the clicked tool ref when the gear is clicked', async () => {
@@ -483,7 +745,7 @@ describe('AgentToolsModal', () => {
 		await fireEvent.click(gearButton!);
 
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-		const editedRef: AgentJsonToolRef = {
+		const editedRef: Extract<AgentJsonToolRef, { type: 'node' }> = {
 			...tool,
 			name: 'Slack renamed',
 		};
@@ -511,7 +773,9 @@ describe('AgentToolsModal', () => {
 					'n8n-nodes-base.manualTrigger',
 					'n8n-nodes-base.scheduleTrigger',
 					'n8n-nodes-base.formTrigger',
+					'n8n-nodes-base.webhook',
 				]),
+				select: ['id', 'name', 'description', 'isArchived', 'nodes'],
 			});
 		});
 
@@ -534,6 +798,56 @@ describe('AgentToolsModal', () => {
 			expect(list.textContent).toContain('Daily sales digest');
 			// Archived workflows are excluded.
 			expect(queryByText('Old archived')).toBeNull();
+		});
+
+		it('renders webhook workflows that respond with Respond to Webhook', async () => {
+			seedWorkflows([
+				makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' }),
+				makeWorkflow({
+					id: 'wf-webhook',
+					name: 'Webhook intake',
+					nodes: [
+						makeWorkflowNode('n8n-nodes-base.webhook', 'Webhook'),
+						makeWorkflowNode('n8n-nodes-base.respondToWebhook', 'Respond to Webhook'),
+					],
+				}),
+			]);
+
+			const { getByTestId, queryByText } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [], projectId: 'p-42', onConfirm: vi.fn() },
+				},
+			});
+
+			const list = await waitFor(() => getByTestId('agent-tools-available-workflows-list'));
+			expect(list.textContent).toContain('Daily sales digest');
+			expect(queryByText('Webhook intake')).not.toBeNull();
+		});
+
+		it('does not render workflows that contain incompatible wait-style body nodes', async () => {
+			seedWorkflows([
+				makeWorkflow({ id: 'wf-1', name: 'Daily sales digest' }),
+				makeWorkflow({
+					id: 'wf-wait',
+					name: 'Wait for callback',
+					nodes: [
+						makeWorkflowNode('n8n-nodes-base.manualTrigger', 'Manual Trigger'),
+						makeWorkflowNode('n8n-nodes-base.wait', 'Wait'),
+					],
+				}),
+			]);
+
+			const { getByTestId, queryByText } = renderComponent({
+				props: {
+					modalName: MODAL_NAME,
+					data: { tools: [], projectId: 'p-42', onConfirm: vi.fn() },
+				},
+			});
+
+			const list = await waitFor(() => getByTestId('agent-tools-available-workflows-list'));
+			expect(list.textContent).toContain('Daily sales digest');
+			expect(queryByText('Wait for callback')).toBeNull();
 		});
 
 		it('keeps already-connected workflows listed under Available (duplicates allowed)', async () => {

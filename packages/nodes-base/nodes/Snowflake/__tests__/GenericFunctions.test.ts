@@ -70,6 +70,20 @@ describe('getConnectionOptions', () => {
 			});
 		});
 
+		it('with oauth token for oauth2 authentication', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				authentication: 'oauth2',
+				token: 'test-oauth-token',
+			});
+
+			expect(result).toEqual({
+				...commonOptions,
+				authenticator: 'OAUTH',
+				token: 'test-oauth-token',
+			});
+		});
+
 		it('with private key for keyPair authentication and passphrase', () => {
 			const createPrivateKeySpy = jest.spyOn(crypto, 'createPrivateKey').mockImplementation(
 				() =>

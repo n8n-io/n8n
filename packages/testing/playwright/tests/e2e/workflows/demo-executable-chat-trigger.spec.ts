@@ -74,6 +74,7 @@ test.describe(
 				connections: chatTriggerConnections,
 			});
 
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 			await expect(n8n.canvas.nodeByName('When chat message received')).toBeVisible();
 
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeHidden();

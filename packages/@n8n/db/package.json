@@ -1,19 +1,21 @@
 {
   "name": "@n8n/db",
-  "version": "1.20.0",
+  "version": "1.26.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
+    "migration:new": "node scripts/new-migration.mjs"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -45,7 +47,13 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/lodash": "catalog:",
-    "express": "5.1.0"
-  }
+    "@vitest/coverage-v8": "catalog:",
+    "express": "5.1.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

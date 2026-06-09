@@ -10,12 +10,16 @@ import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vu
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { listAgents } from '../composables/useAgentApi';
+import { useAgentPermissions } from '../composables/useAgentPermissions';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentResource } from '../types';
-import { AGENT_BUILDER_VIEW } from '../constants';
+import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '../constants';
 import AgentCard from '../components/AgentCard.vue';
 
 const locale = useI18n();
+const documentTitle = useDocumentTitle();
 
 const route = useRoute();
 const router = useRouter();
@@ -23,6 +27,11 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
+const agentTelemetry = useAgentTelemetry();
+
+const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+
+const { canCreate: canCreateAgent } = useAgentPermissions(() => homeProject.value?.id);
 
 const allAgents = ref<AgentResource[]>([]);
 const loading = ref(true);
@@ -68,7 +77,15 @@ function onAgentDeleted(agentId: string) {
 	allAgents.value = allAgents.value.filter((a) => a.id !== agentId);
 }
 
-onMounted(fetchAgents);
+function onCreateAgentClick() {
+	agentTelemetry.trackClickedNewAgent('button');
+	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: projectId.value } });
+}
+
+onMounted(async () => {
+	documentTitle.set(locale.baseText('agents.heading'));
+	await fetchAgents();
+});
 </script>
 
 <template>
@@ -98,9 +115,19 @@ onMounted(fetchAgents);
 
 		<template #empty>
 			<N8nActionBox
+				data-test-id="empty-agents-action-box"
 				:heading="locale.baseText('agents.list.empty.heading')"
 				:description="locale.baseText('agents.list.empty.description')"
-			/>
+				:button-text="locale.baseText('agents.list.empty.button.label')"
+				button-type="secondary"
+				:button-disabled="!canCreateAgent"
+				:button-icon="!canCreateAgent ? 'lock' : undefined"
+				@click:button="onCreateAgentClick"
+			>
+				<template #disabledButtonTooltip>
+					{{ locale.baseText('agents.list.empty.button.disabled.tooltip') }}
+				</template>
+			</N8nActionBox>
 		</template>
 
 		<template #default="{ data }">

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
+	taskIdentifiersFromConfig,
 } from '../composables/agentTelemetry.utils';
 import type { AgentJsonConfig, AgentResource } from '../types';
 
@@ -11,10 +12,20 @@ describe('buildAgentConfigFingerprint', () => {
 		model: 'gpt-4',
 		instructions: 'do things',
 		tools: [
-			{ type: 'node', name: 'zulu' },
+			{
+				type: 'node',
+				name: 'zulu',
+				node: {
+					nodeType: 'n8n-nodes-base.zulu',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					credentials: {},
+				},
+			},
 			{ type: 'custom', id: 'alpha' },
 		],
 		skills: [{ type: 'skill', id: 'summarize_notes' }],
+		tasks: [{ type: 'task', id: 'daily_digest', enabled: true }],
 		memory: { enabled: true, storage: 'n8n' },
 	};
 
@@ -28,6 +39,7 @@ describe('buildAgentConfigFingerprint', () => {
 		const fp = await buildAgentConfigFingerprint(baseConfig, ['telegram', 'slack']);
 		expect(fp.tools).toEqual(['alpha', 'zulu']);
 		expect(fp.skills).toEqual(['summarize_notes']);
+		expect(fp.tasks).toEqual(['daily_digest']);
 		expect(fp.triggers).toEqual(['slack', 'telegram']);
 	});
 
@@ -47,7 +59,19 @@ describe('buildAgentConfigFingerprint', () => {
 		const a = await buildAgentConfigFingerprint(baseConfig, []);
 		const withExtra: AgentJsonConfig = {
 			...baseConfig,
-			tools: [...(baseConfig.tools ?? []), { type: 'node', name: 'new-tool' }],
+			tools: [
+				...(baseConfig.tools ?? []),
+				{
+					type: 'node',
+					name: 'new-tool',
+					node: {
+						nodeType: 'n8n-nodes-base.new-tool',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+						credentials: {},
+					},
+				},
+			],
 		};
 		expect((await buildAgentConfigFingerprint(withExtra, [])).config_version).not.toBe(
 			a.config_version,
@@ -61,6 +85,28 @@ describe('buildAgentConfigFingerprint', () => {
 			skills: [...(baseConfig.skills ?? []), { type: 'skill', id: 'write_like_brand' }],
 		};
 		expect((await buildAgentConfigFingerprint(withExtra, [])).config_version).not.toBe(
+			a.config_version,
+		);
+	});
+
+	it('changes config_version when a task is added', async () => {
+		const a = await buildAgentConfigFingerprint(baseConfig, []);
+		const withExtra: AgentJsonConfig = {
+			...baseConfig,
+			tasks: [...(baseConfig.tasks ?? []), { type: 'task', id: 'weekly_report', enabled: true }],
+		};
+		expect((await buildAgentConfigFingerprint(withExtra, [])).config_version).not.toBe(
+			a.config_version,
+		);
+	});
+
+	it('changes config_version when a task is removed', async () => {
+		const a = await buildAgentConfigFingerprint(baseConfig, []);
+		const withoutTasks: AgentJsonConfig = {
+			...baseConfig,
+			tasks: [],
+		};
+		expect((await buildAgentConfigFingerprint(withoutTasks, [])).config_version).not.toBe(
 			a.config_version,
 		);
 	});
@@ -81,28 +127,46 @@ describe('buildAgentConfigFingerprint', () => {
 		expect(fp.instructions).toBe('');
 		expect(fp.tools).toEqual([]);
 		expect(fp.skills).toEqual([]);
+		expect(fp.tasks).toEqual([]);
 		expect(fp.model).toBeNull();
 	});
 });
 
+describe('taskIdentifiersFromConfig', () => {
+	it('sorts and dedupes task ids', () => {
+		expect(
+			taskIdentifiersFromConfig({
+				name: 'x',
+				model: 'gpt-4',
+				instructions: 'do things',
+				tasks: [
+					{ type: 'task', id: 'z-task', enabled: true },
+					{ type: 'task', id: 'a-task', enabled: true },
+					{ type: 'task', id: 'z-task', enabled: false },
+				],
+			}),
+		).toEqual(['a-task', 'z-task']);
+	});
+});
+
 describe('deriveAgentStatus', () => {
-	it('returns draft when agent has no published version', () => {
-		const agent = { publishedVersion: null, versionId: 'v1' } as unknown as AgentResource;
+	it('returns draft when agent has no active version', () => {
+		const agent = { activeVersionId: null, versionId: 'v1' } as unknown as AgentResource;
 		expect(deriveAgentStatus(agent)).toBe('draft');
 	});
 
-	it('returns draft when published version differs from current versionId', () => {
+	it('returns draft when active version differs from current versionId', () => {
 		const agent = {
 			versionId: 'v2',
-			publishedVersion: { publishedFromVersionId: 'v1' },
+			activeVersionId: 'v1',
 		} as unknown as AgentResource;
 		expect(deriveAgentStatus(agent)).toBe('draft');
 	});
 
-	it('returns production when current versionId matches published version', () => {
+	it('returns production when current versionId matches active version', () => {
 		const agent = {
 			versionId: 'v1',
-			publishedVersion: { publishedFromVersionId: 'v1' },
+			activeVersionId: 'v1',
 		} as unknown as AgentResource;
 		expect(deriveAgentStatus(agent)).toBe('production');
 	});

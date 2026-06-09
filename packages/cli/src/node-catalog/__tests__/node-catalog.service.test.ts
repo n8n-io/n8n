@@ -9,14 +9,14 @@ import { NodeCatalogService } from '../node-catalog.service';
 const MockNodeTypeParser = jest.fn();
 const mockSetSchemaBaseDirs = jest.fn();
 const mockSearchCodeBuilderNodes = jest.fn();
-const mockGetInvoke = jest.fn().mockResolvedValue('get-result');
-const mockSuggestInvoke = jest.fn().mockResolvedValue('suggest-result');
+const mockGetNodeTypes = jest.fn().mockReturnValue('get-result');
+const mockGetSuggestedNodes = jest.fn().mockReturnValue('suggest-result');
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+jest.mock('@n8n/ai-utilities/node-catalog', () => ({
 	NodeTypeParser: MockNodeTypeParser,
 	searchCodeBuilderNodes: (...args: unknown[]) => mockSearchCodeBuilderNodes(...args),
-	createCodeBuilderGetTool: jest.fn(() => ({ invoke: mockGetInvoke })),
-	createGetSuggestedNodesTool: jest.fn(() => ({ invoke: mockSuggestInvoke })),
+	getNodeTypes: (...args: unknown[]) => mockGetNodeTypes(...args),
+	getSuggestedNodes: (...args: unknown[]) => mockGetSuggestedNodes(...args),
 }));
 
 jest.mock('@n8n/workflow-sdk', () => ({
@@ -241,7 +241,7 @@ describe('NodeCatalogService', () => {
 
 			expect(result1).toBe('get-result');
 			expect(result2).toBe('get-result');
-			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
+			expect(mockGetNodeTypes).toHaveBeenCalledTimes(1);
 		});
 
 		test('handles object nodeIds in cache key', async () => {
@@ -251,7 +251,7 @@ describe('NodeCatalogService', () => {
 			await service.getNodeTypes([nodeId]);
 			await service.getNodeTypes([nodeId]);
 
-			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
+			expect(mockGetNodeTypes).toHaveBeenCalledTimes(1);
 		});
 
 		test('is order-independent across nodeIds', async () => {
@@ -260,7 +260,7 @@ describe('NodeCatalogService', () => {
 			await service.getNodeTypes(['n8n-nodes-base.gmail', 'n8n-nodes-base.slack']);
 			await service.getNodeTypes(['n8n-nodes-base.slack', 'n8n-nodes-base.gmail']);
 
-			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
+			expect(mockGetNodeTypes).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -273,7 +273,7 @@ describe('NodeCatalogService', () => {
 
 			expect(result1).toBe('suggest-result');
 			expect(result2).toBe('suggest-result');
-			expect(mockSuggestInvoke).toHaveBeenCalledTimes(1);
+			expect(mockGetSuggestedNodes).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -287,8 +287,8 @@ describe('NodeCatalogService', () => {
 			await service.getSuggestedNodes(['chatbot']);
 
 			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(2);
-			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
-			expect(mockSuggestInvoke).toHaveBeenCalledTimes(1);
+			expect(mockGetNodeTypes).toHaveBeenCalledTimes(1);
+			expect(mockGetSuggestedNodes).toHaveBeenCalledTimes(1);
 
 			expect(postProcessorCallback).toBeDefined();
 			await postProcessorCallback!();
@@ -299,8 +299,8 @@ describe('NodeCatalogService', () => {
 			await service.getSuggestedNodes(['chatbot']);
 
 			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(4);
-			expect(mockGetInvoke).toHaveBeenCalledTimes(2);
-			expect(mockSuggestInvoke).toHaveBeenCalledTimes(2);
+			expect(mockGetNodeTypes).toHaveBeenCalledTimes(2);
+			expect(mockGetSuggestedNodes).toHaveBeenCalledTimes(2);
 		});
 	});
 });

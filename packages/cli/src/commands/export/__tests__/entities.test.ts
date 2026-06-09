@@ -32,6 +32,7 @@ describe('ExportEntitiesCommand', () => {
 					'execution_metadata',
 				]),
 				undefined,
+				{ includeDataTableRows: undefined },
 			);
 		});
 
@@ -53,6 +54,7 @@ describe('ExportEntitiesCommand', () => {
 				'./exports',
 				new Set<string>(),
 				undefined,
+				{ includeDataTableRows: undefined },
 			);
 		});
 
@@ -80,6 +82,29 @@ describe('ExportEntitiesCommand', () => {
 					'execution_metadata',
 				]),
 				'key.txt',
+				{ includeDataTableRows: undefined },
+			);
+		});
+
+		it('should pass includeDataTableRows=false through to the export service', async () => {
+			const command = new ExportEntitiesCommand();
+			// @ts-expect-error Protected property
+			command.flags = {
+				outputDir: './exports',
+				includeDataTableRows: false,
+			};
+			// @ts-expect-error Protected property
+			command.logger = {
+				info: jest.fn(),
+				error: jest.fn(),
+			};
+			await command.run();
+
+			expect(mockExportService.exportEntities).toHaveBeenCalledWith(
+				'./exports',
+				expect.any(Set),
+				undefined,
+				{ includeDataTableRows: false },
 			);
 		});
 	});

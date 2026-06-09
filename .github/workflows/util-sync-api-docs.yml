@@ -129,6 +129,8 @@ jobs:
 
       - name: Create PR in Docs Repo
         if: steps.verify_file.outputs.file_exists == 'true'
+        env:
+          GH_ACTOR: ${{ github.actor }}
 
         # Pin v7.0.8
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
@@ -138,7 +140,7 @@ jobs:
           path: public-docs
           commit-message: 'feat(public-api): Update Public API schema'
           committer: GitHub <noreply@github.com>
-          author: ${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>
+          author: ${{ env.GH_ACTOR }} <${{ github.actor_id }}+${{ env.GH_ACTOR }}@users.noreply.github.com>
           signoff: false
 
           # Create a single branch for multiple PRs

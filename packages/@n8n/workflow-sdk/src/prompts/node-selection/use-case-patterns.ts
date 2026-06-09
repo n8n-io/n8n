@@ -44,12 +44,3 @@ CHATBOTS:
 MEDIA:
 - OpenAI: DALL-E image generation, Sora video, Whisper transcription
 - Google Gemini: Imagen image generation`;
-
-export const BASELINE_FLOW_CONTROL = `Baseline flow control nodes (used in most workflows):
-
-- n8n-nodes-base.aggregate: Combines multiple items into one item
-- n8n-nodes-base.if: Routes items based on true/false condition
-- n8n-nodes-base.switch: Routes items to different paths based on rules or expressions
-- n8n-nodes-base.splitOut: Expands a single item containing an array into multiple individual items
-- n8n-nodes-base.merge: Combines data from multiple parallel branches (for 3+ inputs: mode="append" + numberInputs)
-- n8n-nodes-base.set: Transforms and restructures data fields`;

@@ -1,20 +1,27 @@
 import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiTraceContext } from '../types';
-import type { InstanceAiLivenessPolicy } from './liveness-policy';
+import type { InstanceAiTraceContext, ModelConfig } from '../types';
+import type {
+	InstanceAiLivenessPolicy,
+	InstanceAiLivenessSurface,
+	InstanceAiLivenessTimeoutReason,
+} from './liveness-policy';
+import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
 
 export interface ActiveRunState {
 	runId: string;
+	threadId: string;
 	abortController: AbortController;
 	messageGroupId?: string;
 	tracing?: InstanceAiTraceContext;
+	modelId?: ModelConfig;
 	startedAt?: number;
 	lastActivityAt?: number;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
-	mastraRunId: string;
+	agentRunId: string;
 	agent: unknown;
 	threadId: string;
 	user: TUser;
@@ -25,10 +32,18 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	 *  Preserved across suspend/resume so the resumed run's finalizer can
 	 *  run the deadlock fallback and reschedule. */
 	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
+	/** Set when the suspended run was a planned build-workflow follow-up. */
+	plannedBuild?: {
+		isPlannedBuildFollowUp: true;
+		buildTaskId: string;
+		workItemId: string;
+		isSupportingWorkflowTask?: boolean;
+		savedOutcome?: WorkflowBuildOutcome;
+	};
 }
 
 /**
- * Flat confirmation payload consumed by Mastra tool `resumeSchema`s and sub-agent HITL.
+ * Flat confirmation payload consumed by native tool `resumeSchema`s and sub-agent HITL.
  * The service layer constructs this from the typed `InstanceAiConfirmRequest` discriminated
  * union sent by the frontend — only one subset of fields is populated per call, matching
  * the confirmation kind that was originally requested.
@@ -50,6 +65,8 @@ export interface ConfirmationData {
 	}>;
 	/** User's resource-access decision (e.g. 'allowForSession'). */
 	resourceDecision?: string;
+	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
+	denied?: boolean;
 }
 
 export interface PendingConfirmation {
@@ -72,10 +89,17 @@ export interface BackgroundTaskStatusSnapshot {
 	threadId: string;
 }
 
+export interface RunStateTimeoutDetails {
+	reason: InstanceAiLivenessTimeoutReason;
+	surface: InstanceAiLivenessSurface;
+	timeoutMs: number;
+	elapsedMs: number;
+	idleMs: number;
+}
+
 export interface StartRunOptions<TUser> {
 	threadId: string;
 	user: TUser;
-	researchMode?: boolean;
 	messageGroupId?: string;
 }
 
@@ -92,8 +116,6 @@ export class RunStateRegistry<TUser = unknown> {
 
 	private readonly threadUsers = new Map<string, TUser>();
 
-	private readonly threadResearchMode = new Map<string, boolean>();
-
 	private readonly threadMessageGroupId = new Map<string, string>();
 
 	private readonly runIdsByMessageGroup = new Map<string, string[]>();
@@ -109,15 +131,13 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.activeRuns.set(options.threadId, {
 			runId,
+			threadId: options.threadId,
 			abortController,
 			messageGroupId,
 			startedAt: now,
 			lastActivityAt: now,
 		});
 		this.threadUsers.set(options.threadId, options.user);
-		if (options.researchMode !== undefined) {
-			this.threadResearchMode.set(options.threadId, options.researchMode);
-		}
 
 		// When creating a fresh message group (no reuse), clean up the previous
 		// one so runIdsByMessageGroup doesn't leak entries indefinitely.
@@ -135,7 +155,7 @@ export class RunStateRegistry<TUser = unknown> {
 		const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
 		if (groupRunIds) groupRunIds.push(runId);
 
-		return { runId, abortController, messageGroupId };
+		return { runId, threadId: options.threadId, abortController, messageGroupId };
 	}
 
 	getThreadStatus(
@@ -212,6 +232,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.activeRuns.set(threadId, {
 			...activeRun,
+			threadId,
 			tracing,
 		});
 	}
@@ -259,9 +280,11 @@ export class RunStateRegistry<TUser = unknown> {
 		const now = Date.now();
 		this.activeRuns.set(threadId, {
 			runId: suspended.runId,
+			threadId,
 			abortController: suspended.abortController,
 			messageGroupId: suspended.messageGroupId,
 			tracing: suspended.tracing,
+			modelId: suspended.modelId,
 			startedAt: suspended.startedAt ?? suspended.createdAt,
 			lastActivityAt: now,
 		});
@@ -348,10 +371,6 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadUsers.get(threadId);
 	}
 
-	getThreadResearchMode(threadId: string): boolean | undefined {
-		return this.threadResearchMode.get(threadId);
-	}
-
 	setTimeZone(threadId: string, timeZone: string): void {
 		this.threadTimeZones.set(threadId, timeZone);
 	}
@@ -365,15 +384,57 @@ export class RunStateRegistry<TUser = unknown> {
 	 * Returns thread IDs and request IDs that should be cancelled/rejected.
 	 * Does NOT mutate state — the caller is responsible for cancelling.
 	 */
+	sweepTimedOut(maxAgeMs: number): {
+		suspendedThreadIds: string[];
+		confirmationRequestIds: string[];
+	};
 	sweepTimedOut(
 		policy: InstanceAiLivenessPolicy,
-		now = Date.now(),
+		now?: number,
 	): {
 		activeThreadIds: string[];
 		suspendedThreadIds: string[];
 		confirmationRequestIds: string[];
-	} {
+		activeTimeouts: Record<string, RunStateTimeoutDetails>;
+		suspendedTimeouts: Record<string, RunStateTimeoutDetails>;
+		confirmationTimeouts: Record<string, RunStateTimeoutDetails>;
+	};
+	sweepTimedOut(
+		policyOrMaxAgeMs: InstanceAiLivenessPolicy | number,
+		now = Date.now(),
+	):
+		| {
+				suspendedThreadIds: string[];
+				confirmationRequestIds: string[];
+		  }
+		| {
+				activeThreadIds: string[];
+				suspendedThreadIds: string[];
+				confirmationRequestIds: string[];
+				activeTimeouts: Record<string, RunStateTimeoutDetails>;
+				suspendedTimeouts: Record<string, RunStateTimeoutDetails>;
+				confirmationTimeouts: Record<string, RunStateTimeoutDetails>;
+		  } {
+		if (typeof policyOrMaxAgeMs === 'number') {
+			const maxAgeMs = policyOrMaxAgeMs;
+			const suspendedThreadIds: string[] = [];
+			for (const [threadId, run] of this.suspendedRuns) {
+				if (now - run.createdAt >= maxAgeMs) {
+					suspendedThreadIds.push(threadId);
+				}
+			}
+			const confirmationRequestIds: string[] = [];
+			for (const [reqId, pending] of this.pendingConfirmations) {
+				if (now - pending.createdAt >= maxAgeMs) {
+					confirmationRequestIds.push(reqId);
+				}
+			}
+			return { suspendedThreadIds, confirmationRequestIds };
+		}
+
+		const policy = policyOrMaxAgeMs;
 		const activeThreadIds: string[] = [];
+		const activeTimeouts: Record<string, RunStateTimeoutDetails> = {};
 		for (const [threadId, run] of this.activeRuns) {
 			if (this.hasPendingConfirmationForThread(threadId)) continue;
 
@@ -387,10 +448,12 @@ export class RunStateRegistry<TUser = unknown> {
 			});
 			if (decision.action === 'timeout') {
 				activeThreadIds.push(threadId);
+				activeTimeouts[threadId] = decision;
 			}
 		}
 
 		const suspendedThreadIds: string[] = [];
+		const suspendedTimeouts: Record<string, RunStateTimeoutDetails> = {};
 		for (const [threadId, run] of this.suspendedRuns) {
 			const startedAt = run.startedAt ?? run.createdAt;
 			const lastActivityAt = run.lastActivityAt ?? run.createdAt;
@@ -402,9 +465,11 @@ export class RunStateRegistry<TUser = unknown> {
 			});
 			if (decision.action === 'timeout') {
 				suspendedThreadIds.push(threadId);
+				suspendedTimeouts[threadId] = decision;
 			}
 		}
 		const confirmationRequestIds: string[] = [];
+		const confirmationTimeouts: Record<string, RunStateTimeoutDetails> = {};
 		for (const [reqId, pending] of this.pendingConfirmations) {
 			const startedAt = pending.startedAt ?? pending.createdAt;
 			const lastActivityAt = pending.lastActivityAt ?? pending.createdAt;
@@ -416,9 +481,17 @@ export class RunStateRegistry<TUser = unknown> {
 			});
 			if (decision.action === 'timeout') {
 				confirmationRequestIds.push(reqId);
+				confirmationTimeouts[reqId] = decision;
 			}
 		}
-		return { activeThreadIds, suspendedThreadIds, confirmationRequestIds };
+		return {
+			activeThreadIds,
+			suspendedThreadIds,
+			confirmationRequestIds,
+			activeTimeouts,
+			suspendedTimeouts,
+			confirmationTimeouts,
+		};
 	}
 
 	/**
@@ -440,7 +513,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 	/**
 	 * Remove all per-thread state: active/suspended runs, confirmations,
-	 * user, research mode, and message-group mappings.
+	 * user, time zone, and message-group mappings.
 	 * Returns the cancelled active/suspended runs so the caller can abort them.
 	 */
 	clearThread(
@@ -455,7 +528,6 @@ export class RunStateRegistry<TUser = unknown> {
 		if (active) this.activeRuns.delete(threadId);
 
 		this.threadUsers.delete(threadId);
-		this.threadResearchMode.delete(threadId);
 		this.threadTimeZones.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
@@ -465,26 +537,45 @@ export class RunStateRegistry<TUser = unknown> {
 		return { ...(active ? { active } : {}), ...(suspended ? { suspended } : {}) };
 	}
 
-	shutdown(cancelledConfirmation: ConfirmationData = { approved: false }): {
+	/**
+	 * Process-wide teardown. Returns the in-flight runs so the service can
+	 * abort them and persist terminal snapshots where appropriate.
+	 *
+	 * Pending confirmations are intentionally NOT resolved — auto-resolving an
+	 * inline HITL (`waitForConfirmation(...)`) with `{ approved: false }`
+	 * causes the awaiting agent tool to run to completion as "denied" before
+	 * the process exits, which then mutates the snapshot tree mid-shutdown
+	 * and clobbers the plan/ask card the user would otherwise see on reload.
+	 * Letting the Promises dangle is safe: the process is exiting, the
+	 * abortController for each active run is aborted next, and the
+	 * `instance_ai_pending_confirmations` row survives so the user can still
+	 * see the confirmation card (and get a clear "lost on restart" error if
+	 * they click confirm — see `handleOrphanedConfirmation`).
+	 *
+	 * `pendingThreadIds` is returned so the service can skip the
+	 * publish-run-finish + terminal-snapshot treatment for runs that are
+	 * only sitting in `activeRuns` because they're waiting on an inline
+	 * confirmation Promise.
+	 */
+	shutdown(): {
 		activeRuns: ActiveRunState[];
 		suspendedRuns: Array<SuspendedRunState<TUser>>;
+		pendingThreadIds: string[];
 	} {
 		const activeRuns = [...this.activeRuns.values()];
 		const suspendedRuns = [...this.suspendedRuns.values()];
-
-		for (const pending of this.pendingConfirmations.values()) {
-			pending.resolve(cancelledConfirmation);
-		}
+		const pendingThreadIds = [
+			...new Set([...this.pendingConfirmations.values()].map((p) => p.threadId)),
+		];
 
 		this.activeRuns.clear();
 		this.suspendedRuns.clear();
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
-		this.threadResearchMode.clear();
 		this.threadTimeZones.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();
 
-		return { activeRuns, suspendedRuns };
+		return { activeRuns, suspendedRuns, pendingThreadIds };
 	}
 }

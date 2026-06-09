@@ -29,6 +29,23 @@ See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
 ## Essential Commands
 
+### Fresh checkout / agent setup
+
+For a fresh checkout (cat-bot, a new hire, any agent verifying the repo
+builds), prefer `pnpm agent:setup` over running install + build + tests by
+hand. It chains them in one process, caps per-process memory and turbo
+concurrency so a 6GB box doesn't OOM, streams all output to
+`.agent-setup/<step>.log` (gitignored), and surfaces only a one-line summary
+per step plus the tail of the failing log. A machine-readable
+`.agent-setup/summary.json` is always written so a backgrounded run is
+readable in a single shot — no polling, no scrolling logs.
+
+```bash
+pnpm agent:setup                 # install → build → test (full suite)
+pnpm agent:setup install         # one step at a time
+pnpm agent:setup --json          # JSON summary on stdout (for scripts/agents)
+```
+
 ### Building
 Use `pnpm build` to build all packages. ALWAYS redirect the output of the
 build command to a file:
@@ -159,6 +176,7 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - **Confirm test cases with user** before writing unit tests
 - **Typecheck is critical before committing** - always run `pnpm typecheck`
 - **When modifying pinia stores**, check for unused computed properties
+- **For Vitest packages that use `@n8n/di` decorators**, use `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`. It enables SWC `decoratorMetadata` (esbuild doesn't emit it) and externalizes workspace packages that register services (`@n8n/di`, `@n8n/config`, `@n8n/constants`, `n8n-workflow`) so a single DI `Container` instance is shared across the runtime. Loading them through Vitest's pipeline alongside their CJS dist produces two `Container`s and `Container.get(...)` returns `undefined`.
 
 What we use for testing and writing tests:
 - For testing nodes and other backend components, we use Jest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
@@ -166,6 +184,9 @@ What we use for testing and writing tests:
 - For frontend we use `vitest`
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
   See `packages/testing/playwright/README.md` for details.
+- **To iterate on a feature without docker rebuilds**, boot service containers
+  and run `pnpm dev` locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
+  then `pnpm dev`. See [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
 - **For Playwright test maintenance/cleanup**, see @packages/testing/playwright/AGENTS.md (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
 
 ### Common Development Tasks
@@ -224,6 +245,7 @@ titles, test descriptions, and Linear URLs.
   `.github/pull_request_template.md` and
   `.github/pull_request_title_conventions.md`.
 - Use `gh pr create --draft` to create draft PRs.
-- Always reference the Linear ticket in the PR description,
-  use `https://linear.app/n8n/issue/[TICKET-ID]`
+- If there is a corresponding Linear ticket, reference it in the PR
+  description using `https://linear.app/n8n/issue/[TICKET-ID]`. Do not
+  create a Linear ticket on your own — ask first.
 - always link to the github issue if mentioned in the linear ticket.

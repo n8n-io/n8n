@@ -8,6 +8,7 @@ import { InstanceSettings } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
@@ -50,12 +51,17 @@ describe('ScalingService', () => {
 				interval: 180,
 				batchSize: 100,
 			},
+			queueRetention: {
+				keepLastCompleted: 0,
+				keepLastFailed: 0,
+			},
 		},
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
 	const jobProcessor = mock<JobProcessor>();
 	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 
 	let scalingService: ScalingService;
 
@@ -88,6 +94,7 @@ describe('ScalingService', () => {
 			jobProcessor,
 			globalConfig,
 			executionRepository,
+			executionPersistence,
 			instanceSettings,
 			mock(),
 		);
@@ -236,7 +243,7 @@ describe('ScalingService', () => {
 	});
 
 	describe('addJob', () => {
-		it('should add a job', async () => {
+		it('should add a job with default retention (remove immediately)', async () => {
 			await scalingService.setupQueue();
 			queue.add.mockResolvedValue(mock<Job>({ id: '456' }));
 
@@ -245,9 +252,30 @@ describe('ScalingService', () => {
 
 			expect(queue.add).toHaveBeenCalledWith(JOB_TYPE_NAME, jobData, {
 				priority: 100,
-				removeOnComplete: true,
-				removeOnFail: true,
+				removeOnComplete: 0,
+				removeOnFail: 0,
 			});
+		});
+
+		it('should pass configured retention counts to Bull', async () => {
+			globalConfig.executions.queueRetention.keepLastCompleted = 1000;
+			globalConfig.executions.queueRetention.keepLastFailed = 500;
+
+			await scalingService.setupQueue();
+			queue.add.mockResolvedValue(mock<Job>({ id: '456' }));
+
+			const jobData = mock<JobData>({ executionId: '123' });
+			await scalingService.addJob(jobData, { priority: 100 });
+
+			expect(queue.add).toHaveBeenCalledWith(JOB_TYPE_NAME, jobData, {
+				priority: 100,
+				removeOnComplete: 1000,
+				removeOnFail: 500,
+			});
+
+			// reset for other tests
+			globalConfig.executions.queueRetention.keepLastCompleted = 0;
+			globalConfig.executions.queueRetention.keepLastFailed = 0;
 		});
 	});
 
@@ -334,6 +362,7 @@ describe('ScalingService', () => {
 				jobProcessor,
 				globalConfig,
 				mock(),
+				mock(),
 				instanceSettings,
 				mock(),
 			);
@@ -370,6 +399,7 @@ describe('ScalingService', () => {
 				jobProcessor,
 				globalConfig,
 				mock(),
+				mock(),
 				instanceSettings,
 				mock(),
 			);
@@ -400,6 +430,7 @@ describe('ScalingService', () => {
 				activeExecutions,
 				jobProcessor,
 				globalConfig,
+				mock(),
 				mock(),
 				instanceSettings,
 				mock(),

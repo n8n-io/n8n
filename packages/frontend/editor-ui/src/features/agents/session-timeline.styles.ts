@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'vue';
-import type { EventKind } from './session-timeline.types';
-import { chartBlockColor } from './session-timeline.utils';
-type TimelinePillKind = EventKind | 'idle';
+import type { EventKind, TimelineItem } from './session-timeline.types';
+import { chartBlockColor, isSubAgentTimelineItem } from './session-timeline.utils';
+type TimelinePillKind = EventKind | 'idle' | 'subagent';
 
 export function pillColors(
 	kind: TimelinePillKind,
@@ -11,14 +11,14 @@ export function pillColors(
 			return { backgroundColor: 'var(--color--blue-200)', color: 'var(--color--blue-950)' };
 		case 'agent':
 			return { backgroundColor: 'var(--color--purple-200)', color: 'var(--color--purple-950)' };
+		case 'subagent':
+			return { backgroundColor: 'var(--color--mint-200)', color: 'var(--color--mint-950)' };
 		case 'tool':
 			return { backgroundColor: 'var(--color--green-200)', color: 'var(--color--green-950)' };
 		case 'workflow':
 			return { backgroundColor: 'var(--color--orange-200)', color: 'var(--color--orange-950)' };
 		case 'node':
 			return { backgroundColor: 'var(--color--neutral-200)', color: 'var(--color--neutral-950)' };
-		case 'working-memory':
-			return { backgroundColor: 'var(--color--mint-200)', color: 'var(--color--mint-950)' };
 		case 'suspension':
 		case 'idle':
 			return { backgroundColor: 'var(--color--yellow-200)', color: 'var(--color--yellow-950)' };
@@ -27,9 +27,12 @@ export function pillColors(
 	}
 }
 
-export function chartBlockStyle(kind: EventKind): CSSProperties {
+/** Chart block colour for a timeline item — sub-agent delegations get a distinct hue. */
+export function chartBlockStyleForItem(item: TimelineItem): CSSProperties {
 	return {
-		'--session-timeline-chart-block-color': chartBlockColor(kind),
+		'--session-timeline-chart-block-color': isSubAgentTimelineItem(item)
+			? 'var(--color--mint-600)'
+			: chartBlockColor(item.kind),
 	};
 }
 

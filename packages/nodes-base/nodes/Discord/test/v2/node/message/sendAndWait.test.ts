@@ -94,4 +94,51 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 			},
 		);
 	});
+
+	const setupErrorParameters = () => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			if (key === 'operation') return SEND_AND_WAIT_OPERATION;
+			if (key === 'resource') return 'message';
+			if (key === 'authentication') return 'botToken';
+			if (key === 'message') return 'my message';
+			if (key === 'subject') return '';
+			if (key === 'approvalOptions.values') return {};
+			if (key === 'responseType') return 'approval';
+			if (key === 'sendTo') return 'channel';
+			if (key === 'channelId') return 'channelID';
+			if (key === 'options.limitWaitTime.values') return {};
+		});
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: { data: 'test' } }]);
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&token=abc',
+		);
+	};
+
+	it('should route API errors to error output and skip putExecutionToWait when continueOnFail is true', async () => {
+		setupErrorParameters();
+		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+
+		(transport.discordApiRequest as jest.Mock).mockRejectedValueOnce(
+			Object.assign(new Error('channel_not_found'), { description: 'channel_not_found' }),
+		);
+
+		const result = await discord.execute.call(mockExecuteFunctions);
+
+		expect(result).toEqual([[{ json: { error: expect.any(String) } }]]);
+		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+		expect((result?.[0]?.[0] as { json: { error: string } }).json.error).toBeTruthy();
+	});
+
+	it('should rethrow API errors and skip putExecutionToWait when continueOnFail is false', async () => {
+		setupErrorParameters();
+		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+
+		(transport.discordApiRequest as jest.Mock).mockRejectedValueOnce(
+			Object.assign(new Error('channel_not_found'), { description: 'channel_not_found' }),
+		);
+
+		await expect(discord.execute.call(mockExecuteFunctions)).rejects.toThrow();
+		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+	});
 });
