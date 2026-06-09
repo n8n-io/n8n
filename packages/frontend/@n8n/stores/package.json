@@ -1,7 +1,7 @@
 {
   "name": "@n8n/stores",
   "type": "module",
-  "version": "2.25.0",
+  "version": "2.26.0",
   "files": [
     "dist"
   ],
@@ -62,5 +62,5 @@
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

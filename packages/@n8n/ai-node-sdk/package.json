@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-node-sdk",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "SDK for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -38,5 +38,6 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "vitest": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

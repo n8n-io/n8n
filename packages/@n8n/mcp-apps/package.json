@@ -1,6 +1,6 @@
 {
   "name": "@n8n/mcp-apps",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MCP Apps UI resources and server helpers for n8n",
   "main": "dist/server/index.js",
   "types": "dist/server/index.d.ts",
@@ -36,6 +36,9 @@
     "format": "biome format --write src",
     "format:check": "biome ci src"
   },
+  "dependencies": {
+    "@n8n/utils": "workspace:*"
+  },
   "devDependencies": {
     "@modelcontextprotocol/ext-apps": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
@@ -60,5 +63,6 @@
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

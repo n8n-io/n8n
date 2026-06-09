@@ -1,10 +1,11 @@
 ---
 name: workflow-builder
 description: >-
-  Builds and edits n8n workflows with the workflow SDK. Use for new planned
-  workflow builds, existing-workflow edits, verification repairs,
-  credential-aware node configuration, and setup routing. This is the former
-  workflow-builder agent guidance, now loaded as a skill by the orchestrator.
+  Default path for all single-workflow work: new one-off workflows, existing-
+  workflow edits, verification repairs, and workflow-local data tables. Use
+  build-workflow directly — do not load planning or create-tasks first. Load
+  planning only when multiple coordinated workflows or shared cross-task data
+  tables require a dependency-aware task graph.
 recommended_tools:
   - build-workflow
   - workflows
@@ -26,10 +27,10 @@ Use the orchestrator tools already available in the current turn. If a relevant
 orchestrator or MCP tool is available through tool search, use it when it helps
 complete the build.
 
-For clear single-workflow requests, build directly with `build-workflow`. For
-plan-worthy work that needs architecture or dependency coordination, load the
-`planning` skill first and submit the dependency-aware graph with
-`create-tasks`. Use this skill during an approved
+For all clear single-workflow requests — including new and one-off workflows —
+build directly with `build-workflow`. Do not load `planning` or call
+`create-tasks` first. Only load `planning` when the orchestrator routing rules
+require coordinated multi-artifact work. Use this skill during an approved
 `<planned-task-follow-up type="build-workflow">` turn, or for direct
 single-workflow builds and edits.
 
@@ -131,6 +132,19 @@ Never hardcode fake values like `user@example.com`, `YOUR_API_KEY`, bearer
 tokens, Slack channel IDs, Telegram chat IDs, or sample recipient lists. After
 the build, `workflows(action="setup")` opens an inline setup card in the AI
 Assistant panel so the user can fill placeholder values.
+
+Do not replace concrete user-provided or discoverable values with placeholders.
+If the prompt gives a real URL, channel name, table name, label, folder,
+database, or other literal selector, preserve that value and only use a
+placeholder for the unknown part.
+
+## Knowledge Base Guardrails
+
+For workflows with multiple external systems, multiple requested effects,
+digests or reports, non-trivial branching, or Code nodes, read
+`knowledge-base/reference/workflow-builder-guardrails.md` before writing code.
+Use it as the build checklist for source preservation, fan-out/fan-in,
+effect-specific gating, list itemization, and Code-node safety.
 
 ## Mandatory Process
 
@@ -346,6 +360,15 @@ tables directly with `data-tables`; do not invent table IDs, table names, or
 column names.
 
 ## SDK Code Rules
+
+- SDK builder code is a restricted subset of TypeScript that builds a static
+  graph; it is not a Code node and does not run. Only SDK builder methods chain
+  on SDK objects. Native array/string methods (`.join()`, `.map()`), loops, arrow
+  functions, `new`, and globals like `Math`, `Date`, and `Object` are
+  unavailable. Build strings with template literals or explicit lines; do runtime
+  joining, aggregation, or transforms in a Code node or an n8n expression
+  (`expr()`). Full allowed/forbidden list:
+  `knowledge-base/reference/workflow-sdk-language.md`.
 
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.

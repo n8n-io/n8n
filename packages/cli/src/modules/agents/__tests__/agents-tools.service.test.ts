@@ -1,5 +1,9 @@
 import { mock } from 'jest-mock-extended';
 import type { CredentialProvider } from '@n8n/agents';
+import {
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
+} from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
 
@@ -171,6 +175,18 @@ describe('AgentsToolsService', () => {
 			// Non-provider langchain nodes stay excluded.
 			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.lmChatOpenAi')).toBe(false);
 			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.agent')).toBe(false);
+		});
+
+		it('rejects hidden agent-builder tool node IDs', () => {
+			for (const nodeType of AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES) {
+				expect(isAgentToolNodeType(nodeType)).toBe(false);
+			}
+		});
+
+		it('allows shared AI utility tool node IDs', () => {
+			for (const nodeType of AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES) {
+				expect(isAgentToolNodeType(nodeType)).toBe(true);
+			}
 		});
 
 		it('does not allow MCP tool nodes', () => {

@@ -32,6 +32,12 @@ const listAction = z.object({
 		.describe(
 			'Which workflows to list. Defaults to active; use archived to find workflows that can be restored.',
 		),
+	scope: z
+		.enum(['project', 'instance'])
+		.optional()
+		.describe(
+			"Which project(s) to search. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.",
+		),
 });
 
 const getAction = z.object({
@@ -347,6 +353,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		limit: input.limit,
 		query: input.query,
 		...(input.status ? { status: input.status } : {}),
+		...(input.scope ? { scope: input.scope } : {}),
 	});
 	return { workflows };
 }

@@ -12,6 +12,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	ensureError,
 	toCronExpression,
 	TriggerCloseError,
 	UserError,
@@ -76,6 +77,9 @@ export class ActiveWorkflows {
 		getTriggerFunctions: IGetExecuteTriggerFunctions,
 		getPollFunctions: IGetExecutePollFunctions,
 	) {
+		// Tear down any registration still lingering for this workflow before readding it.
+		await this.remove(workflowId);
+
 		const triggerFunctionNodes = workflow.getTriggerNodes();
 
 		const triggerResponses: ITriggerResponse[] = [];
@@ -94,7 +98,11 @@ export class ActiveWorkflows {
 					triggerResponses.push(triggerResponse);
 				}
 			} catch (e) {
-				const error = e instanceof Error ? e : new Error(`${e}`);
+				const error = ensureError(e);
+
+				// Tear down anything an earlier node already registered, so a failed
+				// activation doesn't leave triggers or crons running.
+				await this.rollbackPartialActivation(workflowId, triggerResponses);
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
@@ -120,18 +128,41 @@ export class ActiveWorkflows {
 					activation,
 				);
 			} catch (e) {
-				// Do not mark this workflow as active if there are no active or schedule
-				// trigger responses, and any poll trigger activation failed.
-				if (triggerResponses.length === 0) {
-					delete this.activeWorkflows[workflowId];
-				}
+				// A failed activation must not leave the workflow half-active. Drop it
+				// from memory and tear down every trigger and cron registered so far.
+				delete this.activeWorkflows[workflowId];
+				await this.rollbackPartialActivation(workflowId, triggerResponses);
 
-				const error = e instanceof Error ? e : new Error(`${e}`);
+				const error = ensureError(e);
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
 					{ cause: error, node: pollNode },
 				);
+			}
+		}
+	}
+
+	/**
+	 * Tears down everything an in-progress activation registered before it
+	 * failed — the trigger responses' close functions and any crons — so a
+	 * failed activation leaves nothing running. Best-effort: a failing close
+	 * function is reported but does not stop the remaining cleanup, and the
+	 * original activation error is still surfaced to the caller.
+	 */
+	private async rollbackPartialActivation(
+		workflowId: string,
+		triggerResponses: ITriggerResponse[],
+	) {
+		// Stop the crons first: deregistration is synchronous and is what actually
+		// prevents the failed activation from continuing to fire.
+		this.scheduledTaskManager.deregisterCrons(workflowId);
+
+		for (const response of triggerResponses) {
+			try {
+				await this.closeTrigger(response, workflowId);
+			} catch (e) {
+				this.errorReporter.error(ensureError(e), { extra: { workflowId } });
 			}
 		}
 	}
@@ -186,12 +217,20 @@ export class ActiveWorkflows {
 	 * Makes a workflow inactive in memory.
 	 */
 	async remove(workflowId: string) {
+		// Ensure crons are deregistered to prevent executions on inactive workflows
+		const hadRegisteredCrons = this.scheduledTaskManager.deregisterCrons(workflowId);
+
 		if (!this.isActive(workflowId)) {
-			this.logger.warn(`Cannot deactivate already inactive workflow ID "${workflowId}"`);
+			if (hadRegisteredCrons) {
+				// Crons were registered for an inactive workflow, which shouldn't happen
+				this.logger.warn(
+					`Deregistered orphaned crons for workflow not tracked as active: "${workflowId}"`,
+					{ workflowId },
+				);
+			}
+
 			return false;
 		}
-
-		this.scheduledTaskManager.deregisterCrons(workflowId);
 
 		const w = this.activeWorkflows[workflowId];
 		for (const r of w.triggerResponses ?? []) {
@@ -204,16 +243,23 @@ export class ActiveWorkflows {
 	}
 
 	async removeAllNonWebhookTriggerWorkflows() {
-		const activeWorkflowIds = Object.keys(this.activeWorkflows);
+		// Sweep both workflows tracked as active AND any that still have registered
+		// crons but are no longer tracked (stranded orphans). On leader stepdown the
+		// process keeps running as a follower, so an orphan left behind here would
+		// survive the demotion and resurface/stack on the next leader takeover.
+		const workflowIds = new Set([
+			...Object.keys(this.activeWorkflows),
+			...this.scheduledTaskManager.getWorkflowIdsWithCrons(),
+		]);
 
-		if (activeWorkflowIds.length === 0) return;
+		if (workflowIds.size === 0) return;
 
-		for (const workflowId of activeWorkflowIds) {
+		for (const workflowId of workflowIds) {
 			await this.remove(workflowId);
 		}
 
-		this.logger.debug('Deactivated all non-webhook trigger workflows', {
-			workflowIds: activeWorkflowIds,
+		this.logger.debug('Deactivated non-webhook triggers and cleared any stranded crons', {
+			workflowIds: Array.from(workflowIds),
 		});
 	}
 
