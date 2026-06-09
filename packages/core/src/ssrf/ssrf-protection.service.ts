@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { Logger, TypedEmitter } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { createResultError, createResultOk, ensureError, Result } from 'n8n-workflow';
@@ -13,6 +13,24 @@ import { buildIpRangeList } from './ip-range-builder';
 import { SsrfBlockedIpError } from './ssrf-blocked-ip.error';
 
 export type SsrfCheckResult = Result<void, Error>;
+
+type SsrfBlockedPayload = { phase: SsrfPhase; reason: string; durationMs: number };
+type SsrfAllowedPayload = { phase: SsrfPhase; durationMs: number };
+
+/**
+ * The lifecycle stage at which an SSRF check was performed.
+ * - `pre_flight`: DNS-based check run before the request is sent
+ * - `connect_time`: DNS-based check run at actual socket connection
+ * - `redirect`: synchronous IP check run when an HTTP redirect is followed
+ */
+type SsrfPhase = 'pre_flight' | 'connect_time' | 'redirect';
+
+export type SsrfEventMap = {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'ssrf.blocked': SsrfBlockedPayload;
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'ssrf.allowed': SsrfAllowedPayload;
+};
 
 export interface SsrfBridge {
 	validateIp(ip: string): SsrfCheckResult;
@@ -35,6 +53,8 @@ type LookAndValidateResult = Result<LookupAddress[], Error>;
  */
 @Service()
 export class SsrfProtectionService implements SsrfBridge {
+	readonly events = new TypedEmitter<SsrfEventMap>();
+
 	private readonly logger: Logger;
 
 	private readonly blockedIps: BlockList;
@@ -76,17 +96,19 @@ export class SsrfProtectionService implements SsrfBridge {
 	async validateUrl(url: string | URL): Promise<SsrfCheckResult> {
 		const parsed = this.tryParseUrl(url);
 		if (!parsed) {
+			this.events.emit('ssrf.blocked', {
+				phase: 'pre_flight',
+				reason: 'invalid_url',
+				durationMs: 0,
+			});
 			return createResultError(new Error(`Invalid URL: ${String(url)}`));
 		}
 
-		const { hostname } = parsed;
-
-		const result = await this.lookupAndValidate(hostname, { all: true });
-		if (!result.ok) {
-			return result;
-		}
-
-		return createResultOk(undefined);
+		const result = await this.withEvents(
+			'pre_flight',
+			async () => await this.lookupAndValidate(parsed.hostname, { all: true }),
+		);
+		return result.ok ? createResultOk(undefined) : result;
 	}
 
 	/**
@@ -152,7 +174,7 @@ export class SsrfProtectionService implements SsrfBridge {
 
 		const cleanIp = this.normalizeIpInHostname(hostname);
 		if (isIP(cleanIp)) {
-			const result = this.validateIp(cleanIp);
+			const result = this.withEvents('redirect', () => this.validateIp(cleanIp));
 			if (!result.ok) {
 				throw result.error;
 			}
@@ -174,7 +196,10 @@ export class SsrfProtectionService implements SsrfBridge {
 		hostname: string,
 		options: LookupOptions,
 	): Promise<LookupAddress[]> {
-		const result = await this.lookupAndValidate(hostname, options);
+		const result = await this.withEvents(
+			'connect_time',
+			async () => await this.lookupAndValidate(hostname, options),
+		);
 		if (!result.ok) {
 			throw result.error;
 		}
@@ -226,6 +251,46 @@ export class SsrfProtectionService implements SsrfBridge {
 		}
 
 		return createResultOk(resolved);
+	}
+
+	/** Runs `fn` and emits `ssrf.allowed` or `ssrf.blocked` based on the result. */
+	private withEvents<T>(phase: SsrfPhase, fn: () => Result<T, Error>): Result<T, Error>;
+	private withEvents<T>(
+		phase: SsrfPhase,
+		fn: () => Promise<Result<T, Error>>,
+	): Promise<Result<T, Error>>;
+	private withEvents<T>(
+		phase: SsrfPhase,
+		fn: () => Result<T, Error> | Promise<Result<T, Error>>,
+	): Result<T, Error> | Promise<Result<T, Error>> {
+		const start = performance.now();
+		const outcome = fn();
+
+		const emitAndReturn = (result: Result<T, Error>): Result<T, Error> => {
+			const durationMs = performance.now() - start;
+			if (result.ok) {
+				this.events.emit('ssrf.allowed', { phase, durationMs });
+			} else {
+				this.events.emit('ssrf.blocked', {
+					phase,
+					reason: this.toReason(result.error, phase),
+					durationMs,
+				});
+			}
+			return result;
+		};
+
+		return outcome instanceof Promise ? outcome.then(emitAndReturn) : emitAndReturn(outcome);
+	}
+
+	private toReason(error: Error, phase: SsrfPhase): string {
+		if (phase === 'redirect') {
+			return 'blocked_redirect';
+		}
+		if (error instanceof SsrfBlockedIpError) {
+			return 'blocked_ip';
+		}
+		return 'dns_error';
 	}
 
 	private tryParseUrl(url: string | URL): URL | null {
