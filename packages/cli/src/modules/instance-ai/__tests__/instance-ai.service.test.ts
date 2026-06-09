@@ -1650,7 +1650,9 @@ type ResolveConfirmationServiceInternals = {
 		rejectPendingConfirmation: jest.Mock;
 	};
 	resumeSuspendedRun: jest.Mock;
-	resolveOrphanedConfirmation: jest.Mock;
+	suspendedRunRestorer: {
+		resolveOrphanedConfirmation: jest.Mock;
+	};
 	suspendedThreads: {
 		dropPendingConfirmation: jest.Mock;
 	};
@@ -1669,7 +1671,9 @@ function createResolveConfirmationService(): ResolveConfirmationServiceInternals
 		rejectPendingConfirmation: jest.fn(),
 	};
 	service.resumeSuspendedRun = jest.fn(async () => false);
-	service.resolveOrphanedConfirmation = jest.fn(async () => false);
+	service.suspendedRunRestorer = {
+		resolveOrphanedConfirmation: jest.fn(async () => false),
+	};
 	service.suspendedThreads = {
 		dropPendingConfirmation: jest.fn(async () => {}),
 	};
@@ -1872,19 +1876,19 @@ describe('InstanceAiService — resolveConfirmation', () => {
 	});
 
 	it('delegates to the orphan-restoration path when no live run resumes', async () => {
-		// The detailed orphan claim/rebuild/finalize scenarios live in the
-		// "orphan restoration" describe below; here we only assert the
+		// The detailed orphan claim/rebuild/finalize scenarios live in
+		// suspended-run-restorer.service.test.ts; here we only assert the
 		// fallthrough wiring once in-memory resolution + resume both miss.
 		const service = createResolveConfirmationService();
 		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
 		service.runState.resolvePendingConfirmation.mockReturnValue(false);
 		service.resumeSuspendedRun.mockResolvedValue(false);
-		service.resolveOrphanedConfirmation.mockResolvedValue(true);
+		service.suspendedRunRestorer.resolveOrphanedConfirmation.mockResolvedValue(true);
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
 		expect(result).toBe(true);
-		expect(service.resolveOrphanedConfirmation).toHaveBeenCalledWith(
+		expect(service.suspendedRunRestorer.resolveOrphanedConfirmation).toHaveBeenCalledWith(
 			'user-1',
 			'req-1',
 			expect.objectContaining({ approved: true }),
@@ -1896,7 +1900,7 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
 		service.runState.resolvePendingConfirmation.mockReturnValue(false);
 		service.resumeSuspendedRun.mockResolvedValue(false);
-		service.resolveOrphanedConfirmation.mockRejectedValue(
+		service.suspendedRunRestorer.resolveOrphanedConfirmation.mockRejectedValue(
 			new UserError('This confirmation was lost when the assistant restarted.'),
 		);
 
@@ -1914,153 +1918,7 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
 		expect(result).toBe(true);
-		expect(service.resolveOrphanedConfirmation).not.toHaveBeenCalled();
-	});
-});
-
-type OrphanRestorationServiceInternals = {
-	resolveOrphanedConfirmation: (
-		userId: string,
-		requestId: string,
-		data: { approved: boolean },
-	) => Promise<boolean>;
-	pendingConfirmationRepo: { claim: jest.Mock };
-	rebuildSuspendedRunFromCheckpoint: jest.Mock;
-	resumeSuspendedRun: jest.Mock;
-	runState: { suspendRun: jest.Mock };
-	dbSnapshotStorage: { markRunCancelled: jest.Mock };
-	publishRunFinish: jest.Mock;
-	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock; info: jest.Mock };
-};
-
-function createOrphanRestorationService(): OrphanRestorationServiceInternals {
-	const service = Object.create(
-		InstanceAiService.prototype,
-	) as unknown as OrphanRestorationServiceInternals;
-	service.pendingConfirmationRepo = { claim: jest.fn(async () => undefined) };
-	service.rebuildSuspendedRunFromCheckpoint = jest.fn();
-	service.resumeSuspendedRun = jest.fn(async () => false);
-	service.runState = { suspendRun: jest.fn() };
-	service.dbSnapshotStorage = { markRunCancelled: jest.fn(async () => {}) };
-	service.publishRunFinish = jest.fn();
-	service.logger = {
-		debug: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
-		info: jest.fn(),
-	};
-	return service;
-}
-
-describe('InstanceAiService — orphan restoration', () => {
-	const approval = { approved: true };
-	const ready = {
-		kind: 'ready',
-		state: { threadId: 'thread-1', runId: 'run-1' },
-	};
-
-	it('returns false silently when no DB row is claimable', async () => {
-		const service = createOrphanRestorationService();
-		service.pendingConfirmationRepo.claim.mockResolvedValue(undefined);
-
-		const result = await service.resolveOrphanedConfirmation('user-1', 'req-missing', approval);
-
-		expect(result).toBe(false);
-		expect(service.rebuildSuspendedRunFromCheckpoint).not.toHaveBeenCalled();
-		expect(service.publishRunFinish).not.toHaveBeenCalled();
-	});
-
-	it('returns false when the claim query itself fails', async () => {
-		const service = createOrphanRestorationService();
-		service.pendingConfirmationRepo.claim.mockRejectedValue(new Error('db down'));
-
-		const result = await service.resolveOrphanedConfirmation('user-1', 'req-1', approval);
-
-		expect(result).toBe(false);
-	});
-
-	it('throws a terminal UserError for an inline orphan (nothing to resume)', async () => {
-		const service = createOrphanRestorationService();
-		service.pendingConfirmationRepo.claim.mockResolvedValue({
-			requestId: 'req-1',
-			threadId: 'thread-1',
-			userId: 'user-1',
-			kind: 'inline',
-			runId: 'run-1',
-		});
-
-		await expect(service.resolveOrphanedConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
-			UserError,
-		);
-		expect(service.rebuildSuspendedRunFromCheckpoint).not.toHaveBeenCalled();
-		expect(service.publishRunFinish).toHaveBeenCalledWith(
-			'thread-1',
-			'run-1',
-			'cancelled',
-			'restart_lost_confirmation',
-		);
-		expect(service.dbSnapshotStorage.markRunCancelled).toHaveBeenCalledWith('thread-1', 'run-1');
-	});
-
-	it('throws when a suspended orphan lacks the pointers needed to resume', async () => {
-		const service = createOrphanRestorationService();
-		service.pendingConfirmationRepo.claim.mockResolvedValue({
-			requestId: 'req-1',
-			threadId: 'thread-1',
-			userId: 'user-1',
-			kind: 'suspended',
-			runId: 'run-1',
-			// no toolCallId / checkpointKey -> can't resume
-		});
-
-		await expect(service.resolveOrphanedConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
-			UserError,
-		);
-		expect(service.rebuildSuspendedRunFromCheckpoint).not.toHaveBeenCalled();
-	});
-
-	it('rebuilds and resumes a suspended orphan when the checkpoint is loadable', async () => {
-		const service = createOrphanRestorationService();
-		const orphan = {
-			requestId: 'req-1',
-			threadId: 'thread-1',
-			userId: 'user-1',
-			kind: 'suspended',
-			runId: 'run-1',
-			toolCallId: 'tool-1',
-			checkpointKey: 'cp-1',
-		};
-		service.pendingConfirmationRepo.claim.mockResolvedValue(orphan);
-		service.rebuildSuspendedRunFromCheckpoint.mockResolvedValue(ready);
-		service.resumeSuspendedRun.mockResolvedValue(true);
-
-		const result = await service.resolveOrphanedConfirmation('user-1', 'req-1', approval);
-
-		expect(result).toBe(true);
-		expect(service.rebuildSuspendedRunFromCheckpoint).toHaveBeenCalledWith(orphan);
-		expect(service.runState.suspendRun).toHaveBeenCalledWith('thread-1', ready.state);
-		expect(service.resumeSuspendedRun).toHaveBeenCalledWith('user-1', 'req-1', approval);
-		expect(service.publishRunFinish).not.toHaveBeenCalled();
-	});
-
-	it('falls back to the terminal UserError when the rebuild fails', async () => {
-		const service = createOrphanRestorationService();
-		service.pendingConfirmationRepo.claim.mockResolvedValue({
-			requestId: 'req-1',
-			threadId: 'thread-1',
-			userId: 'user-1',
-			kind: 'suspended',
-			runId: 'run-1',
-			toolCallId: 'tool-1',
-			checkpointKey: 'cp-1',
-		});
-		service.rebuildSuspendedRunFromCheckpoint.mockResolvedValue({ kind: 'no-checkpoint' });
-
-		await expect(service.resolveOrphanedConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
-			UserError,
-		);
-		expect(service.resumeSuspendedRun).not.toHaveBeenCalled();
-		expect(service.publishRunFinish).toHaveBeenCalled();
+		expect(service.suspendedRunRestorer.resolveOrphanedConfirmation).not.toHaveBeenCalled();
 	});
 });
 
