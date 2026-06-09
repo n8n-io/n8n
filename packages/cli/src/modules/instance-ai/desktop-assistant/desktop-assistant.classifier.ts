@@ -27,6 +27,12 @@ export interface ClassifierInput {
 	emojiIcon?: string;
 	/** Ids of credentials the requesting user can access. Used to flag actionNeeded. */
 	accessibleCredentialIds: ReadonlySet<string>;
+	/** Names of nodes whose type declares required credentials but whose workflow
+	 *  JSON has no populated credential slot at all. Pre-computed by the service
+	 *  via node-type description introspection (mirroring the workflow-builder's
+	 *  setup analysis primitives) because the classifier itself has no
+	 *  `NodeTypes` dependency. */
+	nodesRequiringCredentialSetup?: ReadonlySet<string>;
 }
 
 /** Node-type prefixes that count as "runs locally" via computer-use. */
@@ -238,18 +244,26 @@ function findMissingCredentialNode(
 ): { node: INode; serviceName: string } | undefined {
 	for (const node of input.nodes) {
 		if (node.disabled) continue;
+
+		// (a) Service-side hint: the node's TYPE declares a required credential
+		//     (via node-types description) but the workflow JSON has no slot
+		//     populated at all. This catches workflows the user (or AI) built
+		//     without ever picking a credential — the canvas would show a red
+		//     badge but the workflow JSON has no `credentials` field on the node.
+		if (input.nodesRequiringCredentialSetup?.has(node.name)) {
+			return { node, serviceName: humanizeNodeTypeName(node.type) };
+		}
+
 		if (!node.credentials) continue;
 		for (const slot of Object.values(node.credentials)) {
 			if (!slot) continue;
-			// A credential slot is "needs setup" when either:
-			//  (a) no id is bound to it (the node was created/imported but no
-			//      credential was ever picked), or
-			//  (b) the bound id is not accessible to the requesting user (the
-			//      credential was deleted, or was unshared from this user).
-			// Both block execution and both deserve the same desktop card.
+			// (b) Slot exists but no id is bound (the node was created with a
+			//     placeholder credentials field but no actual credential picked).
 			if (typeof slot.id !== 'string' || slot.id.length === 0) {
 				return { node, serviceName: humanizeNodeTypeName(node.type) };
 			}
+			// (c) Slot has an id but the credential isn't accessible to the
+			//     requesting user (deleted, or unshared from them).
 			if (!input.accessibleCredentialIds.has(slot.id)) {
 				return { node, serviceName: humanizeNodeTypeName(node.type) };
 			}

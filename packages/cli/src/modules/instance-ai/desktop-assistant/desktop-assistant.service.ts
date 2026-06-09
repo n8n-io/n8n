@@ -17,11 +17,18 @@ import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import type { ExecutionStatus } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	INode,
+	INodeCredentialDescription,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
@@ -79,6 +86,7 @@ export class DesktopAssistantService {
 		private readonly executionService: ExecutionService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly projectService: ProjectService,
+		private readonly nodeTypes: NodeTypes,
 	) {}
 
 	// ── tasks list ───────────────────────────────────────────────────────────
@@ -153,10 +161,71 @@ export class DesktopAssistantService {
 					: undefined,
 				emojiIcon: metaIcon ?? nameEmoji,
 				accessibleCredentialIds,
+				nodesRequiringCredentialSetup: this.computeNodesRequiringCredentialSetup(workflow.nodes),
 			};
 		});
 
 		return classifyWorkflowsForDesktopAssistant(inputs);
+	}
+
+	/**
+	 * Identify nodes whose type declares required credentials but whose workflow
+	 * JSON has no populated credential slot. Reuses the same primitives the
+	 * workflow-builder's `setup-workflow.service.ts` analysis is built on —
+	 * `INodeTypeDescription.credentials` filtered by `NodeHelpers.displayParameter`
+	 * against the current parameters — but stays synchronous and avoids the
+	 * heavier `buildSetupRequests` pipeline (parameter issues, credential cache,
+	 * testability checks). For the BFF classifier we just need the "missing
+	 * setup" signal.
+	 *
+	 * The existing slot-based detection (empty `slot.id` or inaccessible
+	 * credential) continues to live in the classifier itself; this complements
+	 * it by catching the case where the node has no `credentials` field at all
+	 * (a workflow imported / built without ever picking a credential).
+	 */
+	private computeNodesRequiringCredentialSetup(nodes: INode[]): Set<string> {
+		const result = new Set<string>();
+		for (const node of nodes) {
+			if (node.disabled) continue;
+			// If any credential slot already exists, the classifier's slot-based
+			// check handles whether it's populated correctly.
+			if (node.credentials && Object.keys(node.credentials).length > 0) continue;
+
+			const description = this.tryGetNodeDescription(node);
+			if (!description) continue;
+			if (!Array.isArray(description.credentials) || description.credentials.length === 0) continue;
+
+			const hasRequired = description.credentials.some((credentialDesc) =>
+				this.nodeRequiresCredential(credentialDesc, node, description),
+			);
+			if (hasRequired) result.add(node.name);
+		}
+		return result;
+	}
+
+	private tryGetNodeDescription(node: INode): INodeTypeDescription | undefined {
+		try {
+			return this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			return undefined;
+		}
+	}
+
+	private nodeRequiresCredential(
+		credentialDesc: INodeCredentialDescription,
+		node: INode,
+		description: INodeTypeDescription,
+	): boolean {
+		if (credentialDesc.required === false) return false;
+		if (!credentialDesc.displayOptions) return true;
+		try {
+			return NodeHelpers.displayParameter(node.parameters, credentialDesc, node, description);
+		} catch {
+			// If displayOptions evaluation throws (malformed parameters etc.),
+			// be conservative and treat the credential as required so the user
+			// is nudged to inspect it.
+			return true;
+		}
 	}
 
 	private async fetchLastExecutionByWorkflowId(

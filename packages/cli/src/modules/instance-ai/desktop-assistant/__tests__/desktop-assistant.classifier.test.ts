@@ -37,6 +37,7 @@ function input(partial: Partial<ClassifierInput> & { workflowId: string }): Clas
 		lastExecution: partial.lastExecution,
 		emojiIcon: partial.emojiIcon,
 		accessibleCredentialIds: partial.accessibleCredentialIds ?? new Set<string>(),
+		nodesRequiringCredentialSetup: partial.nodesRequiringCredentialSetup,
 	};
 }
 
@@ -200,6 +201,27 @@ describe('classifyWorkflowsForDesktopAssistant — bucketing rules', () => {
 		]);
 		expect(result.actionNeeded).toHaveLength(0);
 		expect(result.readyToRun).toHaveLength(1);
+	});
+
+	test('a node whose type requires credentials but has no credentials field at all surfaces in actionNeeded via service hint', () => {
+		const result = classifyWorkflowsForDesktopAssistant([
+			input({
+				workflowId: 'wf-gmail-no-slot',
+				active: false,
+				nodes: [
+					node({
+						name: 'Gmail Trigger',
+						type: GMAIL_TRIGGER_TYPE,
+						// no credentials field at all
+					}),
+				],
+				tags: [],
+				nodesRequiringCredentialSetup: new Set<string>(['Gmail Trigger']),
+			}),
+		]);
+		expect(result.actionNeeded).toHaveLength(1);
+		expect(result.actionNeeded[0].workflowId).toBe('wf-gmail-no-slot');
+		expect(result.actionNeeded[0].description).toBe('Gmail needs credential');
 	});
 
 	test('an active user-built schedule workflow goes to upcoming (not gated on the desktop-assistant tag)', () => {

@@ -14,6 +14,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { ExecutionService } from '@/executions/execution.service';
+import type { NodeTypes } from '@/node-types';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
@@ -38,6 +39,7 @@ function makeService() {
 	const executionService = mock<ExecutionService>();
 	const executionRepository = mock<ExecutionRepository>();
 	const projectService = mock<ProjectService>();
+	const nodeTypes = mock<NodeTypes>();
 
 	const service = new DesktopAssistantService(
 		logger,
@@ -53,6 +55,7 @@ function makeService() {
 		executionService,
 		executionRepository,
 		projectService,
+		nodeTypes,
 	);
 
 	return {
@@ -70,6 +73,7 @@ function makeService() {
 		executionService,
 		executionRepository,
 		projectService,
+		nodeTypes,
 	};
 }
 
