@@ -25,9 +25,12 @@ export class WorkflowPublishedDataService {
 		const record =
 			await this.workflowPublishedVersionRepository.getPublishedVersionWithRelations(workflowId);
 
-		// This should not happen: only triggers read from this service, and they
-		// only do so when the flag is on; the publication service stops triggers
-		// before deleting the record. If we hit this, we have a real bug.
+		// Reached when no published_version mapping exists for the workflow. For
+		// trigger reads this should never happen (the publication service stops
+		// triggers before deleting the record), so it indicates a real bug.
+		// Execution-path readers (sub-workflow, error workflow, MCP execute) may
+		// also hit this for a workflow that simply isn't published; they treat a
+		// null return as "not active".
 		if (!record?.publishedVersion || !record.workflow) {
 			this.errorReporter.error(
 				new UnexpectedError('Published version record not found for workflow', {

@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, User, CreateExecutionPayload } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -40,6 +40,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 @Service()
@@ -58,6 +59,8 @@ export class WorkflowExecutionService {
 		private readonly eventService: EventService,
 		private readonly ownershipService: OwnershipService,
 		private readonly executionContextService: ExecutionContextService,
+		private readonly workflowsConfig: WorkflowsConfig,
+		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 	) {}
 
 	async runWorkflow(
@@ -332,20 +335,40 @@ export class WorkflowExecutionService {
 				return;
 			}
 
-			if (workflowData.activeVersion === null) {
-				// The workflow is not active
-				this.logger.error(
-					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`,
-					{ workflowId },
-				);
-				return;
-			}
-
 			const executionMode = 'error';
 
-			// Use published nodes/connections for execution, not the draft.
-			workflowData.nodes = workflowData.activeVersion.nodes;
-			workflowData.connections = workflowData.activeVersion.connections;
+			// Use published nodes/connections for execution, not the draft. Behind
+			// the flag these come from the workflow_published_version mapping;
+			// otherwise from the activeVersion relation.
+			if (this.workflowsConfig.useWorkflowPublicationService) {
+				// Skip the published-version lookup when the workflow has no
+				// published version: it is simply not active, not a missing-mapping
+				// bug. A null return for a published workflow is reported by the service.
+				const publishedData =
+					workflowData.activeVersionId === null
+						? null
+						: await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+				if (publishedData === null) {
+					this.logger.error(
+						`Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`,
+						{ workflowId },
+					);
+					return;
+				}
+				workflowData.nodes = publishedData.publishedVersion.nodes;
+				workflowData.connections = publishedData.publishedVersion.connections;
+			} else {
+				if (workflowData.activeVersion === null) {
+					// The workflow is not active
+					this.logger.error(
+						`Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`,
+						{ workflowId },
+					);
+					return;
+				}
+				workflowData.nodes = workflowData.activeVersion.nodes;
+				workflowData.connections = workflowData.activeVersion.connections;
+			}
 
 			const workflowInstance = new Workflow({
 				id: workflowId,

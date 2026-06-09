@@ -1,5 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import { User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { MockProxy } from 'jest-mock-extended';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -10,7 +13,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { createWorkflow } from './mock.utils';
+import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
 import { WorkflowAccessError } from '../mcp.errors';
 import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool';
 
@@ -18,6 +21,7 @@ import { McpService } from '@/modules/mcp/mcp.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -910,6 +914,91 @@ describe('execute-workflow MCP tool', () => {
 				// determines whether queue mode MCP handling is applied
 				expect(runCall.isMcpExecution).toBe(false);
 			});
+		});
+	});
+
+	describe('publication service flag (production reads)', () => {
+		let workflowPublishedDataService: MockProxy<WorkflowPublishedDataService>;
+		let workflowsConfig: WorkflowsConfig;
+
+		beforeEach(() => {
+			workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
+			workflowsConfig = Container.get(WorkflowsConfig);
+		});
+
+		afterEach(() => {
+			// Restore the default (flag off) so other suites are unaffected.
+			workflowsConfig.useWorkflowPublicationService = false;
+		});
+
+		test('production reads nodes from the published_version mapping when the flag is on', async () => {
+			workflowsConfig.useWorkflowPublicationService = true;
+
+			// The activeVersion relation carries a different trigger than the
+			// published_version mapping, so the start node proves which is used.
+			const relationTrigger = {
+				id: 'relation-node',
+				name: 'RelationWebhook',
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+			const mappingTrigger = {
+				id: 'mapping-node',
+				name: 'MappingWebhook',
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+
+			const workflow = createWorkflow({ activeVersionId: uuid(), nodes: [relationTrigger] });
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+			(workflowRunner.run as jest.Mock).mockResolvedValue('exec-1');
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+				workflow,
+				publishedVersion: createWorkflowHistoryVersion({
+					workflowId: 'wf-1',
+					versionId: 'mapping-version',
+					nodes: [mappingTrigger],
+				}),
+			});
+
+			await executeWorkflow(
+				user,
+				workflowFinderService,
+				workflowRunner,
+				mcpService,
+				'wf-1',
+				{ type: 'webhook', webhookData: { method: 'POST', headers: {}, query: {}, body: {} } },
+				'production',
+			);
+
+			expect(workflowPublishedDataService.getPublishedWorkflowData).toHaveBeenCalledWith('wf-1');
+			const runCall = (workflowRunner.run as jest.Mock).mock
+				.calls[0][0] as IWorkflowExecutionDataProcess;
+			expect(runCall.startNodes).toEqual([{ name: 'MappingWebhook', sourceData: null }]);
+		});
+
+		test('production throws when the published-version mapping is missing (flag on)', async () => {
+			workflowsConfig.useWorkflowPublicationService = true;
+			const workflow = createWorkflow({ activeVersionId: uuid() });
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
+
+			await expect(
+				executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					'wf-1',
+					undefined,
+					'production',
+				),
+			).rejects.toThrow(WorkflowAccessError);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 	});
 });
