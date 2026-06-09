@@ -175,13 +175,10 @@ export class AgentKnowledgeSandboxService {
 		const limit = validatedRequest.limit ?? DEFAULT_FIND_FILES_LIMIT;
 		const offset = validatedRequest.offset ?? 0;
 		const query = validatedRequest.query?.toLocaleLowerCase();
+		const compactQuery = query ? compactKnowledgeFileLookupText(query) : undefined;
 		const files = await this.loadKnowledgeFileReferences(agentId);
 		const filteredFiles = query
-			? files.filter(
-					(file) =>
-						file.file.toLocaleLowerCase().includes(query) ||
-						file.displayName.toLocaleLowerCase().includes(query),
-				)
+			? files.filter((file) => knowledgeFileMatchesQuery(file, query, compactQuery ?? ''))
 			: files;
 
 		return {
@@ -567,6 +564,27 @@ function buildSearchKnowledgeCommand(
 	];
 
 	return args.join(' ');
+}
+
+function knowledgeFileMatchesQuery(
+	file: AgentKnowledgeFileReference,
+	query: string,
+	compactQuery: string,
+): boolean {
+	const storageName = file.file.toLocaleLowerCase();
+	const displayName = file.displayName.toLocaleLowerCase();
+
+	return (
+		storageName.includes(query) ||
+		displayName.includes(query) ||
+		(compactQuery.length > 0 &&
+			(compactKnowledgeFileLookupText(storageName).includes(compactQuery) ||
+				compactKnowledgeFileLookupText(displayName).includes(compactQuery)))
+	);
+}
+
+function compactKnowledgeFileLookupText(value: string): string {
+	return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
 function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRequest): string {

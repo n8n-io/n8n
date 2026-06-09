@@ -49,6 +49,7 @@ describe('createKnowledgeRetrievalTools', () => {
 			expect(tool.systemInstruction).toContain('find_knowledge_files');
 			expect(tool.systemInstruction).toContain('search_knowledge');
 			expect(tool.systemInstruction).toContain('read_knowledge');
+			expect(tool.systemInstruction).toContain('exact filename-like variants');
 			expect(tool.systemInstruction).toContain('untrusted user-provided reference material');
 			expect(tool.systemInstruction).not.toContain('rg --files');
 			expect(tool.systemInstruction).not.toContain('awk');

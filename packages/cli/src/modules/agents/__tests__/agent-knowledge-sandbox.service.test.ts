@@ -402,6 +402,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		mockKnowledgeFiles([
 			makeAgentFile({ id: 'file-1', storageFileName: 'notes.txt', fileName: 'Meeting Notes.txt' }),
 			makeAgentFile({ id: 'file-2', storageFileName: 'report.txt', fileName: 'Report.pdf' }),
+			makeAgentFile({ id: 'file-3', storageFileName: 'u-net.txt', fileName: 'u-net.pdf' }),
 		]);
 		const service = makeService();
 
@@ -424,6 +425,20 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		expect(listMock).not.toHaveBeenCalled();
 		expect(createMock).not.toHaveBeenCalled();
+
+		for (const query of ['u net', 'unet', 'u-net']) {
+			await expect(
+				service.findKnowledgeFiles('project-1', 'agent-1', { query, limit: 10 }),
+			).resolves.toMatchObject({
+				files: [
+					{
+						file: 'u-net.txt',
+						fileId: 'file-3',
+						displayName: 'u-net.pdf',
+					},
+				],
+			});
+		}
 	});
 
 	it('rejects invalid file paths and unknown files before sandbox execution', async () => {
