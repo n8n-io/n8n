@@ -6,9 +6,9 @@ import { CredentialTypes } from '@/credential-types.js';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
 import { CredentialsService } from '@/credentials/credentials.service.js';
 
-import { CredentialMatcher, type CredentialMatcherContext } from './credential-matcher.js';
-import { createSuccessBinding, type CredentialBinding } from './credential.types.js';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema.js';
+import { CredentialMatcher, type CredentialMatcherContext } from './credential-matcher';
+import type { ImportBindingMap } from '../../n8n-packages.types';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 @Service()
 export class IdBasedCredentialMatcher extends CredentialMatcher {
@@ -24,18 +24,18 @@ export class IdBasedCredentialMatcher extends CredentialMatcher {
 	protected async resolve(
 		known: PackageCredentialRequirement[],
 		context: CredentialMatcherContext,
-	): Promise<CredentialBinding[]> {
+	): Promise<ImportBindingMap> {
 		const resolvableIds = await this.findResolvableCredentialIds(
 			known.map((reference) => reference.id),
 			context.targetProject,
 			context.user,
 		);
 
-		return (
+		return new Map(
 			known
 				.filter((reference) => resolvableIds.has(reference.id))
 				// id-only matching: the target credential id is the source id.
-				.map((reference) => createSuccessBinding(reference.id, reference.id))
+				.map((reference) => [reference.id, reference.id]),
 		);
 	}
 

@@ -8,15 +8,14 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { ToolMessage } from '@langchain/core/messages';
 import type { StructuredToolInterface } from '@langchain/core/tools';
-import { parseStrReplacements } from '@n8n/ai-utilities/text-editor';
+import { parseStrReplacements, type StrReplacement } from '@n8n/ai-utilities/text-editor';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import type { TextEditorHandler } from './text-editor-handler.js';
-import type { TextEditorToolHandler } from './text-editor-tool-handler.js';
-import type { StrReplacement } from './text-editor.types.js';
-import type { ValidateToolHandler } from './validate-tool-handler.js';
-import type { StreamOutput, ToolProgressChunk } from '../../types/streaming.js';
-import type { WarningTracker } from '../state/warning-tracker.js';
+import type { TextEditorHandler } from './text-editor-handler';
+import type { TextEditorToolHandler } from './text-editor-tool-handler';
+import type { ValidateToolHandler } from './validate-tool-handler';
+import type { StreamOutput, ToolProgressChunk } from '../../types/streaming';
+import type { WarningTracker } from '../state/warning-tracker';
 
 /**
  * Parse and validate the `replacements` argument from LLM tool calls.

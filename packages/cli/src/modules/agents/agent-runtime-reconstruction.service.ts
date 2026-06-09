@@ -3,21 +3,25 @@ import {
 	type Agent as RuntimeAgent,
 	BuiltTool,
 	CredentialProvider,
+	ModelConfig,
 	ToolDescriptor,
 } from '@n8n/agents';
-import type {
-	AgentIntegrationConfig,
-	AgentJsonConfig,
-	AgentJsonMcpServerConfig,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-	AgentSkill,
-	SubAgentRunPolicy,
-	SubAgentSource,
+import {
+	isNodeToolsEnabled,
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	SUB_AGENT_TASK_DIFFICULTIES,
+	type AgentIntegrationConfig,
+	type AgentJsonConfig,
+	type AgentJsonMcpServerConfig,
+	type AgentJsonMemoryConfig,
+	type AgentJsonToolConfig,
+	type AgentSkill,
+	type SubAgentRunPolicy,
+	type SubAgentSource,
+	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
-import { isNodeToolsEnabled } from '@n8n/api-types';
 import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -44,18 +48,20 @@ import { N8nMemory } from './integrations/n8n-memory.js';
 import { createGetEnvironmentTool } from './tools/environment-tool.js';
 import {
 	buildFromJson,
+	buildProviderToolsForModel,
 	type MemoryFactory,
 	type ToolResolver,
-} from './json-config/from-json-config.js';
-import { buildMcpClientForServer } from './json-config/mcp-client-factory.js';
-import { AgentRepository } from './repositories/agent.repository.js';
-import { AgentSecureRuntime } from './runtime/agent-secure-runtime.js';
-import { buildToolRegistry, type ToolRegistry } from './tool-registry.js';
-import { AgentKnowledgeCommandService } from './agent-knowledge-command.service.js';
-import { AgentKnowledgeService } from './agent-knowledge.service.js';
-import { AgentsToolsService } from './agents-tools.service.js';
-import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool.js';
-import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner.js';
+} from './json-config/from-json-config';
+import { buildMcpClientForServer } from './json-config/mcp-client-factory';
+import { resolveCredentialAwareModelConfig } from './json-config/model-config';
+import { AgentRepository } from './repositories/agent.repository';
+import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
+import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentsToolsService } from './agents-tools.service';
+import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
+import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {
@@ -221,6 +227,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			userId,
 			runtimeProfile,
+			config,
 			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
 			subAgentDelegation,
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
@@ -324,6 +331,7 @@ export class AgentRuntimeReconstructionService {
 		credentialProvider: CredentialProvider;
 		userId: string;
 		runtimeProfile: AgentRuntimeProfile;
+		config: AgentJsonConfig;
 		nodeToolsEnabled: boolean;
 		subAgentDelegation: SubAgentDelegationConfig;
 		parentAgentIdForDelegation: string;
@@ -337,6 +345,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			userId,
 			runtimeProfile,
+			config,
 			nodeToolsEnabled,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
@@ -398,8 +407,9 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		if (runtimeProfile === 'top-level') {
-			this.attachSubAgentDelegationTool({
+			await this.attachSubAgentDelegationTool({
 				agent,
+				config,
 				parentAgentId: parentAgentIdForDelegation,
 				projectId,
 				credentialProvider,
@@ -414,15 +424,21 @@ export class AgentRuntimeReconstructionService {
 		}
 	}
 
-	private attachSubAgentDelegationTool(params: {
+	private async attachSubAgentDelegationTool(params: {
 		agent: RuntimeAgent;
+		config: AgentJsonConfig;
 		parentAgentId: string;
 		projectId: string;
 		credentialProvider: CredentialProvider;
 		userId: string;
 		delegation: SubAgentDelegationConfig;
-	}): void {
-		const { agent, parentAgentId, projectId, credentialProvider, userId, delegation } = params;
+	}): Promise<void> {
+		const { agent, config, parentAgentId, projectId, credentialProvider, userId, delegation } =
+			params;
+		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
+			config,
+			credentialProvider,
+		);
 		agent.tool(
 			createN8nDelegateSubAgentTool({
 				runner: Container.get(SubAgentForegroundRunner),
@@ -431,10 +447,36 @@ export class AgentRuntimeReconstructionService {
 				parentAgentId,
 				userId,
 				credentialProvider,
-				policy: this.buildSubAgentPolicy(),
+				policy: this.buildSubAgentPolicy(config),
+				...(inlineSubAgentModelsByDifficulty !== undefined
+					? { inlineSubAgentModelsByDifficulty }
+					: {}),
+				resolveInlineSubAgentProviderTools: (modelConfig: ModelConfig) =>
+					buildProviderToolsForModel(config, modelConfig),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId: parentAgentId });
+	}
+
+	private async resolveInlineSubAgentModelsByDifficulty(
+		config: AgentJsonConfig,
+		credentialProvider: CredentialProvider,
+	): Promise<Partial<Record<SubAgentTaskDifficulty, ModelConfig>> | undefined> {
+		const mappings = config.subAgents?.modelsByDifficulty;
+		if (!mappings) return undefined;
+
+		const resolved: Partial<Record<SubAgentTaskDifficulty, ModelConfig>> = {};
+		for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
+			const mapping = mappings[difficulty];
+			if (!mapping) continue;
+			resolved[difficulty] = await resolveCredentialAwareModelConfig(
+				mapping.model,
+				mapping.credential,
+				credentialProvider,
+			);
+		}
+
+		return Object.keys(resolved).length > 0 ? resolved : undefined;
 	}
 
 	private attachWriteTodosTool(agent: RuntimeAgent, agentId: string): void {
@@ -442,10 +484,9 @@ export class AgentRuntimeReconstructionService {
 		this.logger.debug('Injected write_todos tool', { agentId });
 	}
 
-	private buildSubAgentPolicy(): SubAgentRunPolicy {
+	private buildSubAgentPolicy(config: AgentJsonConfig): SubAgentRunPolicy {
 		return {
-			maxChildren: this.agentsConfig.subAgentMaxChildren,
-			timeoutMs: this.agentsConfig.subAgentTimeoutMs,
+			maxChildren: config.subAgents?.maxChildren ?? SUB_AGENT_MAX_CHILDREN_DEFAULT,
 		};
 	}
 }

@@ -406,6 +406,15 @@ function escalateToRepair(
 				'The workflow was saved, but the automatic repair budget is exhausted. Stop editing and explain the blocker to the user.',
 		});
 		applyRemediationToAttempt(attempt, blockedRemediation);
+		// Lead the blocked reason with the concrete verification failure, then the
+		// budget-exhaustion guidance. The guidance alone ("repair budget exhausted,
+		// stop editing") tells the agent *what to do next* but buries *what went
+		// wrong* — the agent needs the latter to explain the real blocker to the
+		// user. Fall back to guidance only when the verdict carries no failure text.
+		const failureDetail = describeVerificationFailure(verdict);
+		const reason = failureDetail
+			? `${failureDetail} ${blockedRemediation.guidance}`
+			: blockedRemediation.guidance;
 		return {
 			state: {
 				...state,
@@ -417,7 +426,7 @@ function escalateToRepair(
 			},
 			action: {
 				type: 'blocked',
-				reason: blockedRemediation.guidance,
+				reason,
 			},
 			attempt,
 		};
@@ -466,6 +475,22 @@ function applyRemediationToAttempt(
 	attempt.remediationCategory = remediation.category;
 	attempt.remediationShouldEdit = remediation.shouldEdit;
 	attempt.remediationGuidance = remediation.guidance;
+}
+
+/**
+ * Compose a concise, human-readable description of *what* a verification verdict
+ * found, so blocked actions can surface the concrete failure rather than only
+ * generic remediation guidance. `summary` is always present; `diagnosis` and
+ * `failureSignature` are appended when they add information.
+ */
+function describeVerificationFailure(verdict: VerificationResult): string {
+	return [
+		verdict.summary,
+		verdict.diagnosis && verdict.diagnosis !== verdict.summary ? verdict.diagnosis : '',
+		verdict.failureSignature ? `Signature: ${verdict.failureSignature}` : '',
+	]
+		.filter(Boolean)
+		.join('. ');
 }
 
 /**

@@ -9,12 +9,12 @@ import { createResultError, createResultOk } from 'n8n-workflow';
 
 import { WorkflowsController } from '../workflows.controller.js';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import type { ExecutionService } from '@/executions/execution.service.js';
-import type { ProjectService } from '@/services/project.service.ee.js';
-import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error.js';
-import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { ExecutionService } from '@/executions/execution.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import { SsrfBlockedIpError } from 'n8n-core';
+import type { SsrfProtectionService } from 'n8n-core';
 
 jest.mock('axios');
 

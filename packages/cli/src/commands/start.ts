@@ -288,9 +288,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (this.instanceSettings.isMultiMain) {
 			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
 			if (this.globalConfig.endpoints.metrics.enable) {
-				const { PrometheusMetricsService } = await import(
-					'@/metrics/prometheus-metrics.service.js'
-				);
+				const { PrometheusMetricsService } = await import('@/metrics/prometheus');
 				Container.get(PrometheusMetricsService);
 			}
 

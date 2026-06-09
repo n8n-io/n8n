@@ -20,6 +20,8 @@ export const WorkflowTestCaseSchema = z.object({
 	triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
 	executionScenarios: z.array(ExecutionScenarioSchema).min(1),
 	messageBudget: z.number().int().positive().optional(),
+	/** Optional NL assertions about the build conversation; LLM-judged, informational only. */
+	buildExpectations: z.array(z.string().min(1)).optional(),
 	/**
 	 * Logical groupings this case belongs to (e.g. `['pr', 'full']`). Used by
 	 * the eval CLI's `--tier` flag and propagated to LangSmith as example

@@ -8,7 +8,7 @@ import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
+import { ExternalSecretsProxy, SsrfProtectionService, WorkflowExecute } from 'n8n-core';
 import {
 	UnexpectedError,
 	Workflow,
@@ -52,16 +52,15 @@ import { FailedRunFactory } from '@/executions/failed-run-factory.js';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
-} from '@/executions/pre-execution-checks/index.js';
-import type { UpdateExecutionPayload } from '@/interfaces.js';
-import { NodeTypes } from '@/node-types.js';
-import { Push } from '@/push/index.js';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service.js';
-import { UrlService } from '@/services/url.service.js';
-import { TaskRequester } from '@/task-runners/task-managers/task-requester.js';
-import { findSubworkflowStart } from '@/utils.js';
-import { objectToError } from '@/utils/object-to-error.js';
-import * as WorkflowHelpers from '@/workflow-helpers.js';
+} from '@/executions/pre-execution-checks';
+import type { UpdateExecutionPayload } from '@/interfaces';
+import { NodeTypes } from '@/node-types';
+import { Push } from '@/push';
+import { UrlService } from '@/services/url.service';
+import { TaskRequester } from '@/task-runners/task-managers/task-requester';
+import { findSubworkflowStart } from '@/utils';
+import { objectToError } from '@/utils/object-to-error';
+import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service.js';
 

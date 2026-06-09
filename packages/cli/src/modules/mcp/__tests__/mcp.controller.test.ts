@@ -219,6 +219,7 @@ describe('McpController', () => {
 		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
 			true,
+			{ name: 'Claude', version: '1.0.0' },
 		);
 	});
 
@@ -250,6 +251,7 @@ describe('McpController', () => {
 		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
 			false,
+			undefined,
 		);
 		// Non-initialize requests still skip telemetry tracking.
 		expect(telemetry.track).not.toHaveBeenCalled();
@@ -294,6 +296,7 @@ describe('McpController', () => {
 			expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'user-1' }),
 				true,
+				undefined,
 			);
 			expect(mockHandleRequest).toHaveBeenCalledWith(req, res, undefined);
 		});

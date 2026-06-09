@@ -5,7 +5,6 @@ import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
-import { InstanceSettings } from 'n8n-core';
 import * as path from 'path';
 import type {
 	INodeCredentials,
@@ -15,16 +14,16 @@ import type {
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
 
-import { N8N_VERSION } from '@/constants.js';
-import { License } from '@/license.js';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder/index.js';
-import { Push } from '@/push/index.js';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service.js';
-import { UrlService } from '@/services/url.service.js';
-import { Telemetry } from '@/telemetry/index.js';
-import { getBase } from '@/workflow-execute-additional-data.js';
+import { N8N_VERSION } from '@/constants';
+import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
+import { Push } from '@/push';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { InstanceSettings, SsrfProtectionService } from 'n8n-core';
+import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
+import { getBase } from '@/workflow-execute-additional-data';
 
 /**
  * This service wraps the actual AiWorkflowBuilderService to avoid circular dependencies.

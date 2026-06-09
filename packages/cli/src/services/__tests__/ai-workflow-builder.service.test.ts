@@ -9,15 +9,15 @@ import type * as fs from 'node:fs';
 import type * as fsp from 'node:fs/promises';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
-import type { License } from '@/license.js';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
-import type { Push } from '@/push/index.js';
-import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service.js';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
-import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service.js';
-import type { UrlService } from '@/services/url.service.js';
-import type { Telemetry } from '@/telemetry/index.js';
-import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder/index.js';
+import type { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { Push } from '@/push';
+import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { SsrfProtectionService } from 'n8n-core';
+import type { UrlService } from '@/services/url.service';
+import type { Telemetry } from '@/telemetry';
+import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
 	AiWorkflowBuilderService: jest.fn(),

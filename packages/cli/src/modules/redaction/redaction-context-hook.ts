@@ -5,10 +5,9 @@ import {
 	HookDescription,
 	IContextEstablishmentHook,
 } from '@n8n/decorators';
-import type { RedactionSource } from 'n8n-workflow';
+import { policyToChannels, type RedactionSource } from 'n8n-workflow';
 
-import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service.js';
-import { policyToChannels } from './redaction-channels.js';
+import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
 
 @ContextEstablishmentHook({
 	alwaysExecute: true,

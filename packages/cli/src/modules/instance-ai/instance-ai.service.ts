@@ -87,7 +87,7 @@ import {
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, SsrfProtectionService } from 'n8n-core';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import type * as Undici from 'undici';
@@ -130,15 +130,14 @@ import {
 } from './planned-task-action-runner.js';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector.js';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants.js';
-import { EventService } from '@/events/event.service.js';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
-import { Push } from '@/push/index.js';
-import { AiService } from '@/services/ai.service.js';
-import { ProxyTokenManager } from '@/services/proxy-token-manager.js';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service.js';
-import { UrlService } from '@/services/url.service.js';
-import { Telemetry } from '@/telemetry/index.js';
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { Push } from '@/push';
+import { AiService } from '@/services/ai.service';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);

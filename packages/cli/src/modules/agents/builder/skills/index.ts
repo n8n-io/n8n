@@ -1,14 +1,16 @@
 import type { RuntimeSkill } from '@n8n/agents';
 
-import { integrationsSkill } from './integrations.skill.js';
-import { mcpSkill } from './mcp.skill.js';
-import { targetSkillsSkill } from './target-skills.skill.js';
-import { targetTasksSkill } from './target-tasks.skill.js';
+import { integrationsSkill } from './integrations.skill';
+import { mcpSkill } from './mcp.skill';
+import { subAgentsSkill } from './sub-agents.skill';
+import { targetSkillsSkill } from './target-skills.skill';
+import { targetTasksSkill } from './target-tasks.skill';
 
 export function getBuilderRuntimeSkills(): RuntimeSkill[] {
 	const skills: RuntimeSkill[] = [
 		integrationsSkill(),
 		mcpSkill(),
+		subAgentsSkill(),
 		targetSkillsSkill(),
 		targetTasksSkill(),
 		// FIXME: Research is disabled until the builder has a supported research tool.

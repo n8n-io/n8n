@@ -6,6 +6,7 @@
  */
 
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { formatTextWithLineNumbers } from '@n8n/ai-utilities/text-editor';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
@@ -15,12 +16,11 @@ import {
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import type { IRunExecutionData, NodeExecutionSchema } from 'n8n-workflow';
 
-import type { PlanOutput } from '../../types/planning.js';
-import { formatPlanAsText } from '../../utils/plan-helpers.js';
-import type { ExpressionValue } from '../../workflow-builder-agent.js';
-import { formatCodeWithLineNumbers } from '../handlers/text-editor-handler.js';
-import { type ConversationEntry, entryToString } from '../utils/code-builder-session.js';
-import { SDK_IMPORT_STATEMENT } from '../utils/extract-code.js';
+import type { PlanOutput } from '../../types/planning';
+import { formatPlanAsText } from '../../utils/plan-helpers';
+import type { ExpressionValue } from '../../workflow-builder-agent';
+import { type ConversationEntry, entryToString } from '../utils/code-builder-session';
+import { SDK_IMPORT_STATEMENT } from '../utils/extract-code';
 
 /**
  * Escape curly brackets for LangChain prompt templates
@@ -856,7 +856,7 @@ function buildUserMessageParts(
 		// Format as file with line numbers (matches view command output)
 		// Include SDK import so LLM sees the same code that's in the text editor
 		const codeWithImport = `${SDK_IMPORT_STATEMENT}\n\n${workflowCode}`;
-		const formattedCode = formatCodeWithLineNumbers(codeWithImport);
+		const formattedCode = formatTextWithLineNumbers(codeWithImport);
 		const escapedCode = escapeCurlyBrackets(formattedCode);
 		parts.push(`<workflow_file path="/workflow.js">\n${escapedCode}\n</workflow_file>`);
 	} else {

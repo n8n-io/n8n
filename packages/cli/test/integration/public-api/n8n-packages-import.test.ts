@@ -127,6 +127,7 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
@@ -138,18 +139,59 @@ describe('POST /n8n-packages/import', () => {
 			},
 			workflows: [
 				{
-					sourceId: 'wf-http-source',
+					sourceWorkflowId: 'wf-http-source',
 					localId: expect.any(String),
 					name: 'HTTP Imported',
 					projectId: ownerPersonalProject.id,
 					parentFolderId: null,
 					activeVersionId: null,
+					status: 'created',
 				},
 			],
-			credentials: { matched: [] },
+			bindings: {
+				workflows: { 'wf-http-source': expect.any(String) },
+				credentials: {},
+			},
 		});
 
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('returns 409 with conflict metadata when a workflow already exists under fail policy', async () => {
+		const firstBuffer = await buildImportPackage();
+
+		const first = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('credentialMatchingMode', 'id-only')
+			.field('credentialMissingMode', 'must-preexist')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', firstBuffer, 'import.n8np');
+		expect(first.statusCode).toBe(200);
+		const existingWorkflowId = first.body.workflows[0].localId;
+
+		const secondBuffer = await buildImportPackage();
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('credentialMatchingMode', 'id-only')
+			.field('credentialMissingMode', 'must-preexist')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', secondBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body).toMatchObject({
+			code: 409,
+			message: expect.stringContaining('already exist in the target project'),
+			meta: {
+				code: 'WORKFLOW_CONFLICT',
+				conflicts: [
+					{
+						sourceWorkflowId: 'wf-http-source',
+						existingWorkflowId,
+						name: 'HTTP Imported',
+					},
+				],
+			},
+		});
 	});
 
 	test('returns 422 when credential references cannot be resolved', async () => {
@@ -167,6 +209,7 @@ describe('POST /n8n-packages/import', () => {
 
 		const response = await authOwnerAgent
 			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(422);

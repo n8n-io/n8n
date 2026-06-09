@@ -1,22 +1,4 @@
-export {
-	buildTargetUrl,
-	createFormDataObject,
-	digestAuthAxiosConfig,
-	generateContentLengthHeader,
-	getBeforeRedirectFn,
-	getHostFromRequestObject,
-	getUrlFromProxyConfig,
-	isFormDataInstance,
-	isIgnoreStatusErrorConfig,
-	resolveLegacyRequestUrl,
-	searchForHeader,
-	setAxiosAgents,
-	tryParseUrl,
-	validateUrlSsrf,
-} from './axios-utils';
-export {
-	applyPaginationRequestData,
-	requestWithAuthenticationPaginated,
-	type ResolveValueFn,
-} from './pagination';
-export { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
+// Imported for side effects: sets axios defaults and registers the request interceptor
+import './axios-config';
+
+export { getRequestHelperFunctions } from './factory';

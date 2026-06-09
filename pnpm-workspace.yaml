@@ -89,6 +89,7 @@ catalog:
   axios: 1.16.1
   babel-jest: ^29.7.0
   basic-auth: 2.0.1
+  cache-manager: 5.2.3
   callsites: 3.1.0
   chat: ^4.28.1
   chokidar: 4.0.3

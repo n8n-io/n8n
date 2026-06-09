@@ -836,22 +836,7 @@ export async function executeWebhook(
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void executePromise
-				.then(async (subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					await WorkflowHelpers.updateParentExecutionWithChildResults(
-						parentExecution.executionId,
-						subworkflowResults,
-					);
-					return subworkflowResults;
-				})
-				.then((subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					const waitTracker = Container.get(WaitTracker);
-					void waitTracker.startExecution(parentExecution.executionId);
-				});
+			void Container.get(WaitTracker).resumeParentExecution(parentExecution, executePromise);
 		}
 
 		if (!didSendResponse) {

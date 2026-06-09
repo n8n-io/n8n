@@ -1,39 +1,60 @@
 import { LicenseState } from '@n8n/backend-common';
-import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import {
+	createActiveWorkflow,
+	createTeamProject,
+	createWorkflow,
+	mockInstance,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
+import type { Folder, Project } from '@n8n/db';
+import {
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CredentialTypes } from '@/credential-types.js';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { EventService } from '@/events/event.service.js';
-import { affixRoleToSaveCredential, saveCredential } from '@test-integration/db/credentials.js';
-import { createFolder } from '@test-integration/db/folders.js';
-import { createMember, createOwner } from '@test-integration/db/users.js';
-import { LicenseMocker } from '@test-integration/license.js';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialTypes } from '@/credential-types';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { affixRoleToSaveCredential, saveCredential } from '@test-integration/db/credentials';
+import { createFolder } from '@test-integration/db/folders';
+import { createMember, createOwner } from '@test-integration/db/users';
+import { LicenseMocker } from '@test-integration/license';
+import { initNodeTypes } from '@test-integration/utils';
 
-import { TarPackageWriter } from '../io/tar/tar-package-writer.js';
-import { N8nPackagesService } from '../n8n-packages.service.js';
-import { FORMAT_VERSION } from '../spec/constants.js';
+import { TarPackageWriter } from '../io/tar/tar-package-writer';
+import { N8nPackagesService } from '../n8n-packages.service';
+import { WorkflowConflictPolicy, type ImportPackageRequest } from '../n8n-packages.types';
+import { FORMAT_VERSION } from '../spec/constants';
 import {
 	buildImportPackageBuffer,
 	githubCredentialPayload,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
-} from './fixtures/package-fixtures.js';
-import { streamToBuffer } from './utils/tar-support.js';
-import type { ImportPackageRequest } from '../n8n-packages.types.js';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema.js';
+} from './fixtures/package-fixtures';
+import { streamToBuffer } from './utils/tar-support';
+import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 type ImportPackageParams = Omit<
 	ImportPackageRequest,
-	'credentialMatchingMode' | 'credentialMissingMode'
+	'credentialMatchingMode' | 'credentialMissingMode' | 'workflowConflictPolicy'
 > &
-	Partial<Pick<ImportPackageRequest, 'credentialMatchingMode' | 'credentialMissingMode'>>;
+	Partial<
+		Pick<
+			ImportPackageRequest,
+			'credentialMatchingMode' | 'credentialMissingMode' | 'workflowConflictPolicy'
+		>
+	>;
 
 async function importPackage(params: ImportPackageParams) {
 	return await Container.get(N8nPackagesService).importPackage({
 		credentialMatchingMode: 'id-only',
 		credentialMissingMode: 'must-preexist',
+		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 		...params,
 	});
 }
@@ -54,12 +75,39 @@ const brokenWorkflow = (id: string, name: string): SerializedWorkflow =>
 		},
 	});
 
+/**
+ * Seeds an owned workflow in a project with a given `sourceWorkflowId` (the
+ * `createWorkflow` helper's `Partial<IWorkflowDb>` param doesn't expose that
+ * column, so it's set directly after creation).
+ */
+async function seedExistingWorkflow(
+	project: Project,
+	name: string,
+	sourceWorkflowId: string,
+	parentFolder?: Folder,
+) {
+	const workflow = await createWorkflow({ name }, project);
+	await Container.get(WorkflowRepository).update(workflow.id, {
+		sourceWorkflowId,
+		...(parentFolder ? { parentFolder } : {}),
+	});
+	workflow.sourceWorkflowId = sourceWorkflowId;
+	return workflow;
+}
+
 const licenseMocker = new LicenseMocker();
 const saveOwnedCredential = affixRoleToSaveCredential('credential:owner');
+
+// Reactivating an active workflow on new-version import calls into the active
+// workflow manager; mock it so trigger registration succeeds without real infra.
+const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
+	// Register node types so the reactivation path's webhook-conflict check can
+	// resolve the trigger nodes used by the seeded/imported workflows.
+	await initNodeTypes();
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 
 	const credentialTypesMock = mockInstance(CredentialTypes);
@@ -75,6 +123,7 @@ afterAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate([
 		'WorkflowEntity',
+		'WorkflowHistory',
 		'SharedWorkflow',
 		'Folder',
 		'Project',
@@ -133,7 +182,7 @@ describe('ImportPipeline batch validation', () => {
 		});
 
 		expect(result.workflows).toHaveLength(2);
-		expect(result.credentials).toEqual({ matched: [] });
+		expect(result.bindings.credentials).toEqual({});
 
 		const workflowRepo = Container.get(WorkflowRepository);
 		const sharedRepo = Container.get(SharedWorkflowRepository);
@@ -142,10 +191,7 @@ describe('ImportPipeline batch validation', () => {
 		expect(await sharedRepo.count({ where: { projectId: personalProject.id } })).toBe(2);
 
 		const allWorkflows = await workflowRepo.find({ order: { name: 'ASC' } });
-		expect(allWorkflows.map((w) => w.sourceWorkflowId).sort()).toEqual([
-			'wf-source-1',
-			'wf-source-2',
-		]);
+		expect(allWorkflows.map((w) => w.sourceWorkflowId)).toEqual(['wf-source-1', 'wf-source-2']);
 	});
 });
 
@@ -162,7 +208,7 @@ describe('ImportPipeline routing matrix', () => {
 			owner.id,
 		);
 
-		await importPackage({
+		const result = await importPackage({
 			user: owner,
 			packageBuffer: await singleWorkflowPackage(),
 		});
@@ -173,10 +219,13 @@ describe('ImportPipeline routing matrix', () => {
 		expect(shared.role).toBe('workflow:owner');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder).toBeNull();
+
+		// The response carries the source→target workflow id binding.
+		expect(result.bindings.workflows).toEqual({ 'wf-routed': workflow.id });
 	});
 
 	it('lands in the requested folder of the personal project when only folderId is given', async () => {
@@ -193,7 +242,7 @@ describe('ImportPipeline routing matrix', () => {
 		});
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder?.id).toBe(folder.id);
@@ -215,7 +264,7 @@ describe('ImportPipeline routing matrix', () => {
 		expect(shared.role).toBe('workflow:owner');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder).toBeNull();
@@ -234,10 +283,238 @@ describe('ImportPipeline routing matrix', () => {
 		});
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder?.id).toBe(folder.id);
+	});
+});
+
+describe('ImportPipeline workflow conflict policy', () => {
+	it.each<WorkflowConflictPolicy>([WorkflowConflictPolicy.NewVersion, WorkflowConflictPolicy.Skip])(
+		'%s handles matched and fresh workflows in one package',
+		async (workflowConflictPolicy) => {
+			const owner = await createOwner();
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(owner.id);
+			const folder = await createFolder(personalProject, { name: 'Existing folder' });
+			const existing = await seedExistingWorkflow(
+				personalProject,
+				'Existing workflow',
+				'wf-existing',
+				folder,
+			);
+
+			const baseNodes = serializedWorkflow({
+				id: 'wf-existing',
+				name: 'Imported replacement',
+			}).nodes;
+
+			const result = await importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({
+						id: 'wf-existing',
+						name: 'Imported replacement',
+						nodes: [
+							...baseNodes,
+							{
+								id: 'set-node',
+								name: 'Set Data',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 3,
+								position: [200, 0],
+								parameters: {},
+							},
+						],
+					}),
+					serializedWorkflow({ id: 'wf-fresh', name: 'Fresh workflow' }),
+				]),
+				workflowConflictPolicy,
+			});
+
+			const matchedSummary = result.workflows.find(
+				({ sourceWorkflowId }) => sourceWorkflowId === 'wf-existing',
+			);
+			const freshSummary = result.workflows.find(
+				({ sourceWorkflowId }) => sourceWorkflowId === 'wf-fresh',
+			);
+
+			expect(matchedSummary).toMatchObject({
+				localId: existing.id,
+				status:
+					workflowConflictPolicy === WorkflowConflictPolicy.NewVersion ? 'updated' : 'skipped',
+			});
+			expect(freshSummary).toMatchObject({ status: 'created', name: 'Fresh workflow' });
+
+			const workflows = await Container.get(WorkflowRepository).find();
+			expect(workflows).toHaveLength(2);
+
+			const storedExisting = await Container.get(WorkflowRepository).findOneOrFail({
+				where: { id: existing.id },
+				relations: ['parentFolder'],
+			});
+			expect(storedExisting.name).toBe(
+				workflowConflictPolicy === WorkflowConflictPolicy.NewVersion
+					? 'Imported replacement'
+					: 'Existing workflow',
+			);
+			// The update path must leave the workflow in its original folder; the
+			// handler only patches the response object's `parentFolder`, so assert
+			// the persisted row directly rather than trusting that field.
+			expect(storedExisting.parentFolder?.id).toBe(folder.id);
+		},
+	);
+
+	it('new-version reactivates an active workflow and advances its active version', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+
+		const active = await createActiveWorkflow({ name: 'Active workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+		const originalActiveVersionId = active.activeVersionId;
+		expect(originalActiveVersionId).not.toBeNull();
+
+		const historyRepo = Container.get(WorkflowHistoryRepository);
+		const historyBefore = await historyRepo.count({ where: { workflowId: active.id } });
+
+		const result = await importPackage({
+			user: owner,
+			// Different nodes than the seeded workflow → saves a new version → republishes.
+			// Uses a real trigger node so the reactivation validation passes.
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-active',
+					name: 'Active updated',
+					nodes: [
+						{
+							id: 'schedule-trigger',
+							name: 'Schedule Trigger',
+							type: 'n8n-nodes-base.scheduleTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				}),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
+		);
+		expect(summary).toMatchObject({ localId: active.id, status: 'updated' });
+		expect(summary?.activeVersionId).toEqual(expect.any(String));
+		expect(summary?.activeVersionId).not.toBe(originalActiveVersionId);
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.active).toBe(true);
+		expect(stored.activeVersionId).toBe(summary?.activeVersionId);
+		expect(stored.activeVersionId).not.toBe(originalActiveVersionId);
+
+		// A new history version was written for the imported content.
+		const historyAfter = await historyRepo.count({ where: { workflowId: active.id } });
+		expect(historyAfter).toBe(historyBefore + 1);
+
+		// Reactivation went through the active workflow manager.
+		expect(activeWorkflowManager.add).toHaveBeenCalled();
+	});
+
+	it('fails before writing any workflows when conflicts exist under fail policy', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const existing = await seedExistingWorkflow(
+			personalProject,
+			'Existing workflow',
+			'wf-existing',
+		);
+		const workflowRepo = Container.get(WorkflowRepository);
+		const workflowsBefore = await workflowRepo.count();
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-existing', name: 'Conflicting workflow' }),
+					serializedWorkflow({ id: 'wf-fresh', name: 'Fresh workflow' }),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+			}),
+		).rejects.toMatchObject({
+			message: expect.stringContaining('already exist in the target project'),
+			meta: {
+				code: 'WORKFLOW_CONFLICT',
+				conflicts: [
+					{
+						sourceWorkflowId: 'wf-existing',
+						existingWorkflowId: existing.id,
+						name: 'Existing workflow',
+					},
+				],
+			},
+		});
+
+		expect(await workflowRepo.count()).toBe(workflowsBefore);
+	});
+
+	it('fails fast when duplicate sourceWorkflowId matches exist in the target project', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		await seedExistingWorkflow(personalProject, 'First match', 'wf-ambiguous');
+		await seedExistingWorkflow(personalProject, 'Second match', 'wf-ambiguous');
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-ambiguous', name: 'Incoming' }),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.Skip,
+			}),
+		).rejects.toMatchObject({
+			message: 'Multiple workflows in the target project share the same sourceWorkflowId',
+			extra: { projectId: personalProject.id, sourceWorkflowId: 'wf-ambiguous' },
+		});
+	});
+
+	it('matches a workflow authored on this instance when re-importing the package it exported', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+
+		const original = await createWorkflow({ name: 'Authored here' }, personalProject);
+		expect(original.sourceWorkflowId).toBeNull();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: original.id, name: 'Updated via re-import' }),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+		});
+
+		expect(result.workflows).toEqual([
+			expect.objectContaining({
+				sourceWorkflowId: original.id,
+				localId: original.id,
+				status: 'updated',
+			}),
+		]);
+		expect(result.bindings.workflows).toEqual({ [original.id]: original.id });
+
+		// Updated in place — no duplicate created.
+		const workflows = await Container.get(WorkflowRepository).find();
+		expect(workflows).toHaveLength(1);
+		expect(workflows[0].name).toBe('Updated via re-import');
 	});
 });
 
@@ -465,13 +742,10 @@ describe('ImportPipeline credential resolution', () => {
 			),
 		});
 
-		expect(result.credentials.matched).toHaveLength(2);
-		expect(result.credentials.matched).toEqual(
-			expect.arrayContaining([
-				{ sourceId: ownedCredential.id, targetId: ownedCredential.id },
-				{ sourceId: globalCredential.id, targetId: globalCredential.id },
-			]),
-		);
+		expect(result.bindings.credentials).toEqual({
+			[ownedCredential.id]: ownedCredential.id,
+			[globalCredential.id]: globalCredential.id,
+		});
 		expect(await Container.get(WorkflowRepository).count()).toBe(2);
 	});
 

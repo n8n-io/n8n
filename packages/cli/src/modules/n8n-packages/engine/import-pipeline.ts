@@ -5,26 +5,24 @@ import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { EventService } from '@/events/event.service.js';
-import { FolderService } from '@/services/folder.service.js';
-import { ProjectService } from '@/services/project.service.ee.js';
-import * as WorkflowHelpers from '@/workflow-helpers.js';
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { FolderService } from '@/services/folder.service';
+import { ProjectService } from '@/services/project.service.ee';
+import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { CredentialImporter } from '../entities/credential/credential-importer.js';
-import { resolvedBindingsToSummaries } from '../entities/credential/credential.types.js';
-import { WorkflowSerializer } from '../entities/workflow/workflow.serializer.js';
-import { TarPackageReader } from '../io/tar/tar-package-reader.js';
-import type {
-	ImportPackageRequest,
-	ImportResult,
-	PreparedWorkflow,
-} from '../n8n-packages.types.js';
-import { packageManifestSchema } from '../spec/manifest.schema.js';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema.js';
+import { CredentialImporter } from '../entities/credential/credential-importer';
+import { resolvedBindingsToSummaries } from '../entities/credential/credential.types';
+import type { PreparedWorkflow } from '../entities/workflow/workflow-conflict-policy.types';
+import { WorkflowImporter } from '../entities/workflow/workflow-importer';
+import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
+import { TarPackageReader } from '../io/tar/tar-package-reader';
+import { createBindings, serializeBindings } from '../n8n-packages.types';
+import type { ImportPackageRequest, ImportResult } from '../n8n-packages.types';
+import { packageManifestSchema } from '../spec/manifest.schema';
+import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 const MEGABYTE_IN_BYTES = 1024 * 1024;
 
@@ -40,12 +38,12 @@ export class ImportPipeline {
 	constructor(
 		private readonly workflowSerializer: WorkflowSerializer,
 		private readonly credentialImporter: CredentialImporter,
-		private readonly workflowCreationService: WorkflowCreationService,
 		globalConfig: GlobalConfig,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly eventService: EventService,
+		private readonly workflowImporter: WorkflowImporter,
 	) {
 		this.maxUncompressedPackageBytes = globalConfig.endpoints.payloadSizeMax * MEGABYTE_IN_BYTES;
 	}
@@ -71,24 +69,25 @@ export class ImportPipeline {
 			targetProject: project,
 			user: request.user,
 		});
+
+		const { outcomes, bindings } = await this.workflowImporter.importWorkflows(
+			prepared,
+			request.workflowConflictPolicy,
+			{
+				user: request.user,
+				projectId: target.projectId,
+				folderId: target.folderId,
+			},
+			createBindings({ credentials: credentialResolution.successes }),
+		);
+
 		const matchedCredentials = resolvedBindingsToSummaries(credentialResolution.successes);
 
-		const created: WorkflowEntity[] = [];
-		for (const { entity, sourceId } of prepared) {
-			const saved = await this.workflowCreationService.createWorkflow(request.user, entity, {
-				projectId: target.projectId,
-				parentFolderId: target.folderId ?? undefined,
-				publicApi: true,
-				source: 'import',
-				sourceWorkflowId: sourceId,
-			});
-			created.push(saved);
-		}
-
+		const imported = outcomes.filter(({ status }) => status !== 'skipped');
 		this.eventService.emit('workflows-imported', {
 			user: request.user,
 			projectId: target.projectId,
-			workflowIds: created.map((w) => w.id),
+			workflowIds: imported.map(({ workflow }) => workflow.id),
 			packageSourceId: manifest.sourceId,
 			packageVersion: manifest.packageFormatVersion,
 			matchedCredentialIds: matchedCredentials.map((m) => m.targetId),
@@ -100,15 +99,16 @@ export class ImportPipeline {
 				sourceId: manifest.sourceId,
 				exportedAt: manifest.exportedAt,
 			},
-			workflows: created.map((w) => ({
-				sourceId: w.sourceWorkflowId ?? '',
-				localId: w.id,
-				name: w.name,
+			workflows: outcomes.map(({ workflow, sourceWorkflowId, status }) => ({
+				sourceWorkflowId,
+				localId: workflow.id,
+				name: workflow.name,
 				projectId: target.projectId,
-				parentFolderId: w.parentFolder?.id ?? null,
-				activeVersionId: w.activeVersionId ?? null,
+				parentFolderId: workflow.parentFolder?.id ?? null,
+				activeVersionId: workflow.activeVersionId ?? null,
+				status,
 			})),
-			credentials: { matched: matchedCredentials },
+			bindings: serializeBindings(bindings),
 		};
 	}
 
@@ -162,7 +162,7 @@ export class ImportPipeline {
 
 			WorkflowHelpers.validateWorkflowStructure(entity);
 
-			prepared.push({ entity, sourceId: entry.id });
+			prepared.push({ entity, sourceWorkflowId: entry.id });
 		}
 
 		return prepared;

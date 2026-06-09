@@ -47,23 +47,22 @@ import { WorkflowRequest } from './workflow.request.js';
 import { WorkflowService } from './workflow.service.js';
 import { EnterpriseWorkflowService } from './workflow.service.ee.js';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
-import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
-import { EventService } from '@/events/event.service.js';
-import { ExecutionService } from '@/executions/execution.service.js';
-import type { IWorkflowResponse } from '@/interfaces.js';
-import { License } from '@/license.js';
-import { listQueryMiddleware } from '@/middlewares/index.js';
-import { userHasScopes } from '@/permissions.ee/check-access.js';
-import { AuthService } from '@/auth/auth.service.js';
-import * as ResponseHelper from '@/response-helper.js';
-import { NamingService } from '@/services/naming.service.js';
-import { ProjectService } from '@/services/project.service.ee.js';
-import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error.js';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service.js';
-import { UserManagementMailer } from '@/user-management/email/index.js';
-import * as utils from '@/utils.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { ExecutionService } from '@/executions/execution.service';
+import type { IWorkflowResponse } from '@/interfaces';
+import { License } from '@/license';
+import { listQueryMiddleware } from '@/middlewares';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { AuthService } from '@/auth/auth.service';
+import * as ResponseHelper from '@/response-helper';
+import { NamingService } from '@/services/naming.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { SsrfBlockedIpError, SsrfProtectionService } from 'n8n-core';
+import { UserManagementMailer } from '@/user-management/email';
+import * as utils from '@/utils';
 
 @RestController('/workflows')
 export class WorkflowsController {

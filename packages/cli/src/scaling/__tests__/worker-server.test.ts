@@ -7,10 +7,10 @@ import type { InstanceSettings } from 'n8n-core';
 import { AssertionError } from 'node:assert';
 import * as http from 'node:http';
 
-import type { ExternalHooks } from '@/external-hooks.js';
-import type { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service.js';
-import { bodyParser, rawBodyReader } from '@/middlewares/index.js';
-import type { RedisClientService } from '@/services/redis-client.service.js';
+import type { ExternalHooks } from '@/external-hooks';
+import type { PrometheusMetricsService } from '@/metrics/prometheus';
+import { bodyParser, rawBodyReader } from '@/middlewares';
+import type { RedisClientService } from '@/services/redis-client.service';
 
 import { WorkerServer } from '../worker-server.js';
 import type { CredentialsOverwrites } from '@/credentials-overwrites.js';
