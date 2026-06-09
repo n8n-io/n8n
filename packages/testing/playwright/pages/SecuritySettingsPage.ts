@@ -11,9 +11,12 @@ const SCOPE_OPTION_LABEL: Record<RedactionScope, string> = {
 
 export class SecuritySettingsPage extends BasePage {
 	async goto() {
-		await this.page.goto('/settings/security');
-		// Wait for settings to load to ensure all components are available
-		await this.waitForRestResponse('/rest/settings/security', 'GET');
+		// Wait for the settings to load so all components are available. Attach the
+		// listener before navigating, or the response can land before we wait for it.
+		await Promise.all([
+			this.waitForRestResponse('/rest/settings/security', 'GET'),
+			this.page.goto('/settings/security'),
+		]);
 	}
 
 	getEnforcementToggle(): Locator {
