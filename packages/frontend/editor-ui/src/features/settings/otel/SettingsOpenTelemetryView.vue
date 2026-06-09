@@ -67,16 +67,21 @@ function envTooltip(field: keyof typeof OTEL_FIELD_ENV_VARS): string {
 	});
 }
 
-async function save() {
+async function save(): Promise<boolean> {
 	try {
 		await otelStore.saveSettings();
-		telemetry.track('User saved otel settings', {
-			enabled: otelStore.settings.enabled,
-			includeNodeSpans: otelStore.settings.includeNodeSpans,
-			productionExecutionsOnly: otelStore.settings.productionExecutionsOnly,
-			tracesSampleRate: otelStore.settings.tracesSampleRate,
-			injectOutbound: otelStore.settings.injectOutbound,
-		});
+
+		if (otelStore.settings.enabled) {
+			telemetry.track('Activated otel via UI', {
+				includeNodeSpans: otelStore.settings.includeNodeSpans,
+				productionExecutionsOnly: otelStore.settings.productionExecutionsOnly,
+				tracesSampleRate: otelStore.settings.tracesSampleRate,
+				injectOutbound: otelStore.settings.injectOutbound,
+			});
+		} else {
+			telemetry.track('Disabled otel via UI');
+		}
+
 		toast.showMessage({
 			title: i18n.baseText('settings.opentelemetry.savedSuccess'),
 			type: 'success',
@@ -88,8 +93,11 @@ async function save() {
 		savedConfirmationTimer = setTimeout(() => {
 			showSavedConfirmation.value = false;
 		}, 3000);
+
+		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.opentelemetry.savedError'));
+		return false;
 	}
 }
 
@@ -105,7 +113,8 @@ function onLeaveWithoutSaving() {
 }
 
 async function onSaveAndLeave() {
-	await save();
+	const saved = await save();
+	if (!saved) return;
 	showUnsavedChangesDialog.value = false;
 	pendingNext.value?.();
 	pendingNext.value = null;

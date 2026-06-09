@@ -873,7 +873,7 @@ describe('productionExecutionsOnly filter', () => {
 		licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
 	});
 
-	it('should skip all tracing for an inactive workflow when productionExecutionsOnly is true', async () => {
+	it('should not start spans for an inactive workflow when productionExecutionsOnly is true, but still call endWorkflow', async () => {
 		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));
 		handler.onWorkflowEnd(makeWorkflowEndCtx(inactiveWorkflow));
 		handler.onNodeStart(makeNodeStartCtx(inactiveWorkflow));
@@ -881,9 +881,22 @@ describe('productionExecutionsOnly filter', () => {
 
 		expect(tracer.startWorkflow).not.toHaveBeenCalled();
 		expect(traceContextService.persist).not.toHaveBeenCalled();
-		expect(tracer.endWorkflow).not.toHaveBeenCalled();
 		expect(tracer.startNode).not.toHaveBeenCalled();
 		expect(tracer.endNode).not.toHaveBeenCalled();
+		expect(tracer.endWorkflow).toHaveBeenCalled();
+	});
+
+	it('should close a span even when settings change to exclude the workflow mid-execution', async () => {
+		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
+
+		await handler.onWorkflowStart(makeWorkflowStartCtx(activeWorkflow));
+		expect(tracer.startWorkflow).toHaveBeenCalled();
+
+		// Simulate settings change mid-execution
+		otelSettingsService.currentSettings!.productionExecutionsOnly = true;
+
+		handler.onWorkflowEnd(makeWorkflowEndCtx(activeWorkflow));
+		expect(tracer.endWorkflow).toHaveBeenCalled();
 	});
 
 	it('should trace an active workflow when productionExecutionsOnly is true', async () => {

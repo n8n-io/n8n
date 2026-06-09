@@ -154,8 +154,6 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteAfter')
 	onWorkflowEnd(ctx: WorkflowExecuteAfterContext): void {
-		if (!this.shouldTrace(ctx)) return;
-
 		this.tracer.endWorkflow({
 			executionId: ctx.executionId,
 			status: ctx.runData.status,
