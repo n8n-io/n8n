@@ -3,11 +3,13 @@ import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Sandbox, SandboxState } from '@daytonaio/sdk';
+import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
 
 import { OperationalError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AiService } from '@/services/ai.service';
 
 import {
 	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
@@ -89,6 +91,13 @@ interface KnowledgeVolumeMount {
 	subpath: string;
 }
 
+interface AgentKnowledgeDaytonaConnection {
+	apiUrl?: string;
+	apiKey?: string;
+	image: string;
+	mode: 'direct' | 'proxy';
+}
+
 function buildScopeLabels(
 	projectId: string,
 	agentId: string,
@@ -100,6 +109,11 @@ function buildScopeLabels(
 		[LABEL_AGENT_ID]: agentId,
 		[LABEL_USER_ID]: userId,
 	};
+}
+
+function isVolumeMountFailure(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return /volume|mount|subpath/i.test(message);
 }
 
 function isUsableSandbox(sandbox: Sandbox): boolean {
@@ -125,6 +139,7 @@ export class AgentKnowledgeSandboxService {
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
+		private readonly aiService: AiService,
 	) {}
 
 	async ensureSandbox(
@@ -225,9 +240,10 @@ export class AgentKnowledgeSandboxService {
 		this.assertValidPathSegments(projectId, agentId);
 
 		const { Daytona } = loadDaytona();
+		const connection = await this.resolveDaytonaConnection(userId);
 		const daytona = new Daytona({
-			apiUrl: this.agentsConfig.daytonaApiUrl || undefined,
-			apiKey: this.agentsConfig.daytonaApiKey || undefined,
+			apiUrl: connection.apiUrl,
+			apiKey: connection.apiKey,
 		});
 		const labels = buildScopeLabels(projectId, agentId, userId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
@@ -256,23 +272,57 @@ export class AgentKnowledgeSandboxService {
 		}
 
 		const name = `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${randomUUID()}`;
-		const image = this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE;
+		const image = connection.image;
 
-		const sandbox = await daytona.create(
-			{
-				name,
-				labels,
-				language: 'typescript',
-				image,
-				ephemeral: true,
-				autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
-				volumes: [volumeMount],
-			},
-			{ timeout: timeoutSeconds },
-		);
+		let sandbox: Sandbox;
+		try {
+			sandbox = await daytona.create(
+				{
+					name,
+					labels,
+					language: 'typescript',
+					image,
+					ephemeral: true,
+					autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
+					volumes: [volumeMount],
+				},
+				{ timeout: timeoutSeconds },
+			);
+		} catch (error) {
+			if (connection.mode === 'proxy' && isVolumeMountFailure(error)) {
+				throw new OperationalError(
+					'Agent knowledge Daytona proxy does not support volume mounts. Enable volume mounts in the AI Assistant sandbox proxy before using agent knowledge base sandboxing.',
+				);
+			}
+			throw error;
+		}
 
 		this.logger.debug('Created agent knowledge sandbox', { projectId, agentId, name });
 		return { sandbox, reused: false };
+	}
+
+	private async resolveDaytonaConnection(userId: string): Promise<AgentKnowledgeDaytonaConnection> {
+		const directImage = this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE;
+
+		if (!this.aiService.isProxyEnabled()) {
+			return {
+				mode: 'direct',
+				apiUrl: this.agentsConfig.daytonaApiUrl || undefined,
+				apiKey: this.agentsConfig.daytonaApiKey || undefined,
+				image: directImage,
+			};
+		}
+
+		const client = await this.aiService.getClient();
+		const proxyConfig = await client.getSandboxProxyConfig();
+		const token = await client.getBuilderApiProxyToken({ id: userId }, { userMessageId: nanoid() });
+
+		return {
+			mode: 'proxy',
+			apiUrl: client.getSandboxProxyBaseUrl(),
+			apiKey: token.accessToken,
+			image: proxyConfig.image || directImage,
+		};
 	}
 
 	private buildVolumeMount(projectId: string, agentId: string): KnowledgeVolumeMount {

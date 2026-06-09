@@ -3,6 +3,7 @@ import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
+import type { AiService } from '../../../services/ai.service';
 
 import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH, KNOWLEDGE_FILES_DIR } from '../agent-knowledge-storage';
 import {
@@ -48,9 +49,12 @@ const createMock = jest.fn<
 	Promise<MockSandbox>,
 	[Record<string, unknown>, { timeout?: number }?]
 >();
+const daytonaInstances: MockDaytona[] = [];
 
 class MockDaytona {
-	constructor(readonly config: { apiUrl?: string; apiKey?: string }) {}
+	constructor(readonly config: { apiUrl?: string; apiKey?: string }) {
+		daytonaInstances.push(this);
+	}
 
 	list = listMock;
 	create = createMock;
@@ -70,9 +74,36 @@ const expectedVolumeMount = {
 	subpath: 'agent-knowledge/projects/project-1/agents/agent-1/knowledge',
 };
 
+function makeAiService(overrides: Partial<AiService> = {}): AiService {
+	const aiService = mock<AiService>();
+	aiService.isProxyEnabled.mockReturnValue(false);
+	return Object.assign(aiService, overrides);
+}
+
+function makeProxyClient(
+	overrides: {
+		image?: string;
+		proxyBaseUrl?: string;
+		accessToken?: string;
+	} = {},
+) {
+	const {
+		image = 'proxy/sandbox:1.0.0',
+		proxyBaseUrl = 'https://assistant.example/sandbox',
+		accessToken = 'proxy-token',
+	} = overrides;
+
+	return {
+		getSandboxProxyBaseUrl: jest.fn().mockReturnValue(proxyBaseUrl),
+		getSandboxProxyConfig: jest.fn().mockResolvedValue({ image }),
+		getBuilderApiProxyToken: jest.fn().mockResolvedValue({ accessToken, tokenType: 'Bearer' }),
+	};
+}
+
 function makeService(
 	configOverrides: Partial<AgentsConfig> = {},
 	logger: Logger = mock<Logger>(),
+	aiService: AiService = makeAiService(),
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
@@ -86,6 +117,7 @@ function makeService(
 			...configOverrides,
 		} as AgentsConfig,
 		logger,
+		aiService,
 	);
 }
 
@@ -123,6 +155,7 @@ function makeSandbox(state = 'started', volumes = [expectedVolumeMount]): MockSa
 describe('AgentKnowledgeSandboxService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		daytonaInstances.length = 0;
 		listMock.mockResolvedValue({ items: [], totalPages: 1 });
 		createMock.mockResolvedValue(makeSandbox('started'));
 	});
@@ -212,12 +245,19 @@ describe('AgentKnowledgeSandboxService', () => {
 	});
 
 	it('creates a sandbox with scoped labels, volume mount, and expected params when list is empty', async () => {
-		const service = makeService();
+		const aiService = makeAiService();
+		const service = makeService({}, mock<Logger>(), aiService);
 
 		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
 			SEARCH_KNOWLEDGE_SANDBOX_CREATED,
 		);
 
+		expect(aiService.getClient).not.toHaveBeenCalled();
+		expect(daytonaInstances).toHaveLength(1);
+		expect(daytonaInstances[0].config).toEqual({
+			apiUrl: 'https://daytona.example',
+			apiKey: 'test-key',
+		});
 		expect(createMock).toHaveBeenCalledTimes(1);
 		const [params, options] = createMock.mock.calls[0];
 		expect(params.name).toMatch(
@@ -235,6 +275,101 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(params.autoStopInterval).toBe(5);
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 		expect(options).toEqual({ timeout: 300 });
+	});
+
+	it('lists sandboxes with project, agent, and user scope labels', async () => {
+		const service = makeService();
+
+		await service.ensureSandbox('project-1', 'agent-1', userId);
+
+		expect(listMock).toHaveBeenCalledWith(
+			{
+				'n8n-agents-knowledgebase': 'true',
+				'n8n-project-id': 'project-1',
+				'n8n-agent-id': 'agent-1',
+				'n8n-user-id': userId,
+			},
+			1,
+			100,
+		);
+	});
+
+	it('creates sandboxes through the AI assistant proxy when proxy mode is enabled', async () => {
+		const mockClient = makeProxyClient();
+		const aiService = makeAiService({
+			isProxyEnabled: jest.fn().mockReturnValue(true),
+			getClient: jest.fn().mockResolvedValue(mockClient),
+		});
+		const service = makeService({}, mock<Logger>(), aiService);
+
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
+			SEARCH_KNOWLEDGE_SANDBOX_CREATED,
+		);
+
+		expect(aiService.getClient).toHaveBeenCalledTimes(1);
+		expect(mockClient.getSandboxProxyConfig).toHaveBeenCalledTimes(1);
+		expect(mockClient.getBuilderApiProxyToken).toHaveBeenCalledWith(
+			{ id: userId },
+			expect.objectContaining({ userMessageId: expect.any(String) }),
+		);
+		expect(daytonaInstances).toHaveLength(1);
+		expect(daytonaInstances[0].config).toEqual({
+			apiUrl: 'https://assistant.example/sandbox',
+			apiKey: 'proxy-token',
+		});
+		const [params] = createMock.mock.calls[0];
+		expect(params.image).toBe('proxy/sandbox:1.0.0');
+		expect(params.volumes).toEqual([expectedVolumeMount]);
+	});
+
+	it('falls back to the configured sandbox image when proxy config has no image', async () => {
+		const mockClient = makeProxyClient({ image: '' });
+		const aiService = makeAiService({
+			isProxyEnabled: jest.fn().mockReturnValue(true),
+			getClient: jest.fn().mockResolvedValue(mockClient),
+		});
+		const service = makeService({}, mock<Logger>(), aiService);
+
+		await service.ensureSandbox('project-1', 'agent-1', userId);
+
+		const [params] = createMock.mock.calls[0];
+		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
+	});
+
+	it('throws a clear operational error when proxy mode rejects volume mounts', async () => {
+		const mockClient = makeProxyClient();
+		const aiService = makeAiService({
+			isProxyEnabled: jest.fn().mockReturnValue(true),
+			getClient: jest.fn().mockResolvedValue(mockClient),
+		});
+		createMock.mockRejectedValue(new Error('volume mounts are not allowed'));
+		const service = makeService({}, mock<Logger>(), aiService);
+
+		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).rejects.toThrow(
+			'Agent knowledge Daytona proxy does not support volume mounts. Enable volume mounts in the AI Assistant sandbox proxy before using agent knowledge base sandboxing.',
+		);
+		expect(createMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('lists sandboxes with user scope labels in proxy mode', async () => {
+		const mockClient = makeProxyClient();
+		const aiService = makeAiService({
+			isProxyEnabled: jest.fn().mockReturnValue(true),
+			getClient: jest.fn().mockResolvedValue(mockClient),
+		});
+		const service = makeService({}, mock<Logger>(), aiService);
+
+		await service.ensureSandbox('project-1', 'agent-1', userId);
+
+		expect(listMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'n8n-project-id': 'project-1',
+				'n8n-agent-id': 'agent-1',
+				'n8n-user-id': userId,
+			}),
+			1,
+			100,
+		);
 	});
 
 	it('rejects before calling Daytona when the volume id is missing', async () => {
