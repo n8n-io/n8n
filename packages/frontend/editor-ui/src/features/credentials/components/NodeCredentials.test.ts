@@ -189,14 +189,10 @@ describe('NodeCredentials', () => {
 
 		credentialsStore = mockedStore(useCredentialsStore);
 		// Component triggers this on mount; avoid a real XHR with stubActions: false.
-<<<<<<< HEAD
-		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
-		ndvStore = mockedStore(useNDVStore);
-=======
+
 		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue([]);
 
-		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('1'));
->>>>>>> 8cd67d30 (fix(editor): Use workflow-scoped credential fetch in node credential picker (#31938))
+		ndvStore = mockedStore(useNDVStore);
 		uiStore = mockedStore(useUIStore);
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
