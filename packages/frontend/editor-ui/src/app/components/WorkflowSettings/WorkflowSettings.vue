@@ -938,6 +938,10 @@ onMounted(async () => {
 
 	// Fetch the instance redaction floor AFTER workflowSettings has been assigned, so
 	// the floor-coercion watch sees the loaded settings (not the initial empty object).
+	// The FE gates this fetch on the `DataRedaction` license, while the endpoint itself is
+	// gated by `feat:personalSpacePolicy` + `securitySettings:manage`. A license mismatch
+	// (one licensed, the other not) is intentionally absorbed by the try/catch fail-open
+	// below: the floor stays `'off'` and no enforcement is applied client-side.
 	if (isDataRedactionLicensed.value) {
 		try {
 			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
