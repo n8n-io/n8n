@@ -424,10 +424,9 @@ describe('DesktopAssistantService.promoteThread', () => {
 });
 
 describe('DesktopAssistantService.getHistory', () => {
-	test('returns empty when the desktop-assistant tag has never been created', async () => {
+	test('returns empty when the user has no accessible workflows', async () => {
 		const ctx = makeService();
-		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
-		ctx.tagRepository.findOne.mockResolvedValue(null);
+		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
 
 		const result = await ctx.service.getHistory(USER, {});
 
@@ -435,15 +434,13 @@ describe('DesktopAssistantService.getHistory', () => {
 		expect(ctx.executionService.findRangeWithCount).not.toHaveBeenCalled();
 	});
 
-	test('passes the intersected workflow ids to the executions service', async () => {
+	test('passes ALL accessible (non-archived) workflow ids to the executions service', async () => {
 		const ctx = makeService();
 		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1', 'wf-2']);
-		ctx.tagRepository.findOne.mockResolvedValue({
-			id: 'tag-da',
-			name: DESKTOP_ASSISTANT_TAG,
-		} as never);
-		ctx.workflowTagMappingRepository.find.mockResolvedValue([{ workflowId: 'wf-1' } as never]);
-		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.workflowRepository.find.mockResolvedValue([
+			{ id: 'wf-1' } as never,
+			{ id: 'wf-2' } as never,
+		]);
 		ctx.executionService.buildSharingOptions.mockResolvedValue({});
 		ctx.executionService.findRangeWithCount.mockResolvedValue({
 			results: [],
@@ -456,23 +453,15 @@ describe('DesktopAssistantService.getHistory', () => {
 		expect(ctx.executionService.findRangeWithCount).toHaveBeenCalledWith(
 			expect.objectContaining({
 				kind: 'range',
-				workflowId: ['wf-1'],
+				workflowId: ['wf-1', 'wf-2'],
 				range: expect.objectContaining({ limit: 10 }),
 			}),
 		);
 	});
 
-	test('drops archived workflows from the executions query (history view skips archived)', async () => {
+	test('drops archived workflows from the executions query', async () => {
 		const ctx = makeService();
 		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1', 'wf-archived']);
-		ctx.tagRepository.findOne.mockResolvedValue({
-			id: 'tag-da',
-			name: DESKTOP_ASSISTANT_TAG,
-		} as never);
-		ctx.workflowTagMappingRepository.find.mockResolvedValue([
-			{ workflowId: 'wf-1' } as never,
-			{ workflowId: 'wf-archived' } as never,
-		]);
 		// repository.find with isArchived: false only returns the live one
 		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
 		ctx.executionService.buildSharingOptions.mockResolvedValue({});
@@ -494,16 +483,9 @@ describe('DesktopAssistantService.getHistory', () => {
 		);
 	});
 
-	test('skips the executions query when every tagged workflow is archived', async () => {
+	test('skips the executions query when every accessible workflow is archived', async () => {
 		const ctx = makeService();
 		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-archived']);
-		ctx.tagRepository.findOne.mockResolvedValue({
-			id: 'tag-da',
-			name: DESKTOP_ASSISTANT_TAG,
-		} as never);
-		ctx.workflowTagMappingRepository.find.mockResolvedValue([
-			{ workflowId: 'wf-archived' } as never,
-		]);
 		ctx.workflowRepository.find.mockResolvedValue([]);
 
 		const result = await ctx.service.getHistory(USER, {});
@@ -512,18 +494,24 @@ describe('DesktopAssistantService.getHistory', () => {
 		expect(ctx.executionService.findRangeWithCount).not.toHaveBeenCalled();
 	});
 
-	test('skips the executions query when nothing is both accessible and tagged', async () => {
+	test('does NOT filter on the desktop-assistant tag (history covers all workflows)', async () => {
 		const ctx = makeService();
-		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
-		ctx.tagRepository.findOne.mockResolvedValue({
-			id: 'tag-da',
-			name: DESKTOP_ASSISTANT_TAG,
-		} as never);
-		ctx.workflowTagMappingRepository.find.mockResolvedValue([]);
+		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-untagged']);
+		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-untagged' } as never]);
+		ctx.executionService.buildSharingOptions.mockResolvedValue({});
+		ctx.executionService.findRangeWithCount.mockResolvedValue({
+			results: [],
+			count: 0,
+			estimated: false,
+		});
 
-		const result = await ctx.service.getHistory(USER, {});
+		await ctx.service.getHistory(USER, {});
 
-		expect(result).toEqual({ results: [], estimated: false, count: 0 });
-		expect(ctx.executionService.findRangeWithCount).not.toHaveBeenCalled();
+		// Pin that we don't go anywhere near the tag tables.
+		expect(ctx.tagRepository.findOne).not.toHaveBeenCalled();
+		expect(ctx.workflowTagMappingRepository.find).not.toHaveBeenCalled();
+		expect(ctx.executionService.findRangeWithCount).toHaveBeenCalledWith(
+			expect.objectContaining({ workflowId: ['wf-untagged'] }),
+		);
 	});
 });

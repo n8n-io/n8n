@@ -453,36 +453,26 @@ export class DesktopAssistantService {
 		user: User,
 		query: { limit?: number; firstId?: string; lastId?: string },
 	): Promise<Awaited<ReturnType<ExecutionService['findRangeWithCount']>>> {
-		const tagId = await this.tryReadDesktopAssistantTagId();
 		const accessibleWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
 		});
-		if (accessibleWorkflowIds.length === 0 || tagId === null) return EMPTY_HISTORY;
+		if (accessibleWorkflowIds.length === 0) return EMPTY_HISTORY;
 
-		const taggedWorkflowIds = await this.workflowTagMappingRepository
-			.find({
-				where: { tagId, workflowId: In(accessibleWorkflowIds) },
-				select: { workflowId: true },
-			})
-			.then((rows) => rows.map((r) => r.workflowId));
-
-		if (taggedWorkflowIds.length === 0) return EMPTY_HISTORY;
-
-		// Skip executions of archived workflows — if the user archived a
-		// desktop-assistant workflow it should drop out of the history view too.
-		const liveTaggedRows = await this.workflowRepository.find({
-			where: { id: In(taggedWorkflowIds), isArchived: false },
+		// Skip executions of archived workflows. Archive is a user signal of
+		// "I'm done with this"; their runs should drop out of the history view.
+		const liveRows = await this.workflowRepository.find({
+			where: { id: In(accessibleWorkflowIds), isArchived: false },
 			select: { id: true },
 		});
-		const liveTaggedWorkflowIds = liveTaggedRows.map((row) => row.id);
-		if (liveTaggedWorkflowIds.length === 0) return EMPTY_HISTORY;
+		const liveWorkflowIds = liveRows.map((row) => row.id);
+		if (liveWorkflowIds.length === 0) return EMPTY_HISTORY;
 
 		const sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
 		return await this.executionService.findRangeWithCount({
 			kind: 'range',
 			user,
 			sharingOptions,
-			workflowId: liveTaggedWorkflowIds,
+			workflowId: liveWorkflowIds,
 			range: {
 				limit: clampLimit(query.limit),
 				firstId: query.firstId,
@@ -490,14 +480,5 @@ export class DesktopAssistantService {
 			},
 			order: { startedAt: 'DESC' },
 		});
-	}
-
-	private async tryReadDesktopAssistantTagId(): Promise<string | null> {
-		if (this.desktopAssistantTagId) return this.desktopAssistantTagId;
-		const tag = await this.tagRepository.findOne({
-			where: { name: DESKTOP_ASSISTANT_TAG },
-		});
-		this.desktopAssistantTagId = tag?.id ?? null;
-		return this.desktopAssistantTagId;
 	}
 }
