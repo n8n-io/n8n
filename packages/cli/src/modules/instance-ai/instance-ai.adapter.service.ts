@@ -96,8 +96,6 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 
-import { InstanceSettings } from 'n8n-core';
-
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -116,7 +114,7 @@ import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import { InstanceSettings, SsrfProtectionService } from 'n8n-core';
 import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';

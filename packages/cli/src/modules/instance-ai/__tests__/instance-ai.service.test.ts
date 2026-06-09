@@ -709,6 +709,12 @@ type TerminalGuardOrderServiceInternals = {
 	liveness: { consumeRunTimeout: jest.Mock };
 	telemetry: { track: jest.Mock };
 	logger: { warn: jest.Mock; error: jest.Mock };
+	instanceAiConfig: {
+		outputRedactionEnabled: boolean;
+		outputRedactionSecrets: boolean;
+		outputRedactionPii: string;
+		outputRedactionPlaceholder: string;
+	};
 	traceContextsByRunId: Map<string, { threadId: string; messageGroupId?: string }>;
 	threadPushRef: Map<string, string>;
 	finalizeRunTracing: jest.Mock;
@@ -781,6 +787,12 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.liveness = { consumeRunTimeout: jest.fn(() => ({ timedOut: false })) };
 	service.telemetry = { track: jest.fn() };
 	service.logger = { warn: jest.fn(), error: jest.fn() };
+	service.instanceAiConfig = {
+		outputRedactionEnabled: true,
+		outputRedactionSecrets: true,
+		outputRedactionPii: 'credit-card',
+		outputRedactionPlaceholder: '[REDACTED]',
+	};
 	service.traceContextsByRunId = new Map([
 		['run-1', { threadId: 'thread-a', messageGroupId: 'group-1' }],
 	]);
@@ -3050,5 +3062,60 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			'setup-claim-1',
 		);
 		expect(records['wi-1'].state.setupRoutingClaimId).toBeUndefined();
+	});
+});
+
+describe('getSandboxConfigFromEnv', () => {
+	type SandboxConfigService = {
+		instanceAiConfig: {
+			sandboxEnabled: boolean;
+			sandboxProvider: string;
+			daytonaApiUrl: string;
+			daytonaApiKey: string;
+			sandboxImage: string;
+			sandboxTimeout: number;
+			sandboxNamePrefix: string;
+			sandboxEphemeral: boolean;
+			daytonaTokenRefreshSkewMs: number;
+		};
+		getSandboxConfigFromEnv: () => SandboxConfig;
+	};
+
+	function createSandboxConfigService(
+		overrides: Partial<SandboxConfigService['instanceAiConfig']>,
+	): SandboxConfigService {
+		const service = Object.create(InstanceAiService.prototype) as SandboxConfigService;
+		service.instanceAiConfig = {
+			sandboxEnabled: true,
+			sandboxProvider: 'daytona',
+			daytonaApiUrl: 'https://api.daytona.io',
+			daytonaApiKey: 'key',
+			sandboxImage: 'img',
+			sandboxTimeout: 1000,
+			sandboxNamePrefix: '',
+			sandboxEphemeral: false,
+			daytonaTokenRefreshSkewMs: 1000,
+			...overrides,
+		};
+		return service;
+	}
+
+	it('marks daytona sandboxes ephemeral when the env flag is set', () => {
+		const service = createSandboxConfigService({ sandboxEphemeral: true });
+
+		expect(service.getSandboxConfigFromEnv()).toMatchObject({
+			enabled: true,
+			provider: 'daytona',
+			ephemeral: true,
+		});
+	});
+
+	it('keeps daytona sandboxes non-ephemeral by default', () => {
+		const service = createSandboxConfigService({ sandboxEphemeral: false });
+
+		expect(service.getSandboxConfigFromEnv()).toMatchObject({
+			provider: 'daytona',
+			ephemeral: false,
+		});
 	});
 });

@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
@@ -131,6 +131,7 @@ export class McpService {
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
 		private readonly nodeResourceExplorerService: NodeResourceExplorerService,
+		private readonly licenseState: LicenseState,
 		private readonly postHogClient: PostHogClient,
 	) {}
 
@@ -491,6 +492,7 @@ export class McpService {
 		const searchProjectsTool = createSearchProjectsTool(
 			user,
 			this.projectRepository,
+			this.licenseState,
 			this.telemetry,
 		);
 		server.registerTool(

@@ -4,6 +4,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
 	Telemetry,
@@ -1212,6 +1213,8 @@ export interface OrchestrationContext {
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
+	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */
+	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;
