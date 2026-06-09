@@ -1,12 +1,12 @@
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
+import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import type { JwtService } from '@/services/jwt.service';
-import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type { UrlService } from '@/services/url.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import type { JwtService } from '@/services/jwt.service';
+import type { UrlService } from '@/services/url.service';
 
 import { UsersController } from '../users.controller';
 
@@ -36,8 +36,8 @@ describe('UsersController', () => {
 	);
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
-		jest.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('changeGlobalRole', () => {

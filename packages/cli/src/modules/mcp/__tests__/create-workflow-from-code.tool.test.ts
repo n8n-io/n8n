@@ -1,9 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import { z } from 'zod';
-
-import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NodeTypes } from '@/node-types';
@@ -12,22 +11,29 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
+
+// Mocks referenced inside vi.mock factories must come from vi.hoisted, otherwise the
+// factory (hoisted above these declarations) silently loads the real module.
+const { mockAutoPopulateNodeCredentials, mockParseAndValidate, mockStripImportStatements } =
+	vi.hoisted(() => ({
+		mockAutoPopulateNodeCredentials: vi.fn(),
+		mockParseAndValidate: vi.fn(),
+		mockStripImportStatements: vi.fn((code: string) => code),
+	}));
+
 // Mock credentials auto-assign
-const mockAutoPopulateNodeCredentials = jest.fn();
-jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
+vi.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	autoPopulateNodeCredentials: (...args: unknown[]) =>
 		mockAutoPopulateNodeCredentials(...args) as unknown,
-	stripNullCredentialStubs: jest.fn(),
+	stripNullCredentialStubs: vi.fn(),
 }));
 
 // Mock dynamic imports
-const mockParseAndValidate = jest.fn();
-const mockStripImportStatements = jest.fn((code: string) => code);
-
-jest.mock('@n8n/ai-workflow-builder', () => ({
-	ParseValidateHandler: jest.fn().mockImplementation(() => ({
-		parseAndValidate: mockParseAndValidate,
-	})),
+vi.mock('@n8n/ai-workflow-builder', () => ({
+	ParseValidateHandler: vi.fn(function () {
+		return { parseAndValidate: mockParseAndValidate };
+	}),
 	stripImportStatements: (code: string) => mockStripImportStatements(code),
 	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow_code', displayTitle: 'Validate' },
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: {
@@ -74,22 +80,22 @@ const parseResult = (result: { content: Array<{ type: string; text?: string }> }
 	JSON.parse((result.content[0] as { type: 'text'; text: string }).text) as Record<string, unknown>;
 
 type DataTableOpsMock = {
-	getManyAndCount: jest.Mock;
+	getManyAndCount: Mock;
 };
 
 describe('create-workflow-from-code MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowCreationService: WorkflowCreationService;
-	let createWorkflowMock: jest.Mock;
+	let createWorkflowMock: Mock;
 	let urlService: UrlService;
 	let telemetry: Telemetry;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 	let dataTableOps: DataTableOpsMock;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
-		createWorkflowMock = jest
+		createWorkflowMock = vi
 			.fn()
 			.mockImplementation(async (_user, workflow) =>
 				Object.assign(new WorkflowEntity(), { ...workflow, id: 'wf-saved-1' }),
@@ -98,10 +104,10 @@ describe('create-workflow-from-code MCP tool', () => {
 			createWorkflow: createWorkflowMock,
 		});
 		urlService = mockInstance(UrlService, {
-			getInstanceBaseUrl: jest.fn().mockReturnValue('https://n8n.example.com'),
+			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 		});
 		telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
 		nodeTypes = mockInstance(NodeTypes);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
@@ -119,12 +125,12 @@ describe('create-workflow-from-code MCP tool', () => {
 		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
 
 		dataTableOps = {
-			getManyAndCount: jest.fn().mockResolvedValue({ data: [], count: 0 }),
+			getManyAndCount: vi.fn().mockResolvedValue({ data: [], count: 0 }),
 		};
 	});
 
 	const credentialsService = mockInstance(CredentialsService, {
-		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue([]),
+		getCredentialsAUserCanUseInAWorkflow: vi.fn().mockResolvedValue([]),
 	});
 	const personalProjectEntity = {
 		id: 'personal-project-1',
@@ -132,8 +138,8 @@ describe('create-workflow-from-code MCP tool', () => {
 		type: 'personal' as const,
 	};
 	const projectRepository = mockInstance(ProjectRepository, {
-		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue(personalProjectEntity),
-		findOneBy: jest.fn().mockImplementation(async ({ id }: { id: string }) => {
+		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue(personalProjectEntity),
+		findOneBy: vi.fn().mockImplementation(async ({ id }: { id: string }) => {
 			if (id === 'personal-project-1') return personalProjectEntity;
 			if (id === 'custom-project-id') {
 				return { id: 'custom-project-id', name: 'Marketing', type: 'team' as const };
@@ -142,7 +148,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		}),
 	});
 	const workflowFinderService = mockInstance(WorkflowFinderService, {
-		findWorkflowForUser: jest.fn().mockResolvedValue(null),
+		findWorkflowForUser: vi.fn().mockResolvedValue(null),
 	});
 
 	const createTool = () =>
@@ -339,7 +345,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				workflow.id = 'wf-recovery-1';
 				throw new Error('Post-save hook failed');
 			});
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValueOnce({
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValueOnce({
 				id: 'wf-recovery-1',
 				name: 'Recovered',
 				nodes: mockNodes,
@@ -430,7 +436,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		test('omits skillsUsed from telemetry when not provided', async () => {
 			await callHandler({ code: 'const wf = ...' });
 
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: Record<string, unknown>;
 			};
 			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
@@ -439,7 +445,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		test('omits skillsUsed from telemetry when an empty array is passed', async () => {
 			await callHandler({ code: 'const wf = ...', skillsUsed: [] });
 
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: Record<string, unknown>;
 			};
 			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
@@ -466,7 +472,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			const result = await callHandler({ code: 'const wf = ...', skillsUsed: oversized });
 
 			expect(result.isError).toBeUndefined();
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: { skillsUsed: string[] };
 			};
 			expect(trackedPayload.parameters.skillsUsed).toHaveLength(50);

@@ -1,3 +1,4 @@
+import type { ModelConfig, ResolvedCredential } from '@n8n/agents';
 import { proxyFetch } from '@n8n/ai-utilities/http-proxy-agent';
 import {
 	AGENT_BUILDER_DEFAULT_MODEL,
@@ -7,7 +8,6 @@ import {
 	type AgentBuilderAdminSettingsUpdateRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { ModelConfig, ResolvedCredential } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,12 +20,12 @@ import { UnprocessableRequestError } from '@/errors/response-errors/unprocessabl
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 
+import { BuilderNotConfiguredError } from './errors';
 import {
 	isSupportedAgentProvider,
 	mapCredentialForProvider,
 	SUPPORTED_AGENT_PROVIDERS,
 } from '../json-config/credential-field-mapping';
-import { BuilderNotConfiguredError } from './errors';
 
 const SETTINGS_KEY = 'agentBuilder.settings';
 

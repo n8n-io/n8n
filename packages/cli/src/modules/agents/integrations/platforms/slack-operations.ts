@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { ChatInstance } from '../chat-integration.service';
+import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
 import {
 	integrationError,
 	isRecord,
@@ -8,7 +9,6 @@ import {
 	unsupportedAction,
 	unsupportedQuery,
 } from '../integration-helpers';
-import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
 import type {
 	IntegrationAction,
 	IntegrationActionResult,

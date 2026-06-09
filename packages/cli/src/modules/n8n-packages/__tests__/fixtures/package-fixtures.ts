@@ -5,7 +5,6 @@ import { FORMAT_VERSION } from '../../spec/constants';
 import type { PackageManifest } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
-
 import { streamToBuffer } from '../utils/tar-support';
 
 /** Credential type used in package import integration tests (matches `randomCredentialPayload` default). */

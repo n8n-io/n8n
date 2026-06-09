@@ -24,7 +24,7 @@ describe('RoleController', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Enable CUSTOM_ROLES license for all tests by default
 		testServer.license.enable('feat:customRoles');
 	});

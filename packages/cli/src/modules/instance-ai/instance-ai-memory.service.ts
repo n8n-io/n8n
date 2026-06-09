@@ -16,8 +16,6 @@ import {
 	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
 
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
-
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import {
@@ -27,6 +25,7 @@ import {
 } from './message-parser';
 import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 
 function isAgentMessageLike(value: unknown): value is AgentDbMessage {

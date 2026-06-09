@@ -1,7 +1,6 @@
+import { distance } from 'fastest-levenshtein';
 import { createReadStream } from 'node:fs';
 import path from 'node:path';
-
-import { distance } from 'fastest-levenshtein';
 
 import { resolveFileReference, type WorkspaceFiles } from './file-references';
 import type { CsvAggregateInput, CsvFilter } from './schemas';

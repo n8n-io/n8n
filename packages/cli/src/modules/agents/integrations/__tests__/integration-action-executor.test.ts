@@ -1,19 +1,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- mocks the ESM-only Chat SDK card factories */
-type MockFn = jest.Mock<any, any[]>;
-const mockButton: MockFn = jest.fn((opts) => ({ type: 'button', ...opts }));
-const mockCard: MockFn = jest.fn((opts) => ({ type: 'card', ...opts }));
-const mockActions: MockFn = jest.fn((children) => ({ type: 'actions', children }));
-const mockCardText: MockFn = jest.fn((content) => ({ type: 'text', content }));
-const mockSection: MockFn = jest.fn((children) => ({ type: 'section', children }));
-const mockDivider: MockFn = jest.fn(() => ({ type: 'divider' }));
-const mockImage: MockFn = jest.fn((opts) => ({ type: 'image', ...opts }));
-const mockSelect: MockFn = jest.fn((opts) => ({ type: 'select', ...opts }));
-const mockRadioSelect: MockFn = jest.fn((opts) => ({ type: 'radio_select', ...opts }));
-const mockFields: MockFn = jest.fn((children) => ({ type: 'fields', children }));
-const mockField: MockFn = jest.fn((opts) => ({ type: 'field', ...opts }));
+import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
-jest.mock('../esm-loader', () => ({
-	loadChatSdk: jest.fn().mockResolvedValue({
+const {
+	mockButton,
+	mockCard,
+	mockActions,
+	mockCardText,
+	mockSection,
+	mockDivider,
+	mockImage,
+	mockSelect,
+	mockRadioSelect,
+	mockFields,
+	mockField,
+} = vi.hoisted(() => ({
+	mockButton: vi.fn((opts: any) => ({ type: 'button', ...opts })),
+	mockCard: vi.fn((opts: any) => ({ type: 'card', ...opts })),
+	mockActions: vi.fn((children: any) => ({ type: 'actions', children })),
+	mockCardText: vi.fn((content: any) => ({ type: 'text', content })),
+	mockSection: vi.fn((children: any) => ({ type: 'section', children })),
+	mockDivider: vi.fn(() => ({ type: 'divider' })),
+	mockImage: vi.fn((opts: any) => ({ type: 'image', ...opts })),
+	mockSelect: vi.fn((opts: any) => ({ type: 'select', ...opts })),
+	mockRadioSelect: vi.fn((opts: any) => ({ type: 'radio_select', ...opts })),
+	mockFields: vi.fn((children: any) => ({ type: 'fields', children })),
+	mockField: vi.fn((opts: any) => ({ type: 'field', ...opts })),
+}));
+
+vi.mock('../esm-loader', () => ({
+	loadChatSdk: vi.fn().mockResolvedValue({
 		Button: mockButton,
 		Card: mockCard,
 		Actions: mockActions,
@@ -28,10 +46,6 @@ jest.mock('../esm-loader', () => ({
 	}),
 }));
 
-import type { Logger } from '@n8n/backend-common';
-import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
-
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
@@ -39,10 +53,9 @@ import {
 } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
+import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack-integration';
-import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 const slack: AgentIntegrationConfig = {
 	type: 'slack',
@@ -86,7 +99,7 @@ function buildRegistry(): ChatIntegrationRegistry {
 
 describe('ChatIntegrationActionExecutor', () => {
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	it('posts channel messages through the selected integration connection and returns message context', async () => {
@@ -95,10 +108,10 @@ describe('ChatIntegrationActionExecutor', () => {
 			threadId: 'slack:C123:123.456',
 		};
 		const channel = {
-			post: jest.fn().mockResolvedValue(sentMessage),
+			post: vi.fn().mockResolvedValue(sentMessage),
 		};
 		const sentThread = {
-			subscribe: jest.fn().mockResolvedValue(undefined),
+			subscribe: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.channel.mockReturnValue(channel as never);
@@ -145,7 +158,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			id: 'linear-message-1',
 		};
 		const channel = {
-			post: jest.fn().mockResolvedValue(sentMessage),
+			post: vi.fn().mockResolvedValue(sentMessage),
 		};
 		const chat = mock<ChatInstance>();
 		chat.channel.mockReturnValue(channel as never);
@@ -189,8 +202,8 @@ describe('ChatIntegrationActionExecutor', () => {
 		};
 		const thread = {
 			id: 'slack:D123:123.456',
-			post: jest.fn().mockResolvedValue(sentMessage),
-			subscribe: jest.fn().mockResolvedValue(undefined),
+			post: vi.fn().mockResolvedValue(sentMessage),
+			subscribe: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.openDM.mockResolvedValue(thread as never);
@@ -216,8 +229,8 @@ describe('ChatIntegrationActionExecutor', () => {
 			threadId: 'slack:C123:123.456',
 		};
 		const thread = {
-			post: jest.fn().mockResolvedValue(sentMessage),
-			subscribe: jest.fn().mockResolvedValue(undefined),
+			post: vi.fn().mockResolvedValue(sentMessage),
+			subscribe: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.thread.mockReturnValue(thread as never);
@@ -279,18 +292,18 @@ describe('ChatIntegrationActionExecutor', () => {
 			threadId: 'telegram-thread-1',
 		};
 		const thread = {
-			post: jest.fn().mockResolvedValue(sentMessage),
+			post: vi.fn().mockResolvedValue(sentMessage),
 		};
 		const chat = mock<ChatInstance>();
 		chat.thread.mockReturnValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const shortenCallback = jest.fn(async (_actionId: string, _value: string) => ({
+		const shortenCallback = vi.fn(async (_actionId: string, _value: string) => ({
 			id: 'short1234',
 			value: '',
 		}));
 		Object.assign(chatIntegrationService, {
-			getShortenCallback: jest.fn().mockReturnValue(shortenCallback),
+			getShortenCallback: vi.fn().mockReturnValue(shortenCallback),
 		});
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
@@ -346,7 +359,7 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('adds Slack reactions to the current message context', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -397,7 +410,7 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('adds Slack reactions to an explicit message target', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -445,7 +458,7 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('returns a structured error when a Slack reaction has no message target', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -514,10 +527,10 @@ describe('ChatIntegrationActionExecutor', () => {
 				isMentionable: true,
 				url: 'https://linear.app/n8n/profiles/user-1',
 			}),
-			labels: jest.fn().mockResolvedValue({ nodes: [{ id: 'label-1', name: 'Bug' }] }),
+			labels: vi.fn().mockResolvedValue({ nodes: [{ id: 'label-1', name: 'Bug' }] }),
 		};
 		const linearClient = {
-			createIssue: jest.fn().mockResolvedValue({
+			createIssue: vi.fn().mockResolvedValue({
 				issue: Promise.resolve(issue),
 				issueId: 'issue-uuid',
 			}),
@@ -617,7 +630,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			}),
 		};
 		const linearClient = {
-			createComment: jest.fn().mockResolvedValue({
+			createComment: vi.fn().mockResolvedValue({
 				comment: Promise.resolve(comment),
 				commentId: 'comment-1',
 			}),
@@ -682,10 +695,10 @@ describe('ChatIntegrationActionExecutor', () => {
 			url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
 			updatedAt: new Date('2026-05-18T10:05:00.000Z'),
 			state: Promise.resolve({ id: 'state-2', name: 'In Progress', type: 'started' }),
-			labels: jest.fn().mockResolvedValue({ nodes: [{ id: 'label-2', name: 'Customer' }] }),
+			labels: vi.fn().mockResolvedValue({ nodes: [{ id: 'label-2', name: 'Customer' }] }),
 		};
 		const linearClient = {
-			updateIssue: jest.fn().mockResolvedValue({
+			updateIssue: vi.fn().mockResolvedValue({
 				issue: Promise.resolve(issue),
 			}),
 		};

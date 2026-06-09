@@ -1,5 +1,5 @@
-import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialProvider, InterruptibleToolContext } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	askCredentialInputSchema,

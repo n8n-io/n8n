@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
@@ -6,9 +5,10 @@ import {
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
+import { mock } from 'vitest-mock-extended';
 
-import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeCatalogService } from '@/node-catalog';
+import type { EphemeralNodeExecutor } from '@/node-execution';
 
 import {
 	AgentsToolsService,
@@ -16,13 +16,13 @@ import {
 	isExecutableNodeType,
 } from '../agents-tools.service';
 
-jest.mock('@n8n/workflow-sdk', () => ({
-	validateNodeConfig: jest.fn().mockReturnValue({ valid: true, errors: [] }),
+vi.mock('@n8n/workflow-sdk', () => ({
+	validateNodeConfig: vi.fn().mockReturnValue({ valid: true, errors: [] }),
 }));
 
 const ctx = {
 	resumeData: undefined,
-	suspend: jest.fn().mockResolvedValue(undefined as never),
+	suspend: vi.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
 
@@ -53,7 +53,7 @@ function makeCredentialProvider(
 
 describe('AgentsToolsService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getSharedTools()', () => {
@@ -232,7 +232,7 @@ describe('AgentsToolsService', () => {
 		}
 
 		beforeEach(() => {
-			jest.mocked(validateNodeConfig).mockReturnValue({ valid: true, errors: [] });
+			vi.mocked(validateNodeConfig).mockReturnValue({ valid: true, errors: [] });
 		});
 
 		it('refuses to run trigger nodes', async () => {
@@ -288,7 +288,7 @@ describe('AgentsToolsService', () => {
 		});
 
 		it('returns an error and skips executeInline when validation fails', async () => {
-			jest.mocked(validateNodeConfig).mockReturnValue({
+			vi.mocked(validateNodeConfig).mockReturnValue({
 				valid: false,
 				errors: [{ path: 'method', message: 'Field "method" has invalid value.' }],
 			});

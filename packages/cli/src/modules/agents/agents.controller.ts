@@ -52,7 +52,6 @@ import { AgentsCredentialProvider } from './adapters/agents-credential-provider'
 import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { messagesToDto } from './agent-message-mapper';
-import { AgentUploadMiddleware, cleanupUploadedTempFiles } from './agent-upload.middleware';
 import {
 	type FlushableResponse,
 	initSseStream,
@@ -60,16 +59,17 @@ import {
 	type ToolEventCallbacks,
 } from './agent-sse-stream';
 import { AgentTaskService } from './agent-task.service';
+import { AgentUploadMiddleware, cleanupUploadedTempFiles } from './agent-upload.middleware';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
+import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { SlackAppSetupService } from './integrations/slack-app-setup.service';
 import { filterOfferedAgentModelProviders } from './model-catalog';
 import { AgentRepository } from './repositories/agent.repository';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
-import type { Agent } from './entities/agent.entity';
 
 const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 

@@ -1,6 +1,7 @@
 import type { User } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -9,7 +10,7 @@ import { N8NIdentifier } from '../n8n-identifier';
 
 describe('N8NIdentifier', () => {
 	let identifier: N8NIdentifier;
-	let mockAuthService: jest.Mocked<AuthService>;
+	let mockAuthService: Mocked<AuthService>;
 
 	const mockUser = mock<User>({ id: 'user-123' });
 
@@ -20,7 +21,7 @@ describe('N8NIdentifier', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('validateOptions', () => {

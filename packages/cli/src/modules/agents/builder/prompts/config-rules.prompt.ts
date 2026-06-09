@@ -1,9 +1,8 @@
+import { AgentModelSchema, RunnableAgentJsonConfigSchema } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-
-import { AgentModelSchema, RunnableAgentJsonConfigSchema } from '@n8n/api-types';
 
 import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer';
 

@@ -3,7 +3,6 @@ import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { ActiveWorkflows, InstanceSettings } from 'n8n-core';
 import type {
 	ExecutionError,
@@ -15,8 +14,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
 import { createDeferredPromise, WorkflowActivationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -37,7 +36,7 @@ describe('ActiveWorkflowManager', () => {
 	const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: false });
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		activeWorkflowManager = new ActiveWorkflowManager(
 			mockLogger(),
 			mock(),
@@ -107,11 +106,8 @@ describe('ActiveWorkflowManager', () => {
 			test.each<[WorkflowActivateMode]>([['init'], ['leadershipChange']])(
 				'should skip inactive workflow in `%s` activation mode',
 				async (mode) => {
-					const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
-					const addNonWebhookTriggersSpy = jest.spyOn(
-						activeWorkflowManager,
-						'addNonWebhookTriggers',
-					);
+					const addWebhooksSpy = vi.spyOn(activeWorkflowManager, 'addWebhooks');
+					const addNonWebhookTriggersSpy = vi.spyOn(activeWorkflowManager, 'addNonWebhookTriggers');
 					workflowRepository.findById.mockResolvedValue(
 						mock<WorkflowEntity>({ active: false, activeVersionId: null, activeVersion: null }),
 					);
@@ -127,11 +123,8 @@ describe('ActiveWorkflowManager', () => {
 			test.each<[WorkflowActivateMode]>([['init'], ['leadershipChange'], ['activate']])(
 				'should skip archived workflow in `%s` activation mode',
 				async (mode) => {
-					const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
-					const addNonWebhookTriggersSpy = jest.spyOn(
-						activeWorkflowManager,
-						'addNonWebhookTriggers',
-					);
+					const addWebhooksSpy = vi.spyOn(activeWorkflowManager, 'addWebhooks');
+					const addNonWebhookTriggersSpy = vi.spyOn(activeWorkflowManager, 'addNonWebhookTriggers');
 					workflowRepository.findById.mockResolvedValue(
 						mock<WorkflowEntity>({
 							id: 'archived-id',
@@ -153,7 +146,7 @@ describe('ActiveWorkflowManager', () => {
 
 	describe('addActiveWorkflows', () => {
 		test('should prevent concurrent activations', async () => {
-			const getAllActiveIds = jest.spyOn(workflowRepository, 'getAllActiveIds');
+			const getAllActiveIds = workflowRepository.getAllActiveIds;
 
 			workflowRepository.getAllActiveIds.mockImplementation(
 				async () => await new Promise((resolve) => setTimeout(() => resolve(['workflow-1']), 50)),
@@ -204,7 +197,7 @@ describe('ActiveWorkflowManager', () => {
 				node: triggerNode,
 			});
 
-			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(activationError);
+			vi.spyOn(activeWorkflowManager, 'add').mockRejectedValue(activationError);
 
 			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
 				workflowId: 'wf-1',
@@ -232,7 +225,7 @@ describe('ActiveWorkflowManager', () => {
 		});
 
 		test('should not include nodeId in broadcast when error has no node', async () => {
-			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
+			vi.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
 
 			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
 				workflowId: 'wf-1',
@@ -300,9 +293,9 @@ describe('ActiveWorkflowManager', () => {
 			workflowRepository.findById.mockResolvedValue(workflowEntity);
 
 			// Mock the add method to throw an error (simulating activation failure)
-			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Authorization failed'));
+			vi.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Authorization failed'));
 
-			const executeErrorWorkflowSpy = jest
+			const executeErrorWorkflowSpy = vi
 				.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
 				.mockImplementation(() => {});
 
@@ -329,7 +322,7 @@ describe('ActiveWorkflowManager', () => {
 		let scopedLogger: Logger;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 			workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
 			activeWorkflows.remove.mockResolvedValue(true);
@@ -337,7 +330,7 @@ describe('ActiveWorkflowManager', () => {
 			executionService.createErrorExecution.mockResolvedValue(undefined);
 
 			scopedLogger = mock<Logger>();
-			const rootLogger = mock<Logger>({ scoped: jest.fn().mockReturnValue(scopedLogger) });
+			const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
 			activeWorkflowManager = new ActiveWorkflowManager(
 				rootLogger,
@@ -513,10 +506,10 @@ describe('ActiveWorkflowManager', () => {
 				const node = mock<INode>({ name: 'Trigger Node' });
 				const triggerError = new Error('Trigger connection failed');
 
-				const executeErrorWorkflowSpy = jest
+				const executeErrorWorkflowSpy = vi
 					.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
 					.mockImplementation(() => {});
-				const addQueuedWorkflowActivationSpy = jest.spyOn(
+				const addQueuedWorkflowActivationSpy = vi.spyOn(
 					activeWorkflowManager as unknown as Record<
 						'addQueuedWorkflowActivation',
 						(a: WorkflowActivateMode, w: WorkflowEntity) => void
@@ -558,7 +551,7 @@ describe('ActiveWorkflowManager', () => {
 				const node = mock<INode>({ name: 'Trigger Node' });
 				const executionError = mock<ExecutionError>();
 
-				const executeErrorWorkflowSpy = jest
+				const executeErrorWorkflowSpy = vi
 					.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
 					.mockImplementation(() => {});
 

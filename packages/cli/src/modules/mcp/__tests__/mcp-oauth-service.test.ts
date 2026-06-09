@@ -1,9 +1,10 @@
+import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
-import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
@@ -14,13 +15,13 @@ import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
 import { OAuthSessionService } from '../oauth-session.service';
 
-let logger: jest.Mocked<Logger>;
-let oauthSessionService: jest.Mocked<OAuthSessionService>;
-let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
-let tokenService: jest.Mocked<McpOAuthTokenService>;
-let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
+let logger: Mocked<Logger>;
+let oauthSessionService: Mocked<OAuthSessionService>;
+let oauthClientRepository: Mocked<OAuthClientRepository>;
+let tokenService: Mocked<McpOAuthTokenService>;
+let authorizationCodeService: Mocked<McpOAuthAuthorizationCodeService>;
 let service: McpOAuthService;
-let userConsentRepository: jest.Mocked<UserConsentRepository>;
+let userConsentRepository: Mocked<UserConsentRepository>;
 
 describe('McpOAuthService', () => {
 	beforeAll(() => {
@@ -42,7 +43,7 @@ describe('McpOAuthService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		tokenService.getCanonicalResourceUrl.mockReturnValue('https://n8n.example.com/mcp-server/http');
 	});
 

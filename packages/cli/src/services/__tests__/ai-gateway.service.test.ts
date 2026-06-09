@@ -1,14 +1,15 @@
-import type { GlobalConfig } from '@n8n/config';
 import type { LicenseState } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import type { GlobalConfig } from '@n8n/config';
+import type { Project, User, UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Project, User, UserRepository } from '@n8n/db';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@/services/url.service';
 
@@ -36,20 +37,20 @@ function makeService({
 	baseUrl = BASE_URL as string | null,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
-	userRepository = mock<UserRepository>({ findOneBy: jest.fn().mockResolvedValue(null) }),
+	userRepository = mock<UserRepository>({ findOneBy: vi.fn().mockResolvedValue(null) }),
 	urlService = mock<UrlService>({
-		getInstanceBaseUrl: jest.fn().mockReturnValue(INSTANCE_BASE_URL),
+		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
 } = {}) {
 	const globalConfig = {
 		aiAssistant: { baseUrl: baseUrl ?? undefined },
 	} as unknown as GlobalConfig;
 	const license = mock<License>({
-		loadCertStr: jest.fn().mockResolvedValue(LICENSE_CERT),
-		getConsumerId: jest.fn().mockReturnValue(CONSUMER_ID),
+		loadCertStr: vi.fn().mockResolvedValue(LICENSE_CERT),
+		getConsumerId: vi.fn().mockReturnValue(CONSUMER_ID),
 	});
 	const licenseState = mock<LicenseState>({
-		isAiGatewayLicensed: jest.fn().mockReturnValue(isAiGatewayLicensed),
+		isAiGatewayLicensed: vi.fn().mockReturnValue(isAiGatewayLicensed),
 	});
 	const instanceSettings = mock<InstanceSettings>({ instanceId: INSTANCE_ID });
 	return new AiGatewayService(
@@ -64,35 +65,35 @@ function makeService({
 }
 
 /** Mock: config fetch succeeds, then credentials fetch returns a token. */
-function mockConfigThenToken(fetchMock: jest.Mock, token = 'mock-jwt-token') {
+function mockConfigThenToken(fetchMock: Mock, token = 'mock-jwt-token') {
 	fetchMock
 		.mockResolvedValueOnce({
 			ok: true,
-			json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+			json: vi.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
 		})
 		.mockResolvedValueOnce({
 			ok: true,
-			json: jest.fn().mockResolvedValue({ token, expiresIn: 3600 }),
+			json: vi.fn().mockResolvedValue({ token, expiresIn: 3600 }),
 		});
 }
 
 describe('AiGatewayService', () => {
-	let fetchMock: jest.Mock;
+	let fetchMock: Mock;
 
 	beforeEach(() => {
-		fetchMock = jest.fn();
+		fetchMock = vi.fn();
 		global.fetch = fetchMock as unknown as typeof fetch;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getGatewayConfig()', () => {
 		it('fetches and returns config from the gateway', async () => {
 			fetchMock.mockResolvedValueOnce({
 				ok: true,
-				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+				json: vi.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
 			});
 			const service = makeService();
 
@@ -105,7 +106,7 @@ describe('AiGatewayService', () => {
 		it('caches config and does not re-fetch within TTL', async () => {
 			fetchMock.mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+				json: vi.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
 			});
 			const service = makeService();
 
@@ -129,7 +130,7 @@ describe('AiGatewayService', () => {
 		it('throws UserError when gateway returns invalid config shape', async () => {
 			fetchMock.mockResolvedValueOnce({
 				ok: true,
-				json: jest.fn().mockResolvedValue({ nodes: 'not-an-array' }),
+				json: vi.fn().mockResolvedValue({ nodes: 'not-an-array' }),
 			});
 			const service = makeService();
 			await expect(service.getGatewayConfig()).rejects.toThrow(UserError);
@@ -154,7 +155,7 @@ describe('AiGatewayService', () => {
 		it('throws UserError for unsupported credential type', async () => {
 			fetchMock.mockResolvedValueOnce({
 				ok: true,
-				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+				json: vi.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
 			});
 			const service = makeService();
 			await expect(
@@ -213,7 +214,7 @@ describe('AiGatewayService', () => {
 
 		it('includes userEmail and userName in token body when user exists', async () => {
 			const userRepository = mock<UserRepository>({
-				findOneBy: jest
+				findOneBy: vi
 					.fn()
 					.mockResolvedValue(
 						mock<User>({ email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' }),
@@ -240,7 +241,7 @@ describe('AiGatewayService', () => {
 
 		it('omits userName from token body when user has no first or last name', async () => {
 			const userRepository = mock<UserRepository>({
-				findOneBy: jest
+				findOneBy: vi
 					.fn()
 					.mockResolvedValue(
 						mock<User>({ email: 'alice@example.com', firstName: '', lastName: '' }),
@@ -452,10 +453,10 @@ describe('AiGatewayService', () => {
 				},
 			};
 			fetchMock
-				.mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue(customConfig) })
+				.mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue(customConfig) })
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
+					json: vi.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
 				});
 			const service = makeService();
 
@@ -485,10 +486,10 @@ describe('AiGatewayService', () => {
 				},
 			};
 			fetchMock
-				.mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue(customConfig) })
+				.mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue(customConfig) })
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
+					json: vi.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
 				});
 			const service = makeService();
 
@@ -510,11 +511,11 @@ describe('AiGatewayService', () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+					json: vi.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ expiresIn: 3600 }), // token missing
+					json: vi.fn().mockResolvedValue({ expiresIn: 3600 }), // token missing
 				});
 			const service = makeService();
 			await expect(
@@ -533,11 +534,11 @@ describe('AiGatewayService', () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+					json: vi.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ budget: 10, balance: 7 }),
+					json: vi.fn().mockResolvedValue({ budget: 10, balance: 7 }),
 				});
 			const service = makeService();
 
@@ -550,11 +551,11 @@ describe('AiGatewayService', () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+					json: vi.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ budget: 10, balance: 7 }),
+					json: vi.fn().mockResolvedValue({ budget: 10, balance: 7 }),
 				});
 			const service = makeService();
 
@@ -578,7 +579,7 @@ describe('AiGatewayService', () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+					json: vi.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
 				})
 				.mockResolvedValueOnce({ ok: false, status: 429 });
 			const service = makeService();
@@ -589,11 +590,11 @@ describe('AiGatewayService', () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+					json: vi.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ budget: 'not-a-number' }),
+					json: vi.fn().mockResolvedValue({ budget: 'not-a-number' }),
 				});
 			const service = makeService();
 			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
@@ -615,11 +616,11 @@ describe('AiGatewayService', () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+					json: vi.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue(MOCK_USAGE_RESPONSE),
+					json: vi.fn().mockResolvedValue(MOCK_USAGE_RESPONSE),
 				});
 			const service = makeService();
 
@@ -632,11 +633,11 @@ describe('AiGatewayService', () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+					json: vi.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue(MOCK_USAGE_RESPONSE),
+					json: vi.fn().mockResolvedValue(MOCK_USAGE_RESPONSE),
 				});
 			const service = makeService();
 
@@ -655,7 +656,7 @@ describe('AiGatewayService', () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+					json: vi.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
 				})
 				.mockResolvedValueOnce({ ok: false, status: 500 });
 			const service = makeService();
@@ -666,11 +667,11 @@ describe('AiGatewayService', () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+					json: vi.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ entries: 'not-an-array', total: 0 }),
+					json: vi.fn().mockResolvedValue({ entries: 'not-an-array', total: 0 }),
 				});
 			const service = makeService();
 			await expect(service.getUsage(USER_ID, 0, 10)).rejects.toThrow(UserError);
@@ -681,10 +682,10 @@ describe('AiGatewayService', () => {
 		it('re-fetches config after TTL expires', async () => {
 			fetchMock.mockResolvedValue({
 				ok: true,
-				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+				json: vi.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
 			});
 			const service = makeService();
-			const dateSpy = jest.spyOn(Date, 'now');
+			const dateSpy = vi.spyOn(Date, 'now');
 
 			dateSpy.mockReturnValue(0);
 			await service.getGatewayConfig();
@@ -727,11 +728,11 @@ describe('AiGatewayService', () => {
 			fetchMock
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ token: 'new-token', expiresIn: 3600 }),
+					json: vi.fn().mockResolvedValue({ token: 'new-token', expiresIn: 3600 }),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: jest.fn().mockResolvedValue({ entries: [], total: 0 }),
+					json: vi.fn().mockResolvedValue({ entries: [], total: 0 }),
 				});
 
 			await service.getUsage('new-user', 0, 1);
@@ -749,14 +750,14 @@ describe('AiGatewayService', () => {
 			// Pre-warm config cache
 			fetchMock.mockResolvedValueOnce({
 				ok: true,
-				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+				json: vi.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
 			});
 			await service.getGatewayConfig();
 
 			// Only one token response queued — concurrent calls must share it
 			fetchMock.mockResolvedValueOnce({
 				ok: true,
-				json: jest.fn().mockResolvedValue({ token: 'shared-token', expiresIn: 3600 }),
+				json: vi.fn().mockResolvedValue({ token: 'shared-token', expiresIn: 3600 }),
 			});
 
 			const [r1, r2, r3] = await Promise.all([

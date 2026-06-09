@@ -1,10 +1,10 @@
+import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
 
 import type { AuthorizationCode } from './database/entities/oauth-authorization-code.entity';
 import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
-import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 /**
  * Handles OAuth 2.1 authorization code lifecycle for MCP server

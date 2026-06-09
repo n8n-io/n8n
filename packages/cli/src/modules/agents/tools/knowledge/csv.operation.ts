@@ -1,10 +1,3 @@
-import type {
-	CsvAggregateInput,
-	CsvDistinctInput,
-	CsvProfileInput,
-	CsvQueryInput,
-} from './schemas';
-import type { WorkspaceFiles } from './file-references';
 import {
 	CSV_DISTINCT_TRACK_LIMIT,
 	CSV_MAX_AGGREGATE_GROUPS,
@@ -28,6 +21,13 @@ import {
 	type CsvColumnProfileState,
 	type CsvDistinctTracker,
 } from './csv-helpers';
+import type { WorkspaceFiles } from './file-references';
+import type {
+	CsvAggregateInput,
+	CsvDistinctInput,
+	CsvProfileInput,
+	CsvQueryInput,
+} from './schemas';
 
 export async function queryCsv(workspaceRoot: string, files: WorkspaceFiles, input: CsvQueryInput) {
 	const file = resolveCsvFile(files, input.file);

@@ -1,5 +1,5 @@
-import { Logger } from '@n8n/backend-common';
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
 	WorkflowHistory,
@@ -15,11 +15,11 @@ import { In } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
 
-import { WorkflowFinderService } from '../workflow-finder.service';
-
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
+
+import { WorkflowFinderService } from '../workflow-finder.service';
 
 @Service()
 export class WorkflowHistoryService {

@@ -1,42 +1,42 @@
 import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { NodeCatalogService } from '../node-catalog.service';
 
-const MockNodeTypeParser = jest.fn();
-const mockSetSchemaBaseDirs = jest.fn();
-const mockSearchCodeBuilderNodes = jest.fn();
-const mockGetNodeTypes = jest.fn().mockReturnValue('get-result');
-const mockGetSuggestedNodes = jest.fn().mockReturnValue('suggest-result');
+const MockNodeTypeParser = vi.fn();
+const mockSetSchemaBaseDirs = vi.fn();
+const mockSearchCodeBuilderNodes = vi.fn();
+const mockGetNodeTypes = vi.fn().mockReturnValue('get-result');
+const mockGetSuggestedNodes = vi.fn().mockReturnValue('suggest-result');
 
-jest.mock('@n8n/ai-utilities/node-catalog', () => ({
+vi.mock('@n8n/ai-utilities/node-catalog', () => ({
 	NodeTypeParser: MockNodeTypeParser,
 	searchCodeBuilderNodes: (...args: unknown[]) => mockSearchCodeBuilderNodes(...args),
 	getNodeTypes: (...args: unknown[]) => mockGetNodeTypes(...args),
 	getSuggestedNodes: (...args: unknown[]) => mockGetSuggestedNodes(...args),
 }));
 
-jest.mock('@n8n/workflow-sdk', () => ({
+vi.mock('@n8n/workflow-sdk', () => ({
 	setSchemaBaseDirs: (...args: unknown[]) => mockSetSchemaBaseDirs(...(args as [string[]])),
 }));
 
-jest.mock('fs', () => ({
-	existsSync: jest.fn().mockReturnValue(true),
+vi.mock('fs', () => ({
+	existsSync: vi.fn().mockReturnValue(true),
 }));
 
-const mockLogger = (): Logger =>
-	mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) });
+const mockLogger = (): Logger => mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) });
 
 describe('NodeCatalogService', () => {
 	let service: NodeCatalogService;
-	let loadNodesAndCredentials: jest.Mocked<LoadNodesAndCredentials>;
+	let loadNodesAndCredentials: Mocked<LoadNodesAndCredentials>;
 	let postProcessorCallback: (() => Promise<void>) | undefined;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockSearchCodeBuilderNodes.mockReturnValue({
 			results: 'search-result',
 			queriesWithNoResults: [],
@@ -44,11 +44,11 @@ describe('NodeCatalogService', () => {
 		postProcessorCallback = undefined;
 
 		loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
-			addPostProcessor: jest.fn().mockImplementation((cb: () => Promise<void>) => {
+			addPostProcessor: vi.fn().mockImplementation((cb: () => Promise<void>) => {
 				postProcessorCallback = cb;
 			}),
-			postProcessLoaders: jest.fn(),
-			collectTypes: jest.fn().mockResolvedValue({
+			postProcessLoaders: vi.fn(),
+			collectTypes: vi.fn().mockResolvedValue({
 				nodes: [{ name: 'n8n-nodes-base.webhook' }, { name: 'n8n-nodes-base.set' }],
 			}),
 		});

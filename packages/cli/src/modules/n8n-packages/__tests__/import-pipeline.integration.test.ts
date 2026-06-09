@@ -643,7 +643,7 @@ describe('ImportPipeline event emission', () => {
 	it('emits workflow-created per workflow plus one workflows-imported on success', async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		try {
 			await importPackage({
@@ -677,7 +677,7 @@ describe('ImportPipeline event emission', () => {
 	it('emits no events when the prepare-phase validation rejects the package', async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		try {
 			await expect(

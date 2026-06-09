@@ -8,20 +8,21 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+import type { INode } from 'n8n-workflow';
 import nock from 'nock';
 import { v4 as uuid } from 'uuid';
-import type { INode } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import * as utils from '../shared/utils';
+import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
 import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
 import { Telemetry } from '@/telemetry';
-import { createCredentials } from '../shared/db/credentials';
-import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 
+import { createCredentials } from '../shared/db/credentials';
 import { createUser } from '../shared/db/users';
+import * as utils from '../shared/utils';
 
 mockInstance(Telemetry);
 
@@ -111,11 +112,11 @@ describe('Workflow Status API', () => {
 	let savedWorkflow: WorkflowEntity;
 	let savedCredential: CredentialsEntity;
 	let owner: User;
-	let isLeaderSpy: jest.SpyInstance;
+	let isLeaderSpy: MockInstance;
 
 	beforeAll(async () => {
 		// Force leader role so N8nResolverSeeder.seed() runs (not no-op for followers).
-		isLeaderSpy = jest
+		isLeaderSpy = vi
 			.spyOn(Container.get(InstanceSettings), 'isLeader', 'get')
 			.mockReturnValue(true);
 

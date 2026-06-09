@@ -6,7 +6,8 @@ import {
 	type ModelConfig,
 } from '@n8n/agents';
 import type { SubAgentSource } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	createN8nDelegateSubAgentTool,
@@ -56,11 +57,11 @@ const foregroundResult: SubAgentForegroundResult = {
 };
 
 describe('createN8nDelegateSubAgentTool', () => {
-	let runner: jest.Mocked<SubAgentForegroundRunner>;
-	let credentialProvider: jest.Mocked<CredentialProvider>;
+	let runner: Mocked<SubAgentForegroundRunner>;
+	let credentialProvider: Mocked<CredentialProvider>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		runner = mock<SubAgentForegroundRunner>();
 		runner.runForeground.mockResolvedValue(foregroundResult);
 		credentialProvider = mock<CredentialProvider>();
@@ -229,7 +230,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	});
 
 	it('routes inline subAgentId through runInlineSubAgent helpers instead of the foreground runner', async () => {
-		const runInlineSubAgent = jest.fn().mockResolvedValue({
+		const runInlineSubAgent = vi.fn().mockResolvedValue({
 			status: 'completed',
 			taskPath: '/root/research_api_0',
 			runId: 'inline-run-1',

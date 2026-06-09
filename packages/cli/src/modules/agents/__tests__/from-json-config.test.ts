@@ -1,13 +1,13 @@
 import * as AgentsRuntime from '@n8n/agents';
 import type { AgentSnapshot, BuiltProviderTool, BuiltTool, ToolDescriptor } from '@n8n/agents';
-import type { JSONSchema7 } from 'json-schema';
-
 import {
 	AgentJsonConfigSchema,
 	RunnableAgentJsonConfigSchema,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
+import type { JSONSchema7 } from 'json-schema';
+
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
@@ -16,7 +16,7 @@ type EmbeddingProviderOpts = {
 	baseURL?: string;
 };
 
-jest.mock('@ai-sdk/openai', () => ({
+vi.mock('@ai-sdk/openai', () => ({
 	createOpenAI: (opts?: EmbeddingProviderOpts) =>
 		Object.assign(
 			(model: string) => ({
@@ -50,7 +50,7 @@ describe('sub-agent difficulty contract', () => {
 
 describe('buildFromJson()', () => {
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	const makeConfig = (overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig => ({
@@ -62,12 +62,12 @@ describe('buildFromJson()', () => {
 	});
 
 	const makeMockToolExecutor = (): ToolExecutor => ({
-		executeTool: jest.fn().mockResolvedValue({ result: 'tool result' }),
+		executeTool: vi.fn().mockResolvedValue({ result: 'tool result' }),
 	});
 
 	const makeMockCredentialProvider = () => ({
-		resolve: jest.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
-		list: jest.fn().mockResolvedValue([]),
+		resolve: vi.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+		list: vi.fn().mockResolvedValue([]),
 	});
 
 	const makeToolDescriptor = (overrides: Partial<ToolDescriptor> = {}): ToolDescriptor => ({
@@ -142,38 +142,38 @@ describe('buildFromJson()', () => {
 	const getDefaultExecutionOptions = (agent: unknown) =>
 		(agent as { defaultExecutionOptions?: { maxIterations?: number } }).defaultExecutionOptions;
 
-	const makeMockMemoryFactory = () => jest.fn();
+	const makeMockMemoryFactory = () => vi.fn();
 
 	const makeMockMemoryBackend = () => ({
-		getThread: jest.fn(),
-		saveThread: jest.fn(),
-		deleteThread: jest.fn(),
-		getMessages: jest.fn().mockResolvedValue([]),
-		saveMessages: jest.fn(),
-		deleteMessages: jest.fn(),
-		appendObservationLogEntries: jest.fn(),
-		getActiveObservationLog: jest.fn(),
-		getObservationLog: jest.fn(),
-		dropObservationLogEntries: jest.fn(),
-		supersedeObservationLogEntries: jest.fn(),
-		applyObservationLogReflection: jest.fn(),
-		getMessagesForObservationScope: jest.fn(),
-		getCursor: jest.fn(),
-		setCursor: jest.fn(),
-		acquireObservationLogTaskLock: jest.fn(),
-		releaseObservationLogTaskLock: jest.fn(),
+		getThread: vi.fn(),
+		saveThread: vi.fn(),
+		deleteThread: vi.fn(),
+		getMessages: vi.fn().mockResolvedValue([]),
+		saveMessages: vi.fn(),
+		deleteMessages: vi.fn(),
+		appendObservationLogEntries: vi.fn(),
+		getActiveObservationLog: vi.fn(),
+		getObservationLog: vi.fn(),
+		dropObservationLogEntries: vi.fn(),
+		supersedeObservationLogEntries: vi.fn(),
+		applyObservationLogReflection: vi.fn(),
+		getMessagesForObservationScope: vi.fn(),
+		getCursor: vi.fn(),
+		setCursor: vi.fn(),
+		acquireObservationLogTaskLock: vi.fn(),
+		releaseObservationLogTaskLock: vi.fn(),
 		episodic: {
-			saveEntryWithSources: jest.fn(),
-			searchEntries: jest.fn(),
-			getEntrySources: jest.fn(),
-			applyReflection: jest.fn(),
-			getCursor: jest.fn(),
-			setCursor: jest.fn(),
+			saveEntryWithSources: vi.fn(),
+			searchEntries: vi.fn(),
+			getEntrySources: vi.fn(),
+			applyReflection: vi.fn(),
+			getCursor: vi.fn(),
+			setCursor: vi.fn(),
 		},
-		describe: jest
+		describe: vi
 			.fn()
 			.mockReturnValue({ name: 'n8n', constructorName: 'N8nMemory', connectionParams: null }),
-		close: jest.fn(),
+		close: vi.fn(),
 	});
 
 	it('sets name, model, and instructions', async () => {
@@ -410,9 +410,9 @@ describe('buildFromJson()', () => {
 		const resolvedTool = {
 			name: 'run_workflow',
 			description: 'Run My Workflow',
-			handler: jest.fn().mockResolvedValue({ done: true }),
+			handler: vi.fn().mockResolvedValue({ done: true }),
 		};
-		const resolveTool = jest.fn().mockResolvedValue(resolvedTool);
+		const resolveTool = vi.fn().mockResolvedValue(resolvedTool);
 
 		const agent = await buildFromJson(
 			config,
@@ -439,9 +439,9 @@ describe('buildFromJson()', () => {
 		const resolvedTool = {
 			name: 'run_workflow',
 			description: 'Run My Workflow',
-			handler: jest.fn().mockResolvedValue({ done: true }),
+			handler: vi.fn().mockResolvedValue({ done: true }),
 		};
-		const resolveTool = jest.fn().mockResolvedValue(resolvedTool);
+		const resolveTool = vi.fn().mockResolvedValue(resolvedTool);
 
 		const agent = await buildFromJson(
 			config,
@@ -475,9 +475,9 @@ describe('buildFromJson()', () => {
 		const resolvedTool = {
 			name: 'my_node_tool',
 			description: 'A node tool',
-			handler: jest.fn().mockResolvedValue({ done: true }),
+			handler: vi.fn().mockResolvedValue({ done: true }),
 		};
-		const resolveTool = jest.fn().mockResolvedValue(resolvedTool);
+		const resolveTool = vi.fn().mockResolvedValue(resolvedTool);
 
 		const agent = await buildFromJson(
 			config,
@@ -503,9 +503,9 @@ describe('buildFromJson()', () => {
 		const resolvedTool = {
 			name: 'run_workflow',
 			description: 'Run My Workflow',
-			handler: jest.fn().mockResolvedValue({ done: true }),
+			handler: vi.fn().mockResolvedValue({ done: true }),
 		};
-		const resolveTool = jest.fn().mockResolvedValue(resolvedTool);
+		const resolveTool = vi.fn().mockResolvedValue(resolvedTool);
 
 		const agent = await buildFromJson(
 			config,
@@ -830,7 +830,7 @@ describe('buildFromJson()', () => {
 			},
 		});
 
-		const memoryFactory = jest.fn().mockReturnValue(mockMemory);
+		const memoryFactory = vi.fn().mockReturnValue(mockMemory);
 
 		const agent = await buildFromJson(
 			config,
@@ -866,7 +866,7 @@ describe('buildFromJson()', () => {
 			{
 				toolExecutor: makeMockToolExecutor(),
 				credentialProvider: makeMockCredentialProvider(),
-				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
 			},
 		);
 
@@ -874,14 +874,14 @@ describe('buildFromJson()', () => {
 	});
 
 	it('configures observational memory worker models with their own credentials', async () => {
-		const observeSpy = jest.spyOn(AgentsRuntime, 'createObservationLogObserveFn');
-		const reflectSpy = jest.spyOn(AgentsRuntime, 'createObservationLogReflectFn');
+		const observeSpy = vi.spyOn(AgentsRuntime, 'createObservationLogObserveFn');
+		const reflectSpy = vi.spyOn(AgentsRuntime, 'createObservationLogReflectFn');
 		const credentialProvider = {
-			resolve: jest.fn(async (credentialId: string) => ({
+			resolve: vi.fn(async (credentialId: string) => ({
 				apiKey: `${credentialId}-api-key`,
 				url: `https://${credentialId}.example/v1`,
 			})),
-			list: jest.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue([]),
 		};
 		const config = makeConfig({
 			memory: {
@@ -903,7 +903,7 @@ describe('buildFromJson()', () => {
 			{
 				toolExecutor: makeMockToolExecutor(),
 				credentialProvider,
-				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
 			},
 		);
 
@@ -932,7 +932,7 @@ describe('buildFromJson()', () => {
 			{
 				toolExecutor: makeMockToolExecutor(),
 				credentialProvider: makeMockCredentialProvider(),
-				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
 			},
 		);
 
@@ -943,11 +943,11 @@ describe('buildFromJson()', () => {
 
 	it('configures episodic memory with the OpenAI embedding credential', async () => {
 		const credentialProvider = {
-			resolve: jest.fn().mockResolvedValue({
+			resolve: vi.fn().mockResolvedValue({
 				apiKey: 'test-api-key',
 				url: 'https://custom.example/v1',
 			}),
-			list: jest.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue([]),
 		};
 		const config = makeConfig({
 			memory: {
@@ -967,7 +967,7 @@ describe('buildFromJson()', () => {
 			{
 				toolExecutor: makeMockToolExecutor(),
 				credentialProvider,
-				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
 			},
 		);
 
@@ -986,14 +986,14 @@ describe('buildFromJson()', () => {
 	});
 
 	it('configures episodic memory worker models with separate credentials from embeddings', async () => {
-		const extractSpy = jest.spyOn(AgentsRuntime, 'createEpisodicMemoryExtractFn');
-		const reflectSpy = jest.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
+		const extractSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryExtractFn');
+		const reflectSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
 		const credentialProvider = {
-			resolve: jest.fn(async (credentialId: string) => ({
+			resolve: vi.fn(async (credentialId: string) => ({
 				apiKey: `${credentialId}-api-key`,
 				url: `https://${credentialId}.example/v1`,
 			})),
-			list: jest.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue([]),
 		};
 		const config = makeConfig({
 			memory: {
@@ -1017,7 +1017,7 @@ describe('buildFromJson()', () => {
 			{
 				toolExecutor: makeMockToolExecutor(),
 				credentialProvider,
-				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
 			},
 		);
 
@@ -1053,7 +1053,7 @@ describe('buildFromJson()', () => {
 			{
 				toolExecutor: makeMockToolExecutor(),
 				credentialProvider: makeMockCredentialProvider(),
-				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
 			},
 		);
 
@@ -1066,7 +1066,7 @@ describe('buildFromJson()', () => {
 	it('skips memory when memory.enabled is false', async () => {
 		const config = makeConfig({ memory: { enabled: false, storage: 'n8n' } });
 
-		const memoryFactory = jest.fn();
+		const memoryFactory = vi.fn();
 
 		const agent = await buildFromJson(
 			config,
@@ -1089,7 +1089,7 @@ describe('buildFromJson()', () => {
 
 	describe('mcpServers', () => {
 		it('does not invoke buildMcpClient when mcpServers is absent', async () => {
-			const buildMcpClient = jest.fn();
+			const buildMcpClient = vi.fn();
 			await buildFromJson(
 				makeConfig(),
 				{},
@@ -1104,7 +1104,7 @@ describe('buildFromJson()', () => {
 		});
 
 		it('does not invoke buildMcpClient when mcpServers is an empty array', async () => {
-			const buildMcpClient = jest.fn();
+			const buildMcpClient = vi.fn();
 			await buildFromJson(
 				makeConfig({ mcpServers: [] }),
 				{},
@@ -1143,9 +1143,7 @@ describe('buildFromJson()', () => {
 		});
 
 		it('calls buildMcpClient once per configured server and passes each entry through', async () => {
-			const buildMcpClient = jest
-				.fn()
-				.mockImplementation(async () => ({ close: jest.fn() }) as never);
+			const buildMcpClient = vi.fn().mockImplementation(async () => ({ close: vi.fn() }) as never);
 			await buildFromJson(
 				makeConfig({
 					mcpServers: [

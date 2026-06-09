@@ -41,16 +41,16 @@ import { sanitizeFilename } from '@n8n/utils';
 import type { Response } from 'express';
 import multer from 'multer';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
 import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubUploadMiddleware } from './chat-hub-upload.middleware';
-import { ChatHubToolService } from './chat-hub-tool.service';
 import { extractAuthenticationMetadata } from './chat-hub-extractor';
+import { ChatHubToolService } from './chat-hub-tool.service';
+import { ChatHubUploadMiddleware } from './chat-hub-upload.middleware';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const chatHubUploadMiddleware = Container.get(ChatHubUploadMiddleware);
 

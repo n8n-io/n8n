@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { Logger } from '@n8n/backend-common';
 import type { Author } from 'chat';
 import { createHmac } from 'crypto';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { MockInstance, Mocked, MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { UrlService } from '@/services/url.service';
@@ -14,13 +14,11 @@ import type { AgentChatIntegrationContext } from '../../agent-chat-integration';
 import { loadTelegramAdapter } from '../../esm-loader';
 import { TelegramIntegration } from '../telegram-integration';
 
-jest.mock('../../esm-loader', () => ({
-	loadTelegramAdapter: jest.fn(),
+vi.mock('../../esm-loader', () => ({
+	loadTelegramAdapter: vi.fn(),
 }));
 
-const mockedLoadTelegramAdapter = loadTelegramAdapter as jest.MockedFunction<
-	typeof loadTelegramAdapter
->;
+const mockedLoadTelegramAdapter = loadTelegramAdapter as MockedFunction<typeof loadTelegramAdapter>;
 
 const expectedSecret = (encryptionKey: string, agentId: string, credentialId: string) =>
 	createHmac('sha256', encryptionKey).update(`telegram:${agentId}:${credentialId}`).digest('hex');
@@ -45,8 +43,8 @@ const makeContext = (
 
 const makeIntegration = (
 	opts: {
-		urlService?: jest.Mocked<UrlService>;
-		agentRepository?: jest.Mocked<AgentRepository>;
+		urlService?: Mocked<UrlService>;
+		agentRepository?: Mocked<AgentRepository>;
 		encryptionKey?: string;
 	} = {},
 ) => {
@@ -71,16 +69,16 @@ const makeIntegration = (
 };
 
 describe('TelegramIntegration.onBeforeConnect', () => {
-	let agentRepository: jest.Mocked<AgentRepository>;
+	let agentRepository: Mocked<AgentRepository>;
 	let integration: TelegramIntegration;
-	let fetchSpy: jest.SpyInstance;
+	let fetchSpy: MockInstance;
 
 	beforeEach(() => {
 		const built = makeIntegration();
 		integration = built.integration;
 		agentRepository = built.agentRepository;
 
-		fetchSpy = jest.spyOn(globalThis, 'fetch');
+		fetchSpy = vi.spyOn(globalThis, 'fetch');
 	});
 
 	afterEach(() => {
@@ -226,7 +224,7 @@ describe('TelegramIntegration.isUserAllowed', () => {
 });
 
 describe('TelegramIntegration secret token', () => {
-	const createTelegramAdapter = jest.fn();
+	const createTelegramAdapter = vi.fn();
 
 	beforeEach(() => {
 		createTelegramAdapter.mockReset();
@@ -274,7 +272,7 @@ describe('TelegramIntegration secret token', () => {
 	});
 
 	it('onAfterConnect sends secret_token to Telegram matching the secret used by the adapter', async () => {
-		const fetchSpy = jest
+		const fetchSpy = vi
 			.spyOn(globalThis, 'fetch')
 			.mockResolvedValue({ ok: true, text: async () => 'ok' } as Response);
 
@@ -297,7 +295,7 @@ describe('TelegramIntegration secret token', () => {
 	});
 
 	it('onAfterConnect honors a custom baseUrl from the credential (self-hosted Bot API)', async () => {
-		const fetchSpy = jest
+		const fetchSpy = vi
 			.spyOn(globalThis, 'fetch')
 			.mockResolvedValue({ ok: true, text: async () => 'ok' } as Response);
 
@@ -322,10 +320,10 @@ describe('TelegramIntegration secret token', () => {
 });
 
 describe('TelegramIntegration.onBeforeDisconnect', () => {
-	let fetchSpy: jest.SpyInstance;
+	let fetchSpy: MockInstance;
 
 	beforeEach(() => {
-		fetchSpy = jest.spyOn(globalThis, 'fetch');
+		fetchSpy = vi.spyOn(globalThis, 'fetch');
 	});
 
 	afterEach(() => {

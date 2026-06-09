@@ -1,6 +1,7 @@
+import type { McpTool } from '@n8n/api-types';
+
 import { LocalGateway } from '../filesystem/local-gateway';
 import type { LocalGatewayRequestEvent } from '../filesystem/local-gateway';
-import type { McpTool } from '@n8n/api-types';
 
 const SAMPLE_TOOL: McpTool = {
 	name: 'read_file',
@@ -160,7 +161,7 @@ describe('LocalGateway', () => {
 		});
 
 		it('should timeout after 60 seconds', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 
 			gateway.init(EMPTY_CAPABILITIES);
 
@@ -169,11 +170,11 @@ describe('LocalGateway', () => {
 				arguments: { filePath: 'slow.ts' },
 			});
 
-			jest.advanceTimersByTime(60_001);
+			vi.advanceTimersByTime(60_001);
 
 			await expect(callPromise).rejects.toThrow('timed out');
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should dispatch different tool names correctly', async () => {

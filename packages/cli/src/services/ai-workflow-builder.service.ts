@@ -6,7 +6,7 @@ import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
-import * as path from 'path';
+import { InstanceSettings, SsrfProtectionService } from 'n8n-core';
 import type {
 	INodeCredentials,
 	INodeParameters,
@@ -14,6 +14,7 @@ import type {
 	IUser,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
+import * as path from 'path';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
@@ -21,7 +22,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { InstanceSettings, SsrfProtectionService } from 'n8n-core';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { getBase } from '@/workflow-execute-additional-data';

@@ -1,7 +1,7 @@
 import type { UpdateSecuritySettingsDto } from '@n8n/api-types';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
@@ -32,7 +32,7 @@ describe('SecuritySettingsController', () => {
 	const flagBefore = process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT] = 'true';
 	});
 

@@ -4,10 +4,9 @@ import type { SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
 import { createResultError, createResultOk } from 'n8n-workflow';
-
-import { WorkflowsController } from '../workflows.controller';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -16,11 +15,13 @@ import type { ProjectService } from '@/services/project.service.ee';
 import { SsrfBlockedIpError } from 'n8n-core';
 import type { SsrfProtectionService } from 'n8n-core';
 
-jest.mock('axios');
+import { WorkflowsController } from '../workflows.controller';
+
+vi.mock('axios');
 
 describe('WorkflowsController', () => {
 	const controller = Object.create(WorkflowsController.prototype);
-	const axiosMock = axios.get as jest.Mock;
+	const axiosMock = axios.get as Mock;
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
 	const projectService = mock<ProjectService>();
@@ -34,7 +35,7 @@ describe('WorkflowsController', () => {
 		controller.ssrfConfig = ssrfConfig;
 		controller.ssrfProtectionService = ssrfProtectionService;
 		ssrfConfig.enabled = false;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getFromUrl', () => {
@@ -134,7 +135,7 @@ describe('WorkflowsController', () => {
 		});
 
 		describe('when URL protection is enabled', () => {
-			const mockLookup = jest.fn();
+			const mockLookup = vi.fn();
 
 			beforeEach(() => {
 				ssrfConfig.enabled = true;

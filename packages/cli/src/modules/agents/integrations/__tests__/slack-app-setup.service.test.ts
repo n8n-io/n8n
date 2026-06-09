@@ -1,6 +1,7 @@
 import type { User, UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -8,9 +9,9 @@ import type { CacheService } from '@/services/cache/cache.service';
 import type { UrlService } from '@/services/url.service';
 
 import type { AgentsService } from '../../agents.service';
+import type { AgentRepository } from '../../repositories/agent.repository';
 import type { ChatIntegrationService } from '../chat-integration.service';
 import { SlackAppSetupService } from '../slack-app-setup.service';
-import type { AgentRepository } from '../../repositories/agent.repository';
 
 const agent = {
 	id: 'agent-1',
@@ -25,30 +26,30 @@ const user = { id: 'user-1' } as User;
 
 function slackResponse(body: Record<string, unknown>): Response {
 	return {
-		json: jest.fn().mockResolvedValue(body),
+		json: vi.fn().mockResolvedValue(body),
 	} as unknown as Response;
 }
 
-function fetchParams(fetchMock: jest.Mock, callIndex: number) {
+function fetchParams(fetchMock: Mock, callIndex: number) {
 	const init = fetchMock.mock.calls[callIndex]?.[1] as RequestInit;
 	return new URLSearchParams(String(init.body));
 }
 
 describe('SlackAppSetupService', () => {
 	const originalFetch = global.fetch;
-	let fetchMock: jest.Mock;
+	let fetchMock: Mock;
 	let cacheStore: Map<string, unknown>;
-	let cacheService: jest.Mocked<CacheService>;
-	let cipher: jest.Mocked<Cipher>;
-	let credentialsService: jest.Mocked<CredentialsService>;
-	let userRepository: jest.Mocked<UserRepository>;
-	let agentRepository: jest.Mocked<AgentRepository>;
-	let agentsService: jest.Mocked<AgentsService>;
-	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
+	let cacheService: Mocked<CacheService>;
+	let cipher: Mocked<Cipher>;
+	let credentialsService: Mocked<CredentialsService>;
+	let userRepository: Mocked<UserRepository>;
+	let agentRepository: Mocked<AgentRepository>;
+	let agentsService: Mocked<AgentsService>;
+	let chatIntegrationService: Mocked<ChatIntegrationService>;
 	let service: SlackAppSetupService;
 
 	beforeEach(() => {
-		fetchMock = jest.fn();
+		fetchMock = vi.fn();
 		global.fetch = fetchMock as unknown as typeof fetch;
 
 		cacheStore = new Map<string, unknown>();

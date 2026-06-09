@@ -1,22 +1,23 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import type { MockInstance, MockedFunction } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatIntegrationContext } from '../agent-chat-integration';
 import { LinearIntegration } from '../platforms/linear-integration';
 
-jest.mock('../esm-loader', () => ({
-	loadLinearAdapter: jest.fn(),
+vi.mock('../esm-loader', () => ({
+	loadLinearAdapter: vi.fn(),
 }));
 
 import { loadLinearAdapter } from '../esm-loader';
 
-const mockedLoadLinearAdapter = loadLinearAdapter as jest.MockedFunction<typeof loadLinearAdapter>;
+const mockedLoadLinearAdapter = loadLinearAdapter as MockedFunction<typeof loadLinearAdapter>;
 
 describe('LinearIntegration', () => {
 	const logger = mock<Logger>();
 	let integration: LinearIntegration;
-	let fetchSpy: jest.SpyInstance;
-	const createLinearAdapter = jest.fn();
+	let fetchSpy: MockInstance;
+	const createLinearAdapter = vi.fn();
 
 	beforeEach(() => {
 		integration = new LinearIntegration(logger);
@@ -27,7 +28,7 @@ describe('LinearIntegration', () => {
 			createLinearAdapter,
 		} as unknown as Awaited<ReturnType<typeof loadLinearAdapter>>);
 
-		fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+		fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
 			ok: true,
 			json: async () => ({ data: { viewer: { displayName: 'AgentName' } } }),
 		} as Response);

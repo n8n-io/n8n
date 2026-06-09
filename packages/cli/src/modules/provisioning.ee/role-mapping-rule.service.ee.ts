@@ -10,7 +10,6 @@ import {
 	RoleRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-
 import { type EntityManager, type FindOptionsOrder, In } from '@n8n/typeorm';
 import type { z } from 'zod';
 

@@ -1,4 +1,4 @@
-import type { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
+import { mapFileReferences, type WorkspaceFiles } from './file-references';
 import type {
 	InternalKnowledgeCommandRequest,
 	InternalKnowledgeCommandResult,
@@ -9,7 +9,7 @@ import type {
 	SearchOutputMode,
 	SearchResultOutput,
 } from './schemas';
-import { mapFileReferences, type WorkspaceFiles } from './file-references';
+import type { AgentKnowledgeCommandService } from '../../agent-knowledge-command.service';
 
 type SearchInput = Extract<ParsedSearchKnowledgeInput, { operation: 'search' }>;
 type InternalSearchMatch = SearchMatchOutput & { fullText: string };

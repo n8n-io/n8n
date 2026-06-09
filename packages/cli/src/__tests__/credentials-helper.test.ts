@@ -6,7 +6,6 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import {
 	type InstanceSettings,
 	Cipher,
@@ -26,6 +25,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { deepCopy, Workflow } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
@@ -435,12 +436,12 @@ describe('CredentialsHelper', () => {
 				},
 			};
 
-			let storeOAuthTokenDataSpy: jest.SpyInstance;
+			let storeOAuthTokenDataSpy: MockInstance;
 
 			beforeEach(() => {
-				jest.clearAllMocks();
+				vi.clearAllMocks();
 				// Spy on the dynamicCredentialProxy's storeOAuthTokenDataIfNeeded method
-				storeOAuthTokenDataSpy = jest
+				storeOAuthTokenDataSpy = vi
 					.spyOn(dynamicCredentialProxy, 'storeOAuthTokenDataIfNeeded')
 					.mockResolvedValue(undefined);
 			});
@@ -512,8 +513,8 @@ describe('CredentialsHelper', () => {
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
 
 				const resolverProvider = {
-					resolveIfNeeded: jest.fn(),
-					getSystemResolverId: jest.fn().mockReturnValue('system-resolver'),
+					resolveIfNeeded: vi.fn(),
+					getSystemResolverId: vi.fn().mockReturnValue('system-resolver'),
 				};
 				dynamicCredentialProxy.setResolverProvider(resolverProvider);
 
@@ -653,7 +654,7 @@ describe('CredentialsHelper', () => {
 
 	describe('getDecrypted - AI Gateway managed credentials', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should pass workflowId and projectId for owner resolution when userId is absent', async () => {
@@ -814,7 +815,7 @@ describe('CredentialsHelper', () => {
 		} as CredentialsEntity;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntityForLicense);
 			secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId.mockResolvedValue([]);
 			mockAdditionalDataForLicense.externalSecretProviderKeysAccessibleByCredential = undefined;
@@ -866,8 +867,8 @@ describe('CredentialsHelper', () => {
 
 	describe('getDecrypted - credential resolution integration', () => {
 		const mockCredentialResolutionProvider = {
-			resolveIfNeeded: jest.fn(),
-			getSystemResolverId: jest.fn(),
+			resolveIfNeeded: vi.fn(),
+			getSystemResolverId: vi.fn(),
 		};
 
 		const mockAdditionalData = {
@@ -899,7 +900,7 @@ describe('CredentialsHelper', () => {
 		} as CredentialsEntity;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
 			// Clear the provider between tests to ensure clean state
 			dynamicCredentialProxy.setResolverProvider(undefined as any);
@@ -1372,7 +1373,7 @@ describe('CredentialsHelper', () => {
 		} as any;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			dynamicCredentialProxy.setResolverProvider(undefined as any);
 
 			credentialsRepository.findOneByOrFail.mockImplementation(async (query: any) => {

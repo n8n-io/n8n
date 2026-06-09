@@ -13,7 +13,7 @@ import { TlsSyslogServer } from './tls-server';
 import { createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';
 
-jest.unmock('@/eventbus/message-event-bus/message-event-bus');
+vi.unmock('@/eventbus/message-event-bus/message-event-bus');
 
 const tlsServer = new TlsSyslogServer();
 let serverPort: number;
@@ -31,7 +31,7 @@ const testServer = utils.setupTestServer({
 afterAll(async () => {
 	await eventBus?.close();
 	// Undo the "unmock" from above
-	jest.mock('@/eventbus/message-event-bus/message-event-bus');
+	vi.mock('@/eventbus/message-event-bus/message-event-bus');
 	await tlsServer.stop();
 });
 
@@ -97,7 +97,7 @@ describe('TLS Syslog E2E', () => {
 	});
 
 	test('should log an error when the certificate is invalid - but not break the application', async () => {
-		const loggerErrorSpy = jest.spyOn(logger, 'error');
+		const loggerErrorSpy = vi.spyOn(logger, 'error');
 
 		const incorrectCertificate = fs.readFileSync(
 			path.join(__dirname, 'support', 'incorrect-certificate.pem'),

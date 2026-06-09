@@ -1,18 +1,19 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
+import type { Mock } from 'vitest';
 
 import type { ModelLookup } from '../resolve-llm.tool';
 import { buildResolveLlmTool } from '../resolve-llm.tool';
 
 function makeProvider(creds: CredentialListItem[]): CredentialProvider {
 	return {
-		list: jest.fn(async () => creds),
-		resolve: jest.fn(async () => ({})),
+		list: vi.fn(async () => creds),
+		resolve: vi.fn(async () => ({})),
 	};
 }
 
-function makeModelLookup(impl?: ModelLookup['list']): ModelLookup & { list: jest.Mock } {
+function makeModelLookup(impl?: ModelLookup['list']): ModelLookup & { list: Mock } {
 	return {
-		list: jest.fn(impl ?? (async () => [])),
+		list: vi.fn(impl ?? (async () => [])),
 	};
 }
 

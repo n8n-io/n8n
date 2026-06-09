@@ -1,7 +1,12 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { User, CredentialsEntity, Project } from '@n8n/db';
-import type { SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type {
+	User,
+	CredentialsEntity,
+	Project,
+	SharedCredentials,
+	SharedCredentialsRepository,
+} from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -36,7 +41,7 @@ describe('EnterpriseCredentialsService', () => {
 	);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	/**
@@ -44,14 +49,14 @@ describe('EnterpriseCredentialsService', () => {
 	 */
 	const mockTransactionManager = () => {
 		const mockManager = {
-			remove: jest.fn().mockResolvedValue(undefined),
-			save: jest.fn().mockResolvedValue(undefined),
-			create: jest.fn().mockImplementation((_, data) => data),
+			remove: vi.fn().mockResolvedValue(undefined),
+			save: vi.fn().mockResolvedValue(undefined),
+			create: vi.fn().mockImplementation((_, data) => data),
 		};
 
 		// @ts-expect-error - Mocking manager for testing
 		sharedCredentialsRepository.manager = {
-			transaction: jest.fn().mockImplementation(async (callback) => {
+			transaction: vi.fn().mockImplementation(async (callback) => {
 				return await callback(mockManager);
 			}),
 		};

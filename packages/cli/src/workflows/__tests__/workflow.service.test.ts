@@ -2,9 +2,10 @@ import type { LicenseState } from '@n8n/backend-common';
 import type { Project, User, WorkflowRepository, WorkflowPublishHistoryRepository } from '@n8n/db';
 import { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import type { IConnections, INode } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -16,21 +17,21 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
+import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowService } from '@/workflows/workflow.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowService } from '@/workflows/workflow.service';
 
-jest.mock('@/permissions.ee/check-access');
-jest.mock('@/workflow-helpers');
-jest.mock('@/generic-helpers');
+vi.mock('@/permissions.ee/check-access');
+vi.mock('@/workflow-helpers');
+vi.mock('@/generic-helpers');
 
 describe('WorkflowService', () => {
 	describe('getMany()', () => {
 		let workflowService: WorkflowService;
 		let workflowRepositoryMock: MockProxy<{
-			getManyAndCountWithSharingSubquery: jest.Mock;
+			getManyAndCountWithSharingSubquery: Mock;
 		}>;
 		let roleServiceMock: MockProxy<RoleService>;
 		let webhookServiceMock: MockProxy<WebhookService>;
@@ -176,14 +177,14 @@ describe('WorkflowService', () => {
 	});
 
 	describe('update() redactionPolicy scope enforcement', () => {
-		const userHasScopesMock = jest.mocked(userHasScopes);
+		const userHasScopesMock = vi.mocked(userHasScopes);
 		let workflowService: WorkflowService;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 		let licenseStateMock: MockProxy<LicenseState>;
 		let redactionEnforcementServiceMock: MockProxy<RedactionEnforcementService>;
 		let workflowRepositoryMock: MockProxy<{
-			update: jest.Mock;
-			findOne: jest.Mock;
+			update: Mock;
+			findOne: Mock;
 		}>;
 
 		beforeEach(() => {
@@ -228,10 +229,10 @@ describe('WorkflowService', () => {
 				redactionEnforcementServiceMock, // redactionEnforcementService
 			);
 
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			// Pass settings through removeDefaultValues unchanged
-			jest.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);
+			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);
 		});
 
 		function setupExistingWorkflow(settings: Record<string, unknown> = {}) {
@@ -331,7 +332,7 @@ describe('WorkflowService', () => {
 
 		test('should throw BadRequestError for invalid workflow structure', async () => {
 			setupExistingWorkflow();
-			jest.mocked(WorkflowHelpers.validateWorkflowStructure).mockImplementationOnce(() => {
+			vi.mocked(WorkflowHelpers.validateWorkflowStructure).mockImplementationOnce(() => {
 				throw new BadRequestError('Workflow structure is invalid. nodes[0].position: Required');
 			});
 
@@ -859,16 +860,18 @@ describe('WorkflowService', () => {
 			);
 
 			// Bypass validation internals
-			jest
-				.spyOn(workflowService as never, '_detectWebhookConflicts')
-				.mockResolvedValue(undefined as never);
-			jest.spyOn(workflowService as never, '_validateNodes').mockReturnValue(undefined as never);
-			jest
-				.spyOn(workflowService as never, '_validateDynamicCredentials')
-				.mockResolvedValue(undefined as never);
-			jest
-				.spyOn(workflowService as never, '_validateSubWorkflowReferences')
-				.mockResolvedValue(undefined as never);
+			(
+				vi.spyOn(workflowService as never, '_detectWebhookConflicts') as unknown as Mock
+			).mockResolvedValue(undefined as never);
+			(vi.spyOn(workflowService as never, '_validateNodes') as unknown as Mock).mockReturnValue(
+				undefined as never,
+			);
+			(
+				vi.spyOn(workflowService as never, '_validateDynamicCredentials') as unknown as Mock
+			).mockResolvedValue(undefined as never);
+			(
+				vi.spyOn(workflowService as never, '_validateSubWorkflowReferences') as unknown as Mock
+			).mockResolvedValue(undefined as never);
 		});
 
 		test('republish blocked by hook leaves previous active version untouched', async () => {
@@ -918,9 +921,9 @@ describe('WorkflowService', () => {
 
 			externalHooksMock.run.mockResolvedValue(undefined);
 
-			jest
-				.spyOn(workflowService as never, '_addToActiveWorkflowManager')
-				.mockResolvedValue(undefined as never);
+			(
+				vi.spyOn(workflowService as never, '_addToActiveWorkflowManager') as unknown as Mock
+			).mockResolvedValue(undefined as never);
 
 			const user = mock<User>();
 

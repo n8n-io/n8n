@@ -274,7 +274,7 @@ describe('RoleRepository', () => {
 				});
 
 				// Spy on transaction method to verify it's called
-				const transactionSpy = jest.spyOn(roleRepository.manager, 'transaction');
+				const transactionSpy = vi.spyOn(roleRepository.manager, 'transaction');
 
 				//
 				// ACT

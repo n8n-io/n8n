@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -12,13 +12,13 @@ import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-reg
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import type { OauthService } from '@/oauth/oauth.service';
 
+import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity';
 import type { InstanceAiMcpRegistryConnectionRepository } from '../../repositories/instance-ai-mcp-registry-connection.repository';
 import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service';
-import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity';
 
-const proxyFetchMock = jest.fn();
+const proxyFetchMock = vi.fn();
 
-jest.mock('@n8n/ai-utilities', () => ({
+vi.mock('@n8n/ai-utilities', () => ({
 	proxyFetch: (...args: unknown[]) => proxyFetchMock(...args),
 }));
 
@@ -65,7 +65,7 @@ describe('InstanceAiMcpRegistryService', () => {
 	};
 
 	function createService() {
-		const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+		const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 		const connectionRepository = mock<InstanceAiMcpRegistryConnectionRepository>();
 		const mcpRegistryService = mock<McpRegistryService>();
 		const credentialsFinderService = mock<CredentialsFinderService>();
@@ -96,7 +96,7 @@ describe('InstanceAiMcpRegistryService', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		proxyFetchMock.mockReset();
 	});
 

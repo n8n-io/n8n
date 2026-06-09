@@ -1,10 +1,11 @@
-import type { BinaryDataService } from 'n8n-core';
 import { generateNanoId } from '@n8n/utils';
-import { mock } from 'jest-mock-extended';
+import type { BinaryDataService } from 'n8n-core';
 import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -13,23 +14,25 @@ import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
-jest.unmock('node:fs');
-jest.unmock('node:fs/promises');
+vi.unmock('node:fs');
+vi.unmock('node:fs/promises');
 
-const mockGetText = jest.fn<Promise<{ text: string; total: number }>, []>();
-const mockDestroy = jest.fn<Promise<void>, []>();
+const mockGetText = vi.fn<() => Promise<{ text: string; total: number }>>();
+const mockDestroy = vi.fn<() => Promise<void>>();
 
-jest.mock('pdf-parse', () => ({
+vi.mock('pdf-parse', async () => ({
 	__esModule: true,
-	PDFParse: jest.fn().mockImplementation(() => ({
-		getText: mockGetText,
-		destroy: mockDestroy,
-	})),
+	PDFParse: vi.fn(function () {
+		return {
+			getText: mockGetText,
+			destroy: mockDestroy,
+		};
+	}),
 }));
 
-jest.mock('@n8n/utils', () => ({
-	...jest.requireActual('@n8n/utils'),
-	generateNanoId: jest.fn(() => 'file-1'),
+vi.mock('@n8n/utils', async () => ({
+	...(await vi.importActual<typeof import('@n8n/utils')>('@n8n/utils')),
+	generateNanoId: vi.fn(() => 'file-1'),
 }));
 
 const agentId = 'agent-1';
@@ -52,9 +55,9 @@ function makeMulterFile(overrides: Partial<Express.Multer.File> = {}): Express.M
 }
 
 describe('AgentKnowledgeService', () => {
-	let agentRepository: jest.Mocked<AgentRepository>;
-	let agentFileRepository: jest.Mocked<AgentFileRepository>;
-	let binaryDataService: jest.Mocked<BinaryDataService>;
+	let agentRepository: Mocked<AgentRepository>;
+	let agentFileRepository: Mocked<AgentFileRepository>;
+	let binaryDataService: Mocked<BinaryDataService>;
 	let service: AgentKnowledgeService;
 
 	beforeEach(() => {
@@ -74,7 +77,7 @@ describe('AgentKnowledgeService', () => {
 		binaryDataService.getAsStream.mockImplementation(async () =>
 			Readable.from(Buffer.from('stored text')),
 		);
-		jest.mocked(generateNanoId).mockReset().mockReturnValue('file-1');
+		vi.mocked(generateNanoId).mockReset().mockReturnValue('file-1');
 		mockGetText.mockReset();
 		mockDestroy.mockReset().mockResolvedValue(undefined);
 
@@ -175,7 +178,7 @@ describe('AgentKnowledgeService', () => {
 
 	it('rolls back stored files and removes temp files when batch upload fails', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		jest.mocked(generateNanoId).mockReturnValueOnce('file-1').mockReturnValueOnce('file-2');
+		vi.mocked(generateNanoId).mockReturnValueOnce('file-1').mockReturnValueOnce('file-2');
 		binaryDataService.store
 			.mockResolvedValueOnce({ id: 'binary-1' } as never)
 			.mockRejectedValueOnce(new Error('disk full'));

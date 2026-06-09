@@ -1,23 +1,24 @@
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import multer from 'multer';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentTaskService } from '../agent-task.service';
+import { AgentsController } from '../agents.controller';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
-import type { AgentExecutionService } from '../agent-execution.service';
-import type { AgentTaskService } from '../agent-task.service';
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRepository } from '../repositories/agent.repository';
-import { AgentsController } from '../agents.controller';
-import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 
 const UNAUTHENTICATED_HANDLERS = new Set([
 	// Third-party webhook callback: no req.user; per-platform signature
@@ -47,14 +48,14 @@ function makeController({
 	agentTaskService = mock<AgentTaskService>(),
 	agentKnowledgeService = mock<AgentKnowledgeService>(),
 }: {
-	agentsService?: jest.Mocked<AgentsService>;
-	credentialsService?: jest.Mocked<CredentialsService>;
-	chatIntegrationService?: jest.Mocked<ChatIntegrationService>;
-	agentRepository?: jest.Mocked<AgentRepository>;
-	chatIntegrationRegistry?: jest.Mocked<ChatIntegrationRegistry>;
-	slackAppSetupService?: jest.Mocked<SlackAppSetupService>;
-	agentTaskService?: jest.Mocked<AgentTaskService>;
-	agentKnowledgeService?: jest.Mocked<AgentKnowledgeService>;
+	agentsService?: Mocked<AgentsService>;
+	credentialsService?: Mocked<CredentialsService>;
+	chatIntegrationService?: Mocked<ChatIntegrationService>;
+	agentRepository?: Mocked<AgentRepository>;
+	chatIntegrationRegistry?: Mocked<ChatIntegrationRegistry>;
+	slackAppSetupService?: Mocked<SlackAppSetupService>;
+	agentTaskService?: Mocked<AgentTaskService>;
+	agentKnowledgeService?: Mocked<AgentKnowledgeService>;
 } = {}) {
 	if (!chatIntegrationRegistry.require.getMockImplementation()) {
 		chatIntegrationRegistry.require.mockImplementation(
@@ -885,7 +886,7 @@ describe('AgentsController integration credentials', () => {
 	it('completes Slack app setup from the OAuth callback and renders the success template', async () => {
 		const slackAppSetupService = mock<SlackAppSetupService>();
 		const { controller } = makeController({ slackAppSetupService });
-		const res = { render: jest.fn() };
+		const res = { render: vi.fn() };
 
 		await controller.handleSlackAppOAuthCallback(
 			{
@@ -908,7 +909,7 @@ describe('AgentsController integration credentials', () => {
 	it('renders the Slack OAuth error callback when Slack denies setup', async () => {
 		const slackAppSetupService = mock<SlackAppSetupService>();
 		const { controller } = makeController({ slackAppSetupService });
-		const res = { render: jest.fn() };
+		const res = { render: vi.fn() };
 
 		await controller.handleSlackAppOAuthCallback(
 			{

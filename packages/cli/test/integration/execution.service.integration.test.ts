@@ -8,7 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { ExecutionSummaries, User } from '@n8n/db';
 import { ExecutionMetadataRepository, ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ExecutionService } from '@/executions/execution.service';
 

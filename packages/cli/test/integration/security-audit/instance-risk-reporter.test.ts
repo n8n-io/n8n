@@ -2,10 +2,10 @@ import { createActiveWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import * as constants from '@/constants';
 import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants';
@@ -83,7 +83,7 @@ test('should report webhook lacking authentication', async () => {
 	);
 
 	if (!section.location) {
-		fail('Expected section to have locations');
+		expect.fail('Expected section to have locations');
 	}
 
 	expect(section.location).toHaveLength(1);
@@ -118,12 +118,12 @@ test('should not report webhooks having basic or header auth', async () => {
 
 	const testAudit = await securityAuditService.run(['instance']);
 
-	if (Array.isArray(testAudit)) fail('Audit is empty');
+	if (Array.isArray(testAudit)) expect.fail('Audit is empty');
 
 	const report = testAudit[toReportTitle('instance')];
 
 	if (!report) {
-		fail('Expected test audit to have instance risk report');
+		expect.fail('Expected test audit to have instance risk report');
 	}
 
 	for (const section of report.sections) {
@@ -176,11 +176,11 @@ test('should not report webhooks validated by direct children', async () => {
 	await Promise.all(promises);
 
 	const testAudit = await securityAuditService.run(['instance']);
-	if (Array.isArray(testAudit)) fail('audit is empty');
+	if (Array.isArray(testAudit)) expect.fail('audit is empty');
 
 	const report = testAudit[toReportTitle('instance')];
 	if (!report) {
-		fail('Expected test audit to have instance risk report');
+		expect.fail('Expected test audit to have instance risk report');
 	}
 
 	for (const section of report.sections) {
@@ -192,12 +192,12 @@ test('should not report non-webhook node', async () => {
 	await saveManualTriggerWorkflow();
 
 	const testAudit = await securityAuditService.run(['instance']);
-	if (Array.isArray(testAudit)) fail('audit is empty');
+	if (Array.isArray(testAudit)) expect.fail('audit is empty');
 
 	const report = testAudit[toReportTitle('instance')];
 
 	if (!report) {
-		fail('Expected test audit to have instance risk report');
+		expect.fail('Expected test audit to have instance risk report');
 	}
 
 	for (const section of report.sections) {
@@ -217,7 +217,7 @@ test('should report outdated instance when outdated', async () => {
 	);
 
 	if (!section.nextVersions) {
-		fail('Expected section to have next versions');
+		expect.fail('Expected section to have next versions');
 	}
 
 	expect(section.nextVersions).toHaveLength(1);
@@ -227,11 +227,11 @@ test('should report outdated instance when outdated', async () => {
 
 test('should not report outdated instance when up to date', async () => {
 	const testAudit = await securityAuditService.run(['instance']);
-	if (Array.isArray(testAudit)) fail('audit is empty');
+	if (Array.isArray(testAudit)) expect.fail('audit is empty');
 
 	const report = testAudit[toReportTitle('instance')];
 	if (!report) {
-		fail('Expected test audit to have instance risk report');
+		expect.fail('Expected test audit to have instance risk report');
 	}
 
 	for (const section of report.sections) {

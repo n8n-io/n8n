@@ -13,10 +13,12 @@ import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { TypedEmitter } from '@/typed-emitter';
 
 import { validateOriginHeaders } from './origin-validator';
+import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
 import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
 import {
@@ -26,8 +28,6 @@ import {
 	type WebSocketPushRequest,
 } from './types';
 import { WebSocketPush } from './websocket.push';
-import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 type PushEvents = {
 	editorUiConnected: string;

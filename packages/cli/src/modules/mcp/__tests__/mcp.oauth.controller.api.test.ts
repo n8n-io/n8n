@@ -298,7 +298,7 @@ describe('POST /mcp-oauth/register', () => {
 
 		// Stub the pre-check guard to always pass, simulating two concurrent
 		// registrations that both saw count < limit and made it past the guard.
-		const guardSpy = jest
+		const guardSpy = vi
 			.spyOn(McpOAuthService.prototype, 'isClientLimitReached')
 			.mockResolvedValue(false);
 

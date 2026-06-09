@@ -1,6 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
-import type { LookupAddress } from 'node:dns';
 import { mock } from 'vitest-mock-extended';
 
 import type { DnsResolver } from '../dns-resolver';
@@ -314,17 +313,18 @@ describe('SsrfProtectionService', () => {
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
 
-			const [error, address, family] = await new Promise<
-				[Error | null, string, number | undefined]
-			>((resolve) =>
-				lookup('example.com', { all: false }, (err, addr, fam) =>
-					resolve([err, addr as string, fam]),
-				),
-			);
-
-			expect(error).toBeNull();
-			expect(address).toBe('93.184.216.34');
-			expect(family).toBe(4);
+			await new Promise<void>((resolve, reject) => {
+				lookup('example.com', { all: false }, (lookupError, address, family) => {
+					try {
+						expect(lookupError).toBeNull();
+						expect(address).toBe('93.184.216.34');
+						expect(family).toBe(4);
+						resolve();
+					} catch (error) {
+						reject(error as Error);
+					}
+				});
+			});
 		});
 
 		it('should reject blocked IPs during lookup', async () => {
@@ -334,14 +334,19 @@ describe('SsrfProtectionService', () => {
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
 
-			const error = await new Promise<Error | null>((resolve) =>
-				lookup('evil.com', { all: false }, (lookupError) => resolve(lookupError)),
-			);
-
-			expect(error).toBeTruthy();
-			expect(error?.message).toContain(
-				'The request was blocked because it resolves to a restricted IP address',
-			);
+			await new Promise<void>((resolve, reject) => {
+				lookup('evil.com', { all: false }, (lookupError) => {
+					try {
+						expect(lookupError).toBeTruthy();
+						expect(lookupError?.message).toContain(
+							'The request was blocked because it resolves to a restricted IP address',
+						);
+						resolve();
+					} catch (error) {
+						reject(error as Error);
+					}
+				});
+			});
 		});
 
 		it('should return all addresses when all=true', async () => {
@@ -354,17 +359,20 @@ describe('SsrfProtectionService', () => {
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
 
-			const [error, addresses] = await new Promise<[Error | null, LookupAddress[]]>((resolve) =>
-				lookup('multi.example.com', { all: true }, (err, addrs) =>
-					resolve([err, addrs as LookupAddress[]]),
-				),
-			);
-
-			expect(error).toBeNull();
-			expect(addresses).toEqual([
-				{ address: '93.184.216.34', family: 4 },
-				{ address: '93.184.216.35', family: 4 },
-			]);
+			await new Promise<void>((resolve, reject) => {
+				lookup('multi.example.com', { all: true }, (lookupError, addresses) => {
+					try {
+						expect(lookupError).toBeNull();
+						expect(addresses).toEqual([
+							{ address: '93.184.216.34', family: 4 },
+							{ address: '93.184.216.35', family: 4 },
+						]);
+						resolve();
+					} catch (error) {
+						reject(error as Error);
+					}
+				});
+			});
 		});
 
 		it('should respect family=6 and return only IPv6 addresses', async () => {
@@ -374,20 +382,25 @@ describe('SsrfProtectionService', () => {
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
 
-			const [error, address, family] = await new Promise<
-				[Error | null, string, number | undefined]
-			>((resolve) =>
-				lookup('dualstack.example.com', { all: false, family: 6 }, (err, addr, fam) =>
-					resolve([err, addr as string, fam]),
-				),
-			);
-
-			expect(error).toBeNull();
-			expect(address).toBe('2606:4700::6810:85e5');
-			expect(family).toBe(6);
-			expect(dnsResolver.lookup).toHaveBeenCalledWith('dualstack.example.com', {
-				all: false,
-				family: 6,
+			await new Promise<void>((resolve, reject) => {
+				lookup(
+					'dualstack.example.com',
+					{ all: false, family: 6 },
+					(lookupError, address, family) => {
+						try {
+							expect(lookupError).toBeNull();
+							expect(address).toBe('2606:4700::6810:85e5');
+							expect(family).toBe(6);
+							expect(dnsResolver.lookup).toHaveBeenCalledWith('dualstack.example.com', {
+								all: false,
+								family: 6,
+							});
+							resolve();
+						} catch (error) {
+							reject(error as Error);
+						}
+					},
+				);
 			});
 		});
 
@@ -398,20 +411,25 @@ describe('SsrfProtectionService', () => {
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
 
-			const [error, address, family] = await new Promise<
-				[Error | null, string, number | undefined]
-			>((resolve) =>
-				lookup('ipv4-only.example.com', { all: false, family: 6 }, (err, addr, fam) =>
-					resolve([err, addr as string, fam]),
-				),
-			);
-
-			expect(error).toBeTruthy();
-			expect(address).toBe('');
-			expect(family).toBeUndefined();
-			expect(dnsResolver.lookup).toHaveBeenCalledWith('ipv4-only.example.com', {
-				all: false,
-				family: 6,
+			await new Promise<void>((resolve, reject) => {
+				lookup(
+					'ipv4-only.example.com',
+					{ all: false, family: 6 },
+					(lookupError, address, family) => {
+						try {
+							expect(lookupError).toBeTruthy();
+							expect(address).toBe('');
+							expect(family).toBeUndefined();
+							expect(dnsResolver.lookup).toHaveBeenCalledWith('ipv4-only.example.com', {
+								all: false,
+								family: 6,
+							});
+							resolve();
+						} catch (error) {
+							reject(error as Error);
+						}
+					},
+				);
 			});
 		});
 
@@ -429,14 +447,17 @@ describe('SsrfProtectionService', () => {
 			);
 			const lookup = service.createSecureLookup();
 
-			const [error, address] = await new Promise<[Error | null, string]>((resolve) =>
-				lookup('api.internal.n8n.io', { all: false }, (err, addr) =>
-					resolve([err, addr as string]),
-				),
-			);
-
-			expect(error).toBeNull();
-			expect(address).toBe('10.0.0.1');
+			await new Promise<void>((resolve, reject) => {
+				lookup('api.internal.n8n.io', { all: false }, (lookupError, address) => {
+					try {
+						expect(lookupError).toBeNull();
+						expect(address).toBe('10.0.0.1');
+						resolve();
+					} catch (error) {
+						reject(error as Error);
+					}
+				});
+			});
 		});
 
 		it('should pass empty string and undefined family on non-all lookup errors', async () => {
@@ -446,17 +467,18 @@ describe('SsrfProtectionService', () => {
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
 
-			const [error, address, family] = await new Promise<
-				[Error | null, string, number | undefined]
-			>((resolve) =>
-				lookup('failing.example.com', { all: false }, (err, addr, fam) =>
-					resolve([err, addr as string, fam]),
-				),
-			);
-
-			expect(error).toBeTruthy();
-			expect(address).toBe('');
-			expect(family).toBeUndefined();
+			await new Promise<void>((resolve, reject) => {
+				lookup('failing.example.com', { all: false }, (lookupError, address, family) => {
+					try {
+						expect(lookupError).toBeTruthy();
+						expect(address).toBe('');
+						expect(family).toBeUndefined();
+						resolve();
+					} catch (error) {
+						reject(error as Error);
+					}
+				});
+			});
 		});
 
 		it('should pass empty array and undefined family on all=true lookup errors', async () => {
@@ -466,17 +488,18 @@ describe('SsrfProtectionService', () => {
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
 
-			const [error, addresses, family] = await new Promise<
-				[Error | null, LookupAddress[], number | undefined]
-			>((resolve) =>
-				lookup('failing.example.com', { all: true }, (err, addrs, fam) =>
-					resolve([err, addrs as LookupAddress[], fam]),
-				),
-			);
-
-			expect(error).toBeTruthy();
-			expect(addresses).toEqual([]);
-			expect(family).toBeUndefined();
+			await new Promise<void>((resolve, reject) => {
+				lookup('failing.example.com', { all: true }, (lookupError, address, family) => {
+					try {
+						expect(lookupError).toBeTruthy();
+						expect(address).toEqual([]);
+						expect(family).toBeUndefined();
+						resolve();
+					} catch (error) {
+						reject(error as Error);
+					}
+				});
+			});
 		});
 	});
 
@@ -576,14 +599,19 @@ describe('SsrfProtectionService', () => {
 				const { service } = createService({}, dnsResolver);
 				const lookup = service.createSecureLookup();
 
-				const error = await new Promise<Error | null>((resolve) =>
-					lookup('rebinding.evil.com', { all: false }, (lookupError) => resolve(lookupError)),
-				);
-
-				expect(error).toBeTruthy();
-				expect(error?.message).toContain(
-					'The request was blocked because it resolves to a restricted IP address',
-				);
+				await new Promise<void>((resolve, reject) => {
+					lookup('rebinding.evil.com', { all: false }, (lookupError) => {
+						try {
+							expect(lookupError).toBeTruthy();
+							expect(lookupError?.message).toContain(
+								'The request was blocked because it resolves to a restricted IP address',
+							);
+							resolve();
+						} catch (error) {
+							reject(error as Error);
+						}
+					});
+				});
 			});
 		});
 

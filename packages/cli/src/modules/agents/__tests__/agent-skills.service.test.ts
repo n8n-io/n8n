@@ -1,9 +1,10 @@
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs and unbound-method references are acceptable test idioms */
+/* eslint-disable @typescript-eslint/require-await -- async mock stubs and unbound-method references are acceptable test idioms */
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import type { Agent } from '../entities/agent.entity';
 import { AgentSkillsService } from '../agent-skills.service';
+import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const agentId = 'agent-1';
@@ -26,7 +27,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 
 describe('AgentSkillsService', () => {
 	let service: AgentSkillsService;
-	let agentRepository: jest.Mocked<AgentRepository>;
+	let agentRepository: Mocked<AgentRepository>;
 
 	const skill = {
 		name: 'Summarize Notes',
@@ -35,7 +36,7 @@ describe('AgentSkillsService', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		agentRepository = mock<AgentRepository>();
 		agentRepository.save.mockImplementation(async (a) => a as Agent);

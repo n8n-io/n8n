@@ -1,8 +1,9 @@
 import { SamlAcsDto, SamlPreferences, SamlToggleDto } from '@n8n/api-types';
-import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { Response } from 'express';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import querystring from 'querystring';
 import type { PostBindingContext } from 'samlify/types/src/entity';
 import url from 'url';
@@ -11,12 +12,11 @@ import { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
-import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { AuthlessRequest } from '@/requests';
 import { sendErrorResponse } from '@/response-helper';
 import { UrlService } from '@/services/url.service';
-import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
+import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import {
 	samlLicensedAndEnabledMiddleware,

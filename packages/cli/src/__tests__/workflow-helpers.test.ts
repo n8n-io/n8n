@@ -3,8 +3,10 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import type { IRun, ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { OwnershipService } from '@/services/ownership.service';
 import {
 	getLastExecutedNodeData,
@@ -19,8 +21,6 @@ import {
 	validateWorkflowStructure,
 	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { mock } from 'jest-mock-extended';
 
 describe('workflow-helpers', () => {
 	beforeAll(() => {
@@ -190,7 +190,7 @@ describe('preserveInputOverride', () => {
 describe('replaceInvalidCredentials', () => {
 	const credentialsRepository = mockInstance(CredentialsRepository);
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	function makeWorkflow(credentials: Record<string, { id: string | null; name: string }>) {
 		return {

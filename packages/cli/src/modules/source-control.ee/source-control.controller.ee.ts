@@ -1,4 +1,3 @@
-import { IWorkflowToImport } from '@/interfaces';
 import {
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
@@ -11,6 +10,11 @@ import { hasGlobalScope } from '@n8n/permissions';
 import * as express from 'express';
 import type { PullResult } from 'simple-git';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { IWorkflowToImport } from '@/interfaces';
+
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import { sourceControlEnabledMiddleware } from './middleware/source-control-enabled-middleware.ee';
 import { SourceControlContextFactory } from './source-control-context.factory';
@@ -22,10 +26,6 @@ import type { ImportResult } from './types/import-result';
 import { SourceControlRequest } from './types/requests';
 import { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
 
 @RestController('/source-control')
 export class SourceControlController {

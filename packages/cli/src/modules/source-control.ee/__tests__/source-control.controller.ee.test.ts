@@ -4,7 +4,8 @@ import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import * as permissions from '@n8n/permissions';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 
@@ -16,11 +17,11 @@ import type { SourceControlRequest } from '../types/requests';
 import { SourceControlContext } from '../types/source-control-context';
 import type { SourceControlGetStatus } from '../types/source-control-get-status';
 
-jest.mock('@n8n/permissions', () => {
-	const actual = jest.requireActual('@n8n/permissions');
+vi.mock('@n8n/permissions', async () => {
+	const actual = await vi.importActual<typeof import('@n8n/permissions')>('@n8n/permissions');
 	return {
 		...actual,
-		hasGlobalScope: jest.fn(actual.hasGlobalScope),
+		hasGlobalScope: vi.fn(actual.hasGlobalScope),
 	};
 });
 
@@ -33,10 +34,10 @@ describe('SourceControlController', () => {
 
 	beforeEach(() => {
 		sourceControlService = {
-			pushWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200 }),
-			pullWorkfolder: jest.fn().mockResolvedValue({ statusCode: 200 }),
-			getStatus: jest.fn().mockResolvedValue([]),
-			setGitUserDetails: jest.fn(),
+			pushWorkfolder: vi.fn().mockResolvedValue({ statusCode: 200 }),
+			pullWorkfolder: vi.fn().mockResolvedValue({ statusCode: 200 }),
+			getStatus: vi.fn().mockResolvedValue([]),
+			setGitUserDetails: vi.fn(),
 		} as unknown as SourceControlService;
 
 		sourceControlPreferencesService = mock<SourceControlPreferencesService>();
@@ -53,7 +54,7 @@ describe('SourceControlController', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('pushWorkfolder', () => {
@@ -79,7 +80,7 @@ describe('SourceControlController', () => {
 			const res = mock<Response>();
 			const payload = { force: true, commitMessage: 'Test commit' } as PushWorkFolderRequestDto;
 
-			(sourceControlService.pushWorkfolder as jest.Mock).mockResolvedValueOnce({
+			(sourceControlService.pushWorkfolder as Mock).mockResolvedValueOnce({
 				statusCode: 200,
 				statusResult: [{ file: 'test.json', status: 'modified' }],
 				pushResult: {
@@ -109,7 +110,7 @@ describe('SourceControlController', () => {
 			const res = mock<Response>();
 			const payload = { force: true } as PushWorkFolderRequestDto;
 
-			(sourceControlService.pushWorkfolder as jest.Mock).mockResolvedValueOnce({
+			(sourceControlService.pushWorkfolder as Mock).mockResolvedValueOnce({
 				statusCode: 200,
 				statusResult: [],
 				pushResult: null,
@@ -130,7 +131,7 @@ describe('SourceControlController', () => {
 			const res = mock<Response>();
 			const payload = { force: true } as PushWorkFolderRequestDto;
 
-			(sourceControlService.pushWorkfolder as jest.Mock).mockRejectedValueOnce(
+			(sourceControlService.pushWorkfolder as Mock).mockRejectedValueOnce(
 				new Error('Git push failed'),
 			);
 
@@ -201,15 +202,13 @@ describe('SourceControlController', () => {
 			mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-1', ...user }) });
 
 		beforeEach(() => {
-			(sourceControlPreferencesService.getPreferences as jest.Mock).mockReturnValue(
-				fullPreferences,
-			);
+			(sourceControlPreferencesService.getPreferences as Mock).mockReturnValue(fullPreferences);
 		});
 
 		it('should return full preferences (including public key) for users with sourceControl:manage', async () => {
 			const mockPublicKey = 'ssh-rsa AAAAB3NzaC1yc2E...';
-			(sourceControlPreferencesService.getPublicKey as jest.Mock).mockResolvedValue(mockPublicKey);
-			(permissions.hasGlobalScope as jest.Mock).mockReturnValue(true);
+			(sourceControlPreferencesService.getPublicKey as Mock).mockResolvedValue(mockPublicKey);
+			(permissions.hasGlobalScope as Mock).mockReturnValue(true);
 
 			const result = await controller.getPreferences(buildReq());
 
@@ -218,9 +217,9 @@ describe('SourceControlController', () => {
 		});
 
 		it('should return branch name and color for project admins (has authorized projects)', async () => {
-			(permissions.hasGlobalScope as jest.Mock).mockReturnValue(false);
+			(permissions.hasGlobalScope as Mock).mockReturnValue(false);
 			const user = mock<User>({ id: 'user-1' });
-			(sourceControlContextFactory.createContext as jest.Mock).mockResolvedValue(
+			(sourceControlContextFactory.createContext as Mock).mockResolvedValue(
 				new SourceControlContext(user, [mock<Project>({ id: 'p1', type: 'team' })], []),
 			);
 
@@ -236,9 +235,9 @@ describe('SourceControlController', () => {
 		});
 
 		it('should return only branchReadOnly for users with no source-control access', async () => {
-			(permissions.hasGlobalScope as jest.Mock).mockReturnValue(false);
+			(permissions.hasGlobalScope as Mock).mockReturnValue(false);
 			const user = mock<User>({ id: 'user-1' });
-			(sourceControlContextFactory.createContext as jest.Mock).mockResolvedValue(
+			(sourceControlContextFactory.createContext as Mock).mockResolvedValue(
 				new SourceControlContext(user, [], []),
 			);
 

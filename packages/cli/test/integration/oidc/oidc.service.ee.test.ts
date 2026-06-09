@@ -1,9 +1,9 @@
-const discoveryMock = jest.fn();
-const authorizationCodeGrantMock = jest.fn();
-const fetchUserInfoMock = jest.fn();
+const discoveryMock = vi.fn();
+const authorizationCodeGrantMock = vi.fn();
+const fetchUserInfoMock = vi.fn();
 
-jest.mock('openid-client', () => ({
-	...jest.requireActual('openid-client'),
+vi.mock('openid-client', async () => ({
+	...(await vi.importActual<typeof import('openid-client')>('openid-client')),
 	discovery: discoveryMock,
 	authorizationCodeGrant: authorizationCodeGrantMock,
 	fetchUserInfo: fetchUserInfoMock,
@@ -16,7 +16,11 @@ import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } 
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import type * as mocked_oidc_client from 'openid-client';
-const real_odic_client = jest.requireActual('openid-client');
+// Assigned in beforeAll rather than top-level await (tsconfig module forbids TLA).
+let real_odic_client: typeof import('openid-client');
+beforeAll(async () => {
+	real_odic_client = await vi.importActual<typeof import('openid-client')>('openid-client');
+});
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

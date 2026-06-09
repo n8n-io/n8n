@@ -9,7 +9,6 @@ import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
 
-import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
@@ -22,6 +21,8 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
+
+import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
 
 @Service()
 export abstract class AbstractServer {

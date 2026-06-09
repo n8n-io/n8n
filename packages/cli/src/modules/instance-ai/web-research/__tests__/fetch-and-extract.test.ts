@@ -1,16 +1,17 @@
 import type { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
 import type { SsrfBridge } from 'n8n-core';
 import { createResultOk } from 'n8n-workflow';
 import type { LookupFunction } from 'node:net';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { DnsResolver } from 'n8n-core';
 import { SsrfProtectionService } from 'n8n-core';
 
 import { fetchAndExtract } from '../fetch-and-extract';
 
-function createSsrfMock(): jest.Mocked<SsrfBridge> {
+function createSsrfMock(): Mocked<SsrfBridge> {
 	const ssrf = mock<SsrfBridge>();
 	ssrf.validateUrl.mockResolvedValue(createResultOk(undefined));
 	ssrf.validateRedirectSync.mockReturnValue(undefined);
@@ -18,7 +19,7 @@ function createSsrfMock(): jest.Mocked<SsrfBridge> {
 	// itself so the lookup is never called — return a noop.
 	ssrf.createSecureLookup.mockReturnValue((_h, _o, cb) =>
 		cb(null, '127.0.0.1', 4),
-	) as unknown as jest.Mocked<SsrfBridge>['createSecureLookup'];
+	) as unknown as Mocked<SsrfBridge>['createSecureLookup'];
 	return ssrf;
 }
 
@@ -56,10 +57,10 @@ function createMockResponse(
 
 describe('fetchAndExtract', () => {
 	const originalFetch = globalThis.fetch;
-	let ssrf: jest.Mocked<SsrfBridge>;
+	let ssrf: Mocked<SsrfBridge>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		ssrf = createSsrfMock();
 	});
 
@@ -80,7 +81,7 @@ describe('fetchAndExtract', () => {
 				</body>
 			</html>`;
 
-		globalThis.fetch = jest.fn().mockResolvedValue(createMockResponse(html));
+		globalThis.fetch = vi.fn().mockResolvedValue(createMockResponse(html));
 
 		const result = await fetchAndExtract('https://example.com/docs', { ssrf });
 
@@ -104,7 +105,7 @@ describe('fetchAndExtract', () => {
 				</body>
 			</html>`;
 
-		globalThis.fetch = jest.fn().mockResolvedValue(createMockResponse(html));
+		globalThis.fetch = vi.fn().mockResolvedValue(createMockResponse(html));
 
 		const result = await fetchAndExtract('https://example.com/table', { ssrf });
 
@@ -114,7 +115,7 @@ describe('fetchAndExtract', () => {
 
 	it('passes through plain text', async () => {
 		const text = 'Just some plain text content.';
-		globalThis.fetch = jest
+		globalThis.fetch = vi
 			.fn()
 			.mockResolvedValue(createMockResponse(text, { contentType: 'text/plain' }));
 
@@ -126,7 +127,7 @@ describe('fetchAndExtract', () => {
 
 	it('truncates content exceeding maxContentLength', async () => {
 		const longText = 'a'.repeat(50_000);
-		globalThis.fetch = jest
+		globalThis.fetch = vi
 			.fn()
 			.mockResolvedValue(createMockResponse(longText, { contentType: 'text/plain' }));
 
@@ -151,7 +152,7 @@ describe('fetchAndExtract', () => {
 				</body>
 			</html>`;
 
-		globalThis.fetch = jest.fn().mockResolvedValue(createMockResponse(html));
+		globalThis.fetch = vi.fn().mockResolvedValue(createMockResponse(html));
 
 		const result = await fetchAndExtract('https://example.com/spa', { ssrf });
 
@@ -170,7 +171,7 @@ describe('fetchAndExtract', () => {
 				</body>
 			</html>`;
 
-		globalThis.fetch = jest.fn().mockResolvedValue(createMockResponse(html));
+		globalThis.fetch = vi.fn().mockResolvedValue(createMockResponse(html));
 
 		const result = await fetchAndExtract('https://example.com/login', { ssrf });
 
@@ -178,9 +179,7 @@ describe('fetchAndExtract', () => {
 	});
 
 	it('handles HTTP errors gracefully', async () => {
-		globalThis.fetch = jest
-			.fn()
-			.mockResolvedValue(createMockResponse('Not Found', { status: 404 }));
+		globalThis.fetch = vi.fn().mockResolvedValue(createMockResponse('Not Found', { status: 404 }));
 
 		const result = await fetchAndExtract('https://example.com/missing', { ssrf });
 
@@ -191,7 +190,7 @@ describe('fetchAndExtract', () => {
 	describe('SSRF integration', () => {
 		it('validates the initial URL via SsrfBridge', async () => {
 			const html = '<html><body><p>Hi</p></body></html>';
-			globalThis.fetch = jest.fn().mockResolvedValue(createMockResponse(html));
+			globalThis.fetch = vi.fn().mockResolvedValue(createMockResponse(html));
 
 			await fetchAndExtract('https://example.com', { ssrf });
 
@@ -201,7 +200,7 @@ describe('fetchAndExtract', () => {
 		it('aborts the fetch if validateUrl rejects', async () => {
 			const blockedError = new Error('Blocked: 10.0.0.1');
 			ssrf.validateUrl.mockResolvedValueOnce({ ok: false, error: blockedError });
-			globalThis.fetch = jest.fn();
+			globalThis.fetch = vi.fn();
 
 			await expect(fetchAndExtract('https://blocked.example', { ssrf })).rejects.toThrow(
 				'Blocked: 10.0.0.1',
@@ -211,7 +210,7 @@ describe('fetchAndExtract', () => {
 
 		it('passes a dispatcher with the secure lookup to fetch', async () => {
 			const html = '<html><body><p>Hi</p></body></html>';
-			const fetchSpy = jest.fn().mockResolvedValue(createMockResponse(html));
+			const fetchSpy = vi.fn().mockResolvedValue(createMockResponse(html));
 			globalThis.fetch = fetchSpy;
 
 			await fetchAndExtract('https://example.com', { ssrf });
@@ -223,7 +222,7 @@ describe('fetchAndExtract', () => {
 
 		it('validates each redirect target via validateRedirectSync and validateUrl', async () => {
 			const html = '<html><body><p>Hi</p></body></html>';
-			globalThis.fetch = jest
+			globalThis.fetch = vi
 				.fn()
 				.mockResolvedValueOnce(
 					createMockResponse('', {
@@ -241,7 +240,7 @@ describe('fetchAndExtract', () => {
 		});
 
 		it('blocks redirects whose direct-IP target is private', async () => {
-			globalThis.fetch = jest.fn().mockResolvedValueOnce(
+			globalThis.fetch = vi.fn().mockResolvedValueOnce(
 				createMockResponse('', {
 					status: 301,
 					location: 'http://10.0.0.1/secret',
@@ -270,18 +269,18 @@ describe('fetchAndExtract', () => {
 			const realSsrf = new SsrfProtectionService(
 				new SsrfProtectionConfig(),
 				dnsResolver,
-				mock<Logger>({ scoped: jest.fn().mockReturnThis() }),
+				mock<Logger>({ scoped: vi.fn().mockReturnThis() }),
 			);
 
 			// Capture the lookup function that fetchAndExtract installs on the dispatcher.
 			let dispatcherLookup: LookupFunction | undefined;
 			const realCreate = realSsrf.createSecureLookup.bind(realSsrf);
-			jest.spyOn(realSsrf, 'createSecureLookup').mockImplementation(() => {
+			vi.spyOn(realSsrf, 'createSecureLookup').mockImplementation(() => {
 				dispatcherLookup = realCreate();
 				return dispatcherLookup;
 			});
 
-			globalThis.fetch = jest
+			globalThis.fetch = vi
 				.fn()
 				.mockResolvedValue(createMockResponse('<html><body>x</body></html>'));
 
@@ -315,7 +314,7 @@ describe('fetchAndExtract', () => {
 			},
 		});
 
-		globalThis.fetch = jest.fn().mockResolvedValue({
+		globalThis.fetch = vi.fn().mockResolvedValue({
 			ok: true,
 			status: 200,
 			statusText: 'OK',

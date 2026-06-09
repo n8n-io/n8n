@@ -1,5 +1,5 @@
-import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool, CredentialListItem, CredentialProvider } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
 import { z } from 'zod';
 
 import { BUILDER_TOOLS } from '../builder-tool-names';

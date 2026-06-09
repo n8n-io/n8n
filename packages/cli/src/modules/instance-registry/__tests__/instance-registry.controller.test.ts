@@ -1,5 +1,6 @@
 import type { InstanceRegistration } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CheckService } from '../checks/check.service';
 import { InstanceRegistryController } from '../instance-registry.controller';
@@ -19,8 +20,8 @@ const makeRegistration = (overrides: Partial<InstanceRegistration> = {}): Instan
 
 describe('InstanceRegistryController', () => {
 	let controller: InstanceRegistryController;
-	let service: jest.Mocked<InstanceRegistryService>;
-	let checkService: jest.Mocked<CheckService>;
+	let service: Mocked<InstanceRegistryService>;
+	let checkService: Mocked<CheckService>;
 
 	beforeEach(() => {
 		service = mock<InstanceRegistryService>();

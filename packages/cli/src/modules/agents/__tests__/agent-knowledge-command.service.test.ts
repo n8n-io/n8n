@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
 
-jest.unmock('node:fs/promises');
+vi.unmock('node:fs/promises');
 
 async function withTempWorkspace(operation: (workspaceRoot: string) => Promise<void>) {
 	const workspaceRoot = await mkdtemp(path.join(tmpdir(), 'n8n-agent-knowledge-test-'));

@@ -1,7 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 import type {
 	INode,
@@ -11,6 +10,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { NodeTypes } from '@/node-types';
@@ -22,33 +22,33 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 // Mocks — must be before the import of the class under test
 // ---------------------------------------------------------------------------
 
-jest.mock('@n8n/instance-ai', () => ({
-	createEvalAgent: jest.fn(),
-	extractText: jest.fn(),
+vi.mock('@n8n/instance-ai', async () => ({
+	createEvalAgent: vi.fn(),
+	extractText: vi.fn(),
 }));
-jest.mock('../pin-data-generator', () => ({
-	generatePinData: jest.fn(),
+vi.mock('../pin-data-generator', async () => ({
+	generatePinData: vi.fn(),
 }));
-jest.mock('../mock-handler', () => ({
-	createLlmMockHandler: jest.fn(),
+vi.mock('../mock-handler', async () => ({
+	createLlmMockHandler: vi.fn(),
 }));
-jest.mock('../workflow-analysis', () => ({
-	partitionAiRoots: jest.fn(),
-	buildVendorLlmRouting: jest.fn().mockReturnValue({
+vi.mock('../workflow-analysis', async () => ({
+	partitionAiRoots: vi.fn(),
+	buildVendorLlmRouting: vi.fn().mockReturnValue({
 		subNodeToRoot: new Map(),
 		rootToSubNode: new Map(),
 	}),
-	generateMockHints: jest.fn(),
-	identifyNodesForHints: jest.fn(),
-	identifyNodesForPinData: jest.fn(),
-	detectBinaryDependencies: jest.fn(),
+	generateMockHints: vi.fn(),
+	identifyNodesForHints: vi.fn(),
+	identifyNodesForPinData: vi.fn(),
+	detectBinaryDependencies: vi.fn(),
 }));
 
-// Class-based mock — `jest.fn().mockImplementation(() => obj)` doesn't reliably return the object via `new`.
-const mockWireServerStart = jest.fn();
-const mockWireServerStop = jest.fn();
+// Class-based mock — `vi.fn().mockImplementation(() => obj)` doesn't reliably return the object via `new`.
+const mockWireServerStart = vi.fn();
+const mockWireServerStop = vi.fn();
 const capturedWireServerOptions: { last: unknown } = { last: undefined };
-jest.mock('../llm-wire-server', () => {
+vi.mock('../llm-wire-server', async () => {
 	class MockLlmWireServer {
 		start = mockWireServerStart;
 		stop = mockWireServerStop;
@@ -60,18 +60,18 @@ jest.mock('../llm-wire-server', () => {
 	return { LlmWireServer: MockLlmWireServer };
 });
 
-const mockRestoreNoProxy = jest.fn();
-jest.mock('../proxy-loopback', () => ({
-	patchNoProxyForLoopback: jest.fn(() => mockRestoreNoProxy),
+const mockRestoreNoProxy = vi.fn();
+vi.mock('../proxy-loopback', async () => ({
+	patchNoProxyForLoopback: vi.fn(() => mockRestoreNoProxy),
 }));
-jest.mock('@n8n/workflow-sdk', () => ({
-	normalizePinData: jest.fn((pd: unknown) => pd),
+vi.mock('@n8n/workflow-sdk', async () => ({
+	normalizePinData: vi.fn((pd: unknown) => pd),
 }));
 
 // Same constructor-protocol gotcha — use a class so `new Workflow()` returns an instance with `getStartNode`.
-const mockGetStartNode = jest.fn();
-jest.mock('n8n-workflow', () => {
-	const actual = jest.requireActual('n8n-workflow');
+const mockGetStartNode = vi.fn();
+vi.mock('n8n-workflow', async () => {
+	const actual = await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow');
 	class MockWorkflow {
 		nodes: Record<string, unknown>;
 		getStartNode = mockGetStartNode;
@@ -88,11 +88,12 @@ jest.mock('n8n-workflow', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Import SUT and mocked modules (after jest.mock calls)
+// Import SUT and mocked modules (after vi.mock calls)
 // ---------------------------------------------------------------------------
 
 import { EvalExecutionService } from '../execution.service';
 import { createLlmMockHandler } from '../mock-handler';
+import { patchNoProxyForLoopback } from '../proxy-loopback';
 import {
 	generateMockHints,
 	identifyNodesForHints,
@@ -105,11 +106,11 @@ import type { MockHints } from '../workflow-analysis';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const generateMockHintsMock = jest.mocked(generateMockHints);
-const identifyNodesForHintsMock = jest.mocked(identifyNodesForHints);
-const identifyNodesForPinDataMock = jest.mocked(identifyNodesForPinData);
-const partitionAiRootsMock = jest.mocked(partitionAiRoots);
-const createLlmMockHandlerMock = jest.mocked(createLlmMockHandler);
+const generateMockHintsMock = vi.mocked(generateMockHints);
+const identifyNodesForHintsMock = vi.mocked(identifyNodesForHints);
+const identifyNodesForPinDataMock = vi.mocked(identifyNodesForPinData);
+const partitionAiRootsMock = vi.mocked(partitionAiRoots);
+const createLlmMockHandlerMock = vi.mocked(createLlmMockHandler);
 
 function makeWorkflowEntity(overrides: Partial<IWorkflowBase> = {}) {
 	return {
@@ -214,13 +215,13 @@ describe('EvalExecutionService', () => {
 
 	function makeMockedAdditionalData(): StubAdditionalData {
 		return {
-			credentialsHelper: { resolve: jest.fn() },
+			credentialsHelper: { resolve: vi.fn() },
 			evalLlmMockHandler: undefined,
 		};
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		lastConfigureAdditionalData = undefined;
 
 		service = new EvalExecutionService(
@@ -236,23 +237,20 @@ describe('EvalExecutionService', () => {
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
 
-		// Root jest config sets `restoreMocks: true`, which strips implementations
+		// Root vi config sets `restoreMocks: true`, which strips implementations
 		// between tests — re-set every impl we depend on here.
 		identifyNodesForHintsMock.mockReturnValue([]);
 		identifyNodesForPinDataMock.mockReturnValue([]);
 		partitionAiRootsMock.mockReturnValue({ unpinNodes: [], pinNodes: [], autoPinned: [] });
 		generateMockHintsMock.mockResolvedValue(makeEmptyHints());
-		createLlmMockHandlerMock.mockReturnValue(jest.fn());
+		createLlmMockHandlerMock.mockReturnValue(vi.fn());
 		mockGetStartNode.mockReturnValue(makeStartNode());
 		mockWireServerStart.mockResolvedValue('http://127.0.0.1:54321');
 		mockWireServerStop.mockResolvedValue(undefined);
 		// Default: kill-switch enabled. Tests that need it off flip this.
 		postHogClient.getFeatureFlags.mockResolvedValue({});
 
-		const proxyLoopback = require('../proxy-loopback') as {
-			patchNoProxyForLoopback: jest.Mock;
-		};
-		proxyLoopback.patchNoProxyForLoopback.mockImplementation(() => mockRestoreNoProxy);
+		vi.mocked(patchNoProxyForLoopback).mockImplementation(() => mockRestoreNoProxy);
 
 		// Mirror runMainProcess: capture + invoke the closure on a stub additionalData.
 		workflowRunner.run.mockImplementation(async (data) => {
@@ -567,8 +565,7 @@ describe('EvalExecutionService', () => {
 			});
 
 			it('tears down the wire server when NO_PROXY patching throws after boot', async () => {
-				const proxyLoopback = require('../proxy-loopback');
-				proxyLoopback.patchNoProxyForLoopback.mockImplementationOnce(() => {
+				vi.mocked(patchNoProxyForLoopback).mockImplementationOnce(() => {
 					throw new Error('env mutation blocked');
 				});
 
@@ -654,7 +651,7 @@ describe('EvalExecutionService', () => {
 			// tools whose HTTP traffic gets folded into the Agent's ledger would
 			// mask real bugs.
 			it('splits the ledger: model turns to the Agent root, tool HTTP to the tool node', async () => {
-				const innerMockHandler = jest.fn().mockResolvedValue({
+				const innerMockHandler = vi.fn().mockResolvedValue({
 					body: { content: 'tool result' },
 					headers: { 'content-type': 'application/json' },
 					statusCode: 200,
