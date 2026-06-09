@@ -6,7 +6,12 @@ import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/app/constants';
 
-import { NodeHelpers, NodeConnectionTypes, MANUAL_TRIGGER_NODE_TYPES } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionTypes,
+	MANUAL_TRIGGER_NODE_TYPES,
+	nodeIssuesToString,
+} from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -436,13 +441,10 @@ export function useNodeHelpers() {
 			const credential = credentialsStore.getCredentialById(details.id);
 			if (!credential?.isResolvable) continue;
 
-			if (!credential.connectedByMe) {
-				foundIssues[credTypeName] = [
-					i18n.baseText('nodeIssues.credentials.privateNotConnected', {
-						interpolate: { name: credential.name },
-					}),
-				];
-			} else if (incompatibleTrigger) {
+			// An unconnected private credential is a missing setup step, not a hard
+			// error — it's surfaced as a warning via the credential callout/banner in
+			// the UI rather than a node issue, so we don't add it here.
+			if (credential.connectedByMe && incompatibleTrigger) {
 				foundIssues[credTypeName] = [
 					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger'),
 				];
@@ -1056,44 +1058,6 @@ export function useNodeHelpers() {
 		}
 
 		return hints;
-	}
-
-	/**
-	 * Returns the issues of the node as string
-	 *
-	 * @param {INodeIssues} issues The issues of the node
-	 * @param {INode} node The node
-	 */
-	function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
-		const nodeIssues = [];
-
-		if (issues.execution !== undefined) {
-			nodeIssues.push('Execution Error.');
-		}
-
-		const objectProperties = ['parameters', 'credentials', 'input'];
-
-		let issueText: string;
-		let parameterName: string;
-		for (const propertyName of objectProperties) {
-			if (issues[propertyName] !== undefined) {
-				for (parameterName of Object.keys(issues[propertyName] as object)) {
-					for (issueText of (issues[propertyName] as INodeIssueObjectProperty)[parameterName]) {
-						nodeIssues.push(issueText);
-					}
-				}
-			}
-		}
-
-		if (issues.typeUnknown !== undefined) {
-			if (node !== undefined) {
-				nodeIssues.push(`Node Type "${node.type}" is not known.`);
-			} else {
-				nodeIssues.push('Node Type is not known.');
-			}
-		}
-
-		return nodeIssues;
 	}
 
 	function getDefaultNodeName(node: AddedNode | INode) {

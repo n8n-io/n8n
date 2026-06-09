@@ -28,11 +28,12 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
+import { OwnershipService } from './ownership.service';
+import { RoleService } from './role.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -73,6 +74,7 @@ export class ProjectService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	private get workflowService() {
@@ -102,6 +104,24 @@ export class ProjectService {
 	private get secretsProvidersConnectionsService() {
 		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee').then(
 			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
+		);
+	}
+
+	private get agentRepository() {
+		return import('@/modules/agents/repositories/agent.repository').then(({ AgentRepository }) =>
+			Container.get(AgentRepository),
+		);
+	}
+
+	private get agentKnowledgeService() {
+		return import('@/modules/agents/agent-knowledge.service').then(({ AgentKnowledgeService }) =>
+			Container.get(AgentKnowledgeService),
+		);
+	}
+
+	private get connectionStatusProxy() {
+		return import('@/credentials/credential-connection-status-proxy').then(
+			({ CredentialConnectionStatusProxy }) => Container.get(CredentialConnectionStatusProxy),
 		);
 	}
 
@@ -206,11 +226,34 @@ export class ProjectService {
 			await secretsProvidersConnectionsService.cleanupConnectionsForProjectDeletion(project.id);
 		}
 
-		// 8. delete project
+		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
+		if (this.moduleRegistry.isActive('agents')) {
+			const [agentRepository, agentKnowledgeService] = await Promise.all([
+				this.agentRepository,
+				this.agentKnowledgeService,
+			]);
+			const agents = await agentRepository.findByProjectId(project.id);
+			for (const agent of agents) {
+				await agentKnowledgeService.deleteAllFilesForAgent(agent.id);
+			}
+		}
+
+		// Capture member user IDs before the project (and its relations) are removed,
+		// so we can clean up orphaned per-user credential entries afterward.
+		const projectMembers = await this.projectRelationRepository.findBy({ projectId: project.id });
+		const memberUserIds = projectMembers.map((pr) => pr.userId);
+
+		// 9. delete project
 		await this.projectRepository.remove(project);
 
-		// 9. delete project relations
+		// 10. delete project relations
 		// Cascading deletes take care of this.
+
+		// 11. delete orphaned per-user credential entries for former members
+		if (memberUserIds.length > 0) {
+			const proxy = await this.connectionStatusProxy;
+			await proxy.cleanupOrphanedEntriesForUsers(memberUserIds);
+		}
 	}
 
 	/**
@@ -245,8 +288,7 @@ export class ProjectService {
 		return projects.map((project) => {
 			const relation = relationsByProject.get(project.id);
 			const projectScopes = relation?.role?.scopes?.map((s) => s.slug) ?? [];
-			return {
-				...project,
+			return Object.assign(project, {
 				role: relation?.role?.slug ?? user.role.slug,
 				scopes: [
 					...new Set(
@@ -256,7 +298,7 @@ export class ProjectService {
 						}),
 					),
 				].sort(),
-			};
+			});
 		});
 	}
 
@@ -330,15 +372,22 @@ export class ProjectService {
 
 	async updateProject(
 		projectId: string,
-		{ name, icon, description }: UpdateProjectDto,
+		{ name, icon, description, customTelemetryTags }: UpdateProjectDto,
 	): Promise<void> {
+		const trimmedTags = customTelemetryTags
+			?.map(({ key, value }) => ({ key: key.trim(), value }))
+			.filter(({ key }) => key !== '');
+
 		const result = await this.projectRepository.update(
 			{ id: projectId, type: 'team' },
-			{ name, icon, description },
+			{ name, icon, description, customTelemetryTags: trimmedTags },
 		);
 		if (!result.affected) {
 			throw new ProjectNotFoundError(projectId);
 		}
+
+		// Ensure OTel spans pick up the updated customTelemetryTags on the next execution.
+		await this.ownershipService.invalidateWorkflowProjectCacheForProject(projectId);
 	}
 
 	async getPersonalProject(user: User): Promise<Project | null> {
@@ -368,9 +417,32 @@ export class ProjectService {
 			'project',
 		);
 
+		const incomingByUserId = new Map(relations.map((r) => [r.userId, r.role]));
+
+		const removedUserIds = project.projectRelations
+			.filter((r) => !incomingByUserId.has(r.userId))
+			.map((r) => r.userId);
+
+		// Users whose role slug changed — a downgrade may strip credential:update,
+		// so their per-user credential entries must be re-evaluated too.
+		const roleChangedUserIds = project.projectRelations
+			.filter((r) => {
+				const newRole = incomingByUserId.get(r.userId);
+				return newRole !== undefined && newRole !== r.role.slug;
+			})
+			.map((r) => r.userId);
+
+		const affectedUserIds = [...new Set([...removedUserIds, ...roleChangedUserIds])];
+
+		const proxy = await this.connectionStatusProxy;
+
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await this.pruneRelations(em, project);
 			await this.addManyRelations(em, project, relations);
+
+			if (affectedUserIds.length > 0) {
+				await proxy.cleanupOrphanedEntriesForUsers(affectedUserIds, em);
+			}
 		});
 
 		const newRelations = relations.filter(
@@ -515,7 +587,12 @@ export class ProjectService {
 			throw new ForbiddenError('Project owner cannot be removed from the project');
 		}
 
-		await this.projectRelationRepository.delete({ projectId: project.id, userId });
+		const proxy = await this.connectionStatusProxy;
+
+		await this.projectRelationRepository.manager.transaction(async (em) => {
+			await em.delete(ProjectRelation, { projectId: project.id, userId });
+			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+		});
 	}
 
 	async changeUserRoleInProject(projectId: string, userId: string, role: AssignableProjectRole) {
@@ -542,7 +619,12 @@ export class ProjectService {
 			throw new UnlicensedProjectRoleError(role);
 		}
 
-		await this.projectRelationRepository.update({ projectId, userId }, { role: { slug: role } });
+		const proxy = await this.connectionStatusProxy;
+
+		await this.projectRelationRepository.manager.transaction(async (em) => {
+			await em.update(ProjectRelation, { projectId, userId }, { role: { slug: role } });
+			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+		});
 	}
 
 	async pruneRelations(em: EntityManager, project: Project) {

@@ -13,9 +13,11 @@ import path from 'path';
 import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
 import type {
+	BuildExpectationResult,
 	ConversationMetrics,
 	ExecutionScenarioResult,
 	ToolInteraction,
+	TranscriptStep,
 	TranscriptTurn,
 	TurnCounter,
 	WorkflowTestCaseResult,
@@ -34,13 +36,42 @@ function escapeHtml(str: string): string {
 		.replace(/'/g, '&#39;');
 }
 
+function trimTrailingSlash(url: string): string {
+	return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
+function workflowUrl(baseUrl: string, workflowId: string): string {
+	return `${trimTrailingSlash(baseUrl)}/workflow/${workflowId}`;
+}
+
+function executionUrl(baseUrl: string, workflowId: string, executionId: string): string {
+	return `${trimTrailingSlash(baseUrl)}/workflow/${workflowId}/executions/${executionId}`;
+}
+
 // ---------------------------------------------------------------------------
 // Scenario rendering
 // ---------------------------------------------------------------------------
 
-function renderScenario(sr: ExecutionScenarioResult, index: number): string {
+function renderExecutionLink(
+	sr: ExecutionScenarioResult,
+	baseUrl: string | undefined,
+	workflowId: string | undefined,
+): string {
+	if (!baseUrl || !workflowId || !sr.evalResult?.executionId) return '';
+	const href = executionUrl(baseUrl, workflowId, sr.evalResult.executionId);
+	// stopPropagation prevents the click from also toggling the parent header.
+	return `<a class="execution-link" href="${href}" target="_blank" rel="noopener" onclick="event.stopPropagation()">view in n8n →</a>`;
+}
+
+function renderScenario(
+	sr: ExecutionScenarioResult,
+	index: number,
+	baseUrl: string | undefined,
+	workflowId: string | undefined,
+): string {
 	const icon = sr.success ? '&#10003;' : '&#10007;';
 	const statusClass = sr.success ? 'pass' : 'fail';
+	const execLink = renderExecutionLink(sr, baseUrl, workflowId);
 
 	// Passing scenarios: compact one-liner with collapsible detail
 	if (sr.success) {
@@ -50,6 +81,7 @@ function renderScenario(sr: ExecutionScenarioResult, index: number): string {
 				<span class="scenario-icon ${statusClass}">${icon}</span>
 				<span class="scenario-name">${escapeHtml(sr.scenario.name)}</span>
 				<span class="scenario-summary-inline">${escapeHtml(summary)}${sr.reasoning && sr.reasoning.length > 150 ? '...' : ''}</span>
+				${execLink}
 			</div>
 			<div class="scenario-detail" id="scenario-${String(index)}">
 				${renderScenarioDetail(sr)}
@@ -63,6 +95,7 @@ function renderScenario(sr: ExecutionScenarioResult, index: number): string {
 			<span class="scenario-icon ${statusClass}">${icon}</span>
 			<span class="scenario-name">${escapeHtml(sr.scenario.name)}</span>
 			<span class="scenario-desc">${escapeHtml(sr.scenario.description)}</span>
+			${execLink}
 		</div>
 		<div class="scenario-detail" id="scenario-${String(index)}">
 			${renderScenarioDetail(sr)}
@@ -178,10 +211,23 @@ function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 				html += '</div>';
 			}
 
-			// Node output
-			if (nr.output !== null && nr.output !== undefined) {
+			const outputEntries = Object.entries(nr.outputs);
+			const hasOutput = outputEntries.some(([, branches]) => branches.length > 0);
+			if (hasOutput) {
 				html += '<details class="node-output-toggle"><summary>Node output</summary>';
-				html += `<pre class="json-block"><code>${escapeHtml(JSON.stringify(nr.output, null, 2))}</code></pre>`;
+				for (const [connType, branches] of outputEntries) {
+					for (let i = 0; i < branches.length; i++) {
+						const label =
+							branches.length > 1 || connType !== 'main'
+								? `${connType} branch ${String(i)} (${String(branches[i].length)} items)`
+								: `${connType} (${String(branches[i].length)} items)`;
+						html += `<div class="node-output-branch"><strong>${escapeHtml(label)}</strong>`;
+						html += `<pre class="json-block"><code>${escapeHtml(JSON.stringify(branches[i], null, 2))}</code></pre></div>`;
+					}
+				}
+				if (nr.truncated) {
+					html += `<div class="muted">truncated; full count: ${String(nr.outputCount)}</div>`;
+				}
 				html += '</details>';
 			} else {
 				html += '<div class="muted">no output</div>';
@@ -271,25 +317,19 @@ function renderTranscriptTurn(turn: TranscriptTurn, turnNum: number): string {
 			`<div class="transcript-line transcript-user"><span class="transcript-icon">👤</span><span class="transcript-text">${escapeHtml(turn.userMessage)}</span></div>`,
 		);
 	}
-	if (turn.agentText) {
-		parts.push(
-			`<div class="transcript-line transcript-assistant"><span class="transcript-icon">🤖</span><span class="transcript-text">${escapeHtml(turn.agentText)}</span></div>`,
-		);
-	}
-
-	const toolNames: string[] = [];
-	for (const interaction of turn.toolInteractions) {
-		const block = renderInteraction(interaction);
+	for (const step of turn.steps) {
+		const block = renderStep(step);
 		if (block) parts.push(block);
-		if (interaction.kind === 'tool-call') toolNames.push(interaction.toolName);
-	}
-
-	if (toolNames.length > 0) {
-		parts.push(
-			`<div class="transcript-tools">🔧 ${toolNames.map((t) => escapeHtml(t)).join(', ')}</div>`,
-		);
 	}
 	return `<div class="transcript-turn">${parts.join('')}</div>`;
+}
+
+function renderStep(step: TranscriptStep): string | null {
+	if (step.kind === 'agent-text') {
+		if (!step.text) return null;
+		return `<div class="transcript-line transcript-assistant"><span class="transcript-icon">🤖</span><span class="transcript-text">${escapeHtml(step.text)}</span></div>`;
+	}
+	return renderInteraction(step);
 }
 
 function renderInteraction(interaction: ToolInteraction): string | null {
@@ -379,13 +419,64 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 		case 'confirmation': {
 			const decisionTag =
 				typeof interaction.approved === 'boolean'
-					? ` <em>(${interaction.approved ? 'approved' : 'rejected'})</em>`
+					? ` <span class="transcript-decision ${interaction.approved ? 'pass' : 'fail'}">👤 ${interaction.approved ? 'approved' : 'rejected'}</span>`
 					: '';
-			return `<div class="transcript-resume">↪ resume <code>${escapeHtml(interaction.toolName)}</code>: ${escapeHtml(interaction.resumeReason)}${decisionTag}</div>`;
+			const messageHtml = interaction.message
+				? `<div class="transcript-answer">💬 ${escapeHtml(interaction.message)}</div>`
+				: '';
+			const feedbackHtml = interaction.feedback
+				? `<div class="transcript-answer">👤 ${escapeHtml(interaction.feedback)}</div>`
+				: '';
+			return `<div class="transcript-resume">↪ resume <code>${escapeHtml(interaction.toolName)}</code>: ${escapeHtml(interaction.resumeReason)}${decisionTag}</div>${messageHtml}${feedbackHtml}`;
 		}
-		case 'tool-call':
-			return null; // surfaced in the aggregate tool-names line at the bottom
+		case 'tool-call': {
+			const args = interaction.args;
+			const hasArgs = Boolean(args && Object.keys(args).length > 0);
+			const errorText = typeof interaction.error === 'string' ? interaction.error : '';
+			const hasResult = interaction.result !== undefined && interaction.result !== null;
+			const idTag = interaction.toolCallId
+				? ` <span class="transcript-tool-id">${escapeHtml(interaction.toolCallId)}</span>`
+				: '';
+			// Surface load_skill's skillId inline so the loaded skill is visible without expanding args.
+			const inlineArg =
+				interaction.toolName === 'load_skill' && args && typeof args.skillId === 'string'
+					? ` <span class="transcript-inline-arg">${escapeHtml(args.skillId)}</span>`
+					: '';
+			const title = `🔧 <code>${escapeHtml(interaction.toolName)}</code>${inlineArg}${idTag}`;
+			if (!hasArgs && !errorText && !hasResult) {
+				return `<div class="transcript-tools">${title}</div>`;
+			}
+			const argsBlock = hasArgs
+				? `<div class="transcript-section-label">args</div><pre class="transcript-args">${escapeHtml(formatJson(args))}</pre>`
+				: '';
+			const outcomeBlock = errorText
+				? `<div class="transcript-section-label">error</div><pre class="transcript-args transcript-error">${escapeHtml(errorText)}</pre>`
+				: hasResult
+					? `<div class="transcript-section-label">result</div><pre class="transcript-args">${escapeHtml(formatJson(interaction.result))}</pre>`
+					: '';
+			const badge = errorText ? ' <span class="transcript-decision fail">error</span>' : '';
+			return `<details class="transcript-aside"${errorText ? ' open' : ''}><summary>${title}${badge}</summary>${argsBlock}${outcomeBlock}</details>`;
+		}
 	}
+}
+
+function formatJson(value: unknown): string {
+	const MAX = 2000;
+	if (typeof value === 'string') {
+		return value.length > MAX
+			? `${value.slice(0, MAX)}\n… (${String(value.length - MAX)} more chars)`
+			: value;
+	}
+	let json: string | undefined;
+	try {
+		json = JSON.stringify(value, null, 2);
+	} catch {
+		return '[unserializable]';
+	}
+	if (typeof json !== 'string') return String(value);
+	return json.length > MAX
+		? `${json.slice(0, MAX)}\n… (${String(json.length - MAX)} more chars)`
+		: json;
 }
 
 // ---------------------------------------------------------------------------
@@ -433,6 +524,33 @@ function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 		.join('');
 
 	return `<details class="section" ${openAttr}><summary>Workflow checks <span class="${summaryClass}">${summary}</span></summary>${groups}</details>`;
+}
+
+// ---------------------------------------------------------------------------
+// Build expectations
+// ---------------------------------------------------------------------------
+
+function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
+	if (!results || results.length === 0) return '';
+	// `incomplete` (no verdict) stays out of the pass/fail count — rendered neutrally.
+	const passCount = results.filter((r) => r.pass && !r.incomplete).length;
+	const failCount = results.filter((r) => !r.pass && !r.incomplete).length;
+	const incompleteCount = results.filter((r) => r.incomplete).length;
+	const scored = passCount + failCount;
+	const statusClass = failCount > 0 ? 'fail' : 'pass';
+	const openAttr = failCount > 0 ? 'open' : '';
+	const summary = `${String(passCount)}/${String(scored)}${incompleteCount > 0 ? ` · ${String(incompleteCount)} no verdict` : ''}`;
+	const items = results
+		.map((r) => {
+			const cls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
+			const icon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
+			const judgment = r.reason
+				? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
+				: '';
+			return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
+		})
+		.join('');
+	return `<details class="section" ${openAttr}><summary>Build expectations <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -504,7 +622,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 	let scenariosHtml = '';
 	if (result.executionScenarioResults.length > 0) {
 		scenariosHtml = result.executionScenarioResults
-			.map((sr, i) => renderScenario(sr, tcIndex * 100 + i))
+			.map((sr, i) => renderScenario(sr, tcIndex * 100 + i, result.n8nBaseUrl, result.workflowId))
 			.join('');
 	} else if (!result.workflowBuildSuccess) {
 		const errorDetail = result.buildError
@@ -512,6 +630,11 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			: '';
 		scenariosHtml = `<div class="muted">Workflow failed to build — no scenarios executed</div>${errorDetail}`;
 	}
+
+	const workflowLink =
+		result.workflowId && result.n8nBaseUrl
+			? `<a class="workflow-link" href="${workflowUrl(result.n8nBaseUrl, result.workflowId)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">open in n8n →</a>`
+			: '';
 
 	return `<div class="test-case ${statusClass}">
 		<div class="test-case-header" onclick="this.parentElement.classList.toggle('expanded')">
@@ -522,6 +645,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			<div class="test-case-meta">
 				<span class="badge badge-tag">${escapeHtml(result.testCase.complexity)}</span>
 				${result.workflowId ? `<span class="workflow-id">${escapeHtml(result.workflowId)}</span>` : ''}
+				${workflowLink}
 			</div>
 			<div class="scenario-indicators">${scenarioIndicators}</div>
 		</div>
@@ -529,6 +653,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			<details class="section"><summary>Prompt</summary><div class="prompt-text">${escapeHtml(prompt)}</div></details>
 			${renderConversationMetrics(result.conversationMetrics)}
 			${renderConversationTranscript(result.transcript)}
+			${renderBuildExpectations(result.buildExpectationResults)}
 			${renderWorkflowChecks(result.workflowChecks)}
 			${renderWorkflowSummary(result)}
 			${scenariosHtml}
@@ -639,6 +764,9 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.scenario-detail { display: none; padding: 10px 12px; border-top: 1px solid var(--border-light); background: var(--bg-primary); }
 	.scenario.expanded .scenario-detail { display: block; }
 
+	.execution-link, .workflow-link { color: var(--color-info); font-size: 11px; text-decoration: none; margin-left: auto; padding: 2px 6px; border-radius: 4px; }
+	.execution-link:hover, .workflow-link:hover { background: var(--bg-tertiary); text-decoration: underline; }
+
 	/* Workflow check rubric (per built workflow) */
 	.check-dimension { margin: 8px 0 12px; }
 	.check-dimension-header { font-size: 12px; padding: 2px 0; text-transform: capitalize; color: var(--text-secondary); }
@@ -652,6 +780,9 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.check.n_a code { color: var(--text-muted); }
 	.check-kind { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 	.check-kind-llm { color: var(--color-purple); }
+	.expectation { padding: 5px 0; display: flex; align-items: baseline; gap: 8px; list-style: none; line-height: 1.5; }
+	.expectation-text { font-size: 12px; }
+	.expectation-judgment { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
 
 	/* Error and warning boxes */
 	.error-box { color: var(--color-fail); font-size: 12px; padding: 6px 10px; background: var(--color-fail-bg); border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--color-fail); }
@@ -736,10 +867,17 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.transcript-aside > summary { cursor: pointer; color: var(--text-muted); font-size: 11px; padding: 2px 0; }
 	.transcript-reasoning { color: var(--text-muted); font-size: 12px; line-height: 1.5; padding: 6px 8px; background: var(--bg-primary); border-left: 2px solid var(--border); border-radius: 2px; white-space: pre-wrap; margin-top: 4px; }
 	.transcript-tools { color: var(--text-muted); font-size: 11px; font-family: monospace; padding: 4px 0 0 26px; }
+	.transcript-args { margin: 4px 0 4px 26px; padding: 6px 8px; font-size: 11px; font-family: monospace; line-height: 1.45; color: var(--text-secondary); background: var(--bg-primary); border-left: 2px solid var(--border); border-radius: 2px; white-space: pre-wrap; word-break: break-word; max-height: 280px; overflow: auto; }
+	.transcript-args.transcript-error { color: var(--color-fail); border-left-color: var(--color-fail); }
+	.transcript-tool-id { color: var(--text-muted); font-size: 10px; font-family: monospace; opacity: 0.7; }
+	.transcript-inline-arg { color: var(--text-muted); font-size: 11px; font-family: monospace; }
 	.transcript-plan, .transcript-questions { margin: 4px 0 4px 18px; padding: 0; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
 	.transcript-plan li, .transcript-questions li { margin: 4px 0; }
 	.transcript-answer { color: var(--text-secondary); font-size: 12px; margin: 2px 0 6px 16px; padding: 2px 0; }
 	.transcript-resume { font-size: 11px; font-family: monospace; color: var(--text-muted); padding: 2px 0 2px 26px; }
+	.transcript-decision { font-weight: 600; }
+	.transcript-decision.pass { color: var(--color-pass); }
+	.transcript-decision.fail { color: var(--color-fail); }
 	.transcript-resume code { background: var(--bg-tertiary); padding: 0 4px; border-radius: 2px; }
 	.transcript-section-label { font-size: 11px; color: var(--text-muted); margin: 6px 0 2px 18px; text-transform: uppercase; letter-spacing: 0.04em; }
 	.transcript-empty { font-size: 12px; color: var(--text-muted); font-style: italic; margin: 4px 0 4px 18px; }

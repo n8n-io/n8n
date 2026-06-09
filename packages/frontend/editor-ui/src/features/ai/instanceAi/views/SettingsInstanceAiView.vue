@@ -10,7 +10,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import ModelSection from '../components/settings/ModelSection.vue';
 import SandboxSection from '../components/settings/SandboxSection.vue';
-import MemorySection from '../components/settings/MemorySection.vue';
 import SearchSection from '../components/settings/SearchSection.vue';
 import AdvancedSection from '../components/settings/AdvancedSection.vue';
 
@@ -193,12 +192,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 					<div v-if="!store.isProxyEnabled && !store.isCloudManaged" :class="$style.card">
 						<div :class="$style.sectionBlock">
 							<SandboxSection />
-						</div>
-					</div>
-
-					<div v-if="!store.isCloudManaged" :class="$style.card">
-						<div :class="$style.sectionBlock">
-							<MemorySection />
 						</div>
 					</div>
 

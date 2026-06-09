@@ -1,11 +1,16 @@
 import { deepCopy, type INodeTypeDescription } from 'n8n-workflow';
 
 import {
+	getMcpRegistryCredentialTypeName,
 	serverToNodeDescription,
 	serverToCredentialDescription,
 } from '../node-description-transform';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
-import { notionMockServer } from '../registry/mock-servers';
+import {
+	gmailDirectExtendMockServer,
+	notionMockServer,
+	slackExtendingMockServer,
+} from '../registry/mock-servers';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',
@@ -41,9 +46,16 @@ const baseDescription: INodeTypeDescription = {
 	],
 };
 
+// oauth2 servers never consult the predicate; this stub keeps those calls type-correct.
+const isKnownCredentialType = () => true;
+
 describe('serverToNodeDescription', () => {
 	it('returns a description tailored to the Notion mock server', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description).not.toBeNull();
 		expect(description).toMatchObject({
@@ -58,7 +70,11 @@ describe('serverToNodeDescription', () => {
 	});
 
 	it('prefers streamable-http when both remotes are available', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		const endpointUrl = description?.properties.find((p) => p.name === 'endpointUrl');
 		const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
@@ -73,7 +89,11 @@ describe('serverToNodeDescription', () => {
 			remotes: [{ type: 'sse', url: 'https://mcp.notion.com/sse' }],
 		};
 
-		const description = serverToNodeDescription(sseOnlyServer, baseDescription);
+		const description = serverToNodeDescription(
+			sseOnlyServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		const endpointUrl = description?.properties.find((p) => p.name === 'endpointUrl');
 		const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
@@ -88,13 +108,19 @@ describe('serverToNodeDescription', () => {
 			remotes: [],
 		};
 
-		expect(serverToNodeDescription(unsupportedServer, baseDescription)).toBeNull();
+		expect(
+			serverToNodeDescription(unsupportedServer, baseDescription, isKnownCredentialType),
+		).toBeNull();
 	});
 
 	it('marks deprecated servers as hidden so the node creator skips them', () => {
 		const deprecatedServer: McpRegistryServer = { ...notionMockServer, status: 'deprecated' };
 
-		const description = serverToNodeDescription(deprecatedServer, baseDescription);
+		const description = serverToNodeDescription(
+			deprecatedServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.hidden).toBe(true);
 	});
@@ -108,7 +134,11 @@ describe('serverToNodeDescription', () => {
 			],
 		};
 
-		const description = serverToNodeDescription(themedServer, baseDescription);
+		const description = serverToNodeDescription(
+			themedServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.iconUrl).toEqual({
 			light: 'https://example.com/light.svg',
@@ -122,7 +152,11 @@ describe('serverToNodeDescription', () => {
 			icons: [{ src: 'https://example.com/light.svg', theme: 'light' }],
 		};
 
-		const description = serverToNodeDescription(lightOnlyServer, baseDescription);
+		const description = serverToNodeDescription(
+			lightOnlyServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.iconUrl).toBe('https://example.com/light.svg');
 	});
@@ -137,7 +171,11 @@ describe('serverToNodeDescription', () => {
 			],
 		};
 
-		const description = serverToNodeDescription(multiFormatServer, baseDescription);
+		const description = serverToNodeDescription(
+			multiFormatServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.iconUrl).toBe('https://example.com/icon.svg');
 	});
@@ -151,7 +189,11 @@ describe('serverToNodeDescription', () => {
 			],
 		};
 
-		const description = serverToNodeDescription(noSvgServer, baseDescription);
+		const description = serverToNodeDescription(
+			noSvgServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.iconUrl).toBe('https://example.com/icon.png');
 	});
@@ -167,7 +209,11 @@ describe('serverToNodeDescription', () => {
 			],
 		};
 
-		const description = serverToNodeDescription(themedMultiFormatServer, baseDescription);
+		const description = serverToNodeDescription(
+			themedMultiFormatServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.iconUrl).toEqual({
 			light: 'https://example.com/light.svg',
@@ -176,7 +222,11 @@ describe('serverToNodeDescription', () => {
 	});
 
 	it('extends codex.alias with the title and displayName', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.codex?.alias).toEqual([
 			'MCP',
@@ -187,7 +237,11 @@ describe('serverToNodeDescription', () => {
 	});
 
 	it('sets primaryDocumentation when websiteUrl is present', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description?.codex?.resources).toEqual({
 			primaryDocumentation: [{ url: notionMockServer.websiteUrl }],
@@ -196,22 +250,33 @@ describe('serverToNodeDescription', () => {
 
 	it('does not mutate the input baseDescription', () => {
 		const snapshot = deepCopy(baseDescription);
-		serverToNodeDescription(notionMockServer, baseDescription);
+		serverToNodeDescription(notionMockServer, baseDescription, isKnownCredentialType);
 		expect(baseDescription).toEqual(snapshot);
 	});
 
 	it('leaves properties other than endpointUrl and serverTransport untouched', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		const include = description?.properties.find((p) => p.name === 'include');
 		expect(include).toEqual(baseDescription.properties.find((p) => p.name === 'include'));
 	});
 
 	it('matches inline snapshot for Notion mock server', () => {
-		const description = serverToNodeDescription(notionMockServer, baseDescription);
+		const description = serverToNodeDescription(
+			notionMockServer,
+			baseDescription,
+			isKnownCredentialType,
+		);
 
 		expect(description).toMatchInlineSnapshot(`
 {
+  "builderHint": {
+    "searchHint": "Agent-optimised Notion integration. When wiring an ai_tool to an AI Agent for Notion, use THIS node, not the native action node — this variant exposes Notion's tools in the shape AI Agents expect and ships pre-configured connection details.",
+  },
   "codex": {
     "alias": [
       "MCP",
@@ -278,11 +343,45 @@ describe('serverToNodeDescription', () => {
 }
 `);
 	});
+
+	describe('with extendsCredential', () => {
+		it('wires the synthetic credential name into the node description when overrides are present', () => {
+			const description = serverToNodeDescription(
+				slackExtendingMockServer,
+				baseDescription,
+				isKnownCredentialType,
+			);
+
+			expect(description).not.toBeNull();
+			expect(description?.credentials).toEqual([{ name: 'slackMcpOAuth2Api', required: true }]);
+		});
+
+		it('wires the synthetic credential name even when no overrides are present', () => {
+			const description = serverToNodeDescription(
+				gmailDirectExtendMockServer,
+				baseDescription,
+				(name) => name === 'gmailOAuth2',
+			);
+
+			expect(description).not.toBeNull();
+			expect(description?.credentials).toEqual([{ name: 'gmailMcpOAuth2Api', required: true }]);
+		});
+
+		it('omits credentials when the parent type is not registered', () => {
+			const description = serverToNodeDescription(
+				gmailDirectExtendMockServer,
+				baseDescription,
+				() => false,
+			);
+
+			expect(description?.credentials).toEqual([]);
+		});
+	});
 });
 
 describe('serverToCredentialDescription', () => {
 	it('returns a description for servers with OAuth2 auth type', () => {
-		const description = serverToCredentialDescription(notionMockServer);
+		const description = serverToCredentialDescription(notionMockServer, isKnownCredentialType);
 
 		expect(description).not.toBeNull();
 		expect(description).toEqual({
@@ -325,7 +424,7 @@ describe('serverToCredentialDescription', () => {
 			authType: 'foo' as never,
 		};
 
-		expect(serverToCredentialDescription(unsupportedServer)).toBeNull();
+		expect(serverToCredentialDescription(unsupportedServer, isKnownCredentialType)).toBeNull();
 	});
 
 	it('returns null when no remote is available', () => {
@@ -334,7 +433,7 @@ describe('serverToCredentialDescription', () => {
 			remotes: [],
 		};
 
-		expect(serverToCredentialDescription(noRemoteServer)).toBeNull();
+		expect(serverToCredentialDescription(noRemoteServer, isKnownCredentialType)).toBeNull();
 	});
 
 	it('returns null when the endpoint URL is not a valid URL', () => {
@@ -343,6 +442,178 @@ describe('serverToCredentialDescription', () => {
 			remotes: [{ type: 'streamable-http', url: 'invalid-url' }],
 		};
 
-		expect(serverToCredentialDescription(invalidUrlServer)).toBeNull();
+		expect(serverToCredentialDescription(invalidUrlServer, isKnownCredentialType)).toBeNull();
+	});
+
+	describe('with extendsCredential', () => {
+		const isKnownCredentialType = (name: string) => name === 'slackOAuth2Api';
+
+		it('extends the named credential and emits hidden override properties for non-null values', () => {
+			const description = serverToCredentialDescription(
+				slackExtendingMockServer,
+				isKnownCredentialType,
+			);
+
+			expect(description).toEqual({
+				name: 'slackMcpOAuth2Api',
+				displayName: 'Slack MCP OAuth2',
+				extends: ['slackOAuth2Api'],
+				icon: 'node:@n8n/mcp-registry.slack',
+				properties: [
+					{
+						displayName: 'authUrl',
+						name: 'authUrl',
+						type: 'hidden',
+						default: 'https://slack.com/oauth/v2_user/authorize',
+					},
+					{
+						displayName: 'accessTokenUrl',
+						name: 'accessTokenUrl',
+						type: 'hidden',
+						default: 'https://slack.com/api/oauth.v2.user.access',
+					},
+					{
+						displayName: 'scope',
+						name: 'scope',
+						type: 'hidden',
+						default: 'channels:read chat:write',
+					},
+					{
+						displayName: 'authQueryParameters',
+						name: 'authQueryParameters',
+						type: 'hidden',
+						default: '',
+					},
+					{
+						displayName: 'Allowed HTTP Request Domains',
+						name: 'allowedHttpRequestDomains',
+						type: 'hidden',
+						default: 'domains',
+					},
+					{
+						displayName: 'Allowed Domains',
+						name: 'allowedDomains',
+						type: 'hidden',
+						default: 'mcp.slack.com',
+					},
+				],
+			});
+		});
+
+		it('drops override keys whose value is null', () => {
+			const server: McpRegistryServer = {
+				...slackExtendingMockServer,
+				extendsCredential: {
+					extends: 'slackOAuth2Api',
+					authUrl: 'https://slack.com/oauth/v2_user/authorize',
+					accessTokenUrl: null as unknown as string,
+					scope: null as unknown as string,
+				},
+			};
+
+			const description = serverToCredentialDescription(server, isKnownCredentialType);
+
+			expect(description?.properties).toEqual([
+				{
+					displayName: 'authUrl',
+					name: 'authUrl',
+					type: 'hidden',
+					default: 'https://slack.com/oauth/v2_user/authorize',
+				},
+				{
+					displayName: 'Allowed HTTP Request Domains',
+					name: 'allowedHttpRequestDomains',
+					type: 'hidden',
+					default: 'domains',
+				},
+				{
+					displayName: 'Allowed Domains',
+					name: 'allowedDomains',
+					type: 'hidden',
+					default: 'mcp.slack.com',
+				},
+			]);
+		});
+
+		it('returns null when the parent credential type is not registered', () => {
+			const description = serverToCredentialDescription(
+				slackExtendingMockServer,
+				(name) => name === 'somethingElse',
+			);
+
+			expect(description).toBeNull();
+		});
+
+		it('returns null when the extendsCredential payload fails schema validation', () => {
+			const server: McpRegistryServer = {
+				...slackExtendingMockServer,
+				extendsCredential: {
+					extends: 'slackOAuth2Api',
+					grantType: 'invalidGrant' as never,
+				},
+			};
+
+			expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
+		});
+
+		it('returns null when authType is "extendsCredential" but the extendsCredential field is missing', () => {
+			const server: McpRegistryServer = {
+				...slackExtendingMockServer,
+				extendsCredential: undefined,
+			};
+
+			expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
+		});
+
+		it('creates a synthetic credential extending the parent even when no overrides are present', () => {
+			const description = serverToCredentialDescription(
+				gmailDirectExtendMockServer,
+				(name) => name === 'gmailOAuth2',
+			);
+
+			expect(description).toEqual({
+				name: 'gmailMcpOAuth2Api',
+				displayName: 'Gmail MCP OAuth2',
+				extends: ['gmailOAuth2'],
+				icon: 'node:@n8n/mcp-registry.gmail',
+				properties: [
+					{
+						displayName: 'Allowed HTTP Request Domains',
+						name: 'allowedHttpRequestDomains',
+						type: 'hidden',
+						default: 'domains',
+					},
+					{
+						displayName: 'Allowed Domains',
+						name: 'allowedDomains',
+						type: 'hidden',
+						default: 'mcp.gmail.com',
+					},
+				],
+			});
+		});
+
+		it('is ignored when authType is "oauth2"', () => {
+			const server: McpRegistryServer = {
+				...slackExtendingMockServer,
+				authType: 'oauth2',
+			};
+
+			const description = serverToCredentialDescription(server, isKnownCredentialType);
+
+			expect(description?.extends).toEqual(['mcpOAuth2Api']);
+		});
+	});
+});
+
+describe('getMcpRegistryCredentialTypeName', () => {
+	it.each([
+		{ slug: 'notion', expected: 'notionMcpOAuth2Api' },
+		{ slug: 'linear', expected: 'linearMcpOAuth2Api' },
+		{ slug: 'multi-word-service', expected: 'multiWordServiceMcpOAuth2Api' },
+	])('maps slug "$slug" to credential type "$expected"', ({ slug, expected }) => {
+		expect(
+			getMcpRegistryCredentialTypeName({ ...notionMockServer, slug } as McpRegistryServer),
+		).toBe(expected);
 	});
 });

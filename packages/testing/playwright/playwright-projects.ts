@@ -29,6 +29,9 @@ const CONTAINER_ONLY = new RegExp(
 // network calls. Used by `pnpm test:local:isolated` and similar workflows.
 const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
 
+/** TODO: Temporarily disable all instance ai e2e tests. Re-enable when ready. */
+const INSTANCE_AI_E2E_IGNORE = '**/instance-ai/**';
+
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'sqlite', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
@@ -50,6 +53,7 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 // postgres/kafka/redis/observability.
 export const BENCHMARK_MAIN_RESOURCES = { memory: 4, cpu: 2 };
 export const BENCHMARK_WORKER_RESOURCES = { memory: 2, cpu: 1 };
+export const BENCHMARK_WEBHOOK_RESOURCES = { memory: 4, cpu: 2 };
 
 export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vector'] as const;
 
@@ -67,9 +71,10 @@ const BENCHMARK_CONFIG: N8NConfig = {
 	postgres: true,
 	resourceQuota: BENCHMARK_MAIN_RESOURCES,
 	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
-	// Distribute load across all mains. UI tests stick to the default `first`
-	// policy so debugging hits a single predictable backend.
-	lbPolicy: 'round_robin',
+	webhookResourceQuota: BENCHMARK_WEBHOOK_RESOURCES,
+	// `least_conn` avoids keep-alive affinity that skews round_robin 50/100% with
+	// autocannon's long-lived connections across 2+ procs. UI tests use `first`.
+	lbPolicy: 'least_conn',
 	env: {
 		N8N_LOG_LEVEL: 'error',
 		N8N_DIAGNOSTICS_ENABLED: 'false',
@@ -96,6 +101,8 @@ export interface BenchOptions {
 	mains?: number;
 	/** Number of worker pods. Default: 0 (direct mode). */
 	workers?: number;
+	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
+	webhooks?: number;
 	/**
 	 * Adds the `tracing` service (Jaeger + n8n-tracer) and turns on OTEL emission.
 	 * Adds ~5-10% per-request overhead — opt in only when measuring OTEL cost or
@@ -118,8 +125,8 @@ export interface BenchOptions {
  *   // Queue-mode kafka (1 main + 3 workers)
  *   test.use({ capability: benchConfig('node-count-scaling', { kafka: true, workers: 3 }) });
  *
- *   // Multi-main webhook
- *   test.use({ capability: benchConfig('webhook-main-scaling', { mains: 2, workers: 2 }) });
+ *   // Dedicated webhook proc + worker
+ *   test.use({ capability: benchConfig('webhook-dedicated-proc', { webhooks: 1, workers: 1 }) });
  */
 export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConfig {
 	const services = [...(BENCHMARK_CONFIG.services ?? [])];
@@ -144,6 +151,7 @@ export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConf
 		services,
 		...(opts.mains !== undefined && { mains: opts.mains }),
 		...(opts.workers !== undefined && { workers: opts.workers }),
+		...(opts.webhooks !== undefined && { webhooks: opts.webhooks }),
 		env,
 	};
 }
@@ -212,6 +220,7 @@ export function getProjects(): Project[] {
 		projects.push({
 			name: 'e2e',
 			testDir: './tests/e2e',
+			testIgnore: INSTANCE_AI_E2E_IGNORE,
 			grepInvert: ALLOW_CONTAINER_ONLY ? undefined : CONTAINER_ONLY,
 			fullyParallel: true,
 			use: { baseURL: getFrontendUrl() },
@@ -231,6 +240,7 @@ export function getProjects(): Project[] {
 				{
 					name: `${name}:e2e`,
 					testDir: './tests/e2e',
+					testIgnore: INSTANCE_AI_E2E_IGNORE,
 					timeout: name === 'sqlite' ? 60000 : 180000, // 60 seconds for sqlite container test, 180 for other modes to allow startup
 					fullyParallel: true,
 					use: { containerConfig: config },
@@ -249,6 +259,7 @@ export function getProjects(): Project[] {
 		projects.push({
 			name: 'coverage',
 			testDir: './tests/e2e',
+			testIgnore: INSTANCE_AI_E2E_IGNORE,
 			timeout: 60000,
 			fullyParallel: true,
 			use: { containerConfig: {} },
@@ -291,6 +302,13 @@ export function getProjects(): Project[] {
 		use: {
 			// Default container config for performance tests, equivalent to @cloud:starter
 			containerConfig: { resourceQuota: { memory: 0.75, cpu: 0.5 }, env: { E2E_TESTS: 'true' } },
+			// The browser runs at Chromium's default launch — no V8 heap flag, memory
+			// pressure enabled — so the canvas numbers stay representative of a real
+			// user's browser. The reported `jsHeapSizeLimit` is ~4 GB (V8's
+			// pointer-compression cage); a prior `--max-old-space-size=8192` flag
+			// couldn't raise it past that cage, so it was a no-op for the ceiling and
+			// only suppressed memory-pressure GC. canvas-execution.spec.ts logs the
+			// actual limit, so any future flag or Chromium change is visible.
 		},
 	});
 

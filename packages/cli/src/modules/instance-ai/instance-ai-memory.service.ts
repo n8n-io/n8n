@@ -20,8 +20,13 @@ import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { parseStoredMessages } from './message-parser';
+import {
+	collectConfirmationRequestIds,
+	markExpiredConfirmations,
+	parseStoredMessages,
+} from './message-parser';
 import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 
 function isAgentMessageLike(value: unknown): value is AgentDbMessage {
@@ -58,6 +63,7 @@ export class InstanceAiMemoryService {
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly checkpointRepository: InstanceAiCheckpointRepository,
+		private readonly pendingConfirmationRepository: InstanceAiPendingConfirmationRepository,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -81,7 +87,11 @@ export class InstanceAiMemoryService {
 		};
 	}
 
-	async ensureThread(userId: string, threadId: string): Promise<InstanceAiEnsureThreadResponse> {
+	async ensureThread(
+		userId: string,
+		threadId: string,
+		projectId: string,
+	): Promise<InstanceAiEnsureThreadResponse> {
 		const existing = await this.agentMemory.getThread(threadId);
 		if (existing) {
 			if (existing.resourceId !== userId) {
@@ -94,11 +104,14 @@ export class InstanceAiMemoryService {
 			};
 		}
 
-		const created = await this.agentMemory.saveThread({
-			id: threadId,
-			resourceId: userId,
-			title: '',
-		});
+		const created = await this.agentMemory.saveThreadWithProject(
+			{
+				id: threadId,
+				resourceId: userId,
+				title: '',
+			},
+			projectId,
+		);
 
 		return {
 			thread: this.toThreadInfo(created),
@@ -159,8 +172,30 @@ export class InstanceAiMemoryService {
 		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
 
 		const messages = parseStoredMessages(storedMessages, snapshots);
+		await this.flagExpiredConfirmations(messages);
 
-		return { threadId, messages };
+		const projectId = await this.agentMemory.getThreadProjectId(threadId);
+		return { threadId, projectId: projectId ?? undefined, messages };
+	}
+
+	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`
+	 *  and flip `confirmation.expired = true` on the ones with no live row. */
+	private async flagExpiredConfirmations(
+		messages: Awaited<ReturnType<typeof parseStoredMessages>>,
+	): Promise<void> {
+		const requestIds = collectConfirmationRequestIds(messages);
+		if (requestIds.length === 0) return;
+		try {
+			const live = await this.pendingConfirmationRepository.findLiveRequestIds(
+				requestIds,
+				new Date(),
+			);
+			markExpiredConfirmations(messages, live);
+		} catch (error) {
+			this.logger.warn('Failed to flag expired confirmation cards', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	private async loadInFlightCheckpointMessages(threadId: string): Promise<AgentDbMessage[]> {
@@ -268,8 +303,9 @@ export class InstanceAiMemoryService {
 	}
 
 	/**
-	 * Delete conversation threads older than the configured TTL.
-	 * Safe to call on startup — no-op if threadTtlDays is 0 (disabled).
+	 * Delete conversation threads older than the configured TTL. Invoked on a
+	 * recurring schedule by the leader instance's prune job. Idempotent and
+	 * safe to call repeatedly — no-op if threadTtlDays is 0 (disabled).
 	 */
 	async cleanupExpiredThreads(
 		onThreadDeleted?: (threadId: string) => Promise<void>,

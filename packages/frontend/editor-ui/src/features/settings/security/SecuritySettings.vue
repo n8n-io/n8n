@@ -68,7 +68,7 @@ function goToUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
 }
 
-const { state } = useAsyncState(async () => {
+const { state, isReady, error } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
 	return {
 		personalSpacePublishing: settings.personalSpacePublishing,
@@ -82,6 +82,13 @@ const { state } = useAsyncState(async () => {
 }, undefined);
 
 const isManagedByEnv = computed(() => state.value?.managedByEnv ?? false);
+
+// The security settings endpoint is gated by an enterprise license and 403s on
+// unlicensed instances, leaving `state` undefined. The data redaction section
+// still needs to render so the licensed-feature upgrade prompt is reachable, so
+// we render once the request settles (resolved or failed) rather than waiting
+// for a defined `state`.
+const isSecuritySettingsSettled = computed(() => isReady.value || error.value !== undefined);
 
 async function updatePersonalSpaceSetting(
 	key: 'personalSpacePublishing' | 'personalSpaceSharing',
@@ -238,8 +245,8 @@ const sharingCountText = computed(() => {
 		</div>
 
 		<DataRedactionSection
-			v-if="isRedactionEnforcementFlagEnabled && state !== undefined"
-			:initial-floor="state.initialRedactionFloor"
+			v-if="isRedactionEnforcementFlagEnabled && isSecuritySettingsSettled"
+			:initial-floor="state?.initialRedactionFloor ?? 'off'"
 			:managed-by-env="isManagedByEnv"
 		/>
 

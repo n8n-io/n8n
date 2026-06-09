@@ -1,7 +1,9 @@
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
+import type { AgentExecutionCounter } from './agent';
 import type { AgentMessage } from './message';
+import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject } from '../utils/json';
 
@@ -18,6 +20,16 @@ export interface ToolExecutionContext {
 		threadId: string;
 		resourceId: string;
 	};
+	/** Internal runtime event bridge for platform-managed tools. */
+	emitEvent?: (event: AgentEventData) => void;
+	/**
+	 * The current run's abort signal. Long-running tools (e.g. ones that spawn a
+	 * child agent) should forward it so cancelling the parent run also cancels
+	 * the work they started.
+	 */
+	abortSignal?: AbortSignal;
+	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
+	executionCounter?: AgentExecutionCounter;
 }
 
 export interface ToolContext {
@@ -27,8 +39,14 @@ export interface ToolContext {
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
 	persistence?: ToolExecutionContext['persistence'];
-	/** Telemetry config from the parent agent, for sub-agent propagation. */
+	/** Telemetry config from the parent agent. */
 	parentTelemetry?: BuiltTelemetry;
+	/** Internal runtime event bridge for platform-managed tools. */
+	emitEvent?: ToolExecutionContext['emitEvent'];
+	/** The current run's abort signal, for tools that start cancellable work. */
+	abortSignal?: ToolExecutionContext['abortSignal'];
+	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
+	executionCounter?: ToolExecutionContext['executionCounter'];
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
@@ -38,16 +56,24 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	 * the execution engine to halt. Code after `return await ctx.suspend()` is unreachable.
 	 */
 	suspend: (payload: S) => Promise<never>;
-	/** Data from the consumer after resume. Undefined on first invocation. */
+	/** Data from the consumer after resume. Undefined on first invocation or when cancelled. */
 	resumeData: R | undefined;
+	/** Set when the resume was a cancellation and the tool opted in via `.handleCancellation()`. */
+	cancellation?: { message: string };
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
 	/** Agent run ID for the current execution. */
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
 	persistence?: ToolExecutionContext['persistence'];
-	/** Telemetry config from the parent agent, for sub-agent propagation. */
+	/** Telemetry config from the parent agent. */
 	parentTelemetry?: BuiltTelemetry;
+	/** Internal runtime event bridge for platform-managed tools. */
+	emitEvent?: ToolExecutionContext['emitEvent'];
+	/** The current run's abort signal, for tools that start cancellable work. */
+	abortSignal?: ToolExecutionContext['abortSignal'];
+	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
+	executionCounter?: ToolExecutionContext['executionCounter'];
 }
 
 export interface BuiltTool {
@@ -63,7 +89,12 @@ export interface BuiltTool {
 	readonly systemInstruction?: string;
 	readonly suspendSchema?: ZodType | JSONSchema7;
 	readonly resumeSchema?: ZodType | JSONSchema7;
-	readonly withDefaultApproval?: boolean;
+	readonly approval?: {
+		readonly required: boolean;
+		readonly conditional?: boolean;
+	};
+	/** When `true`, the handler is called on cancellation with `ctx.cancellation` set instead of being bypassed. */
+	readonly handleCancellation?: boolean;
 	readonly toMessage?: (output: unknown) => AgentMessage | undefined;
 	/**
 	 * Transform the handler output before sending it to the LLM as a tool result.

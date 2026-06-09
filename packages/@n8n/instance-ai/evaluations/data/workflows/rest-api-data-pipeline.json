@@ -10,7 +10,7 @@
 		},
 		{
 			"role": "user",
-			"text": "GET https://jsonplaceholder.typicode.com/posts. Drop any post whose title contains the word 'qui'. Post to #api-digest."
+			"text": "GET https://jsonplaceholder.typicode.com/posts. Drop any post whose title contains the word 'qui'. Post to #api-digest as a single summary message that says how many posts remain and lists their titles."
 		},
 		{
 			"role": "assistant",
@@ -25,6 +25,7 @@
 	"complexity": "medium",
 	"tags": ["build", "http-request", "slack", "data-transformation", "schedule"],
 	"triggerType": "schedule",
+	"datasets": ["pr", "full"],
 	"executionScenarios": [
 		{
 			"name": "happy-path",

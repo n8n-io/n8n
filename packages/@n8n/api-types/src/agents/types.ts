@@ -27,9 +27,6 @@ export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
 
 export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
 
-export const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT =
-	'Automated message: you were triggered on schedule.';
-
 export interface ChatIntegrationDescriptor {
 	type: string;
 	label: string;
@@ -38,12 +35,6 @@ export interface ChatIntegrationDescriptor {
 	capabilities?: string[];
 	useIntegrationWhen?: string[];
 	useNodeToolWhen?: string[];
-}
-
-export interface AgentScheduleConfig {
-	active: boolean;
-	cronExpression: string;
-	wakeUpPrompt: string;
 }
 
 export interface AgentIntegrationStatusEntry {
@@ -121,6 +112,15 @@ export interface AgentVersionDto {
 	author: string;
 }
 
+export interface AgentFileDto {
+	id: string;
+	agentId: string;
+	fileName: string;
+	mimeType: string;
+	fileSizeBytes: number;
+	createdAt: string;
+}
+
 export interface AgentVersionListItemDto {
 	versionId: string;
 	agentId: string;
@@ -138,7 +138,12 @@ export interface AgentPersistedMessageContentPart {
 	input?: unknown;
 	state?: string;
 	output?: unknown;
+	canceled?: boolean;
 	error?: string;
+	/** Epoch ms when the tool handler started executing. */
+	startTime?: number;
+	/** Epoch ms when the tool handler settled. */
+	endTime?: number;
 }
 
 export interface AgentPersistedMessageDto {
