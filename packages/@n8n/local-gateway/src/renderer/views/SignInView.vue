@@ -2,6 +2,10 @@
 import { N8nButton, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
 import { computed, ref } from 'vue';
 
+import type { AuthStatus } from '../../shared/types';
+
+const props = defineProps<{ status: AuthStatus }>();
+
 const CLOUD_SUFFIX = '.app.n8n.cloud';
 
 const useCustomUrl = ref(false);
@@ -18,16 +22,23 @@ const canSubmit = computed(() =>
 	useCustomUrl.value ? customUrl.value.trim().length > 0 : slug.value.trim().length > 0,
 );
 
+// Stay in a loading state from the click until the browser round-trip resolves.
+const loading = computed(() => submitting.value || props.status.state === 'authorizing');
+const errorMessage = computed(() => (props.status.state === 'error' ? props.status.error : null));
+
 function toggleInputMode() {
 	useCustomUrl.value = !useCustomUrl.value;
 }
 
 async function signIn() {
-	if (!canSubmit.value || submitting.value) return;
+	if (!canSubmit.value || loading.value) return;
 	submitting.value = true;
-	// TODO(PR4): call window.electronAPI.signIn(instanceUrl.value) once the OAuth bridge lands.
-	console.info('[sign-in] would start OAuth for', instanceUrl.value);
-	submitting.value = false;
+	try {
+		await window.electronAPI.signIn(instanceUrl.value);
+	} finally {
+		// The browser flow continues out-of-band; `status` drives the UI from here.
+		submitting.value = false;
+	}
 }
 </script>
 
@@ -64,12 +75,15 @@ async function signIn() {
 			<N8nButton
 				:class="$style.submit"
 				size="large"
-				:loading="submitting"
+				:loading="loading"
 				:disabled="!canSubmit"
 				@click="signIn"
 			>
 				Sign in
 			</N8nButton>
+			<N8nText v-if="errorMessage" :class="$style.error" color="danger" size="small">
+				{{ errorMessage }}
+			</N8nText>
 			<button type="button" :class="$style.linkButton" @click="toggleInputMode">
 				<N8nText size="small" color="text-light">
 					{{ useCustomUrl ? 'Use n8n Cloud instead' : 'Self-hosting? Enter URL manually' }}
@@ -122,6 +136,10 @@ async function signIn() {
 /* Block-level primary action — N8nButton doesn't stretch under align-items: stretch. */
 .submit {
 	width: 100%;
+}
+
+.error {
+	text-align: center;
 }
 
 /* Subordinate link: right-aligned with the button, just below it. Styling comes from

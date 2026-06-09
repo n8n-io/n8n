@@ -2,22 +2,15 @@ import { configure, logger } from '@n8n/computer-use/logger';
 import { app, shell } from 'electron';
 import * as path from 'node:path';
 
-import { assertConnectOriginAllowed } from './connect-origin';
-import {
-	deepLinkProtocolsInArgv,
-	parseConnectPayload,
-	parseConnectPayloadFromArgv,
-} from './connect-payload';
 import { DaemonController } from './daemon-controller';
 import { registerIpcHandlers } from './ipc-handlers';
+import { showMainWindow, toggleMainWindow, notifyMainWindow } from './main-window';
 import { parseOAuthCallback } from './oauth/oauth-callback';
 import { OAuthFlow } from './oauth/oauth-flow';
 import { TokenStore } from './oauth/token-store';
 import { SettingsStore } from './settings-store';
-import { openSettingsWindow, notifySettingsWindow } from './settings-window';
 import { createTray } from './tray';
 import { APP_URL_SCHEME } from '../shared/constants';
-import type { ConnectPayload } from '../shared/types';
 
 // Windows: required for proper taskbar/notification grouping
 if (process.platform === 'win32') {
@@ -44,7 +37,7 @@ if (!app.requestSingleInstanceLock()) {
 
 			const settingsStore = new SettingsStore();
 			configure({ level: settingsStore.get().logLevel });
-			logger.info('n8n Gateway starting');
+			logger.info('n8n Assistant starting');
 
 			const controller = new DaemonController();
 			const oauthFlow = new OAuthFlow({
@@ -57,41 +50,23 @@ if (!app.requestSingleInstanceLock()) {
 			const preloadPath = path.join(__dirname, 'preload.js');
 			const rendererPath = path.join(__dirname, '..', 'renderer', 'index.html');
 
-			async function connect(payload: ConnectPayload): Promise<void> {
-				const settings = settingsStore.get();
-				assertConnectOriginAllowed(payload.url, settings.allowedOrigins);
-				const config = settingsStore.toGatewayConfig(settings);
-				const token = payload.apiKey?.trim();
-				if (!token || token.length === 0) {
-					throw new Error(
-						'Missing gateway token in deeplink. Connect from n8n using the computer-use link.',
-					);
-				}
-				await controller.connect(config, payload.url, token);
-			}
-
 			async function disconnectGateway(): Promise<void> {
 				await controller.disconnect();
-			}
-
-			function handleConnectPayload(payload: ConnectPayload): void {
-				logger.info('Handling deep-link connection payload', { url: payload.url });
-				void connect(payload).catch((error: unknown) => {
-					logger.error('Deep-link connection failed', {
-						error: error instanceof Error ? error.message : String(error),
-					});
-					openSettingsWindow(preloadPath, rendererPath);
-				});
 			}
 
 			registerIpcHandlers(controller, settingsStore, disconnectGateway, oauthFlow);
 
 			controller.on('statusChanged', (snapshot) => {
-				notifySettingsWindow('statusChanged', snapshot);
+				notifyMainWindow('statusChanged', snapshot);
 			});
 
 			oauthFlow.on('authStatusChanged', (status) => {
-				notifySettingsWindow('authStatusChanged', status);
+				notifyMainWindow('authStatusChanged', status);
+				// The window auto-hid on blur when the system browser opened — bring it back so the
+				// user sees the result (the signed-in view, or a sign-in error).
+				if (status.state === 'signedIn' || status.state === 'error') {
+					showMainWindow(preloadPath, rendererPath);
+				}
 			});
 
 			/** Route an OAuth redirect deep link to the flow. Returns true if it was one. */
@@ -109,9 +84,9 @@ if (!app.requestSingleInstanceLock()) {
 
 			createTray(
 				controller,
-				() => openSettingsWindow(preloadPath, rendererPath),
+				(trayBounds) => toggleMainWindow(preloadPath, rendererPath, trayBounds),
 				() => {
-					logger.info('n8n Gateway quitting');
+					logger.info('n8n Assistant quitting');
 					void controller
 						.disconnect()
 						.catch((error: unknown) => {
@@ -123,43 +98,24 @@ if (!app.requestSingleInstanceLock()) {
 							app.quit();
 						});
 				},
-				() => {
-					void disconnectGateway();
-				},
 			);
 
-			if (!handleOAuthDeepLinkFromArgv(process.argv)) {
-				const payloadFromArgs = parseConnectPayloadFromArgv(process.argv);
-				if (payloadFromArgs) {
-					handleConnectPayload(payloadFromArgs);
-				} else if (deepLinkProtocolsInArgv(process.argv)) {
-					logger.warn(
-						'Deep link present in argv but payload invalid (e.g. missing token); skipping startup connect',
-					);
-				}
-			}
+			// Cold start: handle an OAuth redirect passed in argv (Windows/Linux deep link).
+			handleOAuthDeepLinkFromArgv(process.argv);
 
-			// macOS — `open-url`: Fires when the OS hands the app a `n8n://…` URL (browser, another app,
-			// or “Open” from Finder). Runs for a process that is already running and also after launch when the app
-			// was opened via the protocol; cold starts may still receive the URL in `process.argv` — we parse that
-			// above so both paths are covered.
+			// The window opens only from the tray — nothing to auto-open on launch.
+
+			// macOS — `open-url`: the OS hands the running app the `n8n://callback?...` OAuth redirect.
+			// Cold starts receive it in `process.argv` instead, handled above.
 			app.on('open-url', (event, url) => {
 				event.preventDefault();
-				if (handleOAuthDeepLink(url)) return;
-				const payload = parseConnectPayload(url);
-				if (!payload) return;
-				handleConnectPayload(payload);
+				handleOAuthDeepLink(url);
 			});
 
-			// Windows / Linux — `second-instance`: Fires on the **first** (lock-holding) process when the user starts
-			// the app again while it is already running. The second process exits immediately (`requestSingleInstanceLock`
-			// failed); this event receives that second process’s `argv`, which often includes the deeplink the OS
-			// passed to the new launch, so we connect from here instead of argv-only startup parsing.
+			// Windows / Linux — `second-instance`: the lock-holding process receives the second launch's
+			// `argv`, which carries the OAuth redirect deep link the OS passed to it.
 			app.on('second-instance', (_event, argv) => {
-				if (handleOAuthDeepLinkFromArgv(argv)) return;
-				const payload = parseConnectPayloadFromArgv(argv);
-				if (!payload) return;
-				handleConnectPayload(payload);
+				handleOAuthDeepLinkFromArgv(argv);
 			});
 		})
 		.catch((error: unknown) => {

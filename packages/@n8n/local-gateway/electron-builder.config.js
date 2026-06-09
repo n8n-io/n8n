@@ -1,7 +1,7 @@
 /** @type {import('electron-builder').Configuration} */
 const config = {
 	appId: 'io.n8n.gateway',
-	productName: 'n8n Gateway',
+	productName: 'n8n Assistant',
 	directories: { output: 'out' },
 	files: ['**/*', '!src/**', '!.turbo/**', '!tsconfig*.json', '!electron-builder.config.js'],
 	mac: {
