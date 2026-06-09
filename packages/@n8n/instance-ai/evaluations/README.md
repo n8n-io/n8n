@@ -132,6 +132,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--exclude` | — | Skip test cases whose filename matches any of the substrings. Same comma-separated shape as `--filter`; applied after `--filter` |
 | `--prebuilt-workflows` | — | Path to a JSON manifest mapping test-case slugs to existing workflow IDs. Skips the orchestrator build for matched test cases — see [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows) |
 | `--keep-workflows` | `false` | Don't delete built workflows after the run. Pair with the HTML report's "view in n8n" links to inspect each scenario's canvas execution |
+| `--delete-prebuilt-workflows` | `false` | With `--prebuilt-workflows`, delete successfully used manifest workflows after the eval run. Mutually exclusive with `--keep-workflows` |
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
@@ -279,7 +280,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
   --experiment-name mcp-cohort
 ```
 
-The harness leaves prebuilt workflows alone after the run (no auto-delete), so the manifest can be re-used across multiple eval runs.
+The harness leaves prebuilt workflows alone after the run (no auto-delete), so the manifest can be re-used across multiple eval runs. If the workflows were created only for this eval cohort, pass `--delete-prebuilt-workflows` with `--prebuilt-workflows` to delete every successfully used manifest workflow once after the run. This is destructive: the manifest will still contain the deleted IDs and should not be re-used afterward.
 
 ### Producing a manifest
 
