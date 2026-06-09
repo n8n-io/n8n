@@ -1,4 +1,4 @@
-import { splitLeadingEmoji } from '../desktop-assistant.service';
+import { splitLeadingEmoji } from '../desktop-assistant.helpers';
 
 describe('splitLeadingEmoji', () => {
 	test('extracts a single emoji and trims the trailing space', () => {
