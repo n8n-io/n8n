@@ -240,10 +240,6 @@ export class DesktopAssistantService {
 		const originalPrompt = await this.recoverOriginalPrompt(body.threadId);
 		const buildPrompt = composePromoteMessage(originalPrompt, body.name);
 
-		// Subscribe BEFORE starting the run so we don't miss a fast build that
-		// emits its tool-result before we wire up the listener.
-		const cleanup = this.subscribeForBuildOutcome(user, body.threadId);
-
 		const runId = this.instanceAiService.startRun(
 			user,
 			body.threadId,
@@ -254,27 +250,88 @@ export class DesktopAssistantService {
 			{ promptMode: 'desktop-assistant-promote' },
 		);
 
+		// Subscribe AFTER we have the runId so the listener can scope itself to
+		// the exact run we just kicked off. `subscribe` is synchronous and
+		// `startRun` only registers the run; it doesn't dispatch any events on
+		// the bus before this line runs.
+		const cleanup = this.subscribeForBuildOutcome(user, body.threadId, runId);
+
 		// Hard-cap the listener so a stalled run does not leak a subscription.
 		setTimeout(cleanup, PROMOTE_FINALIZE_TIMEOUT_MS).unref();
 
 		return { status: 'building', threadId: body.threadId, runId };
 	}
 
-	private subscribeForBuildOutcome(user: User, threadId: string): () => void {
+	/**
+	 * Listen for the promote run finishing, then resolve which workflow it
+	 * produced.
+	 *
+	 * We watch two signals because the orchestrator has more than one build
+	 * path:
+	 *  1. The `instanceAiWorkflowLoop` (newer) persists its outcome to
+	 *     `thread.metadata.instanceAiWorkflowLoop[*].lastBuildOutcome` and
+	 *     emits a plain `run-finish` event — no per-build planItem on the
+	 *     parent thread. We read the persisted outcome at run-finish.
+	 *  2. The older planned-task path (still used by some builds) emits
+	 *     `tasks-update` with a `kind: 'build-workflow'` planItem completing.
+	 *     This is the legacy `extractBuiltWorkflowId` heuristic; kept as a
+	 *     fallback so we cover whichever path the orchestrator picks.
+	 *
+	 * Whichever signal fires first wins; both go through the same `handled`
+	 * gate so we only finalise once.
+	 */
+	private subscribeForBuildOutcome(user: User, threadId: string, runId: string): () => void {
 		let handled = false;
-		const unsubscribe = this.eventBus.subscribe(threadId, (storedEvent: StoredEvent) => {
-			if (handled) return;
-			const built = extractBuiltWorkflowId(storedEvent);
-			if (!built) return;
+		const finalise = (workflowId: string) => {
 			handled = true;
 			unsubscribe();
-			this.finalizePromotedWorkflow(user, threadId, built).catch((error: unknown) => {
+			this.finalizePromotedWorkflow(user, threadId, workflowId).catch((error: unknown) => {
 				this.logger.warn('Failed to finalise promoted workflow', {
 					threadId,
-					workflowId: built,
+					workflowId,
 					error: error instanceof Error ? error.message : String(error),
 				});
 			});
+		};
+
+		const unsubscribe = this.eventBus.subscribe(threadId, (storedEvent: StoredEvent) => {
+			if (handled) return;
+
+			// Fallback: legacy planned-task build emits its outcome inline.
+			const plannedTaskBuilt = extractBuiltWorkflowId(storedEvent);
+			if (plannedTaskBuilt) {
+				finalise(plannedTaskBuilt);
+				return;
+			}
+
+			// Primary: workflow-loop builds only surface via thread metadata at
+			// run-finish. Match on the runId we kicked off so we don't react to
+			// unrelated runs that happen to share the thread.
+			const ev = storedEvent.event;
+			if (ev.type !== 'run-finish') return;
+			if (ev.runId !== runId) return;
+
+			void this.memoryService
+				.getThreadMetadata(user.id, threadId)
+				.then((metadata) => {
+					if (handled) return;
+					const workflowId = extractWorkflowLoopBuildOutcome(metadata, runId);
+					if (!workflowId) {
+						this.logger.warn('Promote run finished without a successful build outcome', {
+							threadId,
+							runId,
+						});
+						return;
+					}
+					finalise(workflowId);
+				})
+				.catch((error: unknown) => {
+					this.logger.warn('Failed to read promote thread metadata at run-finish', {
+						threadId,
+						runId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
 		});
 		return unsubscribe;
 	}
@@ -486,6 +543,37 @@ function readDesktopAssistantMeta(meta: unknown): StoredDesktopAssistantMeta | u
  * a `done` status — to avoid acting on an in-flight task that already has its
  * id slot allocated.
  */
+/**
+ * Read the workflow id produced by a workflow-loop build for the given run
+ * from `thread.metadata.instanceAiWorkflowLoop`. The workflow loop persists
+ * a `lastBuildOutcome` per work item; we pick the one whose `runId` matches
+ * the promote run we kicked off and that was successfully submitted.
+ *
+ * Returns `undefined` when no such outcome exists (e.g. the run finished
+ * without ever invoking the workflow builder, the build failed, or the
+ * metadata structure changed under us).
+ */
+export function extractWorkflowLoopBuildOutcome(
+	metadata: unknown,
+	runId: string,
+): string | undefined {
+	if (!metadata || typeof metadata !== 'object') return undefined;
+	const loop = (metadata as { instanceAiWorkflowLoop?: unknown }).instanceAiWorkflowLoop;
+	if (!loop || typeof loop !== 'object') return undefined;
+	for (const workItem of Object.values(loop as Record<string, unknown>)) {
+		if (!workItem || typeof workItem !== 'object') continue;
+		const outcome = (workItem as { lastBuildOutcome?: unknown }).lastBuildOutcome;
+		if (!outcome || typeof outcome !== 'object') continue;
+		const o = outcome as { runId?: unknown; submitted?: unknown; workflowId?: unknown };
+		if (o.runId !== runId) continue;
+		if (o.submitted !== true) continue;
+		if (typeof o.workflowId === 'string' && o.workflowId.length > 0) {
+			return o.workflowId;
+		}
+	}
+	return undefined;
+}
+
 function extractBuiltWorkflowId(storedEvent: StoredEvent): string | undefined {
 	const ev = storedEvent.event;
 	if (ev.type !== 'tasks-update') return undefined;
