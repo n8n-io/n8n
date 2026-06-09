@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, provide, useTemplateRef } from 'vue';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import { EditorExternalReadOnlyKey } from '@/app/constants/injectionKeys';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { isAgentEditingWorkflow } from '../canvasPreview.utils';
 import { IS_FIX_WITH_AI_OFFER_ENABLED, type FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
 
@@ -105,59 +105,15 @@ onBeforeUnmount(() => {
 });
 
 // === Editing lock ===
-// Lock interaction with the artifact's editor while the agent is actively
-// editing THIS workflow. Two signals trigger the lock; either is enough:
-//
-// 1. A workflow-builder sub-agent is running with `targetResource.id`
-//    matching ours. This is the primary signal — it covers the entire build
-//    window (read file → edit file → submit-workflow → verify). The
-//    orchestrator's `build-workflow-with-agent` tool call returns
-//    immediately with a taskId; the actual work happens in the sub-agent.
-//
-// 2. A workflow-mutating tool call is in flight with `args.workflowId`
-//    matching ours. Fallback for direct orchestrator calls that don't
-//    spawn a sub-agent (e.g. apply-workflow-credentials, setup-workflow).
-//
-// Without this, the user can drag nodes around concurrently with the
-// agent's mutations, producing mid-stream conflicts.
+// Lock the artifact's editor while the agent is actively mutating THIS
+// workflow, so the user can't drag nodes into a mid-stream conflict.
+// `isAgentEditingWorkflow` defines the signals that trigger the lock.
 const thread = useThread();
-
-const WORKFLOW_EDITING_TOOLS = new Set([
-	'build-workflow',
-	'build-workflow-with-agent',
-	'apply-workflow-credentials',
-	'setup-workflow',
-]);
-
-function nodeIsEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
-	// Signal 1: workflow-builder sub-agent active with our workflow id
-	if (
-		node.role === 'workflow-builder' &&
-		node.status === 'active' &&
-		node.targetResource?.type === 'workflow' &&
-		node.targetResource.id === workflowId
-	) {
-		return true;
-	}
-
-	// Signal 2: in-flight workflow-editing tool call targeting our workflow id
-	for (const tc of node.toolCalls) {
-		if (!tc.isLoading) continue;
-		if (!WORKFLOW_EDITING_TOOLS.has(tc.toolName)) continue;
-		const args = tc.args as { workflowId?: string } | undefined;
-		if (args?.workflowId === workflowId) return true;
-	}
-
-	for (const child of node.children) {
-		if (nodeIsEditingWorkflow(child, workflowId)) return true;
-	}
-	return false;
-}
 
 const isAgentEditingThisWorkflow = computed(() => {
 	for (const message of thread.messages) {
 		if (!message.agentTree) continue;
-		if (nodeIsEditingWorkflow(message.agentTree, props.workflowId)) return true;
+		if (isAgentEditingWorkflow(message.agentTree, props.workflowId)) return true;
 	}
 	return false;
 });

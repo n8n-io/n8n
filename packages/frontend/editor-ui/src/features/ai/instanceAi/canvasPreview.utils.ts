@@ -152,6 +152,55 @@ export function getLatestWorkflowUpdateResult(
 	return undefined;
 }
 
+const WORKFLOW_EDITING_TOOLS = new Set([
+	'build-workflow',
+	'build-workflow-with-agent',
+	'apply-workflow-credentials',
+	'setup-workflow',
+]);
+
+/**
+ * Whether the agent is actively mutating `workflowId` somewhere in this agent
+ * tree — used to lock the artifact canvas while a build/edit is in flight so the
+ * user can't drag nodes into a mid-stream conflict. Two signals, either is enough:
+ *   1. An active workflow-builder sub-agent targeting the workflow (covers the
+ *      whole build window: read file → edit → submit-workflow → verify).
+ *   2. An in-flight workflow-mutating tool call targeting the workflow — the
+ *      build/setup tools, or a `workflows` update / restore-version action.
+ *      Read-only `workflows` actions (get-json, get, list, …) don't lock.
+ */
+export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
+	// Signal 1: workflow-builder sub-agent active with our workflow id
+	if (
+		node.role === 'workflow-builder' &&
+		node.status === 'active' &&
+		node.targetResource?.type === 'workflow' &&
+		node.targetResource.id === workflowId
+	) {
+		return true;
+	}
+
+	// Signal 2: in-flight workflow-mutating tool call targeting our workflow id
+	for (const tc of node.toolCalls) {
+		if (!tc.isLoading) continue;
+		const args = tc.args as { workflowId?: string; action?: string } | undefined;
+		if (args?.workflowId !== workflowId) continue;
+		if (WORKFLOW_EDITING_TOOLS.has(tc.toolName)) return true;
+		if (
+			tc.toolName === 'workflows' &&
+			typeof args?.action === 'string' &&
+			WORKFLOW_UPDATE_ACTIONS.has(args.action)
+		) {
+			return true;
+		}
+	}
+
+	for (const child of node.children) {
+		if (isAgentEditingWorkflow(child, workflowId)) return true;
+	}
+	return false;
+}
+
 export interface LatestExecution {
 	executionId: string;
 	workflowId: string;
