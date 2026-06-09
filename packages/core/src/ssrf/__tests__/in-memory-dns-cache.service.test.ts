@@ -5,18 +5,18 @@ import { InMemoryDnsCache } from '../in-memory-dns-cache.service';
 
 describe('InMemoryDnsCache', () => {
 	// lru-cache captures `const perf = performance` at import time and uses perf.now()
-	// for TTL checks. jest.useFakeTimers replaces globalThis.performance with a new
+	// for TTL checks. vi.useFakeTimers replaces globalThis.performance with a new
 	// object, but lru-cache still references the original. We mock performance.now
 	// directly so lru-cache sees our controlled time via its captured reference.
 	let perfNow: number;
 
 	beforeEach(() => {
 		perfNow = 1000;
-		jest.spyOn(performance, 'now').mockImplementation(() => perfNow);
+		vi.spyOn(performance, 'now').mockImplementation(() => perfNow);
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	function advanceTime(ms: number) {

@@ -5,6 +5,7 @@ import type { BuiltTelemetry } from '../../types';
 import { generateTitleFromMessage } from '../title-generation';
 
 type GenerateTextCall = {
+	system?: string;
 	messages: Array<{ role: string; content: string }>;
 	experimental_telemetry?: Record<string, unknown>;
 };
@@ -113,9 +114,8 @@ describe('generateTitleFromMessage', () => {
 		mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert' });
 		await generateTitleFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow');
 		const call = mockGenerateText.mock.calls[0][0];
-		expect(call.messages[0].role).toBe('system');
-		expect(call.messages[0].content).toContain('markdown');
-		expect(call.messages[0].content).toContain('sentence case');
+		expect(call.system).toContain('markdown');
+		expect(call.system).toContain('sentence case');
 	});
 
 	it('accepts custom instructions', async () => {
@@ -124,7 +124,7 @@ describe('generateTitleFromMessage', () => {
 			instructions: 'Custom system prompt',
 		});
 		const call = mockGenerateText.mock.calls[0][0];
-		expect(call.messages[0].content).toBe('Custom system prompt');
+		expect(call.system).toBe('Custom system prompt');
 	});
 
 	it('passes generic telemetry to the title LLM call', async () => {
@@ -176,11 +176,11 @@ describe('generateTitleFromMessage', () => {
 		mockGenerateText.mockResolvedValue({ text: 'Berlin rain alert' });
 		await generateTitleFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow');
 		const call = mockGenerateText.mock.calls[0][0];
-		expect(call.messages[1].role).toBe('user');
-		expect(call.messages[1].content).toContain('Generate a title');
-		expect(call.messages[1].content).toContain('<message>');
-		expect(call.messages[1].content).toContain('Build a daily Berlin rain alert workflow');
-		expect(call.messages[1].content).toContain('</message>');
+		expect(call.messages[0].role).toBe('user');
+		expect(call.messages[0].content).toContain('Generate a title');
+		expect(call.messages[0].content).toContain('<message>');
+		expect(call.messages[0].content).toContain('Build a daily Berlin rain alert workflow');
+		expect(call.messages[0].content).toContain('</message>');
 	});
 
 	it('drops a streamed code fence and everything after it', async () => {
