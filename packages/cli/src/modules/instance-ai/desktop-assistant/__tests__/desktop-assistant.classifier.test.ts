@@ -144,6 +144,83 @@ describe('classifyWorkflowsForDesktopAssistant — bucketing rules', () => {
 		expect(result.actionNeeded[0].description).toBe('Gmail needs credential');
 	});
 
+	test('user-built workflow with a missing credential surfaces in actionNeeded (not gated on the desktop-assistant tag)', () => {
+		const result = classifyWorkflowsForDesktopAssistant([
+			input({
+				workflowId: 'wf-user-built',
+				active: true,
+				nodes: [
+					node({
+						type: GMAIL_TRIGGER_TYPE,
+						credentials: { gmailOAuth2: { id: 'cred-missing', name: 'Gmail account' } },
+					}),
+				],
+				tags: [],
+				accessibleCredentialIds: new Set<string>(),
+			}),
+		]);
+		expect(result.actionNeeded).toHaveLength(1);
+		expect(result.actionNeeded[0].workflowId).toBe('wf-user-built');
+		expect(result.actionNeeded[0].source).toBe('user-built');
+		expect(result.actionNeeded[0].description).toBe('Gmail needs credential');
+		expect(result.readyToRun).toHaveLength(0);
+	});
+
+	test('a credential slot with no id picked counts as "needs credential"', () => {
+		const result = classifyWorkflowsForDesktopAssistant([
+			input({
+				workflowId: 'wf-unconfigured',
+				active: true,
+				nodes: [
+					node({
+						type: GMAIL_TRIGGER_TYPE,
+						// Slot exists on the node but no credential was ever picked.
+						credentials: { gmailOAuth2: { id: '', name: '' } },
+					}),
+				],
+				tags: [],
+				accessibleCredentialIds: new Set<string>(),
+			}),
+		]);
+		expect(result.actionNeeded).toHaveLength(1);
+		expect(result.actionNeeded[0].description).toBe('Gmail needs credential');
+	});
+
+	test('a user-built workflow that is intentionally inactive is NOT flagged for activation (only credentials matter)', () => {
+		const result = classifyWorkflowsForDesktopAssistant([
+			input({
+				workflowId: 'wf-template',
+				active: false,
+				nodes: [
+					node({ type: SCHEDULE_TYPE, parameters: { rule: { interval: [{ field: 'days' }] } } }),
+				],
+				tags: [],
+			}),
+		]);
+		expect(result.actionNeeded).toHaveLength(0);
+		expect(result.readyToRun).toHaveLength(1);
+	});
+
+	test('disabled nodes do not contribute missing credentials to actionNeeded', () => {
+		const result = classifyWorkflowsForDesktopAssistant([
+			input({
+				workflowId: 'wf-disabled-gmail',
+				active: true,
+				nodes: [
+					node({ type: MANUAL_TYPE }),
+					node({
+						type: GMAIL_TRIGGER_TYPE,
+						disabled: true,
+						credentials: { gmailOAuth2: { id: '', name: '' } },
+					}),
+				],
+				tags: [],
+			}),
+		]);
+		expect(result.actionNeeded).toHaveLength(0);
+		expect(result.readyToRun).toHaveLength(1);
+	});
+
 	test('runsLocally: workflow with a computerUse.* node → true', () => {
 		const result = classifyWorkflowsForDesktopAssistant([
 			input({

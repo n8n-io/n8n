@@ -192,7 +192,16 @@ function findMissingCredentialNode(
 		if (node.disabled) continue;
 		if (!node.credentials) continue;
 		for (const slot of Object.values(node.credentials)) {
-			if (!slot?.id) continue; // Unconfigured credentials are not "missing" in the BFF sense
+			if (!slot) continue;
+			// A credential slot is "needs setup" when either:
+			//  (a) no id is bound to it (the node was created/imported but no
+			//      credential was ever picked), or
+			//  (b) the bound id is not accessible to the requesting user (the
+			//      credential was deleted, or was unshared from this user).
+			// Both block execution and both deserve the same desktop card.
+			if (typeof slot.id !== 'string' || slot.id.length === 0) {
+				return { node, serviceName: humanizeNodeTypeName(node.type) };
+			}
 			if (!input.accessibleCredentialIds.has(slot.id)) {
 				return { node, serviceName: humanizeNodeTypeName(node.type) };
 			}
@@ -244,7 +253,14 @@ function classifyOne(input: ClassifierInput): {
 	const isScheduleOrPoll =
 		summary.kind === 'schedule' || summary.kind === 'poll' || summary.kind === 'webhook';
 
-	if (tagged && (missingCredential || (!input.active && isScheduleOrPoll))) {
+	// Missing credentials block execution regardless of source: a user-built
+	// workflow with an unconfigured Gmail node belongs in actionNeeded just
+	// as much as a desktop-assistant-promoted one. Activation-required only
+	// fires for desktop-assistant workflows — plenty of user-built workflows
+	// are intentionally inactive (templates, drafts) and shouldn't be nagged.
+	if (missingCredential) {
+		bucket = 'actionNeeded';
+	} else if (tagged && !input.active && isScheduleOrPoll) {
 		bucket = 'actionNeeded';
 	} else if (tagged && input.active && isScheduleOrPoll) {
 		bucket = 'upcoming';
