@@ -14,7 +14,6 @@ import { mock } from 'jest-mock-extended';
 import {
 	builderRuntimeCacheKey,
 	type AgentStreamControl,
-	type CachedAgentRuntime,
 	type SteerableTurnsConfig,
 	type AgentsRuntimeService,
 } from '../../agents-runtime.service';
@@ -75,12 +74,7 @@ function makeService() {
 		{ modules: [] } as unknown as AgentsConfig,
 	);
 
-	jest.spyOn(service as never, 'getBuilderRuntime').mockResolvedValue({
-		agent: builder,
-		agentId,
-		projectId,
-		toolRegistry: new Map(),
-	} satisfies CachedAgentRuntime as never);
+	jest.spyOn(service as never, 'createBuilderAgent').mockResolvedValue(builder as never);
 
 	return { service, agentsRuntimeService, n8nCheckpointStorage, builder, user, credentialProvider };
 }
