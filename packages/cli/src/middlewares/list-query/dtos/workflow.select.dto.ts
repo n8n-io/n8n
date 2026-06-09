@@ -1,4 +1,4 @@
-import { BaseSelect } from './base.select.dto';
+import { BaseSelect } from './base.select.dto.js';
 
 export class WorkflowSelect extends BaseSelect {
 	static get selectableFields() {

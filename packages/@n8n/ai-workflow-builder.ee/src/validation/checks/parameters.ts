@@ -7,10 +7,10 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
-import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
+import type { SimpleWorkflow } from '@/types/index.js';
+import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map.js';
 
-import type { ProgrammaticViolation } from '../types';
+import type { ProgrammaticViolation } from '../types.js';
 
 /** The value type for options (dropdown) fields */
 type OptionValue = INodePropertyOptions['value'];

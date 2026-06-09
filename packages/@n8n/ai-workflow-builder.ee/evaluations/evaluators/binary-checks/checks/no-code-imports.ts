@@ -1,4 +1,4 @@
-import type { BinaryCheck, SimpleWorkflow } from '../types';
+import type { BinaryCheck, SimpleWorkflow } from '../types.js';
 
 /**
  * Patterns that detect library import attempts in JavaScript code:
@@ -6,7 +6,11 @@ import type { BinaryCheck, SimpleWorkflow } from '../types';
  * - import ... from 'module'
  * - import('module') (dynamic import)
  */
-const JS_IMPORT_PATTERNS = [/\brequire\s*\(/, /\bimport\s+[\s\S]*?\s+from\s+['"`]/, /\bimport\s*\(/];
+const JS_IMPORT_PATTERNS = [
+	/\brequire\s*\(/,
+	/\bimport\s+[\s\S]*?\s+from\s+['"`]/,
+	/\bimport\s*\(/,
+];
 
 /**
  * Patterns that detect library import attempts in Python code:

@@ -12,7 +12,7 @@ import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
 
-import { setupTestServer } from './shared/utils';
+import { setupTestServer } from './shared/utils/index.js';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 

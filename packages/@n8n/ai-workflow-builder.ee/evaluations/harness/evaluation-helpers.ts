@@ -2,10 +2,10 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import { getLangchainCallbacks } from 'langsmith/langchain';
 import { v4 as uuid } from 'uuid';
 
-import type { Evaluator, EvaluationContext, Feedback, LlmCallLimiter } from './harness-types';
-import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
-import { DEFAULTS } from '../support/constants';
+import type { Evaluator, EvaluationContext, Feedback, LlmCallLimiter } from './harness-types.js';
+import type { SimpleWorkflow } from '../../src/types/workflow.js';
+import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent.js';
+import { DEFAULTS } from '../support/constants.js';
 
 /**
  * Get LangChain callbacks that bridge the current traceable context.

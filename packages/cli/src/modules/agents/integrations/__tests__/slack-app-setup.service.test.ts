@@ -2,15 +2,15 @@ import type { User, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { CacheService } from '@/services/cache/cache.service';
-import type { UrlService } from '@/services/url.service';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { CacheService } from '@/services/cache/cache.service.js';
+import type { UrlService } from '@/services/url.service.js';
 
-import type { AgentsService } from '../../agents.service';
-import type { ChatIntegrationService } from '../chat-integration.service';
-import { SlackAppSetupService } from '../slack-app-setup.service';
-import type { AgentRepository } from '../../repositories/agent.repository';
+import type { AgentsService } from '../../agents.service.js';
+import type { ChatIntegrationService } from '../chat-integration.service.js';
+import { SlackAppSetupService } from '../slack-app-setup.service.js';
+import type { AgentRepository } from '../../repositories/agent.repository.js';
 
 const agent = {
 	id: 'agent-1',

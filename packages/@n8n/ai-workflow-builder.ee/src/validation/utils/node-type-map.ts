@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types/index.js';
 
 /**
  * Gets all versions supported by a node type.

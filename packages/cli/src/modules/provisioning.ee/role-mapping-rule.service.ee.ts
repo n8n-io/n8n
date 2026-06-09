@@ -14,14 +14,14 @@ import { Service } from '@n8n/di';
 import { type EntityManager, type FindOptionsOrder, In } from '@n8n/typeorm';
 import type { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
 import {
 	assertAndNormalizeProjectIdsForRuleType,
 	assertRoleCompatibleWithMappingType,
-} from './role-mapping-rule.validation';
+} from './role-mapping-rule.validation.js';
 
 type CreateRoleMappingRuleInput = z.infer<(typeof CreateRoleMappingRuleDto)['schema']>;
 

@@ -1,12 +1,12 @@
 import type { FolderRepository, User } from '@n8n/db';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { createLimitSchema } from './schemas';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types.js';
+import { createLimitSchema } from './schemas.js';
 
-import type { ProjectService } from '@/services/project.service.ee';
-import type { Telemetry } from '@/telemetry';
+import type { ProjectService } from '@/services/project.service.ee.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
 const MAX_RESULTS = 100;
 

@@ -3,14 +3,14 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic.js';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import type { EventDestinationsRepository } from '../database/repositories/event-destination.repository';
-import { messageEventBusDestinationFromDb } from '../destinations/message-event-bus-destination-from-db';
-import type { MessageEventBusDestinationWebhook } from '../destinations/message-event-bus-destination-webhook.ee';
-import { LogStreamingDestinationService } from '../log-streaming-destination.service';
+import type { EventDestinationsRepository } from '../database/repositories/event-destination.repository.js';
+import { messageEventBusDestinationFromDb } from '../destinations/message-event-bus-destination-from-db.js';
+import type { MessageEventBusDestinationWebhook } from '../destinations/message-event-bus-destination-webhook.ee.js';
+import { LogStreamingDestinationService } from '../log-streaming-destination.service.js';
 
 jest.mock('../destinations/message-event-bus-destination-from-db');
 

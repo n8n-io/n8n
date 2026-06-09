@@ -2,11 +2,11 @@ import type { WorkflowWithSharingsAndCredentials } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { IExecutionFlattedResponse } from '@/interfaces';
+import type { IExecutionFlattedResponse } from '@/interfaces.js';
 
-import { ExecutionService } from './execution.service';
-import type { ExecutionRequest } from './execution.types';
-import { EnterpriseWorkflowService } from '../workflows/workflow.service.ee';
+import { ExecutionService } from './execution.service.js';
+import type { ExecutionRequest } from './execution.types.js';
+import { EnterpriseWorkflowService } from '../workflows/workflow.service.ee.js';
 
 @Service()
 export class EnterpriseExecutionsService {

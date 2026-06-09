@@ -10,14 +10,14 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { authAllowlistedNodes } from './constants';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { authAllowlistedNodes } from './constants.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { WaitingWebhooks } from '@/webhooks/waiting-webhooks.js';
 
-import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
-import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
-import { applyCors } from '@/utils/cors.util';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer.js';
+import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types.js';
+import { applyCors } from '@/utils/cors.util.js';
 
 @Service()
 export class WaitingForms extends WaitingWebhooks {

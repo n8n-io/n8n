@@ -2,9 +2,9 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { Time } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
 
-import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import { InsightsPruningService } from '../insights-pruning.service';
-import { InsightsConfig } from '../insights.config';
+import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository.js';
+import { InsightsPruningService } from '../insights-pruning.service.js';
+import { InsightsConfig } from '../insights.config.js';
 
 describe('InsightsPruningService', () => {
 	let insightsConfig: InsightsConfig;

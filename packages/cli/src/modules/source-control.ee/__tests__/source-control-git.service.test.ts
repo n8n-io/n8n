@@ -3,9 +3,9 @@ import { mock } from 'jest-mock-extended';
 import { simpleGit } from 'simple-git';
 import type { SimpleGit } from 'simple-git';
 
-import { SourceControlGitService } from '../source-control-git.service.ee';
-import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
-import type { SourceControlPreferences } from '../types/source-control-preferences';
+import { SourceControlGitService } from '../source-control-git.service.ee.js';
+import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee.js';
+import type { SourceControlPreferences } from '../types/source-control-preferences.js';
 
 const MOCK_BRANCHES = {
 	all: ['origin/master', 'origin/feature/branch'],

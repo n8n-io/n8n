@@ -1,8 +1,8 @@
 import type { INode, INodeType, INodeTypes, IPinData } from 'n8n-workflow';
 
-import { findRepoRoot } from './environment';
-import { executeWorkflowWithPinData, findTriggerByGroup } from './workflow-executor';
-import type { SimpleWorkflow } from '../../src/types/workflow';
+import { findRepoRoot } from './environment.js';
+import { executeWorkflowWithPinData, findTriggerByGroup } from './workflow-executor.js';
+import type { SimpleWorkflow } from '../../src/types/workflow.js';
 
 // ---------------------------------------------------------------------------
 // Mocks

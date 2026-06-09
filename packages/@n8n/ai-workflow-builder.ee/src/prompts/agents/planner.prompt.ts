@@ -4,13 +4,13 @@
  * Generates a structured workflow plan for user approval (Plan Mode).
  */
 
-import { mermaidStringify } from '@/tools/utils/mermaid.utils';
-import type { DiscoveryContext } from '@/types/discovery-types';
-import type { PlanOutput } from '@/types/planning';
-import type { SimpleWorkflow } from '@/types/workflow';
-import { formatPlanAsText } from '@/utils/plan-helpers';
+import { mermaidStringify } from '@/tools/utils/mermaid.utils.js';
+import type { DiscoveryContext } from '@/types/discovery-types.js';
+import type { PlanOutput } from '@/types/planning.js';
+import type { SimpleWorkflow } from '@/types/workflow.js';
+import { formatPlanAsText } from '@/utils/plan-helpers.js';
 
-import { prompt } from '../builder';
+import { prompt } from '../builder/index.js';
 
 const ROLE = `You are a Planner Agent for n8n AI Workflow Builder.
 Write a brief, plain-language summary of what the workflow will do so the user can confirm it matches their intent before anything is built.`;

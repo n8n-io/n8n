@@ -9,7 +9,7 @@ import {
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
 
-import type { ChatHubSession } from './chat-hub-session.entity';
+import type { ChatHubSession } from './chat-hub-session.entity.js';
 import type { IBinaryData } from 'n8n-workflow';
 
 @Entity({ name: 'chat_hub_messages' })

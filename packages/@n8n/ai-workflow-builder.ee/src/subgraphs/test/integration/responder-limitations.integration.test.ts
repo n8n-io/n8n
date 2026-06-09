@@ -12,12 +12,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 
-import { createResponderAgent, invokeResponderAgent } from '@/agents/responder.agent';
+import { createResponderAgent, invokeResponderAgent } from '@/agents/responder.agent.js';
 import {
 	setupIntegrationLLM,
 	shouldRunIntegrationTests,
-} from '@/chains/test/integration/test-helpers';
-import type { SimpleWorkflow } from '@/types/workflow';
+} from '@/chains/test/integration/test-helpers.js';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 
 describe('Responder Limitations - Integration Tests (AI-1894)', () => {
 	let llm: BaseChatModel;

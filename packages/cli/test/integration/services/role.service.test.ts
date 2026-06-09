@@ -6,11 +6,11 @@ import { RoleRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ALL_ROLES } from '@n8n/permissions';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { License } from '@/license';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { License } from '@/license.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { RoleService } from '@/services/role.service.js';
 
 import {
 	createRole,
@@ -18,8 +18,8 @@ import {
 	createCustomRoleWithScopes,
 	createTestScopes,
 	cleanupRolesAndScopes,
-} from '../shared/db/roles';
-import { createMember } from '../shared/db/users';
+} from '../shared/db/roles.js';
+import { createMember } from '../shared/db/users.js';
 
 let roleService: RoleService;
 let roleRepository: RoleRepository;

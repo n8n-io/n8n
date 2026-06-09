@@ -7,10 +7,10 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { SimpleWorkflow } from '@/types';
-import { resolveConnections } from '@/validation/utils/resolve-connections';
+import type { SimpleWorkflow } from '@/types/index.js';
+import { resolveConnections } from '@/validation/utils/resolve-connections.js';
 
-import { evaluateConnections } from './connections';
+import { evaluateConnections } from './connections.js';
 
 const DEFAULT_VERSION = 1;
 

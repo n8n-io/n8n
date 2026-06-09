@@ -44,32 +44,32 @@ import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 import multer from 'multer';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
-import { messagesToDto } from './agent-message-mapper';
-import { AgentUploadMiddleware, cleanupUploadedTempFiles } from './agent-upload.middleware';
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider.js';
+import { AgentExecutionService, threadBelongsTo } from './agent-execution.service.js';
+import { AgentKnowledgeService } from './agent-knowledge.service.js';
+import { messagesToDto } from './agent-message-mapper.js';
+import { AgentUploadMiddleware, cleanupUploadedTempFiles } from './agent-upload.middleware.js';
 import {
 	type FlushableResponse,
 	initSseStream,
 	pumpChunks,
 	type ToolEventCallbacks,
-} from './agent-sse-stream';
-import { AgentTaskService } from './agent-task.service';
-import { AgentsService } from './agents.service';
-import { AgentsBuilderService } from './builder/agents-builder.service';
-import { BUILDER_TOOLS } from './builder/builder-tool-names';
-import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { SlackAppSetupService } from './integrations/slack-app-setup.service';
-import { filterOfferedAgentModelProviders } from './model-catalog';
-import { AgentRepository } from './repositories/agent.repository';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
-import type { Agent } from './entities/agent.entity';
+} from './agent-sse-stream.js';
+import { AgentTaskService } from './agent-task.service.js';
+import { AgentsService } from './agents.service.js';
+import { AgentsBuilderService } from './builder/agents-builder.service.js';
+import { BUILDER_TOOLS } from './builder/builder-tool-names.js';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration.js';
+import { ChatIntegrationService } from './integrations/chat-integration.service.js';
+import { SlackAppSetupService } from './integrations/slack-app-setup.service.js';
+import { filterOfferedAgentModelProviders } from './model-catalog.js';
+import { AgentRepository } from './repositories/agent.repository.js';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope.js';
+import type { Agent } from './entities/agent.entity.js';
 
 const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 

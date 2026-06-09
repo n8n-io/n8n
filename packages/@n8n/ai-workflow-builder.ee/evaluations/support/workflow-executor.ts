@@ -29,8 +29,8 @@ import type {
 import { createDeferredPromise, createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
 import path from 'path';
 
-import { findRepoRoot } from './environment';
-import type { SimpleWorkflow } from '../../src/types/workflow';
+import { findRepoRoot } from './environment.js';
+import type { SimpleWorkflow } from '../../src/types/workflow.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -294,7 +294,8 @@ export async function executeWorkflowWithPinData(
 		// Find start node. getStartNode() only recognises nodes with a trigger()/poll()
 		// method or those in STARTING_NODE_TYPES. Webhook-based triggers like ChatTrigger
 		// are missed, so fall back to any node whose description group includes 'trigger'.
-		const startNode = workflowInstance.getStartNode() ?? findTriggerByGroup(workflow.nodes, imports.nodeTypes);
+		const startNode =
+			workflowInstance.getStartNode() ?? findTriggerByGroup(workflow.nodes, imports.nodeTypes);
 		if (!startNode) {
 			return {
 				success: false,

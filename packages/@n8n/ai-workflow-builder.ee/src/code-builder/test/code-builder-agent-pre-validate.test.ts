@@ -14,7 +14,7 @@ import {
 import type { IWorkflowBase } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { CodeBuilderAgent } from '../code-builder-agent';
+import { CodeBuilderAgent } from '../code-builder-agent.js';
 
 const mockFromJSON = vi.fn();
 

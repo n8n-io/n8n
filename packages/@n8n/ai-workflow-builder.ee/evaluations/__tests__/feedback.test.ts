@@ -1,5 +1,5 @@
-import { langsmithMetricKey, toLangsmithEvaluationResult } from '../harness/feedback';
-import type { Feedback } from '../harness/harness-types';
+import { langsmithMetricKey, toLangsmithEvaluationResult } from '../harness/feedback.js';
+import type { Feedback } from '../harness/harness-types.js';
 
 describe('langsmithMetricKey()', () => {
 	it('should keep llm-judge metrics unprefixed (root and sub-metrics)', () => {

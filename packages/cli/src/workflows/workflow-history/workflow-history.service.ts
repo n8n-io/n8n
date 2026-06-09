@@ -15,11 +15,11 @@ import { In } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
 
-import { WorkflowFinderService } from '../workflow-finder.service';
+import { WorkflowFinderService } from '../workflow-finder.service.js';
 
-import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
-import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
+import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error.js';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error.js';
+import { EventService } from '@/events/event.service.js';
 
 @Service()
 export class WorkflowHistoryService {

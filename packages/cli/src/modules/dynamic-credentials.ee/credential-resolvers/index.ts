@@ -1,3 +1,3 @@
-import './oauth-credential-resolver';
-import './n8n-credential-resolver';
-import './slack-credential-resolver';
+import './oauth-credential-resolver.js';
+import './n8n-credential-resolver.js';
+import './slack-credential-resolver.js';

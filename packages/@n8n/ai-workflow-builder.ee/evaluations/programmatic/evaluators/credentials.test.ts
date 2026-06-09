@@ -1,8 +1,8 @@
 import type { INodeParameters } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { SimpleWorkflow } from '@/types';
-import { validateCredentials } from '@/validation/checks/credentials';
+import type { SimpleWorkflow } from '@/types/index.js';
+import { validateCredentials } from '@/validation/checks/credentials.js';
 
 // Helper types
 interface HeaderParam {

@@ -5,8 +5,8 @@ import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type * as http from 'node:http';
 
-import { AbstractServer } from '@/abstract-server';
-import { ExternalHooks } from '@/external-hooks';
+import { AbstractServer } from '@/abstract-server.js';
+import { ExternalHooks } from '@/external-hooks.js';
 
 const mockServer = mock<http.Server>();
 

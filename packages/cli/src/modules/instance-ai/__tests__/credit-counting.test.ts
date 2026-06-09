@@ -28,8 +28,8 @@ jest.mock('@n8n/instance-ai', () => {
 
 import type { User } from '@n8n/db';
 
-import { InstanceAiService } from '../instance-ai.service';
-import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
+import { InstanceAiService } from '../instance-ai.service.js';
+import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

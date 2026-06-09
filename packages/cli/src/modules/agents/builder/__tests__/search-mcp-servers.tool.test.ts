@@ -1,8 +1,11 @@
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { linearMockServer, notionMockServer } from '@/modules/mcp-registry/registry/mock-servers';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
+import {
+	linearMockServer,
+	notionMockServer,
+} from '@/modules/mcp-registry/registry/mock-servers.js';
 import { mock } from 'jest-mock-extended';
 
-import { buildSearchMcpServersTool } from '../search-mcp-servers.tool';
+import { buildSearchMcpServersTool } from '../search-mcp-servers.tool.js';
 
 const ctx = {
 	resumeData: undefined,

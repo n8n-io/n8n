@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import type { AgentTreeSnapshot } from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
 
-import { InstanceAiRunSnapshotRepository } from '../repositories/instance-ai-run-snapshot.repository';
+import { InstanceAiRunSnapshotRepository } from '../repositories/instance-ai-run-snapshot.repository.js';
 
 /**
  * Walk a saved agent tree and flip everything in-flight to a terminal state.

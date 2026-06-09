@@ -5,10 +5,10 @@ import axios from 'axios';
 import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@/services/cache/cache.service.js';
 
-import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
-import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
+import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface.js';
+import { OAuth2OptionsSchema, sha256 } from './oauth2-utils.js';
 
 // Use minimum of 30 seconds to avoid cache thrashing
 // Cap at 5 minutes to ensure periodic revalidation

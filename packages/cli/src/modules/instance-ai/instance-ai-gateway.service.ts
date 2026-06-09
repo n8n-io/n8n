@@ -5,9 +5,9 @@ import type {
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import { Telemetry } from '@/telemetry';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { LocalGatewayRegistry, type LocalGateway } from './filesystem';
+import { LocalGatewayRegistry, type LocalGateway } from './filesystem/index.js';
 
 /**
  * Per-user Local Gateway connections (pairing tokens, session keys,

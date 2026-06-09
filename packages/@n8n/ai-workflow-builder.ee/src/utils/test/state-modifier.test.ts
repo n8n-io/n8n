@@ -1,14 +1,14 @@
 import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { MockedFunction } from 'vitest';
 
-import { cleanupDanglingToolCallMessages } from '../cleanup-dangling-tool-call-messages';
+import { cleanupDanglingToolCallMessages } from '../cleanup-dangling-tool-call-messages.js';
 import {
 	determineStateAction,
 	handleCleanupDangling,
 	handleCreateWorkflowName,
 	handleDeleteMessages,
-} from '../state-modifier';
-import { estimateTokenCountFromMessages } from '../token-usage';
+} from '../state-modifier.js';
+import { estimateTokenCountFromMessages } from '../token-usage.js';
 
 vi.mock('../cleanup-dangling-tool-call-messages');
 vi.mock('../token-usage');

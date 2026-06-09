@@ -15,16 +15,16 @@ import type {
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { eventNamesAll } from '@/eventbus/event-message-classes';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { eventNamesAll } from '@/eventbus/event-message-classes/index.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
 
-import { MessageEventBusDestinationSentry } from './destinations/message-event-bus-destination-sentry.ee';
-import { MessageEventBusDestinationSyslog } from './destinations/message-event-bus-destination-syslog.ee';
-import { MessageEventBusDestinationWebhook } from './destinations/message-event-bus-destination-webhook.ee';
-import type { MessageEventBusDestination } from './destinations/message-event-bus-destination.ee';
-import { LogStreamingDestinationService } from './log-streaming-destination.service';
+import { MessageEventBusDestinationSentry } from './destinations/message-event-bus-destination-sentry.ee.js';
+import { MessageEventBusDestinationSyslog } from './destinations/message-event-bus-destination-syslog.ee.js';
+import { MessageEventBusDestinationWebhook } from './destinations/message-event-bus-destination-webhook.ee.js';
+import type { MessageEventBusDestination } from './destinations/message-event-bus-destination.ee.js';
+import { LogStreamingDestinationService } from './log-streaming-destination.service.js';
 
 @RestController('/eventbus')
 export class EventBusController {

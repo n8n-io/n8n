@@ -6,9 +6,9 @@ import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { z } from 'zod';
 
-import { OIDC_PREFERENCES_DB_KEY } from '@/modules/sso-oidc/constants';
+import { OIDC_PREFERENCES_DB_KEY } from '@/modules/sso-oidc/constants.js';
 
-import { InstanceBootstrappingError } from '../../instance-bootstrapping.error';
+import { InstanceBootstrappingError } from '../../instance-bootstrapping.error.js';
 
 const oidcEnvSchema = z
 	.object({

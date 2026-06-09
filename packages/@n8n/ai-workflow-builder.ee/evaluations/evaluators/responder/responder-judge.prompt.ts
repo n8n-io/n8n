@@ -1,4 +1,4 @@
-import { prompt } from '@/prompts/builder';
+import { prompt } from '@/prompts/builder/index.js';
 
 /**
  * Responder evaluation types that map to different evaluation strategies.

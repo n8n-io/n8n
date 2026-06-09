@@ -20,9 +20,9 @@ import {
 	type ICredentialDataDecryptedObject,
 	randomString,
 } from 'n8n-workflow';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
-import { CredentialsTester } from '@/services/credentials-tester.service';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { createCredentialsFromCredentialsEntity } from '@/credentials-helper.js';
+import { CredentialsTester } from '@/services/credentials-tester.service.js';
 
 import {
 	decryptCredentialData,
@@ -30,16 +30,16 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
-} from '../shared/db/credentials';
+} from '../shared/db/credentials.js';
 import {
 	createAdmin,
 	createChatUser,
 	createManyUsers,
 	createMember,
 	createOwner,
-} from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { initCredentialsTypes, setupTestServer } from '../shared/utils';
+} from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import { initCredentialsTypes, setupTestServer } from '../shared/utils/index.js';
 
 const { any } = expect;
 

@@ -6,12 +6,12 @@ import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import path from 'path';
 
-import type { License } from '@/license';
+import type { License } from '@/license.js';
 import {
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_SSH_FOLDER,
-} from '@/modules/source-control.ee/constants';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+} from '@/modules/source-control.ee/constants.js';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
 
 import {
 	areSameCredentials,
@@ -25,9 +25,9 @@ import {
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
 	sourceControlFoldersExistCheck,
-} from '../source-control-helper.ee';
-import type { StatusExportableCredential } from '../types/exportable-credential';
-import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
+} from '../source-control-helper.ee.js';
+import type { StatusExportableCredential } from '../types/exportable-credential.js';
+import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id.js';
 
 function createWorkflowVersion(
 	overrides: Partial<SourceControlWorkflowVersionId> = {},
@@ -474,7 +474,7 @@ describe('Source Control Helper', () => {
 			const filePath = 'invalid/path/tags-and-mappings.json';
 			// Import the function after resetting modules
 			const { readTagAndMappingsFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 			const result = await readTagAndMappingsFromSourceControlFile(filePath);
 			expect(result).toEqual({
@@ -495,7 +495,7 @@ describe('Source Control Helper', () => {
 			const filePath = 'invalid/path/folders.json';
 			// Import the function after resetting modules
 			const { readFoldersFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 			const result = await readFoldersFromSourceControlFile(filePath);
 			expect(result).toEqual({
@@ -515,7 +515,7 @@ describe('Source Control Helper', () => {
 			const filePath = 'invalid/path/data_tables.json';
 			// Import the function after resetting modules
 			const { readDataTablesFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 			const result = await readDataTablesFromSourceControlFile(filePath);
 			expect(result).toEqual([]);
@@ -543,7 +543,7 @@ describe('Source Control Helper', () => {
 
 			// Import the function after mocking
 			const { readDataTablesFromSourceControlFile } = await import(
-				'@/modules/source-control.ee/source-control-helper.ee'
+				'@/modules/source-control.ee/source-control-helper.ee.js'
 			);
 
 			const result = await readDataTablesFromSourceControlFile('valid/path/data_tables.json');

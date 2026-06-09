@@ -13,7 +13,7 @@ import {
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
-import { createUser } from '../../shared/db/users';
+import { createUser } from '../../shared/db/users.js';
 
 describe('WorkflowPublishHistoryRepository', () => {
 	beforeAll(async () => {

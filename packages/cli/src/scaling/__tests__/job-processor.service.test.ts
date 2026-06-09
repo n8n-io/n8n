@@ -18,21 +18,21 @@ import {
 	type ExecutionError,
 } from 'n8n-workflow';
 
-import { JobProcessor } from '../job-processor';
-import type { Job } from '../scaling.types';
-import type { NodeTypes } from '@/node-types';
+import { JobProcessor } from '../job-processor.js';
+import type { Job } from '../scaling.types.js';
+import type { NodeTypes } from '@/node-types.js';
 
-import { CredentialsHelper } from '@/credentials-helper';
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { ExternalHooks } from '@/external-hooks';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { ManualExecutionService } from '@/manual-execution.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowHookContextService } from '@/workflow-hook-context.service';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { CredentialsHelper } from '@/credentials-helper.js';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { ManualExecutionService } from '@/manual-execution.service.js';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import { WorkflowHookContextService } from '@/workflow-hook-context.service.js';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
 
 mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {

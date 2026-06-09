@@ -9,30 +9,30 @@ import uniqby from 'lodash/uniqBy';
 import { InstanceSettings } from 'n8n-core';
 import { existsSync } from 'node:fs';
 
-import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
-import type { EventMessageTypes } from '../event-message-classes/';
+import { ExecutionRecoveryService } from '../../executions/execution-recovery.service.js';
+import type { EventMessageTypes } from '../event-message-classes//index.js';
 import {
 	EventMessageAiNode,
 	type EventMessageAiNodeOptions,
-} from '../event-message-classes/event-message-ai-node';
-import type { EventMessageAuditOptions } from '../event-message-classes/event-message-audit';
-import { EventMessageAudit } from '../event-message-classes/event-message-audit';
-import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
-import type { EventMessageExecutionOptions } from '../event-message-classes/event-message-execution';
-import { EventMessageExecution } from '../event-message-classes/event-message-execution';
-import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
-import { EventMessageNode } from '../event-message-classes/event-message-node';
-import type { EventMessageQueueOptions } from '../event-message-classes/event-message-queue';
-import { EventMessageQueue } from '../event-message-classes/event-message-queue';
-import type { EventMessageRunnerOptions } from '../event-message-classes/event-message-runner';
-import { EventMessageRunner } from '../event-message-classes/event-message-runner';
-import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
-import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
-import { MessageEventBusLogWriter } from '../message-event-bus-writer/message-event-bus-log-writer';
+} from '../event-message-classes/event-message-ai-node.js';
+import type { EventMessageAuditOptions } from '../event-message-classes/event-message-audit.js';
+import { EventMessageAudit } from '../event-message-classes/event-message-audit.js';
+import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm.js';
+import type { EventMessageExecutionOptions } from '../event-message-classes/event-message-execution.js';
+import { EventMessageExecution } from '../event-message-classes/event-message-execution.js';
+import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node.js';
+import { EventMessageNode } from '../event-message-classes/event-message-node.js';
+import type { EventMessageQueueOptions } from '../event-message-classes/event-message-queue.js';
+import { EventMessageQueue } from '../event-message-classes/event-message-queue.js';
+import type { EventMessageRunnerOptions } from '../event-message-classes/event-message-runner.js';
+import { EventMessageRunner } from '../event-message-classes/event-message-runner.js';
+import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow.js';
+import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow.js';
+import { MessageEventBusLogWriter } from '../message-event-bus-writer/message-event-bus-log-writer.js';
 import {
 	resolveEventLogPath,
 	type EventLogProcessType,
-} from '../message-event-bus-writer/resolve-event-log-path';
+} from '../message-event-bus-writer/resolve-event-log-path.js';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 

@@ -2,9 +2,9 @@ import { SharedCredentialsRepository } from '@n8n/db';
 import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { CredentialTypes } from '@/credential-types';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialTypes } from '@/credential-types.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
 
 import { CredentialMatcher, type CredentialMatcherContext } from './credential-matcher';
 import type { ImportBindingMap } from '../../n8n-packages.types';

@@ -1,10 +1,10 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
-import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
+import type { SimpleWorkflow } from '@/types/index.js';
+import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map.js';
 
-import type { SingleEvaluatorResult } from '../types';
-import { isTool } from '../utils/is-tool';
+import type { SingleEvaluatorResult } from '../types.js';
+import { isTool } from '../utils/is-tool.js';
 
 const toolsWithoutParameters = [
 	'@n8n/n8n-nodes-langchain.toolCalculator',

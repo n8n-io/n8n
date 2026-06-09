@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 
-import type { QuickConnectConfig } from '../quick-connect.config';
-import { QuickConnectModule } from '../quick-connect.module';
+import type { QuickConnectConfig } from '../quick-connect.config.js';
+import { QuickConnectModule } from '../quick-connect.module.js';
 
 describe('QuickConnectModule', () => {
 	let module: QuickConnectModule;

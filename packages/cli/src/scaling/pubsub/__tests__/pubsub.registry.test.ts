@@ -4,8 +4,8 @@ import { Container, Service } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { PubSubEventBus } from '../pubsub.eventbus';
-import { PubSubRegistry } from '../pubsub.registry';
+import { PubSubEventBus } from '../pubsub.eventbus.js';
+import { PubSubRegistry } from '../pubsub.registry.js';
 
 describe('PubSubRegistry', () => {
 	let metadata: PubSubMetadata;

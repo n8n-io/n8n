@@ -9,7 +9,7 @@ import {
 	isValidNonDefaultMode,
 } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
 @RestController('/binary-data')
 export class BinaryDataController {

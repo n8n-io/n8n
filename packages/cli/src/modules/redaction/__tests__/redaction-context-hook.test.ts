@@ -4,8 +4,8 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { Workflow, WorkflowSettings } from 'n8n-workflow';
 
-import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
-import { RedactionContextHook } from '../redaction-context-hook';
+import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service.js';
+import { RedactionContextHook } from '../redaction-context-hook.js';
 
 describe('RedactionContextHook', () => {
 	let service: MockProxy<InstanceRedactionEnforcementService>;

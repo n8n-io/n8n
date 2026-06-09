@@ -18,29 +18,29 @@ import {
 	type NodeExecutionSchema,
 } from 'n8n-workflow';
 
-import { MAX_AI_BUILDER_PROMPT_LENGTH, MAX_MULTI_AGENT_STREAM_ITERATIONS } from '@/constants';
+import { MAX_AI_BUILDER_PROMPT_LENGTH, MAX_MULTI_AGENT_STREAM_ITERATIONS } from '@/constants.js';
 
-import { parsePlanDecision } from './agents/planner.agent';
-import type { AssistantHandler } from './assistant';
-import { CodeWorkflowBuilder } from './code-builder';
-import { TriageAgent } from './code-builder/triage.agent';
-import type { TriageAgentOutcome } from './code-builder/triage.agent';
+import { parsePlanDecision } from './agents/planner.agent.js';
+import type { AssistantHandler } from './assistant/index.js';
+import { CodeWorkflowBuilder } from './code-builder/index.js';
+import { TriageAgent } from './code-builder/triage.agent.js';
+import type { TriageAgentOutcome } from './code-builder/triage.agent.js';
 import {
 	type CodeBuilderSession,
 	loadCodeBuilderSession,
 	saveCodeBuilderSession,
 	generateCodeBuilderThreadId,
-} from './code-builder/utils/code-builder-session';
-import { ValidationError } from './errors';
-import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
-import { SessionManagerService } from './session-manager.service';
-import type { SsrfGuard } from './tools/utils/ssrf-guard';
-import type { ResourceLocatorCallback } from './types/callbacks';
-import type { HITLInterruptValue, PlanOutput } from './types/planning';
-import type { SimpleWorkflow } from './types/workflow';
-import { sanitizeLlmErrorMessage } from './utils/error-sanitizer';
-import { createStreamProcessor, type StreamEvent } from './utils/stream-processor';
-import type { WorkflowState } from './workflow-state';
+} from './code-builder/utils/code-builder-session.js';
+import { ValidationError } from './errors/index.js';
+import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs.js';
+import { SessionManagerService } from './session-manager.service.js';
+import type { SsrfGuard } from './tools/utils/ssrf-guard.js';
+import type { ResourceLocatorCallback } from './types/callbacks.js';
+import type { HITLInterruptValue, PlanOutput } from './types/planning.js';
+import type { SimpleWorkflow } from './types/workflow.js';
+import { sanitizeLlmErrorMessage } from './utils/error-sanitizer.js';
+import { createStreamProcessor, type StreamEvent } from './utils/stream-processor.js';
+import type { WorkflowState } from './workflow-state.js';
 
 const PROMPT_IS_TOO_LARGE_ERROR =
 	'The current conversation and workflow state is too large to process. Try to simplify your workflow by breaking it into smaller parts.';

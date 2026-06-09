@@ -3,9 +3,9 @@ import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { sleep } from 'n8n-workflow';
 
-import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
-import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
-import { InsightsConfig } from './insights.config';
+import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository.js';
+import { InsightsRawRepository } from './database/repositories/insights-raw.repository.js';
+import { InsightsConfig } from './insights.config.js';
 
 type CompactionRunState = {
 	startedAt: number;

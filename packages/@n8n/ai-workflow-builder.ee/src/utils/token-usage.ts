@@ -1,7 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage } from '@langchain/core/messages';
 
-import { AVG_CHARS_PER_TOKEN_ANTHROPIC } from '@/constants';
+import { AVG_CHARS_PER_TOKEN_ANTHROPIC } from '@/constants.js';
 
 export type AIMessageWithUsageMetadata = AIMessage & {
 	response_metadata: {

@@ -6,21 +6,21 @@ import type {
 } from 'n8n-workflow';
 import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types/index.js';
 import {
 	DATA_TABLE_NODE_TYPE,
 	isDataTableRowColumnOperation,
 	SET_NODE_TYPE,
-} from '@/utils/data-table-helpers';
-import { isSubNode } from '@/utils/node-helpers';
-import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
-import { resolveNodeInputs, resolveNodeOutputs } from '@/validation/utils/resolve-connections';
+} from '@/utils/data-table-helpers.js';
+import { isSubNode } from '@/utils/node-helpers.js';
+import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map.js';
+import { resolveNodeInputs, resolveNodeOutputs } from '@/validation/utils/resolve-connections.js';
 
 import type {
 	NodeResolvedConnectionTypesInfo,
 	ProgrammaticViolation,
 	SingleEvaluatorResult,
-} from '../types';
+} from '../types.js';
 
 function getProvidedInputTypes(
 	nodeConnections?: INodeConnections,

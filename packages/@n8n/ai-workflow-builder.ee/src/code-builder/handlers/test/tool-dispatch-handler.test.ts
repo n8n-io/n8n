@@ -6,16 +6,16 @@ import type {
 	StreamOutput,
 	ToolProgressChunk,
 	WorkflowUpdateChunk,
-} from '../../../types/streaming';
-import { WarningTracker } from '../../state/warning-tracker';
-import type { TextEditorHandler } from '../text-editor-handler';
-import type { TextEditorToolHandler, PreviewParseResult } from '../text-editor-tool-handler';
+} from '../../../types/streaming.js';
+import { WarningTracker } from '../../state/warning-tracker.js';
+import type { TextEditorHandler } from '../text-editor-handler.js';
+import type { TextEditorToolHandler, PreviewParseResult } from '../text-editor-tool-handler.js';
 import {
 	ToolDispatchHandler,
 	parseReplacements,
 	type ToolDispatchResult,
-} from '../tool-dispatch-handler';
-import type { ValidateToolHandler } from '../validate-tool-handler';
+} from '../tool-dispatch-handler.js';
+import type { ValidateToolHandler } from '../validate-tool-handler.js';
 
 /** Type guard for ToolProgressChunk */
 function isToolProgressChunk(chunk: unknown): chunk is ToolProgressChunk {

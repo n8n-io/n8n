@@ -1,8 +1,8 @@
 import type { INodeParameters } from 'n8n-workflow';
 import type { ZodIssue } from 'zod';
 
-import type { AddedNode, NodeDetails, NodeSearchResult } from './nodes';
-import type { SimpleWorkflow } from './workflow';
+import type { AddedNode, NodeDetails, NodeSearchResult } from './nodes.js';
+import type { SimpleWorkflow } from './workflow.js';
 
 /**
  * Types of progress updates

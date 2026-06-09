@@ -2,13 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
 
-import { MessageEventBusDestinationSentry } from './message-event-bus-destination-sentry.ee';
-import { MessageEventBusDestinationSyslog } from './message-event-bus-destination-syslog.ee';
-import { MessageEventBusDestinationWebhook } from './message-event-bus-destination-webhook.ee';
-import type { MessageEventBusDestination } from './message-event-bus-destination.ee';
-import type { EventDestinations } from '../database/entities';
+import { MessageEventBusDestinationSentry } from './message-event-bus-destination-sentry.ee.js';
+import { MessageEventBusDestinationSyslog } from './message-event-bus-destination-syslog.ee.js';
+import { MessageEventBusDestinationWebhook } from './message-event-bus-destination-webhook.ee.js';
+import type { MessageEventBusDestination } from './message-event-bus-destination.ee.js';
+import type { EventDestinations } from '../database/entities/index.js';
 
 export function messageEventBusDestinationFromDb(
 	eventBusInstance: MessageEventBus,

@@ -14,12 +14,12 @@ import type { Logger } from '@n8n/backend-common';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { ActiveExecutions } from '@/active-executions';
-import type { EphemeralNodeExecutor } from '@/node-execution';
-import type { OauthService } from '@/oauth/oauth.service';
-import type { UrlService } from '@/services/url.service';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { ActiveExecutions } from '@/active-executions.js';
+import type { EphemeralNodeExecutor } from '@/node-execution/index.js';
+import type { OauthService } from '@/oauth/oauth.service.js';
+import type { UrlService } from '@/services/url.service.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentsToolsService } from '../agents-tools.service';

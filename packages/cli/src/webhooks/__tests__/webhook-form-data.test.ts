@@ -5,9 +5,9 @@ import { createServer } from 'node:http';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent';
 
-import { rawBodyReader } from '@/middlewares';
+import { rawBodyReader } from '@/middlewares/index.js';
 
-import { createMultiFormDataParser } from '../webhook-form-data';
+import { createMultiFormDataParser } from '../webhook-form-data.js';
 
 // Formidable requires FS to store the uploaded files
 jest.unmock('node:fs');

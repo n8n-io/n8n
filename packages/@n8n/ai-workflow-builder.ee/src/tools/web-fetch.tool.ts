@@ -3,15 +3,15 @@ import { interrupt } from '@langchain/langgraph';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
-import { WEB_FETCH_MAX_PER_TURN } from '@/constants';
-import { ToolExecutionError, ValidationError } from '@/errors';
-import { createProgressReporter } from '@/tools/helpers/progress';
-import { createSuccessResponse, createErrorResponse } from '@/tools/helpers/response';
-import type { BuilderToolBase } from '@/utils/stream-processor';
+import { WEB_FETCH_MAX_PER_TURN } from '@/constants.js';
+import { ToolExecutionError, ValidationError } from '@/errors/index.js';
+import { createProgressReporter } from '@/tools/helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from '@/tools/helpers/response.js';
+import type { BuilderToolBase } from '@/utils/stream-processor.js';
 
-import type { SsrfGuard } from './utils/ssrf-guard';
-import type { WebFetchSecurityManager } from './utils/web-fetch-security';
-import { normalizeHost, fetchUrl, extractReadableContent } from './utils/web-fetch.utils';
+import type { SsrfGuard } from './utils/ssrf-guard.js';
+import type { WebFetchSecurityManager } from './utils/web-fetch-security.js';
+import { normalizeHost, fetchUrl, extractReadableContent } from './utils/web-fetch.utils.js';
 
 interface WebFetchResumeValue {
 	requestId: string;

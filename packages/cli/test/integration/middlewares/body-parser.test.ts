@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import request from 'supertest';
 import { gzipSync, deflateSync } from 'zlib';
 
-import { rawBodyReader, bodyParser } from '@/middlewares/body-parser';
+import { rawBodyReader, bodyParser } from '@/middlewares/body-parser.js';
 
 describe('bodyParser', () => {
 	const server = createServer((req, res) => {

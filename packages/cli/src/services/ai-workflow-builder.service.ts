@@ -1,6 +1,5 @@
 import { AiWorkflowBuilderService, createPassthroughSsrfGuard } from '@n8n/ai-workflow-builder';
-import type { ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
-import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
+import type { ChatPayload, ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';

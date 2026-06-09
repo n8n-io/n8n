@@ -1,12 +1,12 @@
 import type { INodeTypeDescription, NodeConnectionType, IConnections } from 'n8n-workflow';
 
-import { createConnection } from '@/tools/utils/connection.utils';
-import type { SimpleWorkflow } from '@/types';
-import { isSubNode } from '@/utils/node-helpers';
-import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
-import { resolveNodeInputs, resolveNodeOutputs } from '@/validation/utils/resolve-connections';
+import { createConnection } from '@/tools/utils/connection.utils.js';
+import type { SimpleWorkflow } from '@/types/index.js';
+import { isSubNode } from '@/utils/node-helpers.js';
+import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map.js';
+import { resolveNodeInputs, resolveNodeOutputs } from '@/validation/utils/resolve-connections.js';
 
-import type { ProgrammaticViolation, NodeResolvedConnectionTypesInfo } from '../types';
+import type { ProgrammaticViolation, NodeResolvedConnectionTypesInfo } from '../types.js';
 
 export interface AutoFixResult {
 	fixed: AutoFixedConnection[];

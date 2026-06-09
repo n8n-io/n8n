@@ -13,9 +13,9 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 
-import { DynamicNodeParametersController } from '@/controllers/dynamic-node-parameters.controller';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import * as AdditionalData from '@/workflow-execute-additional-data';
+import { DynamicNodeParametersController } from '@/controllers/dynamic-node-parameters.controller.js';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import * as AdditionalData from '@/workflow-execute-additional-data.js';
 
 describe('DynamicNodeParametersController', () => {
 	let service: jest.Mocked<DynamicNodeParametersService>;

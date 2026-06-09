@@ -1,7 +1,7 @@
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { WorkflowState } from '@/workflow-state';
+import type { WorkflowState } from '@/workflow-state.js';
 
 /**
  * LLM configuration for the workflow builder

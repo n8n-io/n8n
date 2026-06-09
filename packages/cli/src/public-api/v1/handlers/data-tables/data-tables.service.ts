@@ -2,9 +2,9 @@ import { type DataTableListFilter } from '@n8n/api-types';
 import { ProjectRepository, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ProjectService } from '@/services/project.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { ProjectService } from '@/services/project.service.ee.js';
 
 export async function getDataTableListFilter(
 	userId: string,

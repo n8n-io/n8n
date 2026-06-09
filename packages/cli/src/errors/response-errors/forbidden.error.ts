@@ -1,4 +1,4 @@
-import { ResponseError } from './abstract/response.error';
+import { ResponseError } from './abstract/response.error.js';
 
 export class ForbiddenError extends ResponseError {
 	constructor(message = 'Forbidden', hint?: string) {

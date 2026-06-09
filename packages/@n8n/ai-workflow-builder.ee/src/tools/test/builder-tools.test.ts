@@ -1,8 +1,8 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { createNodeType, nodeTypes } from '../../../test/test-utils';
-import { getAddNodeToolBase } from '../add-node.tool';
-import { getBuilderToolsForDisplay } from '../builder-tools';
+import { createNodeType, nodeTypes } from '../../../test/test-utils.js';
+import { getAddNodeToolBase } from '../add-node.tool.js';
+import { getBuilderToolsForDisplay } from '../builder-tools.js';
 
 vi.mock('../get-documentation.tool', () => ({
 	GET_DOCUMENTATION_TOOL: {

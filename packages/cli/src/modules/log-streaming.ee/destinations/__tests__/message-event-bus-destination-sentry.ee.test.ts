@@ -1,14 +1,14 @@
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationSentryOptions } from 'n8n-workflow';
 
-import { MessageEventBusDestinationSentry } from '../message-event-bus-destination-sentry.ee';
+import { MessageEventBusDestinationSentry } from '../message-event-bus-destination-sentry.ee.js';
 
 describe('MessageEventBusDestinationSentry', () => {
 	describe('isMessageEventBusDestinationSentryOptions', () => {
 		it('should identify valid sentry options', () => {
 			const {
 				isMessageEventBusDestinationSentryOptions,
-			} = require('../message-event-bus-destination-sentry.ee');
+			} = require('../message-event-bus-destination-sentry.ee.js');
 
 			const validOptions: MessageEventBusDestinationSentryOptions = {
 				__type: MessageEventBusDestinationTypeNames.sentry,
@@ -26,7 +26,7 @@ describe('MessageEventBusDestinationSentry', () => {
 		it('should reject invalid options', () => {
 			const {
 				isMessageEventBusDestinationSentryOptions,
-			} = require('../message-event-bus-destination-sentry.ee');
+			} = require('../message-event-bus-destination-sentry.ee.js');
 
 			expect(isMessageEventBusDestinationSentryOptions({})).toBe(false);
 			expect(isMessageEventBusDestinationSentryOptions(null)).toBe(false);

@@ -1,9 +1,9 @@
 import type { Readable } from 'node:stream';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import { TarPackageReader } from '../tar/tar-package-reader';
-import { TarPackageWriter } from '../tar/tar-package-writer';
+import { TarPackageReader } from '../tar/tar-package-reader.js';
+import { TarPackageWriter } from '../tar/tar-package-writer.js';
 
 const TEST_MAX_UNCOMPRESSED_BYTES = 16 * 1024 * 1024;
 

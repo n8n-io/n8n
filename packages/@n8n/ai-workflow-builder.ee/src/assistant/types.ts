@@ -1,5 +1,5 @@
-import type { StreamChunk } from '../types/streaming';
-import type { SimpleWorkflow } from '../types/workflow';
+import type { StreamChunk } from '../types/streaming.js';
+import type { SimpleWorkflow } from '../types/workflow.js';
 
 export type { SimpleWorkflow };
 

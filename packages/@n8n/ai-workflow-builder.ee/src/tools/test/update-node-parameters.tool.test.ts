@@ -3,7 +3,7 @@ import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import type { Mocked, MockedFunction } from 'vitest';
 
-import { createParameterUpdaterChain } from '@/chains/parameter-updater';
+import { createParameterUpdaterChain } from '@/chains/parameter-updater.js';
 
 import {
 	createNode,
@@ -21,8 +21,8 @@ import {
 	buildUpdateNodeInput,
 	mockParameterUpdaterChain,
 	type ParsedToolContent,
-} from '../../../test/test-utils';
-import { createUpdateNodeParametersTool } from '../update-node-parameters.tool';
+} from '../../../test/test-utils.js';
+import { createUpdateNodeParametersTool } from '../update-node-parameters.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

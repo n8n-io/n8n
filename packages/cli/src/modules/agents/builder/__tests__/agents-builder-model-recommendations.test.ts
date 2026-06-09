@@ -1,8 +1,8 @@
 import type { ProviderCatalog } from '@n8n/agents';
 
-import { buildBuilderPrompt } from '../agents-builder-prompts';
-import { buildModelRecommendationsSection } from '../agents-builder-model-recommendations';
-import { getBuilderRuntimeSkills } from '../skills';
+import { buildBuilderPrompt } from '../agents-builder-prompts.js';
+import { buildModelRecommendationsSection } from '../agents-builder-model-recommendations.js';
+import { getBuilderRuntimeSkills } from '../skills/index.js';
 
 const catalog: ProviderCatalog = {
 	anthropic: {

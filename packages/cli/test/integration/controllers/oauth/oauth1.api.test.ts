@@ -4,16 +4,16 @@ import { Container } from '@n8n/di';
 import { response as Response } from 'express';
 import nock from 'nock';
 
-import { CredentialsHelper } from '@/credentials-helper';
-import { OauthService } from '@/oauth/oauth.service';
+import { CredentialsHelper } from '@/credentials-helper.js';
+import { OauthService } from '@/oauth/oauth.service.js';
 import {
 	decryptCredentialData,
 	getCredentialById,
 	saveCredential,
 	shareCredentialWithUsers,
-} from '@test-integration/db/credentials';
-import { createMember, createOwner } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
+} from '@test-integration/db/credentials.js';
+import { createMember, createOwner } from '@test-integration/db/users.js';
+import { setupTestServer } from '@test-integration/utils/index.js';
 
 describe('OAuth1 API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['oauth1'] });

@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { ProgrammaticEvaluationInput, ProgrammaticViolation } from '@/validation/types';
+import type { ProgrammaticEvaluationInput, ProgrammaticViolation } from '@/validation/types.js';
 
 import {
 	evaluateConnections,
@@ -13,12 +13,12 @@ import {
 	evaluateFromAi,
 	evaluateTrigger,
 	evaluateNodeUsage,
-} from './evaluators';
+} from './evaluators/index.js';
 import {
 	evaluateWorkflowSimilarity,
 	evaluateWorkflowSimilarityMultiple,
-} from './evaluators/workflow-similarity';
-import { calculateOverallScore } from './score';
+} from './evaluators/workflow-similarity.js';
+import { calculateOverallScore } from './score.js';
 
 export async function programmaticEvaluation(
 	input: ProgrammaticEvaluationInput,

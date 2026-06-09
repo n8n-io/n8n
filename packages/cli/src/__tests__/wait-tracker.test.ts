@@ -13,12 +13,12 @@ import {
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 
-import type { ActiveExecutions } from '@/active-executions';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import type { OwnershipService } from '@/services/ownership.service';
-import { WaitTracker } from '@/wait-tracker';
-import type { WorkflowRunner } from '@/workflow-runner';
+import type { ActiveExecutions } from '@/active-executions.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee.js';
+import type { OwnershipService } from '@/services/ownership.service.js';
+import { WaitTracker } from '@/wait-tracker.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
 
 jest.useFakeTimers({ advanceTimers: true });
 

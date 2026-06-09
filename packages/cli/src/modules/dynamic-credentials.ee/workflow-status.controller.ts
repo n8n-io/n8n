@@ -5,14 +5,14 @@ import { Get, Options, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UrlService } from '@/services/url.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { UrlService } from '@/services/url.service.js';
 
-import { DynamicCredentialsConfig } from './dynamic-credentials.config';
-import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';
-import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
-import { DynamicCredentialWebService } from './services/dynamic-credential-web.service';
-import { getDynamicCredentialMiddlewares } from './utils';
+import { DynamicCredentialsConfig } from './dynamic-credentials.config.js';
+import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service.js';
+import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service.js';
+import { DynamicCredentialWebService } from './services/dynamic-credential-web.service.js';
+import { getDynamicCredentialMiddlewares } from './utils.js';
 
 const dynamicCredentialsConfig = Container.get(DynamicCredentialsConfig);
 

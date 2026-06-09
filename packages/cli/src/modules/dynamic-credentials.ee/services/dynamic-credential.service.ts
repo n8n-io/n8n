@@ -10,25 +10,25 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, toCredentialContext } from 'n8n-workflow';
 
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { StaticAuthService } from '@/services/static-auth-service';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { StaticAuthService } from '@/services/static-auth-service.js';
 
-import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import { ResolverConfigExpressionService } from './resolver-config-expression.service';
-import { extractSharedFields } from './shared-fields';
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service.js';
+import { ResolverConfigExpressionService } from './resolver-config-expression.service.js';
+import { extractSharedFields } from './shared-fields.js';
 import type {
 	CredentialResolutionResult,
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
-} from '../../../credentials/credential-resolution-provider.interface';
-import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../constants';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
-import { CredentialResolutionError } from '../errors/credential-resolution.error';
-import { CredentialResolverNotConfiguredError } from '../errors/credential-resolver-not-configured.error';
-import { CredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
-import { MissingExecutionContextError } from '../errors/missing-execution-context.error';
+} from '../../../credentials/credential-resolution-provider.interface.js';
+import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../constants.js';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository.js';
+import { DynamicCredentialsConfig } from '../dynamic-credentials.config.js';
+import { CredentialResolutionError } from '../errors/credential-resolution.error.js';
+import { CredentialResolverNotConfiguredError } from '../errors/credential-resolver-not-configured.error.js';
+import { CredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error.js';
+import { MissingExecutionContextError } from '../errors/missing-execution-context.error.js';
 import { AuthenticatedRequest } from '@n8n/db';
 
 /**

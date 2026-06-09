@@ -4,18 +4,18 @@ import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import * as path from 'path';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
 import {
 	OFFICIAL_RISKY_NODE_TYPES,
 	ENV_VARS_DOCS_URL,
 	NODES_REPORT,
 	COMMUNITY_NODES_RISKS_URL,
 	NPM_PACKAGE_URL,
-} from '@/security-audit/constants';
-import type { Risk, RiskReporter } from '@/security-audit/types';
-import { getNodeTypes } from '@/security-audit/utils';
+} from '@/security-audit/constants.js';
+import type { Risk, RiskReporter } from '@/security-audit/types.js';
+import { getNodeTypes } from '@/security-audit/utils.js';
 
-import { PackagesRepository } from '../security-audit.repository';
+import { PackagesRepository } from '../security-audit.repository.js';
 
 @Service()
 export class NodesRiskReporter implements RiskReporter {

@@ -1,5 +1,5 @@
-import { MAX_EXECUTION_DATA_CHARS } from '../../constants';
-import { truncateJson } from '../truncate-json';
+import { MAX_EXECUTION_DATA_CHARS } from '../../constants.js';
+import { truncateJson } from '../truncate-json.js';
 
 describe('truncateJson', () => {
 	describe('basic serialization', () => {

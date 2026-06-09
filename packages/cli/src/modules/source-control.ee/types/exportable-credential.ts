@@ -1,6 +1,6 @@
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import type { RemoteResourceOwner, StatusResourceOwner } from './resource-owner';
+import type { RemoteResourceOwner, StatusResourceOwner } from './resource-owner.js';
 
 export interface ExportableCredential {
 	id: string;

@@ -1,9 +1,9 @@
 import type { INodeParameters } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types/index.js';
 
-import type { ProgrammaticViolation } from '../types';
-import { containsExpression } from '../utils/expressions';
+import type { ProgrammaticViolation } from '../types.js';
+import { containsExpression } from '../utils/expressions.js';
 
 /**
  * Type guard to check if a value is a valid options object with systemMessage

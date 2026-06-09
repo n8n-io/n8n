@@ -14,7 +14,7 @@ import {
 	type WorkflowVerificationObligationSource,
 } from '@n8n/instance-ai';
 
-import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory.js';
 
 export function parseWorkflowBuildOutcome(
 	outcome: Record<string, unknown> | undefined,

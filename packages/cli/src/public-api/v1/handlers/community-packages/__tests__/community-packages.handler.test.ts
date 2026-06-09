@@ -3,21 +3,21 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
-import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
-import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service.js';
+import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity.js';
+import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware.js';
 
-import { mapToCommunityPackage, mapToCommunityPackageList } from '../community-packages.mapper';
+import { mapToCommunityPackage, mapToCommunityPackageList } from '../community-packages.mapper.js';
 
 const mockMiddleware = jest.fn(async (_req: unknown, _res: unknown, next: unknown) =>
 	(next as () => void)(),
 ) as unknown as middlewares.ScopeTaggedMiddleware;
 jest.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 
-const handler = require('../community-packages.handler');
+const handler = require('../community-packages.handler.js');
 
 describe('CommunityPackages Handler', () => {
 	let mockLifecycle: jest.Mocked<CommunityPackagesLifecycleService>;

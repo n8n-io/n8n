@@ -7,7 +7,7 @@ import {
 	applyCacheControlMarkers,
 	applySubgraphCacheMarkers,
 	stripAllCacheControlMarkers,
-} from '../helpers';
+} from '../helpers.js';
 
 describe('Cache Control Helpers', () => {
 	describe('findUserToolMessageIndices', () => {

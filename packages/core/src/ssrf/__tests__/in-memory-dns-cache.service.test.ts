@@ -1,7 +1,7 @@
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { LookupAddress } from 'node:dns';
 
-import { InMemoryDnsCache } from '../in-memory-dns-cache.service';
+import { InMemoryDnsCache } from '../in-memory-dns-cache.service.js';
 
 describe('InMemoryDnsCache', () => {
 	// lru-cache captures `const perf = performance` at import time and uses perf.now()

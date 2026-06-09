@@ -7,9 +7,9 @@ import type {
 	GcpSecretsManagerContext,
 	GcpSecretAccountKey,
 	RawGcpSecretAccountKey,
-} from './types';
-import { DOCS_HELP_NOTICE } from '../../constants';
-import { SecretsProvider } from '../../types';
+} from './types.js';
+import { DOCS_HELP_NOTICE } from '../../constants.js';
+import { SecretsProvider } from '../../types.js';
 
 export class GcpSecretsManager extends SecretsProvider {
 	name = 'gcpSecretsManager';

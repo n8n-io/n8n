@@ -1,4 +1,4 @@
-import { buildIpRangeList } from '../ip-range-builder';
+import { buildIpRangeList } from '../ip-range-builder.js';
 
 describe('buildIpRangeList', () => {
 	it('should build a list from valid CIDR ranges', () => {

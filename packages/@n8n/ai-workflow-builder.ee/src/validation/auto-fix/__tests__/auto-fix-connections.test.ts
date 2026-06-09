@@ -1,10 +1,10 @@
 import type { INodeTypeDescription, INode, IConnections } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
-import type { ProgrammaticViolation } from '@/validation/types';
+import type { SimpleWorkflow } from '@/types/index.js';
+import type { ProgrammaticViolation } from '@/validation/types.js';
 
-import { autoFixConnections } from '../auto-fix-connections';
+import { autoFixConnections } from '../auto-fix-connections.js';
 
 describe('autoFixConnections', () => {
 	// Mock node types

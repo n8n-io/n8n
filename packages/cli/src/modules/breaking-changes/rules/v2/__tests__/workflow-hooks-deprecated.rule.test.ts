@@ -1,4 +1,4 @@
-import { WorkflowHooksDeprecatedRule } from '../workflow-hooks-deprecated.rule';
+import { WorkflowHooksDeprecatedRule } from '../workflow-hooks-deprecated.rule.js';
 
 describe('WorkflowHooksDeprecatedRule', () => {
 	let rule: WorkflowHooksDeprecatedRule;

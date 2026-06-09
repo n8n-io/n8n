@@ -38,17 +38,17 @@ import * as utils from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import fsp from 'node:fs/promises';
 
-import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
-import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
-import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
-import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
-import type { IWorkflowToImport } from '@/interfaces';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { createFolder } from '@test-integration/db/folders';
-import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
+import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee.js';
+import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory.js';
+import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service.js';
+import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential.js';
+import type { IWorkflowToImport } from '@/interfaces.js';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
+import { createFolder } from '@test-integration/db/folders.js';
+import { assignTagToWorkflow, createTag } from '@test-integration/db/tags.js';
 
-import { createCredentials, saveCredential } from '../shared/db/credentials';
-import { createAdmin, createMember, createOwner, getGlobalOwner } from '../shared/db/users';
+import { createCredentials, saveCredential } from '../shared/db/credentials.js';
+import { createAdmin, createMember, createOwner, getGlobalOwner } from '../shared/db/users.js';
 
 jest.mock('fast-glob');
 

@@ -6,25 +6,25 @@ import type { Response } from 'express';
 import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import { NodeTypes } from '@/node-types';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import { WebhookService } from '@/webhooks/webhook.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error.js';
+import { NodeTypes } from '@/node-types.js';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
+import { WebhookService } from '@/webhooks/webhook.service.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
 
-import { authAllowlistedNodes } from './constants';
-import { matchesExpectedNodeType } from './node-type-matcher';
-import type { ExpectedWebhookNodeType } from './node-type-matcher';
-import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
+import { authAllowlistedNodes } from './constants.js';
+import { matchesExpectedNodeType } from './node-type-matcher.js';
+import type { ExpectedWebhookNodeType } from './node-type-matcher.js';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer.js';
 import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,
 	WebhookAccessControlOptions,
 	WebhookRequest,
-} from './webhook.types';
+} from './webhook.types.js';
 
 /**
  * Service for handling the execution of live webhooks, i.e. webhooks

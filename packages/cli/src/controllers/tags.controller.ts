@@ -13,7 +13,7 @@ import {
 } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { TagService } from '@/services/tag.service';
+import { TagService } from '@/services/tag.service.js';
 
 @RestController('/tags')
 export class TagsController {

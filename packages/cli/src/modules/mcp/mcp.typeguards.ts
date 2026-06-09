@@ -1,7 +1,7 @@
 // Inferred typing for CredentialsService.getOne() is a bit too broad, so we need custom type guards
 // to ensure that the decrypted data has the expected structure without changing the service code.
 
-import type { JSONRPCRequest } from './mcp.types';
+import type { JSONRPCRequest } from './mcp.types.js';
 
 type UnknownRecord = Record<string, unknown>;
 

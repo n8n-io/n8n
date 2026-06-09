@@ -5,10 +5,10 @@ import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permiss
 import { mock } from 'jest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import type { UrlService } from '@/services/url.service';
-import type { InviteEmailData, PasswordResetData } from '@/user-management/email/interfaces';
-import { NodeMailer } from '@/user-management/email/node-mailer';
-import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+import type { UrlService } from '@/services/url.service.js';
+import type { InviteEmailData, PasswordResetData } from '@/user-management/email/interfaces.js';
+import { NodeMailer } from '@/user-management/email/node-mailer.js';
+import { UserManagementMailer } from '@/user-management/email/user-management-mailer.js';
 
 describe('UserManagementMailer', () => {
 	const email = 'test@user.com';

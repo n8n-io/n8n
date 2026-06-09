@@ -17,32 +17,32 @@ import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import { CredentialTypes } from '@/credential-types';
-import { AgentTaskService } from '../agent-task.service';
-import { AgentsToolsService } from '../agents-tools.service';
-import { AgentsService } from '../agents.service';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { CredentialTypes } from '@/credential-types.js';
+import { AgentTaskService } from '../agent-task.service.js';
+import { AgentsToolsService } from '../agents-tools.service.js';
+import { AgentsService } from '../agents.service.js';
+import { composeJsonConfig } from '../json-config/agent-config-composition.js';
 import {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
-} from '../json-config/native-web-search-provider-tools';
-import { AgentRepository } from '../repositories/agent.repository';
-import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { BuilderModelLookupService } from './builder-model-lookup.service';
+} from '../json-config/native-web-search-provider-tools.js';
+import { AgentRepository } from '../repositories/agent.repository.js';
+import { AgentSecureRuntime } from '../runtime/agent-secure-runtime.js';
+import { BuilderModelLookupService } from './builder-model-lookup.service.js';
 import {
 	buildAskCredentialTool,
 	buildAskLlmTool,
 	buildAskQuestionTool,
 	buildResolveLlmTool,
-} from './interactive';
-import type { ModelLookup } from './interactive/resolve-llm.tool';
-import { BUILDER_TOOLS } from './builder-tool-names';
-import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
-import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
-import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
-import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
-import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { OauthService } from '@/oauth/oauth.service';
+} from './interactive/index.js';
+import type { ModelLookup } from './interactive/resolve-llm.tool.js';
+import { BUILDER_TOOLS } from './builder-tool-names.js';
+import { buildSearchMcpServersTool } from './search-mcp-servers.tool.js';
+import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template.js';
+import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template.js';
+import { buildVerifyMcpServerTool } from './verify-mcp-server.tool.js';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
+import { OauthService } from '@/oauth/oauth.service.js';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',

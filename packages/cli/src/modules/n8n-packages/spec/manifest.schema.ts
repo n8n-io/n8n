@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { FORMAT_VERSION } from './constants';
-import { packageRequirementsSchema } from './requirements.schema';
+import { FORMAT_VERSION } from './constants.js';
+import { packageRequirementsSchema } from './requirements.schema.js';
 
 export const manifestEntrySchema = z.object({
 	id: z.string().min(1),

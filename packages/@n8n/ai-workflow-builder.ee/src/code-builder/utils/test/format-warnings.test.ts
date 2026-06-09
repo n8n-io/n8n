@@ -1,6 +1,6 @@
-import { WarningTracker } from '../../state/warning-tracker';
-import type { ValidationWarning } from '../../types';
-import { formatWarnings } from '../format-warnings';
+import { WarningTracker } from '../../state/warning-tracker.js';
+import type { ValidationWarning } from '../../types.js';
+import { formatWarnings } from '../format-warnings.js';
 
 describe('formatWarnings', () => {
 	it('should format warnings without tracker', () => {

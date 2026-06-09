@@ -1,6 +1,6 @@
-export { autoFixConnections } from './auto-fix-connections';
+export { autoFixConnections } from './auto-fix-connections.js';
 export type {
 	AutoFixResult,
 	AutoFixedConnection,
 	UnfixableConnection,
-} from './auto-fix-connections';
+} from './auto-fix-connections.js';

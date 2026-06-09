@@ -4,8 +4,8 @@ import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
-import { PostHogClient } from '@/posthog';
-import { Telemetry } from '@/telemetry';
+import { PostHogClient } from '@/posthog/index.js';
+import { Telemetry } from '@/telemetry/index.js';
 
 jest.unmock('@/telemetry');
 jest.mock('@/posthog');

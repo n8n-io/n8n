@@ -1,7 +1,7 @@
 import { User, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
 
-import { OAuthClient } from './oauth-client.entity';
+import { OAuthClient } from './oauth-client.entity.js';
 
 @Entity('oauth_authorization_codes')
 export class AuthorizationCode extends WithTimestamps {

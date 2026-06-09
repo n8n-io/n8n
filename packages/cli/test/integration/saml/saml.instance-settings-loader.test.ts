@@ -3,11 +3,11 @@ import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { SsoInstanceSettingsLoader } from '@/instance-settings-loader/loaders/sso/sso.instance-settings-loader';
-import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants';
-import { OIDC_PREFERENCES_DB_KEY } from '@/modules/sso-oidc/constants';
-import { SAML_PREFERENCES_DB_KEY } from '@/modules/sso-saml/constants';
-import { SamlService } from '@/modules/sso-saml/saml.service.ee';
+import { SsoInstanceSettingsLoader } from '@/instance-settings-loader/loaders/sso/sso.instance-settings-loader.js';
+import { PROVISIONING_PREFERENCES_DB_KEY } from '@/modules/provisioning.ee/constants.js';
+import { OIDC_PREFERENCES_DB_KEY } from '@/modules/sso-oidc/constants.js';
+import { SAML_PREFERENCES_DB_KEY } from '@/modules/sso-saml/constants.js';
+import { SamlService } from '@/modules/sso-saml/saml.service.ee.js';
 
 beforeAll(async () => {
 	await testDb.init();

@@ -1,8 +1,8 @@
 import type { ClusterCheckSummary, ClusterInfoResponse } from '@n8n/api-types';
 import { Get, RestController } from '@n8n/decorators';
 
-import { CheckService } from './checks/check.service';
-import { InstanceRegistryService } from './instance-registry.service';
+import { CheckService } from './checks/check.service.js';
+import { InstanceRegistryService } from './instance-registry.service.js';
 
 @RestController('/instance-registry')
 export class InstanceRegistryController {

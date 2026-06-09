@@ -2,12 +2,12 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionRepository, User } from '@n8n/db';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { createGetExecutionTool } from '../tools/get-execution.tool';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants.js';
+import { createGetExecutionTool } from '../tools/get-execution.tool.js';
 
 describe('get-execution MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });

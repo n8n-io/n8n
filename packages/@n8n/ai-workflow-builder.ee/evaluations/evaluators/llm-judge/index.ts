@@ -1,12 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types/workflow';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 
-import type { EvaluationInput } from './evaluation';
-import { evaluateWorkflow } from './workflow-evaluator';
-import { runWithOptionalLimiter, withTimeout } from '../../harness/evaluation-helpers';
-import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
+import type { EvaluationInput } from './evaluation.js';
+import { evaluateWorkflow } from './workflow-evaluator.js';
+import { runWithOptionalLimiter, withTimeout } from '../../harness/evaluation-helpers.js';
+import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types.js';
 
 const EVALUATOR_NAME = 'llm-judge';
 

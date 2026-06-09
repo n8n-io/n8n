@@ -1,8 +1,8 @@
 import { promises as dns } from 'node:dns';
 import { mock } from 'vitest-mock-extended';
 
-import { DnsResolver } from '../dns-resolver';
-import type { InMemoryDnsCache } from '../in-memory-dns-cache.service';
+import { DnsResolver } from '../dns-resolver.js';
+import type { InMemoryDnsCache } from '../in-memory-dns-cache.service.js';
 
 vi.mock('node:dns', () => ({
 	promises: {

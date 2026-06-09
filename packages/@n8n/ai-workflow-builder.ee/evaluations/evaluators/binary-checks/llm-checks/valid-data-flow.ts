@@ -1,4 +1,4 @@
-import { createLlmCheck } from './create-llm-check';
+import { createLlmCheck } from './create-llm-check.js';
 
 export const validDataFlow = createLlmCheck({
 	name: 'valid_data_flow',

@@ -54,6 +54,8 @@ catalog:
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.55.0
+  '@stryker-mutator/core': 9.6.1
+  '@stryker-mutator/vitest-runner': 9.6.1
   '@supabase/supabase-js': 2.50.0
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
@@ -81,8 +83,7 @@ catalog:
   '@types/node': 24.10.1
   '@types/uuid': ^11.0.0
   '@types/xml2js': ^0.4.14
-  '@stryker-mutator/core': 9.6.1
-  '@stryker-mutator/vitest-runner': 9.6.1
+  '@typescript/native-preview': 7.0.0-dev.20260602.1
   '@vitest/coverage-v8': 4.1.1
   agent-browser: 0.26.0
   axios: 1.16.1

@@ -8,11 +8,11 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types';
 
-import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { License } from '@/license';
-import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
+import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants.js';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
+import { License } from '@/license.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { UrlService } from '@/services/url.service.js';
 
 interface GatewayTokenResponse {
 	token: string;

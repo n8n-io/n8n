@@ -6,8 +6,8 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
-import { InsightsModule } from '../insights.module';
-import { InsightsService } from '../insights.service';
+import { InsightsModule } from '../insights.module.js';
+import { InsightsService } from '../insights.service.js';
 
 describe('InsightsModule', () => {
 	let insightsModule: InsightsModule;

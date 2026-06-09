@@ -1,9 +1,9 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types/index.js';
 
-import { evaluateTrigger } from './trigger';
+import { evaluateTrigger } from './trigger.js';
 
 describe('evaluateTrigger', () => {
 	const mockNodeTypes: INodeTypeDescription[] = [

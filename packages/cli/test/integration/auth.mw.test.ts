@@ -1,10 +1,10 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
 
-import { createUser } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils/';
+import { createUser } from './shared/db/users.js';
+import type { SuperAgentTest } from './shared/types.js';
+import * as utils from './shared/utils//index.js';
 
 describe('Auth Middleware', () => {
 	mockInstance(ActiveWorkflowManager);

@@ -6,10 +6,10 @@
  * using their real compiled dist implementations.
  */
 
-import type { SimpleWorkflow } from '@/types/workflow';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 
-import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
-import { executeWorkflowWithPinData } from '../../support/workflow-executor';
+import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types.js';
+import { executeWorkflowWithPinData } from '../../support/workflow-executor.js';
 
 /**
  * Create an execution evaluator that runs the workflow with pin data.

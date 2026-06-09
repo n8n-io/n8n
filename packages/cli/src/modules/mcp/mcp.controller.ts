@@ -5,19 +5,19 @@ import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
-import { Telemetry } from '@/telemetry';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { McpServerMiddlewareService } from './mcp-server-middleware.service';
+import { McpServerMiddlewareService } from './mcp-server-middleware.service.js';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
 	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 	INTERNAL_SERVER_ERROR_MESSAGE,
-} from './mcp.constants';
-import { McpService } from './mcp.service';
-import { McpSettingsService } from './mcp.settings.service';
-import { isJSONRPCRequest } from './mcp.typeguards';
-import type { UserConnectedToMCPEventPayload } from './mcp.types';
-import { getClientInfo } from './mcp.utils';
+} from './mcp.constants.js';
+import { McpService } from './mcp.service.js';
+import { McpSettingsService } from './mcp.settings.service.js';
+import { isJSONRPCRequest } from './mcp.typeguards.js';
+import type { UserConnectedToMCPEventPayload } from './mcp.types.js';
+import { getClientInfo } from './mcp.utils.js';
 
 export type FlushableResponse = Response & { flush: () => void };
 

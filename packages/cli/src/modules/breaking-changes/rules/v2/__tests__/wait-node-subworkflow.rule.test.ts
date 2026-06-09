@@ -1,8 +1,8 @@
 import type { INode } from 'n8n-workflow';
 
-import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
-import { BreakingChangeCategory } from '../../../types';
-import { WaitNodeSubworkflowRule } from '../wait-node-subworkflow.rule';
+import { createNode, createWorkflow } from '../../../__tests__/test-helpers.js';
+import { BreakingChangeCategory } from '../../../types/index.js';
+import { WaitNodeSubworkflowRule } from '../wait-node-subworkflow.rule.js';
 
 class TestRule extends WaitNodeSubworkflowRule {
 	testExtractCalledWorkflowId(node: INode, callerWorkflowId: string): string | undefined {

@@ -2,7 +2,7 @@ import type { CredentialsEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee.js';
 
 describe('EnterpriseWorkflowService', () => {
 	let service: EnterpriseWorkflowService;

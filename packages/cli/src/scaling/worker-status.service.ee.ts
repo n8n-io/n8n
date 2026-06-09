@@ -5,11 +5,11 @@ import { InstanceSettings } from 'n8n-core';
 import os from 'node:os';
 import process from 'node:process';
 
-import { N8N_VERSION } from '@/constants';
-import { Push } from '@/push';
+import { N8N_VERSION } from '@/constants.js';
+import { Push } from '@/push/index.js';
 
-import { JobProcessor } from './job-processor';
-import { Publisher } from './pubsub/publisher.service';
+import { JobProcessor } from './job-processor.js';
+import { Publisher } from './pubsub/publisher.service.js';
 
 @Service()
 export class WorkerStatusService {

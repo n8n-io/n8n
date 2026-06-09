@@ -1,6 +1,6 @@
 import type { Readable } from 'node:stream';
 
-import type { PackageWriter } from '../../package-writer';
+import type { PackageWriter } from '../../package-writer.js';
 
 export class CapturingWriter implements PackageWriter {
 	readonly files: Array<{ path: string; content: string }> = [];

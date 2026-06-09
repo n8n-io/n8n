@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import type { ICredentialType, ICredentialTypes } from 'n8n-workflow';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
 
 @Service()
 export class CredentialTypes implements ICredentialTypes {

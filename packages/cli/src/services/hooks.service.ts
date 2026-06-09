@@ -18,9 +18,9 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import RudderStack, { type constructorOptions } from '@rudderstack/rudder-sdk-node';
 import type { NextFunction, Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service';
-import type { Invitation } from '@/interfaces';
-import { UserService } from '@/services/user.service';
+import { AuthService } from '@/auth/auth.service.js';
+import type { Invitation } from '@/interfaces.js';
+import { UserService } from '@/services/user.service.js';
 
 /**
  * Exposes functionality to be used by the cloud BE hooks.

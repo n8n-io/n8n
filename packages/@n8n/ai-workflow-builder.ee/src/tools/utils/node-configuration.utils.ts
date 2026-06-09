@@ -1,7 +1,11 @@
 import type { INodeParameters } from 'n8n-workflow';
 
-import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
-import type { NodeConfigurationsMap, NodeConfigurationEntry, WorkflowMetadata } from '@/types';
+import { MAX_NODE_EXAMPLE_CHARS } from '@/constants.js';
+import type {
+	NodeConfigurationsMap,
+	NodeConfigurationEntry,
+	WorkflowMetadata,
+} from '@/types/index.js';
 
 /**
  * Node structure for configuration collection

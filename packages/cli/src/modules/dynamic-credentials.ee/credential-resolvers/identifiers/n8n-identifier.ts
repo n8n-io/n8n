@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import type { ICredentialContext } from 'n8n-workflow';
-import { ITokenIdentifier } from './identifier-interface';
-import { AuthService } from '@/auth/auth.service';
+import { ITokenIdentifier } from './identifier-interface.js';
+import { AuthService } from '@/auth/auth.service.js';
 import { z } from 'zod';
 import { CredentialResolverError } from '@n8n/decorators';
 

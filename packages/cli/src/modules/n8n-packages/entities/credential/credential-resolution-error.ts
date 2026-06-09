@@ -1,6 +1,6 @@
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
 
-import type { CredentialResolution } from './credential.types';
+import type { CredentialResolution } from './credential.types.js';
 
 /** Maps unresolved credential references to the 422 returned by the package import API. */
 export function toCredentialResolutionFailedError(

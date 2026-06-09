@@ -5,7 +5,7 @@ import type { EntityManager } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { staticRolesWithScope, type Scope } from '@n8n/permissions';
 
-import { CacheService } from './cache/cache.service';
+import { CacheService } from './cache/cache.service.js';
 
 type RoleInfo = {
 	scopes: string[]; // array of scope slugs

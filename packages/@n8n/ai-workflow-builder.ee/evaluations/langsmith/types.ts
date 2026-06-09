@@ -1,9 +1,9 @@
 import type { BaseMessage } from '@langchain/core/messages';
 
-import type { IntrospectionEvent } from '@/tools/introspect.tool';
-import { cleanContextTags } from '@/utils/stream-processor';
+import type { IntrospectionEvent } from '@/tools/introspect.tool.js';
+import { cleanContextTags } from '@/utils/stream-processor.js';
 
-import type { SimpleWorkflow } from '../../src/types/workflow';
+import type { SimpleWorkflow } from '../../src/types/workflow.js';
 
 export interface WorkflowOutput {
 	workflow?: unknown;

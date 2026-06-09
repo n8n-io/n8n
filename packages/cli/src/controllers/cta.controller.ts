@@ -2,7 +2,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController } from '@n8n/decorators';
 import express from 'express';
 
-import { CtaService } from '@/services/cta.service';
+import { CtaService } from '@/services/cta.service.js';
 
 /**
  * Controller for Call to Action (CTA) endpoints. CTAs are certain

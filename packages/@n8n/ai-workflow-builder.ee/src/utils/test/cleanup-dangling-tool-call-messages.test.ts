@@ -1,7 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, RemoveMessage, ToolMessage } from '@langchain/core/messages';
 
-import { cleanupDanglingToolCallMessages } from '../cleanup-dangling-tool-call-messages';
+import { cleanupDanglingToolCallMessages } from '../cleanup-dangling-tool-call-messages.js';
 
 describe('cleanupDanglingToolCallMessages', () => {
 	it('should remove AI messages with dangling tool calls', () => {

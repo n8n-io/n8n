@@ -7,30 +7,30 @@ import querystring from 'querystring';
 import type { PostBindingContext } from 'samlify/types/src/entity';
 import url from 'url';
 
-import { AuthService } from '@/auth/auth.service';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { AuthService } from '@/auth/auth.service.js';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { EventService } from '@/events/event.service.js';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { AuthlessRequest } from '@/requests';
-import { sendErrorResponse } from '@/response-helper';
-import { UrlService } from '@/services/url.service';
-import { validateRedirectUrl } from '@/utils/validate-redirect-url';
-import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
+import { AuthlessRequest } from '@/requests.js';
+import { sendErrorResponse } from '@/response-helper.js';
+import { UrlService } from '@/services/url.service.js';
+import { validateRedirectUrl } from '@/utils/validate-redirect-url.js';
+import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers.js';
 
 import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedMiddleware,
-} from './middleware/saml-enabled-middleware';
-import { extractTestIdFromRelayState, isConnectionTestRequest } from './saml-helpers';
-import { SamlService } from './saml.service.ee';
+} from './middleware/saml-enabled-middleware.js';
+import { extractTestIdFromRelayState, isConnectionTestRequest } from './saml-helpers.js';
+import { SamlService } from './saml.service.ee.js';
 import {
 	getServiceProviderConfigTestReturnUrl,
 	getServiceProviderEntityId,
 	getServiceProviderReturnUrl,
-} from './service-provider.ee';
-import type { SamlLoginBinding } from './types';
-import { getInitSSOFormView } from './views/init-sso-post';
+} from './service-provider.ee.js';
+import type { SamlLoginBinding } from './types.js';
+import { getInitSSOFormView } from './views/init-sso-post.js';
 
 @RestController('/sso/saml')
 export class SamlController {

@@ -1,11 +1,11 @@
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { mockCipher } from '@test/mocking';
+import { mockCipher } from '@test/mocking.js';
 
-import { EXTERNAL_SECRETS_DB_KEY } from '../constants';
-import { ExternalSecretsSettingsStore } from '../settings-store.service';
-import type { ExternalSecretsSettings } from '../types';
+import { EXTERNAL_SECRETS_DB_KEY } from '../constants.js';
+import { ExternalSecretsSettingsStore } from '../settings-store.service.js';
+import type { ExternalSecretsSettings } from '../types.js';
 
 describe('SettingsStore', () => {
 	let store: ExternalSecretsSettingsStore;

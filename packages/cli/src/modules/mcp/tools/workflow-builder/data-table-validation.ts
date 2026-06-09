@@ -5,7 +5,7 @@ import { isExpression, isResourceLocatorValue } from 'n8n-workflow';
 import {
 	isAllowedNode,
 	type DataTableUserOperations,
-} from '@/modules/data-table/data-table-proxy.service';
+} from '@/modules/data-table/data-table-proxy.service.js';
 
 export interface DataTableValidationFailure {
 	ok: false;

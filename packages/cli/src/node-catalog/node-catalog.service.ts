@@ -9,9 +9,9 @@ import * as fs from 'fs/promises';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import * as path from 'path';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
-import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform.js';
+import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def.js';
 
 export type NodeFilter = (nodeId: string) => boolean;
 

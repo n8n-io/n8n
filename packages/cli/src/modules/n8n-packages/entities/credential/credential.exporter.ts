@@ -1,14 +1,14 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
 
-import { CredentialSerializer } from './credential.serializer';
-import type { WorkflowCredentialRequirement } from './credential.types';
-import type { PackageWriter } from '../../io/package-writer';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
+import { CredentialSerializer } from './credential.serializer.js';
+import type { WorkflowCredentialRequirement } from './credential.types.js';
+import type { PackageWriter } from '../../io/package-writer.js';
+import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator.js';
+import type { ManifestEntry } from '../../spec/manifest.schema.js';
+import type { PackageCredentialRequirement } from '../../spec/requirements.schema.js';
 
 interface CredentialGroup {
 	// Name+type to use if the DB lookup fails — sourced from the workflow snapshot.

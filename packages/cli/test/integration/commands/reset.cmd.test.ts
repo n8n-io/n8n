@@ -15,13 +15,13 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { Reset } from '@/commands/user-management/reset';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeTypes } from '@/node-types';
-import { setupTestCommand } from '@test-integration/utils/test-command';
+import { Reset } from '@/commands/user-management/reset.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { NodeTypes } from '@/node-types.js';
+import { setupTestCommand } from '@test-integration/utils/test-command.js';
 
-import { encryptCredentialData, saveCredential } from '../shared/db/credentials';
-import { createMember, createUser } from '../shared/db/users';
+import { encryptCredentialData, saveCredential } from '../shared/db/credentials.js';
+import { createMember, createUser } from '../shared/db/users.js';
 
 mockInstance(LoadNodesAndCredentials);
 mockInstance(NodeTypes);

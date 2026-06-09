@@ -19,18 +19,18 @@ import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
-import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
-import { DbStore } from './execution-data/db-store';
-import { FsStore } from './execution-data/fs-store';
-import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
+import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error.js';
+import { DbStore } from './execution-data/db-store.js';
+import { FsStore } from './execution-data/fs-store.js';
+import { MissingExecutionDataError } from './execution-data/missing-execution-data.error.js';
 import type {
 	ExecutionDataBundle,
 	ExecutionDataStore,
 	ExecutionRef,
 	WorkflowSnapshot,
-} from './execution-data/types';
-import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
-import { EventService } from '../events/event.service';
+} from './execution-data/types.js';
+import { DuplicateExecutionError } from '../errors/duplicate-execution.error.js';
+import { EventService } from '../events/event.service.js';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 

@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream';
 import { Header, Pack, ReadEntry } from 'tar';
 
-import type { PackageWriter } from '../package-writer';
+import type { PackageWriter } from '../package-writer.js';
 
 const FIXED_MTIME = new Date(0);
 const FILE_MODE = 0o644;

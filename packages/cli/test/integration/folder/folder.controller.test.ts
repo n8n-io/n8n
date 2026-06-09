@@ -21,18 +21,18 @@ import {
 	saveCredential,
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
-} from '@test-integration/db/credentials';
-import { createFolder } from '@test-integration/db/folders';
-import { createTag } from '@test-integration/db/tags';
+} from '@test-integration/db/credentials.js';
+import { createFolder } from '@test-integration/db/folders.js';
+import { createTag } from '@test-integration/db/tags.js';
 import { DateTime } from 'luxon';
 import { ApplicationError, PROJECT_ROOT } from 'n8n-workflow';
 
-import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
+import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils//index.js';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { OwnershipService } from '@/services/ownership.service';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { OwnershipService } from '@/services/ownership.service.js';
 
 let owner: User;
 let member: User;

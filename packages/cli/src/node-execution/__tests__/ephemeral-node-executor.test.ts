@@ -16,14 +16,14 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types';
+import { NodeTypes } from '@/node-types.js';
 
 import {
 	AGENT_PROVIDER_NODE_WHITELIST,
 	EphemeralNodeExecutor,
 	isAgentProviderNode,
 	isUsableAsAgentTool,
-} from '../ephemeral-node-executor';
+} from '../ephemeral-node-executor.js';
 
 const mockGetBase = jest.fn();
 

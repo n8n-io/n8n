@@ -4,7 +4,7 @@
 
 import { HumanMessage, AIMessage } from '@langchain/core/messages';
 
-import { AgentIterationHandler } from '../agent-iteration-handler';
+import { AgentIterationHandler } from '../agent-iteration-handler.js';
 
 describe('AgentIterationHandler', () => {
 	let handler: AgentIterationHandler;

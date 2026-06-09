@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { IRunData } from 'n8n-workflow';
 
-import { extractTokenUsage } from '../utils.ee';
+import { extractTokenUsage } from '../utils.ee.js';
 
 type TokenUsage = {
 	completionTokens: number;

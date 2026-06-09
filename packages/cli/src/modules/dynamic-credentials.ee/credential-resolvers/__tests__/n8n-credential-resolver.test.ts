@@ -5,10 +5,10 @@ import {
 } from '@n8n/decorators';
 import type { Cipher } from 'n8n-core';
 
-import type { N8NIdentifier } from '../identifiers/n8n-identifier';
-import { N8NCredentialResolver } from '../n8n-credential-resolver';
-import type { DynamicCredentialUserEntryStorage } from '../storage/dynamic-credential-user-entry-storage';
-import { testCredentialResolverContract, testHelpers } from './resolver-contract-tests';
+import type { N8NIdentifier } from '../identifiers/n8n-identifier.js';
+import { N8NCredentialResolver } from '../n8n-credential-resolver.js';
+import type { DynamicCredentialUserEntryStorage } from '../storage/dynamic-credential-user-entry-storage.js';
+import { testCredentialResolverContract, testHelpers } from './resolver-contract-tests.js';
 
 describe('N8NCredentialResolver', () => {
 	let mockLogger: jest.Mocked<Logger>;

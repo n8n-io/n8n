@@ -1,4 +1,4 @@
-import type { WorkflowState } from '../workflow-state';
+import type { WorkflowState } from '../workflow-state.js';
 
 /**
  * Type for state updater functions

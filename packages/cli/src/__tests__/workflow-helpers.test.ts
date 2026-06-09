@@ -4,8 +4,8 @@ import type { CredentialsEntity, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import type { IRun, ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
-import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { OwnershipService } from '@/services/ownership.service';
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee.js';
+import { OwnershipService } from '@/services/ownership.service.js';
 import {
 	getLastExecutedNodeData,
 	getLastExecutedNodeRuns,
@@ -18,8 +18,8 @@ import {
 	validateWorkflowNodeGroups,
 	validateWorkflowStructure,
 	WorkflowStructureBadRequestError,
-} from '@/workflow-helpers';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+} from '@/workflow-helpers.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 import { mock } from 'jest-mock-extended';
 
 describe('workflow-helpers', () => {

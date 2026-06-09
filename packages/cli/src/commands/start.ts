@@ -20,32 +20,32 @@ import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
 import { z } from 'zod';
 
-import { ActiveExecutions } from '@/active-executions';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import config from '@/config';
-import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
-import { ExecutionService } from '@/executions/execution.service';
-import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
-import { Server } from '@/server';
-import { JwtService } from '@/services/jwt.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
-import { UrlService } from '@/services/url.service';
-import { WaitTracker } from '@/wait-tracker';
-import { WorkflowRunner } from '@/workflow-runner';
+import { ActiveExecutions } from '@/active-executions.js';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import config from '@/config/index.js';
+import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants.js';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { EventService } from '@/events/event.service.js';
+import { ExecutionService } from '@/executions/execution.service.js';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry.js';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service.js';
+import { Server } from '@/server.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service.js';
+import { UrlService } from '@/services/url.service.js';
+import { WaitTracker } from '@/wait-tracker.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
 
-import { BaseCommand } from './base-command';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { DeprecationService } from '@/deprecation/deprecation.service';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
-import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
+import { BaseCommand } from './base-command.js';
+import { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import { DeprecationService } from '@/deprecation/deprecation.service.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service.js';
+import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage.js';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -282,13 +282,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// Initialize auth handler registry after modules are loaded
-		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry');
+		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry.js');
 		await Container.get(AuthHandlerRegistry).init();
 
 		if (this.instanceSettings.isMultiMain) {
 			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
 			if (this.globalConfig.endpoints.metrics.enable) {
-				const { PrometheusMetricsService } = await import('@/metrics/prometheus');
+				const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 				Container.get(PrometheusMetricsService);
 			}
 
@@ -301,7 +301,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	private async initInstanceSettingsLoader(): Promise<void> {
 		const { InstanceSettingsLoaderService } = await import(
-			'@/instance-settings-loader/instance-settings-loader.service'
+			'@/instance-settings-loader/instance-settings-loader.service.js'
 		);
 		await Container.get(InstanceSettingsLoaderService).init();
 	}

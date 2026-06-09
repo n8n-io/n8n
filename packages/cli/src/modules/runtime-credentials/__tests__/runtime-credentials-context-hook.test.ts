@@ -3,8 +3,8 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { INode, INodeExecutionData } from 'n8n-workflow';
 
-import { RuntimeCredentialsContextHook } from '../runtime-credentials-context-hook';
-import type { RuntimeCredentialsService, StripResult } from '../runtime-credentials.service';
+import { RuntimeCredentialsContextHook } from '../runtime-credentials-context-hook.js';
+import type { RuntimeCredentialsService, StripResult } from '../runtime-credentials.service.js';
 
 describe('RuntimeCredentialsContextHook', () => {
 	let service: MockProxy<RuntimeCredentialsService>;

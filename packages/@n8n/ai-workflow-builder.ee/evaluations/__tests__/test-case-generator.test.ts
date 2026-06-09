@@ -9,8 +9,8 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { loadDefaultTestCases } from '../cli/csv-prompt-loader';
-import { createTestCaseGenerator, type GeneratedTestCase } from '../support/test-case-generator';
+import { loadDefaultTestCases } from '../cli/csv-prompt-loader.js';
+import { createTestCaseGenerator, type GeneratedTestCase } from '../support/test-case-generator.js';
 
 /** Type guard for message objects with content */
 function isMessageWithContent(msg: unknown): msg is { content: unknown } {

@@ -10,8 +10,8 @@ import {
 	createMockSchema,
 	setupWorkflowStateWithContext,
 	type ParsedToolContent,
-} from '../../../test/test-utils';
-import { createGetExecutionSchemaTool } from '../get-execution-schema.tool';
+} from '../../../test/test-utils.js';
+import { createGetExecutionSchemaTool } from '../get-execution-schema.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

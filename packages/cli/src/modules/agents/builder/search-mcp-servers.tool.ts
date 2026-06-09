@@ -4,11 +4,11 @@ import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import { camelCase } from 'change-case';
 import { z } from 'zod';
 
-import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform.js';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
+import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types.js';
 
-import { BUILDER_TOOLS } from './builder-tool-names';
+import { BUILDER_TOOLS } from './builder-tool-names.js';
 
 export interface SearchMcpServersDeps {
 	mcpRegistryService: McpRegistryService;

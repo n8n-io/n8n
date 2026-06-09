@@ -1,12 +1,12 @@
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types/index.js';
 
 import {
 	evaluateWorkflowSimilarity,
 	evaluateWorkflowSimilarityMultiple,
-} from './workflow-similarity';
+} from './workflow-similarity.js';
 
 // Mock node modules before any imports
 vi.mock('node:child_process', () => ({

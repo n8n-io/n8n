@@ -6,8 +6,8 @@ import {
 	buildSchemaContexts,
 	workflowToMermaid,
 	generateEvalPinData,
-} from './pin-data-generator';
-import type { SimpleWorkflow } from '../../src/types/workflow';
+} from './pin-data-generator.js';
+import type { SimpleWorkflow } from '../../src/types/workflow.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

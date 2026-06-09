@@ -5,11 +5,11 @@ import {
 	type NodeConnectionType,
 } from 'n8n-workflow';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants.js';
+import type { UserCalledMCPToolEventPayload } from '../../mcp.types.js';
 
-import type { NodeTypes } from '@/node-types';
-import type { Telemetry } from '@/telemetry';
+import type { NodeTypes } from '@/node-types.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
 /**
  * Look up a node type's declared outputs. Returns `undefined` when the type is

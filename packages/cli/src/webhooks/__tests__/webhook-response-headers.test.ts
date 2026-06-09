@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
+import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers.js';
 
 describe('WebhookResponseHeaders', () => {
 	describe('set()', () => {

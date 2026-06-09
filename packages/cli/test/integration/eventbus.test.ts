@@ -1,12 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service.js';
 
-import { createUser } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils/';
+import { createUser } from './shared/db/users.js';
+import type { SuperAgentTest } from './shared/types.js';
+import * as utils from './shared/utils//index.js';
 
 /**
  * NOTE: due to issues with mocking the MessageEventBus in multiple tests running in parallel,

@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { AgentTaskRunLock } from '../entities/agent-task-run-lock.entity';
+import { AgentTaskRunLock } from '../entities/agent-task-run-lock.entity.js';
 
 export type AgentTaskRunLockHandle = Pick<
 	AgentTaskRunLock,

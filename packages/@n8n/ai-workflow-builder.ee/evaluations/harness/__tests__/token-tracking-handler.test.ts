@@ -1,6 +1,6 @@
 import type { LLMResult } from '@langchain/core/outputs';
 
-import { TokenUsageTrackingHandler } from '../token-tracking-handler';
+import { TokenUsageTrackingHandler } from '../token-tracking-handler.js';
 
 describe('TokenUsageTrackingHandler', () => {
 	let handler: TokenUsageTrackingHandler;

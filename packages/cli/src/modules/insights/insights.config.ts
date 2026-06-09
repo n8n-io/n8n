@@ -1,6 +1,6 @@
 import { Config, Env } from '@n8n/config';
 
-import { INSIGHTS_MAX_AGE_DAYS_DEFAULT } from './insights.constants';
+import { INSIGHTS_MAX_AGE_DAYS_DEFAULT } from './insights.constants.js';
 
 @Config
 export class InsightsConfig {

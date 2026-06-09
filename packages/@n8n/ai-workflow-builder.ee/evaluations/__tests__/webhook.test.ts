@@ -12,8 +12,8 @@ import {
 	WEBHOOK_SIGNATURE_HEADER,
 	WEBHOOK_TIMESTAMP_HEADER,
 	type WebhookPayload,
-} from '../cli/webhook';
-import type { RunSummary } from '../harness/harness-types';
+} from '../cli/webhook.js';
+import type { RunSummary } from '../harness/harness-types.js';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;

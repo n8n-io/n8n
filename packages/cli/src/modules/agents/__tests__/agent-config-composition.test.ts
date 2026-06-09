@@ -1,5 +1,5 @@
-import type { Agent } from '../entities/agent.entity';
-import { composeJsonConfig, decomposeJsonConfig } from '../json-config/agent-config-composition';
+import type { Agent } from '../entities/agent.entity.js';
+import { composeJsonConfig, decomposeJsonConfig } from '../json-config/agent-config-composition.js';
 import type { AgentJsonConfig } from '@n8n/api-types';
 
 describe('composeJsonConfig', () => {

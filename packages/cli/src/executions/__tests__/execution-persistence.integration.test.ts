@@ -3,8 +3,8 @@ import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
-import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
 describe('ExecutionPersistence', () => {
 	beforeAll(async () => {

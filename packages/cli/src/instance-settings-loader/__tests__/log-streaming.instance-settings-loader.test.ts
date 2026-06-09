@@ -4,10 +4,10 @@ import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import type { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository';
+import type { EventDestinationsRepository } from '@/modules/log-streaming.ee/database/repositories/event-destination.repository.js';
 
-import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
-import { LogStreamingInstanceSettingsLoader } from '../loaders/log-streaming.instance-settings-loader';
+import { InstanceBootstrappingError } from '../instance-bootstrapping.error.js';
+import { LogStreamingInstanceSettingsLoader } from '../loaders/log-streaming.instance-settings-loader.js';
 
 const UUID_A = '11111111-1111-4111-8111-111111111111';
 

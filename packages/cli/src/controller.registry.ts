@@ -1,4 +1,4 @@
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
@@ -16,17 +16,17 @@ import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
 import type { ZodClass } from '@n8n/api-types';
 
-import { AbstractServer } from './abstract-server';
-import { NotFoundError } from './errors/response-errors/not-found.error';
-import { LastActiveAtService } from './services/last-active-at.service';
-import { RateLimitService } from './services/rate-limit.service';
+import { AbstractServer } from './abstract-server.js';
+import { NotFoundError } from './errors/response-errors/not-found.error.js';
+import { LastActiveAtService } from './services/last-active-at.service.js';
+import { RateLimitService } from './services/rate-limit.service.js';
 
-import { AuthService } from '@/auth/auth.service';
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
-import { License } from '@/license';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { send } from '@/response-helper';
-import { CorsService } from './services/cors-service';
+import { AuthService } from '@/auth/auth.service.js';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error.js';
+import { License } from '@/license.js';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
+import { send } from '@/response-helper.js';
+import { CorsService } from './services/cors-service.js';
 import { inProduction } from '@n8n/backend-common';
 import { isAuthenticatedRequest } from '@n8n/db';
 

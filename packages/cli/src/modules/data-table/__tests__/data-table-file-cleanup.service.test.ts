@@ -3,7 +3,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
+import { DataTableFileCleanupService } from '../data-table-file-cleanup.service.js';
 import { mock } from 'jest-mock-extended';
 
 jest.mock('fs', () => ({

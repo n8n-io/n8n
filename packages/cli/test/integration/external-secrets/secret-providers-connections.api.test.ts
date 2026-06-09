@@ -10,13 +10,13 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee.js';
 
-import { MockProviders, createDummyProvider } from '../../shared/external-secrets/utils';
-import { createAdmin, createMember, createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils';
+import { MockProviders, createDummyProvider } from '../../shared/external-secrets/utils.js';
+import { createAdmin, createMember, createOwner } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils/index.js';
 
 const mockProvidersInstance = new MockProviders();
 // Register mock providers for types used in tests
@@ -755,18 +755,18 @@ describe('Secret Providers Connections API', () => {
 
 	describe('Reload connection secrets', () => {
 		beforeAll(async () => {
-			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			const { DummyProvider } = await import('../../shared/external-secrets/utils.js');
 			mockProvidersInstance.setProviders({ awsSecretsManager: DummyProvider });
 		});
 
 		afterEach(async () => {
-			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			const { DummyProvider } = await import('../../shared/external-secrets/utils.js');
 			mockProvidersInstance.setProviders({ awsSecretsManager: DummyProvider });
 		});
 
 		test('should successfully reload connection secrets', async () => {
 			const { ExternalSecretsManager } = await import(
-				'@/modules/external-secrets.ee/external-secrets-manager.ee'
+				'@/modules/external-secrets.ee/external-secrets-manager.ee.js'
 			);
 
 			await ownerAgent
@@ -811,7 +811,7 @@ describe('Secret Providers Connections API', () => {
 				{ role: 'member', allowed: false },
 			])('should allow=$allowed for $role to reload connection', async ({ role, allowed }) => {
 				const { ExternalSecretsManager } = await import(
-					'@/modules/external-secrets.ee/external-secrets-manager.ee'
+					'@/modules/external-secrets.ee/external-secrets-manager.ee.js'
 				);
 
 				const providerKey = `reloadAccess${role.charAt(0).toUpperCase() + role.slice(1)}`;
@@ -842,12 +842,12 @@ describe('Secret Providers Connections API', () => {
 
 	describe('Test connection', () => {
 		beforeAll(async () => {
-			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			const { DummyProvider } = await import('../../shared/external-secrets/utils.js');
 			mockProvidersInstance.setProviders({ awsSecretsManager: DummyProvider });
 		});
 
 		afterEach(async () => {
-			const { DummyProvider } = await import('../../shared/external-secrets/utils');
+			const { DummyProvider } = await import('../../shared/external-secrets/utils.js');
 			mockProvidersInstance.setProviders({ awsSecretsManager: DummyProvider });
 		});
 
@@ -870,7 +870,7 @@ describe('Secret Providers Connections API', () => {
 		});
 
 		test('should return failure when provider test fails', async () => {
-			const { TestFailProvider } = await import('../../shared/external-secrets/utils');
+			const { TestFailProvider } = await import('../../shared/external-secrets/utils.js');
 
 			mockProvidersInstance.setProviders({ awsSecretsManager: TestFailProvider });
 
@@ -892,7 +892,7 @@ describe('Secret Providers Connections API', () => {
 		});
 
 		test('should return error when connection fails', async () => {
-			const { FailedProvider } = await import('../../shared/external-secrets/utils');
+			const { FailedProvider } = await import('../../shared/external-secrets/utils.js');
 
 			mockProvidersInstance.setProviders({ awsSecretsManager: FailedProvider });
 

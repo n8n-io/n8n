@@ -4,7 +4,7 @@ import {
 	TRIGGER_COUNT_EXCLUDED_NODES,
 	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
-} from '@/constants';
+} from '@/constants.js';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
@@ -48,27 +48,27 @@ import {
 } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
-import { ActivationErrorsService } from '@/activation-errors.service';
-import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { ActiveExecutions } from '@/active-executions';
-import { EventService } from '@/events/event.service';
-import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
-import { ExecutionService } from '@/executions/execution.service';
-import { ExternalHooks } from '@/external-hooks';
-import { NodeTypes } from '@/node-types';
-import { Push } from '@/push';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { ActiveWorkflowsService } from '@/services/active-workflows.service';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import { WebhookService } from '@/webhooks/webhook.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-import { getErrorDescription, getErrorNodeId } from '@/workflows/utils';
-import { formatWorkflow } from '@/workflows/workflow.formatter';
+import { ActivationErrorsService } from '@/activation-errors.service.js';
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { ActiveExecutions } from '@/active-executions.js';
+import { EventService } from '@/events/event.service.js';
+import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow.js';
+import { ExecutionService } from '@/executions/execution.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { NodeTypes } from '@/node-types.js';
+import { Push } from '@/push/index.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map.js';
+import { ActiveWorkflowsService } from '@/services/active-workflows.service.js';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
+import { WebhookService } from '@/webhooks/webhook.service.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
+import { getErrorDescription, getErrorNodeId } from '@/workflows/utils.js';
+import { formatWorkflow } from '@/workflows/workflow.formatter.js';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;

@@ -1,9 +1,9 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
-import { promptCategorizationChain } from '@/chains/prompt-categorization';
-import { WorkflowTechnique, type WorkflowTechniqueType } from '@/types/categorization';
+import { promptCategorizationChain } from '@/chains/prompt-categorization.js';
+import { WorkflowTechnique, type WorkflowTechniqueType } from '@/types/categorization.js';
 
-import { setupIntegrationLLM, shouldRunIntegrationTests } from './test-helpers';
+import { setupIntegrationLLM, shouldRunIntegrationTests } from './test-helpers.js';
 
 /**
  * Integration tests for prompt categorization chain

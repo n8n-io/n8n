@@ -3,7 +3,7 @@ import type { EvalLlmMockHandler } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import OpenAI from 'openai';
 
-import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
+import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server.js';
 
 async function postChatCompletion(url: string, path: string, body: unknown): Promise<Response> {
 	return await fetch(`${url}${path}`, {

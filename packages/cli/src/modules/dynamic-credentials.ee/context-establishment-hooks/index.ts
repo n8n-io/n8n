@@ -1,3 +1,3 @@
-import './http-header-extractor';
-import './bearer-token-extractor';
-import './slack-signature-extractor';
+import './http-header-extractor.js';
+import './bearer-token-extractor.js';
+import './slack-signature-extractor.js';

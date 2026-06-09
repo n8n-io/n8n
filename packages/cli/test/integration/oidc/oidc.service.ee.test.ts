@@ -18,13 +18,13 @@ import { UserError } from 'n8n-workflow';
 import type * as mocked_oidc_client from 'openid-client';
 const real_odic_client = jest.requireActual('openid-client');
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';
-import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
-import { JwtService } from '@/services/jwt.service';
-import { createUser } from '@test-integration/db/users';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants.js';
+import { OidcService } from '@/modules/sso-oidc/oidc.service.ee.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { createUser } from '@test-integration/db/users.js';
 
 beforeAll(async () => {
 	await testDb.init();

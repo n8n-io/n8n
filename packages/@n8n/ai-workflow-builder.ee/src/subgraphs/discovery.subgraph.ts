@@ -20,45 +20,45 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { createPlannerAgent, invokePlannerNode } from '@/agents/planner.agent';
-import { LLMServiceError } from '@/errors';
-import type { ParentGraphState } from '@/parent-graph-state';
-import { buildDiscoveryPrompt } from '@/prompts';
-import { createGetDocumentationTool } from '@/tools/get-documentation.tool';
+import { createPlannerAgent, invokePlannerNode } from '@/agents/planner.agent.js';
+import { LLMServiceError } from '@/errors/index.js';
+import type { ParentGraphState } from '@/parent-graph-state.js';
+import { buildDiscoveryPrompt } from '@/prompts/index.js';
+import { createGetDocumentationTool } from '@/tools/get-documentation.tool.js';
 import {
 	createIntrospectTool,
 	extractIntrospectionEventsFromMessages,
-} from '@/tools/introspect.tool';
-import { createNodeSearchTool } from '@/tools/node-search.tool';
-import { submitQuestionsTool } from '@/tools/submit-questions.tool';
-import { createPassthroughSsrfGuard, type SsrfGuard } from '@/tools/utils/ssrf-guard';
+} from '@/tools/introspect.tool.js';
+import { createNodeSearchTool } from '@/tools/node-search.tool.js';
+import { submitQuestionsTool } from '@/tools/submit-questions.tool.js';
+import { createPassthroughSsrfGuard, type SsrfGuard } from '@/tools/utils/ssrf-guard.js';
 import {
 	createLangGraphSecurityManagerFactory,
 	createMutableSecurityManagerFactory,
 	type MutableWebFetchState,
-} from '@/tools/utils/web-fetch-security';
-import { createWebFetchTool } from '@/tools/web-fetch.tool';
-import type { CoordinationLogEntry } from '@/types/coordination';
-import { createDiscoveryMetadata } from '@/types/coordination';
-import type { DiscoveryContext } from '@/types/discovery-types';
-import type { PlanDecision, PlanOutput } from '@/types/planning';
-import type { WorkflowMetadata } from '@/types/tools';
-import type { SimpleWorkflow } from '@/types/workflow';
-import { applySubgraphCacheMarkers } from '@/utils/cache-control';
+} from '@/tools/utils/web-fetch-security.js';
+import { createWebFetchTool } from '@/tools/web-fetch.tool.js';
+import type { CoordinationLogEntry } from '@/types/coordination.js';
+import { createDiscoveryMetadata } from '@/types/coordination.js';
+import type { DiscoveryContext } from '@/types/discovery-types.js';
+import type { PlanDecision, PlanOutput } from '@/types/planning.js';
+import type { WorkflowMetadata } from '@/types/tools.js';
+import type { SimpleWorkflow } from '@/types/workflow.js';
+import { applySubgraphCacheMarkers } from '@/utils/cache-control/index.js';
 import {
 	buildWorkflowSummary,
 	buildSelectedNodesSummary,
 	createContextMessage,
-} from '@/utils/context-builders';
-import { appendArrayReducer, cachedTemplatesReducer } from '@/utils/state-reducers';
+} from '@/utils/context-builders.js';
+import { appendArrayReducer, cachedTemplatesReducer } from '@/utils/state-reducers.js';
 import {
 	executeSubgraphTools,
 	extractUserRequest,
 	extractToolMessagesForPersistence,
-} from '@/utils/subgraph-helpers';
-import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+} from '@/utils/subgraph-helpers.js';
+import type { BuilderFeatureFlags } from '@/workflow-builder-agent.js';
 
-import { BaseSubgraph } from './subgraph-interface';
+import { BaseSubgraph } from './subgraph-interface.js';
 
 /**
  * Strict Output Schema for Discovery

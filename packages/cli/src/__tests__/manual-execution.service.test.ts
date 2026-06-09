@@ -20,7 +20,7 @@ import type {
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import { ManualExecutionService } from '@/manual-execution.service';
+import { ManualExecutionService } from '@/manual-execution.service.js';
 
 jest.mock('n8n-core');
 

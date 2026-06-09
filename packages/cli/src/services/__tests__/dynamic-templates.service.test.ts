@@ -3,7 +3,10 @@ import type { GlobalConfig } from '@n8n/config';
 import axios from 'axios';
 import { mock } from 'jest-mock-extended';
 
-import { DynamicTemplatesService, REQUEST_TIMEOUT_MS } from '@/services/dynamic-templates.service';
+import {
+	DynamicTemplatesService,
+	REQUEST_TIMEOUT_MS,
+} from '@/services/dynamic-templates.service.js';
 
 jest.mock('axios');
 

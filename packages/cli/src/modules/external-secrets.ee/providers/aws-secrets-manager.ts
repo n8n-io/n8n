@@ -3,10 +3,10 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { INodeProperties } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE } from '../constants';
-import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error';
-import { SecretsProvider } from '../types';
-import type { SecretsProviderSettings } from '../types';
+import { DOCS_HELP_NOTICE } from '../constants.js';
+import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error.js';
+import { SecretsProvider } from '../types.js';
+import type { SecretsProviderSettings } from '../types.js';
 
 type Secret = {
 	secretName: string;

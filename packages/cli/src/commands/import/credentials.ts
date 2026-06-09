@@ -19,9 +19,9 @@ import { Cipher } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { UM_FIX_INSTRUCTION } from '@/constants';
+import { UM_FIX_INSTRUCTION } from '@/constants.js';
 
-import { BaseCommand } from '../base-command';
+import { BaseCommand } from '../base-command.js';
 
 type ReadCredentialsOptions = {
 	inputPath: string;

@@ -4,13 +4,13 @@ import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import * as path from 'path';
 
-import '@/zod-alias-support';
-import { ImportCredentialsCommand } from '@/commands/import/credentials';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { setupTestCommand } from '@test-integration/utils/test-command';
+import '@/zod-alias-support.js';
+import { ImportCredentialsCommand } from '@/commands/import/credentials.js';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { setupTestCommand } from '@test-integration/utils/test-command.js';
 
-import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
-import { createMember, createOwner } from '../shared/db/users';
+import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials.js';
+import { createMember, createOwner } from '../shared/db/users.js';
 
 type CredentialFixture = {
 	createdAt: string;

@@ -1,10 +1,10 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
-import { validateConnections } from '@/validation/checks';
-import type { SingleEvaluatorResult } from '@/validation/types';
+import type { SimpleWorkflow } from '@/types/index.js';
+import { validateConnections } from '@/validation/checks/index.js';
+import type { SingleEvaluatorResult } from '@/validation/types.js';
 
-import { calcSingleEvaluatorScore } from '../score';
+import { calcSingleEvaluatorScore } from '../score.js';
 
 export function evaluateConnections(
 	workflow: SimpleWorkflow,

@@ -12,11 +12,11 @@ import type {
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
-import type { ActiveExecutions } from '@/active-executions';
-import type { NodeTypes } from '@/node-types';
-import type { PostHogClient } from '@/posthog';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { ActiveExecutions } from '@/active-executions.js';
+import type { NodeTypes } from '@/node-types.js';
+import type { PostHogClient } from '@/posthog/index.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 // ---------------------------------------------------------------------------
 // Mocks — must be before the import of the class under test
@@ -91,15 +91,15 @@ jest.mock('n8n-workflow', () => {
 // Import SUT and mocked modules (after jest.mock calls)
 // ---------------------------------------------------------------------------
 
-import { EvalExecutionService } from '../execution.service';
-import { createLlmMockHandler } from '../mock-handler';
+import { EvalExecutionService } from '../execution.service.js';
+import { createLlmMockHandler } from '../mock-handler.js';
 import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	partitionAiRoots,
-} from '../workflow-analysis';
-import type { MockHints } from '../workflow-analysis';
+} from '../workflow-analysis.js';
+import type { MockHints } from '../workflow-analysis.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -249,7 +249,7 @@ describe('EvalExecutionService', () => {
 		// Default: kill-switch enabled. Tests that need it off flip this.
 		postHogClient.getFeatureFlags.mockResolvedValue({});
 
-		const proxyLoopback = require('../proxy-loopback') as {
+		const proxyLoopback = require('../proxy-loopback.js') as {
 			patchNoProxyForLoopback: jest.Mock;
 		};
 		proxyLoopback.patchNoProxyForLoopback.mockImplementation(() => mockRestoreNoProxy);
@@ -567,7 +567,7 @@ describe('EvalExecutionService', () => {
 			});
 
 			it('tears down the wire server when NO_PROXY patching throws after boot', async () => {
-				const proxyLoopback = require('../proxy-loopback');
+				const proxyLoopback = require('../proxy-loopback.js');
 				proxyLoopback.patchNoProxyForLoopback.mockImplementationOnce(() => {
 					throw new Error('env mutation blocked');
 				});

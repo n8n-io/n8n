@@ -11,12 +11,12 @@ import { randomUUID } from 'crypto';
 import { mock } from 'jest-mock-extended';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 
-import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
-import { AiService } from '@/services/ai.service';
+import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants.js';
+import { AiService } from '@/services/ai.service.js';
 
-import { createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import { initCredentialsTypes, setupTestServer } from '../shared/utils';
+import { createOwner } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import { initCredentialsTypes, setupTestServer } from '../shared/utils/index.js';
 
 const createAiCreditsResponse = {
 	apiKey: randomUUID(),

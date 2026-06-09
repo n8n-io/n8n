@@ -3,7 +3,7 @@ import multer from 'multer';
 
 import { IMPORT_PACKAGE_REQUEST_FORM_FIELDS } from '@n8n/api-types';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
 /**
  * Allowed keys on `req.body` after multipart parsing. Includes `package` because

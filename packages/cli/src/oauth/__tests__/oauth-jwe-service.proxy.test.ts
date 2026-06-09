@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
-import { OAuthJweServiceProxy, type OAuthJweHandler } from '@/oauth/oauth-jwe-service.proxy';
+import { OAuthJweServiceProxy, type OAuthJweHandler } from '@/oauth/oauth-jwe-service.proxy.js';
 
 describe('OAuthJweServiceProxy', () => {
 	describe('decryptOAuth2TokenData', () => {

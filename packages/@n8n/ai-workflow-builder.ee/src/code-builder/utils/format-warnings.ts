@@ -6,8 +6,8 @@
  * informed decision about whether to fix them.
  */
 
-import type { WarningTracker } from '../state/warning-tracker';
-import type { ValidationWarning } from '../types';
+import type { WarningTracker } from '../state/warning-tracker.js';
+import type { ValidationWarning } from '../types.js';
 
 /**
  * Format an array of validation warnings into a bullet-list string.

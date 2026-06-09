@@ -16,10 +16,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
-import type { SimpleWorkflow } from '@/types/workflow';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 
-import type { Evaluator, Feedback, RunConfig } from '../harness/harness-types';
-import { createLogger } from '../harness/logger';
+import type { Evaluator, Feedback, RunConfig } from '../harness/harness-types.js';
+import { createLogger } from '../harness/logger.js';
 
 const silentLogger = createLogger(false);
 
@@ -121,7 +121,7 @@ describe('Runner - LangSmith Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(mockEvaluate).toHaveBeenCalledTimes(1);
@@ -161,7 +161,7 @@ describe('Runner - LangSmith Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(mockEvaluate).toHaveBeenCalledTimes(1);
@@ -212,7 +212,7 @@ describe('Runner - LangSmith Mode', () => {
 					logger: silentLogger,
 				};
 
-				const { runEvaluation } = await import('../harness/runner');
+				const { runEvaluation } = await import('../harness/runner.js');
 				await runEvaluation(config);
 
 				expect(mockEvaluate).toHaveBeenCalledTimes(1);
@@ -260,7 +260,7 @@ describe('Runner - LangSmith Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(mockEvaluate).toHaveBeenCalledTimes(1);
@@ -316,7 +316,7 @@ describe('Runner - LangSmith Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(mockEvaluate).toHaveBeenCalledTimes(1);
@@ -359,7 +359,7 @@ describe('Runner - LangSmith Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(mockEvaluate).toHaveBeenCalledTimes(1);
@@ -407,7 +407,7 @@ describe('Runner - LangSmith Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(mockEvaluate).toHaveBeenCalledTimes(1);
@@ -460,7 +460,7 @@ describe('Runner - LangSmith Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(mockEvaluate).toHaveBeenCalledTimes(1);
@@ -510,7 +510,7 @@ describe('Runner - LangSmith Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(mockEvaluate).toHaveBeenCalledTimes(1);
@@ -569,7 +569,7 @@ describe('Runner - LangSmith Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(mockEvaluate).toHaveBeenCalledTimes(1);
@@ -633,7 +633,7 @@ describe('Runner - LangSmith Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await runEvaluation(config);
 
 			expect(mockEvaluate).toHaveBeenCalledTimes(1);
@@ -675,7 +675,7 @@ describe('Runner - LangSmith Mode', () => {
 				logger: silentLogger,
 			};
 
-			const { runEvaluation } = await import('../harness/runner');
+			const { runEvaluation } = await import('../harness/runner.js');
 			await expect(runEvaluation(config)).rejects.toThrow('No examples matched filters');
 		});
 
@@ -717,7 +717,7 @@ describe('Runner - LangSmith Mode', () => {
 					logger: silentLogger,
 				};
 
-				const { runEvaluation } = await import('../harness/runner');
+				const { runEvaluation } = await import('../harness/runner.js');
 				const summary = await runEvaluation(config);
 
 				// The summary should include evaluatorAverages computed from captured results

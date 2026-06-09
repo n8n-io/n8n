@@ -1,8 +1,8 @@
 import { UserError } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
-import { OnePasswordProvider } from '../one-password';
-import type { OnePasswordContext } from '../one-password';
+import { OnePasswordProvider } from '../one-password.js';
+import type { OnePasswordContext } from '../one-password.js';
 
 const mockListVaults = jest.fn();
 const mockListItems = jest.fn();

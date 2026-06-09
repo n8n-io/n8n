@@ -22,7 +22,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import {
 	shouldRestartParentExecution,
 	updateParentExecutionWithChildResults,
-} from './workflow-helpers';
+} from './workflow-helpers.js';
 
 /** How many times each parent-resume step is attempted before giving up. */
 const MAX_PARENT_RESUME_ATTEMPTS = 3;

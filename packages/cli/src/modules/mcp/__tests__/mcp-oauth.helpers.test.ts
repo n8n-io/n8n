@@ -1,4 +1,4 @@
-import { McpOAuthHelpers } from '../mcp-oauth.helpers';
+import { McpOAuthHelpers } from '../mcp-oauth.helpers.js';
 
 describe('McpOAuthHelpers', () => {
 	describe('buildSuccessRedirectUrl', () => {

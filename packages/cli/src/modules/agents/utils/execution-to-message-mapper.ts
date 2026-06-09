@@ -1,7 +1,7 @@
 import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from '@n8n/api-types';
 
-import type { AgentExecution } from '../entities/agent-execution.entity';
-import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
+import type { AgentExecution } from '../entities/agent-execution.entity.js';
+import type { RecordedToolCall, TimelineEvent } from '../execution-recorder.js';
 
 type ExecutionTranscript = Pick<
 	AgentExecution,

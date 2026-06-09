@@ -2,7 +2,7 @@ import { AGENT_TASK_CRON_EXPRESSION_MAX_LENGTH, AGENT_TASK_ID_MAX_LENGTH } from 
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, type Relation } from '@n8n/typeorm';
 
-import { AgentHistory } from './agent-history.entity';
+import { AgentHistory } from './agent-history.entity.js';
 
 /** Immutable task body captured for a single published agent version. */
 @Entity({ name: 'agent_task_snapshot' })

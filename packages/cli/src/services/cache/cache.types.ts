@@ -1,6 +1,6 @@
 import type { MemoryCache } from 'cache-manager';
 
-import type { RedisCache } from '@/services/cache/redis.cache-manager';
+import type { RedisCache } from '@/services/cache/redis.cache-manager.js';
 
 export type TaggedRedisCache = RedisCache & { kind: 'redis' };
 

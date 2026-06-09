@@ -35,20 +35,20 @@ import {
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { UserRequest } from '@/requests';
-import { FolderService } from '@/services/folder.service';
-import { UserService } from '@/services/user.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import { AuthService } from '@/auth/auth.service.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee.js';
+import { UserRequest } from '@/requests.js';
+import { FolderService } from '@/services/folder.service.js';
+import { UserService } from '@/services/user.service.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
+import { JwtService } from '@/services/jwt.service.js';
+import { UrlService } from '@/services/url.service.js';
 
 @RestController('/users')
 export class UsersController {

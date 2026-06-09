@@ -1,9 +1,9 @@
 import type { McpRegistryServerResponse } from '@n8n/api-types';
 import { Get, RestController } from '@n8n/decorators';
 
-import { getMcpRegistryCredentialTypeName } from './node-description-transform';
-import { McpRegistryService } from './registry/mcp-registry.service';
-import type { McpRegistryServer } from './registry/mcp-registry.types';
+import { getMcpRegistryCredentialTypeName } from './node-description-transform.js';
+import { McpRegistryService } from './registry/mcp-registry.service.js';
+import type { McpRegistryServer } from './registry/mcp-registry.types.js';
 
 @RestController('/mcp-registry')
 export class McpRegistryController {

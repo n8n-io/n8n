@@ -1,8 +1,8 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types/index.js';
 
-import { evaluateAgentPrompt } from './agent-prompt';
+import { evaluateAgentPrompt } from './agent-prompt.js';
 
 describe('evaluateAgentPrompt', () => {
 	it('should return no violations for empty workflow', () => {

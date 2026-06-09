@@ -5,12 +5,12 @@ import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { PostHogClient } from '@/posthog';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { PostHogClient } from '@/posthog/index.js';
 
-import { EvaluationCollectionsController } from '../evaluation-collections.controller.ee';
-import type { EvaluationCollectionService } from '../evaluation-collection.service';
+import { EvaluationCollectionsController } from '../evaluation-collections.controller.ee.js';
+import type { EvaluationCollectionService } from '../evaluation-collection.service.js';
 
 describe('EvaluationCollectionsController', () => {
 	let controller: EvaluationCollectionsController;

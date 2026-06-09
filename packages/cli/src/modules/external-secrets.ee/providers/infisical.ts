@@ -4,9 +4,9 @@ import type { AxiosInstance } from 'axios';
 import axios from 'axios';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE } from '../constants';
-import type { SecretsProviderSettings } from '../types';
-import { SecretsProvider } from '../types';
+import { DOCS_HELP_NOTICE } from '../constants.js';
+import type { SecretsProviderSettings } from '../types.js';
+import { SecretsProvider } from '../types.js';
 
 type InfisicalAuthMethod = 'universalAuth';
 

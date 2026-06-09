@@ -12,8 +12,8 @@ import type { PrometheusMetricsService } from '@/metrics/prometheus';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import type { RedisClientService } from '@/services/redis-client.service';
 
-import { WorkerServer } from '../worker-server';
-import type { CredentialsOverwrites } from '@/credentials-overwrites';
+import { WorkerServer } from '../worker-server.js';
+import type { CredentialsOverwrites } from '@/credentials-overwrites.js';
 import type { NextFunction, Request, Response } from 'express';
 
 const app = mock<express.Application>();

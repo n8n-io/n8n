@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import type { ChatInstance } from '../chat-integration.service';
-import { INTEGRATION_ERROR_CODES } from '../integration-error-codes';
+import type { ChatInstance } from '../chat-integration.service.js';
+import { INTEGRATION_ERROR_CODES } from '../integration-error-codes.js';
 import {
 	booleanProperty,
 	integrationError,
@@ -13,14 +13,14 @@ import {
 	stringProperty,
 	unsupportedAction,
 	unsupportedQuery,
-} from '../integration-helpers';
+} from '../integration-helpers.js';
 import type {
 	IntegrationAction,
 	IntegrationActionResult,
 	IntegrationContextQuery,
 	IntegrationMessageSubject,
 	IntegrationToolConnectionDescriptor,
-} from '../integration-tools';
+} from '../integration-tools.js';
 
 const PLATFORM = 'linear';
 

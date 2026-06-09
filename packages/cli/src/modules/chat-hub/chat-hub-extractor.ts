@@ -12,7 +12,7 @@ import { Cipher } from 'n8n-core';
 import { ensureError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { AuthService } from '@/auth/auth.service';
+import { AuthService } from '@/auth/auth.service.js';
 
 const EncryptedMetadataSchema = z.object({
 	encryptedMetadata: z.string(),

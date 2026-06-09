@@ -8,9 +8,9 @@ import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } 
 import { NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
-import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
-import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
-import { shouldAssignExecuteMethod } from './utils';
+import { LoadNodesAndCredentials } from './load-nodes-and-credentials.js';
+import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation/index.js';
+import { shouldAssignExecuteMethod } from './utils.js';
 
 @Service()
 export class NodeTypes implements INodeTypes {

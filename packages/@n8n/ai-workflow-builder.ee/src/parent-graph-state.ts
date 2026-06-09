@@ -1,14 +1,14 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
-import type { IntrospectionEvent } from './tools/introspect.tool';
-import type { CoordinationLogEntry } from './types/coordination';
-import type { DiscoveryContext } from './types/discovery-types';
-import type { PlanDecision, PlanOutput } from './types/planning';
-import type { WorkflowMetadata } from './types/tools';
-import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
-import { appendArrayReducer, cachedTemplatesReducer } from './utils/state-reducers';
-import type { ChatPayload } from './workflow-builder-agent';
+import type { IntrospectionEvent } from './tools/introspect.tool.js';
+import type { CoordinationLogEntry } from './types/coordination.js';
+import type { DiscoveryContext } from './types/discovery-types.js';
+import type { PlanDecision, PlanOutput } from './types/planning.js';
+import type { WorkflowMetadata } from './types/tools.js';
+import type { SimpleWorkflow, WorkflowOperation } from './types/workflow.js';
+import { appendArrayReducer, cachedTemplatesReducer } from './utils/state-reducers.js';
+import type { ChatPayload } from './workflow-builder-agent.js';
 
 /**
  * Parent Graph State

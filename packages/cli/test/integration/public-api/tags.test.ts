@@ -3,10 +3,10 @@ import type { User } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createTag } from '../shared/db/tags';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
+import { createTag } from '../shared/db/tags.js';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils//index.js';
 
 let owner: User;
 let member: User;

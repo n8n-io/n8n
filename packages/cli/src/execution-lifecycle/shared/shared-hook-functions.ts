@@ -4,10 +4,10 @@ import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
 import { ensureError, type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { UpdateExecutionPayload } from '@/interfaces';
-import { ExecutionMetadataService } from '@/services/execution-metadata.service';
-import { isWorkflowIdValid } from '@/utils';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { UpdateExecutionPayload } from '@/interfaces.js';
+import { ExecutionMetadataService } from '@/services/execution-metadata.service.js';
+import { isWorkflowIdValid } from '@/utils.js';
 
 export function determineFinalExecutionStatus(runData: IRun): ExecutionStatus {
 	const workflowHasCrashed = runData.status === 'crashed';

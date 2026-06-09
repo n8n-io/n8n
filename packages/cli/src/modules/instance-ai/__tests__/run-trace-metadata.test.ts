@@ -1,6 +1,6 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 
-import { buildInstanceAiRunTraceMetadata } from '../run-trace-metadata';
+import { buildInstanceAiRunTraceMetadata } from '../run-trace-metadata.js';
 
 const baseEvent = {
 	runId: 'run-1',

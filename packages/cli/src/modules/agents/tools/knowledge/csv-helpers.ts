@@ -3,8 +3,8 @@ import path from 'node:path';
 
 import { distance } from 'fastest-levenshtein';
 
-import { resolveFileReference, type WorkspaceFiles } from './file-references';
-import type { CsvAggregateInput, CsvFilter } from './schemas';
+import { resolveFileReference, type WorkspaceFiles } from './file-references.js';
+import type { CsvAggregateInput, CsvFilter } from './schemas.js';
 
 export const CSV_SAMPLE_VALUE_LIMIT = 5;
 export const CSV_PROFILE_DISTINCT_LIMIT = 100;

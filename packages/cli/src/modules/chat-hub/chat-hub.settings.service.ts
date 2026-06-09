@@ -1,4 +1,4 @@
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 import {
 	ChatHubConversationModel,
 	ChatHubLLMProvider,
@@ -11,8 +11,8 @@ import { SettingsRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
-import type { SemanticSearchOptions } from './chat-hub.types';
-import { VECTOR_STORE_NODE_TYPE_MAP } from './chat-hub.constants';
+import type { SemanticSearchOptions } from './chat-hub.types.js';
+import { VECTOR_STORE_NODE_TYPE_MAP } from './chat-hub.constants.js';
 import { DEFAULT_SEMANTIC_SEARCH_SETTINGS } from '@n8n/chat-hub';
 
 const CHAT_PROVIDER_SETTINGS_KEY_PREFIX = 'chat.provider.';

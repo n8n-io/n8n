@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ShutdownService } from '../shutdown.service';
+import { ShutdownService } from '../shutdown.service.js';
 
 class MockComponent {
 	onShutdown() {}

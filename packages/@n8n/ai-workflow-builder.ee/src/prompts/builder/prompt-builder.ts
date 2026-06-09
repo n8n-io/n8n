@@ -5,7 +5,7 @@ import type {
 	SectionEntry,
 	SectionFormat,
 	SectionOptions,
-} from './types';
+} from './types.js';
 
 // ============================================================================
 // Helper Functions

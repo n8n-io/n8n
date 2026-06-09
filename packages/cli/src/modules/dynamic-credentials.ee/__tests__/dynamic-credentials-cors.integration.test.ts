@@ -6,13 +6,13 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { OauthService } from '@/oauth/oauth.service';
-import * as utils from '@test-integration/utils';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee.js';
+import { OauthService } from '@/oauth/oauth.service.js';
+import * as utils from '@test-integration/utils/index.js';
 
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
-import { DynamicCredentialResolverRegistry } from '../services';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository.js';
+import { DynamicCredentialsConfig } from '../dynamic-credentials.config.js';
+import { DynamicCredentialResolverRegistry } from '../services/index.js';
 
 // Enable dynamic credentials feature flag
 process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
@@ -304,7 +304,7 @@ describe('GET /workflows/:workflowId/execution-status - CORS Integration', () =>
 	test('should set CORS headers on GET request', async () => {
 		// Mock the workflow status service to return a valid response
 		const { CredentialResolverWorkflowService } = await import(
-			'../services/credential-resolver-workflow.service'
+			'../services/credential-resolver-workflow.service.js'
 		);
 		const workflowService = Container.get(CredentialResolverWorkflowService);
 		jest.spyOn(workflowService, 'getWorkflowStatus').mockResolvedValue([

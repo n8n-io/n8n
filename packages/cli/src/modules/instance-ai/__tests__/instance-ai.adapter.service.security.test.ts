@@ -67,7 +67,7 @@ jest.mock('node:fs/promises', () => ({
 	readFile: jest.fn().mockResolvedValue('[]'),
 }));
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
 
 const userHasScopesMock = jest.mocked(userHasScopes);
 

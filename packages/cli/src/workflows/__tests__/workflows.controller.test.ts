@@ -7,7 +7,7 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { createResultError, createResultOk } from 'n8n-workflow';
 
-import { WorkflowsController } from '../workflows.controller';
+import { WorkflowsController } from '../workflows.controller.js';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

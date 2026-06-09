@@ -6,9 +6,9 @@ import type { INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 import z from 'zod';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
 
-import { BaseCommand } from '../base-command';
+import { BaseCommand } from '../base-command.js';
 
 const flagsSchema = z.object({
 	output: z

@@ -8,7 +8,7 @@ import {
 	FIX_VALIDATION_ERRORS_INSTRUCTION,
 	TEXT_EDITOR_TOOL,
 	VALIDATE_TOOL,
-} from '../constants';
+} from '../constants.js';
 
 describe('code-builder constants', () => {
 	describe('iteration limits', () => {

@@ -8,19 +8,19 @@ import type { Response } from 'express';
 import { mock, anyObject } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 
-import { AUTH_COOKIE_NAME } from '@/constants';
-import { MeController } from '@/controllers/me.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
-import { MfaService } from '@/mfa/mfa.service';
-import type { MeRequest } from '@/requests';
-import { UserService } from '@/services/user.service';
-import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
-import { badPasswords } from '@test/test-data';
+import { AUTH_COOKIE_NAME } from '@/constants.js';
+import { MeController } from '@/controllers/me.controller.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error.js';
+import { EventService } from '@/events/event.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { License } from '@/license.js';
+import { MfaService } from '@/mfa/mfa.service.js';
+import type { MeRequest } from '@/requests.js';
+import { UserService } from '@/services/user.service.js';
+import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers.js';
+import { badPasswords } from '@test/test-data.js';
 
 jest.mock('@/sso.ee/sso-helpers', () => ({
 	...jest.requireActual('@/sso.ee/sso-helpers'),

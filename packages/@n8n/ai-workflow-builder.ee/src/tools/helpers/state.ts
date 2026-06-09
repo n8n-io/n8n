@@ -1,9 +1,9 @@
 import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INode, IConnection } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../../types/workflow';
-import { applyOperations } from '../../utils/operations-processor';
-import type { WorkflowState } from '../../workflow-state';
+import type { SimpleWorkflow } from '../../types/workflow.js';
+import { applyOperations } from '../../utils/operations-processor.js';
+import type { WorkflowState } from '../../workflow-state.js';
 
 /**
  * Get the current workflow from state in a type-safe manner

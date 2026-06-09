@@ -16,7 +16,7 @@ import {
 	CODE_BUILDER_SEARCH_NODES_TOOL,
 	CODE_BUILDER_VALIDATE_TOOL,
 	CODE_BUILDER_VALIDATE_NODE_TOOL,
-} from './constants';
+} from './constants.js';
 
 export function getMcpInstructions(isBuilderEnabled: boolean): string {
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';

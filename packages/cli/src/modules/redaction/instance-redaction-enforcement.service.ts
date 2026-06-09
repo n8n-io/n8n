@@ -9,7 +9,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { CacheService } from '@/services/cache/cache.service';
 
-import { isRedactionEnforcementEnabled } from './redaction-enforcement.feature-flag';
+import { isRedactionEnforcementEnabled } from './redaction-enforcement.feature-flag.js';
 
 const KEY = 'redaction.enforcement';
 

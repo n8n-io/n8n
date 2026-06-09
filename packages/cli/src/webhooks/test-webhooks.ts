@@ -13,33 +13,33 @@ import type {
 	IDestinationNode,
 } from 'n8n-workflow';
 
-import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
-import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
-import { NodeTypes } from '@/node-types';
-import { Push } from '@/push';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { removeTrailingSlash } from '@/utils';
-import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
-import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
-import * as WebhookHelpers from '@/webhooks/webhook-helpers';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { WorkflowRequest } from '@/workflows/workflow.request';
-import { WebhookResponse } from './webhook-response';
+import { TEST_WEBHOOK_TIMEOUT } from '@/constants.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error.js';
+import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error.js';
+import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error.js';
+import { NodeTypes } from '@/node-types.js';
+import { Push } from '@/push/index.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import { removeTrailingSlash } from '@/utils.js';
+import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service.js';
+import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service.js';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers.js';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data.js';
+import type { WorkflowRequest } from '@/workflows/workflow.request.js';
+import { WebhookResponse } from './webhook-response.js';
 
-import { authAllowlistedNodes } from './constants';
-import { matchesExpectedNodeType } from './node-type-matcher';
-import type { ExpectedWebhookNodeType } from './node-type-matcher';
-import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
-import { WebhookService } from './webhook.service';
+import { authAllowlistedNodes } from './constants.js';
+import { matchesExpectedNodeType } from './node-type-matcher.js';
+import type { ExpectedWebhookNodeType } from './node-type-matcher.js';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer.js';
+import { WebhookService } from './webhook.service.js';
 import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,
 	WebhookAccessControlOptions,
 	WebhookRequest,
-} from './webhook.types';
+} from './webhook.types.js';
 
 const SINGLE_WEBHOOK_TRIGGERS = [
 	'n8n-nodes-base.telegramTrigger',

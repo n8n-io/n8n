@@ -2,9 +2,9 @@ import { ServerError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Time } from '@n8n/constants';
 import { UserError } from 'n8n-workflow';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
 
-import type { WorkflowNotFoundReason } from './mcp.types';
+import type { WorkflowNotFoundReason } from './mcp.types.js';
 
 export const buildMcpClientLimitReachedMessage = (limit: number): string =>
 	`This n8n instance has reached its maximum of ${limit} registered MCP clients. Ask an administrator to revoke unused clients or raise N8N_MCP_MAX_REGISTERED_CLIENTS.`;

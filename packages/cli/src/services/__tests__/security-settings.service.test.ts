@@ -10,8 +10,8 @@ import {
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
 
-import { RoleService } from '@/services/role.service';
-import { SecuritySettingsService } from '@/services/security-settings.service';
+import { RoleService } from '@/services/role.service.js';
+import { SecuritySettingsService } from '@/services/security-settings.service.js';
 
 describe('SecuritySettingsService', () => {
 	const settingsRepository = mockInstance(SettingsRepository);

@@ -17,10 +17,10 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UnexpectedError } from 'n8n-workflow';
 
-import type { DataTableColumn } from '../data-table-column.entity';
-import type { DataTableUserTableName } from '../data-table.types';
+import type { DataTableColumn } from '../data-table-column.entity.js';
+import type { DataTableUserTableName } from '../data-table.types.js';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
 export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {

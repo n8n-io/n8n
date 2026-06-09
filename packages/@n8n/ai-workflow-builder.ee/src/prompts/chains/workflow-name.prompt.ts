@@ -1,6 +1,6 @@
 import { PromptTemplate } from '@langchain/core/prompts';
 
-import { prompt } from '../builder';
+import { prompt } from '../builder/index.js';
 
 /** Template for generating descriptive workflow names from user prompts */
 export const workflowNamingPromptTemplate = PromptTemplate.fromTemplate(

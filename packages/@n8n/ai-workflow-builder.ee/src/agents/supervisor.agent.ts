@@ -5,17 +5,17 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import { z } from 'zod';
 
-import { buildSupervisorPrompt } from '@/prompts';
+import { buildSupervisorPrompt } from '@/prompts/index.js';
 
-import type { CoordinationLogEntry } from '../types/coordination';
-import type { SimpleWorkflow } from '../types/workflow';
+import type { CoordinationLogEntry } from '../types/coordination.js';
+import type { SimpleWorkflow } from '../types/workflow.js';
 import {
 	buildSelectedNodesSummary,
 	buildSimplifiedExecutionContext,
 	buildWorkflowSummary,
-} from '../utils/context-builders';
-import { getCurrentTurnEntries, summarizeCoordinationLog } from '../utils/coordination-log';
-import type { ChatPayload } from '../workflow-builder-agent';
+} from '../utils/context-builders.js';
+import { getCurrentTurnEntries, summarizeCoordinationLog } from '../utils/coordination-log.js';
+import type { ChatPayload } from '../workflow-builder-agent.js';
 
 const ROUTING_OPTIONS_WITH_ASSISTANT = ['responder', 'discovery', 'builder', 'assistant'] as const;
 const ROUTING_OPTIONS_WITHOUT_ASSISTANT = ['responder', 'discovery', 'builder'] as const;

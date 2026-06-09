@@ -1,7 +1,7 @@
 /**
  * Agent message chunk for streaming
  */
-import type { PlanOutput, PlannerQuestion } from './planning';
+import type { PlanOutput, PlannerQuestion } from './planning.js';
 
 export interface AgentMessageChunk {
 	role: 'assistant';

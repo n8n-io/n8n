@@ -3,7 +3,7 @@ import type { ToolDescriptor } from '@n8n/agents';
 import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
 
-import type { AgentHistory } from './agent-history.entity';
+import type { AgentHistory } from './agent-history.entity.js';
 
 @Entity({ name: 'agents' })
 export class Agent extends WithTimestampsAndStringId {

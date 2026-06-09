@@ -1,8 +1,8 @@
 import type { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
-import { validateParameters } from '@/validation/checks/parameters';
+import type { SimpleWorkflow } from '@/types/index.js';
+import { validateParameters } from '@/validation/checks/parameters.js';
 
 function createNodeType(
 	type: string,

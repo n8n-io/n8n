@@ -1,10 +1,10 @@
 import { Service } from '@n8n/di';
 import type { WorkflowSettings } from 'n8n-workflow';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
 
-import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service';
-import { policyMeetsFloor, REDACTION_FLOOR_VIOLATION_MESSAGE } from './redaction-policy';
+import { InstanceRedactionEnforcementService } from './instance-redaction-enforcement.service.js';
+import { policyMeetsFloor, REDACTION_FLOOR_VIOLATION_MESSAGE } from './redaction-policy.js';
 
 /**
  * Reports the active instance redaction floor and asserts that incoming

@@ -1,8 +1,8 @@
 import { getChildNodes } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types/index.js';
 
-import type { ProgrammaticViolation } from '../../types';
+import type { ProgrammaticViolation } from '../../types.js';
 
 const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';

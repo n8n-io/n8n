@@ -1,7 +1,7 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { DETERMINISTIC_CHECKS } from '../checks';
-import { createBinaryChecksEvaluator } from '../index';
+import { DETERMINISTIC_CHECKS } from '../checks/index.js';
+import { createBinaryChecksEvaluator } from '../index.js';
 
 const mockNodeTypes: INodeTypeDescription[] = [];
 

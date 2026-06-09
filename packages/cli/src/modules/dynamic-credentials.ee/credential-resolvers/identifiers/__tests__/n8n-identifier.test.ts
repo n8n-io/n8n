@@ -2,10 +2,10 @@ import type { User } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
 import { mock } from 'jest-mock-extended';
 
-import type { AuthService } from '@/auth/auth.service';
-import { AuthError } from '@/errors/response-errors/auth.error';
+import type { AuthService } from '@/auth/auth.service.js';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
 
-import { N8NIdentifier } from '../n8n-identifier';
+import { N8NIdentifier } from '../n8n-identifier.js';
 
 describe('N8NIdentifier', () => {
 	let identifier: N8NIdentifier;

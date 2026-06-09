@@ -1,8 +1,8 @@
 import type { INode } from 'n8n-workflow';
 
-import { createNode, createWorkflow } from '../../../test/test-utils';
-import type { SimpleWorkflow } from '../../types/workflow';
-import { trimWorkflowJSON } from '../trim-workflow-context';
+import { createNode, createWorkflow } from '../../../test/test-utils.js';
+import type { SimpleWorkflow } from '../../types/workflow.js';
+import { trimWorkflowJSON } from '../trim-workflow-context.js';
 
 describe('trimWorkflowJSON', () => {
 	describe('Small workflows', () => {

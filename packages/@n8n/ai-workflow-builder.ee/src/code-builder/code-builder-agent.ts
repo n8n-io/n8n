@@ -23,35 +23,35 @@ import type {
 	AgentMessageChunk,
 	WorkflowUpdateChunk,
 	SessionMessagesChunk,
-} from '../types/streaming';
-import type { ChatPayload } from '../workflow-builder-agent';
+} from '../types/streaming.js';
+import type { ChatPayload } from '../workflow-builder-agent.js';
 import {
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
 	CODE_BUILDER_SEARCH_NODES_TOOL,
 	MAX_AGENT_ITERATIONS,
 	MAX_VALIDATE_ATTEMPTS,
-} from './constants';
-import { AgentIterationHandler } from './handlers/agent-iteration-handler';
-import { AutoFinalizeHandler } from './handlers/auto-finalize-handler';
-import { ChatSetupHandler, type LlmWithTools } from './handlers/chat-setup-handler';
-import { FinalResponseHandler } from './handlers/final-response-handler';
-import { ParseValidateHandler } from './handlers/parse-validate-handler';
-import type { TextEditorHandler } from './handlers/text-editor-handler';
-import type { TextEditorToolHandler } from './handlers/text-editor-tool-handler';
-import { ToolDispatchHandler } from './handlers/tool-dispatch-handler';
-import { ValidateToolHandler } from './handlers/validate-tool-handler';
-import type { HistoryContext } from './prompts';
-import { WarningTracker } from './state/warning-tracker';
-import { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
-import { createCodeBuilderSearchTool } from './tools/code-builder-search.tool';
-import { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
-import type { CodeBuilderAgentConfig, TokenUsage } from './types';
-export type { CodeBuilderAgentConfig } from './types';
-import { sanitizeLlmErrorMessage } from '../utils/error-sanitizer';
-import { entryToString } from './utils/code-builder-session';
-import { pushValidationFeedback } from './utils/content-extractors';
-import { calculateNodeChanges } from './utils/node-diff';
+} from './constants.js';
+import { AgentIterationHandler } from './handlers/agent-iteration-handler.js';
+import { AutoFinalizeHandler } from './handlers/auto-finalize-handler.js';
+import { ChatSetupHandler, type LlmWithTools } from './handlers/chat-setup-handler.js';
+import { FinalResponseHandler } from './handlers/final-response-handler.js';
+import { ParseValidateHandler } from './handlers/parse-validate-handler.js';
+import type { TextEditorHandler } from './handlers/text-editor-handler.js';
+import type { TextEditorToolHandler } from './handlers/text-editor-tool-handler.js';
+import { ToolDispatchHandler } from './handlers/tool-dispatch-handler.js';
+import { ValidateToolHandler } from './handlers/validate-tool-handler.js';
+import type { HistoryContext } from './prompts/index.js';
+import { WarningTracker } from './state/warning-tracker.js';
+import { createCodeBuilderGetTool } from './tools/code-builder-get.tool.js';
+import { createCodeBuilderSearchTool } from './tools/code-builder-search.tool.js';
+import { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool.js';
+import type { CodeBuilderAgentConfig, TokenUsage } from './types.js';
+export type { CodeBuilderAgentConfig } from './types.js';
+import { sanitizeLlmErrorMessage } from '../utils/error-sanitizer.js';
+import { entryToString } from './utils/code-builder-session.js';
+import { pushValidationFeedback } from './utils/content-extractors.js';
+import { calculateNodeChanges } from './utils/node-diff.js';
 
 /**
  * Code Builder Agent

@@ -1,7 +1,7 @@
 import { inProduction } from '@n8n/backend-common';
 
-import { getCommunityNodeTypes } from '../community-node-types-utils';
-import { CommunityNodeTypesService } from '../community-node-types.service';
+import { getCommunityNodeTypes } from '../community-node-types-utils.js';
+import { CommunityNodeTypesService } from '../community-node-types.service.js';
 
 jest.mock('@n8n/backend-common', () => ({
 	...jest.requireActual('@n8n/backend-common'),
@@ -47,7 +47,7 @@ describe('CommunityNodeTypesService', () => {
 	});
 
 	describe('fetchNodeTypes', () => {
-		const { getCommunityNodeTypes } = require('../community-node-types-utils');
+		const { getCommunityNodeTypes } = require('../community-node-types-utils.js');
 
 		it('should use staging environment when ENVIRONMENT=staging', async () => {
 			process.env.ENVIRONMENT = 'staging';
@@ -713,7 +713,7 @@ describe('CommunityNodeTypesService', () => {
 	});
 
 	describe('detectUpdates', () => {
-		const { getCommunityNodesMetadata } = require('../community-node-types-utils');
+		const { getCommunityNodesMetadata } = require('../community-node-types-utils.js');
 
 		beforeEach(() => {
 			const mockNodeTypes = [

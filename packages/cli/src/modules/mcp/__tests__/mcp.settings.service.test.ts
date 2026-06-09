@@ -6,13 +6,13 @@ import type { EntityManager, FindOperator } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
-import type { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { CacheService } from '@/services/cache/cache.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { CollaborationService } from '@/collaboration/collaboration.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { CacheService } from '@/services/cache/cache.service.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { UpdateWorkflowsAvailabilityDto } from '../dto/update-workflows-availability.dto';
-import { McpSettingsService } from '../mcp.settings.service';
+import { UpdateWorkflowsAvailabilityDto } from '../dto/update-workflows-availability.dto.js';
+import { McpSettingsService } from '../mcp.settings.service.js';
 
 describe('McpSettingsService', () => {
 	let service: McpSettingsService;

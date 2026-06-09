@@ -1,1 +1,1 @@
-export * from './instance-ai-mcp-registry.service';
+export * from './instance-ai-mcp-registry.service.js';

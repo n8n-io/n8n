@@ -32,29 +32,29 @@ import {
 	createRenameDataTableColumnTool,
 	createRenameDataTableTool,
 	createSearchDataTablesTool,
-} from './tools/data-table';
-import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
-import { createGetExecutionTool } from './tools/get-execution.tool';
-import { createSearchExecutionsTool } from './tools/search-executions.tool';
-import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
-import { createListCredentialsTool } from './tools/list-credentials.tool';
-import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
-import { createSearchFoldersTool } from './tools/search-folders.tool';
-import { createSearchProjectsTool } from './tools/search-projects.tool';
-import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
-import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
-import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
-import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
-import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
-import { createGetWorkflowBestPracticesTool } from './tools/workflow-builder/get-workflow-best-practices.tool';
-import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
-import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-workflow-sdk-reference.tool';
-import { getMcpInstructions } from './tools/workflow-builder/mcp-instructions';
-import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool';
-import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
-import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
-import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
-import { NodeCatalogService } from '@/node-catalog';
+} from './tools/data-table/index.js';
+import { createExecuteWorkflowTool } from './tools/execute-workflow.tool.js';
+import { createGetExecutionTool } from './tools/get-execution.tool.js';
+import { createSearchExecutionsTool } from './tools/search-executions.tool.js';
+import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool.js';
+import { createListCredentialsTool } from './tools/list-credentials.tool.js';
+import { createPublishWorkflowTool } from './tools/publish-workflow.tool.js';
+import { createSearchFoldersTool } from './tools/search-folders.tool.js';
+import { createSearchProjectsTool } from './tools/search-projects.tool.js';
+import { createSearchWorkflowsTool } from './tools/search-workflows.tool.js';
+import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool.js';
+import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool.js';
+import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool.js';
+import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool.js';
+import { createGetWorkflowBestPracticesTool } from './tools/workflow-builder/get-workflow-best-practices.tool.js';
+import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool.js';
+import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-workflow-sdk-reference.tool.js';
+import { getMcpInstructions } from './tools/workflow-builder/mcp-instructions.js';
+import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool.js';
+import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content.js';
+import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool.js';
+import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool.js';
+import { NodeCatalogService } from '@/node-catalog/index.js';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -391,6 +391,7 @@ export class McpService {
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
+			// @ts-expect-error - Type mismatch while moving between commonjs and esm
 			await this.registerBuilderTools(server, user, dataTableOps, mcpAppsEnabled, clientInfo);
 		}
 

@@ -6,14 +6,14 @@ import type {
 	ToolProgressChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
-} from '../../types/streaming';
-import type { BuilderToolBase } from '../stream-processor';
+} from '../../types/streaming.js';
+import type { BuilderToolBase } from '../stream-processor.js';
 import {
 	processStreamChunk,
 	createStreamProcessor,
 	formatMessages,
 	cleanContextTags,
-} from '../stream-processor';
+} from '../stream-processor.js';
 
 describe('stream-processor', () => {
 	describe('processStreamChunk', () => {

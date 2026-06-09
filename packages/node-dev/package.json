@@ -13,6 +13,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "build": "tsc --noEmit",
     "build:unchecked": "pnpm run build",
     "build-node-dev": "tsc",

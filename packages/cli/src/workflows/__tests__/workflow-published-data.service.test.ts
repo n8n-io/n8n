@@ -2,7 +2,7 @@ import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } fro
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service.js';
 
 describe('WorkflowPublishedDataService', () => {
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();

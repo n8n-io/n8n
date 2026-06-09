@@ -11,11 +11,11 @@ import {
 	setupWorkflowState,
 	expectToolSuccess,
 	type ParsedToolContent,
-} from '../../../test/test-utils';
+} from '../../../test/test-utils.js';
 import {
 	createValidateConfigurationTool,
 	VALIDATE_CONFIGURATION_TOOL,
-} from '../validate-configuration.tool';
+} from '../validate-configuration.tool.js';
 
 vi.mock('@langchain/langgraph', () => ({
 	getCurrentTaskInput: vi.fn(),

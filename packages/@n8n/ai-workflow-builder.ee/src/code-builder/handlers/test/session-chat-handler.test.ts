@@ -3,9 +3,9 @@ import type { MemorySaver } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { Mocked } from 'vitest';
 
-import type { StreamOutput } from '../../../types/streaming';
-import type { ChatPayload } from '../../../workflow-builder-agent';
-import { SessionChatHandler } from '../session-chat-handler';
+import type { StreamOutput } from '../../../types/streaming.js';
+import type { ChatPayload } from '../../../workflow-builder-agent.js';
+import { SessionChatHandler } from '../session-chat-handler.js';
 
 // Mock the session utilities
 vi.mock('../../utils/code-builder-session', () => ({

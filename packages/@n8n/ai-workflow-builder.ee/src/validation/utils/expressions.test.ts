@@ -1,6 +1,6 @@
 import type { INodeParameters } from 'n8n-workflow';
 
-import { containsExpression, nodeParametersContainExpression } from './expressions';
+import { containsExpression, nodeParametersContainExpression } from './expressions.js';
 
 describe('containsExpression', () => {
 	it('should return false for non-expression values', () => {

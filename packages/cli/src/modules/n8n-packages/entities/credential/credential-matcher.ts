@@ -1,7 +1,7 @@
 import type { Project, SharedCredentialsRepository, User } from '@n8n/db';
 
-import type { CredentialTypes } from '@/credential-types';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialTypes } from '@/credential-types.js';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
 
 import {
 	createFailure,

@@ -3,7 +3,7 @@ import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages
 import { FakeListChatModel } from '@langchain/core/utils/testing';
 import { MemorySaver } from '@langchain/langgraph';
 
-import { SessionManagerService } from '@/session-manager.service';
+import { SessionManagerService } from '@/session-manager.service.js';
 
 import {
 	loadCodeBuilderSession,
@@ -12,7 +12,7 @@ import {
 	generateCodeBuilderThreadId,
 	saveSessionMessages,
 	type CodeBuilderSession,
-} from '../code-builder-session';
+} from '../code-builder-session.js';
 
 // Mock structured output for the compact chain
 class MockStructuredLLM extends FakeListChatModel {

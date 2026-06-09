@@ -7,10 +7,10 @@ import type { LookupAddress, LookupOptions } from 'node:dns';
 import type { BlockList, LookupFunction } from 'node:net';
 import { isIP } from 'node:net';
 
-import { DnsResolver } from './dns-resolver';
-import { HostnameMatcher } from './hostname-matcher';
-import { buildIpRangeList } from './ip-range-builder';
-import { SsrfBlockedIpError } from './ssrf-blocked-ip.error';
+import { DnsResolver } from './dns-resolver.js';
+import { HostnameMatcher } from './hostname-matcher.js';
+import { buildIpRangeList } from './ip-range-builder.js';
+import { SsrfBlockedIpError } from './ssrf-blocked-ip.error.js';
 
 export type SsrfCheckResult = Result<void, Error>;
 

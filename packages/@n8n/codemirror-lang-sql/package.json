@@ -14,7 +14,8 @@
     "lint:fix": "eslint . --fix",
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit"
   },
   "keywords": [
     "editor",

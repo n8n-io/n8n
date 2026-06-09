@@ -4,10 +4,10 @@ import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { ICredentialContext, jsonParse } from 'n8n-workflow';
 
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
 
-import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service.js';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository.js';
 
 type CredentialStatus = {
 	credentialId: string;

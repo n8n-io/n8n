@@ -1,4 +1,4 @@
-import type { Risk } from '@/security-audit/types';
+import type { Risk } from '@/security-audit/types.js';
 
 /**
  * Risk categories

@@ -4,7 +4,7 @@ import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import z from 'zod';
 
-import { compactPromptTemplate } from '@/prompts/chains/compact.prompt';
+import { compactPromptTemplate } from '@/prompts/chains/compact.prompt.js';
 
 export async function conversationCompactChain(
 	llm: BaseChatModel,

@@ -11,9 +11,9 @@ import {
 import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
+import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history.js';
 
-import { createTestRun } from '../../shared/db/evaluation';
+import { createTestRun } from '../../shared/db/evaluation.js';
 
 // Test helper functions
 async function shareWorkflowsToProject(
@@ -566,7 +566,7 @@ describe('WorkflowRepository', () => {
 
 		it('should fetch workflows using subquery for standard user with roles', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
 
 			const member = await createMember();
@@ -603,7 +603,7 @@ describe('WorkflowRepository', () => {
 
 		it('should handle personal project filtering correctly', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const owner = await createOwner();
@@ -630,7 +630,7 @@ describe('WorkflowRepository', () => {
 
 		it('should handle onlySharedWithMe filter correctly', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const member = await createMember();
@@ -654,7 +654,7 @@ describe('WorkflowRepository', () => {
 
 		it('should apply filters correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const owner = await createOwner();
@@ -685,7 +685,7 @@ describe('WorkflowRepository', () => {
 
 		it('should handle pagination correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
 
 			const owner = await createOwner();
@@ -755,9 +755,9 @@ describe('WorkflowRepository', () => {
 
 		it('should fetch both workflows and folders using subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createFolder } = await import('../../shared/db/folders');
+			const { createFolder } = await import('../../shared/db/folders.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -785,9 +785,9 @@ describe('WorkflowRepository', () => {
 
 		it('should handle complex filtering in union query with subquery', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createFolder } = await import('../../shared/db/folders');
+			const { createFolder } = await import('../../shared/db/folders.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -836,10 +836,10 @@ describe('WorkflowRepository', () => {
 
 		it('should return identical results for standard user with both approaches', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { RoleService } = await import('@/services/role.service.js');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -881,9 +881,9 @@ describe('WorkflowRepository', () => {
 
 		it('should return identical results for personal project with both approaches', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -922,9 +922,9 @@ describe('WorkflowRepository', () => {
 
 		it('should return identical results with filters and pagination', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -974,10 +974,10 @@ describe('WorkflowRepository', () => {
 
 		it('should correctly filter workflows by project when workflows belong to multiple projects', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { RoleService } = await import('@/services/role.service.js');
 
 			const member = await createMember();
 
@@ -1056,10 +1056,10 @@ describe('WorkflowRepository', () => {
 
 		it('should correctly isolate workflows by user - each user sees only their workflows', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { RoleService } = await import('@/services/role.service.js');
 
 			// Create two separate users
 			const userA = await createMember();

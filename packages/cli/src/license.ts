@@ -17,9 +17,9 @@ import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings } from 'n8n-core';
 
-import { LicenseMetricsService } from '@/metrics/license-metrics.service';
+import { LicenseMetricsService } from '@/metrics/license-metrics.service.js';
 
-import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
+import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants.js';
 
 const LICENSE_RENEWAL_DISABLED_WARNING =
 	'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!';
@@ -155,7 +155,7 @@ export class License implements LicenseProvider {
 
 	private async broadcastReloadLicenseCommand() {
 		if (this.globalConfig.executions.mode === 'queue' && this.instanceSettings.isLeader) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
 		}
 	}

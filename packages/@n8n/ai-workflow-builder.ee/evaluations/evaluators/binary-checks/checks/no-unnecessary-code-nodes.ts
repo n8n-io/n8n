@@ -1,4 +1,4 @@
-import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types';
+import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types.js';
 
 export const noUnnecessaryCodeNodes: BinaryCheck = {
 	name: 'no_unnecessary_code_nodes',

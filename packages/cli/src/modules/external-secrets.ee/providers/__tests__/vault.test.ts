@@ -2,8 +2,8 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
 import nock from 'nock';
 
-import { ExternalSecretsConfig } from '../../external-secrets.config';
-import { VaultProvider } from '../vault';
+import { ExternalSecretsConfig } from '../../external-secrets.config.js';
+import { VaultProvider } from '../vault.js';
 
 const VAULT_BASE_URL = 'https://vault.test.com';
 const VAULT_URL = `${VAULT_BASE_URL}/v1/`;

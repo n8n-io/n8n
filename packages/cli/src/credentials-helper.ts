@@ -38,15 +38,15 @@ import {
 	isExpression,
 } from 'n8n-workflow';
 
-import { RESPONSE_ERROR_MESSAGES } from './constants';
-import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
-import { CredentialMissingIdError } from './errors/credential-missing-id.error';
-import { CredentialNotFoundError } from './errors/credential-not-found.error';
+import { RESPONSE_ERROR_MESSAGES } from './constants.js';
+import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy.js';
+import { CredentialMissingIdError } from './errors/credential-missing-id.error.js';
+import { CredentialNotFoundError } from './errors/credential-not-found.error.js';
 
-import { CredentialTypes } from '@/credential-types';
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { AiGatewayService } from '@/services/ai-gateway.service';
+import { CredentialTypes } from '@/credential-types.js';
+import { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config.js';
+import { AiGatewayService } from '@/services/ai-gateway.service.js';
 
 const mockNode = {
 	name: '',

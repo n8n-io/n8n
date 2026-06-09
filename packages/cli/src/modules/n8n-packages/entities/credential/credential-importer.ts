@@ -1,8 +1,8 @@
 import { Service } from '@n8n/di';
 
-import { CredentialMatcherFactory } from './credential-matcher-factory';
-import { CredentialMissingModeFactory } from './credential-missing-mode-factory';
-import type { CredentialBindingRequest, CredentialResolution } from './credential.types';
+import { CredentialMatcherFactory } from './credential-matcher-factory.js';
+import { CredentialMissingModeFactory } from './credential-missing-mode-factory.js';
+import type { CredentialBindingRequest, CredentialResolution } from './credential.types.js';
 
 @Service()
 export class CredentialImporter {

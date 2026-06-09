@@ -10,15 +10,15 @@ import validator from 'validator';
 
 import { Logger } from '@n8n/backend-common';
 
-import { EventService } from '@/events/event.service';
-import { License } from '@/license';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
-import { LastActiveAtService } from '@/services/last-active-at.service';
-import { UrlService } from '@/services/url.service';
+import { EventService } from '@/events/event.service.js';
+import { License } from '@/license.js';
+import { AuthStrategyRegistry } from '@/services/auth-strategy.registry.js';
+import { LastActiveAtService } from '@/services/last-active-at.service.js';
+import { UrlService } from '@/services/url.service.js';
 
-import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
+import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload.js';
 
-import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
+import { sendPublicApiErrorResponse } from './v1/public-api-error-response.js';
 
 function createLazySwaggerMiddleware(
 	openApiSpecPath: string,

@@ -5,10 +5,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { Mock, Mocked, MockInstance, MockedClass } from 'vitest';
 import { mock, mockClear } from 'vitest-mock-extended';
 
-import { SessionManagerService } from '@/session-manager.service';
-import { getBuilderToolsForDisplay } from '@/tools/builder-tools';
-import type { ISessionStorage, StoredSession } from '@/types/session-storage';
-import * as streamProcessor from '@/utils/stream-processor';
+import { SessionManagerService } from '@/session-manager.service.js';
+import { getBuilderToolsForDisplay } from '@/tools/builder-tools.js';
+import type { ISessionStorage, StoredSession } from '@/types/session-storage.js';
+import * as streamProcessor from '@/utils/stream-processor.js';
 
 vi.mock('@langchain/langgraph', () => ({
 	MemorySaver: vi.fn(),

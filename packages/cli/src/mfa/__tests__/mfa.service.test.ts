@@ -4,11 +4,11 @@ import type { SettingsRepository, UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
-import { MFA_ENFORCE_SETTING } from '../constants';
-import { MFA_CACHE_KEY, MfaService } from '../mfa.service';
-import type { TOTPService } from '../totp.service';
+import { MFA_ENFORCE_SETTING } from '../constants.js';
+import { MFA_CACHE_KEY, MfaService } from '../mfa.service.js';
+import type { TOTPService } from '../totp.service.js';
 
 describe('MfaService', () => {
 	let mfaService: MfaService;

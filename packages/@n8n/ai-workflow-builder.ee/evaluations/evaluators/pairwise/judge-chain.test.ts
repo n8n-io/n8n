@@ -1,10 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { mock } from 'vitest-mock-extended';
 
-import type { SimpleWorkflow } from '@/types/workflow';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 
-import { evaluateWorkflowPairwise, type PairwiseEvaluationInput } from './judge-chain';
-import * as baseEvaluator from '../llm-judge/evaluators/base';
+import { evaluateWorkflowPairwise, type PairwiseEvaluationInput } from './judge-chain.js';
+import * as baseEvaluator from '../llm-judge/evaluators/base.js';
 
 // Mock the base evaluator module
 vi.mock('../llm-judge/evaluators/base', () => ({

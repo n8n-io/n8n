@@ -3,21 +3,21 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import multer from 'multer';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import type { AgentsService } from '../agents.service';
-import type { AgentsBuilderService } from '../builder/agents-builder.service';
-import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import type { ChatIntegrationService } from '../integrations/chat-integration.service';
-import type { SlackAppSetupService } from '../integrations/slack-app-setup.service';
-import type { AgentExecutionService } from '../agent-execution.service';
-import type { AgentTaskService } from '../agent-task.service';
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
-import type { AgentRepository } from '../repositories/agent.repository';
-import { AgentsController } from '../agents.controller';
-import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import type { AgentsService } from '../agents.service.js';
+import type { AgentsBuilderService } from '../builder/agents-builder.service.js';
+import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration.js';
+import type { ChatIntegrationService } from '../integrations/chat-integration.service.js';
+import type { SlackAppSetupService } from '../integrations/slack-app-setup.service.js';
+import type { AgentExecutionService } from '../agent-execution.service.js';
+import type { AgentTaskService } from '../agent-task.service.js';
+import type { AgentKnowledgeService } from '../agent-knowledge.service.js';
+import type { AgentRepository } from '../repositories/agent.repository.js';
+import { AgentsController } from '../agents.controller.js';
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider.js';
 
 const UNAUTHENTICATED_HANDLERS = new Set([
 	// Third-party webhook callback: no req.user; per-platform signature

@@ -13,8 +13,8 @@ import {
 	expectToolError,
 	expectWorkflowOperation,
 	type ParsedToolContent,
-} from '../../../test/test-utils';
-import { createRemoveConnectionTool } from '../remove-connection.tool';
+} from '../../../test/test-utils.js';
+import { createRemoveConnectionTool } from '../remove-connection.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

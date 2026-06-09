@@ -4,11 +4,11 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { TypeToNumber } from '../database/entities/insights-shared';
-import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import type { InsightsCompactionService } from '../insights-compaction.service';
-import type { InsightsPruningService } from '../insights-pruning.service';
-import { InsightsService } from '../insights.service';
+import { TypeToNumber } from '../database/entities/insights-shared.js';
+import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository.js';
+import type { InsightsCompactionService } from '../insights-compaction.service.js';
+import type { InsightsPruningService } from '../insights-pruning.service.js';
+import { InsightsService } from '../insights.service.js';
 
 describe('InsightsService', () => {
 	let insightsService: InsightsService;

@@ -17,9 +17,9 @@ import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
+import { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.js';
 import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -43,23 +43,23 @@ import type {
 import assert from 'node:assert';
 import pLimit from 'p-limit';
 
-import { ActiveExecutions } from '@/active-executions';
-import { EventService } from '@/events/event.service';
+import { ActiveExecutions } from '@/active-executions.js';
+import { EventService } from '@/events/event.service.js';
 import {
 	getEvaluationConcurrencyLimitSource,
 	resolveEvaluationConcurrencyLimit,
-} from '@/evaluation.ee/evaluation-concurrency.helper';
-import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
+} from '@/evaluation.ee/evaluation-concurrency.helper.js';
+import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee.js';
 import {
 	checkNodeParameterNotEmpty,
 	extractTokenUsage,
-} from '@/evaluation.ee/test-runner/utils.ee';
-import { License } from '@/license';
-import { Telemetry } from '@/telemetry';
-import { WorkflowRunner } from '@/workflow-runner';
+} from '@/evaluation.ee/test-runner/utils.ee.js';
+import { License } from '@/license.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
 
-import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee';
-import { WorkflowCompilerService } from './workflow-compiler.service';
+import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee.js';
+import { WorkflowCompilerService } from './workflow-compiler.service.js';
 
 export interface TestRunMetadata {
 	testRunId: string;

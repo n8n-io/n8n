@@ -4,12 +4,12 @@ import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
-import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
-import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
+import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error.js';
+import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error.js';
 
-import { MFA_ENFORCE_SETTING } from './constants';
-import { TOTPService } from './totp.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { MFA_ENFORCE_SETTING } from './constants.js';
+import { TOTPService } from './totp.service.js';
+import { CacheService } from '@/services/cache/cache.service.js';
 
 export const MFA_CACHE_KEY = 'mfa:enforce';
 @Service()

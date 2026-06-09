@@ -4,7 +4,7 @@ import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/
 import type { Logger } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { prompt as createPromptBuilder } from '@/prompts/builder';
+import { prompt as createPromptBuilder } from '@/prompts/builder/index.js';
 import {
 	getMatchingGuides,
 	getMatchingExamples,
@@ -14,10 +14,10 @@ import {
 	EXPRESSION_RULES,
 	COMMON_PATTERNS,
 	OUTPUT_FORMAT,
-} from '@/prompts/chains/parameter-updater';
+} from '@/prompts/chains/parameter-updater/index.js';
 
-import { LLMServiceError } from '../errors';
-import type { ParameterUpdaterOptions } from '../types/config';
+import { LLMServiceError } from '../errors/index.js';
+import type { ParameterUpdaterOptions } from '../types/config.js';
 
 export const parametersSchema = z
 	.object({

@@ -2,8 +2,8 @@ import { type PushMessage } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 import EventEmitter from 'node:events';
 
-import { SSEPush } from '@/push/sse.push';
-import type { PushRequest, PushResponse } from '@/push/types';
+import { SSEPush } from '@/push/sse.push.js';
+import type { PushRequest, PushResponse } from '@/push/types.js';
 
 jest.useFakeTimers();
 

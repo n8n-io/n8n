@@ -1,12 +1,12 @@
 import type { RequestHandler } from 'express';
 
-import { appendListQueryOptions } from '@/requests';
-import * as ResponseHelper from '@/response-helper';
-import { toError } from '@/utils';
+import { appendListQueryOptions } from '@/requests.js';
+import * as ResponseHelper from '@/response-helper.js';
+import { toError } from '@/utils.js';
 
-import { CredentialsSelect } from './dtos/credentials.select.dto';
-import { UserSelect } from './dtos/user.select.dto';
-import { WorkflowSelect } from './dtos/workflow.select.dto';
+import { CredentialsSelect } from './dtos/credentials.select.dto.js';
+import { UserSelect } from './dtos/user.select.dto.js';
+import { WorkflowSelect } from './dtos/workflow.select.dto.js';
 
 export const selectListQueryMiddleware: RequestHandler = (req, res, next) => {
 	const { select: rawSelect } = req.query;

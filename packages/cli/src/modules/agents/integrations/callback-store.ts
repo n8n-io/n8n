@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { TtlMap } from '@/utils/ttl-map';
+import { TtlMap } from '@/utils/ttl-map.js';
 
 export interface CallbackPayload {
 	actionId: string;

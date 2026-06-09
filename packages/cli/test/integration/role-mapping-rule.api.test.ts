@@ -3,11 +3,11 @@ import { RoleMappingRuleRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
 
-import { createMember, createOwner } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils';
+import { createMember, createOwner } from './shared/db/users.js';
+import type { SuperAgentTest } from './shared/types.js';
+import * as utils from './shared/utils/index.js';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['role', 'roleMappingRule'],

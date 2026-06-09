@@ -4,19 +4,19 @@ import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import type { DataTableInfoById } from 'n8n-workflow';
 
-import type { DataTableColumn } from '../data-table-column.entity';
-import type { DataTable } from '../data-table.entity';
-import { DataTableColumnRepository } from '../data-table-column.repository';
-import { DataTableCsvImportService } from '../data-table-csv-import.service';
-import { DataTableRowsRepository } from '../data-table-rows.repository';
-import { DataTableSizeValidator } from '../data-table-size-validator.service';
-import { DataTableRepository } from '../data-table.repository';
-import { DataTableService } from '../data-table.service';
-import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
-import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
-import { EventService } from '@/events/event.service';
-import { DataTableValidationError } from '../errors/data-table-validation.error';
-import { RoleService } from '@/services/role.service';
+import type { DataTableColumn } from '../data-table-column.entity.js';
+import type { DataTable } from '../data-table.entity.js';
+import { DataTableColumnRepository } from '../data-table-column.repository.js';
+import { DataTableCsvImportService } from '../data-table-csv-import.service.js';
+import { DataTableRowsRepository } from '../data-table-rows.repository.js';
+import { DataTableSizeValidator } from '../data-table-size-validator.service.js';
+import { DataTableRepository } from '../data-table.repository.js';
+import { DataTableService } from '../data-table.service.js';
+import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error.js';
+import { DataTableNotFoundError } from '../errors/data-table-not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import { DataTableValidationError } from '../errors/data-table-validation.error.js';
+import { RoleService } from '@/services/role.service.js';
 
 describe('DataTableService', () => {
 	let dataTableService: DataTableService;

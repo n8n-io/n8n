@@ -12,7 +12,7 @@
  */
 
 // Core runner
-export { runEvaluation } from './harness/runner';
+export { runEvaluation } from './harness/runner.js';
 
 // Types
 export {
@@ -29,7 +29,7 @@ export {
 	type EvaluationLifecycle,
 	type LangsmithOptions,
 	type GenerationResult,
-} from './harness/harness-types';
+} from './harness/harness-types.js';
 
 // Lifecycle
 export {
@@ -37,7 +37,7 @@ export {
 	createQuietLifecycle,
 	mergeLifecycles,
 	type ConsoleLifecycleOptions,
-} from './harness/lifecycle';
+} from './harness/lifecycle.js';
 
 // Evaluator factories
 export {
@@ -52,27 +52,27 @@ export {
 	type SimilarityEvaluatorOptions,
 	type BinaryChecksEvaluatorOptions,
 	type ResponderEvaluationContext,
-} from './evaluators';
+} from './evaluators/index.js';
 
 // Introspection lifecycle
 export {
 	createIntrospectionAnalysisLifecycle,
 	type IntrospectionAnalysisOptions,
-} from './lifecycles/introspection-analysis';
+} from './lifecycles/introspection-analysis.js';
 
 // Output
 export {
 	createArtifactSaver,
 	type ArtifactSaver,
 	type ArtifactSaverOptions,
-} from './harness/output';
+} from './harness/output.js';
 
 // Trace filtering (re-exported from v1 for convenience)
 export {
 	createTraceFilters,
 	isMinimalTracingEnabled,
 	type TraceFilters,
-} from './langsmith/trace-filters';
+} from './langsmith/trace-filters.js';
 
 // Score calculation utilities
 export {
@@ -86,7 +86,7 @@ export {
 	type ScoreWeights,
 	type AggregatedScore,
 	type FeedbackKeyParts,
-} from './harness/score-calculator';
+} from './harness/score-calculator.js';
 
 // Report generation
 export {
@@ -96,7 +96,7 @@ export {
 	type ViolationSeverity,
 	type ReportOptions,
 	type ReportMetrics,
-} from './support/report-generator';
+} from './support/report-generator.js';
 
 // Test case generation
 export {
@@ -104,7 +104,7 @@ export {
 	type TestCaseGeneratorOptions,
 	type GeneratedTestCase,
 	type TestCaseGenerator,
-} from './support/test-case-generator';
+} from './support/test-case-generator.js';
 
 // CSV loader utilities
-export { loadDefaultTestCases, getDefaultTestCaseIds } from './cli/csv-prompt-loader';
+export { loadDefaultTestCases, getDefaultTestCaseIds } from './cli/csv-prompt-loader.js';

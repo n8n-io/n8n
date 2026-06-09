@@ -60,9 +60,9 @@ describe('CredentialsRepository', () => {
 
 		it('should fetch credentials using subquery for standard user with roles', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -98,9 +98,9 @@ describe('CredentialsRepository', () => {
 
 		it('should handle personal project filtering correctly', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -126,9 +126,9 @@ describe('CredentialsRepository', () => {
 
 		it('should handle onlySharedWithMe filter correctly', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const member = await createMember();
 			const memberPersonalProject = await getPersonalProject(member);
@@ -159,9 +159,9 @@ describe('CredentialsRepository', () => {
 
 		it('should apply name filter correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -191,9 +191,9 @@ describe('CredentialsRepository', () => {
 
 		it('should apply type filter correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -223,9 +223,9 @@ describe('CredentialsRepository', () => {
 
 		it('should handle pagination correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -277,9 +277,9 @@ describe('CredentialsRepository', () => {
 
 		it('should correctly filter credentials by project when credentials belong to multiple projects', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const member = await createMember();
 			const projectA = await createTeamProject('Project A');
@@ -347,9 +347,9 @@ describe('CredentialsRepository', () => {
 
 		it('should correctly isolate credentials by user - each user sees only their credentials', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const userA = await createMember();
 			const userB = await createMember();
@@ -423,11 +423,13 @@ describe('CredentialsRepository', () => {
 
 		it('should return identical results for standard user with both approaches', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
-			const { CredentialsFinderService } = await import('@/credentials/credentials-finder.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import(
+				'@/credentials/credentials-finder.service.js'
+			);
+			const { RoleService } = await import('@/services/role.service.js');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -470,10 +472,12 @@ describe('CredentialsRepository', () => {
 
 		it('should return identical results for personal project with both approaches', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
-			const { CredentialsFinderService } = await import('@/credentials/credentials-finder.service');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import(
+				'@/credentials/credentials-finder.service.js'
+			);
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -513,11 +517,13 @@ describe('CredentialsRepository', () => {
 
 		it('should return identical results with filters and pagination', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
-			const { CredentialsFinderService } = await import('@/credentials/credentials-finder.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import(
+				'@/credentials/credentials-finder.service.js'
+			);
+			const { RoleService } = await import('@/services/role.service.js');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -577,11 +583,13 @@ describe('CredentialsRepository', () => {
 
 		it('should correctly filter credentials by project - old vs new comparison', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
-			const { CredentialsFinderService } = await import('@/credentials/credentials-finder.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import(
+				'@/credentials/credentials-finder.service.js'
+			);
+			const { RoleService } = await import('@/services/role.service.js');
 
 			const member = await createMember();
 
@@ -662,11 +670,13 @@ describe('CredentialsRepository', () => {
 
 		it('should correctly isolate credentials by user - old vs new comparison', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
-			const { CredentialsFinderService } = await import('@/credentials/credentials-finder.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import(
+				'@/credentials/credentials-finder.service.js'
+			);
+			const { RoleService } = await import('@/services/role.service.js');
 
 			// Create two separate users
 			const userA = await createMember();

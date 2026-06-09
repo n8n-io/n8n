@@ -29,8 +29,8 @@ import {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
-} from './native-web-search-provider-tools';
-import { resolveProviderToolName } from './provider-tool-aliases';
+} from './native-web-search-provider-tools.js';
+import { resolveProviderToolName } from './provider-tool-aliases.js';
 
 const WEB_SEARCH_TOOL_NAME = 'web_search';
 const WEB_SEARCH_INPUT_SCHEMA = z.object({

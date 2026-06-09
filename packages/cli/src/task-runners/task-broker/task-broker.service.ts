@@ -11,11 +11,11 @@ import type {
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { TaskDeferredError } from '@/task-runners/task-broker/errors/task-deferred.error';
-import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.error';
-import { TaskRunnerAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-runner-accept-timeout.error';
-import { TaskRunnerExecutionTimeoutError } from '@/task-runners/task-broker/errors/task-runner-execution-timeout.error';
-import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
+import { TaskDeferredError } from '@/task-runners/task-broker/errors/task-deferred.error.js';
+import { TaskRejectError } from '@/task-runners/task-broker/errors/task-reject.error.js';
+import { TaskRunnerAcceptTimeoutError } from '@/task-runners/task-broker/errors/task-runner-accept-timeout.error.js';
+import { TaskRunnerExecutionTimeoutError } from '@/task-runners/task-broker/errors/task-runner-execution-timeout.error.js';
+import { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events.js';
 
 export interface TaskRunner {
 	id: string;

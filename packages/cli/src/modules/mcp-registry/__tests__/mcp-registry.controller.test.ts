@@ -1,8 +1,8 @@
 import { mock } from 'jest-mock-extended';
 
-import { McpRegistryController } from '../mcp-registry.controller';
-import type { McpRegistryService } from '../registry/mcp-registry.service';
-import { linearMockServer, notionMockServer } from '../registry/mock-servers';
+import { McpRegistryController } from '../mcp-registry.controller.js';
+import type { McpRegistryService } from '../registry/mcp-registry.service.js';
+import { linearMockServer, notionMockServer } from '../registry/mock-servers.js';
 
 describe('McpRegistryController', () => {
 	const service = mock<McpRegistryService>();

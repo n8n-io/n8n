@@ -2,7 +2,7 @@ import type { ToolRunnableConfig } from '@langchain/core/tools';
 import type { LangGraphRunnableConfig } from '@langchain/langgraph';
 import type { MockedFunction } from 'vitest';
 
-import type { ToolError } from '../../../types/tools';
+import type { ToolError } from '../../../types/tools.js';
 import {
 	createProgressReporter,
 	reportStart,
@@ -10,7 +10,7 @@ import {
 	reportComplete,
 	reportError,
 	createBatchProgressReporter,
-} from '../progress';
+} from '../progress.js';
 
 describe('progress helpers', () => {
 	let mockWriter: MockedFunction<(chunk: unknown) => void>;

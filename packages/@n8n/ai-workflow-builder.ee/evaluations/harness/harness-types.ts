@@ -3,11 +3,11 @@ import type { Client as LangsmithClient } from 'langsmith/client';
 import type { IPinData } from 'n8n-workflow';
 import type pLimit from 'p-limit';
 
-import type { EvalLogger } from './logger';
-import type { GenerationCollectors } from './runner';
+import type { EvalLogger } from './logger.js';
+import type { GenerationCollectors } from './runner.js';
 import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
-import type { SimpleWorkflow } from '../../src/types/workflow';
-import type { ChatPayload } from '../../src/workflow-builder-agent';
+import type { SimpleWorkflow } from '../../src/types/workflow.js';
+import type { ChatPayload } from '../../src/workflow-builder-agent.js';
 
 export type LlmCallLimiter = ReturnType<typeof pLimit>;
 

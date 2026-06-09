@@ -1,6 +1,6 @@
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
-import { isSubNode } from '../../utils/node-helpers';
+import { isSubNode } from '../../utils/node-helpers.js';
 
 /**
  * Constants for node positioning

@@ -10,7 +10,7 @@ import {
 	type DataTableRowOperation,
 } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../types';
+import type { SimpleWorkflow } from '../types/index.js';
 
 export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 export const SET_NODE_TYPE = 'n8n-nodes-base.set';

@@ -2,15 +2,15 @@ import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
 
 import { AgentIntegrationConfig } from '@n8n/api-types';
-import type { ChatInstance } from './chat-integration.service';
-import type { SuspendComponent } from './component-mapper';
+import type { ChatInstance } from './chat-integration.service.js';
+import type { SuspendComponent } from './component-mapper.js';
 import type {
 	IntegrationAction,
 	IntegrationActionResult,
 	IntegrationContextQuery,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
-} from './integration-tools';
+} from './integration-tools.js';
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
 export interface AgentChatIntegrationContext {

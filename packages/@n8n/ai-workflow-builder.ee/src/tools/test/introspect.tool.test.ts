@@ -1,7 +1,10 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { Command } from '@langchain/langgraph';
 
-import { createIntrospectTool, extractIntrospectionEventsFromMessages } from '../introspect.tool';
+import {
+	createIntrospectTool,
+	extractIntrospectionEventsFromMessages,
+} from '../introspect.tool.js';
 
 /**
  * Helper to extract content from tool response (Command object with messages)

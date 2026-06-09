@@ -1,12 +1,12 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../../types';
+import type { SimpleWorkflow } from '../../types/index.js';
 import {
 	DATA_TABLE_NODE_TYPE,
 	SET_NODE_TYPE,
 	extractSetNodeFields,
 	extractDataTableInfo,
-} from '../data-table-helpers';
+} from '../data-table-helpers.js';
 
 describe('data-table-helpers', () => {
 	const createEmptyWorkflow = (): SimpleWorkflow => ({

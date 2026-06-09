@@ -8,6 +8,7 @@
     "copy-nodes-json": "node scripts/copy-nodes-json.js .",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "build": "tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata && pnpm n8n-generate-node-defs",
     "build:unchecked": "tsc --build tsconfig.build.cjs.json --noCheck && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata && pnpm n8n-generate-node-defs",
     "format": "biome format --write .",

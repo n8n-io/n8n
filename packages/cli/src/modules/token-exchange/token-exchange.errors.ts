@@ -1,7 +1,7 @@
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import type { TokenExchangeFailureReason } from './token-exchange.types';
+import type { TokenExchangeFailureReason } from './token-exchange.types.js';
 
 /**
  * AuthError subclass that carries a typed failure reason for Prometheus metrics.

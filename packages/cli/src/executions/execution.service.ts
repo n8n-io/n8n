@@ -40,26 +40,26 @@ import {
 	ensureError,
 } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions';
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
-import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import type { IExecutionFlattedResponse } from '@/interfaces';
-import { License } from '@/license';
-import { NodeTypes } from '@/node-types';
-import { RoleService } from '@/services/role.service';
-import { WaitTracker } from '@/wait-tracker';
-import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { ActiveExecutions } from '@/active-executions.js';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error.js';
+import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error.js';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import type { IExecutionFlattedResponse } from '@/interfaces.js';
+import { License } from '@/license.js';
+import { NodeTypes } from '@/node-types.js';
+import { RoleService } from '@/services/role.service.js';
+import { WaitTracker } from '@/wait-tracker.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service.js';
 
-import { ExecutionPersistence } from './execution-persistence';
-import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service';
-import type { ExecutionRequest, StopResult } from './execution.types';
+import { ExecutionPersistence } from './execution-persistence.js';
+import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service.js';
+import type { ExecutionRequest, StopResult } from './execution.types.js';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',

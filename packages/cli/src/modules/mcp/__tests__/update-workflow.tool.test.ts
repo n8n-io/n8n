@@ -2,16 +2,16 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type IConnections, type INode } from 'n8n-workflow';
 
-import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
+import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool.js';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { NodeTypes } from '@/node-types';
-import { UrlService } from '@/services/url.service';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { CollaborationService } from '@/collaboration/collaboration.service.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { NodeTypes } from '@/node-types.js';
+import { UrlService } from '@/services/url.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
 const mockAutoPopulateNodeCredentials = jest.fn();
 jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({

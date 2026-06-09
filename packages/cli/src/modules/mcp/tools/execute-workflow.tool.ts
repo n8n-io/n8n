@@ -19,20 +19,20 @@ import {
 	SUPPORTED_MCP_TRIGGERS,
 	SUPPORTED_PRODUCTION_MCP_TRIGGERS,
 	USER_CALLED_MCP_TOOL_EVENT,
-} from '../mcp.constants';
-import { WorkflowAccessError } from '../mcp.errors';
+} from '../mcp.constants.js';
+import { WorkflowAccessError } from '../mcp.errors.js';
 import type {
 	ExecuteWorkflowsInputMeta,
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
-} from '../mcp.types';
-import { findMcpSupportedTrigger } from '../mcp.utils';
-import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
+} from '../mcp.types.js';
+import { findMcpSupportedTrigger } from '../mcp.utils.js';
+import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils.js';
 
-import type { McpService } from '@/modules/mcp/mcp.service';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { McpService } from '@/modules/mcp/mcp.service.js';
+import type { Telemetry } from '@/telemetry/index.js';
+import type { WorkflowRunner } from '@/workflow-runner.js';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 export { type FoundWorkflow };
 

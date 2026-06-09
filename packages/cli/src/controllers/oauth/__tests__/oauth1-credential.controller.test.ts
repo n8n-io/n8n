@@ -4,11 +4,11 @@ import { type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
-import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
-import { EventService } from '@/events/event.service';
-import type { OAuthRequest } from '@/requests';
-import { OauthService } from '@/oauth/oauth.service';
-import { ExternalHooks } from '@/external-hooks';
+import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller.js';
+import { EventService } from '@/events/event.service.js';
+import type { OAuthRequest } from '@/requests.js';
+import { OauthService } from '@/oauth/oauth.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
 
 describe('OAuth1CredentialController', () => {
 	const oauthService = mockInstance(OauthService);

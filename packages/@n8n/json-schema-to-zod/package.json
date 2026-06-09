@@ -18,6 +18,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "dev": "tsc -w",
     "format": "biome format --write src",
     "format:check": "biome ci src",

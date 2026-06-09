@@ -2,24 +2,24 @@ import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import { z } from 'zod';
 
-import type { WorkflowMetadata } from '@/types';
-import type { BuilderToolBase } from '@/utils/stream-processor';
+import type { WorkflowMetadata } from '@/types/index.js';
+import type { BuilderToolBase } from '@/utils/stream-processor.js';
 
-import { ValidationError, ToolExecutionError } from '../errors';
+import { ValidationError, ToolExecutionError } from '../errors/index.js';
 import {
 	createProgressReporter,
 	createSuccessResponse,
 	createErrorResponse,
 	getWorkflowState,
 	reportProgress,
-} from './helpers';
-import { mermaidStringify } from './utils/mermaid.utils';
+} from './helpers/index.js';
+import { mermaidStringify } from './utils/mermaid.utils.js';
 import {
 	formatNodeConfigurationExamples,
 	getNodeConfigurationsFromTemplates,
-} from './utils/node-configuration.utils';
-import type { NodeConfigurationEntry } from '../types/tools';
-import { fetchWorkflowsFromTemplates } from './web/templates';
+} from './utils/node-configuration.utils.js';
+import type { NodeConfigurationEntry } from '../types/tools.js';
+import { fetchWorkflowsFromTemplates } from './web/templates.js';
 
 /**
  * Schema for a single node request

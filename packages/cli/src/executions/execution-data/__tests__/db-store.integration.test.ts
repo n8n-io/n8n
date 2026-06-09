@@ -2,10 +2,10 @@ import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { DbStore } from '../db-store';
-import { createExecutionRef } from '../types';
-import type { ExecutionDataPayload } from '../types';
-import { payload, workflowId } from './mocks';
+import { DbStore } from '../db-store.js';
+import { createExecutionRef } from '../types.js';
+import type { ExecutionDataPayload } from '../types.js';
+import { payload, workflowId } from './mocks.js';
 
 let dbStore: DbStore;
 let repository: ExecutionDataRepository;

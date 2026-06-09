@@ -23,11 +23,11 @@ import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { ImportService } from '@/services/import.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service.js';
+import { ImportService } from '@/services/import.service.js';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { createMember, createOwner } from './shared/db/users';
+import { createMember, createOwner } from './shared/db/users.js';
 
 describe('ImportService', () => {
 	let importService: ImportService;

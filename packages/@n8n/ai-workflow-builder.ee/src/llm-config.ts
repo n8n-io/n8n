@@ -1,9 +1,9 @@
 // Different LLMConfig type for this file - specific to LLM providers
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
-import { MAX_OUTPUT_TOKENS } from '@/constants';
+import { MAX_OUTPUT_TOKENS } from '@/constants.js';
 
-import { getProxyAgent } from './utils/http-proxy-agent';
+import { getProxyAgent } from './utils/http-proxy-agent.js';
 
 /**
  * Configuration for LLM provider initialization.

@@ -1,11 +1,11 @@
 import type { RequestHandler } from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { appendListQueryOptions } from '@/requests';
-import * as ResponseHelper from '@/response-helper';
-import { toError } from '@/utils';
+import { appendListQueryOptions } from '@/requests.js';
+import * as ResponseHelper from '@/response-helper.js';
+import { toError } from '@/utils.js';
 
-import { Pagination } from './dtos/pagination.dto';
+import { Pagination } from './dtos/pagination.dto.js';
 
 export const paginationListQueryMiddleware: RequestHandler = (req, res, next) => {
 	const { take: rawTake } = req.query;

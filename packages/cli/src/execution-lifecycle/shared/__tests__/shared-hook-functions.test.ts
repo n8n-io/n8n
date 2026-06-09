@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { determineFinalExecutionStatus } from '../shared-hook-functions';
+import { determineFinalExecutionStatus } from '../shared-hook-functions.js';
 
 describe('determineFinalExecutionStatus', () => {
 	describe('When waitTill is not set', () => {

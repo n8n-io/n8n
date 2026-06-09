@@ -21,12 +21,12 @@ import {
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveExecutions } from '@/active-executions';
-import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import type { EventService } from '@/events/event.service';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { License } from '@/license';
-import type { Telemetry } from '@/telemetry';
+import { ActiveExecutions } from '@/active-executions.js';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service.js';
+import type { EventService } from '@/events/event.service.js';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { License } from '@/license.js';
+import type { Telemetry } from '@/telemetry/index.js';
 
 jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),

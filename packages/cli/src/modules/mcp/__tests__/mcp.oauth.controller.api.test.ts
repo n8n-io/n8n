@@ -3,11 +3,11 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createOwner } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
+import { createOwner } from '@test-integration/db/users.js';
+import { setupTestServer } from '@test-integration/utils/index.js';
 
-import { SUPPORTED_SCOPES } from '../mcp-oauth-service';
-import { McpSettingsService } from '../mcp.settings.service';
+import { SUPPORTED_SCOPES } from '../mcp-oauth-service.js';
+import { McpSettingsService } from '../mcp.settings.service.js';
 
 const testServer = setupTestServer({ modules: ['mcp'], endpointGroups: ['mcp'] });
 
@@ -291,7 +291,7 @@ describe('POST /mcp-oauth/register', () => {
 	});
 
 	test('should reject with descriptive server_error on the post-insert rollback (race path)', async () => {
-		const { McpOAuthService } = await import('../mcp-oauth-service');
+		const { McpOAuthService } = await import('../mcp-oauth-service.js');
 		const globalConfig = Container.get(GlobalConfig);
 		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
 		globalConfig.endpoints.mcpMaxRegisteredClients = 1;

@@ -2,13 +2,13 @@ import type { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, SettingsRepository, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { AiService } from '@/services/ai.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
+import type { AiService } from '@/services/ai.service.js';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import type { CredentialsService } from '@/credentials/credentials.service.js';
 
-import { AgentsBuilderSettingsService } from '../agents-builder-settings.service';
-import { BUILDER_NOT_CONFIGURED_CODE, BuilderNotConfiguredError } from '../errors';
+import { AgentsBuilderSettingsService } from '../agents-builder-settings.service.js';
+import { BUILDER_NOT_CONFIGURED_CODE, BuilderNotConfiguredError } from '../errors.js';
 
 const ENV_KEYS = ['N8N_AI_ANTHROPIC_KEY', 'ANTHROPIC_API_KEY'] as const;
 

@@ -25,18 +25,18 @@ import omit from 'lodash/omit';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { NodeOperationError, PROJECT_ROOT, UserError, WorkflowActivationError } from 'n8n-workflow';
 
-import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowFinderService } from './workflow-finder.service.js';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import { FolderService } from '@/services/folder.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service.ee';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error.js';
+import { FolderService } from '@/services/folder.service.js';
+import { OwnershipService } from '@/services/ownership.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
 
 @Service()
 export class EnterpriseWorkflowService {

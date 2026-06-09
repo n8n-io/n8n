@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { extractProviderKeysFromCredentialData } from './external-secrets.utils';
+import { extractProviderKeysFromCredentialData } from './external-secrets.utils.js';
 
 export const EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE = 'externalSecretProvider' as const;
 

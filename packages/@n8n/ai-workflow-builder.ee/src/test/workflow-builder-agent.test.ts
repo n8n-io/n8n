@@ -45,19 +45,19 @@ vi.mock('@/code-builder/utils/code-builder-session', () => ({
 // suites. `restoreMocks: true` restores this spy automatically.
 vi.spyOn(globalThis.crypto, 'randomUUID');
 
-import type { AssistantHandler } from '@/assistant/assistant-handler';
-import { CodeWorkflowBuilder } from '@/code-builder';
-import { TriageAgent } from '@/code-builder/triage.agent';
-import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
-import { ValidationError } from '@/errors';
-import type { PlanInterruptValue, PlanOutput } from '@/types/planning';
-import type { StreamOutput } from '@/types/streaming';
-import { createStreamProcessor } from '@/utils/stream-processor';
+import type { AssistantHandler } from '@/assistant/assistant-handler.js';
+import { CodeWorkflowBuilder } from '@/code-builder/index.js';
+import { TriageAgent } from '@/code-builder/triage.agent.js';
+import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants.js';
+import { ValidationError } from '@/errors/index.js';
+import type { PlanInterruptValue, PlanOutput } from '@/types/planning.js';
+import type { StreamOutput } from '@/types/streaming.js';
+import { createStreamProcessor } from '@/utils/stream-processor.js';
 import {
 	WorkflowBuilderAgent,
 	type WorkflowBuilderAgentConfig,
 	type ChatPayload,
-} from '@/workflow-builder-agent';
+} from '@/workflow-builder-agent.js';
 
 describe('WorkflowBuilderAgent', () => {
 	let agent: WorkflowBuilderAgent;

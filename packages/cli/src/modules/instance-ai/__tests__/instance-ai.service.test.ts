@@ -161,7 +161,7 @@ import {
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
 
-import { InstanceAiService } from '../instance-ai.service';
+import { InstanceAiService } from '../instance-ai.service.js';
 
 type ServiceInternals = {
 	pendingCheckpointReentries: Map<string, Set<string>>;

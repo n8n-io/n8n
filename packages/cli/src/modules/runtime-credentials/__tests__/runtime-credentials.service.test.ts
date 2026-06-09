@@ -3,9 +3,9 @@ import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import type { RuntimeCredentialsConfig } from '../runtime-credentials.config';
-import type { SensitiveFieldRules } from '../runtime-credentials.schemas';
-import { RuntimeCredentialsService } from '../runtime-credentials.service';
+import type { RuntimeCredentialsConfig } from '../runtime-credentials.config.js';
+import type { SensitiveFieldRules } from '../runtime-credentials.schemas.js';
+import { RuntimeCredentialsService } from '../runtime-credentials.service.js';
 
 const item = (json: IDataObject): INodeExecutionData => ({ json });
 

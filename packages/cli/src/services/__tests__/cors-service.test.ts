@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 
-import { CorsService } from '../cors-service';
+import { CorsService } from '../cors-service.js';
 
 describe('CorsService', () => {
 	let corsService: CorsService;

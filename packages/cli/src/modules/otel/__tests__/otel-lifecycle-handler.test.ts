@@ -9,12 +9,16 @@ import { mock } from 'jest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
 
-import type { OwnershipService } from '@/services/ownership.service';
+import type { OwnershipService } from '@/services/ownership.service.js';
 
-import type { ExecutionLevelTracer } from '../execution-level-tracer';
-import { OtelLifecycleHandler, countInputItems, countOutputItems } from '../otel-lifecycle-handler';
-import { OtelConfig } from '../otel.config';
-import type { TracingContext, TraceContextService } from '../tracing-context';
+import type { ExecutionLevelTracer } from '../execution-level-tracer.js';
+import {
+	OtelLifecycleHandler,
+	countInputItems,
+	countOutputItems,
+} from '../otel-lifecycle-handler.js';
+import { OtelConfig } from '../otel.config.js';
+import type { TracingContext, TraceContextService } from '../tracing-context.js';
 
 const emptyExecutionData = {
 	resultData: { runData: {}, pinData: {} },

@@ -3,13 +3,13 @@ import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
-import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
+import type { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service.js';
+import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config.js';
+import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service.js';
+import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity.js';
 
-import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
-import { CommunityPackagesInstanceSettingsLoader } from '../loaders/community-packages.instance-settings-loader';
+import { InstanceBootstrappingError } from '../instance-bootstrapping.error.js';
+import { CommunityPackagesInstanceSettingsLoader } from '../loaders/community-packages.instance-settings-loader.js';
 
 type Vetted = {
 	npmVersion: string;

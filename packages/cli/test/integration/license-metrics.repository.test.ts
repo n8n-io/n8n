@@ -2,8 +2,8 @@ import { createManyActiveWorkflows, createManyWorkflows, testDb } from '@n8n/bac
 import { StatisticsNames, LicenseMetricsRepository, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createManyCredentials } from './shared/db/credentials';
-import { createAdmin, createMember, createOwner, createUser } from './shared/db/users';
+import { createManyCredentials } from './shared/db/credentials.js';
+import { createAdmin, createMember, createOwner, createUser } from './shared/db/users.js';
 
 describe('LicenseMetricsRepository', () => {
 	let licenseMetricsRepository: LicenseMetricsRepository;

@@ -14,13 +14,13 @@ import type {
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
-import type { AgentExecutionService } from '../../agent-execution.service';
-import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
+import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service.js';
+import type { AgentExecutionService } from '../../agent-execution.service.js';
+import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner.js';
 import type {
 	ResolvedSubAgentRuntimeSource,
 	SubAgentSourceResolver,
-} from '../sub-agent-source-resolver';
+} from '../sub-agent-source-resolver.js';
 
 const projectId = 'project-1';
 const userId = 'user-1';

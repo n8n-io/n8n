@@ -3,7 +3,7 @@ import type { StorageConfig } from 'n8n-core';
 import { NodeOperationError } from 'n8n-workflow';
 import type { INode, WorkflowExecuteMode } from 'n8n-workflow';
 
-import { FailedRunFactory } from '../failed-run-factory';
+import { FailedRunFactory } from '../failed-run-factory.js';
 
 describe('FailedRunFactory', () => {
 	const storageConfig = mock<StorageConfig>({ mode: 'database' });

@@ -21,11 +21,11 @@ import { captor, mock } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee';
-import { SourceControlExportService } from '../source-control-export.service.ee';
-import type { SourceControlScopedService } from '../source-control-scoped.service';
-import { SourceControlContext } from '../types/source-control-context';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
+import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee.js';
+import { SourceControlExportService } from '../source-control-export.service.ee.js';
+import type { SourceControlScopedService } from '../source-control-scoped.service.js';
+import { SourceControlContext } from '../types/source-control-context.js';
 
 describe('SourceControlExportService', () => {
 	const cipher = Container.get(Cipher);

@@ -4,9 +4,9 @@ import type { ErrorReporter } from 'n8n-core';
 import { CHAT_NODE_TYPE } from 'n8n-workflow';
 import { WebSocket } from 'ws';
 
-import type { ChatExecutionManager } from '../chat-execution-manager';
-import { ChatService } from '../chat-service';
-import type { ChatRequest } from '../chat-service.types';
+import type { ChatExecutionManager } from '../chat-execution-manager.js';
+import { ChatService } from '../chat-service.js';
+import type { ChatRequest } from '../chat-service.types.js';
 
 describe('ChatService', () => {
 	let mockExecutionManager: ReturnType<typeof mock<ChatExecutionManager>>;

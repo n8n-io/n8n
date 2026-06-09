@@ -22,16 +22,16 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NodeTypes } from '@/node-types.js';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
 
-import { WorkflowLoaderService } from './workflow-loader.service';
+import { WorkflowLoaderService } from './workflow-loader.service.js';
 import { SharedWorkflowRepository, User } from '@n8n/db';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
 import { Logger } from '@n8n/backend-common';
-import { withExpressionIsolate } from '@/utils';
+import { withExpressionIsolate } from '@/utils.js';
 
 type LocalResourceMappingMethod = (
 	this: ILocalLoadOptionsFunctions,

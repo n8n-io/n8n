@@ -1,7 +1,7 @@
-export { AssistantHandler } from './assistant-handler';
+export { AssistantHandler } from './assistant-handler.js';
 export type {
 	AssistantContext,
 	AssistantResult,
 	AssistantSdkClient,
 	StreamWriter,
-} from './types';
+} from './types.js';

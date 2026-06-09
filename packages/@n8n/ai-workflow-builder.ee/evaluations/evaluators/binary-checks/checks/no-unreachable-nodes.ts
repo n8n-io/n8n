@@ -1,9 +1,9 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getChildNodes } from 'n8n-workflow';
 
-import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
+import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map.js';
 
-import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types';
+import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types.js';
 
 const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
 

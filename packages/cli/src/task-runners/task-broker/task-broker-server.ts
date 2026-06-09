@@ -18,10 +18,10 @@ import type { AddressInfo, Socket } from 'node:net';
 import { parse as parseUrl } from 'node:url';
 import { type WebSocket, Server as WSServer } from 'ws';
 
-import { bodyParser, rawBodyReader } from '@/middlewares';
-import { send } from '@/response-helper';
-import { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
-import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import { bodyParser, rawBodyReader } from '@/middlewares/index.js';
+import { send } from '@/response-helper.js';
+import { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller.js';
+import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server.js';
 
 type IncomingUpgradeRequest = IncomingMessage & { url: string; ws?: WebSocket };
 

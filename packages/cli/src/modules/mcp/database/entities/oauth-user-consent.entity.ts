@@ -1,7 +1,7 @@
 import { User } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Unique } from '@n8n/typeorm';
 
-import { OAuthClient } from './oauth-client.entity';
+import { OAuthClient } from './oauth-client.entity.js';
 
 @Entity('oauth_user_consents')
 @Unique(['userId', 'clientId'])

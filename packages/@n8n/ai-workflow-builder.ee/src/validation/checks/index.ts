@@ -1,9 +1,9 @@
-export { validateAgentPrompt } from './agent-prompt';
-export { validateConnections } from './connections';
-export { validateCredentials } from './credentials';
-export { validateFromAi } from './from-ai';
-export { validateNodes } from './nodes';
-export { validateParameters } from './parameters';
-export { validateTools } from './tools';
-export { validateTrigger, type TriggerEvaluationResult } from './trigger';
-export { validateWebhookResponse } from './node-usage';
+export { validateAgentPrompt } from './agent-prompt.js';
+export { validateConnections } from './connections.js';
+export { validateCredentials } from './credentials.js';
+export { validateFromAi } from './from-ai.js';
+export { validateNodes } from './nodes.js';
+export { validateParameters } from './parameters.js';
+export { validateTools } from './tools.js';
+export { validateTrigger, type TriggerEvaluationResult } from './trigger.js';
+export { validateWebhookResponse } from './node-usage/index.js';

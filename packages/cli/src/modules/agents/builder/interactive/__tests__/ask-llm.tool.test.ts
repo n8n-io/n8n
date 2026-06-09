@@ -1,4 +1,4 @@
-import { buildAskLlmTool } from '../ask-llm.tool';
+import { buildAskLlmTool } from '../ask-llm.tool.js';
 
 interface TestCtx {
 	resumeData?: unknown;

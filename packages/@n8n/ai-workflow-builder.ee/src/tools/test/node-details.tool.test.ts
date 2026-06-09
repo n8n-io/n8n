@@ -17,9 +17,9 @@ import {
 	type ParsedToolContent,
 	createNodeType,
 	createNode,
-} from '../../../test/test-utils';
-import type { WorkflowMetadata } from '../../types/tools';
-import { createNodeDetailsTool } from '../node-details.tool';
+} from '../../../test/test-utils.js';
+import type { WorkflowMetadata } from '../../types/tools.js';
+import { createNodeDetailsTool } from '../node-details.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

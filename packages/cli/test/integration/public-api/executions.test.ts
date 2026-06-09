@@ -17,17 +17,17 @@ import {
 	createExecution,
 	createManyExecutions,
 	createSuccessfulExecution,
-} from '../shared/db/executions';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
+} from '../shared/db/executions.js';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users.js';
+import type { SuperAgentTest } from '../shared/types.js';
+import * as utils from '../shared/utils//index.js';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { ExecutionService } from '@/executions/execution.service';
-import { Telemetry } from '@/telemetry';
-import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { ExecutionService } from '@/executions/execution.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error.js';
+import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error.js';
+import { ConflictError } from '@/errors/response-errors/conflict.error.js';
 
 let owner: User;
 let user1: User;

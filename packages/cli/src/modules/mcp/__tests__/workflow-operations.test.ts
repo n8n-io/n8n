@@ -4,7 +4,7 @@ import {
 	applyOperations,
 	partialUpdateOperationSchema,
 	type PartialUpdateOperation,
-} from '../tools/workflow-builder/workflow-operations';
+} from '../tools/workflow-builder/workflow-operations.js';
 
 const makeNode = (overrides: Partial<INode> = {}): INode => ({
 	id: 'node-id',

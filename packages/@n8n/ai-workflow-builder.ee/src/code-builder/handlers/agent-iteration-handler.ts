@@ -10,10 +10,10 @@ import type { BaseChatModelCallOptions } from '@langchain/core/language_models/c
 import type { BaseMessage, AIMessage } from '@langchain/core/messages';
 import type { Runnable } from '@langchain/core/runnables';
 
-import type { StreamOutput, AgentMessageChunk } from '../../types/streaming';
-import { applySubgraphCacheMarkers } from '../../utils/cache-control/helpers';
-import type { TokenUsage } from '../types';
-import { extractTextContent, extractThinkingContent } from '../utils/content-extractors';
+import type { StreamOutput, AgentMessageChunk } from '../../types/streaming.js';
+import { applySubgraphCacheMarkers } from '../../utils/cache-control/helpers.js';
+import type { TokenUsage } from '../types.js';
+import { extractTextContent, extractThinkingContent } from '../utils/content-extractors.js';
 
 /** Type guard for response metadata with usage info */
 interface ResponseMetadataWithUsage {

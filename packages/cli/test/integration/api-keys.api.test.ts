@@ -9,7 +9,7 @@ import {
 	getOwnerOnlyApiKeyScopes,
 	type ApiKeyScope,
 } from '@n8n/permissions';
-import { PublicApiKeyService } from '@/services/public-api-key.service';
+import { PublicApiKeyService } from '@/services/public-api-key.service.js';
 
 import {
 	createAdmin,
@@ -17,9 +17,9 @@ import {
 	createOwnerWithApiKey,
 	createUser,
 	createUserShell,
-} from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils/';
+} from './shared/db/users.js';
+import type { SuperAgentTest } from './shared/types.js';
+import * as utils from './shared/utils//index.js';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;

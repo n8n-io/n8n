@@ -6,7 +6,7 @@ import { BINARY_ENCODING, OperationalError } from 'n8n-workflow';
 import assert from 'node:assert';
 import { Readable } from 'node:stream';
 
-import { extractWebhookLastNodeResponse } from '../webhook-last-node-response-extractor';
+import { extractWebhookLastNodeResponse } from '../webhook-last-node-response-extractor.js';
 
 describe('extractWebhookLastNodeResponse', () => {
 	let lastNodeTaskData: MockProxy<ITaskData>;

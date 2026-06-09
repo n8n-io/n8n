@@ -9,10 +9,10 @@ import {
 	getCommunityNodesMetadata,
 	StrapiCommunityNodeType,
 	type CommunityNodesMetadata,
-} from './community-node-types-utils';
-import { CommunityPackagesConfig } from './community-packages.config';
-import { CommunityPackagesService } from './community-packages.service';
-import { buildStrapiUpdateQuery } from '@/utils/strapi-utils';
+} from './community-node-types-utils.js';
+import { CommunityPackagesConfig } from './community-packages.config.js';
+import { CommunityPackagesService } from './community-packages.service.js';
+import { buildStrapiUpdateQuery } from '@/utils/strapi-utils.js';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 const RETRY_INTERVAL = 5 * 60 * 1000;

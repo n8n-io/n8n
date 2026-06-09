@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 import {
 	OAUTH_BINDING_COOKIE_NAME,
 	OAuthBrowserBindingService,
-} from '@/oauth/oauth-browser-binding.service';
+} from '@/oauth/oauth-browser-binding.service.js';
 
 const makeConfig = (
 	overrides: Partial<{

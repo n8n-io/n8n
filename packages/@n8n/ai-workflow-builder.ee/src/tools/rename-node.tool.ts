@@ -2,14 +2,14 @@ import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import { z } from 'zod';
 
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor.js';
 
-import { ValidationError } from '../errors';
-import type { RenameNodeOutput } from '../types/tools';
-import { createProgressReporter, reportProgress } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getCurrentWorkflow, getWorkflowState, renameNodeInWorkflow } from './helpers/state';
-import { createNodeNotFoundError, validateNodeExists } from './helpers/validation';
+import { ValidationError } from '../errors/index.js';
+import type { RenameNodeOutput } from '../types/tools.js';
+import { createProgressReporter, reportProgress } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
+import { getCurrentWorkflow, getWorkflowState, renameNodeInWorkflow } from './helpers/state.js';
+import { createNodeNotFoundError, validateNodeExists } from './helpers/validation.js';
 
 /**
  * Schema for renaming a node

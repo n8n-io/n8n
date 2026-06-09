@@ -6,7 +6,7 @@ import { mock } from 'jest-mock-extended';
 import { join as pathJoin } from 'path';
 import type { Transporter } from 'nodemailer';
 
-import { NodeMailer } from '@/user-management/email/node-mailer';
+import { NodeMailer } from '@/user-management/email/node-mailer.js';
 
 const templatesDir = pathJoin(__dirname, '../templates');
 

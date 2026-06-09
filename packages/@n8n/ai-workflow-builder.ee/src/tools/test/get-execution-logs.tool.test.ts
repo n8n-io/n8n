@@ -10,8 +10,8 @@ import {
 	createLargeTestData,
 	setupWorkflowStateWithContext,
 	type ParsedToolContent,
-} from '../../../test/test-utils';
-import { createGetExecutionLogsTool } from '../get-execution-logs.tool';
+} from '../../../test/test-utils.js';
+import { createGetExecutionLogsTool } from '../get-execution-logs.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

@@ -4,14 +4,14 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { WorkflowExecuteMode } from 'n8n-workflow';
 
-import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
-import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
-import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
-import { EventService } from '@/events/event.service';
-import { License } from '@/license';
-import { Telemetry } from '@/telemetry';
+import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error.js';
+import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error.js';
+import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper.js';
+import { EventService } from '@/events/event.service.js';
+import { License } from '@/license.js';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { ConcurrencyQueue } from './concurrency-queue';
+import { ConcurrencyQueue } from './concurrency-queue.js';
 
 export const CLOUD_TEMP_PRODUCTION_LIMIT = 999;
 export const CLOUD_TEMP_REPORTABLE_THRESHOLDS = [5, 10, 20, 50, 100, 200];

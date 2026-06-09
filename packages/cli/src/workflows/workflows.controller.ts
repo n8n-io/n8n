@@ -38,14 +38,14 @@ import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import axios, { type AxiosRequestConfig } from 'axios';
 import express from 'express';
 import { calculateWorkflowChecksum, ensureError } from 'n8n-workflow';
-import { CollaborationService } from '../collaboration/collaboration.service';
+import { CollaborationService } from '../collaboration/collaboration.service.js';
 
-import { WorkflowCreationService } from './workflow-creation.service';
-import { WorkflowExecutionService } from './workflow-execution.service';
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowRequest } from './workflow.request';
-import { WorkflowService } from './workflow.service';
-import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { WorkflowCreationService } from './workflow-creation.service.js';
+import { WorkflowExecutionService } from './workflow-execution.service.js';
+import { WorkflowFinderService } from './workflow-finder.service.js';
+import { WorkflowRequest } from './workflow.request.js';
+import { WorkflowService } from './workflow.service.js';
+import { EnterpriseWorkflowService } from './workflow.service.ee.js';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

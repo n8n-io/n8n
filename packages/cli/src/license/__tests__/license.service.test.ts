@@ -4,10 +4,10 @@ import type { TEntitlement } from '@n8n_io/license-sdk';
 import axios, { AxiosError } from 'axios';
 import { mock } from 'jest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { EventService } from '@/events/event.service';
-import type { License } from '@/license';
-import { LicenseErrors, LicenseService } from '@/license/license.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { EventService } from '@/events/event.service.js';
+import type { License } from '@/license.js';
+import { LicenseErrors, LicenseService } from '@/license/license.service.js';
 
 jest.mock('axios');
 

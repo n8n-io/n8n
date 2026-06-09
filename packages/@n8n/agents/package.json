@@ -44,6 +44,7 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
+    "typecheck:tsgo": "tsgo --noEmit",
     "build": "rimraf dist && tsc -p tsconfig.build.json",
     "build:unchecked": "rimraf dist && tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src examples",

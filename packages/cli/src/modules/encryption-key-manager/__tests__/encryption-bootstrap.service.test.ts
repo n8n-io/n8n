@@ -1,8 +1,8 @@
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EncryptionKeyProxy, InstanceSettings } from 'n8n-core';
 
-import { KeyManagerService } from '../key-manager.service';
-import { EncryptionBootstrapService } from '../encryption-bootstrap.service';
+import { KeyManagerService } from '../key-manager.service.js';
+import { EncryptionBootstrapService } from '../encryption-bootstrap.service.js';
 
 describe('EncryptionBootstrapService', () => {
 	const keyManager = mockInstance(KeyManagerService);

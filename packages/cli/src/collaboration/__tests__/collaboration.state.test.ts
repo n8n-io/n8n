@@ -1,8 +1,8 @@
 import { mock } from 'jest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
-import { CollaborationState } from '../collaboration.state';
+import { CollaborationState } from '../collaboration.state.js';
 
 const origDate = global.Date;
 

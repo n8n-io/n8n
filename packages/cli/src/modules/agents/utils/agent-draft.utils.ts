@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
-import type { Agent } from '../entities/agent.entity';
+import type { Agent } from '../entities/agent.entity.js';
 
 /**
  * Start a new draft if the agent is currently in sync with the published snapshot.

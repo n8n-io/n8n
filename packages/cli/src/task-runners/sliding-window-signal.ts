@@ -1,4 +1,4 @@
-import type { TypedEmitter } from '../typed-emitter';
+import type { TypedEmitter } from '../typed-emitter.js';
 
 export type SlidingWindowSignalOpts = {
 	windowSizeInMs?: number;

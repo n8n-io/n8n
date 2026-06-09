@@ -15,18 +15,18 @@ import {
 	createResponderAgent,
 	invokeResponderAgent,
 	type ResponderAgentType,
-} from './agents/responder.agent';
-import { SupervisorAgent } from './agents/supervisor.agent';
-import type { AssistantHandler } from './assistant';
+} from './agents/responder.agent.js';
+import { SupervisorAgent } from './agents/supervisor.agent.js';
+import type { AssistantHandler } from './assistant/index.js';
 import {
 	ASSISTANT_SDK_TIMEOUT_MS,
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 	MAX_DISCOVERY_ITERATIONS,
-} from './constants';
-import { ParentGraphState } from './parent-graph-state';
-import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
-import type { BaseSubgraph } from './subgraphs/subgraph-interface';
-import type { SsrfGuard } from './tools/utils/ssrf-guard';
+} from './constants.js';
+import { ParentGraphState } from './parent-graph-state.js';
+import { DiscoverySubgraph } from './subgraphs/discovery.subgraph.js';
+import type { BaseSubgraph } from './subgraphs/subgraph-interface.js';
+import type { SsrfGuard } from './tools/utils/ssrf-guard.js';
 import {
 	type CoordinationLogEntry,
 	type CoordinationMetadata,
@@ -34,10 +34,10 @@ import {
 	createAssistantMetadata,
 	createErrorMetadata,
 	createResponderMetadata,
-} from './types/coordination';
-import type { StreamChunk } from './types/streaming';
-import { getLastCompletedPhase, getNextPhaseFromLog } from './utils/coordination-log';
-import { sanitizeLlmErrorMessage } from './utils/error-sanitizer';
+} from './types/coordination.js';
+import type { StreamChunk } from './types/streaming.js';
+import { getLastCompletedPhase, getNextPhaseFromLog } from './utils/coordination-log.js';
+import { sanitizeLlmErrorMessage } from './utils/error-sanitizer.js';
 import {
 	determineStateAction,
 	handleClearErrorState,
@@ -45,9 +45,9 @@ import {
 	handleCompactMessages,
 	handleCreateWorkflowName,
 	handleDeleteMessages,
-} from './utils/state-modifier';
-import { extractUserRequest, filterOutSubgraphToolMessages } from './utils/subgraph-helpers';
-import type { BuilderFeatureFlags, StageLLMs } from './workflow-builder-agent';
+} from './utils/state-modifier.js';
+import { extractUserRequest, filterOutSubgraphToolMessages } from './utils/subgraph-helpers.js';
+import type { BuilderFeatureFlags, StageLLMs } from './workflow-builder-agent.js';
 
 /**
  * Type guard to check if a value is a coordination log entry-like object.

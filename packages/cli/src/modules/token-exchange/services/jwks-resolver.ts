@@ -7,8 +7,8 @@ import type { Algorithm } from 'jsonwebtoken';
 import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { JwksKeySource } from '../token-exchange.schemas';
-import { JwtAlgorithmSchema } from '../token-exchange.schemas';
+import type { JwksKeySource } from '../token-exchange.schemas.js';
+import { JwtAlgorithmSchema } from '../token-exchange.schemas.js';
 
 /**
  * Superset of jsonwebtoken's Algorithm that includes EdDSA.

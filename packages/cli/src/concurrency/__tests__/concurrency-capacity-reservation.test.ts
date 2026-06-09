@@ -3,9 +3,9 @@ import { mock } from 'jest-mock-extended';
 import type {
 	CapacityTarget,
 	ConcurrencyControlService,
-} from '@/concurrency/concurrency-control.service';
+} from '@/concurrency/concurrency-control.service.js';
 
-import { ConcurrencyCapacityReservation } from '../concurrency-capacity-reservation';
+import { ConcurrencyCapacityReservation } from '../concurrency-capacity-reservation.js';
 
 describe('ConcurrencyCapacityReservation', () => {
 	const concurrencyControlService = mock<ConcurrencyControlService>();

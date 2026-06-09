@@ -8,7 +8,7 @@ import type {
 import type { AgentDbMessage, AgentTreeSnapshot, MessageContent } from '@n8n/instance-ai';
 import { z } from 'zod';
 
-import { cleanStoredUserMessage } from './internal-messages';
+import { cleanStoredUserMessage } from './internal-messages.js';
 
 type RunSnapshots = AgentTreeSnapshot[];
 

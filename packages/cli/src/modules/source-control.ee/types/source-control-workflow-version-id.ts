@@ -1,4 +1,4 @@
-import type { StatusResourceOwner } from './resource-owner';
+import type { StatusResourceOwner } from './resource-owner.js';
 
 export interface SourceControlWorkflowVersionId {
 	id: string;

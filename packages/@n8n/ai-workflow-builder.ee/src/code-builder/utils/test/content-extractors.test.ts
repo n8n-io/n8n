@@ -9,7 +9,7 @@ import {
 	extractTextContent,
 	extractThinkingContent,
 	pushValidationFeedback,
-} from '../content-extractors';
+} from '../content-extractors.js';
 
 // Helper to create mock AIMessage (for extractText/Thinking tests that don't need instanceof)
 function createMockMessage(

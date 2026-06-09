@@ -6,16 +6,16 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
 
-import type { Agent } from '../../entities/agent.entity';
-import type { AgentRepository } from '../../repositories/agent.repository';
+import type { Agent } from '../../entities/agent.entity.js';
+import type { AgentRepository } from '../../repositories/agent.repository.js';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
-} from '../agent-chat-integration';
-import { ChatIntegrationService } from '../chat-integration.service';
+} from '../agent-chat-integration.js';
+import { ChatIntegrationService } from '../chat-integration.service.js';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 /**

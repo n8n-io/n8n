@@ -1,4 +1,4 @@
-import { sanitizeSkillsUsed } from '../tools/workflow-builder/skills-used';
+import { sanitizeSkillsUsed } from '../tools/workflow-builder/skills-used.js';
 
 describe('sanitizeSkillsUsed', () => {
 	test('returns undefined for non-array input', () => {

@@ -12,23 +12,23 @@ import type {
 import type {
 	CredentialResolutionResult,
 	CredentialResolveMetadata,
-} from '@/credentials/credential-resolution-provider.interface';
-import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { StaticAuthService } from '@/services/static-auth-service';
+} from '@/credentials/credential-resolution-provider.interface.js';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials.js';
+import { StaticAuthService } from '@/services/static-auth-service.js';
 
-import type { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
-import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
-import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config';
-import { CredentialResolutionError } from '../../errors/credential-resolution.error';
-import { CredentialResolverNotConfiguredError } from '../../errors/credential-resolver-not-configured.error';
-import { CredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
-import { MissingExecutionContextError } from '../../errors/missing-execution-context.error';
-import { IdentifierValidationError } from '../../credential-resolvers/identifiers/identifier-interface';
-import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
-import { DynamicCredentialService } from '../dynamic-credential.service';
-import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
-import { SYSTEM_RESOLVER_TYPE } from '../../constants';
+import type { DynamicCredentialResolver } from '../../database/entities/credential-resolver.js';
+import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository.js';
+import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config.js';
+import { CredentialResolutionError } from '../../errors/credential-resolution.error.js';
+import { CredentialResolverNotConfiguredError } from '../../errors/credential-resolver-not-configured.error.js';
+import { CredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error.js';
+import { MissingExecutionContextError } from '../../errors/missing-execution-context.error.js';
+import { IdentifierValidationError } from '../../credential-resolvers/identifiers/identifier-interface.js';
+import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service.js';
+import { DynamicCredentialService } from '../dynamic-credential.service.js';
+import type { ResolverConfigExpressionService } from '../resolver-config-expression.service.js';
+import { SYSTEM_RESOLVER_TYPE } from '../../constants.js';
 
 describe('DynamicCredentialService', () => {
 	let service: DynamicCredentialService;

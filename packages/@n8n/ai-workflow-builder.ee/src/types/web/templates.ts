@@ -1,4 +1,4 @@
-import type { SimpleWorkflow } from '../workflow';
+import type { SimpleWorkflow } from '../workflow.js';
 
 // retrieved from https://api.n8n.io/api/templates/categories
 export const categories = [

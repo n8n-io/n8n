@@ -1,14 +1,17 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
-import { createWorkflow } from './mock.utils';
-import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';
+import { createWorkflow } from './mock.utils.js';
+import {
+	getWorkflowDetails,
+	createWorkflowDetailsTool,
+} from '../tools/get-workflow-details.tool.js';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
-import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { CredentialsService } from '@/credentials/credentials.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { RoleService } from '@/services/role.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 import { v4 as uuid } from 'uuid';
 

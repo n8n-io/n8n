@@ -2,8 +2,8 @@ import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import nock from 'nock';
 
-import type { FirecrawlQuickConnect } from '../../quick-connect.config';
-import { FirecrawlHandler } from '../firecrawl.handler';
+import type { FirecrawlQuickConnect } from '../../quick-connect.config.js';
+import { FirecrawlHandler } from '../firecrawl.handler.js';
 
 describe('FirecrawlHandler', () => {
 	let handler: FirecrawlHandler;

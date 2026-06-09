@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { ButtonStyle } from 'chat';
-import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
+import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes.js';
 
 export type IntegrationMessageTarget =
 	| {

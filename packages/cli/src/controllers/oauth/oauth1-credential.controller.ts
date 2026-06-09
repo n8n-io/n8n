@@ -3,10 +3,10 @@ import { Get, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 import { ensureError, jsonStringify } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
-import { OAuthRequest } from '@/requests';
+import { EventService } from '@/events/event.service.js';
+import { OAuthRequest } from '@/requests.js';
 
-import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
+import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service.js';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {

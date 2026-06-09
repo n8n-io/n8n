@@ -3,8 +3,8 @@ import type { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
-import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
-import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
+import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants.js';
+import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool.js';
 
 export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	name: string;

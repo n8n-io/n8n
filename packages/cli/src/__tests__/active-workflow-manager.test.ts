@@ -18,16 +18,16 @@ import type {
 
 import { createDeferredPromise, WorkflowActivationError } from 'n8n-workflow';
 
-import type { ActivationErrorsService } from '@/activation-errors.service';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import type { EventService } from '@/events/event.service';
-import type { ExecutionService } from '@/executions/execution.service';
-import type { NodeTypes } from '@/node-types';
-import type { Push } from '@/push';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import type { ActivationErrorsService } from '@/activation-errors.service.js';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { DuplicateExecutionError } from '@/errors/duplicate-execution.error.js';
+import type { EventService } from '@/events/event.service.js';
+import type { ExecutionService } from '@/executions/execution.service.js';
+import type { NodeTypes } from '@/node-types.js';
+import type { Push } from '@/push/index.js';
+import type { Publisher } from '@/scaling/pubsub/publisher.service.js';
+import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
+import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
 
 describe('ActiveWorkflowManager', () => {
 	let activeWorkflowManager: ActiveWorkflowManager;

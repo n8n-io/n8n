@@ -5,7 +5,7 @@ import type { Request } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
 
 // eslint-disable-next-line import-x/order
-import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
+import { McpServerMiddlewareService } from '../mcp-server-middleware.service.js';
 
 const mockAuthMiddleware = jest.fn().mockImplementation(async (_req, _res, next) => {
 	next();
@@ -16,11 +16,11 @@ mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware)
 // We need to mock the service before importing the controller as it's used in the middleware
 Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
-import { McpController, type FlushableResponse } from '../mcp.controller';
-import { McpService } from '../mcp.service';
-import { McpSettingsService } from '../mcp.settings.service';
-import { Telemetry } from '@/telemetry';
-import type { UserConnectedToMCPEventPayload } from '../mcp.types';
+import { McpController, type FlushableResponse } from '../mcp.controller.js';
+import { McpService } from '../mcp.service.js';
+import { McpSettingsService } from '../mcp.settings.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import type { UserConnectedToMCPEventPayload } from '../mcp.types.js';
 
 const mockHandleRequest = jest.fn().mockResolvedValue(undefined);
 jest.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {

@@ -9,19 +9,19 @@ import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
 
-import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util';
-import config from '@/config';
-import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
-import { ExternalHooks } from '@/external-hooks';
-import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
-import { send, sendErrorResponse } from '@/response-helper';
-import { createHandlebarsEngine } from '@/utils/handlebars.util';
-import { LiveWebhooks } from '@/webhooks/live-webhooks';
-import { TestWebhooks } from '@/webhooks/test-webhooks';
-import { WaitingForms } from '@/webhooks/waiting-forms';
-import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
-import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
+import { resolveBackendHealthEndpointPath } from './utils/health-endpoint.util.js';
+import config from '@/config/index.js';
+import { N8N_VERSION, TEMPLATES_DIR } from '@/constants.js';
+import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares/index.js';
+import { send, sendErrorResponse } from '@/response-helper.js';
+import { createHandlebarsEngine } from '@/utils/handlebars.util.js';
+import { LiveWebhooks } from '@/webhooks/live-webhooks.js';
+import { TestWebhooks } from '@/webhooks/test-webhooks.js';
+import { WaitingForms } from '@/webhooks/waiting-forms.js';
+import { WaitingWebhooks } from '@/webhooks/waiting-webhooks.js';
+import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler.js';
 
 @Service()
 export abstract class AbstractServer {

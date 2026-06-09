@@ -1,7 +1,7 @@
 import { SecretsManager } from '@aws-sdk/client-secrets-manager';
 import { mock } from 'jest-mock-extended';
 
-import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets-manager';
+import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets-manager.js';
 
 jest.mock('@aws-sdk/client-secrets-manager');
 

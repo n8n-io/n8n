@@ -5,7 +5,7 @@ import type { IConnections, INode } from 'n8n-workflow';
 import {
 	serializedWorkflowSchema,
 	type SerializedWorkflow,
-} from '../../spec/serialized/workflow.schema';
+} from '../../spec/serialized/workflow.schema.js';
 
 /** Fields restored from package workflow.json; the target instance assigns the rest. */
 type WorkflowPackageContent = Pick<

@@ -6,7 +6,7 @@ import type {
 	Category,
 	TemplateFetchResponse,
 	WorkflowMetadata,
-} from '@/types';
+} from '@/types/index.js';
 
 /**
  * Base URL for n8n template API

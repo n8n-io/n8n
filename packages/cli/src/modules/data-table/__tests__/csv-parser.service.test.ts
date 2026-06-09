@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-import { CsvParserService } from '../csv-parser.service';
+import { CsvParserService } from '../csv-parser.service.js';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);

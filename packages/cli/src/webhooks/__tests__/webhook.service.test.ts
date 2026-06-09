@@ -11,10 +11,10 @@ import type {
 import { Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import config from '@/config';
-import type { NodeTypes } from '@/node-types';
-import type { CacheService } from '@/services/cache/cache.service';
-import { WebhookService } from '@/webhooks/webhook.service';
+import config from '@/config/index.js';
+import type { NodeTypes } from '@/node-types.js';
+import type { CacheService } from '@/services/cache/cache.service.js';
+import { WebhookService } from '@/webhooks/webhook.service.js';
 
 const createWebhook = (method: string, path: string, webhookId?: string, pathSegments?: number) =>
 	Object.assign(new WebhookEntity(), {

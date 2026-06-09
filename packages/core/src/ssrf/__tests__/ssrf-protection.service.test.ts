@@ -3,9 +3,9 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import type { LookupAddress } from 'node:dns';
 import { mock } from 'vitest-mock-extended';
 
-import type { DnsResolver } from '../dns-resolver';
-import { SsrfBlockedIpError } from '../ssrf-blocked-ip.error';
-import { SsrfProtectionService } from '../ssrf-protection.service';
+import type { DnsResolver } from '../dns-resolver.js';
+import { SsrfBlockedIpError } from '../ssrf-blocked-ip.error.js';
+import { SsrfProtectionService } from '../ssrf-protection.service.js';
 
 function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtectionConfig {
 	const config = new SsrfProtectionConfig();

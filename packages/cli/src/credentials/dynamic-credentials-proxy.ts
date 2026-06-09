@@ -14,11 +14,11 @@ import type {
 	CredentialResolutionResult,
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
-} from './credential-resolution-provider.interface';
+} from './credential-resolution-provider.interface.js';
 import type {
 	CredentialStoreMetadata,
 	IDynamicCredentialStorageProvider,
-} from './dynamic-credential-storage.interface';
+} from './dynamic-credential-storage.interface.js';
 
 @Service()
 export class DynamicCredentialsProxy

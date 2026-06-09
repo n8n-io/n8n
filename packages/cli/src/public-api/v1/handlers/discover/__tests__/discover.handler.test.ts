@@ -4,11 +4,11 @@ import { ApiKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error.js';
 
-import * as discoverService from '../discover.service';
+import * as discoverService from '../discover.service.js';
 
-const handler = require('../discover.handler');
+const handler = require('../discover.handler.js');
 
 describe('Discover Handler', () => {
 	let mockApiKeyRepository: jest.Mocked<ApiKeyRepository>;

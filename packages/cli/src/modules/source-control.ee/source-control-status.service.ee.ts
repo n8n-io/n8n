@@ -7,8 +7,8 @@ import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { UserError } from 'n8n-workflow';
 
-import { SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER } from './constants';
-import { SourceControlGitService } from './source-control-git.service.ee';
+import { SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER } from './constants.js';
+import { SourceControlGitService } from './source-control-git.service.ee.js';
 import {
 	hasOwnerChanged,
 	getDataTableExportPath,
@@ -20,30 +20,30 @@ import {
 	isWorkflowModified,
 	isDataTableModified,
 	areSameCredentials,
-} from './source-control-helper.ee';
-import { SourceControlImportService } from './source-control-import.service.ee';
-import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import { SourceControlContextFactory } from './source-control-context.factory';
-import type { StatusExportableCredential } from './types/exportable-credential';
+} from './source-control-helper.ee.js';
+import { SourceControlImportService } from './source-control-import.service.ee.js';
+import { SourceControlPreferencesService } from './source-control-preferences.service.ee.js';
+import { SourceControlContextFactory } from './source-control-context.factory.js';
+import type { StatusExportableCredential } from './types/exportable-credential.js';
 import type {
 	DataTableResourceOwner,
 	ExportableDataTable,
 	StatusExportableDataTable,
-} from './types/exportable-data-table';
-import type { ExportableFolder, FolderPathNode } from './types/exportable-folders';
-import type { ExportableProjectWithFileName } from './types/exportable-project';
-import { ExportableVariable } from './types/exportable-variable';
-import type { StatusResourceOwner } from './types/resource-owner';
-import { SourceControlContext } from './types/source-control-context';
+} from './types/exportable-data-table.js';
+import type { ExportableFolder, FolderPathNode } from './types/exportable-folders.js';
+import type { ExportableProjectWithFileName } from './types/exportable-project.js';
+import { ExportableVariable } from './types/exportable-variable.js';
+import type { StatusResourceOwner } from './types/resource-owner.js';
+import { SourceControlContext } from './types/source-control-context.js';
 import type {
 	SourceControlGetStatus,
 	SourceControlGetStatusVerboseResult,
-} from './types/source-control-get-status';
-import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+} from './types/source-control-get-status.js';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id.js';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { EventService } from '@/events/event.service.js';
+import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags.js';
 
 @Service()
 export class SourceControlStatusService {

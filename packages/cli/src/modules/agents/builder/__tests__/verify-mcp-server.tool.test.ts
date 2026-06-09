@@ -1,9 +1,9 @@
 import type { CredentialProvider, McpClient } from '@n8n/agents';
 import { mock } from 'jest-mock-extended';
 
-import type { OauthService } from '@/oauth/oauth.service';
+import type { OauthService } from '@/oauth/oauth.service.js';
 
-import { buildVerifyMcpServerTool } from '../verify-mcp-server.tool';
+import { buildVerifyMcpServerTool } from '../verify-mcp-server.tool.js';
 
 // ---------------------------------------------------------------------------
 // Module mocks

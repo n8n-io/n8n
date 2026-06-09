@@ -1,5 +1,5 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
-import { buildAskCredentialTool } from '../ask-credential.tool';
+import { buildAskCredentialTool } from '../ask-credential.tool.js';
 
 interface TestCtx {
 	resumeData?: unknown;

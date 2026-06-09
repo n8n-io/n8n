@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type {
 	AgentKnowledgeCommandRequest,
 	AgentKnowledgeCommandResult,
-} from '../../agent-knowledge-command.service';
+} from '../../agent-knowledge-command.service.js';
 
 export const DEFAULT_SEARCH_HEAD_LIMIT = 250;
 

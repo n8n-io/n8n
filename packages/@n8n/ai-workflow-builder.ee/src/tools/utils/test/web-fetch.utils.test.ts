@@ -5,14 +5,14 @@ import type { LookupFunction } from 'node:net';
 import { Readable } from 'node:stream';
 import type { Mock } from 'vitest';
 
-import { WEB_FETCH_MAX_BYTES } from '../../../constants';
-import { CrossHostRedirectError, type SsrfGuard } from '../ssrf-guard';
+import { WEB_FETCH_MAX_BYTES } from '../../../constants.js';
+import { CrossHostRedirectError, type SsrfGuard } from '../ssrf-guard.js';
 import {
 	normalizeHost,
 	fetchUrl,
 	extractReadableContent,
 	isUrlInUserMessages,
-} from '../web-fetch.utils';
+} from '../web-fetch.utils.js';
 
 vi.mock('axios', () => ({ __esModule: true, default: { get: vi.fn() } }));
 

@@ -2,7 +2,7 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import path from 'path';
 import RefParser from '@apidevtools/json-schema-ref-parser';
 
-import type { ScopeTaggedMiddleware } from '../../shared/middlewares/global.middleware';
+import type { ScopeTaggedMiddleware } from '../../shared/middlewares/global.middleware.js';
 
 const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'] as const;
 

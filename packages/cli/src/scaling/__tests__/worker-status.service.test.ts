@@ -1,8 +1,8 @@
 import type { WorkerStatus } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 
-import type { Push } from '@/push';
-import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
+import type { Push } from '@/push/index.js';
+import { WorkerStatusService } from '@/scaling/worker-status.service.ee.js';
 
 describe('WorkerStatusService', () => {
 	let workerStatusService: WorkerStatusService;

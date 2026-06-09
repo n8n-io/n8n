@@ -7,13 +7,13 @@ import type { Server, ServerResponse } from 'node:http';
 import type { Socket } from 'node:net';
 import { type WebSocket, Server as WSServer } from 'ws';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Push } from '@/push';
-import { SSEPush } from '@/push/sse.push';
-import type { WebSocketPushRequest, SSEPushRequest, PushResponse } from '@/push/types';
-import { WebSocketPush } from '@/push/websocket.push';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { Push } from '@/push/index.js';
+import { SSEPush } from '@/push/sse.push.js';
+import type { WebSocketPushRequest, SSEPushRequest, PushResponse } from '@/push/types.js';
+import { WebSocketPush } from '@/push/websocket.push.js';
 
-import type { PushConfig } from '../push.config';
+import type { PushConfig } from '../push.config.js';
 
 jest.mock('ws', () => ({
 	Server: jest.fn(),

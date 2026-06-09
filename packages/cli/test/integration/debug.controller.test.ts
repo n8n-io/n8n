@@ -3,12 +3,12 @@ import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
+import { ActiveWorkflowManager } from '@/active-workflow-manager.js';
+import { MultiMainSetup } from '@/scaling/multi-main-setup.ee.js';
 
-import { createOwner } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import { setupTestServer } from './shared/utils';
+import { createOwner } from './shared/db/users.js';
+import type { SuperAgentTest } from './shared/types.js';
+import { setupTestServer } from './shared/utils/index.js';
 
 describe('DebugController', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);

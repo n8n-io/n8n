@@ -1,7 +1,7 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { buildCodeBuilderPrompt } from '../../code-builder/prompts/index';
-import type { PlanOutput } from '../../types/planning';
+import { buildCodeBuilderPrompt } from '../../code-builder/prompts/index.js';
+import type { PlanOutput } from '../../types/planning.js';
 
 describe('buildCodeBuilderPrompt', () => {
 	describe('extended thinking compatibility', () => {

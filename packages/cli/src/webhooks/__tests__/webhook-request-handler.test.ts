@@ -6,14 +6,14 @@ import { isWebhookHtmlSandboxingDisabled, getHtmlSandboxCSP } from 'n8n-core';
 import { OperationalError, randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error.js';
+import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler.js';
 import type {
 	IWebhookManager,
 	IWebhookResponseCallbackData,
 	WebhookOptionsRequest,
 	WebhookRequest,
-} from '@/webhooks/webhook.types';
+} from '@/webhooks/webhook.types.js';
 
 jest.mock('n8n-core', () => ({
 	...jest.requireActual('n8n-core'),

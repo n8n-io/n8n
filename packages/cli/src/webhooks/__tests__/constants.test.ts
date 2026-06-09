@@ -1,6 +1,6 @@
 import { CHAT_TRIGGER_NODE_TYPE, FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import { authAllowlistedNodes } from '../constants';
+import { authAllowlistedNodes } from '../constants.js';
 
 describe('authAllowlistedNodes', () => {
 	it('includes the Chat Trigger', () => {

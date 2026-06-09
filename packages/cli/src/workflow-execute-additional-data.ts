@@ -41,14 +41,14 @@ import type {
 	IRunExecutionData,
 } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/active-executions';
-import { CredentialsHelper } from '@/credentials-helper';
-import { EventService } from '@/events/event.service';
-import type { AiEventPayload } from '@/events/maps/ai.event-map';
-import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { isManualOrChatExecution } from '@/executions/execution.utils';
-import { FailedRunFactory } from '@/executions/failed-run-factory';
+import { ActiveExecutions } from '@/active-executions.js';
+import { CredentialsHelper } from '@/credentials-helper.js';
+import { EventService } from '@/events/event.service.js';
+import type { AiEventPayload } from '@/events/maps/ai.event-map.js';
+import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks.js';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { isManualOrChatExecution } from '@/executions/execution.utils.js';
+import { FailedRunFactory } from '@/executions/failed-run-factory.js';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
@@ -62,7 +62,7 @@ import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
+import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service.js';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -332,7 +332,7 @@ export async function executeAgent(
 	// project to derive both `userId` and `projectId` so the agent runs under
 	// the workflow owner's identity, mirroring the projectId backfill below.
 	if ((!userId || !projectId) && additionalData.workflowId) {
-		const { OwnershipService } = await import('@/services/ownership.service');
+		const { OwnershipService } = await import('@/services/ownership.service.js');
 		const ownershipService = Container.get(OwnershipService);
 		const project = await ownershipService.getWorkflowProjectCached(additionalData.workflowId);
 		projectId = projectId ?? project.id;
@@ -351,7 +351,7 @@ export async function executeAgent(
 		);
 	}
 
-	const { AgentsService } = await import('@/modules/agents/agents.service');
+	const { AgentsService } = await import('@/modules/agents/agents.service.js');
 	const agentsService = Container.get(AgentsService);
 
 	const useDraftVersion = isManualOrChatExecution(executionMode);
@@ -370,7 +370,7 @@ export async function executeAgent(
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
-	const { AgentsService } = await import('@/modules/agents/agents.service');
+	const { AgentsService } = await import('@/modules/agents/agents.service.js');
 	const agentsService = Container.get(AgentsService);
 	// Only published agents are runnable from a published workflow.
 	// But unpublished agents may be called from manual workflow executions (e.g. during development), so they are included in the list as well.

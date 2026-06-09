@@ -1,4 +1,4 @@
-import { describeStructuredOutputError } from '../structured-output-error';
+import { describeStructuredOutputError } from '../structured-output-error.js';
 
 describe('describeStructuredOutputError', () => {
 	it.each([

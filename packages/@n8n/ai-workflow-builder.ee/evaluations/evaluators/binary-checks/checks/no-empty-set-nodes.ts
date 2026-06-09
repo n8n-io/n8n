@@ -1,4 +1,4 @@
-import type { BinaryCheck, SimpleWorkflow } from '../types';
+import type { BinaryCheck, SimpleWorkflow } from '../types.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);

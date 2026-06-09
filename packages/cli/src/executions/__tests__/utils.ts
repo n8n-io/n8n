@@ -1,6 +1,6 @@
-import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
-import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
-import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow';
+import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes/index.js';
+import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node.js';
+import { EventMessageWorkflow } from '@/eventbus/event-message-classes/event-message-workflow.js';
 
 export const setupMessages = (executionId: string, workflowName: string): EventMessage[] => {
 	return [

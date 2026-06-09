@@ -1,4 +1,4 @@
-import { createLlmCheck } from './create-llm-check';
+import { createLlmCheck } from './create-llm-check.js';
 
 export const responseMatchesWorkflowChanges = createLlmCheck({
 	name: 'response_matches_workflow_changes',

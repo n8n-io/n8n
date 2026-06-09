@@ -1,11 +1,11 @@
 import type { Role } from '@n8n/db';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
 import {
 	assertAndNormalizeProjectIdsForRuleType,
 	assertRoleCompatibleWithMappingType,
-} from '../role-mapping-rule.validation';
+} from '../role-mapping-rule.validation.js';
 
 const globalRole = { roleType: 'global' } as Role;
 const projectRole = { roleType: 'project' } as Role;

@@ -1,4 +1,4 @@
-import { classifyHttpError } from '@/errors/http-error-classifier';
+import { classifyHttpError } from '@/errors/http-error-classifier.js';
 import {
 	serializeInternalRestError,
 	serializePublicApiError,

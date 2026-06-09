@@ -1,5 +1,5 @@
-import { toCredentialResolutionFailedError } from './credential-resolution-error';
-import type { CredentialMissingModeContext, CredentialResolution } from './credential.types';
+import { toCredentialResolutionFailedError } from './credential-resolution-error.js';
+import type { CredentialMissingModeContext, CredentialResolution } from './credential.types.js';
 
 export abstract class CredentialMissingModeHandler {
 	abstract handle(

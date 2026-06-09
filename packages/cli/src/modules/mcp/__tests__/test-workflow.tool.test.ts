@@ -10,16 +10,16 @@ import {
 
 jest.mock('@n8n/workflow-sdk', () => jest.requireActual('@n8n/workflow-sdk'));
 
-import { createWorkflow } from './mock.utils';
-import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
-import { createTestWorkflowTool, testWorkflow } from '../tools/test-workflow.tool';
+import { createWorkflow } from './mock.utils.js';
+import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors.js';
+import { createTestWorkflowTool, testWorkflow } from '../tools/test-workflow.tool.js';
 
-import { ActiveExecutions } from '@/active-executions';
-import { NodeTypes } from '@/node-types';
-import { McpService } from '@/modules/mcp/mcp.service';
-import { Telemetry } from '@/telemetry';
-import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ActiveExecutions } from '@/active-executions.js';
+import { NodeTypes } from '@/node-types.js';
+import { McpService } from '@/modules/mcp/mcp.service.js';
+import { Telemetry } from '@/telemetry/index.js';
+import { WorkflowRunner } from '@/workflow-runner.js';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
 // Helper to create a mock NodeTypes that recognizes trigger vs non-trigger nodes
 const TRIGGER_NODE_TYPES = new Set([

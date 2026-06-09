@@ -3,10 +3,10 @@ import { Time } from '@n8n/constants';
 import axios from 'axios';
 import { mock } from 'jest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@/services/cache/cache.service.js';
 
-import { IdentifierValidationError } from '../identifier-interface';
-import { OAuth2TokenIntrospectionIdentifier } from '../oauth2-introspection-identifier';
+import { IdentifierValidationError } from '../identifier-interface.js';
+import { OAuth2TokenIntrospectionIdentifier } from '../oauth2-introspection-identifier.js';
 
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;

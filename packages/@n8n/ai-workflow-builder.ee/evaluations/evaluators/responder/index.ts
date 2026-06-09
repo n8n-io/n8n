@@ -1,11 +1,11 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 
-import type { ResponderEvalCriteria } from './responder-judge.prompt';
-import { buildResponderJudgePrompt } from './responder-judge.prompt';
-import { runWithOptionalLimiter, withTimeout } from '../../harness/evaluation-helpers';
-import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
-import { DEFAULTS } from '../../support/constants';
+import type { ResponderEvalCriteria } from './responder-judge.prompt.js';
+import { buildResponderJudgePrompt } from './responder-judge.prompt.js';
+import { runWithOptionalLimiter, withTimeout } from '../../harness/evaluation-helpers.js';
+import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types.js';
+import { DEFAULTS } from '../../support/constants.js';
 
 const EVALUATOR_NAME = 'responder-judge';
 

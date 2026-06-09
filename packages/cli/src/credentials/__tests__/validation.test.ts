@@ -5,9 +5,9 @@ import {
 	validateExternalSecretsPermissions,
 	isChangingExternalSecretExpression,
 	validateAccessToReferencedSecretProviders,
-} from '../validation';
-import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import * as checkAccess from '@/permissions.ee/check-access';
+} from '../validation.js';
+import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee.js';
+import * as checkAccess from '@/permissions.ee/check-access.js';
 
 const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });

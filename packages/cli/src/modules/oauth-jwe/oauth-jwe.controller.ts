@@ -4,11 +4,11 @@ import { Get, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { AuthlessRequest } from '@/requests';
+import { AuthlessRequest } from '@/requests.js';
 
-import { OAuthJweKeyService } from './oauth-jwe-key.service';
-import { OAuthJweConfig } from './oauth-jwe.config';
-import { type JwksResponse, PublicJweJwkSchema } from './oauth-jwe.schemas';
+import { OAuthJweKeyService } from './oauth-jwe-key.service.js';
+import { OAuthJweConfig } from './oauth-jwe.config.js';
+import { type JwksResponse, PublicJweJwkSchema } from './oauth-jwe.schemas.js';
 
 const configService = Container.get(OAuthJweConfig);
 

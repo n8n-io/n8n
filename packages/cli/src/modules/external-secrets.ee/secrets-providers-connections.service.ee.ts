@@ -21,18 +21,18 @@ import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
-import { ExternalSecretsProviderRegistry } from './provider-registry.service';
+import { ExternalSecretsProviderRegistry } from './provider-registry.service.js';
 
 import {
 	CredentialDependencyService,
 	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
-} from '@/credentials/credential-dependency.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import type { ProjectSummary } from '@/events/maps/relay.event-map';
-import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
-import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
+} from '@/credentials/credential-dependency.service.js';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { EventService } from '@/events/event.service.js';
+import type { ProjectSummary } from '@/events/maps/relay.event-map.js';
+import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee.js';
+import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee.js';
 
 @Service()
 export class SecretsProvidersConnectionsService {

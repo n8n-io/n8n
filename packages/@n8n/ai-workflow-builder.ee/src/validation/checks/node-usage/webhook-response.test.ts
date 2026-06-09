@@ -1,8 +1,8 @@
 import type { IConnections, INodeParameters } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types';
+import type { SimpleWorkflow } from '@/types/index.js';
 
-import { validateWebhookResponse } from './webhook-response';
+import { validateWebhookResponse } from './webhook-response.js';
 
 interface WebhookNodeOptions {
 	name?: string;

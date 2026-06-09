@@ -93,30 +93,30 @@ import { nanoid } from 'nanoid';
 import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
-import { InProcessEventBus } from './event-bus/in-process-event-bus';
-import { InstanceAiGatewayService } from './instance-ai-gateway.service';
-import { InstanceAiMemoryService } from './instance-ai-memory.service';
-import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { InstanceAiAdapterService } from './instance-ai.adapter.service';
-import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
-import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
-import { InstanceAiMcpRegistryService } from './mcp';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
+import { InProcessEventBus } from './event-bus/in-process-event-bus.js';
+import { InstanceAiGatewayService } from './instance-ai-gateway.service.js';
+import { InstanceAiMemoryService } from './instance-ai-memory.service.js';
+import { InstanceAiSettingsService } from './instance-ai-settings.service.js';
+import { InstanceAiAdapterService } from './instance-ai.adapter.service.js';
+import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages.js';
+import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness/index.js';
+import { InstanceAiMcpRegistryService } from './mcp/index.js';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository.js';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository.js';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
-} from './run-trace-metadata';
-import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from './sandbox-provider';
-import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
-import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
-import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
-import { TraceReplayState } from './trace-replay-state';
+} from './run-trace-metadata.js';
+import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from './sandbox-provider.js';
+import { DbIterationLogStorage } from './storage/db-iteration-log-storage.js';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage.js';
+import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store.js';
+import { TypeORMAgentMemory } from './storage/typeorm-agent-memory.js';
+import { TraceReplayState } from './trace-replay-state.js';
 import {
 	parseWorkflowBuildOutcome,
 	WorkflowVerificationObligationService,
-} from './workflow-verification-obligation-service';
+} from './workflow-verification-obligation-service.js';
 import {
 	PlannedTaskActionRunner,
 	type PlannedBuildFollowUp,
@@ -127,8 +127,8 @@ import {
 	type PlannedTaskView,
 	type PlannedWorkflowVerificationGate,
 	type PlannedWorkflowVerificationTracker,
-} from './planned-task-action-runner';
-import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
+} from './planned-task-action-runner.js';
+import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector.js';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';

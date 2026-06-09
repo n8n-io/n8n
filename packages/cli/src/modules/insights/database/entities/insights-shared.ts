@@ -1,4 +1,4 @@
-import { invert } from '@/utils/inverter';
+import { invert } from '@/utils/inverter.js';
 
 function isValid<T extends Record<number | string | symbol, unknown>>(
 	value: number | string | symbol,

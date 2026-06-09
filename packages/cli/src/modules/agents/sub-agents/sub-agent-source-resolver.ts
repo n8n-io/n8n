@@ -9,13 +9,13 @@ import type { ToolDescriptor } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import type { AgentHistory } from '../entities/agent-history.entity';
-import type { Agent } from '../entities/agent.entity';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
-import { AgentHistoryRepository } from '../repositories/agent-history.repository';
-import { AgentRepository } from '../repositories/agent.repository';
+import type { AgentHistory } from '../entities/agent-history.entity.js';
+import type { Agent } from '../entities/agent.entity.js';
+import { composeJsonConfig } from '../json-config/agent-config-composition.js';
+import { AgentHistoryRepository } from '../repositories/agent-history.repository.js';
+import { AgentRepository } from '../repositories/agent.repository.js';
 
 export interface ResolveSubAgentSourceContext {
 	projectId: string;

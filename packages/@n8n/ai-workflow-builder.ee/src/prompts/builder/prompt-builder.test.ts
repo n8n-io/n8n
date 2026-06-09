@@ -1,4 +1,4 @@
-import { prompt, PromptBuilder } from './prompt-builder';
+import { prompt, PromptBuilder } from './prompt-builder.js';
 
 describe('PromptBuilder', () => {
 	describe('section()', () => {

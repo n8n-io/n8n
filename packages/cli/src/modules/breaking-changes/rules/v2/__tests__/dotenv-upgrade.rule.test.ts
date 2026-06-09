@@ -1,6 +1,6 @@
 import { access } from 'node:fs/promises';
 
-import { DotenvUpgradeRule } from '../dotenv-upgrade.rule';
+import { DotenvUpgradeRule } from '../dotenv-upgrade.rule.js';
 
 jest.mock('node:fs/promises');
 

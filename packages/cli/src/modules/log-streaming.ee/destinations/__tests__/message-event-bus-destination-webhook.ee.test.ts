@@ -1,9 +1,9 @@
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
 
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
 
-import { MessageEventBusDestinationWebhook } from '../message-event-bus-destination-webhook.ee';
+import { MessageEventBusDestinationWebhook } from '../message-event-bus-destination-webhook.ee.js';
 
 const mockEventBus = {} as MessageEventBus;
 
@@ -12,7 +12,7 @@ describe('MessageEventBusDestinationWebhook', () => {
 		it('should identify valid webhook options', () => {
 			const {
 				isMessageEventBusDestinationWebhookOptions,
-			} = require('../message-event-bus-destination-webhook.ee');
+			} = require('../message-event-bus-destination-webhook.ee.js');
 
 			const validOptions: MessageEventBusDestinationWebhookOptions = {
 				__type: MessageEventBusDestinationTypeNames.webhook,
@@ -31,7 +31,7 @@ describe('MessageEventBusDestinationWebhook', () => {
 		it('should reject invalid options', () => {
 			const {
 				isMessageEventBusDestinationWebhookOptions,
-			} = require('../message-event-bus-destination-webhook.ee');
+			} = require('../message-event-bus-destination-webhook.ee.js');
 
 			expect(isMessageEventBusDestinationWebhookOptions({})).toBe(false);
 			expect(isMessageEventBusDestinationWebhookOptions(null)).toBe(false);

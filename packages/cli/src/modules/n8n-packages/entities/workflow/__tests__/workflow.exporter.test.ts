@@ -2,13 +2,13 @@ import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { jsonParse } from 'n8n-workflow';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service.js';
 
-import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
-import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor';
-import type { WorkflowCredentialRequirement } from '../../credential/credential.types';
-import { WorkflowExporter } from '../workflow.exporter';
-import { WorkflowSerializer } from '../workflow.serializer';
+import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer.js';
+import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor.js';
+import type { WorkflowCredentialRequirement } from '../../credential/credential.types.js';
+import { WorkflowExporter } from '../workflow.exporter.js';
+import { WorkflowSerializer } from '../workflow.serializer.js';
 
 const user = mock<User>({ id: 'user-1' });
 

@@ -13,19 +13,19 @@ import {
 	SYSTEM_RESOLVER_ID,
 	SYSTEM_RESOLVER_NAME,
 	SYSTEM_RESOLVER_TYPE,
-} from '@/modules/dynamic-credentials.ee/constants';
-import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage';
-import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
-import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository';
-import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
-import { Telemetry } from '@/telemetry';
+} from '@/modules/dynamic-credentials.ee/constants.js';
+import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage.js';
+import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository.js';
+import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository.js';
+import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config.js';
+import { Telemetry } from '@/telemetry/index.js';
 import {
 	getCredentialSharings,
 	saveCredential,
 	shareCredentialWithProjects,
-} from '../shared/db/credentials';
-import { createMember } from '../shared/db/users';
-import { setupTestServer } from '../shared/utils';
+} from '../shared/db/credentials.js';
+import { createMember } from '../shared/db/users.js';
+import { setupTestServer } from '../shared/utils/index.js';
 
 mockInstance(Telemetry);
 

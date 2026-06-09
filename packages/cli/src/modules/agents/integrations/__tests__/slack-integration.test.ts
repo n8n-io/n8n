@@ -1,4 +1,4 @@
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack-integration.js';
 
 describe('SlackIntegration', () => {
 	let integration: SlackIntegration;

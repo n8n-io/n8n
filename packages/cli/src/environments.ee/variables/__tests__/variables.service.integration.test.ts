@@ -4,13 +4,13 @@ import { Container } from '@n8n/di';
 import type { AssignableProjectRole } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { createAdmin, createMember } from '@test-integration/db/users';
-import { createProjectVariable, createVariable } from '@test-integration/db/variables';
+import type { EventService } from '@/events/event.service.js';
+import { CacheService } from '@/services/cache/cache.service.js';
+import { ProjectService } from '@/services/project.service.ee.js';
+import { createAdmin, createMember } from '@test-integration/db/users.js';
+import { createProjectVariable, createVariable } from '@test-integration/db/variables.js';
 
-import { VariablesService } from '../variables.service.ee';
+import { VariablesService } from '../variables.service.ee.js';
 
 describe('VariablesService', () => {
 	let variablesService: VariablesService;

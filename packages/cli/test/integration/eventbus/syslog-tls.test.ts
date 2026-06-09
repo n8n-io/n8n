@@ -5,13 +5,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type TestAgent from 'supertest/lib/agent';
 
-import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic.js';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus.js';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service.js';
 
-import { TlsSyslogServer } from './tls-server';
-import { createUser } from '../shared/db/users';
-import * as utils from '../shared/utils';
+import { TlsSyslogServer } from './tls-server.js';
+import { createUser } from '../shared/db/users.js';
+import * as utils from '../shared/utils/index.js';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 

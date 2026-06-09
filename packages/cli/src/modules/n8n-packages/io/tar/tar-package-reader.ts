@@ -1,9 +1,9 @@
 import { Parser, type ReadEntry } from 'tar';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
 
-import type { PackageManifest } from '../../spec/manifest.schema';
-import type { PackageReader } from '../package-reader';
+import type { PackageManifest } from '../../spec/manifest.schema.js';
+import type { PackageReader } from '../package-reader.js';
 
 const MANIFEST_PATH = 'manifest.json';
 

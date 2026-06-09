@@ -4,10 +4,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import {
 	setupIntegrationLLM,
 	shouldRunIntegrationTests,
-} from '@/chains/test/integration/test-helpers';
-import { DiscoverySubgraph } from '@/subgraphs/discovery.subgraph';
+} from '@/chains/test/integration/test-helpers.js';
+import { DiscoverySubgraph } from '@/subgraphs/discovery.subgraph.js';
 
-import { loadNodesFromFile } from '../../../../evaluations/support/load-nodes';
+import { loadNodesFromFile } from '../../../../evaluations/support/load-nodes.js';
 
 /**
  * Integration tests for Discovery Subgraph

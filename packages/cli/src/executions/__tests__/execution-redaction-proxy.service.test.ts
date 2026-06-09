@@ -5,8 +5,8 @@ import type {
 	ExecutionRedaction,
 	ExecutionRedactionOptions,
 	RedactableExecution,
-} from '@/executions/execution-redaction';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+} from '@/executions/execution-redaction.js';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service.js';
 
 describe('ExecutionRedactionServiceProxy', () => {
 	let proxy: ExecutionRedactionServiceProxy;

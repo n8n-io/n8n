@@ -7,9 +7,9 @@ import { Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy, jsonParse } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/credential-types';
-import type { ICredentialsOverwrite } from '@/interfaces';
-import { StaticAuthService } from './services/static-auth-service';
+import { CredentialTypes } from '@/credential-types.js';
+import type { ICredentialsOverwrite } from '@/interfaces.js';
+import { StaticAuthService } from './services/static-auth-service.js';
 
 const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
 
@@ -76,7 +76,7 @@ export class CredentialsOverwrites {
 	}
 
 	private async broadcastReloadOverwriteCredentialsCommand(): Promise<void> {
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+		const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 		await Container.get(Publisher).publishCommand({ command: 'reload-overwrite-credentials' });
 	}
 
@@ -132,7 +132,7 @@ export class CredentialsOverwrites {
 	private async reloadFrontendService() {
 		// FrontendService has CredentialOverwrites injected via the constructor
 		// to break the circular dependency we need to use the container to get the instance
-		const { FrontendService } = await import('./services/frontend.service');
+		const { FrontendService } = await import('./services/frontend.service.js');
 		await Container.get(FrontendService)?.generateTypes();
 	}
 

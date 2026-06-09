@@ -2,7 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { RunnableConfig } from '@langchain/core/runnables';
 import z from 'zod';
 
-import { workflowNamingPromptTemplate } from '@/prompts/chains/workflow-name.prompt';
+import { workflowNamingPromptTemplate } from '@/prompts/chains/workflow-name.prompt.js';
 
 export async function workflowNameChain(
 	llm: BaseChatModel,

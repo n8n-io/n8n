@@ -9,17 +9,17 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { MemorySaver } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 
-import type { SessionMessagesChunk, StreamChunk, StreamOutput } from '../../types/streaming';
-import type { ChatPayload } from '../../workflow-builder-agent';
-import type { HistoryContext } from '../prompts';
-import type { ConversationEntry } from '../utils/code-builder-session';
+import type { SessionMessagesChunk, StreamChunk, StreamOutput } from '../../types/streaming.js';
+import type { ChatPayload } from '../../workflow-builder-agent.js';
+import type { HistoryContext } from '../prompts/index.js';
+import type { ConversationEntry } from '../utils/code-builder-session.js';
 import {
 	loadCodeBuilderSession,
 	saveCodeBuilderSession,
 	compactSessionIfNeeded,
 	generateCodeBuilderThreadId,
 	saveSessionMessages,
-} from '../utils/code-builder-session';
+} from '../utils/code-builder-session.js';
 
 /** Type guard for SessionMessagesChunk */
 function isSessionMessagesChunk(chunk: StreamChunk): chunk is SessionMessagesChunk {

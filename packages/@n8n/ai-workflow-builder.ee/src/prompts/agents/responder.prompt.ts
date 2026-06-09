@@ -5,10 +5,10 @@
  * Also handles conversational queries and explanations.
  */
 
-import { type DataTableInfo, isDataTableRowColumnOperation } from '@/utils/data-table-helpers';
+import { type DataTableInfo, isDataTableRowColumnOperation } from '@/utils/data-table-helpers.js';
 
-import { prompt } from '../builder';
-import { buildDeicticResolutionPrompt } from '../shared/deictic-resolution';
+import { prompt } from '../builder/index.js';
+import { buildDeicticResolutionPrompt } from '../shared/deictic-resolution.js';
 
 const RESPONDER_ROLE = `You are a helpful AI assistant for n8n workflow automation.
 

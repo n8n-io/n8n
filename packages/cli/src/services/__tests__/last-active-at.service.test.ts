@@ -6,7 +6,7 @@ import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 
-import { LastActiveAtService } from '@/services/last-active-at.service';
+import { LastActiveAtService } from '@/services/last-active-at.service.js';
 
 describe('LastActiveAtService', () => {
 	const userData = {

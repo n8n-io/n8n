@@ -8,10 +8,10 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas';
-import { IdentityResolutionService } from '@/modules/token-exchange/services/identity-resolution.service';
+import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas.js';
+import { IdentityResolutionService } from '@/modules/token-exchange/services/identity-resolution.service.js';
 
-import { createOwner, createUser } from '../shared/db/users';
+import { createOwner, createUser } from '../shared/db/users.js';
 
 let service: IdentityResolutionService;
 let userRepository: UserRepository;

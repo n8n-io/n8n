@@ -46,14 +46,14 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries } from '@n8n/db';
 
-import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
-import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { extractResolvedNodeParameters } from './extract-resolved-node-parameters.js';
+import { InstanceAiSettingsService } from './instance-ai-settings.service.js';
 import {
 	resolveNodeTypeDefinition,
 	resolveBuiltinNodeDefinitionDirs,
 	listNodeDiscriminators,
-} from './node-definition-resolver';
-import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
+} from './node-definition-resolver.js';
+import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research/index.js';
 import {
 	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
@@ -1424,7 +1424,7 @@ export class InstanceAiAdapterService {
 					const raw = await credentialsService.decrypt(credential, true);
 					const tokenData = raw.oauthTokenData;
 					if (tokenData && typeof tokenData === 'object') {
-						const { OauthService } = await import('@/oauth/oauth.service');
+						const { OauthService } = await import('@/oauth/oauth.service.js');
 						const identifier = OauthService.extractAccountIdentifier(
 							tokenData as Record<string, unknown>,
 						);

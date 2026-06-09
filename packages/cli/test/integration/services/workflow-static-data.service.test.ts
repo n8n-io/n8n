@@ -3,8 +3,8 @@ import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Workflow } from 'n8n-workflow';
 
-import { NodeTypes } from '@/node-types';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { NodeTypes } from '@/node-types.js';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service.js';
 
 const nodeTypes = mockInstance(NodeTypes);
 let workflowStaticDataService: WorkflowStaticDataService;

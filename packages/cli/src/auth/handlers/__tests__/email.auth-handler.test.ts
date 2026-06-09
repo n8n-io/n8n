@@ -3,11 +3,11 @@ import type { AuthIdentity, User } from '@n8n/db';
 import type { UserRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import type { EventService } from '@/events/event.service';
-import type { PasswordUtility } from '@/services/password.utility';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
+import type { EventService } from '@/events/event.service.js';
+import type { PasswordUtility } from '@/services/password.utility.js';
 
-import { EmailAuthHandler } from '../email.auth-handler';
+import { EmailAuthHandler } from '../email.auth-handler.js';
 
 describe('EmailAuthHandler', () => {
 	const userRepository = mock<UserRepository>();

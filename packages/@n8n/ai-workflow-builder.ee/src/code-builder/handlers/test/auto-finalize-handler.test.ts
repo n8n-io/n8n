@@ -6,9 +6,9 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 
-import { WarningTracker } from '../../state/warning-tracker';
-import type { ParseAndValidateResult } from '../../types';
-import { AutoFinalizeHandler } from '../auto-finalize-handler';
+import { WarningTracker } from '../../state/warning-tracker.js';
+import type { ParseAndValidateResult } from '../../types.js';
+import { AutoFinalizeHandler } from '../auto-finalize-handler.js';
 
 describe('AutoFinalizeHandler', () => {
 	const mockParseAndValidate =

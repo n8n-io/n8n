@@ -28,18 +28,18 @@ import {
 import os from 'node:os';
 import semver from 'semver';
 
-import config from '@/config';
-import { N8N_VERSION } from '@/constants';
-import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
-import type { IExecutionTrackProperties } from '@/interfaces';
-import { License } from '@/license';
-import { NodeTypes } from '@/node-types';
+import config from '@/config/index.js';
+import { N8N_VERSION } from '@/constants.js';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy.js';
+import { EventService } from '@/events/event.service.js';
+import type { RelayEventMap } from '@/events/maps/relay.event-map.js';
+import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions.js';
+import type { IExecutionTrackProperties } from '@/interfaces.js';
+import { License } from '@/license.js';
+import { NodeTypes } from '@/node-types.js';
 
-import { EventRelay } from './event-relay';
-import { Telemetry } from '../../telemetry';
+import { EventRelay } from './event-relay.js';
+import { Telemetry } from '../../telemetry/index.js';
 
 // Max size for node_graph_string to avoid exceeding telemetry payload limits (32 KB), leaving room for other fields
 const MAX_NODE_GRAPH_STRING_SIZE = 24 * 1024;
@@ -1368,7 +1368,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private async getOtelTelemetryInfo() {
-		const { OtelConfig } = await import('@/modules/otel/otel.config');
+		const { OtelConfig } = await import('@/modules/otel/otel.config.js');
 		const otelConfig = Container.get(OtelConfig);
 
 		return {

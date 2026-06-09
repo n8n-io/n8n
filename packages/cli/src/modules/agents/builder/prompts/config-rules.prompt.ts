@@ -5,7 +5,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { AgentModelSchema, RunnableAgentJsonConfigSchema } from '@n8n/api-types';
 
-import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer';
+import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer.js';
 
 const BuilderPromptMemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,

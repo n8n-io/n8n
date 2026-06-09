@@ -5,8 +5,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import dns from 'node:dns/promises';
 
-import type { RunSummary } from '../harness/harness-types';
-import type { EvalLogger } from '../harness/logger';
+import type { RunSummary } from '../harness/harness-types.js';
+import type { EvalLogger } from '../harness/logger.js';
 
 /**
  * Mask a webhook URL for safe logging (hide potential tokens in path/query).

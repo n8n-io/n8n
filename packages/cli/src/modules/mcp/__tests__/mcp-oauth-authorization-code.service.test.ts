@@ -1,9 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
-import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
-import { AuthorizationCodeRepository } from '../database/repositories/oauth-authorization-code.repository';
-import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
+import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity.js';
+import { AuthorizationCodeRepository } from '../database/repositories/oauth-authorization-code.repository.js';
+import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service.js';
 
 let authorizationCodeRepository: jest.Mocked<AuthorizationCodeRepository>;
 let service: McpOAuthAuthorizationCodeService;

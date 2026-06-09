@@ -7,26 +7,26 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
-import type { EmailAuthHandler } from '@/auth/handlers/email.auth-handler';
-import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
-import { EventService } from '@/events/event.service';
-import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
-import { License } from '@/license';
-import { MfaService } from '@/mfa/mfa.service';
-import { PostHogClient } from '@/posthog';
-import { UserService } from '@/services/user.service';
+import { AuthHandlerRegistry } from '@/auth/auth-handler.registry.js';
+import type { EmailAuthHandler } from '@/auth/handlers/email.auth-handler.js';
+import { AuthService } from '@/auth/auth.service.js';
+import config from '@/config/index.js';
+import { EventService } from '@/events/event.service.js';
+import { LdapService } from '@/modules/ldap.ee/ldap.service.ee.js';
+import { License } from '@/license.js';
+import { MfaService } from '@/mfa/mfa.service.js';
+import { PostHogClient } from '@/posthog/index.js';
+import { UserService } from '@/services/user.service.js';
 
-import { AuthController } from '../auth.controller';
-import { AuthError } from '@/errors/response-errors/auth.error';
+import { AuthController } from '../auth.controller.js';
+import { AuthError } from '@/errors/response-errors/auth.error.js';
 import { v4 as uuidv4 } from 'uuid';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { AuthlessRequest } from '@/requests';
-import * as ssoHelpers from '@/sso.ee/sso-helpers';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import type { AuthlessRequest } from '@/requests.js';
+import * as ssoHelpers from '@/sso.ee/sso-helpers.js';
 import { ResolveSignupTokenQueryDto } from '@n8n/api-types';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
 
 describe('AuthController', () => {
 	mockInstance(Logger);

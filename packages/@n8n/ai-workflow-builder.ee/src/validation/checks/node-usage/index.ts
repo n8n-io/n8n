@@ -1,1 +1,1 @@
-export { validateWebhookResponse } from './webhook-response';
+export { validateWebhookResponse } from './webhook-response.js';

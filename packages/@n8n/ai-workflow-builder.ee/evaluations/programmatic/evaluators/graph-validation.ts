@@ -4,12 +4,12 @@
  */
 import { parseWorkflowCodeToBuilder } from '@n8n/workflow-sdk';
 
-import { stripImportStatements } from '@/code-builder/utils/extract-code';
+import { stripImportStatements } from '@/code-builder/utils/extract-code.js';
 import type {
 	ProgrammaticViolation,
 	ProgrammaticViolationName,
 	SingleEvaluatorResult,
-} from '@/validation/types';
+} from '@/validation/types.js';
 
 /**
  * Convert SDK validation code (SCREAMING_SNAKE_CASE) to violation name (graph-kebab-case).

@@ -5,9 +5,9 @@ import { jsonParse } from 'n8n-workflow';
 import { basename, dirname, join } from 'path';
 import pc from 'picocolors';
 
-import { mermaidStringify, type MermaidOptions } from '@/tools/utils/mermaid.utils';
-import type { WorkflowMetadata } from '@/types';
-import type { SimpleWorkflow } from '@/types/workflow';
+import { mermaidStringify, type MermaidOptions } from '@/tools/utils/mermaid.utils.js';
+import type { WorkflowMetadata } from '@/types/index.js';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 
 // exported workflows (unlike templates) don't have a template ID - but the script doesn't need them to have it
 const templateId = 0;

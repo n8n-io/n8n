@@ -1,8 +1,8 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { ProgrammaticViolation } from '@/validation/types';
+import type { ProgrammaticViolation } from '@/validation/types.js';
 
-import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types';
+import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types.js';
 
 type ValidateFn = (
 	workflow: SimpleWorkflow,

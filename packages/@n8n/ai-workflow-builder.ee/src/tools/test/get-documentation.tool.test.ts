@@ -2,9 +2,9 @@ import type { ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { Command } from '@langchain/langgraph';
 
-import { createGetDocumentationTool, DocumentationType } from '@/tools/get-documentation.tool';
-import { WorkflowTechnique } from '@/types/categorization';
-import { RecommendationCategory } from '@/types/node-recommendations';
+import { createGetDocumentationTool, DocumentationType } from '@/tools/get-documentation.tool.js';
+import { WorkflowTechnique } from '@/types/categorization.js';
+import { RecommendationCategory } from '@/types/node-recommendations.js';
 
 /**
  * Helper to extract the message content from a Command response

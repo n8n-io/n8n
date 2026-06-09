@@ -18,9 +18,9 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
-import { TaskRunnerModule } from '@/task-runners/task-runner-module';
-import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
+import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester.js';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module.js';
+import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py.js';
 
 // `restoreMocks: true` in the root jest config restores spies between tests,
 // but the Python runtime check is invoked from inner describes' `beforeAll`
@@ -218,7 +218,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 		beforeAll(async () => {
 			process.env.NODE_FUNCTION_ALLOW_BUILTIN = 'crypto';
 			process.env.NODE_FUNCTION_ALLOW_EXTERNAL = 'moment';
-			const { TaskBroker } = await import('@/task-runners/task-broker/task-broker.service');
+			const { TaskBroker } = await import('@/task-runners/task-broker/task-broker.service.js');
 			Container.get(TaskBroker).stopDraining();
 			await taskRunnerModule.start();
 		});

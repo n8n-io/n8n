@@ -1,8 +1,8 @@
 import type { INodeParameters, NodeParameterValueType } from 'n8n-workflow';
 
-import { MAX_WORKFLOW_LENGTH_TOKENS } from '@/constants';
-import type { SimpleWorkflow } from '@/types';
-import { estimateTokenCountFromString } from '@/utils/token-usage';
+import { MAX_WORKFLOW_LENGTH_TOKENS } from '@/constants.js';
+import type { SimpleWorkflow } from '@/types/index.js';
+import { estimateTokenCountFromString } from '@/utils/token-usage.js';
 
 /**
  * Thresholds for progressively trimming large parameter values.

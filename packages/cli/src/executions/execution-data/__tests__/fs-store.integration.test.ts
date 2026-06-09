@@ -9,13 +9,13 @@ import fs, { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { EXECUTION_DATA_BUNDLE_FILENAME } from '../constants';
-import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
-import { ExecutionDataWriteError } from '../execution-data-write.error';
-import { FsStore } from '../fs-store';
-import { createExecutionRef } from '../types';
-import type { ExecutionDataPayload } from '../types';
-import { executionId, payload, ref, workflowId } from './mocks';
+import { EXECUTION_DATA_BUNDLE_FILENAME } from '../constants.js';
+import { CorruptedExecutionDataError } from '../corrupted-execution-data.error.js';
+import { ExecutionDataWriteError } from '../execution-data-write.error.js';
+import { FsStore } from '../fs-store.js';
+import { createExecutionRef } from '../types.js';
+import type { ExecutionDataPayload } from '../types.js';
+import { executionId, payload, ref, workflowId } from './mocks.js';
 
 jest.unmock('node:fs/promises');
 

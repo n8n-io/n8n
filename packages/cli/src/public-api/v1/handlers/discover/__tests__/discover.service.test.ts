@@ -1,6 +1,6 @@
 import type { ApiKeyScope } from '@n8n/permissions';
 
-import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
+import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware.js';
 
 // Mock middleware factories before any handler is loaded via require()
 // The tagged wrapper must still have __apiKeyScope for introspection
@@ -30,7 +30,7 @@ jest.spyOn(middlewares, 'globalScope').mockReturnValue(createMockMiddleware as a
 jest.spyOn(middlewares, 'validLicenseWithUserQuota').mockReturnValue(createMockMiddleware as any);
 jest.spyOn(middlewares, 'isLicensed').mockReturnValue(createMockMiddleware as any);
 
-import { buildDiscoverResponse, _resetCache } from '../discover.service';
+import { buildDiscoverResponse, _resetCache } from '../discover.service.js';
 
 beforeEach(() => {
 	_resetCache();

@@ -7,13 +7,13 @@ import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 
-import type { ActiveExecutions } from '@/active-executions';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { ActiveExecutions } from '@/active-executions.js';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
-import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
-import type { JobProcessor } from '../job-processor';
-import { ScalingService } from '../scaling.service';
-import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
+import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants.js';
+import type { JobProcessor } from '../job-processor.js';
+import { ScalingService } from '../scaling.service.js';
+import type { Job, JobData, JobId, JobQueue } from '../scaling.types.js';
 
 const queue = mock<JobQueue>({
 	client: { ping: jest.fn() },

@@ -29,8 +29,8 @@ import type {
 	ITaskData,
 } from 'n8n-workflow';
 
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { NodeTypes } from '@/node-types';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { NodeTypes } from '@/node-types.js';
 
 import {
 	extractExecutionResult,
@@ -40,7 +40,7 @@ import {
 	resolveDataTableByIdOrName,
 	truncateNodeOutput,
 	truncateResultData,
-} from '../instance-ai.adapter.service';
+} from '../instance-ai.adapter.service.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1107,16 +1107,16 @@ import type {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
+import type { DataTableService } from '@/modules/data-table/data-table.service.js';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee.js';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { WorkflowService } from '@/workflows/workflow.service';
-import type { License } from '@/license';
-import type { RoleService } from '@/services/role.service';
+import type { WorkflowService } from '@/workflows/workflow.service.js';
+import type { License } from '@/license.js';
+import type { RoleService } from '@/services/role.service.js';
 
-import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { InstanceAiAdapterService } from '../instance-ai.adapter.service.js';
+import { userHasScopes } from '@/permissions.ee/check-access.js';
 
 const mockedUserHasScopes = jest.mocked(userHasScopes);
 

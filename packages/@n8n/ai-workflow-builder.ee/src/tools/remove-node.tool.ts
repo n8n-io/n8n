@@ -3,14 +3,14 @@ import type { Logger } from '@n8n/backend-common';
 import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor.js';
 
-import { ValidationError, ToolExecutionError } from '../errors';
-import { createProgressReporter, reportProgress } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
-import { getCurrentWorkflow, getWorkflowState, removeNodeFromWorkflow } from './helpers/state';
-import { validateNodeExists, createNodeNotFoundError } from './helpers/validation';
-import type { RemoveNodeOutput } from '../types/tools';
+import { ValidationError, ToolExecutionError } from '../errors/index.js';
+import { createProgressReporter, reportProgress } from './helpers/progress.js';
+import { createSuccessResponse, createErrorResponse } from './helpers/response.js';
+import { getCurrentWorkflow, getWorkflowState, removeNodeFromWorkflow } from './helpers/state.js';
+import { validateNodeExists, createNodeNotFoundError } from './helpers/validation.js';
+import type { RemoveNodeOutput } from '../types/tools.js';
 
 /**
  * Schema for the remove node tool

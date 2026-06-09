@@ -5,17 +5,17 @@ import type { InstanceSettings } from 'n8n-core';
 import type { IRun, IRunExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import type { ActiveExecutions } from '@/active-executions';
-import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { ExecutionService } from '@/executions/execution.service';
-import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { ActiveExecutions } from '@/active-executions.js';
+import type { ChatExecutionManager } from '@/chat/chat-execution-manager.js';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import type { ExecutionService } from '@/executions/execution.service.js';
+import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service.js';
 
-import type { ChatHubExecutionStore } from '../chat-hub-execution-store.service';
-import { ChatHubExecutionService } from '../chat-hub-execution.service';
-import type { ChatHubWorkflowService } from '../chat-hub-workflow.service';
-import type { ChatHubMessageRepository } from '../chat-message.repository';
-import type { ChatStreamService } from '../chat-stream.service';
+import type { ChatHubExecutionStore } from '../chat-hub-execution-store.service.js';
+import { ChatHubExecutionService } from '../chat-hub-execution.service.js';
+import type { ChatHubWorkflowService } from '../chat-hub-workflow.service.js';
+import type { ChatHubMessageRepository } from '../chat-message.repository.js';
+import type { ChatStreamService } from '../chat-stream.service.js';
 
 describe('ChatHubExecutionService', () => {
 	const logger = mock<Logger>();

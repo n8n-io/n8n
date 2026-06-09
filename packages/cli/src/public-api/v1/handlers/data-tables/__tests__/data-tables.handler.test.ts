@@ -3,14 +3,14 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import type { DataTableRequest } from '@/public-api/types';
-import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
-import { ProjectService } from '@/services/project.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository.js';
+import { DataTableService } from '@/modules/data-table/data-table.service.js';
+import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error.js';
+import type { DataTableRequest } from '@/public-api/types.js';
+import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware.js';
+import { ProjectService } from '@/services/project.service.ee.js';
 
 // Mock middleware before requiring handler
 const mockMiddleware = jest.fn(async (_req, _res, next) => next()) as any;
@@ -18,8 +18,8 @@ jest.spyOn(middlewares, 'publicApiScope').mockReturnValue(mockMiddleware);
 jest.spyOn(middlewares, 'projectScope').mockReturnValue(mockMiddleware);
 jest.spyOn(middlewares, 'validCursor').mockReturnValue(mockMiddleware);
 
-const mainHandler = require('../data-tables.handler');
-const handler = require('../data-tables.rows.handler');
+const mainHandler = require('../data-tables.handler.js');
+const handler = require('../data-tables.rows.handler.js');
 
 describe('DataTable Handler', () => {
 	let mockDataTableService: jest.Mocked<DataTableService>;

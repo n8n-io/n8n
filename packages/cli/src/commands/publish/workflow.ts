@@ -3,7 +3,7 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command';
+import { BaseCommand } from '../base-command.js';
 
 const flagsSchema = z.object({
 	id: z.string().describe('The ID of the workflow to publish'),

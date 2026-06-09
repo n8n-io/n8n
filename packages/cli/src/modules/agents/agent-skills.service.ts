@@ -8,12 +8,12 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
 
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { Agent } from './entities/agent.entity';
-import { AgentRepository } from './repositories/agent.repository';
-import { generateAgentResourceId } from './utils/agent-resource-id';
+import { markAgentDraftDirty } from './utils/agent-draft.utils.js';
+import { Agent } from './entities/agent.entity.js';
+import { AgentRepository } from './repositories/agent.repository.js';
+import { generateAgentResourceId } from './utils/agent-resource-id.js';
 
 type AgentSkillEntries = Agent['skills'];
 

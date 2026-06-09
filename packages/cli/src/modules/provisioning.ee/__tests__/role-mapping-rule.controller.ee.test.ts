@@ -1,15 +1,15 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
-import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee';
+import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee.js';
 import type {
 	RoleMappingRuleListResponse,
 	RoleMappingRuleResponse,
 	RoleMappingRuleService,
-} from '../role-mapping-rule.service.ee';
+} from '../role-mapping-rule.service.ee.js';
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '@n8n/db';
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@/events/event.service.js';
 
 const roleMappingRuleService = mock<RoleMappingRuleService>();
 const licenseState = mock<LicenseState>();

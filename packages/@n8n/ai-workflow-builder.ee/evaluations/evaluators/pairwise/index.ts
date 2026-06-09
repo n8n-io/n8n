@@ -1,15 +1,15 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
-import type { SimpleWorkflow } from '@/types/workflow';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 
-import { runJudgePanel, type EvalCriteria } from './judge-panel';
-import { PAIRWISE_METRICS } from './metrics';
+import { runJudgePanel, type EvalCriteria } from './judge-panel.js';
+import { PAIRWISE_METRICS } from './metrics.js';
 import type {
 	DisplayLine,
 	EvaluationContext,
 	Evaluator,
 	Feedback,
-} from '../../harness/harness-types';
+} from '../../harness/harness-types.js';
 
 // Re-exports so downstream consumers (e.g. instance-ai evals) can pull the
 // evaluator and its input/output types from a single module surface.

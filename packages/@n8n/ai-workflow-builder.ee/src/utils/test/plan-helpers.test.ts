@@ -1,6 +1,6 @@
-import type { PlanOutput } from '@/types/planning';
+import type { PlanOutput } from '@/types/planning.js';
 
-import { formatPlanAsText } from '../plan-helpers';
+import { formatPlanAsText } from '../plan-helpers.js';
 
 const makePlan = (overrides: Partial<PlanOutput> = {}): PlanOutput => ({
 	summary: 'Send a daily weather alert via Slack',

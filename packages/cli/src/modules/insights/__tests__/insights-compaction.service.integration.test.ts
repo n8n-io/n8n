@@ -11,18 +11,18 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 
-import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
+import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository.js';
 
 import {
 	createMetadata,
 	createRawInsightsEvent,
 	createCompactedInsightsEvent,
 	createRawInsightsEvents,
-} from '../database/entities/__tests__/db-utils';
-import type { PeriodUnit } from '../database/entities/insights-shared';
-import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import { InsightsCompactionService } from '../insights-compaction.service';
-import { InsightsConfig } from '../insights.config';
+} from '../database/entities/__tests__/db-utils.js';
+import type { PeriodUnit } from '../database/entities/insights-shared.js';
+import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository.js';
+import { InsightsCompactionService } from '../insights-compaction.service.js';
+import { InsightsConfig } from '../insights.config.js';
 
 type CompactionConfig = Pick<
 	InsightsConfig,

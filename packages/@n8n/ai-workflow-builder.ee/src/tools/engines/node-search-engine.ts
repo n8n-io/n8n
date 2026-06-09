@@ -2,7 +2,7 @@ import { sublimeSearch } from '@n8n/utils';
 import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import type { NodeSearchResult } from '../../types/nodes';
+import type { NodeSearchResult } from '../../types/nodes.js';
 
 /**
  * Search keys configuration for sublimeSearch

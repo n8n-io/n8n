@@ -8,7 +8,7 @@ import type {
 import { Container } from '@n8n/di';
 import type { ICredentialContext, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
+import { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service.js';
 
 describe('DynamicCredentialResolverRegistry', () => {
 	let registry: DynamicCredentialResolverRegistry;

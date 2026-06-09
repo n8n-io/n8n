@@ -9,8 +9,8 @@ import { SELF_SEND_COMMANDS } from '@/scaling/constants';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { CacheService } from '@/services/cache/cache.service';
 
-import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
-import { N8N_ENV_FEAT_REDACTION_ENFORCEMENT } from '../redaction-enforcement.feature-flag';
+import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service.js';
+import { N8N_ENV_FEAT_REDACTION_ENFORCEMENT } from '../redaction-enforcement.feature-flag.js';
 
 const KEY = 'redaction.enforcement';
 

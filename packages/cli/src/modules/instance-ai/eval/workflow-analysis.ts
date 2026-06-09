@@ -11,7 +11,7 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
-import { extractNodeConfig } from './node-config';
+import { extractNodeConfig } from './node-config.js';
 
 /**
  * AI root node types — lets the typo guard accept a no-sub-node Agent.

@@ -1,7 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
-import { SettingsFilePermissionsRule } from '../settings-file-permissions.rule';
+import { SettingsFilePermissionsRule } from '../settings-file-permissions.rule.js';
 
 describe('SettingsFilePermissionsRule', () => {
 	let rule: SettingsFilePermissionsRule;

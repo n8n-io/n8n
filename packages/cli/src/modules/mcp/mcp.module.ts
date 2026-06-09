@@ -11,11 +11,11 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'mcp', instanceTypes: ['main'] })
 export class McpModule implements ModuleInterface {
 	async init() {
-		await import('./mcp.controller');
-		await import('./mcp.settings.controller');
-		await import('./mcp.oauth.controller');
-		await import('./mcp.auth.consent.controller');
-		await import('./mcp.oauth-clients.controller');
+		await import('./mcp.controller.js');
+		await import('./mcp.settings.controller.js');
+		await import('./mcp.oauth.controller.js');
+		await import('./mcp.auth.consent.controller.js');
+		await import('./mcp.oauth-clients.controller.js');
 	}
 
 	/**
@@ -24,20 +24,20 @@ export class McpModule implements ModuleInterface {
 	 * The response shape will be `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean } }`.
 	 */
 	async settings() {
-		const { McpSettingsService } = await import('./mcp.settings.service');
+		const { McpSettingsService } = await import('./mcp.settings.service.js');
 		const mcpAccessEnabled = await Container.get(McpSettingsService).getEnabled();
 		const { mcpManagedByEnv } = Container.get(InstanceSettingsLoaderConfig);
 		return { mcpAccessEnabled, mcpManagedByEnv };
 	}
 
 	async entities() {
-		const { OAuthClient } = await import('./database/entities/oauth-client.entity');
+		const { OAuthClient } = await import('./database/entities/oauth-client.entity.js');
 		const { AuthorizationCode } = await import(
-			'./database/entities/oauth-authorization-code.entity'
+			'./database/entities/oauth-authorization-code.entity.js'
 		);
-		const { AccessToken } = await import('./database/entities/oauth-access-token.entity');
-		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity');
-		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity');
+		const { AccessToken } = await import('./database/entities/oauth-access-token.entity.js');
+		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity.js');
+		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity.js');
 
 		return [OAuthClient, AuthorizationCode, AccessToken, RefreshToken, UserConsent] as never;
 	}

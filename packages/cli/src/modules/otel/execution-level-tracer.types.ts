@@ -1,6 +1,6 @@
 import type { ExecutionStatus, WorkflowExecuteMode, INode } from 'n8n-workflow';
 
-import type { TracingContext } from './tracing-context';
+import type { TracingContext } from './tracing-context.js';
 
 export type CustomAttributes = Record<string, string>;
 type ProjectContext = {

@@ -3,13 +3,13 @@ import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 
-import { EXECUTION_DATA_BUNDLE_VERSION } from './constants';
+import { EXECUTION_DATA_BUNDLE_VERSION } from './constants.js';
 import type {
 	ExecutionDataStore,
 	ExecutionRef,
 	ExecutionDataPayload,
 	ExecutionDataBundle,
-} from './types';
+} from './types.js';
 
 // Max number of ids per IN-clause. Conservative, as some databases cap near 1000.
 const MAX_READ_BATCH_SIZE = 900;

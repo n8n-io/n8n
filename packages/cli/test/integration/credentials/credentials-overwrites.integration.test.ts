@@ -4,10 +4,10 @@ import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 
-import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { CredentialTypes } from '@/credential-types';
-import type { ICredentialsOverwrite } from '@/interfaces';
-import { FrontendService } from '@/services/frontend.service';
+import { CredentialsOverwrites } from '@/credentials-overwrites.js';
+import { CredentialTypes } from '@/credential-types.js';
+import type { ICredentialsOverwrite } from '@/interfaces.js';
+import { FrontendService } from '@/services/frontend.service.js';
 
 describe('CredentialsOverwrites - Integration Tests', () => {
 	let credentialsOverwrites: CredentialsOverwrites;

@@ -8,7 +8,7 @@ import type { LookupFunction } from 'node:net';
 import type { DnsResolver } from 'n8n-core';
 import { SsrfProtectionService } from 'n8n-core';
 
-import { fetchAndExtract } from '../fetch-and-extract';
+import { fetchAndExtract } from '../fetch-and-extract.js';
 
 function createSsrfMock(): jest.Mocked<SsrfBridge> {
 	const ssrf = mock<SsrfBridge>();

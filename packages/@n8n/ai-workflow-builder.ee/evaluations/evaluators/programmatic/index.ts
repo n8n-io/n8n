@@ -1,9 +1,9 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '@/types/workflow';
+import type { SimpleWorkflow } from '@/types/workflow.js';
 
-import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
-import { programmaticEvaluation } from '../../programmatic/programmatic-evaluation';
+import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types.js';
+import { programmaticEvaluation } from '../../programmatic/programmatic-evaluation.js';
 
 /**
  * Format violations as a comment string.

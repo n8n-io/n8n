@@ -3,9 +3,9 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
-import { McpOAuthConsentService } from './mcp-oauth-consent.service';
-import { OAuthSessionService } from './oauth-session.service';
+import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto.js';
+import { McpOAuthConsentService } from './mcp-oauth-consent.service.js';
+import { OAuthSessionService } from './oauth-session.service.js';
 
 @RestController('/consent')
 export class McpConsentController {

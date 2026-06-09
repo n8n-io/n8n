@@ -6,9 +6,9 @@ import {
 	NodeTypeNotFoundError,
 	ParameterTooLargeError,
 	ValidationError,
-} from '../../errors';
-import type { ToolError } from '../../types/tools';
-import type { SimpleWorkflow } from '../../types/workflow';
+} from '../../errors/index.js';
+import type { ToolError } from '../../types/tools.js';
+import type { SimpleWorkflow } from '../../types/workflow.js';
 
 /**
  * Validate that a node exists in the workflow

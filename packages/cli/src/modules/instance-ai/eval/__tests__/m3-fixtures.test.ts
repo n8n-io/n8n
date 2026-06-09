@@ -9,8 +9,8 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
-import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
-import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
+import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper.js';
+import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server.js';
 
 /**
  * Integration-shaped unit test exercising credential rewrite + path-based

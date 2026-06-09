@@ -11,8 +11,8 @@ import {
 	buildNodeSearchQuery,
 	type ParsedToolContent,
 	createNodeType,
-} from '../../../test/test-utils';
-import { createNodeSearchTool } from '../node-search.tool';
+} from '../../../test/test-utils.js';
+import { createNodeSearchTool } from '../node-search.tool.js';
 
 // Mock LangGraph dependencies
 vi.mock('@langchain/langgraph', () => ({

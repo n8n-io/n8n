@@ -8,8 +8,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import type { EventMessageTypes } from '../../event-message-classes';
-import { MessageEventBusLogWriter } from '../message-event-bus-log-writer';
+import type { EventMessageTypes } from '../../event-message-classes/index.js';
+import { MessageEventBusLogWriter } from '../message-event-bus-log-writer.js';
 
 jest.unmock('node:fs');
 jest.unmock('node:fs/promises');

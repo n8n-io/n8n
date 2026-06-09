@@ -1,6 +1,6 @@
 import type { InstanceAiGatewayCapabilities } from '@n8n/api-types';
 
-import { LocalGatewayRegistry } from '../filesystem/local-gateway-registry';
+import { LocalGatewayRegistry } from '../filesystem/local-gateway-registry.js';
 
 const CAPABILITIES: InstanceAiGatewayCapabilities = {
 	rootPath: '/home/user/project',

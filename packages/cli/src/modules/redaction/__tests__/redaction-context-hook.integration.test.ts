@@ -16,8 +16,8 @@ import {
 	type WorkflowSettings,
 } from 'n8n-workflow';
 
-import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
-import { RedactionContextHook } from '../redaction-context-hook';
+import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service.js';
+import { RedactionContextHook } from '../redaction-context-hook.js';
 
 /**
  * Wires the real RedactionContextHook, ExecutionContextService and

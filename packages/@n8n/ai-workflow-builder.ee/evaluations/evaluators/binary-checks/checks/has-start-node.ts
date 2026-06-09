@@ -1,8 +1,8 @@
 import { getChildNodes, NodeConnectionTypes } from 'n8n-workflow';
 
-import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
+import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map.js';
 
-import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types';
+import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types.js';
 
 export const hasStartNode: BinaryCheck = {
 	name: 'has_start_node',

@@ -1,5 +1,5 @@
-import { TypedEmitter } from '../../typed-emitter';
-import { SlidingWindowSignal } from '../sliding-window-signal';
+import { TypedEmitter } from '../../typed-emitter.js';
+import { SlidingWindowSignal } from '../sliding-window-signal.js';
 
 type TestEventMap = {
 	testEvent: string;

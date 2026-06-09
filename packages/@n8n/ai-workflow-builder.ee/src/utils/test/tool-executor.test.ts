@@ -5,11 +5,11 @@ import { ToolInputParsingException } from '@langchain/core/tools';
 import { Command as MockedCommandCtor } from '@langchain/langgraph';
 import type { Command as CommandType } from '@langchain/langgraph';
 
-import { createWorkflow, createNode } from '../../../test/test-utils';
-import type { ToolExecutorOptions } from '../../types/config';
-import type { WorkflowOperation } from '../../types/workflow';
-import type { WorkflowState } from '../../workflow-state';
-import { executeToolsInParallel } from '../tool-executor';
+import { createWorkflow, createNode } from '../../../test/test-utils.js';
+import type { ToolExecutorOptions } from '../../types/config.js';
+import type { WorkflowOperation } from '../../types/workflow.js';
+import type { WorkflowState } from '../../workflow-state.js';
+import { executeToolsInParallel } from '../tool-executor.js';
 
 // Type for our mocked Command
 type MockedCommand = CommandType & { _isCommand: boolean };

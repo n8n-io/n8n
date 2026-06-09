@@ -1,15 +1,15 @@
 // Registry system
-export { getMatchingGuides, getMatchingExamples, matchesPattern } from './registry';
+export { getMatchingGuides, getMatchingExamples, matchesPattern } from './registry.js';
 export type {
 	NodeTypeGuide,
 	NodeTypeExamples,
 	NodeTypePattern,
 	PromptContext,
-} from './types';
+} from './types.js';
 
 // Utilities
-export { hasResourceLocatorParameters } from './utils';
-export { instanceUrlPrompt } from './instance-url';
+export { hasResourceLocatorParameters } from './utils.js';
+export { instanceUrlPrompt } from './instance-url.js';
 
 // Base prompts
 export {
@@ -17,7 +17,7 @@ export {
 	EXPRESSION_RULES,
 	COMMON_PATTERNS,
 	OUTPUT_FORMAT,
-} from './parameter-updater.prompt';
+} from './parameter-updater.prompt.js';
 
 // Node type guides
 export {
@@ -27,14 +27,14 @@ export {
 	HTTP_REQUEST_GUIDE,
 	TOOL_NODES_GUIDE,
 	GMAIL_GUIDE,
-} from './guides';
+} from './guides/index.js';
 
 // Parameter type guides
 export {
 	RESOURCE_LOCATOR_GUIDE,
 	SYSTEM_MESSAGE_GUIDE,
 	TEXT_FIELDS_GUIDE,
-} from './guides';
+} from './guides/index.js';
 
 // Examples
 export {
@@ -44,4 +44,4 @@ export {
 	SIMPLE_UPDATE_EXAMPLES,
 	TOOL_NODE_EXAMPLES,
 	RESOURCE_LOCATOR_EXAMPLES,
-} from './examples';
+} from './examples/index.js';

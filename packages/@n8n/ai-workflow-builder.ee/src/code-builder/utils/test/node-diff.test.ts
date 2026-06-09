@@ -2,7 +2,7 @@
  * Tests for node-diff utility
  */
 
-import { calculateNodeChanges } from '../node-diff';
+import { calculateNodeChanges } from '../node-diff.js';
 
 describe('calculateNodeChanges', () => {
 	describe('when comparing workflows', () => {

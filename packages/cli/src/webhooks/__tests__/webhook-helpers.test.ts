@@ -33,8 +33,8 @@ import {
 	prepareExecutionData,
 	handleHostedChatResponse,
 	_privateGetWebhookErrorMessage,
-} from '../webhook-helpers';
-import type { IWebhookResponseCallbackData } from '../webhook.types';
+} from '../webhook-helpers.js';
+import type { IWebhookResponseCallbackData } from '../webhook.types.js';
 
 jest.mock('stream/promises', () => ({
 	finished: jest.fn(),

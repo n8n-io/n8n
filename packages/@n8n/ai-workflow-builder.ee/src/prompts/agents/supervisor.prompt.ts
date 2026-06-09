@@ -5,8 +5,8 @@
  * After initial routing, deterministic routing takes over based on coordination log.
  */
 
-import { prompt } from '../builder';
-import { buildDeicticResolutionPrompt } from '../shared/deictic-resolution';
+import { prompt } from '../builder/index.js';
+import { buildDeicticResolutionPrompt } from '../shared/deictic-resolution.js';
 
 const SUPERVISOR_ROLE = 'You are a Supervisor that routes user requests to specialist agents.';
 

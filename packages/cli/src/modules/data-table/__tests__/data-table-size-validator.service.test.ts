@@ -1,9 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 
-import { Telemetry } from '@/telemetry';
+import { Telemetry } from '@/telemetry/index.js';
 
-import { DataTableSizeValidator } from '../data-table-size-validator.service';
+import { DataTableSizeValidator } from '../data-table-size-validator.service.js';
 
 describe('DataTableSizeValidator', () => {
 	let validator: DataTableSizeValidator;

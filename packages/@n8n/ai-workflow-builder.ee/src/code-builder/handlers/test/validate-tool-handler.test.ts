@@ -6,9 +6,9 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { ToolMessage } from '@langchain/core/messages';
 import type { Mock } from 'vitest';
 
-import type { StreamOutput, ToolProgressChunk } from '../../../types/streaming';
-import { WarningTracker } from '../../state/warning-tracker';
-import { ValidateToolHandler } from '../validate-tool-handler';
+import type { StreamOutput, ToolProgressChunk } from '../../../types/streaming.js';
+import { WarningTracker } from '../../state/warning-tracker.js';
+import { ValidateToolHandler } from '../validate-tool-handler.js';
 
 /** Type guard for ToolProgressChunk */
 function isToolProgressChunk(chunk: unknown): chunk is ToolProgressChunk {

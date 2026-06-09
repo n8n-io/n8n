@@ -4,10 +4,10 @@ import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
+import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users.js';
 
-import { JwtService } from '../jwt.service';
-import { PublicApiKeyService } from '../public-api-key.service';
+import { JwtService } from '../jwt.service.js';
+import { PublicApiKeyService } from '../public-api-key.service.js';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 

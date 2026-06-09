@@ -1,12 +1,12 @@
 import { ALL_ROLES } from '@n8n/permissions';
 import type { Role, Scope } from '@n8n/permissions';
 
-import { createMember } from './shared/db/users';
-import type { SuperAgentTest } from './shared/types';
-import * as utils from './shared/utils/';
+import { createMember } from './shared/db/users.js';
+import type { SuperAgentTest } from './shared/types.js';
+import * as utils from './shared/utils//index.js';
 import { Container } from '@n8n/di';
 import { AuthRolesService, SettingsRepository } from '@n8n/db';
-import { SecuritySettingsService } from '@/services/security-settings.service';
+import { SecuritySettingsService } from '@/services/security-settings.service.js';
 import {
 	PROJECT_SCOPE_MAP,
 	PERSONAL_SPACE_SHARING_SETTING,

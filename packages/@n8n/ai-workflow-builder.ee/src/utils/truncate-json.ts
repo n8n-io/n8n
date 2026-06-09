@@ -1,4 +1,4 @@
-import { MAX_EXECUTION_DATA_CHARS } from '../constants';
+import { MAX_EXECUTION_DATA_CHARS } from '../constants.js';
 
 export interface TruncateJsonOptions {
 	maxLength?: number;

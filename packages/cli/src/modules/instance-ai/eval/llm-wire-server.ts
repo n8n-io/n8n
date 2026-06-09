@@ -11,7 +11,7 @@ import {
 	forwardTranslateToSseChunks,
 	isStreamRequested,
 	reverseTranslateOpenAiRequest,
-} from './openai-envelope';
+} from './openai-envelope.js';
 import {
 	buildResponsesErrorEnvelope,
 	extractResponsesRequestModel,
@@ -19,7 +19,7 @@ import {
 	forwardTranslateToResponsesSseEvents,
 	isResponsesStreamRequested,
 	reverseTranslateOpenAiResponsesRequest,
-} from './openai-responses-envelope';
+} from './openai-responses-envelope.js';
 
 /** Loopback HTTP server that intercepts vendor SDK calls during eval. Binds to an OS-assigned port. */
 export interface InterceptedTurn {

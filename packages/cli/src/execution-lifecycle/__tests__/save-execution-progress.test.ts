@@ -4,9 +4,9 @@ import { mock } from 'jest-mock-extended';
 import { ErrorReporter } from 'n8n-core';
 import { createRunExecutionData, type ITaskData } from 'n8n-workflow';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionPersistence } from '@/executions/execution-persistence.js';
 
-import { saveExecutionProgress } from '../save-execution-progress';
+import { saveExecutionProgress } from '../save-execution-progress.js';
 
 describe('saveExecutionProgress', () => {
 	mockInstance(Logger);

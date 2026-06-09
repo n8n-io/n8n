@@ -1,14 +1,14 @@
 import type { AuthenticatedRequest, CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service.js';
+import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types.js';
 
-import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity';
-import { InstanceAiMcpConnectionController } from '../instance-ai-mcp-connection.controller';
-import type { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service';
+import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity.js';
+import { InstanceAiMcpConnectionController } from '../instance-ai-mcp-connection.controller.js';
+import type { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service.js';
 
 describe('InstanceAiMcpConnectionController', () => {
 	const user = { id: 'user-1' } as User;

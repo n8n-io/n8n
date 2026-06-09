@@ -13,7 +13,7 @@ import type {
 	SubAgentForegroundRunContext,
 	SubAgentForegroundResult,
 	SubAgentForegroundRunner,
-} from './sub-agent-foreground-runner';
+} from './sub-agent-foreground-runner.js';
 
 export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentForegroundRunContext {
 	runner: SubAgentForegroundRunner;

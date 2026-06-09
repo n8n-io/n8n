@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { createCodeBuilderGetTool } from '../code-builder-get.tool';
+import { createCodeBuilderGetTool } from '../code-builder-get.tool.js';
 
 describe('CodeBuilderGetTool', () => {
 	describe('createCodeBuilderGetTool', () => {

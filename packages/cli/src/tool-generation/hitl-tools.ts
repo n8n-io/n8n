@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
-import { copyCredentialSupport, isFullDescription, setToolCodex } from './utils';
+import { copyCredentialSupport, isFullDescription, setToolCodex } from './utils.js';
 
 /**
  * Check if a node has a sendAndWait operation.

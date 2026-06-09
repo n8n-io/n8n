@@ -5,7 +5,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlags } from 'n8n-workflow';
 import { PostHog } from 'posthog-node';
 
-import { PostHogClient } from '@/posthog';
+import { PostHogClient } from '@/posthog/index.js';
 
 jest.mock('posthog-node');
 

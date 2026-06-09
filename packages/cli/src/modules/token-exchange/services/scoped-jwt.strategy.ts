@@ -4,10 +4,10 @@ import { Service } from '@n8n/di';
 import { ALL_API_KEY_SCOPES } from '@n8n/permissions';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
-import type { AuthStrategy, AuthStrategyOptions } from '@/services/auth-strategy.types';
-import { JwtService } from '@/services/jwt.service';
+import type { AuthStrategy, AuthStrategyOptions } from '@/services/auth-strategy.types.js';
+import { JwtService } from '@/services/jwt.service.js';
 
-import { TOKEN_EXCHANGE_ISSUER, type IssuedJwtPayload } from '../token-exchange.types';
+import { TOKEN_EXCHANGE_ISSUER, type IssuedJwtPayload } from '../token-exchange.types.js';
 
 const BEARER_PREFIX = 'Bearer ';
 const API_KEY_HEADER = 'x-n8n-api-key';

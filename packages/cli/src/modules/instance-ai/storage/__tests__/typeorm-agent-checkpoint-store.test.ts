@@ -2,9 +2,9 @@ import type { SerializableAgentState } from '@n8n/instance-ai';
 import { mock } from 'jest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
-import type { InstanceAiCheckpoint } from '../../entities/instance-ai-checkpoint.entity';
-import type { InstanceAiCheckpointRepository } from '../../repositories/instance-ai-checkpoint.repository';
-import { TypeORMAgentCheckpointStore } from '../typeorm-agent-checkpoint-store';
+import type { InstanceAiCheckpoint } from '../../entities/instance-ai-checkpoint.entity.js';
+import type { InstanceAiCheckpointRepository } from '../../repositories/instance-ai-checkpoint.repository.js';
+import { TypeORMAgentCheckpointStore } from '../typeorm-agent-checkpoint-store.js';
 
 function makeState(overrides: Partial<SerializableAgentState> = {}): SerializableAgentState {
 	return {

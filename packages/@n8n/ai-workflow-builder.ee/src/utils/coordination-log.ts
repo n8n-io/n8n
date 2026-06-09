@@ -15,7 +15,7 @@ import type {
 	AssistantMetadata,
 	StateManagementMetadata,
 	ResponderMetadata,
-} from '../types/coordination';
+} from '../types/coordination.js';
 
 export type RoutingDecision = 'discovery' | 'builder' | 'assistant' | 'responder';
 

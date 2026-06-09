@@ -17,15 +17,15 @@ import {
 	type IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service.js';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service.js';
+import { getBase } from '@/workflow-execute-additional-data.js';
+import { WorkflowService } from '@/workflows/workflow.service.js';
 
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { chatTriggerParamsShape, type ChatTriggerParams } from './chat-hub.types';
+import { ChatHubAgentService } from './chat-hub-agent.service.js';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service.js';
+import { getModelMetadata, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants.js';
+import { chatTriggerParamsShape, type ChatTriggerParams } from './chat-hub.types.js';
 
 @Service()
 export class ChatHubModelsService {

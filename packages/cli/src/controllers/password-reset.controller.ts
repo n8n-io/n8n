@@ -17,27 +17,27 @@ import {
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
-import { AuthService } from '@/auth/auth.service';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { AuthService } from '@/auth/auth.service.js';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants.js';
 import { ErrorReporter } from 'n8n-core';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
-import { MfaService } from '@/mfa/mfa.service';
-import { AuthlessRequest } from '@/requests';
-import { PasswordUtility } from '@/services/password.utility';
-import { UserService } from '@/services/user.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error.js';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error.js';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error.js';
+import { NotFoundError } from '@/errors/response-errors/not-found.error.js';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error.js';
+import { EventService } from '@/events/event.service.js';
+import { ExternalHooks } from '@/external-hooks.js';
+import { License } from '@/license.js';
+import { MfaService } from '@/mfa/mfa.service.js';
+import { AuthlessRequest } from '@/requests.js';
+import { PasswordUtility } from '@/services/password.utility.js';
+import { UserService } from '@/services/user.service.js';
 import {
 	isOidcCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers';
-import { UserManagementMailer } from '@/user-management/email';
-import { createJitterMiddleware } from '@/middlewares';
+} from '@/sso.ee/sso-helpers.js';
+import { UserManagementMailer } from '@/user-management/email/index.js';
+import { createJitterMiddleware } from '@/middlewares/index.js';
 
 @RestController()
 export class PasswordResetController {

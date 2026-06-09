@@ -6,26 +6,26 @@ import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
 import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 
-import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
-import * as ResponseHelper from '@/response-helper';
-import type { ExpectedWebhookNodeType } from '@/webhooks/node-type-matcher';
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error.js';
+import * as ResponseHelper from '@/response-helper.js';
+import type { ExpectedWebhookNodeType } from '@/webhooks/node-type-matcher.js';
 import type {
 	WebhookStaticResponse,
 	WebhookResponse,
 	WebhookResponseStream,
-} from '@/webhooks/webhook-response';
+} from '@/webhooks/webhook-response.js';
 import {
 	isWebhookNoResponse,
 	isWebhookStaticResponse,
 	isWebhookResponse,
 	isWebhookStreamResponse,
-} from '@/webhooks/webhook-response';
-import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
+} from '@/webhooks/webhook-response.js';
+import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers.js';
 import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
 	WebhookRequest,
-} from '@/webhooks/webhook.types';
+} from '@/webhooks/webhook.types.js';
 
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 

@@ -1,4 +1,4 @@
-import { CLI_DIR } from '@/constants';
+import { CLI_DIR } from '@/constants.js';
 import { Get, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 import { readFile } from 'fs/promises';

@@ -10,10 +10,10 @@ import {
 	type Workflow,
 } from 'n8n-workflow';
 
-import type { WaitingWebhookRequest } from '../webhook.types';
+import type { WaitingWebhookRequest } from '../webhook.types.js';
 
-import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WaitingForms } from '@/webhooks/waiting-forms';
+import type { ExecutionPersistence } from '@/executions/execution-persistence.js';
+import { WaitingForms } from '@/webhooks/waiting-forms.js';
 
 class TestWaitingForms extends WaitingForms {
 	exposeCreateWorkflow(workflowData: IWorkflowBase): Workflow {

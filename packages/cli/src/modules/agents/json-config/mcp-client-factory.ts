@@ -2,8 +2,8 @@ import type { CredentialProvider, McpClient, McpServerConfig } from '@n8n/agents
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import { isMcpOAuth2Authentication } from 'n8n-workflow';
 
-import type { OauthService } from '@/oauth/oauth.service';
-import { createAuthFetch } from '@/utils/auth-fetch';
+import type { OauthService } from '@/oauth/oauth.service.js';
+import { createAuthFetch } from '@/utils/auth-fetch.js';
 
 /**
  * Convert the JSON-config `approval` shape into the SDK's `requireApproval`

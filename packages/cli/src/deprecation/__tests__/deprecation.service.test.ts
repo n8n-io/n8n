@@ -5,7 +5,7 @@ import type { InstanceType } from '@n8n/constants';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
-import { DeprecationService } from '../deprecation.service';
+import { DeprecationService } from '../deprecation.service.js';
 
 describe('DeprecationService', () => {
 	const logger = mock<Logger>();
