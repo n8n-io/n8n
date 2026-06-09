@@ -31,11 +31,13 @@ function entryBlocks(entry: RawTarEntry): Buffer {
 		linkpath: entry.linkpath,
 	});
 	header.encode();
+	const headerBlock = header.block;
+	if (!headerBlock) throw new Error('tar header failed to encode');
 
-	if (content.length === 0) return header.block;
+	if (content.length === 0) return headerBlock;
 	const data = Buffer.alloc(Math.ceil(content.length / BLOCK_SIZE) * BLOCK_SIZE);
 	content.copy(data);
-	return Buffer.concat([header.block, data]);
+	return Buffer.concat([headerBlock, data]);
 }
 
 /**
