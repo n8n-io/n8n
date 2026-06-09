@@ -234,7 +234,7 @@ describe('ScalingService', () => {
 				expect(stopQueueRecoverySpy).not.toHaveBeenCalled();
 			});
 
-			it('should also wait for in-flight executions tracked outside Bull (e.g. detached sub-workflows)', async () => {
+			it('should also wait for in-flight executions tracked outside Bull (e.g. in-process worker sub-workflows)', async () => {
 				// @ts-expect-error readonly property
 				instanceSettings.instanceType = 'worker';
 				await scalingService.setupQueue();
@@ -262,8 +262,22 @@ describe('ScalingService', () => {
 					mock<IExecutionsCurrentSummary>({ status: 'waiting' }),
 				]);
 
-				await scalingService.stop();
+				// Advance timer by 0ms (less than the polling delay);
+				// If `scalingService.stop` resolves before that, it means it didn't wait
+				jest.useFakeTimers();
+				try {
+					let settled = false;
+					void scalingService.stop().then(() => {
+						settled = true;
+					});
+					await jest.advanceTimersByTimeAsync(0);
+					expect(settled).toBe(true);
+				} finally {
+					jest.useRealTimers();
+				}
 
+				// `queue.pause` being called immediately by `scalingService.stop`
+				// means the 'waiting' execution did not block as the only active execution
 				expect(queue.pause).toHaveBeenCalled();
 			});
 		});
