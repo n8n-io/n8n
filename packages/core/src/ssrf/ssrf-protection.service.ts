@@ -280,7 +280,14 @@ export class SsrfProtectionService implements SsrfBridge {
 			return result;
 		};
 
-		return outcome instanceof Promise ? outcome.then(emitAndReturn) : emitAndReturn(outcome);
+		const emitAndRethrow = (error: unknown): never => {
+			emitAndReturn(createResultError(ensureError(error)));
+			throw error;
+		};
+
+		return outcome instanceof Promise
+			? outcome.then(emitAndReturn, emitAndRethrow)
+			: emitAndReturn(outcome);
 	}
 
 	private toReason(error: Error, phase: SsrfPhase): string {

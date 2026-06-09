@@ -629,4 +629,72 @@ describe('SsrfProtectionService', () => {
 			);
 		});
 	});
+
+	describe('events', () => {
+		it('should emit ssrf.allowed for an allowed URL', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+			const { service } = createService({}, dnsResolver);
+			const allowed = vi.fn();
+			service.events.on('ssrf.allowed', allowed);
+
+			await service.validateUrl('http://example.com/');
+
+			expect(allowed).toHaveBeenCalledWith(
+				expect.objectContaining({ phase: 'pre_flight', durationMs: expect.any(Number) }),
+			);
+		});
+
+		it('should emit ssrf.blocked with reason blocked_ip for a blocked URL', async () => {
+			const { service } = createService();
+			const blocked = vi.fn();
+			service.events.on('ssrf.blocked', blocked);
+
+			await service.validateUrl('http://127.0.0.1/');
+
+			expect(blocked).toHaveBeenCalledWith(
+				expect.objectContaining({ phase: 'pre_flight', reason: 'blocked_ip' }),
+			);
+		});
+
+		it('should emit ssrf.blocked with reason invalid_url for an unparseable URL', async () => {
+			const { service } = createService();
+			const blocked = vi.fn();
+			service.events.on('ssrf.blocked', blocked);
+
+			await service.validateUrl('not a url');
+
+			expect(blocked).toHaveBeenCalledWith(
+				expect.objectContaining({ phase: 'pre_flight', reason: 'invalid_url' }),
+			);
+		});
+
+		it('should emit ssrf.blocked with reason dns_error when DNS resolution rejects', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockRejectedValue(new Error('ENOTFOUND'));
+			const { service } = createService({}, dnsResolver);
+			const blocked = vi.fn();
+			service.events.on('ssrf.blocked', blocked);
+
+			await expect(service.validateUrl('http://nonexistent.example.com/')).rejects.toThrow(
+				'ENOTFOUND',
+			);
+
+			expect(blocked).toHaveBeenCalledWith(
+				expect.objectContaining({ phase: 'pre_flight', reason: 'dns_error' }),
+			);
+		});
+
+		it('should emit ssrf.blocked with reason blocked_redirect for a blocked redirect', () => {
+			const { service } = createService();
+			const blocked = vi.fn();
+			service.events.on('ssrf.blocked', blocked);
+
+			expect(() => service.validateRedirectSync('http://127.0.0.1/admin')).toThrow();
+
+			expect(blocked).toHaveBeenCalledWith(
+				expect.objectContaining({ phase: 'redirect', reason: 'blocked_redirect' }),
+			);
+		});
+	});
 });

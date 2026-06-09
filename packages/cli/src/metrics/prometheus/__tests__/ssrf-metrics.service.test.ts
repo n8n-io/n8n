@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { PrometheusMetricsConfig } from '@n8n/config';
+import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { SsrfProtectionService } from 'n8n-core';
 import promClient from 'prom-client';
 
@@ -13,6 +13,10 @@ describe('PrometheusSsrfMetricsService', () => {
 		includeSsrfMetrics: true,
 	});
 
+	const ssrfConfig = mockInstance(SsrfProtectionConfig, {
+		enabled: true,
+	});
+
 	const ssrfEvents = { on: jest.fn() };
 	const ssrfProtectionService = {
 		events: ssrfEvents,
@@ -24,7 +28,8 @@ describe('PrometheusSsrfMetricsService', () => {
 
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_', includeSsrfMetrics: true });
-		service = new PrometheusSsrfMetricsService(ssrfProtectionService, config);
+		Object.assign(ssrfConfig, { enabled: true });
+		service = new PrometheusSsrfMetricsService(ssrfProtectionService, config, ssrfConfig);
 		mockCounterInc = jest.fn();
 		mockHistogramObserve = jest.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
@@ -41,13 +46,21 @@ describe('PrometheusSsrfMetricsService', () => {
 	}
 
 	describe('enabled', () => {
-		it('should be true when includeSsrfMetrics is true', () => {
+		it('should be true when includeSsrfMetrics and SSRF protection are both enabled', () => {
 			config.includeSsrfMetrics = true;
+			ssrfConfig.enabled = true;
 			expect(service.enabled).toBe(true);
 		});
 
 		it('should be false when includeSsrfMetrics is false', () => {
 			config.includeSsrfMetrics = false;
+			ssrfConfig.enabled = true;
+			expect(service.enabled).toBe(false);
+		});
+
+		it('should be false when SSRF protection is disabled', () => {
+			config.includeSsrfMetrics = true;
+			ssrfConfig.enabled = false;
 			expect(service.enabled).toBe(false);
 		});
 	});
