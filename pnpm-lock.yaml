@@ -2106,13 +2106,22 @@ importers:
       '@n8n/computer-use':
         specifier: workspace:*
         version: link:../computer-use
+      '@n8n/design-system':
+        specifier: workspace:*
+        version: link:../../frontend/@n8n/design-system
       electron-store:
         specifier: ^8.2.0
         version: 8.2.0
+      vue:
+        specifier: catalog:frontend
+        version: 3.5.26(typescript@6.0.2)
     devDependencies:
       '@electron/rebuild':
         specifier: ^4.0.4
         version: 4.0.4
+      '@iconify/json':
+        specifier: ^2.2.349
+        version: 2.2.354
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
@@ -2125,6 +2134,9 @@ importers:
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.41
+      '@vitejs/plugin-vue':
+        specifier: catalog:frontend
+        version: 5.2.4(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
@@ -2140,6 +2152,15 @@ importers:
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
+      sass-embedded:
+        specifier: 'catalog:'
+        version: 1.98.0
+      unplugin-icons:
+        specifier: catalog:frontend
+        version: 23.0.1(@vue/compiler-sfc@3.5.26)
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
