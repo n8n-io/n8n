@@ -81,12 +81,12 @@ export class AgentsModule implements ModuleInterface {
 		return {
 			enabled: true,
 			modules: [...config.modules],
+			knowledgeBaseEnabled: config.sandboxEnabled && config.sandboxProvider === 'daytona',
 		};
 	}
 
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity');
-		const { AgentFile } = await import('./entities/agent-file.entity');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
@@ -115,7 +115,6 @@ export class AgentsModule implements ModuleInterface {
 
 		return [
 			Agent,
-			AgentFile,
 			AgentCheckpoint,
 			AgentResourceEntity,
 			AgentThreadEntity,

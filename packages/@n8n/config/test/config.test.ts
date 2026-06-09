@@ -573,6 +573,14 @@ describe('GlobalConfig', () => {
 		agents: {
 			checkpointTtlSeconds: 345600,
 			modules: [],
+			sandboxEnabled: false,
+			sandboxProvider: '',
+			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			sandboxTimeout: 300000,
+			sandboxNamePrefix: '',
+			daytonaVolumeId: '',
+			daytonaApiUrl: '',
+			daytonaApiKey: '',
 		},
 	} satisfies GlobalConfigShape;
 

@@ -185,9 +185,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAgentModuleActive('node-tools-searcher'),
 	);
 
-	// Opt-in flag: the `knowledge-base` token must be listed in the backend
-	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
-	const isAgentsKnowledgeBaseFeatureEnabled = computed(() => isAgentModuleActive('knowledge-base'));
+	// Opt-in flag: requires `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
+	// `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
+	const isAgentsKnowledgeBaseFeatureEnabled = computed(
+		() =>
+			isModuleActive('agents') === true &&
+			moduleSettings.value.agents?.knowledgeBaseEnabled === true,
+	);
 
 	const isPublicChatTriggerDisabled = computed(
 		() => settings.value.chatTrigger?.disablePublicChat ?? false,

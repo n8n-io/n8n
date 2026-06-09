@@ -26,7 +26,6 @@ import type { OauthService } from '@/oauth/oauth.service';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService, chatThreadId } from '../agents.service';
@@ -107,8 +106,6 @@ function makeRuntimeReconstructionService(
 		mock<N8nMemory>(),
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
-		mock<AgentKnowledgeService>(),
-		mock<AgentKnowledgeCommandService>(),
 	);
 }
 
@@ -214,6 +211,22 @@ describe('AgentsService', () => {
 
 	afterEach(() => {
 		Container.reset();
+	});
+
+	describe('isKnowledgeBaseEnabled', () => {
+		it('only enables the knowledge base for Daytona sandbox config', () => {
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+
+			agentsConfig.sandboxEnabled = true;
+			agentsConfig.sandboxProvider = 'n8n-sandbox';
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+
+			agentsConfig.sandboxProvider = 'daytona';
+			expect(service.isKnowledgeBaseEnabled()).toBe(true);
+
+			agentsConfig.sandboxEnabled = false;
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+		});
 	});
 
 	describe('validateConfig', () => {

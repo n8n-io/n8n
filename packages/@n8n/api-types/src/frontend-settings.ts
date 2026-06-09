@@ -341,6 +341,12 @@ export type FrontendModuleSettings = {
 		 * `N8N_AGENTS_MODULES`
 		 */
 		modules: string[];
+		/**
+		 * Whether the agent knowledge base is enabled. Requires
+		 * `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
+		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
+		 */
+		knowledgeBaseEnabled: boolean;
 	};
 };
 

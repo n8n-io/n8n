@@ -57,8 +57,6 @@ import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
-import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
@@ -106,8 +104,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
-		private readonly agentKnowledgeService: AgentKnowledgeService,
-		private readonly agentKnowledgeCommandService: AgentKnowledgeCommandService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -289,10 +285,6 @@ export class AgentRuntimeReconstructionService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
-	private isKnowledgeBaseModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('knowledge-base');
-	}
-
 	private makeToolResolver(projectId: string, userId: string): ToolResolver {
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
@@ -353,25 +345,6 @@ export class AgentRuntimeReconstructionService {
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
-
-		if (this.isKnowledgeBaseModuleEnabled()) {
-			try {
-				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
-				agent.tool(
-					createSearchKnowledgeTool({
-						agentId,
-						projectId,
-						knowledgeService: this.agentKnowledgeService,
-						commandService: this.agentKnowledgeCommandService,
-					}),
-				);
-			} catch (toolError) {
-				this.logger.warn('Failed to inject search_knowledge tool', {
-					agentId,
-					error: toolError instanceof Error ? toolError.message : String(toolError),
-				});
-			}
-		}
 
 		if (runtimeProfile === 'top-level') {
 			const integrationRegistry = Container.get(ChatIntegrationRegistry);
