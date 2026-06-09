@@ -251,7 +251,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(activeWorkflowManager.addTriggerNodes).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
 				newVersion,
-				['b'],
+				new Set(['b']),
 			);
 			expect(outboxRepository.manager.upsert).toHaveBeenCalled();
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
@@ -265,7 +265,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(activeWorkflowManager.removeTriggerNodes).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
 				oldVersion,
-				['b'],
+				new Set(['b']),
 			);
 			expect(activeWorkflowManager.addTriggerNodes).not.toHaveBeenCalled();
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
@@ -294,12 +294,12 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(activeWorkflowManager.removeTriggerNodes).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
 				oldVersion,
-				['a'],
+				new Set(['a']),
 			);
 			expect(activeWorkflowManager.addTriggerNodes).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
 				newVersion,
-				['a'],
+				new Set(['a']),
 			);
 			expect(callOrder).toEqual(['remove', 'advance', 'add']);
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
@@ -344,7 +344,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(activeWorkflowManager.addTriggerNodes).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
 				newVersion,
-				['a'],
+				new Set(['a']),
 			);
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
 		});
