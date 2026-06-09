@@ -889,28 +889,21 @@ export class AgentsController {
 			);
 		}
 
-		if (!agent.activeVersionId) {
-			await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
-			const publishedAgent = await this.agentsService.publishAgent(
-				agentId,
-				agent.projectId,
-				req.user,
-				undefined,
-				{ syncIntegrations: false },
-			);
-			await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
-			await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
-			return {
-				status: 'connected',
-				agent: await this.withRunnableState(publishedAgent, agent.projectId, req.user),
-			};
-		}
-
+		await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
+		const publishedAgent = await this.agentsService.publishAgent(
+			agentId,
+			agent.projectId,
+			req.user,
+			undefined,
+			{ syncIntegrations: false },
+		);
 		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
+		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
 
-		await this.agentsService.saveCredentialIntegration(agent, integration);
-
-		return { status: 'connected' };
+		return {
+			status: 'connected',
+			agent: await this.withRunnableState(publishedAgent, agent.projectId, req.user),
+		};
 	}
 
 	@Post('/:agentId/integrations/slack/app')

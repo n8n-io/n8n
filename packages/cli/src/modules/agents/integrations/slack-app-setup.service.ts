@@ -14,7 +14,6 @@ import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
@@ -141,12 +140,12 @@ export class SlackAppSetupService {
 	) {}
 
 	async createApp(options: CreateSlackAppOptions): Promise<CreateSlackAgentAppResponse> {
-		const agent = await this.getAgent(options.agentId, options.projectId, true);
 		const appConfigurationToken = options.appConfigurationToken.trim();
 		if (!appConfigurationToken) {
 			throw new BadRequestError('Slack app configuration token is required');
 		}
 
+		const agent = await this.getAgent(options.agentId, options.projectId);
 		const redirectUrl = this.callbackUrl(options.projectId, options.agentId);
 		const manifest = this.buildManifest(agent.name, options.projectId, options.agentId, {
 			redirectUrl,
@@ -208,7 +207,6 @@ export class SlackAppSetupService {
 			throw new BadRequestError('Slack app setup state does not match this agent');
 		}
 
-		const agent = await this.getAgent(session.agentId, session.projectId, true);
 		const user = await this.userRepository.findOne({
 			where: { id: session.userId },
 			relations: ['role'],
@@ -217,6 +215,7 @@ export class SlackAppSetupService {
 			throw new NotFoundError(`User "${session.userId}" not found`);
 		}
 
+		const agent = await this.getAgent(session.agentId, session.projectId);
 		const tokenResponse = await this.callSlackApi(
 			'oauth.v2.access',
 			{
@@ -256,27 +255,26 @@ export class SlackAppSetupService {
 			credentialId: credential.id,
 		} satisfies AgentIntegrationConfig;
 
+		await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
+		await this.agentsService.publishAgent(session.agentId, session.projectId, user, undefined, {
+			syncIntegrations: false,
+		});
 		await this.chatIntegrationService.connect(
 			session.agentId,
 			integration,
 			session.userId,
 			session.projectId,
 		);
-		await this.agentsService.saveCredentialIntegration(agent, integration);
+		await this.chatIntegrationService.broadcastIntegrationChange(
+			session.agentId,
+			integration,
+			'connect',
+		);
 	}
 
-	private async getAgent(
-		agentId: string,
-		projectId: string,
-		requirePublished = false,
-	): Promise<Agent> {
+	private async getAgent(agentId: string, projectId: string): Promise<Agent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		if (requirePublished && !agent.activeVersionId) {
-			throw new ConflictError(
-				`Agent "${agentId}" must be published before connecting an integration`,
-			);
-		}
 		return agent;
 	}
 

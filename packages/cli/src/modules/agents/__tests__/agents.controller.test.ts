@@ -501,7 +501,7 @@ describe('AgentsController integration credentials', () => {
 		expect(chatIntegrationService.connect).not.toHaveBeenCalled();
 	});
 
-	it('persists and broadcasts Telegram settings on connect', async () => {
+	it('persists, publishes, connects, and broadcasts Telegram settings on connect', async () => {
 		const credentialsService = mock<CredentialsService>();
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
 			{
@@ -532,6 +532,8 @@ describe('AgentsController integration credentials', () => {
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		const agentsService = mock<AgentsService>();
+		agentsService.publishAgent.mockResolvedValue(agent as never);
+		agentsService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
 		const { controller } = makeController({
 			agentsService,
 			credentialsService,
@@ -557,23 +559,49 @@ describe('AgentsController integration credentials', () => {
 				undefined as never,
 				'agent-1',
 			),
-		).resolves.toEqual({ status: 'connected' });
-
-		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
-			'agent-1',
-			{
-				type: 'telegram',
-				credentialId: 'cred-telegram',
-				settings,
+		).resolves.toMatchObject({
+			status: 'connected',
+			agent: {
+				id: 'agent-1',
+				isRunnable: true,
 			},
-			'user-1',
-			'project-1',
-		);
-		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, {
+		});
+
+		const integration = {
 			type: 'telegram',
 			credentialId: 'cred-telegram',
 			settings,
+		};
+		expect(agentsService.saveCredentialIntegration).toHaveBeenCalledWith(agent, integration, {
+			broadcast: false,
 		});
+		expect(agentsService.publishAgent).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			{ id: 'user-1' },
+			undefined,
+			{ syncIntegrations: false },
+		);
+		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
+			'agent-1',
+			integration,
+			'user-1',
+			'project-1',
+		);
+		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
+			'agent-1',
+			integration,
+			'connect',
+		);
+		expect(agentsService.saveCredentialIntegration.mock.invocationCallOrder[0]).toBeLessThan(
+			agentsService.publishAgent.mock.invocationCallOrder[0],
+		);
+		expect(agentsService.publishAgent.mock.invocationCallOrder[0]).toBeLessThan(
+			chatIntegrationService.connect.mock.invocationCallOrder[0],
+		);
+		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
+			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
+		);
 	});
 
 	it('persists the integration before publishing when connecting an unpublished agent', async () => {
