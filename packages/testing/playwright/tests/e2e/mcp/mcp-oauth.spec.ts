@@ -1,5 +1,11 @@
 import { test, expect } from '../../../fixtures/base';
 
+// Both this spec and mcp-service.spec.ts toggle the instance-global MCP access
+// setting. In container runs this gives the OAuth spec its own worker/container
+// so the two files cannot race each other's `setMcpAccess` calls. (Local runs
+// against a shared N8N_BASE_URL ignore this — run the two files sequentially.)
+test.use({ capability: { env: { TEST_ISOLATION: 'mcp-oauth' } } });
+
 /**
  * E2E baseline for the instance MCP OAuth server.
  *
