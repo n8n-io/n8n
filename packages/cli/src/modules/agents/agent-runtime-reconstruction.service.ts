@@ -57,6 +57,7 @@ import { resolveCredentialAwareModelConfig } from './json-config/model-config';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
@@ -104,6 +105,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -285,6 +287,12 @@ export class AgentRuntimeReconstructionService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
+	private isKnowledgeBaseEnabled(): boolean {
+		return (
+			this.agentsConfig.sandboxEnabled === true && this.agentsConfig.sandboxProvider === 'daytona'
+		);
+	}
+
 	private makeToolResolver(projectId: string, userId: string): ToolResolver {
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
@@ -345,6 +353,17 @@ export class AgentRuntimeReconstructionService {
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
+
+		if (this.isKnowledgeBaseEnabled()) {
+			const { createSearchKnowledgeTool } = await import('./tools/knowledge/search-knowledge.tool');
+			agent.tool(
+				createSearchKnowledgeTool({
+					projectId,
+					agentId,
+					sandboxService: this.agentKnowledgeSandboxService,
+				}),
+			);
+		}
 
 		if (runtimeProfile === 'top-level') {
 			const integrationRegistry = Container.get(ChatIntegrationRegistry);

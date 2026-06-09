@@ -16,6 +16,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { Logger } from '@n8n/backend-common';
@@ -106,6 +107,7 @@ function makeRuntimeReconstructionService(
 		mock<N8nMemory>(),
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
+		mock<AgentKnowledgeSandboxService>(),
 	);
 }
 

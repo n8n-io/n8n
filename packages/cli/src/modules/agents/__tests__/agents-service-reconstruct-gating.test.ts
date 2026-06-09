@@ -22,6 +22,7 @@ import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -85,6 +86,7 @@ function makeReconstructionService(
 			modules,
 			...(overrides.agentsConfig ?? {}),
 		} as unknown as AgentsConfig,
+		mock<AgentKnowledgeSandboxService>(),
 	);
 }
 
@@ -491,4 +493,57 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 		expect(toolNames).not.toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(toolNames).not.toContain(WRITE_TODOS_TOOL_NAME);
 	});
+});
+
+describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — search_knowledge gating', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+		builtAgent.tool.mockClear();
+	});
+
+	function getInjectedToolNames(): string[] {
+		const names: string[] = [];
+		for (const call of builtAgent.tool.mock.calls) {
+			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
+				const tool = item as { name?: string };
+				if (tool.name) names.push(tool.name);
+			}
+		}
+		return names;
+	}
+
+	function setup(agentsConfig: Partial<AgentsConfig>) {
+		const agentsToolsService = mock<AgentsToolsService>();
+		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
+		const credentialProvider = mock<CredentialProvider>();
+		const service = makeReconstructionService(agentsToolsService, [], { agentsConfig });
+		return { service, credentialProvider };
+	}
+
+	it('injects search_knowledge when the Daytona knowledge base gate is enabled', async () => {
+		const { service, credentialProvider } = setup({
+			sandboxEnabled: true,
+			sandboxProvider: 'daytona',
+		});
+
+		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
+
+		expect(getInjectedToolNames()).toContain('search_knowledge');
+	});
+
+	it.each([
+		{ sandboxEnabled: false, sandboxProvider: 'daytona' as const },
+		{ sandboxEnabled: true, sandboxProvider: 'n8n-sandbox' as const },
+		{ sandboxEnabled: false, sandboxProvider: 'n8n-sandbox' as const },
+	])(
+		'does not inject search_knowledge when sandboxEnabled=$sandboxEnabled and sandboxProvider=$sandboxProvider',
+		async (agentsConfig) => {
+			const { service, credentialProvider } = setup(agentsConfig);
+
+			await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
+
+			expect(getInjectedToolNames()).not.toContain('search_knowledge');
+		},
+	);
 });
