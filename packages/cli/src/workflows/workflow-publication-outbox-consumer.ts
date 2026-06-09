@@ -1,9 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import {
+	WorkflowHistory,
+	WorkflowHistoryRepository,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublishedVersion,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
@@ -13,15 +16,18 @@ import { ensureError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { computeTriggerDiff } from '@/workflows/trigger-diff';
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It polls for
- * pending records and, for each one, reapplies the workflow's triggers to match
- * the published version: tearing down the old triggers, advancing
- * `activeVersionId`, and registering the new triggers. Records for deleted or
- * no-longer-active workflows are short-circuited to completed, and activation
- * failures are recorded against the workflow and marked failed without halting
- * the poll loop.
+ * pending records and, for each one, reconciles the workflow's triggers to match
+ * the version being published. It computes a trigger-level diff between the
+ * currently published version and the new version, then applies only the
+ * necessary operations: removing deleted triggers, adding new ones, and
+ * re-applying modified ones (remove-then-add) while leaving unchanged triggers
+ * running. Records for deleted or no-longer-active workflows are short-circuited
+ * to completed, and activation failures are recorded against the workflow and
+ * marked failed without halting the poll loop.
  */
 @Service()
 export class WorkflowPublicationOutboxConsumer {
@@ -37,6 +43,8 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly errorReporter: ErrorReporter,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly activationErrorsService: ActivationErrorsService,
 	) {
@@ -145,21 +153,53 @@ export class WorkflowPublicationOutboxConsumer {
 			return;
 		}
 
-		if (workflow.activeVersionId === publishedVersionId) {
+		const { oldVersion, newVersion } = await this.resolveVersions(record);
+		if (!newVersion) {
+			this.logger.warn('Published version not found, marking outbox record as completed', {
+				workflowId,
+				publishedVersionId,
+				outboxId: record.id,
+			});
+			await this.outboxRepository.markCompleted(record.id);
+			return;
+		}
+
+		const { toAdd, toRemove } = computeTriggerDiff(
+			this.activeWorkflowManager.getEnabledTriggerNodes(oldVersion),
+			this.activeWorkflowManager.getEnabledTriggerNodes(newVersion),
+		);
+
+		// No trigger changed: advance the published version and finish. Unchanged
+		// triggers keep running and re-read the new version on their next fire.
+		if (toAdd.length === 0 && toRemove.length === 0) {
 			await this.advancePublishedVersion(record);
 			await this.finalizePublication(record);
 			return;
 		}
 
 		try {
-			// Must happen BEFORE advancing the version because clearWebhooks()
-			// reads activeVersion from DB.
-			await this.tearDownOldTriggers(record);
-
-			await this.advancePublishedVersion(record);
-
-			await this.registerNewTriggers(record);
+			// Must happen BEFORE advancing the version, using the currently
+			// published version so the right webhooks are deregistered.
+			if (toRemove.length > 0 && oldVersion) {
+				await this.activeWorkflowManager.removeTriggerNodes(workflowId, oldVersion, toRemove);
+			}
 		} catch (error) {
+			await this.outboxRepository.markFailed(record.id, ensureError(error).message);
+			return;
+		}
+
+		await this.advancePublishedVersion(record);
+
+		try {
+			if (toAdd.length > 0) {
+				await this.activeWorkflowManager.addTriggerNodes(workflowId, newVersion, toAdd);
+			}
+		} catch (error) {
+			await this.workflowRepository.update(workflowId, {
+				active: false,
+				activeVersionId: null,
+			});
+			await this.activationErrorsService.register(workflowId, ensureError(error).message);
 			await this.outboxRepository.markFailed(record.id, ensureError(error).message);
 			return;
 		}
@@ -173,38 +213,24 @@ export class WorkflowPublicationOutboxConsumer {
 		});
 	}
 
-	private async tearDownOldTriggers(record: WorkflowPublicationOutbox) {
-		// This try-catch reflects the old behaviour in the ActiveWorkflowManager.
-		// We probably want to revisit this.
-		try {
-			await this.activeWorkflowManager.clearWebhooks(record.workflowId);
-		} catch (error) {
-			this.errorReporter.error(error, {
-				shouldBeLogged: true,
-				tags: {
-					workflowId: record.workflowId,
-					outboxId: record.id,
-				},
-			});
-		}
+	/**
+	 * Loads the two versions whose triggers are diffed: the version being
+	 * published (`newVersion`, null if its history row no longer exists) and the
+	 * currently published version (`oldVersion`, null on a first publication).
+	 */
+	private async resolveVersions(
+		record: WorkflowPublicationOutbox,
+	): Promise<{ oldVersion: WorkflowHistory | null; newVersion: WorkflowHistory | null }> {
+		const newVersion = await this.workflowHistoryRepository.findOneBy({
+			versionId: record.publishedVersionId,
+		});
 
-		await this.activeWorkflowManager.removeActivationError(record.workflowId);
-		await this.activeWorkflowManager.removeNonWebhookTriggers(record.workflowId);
-	}
+		const currentPublished =
+			await this.workflowPublishedVersionRepository.getPublishedVersionWithRelations(
+				record.workflowId,
+			);
 
-	private async registerNewTriggers(record: WorkflowPublicationOutbox) {
-		try {
-			await this.activeWorkflowManager.add(record.workflowId, 'update', undefined, {
-				shouldPublish: false,
-			});
-		} catch (error) {
-			await this.workflowRepository.update(record.workflowId, {
-				active: false,
-				activeVersionId: null,
-			});
-			await this.activationErrorsService.register(record.workflowId, ensureError(error).message);
-			throw error;
-		}
+		return { oldVersion: currentPublished?.publishedVersion ?? null, newVersion };
 	}
 
 	/**

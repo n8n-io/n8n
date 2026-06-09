@@ -145,6 +145,16 @@ export class WebhookService {
 		return await this.deleteWebhooks(webhooks);
 	}
 
+	/** Delete the webhooks registered for the given nodes of a workflow. */
+	async deleteWorkflowWebhooksForNodes(workflowId: string, nodeNames: string[]) {
+		if (nodeNames.length === 0) return;
+
+		const webhooks = await this.webhookRepository.findBy({ workflowId });
+		const toDelete = webhooks.filter((webhook) => nodeNames.includes(webhook.node));
+
+		return await this.deleteWebhooks(toDelete);
+	}
+
 	private async deleteWebhooks(webhooks: WebhookEntity[]) {
 		void this.cacheService.deleteMany(webhooks.map((w) => w.cacheKey));
 

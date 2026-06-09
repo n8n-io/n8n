@@ -66,13 +66,13 @@ export class ActiveWorkflowTriggers {
 	}
 
 	/**
-	 * Makes a workflow active
+	 * Makes a workflow active by registering all of its trigger and poll nodes.
 	 *
 	 * @param {string} workflowId The id of the workflow to activate
 	 * @param {Workflow} workflow The workflow to activate
 	 * @param {IWorkflowExecuteAdditionalData} additionalData The additional data which is needed to run workflows
 	 */
-	async add(
+	async addAllTriggers(
 		workflowId: string,
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -81,9 +81,44 @@ export class ActiveWorkflowTriggers {
 		getTriggerFunctions: IGetExecuteTriggerFunctions,
 		getPollFunctions: IGetExecutePollFunctions,
 	) {
-		const triggerFunctionNodes = workflow.getTriggerNodes();
+		const nodeIds = [...workflow.getTriggerNodes(), ...workflow.getPollNodes()].map(
+			(node) => node.id,
+		);
 
-		const triggers = new WorkflowActiveTriggersState();
+		await this.addTriggers(
+			workflowId,
+			workflow,
+			nodeIds,
+			additionalData,
+			mode,
+			activation,
+			getTriggerFunctions,
+			getPollFunctions,
+		);
+	}
+
+	/**
+	 * Activates the given subset of a workflow's trigger and poll nodes, merging
+	 * them into any triggers already active for the workflow. Used to apply a
+	 * trigger-level diff during publication without disturbing unchanged triggers.
+	 */
+	async addTriggers(
+		workflowId: string,
+		workflow: Workflow,
+		nodeIds: string[],
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		getTriggerFunctions: IGetExecuteTriggerFunctions,
+		getPollFunctions: IGetExecutePollFunctions,
+	) {
+		const nodeIdSet = new Set(nodeIds);
+		const existing = this.activeTriggersByWorkflowId.get(workflowId);
+		const triggers = existing ?? new WorkflowActiveTriggersState();
+
+		const triggerFunctionNodes = workflow
+			.getTriggerNodes()
+			.filter((node) => nodeIdSet.has(node.id));
 
 		for (const triggerNode of triggerFunctionNodes) {
 			try {
@@ -110,7 +145,7 @@ export class ActiveWorkflowTriggers {
 
 		this.activeTriggersByWorkflowId.set(workflowId, triggers);
 
-		const pollTriggerNodes = workflow.getPollNodes();
+		const pollTriggerNodes = workflow.getPollNodes().filter((node) => nodeIdSet.has(node.id));
 
 		if (pollTriggerNodes.length === 0) return;
 
@@ -126,8 +161,9 @@ export class ActiveWorkflowTriggers {
 				);
 			} catch (e) {
 				// Do not mark this workflow as active if there are no active or schedule
-				// trigger responses, and any poll trigger activation failed.
-				if (triggers.isEmpty) {
+				// trigger responses, and any poll trigger activation failed. Leave an
+				// already-active workflow's triggers in place.
+				if (!existing && triggers.isEmpty) {
 					this.activeTriggersByWorkflowId.delete(workflowId);
 				}
 
@@ -138,6 +174,29 @@ export class ActiveWorkflowTriggers {
 					{ cause: error, node: pollNode },
 				);
 			}
+		}
+	}
+
+	/**
+	 * Deactivates the given subset of a workflow's trigger and poll nodes,
+	 * leaving the rest active. Closes each node's trigger response and
+	 * deregisters its poll crons. Drops the workflow from the active set only
+	 * when no triggers or crons remain for it.
+	 */
+	async removeTriggers(workflowId: string, nodeIds: string[]) {
+		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
+
+		for (const nodeId of nodeIds) {
+			const response = triggers?.get(nodeId);
+			if (response) {
+				await this.closeTrigger(response, workflowId);
+			}
+			triggers?.delete(nodeId);
+			this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
+		}
+
+		if (triggers?.isEmpty && !this.scheduledTaskManager.hasCrons(workflowId)) {
+			this.activeTriggersByWorkflowId.delete(workflowId);
 		}
 	}
 

@@ -98,7 +98,7 @@ describe('ActiveWorkflowTriggers', () => {
 			getPollFunctions.mockReturnValue(pollFunctions);
 		}
 
-		return await activeWorkflowTriggers.add(
+		return await activeWorkflowTriggers.addAllTriggers(
 			workflowId,
 			workflow,
 			additionalData,
@@ -109,7 +109,7 @@ describe('ActiveWorkflowTriggers', () => {
 		);
 	};
 
-	describe('add()', () => {
+	describe('addAllTriggers()', () => {
 		describe('should activate workflow', () => {
 			it('with trigger function nodes', async () => {
 				await addWorkflow({ triggerNodes: [triggerNode] });
@@ -452,6 +452,137 @@ describe('ActiveWorkflowTriggers', () => {
 
 			expect(activeWorkflowTriggers.allActiveWorkflows()).toEqual([]);
 			expect(scheduledTaskManager.deregisterCrons).toHaveBeenCalledWith(workflowId);
+		});
+	});
+
+	describe('addTriggers()', () => {
+		const triggerNodeA = mock<INode>({ id: 'a' });
+		const triggerNodeB = mock<INode>({ id: 'b' });
+
+		const addTriggers = async (nodeIds: string[]) =>
+			await activeWorkflowTriggers.addTriggers(
+				workflowId,
+				workflow,
+				nodeIds,
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+
+		it('registers only the requested trigger nodes', async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA, triggerNodeB]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue(triggerResponse);
+
+			await addTriggers(['a']);
+
+			expect(triggersAndPollers.runTriggerFunction).toHaveBeenCalledTimes(1);
+			expect(triggersAndPollers.runTriggerFunction).toHaveBeenCalledWith(
+				workflow,
+				triggerNodeA,
+				getTriggerFunctions,
+				additionalData,
+				mode,
+				activation,
+			);
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+		});
+
+		it('merges newly added triggers into an already-active workflow', async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA, triggerNodeB]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue(triggerResponse);
+
+			await addTriggers(['a']);
+			await addTriggers(['b']);
+
+			expect(triggersAndPollers.runTriggerFunction).toHaveBeenCalledTimes(2);
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, ['a', 'b']);
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
+		});
+	});
+
+	describe('removeTriggers()', () => {
+		const triggerNodeA = mock<INode>({ id: 'a' });
+		const triggerNodeB = mock<INode>({ id: 'b' });
+		const pollNodeP = mock<INode>({ id: 'p' });
+		const responseA = mock<ITriggerResponse>();
+		const responseB = mock<ITriggerResponse>();
+
+		const addTriggerNodesAB = async () => {
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA, triggerNodeB]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockImplementation(async (_workflow, node) =>
+				node.id === 'a' ? responseA : responseB,
+			);
+
+			await activeWorkflowTriggers.addTriggers(
+				workflowId,
+				workflow,
+				['a', 'b'],
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+		};
+
+		it('closes only the targeted trigger and deregisters its cron, leaving others active', async () => {
+			await addTriggerNodesAB();
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, ['a']);
+
+			expect(responseA.closeFunction).toHaveBeenCalled();
+			expect(responseB.closeFunction).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(workflowId, 'a');
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+		});
+
+		it('drops the workflow once its last trigger is removed and no crons remain', async () => {
+			await addTriggerNodesAB();
+			scheduledTaskManager.hasCrons.mockReturnValue(false);
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, ['a', 'b']);
+
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(false);
+		});
+
+		it('keeps the workflow active while it still has registered crons', async () => {
+			await addTriggerNodesAB();
+			scheduledTaskManager.hasCrons.mockReturnValue(true);
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, ['a', 'b']);
+
+			expect(activeWorkflowTriggers.isActive(workflowId)).toBe(true);
+		});
+
+		it('deregisters crons for a poll node with no trigger response', async () => {
+			workflow.getTriggerNodes.mockReturnValue([]);
+			workflow.getPollNodes.mockReturnValue([pollNodeP]);
+			getPollFunctions.mockReturnValue(pollFunctions);
+			pollFunctions.getNodeParameter
+				.calledWith('pollTimes')
+				.mockReturnValue({ item: [{ mode: 'everyMinute' }] });
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+
+			await activeWorkflowTriggers.addTriggers(
+				workflowId,
+				workflow,
+				['p'],
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+
+			await activeWorkflowTriggers.removeTriggers(workflowId, ['p']);
+
+			expect(scheduledTaskManager.deregisterCron).toHaveBeenCalledWith(workflowId, 'p');
 		});
 	});
 });
