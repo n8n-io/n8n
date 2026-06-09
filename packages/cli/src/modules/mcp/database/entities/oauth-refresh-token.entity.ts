@@ -1,4 +1,4 @@
-import { User, WithTimestamps } from '@n8n/db';
+import { JsonColumn, User, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
 
 import { OAuthClient } from './oauth-client.entity';
@@ -25,6 +25,10 @@ export class RefreshToken extends WithTimestamps {
 	@Index()
 	@Column({ type: String })
 	userId: string;
+
+	/** OAuth scopes granted for this refresh token (preserved across rotation). */
+	@JsonColumn()
+	scope: string[];
 
 	@Index()
 	@Column({ type: 'int' })

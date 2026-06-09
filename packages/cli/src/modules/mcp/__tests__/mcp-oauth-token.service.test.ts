@@ -116,6 +116,23 @@ describe('McpOAuthTokenService', () => {
 			expect(pair1.accessToken).not.toBe(pair2.accessToken);
 			expect(pair1.refreshToken).not.toBe(pair2.refreshToken);
 		});
+
+		it('includes the granted scopes in the access token claim', () => {
+			const { accessToken } = service.generateTokenPair('user-123', 'client-456', undefined, [
+				'instanceAi:message',
+				'workflow:read',
+			]);
+
+			const decoded = jwtService.decode(accessToken);
+			expect(decoded.scope).toEqual(['instanceAi:message', 'workflow:read']);
+		});
+
+		it('falls back to the legacy MCP scopes when no scopes are provided', () => {
+			const { accessToken } = service.generateTokenPair('user-123', 'client-456');
+
+			const decoded = jwtService.decode(accessToken);
+			expect(decoded.scope).toEqual(['tool:listWorkflows', 'tool:getWorkflowDetails']);
+		});
 	});
 
 	describe('saveTokenPair', () => {
@@ -125,7 +142,8 @@ describe('McpOAuthTokenService', () => {
 			const clientId = 'client-123';
 			const userId = 'user-456';
 
-			await service.saveTokenPair(accessToken, refreshToken, clientId, userId);
+			const scopes = ['workflow:read', 'workflow:execute'];
+			await service.saveTokenPair(accessToken, refreshToken, clientId, userId, scopes);
 
 			const mockManager = accessTokenRepository.manager as any;
 			expect(mockManager.transaction).toHaveBeenCalled();
@@ -141,6 +159,7 @@ describe('McpOAuthTokenService', () => {
 				token: refreshToken,
 				clientId,
 				userId,
+				scope: scopes,
 				expiresAt: expect.any(Number),
 			});
 		});
@@ -154,6 +173,7 @@ describe('McpOAuthTokenService', () => {
 				token: refreshToken,
 				clientId,
 				userId: 'user-456',
+				scope: ['workflow:read'],
 				expiresAt: Date.now() + 1000000, // Valid
 			});
 
@@ -179,6 +199,33 @@ describe('McpOAuthTokenService', () => {
 			expect(mockTransactionManager.insert).toHaveBeenCalledTimes(2);
 		});
 
+		it('preserves the original grant scopes when rotating', async () => {
+			// Plain object (not a mock proxy) so the scope array round-trips through the JWT intact.
+			const refreshTokenRecord = {
+				token: 'old-refresh-token',
+				clientId: 'client-123',
+				userId: 'user-456',
+				scope: ['workflow:execute', 'instanceAi:message'],
+				expiresAt: Date.now() + 1000000,
+			} as RefreshToken;
+
+			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
+
+			const result = await service.validateAndRotateRefreshToken('old-refresh-token', 'client-123');
+
+			// New access token carries the original grant's scopes...
+			expect(jwtService.decode(result.access_token).scope).toEqual([
+				'workflow:execute',
+				'instanceAi:message',
+			]);
+			// ...and the rotated refresh-token row is persisted with the same scopes.
+			const refreshInsert = mockTransactionManager.insert.mock.calls.find(
+				([, values]: [unknown, { scope?: string[] }]) => values?.scope !== undefined,
+			);
+			expect(refreshInsert?.[1].scope).toEqual(['workflow:execute', 'instanceAi:message']);
+		});
+
 		it('should honor resource when rotating refresh token', async () => {
 			const refreshToken = 'old-refresh-token';
 			const clientId = 'client-123';
@@ -186,6 +233,7 @@ describe('McpOAuthTokenService', () => {
 				token: refreshToken,
 				clientId,
 				userId: 'user-456',
+				scope: ['workflow:read'],
 				expiresAt: Date.now() + 1000000,
 			});
 
@@ -246,11 +294,29 @@ describe('McpOAuthTokenService', () => {
 			expect(result).toEqual({
 				token: accessToken,
 				clientId,
-				scopes: [],
+				// Token minted without explicit scopes falls back to the legacy MCP scopes.
+				scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
 				extra: {
 					userId,
 				},
 			});
+		});
+
+		it('returns the scopes carried in the token claim', async () => {
+			const userId = 'user-123';
+			const clientId = 'client-456';
+			const { accessToken } = service.generateTokenPair(userId, clientId, undefined, [
+				'instanceAi:message',
+				'workflow:execute',
+			]);
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId, userId }),
+			);
+
+			const result = await service.verifyAccessToken(accessToken);
+
+			expect(result.scopes).toEqual(['instanceAi:message', 'workflow:execute']);
 		});
 
 		it('should throw error for invalid JWT signature', async () => {
@@ -292,7 +358,8 @@ describe('McpOAuthTokenService', () => {
 			await expect(service.verifyAccessToken(canonicalAudienceToken, audience)).resolves.toEqual({
 				token: canonicalAudienceToken,
 				clientId: 'client-456',
-				scopes: [],
+				// Legacy token without a `scope` claim falls back to the MCP scopes.
+				scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
 				extra: {
 					userId: 'user-123',
 				},
@@ -391,7 +458,12 @@ describe('McpOAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			expect(result).toEqual({ user, authType: 'oauth' });
+			expect(result).toEqual({
+				user,
+				authType: 'oauth',
+				// No explicit scopes minted → legacy MCP scopes surface on the token.
+				scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
+			});
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { id: userId },
 				relations: ['role'],

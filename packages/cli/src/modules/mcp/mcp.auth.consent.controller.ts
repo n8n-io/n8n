@@ -32,6 +32,7 @@ export class McpConsentController {
 				data: {
 					clientName: consentDetails.clientName,
 					clientId: consentDetails.clientId,
+					scopes: consentDetails.scopes,
 				},
 			});
 		} catch (error) {
@@ -53,7 +54,7 @@ export class McpConsentController {
 
 			const result = await this.consentService.handleConsentDecision(
 				sessionToken,
-				req.user.id,
+				req.user,
 				payload.approved,
 			);
 

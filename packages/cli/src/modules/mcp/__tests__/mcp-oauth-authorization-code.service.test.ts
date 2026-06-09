@@ -25,6 +25,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 			const redirectUri = 'https://example.com/callback';
 			const codeChallenge = 'challenge-abc';
 			const state = 'state-xyz';
+			const scopes = ['workflow:read', 'workflow:execute'];
 			const resource = 'https://n8n.example.com/mcp-server/http';
 
 			authorizationCodeRepository.insert.mockResolvedValue(mock());
@@ -35,6 +36,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 				redirectUri,
 				codeChallenge,
 				state,
+				scopes,
 				resource,
 			);
 
@@ -47,6 +49,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 				codeChallenge,
 				codeChallengeMethod: 'S256',
 				state,
+				scope: scopes,
 				resource,
 				expiresAt: expect.any(Number),
 				used: false,
@@ -62,11 +65,13 @@ describe('McpOAuthAuthorizationCodeService', () => {
 				'https://example.com',
 				'challenge',
 				null,
+				['workflow:read'],
 			);
 
 			expect(authorizationCodeRepository.insert).toHaveBeenCalledWith(
 				expect.objectContaining({
 					state: null,
+					scope: ['workflow:read'],
 					resource: null,
 				}),
 			);

@@ -16,6 +16,15 @@ export class McpModule implements ModuleInterface {
 		await import('./mcp.oauth.controller');
 		await import('./mcp.auth.consent.controller');
 		await import('./mcp.oauth-clients.controller');
+
+		await this.seedOAuthClients();
+	}
+
+	/** Seed pre-registered OAuth clients from config (e.g. the first-party `n8n-app` client). */
+	private async seedOAuthClients() {
+		const { McpOAuthConfig } = await import('./mcp-oauth.config');
+		const { McpOAuthService } = await import('./mcp-oauth-service');
+		await Container.get(McpOAuthService).seedClients(Container.get(McpOAuthConfig).clients);
 	}
 
 	/**

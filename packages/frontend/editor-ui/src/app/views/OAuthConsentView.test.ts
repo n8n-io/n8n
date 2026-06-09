@@ -21,6 +21,7 @@ describe('OAuthConsentView', () => {
 		consentStore.consentDetails = {
 			clientName: 'Test MCP Client',
 			clientId: 'test-client-id',
+			scopes: [],
 		};
 		consentStore.isLoading = false;
 		consentStore.error = null;
