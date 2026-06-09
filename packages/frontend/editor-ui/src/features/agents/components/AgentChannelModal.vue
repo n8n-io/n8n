@@ -43,6 +43,7 @@ interface Props {
 	projectId: string;
 	view: ChannelView;
 	connectedChannels: string[];
+	isPublished: boolean;
 }
 
 const props = defineProps<Props>();
@@ -467,6 +468,7 @@ watch(
 						v-if="selectedChannelType === 'slack'"
 						mode="setup"
 						:connected="isConnected('slack')"
+						:is-published="isPublished"
 						:setup-slack-app="setupSlackApp"
 					/>
 					<AgentChannelLinearSetup
@@ -486,6 +488,7 @@ watch(
 						"
 						:error-is-conflict="errorIsConflict[currentIntegration.type]"
 						:saved-settings="integrationSettings[currentIntegration.type]"
+						:is-published="isPublished"
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
@@ -510,6 +513,7 @@ watch(
 						"
 						:error-is-conflict="errorIsConflict[currentIntegration.type]"
 						:saved-settings="integrationSettings[currentIntegration.type]"
+						:is-published="isPublished"
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
@@ -524,6 +528,7 @@ watch(
 						v-if="currentIntegration?.type === 'slack'"
 						mode="edit"
 						:connected="isConnected('slack')"
+						:is-published="isPublished"
 						:disabled="isLoading('slack')"
 						:disconnect-slack-app="disconnectSlackApp"
 					/>

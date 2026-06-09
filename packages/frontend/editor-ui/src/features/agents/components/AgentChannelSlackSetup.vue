@@ -10,6 +10,7 @@ const props = withDefaults(
 		connected?: boolean;
 		disabled?: boolean;
 		mode?: 'setup' | 'edit';
+		isPublished?: boolean;
 		setupSlackApp?: (appConfigurationToken: string) => Promise<boolean>;
 		disconnectSlackApp?: () => Promise<void>;
 	}>(),
@@ -17,6 +18,7 @@ const props = withDefaults(
 		connected: false,
 		disabled: false,
 		mode: 'setup',
+		isPublished: true,
 		setupSlackApp: undefined,
 		disconnectSlackApp: undefined,
 	},
@@ -56,8 +58,6 @@ const canInstallApp = computed(
 		!props.connected &&
 		props.setupSlackApp !== undefined,
 );
-
-const visibleTokenPlaceholder = '••••••••••••••••';
 
 const appConfigurationTokenInputType = computed(() =>
 	showAppConfigurationToken.value ? 'text' : 'password',
@@ -108,21 +108,6 @@ async function onDisconnectSlackApp() {
 <template>
 	<div :class="$style.slackSetup">
 		<div v-if="mode === 'edit'" :class="$style.editTokenContainer">
-			<div :class="$style.tokenField">
-				<label for="slack-app-configuration-token" :class="$style.tokenLabel">
-					<N8nText bold size="medium">
-						{{ i18n.baseText('agents.channels.slack.setup.copyAccessToken.label') }}
-					</N8nText>
-				</label>
-				<N8nInput
-					id="slack-app-configuration-token"
-					:model-value="visibleTokenPlaceholder"
-					type="password"
-					size="large"
-					readonly
-					data-testid="slack-app-configuration-token"
-				/>
-			</div>
 			<N8nButton
 				variant="destructive"
 				size="medium"
@@ -204,6 +189,14 @@ async function onDisconnectSlackApp() {
 							{{ i18n.baseText('agents.channels.slack.setup.installApp.button') }}
 						</N8nButton>
 						<N8nText
+							v-if="!isPublished"
+							:class="$style.publishNotice"
+							size="small"
+							data-testid="slack-app-publish-notice"
+						>
+							{{ i18n.baseText('agents.channels.setup.publishNotice') }}
+						</N8nText>
+						<N8nText
 							v-if="setupError === 'generic'"
 							:class="$style.setupError"
 							size="small"
@@ -239,7 +232,8 @@ async function onDisconnectSlackApp() {
 	height: var(--height--xs);
 }
 
-.setupDescription {
+.setupDescription,
+.publishNotice {
 	color: var(--text-color--subtler);
 }
 
@@ -257,19 +251,6 @@ async function onDisconnectSlackApp() {
 .editTokenContainer {
 	gap: var(--spacing--sm);
 	align-items: flex-start;
-}
-
-.tokenField {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	padding-inline: var(--spacing--3xs);
-	margin-inline: calc(var(--spacing--3xs) * -1);
-}
-
-.tokenLabel {
-	display: inline-flex;
 }
 
 .tokenVisibilityButton {

@@ -100,6 +100,9 @@ const sharedInputDraft = ref('');
 							:project-id="projectId"
 							:agent-id="agentId"
 							:connected-triggers="connectedTriggers"
+							:is-published="
+								agent?.activeVersionId !== null && agent?.activeVersionId !== undefined
+							"
 							@update:tools="emit('update:tools', $event)"
 							@update:mcp-servers="emit('update:mcp-servers', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"

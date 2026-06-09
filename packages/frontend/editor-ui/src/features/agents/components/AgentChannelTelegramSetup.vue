@@ -21,6 +21,7 @@ const props = withDefaults(
 		loading?: boolean;
 		connected?: boolean;
 		connectedDescription?: string;
+		isPublished?: boolean;
 		errorMessage?: string;
 		errorIsConflict?: boolean;
 		savedSettings?: AgentIntegrationSettings;
@@ -33,6 +34,7 @@ const props = withDefaults(
 		loading: false,
 		connected: false,
 		connectedDescription: '',
+		isPublished: true,
 		errorMessage: '',
 		errorIsConflict: false,
 		savedSettings: undefined,
@@ -107,17 +109,26 @@ defineExpose({ credentialId, currentSettings, validationError });
 						:project-id="projectId"
 						:agent-id="agentId"
 					/>
-					<N8nButton
-						v-else-if="step.id === 'connect'"
-						variant="subtle"
-						size="medium"
-						:loading="loading"
-						:disabled="!canConnect"
-						data-testid="telegram-connect-button"
-						@click="emit('connect')"
-					>
-						{{ i18n.baseText('agents.builder.addTrigger.connect') }}
-					</N8nButton>
+					<div v-else-if="step.id === 'connect'" :class="$style.connectStep">
+						<N8nButton
+							variant="subtle"
+							size="medium"
+							:loading="loading"
+							:disabled="!canConnect"
+							data-testid="telegram-connect-button"
+							@click="emit('connect')"
+						>
+							{{ i18n.baseText('agents.builder.addTrigger.connect') }}
+						</N8nButton>
+						<N8nText
+							v-if="!isPublished"
+							:class="$style.publishNotice"
+							size="small"
+							data-testid="telegram-publish-notice"
+						>
+							{{ i18n.baseText('agents.channels.setup.publishNotice') }}
+						</N8nText>
+					</div>
 				</div>
 			</template>
 		</N8nStepper>
@@ -175,6 +186,17 @@ defineExpose({ credentialId, currentSettings, validationError });
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding-top: var(--spacing--xs);
+}
+
+.connectStep {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--sm);
+}
+
+.publishNotice {
+	color: var(--text-color--subtler);
 }
 
 .errorText {

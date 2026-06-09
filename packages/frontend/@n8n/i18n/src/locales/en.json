@@ -6595,6 +6595,7 @@
 	"agents.builder.addTrigger.slack.setup.tokenLink": "Create one in Slack.",
 	"agents.builder.addTrigger.slack.setup.button": "Create and install",
 	"agents.builder.addTrigger.slack.setup.error": "Could not create and install the Slack app.",
+	"agents.channels.setup.publishNotice": "This will publish your agent",
 	"agents.channels.slack.setup.createToken.title": "Create token",
 	"agents.channels.slack.setup.createToken.description": "Open the Slack dashboard and create an app configuration token.",
 	"agents.channels.slack.setup.createToken.link": "Open Slack dashboard",
