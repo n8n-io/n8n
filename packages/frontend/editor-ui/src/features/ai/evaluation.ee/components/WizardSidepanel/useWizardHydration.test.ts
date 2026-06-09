@@ -9,9 +9,12 @@ import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store'
 const { mocks } = vi.hoisted(() => ({
 	mocks: {
 		allNodes: [] as Array<{ name: string; type: string }>,
+		isNewWorkflow: false,
 		showError: vi.fn(),
 		listEvaluationConfigs: vi.fn(),
 		getDataTableRowsApi: vi.fn(),
+		fetchTestRuns: vi.fn(),
+		testRunsByWorkflowId: {} as Record<string, Array<{ id: string; createdAt: string }>>,
 	},
 }));
 
@@ -38,6 +41,14 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
+}));
+
+vi.mock('@/app/stores/workflows.store', () => ({
+	useWorkflowsStore: () => ({
+		get isNewWorkflow() {
+			return mocks.isNewWorkflow;
+		},
+	}),
 }));
 
 // Avoid activating the real focus-panel store: its watchers outlive the test
@@ -68,6 +79,15 @@ vi.mock('@/features/core/dataTable/dataTable.api', () => ({
 	getDataTableRowsApi: (...args: unknown[]) => mocks.getDataTableRowsApi(...args),
 }));
 
+vi.mock('../../evaluation.store', () => ({
+	useEvaluationStore: () => ({
+		fetchTestRuns: (...args: unknown[]) => mocks.fetchTestRuns(...args),
+		get testRunsByWorkflowId() {
+			return mocks.testRunsByWorkflowId;
+		},
+	}),
+}));
+
 import { useWizardHydration } from './useWizardHydration';
 
 function makeConfig(overrides: Partial<EvaluationConfigDto> = {}): EvaluationConfigDto {
@@ -94,9 +114,74 @@ describe('useWizardHydration', () => {
 			{ name: 'Pre-process', type: 'n8n-nodes-base.set' },
 			{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' },
 		];
+		mocks.isNewWorkflow = false;
 		mocks.listEvaluationConfigs.mockReset();
 		mocks.getDataTableRowsApi.mockReset();
+		mocks.getDataTableRowsApi.mockResolvedValue({ data: [] });
 		mocks.showError.mockReset();
+		mocks.fetchTestRuns.mockReset();
+		mocks.fetchTestRuns.mockResolvedValue(undefined);
+		mocks.testRunsByWorkflowId = {};
+	});
+
+	it('skips hydration for a new/unsaved workflow without calling the API or toasting', async () => {
+		mocks.isNewWorkflow = true;
+
+		const store = useEvaluationsWizardSidepanelStore();
+		const { hydrate } = useWizardHydration();
+		await hydrate();
+
+		expect(mocks.listEvaluationConfigs).not.toHaveBeenCalled();
+		expect(mocks.showError).not.toHaveBeenCalled();
+		// Skipping hydration leaves the store's default pre-selection untouched.
+		expect(store.selectedMetricKeys).toEqual(['correctness']);
+	});
+
+	describe('restoring the last run', () => {
+		it('jumps to the results step pinned to the most recent run', async () => {
+			mocks.listEvaluationConfigs.mockResolvedValue([makeConfig()]);
+			mocks.testRunsByWorkflowId = {
+				'workflow-id': [
+					{ id: 'run-old', createdAt: '2024-01-01T00:00:00.000Z' },
+					{ id: 'run-new', createdAt: '2024-02-01T00:00:00.000Z' },
+				],
+			};
+
+			const store = useEvaluationsWizardSidepanelStore();
+			const { hydrate } = useWizardHydration();
+			await hydrate();
+
+			expect(mocks.fetchTestRuns).toHaveBeenCalledWith('workflow-id');
+			expect(store.activeStep).toBe(3);
+			expect(store.activeRunId).toBe('run-new');
+		});
+
+		it('stays on step 0 when the configured eval has no prior runs', async () => {
+			mocks.listEvaluationConfigs.mockResolvedValue([makeConfig()]);
+			mocks.testRunsByWorkflowId = {};
+
+			const store = useEvaluationsWizardSidepanelStore();
+			const { hydrate } = useWizardHydration();
+			await hydrate();
+
+			expect(store.activeStep).toBe(0);
+			expect(store.activeRunId).toBeNull();
+		});
+
+		it('does not restore a run when the user is already past step 0', async () => {
+			mocks.listEvaluationConfigs.mockResolvedValue([makeConfig()]);
+			mocks.testRunsByWorkflowId = {
+				'workflow-id': [{ id: 'run-1', createdAt: '2024-01-01T00:00:00.000Z' }],
+			};
+
+			const store = useEvaluationsWizardSidepanelStore();
+			store.setStep(1);
+			const { hydrate } = useWizardHydration();
+			await hydrate();
+
+			expect(mocks.fetchTestRuns).not.toHaveBeenCalled();
+			expect(store.activeStep).toBe(1);
+		});
 	});
 
 	it('decodes a canned correctness metric back into selectedMetricKeys + judgeSelection', async () => {
@@ -293,7 +378,8 @@ describe('useWizardHydration', () => {
 		const { hydrate } = useWizardHydration();
 		await hydrate();
 
-		expect(store.selectedMetricKeys).toEqual([]);
+		// No config to load — the store keeps its default pre-selection.
+		expect(store.selectedMetricKeys).toEqual(['correctness']);
 		expect(store.customChecks).toEqual([]);
 		expect(mocks.getDataTableRowsApi).not.toHaveBeenCalled();
 	});

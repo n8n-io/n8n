@@ -1,5 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
-import type { ModelMessage } from 'ai';
+import type { ModelMessage, SystemModelMessage } from 'ai';
 
 import { toAiMessages } from './messages';
 import { stringifyError } from './runtime-helpers';
@@ -10,6 +10,11 @@ import type { AgentDbMessage, AgentMessage, ContentToolCall } from '../types/sdk
 import type { JSONValue } from '../types/utils/json';
 
 export type { SerializedMessageList };
+
+export type LlmContext = {
+	system: SystemModelMessage;
+	messages: ModelMessage[];
+};
 
 type MessageSource = 'history' | 'input' | 'response';
 
@@ -220,10 +225,10 @@ export class AgentMessageList {
 
 	/**
 	 * Full LLM context for a generateText / streamText call.
-	 * Prepends the system prompt (with observation-log memory appended if configured),
-	 * strips custom messages via filterLlmMessages.
+	 * Returns the system prompt separately (with observation-log memory appended if configured)
+	 * and conversation messages stripped via filterLlmMessages.
 	 */
-	forLlm(baseInstructions: string, instructionProviderOptions?: ProviderOptions): ModelMessage[] {
+	forLlm(baseInstructions: string, instructionProviderOptions?: ProviderOptions): LlmContext {
 		let systemPrompt = baseInstructions;
 
 		const observationLogMemory = this.observationLogMemory?.trim();
@@ -231,10 +236,16 @@ export class AgentMessageList {
 			systemPrompt += `\n\n${observationLogMemory}`;
 		}
 
-		const systemMessage: ModelMessage = instructionProviderOptions
-			? { role: 'system', content: systemPrompt, providerOptions: instructionProviderOptions }
-			: { role: 'system', content: systemPrompt };
-		return [systemMessage, ...toAiMessages(filterLlmMessages(stripOrphanedToolMessages(this.all)))];
+		const system: SystemModelMessage = {
+			role: 'system',
+			content: systemPrompt,
+			...(instructionProviderOptions ? { providerOptions: instructionProviderOptions } : {}),
+		};
+
+		return {
+			system,
+			messages: toAiMessages(filterLlmMessages(stripOrphanedToolMessages(this.all))),
+		};
 	}
 
 	/**

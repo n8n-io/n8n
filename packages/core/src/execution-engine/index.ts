@@ -6,9 +6,9 @@ import type {
 	INode,
 	IWorkflowSettings,
 	OauthJweProxyProvider,
-	Result,
 } from 'n8n-workflow';
-import type { LookupFunction } from 'node:net';
+
+import type { SsrfBridge } from '@/ssrf';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import type { ExternalSecretsProxy } from './external-secrets-proxy';
@@ -29,19 +29,6 @@ export type EvalLlmMockHandler = (
 	requestOptions: IHttpRequestOptions,
 	node: INode,
 ) => Promise<EvalMockHttpResponse | undefined>;
-
-export type SsrfCheckResult = Result<void, Error>;
-
-/**
- * Narrow interface for SSRF protection, satisfied structurally by SsrfProtectionService.
- * Defined here so packages/core can use it without importing from packages/cli.
- */
-export interface SsrfBridge {
-	validateIp(ip: string): SsrfCheckResult;
-	validateUrl(url: string | URL): Promise<SsrfCheckResult>;
-	validateRedirectSync(url: string): void;
-	createSecureLookup(): LookupFunction;
-}
 
 declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
@@ -98,6 +85,7 @@ declare module 'n8n-workflow' {
 }
 
 export * from './active-workflows';
+export * from './scheduled-task-manager';
 export type * from './interfaces';
 export * from './routing-node';
 export * from './node-execution-context';

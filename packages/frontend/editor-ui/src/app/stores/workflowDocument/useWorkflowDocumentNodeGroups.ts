@@ -3,7 +3,6 @@ import { createEventHook } from '@vueuse/core';
 import uniq from 'lodash/uniq';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import { CHANGE_ACTION } from './types';
-import type { ChangeAction, ChangeEvent } from './types';
 
 export type NodeGroupPayload = {
 	group: IWorkflowGroup;
@@ -17,10 +16,12 @@ export type NodeGroupsSetPayload = {
 	groups: IWorkflowGroup[];
 };
 
+// Discriminated by `action` so subscribers can narrow `payload` without casts.
 export type NodeGroupChangeEvent =
-	| ChangeEvent<NodeGroupPayload>
-	| ChangeEvent<NodeGroupRemovedPayload>
-	| ChangeEvent<NodeGroupsSetPayload>;
+	| { action: typeof CHANGE_ACTION.SET; payload: NodeGroupsSetPayload }
+	| { action: typeof CHANGE_ACTION.ADD; payload: NodeGroupPayload }
+	| { action: typeof CHANGE_ACTION.UPDATE; payload: NodeGroupPayload }
+	| { action: typeof CHANGE_ACTION.DELETE; payload: NodeGroupRemovedPayload };
 
 type NodeGroupMutationOptions = {
 	markDirty?: boolean;
@@ -55,7 +56,7 @@ export function useWorkflowDocumentNodeGroups() {
 
 	function applyUpsertGroup(
 		group: IWorkflowGroup,
-		action: ChangeAction,
+		action: typeof CHANGE_ACTION.ADD | typeof CHANGE_ACTION.UPDATE,
 		{ markDirty = true }: NodeGroupMutationOptions = {},
 	) {
 		groups.value.set(group.id, group);

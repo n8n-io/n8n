@@ -56,7 +56,7 @@ import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee'
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
-import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import type { SsrfProtectionService } from 'n8n-core';
 import type { Telemetry } from '@/telemetry';
 
 jest.mock('@/permissions.ee/check-access');
@@ -437,6 +437,23 @@ describe('credentialService.list — scoping', () => {
 			includeGlobal: true,
 		});
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('scopes to the bound project and ignores caller-supplied workflowId/projectId', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Bound Project Cred', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.credentialService.list({ workflowId: 'wf-other', projectId: 'project-other' });
+
+		// A bound thread can only ever see its own project's usable credentials —
+		// the LLM cannot broaden the list by passing another workflow or project.
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledTimes(1);
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'bound-project',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
 	});
 });
 

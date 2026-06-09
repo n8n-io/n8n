@@ -1,6 +1,6 @@
 {
   "name": "@n8n/typescript-config",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "type": "module",
   "files": [
     "tsconfig.backend.json",
@@ -15,5 +15,5 @@
     "./tsconfig.frontend.json": "./tsconfig.frontend.json",
     "./*": "./*"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "LicenseRef-n8n-sustainable-use"
 }
