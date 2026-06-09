@@ -96,6 +96,14 @@ describe('MicrosoftSharePointOAuth2Api Credential', () => {
 				'={{($self["customScopes"] ? $self["enabledScopes"] : "openid offline_access https://{subdomain}.sharepoint.com/.default").replace(/\\{subdomain\\}/g, $self["subdomain"])}}',
 			);
 		});
+
+		it('should request the Microsoft account chooser via authQueryParameters', () => {
+			const authQueryParamsProperty = credential.properties.find(
+				(p) => p.name === 'authQueryParameters',
+			);
+			expect(authQueryParamsProperty?.type).toBe('hidden');
+			expect(authQueryParamsProperty?.default).toBe('response_mode=query&prompt=select_account');
+		});
 	});
 
 	describe('OAuth2 flow with default scopes', () => {

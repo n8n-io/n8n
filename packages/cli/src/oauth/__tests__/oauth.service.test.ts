@@ -1875,6 +1875,55 @@ describe('OauthService', () => {
 			expect(mockGetUri).toHaveBeenCalled();
 		});
 
+		it('should merge authQueryParameters into the authorize URL query', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+
+			// Capture the options passed into the ClientOAuth2 constructor and let getUri()
+			// reflect the merged query, proving authQueryParameters reaches the authorize URL.
+			let capturedOptions: { query?: Record<string, string> } | undefined;
+			jest.mocked(ClientOAuth2).mockImplementation((options: any) => {
+				capturedOptions = options;
+				return {
+					code: {
+						getUri: () => {
+							const query = new URLSearchParams(options.query ?? {}).toString();
+							return {
+								toString: () => `https://example.domain/oauth2/auth?response_type=code&${query}`,
+							};
+						},
+					},
+				} as any;
+			});
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'microsoftOutlookOAuth2Api' });
+			const oauthCredentials: OAuth2CredentialData = {
+				clientId: 'client_id',
+				clientSecret: 'client_secret',
+				authUrl: 'https://example.domain/oauth2/auth',
+				accessTokenUrl: 'https://example.domain/oauth2/token',
+				scope: 'openid',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				authQueryParameters: 'response_mode=query&prompt=select_account',
+			};
+
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue(oauthCredentials);
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const authUri = await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			expect(capturedOptions?.query).toEqual({
+				response_mode: 'query',
+				prompt: 'select_account',
+			});
+			expect(authUri).toContain('prompt=select_account');
+			expect(authUri).toContain('response_mode=query');
+		});
+
 		it('should handle dynamic client registration with root-level server URL', async () => {
 			const axios = require('axios');
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');

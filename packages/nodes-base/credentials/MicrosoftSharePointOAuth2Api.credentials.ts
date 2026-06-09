@@ -65,6 +65,12 @@ export class MicrosoftSharePointOAuth2Api implements ICredentialType {
 				'").replace(/\\{subdomain\\}/g, $self["subdomain"])}}',
 		},
 		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'hidden',
+			default: 'response_mode=query&prompt=select_account',
+		},
+		{
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string',

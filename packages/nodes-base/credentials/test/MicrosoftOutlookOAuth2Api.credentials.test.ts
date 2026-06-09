@@ -99,6 +99,14 @@ describe('MicrosoftOutlookOAuth2Api Credential', () => {
 		expect(enabledScopesProperty?.displayOptions?.show?.customScopes).toEqual([true]);
 	});
 
+	it('should request the Microsoft account chooser via authQueryParameters', () => {
+		const authQueryParamsProperty = microsoftOutlookOAuth2Api.properties.find(
+			(p) => p.name === 'authQueryParameters',
+		);
+		expect(authQueryParamsProperty?.type).toBe('hidden');
+		expect(authQueryParamsProperty?.default).toBe('response_mode=query&prompt=select_account');
+	});
+
 	describe('OAuth2 flow with default scopes', () => {
 		it('should include default scopes in authorization URI', () => {
 			const oauthClient = createOAuthClient(defaultScopes);

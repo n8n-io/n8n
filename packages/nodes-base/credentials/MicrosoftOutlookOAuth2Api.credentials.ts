@@ -65,6 +65,12 @@ export class MicrosoftOutlookOAuth2Api implements ICredentialType {
 				'={{$self["customScopes"] ? $self["enabledScopes"] : "' + defaultScopes.join(' ') + '"}}',
 		},
 		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'hidden',
+			default: 'response_mode=query&prompt=select_account',
+		},
+		{
 			displayName: 'Use Shared Mailbox',
 			name: 'useShared',
 			type: 'boolean',
