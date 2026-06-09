@@ -1,7 +1,7 @@
+import { TypedEmitter } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 
 import { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
-import { TypedEmitter } from '@/typed-emitter';
 
 import type { TaskRunnerProcessBase } from './task-runner-process-base';
 
