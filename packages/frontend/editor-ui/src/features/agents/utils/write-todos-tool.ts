@@ -1,11 +1,8 @@
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
+import { SUB_AGENT_TASK_DIFFICULTIES } from '@n8n/api-types';
 import { z } from 'zod';
 
-import {
-	SUB_AGENT_DIFFICULTY_I18N_KEY,
-	SUB_AGENT_TASK_DIFFICULTIES,
-	resolveSubAgentIdForDisplay,
-} from './delegate-tool';
+import { SUB_AGENT_DIFFICULTY_I18N_KEY, resolveSubAgentIdForDisplay } from './delegate-tool';
 
 /**
  * Name of the SDK tool the parent agent calls to maintain a structured task list.
@@ -98,7 +95,7 @@ export function countIncompleteTodos(todos: TodoItem[]): number {
 
 export function writeTodosSummaryLabel(i18n: WriteTodosI18n, incompleteTodoCount: number): string {
 	if (incompleteTodoCount === 0) {
-		return i18n.baseText('agents.chat.writeTodos.summary.done' as BaseTextKey);
+		return i18n.baseText('agents.chat.writeTodos.summary.done');
 	}
 
 	const key =
@@ -126,7 +123,7 @@ function formatTodoItem(
 	const hints: string[] = [];
 	if (todo.difficulty) {
 		hints.push(
-			`${i18n.baseText('agents.chat.writeTodos.hint.difficulty' as BaseTextKey)}: ${writeTodosDifficultyLabel(i18n, todo.difficulty)}`,
+			`${i18n.baseText('agents.chat.writeTodos.hint.difficulty')}: ${writeTodosDifficultyLabel(i18n, todo.difficulty)}`,
 		);
 	}
 	if (todo.delegateHint?.subAgentId) {

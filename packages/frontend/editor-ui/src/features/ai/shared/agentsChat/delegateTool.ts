@@ -1,4 +1,5 @@
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
+import { SUB_AGENT_TASK_DIFFICULTIES } from '@n8n/api-types';
 import { z } from 'zod';
 
 /**
@@ -9,7 +10,6 @@ import { z } from 'zod';
  */
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
 export const INLINE_SUB_AGENT_ID = 'inline';
-export const SUB_AGENT_TASK_DIFFICULTIES = ['low', 'medium', 'high'] as const;
 /** Mirrors `DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE` in `@n8n/agents`. */
 export const DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE =
 	'agents.chat.delegate.childSuspendUnsupported';
@@ -39,9 +39,9 @@ export type DelegateOutput = z.infer<typeof delegateOutputSchema>;
 export type DelegateDifficulty = NonNullable<DelegateInput['difficulty']>;
 
 export const SUB_AGENT_DIFFICULTY_I18N_KEY: Record<DelegateDifficulty, BaseTextKey> = {
-	low: 'agents.chat.difficulty.low' as BaseTextKey,
-	medium: 'agents.chat.difficulty.medium' as BaseTextKey,
-	high: 'agents.chat.difficulty.high' as BaseTextKey,
+	low: 'agents.chat.difficulty.low',
+	medium: 'agents.chat.difficulty.medium',
+	high: 'agents.chat.difficulty.high',
 };
 
 export function isDelegateSubAgentTool(toolName: string | undefined): boolean {
