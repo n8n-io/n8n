@@ -24,7 +24,14 @@ import { McpClientLimitReachedError } from './mcp.errors';
 import { McpSettingsService } from './mcp.settings.service';
 import { OAuthSessionService } from './oauth-session.service';
 
-export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
+/**
+ * Reserved for future granular per-tool delegation. Today MCP OAuth tokens are
+ * user-delegations: a successful consent authorizes the client to act on
+ * behalf of the user with the user's full permission set, equivalent to a
+ * Personal API Key. Advertising scopes we don't enforce would misrepresent
+ * that contract, so this stays empty until per-tool enforcement ships.
+ */
+export const SUPPORTED_SCOPES: string[] = [];
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
