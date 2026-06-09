@@ -201,6 +201,41 @@ describe('classifyWorkflowsForDesktopAssistant — bucketing rules', () => {
 		expect(result.readyToRun).toHaveLength(1);
 	});
 
+	test('an active user-built schedule workflow goes to upcoming (not gated on the desktop-assistant tag)', () => {
+		const result = classifyWorkflowsForDesktopAssistant([
+			input({
+				workflowId: 'wf-user-schedule',
+				active: true,
+				nodes: [
+					node({
+						type: SCHEDULE_TYPE,
+						parameters: { rule: { interval: [{ triggerAtHour: 7 }] } },
+					}),
+				],
+				tags: [],
+			}),
+		]);
+		expect(result.upcoming).toHaveLength(1);
+		expect(result.upcoming[0].workflowId).toBe('wf-user-schedule');
+		expect(result.upcoming[0].source).toBe('user-built');
+		expect(result.upcoming[0].trigger.kind).toBe('schedule');
+		expect(result.readyToRun).toHaveLength(0);
+	});
+
+	test('an active user-built webhook workflow stays in readyToRun (no time-based preview)', () => {
+		const result = classifyWorkflowsForDesktopAssistant([
+			input({
+				workflowId: 'wf-user-webhook',
+				active: true,
+				nodes: [node({ type: WEBHOOK_TYPE })],
+				tags: [],
+			}),
+		]);
+		expect(result.readyToRun).toHaveLength(1);
+		expect(result.readyToRun[0].source).toBe('user-built');
+		expect(result.upcoming).toHaveLength(0);
+	});
+
 	test('disabled nodes do not contribute missing credentials to actionNeeded', () => {
 		const result = classifyWorkflowsForDesktopAssistant([
 			input({
