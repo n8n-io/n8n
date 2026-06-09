@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Config, Env, Nested } from '../decorators';
 
 @Config
-class PrometheusMetricsConfig {
+export class PrometheusMetricsConfig {
 	/** Whether to enable the `/metrics` endpoint to expose Prometheus metrics. */
 	@Env('N8N_METRICS')
 	enable: boolean = false;

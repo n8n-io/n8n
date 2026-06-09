@@ -1541,7 +1541,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	/**
 	 * Returns if the workflow is stored as `active`.
 	 *
-	 * @important Do not confuse with `ActiveWorkflows.isActive()`,
+	 * @important Do not confuse with `ActiveWorkflowTriggers.isActive()`,
 	 * which checks if the workflow is active in memory.
 	 */
 	async isActive(workflowId: string) {

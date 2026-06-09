@@ -123,10 +123,11 @@ export class ScheduledTaskManager {
 		});
 	}
 
-	deregisterCrons(workflowId: string) {
+	/** Returns whether any crons were registered for the workflow and got stopped. */
+	deregisterCrons(workflowId: string): boolean {
 		const workflowCrons = this.cronsByWorkflow.get(workflowId);
 
-		if (!workflowCrons || workflowCrons.size === 0) return;
+		if (!workflowCrons || workflowCrons.size === 0) return false;
 
 		const summaries: string[] = [];
 
@@ -142,6 +143,13 @@ export class ScheduledTaskManager {
 			crons: summaries,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
+
+		return true;
+	}
+
+	/** Ids of workflows that currently have crons registered. */
+	getWorkflowIdsWithCrons(): string[] {
+		return Array.from(this.cronsByWorkflow.keys());
 	}
 
 	deregisterAllCrons() {

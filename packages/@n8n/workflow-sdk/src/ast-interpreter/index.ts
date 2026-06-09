@@ -33,6 +33,14 @@ export { parseSDKCode } from './parser';
 export {
 	ALLOWED_SDK_FUNCTIONS,
 	ALLOWED_METHODS,
+	SDK_METHODS,
+	FORBIDDEN_NODE_TYPES,
+	SAFE_JSON_METHOD_NAMES,
+	SAFE_STRING_METHOD_NAMES,
+	BUILDER_BLOCKED_GLOBALS,
+	SDK_INLINE_CONSTRAINTS,
+	DANGEROUS_GLOBALS,
 	isAllowedSDKFunction,
 	isAllowedMethod,
 } from './validators';
+export type { BuilderBlockedGlobal, SdkMethodSpec, SdkMethodGroup } from './validators';
