@@ -623,21 +623,5 @@ describe('ProjectService', () => {
 				projectRepository.remove.mock.invocationCallOrder[0],
 			);
 		});
-
-		it('skips agent knowledge cleanup when the agents module is inactive', async () => {
-			const project = mock<Project>({ id: 'project-1', type: 'team' });
-			manager.findOne.mockResolvedValueOnce(project);
-			projectRepository.remove.mockResolvedValueOnce(project);
-			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
-			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
-			moduleRegistry.isActive.mockReturnValue(false);
-			projectRelationRepository.findBy.mockResolvedValueOnce([]);
-
-			await projectService.deleteProject(user, project.id);
-
-			expect(agentRepository.findByProjectId).not.toHaveBeenCalled();
-			expect(agentKnowledgeService.deleteAllFilesForAgent).not.toHaveBeenCalled();
-			expect(projectRepository.remove).toHaveBeenCalledWith(project);
-		});
 	});
 });

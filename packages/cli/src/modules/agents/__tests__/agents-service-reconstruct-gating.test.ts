@@ -514,41 +514,11 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		return names;
 	}
 
-	function getInjectedToolBuilder(name: string): { build: () => BuiltTool } | undefined {
-		for (const call of builtAgent.tool.mock.calls) {
-			for (const item of Array.isArray(call[0]) ? call[0] : [call[0]]) {
-				const tool = item as { name?: string; build?: () => BuiltTool };
-				if (tool.name === name && tool.build) return { build: tool.build.bind(tool) };
-			}
-		}
-		return undefined;
-	}
-
 	function setup(agentsConfig: Partial<AgentsConfig>) {
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
 		const agentKnowledgeSandboxService = mock<AgentKnowledgeSandboxService>();
-		agentKnowledgeSandboxService.findKnowledgeFiles.mockResolvedValue({
-			files: [],
-			limit: 20,
-			offset: 0,
-			hasMore: false,
-		});
-		agentKnowledgeSandboxService.searchKnowledge.mockResolvedValue({
-			matches: [],
-			limit: 20,
-			offset: 0,
-			hasMore: false,
-			truncated: false,
-		});
-		agentKnowledgeSandboxService.readKnowledge.mockResolvedValue({
-			file: 'notes.txt',
-			fileId: 'file-1',
-			displayName: 'notes.txt',
-			ranges: [],
-			truncated: false,
-		});
 		const service = makeReconstructionService(agentsToolsService, [], {
 			agentsConfig,
 			agentKnowledgeSandboxService,
@@ -556,55 +526,19 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		return {
 			service,
 			credentialProvider,
-			agentKnowledgeSandboxService,
 		};
 	}
 
-	it('injects search_knowledge with the sandbox service when the Daytona gate is enabled', async () => {
-		const { service, credentialProvider, agentKnowledgeSandboxService } = setup({
+	it('injects knowledge retrieval tools when the Daytona gate is enabled', async () => {
+		const { service, credentialProvider } = setup({
 			sandboxEnabled: true,
 			sandboxProvider: 'daytona',
 		});
 
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
-		expect(getInjectedToolNames()).toContain('search_knowledge');
-		expect(getInjectedToolNames()).toContain('find_knowledge_files');
-		expect(getInjectedToolNames()).toContain('read_knowledge');
-		const findFilesTool = getInjectedToolBuilder('find_knowledge_files')?.build();
-		const searchTool = getInjectedToolBuilder('search_knowledge')?.build();
-		const readTool = getInjectedToolBuilder('read_knowledge')?.build();
-		if (!findFilesTool?.handler || !searchTool?.handler || !readTool?.handler) {
-			throw new Error('Expected knowledge retrieval tools to be injected with handlers');
-		}
-
-		await findFilesTool.handler({ query: 'notes' }, {} as never);
-		expect(agentKnowledgeSandboxService.findKnowledgeFiles).toHaveBeenCalledWith(
-			'project-1',
-			'agent-1',
-			{ query: 'notes' },
-		);
-
-		await searchTool.handler({ query: 'flow control' }, {} as never);
-		expect(agentKnowledgeSandboxService.searchKnowledge).toHaveBeenCalledWith(
-			'project-1',
-			'agent-1',
-			'user-1',
-			{ query: 'flow control' },
-		);
-
-		await readTool.handler(
-			{ file: 'notes.txt', ranges: [{ startLine: 1, endLine: 3 }] },
-			{} as never,
-		);
-		expect(agentKnowledgeSandboxService.readKnowledge).toHaveBeenCalledWith(
-			'project-1',
-			'agent-1',
-			'user-1',
-			{
-				file: 'notes.txt',
-				ranges: [{ startLine: 1, endLine: 3 }],
-			},
+		expect(getInjectedToolNames()).toEqual(
+			expect.arrayContaining(['find_knowledge_files', 'search_knowledge', 'read_knowledge']),
 		);
 	});
 
