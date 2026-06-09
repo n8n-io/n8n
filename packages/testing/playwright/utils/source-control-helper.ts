@@ -1,7 +1,7 @@
 import type { GitCommitInfo, SourceControlledFile } from '@n8n/api-types';
 import { expect } from '@playwright/test';
-import { createHash } from 'node:crypto';
 import type { GiteaHelper } from 'n8n-containers';
+import { createHash } from 'node:crypto';
 
 import type { n8nPage } from '../pages/n8nPage';
 import type { ApiHelpers } from '../services/api-helper';
