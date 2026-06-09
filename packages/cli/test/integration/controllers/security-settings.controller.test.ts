@@ -93,6 +93,19 @@ describe('SecuritySettingsController', () => {
 
 			await ownerAgent.get('/settings/security').expect(500);
 		});
+
+		it('should return 500 when reading the redaction floor fails', async () => {
+			securitySettingsService.arePersonalSpaceSettingsEnabled.mockResolvedValue({
+				personalSpacePublishing: true,
+				personalSpaceSharing: false,
+			});
+			securitySettingsService.getPublishedPersonalWorkflowsCount.mockResolvedValue(0);
+			securitySettingsService.getSharedPersonalWorkflowsCount.mockResolvedValue(0);
+			securitySettingsService.getSharedPersonalCredentialsCount.mockResolvedValue(0);
+			instanceRedactionEnforcementService.get.mockRejectedValueOnce(new Error('boom'));
+
+			await ownerAgent.get('/settings/security').expect(500);
+		});
 	});
 
 	describe('POST /settings/security', () => {

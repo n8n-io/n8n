@@ -104,14 +104,18 @@ describe('SecuritySettingsController', () => {
 			expect(redactionPolicyEvents()).toHaveLength(0);
 		});
 
-		it('applies the redaction floor when provided', async () => {
-			instanceRedactionEnforcementService.get.mockResolvedValue('off');
+		it('does not persist or emit when the redaction floor is unchanged', async () => {
+			instanceRedactionEnforcementService.get.mockResolvedValue('all');
 
-			await controller.updateSecuritySettings(req, mock(), dto('all'));
+			const result = await controller.updateSecuritySettings(req, mock(), dto('all'));
 
-			expect(instanceRedactionEnforcementService.get).toHaveBeenCalled();
-			expect(instanceRedactionEnforcementService.set).toHaveBeenCalledWith('all');
-			expect(redactionPolicyEvents()).toHaveLength(1);
+			expect(instanceRedactionEnforcementService.set).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'redaction-enforcement-updated',
+				expect.anything(),
+			);
+			expect(redactionPolicyEvents()).toHaveLength(0);
+			expect(result.redactionEnforcement).toEqual({ floor: 'all' });
 		});
 	});
 });
