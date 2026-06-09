@@ -7,6 +7,7 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublishedVersion,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
@@ -44,6 +45,7 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly activationErrorsService: ActivationErrorsService,
 	) {
@@ -194,25 +196,28 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	/**
-	 * Loads the two versions whose triggers are diffed: the version being
-	 * published (`newVersion`, null if its history row no longer exists) and the
-	 * currently published version (`oldVersion`, null on a first publication).
+	 * Loads the workflow and the two versions whose triggers are diffed: the
+	 * version being published (`newVersion`, null if its history row no longer
+	 * exists) and the currently published version (`oldVersion`, null on a first
+	 * publication). The workflow is loaded independently of the published-version
+	 * mapping so a first publication (no mapping row yet) still resolves it.
 	 */
 	private async resolveVersions(record: WorkflowPublicationOutbox): Promise<{
 		workflow: WorkflowEntity | null;
 		oldVersion: WorkflowHistory | null;
 		newVersion: WorkflowHistory | null;
 	}> {
-		const workflow = await this.workflowRepository.findOne({
-			where: { id: record.workflowId },
-			relations: { activeVersion: true },
-		});
+		const [workflow, currentlyPublishedVersion, newVersion] = await Promise.all([
+			this.workflowRepository.findOneBy({ id: record.workflowId }),
+			this.workflowPublishedVersionRepository.findOne({
+				where: { workflowId: record.workflowId },
+				relations: { publishedVersion: true },
+				loadEagerRelations: false,
+			}),
+			this.workflowHistoryRepository.findOneBy({ versionId: record.publishedVersionId }),
+		]);
 
-		const oldVersion = workflow?.activeVersion ?? null;
-
-		const newVersion = await this.workflowHistoryRepository.findOneBy({
-			versionId: record.publishedVersionId,
-		});
+		const oldVersion = currentlyPublishedVersion?.publishedVersion ?? null;
 
 		return { workflow, oldVersion, newVersion };
 	}

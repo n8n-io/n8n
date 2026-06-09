@@ -98,6 +98,7 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			owner,
 		);
 		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
 		await activeWorkflowManager.add(workflow.id, 'activate');
 
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(unchanged.id)).toBe(true);
@@ -137,6 +138,7 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		const trigger = scheduleNode('only');
 		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
 		await activeWorkflowManager.add(workflow.id, 'activate');
 
 		// New version keeps the same trigger (a non-trigger node could have changed).

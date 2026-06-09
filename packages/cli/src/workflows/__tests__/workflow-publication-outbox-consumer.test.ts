@@ -6,6 +6,8 @@ import type {
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublishedVersion as WorkflowPublishedVersionEntity,
+	WorkflowPublishedVersionRepository,
 	WorkflowHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -26,6 +28,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const activationErrorsService = mock<ActivationErrorsService>();
 
@@ -45,6 +48,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			outboxRepository,
 			workflowRepository,
 			workflowHistoryRepository,
+			workflowPublishedVersionRepository,
 			activeWorkflowManager,
 			activationErrorsService,
 		);
@@ -95,6 +99,17 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		};
 	}
 
+	/** The `workflow_published_version` mapping read by `resolveVersions`. */
+	function makePublishedVersion(
+		publishedVersion: WorkflowHistory | null,
+	): WorkflowPublishedVersionEntity {
+		return {
+			workflowId: 'wf-1',
+			publishedVersionId: publishedVersion?.versionId ?? 'v-1',
+			publishedVersion,
+		} as unknown as WorkflowPublishedVersionEntity;
+	}
+
 	const newVersion = makeVersion('v-2');
 	const oldVersion = makeVersion('v-1');
 
@@ -107,9 +122,8 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 	/** Pin all tracked mock functions so jest-mock-extended Proxy returns stable instances. */
 	function setupDefaultMocks() {
-		workflowRepository.findOne.mockResolvedValue(
-			makeWorkflow({ activeVersionId: 'v-1', activeVersion: oldVersion }),
-		);
+		workflowRepository.findOneBy.mockResolvedValue(makeWorkflow({ activeVersionId: 'v-1' }));
+		workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(oldVersion));
 		workflowRepository.update.mockResolvedValue({} as never);
 		workflowHistoryRepository.findOneBy.mockResolvedValue(newVersion);
 		activeWorkflowManager.getEnabledTriggerNodes.mockReturnValue([]);
@@ -205,7 +219,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 	describe('processRecord', () => {
 		test('marks completed when workflow not found', async () => {
-			workflowRepository.findOne.mockResolvedValue(null);
+			workflowRepository.findOneBy.mockResolvedValue(null);
 
 			await consumer.processRecord(makeRecord());
 
@@ -332,10 +346,8 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'registration failed');
 		});
 
-		test('treats a first publication (no active version yet) as all-added', async () => {
-			workflowRepository.findOne.mockResolvedValue(
-				makeWorkflow({ activeVersionId: null, activeVersion: null }),
-			);
+		test('treats a first publication (no published-version mapping yet) as all-added', async () => {
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(null);
 			setTriggerSets([], [triggerNode('a')]);
 
 			await consumer.processRecord(makeRecord());
