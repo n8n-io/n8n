@@ -57,12 +57,13 @@ describe('createSandbox', () => {
 		);
 	});
 
-	it('passes archive and delete intervals through to the DaytonaSandbox', async () => {
+	it('passes stop, archive and delete intervals through to the DaytonaSandbox', async () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
 			daytonaApiUrl: 'https://api.daytona.io',
 			daytonaApiKey: 'test-key',
+			autoStopInterval: 30,
 			autoArchiveInterval: 1440,
 			autoDeleteInterval: 43_200,
 			timeout: 60_000,
@@ -73,10 +74,18 @@ describe('createSandbox', () => {
 		expect(
 			(
 				result as unknown as {
-					options: { autoArchiveInterval?: number; autoDeleteInterval?: number };
+					options: {
+						autoStopInterval?: number;
+						autoArchiveInterval?: number;
+						autoDeleteInterval?: number;
+					};
 				}
 			).options,
-		).toMatchObject({ autoArchiveInterval: 1440, autoDeleteInterval: 43_200 });
+		).toMatchObject({
+			autoStopInterval: 30,
+			autoArchiveInterval: 1440,
+			autoDeleteInterval: 43_200,
+		});
 	});
 
 	it('omits ephemeral from the DaytonaSandbox when not configured', async () => {

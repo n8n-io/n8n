@@ -78,6 +78,7 @@ export interface DaytonaSandboxConfig extends SandboxConfigBase {
 	 * Overrides {@link autoDeleteInterval} (Daytona forces it to 0 when ephemeral).
 	 */
 	ephemeral?: boolean;
+	autoStopInterval?: number;
 	autoArchiveInterval?: number;
 	autoDeleteInterval?: number;
 	createTimeoutSeconds?: number;

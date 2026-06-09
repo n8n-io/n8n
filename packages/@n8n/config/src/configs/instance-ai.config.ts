@@ -80,6 +80,13 @@ export class InstanceAiConfig {
 	sandboxEphemeral: boolean = false;
 
 	/**
+	 * Minutes an idle Daytona sandbox waits before it is stopped. Default 15 minutes.
+	 * `0` disables auto-stop (the sandbox stays running).
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES')
+	sandboxAutoStopMinutes: number = 15;
+
+	/**
 	 * Minutes a stopped Daytona sandbox waits before it is archived to cold storage.
 	 * Default 7 days. `0` uses Daytona's maximum interval.
 	 */

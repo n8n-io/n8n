@@ -299,6 +299,7 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
+			sandboxAutoStopMinutes: 15,
 			sandboxAutoArchiveMinutes: 10_080,
 			sandboxAutoDeleteMinutes: 43_200,
 			daytonaTokenRefreshSkewMs: 300_000,

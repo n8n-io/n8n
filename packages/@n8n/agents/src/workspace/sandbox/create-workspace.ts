@@ -37,6 +37,9 @@ function buildSandbox(
 			apiUrl: config.daytonaApiUrl,
 			labels: config.labels,
 			...(config.ephemeral !== undefined ? { ephemeral: config.ephemeral } : {}),
+			...(config.autoStopInterval !== undefined
+				? { autoStopInterval: config.autoStopInterval }
+				: {}),
 			...(config.autoArchiveInterval !== undefined
 				? { autoArchiveInterval: config.autoArchiveInterval }
 				: {}),
