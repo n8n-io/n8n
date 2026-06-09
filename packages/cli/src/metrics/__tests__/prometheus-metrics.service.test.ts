@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
@@ -6,14 +7,30 @@ import promBundle from 'express-prom-bundle';
 import type { InstanceSettings, StorageConfig } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import { readFileSync } from 'node:fs';
+=======
+/* eslint-disable @typescript-eslint/unbound-method -- jest mocks */
+import type { Logger } from '@n8n/backend-common';
+import type express from 'express';
+import { mock } from 'jest-mock-extended';
+>>>>>>> master
 import promClient from 'prom-client';
-import type { Mock } from 'vitest';
+import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { EventService } from '@/events/event.service';
-
-import { PrometheusMetricsService } from '../prometheus-metrics.service';
+import type { PrometheusActiveWorkflowMetricsService } from '../prometheus/active-workflow-metrics.service';
+import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.service';
+import type { PrometheusDefaultMetricsService } from '../prometheus/default-metrics.service';
+import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-metrics.service';
+import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
+import type { PrometheusInstanceRoleMetricsService } from '../prometheus/instance-role-metrics.service';
+import { PrometheusMetricsService } from '../prometheus/prometheus.service';
+import type { PrometheusPssMetricsService } from '../prometheus/pss-metrics.service';
+import type { PrometheusQueueMetricsService } from '../prometheus/queue-metrics.service';
+import type { PrometheusRouteMetricsService } from '../prometheus/route-metrics.service';
+import type { PrometheusTokenExchangeMetricsService } from '../prometheus/token-exchange-metrics.service';
+import type { PrometheusVersionMetricsService } from '../prometheus/version-metrics.service';
+import type { PrometheusWorkflowExecutionDurationMetricsService } from '../prometheus/workflow-execution-duration-metrics.service';
+import type { PrometheusWorkflowStatisticsMetricsService } from '../prometheus/workflow-statistics-metrics.service';
 
 const mockMiddleware = (
 	_req: express.Request,
@@ -28,77 +45,72 @@ vi.mock('express-prom-bundle', () => ({ default: vi.fn(() => mockMiddleware) }))
 const mockedReadFileSync = vi.mocked(readFileSync);
 
 describe('PrometheusMetricsService', () => {
-	let globalConfig: GlobalConfig;
-	let app: express.Application;
-	let eventBus: MessageEventBus;
-	let eventService: EventService;
-	let instanceSettings: InstanceSettings;
-	let workflowRepository: WorkflowRepository;
-	let licenseMetricsRepository: LicenseMetricsRepository;
-	let storageConfig: StorageConfig;
-	let prometheusMetricsService: PrometheusMetricsService;
+	let logger: Mocked<Logger>;
+	let app: Mocked<express.Application>;
 
-	beforeEach(() => {
-		globalConfig = mockInstance(GlobalConfig, {
-			endpoints: {
-				metrics: {
-					prefix: 'n8n_',
-					includeDefaultMetrics: false,
-					includeApiEndpoints: false,
-					includeCacheMetrics: false,
-					includeMessageEventBusMetrics: false,
-					includeCredentialTypeLabel: false,
-					includeNodeTypeLabel: false,
-					includeWorkflowIdLabel: false,
-					includeApiPathLabel: false,
-					includeApiMethodLabel: false,
-					includeApiStatusCodeLabel: false,
-					includeQueueMetrics: false,
-					includeWorkflowExecutionDuration: false,
-					includeWorkflowNameLabel: false,
-					includeWorkflowStatistics: false,
-					includeExecutionDataMetrics: false,
-					activeWorkflowCountInterval: 30,
-					workflowStatisticsInterval: 30,
-				},
-				rest: 'rest',
-				form: 'form',
-				formTest: 'form-test',
-				formWaiting: 'form-waiting',
-				webhook: 'webhook',
-				webhookTest: 'webhook-test',
-				webhookWaiting: 'webhook-waiting',
-			},
-			executions: {
-				mode: 'regular',
-			},
-		});
+	let cache: Mocked<PrometheusCacheMetricsService>;
+	let eventBus: Mocked<PrometheusEventBusMetricsService>;
+	let queue: Mocked<PrometheusQueueMetricsService>;
+	let route: Mocked<PrometheusRouteMetricsService>;
+	let roleInstance: Mocked<PrometheusInstanceRoleMetricsService>;
+	let activeWorkflow: Mocked<PrometheusActiveWorkflowMetricsService>;
+	let workflowExecutionDuration: Mocked<PrometheusWorkflowExecutionDurationMetricsService>;
+	let workflowStatistics: Mocked<PrometheusWorkflowStatisticsMetricsService>;
+	let executionData: Mocked<PrometheusExecutionDataMetricsService>;
+	let pss: Mocked<PrometheusPssMetricsService>;
+	let version: Mocked<PrometheusVersionMetricsService>;
+	let defaultMetrics: Mocked<PrometheusDefaultMetricsService>;
+	let tokenExchange: Mocked<PrometheusTokenExchangeMetricsService>;
 
-		app = mock<express.Application>();
-		eventBus = mock<MessageEventBus>();
-		eventService = mock<EventService>();
-		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
-		workflowRepository = mock<WorkflowRepository>();
-		licenseMetricsRepository = mock<LicenseMetricsRepository>();
-		storageConfig = mock<StorageConfig>({ modeTag: 'db' });
+	let service: PrometheusMetricsService;
 
-		prometheusMetricsService = new PrometheusMetricsService(
-			mock(),
+	const buildService = () =>
+		new PrometheusMetricsService(
+			logger,
+			cache,
 			eventBus,
-			globalConfig,
-			eventService,
-			instanceSettings,
-			workflowRepository,
-			licenseMetricsRepository,
-			storageConfig,
+			queue,
+			route,
+			roleInstance,
+			activeWorkflow,
+			workflowExecutionDuration,
+			workflowStatistics,
+			executionData,
+			pss,
+			version,
+			defaultMetrics,
+			tokenExchange,
 		);
 
 		promClient.Counter.prototype.inc = vi.fn();
 		(promClient.validateMetricName as Mock).mockReturnValue(true);
 
-		mockedReadFileSync.mockImplementation(() => {
-			throw new Error('ENOENT: no such file or directory');
+	beforeEach(() => {
+		// Logger: scoped() must return a logger that also has warn/debug
+		const scopedLogger = mock<Logger>();
+		logger = mock<Logger>();
+		logger.scoped.mockReturnValue(scopedLogger);
+
+		app = mock<express.Application>();
+
+		// All collectors enabled by default
+		cache = mock<PrometheusCacheMetricsService>({ enabled: true });
+		eventBus = mock<PrometheusEventBusMetricsService>({ enabled: true });
+		queue = mock<PrometheusQueueMetricsService>({ enabled: true });
+		route = mock<PrometheusRouteMetricsService>({ enabled: true });
+		roleInstance = mock<PrometheusInstanceRoleMetricsService>({ enabled: true });
+		activeWorkflow = mock<PrometheusActiveWorkflowMetricsService>({ enabled: true });
+		workflowExecutionDuration = mock<PrometheusWorkflowExecutionDurationMetricsService>({
+			enabled: true,
 		});
+		workflowStatistics = mock<PrometheusWorkflowStatisticsMetricsService>({ enabled: true });
+		executionData = mock<PrometheusExecutionDataMetricsService>({ enabled: true });
+		pss = mock<PrometheusPssMetricsService>({ enabled: true });
+		version = mock<PrometheusVersionMetricsService>({ enabled: true });
+		defaultMetrics = mock<PrometheusDefaultMetricsService>({ enabled: true });
+		tokenExchange = mock<PrometheusTokenExchangeMetricsService>({ enabled: true });
+
+		service = buildService();
 	});
 
 	afterEach(() => {
@@ -139,88 +151,86 @@ describe('PrometheusMetricsService', () => {
 	});
 
 	describe('init', () => {
-		it('should set up `n8n_version_info`', async () => {
-			await prometheusMetricsService.init(app);
+		it('should call init on all enabled collectors', () => {
+			service.init(app);
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(1, {
-				name: 'n8n_version_info',
-				help: 'n8n version info.',
-				labelNames: ['version', 'major', 'minor', 'patch'],
-			});
+			expect(cache.init).toHaveBeenCalledWith(app);
+			expect(eventBus.init).toHaveBeenCalledWith(app);
+			expect(queue.init).toHaveBeenCalledWith(app);
+			expect(route.init).toHaveBeenCalledWith(app);
+			expect(roleInstance.init).toHaveBeenCalledWith(app);
+			expect(activeWorkflow.init).toHaveBeenCalledWith(app);
+			expect(workflowExecutionDuration.init).toHaveBeenCalledWith(app);
+			expect(workflowStatistics.init).toHaveBeenCalledWith(app);
+			expect(executionData.init).toHaveBeenCalledWith(app);
+			expect(pss.init).toHaveBeenCalledWith(app);
+			expect(version.init).toHaveBeenCalledWith(app);
+			expect(defaultMetrics.init).toHaveBeenCalledWith(app);
+			expect(tokenExchange.init).toHaveBeenCalledWith(app);
 		});
 
-		it('should set up default metrics collection with `prom-client`', async () => {
-			prometheusMetricsService.enableMetric('default');
-			await prometheusMetricsService.init(app);
+		it('should NOT call init on disabled collectors', () => {
+			jest.replaceProperty(cache, 'enabled', false);
+			jest.replaceProperty(queue, 'enabled', false);
+			jest.replaceProperty(pss, 'enabled', false);
 
-			expect(promClient.collectDefaultMetrics).toHaveBeenCalled();
+			service.init(app);
+
+			expect(cache.init).not.toHaveBeenCalled();
+			expect(queue.init).not.toHaveBeenCalled();
+			expect(pss.init).not.toHaveBeenCalled();
+
+			// Still call enabled ones
+			expect(version.init).toHaveBeenCalledWith(app);
+			expect(eventBus.init).toHaveBeenCalledWith(app);
 		});
 
-		it('should set up `n8n_cache_hits_total`', async () => {
-			prometheusMetricsService.enableMetric('cache');
-			await prometheusMetricsService.init(app);
+		it('should mount GET /metrics endpoint', () => {
+			service.init(app);
 
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_cache_hits_total',
-				help: 'Total number of cache hits.',
-				labelNames: ['cache'],
-			});
+			expect(app.get).toHaveBeenCalledWith('/metrics', expect.any(Function));
 		});
 
-		it('should set up `n8n_cache_misses_total`', async () => {
-			prometheusMetricsService.enableMetric('cache');
-			await prometheusMetricsService.init(app);
+		it('should return metrics string with correct content-type when /metrics handler is called', async () => {
+			const metricsString = '# HELP n8n_version_info\nn8n_version_info 1';
+			(promClient.register.metrics as jest.Mock).mockResolvedValue(metricsString);
+			(promClient.register as unknown as { contentType: string }).contentType =
+				'text/plain; version=0.0.4; charset=utf-8';
 
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_cache_misses_total',
-				help: 'Total number of cache misses.',
-				labelNames: ['cache'],
-			});
+			service.init(app);
+
+			const handler = (app.get as jest.Mock).mock.calls.find((c) => c[0] === '/metrics')?.[1];
+			expect(handler).toBeDefined();
+
+			const req = mock<express.Request>();
+			const res = mock<express.Response>();
+			res.send.mockReturnValue(res);
+
+			await handler(req, res);
+
+			expect(promClient.register.metrics).toHaveBeenCalled();
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Type', promClient.register.contentType);
+			expect(res.send).toHaveBeenCalledWith(metricsString);
 		});
 
-		it('should set up `n8n_cache_updates_total`', async () => {
-			prometheusMetricsService.enableMetric('cache');
-			await prometheusMetricsService.init(app);
+		it('should warn and skip re-initialization when called a second time', () => {
+			const scopedLogger = logger.scoped('metrics');
 
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_cache_updates_total',
-				help: 'Total number of cache updates.',
-				labelNames: ['cache'],
-			});
-			// @ts-expect-error private field
-			expect(prometheusMetricsService.counters.cacheUpdatesTotal?.inc).toHaveBeenCalledWith(0);
-		});
+			service.init(app);
 
-		it('should set up route metrics with `express-prom-bundle`', async () => {
-			prometheusMetricsService.enableMetric('routes');
-			await prometheusMetricsService.init(app);
+			// Reset init call counts
+			jest.clearAllMocks();
+			app.get.mockClear();
 
-			expect(promBundle).toHaveBeenCalledWith({
-				httpDurationMetricName: 'n8n_http_request_duration_seconds',
-				autoregister: false,
-				includeUp: false,
-				includePath: false,
-				includeMethod: false,
-				includeStatusCode: false,
-			});
+			service.init(app);
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
-				name: 'n8n_last_activity',
-				help: 'last instance activity (backend request) in Unix time (seconds).',
-			});
+			// Collectors should NOT be re-initialized
+			expect(cache.init).not.toHaveBeenCalled();
+			expect(version.init).not.toHaveBeenCalled();
 
-			expect(app.use).toHaveBeenCalledWith(
-				[
-					'/api/',
-					'/rest/',
-					'/webhook/',
-					'/webhook-waiting/',
-					'/webhook-test/',
-					'/form/',
-					'/form-waiting/',
-					'/form-test/',
-				],
-				expect.any(Function),
+			// Logger warn should be called
+			expect((scopedLogger as jest.Mocked<Logger>).warn).toHaveBeenCalledWith(
+				'The prometheus initialization should not be called twice.',
 			);
 		});
 
@@ -1072,6 +1082,28 @@ describe('PrometheusMetricsService', () => {
 			// @ts-expect-error private field
 			const histogram = prometheusMetricsService.histograms.executionDataWriteDuration;
 			expect(histogram.observe).not.toHaveBeenCalled();
+		});
+
+		it('should handle a mix of enabled and disabled collectors correctly', () => {
+
+			vi.spyOn(cache, "enabled", "get").mockReturnValue(false);
+			vi.spyOn(queue, "enabled", "get").mockReturnValue(false);
+			vi.spyOn(defaultMetrics, "enabled", "get").mockReturnValue(false);
+			vi.spyOn(pss, "enabled", "get").mockReturnValue(false);
+			vi.spyOn(eventBus, "enabled", "get").mockReturnValue(false);
+
+			service.init(app);
+
+			expect(cache.init).not.toHaveBeenCalled();
+			expect(queue.init).not.toHaveBeenCalled();
+			expect(defaultMetrics.init).not.toHaveBeenCalled();
+			expect(pss.init).not.toHaveBeenCalled();
+			expect(eventBus.init).not.toHaveBeenCalled();
+
+			expect(route.init).toHaveBeenCalled();
+			expect(version.init).toHaveBeenCalled();
+			expect(tokenExchange.init).toHaveBeenCalled();
+			expect(activeWorkflow.init).toHaveBeenCalled();
 		});
 	});
 });

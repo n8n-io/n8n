@@ -10,7 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { ExternalHooks } from '@/external-hooks';
-import type { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
+import type { PrometheusMetricsService } from '@/metrics/prometheus';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import type { RedisClientService } from '@/services/redis-client.service';
 
