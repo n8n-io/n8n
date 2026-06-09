@@ -729,6 +729,8 @@ export class InstanceAiService {
 			sandboxTimeout,
 			sandboxNamePrefix,
 			sandboxEphemeral,
+			sandboxAutoArchiveMinutes,
+			sandboxAutoDeleteMinutes,
 			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
 		const provider = normalizeSandboxProvider(sandboxProvider);
@@ -751,6 +753,10 @@ export class InstanceAiService {
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
 				ephemeral: sandboxEphemeral,
+				autoArchiveInterval: sandboxAutoArchiveMinutes,
+				// Ephemeral sandboxes delete on stop; Daytona forces autoDeleteInterval to 0 and warns
+				// if we also pass a non-zero value, so leave it unset on the ephemeral path.
+				autoDeleteInterval: sandboxEphemeral ? undefined : sandboxAutoDeleteMinutes,
 				refreshSkewMs: daytonaTokenRefreshSkewMs,
 			};
 		}

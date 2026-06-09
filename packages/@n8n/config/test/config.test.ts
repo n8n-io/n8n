@@ -299,6 +299,8 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
+			sandboxAutoArchiveMinutes: 10_080,
+			sandboxAutoDeleteMinutes: 43_200,
 			daytonaTokenRefreshSkewMs: 300_000,
 			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',
