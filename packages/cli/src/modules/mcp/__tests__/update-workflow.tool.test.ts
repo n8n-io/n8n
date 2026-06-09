@@ -8,6 +8,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
+import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -61,6 +62,8 @@ describe('update-workflow MCP tool', () => {
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 	let collaborationService: CollaborationService;
 	let dataTableOps: DataTableOpsMock;
+	let tagService: TagService;
+	let findOrCreateByNamesMock: jest.Mock;
 
 	const buildExistingWorkflow = () =>
 		Object.assign(new WorkflowEntity(), {
@@ -122,6 +125,9 @@ describe('update-workflow MCP tool', () => {
 		dataTableOps = {
 			getManyAndCount: jest.fn().mockResolvedValue({ data: [], count: 0 }),
 		};
+
+		findOrCreateByNamesMock = jest.fn();
+		tagService = mockInstance(TagService, { findOrCreateByNames: findOrCreateByNamesMock });
 	});
 
 	const createTool = () =>
@@ -136,6 +142,7 @@ describe('update-workflow MCP tool', () => {
 			sharedWorkflowRepository,
 			collaborationService,
 			dataTableOps as never,
+			tagService,
 		);
 
 	const callHandler = async (
@@ -943,6 +950,86 @@ describe('update-workflow MCP tool', () => {
 				expect(result.isError).toBeUndefined();
 				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
 				expect(workflowService.update).toHaveBeenCalled();
+			});
+		});
+
+		describe('tag operations', () => {
+			const workflowWithTags = (tagNames: string[]) =>
+				Object.assign(buildExistingWorkflow(), {
+					tags: tagNames.map((name, i) => ({ id: `tag-${i}`, name })),
+				});
+
+			test('resolves added tag names and passes tagIds to workflow update', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production']));
+				findOrCreateByNamesMock.mockResolvedValue([
+					{ id: 'tag-0', name: 'production' },
+					{ id: 'tag-new', name: 'critical' },
+				]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['critical'] }],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(findWorkflowMock).toHaveBeenCalledWith(
+					'wf-1',
+					user,
+					['workflow:update'],
+					expect.objectContaining({ includeTags: true }),
+				);
+				expect(findOrCreateByNamesMock).toHaveBeenCalledTimes(1);
+				const passedNames = findOrCreateByNamesMock.mock.calls[0][0] as string[];
+				expect(passedNames.sort()).toEqual(['critical', 'production']);
+
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds.sort()).toEqual(['tag-0', 'tag-new']);
+			});
+
+			test('removeTags drops names from the resolved set', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production', 'critical']));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'production' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'removeTags', names: ['critical'] }],
+				});
+
+				expect(findOrCreateByNamesMock).toHaveBeenCalledWith(['production']);
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual(['tag-0']);
+			});
+
+			test('removing the last tag passes an empty tagIds array', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['production']));
+				findOrCreateByNamesMock.mockResolvedValue([]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'removeTags', names: ['production'] }],
+				});
+
+				expect(findOrCreateByNamesMock).toHaveBeenCalledWith([]);
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual([]);
+			});
+
+			test('does not call tagService or pass tagIds when no tag ops are present', async () => {
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowMetadata', name: 'renamed' }],
+				});
+
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toBeUndefined();
+				// Tags should not be loaded when there are no tag ops
+				expect(findWorkflowMock).toHaveBeenCalledWith(
+					'wf-1',
+					user,
+					['workflow:update'],
+					expect.objectContaining({ includeTags: false }),
+				);
 			});
 		});
 	});

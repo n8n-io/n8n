@@ -525,6 +525,7 @@ export class McpService {
 			this.sharedWorkflowRepository,
 			this.collaborationService,
 			dataTableOps,
+			this.tagService,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

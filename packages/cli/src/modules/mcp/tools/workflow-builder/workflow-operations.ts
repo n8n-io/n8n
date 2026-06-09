@@ -168,6 +168,26 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 		name: z.string().max(128).optional(),
 		description: z.string().max(255).optional(),
 	}),
+	z.object({
+		type: z.literal('addTags'),
+		names: z
+			.array(z.string().trim().min(1).max(24))
+			.min(1)
+			.max(50)
+			.describe(
+				'Tag names to add to the workflow. Missing tags are auto-created. Idempotent: names already on the workflow are left in place.',
+			),
+	}),
+	z.object({
+		type: z.literal('removeTags'),
+		names: z
+			.array(z.string().trim().min(1).max(24))
+			.min(1)
+			.max(50)
+			.describe(
+				'Tag names to remove from the workflow. Names not currently on the workflow are silently ignored. Does not delete the tag from the instance.',
+			),
+	}),
 ]);
 
 export type PartialUpdateOperation = z.infer<typeof partialUpdateOperationSchema>;
@@ -177,12 +197,25 @@ interface WorkflowSlice {
 	description?: string;
 	nodes: INode[];
 	connections: IConnections;
+	/**
+	 * Tag names currently on the workflow. Loaded by the caller from the existing
+	 * workflow's `tags` relation when the operation batch contains `addTags` or
+	 * `removeTags`. Left undefined when the caller did not load tags — in that
+	 * case tag operations would fail at apply time.
+	 */
+	tagNames?: string[];
 }
 
 export interface ApplyOperationsSuccess {
 	success: true;
 	workflow: WorkflowSlice;
 	addedNodeNames: string[];
+	/**
+	 * Final tag-name set after applying all `addTags`/`removeTags` ops in order.
+	 * Undefined when no tag ops ran, signaling that the tag set should be left
+	 * unchanged. Empty array means "clear all tags".
+	 */
+	tagNames?: string[];
 }
 
 export interface ApplyOperationsFailure {
@@ -198,6 +231,7 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	description: workflow.description,
 	nodes: workflow.nodes.map((node) => structuredClone(node)),
 	connections: structuredClone(workflow.connections),
+	tagNames: workflow.tagNames ? [...workflow.tagNames] : undefined,
 });
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -380,6 +414,9 @@ export function applyOperations(
 	const workflow = cloneWorkflow(input);
 	const nodeByName = new Map(workflow.nodes.map((n) => [n.name, n]));
 	const addedNodeNames = new Set<string>();
+	// Tag set is null until the first tag op runs; that keeps "no tag ops"
+	// distinguishable from "tag ops applied to an empty set" at return time.
+	let tagSet: Set<string> | null = null;
 
 	for (let i = 0; i < operations.length; i++) {
 		const op = operations[i];
@@ -566,6 +603,20 @@ export function applyOperations(
 				break;
 			}
 
+			case 'addTags':
+			case 'removeTags': {
+				if (workflow.tagNames === undefined) {
+					return fail(i, 'tag operations require existing tags to be loaded');
+				}
+				if (tagSet === null) tagSet = new Set(workflow.tagNames);
+				if (op.type === 'addTags') {
+					for (const name of op.names) tagSet.add(name);
+				} else {
+					for (const name of op.names) tagSet.delete(name);
+				}
+				break;
+			}
+
 			default: {
 				op satisfies never;
 				return fail(i, 'unknown operation type');
@@ -573,18 +624,32 @@ export function applyOperations(
 		}
 	}
 
-	return { success: true, workflow, addedNodeNames: [...addedNodeNames] };
+	if (tagSet !== null) {
+		workflow.tagNames = [...tagSet];
+	}
+
+	return {
+		success: true,
+		workflow,
+		addedNodeNames: [...addedNodeNames],
+		tagNames: tagSet !== null ? [...tagSet] : undefined,
+	};
 }
 
 /**
  * Pick only the fields the partial-update path needs from a workflow entity.
  * Keeps the surface explicit and avoids mutating the loaded entity.
  */
-export function toWorkflowSlice(workflow: IWorkflowBase): WorkflowSlice {
+export function toWorkflowSlice(
+	workflow: IWorkflowBase,
+	options: { includeTags?: boolean } = {},
+): WorkflowSlice {
+	const tags = (workflow as { tags?: Array<{ name: string }> }).tags;
 	return {
 		name: workflow.name ?? '',
 		description: (workflow as { description?: string }).description,
 		nodes: workflow.nodes,
 		connections: workflow.connections,
+		tagNames: options.includeTags ? (tags ?? []).map((t) => t.name) : undefined,
 	};
 }

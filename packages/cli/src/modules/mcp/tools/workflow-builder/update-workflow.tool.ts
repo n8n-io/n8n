@@ -21,6 +21,7 @@ import type { CollaborationService } from '@/collaboration/collaboration.service
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
+import type { TagService } from '@/services/tag.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
@@ -126,6 +127,7 @@ export const createUpdateWorkflowTool = (
 	sharedWorkflowRepository: SharedWorkflowRepository,
 	collaborationService: CollaborationService,
 	dataTableOps: DataTableUserOperations,
+	tagService: TagService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -163,16 +165,24 @@ export const createUpdateWorkflowTool = (
 		};
 
 		try {
+			const hasTagOperations = operations.some(
+				(op) => op.type === 'addTags' || op.type === 'removeTags',
+			);
+
 			const existingWorkflow = await getMcpWorkflow(
 				workflowId,
 				user,
 				['workflow:update'],
 				workflowFinderService,
+				{ includeTags: hasTagOperations },
 			);
 
 			await collaborationService.ensureWorkflowEditable(existingWorkflow.id);
 
-			const result = applyOperations(toWorkflowSlice(existingWorkflow), operations);
+			const result = applyOperations(
+				toWorkflowSlice(existingWorkflow, { includeTags: hasTagOperations }),
+				operations,
+			);
 
 			if (!result.success) {
 				throw new Error(result.error);
@@ -260,9 +270,16 @@ export const createUpdateWorkflowTool = (
 				connections: workflowUpdateData.connections,
 			} as unknown as WorkflowJSON);
 
+			let tagIds: string[] | undefined;
+			if (result.tagNames !== undefined) {
+				const resolvedTags = await tagService.findOrCreateByNames(result.tagNames);
+				tagIds = resolvedTags.map((t) => t.id);
+			}
+
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 				aiBuilderAssisted: true,
 				source: 'n8n-mcp',
+				...(tagIds !== undefined ? { tagIds } : {}),
 			});
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});

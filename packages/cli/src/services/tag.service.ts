@@ -1,6 +1,8 @@
 import type { TagEntity, ITagWithCountDb } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -82,5 +84,30 @@ export class TagService {
 		}, {});
 
 		return requestOrder.map((tagId) => tagMap[tagId]);
+	}
+
+	/**
+	 * Resolve a set of tag names to their entities, creating any that don't exist.
+	 * Names are trimmed and de-duplicated before lookup. Returns one entity per
+	 * unique input name, in the same order as the de-duplicated input.
+	 */
+	async findOrCreateByNames(names: string[]): Promise<TagEntity[]> {
+		const uniqueNames = Array.from(new Set(names.map((n) => n.trim()).filter((n) => n.length > 0)));
+		if (uniqueNames.length === 0) return [];
+
+		const existing = await this.tagRepository.find({ where: { name: In(uniqueNames) } });
+		const existingByName = new Map(existing.map((t) => [t.name, t]));
+
+		const result: TagEntity[] = [];
+		for (const name of uniqueNames) {
+			const hit = existingByName.get(name);
+			if (hit) {
+				result.push(hit);
+				continue;
+			}
+			const created = await this.save(this.toEntity({ name }), 'create');
+			result.push(created);
+		}
+		return result;
 	}
 }
