@@ -1,6 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
-import type { LookupAddress } from 'node:dns';
 import { mock } from 'vitest-mock-extended';
 
 import type { DnsResolver } from '../dns-resolver';

@@ -1,20 +1,8 @@
-<<<<<<< HEAD
-import { mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
-import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
-import promBundle from 'express-prom-bundle';
-import type { InstanceSettings, StorageConfig } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import { readFileSync } from 'node:fs';
-=======
-/* eslint-disable @typescript-eslint/unbound-method -- jest mocks */
-import type { Logger } from '@n8n/backend-common';
-import type express from 'express';
-import { mock } from 'jest-mock-extended';
->>>>>>> master
 import promClient from 'prom-client';
-import type { Mock, Mocked } from 'vitest';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { PrometheusActiveWorkflowMetricsService } from '../prometheus/active-workflow-metrics.service';
@@ -45,22 +33,22 @@ vi.mock('express-prom-bundle', () => ({ default: vi.fn(() => mockMiddleware) }))
 const mockedReadFileSync = vi.mocked(readFileSync);
 
 describe('PrometheusMetricsService', () => {
-	let logger: Mocked<Logger>;
-	let app: Mocked<express.Application>;
+	let logger: Logger;
+	let app: express.Application;
 
-	let cache: Mocked<PrometheusCacheMetricsService>;
-	let eventBus: Mocked<PrometheusEventBusMetricsService>;
-	let queue: Mocked<PrometheusQueueMetricsService>;
-	let route: Mocked<PrometheusRouteMetricsService>;
-	let roleInstance: Mocked<PrometheusInstanceRoleMetricsService>;
-	let activeWorkflow: Mocked<PrometheusActiveWorkflowMetricsService>;
-	let workflowExecutionDuration: Mocked<PrometheusWorkflowExecutionDurationMetricsService>;
-	let workflowStatistics: Mocked<PrometheusWorkflowStatisticsMetricsService>;
-	let executionData: Mocked<PrometheusExecutionDataMetricsService>;
-	let pss: Mocked<PrometheusPssMetricsService>;
-	let version: Mocked<PrometheusVersionMetricsService>;
-	let defaultMetrics: Mocked<PrometheusDefaultMetricsService>;
-	let tokenExchange: Mocked<PrometheusTokenExchangeMetricsService>;
+	let cache: PrometheusCacheMetricsService;
+	let eventBus: PrometheusEventBusMetricsService;
+	let queue: PrometheusQueueMetricsService;
+	let route: PrometheusRouteMetricsService;
+	let roleInstance: PrometheusInstanceRoleMetricsService;
+	let activeWorkflow: PrometheusActiveWorkflowMetricsService;
+	let workflowExecutionDuration: PrometheusWorkflowExecutionDurationMetricsService;
+	let workflowStatistics: PrometheusWorkflowStatisticsMetricsService;
+	let executionData: PrometheusExecutionDataMetricsService;
+	let pss: PrometheusPssMetricsService;
+	let version: PrometheusVersionMetricsService;
+	let defaultMetrics: PrometheusDefaultMetricsService;
+	let tokenExchange: PrometheusTokenExchangeMetricsService;
 
 	let service: PrometheusMetricsService;
 
@@ -82,8 +70,8 @@ describe('PrometheusMetricsService', () => {
 			tokenExchange,
 		);
 
-		promClient.Counter.prototype.inc = vi.fn();
-		(promClient.validateMetricName as Mock).mockReturnValue(true);
+	promClient.Counter.prototype.inc = vi.fn();
+	(promClient.validateMetricName as Mock).mockReturnValue(true);
 
 	beforeEach(() => {
 		// Logger: scoped() must return a logger that also has warn/debug
@@ -1085,12 +1073,11 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should handle a mix of enabled and disabled collectors correctly', () => {
-
-			vi.spyOn(cache, "enabled", "get").mockReturnValue(false);
-			vi.spyOn(queue, "enabled", "get").mockReturnValue(false);
-			vi.spyOn(defaultMetrics, "enabled", "get").mockReturnValue(false);
-			vi.spyOn(pss, "enabled", "get").mockReturnValue(false);
-			vi.spyOn(eventBus, "enabled", "get").mockReturnValue(false);
+			vi.spyOn(cache, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(queue, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(defaultMetrics, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(pss, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(eventBus, 'enabled', 'get').mockReturnValue(false);
 
 			service.init(app);
 
