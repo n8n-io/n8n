@@ -1,7 +1,18 @@
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
-import type { MaybeRefOrGetter, Ref, ComputedRef } from 'vue';
-import { toValue, computed, ref, watchEffect, shallowRef, onScopeDispose } from 'vue';
+import {
+	toValue,
+	computed,
+	ref,
+	watchEffect,
+	shallowRef,
+	onScopeDispose,
+	effectScope,
+	type MaybeRefOrGetter,
+	type Ref,
+	type ComputedRef,
+	type EffectScope,
+} from 'vue';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
 import type { Workflow, IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
 import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
@@ -110,9 +121,16 @@ function createWorkflowDiff(
 	};
 }
 
-function createDiffRenderData(workflowRef: ComputedRef<IWorkflowDb | undefined>, side: string) {
+function createDiffRenderData(
+	workflowRef: ComputedRef<IWorkflowDb | undefined>,
+	workflowNodes: Ref<INodeUi[]>,
+	side: string,
+) {
 	const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
+	// `useWorkflowDocumentRenderData` is side-effectful; own its scope so it can
+	// be torn down when the diffed workflow changes or this side disposes.
+	let renderDataScope: EffectScope | undefined;
 
 	watchEffect(() => {
 		const wf = workflowRef.value;
@@ -121,16 +139,30 @@ function createDiffRenderData(workflowRef: ComputedRef<IWorkflowDb | undefined>,
 		if (workflowDocumentStore) {
 			disposeWorkflowDocumentStore(workflowDocumentStore);
 		}
+		renderDataScope?.stop();
 
 		const versionId = wf.versionId ?? `diff-${side}`;
 		const docId = createWorkflowDocumentId(wf.id, versionId);
 
 		workflowDocumentStore = useWorkflowDocumentStore(docId);
-		workflowDocumentStore.hydrate({ ...wf, versionId } as IWorkflowDb);
-		renderData.value = useWorkflowDocumentRenderData(docId);
+		// Hydrate from the same normalized nodes that feed the canvas so the
+		// render-data maps are keyed by the same node IDs the canvas looks up.
+		// Shallow-copy the nodes so the document store owns/mutates its own node
+		// objects (e.g. position snapping) without leaking into `workflowNodes`.
+		workflowDocumentStore.hydrate({
+			...wf,
+			nodes: workflowNodes.value.map((node) => ({ ...node })),
+			versionId,
+		} as IWorkflowDb);
+		renderDataScope = effectScope(true);
+		renderDataScope.run(() => {
+			renderData.value = useWorkflowDocumentRenderData(docId);
+		});
 	});
 
 	function dispose() {
+		renderDataScope?.stop();
+		renderDataScope = undefined;
 		if (workflowDocumentStore) {
 			disposeWorkflowDocumentStore(workflowDocumentStore);
 			workflowDocumentStore = null;
@@ -158,10 +190,12 @@ export const useWorkflowDiff = (
 
 	const { renderData: sourceRenderData, dispose: disposeSource } = createDiffRenderData(
 		sourceRefs.workflowRef,
+		sourceRefs.workflowNodes,
 		'source',
 	);
 	const { renderData: targetRenderData, dispose: disposeTarget } = createDiffRenderData(
 		targetRefs.workflowRef,
+		targetRefs.workflowNodes,
 		'target',
 	);
 

@@ -6,8 +6,19 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import { computed, ref, useCssModule, useTemplateRef } from 'vue';
+import {
+	computed,
+	effectScope,
+	onScopeDispose,
+	ref,
+	shallowRef,
+	useCssModule,
+	useTemplateRef,
+	watch,
+	type EffectScope,
+} from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
+import { createEmptyCanvasRenderData, type CanvasRenderData } from '../canvas.utils';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -41,9 +52,28 @@ const props = withDefaults(
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const renderData = computed(() =>
-	useWorkflowDocumentRenderData(workflowDocumentStore.value.documentId),
+
+// `useWorkflowDocumentRenderData` is side-effectful (subscribes to the document
+// store and creates per-node effect scopes), so it must run once per document
+// id inside a scope we own — not inside a re-evaluating `computed`. We rebuild
+// it only when the document id actually changes, stopping the previous scope
+// (which runs the composable's teardown). The `watch` callback runs outside
+// reactive tracking, so the composable's internal reactive reads don't cause
+// re-invocation.
+const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
+let renderDataScope: EffectScope | undefined;
+watch(
+	() => workflowDocumentStore.value.documentId,
+	(documentId) => {
+		renderDataScope?.stop();
+		renderDataScope = effectScope(true);
+		renderDataScope.run(() => {
+			renderData.value = useWorkflowDocumentRenderData(documentId);
+		});
+	},
+	{ immediate: true },
 );
+onScopeDispose(() => renderDataScope?.stop());
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
 

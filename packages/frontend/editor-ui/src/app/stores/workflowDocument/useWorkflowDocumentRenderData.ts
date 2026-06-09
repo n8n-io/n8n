@@ -1,4 +1,4 @@
-import { computed, effectScope, shallowReactive, type ComputedRef } from 'vue';
+import { computed, effectScope, onScopeDispose, shallowReactive, type ComputedRef } from 'vue';
 import isEqual from 'lodash/isEqual';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import { useI18n } from '@n8n/i18n';
@@ -60,6 +60,12 @@ import type {
  * downstream propagation. Entry lifecycle is driven by the document store's
  * `onNodesChange` event, so add/remove are O(1) and updates re-evaluate
  * lazily.
+ *
+ * Lifecycle: this is side-effectful (subscribes to `onNodesChange`, creates
+ * per-node scopes), so it must be invoked **once per document id inside an
+ * `effectScope` the caller owns** — never inside a re-evaluating `computed`.
+ * Stopping that scope runs the `onScopeDispose` teardown below. See
+ * `WorkflowCanvas.vue` and `useWorkflowDiff.ts` for the call pattern.
  */
 export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocumentId) {
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
@@ -352,8 +358,9 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		for (const id of nodeIds) applyAddEntry(id);
 	}
 
+	let nodesChangeSubscription: { off: () => void } | undefined;
 	if (typeof workflowDocumentStore.onNodesChange === 'function') {
-		workflowDocumentStore.onNodesChange((event: NodesChangeEvent) => {
+		nodesChangeSubscription = workflowDocumentStore.onNodesChange((event: NodesChangeEvent) => {
 			switch (event.action) {
 				case CHANGE_ACTION.ADD: {
 					const { node } = event.payload as NodeAddedPayload;
@@ -379,6 +386,18 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	if (initialIds && typeof initialIds.keys === 'function') {
 		applyReconcileEntries(Array.from(initialIds.keys()));
 	}
+
+	// Teardown. This composable is invoked once per document id inside a
+	// caller-owned `effectScope` (see WorkflowCanvas.vue / useWorkflowDiff.ts).
+	// When that scope stops — on document-id change or unmount — we remove the
+	// `onNodesChange` subscription (otherwise the document store's event hook
+	// keeps a closure referencing this instance's maps alive and keeps running
+	// reconciliation) and stop every per-entry scope.
+	onScopeDispose(() => {
+		nodesChangeSubscription?.off();
+		for (const stop of entryScopes.values()) stop();
+		entryScopes.clear();
+	});
 
 	// -------------------------------------------------------------------------
 	// `additionalPropertiesByNodeId` — sticky-note z-index overlap resolution.
@@ -445,14 +464,36 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		subtitleByNodeId,
 		simulatedNodeTypeDescriptionByNodeId,
 
-		// --- workflowExecutionState projections (active/displayed fallback) ---
-		executionIssuesByNodeName: executionStateStore.activeExecutionIssuesByNodeName,
-		executionStatusByNodeId: executionStateStore.activeExecutionStatusByNodeId,
-		executionRunDataByNodeId: executionStateStore.activeExecutionRunDataByNodeId,
-		executionRunDataOutputMapByNodeId: executionStateStore.activeExecutionRunDataOutputMapByNodeId,
-		executionWaitingByNodeId: executionStateStore.activeExecutionWaitingByNodeId,
-		executionRunningByNodeId: executionStateStore.executionRunningByNodeId,
-		executionWaitingForNextByNodeId: executionStateStore.executionWaitingForNextByNodeId,
+		// --- workflowExecutionState projections ---
+		// All exposed as getters. Setup runs once per document id, but the
+		// `active*` maps swap identity when the active/displayed execution
+		// changes, so they must re-resolve on access to stay reactive. The
+		// running / waiting-for-next maps are stable today, but keeping every
+		// execution-state passthrough a getter is uniform and stays correct if
+		// any later becomes resolver-backed — and a getter over a stable ref
+		// behaves identically to capturing it. (Consumers read these inside
+		// their own computeds and none destructure them.)
+		get executionIssuesByNodeName() {
+			return executionStateStore.activeExecutionIssuesByNodeName;
+		},
+		get executionStatusByNodeId() {
+			return executionStateStore.activeExecutionStatusByNodeId;
+		},
+		get executionRunDataByNodeId() {
+			return executionStateStore.activeExecutionRunDataByNodeId;
+		},
+		get executionRunDataOutputMapByNodeId() {
+			return executionStateStore.activeExecutionRunDataOutputMapByNodeId;
+		},
+		get executionWaitingByNodeId() {
+			return executionStateStore.activeExecutionWaitingByNodeId;
+		},
+		get executionRunningByNodeId() {
+			return executionStateStore.executionRunningByNodeId;
+		},
+		get executionWaitingForNextByNodeId() {
+			return executionStateStore.executionWaitingForNextByNodeId;
+		},
 
 		// --- multi-store fusion projections ---
 		tooltipByNodeId,

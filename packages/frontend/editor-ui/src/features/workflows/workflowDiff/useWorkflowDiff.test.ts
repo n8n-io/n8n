@@ -430,5 +430,28 @@ describe('useWorkflowDiff', () => {
 			// Node with existing ID should keep its ID
 			expect(passedNodes[1].id).toBe('existing-id');
 		});
+
+		it('hydrates the render-data store with the same node IDs used for canvas mapping', () => {
+			const nodeWithoutId = {
+				name: 'Node Without ID',
+				type: 'test-node',
+				typeVersion: 1,
+				position: [100, 100] as [number, number],
+				parameters: {},
+			} as INodeUi;
+
+			const sourceWorkflow = createMockWorkflow('source', [nodeWithoutId]);
+
+			useWorkflowDiff(sourceWorkflow, undefined);
+
+			// Canvas mapping receives nodes with generated IDs; the render-data store
+			// must be hydrated with those same IDs, otherwise canvas lookups
+			// (handles, render type, subtitle, status) miss.
+			const canvasNodes = mockUseCanvasMapping.mock.calls[0][0].nodes.value;
+			const hydratedNodes = mockDocumentStore.hydrate.mock.calls[0][0].nodes;
+
+			expect(canvasNodes[0].id).toBeDefined();
+			expect(hydratedNodes[0].id).toBe(canvasNodes[0].id);
+		});
 	});
 });
