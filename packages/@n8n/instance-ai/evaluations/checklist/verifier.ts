@@ -142,6 +142,11 @@ function extractOpenAiAssistantText(response: unknown): string {
 	return texts.join('');
 }
 
+export function supportsOpenAiReasoning(modelId: string): boolean {
+	const normalized = modelId.trim().toLowerCase();
+	return /^(gpt-5(?:$|[-.])|o[1-9](?:$|[-.]))/.test(normalized);
+}
+
 async function runNativeOpenAiVerifier(
 	userMessage: string,
 	abortSignal: AbortSignal,
@@ -152,61 +157,62 @@ async function runNativeOpenAiVerifier(
 	parsed: z.infer<typeof checklistResultSchema> | undefined;
 }> {
 	const model = resolveEvalModelConfig();
+	const requestBody = {
+		model: model.providerModelId,
+		...(supportsOpenAiReasoning(model.providerModelId) ? { reasoning: { effort: 'high' } } : {}),
+		input: [
+			{
+				role: 'developer',
+				content: MOCK_EXECUTION_VERIFY_PROMPT,
+			},
+			{
+				role: 'user',
+				content: [
+					{
+						type: 'input_text',
+						text: userMessage,
+					},
+				],
+			},
+		],
+		text: {
+			format: {
+				type: 'json_schema',
+				strict: true,
+				name: 'response',
+				schema: {
+					type: 'object',
+					properties: {
+						results: {
+							type: 'array',
+							items: {
+								type: 'object',
+								properties: {
+									id: { type: 'number' },
+									pass: { type: 'boolean' },
+									reasoning: { type: 'string' },
+									failureCategory: { type: ['string', 'null'] },
+									rootCause: { type: ['string', 'null'] },
+								},
+								required: ['id', 'pass', 'reasoning', 'failureCategory', 'rootCause'],
+								additionalProperties: false,
+							},
+						},
+					},
+					required: ['results'],
+					additionalProperties: false,
+					$schema: 'http://json-schema.org/draft-07/schema#',
+				},
+			},
+		},
+	};
 	const response = await fetch(getOpenAiResponsesUrl(model.url), {
 		method: 'POST',
 		headers: {
 			Authorization: `Bearer ${model.apiKey}`,
 			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify({
-			model: model.providerModelId,
-			reasoning: { effort: 'high' },
-			input: [
-				{
-					role: 'developer',
-					content: MOCK_EXECUTION_VERIFY_PROMPT,
-				},
-				{
-					role: 'user',
-					content: [
-						{
-							type: 'input_text',
-							text: userMessage,
-						},
-					],
-				},
-			],
-			text: {
-				format: {
-					type: 'json_schema',
-					strict: true,
-					name: 'response',
-					schema: {
-						type: 'object',
-						properties: {
-							results: {
-								type: 'array',
-								items: {
-									type: 'object',
-									properties: {
-										id: { type: 'number' },
-										pass: { type: 'boolean' },
-										reasoning: { type: 'string' },
-										failureCategory: { type: ['string', 'null'] },
-										rootCause: { type: ['string', 'null'] },
-									},
-									required: ['id', 'pass', 'reasoning', 'failureCategory', 'rootCause'],
-									additionalProperties: false,
-								},
-							},
-						},
-						required: ['results'],
-						additionalProperties: false,
-						$schema: 'http://json-schema.org/draft-07/schema#',
-					},
-				},
-			},
-		}),
+		body: JSON.stringify(requestBody),
 		signal: abortSignal,
 	});
 

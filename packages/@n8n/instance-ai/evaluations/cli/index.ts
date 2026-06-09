@@ -24,7 +24,7 @@ import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckOutcome } from '../binaryChecks/types';
-import { N8nClient } from '../clients/n8n-client';
+import { N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import {
 	compareBuckets,
 	type ComparisonOutcome,
@@ -61,6 +61,7 @@ import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
 	MultiRunEvaluation,
+	BuildTrace,
 	ExecutionScenarioResult,
 	ExecutionScenario,
 	TranscriptTurn,
@@ -97,10 +98,17 @@ const targetOutputSchema = z.object({
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId: z.string().optional(),
 	workflowChecks: z.array(checkOutcomeSchema).optional(),
+	workflowJson: z.unknown().optional(),
+	buildTrace: z.unknown().optional(),
 });
 
-type TargetOutput = Omit<z.infer<typeof targetOutputSchema>, 'evalResult'> & {
+type TargetOutput = Omit<
+	z.infer<typeof targetOutputSchema>,
+	'evalResult' | 'workflowJson' | 'buildTrace'
+> & {
 	evalResult?: InstanceAiEvalExecutionResult;
+	workflowJson?: WorkflowResponse;
+	buildTrace?: BuildTrace;
 };
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -118,6 +126,27 @@ function isEvalResult(v: unknown): v is InstanceAiEvalExecutionResult {
 	);
 }
 
+function isWorkflowResponse(v: unknown): v is WorkflowResponse {
+	if (!isPlainObject(v)) return false;
+	return (
+		typeof v.id === 'string' &&
+		typeof v.name === 'string' &&
+		typeof v.active === 'boolean' &&
+		typeof v.versionId === 'string' &&
+		Array.isArray(v.nodes) &&
+		isPlainObject(v.connections)
+	);
+}
+
+function isBuildTrace(v: unknown): v is BuildTrace {
+	if (!isPlainObject(v)) return false;
+	return (
+		typeof v.finalText === 'string' &&
+		Array.isArray(v.toolCalls) &&
+		Array.isArray(v.agentActivities)
+	);
+}
+
 /** Safe-parse a run's outputs. Returns `undefined` if the row is malformed
  *  or missing, so callers can skip it instead of treating it as a genuine
  *  failed evaluation. Every field in the schema has a default, so an empty
@@ -131,6 +160,10 @@ function parseTargetOutput(raw: unknown): TargetOutput | undefined {
 	return {
 		...parsed.data,
 		evalResult: isEvalResult(parsed.data.evalResult) ? parsed.data.evalResult : undefined,
+		workflowJson: isWorkflowResponse(parsed.data.workflowJson)
+			? parsed.data.workflowJson
+			: undefined,
+		buildTrace: isBuildTrace(parsed.data.buildTrace) ? parsed.data.buildTrace : undefined,
 	};
 }
 
@@ -255,13 +288,15 @@ async function main(): Promise<void> {
 			slugByTestCase = langsmithRun.slugByTestCase;
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			evaluation = await runDirectLoop({
+			const directRun = await runDirectLoop({
 				args,
 				lanes,
 				logger,
 				prebuiltManifest,
 				prebuiltWorkflowIdsToDelete,
 			});
+			evaluation = directRun.evaluation;
+			slugByTestCase = directRun.slugByTestCase;
 		}
 
 		const totalDuration = Date.now() - startTime;
@@ -508,6 +543,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				nodeCount: 0,
 				threadId: build.threadId,
 				workflowChecks: build.workflowChecks,
+				buildTrace: build.buildTrace,
 			};
 		}
 
@@ -561,6 +597,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					execDurationMs: Date.now() - execStart,
 					nodeCount,
 					workflowChecks: build.workflowChecks,
+					workflowJson: build.workflowJsons[0],
+					buildTrace: build.buildTrace,
 				};
 			}
 		}
@@ -586,6 +624,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			nodeCount,
 			threadId: build.threadId,
 			workflowChecks: build.workflowChecks,
+			workflowJson: build.workflowJsons[0],
+			buildTrace: build.buildTrace,
 		};
 	};
 
@@ -908,6 +948,8 @@ function reshapeLangSmithRuns(
 			let buildError: string | undefined;
 			let threadId: string | undefined;
 			let workflowChecks: CheckOutcome[] | undefined;
+			let workflowJson: WorkflowResponse | undefined;
+			let buildTrace: BuildTrace | undefined;
 
 			for (const scenario of testCase.executionScenarios) {
 				const run = byKey.get(`${String(iter)}/${fileSlug}/${scenario.name}`);
@@ -926,6 +968,8 @@ function reshapeLangSmithRuns(
 				if (output.threadId) threadId = output.threadId;
 				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
 				if (output.workflowChecks && !workflowChecks) workflowChecks = output.workflowChecks;
+				if (output.workflowJson && !workflowJson) workflowJson = output.workflowJson;
+				if (output.buildTrace && !buildTrace) buildTrace = output.buildTrace;
 				executionScenarioResults.push({
 					scenario,
 					success: output.passed,
@@ -947,6 +991,8 @@ function reshapeLangSmithRuns(
 				threadId,
 				transcript,
 				workflowChecks,
+				workflowJson,
+				buildTrace,
 				n8nBaseUrl,
 			});
 		}
@@ -959,13 +1005,19 @@ function reshapeLangSmithRuns(
 // Direct mode: simple loop, no LangSmith dependency
 // ---------------------------------------------------------------------------
 
-async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
+async function runDirectLoop(config: RunConfig): Promise<{
+	evaluation: MultiRunEvaluation;
+	slugByTestCase: Map<WorkflowTestCase, string>;
+}> {
 	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
 
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
+	const slugByTestCase = new Map<WorkflowTestCase, string>(
+		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
+	);
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases found in evaluations/data/workflows/');
-		return { totalRuns: 0, testCases: [] };
+		return { evaluation: { totalRuns: 0, testCases: [] }, slugByTestCase };
 	}
 
 	const totalScenarios = testCasesWithFiles.reduce(
@@ -1035,7 +1087,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 		}),
 	);
 
-	return aggregateResults(allRunResults, args.iterations);
+	return { evaluation: aggregateResults(allRunResults, args.iterations), slugByTestCase };
 }
 
 // ---------------------------------------------------------------------------
