@@ -1,0 +1,37 @@
+packages/cli/src/__tests__/controller.registry.test.ts
+  s_f4037ec3e84992::t_10624e1c409da5 369-433
+  s_f4037ec3e84992::t_4b49d2a4a0747b 15
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-token.service.test.ts
+  s_f4037ec3e84992::t_b6ce237c95560d 119-135
+  s_f4037ec3e84992::t_8da08105ac3128 202,205-207,209,211-216,225,227-228
+  s_f4037ec3e84992::t_5da9ae21757a34 203-204,208,210,217-224,226
+  s_f4037ec3e84992::t_d3d43e29b2dc8c 305-321
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-service.test.ts
+  s_f4037ec3e84992::t_ede76aed163d98 227-282
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-consent.service.test.ts
+  s_f4037ec3e84992::t_e911eec669c89d 313-314,316-342,344-367
+  s_f4037ec3e84992::t_5acb2b22e9b2ad 315
+  s_f4037ec3e84992::t_ebdefaaaaf2c54 343
+  s_f4037ec3e84992::t_051cc60aa759d4 26-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "e3f247787c117b6d21261b4ae8be78b0ebff485e",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f4037ec3e84992": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c047bb52-f9ff-424b-8fe6-ebf66afb06bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
