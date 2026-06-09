@@ -225,6 +225,9 @@ catalogs:
     basic-auth:
       specifier: 2.0.1
       version: 2.0.1
+    cache-manager:
+      specifier: 5.2.3
+      version: 5.2.3
     callsites:
       specifier: 3.1.0
       version: 3.1.0
@@ -766,12 +769,18 @@ importers:
       '@ai-sdk/xai':
         specifier: 'catalog:'
         version: 3.0.93(zod@3.25.67)
+      '@daytonaio/sdk':
+        specifier: 'catalog:'
+        version: 0.175.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@3.25.67)
       '@n8n/ai-utilities':
         specifier: workspace:*
         version: link:../ai-utilities
+      '@n8n/sandbox-client':
+        specifier: 0.0.4
+        version: 0.0.4
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -1967,9 +1976,6 @@ importers:
       '@n8n/mcp-browser':
         specifier: workspace:*
         version: link:../mcp-browser
-      '@n8n/sandbox-client':
-        specifier: 0.0.4
-        version: 0.0.4
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -2139,6 +2145,10 @@ importers:
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/mcp-apps:
+    dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@modelcontextprotocol/ext-apps':
         specifier: 'catalog:'
@@ -3151,7 +3161,7 @@ importers:
         specifier: 4.16.4
         version: 4.16.4(patch_hash=a4b6d56db16fe5870646929938466d6a5c668435fd1551bed6a93fffb597ba42)
       cache-manager:
-        specifier: 5.2.3
+        specifier: 'catalog:'
         version: 5.2.3
       change-case:
         specifier: 4.1.2
@@ -3559,6 +3569,9 @@ importers:
       axios:
         specifier: 1.16.1
         version: 1.16.1(debug@4.4.3)
+      cache-manager:
+        specifier: 'catalog:'
+        version: 5.2.3
       callsites:
         specifier: 'catalog:'
         version: 3.1.0

@@ -54,7 +54,7 @@ import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { NodeTypes } from '@/node-types';
 import type { RoleService } from '@/services/role.service';
-import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import type { SsrfProtectionService } from 'n8n-core';
 import type { Telemetry } from '@/telemetry';
 
 vi.mock('@/permissions.ee/check-access');

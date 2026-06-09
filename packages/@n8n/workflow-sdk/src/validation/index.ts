@@ -42,6 +42,7 @@ export type ValidationErrorCode =
 	| 'UNSUPPORTED_SUBNODE_INPUT'
 	| 'MISSING_REQUIRED_INPUT'
 	| 'INVALID_OUTPUT_FOR_MODE'
+	| 'SWITCH_NO_OUTPUT_CONNECTIONS'
 	| 'SWITCH_FALLBACK_OUTPUT_DISABLED'
 	| 'MAX_NODES_EXCEEDED'
 	| 'INVALID_EXPRESSION_PATH'
@@ -512,6 +513,7 @@ export function validateWorkflow(
 
 	// Switch fallback output validation does not need node metadata. It is derived from
 	// the Switch node's dynamic output contract in rules mode.
+	validateSwitchHasOutgoingConnections(json, warnings);
 	validateSwitchFallbackOutputConnections(json, warnings);
 
 	// Merge node input-count consistency
@@ -1056,6 +1058,39 @@ function hasOutputConnections(
 ): boolean {
 	const output = outputs[outputIndex];
 	return Array.isArray(output) && output.length > 0;
+}
+
+function hasAnyMainOutputConnection(nodeConnections: unknown): boolean {
+	if (!isRecord(nodeConnections)) return false;
+	const main = nodeConnections.main;
+	if (!Array.isArray(main)) return false;
+
+	return main.some((slot) => Array.isArray(slot) && slot.length > 0);
+}
+
+/**
+ * A Switch with no outgoing branches is almost always an incomplete router:
+ * every matched item is dropped and downstream side effects never run.
+ */
+function validateSwitchHasOutgoingConnections(
+	json: WorkflowJSON,
+	warnings: ValidationWarning[],
+): void {
+	for (const sourceNode of json.nodes) {
+		if (!sourceNode.name || sourceNode.type !== 'n8n-nodes-base.switch') continue;
+		if (hasAnyMainOutputConnection(json.connections[sourceNode.name])) continue;
+
+		warnings.push(
+			new ValidationWarning(
+				'SWITCH_NO_OUTPUT_CONNECTIONS',
+				`Switch node '${sourceNode.name}' has no outgoing connections. Connect at least one output branch to downstream action nodes, or remove the Switch node.`,
+				sourceNode.name,
+				'connections',
+				undefined,
+				'major',
+			),
+		);
+	}
 }
 
 /**

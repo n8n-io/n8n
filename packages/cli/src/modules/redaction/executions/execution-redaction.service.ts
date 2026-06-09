@@ -1,6 +1,6 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { WorkflowExecuteMode, WorkflowSettings } from 'n8n-workflow';
+import { channelsToPolicy, WorkflowExecuteMode, WorkflowSettings } from 'n8n-workflow';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
@@ -12,7 +12,6 @@ import type {
 } from '@/executions/execution-redaction';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { channelsToPolicy } from '../redaction-channels';
 import type {
 	IExecutionRedactionStrategy,
 	RedactionContext,

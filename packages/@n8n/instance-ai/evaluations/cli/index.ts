@@ -40,6 +40,7 @@ import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { createLogger } from '../harness/logger';
 import type { EvalLogger } from '../harness/logger';
 import {
+	cleanupPrebuiltWorkflows,
 	fetchPrebuiltBuild,
 	loadPrebuiltManifest,
 	pickPrebuiltWorkflowId,
@@ -159,6 +160,7 @@ interface RunConfig {
 	lanes: Lane[];
 	logger: EvalLogger;
 	prebuiltManifest?: PrebuiltManifest;
+	prebuiltWorkflowIdsToDelete?: Set<string>;
 }
 
 async function main(): Promise<void> {
@@ -228,6 +230,7 @@ async function main(): Promise<void> {
 	);
 
 	const startTime = Date.now();
+	const prebuiltWorkflowIdsToDelete = args.deletePrebuiltWorkflows ? new Set<string>() : undefined;
 
 	try {
 		const hasLangSmith = Boolean(process.env.LANGSMITH_API_KEY);
@@ -239,14 +242,26 @@ async function main(): Promise<void> {
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
-			const langsmithRun = await runWithLangSmith({ args, lanes, logger, prebuiltManifest });
+			const langsmithRun = await runWithLangSmith({
+				args,
+				lanes,
+				logger,
+				prebuiltManifest,
+				prebuiltWorkflowIdsToDelete,
+			});
 			evaluation = langsmithRun.evaluation;
 			experimentName = langsmithRun.experimentName;
 			outcome = langsmithRun.outcome;
 			slugByTestCase = langsmithRun.slugByTestCase;
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			evaluation = await runDirectLoop({ args, lanes, logger, prebuiltManifest });
+			evaluation = await runDirectLoop({
+				args,
+				lanes,
+				logger,
+				prebuiltManifest,
+				prebuiltWorkflowIdsToDelete,
+			});
 		}
 
 		const totalDuration = Date.now() - startTime;
@@ -270,6 +285,9 @@ async function main(): Promise<void> {
 			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase }),
 		);
 	} finally {
+		if (prebuiltWorkflowIdsToDelete && lanes[0]) {
+			await cleanupPrebuiltWorkflows(lanes[0].client, prebuiltWorkflowIdsToDelete, logger);
+		}
 		await Promise.all(
 			lanes.map(async (lane) => {
 				await cleanupCredentials(lane.client, lane.seedResult.credentialIds).catch(() => {});
@@ -288,7 +306,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	outcome: ComparisonOutcome;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const { args, lanes, logger, prebuiltManifest } = config;
+	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
 
 	const lsClient = new Client();
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
@@ -412,6 +430,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const lane = laneStates[0];
 				const start = Date.now();
 				const build = await fetchPrebuiltBuild(lane.runner.client, prebuiltId, logger);
+				if (build.success && build.workflowId) {
+					prebuiltWorkflowIdsToDelete?.add(build.workflowId);
+				}
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
@@ -934,7 +955,7 @@ function reshapeLangSmithRuns(
 // ---------------------------------------------------------------------------
 
 async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
-	const { args, lanes, logger, prebuiltManifest } = config;
+	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
 
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
 	if (testCasesWithFiles.length === 0) {
@@ -969,8 +990,13 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 						lanes.length > 1 ? ` [lane ${String(laneIdx + 1)}/${String(lanes.length)}]` : '';
 					const results = await runWithConcurrency(
 						bucket,
-						async ({ tc }) =>
-							await runWorkflowTestCase({
+						async ({ tc }) => {
+							const prebuiltWorkflowId = pickPrebuiltWorkflowId(
+								prebuiltManifest,
+								tc.fileSlug,
+								iter,
+							);
+							const result = await runWorkflowTestCase({
 								client: lane.client,
 								baseUrl: lane.baseUrl,
 								testCase: tc.testCase,
@@ -981,9 +1007,18 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 								logger,
 								keepWorkflows: args.keepWorkflows,
 								laneTag,
-								prebuiltWorkflowId: pickPrebuiltWorkflowId(prebuiltManifest, tc.fileSlug, iter),
+								prebuiltWorkflowId,
 								pinAiRoots: args.pinAiRoots,
-							}),
+							});
+							if (
+								prebuiltWorkflowId !== undefined &&
+								result.workflowBuildSuccess &&
+								result.workflowId
+							) {
+								prebuiltWorkflowIdsToDelete?.add(result.workflowId);
+							}
+							return result;
+						},
 						MAX_CONCURRENT_BUILDS,
 					);
 					return bucket.map((b, i) => ({ origIdx: b.origIdx, result: results[i] }));

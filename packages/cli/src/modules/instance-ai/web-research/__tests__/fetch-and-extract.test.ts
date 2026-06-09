@@ -6,8 +6,8 @@ import type { LookupFunction } from 'node:net';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { DnsResolver } from '@/services/ssrf/dns-resolver';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import type { DnsResolver } from 'n8n-core';
+import { SsrfProtectionService } from 'n8n-core';
 
 import { fetchAndExtract } from '../fetch-and-extract';
 

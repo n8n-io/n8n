@@ -17,7 +17,7 @@ import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builde
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import type { SsrfProtectionService } from 'n8n-core';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 
