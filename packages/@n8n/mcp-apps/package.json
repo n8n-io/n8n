@@ -36,6 +36,9 @@
     "format": "biome format --write src",
     "format:check": "biome ci src"
   },
+  "dependencies": {
+    "@n8n/utils": "workspace:*"
+  },
   "devDependencies": {
     "@modelcontextprotocol/ext-apps": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
