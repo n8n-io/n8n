@@ -6,7 +6,14 @@ jest.mock('aws4', () => ({
 	sign: jest.fn(),
 }));
 
+jest.mock('../../../../credentials/common/aws/utils', () => {
+	const actual = jest.requireActual('../../../../credentials/common/aws/utils');
+	return { ...actual, assumeRole: jest.fn() };
+});
+
 import { sign } from 'aws4';
+
+import { assumeRole } from '../../../../credentials/common/aws/utils';
 import { awsApiRequest } from '../GenericFunctions';
 
 describe('AWS Transcribe Generic Functions', () => {
@@ -65,6 +72,64 @@ describe('AWS Transcribe Generic Functions', () => {
 
 			expect(mockSign).not.toHaveBeenCalled();
 			expect(helpers.request).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('awsApiRequest authentication selection', () => {
+		const mockAssumeRole = assumeRole as jest.MockedFunction<typeof assumeRole>;
+
+		const buildContext = (authentication: string | undefined, credentials: object) => {
+			const helpers = { request: jest.fn().mockResolvedValue('{}') };
+			const context = mock<IExecuteFunctions>({
+				getNodeParameter: jest.fn().mockReturnValue(authentication),
+				getCredentials: jest.fn().mockResolvedValue(credentials),
+				helpers: helpers as never,
+			});
+			return { context, helpers };
+		};
+
+		it('signs with the static keys when authentication is iam', async () => {
+			const { context, helpers } = buildContext('iam', {
+				region: 'us-east-1',
+				accessKeyId: 'AKIA-test',
+				secretAccessKey: 'secret-test',
+			});
+
+			await awsApiRequest.call(context, 'transcribe', 'POST', '/');
+
+			expect(context.getCredentials).toHaveBeenCalledWith('aws');
+			expect(mockAssumeRole).not.toHaveBeenCalled();
+			expect(mockSign).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ accessKeyId: 'AKIA-test', secretAccessKey: 'secret-test' }),
+			);
+			expect(helpers.request).toHaveBeenCalledTimes(1);
+		});
+
+		it('resolves credentials via assumeRole and signs with the temporary credentials', async () => {
+			const temporaryCredentials = {
+				accessKeyId: 'ASIA-temp',
+				secretAccessKey: 'temp-secret',
+				sessionToken: 'temp-token',
+			};
+			mockAssumeRole.mockResolvedValue(temporaryCredentials);
+
+			const assumeRoleCredentials = {
+				region: 'us-east-1',
+				roleArn: 'arn:aws:iam::123456789012:role/MyRole',
+				externalId: 'ext-id',
+				roleSessionName: 'n8n-session',
+				stsAccessKeyId: 'AKIA-sts',
+				stsSecretAccessKey: 'sts-secret',
+			};
+			const { context, helpers } = buildContext('assumeRole', assumeRoleCredentials);
+
+			await awsApiRequest.call(context, 'transcribe', 'POST', '/');
+
+			expect(context.getCredentials).toHaveBeenCalledWith('awsAssumeRole');
+			expect(mockAssumeRole).toHaveBeenCalledWith(assumeRoleCredentials, 'us-east-1');
+			expect(mockSign).toHaveBeenCalledWith(expect.anything(), temporaryCredentials);
+			expect(helpers.request).toHaveBeenCalledTimes(1);
 		});
 	});
 });

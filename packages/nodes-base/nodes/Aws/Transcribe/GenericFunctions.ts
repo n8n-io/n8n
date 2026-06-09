@@ -2,7 +2,6 @@ import type { Request } from 'aws4';
 import { sign } from 'aws4';
 import get from 'lodash/get';
 import type {
-	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
@@ -15,12 +14,15 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 import { URL } from 'url';
 
-import { assertSupportedAwsRegion } from '../../../credentials/common/aws/utils';
+import type {
+	AwsAssumeRoleCredentialsType,
+	AwsCredentialsTypeBase,
+	AwsIamCredentialsType,
+} from '../../../credentials/common/aws/types';
+import { assertSupportedAwsRegion, assumeRole } from '../../../credentials/common/aws/utils';
+import { getAwsCredentials } from '../GenericFunctions';
 
-function getEndpointForService(
-	service: string,
-	credentials: ICredentialDataDecryptedObject,
-): string {
+function getEndpointForService(service: string, credentials: AwsCredentialsTypeBase): string {
 	assertSupportedAwsRegion(credentials.region);
 	let endpoint;
 	if (service === 'lambda' && credentials.lambdaEndpoint) {
@@ -41,20 +43,28 @@ export async function awsApiRequest(
 	body?: string,
 	headers?: object,
 ): Promise<any> {
-	const credentials = await this.getCredentials('aws');
+	const { credentials, credentialsType } = await getAwsCredentials(this);
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
 
-	// Sign AWS API request with the user credentials
+	// Sign AWS API request with the resolved credentials
 	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
-	const securityHeaders = {
-		accessKeyId: `${credentials.accessKeyId}`.trim(),
-		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
-		sessionToken: credentials.temporaryCredentials
-			? `${credentials.sessionToken}`.trim()
-			: undefined,
-	};
+
+	let securityHeaders;
+	if (credentialsType === 'awsAssumeRole') {
+		const assumeRoleCredentials = credentials as AwsAssumeRoleCredentialsType;
+		securityHeaders = await assumeRole(assumeRoleCredentials, assumeRoleCredentials.region);
+	} else {
+		const iamCredentials = credentials as AwsIamCredentialsType;
+		securityHeaders = {
+			accessKeyId: `${iamCredentials.accessKeyId}`.trim(),
+			secretAccessKey: `${iamCredentials.secretAccessKey}`.trim(),
+			sessionToken: iamCredentials.temporaryCredentials
+				? `${iamCredentials.sessionToken}`.trim()
+				: undefined,
+		};
+	}
 
 	sign(signOpts, securityHeaders);
 
