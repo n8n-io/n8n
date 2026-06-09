@@ -26,7 +26,7 @@ export {
 	formatTextWithLineNumbers,
 	findDivergenceContext,
 	parseStrReplacements,
-} from './utils/text-editor';
+} from './utils/workflow-text-editor';
 export type {
 	ViewCommand,
 	CreateCommand,
@@ -40,7 +40,7 @@ export type {
 	StrReplacement,
 	BatchReplaceResult,
 	TextEditorDocumentOptions,
-} from './utils/text-editor';
+} from './utils/workflow-text-editor';
 export {
 	estimateTokensFromStringList,
 	estimateTokensByCharCount,
@@ -54,6 +54,8 @@ export {
 	proxyFetch,
 	type AgentTimeoutOptions,
 } from './utils/http-proxy-agent';
+export { braveSearch, searxngSearch, type BraveSearchOptions } from './web-search';
+export type { WebSearchOptions, WebSearchResponse, WebSearchResult } from './web-search';
 export {
 	fetchFollowingRedirects,
 	type FollowRedirectsOptions,

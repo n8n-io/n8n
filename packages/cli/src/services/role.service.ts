@@ -356,7 +356,7 @@ export class RoleService {
 		// TODO: move this info into FrontendSettings
 
 		if (!isBuiltInRole(role)) {
-			// This is a custom role, there for we need to check if
+			// This is a custom role, therefore we need to check if
 			// custom roles are licensed
 			return this.license.isCustomRolesLicensed();
 		}

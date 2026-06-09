@@ -4,7 +4,7 @@
  * Consumed by:
  * - Code Builder Agent (ai-workflow-builder.ee)
  * - MCP Server (external SDK reference)
- * - Instance AI builder sub-agent
+ * - Instance AI workflow-builder skill
  */
 export const WORKFLOW_RULES = `Follow these rules strictly when generating workflows:
 
@@ -26,6 +26,8 @@ export const WORKFLOW_RULES = `Follow these rules strictly when generating workf
 3. **Use \`executeOnce: true\` for single-execution nodes**
    - When a node receives N items but should only execute once (not N times), set \`executeOnce: true\`
    - Common cases: sending a summary notification, generating a report, calling an API that doesn't need per-item execution
+   - If a node fetches shared context independently but is chained after a multi-item source, set \`executeOnce: true\` so it does not run once per incoming item
+   - Duplicate notifications, duplicate API calls, or repeated shared-context fetches usually mean a downstream node is missing \`executeOnce: true\` or should be on a parallel branch
    - Example: \`config: { ..., executeOnce: true }\`
 
 4. **Pick the right control-flow primitive**
@@ -33,6 +35,7 @@ export const WORKFLOW_RULES = `Follow these rules strictly when generating workf
    - **Drop items that don't match a predicate** → \`filter\`. It emits 0 items when nothing matches, and the chain stops cleanly.
    - **Two mutually exclusive paths that both do real work** → \`IF\` (\`onTrue\` / \`onFalse\`).
    - **Many mutually exclusive paths keyed off a value** → \`switch\` (\`onCase\`).
+   - A Filter or IF only selects items; it does not perform a requested side effect. If the user asks to archive, update, delete, send, or create only matching items, wire the corresponding action node on the matching path.
    - Nested control flow is supported: \`ifNode.onTrue(loopBuilder)\`, \`switchNode.onCase(0, loopBuilder)\`, and \`splitInBatches(sib).onEachBatch(ifElseBuilder)\` all compile and wire correctly. Use them when the semantics genuinely call for it, not as a workaround for empty-list handling.
 
 5. **Input and output indices are 0-based — \`.input(0)\` is the FIRST input**

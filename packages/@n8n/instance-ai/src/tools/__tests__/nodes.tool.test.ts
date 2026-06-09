@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { createNodesTool } from '../nodes.tool';
@@ -6,49 +8,49 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 	return {
 		userId: 'user-1',
 		workflowService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			getAsWorkflowJSON: jest.fn(),
-			createFromWorkflowJSON: jest.fn(),
-			updateFromWorkflowJSON: jest.fn(),
-			archive: jest.fn(),
-			delete: jest.fn(),
-			publish: jest.fn(),
-			unpublish: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			getAsWorkflowJSON: vi.fn(),
+			createFromWorkflowJSON: vi.fn(),
+			updateFromWorkflowJSON: vi.fn(),
+			archive: vi.fn(),
+			delete: vi.fn(),
+			publish: vi.fn(),
+			unpublish: vi.fn(),
 		},
 		executionService: {
-			list: jest.fn(),
-			run: jest.fn(),
-			getStatus: jest.fn(),
-			getResult: jest.fn(),
-			stop: jest.fn(),
-			getDebugInfo: jest.fn(),
-			getNodeOutput: jest.fn(),
+			list: vi.fn(),
+			run: vi.fn(),
+			getStatus: vi.fn(),
+			getResult: vi.fn(),
+			stop: vi.fn(),
+			getDebugInfo: vi.fn(),
+			getNodeOutput: vi.fn(),
 		},
 		credentialService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			delete: jest.fn(),
-			test: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			delete: vi.fn(),
+			test: vi.fn(),
 		},
 		nodeService: {
-			listAvailable: jest.fn(),
-			getDescription: jest.fn(),
-			listSearchable: jest.fn(),
-			exploreResources: jest.fn(),
+			listAvailable: vi.fn(),
+			getDescription: vi.fn(),
+			listSearchable: vi.fn(),
+			exploreResources: vi.fn(),
 		},
 		dataTableService: {
-			list: jest.fn(),
-			create: jest.fn(),
-			delete: jest.fn(),
-			getSchema: jest.fn(),
-			addColumn: jest.fn(),
-			deleteColumn: jest.fn(),
-			renameColumn: jest.fn(),
-			queryRows: jest.fn(),
-			insertRows: jest.fn(),
-			updateRows: jest.fn(),
-			deleteRows: jest.fn(),
+			list: vi.fn(),
+			create: vi.fn(),
+			delete: vi.fn(),
+			getSchema: vi.fn(),
+			addColumn: vi.fn(),
+			deleteColumn: vi.fn(),
+			renameColumn: vi.fn(),
+			queryRows: vi.fn(),
+			insertRows: vi.fn(),
+			updateRows: vi.fn(),
+			deleteRows: vi.fn(),
 		},
 		permissions: {},
 		...overrides,
@@ -72,7 +74,7 @@ describe('nodes tool', () => {
 				results: [{ name: 'Sheet1', value: 'sheet-1' }],
 				paginationToken: undefined,
 			};
-			(context.nodeService.exploreResources as jest.Mock).mockResolvedValue(mockResult);
+			(context.nodeService.exploreResources as Mock).mockResolvedValue(mockResult);
 
 			const tool = createNodesTool(context, 'orchestrator');
 			const result = await executeTool(
@@ -119,7 +121,7 @@ describe('nodes tool', () => {
 				},
 			];
 			const context = createMockContext();
-			(context.nodeService.listAvailable as jest.Mock).mockResolvedValue(nodes);
+			(context.nodeService.listAvailable as Mock).mockResolvedValue(nodes);
 
 			const tool = createNodesTool(context, 'full');
 			const result = await executeTool(
@@ -130,6 +132,94 @@ describe('nodes tool', () => {
 
 			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({ query: 'http' });
 			expect(result).toEqual({ nodes });
+		});
+	});
+
+	describe('search action', () => {
+		it('should search nodes by query and reuse the searchable node list reference', async () => {
+			const searchableNodes = [
+				{
+					name: 'n8n-nodes-base.httpRequest',
+					displayName: 'HTTP Request',
+					description: 'Make HTTP requests',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+					codex: { alias: ['api'] },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+
+			const tool = createNodesTool(context, 'full');
+			const first = await executeTool(
+				tool,
+				{ action: 'search', query: 'http', limit: 5 } as never,
+				{} as never,
+			);
+			const second = await executeTool(
+				tool,
+				{ action: 'search', query: 'http', limit: 5 } as never,
+				{} as never,
+			);
+
+			expect(context.nodeService.listSearchable).toHaveBeenCalledTimes(2);
+			expect(first).toMatchObject({
+				totalResults: 1,
+				results: [expect.objectContaining({ name: 'n8n-nodes-base.httpRequest' })],
+			});
+			expect(second).toMatchObject({
+				totalResults: 1,
+				results: [expect.objectContaining({ name: 'n8n-nodes-base.httpRequest' })],
+			});
+		});
+
+		it('should search nodes by connection type and enrich results with discriminators', async () => {
+			const searchableNodes = [
+				{
+					name: 'n8n-nodes-base.slackTool',
+					displayName: 'Slack Tool',
+					description: 'Send messages to Slack from an AI agent',
+					inputs: ['main'],
+					outputs: ['ai_tool'],
+					version: 1,
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			context.nodeService.listDiscriminators = vi.fn().mockResolvedValue({
+				resource: ['message'],
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'search', connectionType: 'ai_tool', limit: 5 } as never,
+				{} as never,
+			);
+
+			expect(context.nodeService.listDiscriminators).toHaveBeenCalledWith(
+				'n8n-nodes-base.slackTool',
+			);
+			expect(result).toMatchObject({
+				totalResults: 1,
+				results: [
+					expect.objectContaining({
+						name: 'n8n-nodes-base.slackTool',
+						discriminators: { resource: ['message'] },
+					}),
+				],
+			});
+		});
+
+		it('should return no search results when neither query nor connection type is provided', async () => {
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue([]);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(tool, { action: 'search' } as never, {} as never);
+
+			expect(result).toEqual({ results: [], totalResults: 0 });
 		});
 	});
 
@@ -161,9 +251,7 @@ describe('nodes tool', () => {
 
 		it('should handle errors from exploreResources gracefully', async () => {
 			const context = createMockContext();
-			(context.nodeService.exploreResources as jest.Mock).mockRejectedValue(
-				new Error('Auth failed'),
-			);
+			(context.nodeService.exploreResources as Mock).mockRejectedValue(new Error('Auth failed'));
 
 			const tool = createNodesTool(context, 'full');
 			const result = await executeTool(
@@ -223,11 +311,11 @@ describe('nodes tool', () => {
 		it('should surface node-level builder hints from type definitions', async () => {
 			const context = createMockContext({
 				nodeService: {
-					listAvailable: jest.fn(),
-					getDescription: jest.fn(),
-					listSearchable: jest.fn(),
-					exploreResources: jest.fn(),
-					getNodeTypeDefinition: jest.fn().mockResolvedValue({
+					listAvailable: vi.fn(),
+					getDescription: vi.fn(),
+					listSearchable: vi.fn(),
+					exploreResources: vi.fn(),
+					getNodeTypeDefinition: vi.fn().mockResolvedValue({
 						content: 'export type IfNode = unknown;',
 						version: 'v23',
 						builderHint: 'Always include options, conditions, and combinator.',
@@ -258,7 +346,7 @@ describe('nodes tool', () => {
 	describe('describe action', () => {
 		it('should return found: false when node type is not found', async () => {
 			const context = createMockContext();
-			(context.nodeService.getDescription as jest.Mock).mockRejectedValue(new Error('not found'));
+			(context.nodeService.getDescription as Mock).mockRejectedValue(new Error('not found'));
 
 			const tool = createNodesTool(context, 'full');
 			const result = await executeTool(

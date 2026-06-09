@@ -23,7 +23,7 @@ import {
 } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useCredentialsStore } from '../../credentials.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import Banner from '@/app/components/Banner.vue';
@@ -35,6 +35,7 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 
 import {
+	N8nButton,
 	N8nCallout,
 	N8nIcon,
 	N8nInfoTip,
@@ -67,6 +68,8 @@ type Props = {
 	isManaged?: boolean;
 	isDynamicCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
+	isShared?: boolean;
+	connectedByMe?: boolean;
 	isNewCredential?: boolean;
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
@@ -88,13 +91,14 @@ const emit = defineEmits<{
 	scrollToTop: [];
 	retest: [];
 	oauth: [];
+	disconnect: [];
 	quickConnect: [];
 	claimed: [];
 	'update:isResolvable': [value: boolean];
 }>();
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -104,6 +108,10 @@ const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
+
+// A shared credential can't be turned into a dynamic credential (they're mutually exclusive).
+// Toggling back from dynamic to static stays allowed.
+const isDynamicToggleDisabled = computed(() => Boolean(props.isShared) && !props.isResolvable);
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -140,7 +148,7 @@ const credentialOwnerName = computed(() =>
 );
 const documentationUrl = computed(() => {
 	const type = props.credentialType;
-	const activeNode = ndvStore.activeNode;
+	const activeNode = ndvStore.value.activeNode;
 	const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
 	const docUrl = type?.documentationUrl;
@@ -200,6 +208,10 @@ const showOAuthNotConnectedBanner = computed(() => {
 	);
 });
 
+const showDisconnectButton = computed(
+	() => !!props.isDynamicCredentialsEnabled && !!props.isResolvable && !!props.connectedByMe,
+);
+
 const isMissingCredentials = computed(() => props.credentialType === null);
 
 const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
@@ -229,7 +241,7 @@ const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 const quickConnectOption = computed(() => {
 	if (!activeNode.value) return undefined;
@@ -402,22 +414,27 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					data-test-id="oauth-connect-success-banner"
 					@click="$emit('oauth')"
 				>
-					<template v-if="isGoogleOAuthType" #button>
-						<p
-							:class="$style.googleReconnectLabel"
-							v-text="`${i18n.baseText('credentialEdit.credentialConfig.reconnect')}:`"
-						/>
-						<GoogleAuthButton @click="$emit('oauth')" />
-					</template>
-					<template v-else #button>
-						<QuickConnectButton
-							size="small"
-							:service-name="serviceName"
-							:credential-type-name="credentialType.name"
-							:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
-							data-test-id="quick-connect-reconnect-button"
-							@click="$emit('oauth')"
-						/>
+					<template #button>
+						<div :class="$style.bannerActions">
+							<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('oauth')" />
+							<QuickConnectButton
+								v-else
+								size="small"
+								:service-name="serviceName"
+								:credential-type-name="credentialType.name"
+								:label="i18n.baseText('credentialEdit.credentialConfig.reconnect')"
+								data-test-id="quick-connect-reconnect-button"
+								@click="$emit('oauth')"
+							/>
+							<N8nButton
+								v-if="showDisconnectButton"
+								variant="outline"
+								:size="isGoogleOAuthType ? 'xlarge' : 'small'"
+								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
+								data-test-id="oauth-disconnect-button"
+								@click="$emit('disconnect')"
+							/>
+						</div>
 					</template>
 				</Banner>
 
@@ -444,11 +461,23 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					data-test-id="dynamic-credentials-section"
 				>
 					<div :class="$style.dynamicCredentialsRow">
-						<ElSwitch
-							:model-value="isResolvable"
-							data-test-id="dynamic-credentials-toggle"
-							@update:model-value="(val) => $emit('update:isResolvable', Boolean(val))"
-						/>
+						<N8nTooltip placement="top" :disabled="!isDynamicToggleDisabled">
+							<template #content>
+								<div>
+									{{
+										i18n.baseText(
+											'credentialEdit.credentialConfig.dynamicCredentials.sharedDisabledTooltip',
+										)
+									}}
+								</div>
+							</template>
+							<ElSwitch
+								:model-value="isResolvable"
+								:disabled="isDynamicToggleDisabled"
+								data-test-id="dynamic-credentials-toggle"
+								@update:model-value="(val) => $emit('update:isResolvable', Boolean(val))"
+							/>
+						</N8nTooltip>
 						<N8nText size="small">
 							{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
 						</N8nText>
@@ -552,8 +581,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	}
 }
 
-.googleReconnectLabel {
-	margin-right: var(--spacing--3xs);
+.bannerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .askAssistantButton {

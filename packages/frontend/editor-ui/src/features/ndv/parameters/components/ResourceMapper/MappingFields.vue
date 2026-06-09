@@ -250,9 +250,9 @@ function getParameterValue(parameterName: string): string | number | boolean | n
 }
 
 function getFieldIssues(field: INodeProperties): string[] {
-	if (!ndvStore.activeNode) return [];
+	if (!ndvStore.value.activeNode) return [];
 
-	const nodeIssues = ndvStore.activeNode.issues || ({} as INodeIssues);
+	const nodeIssues = ndvStore.value.activeNode.issues || ({} as INodeIssues);
 	const fieldName = parseResourceMapperFieldName(field.name);
 	if (!fieldName) return [];
 

@@ -626,6 +626,7 @@ describe('WorkflowCard', () => {
 		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
 			updatedCount: 1,
 			skippedCount: 0,
+			unchangedCount: 0,
 			failedCount: 0,
 		});
 
@@ -725,6 +726,7 @@ describe('WorkflowCard', () => {
 		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
 			updatedCount: 1,
 			skippedCount: 0,
+			unchangedCount: 0,
 			failedCount: 0,
 		});
 
@@ -1009,6 +1011,7 @@ describe('WorkflowCard', () => {
 		mcpStore.toggleWorkflowMcpAccess.mockResolvedValue({
 			updatedCount: 1,
 			skippedCount: 0,
+			unchangedCount: 0,
 			failedCount: 0,
 		});
 
@@ -1111,34 +1114,6 @@ describe('WorkflowCard', () => {
 
 		const indicator = queryByTestId('workflow-card-dynamic-credentials');
 		expect(indicator).toBeNull();
-	});
-
-	it('should show resolver missing badge when workflow has resolvable credentials but no resolver configured', () => {
-		const data = createWorkflow({
-			hasResolvableCredentials: true,
-			settings: {
-				credentialResolverId: undefined,
-			},
-		});
-
-		const { getByTestId } = renderComponent({ props: { data } });
-
-		const badge = getByTestId('workflow-card-resolver-missing');
-		expect(badge).toBeVisible();
-	});
-
-	it('should hide resolver missing badge when workflow has resolver configured', () => {
-		const data = createWorkflow({
-			hasResolvableCredentials: true,
-			settings: {
-				credentialResolverId: 'resolver-123',
-			},
-		});
-
-		const { queryByTestId } = renderComponent({ props: { data } });
-
-		const badge = queryByTestId('workflow-card-resolver-missing');
-		expect(badge).toBeNull();
 	});
 
 	it('should show Archived text on archived workflows', async () => {

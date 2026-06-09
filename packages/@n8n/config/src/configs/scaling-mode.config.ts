@@ -1,3 +1,5 @@
+import { Time } from '@n8n/constants';
+
 import { Config, Env, Nested } from '../decorators';
 
 @Config
@@ -44,14 +46,14 @@ class RedisConfig {
 
 	/** Max cumulative timeout (in milliseconds) of connection retries before process exit. */
 	@Env('QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD')
-	timeoutThreshold: number = 10_000;
+	timeoutThreshold: number = 10 * Time.seconds.toMilliseconds;
 
 	/** Slot refresh timeout (in milliseconds) before a timeout occurs while refreshing slots from the cluster. */
 	@Env('QUEUE_BULL_REDIS_SLOT_REFRESH_TIMEOUT')
-	slotsRefreshTimeout: number = 1_000;
+	slotsRefreshTimeout: number = 1 * Time.seconds.toMilliseconds;
 	/** Slot refresh interval (in milliseconds) between every automatic slot refresh. */
 	@Env('QUEUE_BULL_REDIS_SLOT_REFRESH_INTERVAL')
-	slotsRefreshInterval: number = 5_000;
+	slotsRefreshInterval: number = 5 * Time.seconds.toMilliseconds;
 
 	/** Redis username. Redis 6.0 or higher required. */
 	@Env('QUEUE_BULL_REDIS_USERNAME')
@@ -91,11 +93,11 @@ class RedisConfig {
 
 	/** TCP keep-alive initial delay in milliseconds. */
 	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_DELAY')
-	keepAliveDelay: number = 5000;
+	keepAliveDelay: number = 5 * Time.seconds.toMilliseconds;
 
 	/** TCP keep-alive interval in milliseconds. */
 	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_INTERVAL')
-	keepAliveInterval: number = 5000;
+	keepAliveInterval: number = 5 * Time.seconds.toMilliseconds;
 
 	/** Whether to reconnect to Redis on READONLY errors i.e., failover events. */
 	@Env('QUEUE_BULL_REDIS_RECONNECT_ON_FAILOVER')
@@ -106,15 +108,15 @@ class RedisConfig {
 class SettingsConfig {
 	/** How long (in milliseconds) is the lease period for a worker processing a job. */
 	@Env('QUEUE_WORKER_LOCK_DURATION')
-	lockDuration: number = 60_000;
+	lockDuration: number = 1 * Time.minutes.toMilliseconds;
 
 	/** How often (in milliseconds) a worker must renew the lease. */
 	@Env('QUEUE_WORKER_LOCK_RENEW_TIME')
-	lockRenewTime: number = 10_000;
+	lockRenewTime: number = 10 * Time.seconds.toMilliseconds;
 
 	/** How often (in milliseconds) Bull must check for stalled jobs. `0` to disable. */
 	@Env('QUEUE_WORKER_STALLED_INTERVAL')
-	stalledInterval: number = 30_000;
+	stalledInterval: number = 30 * Time.seconds.toMilliseconds;
 }
 
 @Config

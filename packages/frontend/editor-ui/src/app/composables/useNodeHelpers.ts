@@ -6,7 +6,12 @@ import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/app/constants';
 
-import { NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionTypes,
+	MANUAL_TRIGGER_NODE_TYPES,
+	nodeIssuesToString,
+} from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -49,6 +54,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -68,8 +74,8 @@ export function useNodeHelpers() {
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
-
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 	const isInsertingNodes = ref(false);
 	const credentialsUpdated = ref(false);
@@ -413,6 +419,39 @@ export function useNodeHelpers() {
 		return null;
 	}
 
+	function workflowHasIncompatibleTrigger(): boolean {
+		const triggers = workflowDocumentStore.value.workflowTriggerNodes;
+		return triggers.some(
+			(trigger) => !trigger.disabled && !MANUAL_TRIGGER_NODE_TYPES.includes(trigger.type),
+		);
+	}
+
+	function collectPrivateCredentialIssues(
+		node: INodeUi,
+		foundIssues: INodeIssueObjectProperty,
+	): void {
+		if (!isDynamicCredentialsEnabled.value) return;
+
+		const incompatibleTrigger = workflowHasIncompatibleTrigger();
+
+		for (const [credTypeName, details] of Object.entries(node.credentials ?? {})) {
+			if (foundIssues[credTypeName]?.length) continue;
+			if (!details?.id || details.__aiGatewayManaged) continue;
+
+			const credential = credentialsStore.getCredentialById(details.id);
+			if (!credential?.isResolvable) continue;
+
+			// An unconnected private credential is a missing setup step, not a hard
+			// error — it's surfaced as a warning via the credential callout/banner in
+			// the UI rather than a node issue, so we don't add it here.
+			if (credential.connectedByMe && incompatibleTrigger) {
+				foundIssues[credTypeName] = [
+					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger'),
+				];
+			}
+		}
+	}
+
 	function getNodeCredentialIssues(
 		node: INodeUi,
 		nodeType?: INodeTypeDescription,
@@ -560,6 +599,8 @@ export function useNodeHelpers() {
 				}
 			}
 		}
+
+		collectPrivateCredentialIssues(node, foundIssues);
 
 		// TODO: Could later check also if the node has access to the credentials
 		if (Object.keys(foundIssues).length === 0) {
@@ -1017,44 +1058,6 @@ export function useNodeHelpers() {
 		}
 
 		return hints;
-	}
-
-	/**
-	 * Returns the issues of the node as string
-	 *
-	 * @param {INodeIssues} issues The issues of the node
-	 * @param {INode} node The node
-	 */
-	function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
-		const nodeIssues = [];
-
-		if (issues.execution !== undefined) {
-			nodeIssues.push('Execution Error.');
-		}
-
-		const objectProperties = ['parameters', 'credentials', 'input'];
-
-		let issueText: string;
-		let parameterName: string;
-		for (const propertyName of objectProperties) {
-			if (issues[propertyName] !== undefined) {
-				for (parameterName of Object.keys(issues[propertyName] as object)) {
-					for (issueText of (issues[propertyName] as INodeIssueObjectProperty)[parameterName]) {
-						nodeIssues.push(issueText);
-					}
-				}
-			}
-		}
-
-		if (issues.typeUnknown !== undefined) {
-			if (node !== undefined) {
-				nodeIssues.push(`Node Type "${node.type}" is not known.`);
-			} else {
-				nodeIssues.push('Node Type is not known.');
-			}
-		}
-
-		return nodeIssues;
 	}
 
 	function getDefaultNodeName(node: AddedNode | INode) {

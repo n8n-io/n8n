@@ -13,7 +13,9 @@ import {
 	parseRuntimeSkillMarkdown,
 	renderSkillCatalogPrompt,
 } from '..';
+import type { AgentRuntimeConfig } from '../../runtime/agent-runtime';
 import { Agent } from '../../sdk/agent';
+import { isZodSchema } from '../../utils/zod';
 
 describe('runtime skills', () => {
 	it('parses SKILL.md frontmatter into a runtime skill', () => {
@@ -155,11 +157,9 @@ description: Has no instructions.
 	});
 
 	it('uses locale-independent ordering for registry hashes', () => {
-		const localeCompareSpy = jest
-			.spyOn(String.prototype, 'localeCompare')
-			.mockImplementation(() => {
-				throw new Error('localeCompare must not be used for registry ordering');
-			});
+		const localeCompareSpy = vi.spyOn(String.prototype, 'localeCompare').mockImplementation(() => {
+			throw new Error('localeCompare must not be used for registry ordering');
+		});
 
 		try {
 			expect(() =>
@@ -369,8 +369,23 @@ Use the workflow SDK.`,
 		const listedSkill = (listOutput as { skills: Array<Record<string, unknown>> }).skills[0];
 		expect(listedSkill).not.toHaveProperty('content');
 		expect(listedSkill).not.toHaveProperty('instructions');
-
+		expect(loadTool.description).toContain('do not pass filePath');
+		expect(isZodSchema(loadTool.inputSchema)).toBe(true);
+		if (!isZodSchema(loadTool.inputSchema)) throw new Error('Expected Zod input schema');
+		expect(
+			loadTool.inputSchema.safeParse({ skillId: 'summarize_notes', filePath: '/' }).data,
+		).toEqual({ skillId: 'summarize_notes' });
 		await expect(loadTool.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
+			ok: true,
+			success: true,
+			skillId: 'summarize_notes',
+			name: 'Summarize notes',
+			content: 'Extract decisions.',
+			instructions: 'Extract decisions.',
+		});
+		await expect(
+			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'SKILL.md' }, {}),
+		).resolves.toMatchObject({
 			ok: true,
 			success: true,
 			skillId: 'summarize_notes',
@@ -400,7 +415,7 @@ Use the workflow SDK.`,
 				instructions: 'Full private skill body: Extract decisions.',
 			},
 		]);
-		const prepare = jest.fn(async () => {
+		const prepare = vi.fn(async () => {
 			await Promise.resolve();
 			source.registry = {
 				...source.registry,
@@ -444,7 +459,7 @@ Use the workflow SDK.`,
 				instructions: 'Extract decisions.',
 			},
 		]);
-		const prepare = jest.fn(async () => {
+		const prepare = vi.fn(async () => {
 			await Promise.resolve();
 			source.registry = {
 				...source.registry,
@@ -460,8 +475,10 @@ Use the workflow SDK.`,
 			.model('anthropic/claude-sonnet-4-5')
 			.instructions('Base instructions.')
 			.skills(source);
-		const runtime = await (agent as unknown as { build(): Promise<unknown> }).build();
-		const instructions = (runtime as { config: { instructions: string } }).config.instructions;
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
+		const { instructions } = runtimeConfig;
 
 		expect(prepare).toHaveBeenCalledTimes(1);
 		expect(instructions).toContain('name: "Summarize notes"');
@@ -526,7 +543,7 @@ Use the workflow SDK.`,
 				},
 			},
 		]);
-		const loadFile = jest.fn(
+		const loadFile = vi.fn(
 			async (_skillId: string, filePath: string) =>
 				await Promise.resolve({
 					skillId: 'summarize_notes',
@@ -549,24 +566,43 @@ Use the workflow SDK.`,
 		]);
 
 		const unsupportedLoadTool = createSkillLoadTool(registeredFileSource);
+		expect(unsupportedLoadTool.description).toContain('do not pass filePath');
+		expect(isZodSchema(unsupportedLoadTool.inputSchema)).toBe(true);
+		if (!isZodSchema(unsupportedLoadTool.inputSchema)) throw new Error('Expected Zod input schema');
+		expect(
+			unsupportedLoadTool.inputSchema.safeParse({
+				skillId: 'summarize_notes',
+				filePath: 'references/guide.md',
+			}).data,
+		).toEqual({ skillId: 'summarize_notes' });
 		await expect(
 			unsupportedLoadTool.handler?.(
 				{ skillId: 'summarize_notes', filePath: 'references/guide.md' },
 				{},
 			),
 		).resolves.toMatchObject({
-			ok: false,
-			success: false,
-			error: 'This skill source does not support loading linked files.',
+			ok: true,
+			success: true,
+			content: 'Extract decisions.',
 		});
 
 		const loadTool = createSkillLoadTool(fileBackedSource);
+		expect(loadTool.description).toContain('use filePath only for a linked file path');
+		expect(isZodSchema(loadTool.inputSchema)).toBe(true);
+		if (!isZodSchema(loadTool.inputSchema)) throw new Error('Expected Zod input schema');
+		expect(
+			loadTool.inputSchema.safeParse({
+				skillId: 'summarize_notes',
+				filePath: 'references/guide.md',
+			}).data,
+		).toEqual({ skillId: 'summarize_notes', filePath: 'references/guide.md' });
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/missing.md' }, {}),
 		).resolves.toMatchObject({
 			ok: false,
 			success: false,
-			error: 'File is not registered for skill Summarize notes: references/missing.md',
+			error:
+				'File is not registered for skill Summarize notes: references/missing.md. To load the main skill instructions, retry without filePath.',
 		});
 		expect(loadFile).not.toHaveBeenCalledWith('summarize_notes', 'references/missing.md');
 

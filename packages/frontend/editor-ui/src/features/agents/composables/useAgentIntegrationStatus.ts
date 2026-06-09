@@ -110,12 +110,12 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		type: string,
 		credId: string,
 		settings?: AgentIntegrationSettings,
-	): Promise<void> {
+	): Promise<{ status: string; agent?: Awaited<ReturnType<typeof connectIntegration>>['agent'] }> {
 		state.loadingMap.value[type] = true;
 		state.errorMessages.value[type] = '';
 		state.errorIsConflict.value[type] = false;
 		try {
-			await connectIntegration(
+			const result = await connectIntegration(
 				rootStore.restApiContext,
 				projectId,
 				agentId,
@@ -128,6 +128,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 			state.statuses.value[type] = 'connected';
 			state.connectedCredentials.value[type] = credId;
 			state.integrationSettings.value[type] = settings;
+			return result;
 		} catch (e: unknown) {
 			const msg =
 				e instanceof Error

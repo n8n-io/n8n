@@ -3,7 +3,7 @@ import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ICredentialTestFunctions } from 'n8n-workflow';
 
-import { proxyRequestToAxios } from './utils/request-helper-functions';
+import { proxyRequestToAxios } from './utils/request-helpers/legacy-request-adapter'; // This bypasses the index barrel on purpose
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
 export class CredentialTestContext implements ICredentialTestFunctions {
