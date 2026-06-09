@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
 	INode,
+	INodeExecutionData,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
@@ -458,6 +459,143 @@ describe('ActiveWorkflows', () => {
 				expect(pollFunctions.__emit).not.toHaveBeenCalled();
 				expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
 			});
+		});
+	});
+
+	describe('in-flight poll during workflow activation', () => {
+		// If a poll() is already in flight when the workflow is removed/reactivated,
+		// stopping the cron does not abort it; it still resolves later calling `__emit`,
+		// triggering an execution against the superseded workflow version.
+
+		it('should not emit from a poll that was already in flight when the workflow was removed', async () => {
+			let resolveInFlightPoll!: (value: INodeExecutionData[][] | null) => void;
+
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null) // initial activation test poll
+				.mockReturnValueOnce(
+					new Promise<INodeExecutionData[][] | null>((resolve) => {
+						resolveInFlightPoll = resolve;
+					}),
+				); // scheduled poll that hangs in flight
+
+			await addWorkflow({ pollNodes: [pollNode] });
+
+			const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+			const executeScheduledPoll = registerCronCall[1] as () => void;
+
+			// A cron tick fires and the poll() begins awaiting (e.g. a Gmail API call).
+			executeScheduledPoll();
+			await flushPromises();
+
+			// While the poll is still in flight, the workflow is deactivated/reactivated.
+			await activeWorkflows.remove(workflowId);
+
+			// The in-flight poll now returns data
+			resolveInFlightPoll([[{ json: {} }]]);
+			await flushPromises();
+
+			// The superseded registration must not trigger an execution.
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+		});
+
+		it('should skip the poll entirely when the workflow is removed before running the poller', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null); // initial activation test poll
+
+			await addWorkflow({ pollNodes: [pollNode] });
+			const executeScheduledPoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+
+			// Workflow is removed before the cron ticks
+			await activeWorkflows.remove(workflowId);
+			triggersAndPollers.runPollFunction.mockClear();
+
+			executeScheduledPoll();
+			await flushPromises();
+
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(acquireIsolate).not.toHaveBeenCalled();
+		});
+
+		it('drops a stale in-flight poll but keeps emitting from the reactivated workflow', async () => {
+			// Deactivate then reactivate while a poll is in flight.
+			let resolveStalePoll!: (value: INodeExecutionData[][] | null) => void;
+
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null) // v1 activation test poll
+				.mockReturnValueOnce(
+					new Promise<INodeExecutionData[][] | null>((resolve) => {
+						resolveStalePoll = resolve;
+					}),
+				); // v1 scheduled poll: hangs in flight
+
+			await addWorkflow({ pollNodes: [pollNode] });
+			const executeStalePoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+
+			executeStalePoll();
+			await flushPromises();
+
+			// Deactivate, then reactivate while v1 poll is in flight.
+			await activeWorkflows.remove(workflowId);
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null) // v2 activation test poll
+				.mockResolvedValueOnce([[{ json: { fresh: true } }]]); // v2 scheduled poll
+
+			await addWorkflow({ pollNodes: [pollNode] });
+			const executeFreshPoll = scheduledTaskManager.registerCron.mock.calls[1][1] as () => void;
+
+			// The superseded v1 poll resolves now; it must be dropped.
+			resolveStalePoll([[{ json: { stale: true } }]]);
+			await flushPromises();
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+
+			// The reactivated v2 poll still emits normally
+			executeFreshPoll();
+			await flushPromises();
+			expect(pollFunctions.__emit).toHaveBeenCalledTimes(1);
+			expect(pollFunctions.__emit).toHaveBeenCalledWith([[{ json: { fresh: true } }]]);
+		});
+
+		it('does not lose events: a dropped poll is re-delivered exactly once by the reactivated workflow', async () => {
+			// Test whether dropping a poll run would cause poll static data e.g. cursors, pagination
+			// to be updated without starting a workflow, which would cause data loss.
+			// Instead we want the poller to not update its data, whether or not the poll function ran
+			// so the newly activated workflow's poller can naturally pick up from the previous static data
+			// and resume polling.
+			const events = [[{ json: { id: 'meow' } }]];
+
+			let resolveStalePoll!: (value: INodeExecutionData[][] | null) => void;
+
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null) // v1 activation test poll
+				.mockReturnValueOnce(
+					new Promise<INodeExecutionData[][] | null>((resolve) => {
+						resolveStalePoll = resolve;
+					}),
+				); // v1 scheduled poll: picks up events, hangs in flight
+
+			await addWorkflow({ pollNodes: [pollNode] });
+			const executeStalePoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+			executeStalePoll();
+			await flushPromises();
+
+			// Reactivate while the v1 poll is still in flight.
+			await activeWorkflows.remove(workflowId);
+
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null) // v2 activation test poll
+				.mockResolvedValueOnce(events); // v2 fetches the same events again since cursor unchanged by dropped `__emit`
+			await addWorkflow({ pollNodes: [pollNode] });
+			const executeFreshPoll = scheduledTaskManager.registerCron.mock.calls[1][1] as () => void;
+
+			resolveStalePoll(events);
+			await flushPromises();
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+
+			executeFreshPoll();
+			await flushPromises();
+			expect(pollFunctions.__emit).toHaveBeenCalledTimes(1);
+			expect(pollFunctions.__emit).toHaveBeenCalledWith(events);
 		});
 	});
 
