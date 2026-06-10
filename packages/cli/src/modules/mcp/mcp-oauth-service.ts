@@ -75,7 +75,7 @@ export class McpOAuthService implements OAuthServerProvider {
 						client_secret_expires_at: client.clientSecretExpiresAt,
 					}),
 					response_types: ['code'],
-					scope: SUPPORTED_SCOPES.join(' '),
+					...(SUPPORTED_SCOPES.length > 0 && { scope: SUPPORTED_SCOPES.join(' ') }),
 					logo_uri: undefined,
 					tos_uri: undefined,
 				};

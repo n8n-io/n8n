@@ -76,7 +76,7 @@ describe('McpOAuthService', () => {
 					grant_types: ['authorization_code', 'refresh_token'],
 					token_endpoint_auth_method: 'none',
 					response_types: ['code'],
-					scope: SUPPORTED_SCOPES.join(' '),
+					...(SUPPORTED_SCOPES.length > 0 && { scope: SUPPORTED_SCOPES.join(' ') }),
 					logo_uri: undefined,
 					tos_uri: undefined,
 				});
