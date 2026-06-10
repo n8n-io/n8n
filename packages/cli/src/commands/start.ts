@@ -213,6 +213,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(DeprecationService).warn();
 
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const { WorkflowPublicationOutboxConsumer } = await import(
+				'@/workflows/workflow-publication-outbox-consumer'
+			);
+			Container.get(WorkflowPublicationOutboxConsumer).init();
+		}
 
 		const isMultiMainEnabled =
 			this.globalConfig.executions.mode === 'queue' && this.globalConfig.multiMainSetup.enabled;
