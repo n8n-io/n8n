@@ -1,4 +1,4 @@
-import { Config, Env } from '../decorators';
+import { Config, Env } from '@n8n/config';
 
 const MiB = 1024 * 1024;
 

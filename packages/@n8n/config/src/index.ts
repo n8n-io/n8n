@@ -31,7 +31,6 @@ import { LoggingConfig } from './configs/logging.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
-import { PackageImportConfig } from './configs/package-import.config';
 import { PersonalizationConfig } from './configs/personalization.config';
 import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
@@ -75,7 +74,6 @@ export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { HttpRequestConfig } from './configs/http-request.config';
 export { PersonalizationConfig } from './configs/personalization.config';
 export { NodesConfig } from './configs/nodes.config';
-export { PackageImportConfig } from './configs/package-import.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
@@ -259,9 +257,6 @@ export class GlobalConfig {
 
 	@Nested
 	dataTable: DataTableConfig;
-
-	@Nested
-	packageImport: PackageImportConfig;
 
 	@Nested
 	workflowHistoryCompaction: WorkflowHistoryCompactionConfig;

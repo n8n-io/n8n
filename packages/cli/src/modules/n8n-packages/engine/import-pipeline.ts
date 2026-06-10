@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -22,7 +21,9 @@ import type {
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
 import { toImportBlockedError } from './import-blocked.error';
 import { N8nPackageParser } from './n8n-package-parser';
-import { TarPackageReader, type TarReaderLimits} from '../io/tar/tar-package-reader';
+import { TarPackageReader} from '../io/tar/tar-package-reader';
+import { PackageImportConfig } from '../n8n-packages.config';
+
 import { createBindings, serializeBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
@@ -39,20 +40,16 @@ interface ImportTarget {
 
 @Service()
 export class ImportPipeline {
-	private readonly readerLimits: TarReaderLimits;
-
 	constructor(
 		private readonly packageParser: N8nPackageParser,
 		private readonly credentialImporter: CredentialImporter,
-		globalConfig: GlobalConfig,
+		private readonly packageImportConfig: PackageImportConfig,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly eventService: EventService,
 		private readonly workflowImporter: WorkflowImporter,
-	) {
-		this.readerLimits = globalConfig.packageImport;
-	}
+	) {}
 
 	async run(request: ImportPackageRequest): Promise<ImportResult> {
 		const { target, project } = await this.resolveTarget(
@@ -61,7 +58,7 @@ export class ImportPipeline {
 			request.folderId,
 		);
 
-		const reader = new TarPackageReader(request.packageBuffer, this.readerLimits);
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
 		const workflowsForImport = await this.packageParser.getWorkflows(reader);
 
