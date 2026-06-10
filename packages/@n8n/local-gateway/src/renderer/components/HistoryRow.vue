@@ -52,7 +52,7 @@ function open() {
 
 		<div v-if="isFailed" :class="$style.errorRow">
 			<N8nText size="small" :class="$style.errorText">{{
-				i18n.baseText('desktopAssistant.history.errorGeneric')
+				entry.errorMessage ?? i18n.baseText('desktopAssistant.history.errorGeneric')
 			}}</N8nText>
 			<button type="button" :class="$style.fix" @click.stop="open">
 				{{ i18n.baseText('desktopAssistant.history.fix') }}

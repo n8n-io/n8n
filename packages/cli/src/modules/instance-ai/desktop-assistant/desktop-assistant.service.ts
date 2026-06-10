@@ -22,6 +22,7 @@ import type { ExecutionStatus } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
@@ -43,6 +44,7 @@ import {
 	extractWorkflowLoopBuildOutcome,
 	readDesktopAssistantMeta,
 	splitLeadingEmoji,
+	summarizeExecutionError,
 } from './desktop-assistant.helpers';
 import { computeNodesRequiringCredentialSetup } from './node-credential-requirements';
 
@@ -55,6 +57,15 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 const PROMOTE_FINALIZE_TIMEOUT_MS = 5 * 60 * 1000;
+
+/** Statuses we treat as a failure worth surfacing an error message for. `canceled`
+ * is excluded — a user-stopped run has no meaningful error. */
+const FAILED_HISTORY_STATUSES: ReadonlySet<ExecutionStatus> = new Set(['error', 'crashed']);
+
+/** Upper bound on failed rows we load full execution data for per page, to cap
+ * the cost of parsing many large execution blobs. The default page is 20, so
+ * this only bites a pathological all-failed page near the 100-row limit. */
+const MAX_ERROR_ENRICHMENTS = 30;
 
 const EMPTY_HISTORY = Object.freeze({
 	results: [],
@@ -96,6 +107,7 @@ export class DesktopAssistantService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly executionService: ExecutionService,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly projectService: ProjectService,
 		private readonly nodeTypes: NodeTypes,
 	) {}
@@ -533,17 +545,57 @@ export class DesktopAssistantService {
 			if (!value) return null;
 			return value instanceof Date ? value.toISOString() : value;
 		};
-		return {
-			results: results.map((execution) => ({
-				id: execution.id,
-				workflowId: execution.workflowId,
-				workflowName: splitLeadingEmoji(execution.workflowName ?? '').rest,
-				status: execution.status,
-				startedAt: toIso(execution.startedAt),
-				createdAt: toIso(execution.createdAt) ?? '',
-			})),
-			count,
-			estimated,
-		};
+		const entries: DesktopAssistantHistoryResponse['results'] = results.map((execution) => ({
+			id: execution.id,
+			workflowId: execution.workflowId,
+			workflowName: splitLeadingEmoji(execution.workflowName ?? '').rest,
+			status: execution.status,
+			startedAt: toIso(execution.startedAt),
+			createdAt: toIso(execution.createdAt) ?? '',
+		}));
+
+		await this.attachErrorMessages(entries, liveWorkflowIds);
+
+		return { results: entries, count, estimated };
+	}
+
+	/**
+	 * Enrich failed rows in-place with a short error one-liner. The history list
+	 * query only carries `status`; the real error lives in the execution data
+	 * blob, so we batch-load the data for the failed rows in this page and derive
+	 * a message from `data.resultData.error`. Bounded by `MAX_ERROR_ENRICHMENTS`.
+	 */
+	private async attachErrorMessages(
+		entries: DesktopAssistantHistoryResponse['results'],
+		liveWorkflowIds: string[],
+	): Promise<void> {
+		const failed = entries.filter((entry) => FAILED_HISTORY_STATUSES.has(entry.status));
+		if (failed.length === 0) return;
+
+		const toEnrich = failed.slice(0, MAX_ERROR_ENRICHMENTS);
+		if (failed.length > toEnrich.length) {
+			this.logger.debug('Skipping error enrichment for some failed history rows', {
+				failed: failed.length,
+				enriched: toEnrich.length,
+			});
+		}
+
+		const failedIds = toEnrich.map((entry) => entry.id);
+		const executions = await this.executionPersistence.findMultipleExecutions(
+			{ where: { id: In(failedIds), workflowId: In(liveWorkflowIds) } },
+			{ includeData: true, unflattenData: true },
+		);
+
+		const summaryByExecutionId = new Map<string, ReturnType<typeof summarizeExecutionError>>();
+		for (const execution of executions) {
+			summaryByExecutionId.set(execution.id, summarizeExecutionError(execution.data));
+		}
+
+		for (const entry of toEnrich) {
+			const summary = summaryByExecutionId.get(entry.id);
+			if (!summary?.message) continue;
+			entry.errorMessage = summary.message;
+			entry.failedNode = summary.node;
+		}
 	}
 }

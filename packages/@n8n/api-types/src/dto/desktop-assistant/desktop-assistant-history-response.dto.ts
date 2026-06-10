@@ -32,6 +32,15 @@ export interface DesktopAssistantHistoryEntry {
 	startedAt: string | null;
 	/** ISO creation time; the relative-time fallback when `startedAt` is null. */
 	createdAt: string;
+	/**
+	 * A short, human-readable one-liner describing what failed, derived from the
+	 * execution's error (e.g. `"Dropbox: Authorization failed"`). Only set for
+	 * failed runs that carry an error; absent otherwise (the client falls back to
+	 * a generic label).
+	 */
+	errorMessage?: string;
+	/** The failing node's name, when known. Already folded into `errorMessage`. */
+	failedNode?: string;
 }
 
 /**

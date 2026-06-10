@@ -5,6 +5,7 @@
  */
 import type { DesktopAssistantTaskRequest } from '@n8n/api-types';
 import type { StoredEvent } from '@n8n/instance-ai';
+import type { ExecutionError, IRunExecutionData } from 'n8n-workflow';
 
 import type { PROMOTED_FROM_THREAD_ID_KEY } from './constants';
 
@@ -65,6 +66,56 @@ export function clampLimit(limit: number | undefined): number {
 	if (!limit || limit < 1) return 20;
 	if (limit > 100) return 100;
 	return limit;
+}
+
+// ── execution error summary ──────────────────────────────────────────────────
+
+/** Cap the derived error one-liner so a verbose message stays a single line. */
+const MAX_ERROR_MESSAGE_LENGTH = 140;
+
+/**
+ * Derive a short, human-readable one-liner describing what failed, from a run's
+ * execution data. Mirrors the editor's `getExecutionErrorMessage`: prefer the
+ * error message (then its description), prefix the failing node name when known,
+ * and fall back to a node-only phrasing. Returns `message: undefined` when there
+ * is nothing meaningful to show (the client then renders a generic label).
+ */
+export function summarizeExecutionError(data: IRunExecutionData | undefined): {
+	message?: string;
+	node?: string;
+} {
+	const resultData = data?.resultData;
+	const error = resultData?.error;
+
+	const node = extractErrorNode(error) ?? nonEmpty(resultData?.lastNodeExecuted);
+	const raw = nonEmpty(error?.message) ?? nonEmpty(error?.description);
+
+	let message: string | undefined;
+	if (node && raw) message = `${node}: ${raw}`;
+	else if (raw) message = raw;
+	else if (node) message = `Problem in node ‘${node}’`;
+
+	return { message: message ? toOneLine(message) : undefined, node };
+}
+
+/** The failing node's name, when the error carries one (NodeApiError/NodeOperationError). */
+function extractErrorNode(error: ExecutionError | undefined): string | undefined {
+	if (!error || !('node' in error) || !error.node) return undefined;
+	return nonEmpty(typeof error.node === 'string' ? error.node : error.node.name);
+}
+
+/** Trimmed string, or `undefined` when empty/whitespace/missing. */
+function nonEmpty(value: string | null | undefined): string | undefined {
+	const trimmed = value?.trim();
+	return trimmed ? trimmed : undefined;
+}
+
+/** Collapse whitespace/newlines into a single line and truncate with an ellipsis. */
+function toOneLine(text: string): string {
+	const collapsed = text.replace(/\s+/g, ' ').trim();
+	return collapsed.length > MAX_ERROR_MESSAGE_LENGTH
+		? `${collapsed.slice(0, MAX_ERROR_MESSAGE_LENGTH - 1).trimEnd()}…`
+		: collapsed;
 }
 
 // ── workflow_entity.meta.desktopAssistant ────────────────────────────────────
