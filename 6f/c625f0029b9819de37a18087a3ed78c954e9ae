@@ -1,0 +1,20 @@
+.claude/plugins/n8n/skills/db-migrations/SKILL.md
+  s_8f90a48c0964aa::t_30b85ff85c4686 783-806
+  s_8f90a48c0964aa::t_63e5e92790dabd 126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6fc625f0029b9819de37a18087a3ed78c954e9ae",
+  "prompts": {},
+  "sessions": {
+    "s_8f90a48c0964aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae791531-91f1-44f0-a6d6-d06f9af49565",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
