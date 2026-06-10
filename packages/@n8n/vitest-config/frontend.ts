@@ -1,7 +1,7 @@
 import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 import type { InlineConfig } from 'vitest/node';
 
-import { coverageExcludes } from './coverage-excludes';
+import { coverageExcludes } from './coverage-excludes.js';
 
 export const createVitestConfig = (options: InlineConfig = {}) => {
 	const vitestConfig = defineConfig({
