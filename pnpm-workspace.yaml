@@ -54,6 +54,8 @@ catalog:
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.55.0
+  '@stryker-mutator/core': 9.6.1
+  '@stryker-mutator/vitest-runner': 9.6.1
   '@supabase/supabase-js': 2.50.0
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
@@ -81,8 +83,6 @@ catalog:
   '@types/node': 24.10.1
   '@types/uuid': ^11.0.0
   '@types/xml2js': ^0.4.14
-  '@stryker-mutator/core': 9.6.1
-  '@stryker-mutator/vitest-runner': 9.6.1
   '@vitest/coverage-v8': 4.1.1
   agent-browser: 0.26.0
   axios: 1.16.1
@@ -144,6 +144,7 @@ catalog:
   uuid: 11.1.1
   vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
+  vite-plugin-electron: ^1.0.4
   vite-plugin-singlefile: 2.3.3
   vitest: ^4.1.1
   vitest-mock-extended: ^3.1.0
@@ -164,10 +165,6 @@ catalogs:
     eslint-plugin-playwright: 2.2.2
     playwright: 1.60.0
     playwright-core: 1.60.0
-  undici-v6:
-    undici: ^6.24.0
-  undici-v7:
-    undici: ^7.16.0
   frontend:
     '@sentry/vue': ^10.36.0
     '@testing-library/jest-dom': ^6.6.3
@@ -200,6 +197,10 @@ catalogs:
     '@storybook/vue3-vite': ^10.1.11
     eslint-plugin-storybook: ^10.1.11
     storybook: ^10.1.11
+  undici-v6:
+    undici: ^6.24.0
+  undici-v7:
+    undici: ^7.16.0
 
 minimumReleaseAge: 4320
 

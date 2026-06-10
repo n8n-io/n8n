@@ -1,23 +1,20 @@
 <script setup lang="ts">
-import { N8nText } from '@n8n/design-system';
-
 defineProps<{ variant: 'actionNeeded' | 'scheduled' | 'watching'; label: string }>();
 </script>
 
 <template>
-	<span :class="[$style.badge, $style[variant]]">
-		<N8nText size="small" :compact="true">{{ label }}</N8nText>
-	</span>
+	<span :class="[$style.badge, $style[variant]]">{{ label }}</span>
 </template>
 
 <style module>
-/* Pill of accent text on a low-alpha wash of the same accent — no border
-   (matches the reference badge / `.fix-btn` pattern). */
+/* Prototype zj: font-size 10px, font-weight 600, padding 2px 7px, border-radius 20px */
 .badge {
 	display: inline-flex;
 	align-items: center;
-	padding: 2px 9px;
-	border-radius: 20px;
+	padding: var(--spacing--5xs) 7px;
+	border-radius: var(--radius--full);
+	font-size: 10px;
+	font-weight: 600;
 	white-space: nowrap;
 }
 

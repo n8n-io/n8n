@@ -56,7 +56,15 @@ function createMainWindow(preloadPath: string, rendererPath: string): BrowserWin
 		},
 	});
 
-	void window.loadFile(rendererPath);
+	// Dev mode (`pnpm dev`) serves the renderer from a Vite dev server with HMR;
+	// production loads the built bundle from disk over `file://`.
+	// VITE_DEV_SERVER_URL is set by vite-plugin-electron when it spawns Electron.
+	const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+	if (devServerUrl) {
+		void window.loadURL(devServerUrl);
+	} else {
+		void window.loadFile(rendererPath);
+	}
 
 	// Tell the renderer when the window is actually on screen, so background polling
 	// can pause while it's hidden. The renderer's own visibility/focus events are

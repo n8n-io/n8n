@@ -366,6 +366,9 @@ catalogs:
     vite-plugin-dts:
       specifier: ^4.5.4
       version: 4.5.4
+    vite-plugin-electron:
+      specifier: ^1.0.4
+      version: 1.0.4
     vite-plugin-singlefile:
       specifier: 2.3.3
       version: 2.3.3
@@ -2149,9 +2152,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
-      concurrently:
-        specifier: ^8.2.0
-        version: 8.2.0
       electron:
         specifier: ^41.3.0
         version: 41.3.0
@@ -2170,6 +2170,9 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite-plugin-electron:
+        specifier: 'catalog:'
+        version: 1.0.4
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
@@ -16418,6 +16421,10 @@ packages:
     resolution: {integrity: sha512-arhlxbFRmoQHl33a0Zkle/YWlmNwoyt6QNZEIJcqNbdrsix5Lvc4HyyI3EnwxTYlZYc32EbYrQ8SzEZ7dqgg9A==}
     engines: {node: '>=14'}
 
+  local-pkg@1.2.1:
+    resolution: {integrity: sha512-++gUqRDEvcnN6Zhqrr+y/CkVEHhlrR96vZn3nZZPYzMcBUyBtTKzB9NadClFIsIVSsu+3i9tfk/erqy9kAmt7Q==}
+    engines: {node: '>=14'}
+
   locate-path@3.0.0:
     resolution: {integrity: sha512-7AO748wWnIhNqAuaty2ZWHkQHRSNfPVIsPIfwEOWO22AmaoVrWavlOcMR5nzTLNYvp36X220/maaRsrec1G65A==}
     engines: {node: '>=6'}
@@ -20760,6 +20767,14 @@ packages:
       vite: '*'
     peerDependenciesMeta:
       vite:
+        optional: true
+
+  vite-plugin-electron@1.0.4:
+    resolution: {integrity: sha512-YBpc7l0gQMAhmt/aETr1Xa4IXEmPUFEoY+2FZK05wusfdsqtvAVcSGStfOPc/JpQBdtLPwFNERoxUB/brn8VLw==}
+    peerDependencies:
+      vite-plugin-electron-renderer: '*'
+    peerDependenciesMeta:
+      vite-plugin-electron-renderer:
         optional: true
 
   vite-plugin-node-polyfills@0.25.0:
@@ -35426,6 +35441,12 @@ snapshots:
       pkg-types: 2.3.0
       quansync: 0.2.11
 
+  local-pkg@1.2.1:
+    dependencies:
+      mlly: 1.8.0
+      pkg-types: 2.3.0
+      quansync: 0.2.11
+
   locate-path@3.0.0:
     dependencies:
       p-locate: 3.0.0
@@ -40714,6 +40735,10 @@ snapshots:
       - '@types/node'
       - rollup
       - supports-color
+
+  vite-plugin-electron@1.0.4:
+    dependencies:
+      local-pkg: 1.2.1
 
   vite-plugin-node-polyfills@0.25.0(rollup@4.52.4)(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
     dependencies:
