@@ -1,8 +1,14 @@
 import { configure, logger } from '@n8n/computer-use/logger';
 import { ipcMain } from 'electron';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
+import type { ContextDetector } from './context-detector';
 import type { DaemonController } from './daemon-controller';
 import { InstanceApiError, type InstanceApi } from './instance-api';
+import { getMacPermissionStatus, openMacPermissionSettings } from './mac-permissions';
 import type { OAuthFlow } from './oauth/oauth-flow';
 import type { AppSettings, SettingsStore } from './settings-store';
 import type { ThreadService } from './thread-service';
@@ -10,10 +16,17 @@ import type {
 	AuthStatus,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantTaskRequest,
+	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
+	DetectedContext,
 	InstanceAiRichMessagesResponse,
+	MacPermissionKind,
+	MacPermissionStatus,
 	RunTaskResult,
+	ScreenshotAttachment,
+	WindowCaptureTarget,
 } from '../shared/types';
 
 export interface IpcHandlerDeps {
@@ -24,8 +37,66 @@ export interface IpcHandlerDeps {
 	oauthFlow: OAuthFlow;
 	instanceApi: InstanceApi;
 	threadService: ThreadService;
+	contextDetector: ContextDetector;
 	/** Opens a URL in the user's default browser (e.g. shell.openExternal). */
 	openExternal: (url: string) => Promise<void>;
+}
+
+/** Where forwarded attachments are written for inspection — next to the log file. */
+const ATTACHMENT_INSPECT_DIR = join(homedir(), '.n8n-local-gateway', 'attachments');
+
+/** Monotonic suffix so successive submits don't overwrite each other within a session. */
+let attachmentInspectSeq = 0;
+
+/**
+ * Write a forwarded attachment to disk so it can be opened/inspected, returning
+ * a `file://` URL. Best-effort: on any failure it just returns `undefined` and
+ * logging continues. Inspection aid while the UI flow is stubbed.
+ */
+function persistAttachmentForInspection(
+	attachment: ScreenshotAttachment | { data: string; fileName: string },
+): string | undefined {
+	try {
+		mkdirSync(ATTACHMENT_INSPECT_DIR, { recursive: true });
+		attachmentInspectSeq += 1;
+		const filePath = join(ATTACHMENT_INSPECT_DIR, `${attachmentInspectSeq}-${attachment.fileName}`);
+		writeFileSync(filePath, Buffer.from(attachment.data, 'base64'));
+		return pathToFileURL(filePath).href;
+	} catch (error) {
+		logger.debug('Failed to persist attachment for inspection', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
+}
+
+/**
+ * A log-safe view of a task request: the full structured context the desktop
+ * detected, but with attachments reduced to `{ fileName, mimeType, bytes, fileUrl }`
+ * so a multi-MB base64 screenshot never lands in the logs — `fileUrl` points at
+ * the on-disk copy so the screenshot can be opened. Handy for inspecting what
+ * "Looking at …" actually forwarded while the UI flow is stubbed.
+ */
+function summarizeTaskRequest(body: DesktopAssistantTaskRequest): Record<string, unknown> {
+	const context = body.context;
+	return {
+		prompt: body.prompt,
+		context: context && {
+			kind: context.kind,
+			app: context.app,
+			windowTitle: context.windowTitle,
+			url: context.url,
+			path: context.path,
+			selectedTextChars: context.selectedText?.length,
+			attachments: context.attachments?.map((attachment) => ({
+				fileName: attachment.fileName,
+				mimeType: attachment.mimeType,
+				// base64 inflates ~4/3; this is the approximate decoded size.
+				bytes: Math.round((attachment.data.length * 3) / 4),
+				fileUrl: persistAttachmentForInspection(attachment),
+			})),
+		},
+	};
 }
 
 export function registerIpcHandlers({
@@ -35,6 +106,7 @@ export function registerIpcHandlers({
 	oauthFlow,
 	instanceApi,
 	threadService,
+	contextDetector,
 	openExternal,
 }: IpcHandlerDeps): void {
 	ipcMain.handle(
@@ -168,4 +240,41 @@ export function registerIpcHandlers({
 		logger.debug('IPC thread:unlisten', { threadId });
 		threadService.unlisten(threadId);
 	});
+
+	ipcMain.handle('context:list', (): DetectedContext[] => {
+		const options = contextDetector.getOptions();
+		logger.debug('IPC context:list', { count: options.length });
+		return options;
+	});
+
+	ipcMain.handle(
+		'context:captureScreenshot',
+		async (_event, target?: WindowCaptureTarget): Promise<ScreenshotAttachment> => {
+			logger.debug('IPC context:captureScreenshot', { app: target?.app });
+			return await contextDetector.captureScreenshot(target);
+		},
+	);
+
+	ipcMain.handle(
+		'tasks:trigger',
+		async (_event, body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> => {
+			// `info` so it shows without enabling debug, and a summary rather than the
+			// raw body — screenshot attachments are multi-MB base64 we never want in logs.
+			logger.info('Triggering one-shot task', summarizeTaskRequest(body));
+			return await instanceApi.triggerTask(body);
+		},
+	);
+
+	ipcMain.handle('permissions:get', async (): Promise<MacPermissionStatus> => {
+		logger.debug('IPC permissions:get');
+		return await getMacPermissionStatus();
+	});
+
+	ipcMain.handle(
+		'permissions:openSettings',
+		async (_event, kind: MacPermissionKind): Promise<void> => {
+			logger.debug('IPC permissions:openSettings', { kind });
+			await openMacPermissionSettings(kind);
+		},
+	);
 }

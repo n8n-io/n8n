@@ -11,16 +11,48 @@ import type { PROMOTED_FROM_THREAD_ID_KEY } from './constants';
 
 // ── Message composition ─────────────────────────────────────────────────────
 
-/** Compose the one-shot task message that gets handed to Instance AI. */
+/** Compose the one-shot task message that gets handed to Instance AI.
+ *
+ *  The structured context the desktop app detects locally is rendered into the
+ *  prompt as plain text so the orchestrator can act on it. `path` is surfaced
+ *  as an explicit absolute path so the filesystem tools can target it (e.g.
+ *  "clean up the current folder" resolves to the detected directory); for the
+ *  PoC the gateway's base directory is the user home, broad enough to contain
+ *  the detected folder. Attachments (e.g. a screenshot) are NOT rendered here —
+ *  they ride the `attachments` channel into the run (see the service). */
 export function composeOneShotMessage(body: DesktopAssistantTaskRequest): string {
+	const context = body.context;
 	const lines: string[] = [body.prompt.trim()];
-	if (body.context?.appHint) {
-		lines.push('', `Currently looking at: ${body.context.appHint}`);
+
+	const looking = describeActiveContext(context);
+	if (looking) {
+		lines.push('', `Currently looking at: ${looking}`);
 	}
-	if (body.context?.selectedText) {
-		lines.push('', 'Selected text:', '```', body.context.selectedText, '```');
+	if (context?.url) {
+		lines.push(`URL: ${context.url}`);
+	}
+	if (context?.path) {
+		lines.push(`Path: ${context.path}`);
+	}
+	if (context?.selectedText) {
+		lines.push('', 'Selected text:', '```', context.selectedText, '```');
 	}
 	return lines.join('\n');
+}
+
+/** Build the single "Currently looking at" phrase from the structured context,
+ *  preferring the explicit `appHint` when the app supplied one, otherwise
+ *  composing it from `app` and `windowTitle`. Returns `undefined` when there is
+ *  nothing meaningful to say. */
+function describeActiveContext(
+	context: DesktopAssistantTaskRequest['context'],
+): string | undefined {
+	if (!context) return undefined;
+	if (context.appHint) return context.appHint;
+	const app = context.app?.trim();
+	const title = context.windowTitle?.trim();
+	if (app && title) return `${app} — ${title}`;
+	return app ?? title ?? undefined;
 }
 
 /** Compose the promote-thread message: grounds the build on the original

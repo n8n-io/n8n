@@ -1,8 +1,9 @@
-import { Monitor } from 'node-screenshots';
+import { Monitor, Window } from 'node-screenshots';
 import type { Mock, MockedClass } from 'vitest';
 
 import { ScreenshotModule } from './index';
 import { screenshotTool, screenshotRegionTool } from './screenshot';
+import { captureScreenshotAttachment } from '../context/capture';
 
 vi.mock('node-screenshots');
 
@@ -257,6 +258,74 @@ describe('screen_screenshot_region tool', () => {
 		// Cropped image (800×600 physical) must be resized to logical 400×300
 		const pipeline = mockFromRgbaPixels.mock.results[0].value as { resize: Mock };
 		expect(pipeline.resize).toHaveBeenCalledWith(400, 300);
+	});
+});
+
+function makeMockWindow(opts: {
+	id?: number;
+	appName?: string;
+	title?: string;
+	width?: number;
+	height?: number;
+	image?: MockImage;
+}) {
+	const image = opts.image ?? makeMockImage(1200, 800);
+	return {
+		id: vi.fn().mockReturnValue(opts.id ?? 1),
+		pid: vi.fn().mockReturnValue(0),
+		appName: vi.fn().mockReturnValue(opts.appName ?? ''),
+		title: vi.fn().mockReturnValue(opts.title ?? ''),
+		width: vi.fn().mockReturnValue(opts.width ?? 1200),
+		height: vi.fn().mockReturnValue(opts.height ?? 800),
+		captureImage: vi.fn().mockResolvedValue(image),
+	};
+}
+
+describe('captureScreenshotAttachment', () => {
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('captures the matching window by id (not the full screen)', async () => {
+		const target = makeMockWindow({ id: 5, appName: 'Safari', title: 'The Atlantic' });
+		const other = makeMockWindow({ id: 1, appName: 'Finder' });
+		(Window.all as Mock).mockReturnValue([other, target]);
+
+		const result = await captureScreenshotAttachment({ windowId: '5', app: 'Safari' });
+
+		expect(target.captureImage).toHaveBeenCalled();
+		expect(other.captureImage).not.toHaveBeenCalled();
+		expect(result.data).toBe(Buffer.from('fake-jpeg').toString('base64'));
+		expect(result.fileName).toBe('safari.jpg');
+	});
+
+	it('matches by app + title when the id does not match', async () => {
+		const target = makeMockWindow({ id: 9, appName: 'Preview', title: 'Q2.pdf' });
+		(Window.all as Mock).mockReturnValue([target]);
+
+		await captureScreenshotAttachment({ windowId: 'stale', app: 'Preview', title: 'Q2.pdf' });
+		expect(target.captureImage).toHaveBeenCalled();
+	});
+
+	it('falls back to a full-screen capture when no window matches', async () => {
+		(Window.all as Mock).mockReturnValue([]);
+		const monitor = makeMockMonitor({ isPrimary: true });
+		(MockMonitor.all as Mock).mockReturnValue([monitor]);
+
+		const result = await captureScreenshotAttachment({ app: 'Ghost' });
+
+		expect(monitor.captureImage).toHaveBeenCalled();
+		expect(result.fileName).toBe('ghost.jpg');
+	});
+
+	it('captures the full screen when no target is given', async () => {
+		const monitor = makeMockMonitor({ isPrimary: true });
+		(MockMonitor.all as Mock).mockReturnValue([monitor]);
+
+		const result = await captureScreenshotAttachment();
+
+		expect(monitor.captureImage).toHaveBeenCalled();
+		expect(result.fileName).toBe('screen.jpg');
 	});
 });
 

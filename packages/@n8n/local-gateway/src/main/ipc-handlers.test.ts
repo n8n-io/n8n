@@ -28,9 +28,18 @@ vi.mock('@n8n/computer-use/logger', () => ({
 	},
 }));
 
+vi.mock('./mac-permissions', () => ({
+	getMacPermissionStatus: vi.fn(),
+	openMacPermissionSettings: vi.fn(),
+}));
+
 import { logger } from '@n8n/computer-use/logger';
 
 import { registerIpcHandlers } from './ipc-handlers';
+import { getMacPermissionStatus, openMacPermissionSettings } from './mac-permissions';
+
+const mockGetMacPermissionStatus = vi.mocked(getMacPermissionStatus);
+const mockOpenMacPermissionSettings = vi.mocked(openMacPermissionSettings);
 
 function getRegisteredHandler(channel: string): HandlerFn {
 	const handler = registeredHandlers.get(channel);
@@ -47,6 +56,7 @@ function register(overrides: {
 	disconnectGateway?: HandlerFn;
 	instanceApi?: unknown;
 	threadService?: unknown;
+	contextDetector?: unknown;
 	openExternal?: HandlerFn;
 }): void {
 	registerIpcHandlers({
@@ -66,6 +76,11 @@ function register(overrides: {
 			getHistory: vi.fn(),
 			executionUrl: vi.fn(),
 			getTimeSaved: vi.fn(),
+			triggerTask: vi.fn(),
+		}) as never,
+		contextDetector: (overrides.contextDetector ?? {
+			getOptions: vi.fn().mockReturnValue([]),
+			captureScreenshot: vi.fn(),
 		}) as never,
 		threadService: (overrides.threadService ?? {
 			getMessages: vi.fn(),
@@ -290,6 +305,77 @@ describe('registerIpcHandlers', () => {
 
 		expect(threadService.listen).toHaveBeenCalledWith('t1', 7);
 		expect(threadService.unlisten).toHaveBeenCalledWith('t1');
+	});
+
+	it('context:list returns the detector options', () => {
+		const options = [
+			{ id: '1', kind: 'browser' as const, app: 'Safari' },
+			{ id: '2', kind: 'finder' as const, app: 'Finder', path: '/Users/me/Downloads' },
+		];
+		const contextDetector = {
+			getOptions: vi.fn().mockReturnValue(options),
+			captureScreenshot: vi.fn(),
+		};
+		register({ contextDetector });
+
+		const result = getRegisteredHandler('context:list')();
+		expect(contextDetector.getOptions).toHaveBeenCalled();
+		expect(result).toEqual(options);
+	});
+
+	it('context:captureScreenshot returns the captured attachment', async () => {
+		const attachment = { data: 'base64', mimeType: 'image/jpeg', fileName: 'screen.jpg' };
+		const contextDetector = {
+			getCurrent: vi.fn(),
+			captureScreenshot: vi.fn().mockResolvedValue(attachment),
+		};
+		register({ contextDetector });
+
+		const result = await getRegisteredHandler('context:captureScreenshot')();
+		expect(contextDetector.captureScreenshot).toHaveBeenCalled();
+		expect(result).toEqual(attachment);
+	});
+
+	it('tasks:trigger forwards the body to the instance api', async () => {
+		const response = { threadId: 't-1', runId: 'r-1' };
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn(),
+			getTimeSaved: vi.fn(),
+			triggerTask: vi.fn().mockResolvedValue(response),
+		};
+		register({ instanceApi });
+
+		const body = { prompt: 'clean up the folder', context: { kind: 'finder' as const } };
+		const result = await getRegisteredHandler('tasks:trigger')(undefined, body);
+
+		expect(instanceApi.triggerTask).toHaveBeenCalledWith(body);
+		expect(result).toEqual(response);
+	});
+
+	it('permissions:get returns the mac permission status', async () => {
+		const status = {
+			supported: true,
+			accessibility: 'granted',
+			screenRecording: 'denied',
+			automation: 'granted',
+		};
+		mockGetMacPermissionStatus.mockResolvedValue(status);
+		register({});
+
+		const result = await getRegisteredHandler('permissions:get')();
+		expect(result).toEqual(status);
+	});
+
+	it('permissions:openSettings opens the requested pane', async () => {
+		mockOpenMacPermissionSettings.mockResolvedValue(undefined);
+		register({});
+
+		await getRegisteredHandler('permissions:openSettings')(undefined, 'screenRecording');
+		expect(mockOpenMacPermissionSettings).toHaveBeenCalledWith('screenRecording');
 	});
 
 	it('settings:set persists capability toggles', async () => {

@@ -30,10 +30,17 @@ export interface ConnectPayload {
 // reused verbatim, never redefined here.
 import type {
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantTaskRequest,
+	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
+import type {
+	DetectedContext,
+	ScreenshotAttachment,
+	WindowCaptureTarget,
+} from '@n8n/computer-use/context';
 
 export type {
 	DesktopAssistantTasksResponse,
@@ -42,9 +49,20 @@ export type {
 	DesktopAssistantTriggerSummary,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantHistoryEntry,
+	DesktopAssistantTaskRequest,
+	DesktopAssistantTaskResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
+
+// Type-only re-export: the detected-context shape comes from @n8n/computer-use,
+// but importing it `type`-only means no Node runtime dependency leaks into the
+// renderer bundle.
+export type {
+	DetectedContext,
+	ScreenshotAttachment,
+	WindowCaptureTarget,
+} from '@n8n/computer-use/context';
 
 /** Cursor + page-size params for the history list. */
 export interface DesktopAssistantHistoryParams {
@@ -69,6 +87,24 @@ export interface RunTaskResult {
 	ok: boolean;
 	executionId?: string;
 	error?: string;
+}
+
+/** Grant state of a single macOS permission; `unknown` covers not-determined / non-macOS. */
+export type MacPermissionState = 'granted' | 'denied' | 'unknown';
+
+/** The macOS permissions context detection relies on. */
+export type MacPermissionKind = 'accessibility' | 'screenRecording' | 'automation';
+
+/**
+ * Status of the macOS permissions the context layer uses. `supported` is `false`
+ * off macOS, where the UI hides the whole permissions section. `automation` is
+ * the AppleEvents grant our osascript calls need (e.g. to read the Finder folder).
+ */
+export interface MacPermissionStatus {
+	supported: boolean;
+	accessibility: MacPermissionState;
+	screenRecording: MacPermissionState;
+	automation: MacPermissionState;
 }
 
 /**
@@ -114,6 +150,25 @@ export interface ElectronApi {
 	onThreadEvent: (
 		onEventCallback: (threadId: string, event: InstanceAiEvent) => void,
 	) => () => void;
+	/** The open windows the user can pick as context (first = frontmost). */
+	getContextOptions: () => Promise<DetectedContext[]>;
+	/**
+	 * Subscribe to context-option changes, pushed by the main process when it
+	 * re-detects (on tray open). Returns a disposer to unsubscribe.
+	 */
+	onContextChanged: (onChangeCallback: (contexts: DetectedContext[]) => void) => () => void;
+	/**
+	 * Capture a task attachment (base64 JPEG). With a `target` window it captures
+	 * just that window (excluding the assistant in front of it); otherwise the
+	 * full screen.
+	 */
+	captureScreenshot: (target?: WindowCaptureTarget) => Promise<ScreenshotAttachment>;
+	/** Fire a one-shot task with the prompt + detected context; returns thread/run ids. */
+	triggerTask: (body: DesktopAssistantTaskRequest) => Promise<DesktopAssistantTaskResponse>;
+	/** Current grant state of the macOS permissions context detection relies on. */
+	getMacPermissions: () => Promise<MacPermissionStatus>;
+	/** Open the System Settings pane to grant a macOS permission. */
+	openMacPermissionSettings: (kind: MacPermissionKind) => Promise<void>;
 }
 
 export type AuthState = 'signedOut' | 'authorizing' | 'signedIn' | 'error';

@@ -1,15 +1,20 @@
 <script setup lang="ts">
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import ContextPill from './ContextPill.vue';
 import MiniSpinner from './MiniSpinner.vue';
 
-import { ASSISTANT_CONTEXTS, suggestionChipsFor } from '../assistant/contexts';
+import {
+	assistantContextFromDetected,
+	suggestionChipsFor,
+	type AssistantContext,
+} from '../assistant/contexts';
 import { formatMinutes } from '../assistant/format';
 import { buildFallbackPlan, planTask, type Plan } from '../assistant/planner';
 import { useAssistantScreen } from '../assistant/use-assistant-screen';
+import type { DetectedContext } from '../../shared/types';
 
 type ComposerState = 'idle' | 'thinking' | 'doing';
 
@@ -23,18 +28,103 @@ const { goTo } = useAssistantScreen();
 const text = ref('');
 const state = ref<ComposerState>('idle');
 const doneCard = ref<DoneCard | null>(null);
-const activeContextKey = ref(ASSISTANT_CONTEXTS[0].key);
+
+// The open windows the user can pick as context, detected locally and pushed
+// from the main process (first = frontmost). `selectedKey` is the user's pick;
+// `null` means "use the frontmost". `detected` is the chosen raw context we
+// forward to the backend; `activeContext`/`contextOptions` are its UI projection.
+const optionsList = ref<DetectedContext[]>([]);
+const selectedKey = ref<string | null>(null);
+
+const detected = computed<DetectedContext>(() => {
+	const list = optionsList.value;
+	return list.find((c) => (c.id ?? c.app) === selectedKey.value) ?? list[0] ?? { kind: 'other' };
+});
+const activeContext = computed(() => assistantContextFromDetected(detected.value));
+const contextOptions = computed<AssistantContext[]>(() =>
+	optionsList.value.length
+		? optionsList.value.map(assistantContextFromDetected)
+		: [activeContext.value],
+);
+
+// Screenshot opt-in: off by default, auto-on when the context is just "the
+// screen" (kind 'other'), where pixels are the only signal. User can override.
+const screenshotEnabled = ref(false);
+watch(
+	() => activeContext.value.kind,
+	(kind) => {
+		screenshotEnabled.value = kind === 'other';
+	},
+	{ immediate: true },
+);
+
+const screenshotTooltip = computed(() =>
+	i18n.baseText(
+		screenshotEnabled.value
+			? 'desktopAssistant.composer.screenshotOnTooltip'
+			: 'desktopAssistant.composer.screenshotOffTooltip',
+	),
+);
+
+let disposeContext: (() => void) | undefined;
+onMounted(async () => {
+	optionsList.value = await window.electronAPI.getContextOptions();
+	disposeContext = window.electronAPI.onContextChanged((contexts) => {
+		optionsList.value = contexts;
+		// A fresh detection supersedes a stale manual pick.
+		selectedKey.value = null;
+	});
+});
+onBeforeUnmount(() => disposeContext?.());
 
 const inputRef = ref<HTMLInputElement | null>(null);
 const doneCardRef = ref<HTMLElement | null>(null);
 
 const busy = computed(() => state.value === 'thinking' || state.value === 'doing');
 
-const activeContext = computed(
-	() => ASSISTANT_CONTEXTS.find((c) => c.key === activeContextKey.value) ?? ASSISTANT_CONTEXTS[0],
+const chips = computed(() =>
+	suggestionChipsFor(activeContext.value.kind, activeContext.value.fileType),
 );
 
-const chips = computed(() => suggestionChipsFor(activeContext.value.kind));
+/**
+ * Forward the prompt + detected context (and an optional screenshot) to the
+ * backend one-shot endpoint. This is the real data path; the on-screen plan
+ * flow below is the (still-stubbed) UI. Fire-and-forget — failures are logged,
+ * never block the composer.
+ */
+async function dispatchToBackend(prompt: string) {
+	try {
+		const ctx = detected.value;
+		const context: NonNullable<Parameters<typeof window.electronAPI.triggerTask>[0]['context']> = {
+			kind: ctx.kind,
+			fileType: ctx.fileType,
+			app: ctx.app,
+			windowTitle: ctx.windowTitle,
+			url: ctx.url,
+			path: ctx.path,
+		};
+		if (screenshotEnabled.value) {
+			// Capture just the selected window (so our own window isn't in the shot);
+			// falls back to full screen in the main process when it can't be matched.
+			const shot = await window.electronAPI.captureScreenshot({
+				windowId: ctx.id,
+				app: ctx.app,
+				title: ctx.windowTitle,
+			});
+			context.attachments = [shot];
+		}
+		// Inspection aid while the UI flow is stubbed: see exactly what context the
+		// composer forwards. Attachment data is omitted (it's multi-MB base64); the
+		// main process logs a fuller summary too.
+		console.info('[desktop-assistant] triggerTask', {
+			prompt,
+			context: { ...context, attachments: context.attachments?.length ?? 0 },
+		});
+		await window.electronAPI.triggerTask({ prompt, context });
+	} catch (error) {
+		console.error('triggerTask failed', error);
+	}
+}
 
 const doneSubtitle = computed(() => {
 	if (!doneCard.value) return '';
@@ -67,6 +157,9 @@ async function submit(prompt?: string) {
 	text.value = '';
 	doneCard.value = null;
 	state.value = 'thinking';
+
+	// Send the real, context-enriched request to the backend.
+	void dispatchToBackend(value);
 
 	try {
 		const plan = await planTask(value, activeContext.value.kind);
@@ -193,9 +286,20 @@ function dismissDone() {
 		<div :class="$style.pillRow">
 			<ContextPill
 				:context="activeContext"
-				:options="ASSISTANT_CONTEXTS"
-				@select="activeContextKey = $event"
+				:options="contextOptions"
+				@select="selectedKey = $event"
 			/>
+			<N8nTooltip :content="screenshotTooltip" placement="top">
+				<button
+					type="button"
+					:class="[$style.screenshotToggle, { [$style.screenshotOn]: screenshotEnabled }]"
+					:aria-pressed="screenshotEnabled"
+					:aria-label="i18n.baseText('desktopAssistant.composer.attachScreenshot')"
+					@click="screenshotEnabled = !screenshotEnabled"
+				>
+					<N8nIcon icon="image" :size="13" aria-hidden="true" />
+				</button>
+			</N8nTooltip>
 		</div>
 
 		<div :class="$style.chipRowWrapper">
@@ -412,7 +516,43 @@ function dismissDone() {
 }
 
 .pillRow {
+	display: flex;
+	gap: var(--spacing--3xs);
+	align-items: center;
 	margin-top: 10px;
+}
+
+.screenshotToggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	color: var(--da-subtler);
+	cursor: pointer;
+	background: var(--da-surface-2);
+	border: 1px solid var(--da-border);
+	border-radius: var(--radius--full);
+	transition:
+		background 0.12s,
+		border-color 0.12s,
+		color 0.12s;
+}
+
+.screenshotToggle:hover {
+	color: var(--da-text);
+	border-color: var(--da-subtler);
+}
+
+.screenshotToggle:focus-visible {
+	outline: var(--da-focus-ring);
+	outline-offset: var(--da-focus-ring-offset);
+}
+
+.screenshotOn {
+	color: var(--da-purple);
+	background: rgba(167, 139, 250, 0.1);
+	border-color: rgba(167, 139, 250, 0.35);
 }
 
 .chipRowWrapper {

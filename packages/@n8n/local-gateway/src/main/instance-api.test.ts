@@ -191,6 +191,24 @@ describe('InstanceApi', () => {
 		});
 	});
 
+	describe('triggerTask', () => {
+		it('POSTs the prompt + context to the one-shot endpoint and unwraps the ids', async () => {
+			mockFetch.mockResolvedValue(jsonResponse({ data: { threadId: 't-1', runId: 'r-1' } }));
+
+			const body = {
+				prompt: 'clean up the current folder',
+				context: { kind: 'finder' as const, path: '/Users/me/Downloads' },
+			};
+			const result = await new InstanceApi(makeOAuth()).triggerTask(body);
+
+			const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n.example/rest/desktop-assistant/task');
+			expect(init.method).toBe('POST');
+			expect(init.body).toBe(JSON.stringify(body));
+			expect(result).toEqual({ threadId: 't-1', runId: 'r-1' });
+		});
+	});
+
 	describe('workflowUrl', () => {
 		it('builds the editor url, or null when signed out', () => {
 			expect(new InstanceApi(makeOAuth()).workflowUrl('wf-1')).toBe(

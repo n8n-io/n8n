@@ -1,5 +1,7 @@
 import type {
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantTaskRequest,
+	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	InsightsSummary,
 	InstanceAiRichMessagesResponse,
@@ -106,6 +108,21 @@ export class InstanceApi {
 		tasks.upcoming.forEach(fix);
 		tasks.readyToRun.forEach(fix);
 		return tasks;
+	}
+
+	/**
+	 * `POST /rest/desktop-assistant/task` — fire a one-shot task with the prompt
+	 * and the locally-detected context (structured pointer fields + optional
+	 * screenshot attachment). Returns the thread/run ids for SSE subscription.
+	 */
+	async triggerTask(body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> {
+		const response = await this.authedFetch('/desktop-assistant/task', {
+			method: 'POST',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body),
+		});
+		return await this.unwrap<DesktopAssistantTaskResponse>(response);
 	}
 
 	/**

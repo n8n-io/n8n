@@ -35,6 +35,77 @@ async function toJpeg(
 	return await pipeline.jpeg(85);
 }
 
+/**
+ * Capture the primary monitor as a base64-encoded JPEG (downscaled to the LLM
+ * token budget, same as `screen_screenshot`). Exported so callers that need a
+ * screenshot outside the MCP tool path (e.g. the desktop context picker) can
+ * reuse the exact capture pipeline rather than reimplementing it.
+ */
+export async function captureFullScreenJpegBase64(): Promise<string> {
+	const monitor = await getPrimaryMonitor();
+	const image = await monitor.captureImage();
+	const rawBuffer = await image.toRaw();
+	const jpegBuffer = await toJpeg(
+		rawBuffer,
+		image.width,
+		image.height,
+		monitor.width(),
+		monitor.height(),
+	);
+	return jpegBuffer.toString('base64');
+}
+
+/** Identifies a specific window to capture (any field is best-effort). */
+export interface WindowCaptureTarget {
+	/** Window id (CGWindowID on macOS — same id space as get-windows). */
+	windowId?: string;
+	/** Owning app name, e.g. "Safari". */
+	app?: string;
+	/** Window title. */
+	title?: string;
+}
+
+/**
+ * Capture a *single window* as a base64 JPEG, matched by id (then app+title,
+ * then app). Capturing by window id renders that window's own backing store, so
+ * anything in front of it (e.g. our own assistant window) is not included.
+ * Returns `undefined` when no window matches or the capture is empty — the
+ * caller can then fall back to a full-screen grab.
+ */
+export async function captureWindowJpegBase64(
+	target: WindowCaptureTarget,
+): Promise<string | undefined> {
+	const { Window } = await import('node-screenshots');
+	const windows = Window.all();
+
+	const byId = target.windowId
+		? windows.find((w) => String(w.id()) === target.windowId)
+		: undefined;
+	const appLower = target.app?.toLowerCase();
+	const titleLower = target.title?.toLowerCase();
+	const byAppTitle =
+		appLower && titleLower
+			? windows.find(
+					(w) => w.appName().toLowerCase() === appLower && w.title().toLowerCase() === titleLower,
+				)
+			: undefined;
+	const byApp = appLower ? windows.find((w) => w.appName().toLowerCase() === appLower) : undefined;
+
+	const match = byId ?? byAppTitle ?? byApp;
+	if (!match || match.width() === 0 || match.height() === 0) return undefined;
+
+	const image = await match.captureImage();
+	const rawBuffer = await image.toRaw();
+	const jpegBuffer = await toJpeg(
+		rawBuffer,
+		image.width,
+		image.height,
+		match.width(),
+		match.height(),
+	);
+	return jpegBuffer.toString('base64');
+}
+
 export const screenshotTool: ToolDefinition<typeof screenshotSchema> = {
 	name: 'screen_screenshot',
 	description: 'Capture a screenshot of the full screen and return it as a base64-encoded JPEG',
@@ -44,21 +115,11 @@ export const screenshotTool: ToolDefinition<typeof screenshotSchema> = {
 		return [{ toolGroup: 'computer' as const, resource: '*', description: 'Capture screenshot' }];
 	},
 	async execute(_input: z.infer<typeof screenshotSchema>, _context: ToolContext) {
-		const monitor = await getPrimaryMonitor();
-		const image = await monitor.captureImage();
-		const rawBuffer = await image.toRaw();
-		const jpegBuffer = await toJpeg(
-			rawBuffer,
-			image.width,
-			image.height,
-			monitor.width(),
-			monitor.height(),
-		);
 		return {
 			content: [
 				{
 					type: 'image' as const,
-					data: jpegBuffer.toString('base64'),
+					data: await captureFullScreenJpegBase64(),
 					mimeType: 'image/jpeg',
 				},
 			],

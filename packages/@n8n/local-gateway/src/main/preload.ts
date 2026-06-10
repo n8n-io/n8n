@@ -5,13 +5,20 @@ import type {
 	AuthStatus,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantTaskRequest,
+	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
+	DetectedContext,
 	ElectronApi,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
+	MacPermissionKind,
+	MacPermissionStatus,
 	RunTaskResult,
+	ScreenshotAttachment,
 	StatusSnapshot,
+	WindowCaptureTarget,
 } from '../shared/types';
 
 const electronApi: ElectronApi = {
@@ -102,6 +109,31 @@ const electronApi: ElectronApi = {
 			onEventCallback(threadId, event);
 		ipcRenderer.on('threadEvent', handler);
 		return () => ipcRenderer.removeListener('threadEvent', handler);
+	},
+
+	getContextOptions: async (): Promise<DetectedContext[]> =>
+		await (ipcRenderer.invoke('context:list') as Promise<DetectedContext[]>),
+
+	onContextChanged: (onChangeCallback: (contexts: DetectedContext[]) => void): (() => void) => {
+		const handler = (_event: unknown, contexts: DetectedContext[]) => onChangeCallback(contexts);
+		ipcRenderer.on('contextChanged', handler);
+		return () => ipcRenderer.removeListener('contextChanged', handler);
+	},
+
+	captureScreenshot: async (target?: WindowCaptureTarget): Promise<ScreenshotAttachment> =>
+		await (ipcRenderer.invoke(
+			'context:captureScreenshot',
+			target,
+		) as Promise<ScreenshotAttachment>),
+
+	triggerTask: async (body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> =>
+		await (ipcRenderer.invoke('tasks:trigger', body) as Promise<DesktopAssistantTaskResponse>),
+
+	getMacPermissions: async (): Promise<MacPermissionStatus> =>
+		await (ipcRenderer.invoke('permissions:get') as Promise<MacPermissionStatus>),
+
+	openMacPermissionSettings: async (kind: MacPermissionKind): Promise<void> => {
+		await ipcRenderer.invoke('permissions:openSettings', kind);
 	},
 };
 
