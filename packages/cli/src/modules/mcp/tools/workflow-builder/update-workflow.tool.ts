@@ -405,7 +405,7 @@ export const createUpdateWorkflowTool = (
 						.filter((name) => name.length > 0 && !resolvedNames.has(name));
 					if (missing.length > 0) {
 						throw new Error(
-							`User does not have permission to create tags. The following tags do not exist: ${missing.join(', ')}`,
+							`Cannot apply the following tags because they don't exist and your account does not have permission to create them: ${missing.join(', ')}`,
 						);
 					}
 					tagIds = resolvedTags.map((t) => t.id);
