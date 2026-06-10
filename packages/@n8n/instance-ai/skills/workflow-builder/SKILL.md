@@ -38,24 +38,24 @@ Do not call `delegate` to build, patch, fix, verify, or update workflows. The
 builder work happens here with the workflow-builder guidance and the
 orchestrator's tools.
 
-## Required Reference Loading
+## Reference Loading
 
-Before the first `build-workflow` call for workflows that use Merge, fan-in,
-deduplication, candidate/existing comparisons, create/update guards, scheduled
-cadence, filtered final digests/reports, zero-item source reads, no-results
-behavior, or email/Gmail digests, load
-[references/graph-guardrails.md](references/graph-guardrails.md).
+Each reference below is the authoritative guidance for its area. Before the
+first `build-workflow` call, load the ones whose case applies — and only those.
+Simple workflows that match none of these cases need no reference loading; do
+not let reference reading delay or replace the build itself.
 
-Before the first `build-workflow` call for webhook/form/intake workflows with
-multiple requested side effects, validation gates, optional fields, partial
-failure behavior, or Google Sheets/Airtable resource-mapper writes from trigger
-payloads, load
-[references/intake-guardrails.md](references/intake-guardrails.md).
-
-Before the first `build-workflow` call for workflows where LLM Chain, AI Agent,
-OpenAI `text/response`, or another AI summarizer/extractor feeds a final
-send/post/respond/create/update/log action, load
-[references/ai-output-guardrails.md](references/ai-output-guardrails.md).
+- [references/graph-guardrails.md](references/graph-guardrails.md): Merge or
+  fan-in, deduplication, candidate/existing comparisons, create/update guards,
+  scheduled cadence, digests/reports/rankings, zero-item source reads (for
+  example email/Gmail digests), or no-results behavior.
+- [references/intake-guardrails.md](references/intake-guardrails.md):
+  webhook/form/intake workflows with multiple requested side effects,
+  validation gates, optional fields, partial-failure behavior, or Google
+  Sheets/Airtable resource-mapper writes from trigger payloads.
+- [references/ai-output-guardrails.md](references/ai-output-guardrails.md): an
+  LLM Chain, AI Agent, OpenAI `text/response`, or other AI summarizer/extractor
+  feeds a final send/post/respond/create/update/log action.
 
 ## Output Discipline
 
@@ -174,46 +174,29 @@ completion checklist:
   post, respond, create, update, notify, summarize, log, or upsert.
 - `Required branches`: valid, invalid, empty, no-results, success, failure, and
   partial-failure behaviors that must remain distinct.
-- `Independent failures`: any source or final effect that may fail without
-  blocking the other required sources, branches, or effects. Keep those paths
-  isolated with supported continue/error-output behavior and turn failures into
-  explicit error records or alternate responses.
-- `Effect eligibility`: which fields are required for the whole item versus
-  required only for one requested side effect. Gate only the effect that needs a
-  missing or invalid field; keep logging, notifications, acknowledgements, and
-  other effects running when they can use the remaining data.
-- `Required data`: fields needed by later conditions, ranking, response
-  messages, or downstream effects, especially fields that must survive
-  side-effect nodes that replace item JSON, branch merges, and nodes that fan
-  one source item out into many output items.
-- `Item-count plan`: for each important connection, decide whether the
-  downstream node should run once or once per incoming item. Mark shared-context
-  fetches, report builders, summaries, and final digest/ranking posts that need
-  `executeOnce: true`, and avoid merging multiple trigger start items into the
-  same fetch or aggregate path.
-- `Final effect payloads`: for each terminal send, post, respond, create,
-  update, notify, log, or upsert action, name the immediate upstream node and
-  exact field path the action will read. If a summarizer, AI node, Aggregate,
-  Code node, or side-effect node changes the JSON shape, normalize the value
-  into a stable field before the terminal action. For AI node output shapes,
-  load [references/ai-output-guardrails.md](references/ai-output-guardrails.md).
+- `Independent failures`: sources or effects that may fail without blocking the
+  others; keep those paths isolated with supported continue/error-output
+  behavior (rule 8).
+- `Effect eligibility`: fields required for the whole item versus required by
+  only one side effect; gate only the effect that needs the field.
+- `Required data`: fields needed by later conditions, ranking, messages, or
+  effects, especially fields that must survive nodes that replace item JSON,
+  branch merges, or fan-out (rule 6).
+- `Item-count plan`: for each important connection, whether the downstream node
+  runs once or once per incoming item (rule 3).
+- `Final effect payloads`: for each terminal action, the immediate upstream
+  node and exact field path it will read (rule 13).
 - `External field contract`: exact fields, labels, relationships, identities,
-  and date/window values that must be requested from external systems. Do not
-  infer related facts from primary records when the workflow needs a real
-  mapping, membership, label, owner, or timestamp field.
+  and date/window values that must be requested from external systems; do not
+  infer them from whichever primary records arrive (rule 9).
 - `Required source reads`: every external data source needed to compute the
-  final output. If a ranking, digest, report, or summary mentions Linear,
-  BigQuery, Jira, GitHub, Slack history, Sheets rows, or another data source,
-  include actual read/query/fetch nodes for those sources before formatting the
-  final message; a schedule/window item or hardcoded placeholder rows are not
-  source data.
+  final output, each with a real read/query/fetch node before the final
+  formatting; a schedule/window item or hardcoded rows are not source data.
 - `Explicit constraints`: concrete user-stated URLs, channels, tables, labels,
   resource names, node families, or mechanisms. Preserve these exactly when
-  safe; do not move them into assumptions or placeholders. If the user explicitly
-  names a node family or mechanism such as HTTP Request, webhook, form, MCP, or
-  a service-native node, treat it as a hard requirement unless it is impossible
-  or contradicts another stated requirement. Do not silently replace an explicit
-  mechanism with a more convenient native node.
+  safe; do not move them into assumptions or placeholders, and do not silently
+  replace an explicitly named mechanism such as HTTP Request, webhook, form, or
+  MCP with a more convenient native node.
 - `Empty/invalid behavior`: what should happen when input is empty, filtered out,
   malformed, or missing a field required by only one effect.
 - `Done when`: observable acceptance checks, including every final action and
@@ -252,14 +235,6 @@ missing a required final user-facing effect.
    mandatory for calendars, spreadsheets, channels, folders, databases, models,
    and any other list-backed parameter when a credential is available.
 6. Build complete TypeScript SDK code and call `build-workflow`.
-   For new main workflows, include `requiredFinalActions`: one entry for every
-   user-requested terminal effect from the build brief, with `description` and
-   the exact enabled terminal action `nodeNames` that perform it. Do not list
-   triggers, IF/Switch/Merge, Code, Set/Edit Fields, Aggregate, validation, or
-   prompt-construction nodes as final actions. If the user asked to send email,
-   post to Slack, notify Telegram, respond to a webhook, log to Google Sheets,
-   or upsert Airtable, the listed node must be the actual Email/Gmail, Slack,
-   Telegram, Respond to Webhook, Google Sheets, or Airtable action node.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
    task's final deliverable.
@@ -269,66 +244,24 @@ missing a required final user-facing effect.
    use zero-based `.onCase(index, target)`, Merge modes match the data shape,
    single-output nodes are not wired through invented output ports, sub-nodes
    are attached to the correct parent, and every required final effect has a
-   downstream action node. If one external source or side-effect can fail while
-   the workflow should continue, configure the node's supported `onError`
-   behavior and merge successful and failed records deliberately.
+   downstream action node.
    Trace item counts for each connection. If node A emits N items, decide
-   whether node B must run N times or once; use `executeOnce: true` for
-   shared-context fetches, report construction, summaries, rankings, and final
-   one-message posts that should not multiply by input count. Multiple triggers
-   are alternate starts, not data to aggregate; do not Merge Manual and
-   Schedule trigger items before shared external reads or counts.
-   For multi-effect intake workflows, load
-   [references/intake-guardrails.md](references/intake-guardrails.md) and
-   separate whole-item rejection from side-effect eligibility.
-   For multi-source summaries or digests, keep empty results, successful reads,
-   and failed reads distinct. Empty is a successful zero-item read. If one
-   source may fail without stopping the workflow, use the node's supported
-   continue/error-output behavior and feed the aggregator either successful data
-   or one failure record for that source.
-   For independent final effects, a failure in one action must not abort other
-   required effects unless the user asked for all-or-nothing behavior. Use the
-   node's supported error mode and convert the result into a success/failure
-   record before fan-in; do not create synthetic failure records on the success
-   path.
-   If several branches feed one summary, ranking, digest, or final response,
-   merge the branches before the aggregator so it runs once over the full data
-   set rather than once per branch.
-   Do not use `SplitInBatches` as the collector for a fixed set of external
-   sources in a digest/report path. Its done branch does not accumulate body
-   outputs, and a zero-item source read can leave the final aggregator with no
-   source records. Prefer parallel source branches plus an explicit merge, or
-   explicitly emit one success/empty/failure record per source before fan-in.
-   If a final report, ranking, digest, or summary depends on named external
-   sources such as Linear issues, BigQuery usage, Slack history, or Sheets rows,
-   verify the graph has reachable read/query/fetch nodes for each named source
-   before the formatter and final post. Do not build only the schedule, window
-   calculation, formatter, and final Slack/email action. If using a Merge before
-   the formatter, each Merge input must be fed by the actual source read output
-   or a normalizer downstream of that read, not by the shared schedule/window/IF
-   item. Source-specific counters or normalizers, such as "Count Linear Bugs" or
-   "Normalize Usage", must be wired from the matching source read output or a
-   downstream normalizer for that source.
-   Trace the payload field path for every final action. The expression in the
-   final node must read a field that exists on its immediate upstream item, or a
-   deliberately preserved source-node field. Do not guess common names like
-   `$json.text`, `$json.message`, or `$json.temperature` after nodes that may
-   output nested objects or replace JSON; inspect or normalize the shape first.
-   For LLM/OpenAI output shapes, load
-   [references/ai-output-guardrails.md](references/ai-output-guardrails.md)
-   and normalize generated content before final actions read it.
-   When a source node can emit many output items for one input item, stamp
-   required source metadata such as channel, city, account, or request ID before
-   flattening, or carry it inside the same transformation that expands the
-   records. Do not recover source identity later by indexing a fixed source list
-   with `pairedItem.item` or item position unless the node is explicitly
-   one-output-per-input.
-   Do not use `$('Source List').item.json...` to recover channel, city, account,
-   team, label, or origin after an external read, multi-record fan-out, or error
-   output. That paired item may be absent or may point at a record index rather
-   than the original source. Carry the source fields on the current item before
-   fan-out, and create failure records with explicit source fields only on the
-   real error path.
+   whether node B must run N times or once (rule 3). Multiple triggers are
+   alternate starts, not data to aggregate; do not Merge Manual and Schedule
+   trigger items before shared external reads or counts.
+   Trace the payload field path for every final action (rule 13): the
+   expression in the final node must read a field that exists on its immediate
+   upstream item or a deliberately preserved source-node field. Do not guess
+   common names like `$json.text` or `$json.message` after nodes that may nest
+   or replace JSON; inspect or normalize the shape first.
+   Check the build brief's `Required source reads`: every named external source
+   must have a reachable read/query/fetch node before the final formatter, and
+   each Merge input or source-specific counter/normalizer must be fed from its
+   matching source read, not from a shared schedule/window/IF item.
+   Apply the loaded references here: graph-guardrails for fan-in, digests,
+   collectors, and source identity; intake-guardrails for whole-item rejection
+   versus side-effect eligibility; ai-output-guardrails for LLM/OpenAI output
+   shapes.
 8. Verify the final user-facing outcome exists. Trace the graph from the trigger
    to the terminal action the user actually asked for. If the request says to
    send, post, respond, create, update, notify, summarize, or log, the workflow
@@ -644,11 +577,10 @@ Follow these rules strictly when generating workflows:
    after data has been deduplicated.
 4. Pick the right control-flow primitive:
    - Per-item loop with side effects: `splitInBatches` with `batchSize: 1`,
-     feeding the per-item work and looping back via `nextBatch`.
-     `splitInBatches` does not accumulate successful per-iteration output for
-     the done branch. If the final outcome needs all fetched records, build a
-     structure that preserves or appends each iteration's successful data before
-     aggregation, or fetch all records in one request when the API allows it.
+     feeding the per-item work and looping back via `nextBatch`. Its done
+     branch does not accumulate loop-body output, so do not use it as the
+     collector for a digest/report path; see
+     [references/graph-guardrails.md](references/graph-guardrails.md).
    - Drop items that do not match a predicate: `filter`.
    - Two mutually exclusive paths that both do real work: IF with `.onTrue()`
      and `.onFalse()`.
@@ -725,32 +657,15 @@ Follow these rules strictly when generating workflows:
     "count", "digest", "summary", "ranking", or "list the titles" means the
     notification should be one aggregated message, not one message per item. If
     the user asks for one action per item, keep the stream itemized.
-    For multi-source digests, do not rely on a direct multi-input Merge into
-    Aggregate `aggregateAllItemData` unless you have verified that the aggregate
-    receives and preserves every merged item. Prefer a Code node using
-    `$input.all()` to build the prompt/report from all merged items, or another
-    explicit shape-preserving transform, before the final summarizer or post.
-    For fixed source lists, avoid `SplitInBatches` as the final collector. It
-    does not accumulate loop body outputs on the done branch; emit one
-    success/empty/failure record per source before fan-in, or use parallel
-    source branches with an explicit merge.
-    For reports that combine named sources such as Linear and BigQuery, verify
-    every Merge input is sourced from the actual read output or a downstream
-    normalizer for that source. Do not wire the same schedule/window/IF output
-    into multiple Merge inputs while the real source reads run on side branches.
-    Source-specific counters and normalizers must also have the source read
-    upstream; a Linear bug counter should not receive only the schedule/window
-    item, and a usage normalizer should not receive only the cadence gate item.
-    For Merge, SQL Merge, fan-in, candidate/existing comparisons, or
-    create/update guards, load
-    [references/graph-guardrails.md](references/graph-guardrails.md).
-    Do not set `executeOnce: true` on that post-Merge Code aggregator. Use Code
-    mode `runOnceForAllItems` with `$input.all()` so the node sees every merged
-    item exactly once.
     When the prompt asks for a ranking, leaderboard, top list, or "sorted by
     count", compute one row per ranked entity, then sort by the requested score
-    or count before formatting. Do not rely on input order or alphabetical team
-    order when the requirement is score/count order.
+    or count before formatting; do not rely on input order.
+    For multi-source digests, fan-in, Merge/SQL Merge, candidate/existing
+    comparisons, or create/update guards, follow
+    [references/graph-guardrails.md](references/graph-guardrails.md): build the
+    combined report with a post-merge Code node in `runOnceForAllItems` mode
+    using `$input.all()` (not `executeOnce: true`), and feed every Merge input
+    from its actual source read.
 12. Empty-case logic must be reachable when there are zero matching items. A Code
     or formatting node placed only after a Filter/IF true branch will not execute
     if that branch receives 0 items. For required no-results behavior, branch or
@@ -771,6 +686,7 @@ Follow these rules strictly when generating workflows:
 14. Let Schedule nodes control cadence. For scheduled daily, weekly, bi-weekly,
     every-two-weeks, or fortnightly workflows, load
     [references/graph-guardrails.md](references/graph-guardrails.md).
+
 ## Tool Naming Rules
 
 - Name tools by the action they perform, not by repeating the integration or

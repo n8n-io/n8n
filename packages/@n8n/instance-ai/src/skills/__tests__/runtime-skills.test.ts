@@ -119,6 +119,9 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('references/ai-output-guardrails.md');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain('Do not call `delegate`');
+
+		// Headroom below the 64KB load_skill output truncation limit.
+		expect(Buffer.byteLength(loaded?.instructions ?? '', 'utf8')).toBeLessThan(56 * 1024);
 	});
 
 	it('loads the bundled planning skill', async () => {
@@ -147,8 +150,8 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('`Explicit constraints`');
 		expect(loaded?.instructions).toContain('`Empty/invalid behavior`');
 		expect(loaded?.instructions).toContain('`Verify required effects`');
-		expect(loaded?.instructions).toContain('If exactly one matching credential exists');
-		expect(loaded?.instructions).toContain('If multiple matching credentials exist');
+		expect(loaded?.instructions).toContain("Never ask for the user's timezone");
+		expect(loaded?.instructions).toContain('Trust already-collected briefing context');
 		expect(loaded?.instructions).toContain('Do not add\nroutine "verify this workflow"');
 		expect(loaded?.instructions).toContain('Checkpoint tasks are exceptional semantic checks');
 		expect(loaded?.instructions).not.toContain('submit-plan');
