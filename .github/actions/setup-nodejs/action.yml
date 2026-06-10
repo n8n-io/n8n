@@ -136,19 +136,41 @@ runs:
       shell: bash
 
     # Fail fast if activation did not take effect, mirroring the Node/pnpm
-    # verify guards above. $GITHUB_PATH changes apply to subsequent steps, so
-    # this separate step sees the shimmed PATH and asserts the package managers
-    # now resolve to SafeChain shims rather than the bare binaries.
-    - name: Verify SafeChain is active
+    # verify guards above. We use SafeChain's own `safe-chain-verify` command,
+    # which runs *through* the wrapped package manager and prints
+    # "OK: Safe-chain works!" only when the shim is active — a truer check than
+    # matching the resolved binary path. Split by OS: SafeChain's CI shims are
+    # bare executables on Unix (resolvable in bash) but `.cmd`/`.ps1` on Windows,
+    # which only resolve in pwsh — the same shell as the pnpm-start smoke test.
+    - name: Verify SafeChain is active (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
       run: |
         for pm in npm pnpm; do
-          resolved="$(command -v "$pm" || true)"
-          case "$resolved" in
-            *safe-chain*) echo "ok: $pm -> $resolved" ;;
-            *) echo "::error::SafeChain inactive: '$pm' resolves to '${resolved:-<none>}', expected a SafeChain shim"; exit 1 ;;
+          out="$("$pm" safe-chain-verify 2>&1)" || {
+            echo "::error::SafeChain inactive: '$pm safe-chain-verify' failed:"
+            echo "$out"
+            exit 1
+          }
+          echo "$out"
+          case "$out" in
+            *OK*) ;;
+            *) echo "::error::SafeChain inactive: unexpected '$pm safe-chain-verify' output"; exit 1 ;;
           esac
         done
-      shell: bash
+
+    - name: Verify SafeChain is active (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        foreach ($pm in 'npm', 'pnpm') {
+          $out = & $pm safe-chain-verify 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0 -or $out -notmatch 'OK') {
+            Write-Host "::error::SafeChain inactive: '$pm safe-chain-verify' failed"
+            exit 1
+          }
+        }
 
     # Capture pnpm's combined stdout+stderr through `tee` so the ERR_PNPM_* code
     # and offending package survive even when `timeout` terminates the process
