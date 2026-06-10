@@ -6,7 +6,6 @@ import {
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -16,6 +15,7 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -57,13 +57,17 @@ type Item = ActionDropdownItem<ContextMenuAction>;
 
 export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
-	const settingsStore = useSettingsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 	const focusedNodesStore = useFocusedNodesStore();
 	const i18n = useI18n();
+
+	// Per-editor host overrides (already ANDed with the instance-wide store
+	// flags) — e.g. the Instance AI artifact preview supersedes the AI
+	// capabilities of its embedded editor, which must hide the AI actions.
+	const { aiAssistant, aiBuilder } = useEditorContext();
 
 	const workflowPermissions = computed(
 		() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
@@ -177,7 +181,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 		const aiActions: Item[] = [
 			!onlyStickies &&
-				settingsStore.isAiAssistantOrBuilderEnabled &&
+				(aiAssistant.value || aiBuilder.value) &&
 				focusedNodesStore.isFeatureEnabled && {
 					id: 'focus_ai_on_selected',
 					divided: true,
