@@ -9,6 +9,8 @@ import {
 	N8nDataTableServer,
 	N8nHeading,
 	N8nIcon,
+	N8nOption,
+	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
@@ -18,8 +20,10 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import {
+	fetchRegistries,
 	fetchImportableChanges,
 	importProjectChanges,
+	type N8nPackagesRegistryConnection,
 	type N8nPackagesRegistryProjectGroup,
 } from '../n8nPackagesRegistry.api';
 
@@ -54,11 +58,14 @@ const documentTitle = useDocumentTitle();
 const $style = useCssModule();
 
 const projectGroups = ref<N8nPackagesRegistryProjectGroup[]>([]);
+const registries = ref<N8nPackagesRegistryConnection[]>([]);
+const selectedRegistryId = ref('source-control');
 const isLoading = ref(false);
 const hasLoadError = ref(false);
 const importingProjectId = ref<string | null>(null);
 
 const hasProjectGroups = computed(() => projectGroups.value.length > 0);
+const hasRegistries = computed(() => registries.value.length > 0);
 const tableRows = computed<ProjectGroupTableRow[]>(() =>
 	projectGroups.value.map((group) => ({
 		...group,
@@ -112,21 +119,49 @@ const tableHeaders = ref<Array<TableHeader<ProjectGroupTableRow>>>([
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nPackagesRegistry.title'));
-	void loadImportableChanges();
+	void initialize();
 });
+
+async function initialize() {
+	await loadRegistries();
+	if (hasLoadError.value) return;
+	await loadImportableChanges();
+}
+
+async function loadRegistries() {
+	try {
+		registries.value = await fetchRegistries(rootStore.restApiContext);
+		selectedRegistryId.value = registries.value[0]?.id ?? 'source-control';
+	} catch (error) {
+		hasLoadError.value = true;
+		toast.showError(error, i18n.baseText('settings.n8nPackagesRegistry.fetchError'));
+	}
+}
 
 async function loadImportableChanges() {
 	isLoading.value = true;
 	hasLoadError.value = false;
 
 	try {
-		projectGroups.value = await fetchImportableChanges(rootStore.restApiContext);
+		projectGroups.value = await fetchImportableChanges(
+			rootStore.restApiContext,
+			selectedRegistryId.value,
+		);
 	} catch (error) {
 		hasLoadError.value = true;
 		toast.showError(error, i18n.baseText('settings.n8nPackagesRegistry.fetchError'));
 	} finally {
 		isLoading.value = false;
 	}
+}
+
+async function refresh() {
+	await loadImportableChanges();
+}
+
+async function selectRegistry(registryId: string) {
+	selectedRegistryId.value = registryId;
+	await loadImportableChanges();
 }
 
 function getProjectTypeLabel(type: N8nPackagesRegistryProjectGroup['project']['type']) {
@@ -255,7 +290,11 @@ async function importProject(group: N8nPackagesRegistryProjectGroup) {
 	importingProjectId.value = group.project.id;
 
 	try {
-		const importedChanges = await importProjectChanges(rootStore.restApiContext, group.project.id);
+		const importedChanges = await importProjectChanges(
+			rootStore.restApiContext,
+			group.project.id,
+			selectedRegistryId.value,
+		);
 		toast.showMessage({
 			title: i18n.baseText('settings.n8nPackagesRegistry.importSuccess.title'),
 			message: i18n.baseText('settings.n8nPackagesRegistry.importSuccess.message', {
@@ -293,11 +332,30 @@ async function importProject(group: N8nPackagesRegistryProjectGroup) {
 				icon="refresh-cw"
 				:disabled="isLoading"
 				data-test-id="n8n-packages-registry-refresh"
-				@click="loadImportableChanges"
+				@click="refresh"
 			>
 				{{ i18n.baseText('settings.n8nPackagesRegistry.refresh') }}
 			</N8nButton>
 		</header>
+
+		<div v-if="hasRegistries" :class="$style.registrySelector" class="mb-l">
+			<N8nText size="small" color="text-base">
+				{{ i18n.baseText('settings.n8nPackagesRegistry.registry') }}
+			</N8nText>
+			<N8nSelect
+				:model-value="selectedRegistryId"
+				size="medium"
+				data-test-id="n8n-packages-registry-select"
+				@update:model-value="selectRegistry(String($event))"
+			>
+				<N8nOption
+					v-for="registry in registries"
+					:key="registry.id"
+					:value="registry.id"
+					:label="registry.name"
+				/>
+			</N8nSelect>
+		</div>
 
 		<N8nCallout
 			v-if="hasLoadError"
@@ -406,6 +464,13 @@ async function importProject(group: N8nPackagesRegistryProjectGroup) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.registrySelector {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	max-width: 360px;
 }
 
 .disabledRow {

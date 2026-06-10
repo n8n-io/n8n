@@ -5,6 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import SettingsN8nPackagesRegistryView from './SettingsN8nPackagesRegistryView.vue';
 
 const apiMocks = vi.hoisted(() => ({
+	fetchRegistries: vi.fn(),
 	fetchImportableChanges: vi.fn(),
 	importProjectChanges: vi.fn(),
 }));
@@ -91,6 +92,16 @@ const renderComponent = createComponentRenderer(SettingsN8nPackagesRegistryView,
 			N8nIcon: {
 				template: '<span />',
 			},
+			N8nOption: {
+				props: {
+					label: String,
+					value: String,
+				},
+				template: '<option :value="value">{{ label }}</option>',
+			},
+			N8nSelect: {
+				template: '<select><slot /></select>',
+			},
 			N8nText: {
 				props: {
 					tag: String,
@@ -104,6 +115,15 @@ const renderComponent = createComponentRenderer(SettingsN8nPackagesRegistryView,
 describe('SettingsN8nPackagesRegistryView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		apiMocks.fetchRegistries.mockResolvedValue([
+			{
+				id: 'source-control',
+				type: 'source-control',
+				name: 'Source control',
+				enabled: true,
+				readonly: true,
+			},
+		]);
 	});
 
 	it('enables project import when the only supported changes are folders', async () => {

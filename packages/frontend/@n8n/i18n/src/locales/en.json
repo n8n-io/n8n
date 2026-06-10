@@ -6738,6 +6738,7 @@
 	"tools.connection.detail.noAdditionalDetails": "No additional details available",
 	"settings.n8nPackagesRegistry.title": "Package registry",
 	"settings.n8nPackagesRegistry.description": "Import project changes from the connected package registry.",
+	"settings.n8nPackagesRegistry.registry": "Registry",
 	"settings.n8nPackagesRegistry.refresh": "Refresh",
 	"settings.n8nPackagesRegistry.loading": "Loading importable projects...",
 	"settings.n8nPackagesRegistry.fetchError": "Could not load package registry changes",

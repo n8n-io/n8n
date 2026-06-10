@@ -55,6 +55,7 @@ import { LimitWorkflowVersionTriggerToContent1784000000003 } from './17840000000
 import { CreateAgentHistoryTable1784000000011 } from './1784000000011-CreateAgentHistoryTable';
 import { AddScopeColumnToOAuthTables1784000000026 } from './1784000000026-AddScopeColumnToOAuthTables';
 import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
+import { CreateN8nPackagesRegistryConnectionTable1784000000029 } from '../common/1784000000029-CreateN8nPackagesRegistryConnectionTable';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -397,6 +398,7 @@ const sqliteMigrations: Migration[] = [
 	AddScopeColumnToOAuthTables1784000000026,
 	CreateWorkflowPublicationOutboxTable1784000000027,
 	AddProjectIdToInstanceAiThread1784000000028,
+	CreateN8nPackagesRegistryConnectionTable1784000000029,
 ];
 
 export { sqliteMigrations };

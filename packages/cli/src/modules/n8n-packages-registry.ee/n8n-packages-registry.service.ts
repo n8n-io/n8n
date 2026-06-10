@@ -1,214 +1,74 @@
-import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { IWorkflowBase } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { IWorkflowToImport } from '@/interfaces';
-import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 
-import { GitFolderReaderService } from './git-resource-reader/git-folder-reader.service';
-import { SourceControlProjectImportPlanner } from './import-planner/source-control-project-import-planner.service';
-import { SourceControlImportService } from '../source-control.ee/source-control-import.service.ee';
-import { SourceControlPreferencesService } from '../source-control.ee/source-control-preferences.service.ee';
+import { N8nPackagesRegistryConnectionsService } from './n8n-packages-registry-connections.service';
 import {
-	getDeletedResources,
-	getNonDeletedResources,
-} from '../source-control.ee/source-control-resource-helper';
-import { SourceControlService } from '../source-control.ee/source-control.service.ee';
-import type { SourceControlGetStatus } from '../source-control.ee/types/source-control-get-status';
-
-type SourceControlProjectGroup = {
-	project: {
-		id: string | null;
-		name: string;
-		type: 'team' | 'personal' | 'global';
-	};
-	changes: SourceControlledFile[];
-};
-
-type ProjectGroupIdentifier = SourceControlProjectGroup['project'] & {
-	groupId: string;
-};
+	SOURCE_CONTROL_REGISTRY_ID,
+	type N8nPackagesRegistryConnection,
+} from './n8n-packages-registry.types';
+import { N8nPackagesRegistryProviders } from './providers/n8n-packages-registry-providers.service';
 
 @Service()
 export class N8nPackagesRegistryService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
-		private readonly gitFolderReaderService: GitFolderReaderService,
-		private readonly sourceControlService: SourceControlService,
-		private readonly sourceControlImportService: SourceControlImportService,
-		private readonly sourceControlProjectImportPlanner: SourceControlProjectImportPlanner,
-		private readonly workflowIndexService: WorkflowIndexService,
+		private readonly connectionsService: N8nPackagesRegistryConnectionsService,
+		private readonly providers: N8nPackagesRegistryProviders,
 	) {}
 
-	isConnected(): boolean {
-		const isConnected = this.sourceControlPreferencesService.isSourceControlConnected();
-		this.logger.info(`Source control is connected: ${isConnected}`);
+	async listRegistries(): Promise<N8nPackagesRegistryConnection[]> {
+		return await this.connectionsService.findAllAvailable();
+	}
+
+	async isConnected(): Promise<boolean> {
+		const sourceControlRegistry = await this.connectionsService.findById(
+			SOURCE_CONTROL_REGISTRY_ID,
+		);
+		const isConnected = sourceControlRegistry?.enabled === true;
+		this.logger.info(`Source control package registry is connected: ${isConnected}`);
 		return isConnected;
 	}
 
-	/**
-	 * @deprecated for now we'll try to re-use as much as possible the existing implemenation in the sources-control.ee module
-	 */
-	async findAllProjects() {
-		return await this.gitFolderReaderService.findAllResources({ resourceType: 'project' });
+	async findAllProjects(user: User, registryId = SOURCE_CONTROL_REGISTRY_ID) {
+		const registry = await this.createRegistry(registryId);
+		return await registry.listProjects(user);
 	}
 
-	async findImportableChangesGroupedByProject(user: User): Promise<SourceControlProjectGroup[]> {
-		const options = {
-			direction: 'pull',
-			preferLocalVersion: false,
-			verbose: false,
-		} satisfies SourceControlGetStatus;
-
-		const status = await this.sourceControlService.getStatus(user, options);
-		const changes = Array.isArray(status) ? status : status.sourceControlledFiles;
-		const groupsByProjectId = new Map<string, SourceControlProjectGroup>();
-
-		for (const change of changes) {
-			const project = this.getProjectGroupIdentifier(change);
-			const existingGroup = groupsByProjectId.get(project.groupId);
-
-			if (existingGroup) {
-				existingGroup.changes.push(change);
-				continue;
-			}
-
-			groupsByProjectId.set(project.groupId, {
-				project: {
-					id: project.id,
-					name: project.name,
-					type: project.type,
-				},
-				changes: [change],
-			});
-		}
-
-		return [...groupsByProjectId.values()].sort((a, b) =>
-			a.project.name.localeCompare(b.project.name),
-		);
+	async findImportableChangesGroupedByProject(user: User, registryId = SOURCE_CONTROL_REGISTRY_ID) {
+		const registry = await this.createRegistry(registryId);
+		return await registry.getImportableChangesGroupedByProject(user);
 	}
 
-	async importProjectChanges(user: User, projectId: string): Promise<SourceControlledFile[]> {
-		const plan = await this.sourceControlProjectImportPlanner.planProjectImport(user, projectId);
-
-		if (!plan.canApply) {
-			throw new UnprocessableRequestError('Import has unresolved dependencies', undefined, {
-				issues: plan.validation.blockingIssues,
-				warnings: plan.validation.warnings,
-			});
-		}
-
-		const imported = await this.importSelectedWorkfolderChanges(user, plan.selectedChanges);
-
-		for (const workflow of plan.remoteResources.workflows.values()) {
-			await this.workflowIndexService.updateIndexForDraft(this.toIndexableWorkflow(workflow));
-		}
-
-		return imported;
-	}
-
-	private toIndexableWorkflow(workflow: IWorkflowToImport): IWorkflowBase {
-		const importedAt = new Date();
-
-		return {
-			...workflow,
-			createdAt: importedAt,
-			updatedAt: importedAt,
-		};
-	}
-
-	private async importSelectedWorkfolderChanges(
+	async importProjectChanges(
 		user: User,
-		statusResult: SourceControlledFile[],
-	): Promise<SourceControlledFile[]> {
-		const projectsToBeImported = getNonDeletedResources(statusResult, 'project');
-		await this.sourceControlImportService.importTeamProjectsFromWorkFolder(
-			projectsToBeImported,
-			user.id,
-		);
-
-		const foldersToBeImported = getNonDeletedResources(statusResult, 'folders')[0];
-		if (foldersToBeImported) {
-			await this.sourceControlImportService.importFoldersFromWorkFolder(user, foldersToBeImported);
-		}
-
-		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
-		const workflowImportResults =
-			await this.sourceControlImportService.importWorkflowFromWorkFolder(
-				workflowsToBeImported,
-				user.id,
-			);
-
-		const statusByWorkflowId = new Map(
-			statusResult.filter((item) => item.type === 'workflow').map((item) => [item.id, item]),
-		);
-
-		for (const { id, publishingError } of workflowImportResults) {
-			if (!publishingError) continue;
-
-			const statusItem = statusByWorkflowId.get(id);
-			if (statusItem) {
-				statusItem.publishingError = publishingError;
-			}
-		}
-
-		const workflowsToBeDeleted = getDeletedResources(statusResult, 'workflow');
-		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
-			user,
-			workflowsToBeDeleted,
-		);
-
-		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
-		await this.sourceControlImportService.importCredentialsFromWorkFolder(
-			credentialsToBeImported,
-			user.id,
-		);
-
-		const credentialsToBeDeleted = getDeletedResources(statusResult, 'credential');
-		await this.sourceControlImportService.deleteCredentialsNotInWorkfolder(
-			user,
-			credentialsToBeDeleted,
-		);
-
-		const dataTableCandidates = getNonDeletedResources(statusResult, 'datatable');
-		if (dataTableCandidates.length > 0) {
-			await this.sourceControlImportService.importDataTablesFromWorkFolder(
-				dataTableCandidates,
-				user.id,
-			);
-		}
-
-		const dataTablesToBeDeleted = getDeletedResources(statusResult, 'datatable');
-		await this.sourceControlImportService.deleteDataTablesNotInWorkFolder(dataTablesToBeDeleted);
-
-		const foldersToBeDeleted = getDeletedResources(statusResult, 'folders');
-		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
-
-		const projectsToBeDeleted = getDeletedResources(statusResult, 'project');
-		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(projectsToBeDeleted);
-
-		return statusResult;
+		projectId: string,
+		registryId = SOURCE_CONTROL_REGISTRY_ID,
+	) {
+		const registry = await this.createRegistry(registryId);
+		return await registry.importProjectChanges(user, projectId);
 	}
 
-	private getProjectGroupIdentifier(change: SourceControlledFile): ProjectGroupIdentifier {
-		if (change.owner) {
-			return {
-				groupId: change.owner.projectId,
-				id: change.owner.projectId,
-				name: change.owner.projectName,
-				type: change.owner.type,
-			};
+	private async createRegistry(registryId: string) {
+		const connection = await this.connectionsService.findById(registryId);
+
+		if (!connection) {
+			throw new NotFoundError(`Package registry not found: ${registryId}`);
 		}
 
-		return {
-			groupId: 'global',
-			id: null,
-			name: 'Global changes',
-			type: 'global',
-		};
+		if (!connection.enabled) {
+			throw new UnprocessableRequestError(`Package registry is not enabled: ${registryId}`);
+		}
+
+		const provider = this.providers.getProvider(connection.type);
+
+		if (!provider) {
+			throw new UnprocessableRequestError(`Unsupported package registry type: ${connection.type}`);
+		}
+
+		return await provider.init(connection);
 	}
 }

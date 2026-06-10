@@ -21,6 +21,11 @@ import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
 import { InvalidAuthToken } from './invalid-auth-token';
+import {
+	N8nPackagesRegistryConnection,
+	type N8nPackagesRegistryConnectionConfig,
+	type N8nPackagesRegistryConnectionType,
+} from './n8n-packages-registry-connection';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
@@ -53,6 +58,9 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	InvalidAuthToken,
+	N8nPackagesRegistryConnection,
+	type N8nPackagesRegistryConnectionConfig,
+	type N8nPackagesRegistryConnectionType,
 	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
@@ -106,6 +114,7 @@ export {
 
 export const entities = {
 	InvalidAuthToken,
+	N8nPackagesRegistryConnection,
 	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
