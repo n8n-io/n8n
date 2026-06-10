@@ -125,6 +125,7 @@ export class ActiveWorkflowTriggers {
 		for (const pollNode of pollTriggerNodes) {
 			try {
 				await this.activatePollTrigger(
+					workflowId,
 					pollNode,
 					workflow,
 					additionalData,
@@ -176,6 +177,7 @@ export class ActiveWorkflowTriggers {
 	 * Activates the given poll trigger node.
 	 */
 	private async activatePollTrigger(
+		workflowId: string,
 		node: INode,
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -191,7 +193,12 @@ export class ActiveWorkflowTriggers {
 
 		// Get all the trigger times
 		const cronExpressions = (pollTimes.item || []).map(toCronExpression);
-		const executePollTrigger = this.createPollTriggerExecuteFn(workflow, node, pollFunctions);
+		const executePollTrigger = this.createPollTriggerExecuteFn(
+			workflowId,
+			workflow,
+			node,
+			pollFunctions,
+		);
 
 		// Execute the poll trigger directly to be able to know if it works.
 		await executePollTrigger(true);
@@ -296,10 +303,18 @@ export class ActiveWorkflowTriggers {
 	 * trigger node and triggers a workflow execution based on the output.
 	 */
 	private createPollTriggerExecuteFn(
+		workflowId: string,
 		workflow: Workflow,
 		node: INode,
 		pollFunctions: IPollFunctions,
 	): (testingTrigger?: boolean) => Promise<void> {
+		// Capture this activation's registration; `remove()` deletes this entry and
+		// `add()` always assigns a fresh one, so if a scheduled poll finishes after the
+		// workflow was removed or reactivated, it no longer matches and its
+		// result, belonging to the now superseded version, must not be emitted.
+		const registration = this.activeTriggersByWorkflowId.get(workflowId);
+		const isSuperseded = () => this.activeTriggersByWorkflowId.get(workflowId) !== registration;
+
 		return async (testingTrigger = false) => {
 			return await this.tracing.startSpan(
 				{
@@ -324,6 +339,16 @@ export class ActiveWorkflowTriggers {
 					// that window and must acquire/release per tick — see CAT-3147.
 					const ownsIsolate = !testingTrigger;
 
+					// A scheduled poll can finish after the workflow was removed or
+					// reactivated, so drop it if superseded to prevent executing the old version.
+					if (!testingTrigger && isSuperseded()) {
+						this.logger.debug(`Skipping poll for superseded workflow "${workflow.name}"`, {
+							workflowId: workflow.id,
+						});
+						span.setStatus({ code: SpanStatus.ok });
+						return;
+					}
+
 					try {
 						if (ownsIsolate) await workflow.expression.acquireIsolate();
 
@@ -333,19 +358,47 @@ export class ActiveWorkflowTriggers {
 							pollFunctions,
 						);
 
+						// Same as the above `isSuperseded` check; last chance to check before
+						// potentially starting the execution. Emitting now if superseded would run
+						// an execution against the old version of the workflow, so drop it.
+						// Bailing out here is safe even though `poll()` may have already advanced
+						// its state in the in-memory static data: persistence only happens inside
+						// `__emit` (`saveStaticData`), so the dropped call leaves the stored state
+						// untouched and the newly registered poller re-fetches the same events.
+						if (!testingTrigger && isSuperseded()) {
+							this.logger.debug(
+								`Discarding in-flight poll result for superseded workflow "${workflow.name}"`,
+								{ workflowId: workflow.id },
+							);
+							span.setStatus({ code: SpanStatus.ok });
+							return;
+						}
+
 						if (pollResponse !== null) {
 							pollFunctions.__emit(pollResponse);
 						}
 
 						span.setStatus({ code: SpanStatus.ok });
 					} catch (error) {
-						span.setStatus({ code: SpanStatus.error });
 						// If the poll trigger fails in the first activation
 						// throw the error back so we let the user know there is
 						// an issue with the trigger.
 						if (testingTrigger) {
+							span.setStatus({ code: SpanStatus.error });
 							throw error;
 						}
+
+						// Ignore poll errors that are against a superseded workflow
+						if (isSuperseded()) {
+							this.logger.debug(
+								`Ignoring in-flight poll error for superseded workflow "${workflow.name}"`,
+								{ workflowId: workflow.id },
+							);
+							span.setStatus({ code: SpanStatus.ok });
+							return;
+						}
+
+						span.setStatus({ code: SpanStatus.error });
 						pollFunctions.__emitError(error as Error);
 					} finally {
 						if (ownsIsolate) await workflow.expression.releaseIsolate();
