@@ -10,6 +10,9 @@
         "delinquent": {
             "type": "boolean"
         },
+        "discount": {
+            "type": "null"
+        },
         "id": {
             "type": "string"
         },
@@ -20,6 +23,9 @@
             "type": "object",
             "properties": {
                 "footer": {
+                    "type": "null"
+                },
+                "rendering_options": {
                     "type": "null"
                 }
             }
@@ -40,5 +46,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
