@@ -3,14 +3,12 @@
 
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
-	ExecutionData,
 	ExecutionEntity,
 	type CreateExecutionPayload,
 	type EntityManager,
 	type ExecutionRepository,
 } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
-import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -123,35 +121,22 @@ describe('ExecutionPersistence', () => {
 				expect(fsStore.write).not.toHaveBeenCalled();
 			});
 
-			it('records sizeBytes for the whole bundle (run data + snapshot + version id)', async () => {
+			it('persists the byte size the store reports and emits it on the write event', async () => {
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
+				dbStore.write.mockResolvedValue(4321);
 
 				await executionPersistence.create(createPayload);
 
-				const snapshot = {
-					connections: workflowData.connections,
-					nodes: workflowData.nodes,
-					name: workflowData.name,
-					settings: workflowData.settings,
-					id: workflowData.id,
-				};
-				const expectedSize =
-					Buffer.byteLength(stringify(runData), 'utf8') +
-					Buffer.byteLength(JSON.stringify(snapshot), 'utf8') +
-					Buffer.byteLength('version-abc', 'utf8');
-
-				// size is persisted after the timed write, not folded into the insert
+				// size is whatever the store reports, persisted after the timed write (not on the insert)
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: 'exec-1' },
-					{ sizeBytes: expectedSize },
+					{ sizeBytes: 4321 },
 				);
-				// the snapshot + version id add to the run-data size, so the bundle is strictly larger
-				expect(expectedSize).toBeGreaterThan(Buffer.byteLength(stringify(runData), 'utf8'));
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
-					expect.objectContaining({ sizeBytes: expectedSize }),
+					expect.objectContaining({ sizeBytes: 4321 }),
 				);
 			});
 
@@ -472,9 +457,10 @@ describe('ExecutionPersistence', () => {
 		});
 
 		describe('data updates on db-mode executions', () => {
-			it('should update data and workflowData directly without reading the existing bundle first', async () => {
+			it('should overwrite the bundle in place without reading the existing bundle first', async () => {
 				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
+				dbStore.overwrite.mockResolvedValue(123);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -497,10 +483,9 @@ describe('ExecutionPersistence', () => {
 					{ id: executionId },
 					{ status: 'success' },
 				);
-				expect(mockTx.update).toHaveBeenCalledWith(
-					ExecutionData,
-					{ executionId },
-					{
+				expect(dbStore.overwrite).toHaveBeenCalledWith(
+					{ workflowId, executionId },
+					expect.objectContaining({
 						data: expect.any(String) as string,
 						workflowData: {
 							id: workflowData.id,
@@ -509,21 +494,23 @@ describe('ExecutionPersistence', () => {
 							connections: workflowData.connections,
 							settings: workflowData.settings,
 						},
-					},
+						workflowVersionId: 'version-abc',
+					}),
+					mockTx,
 				);
 				expect(dbStore.read).not.toHaveBeenCalled();
 				expect(dbStore.write).not.toHaveBeenCalled();
 				expect(fsStore.write).not.toHaveBeenCalled();
 			});
 
-			it('should throw MissingExecutionDataError when the data row no longer exists during a full overwrite', async () => {
+			it('should propagate MissingExecutionDataError when the store reports the data row is gone', async () => {
 				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
+				dbStore.overwrite.mockRejectedValue(
+					new MissingExecutionDataError({ workflowId, executionId }),
+				);
 
 				const mockTx = createMockTransaction();
-				mockTx.update
-					.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: {} })
-					.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: {} });
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				await expect(
@@ -714,6 +701,7 @@ describe('ExecutionPersistence', () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
 				fsStore.read.mockResolvedValue(existingBundle);
+				fsStore.write.mockResolvedValue(512);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -729,7 +717,7 @@ describe('ExecutionPersistence', () => {
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ sizeBytes: expect.any(Number) as number },
+					{ sizeBytes: 512 },
 				);
 			});
 
@@ -939,101 +927,57 @@ describe('ExecutionPersistence', () => {
 		});
 
 		describe('sizeBytes tracking', () => {
-			const fullBundleSize = (data: string, snapshot: object, versionId: string | null) =>
-				Buffer.byteLength(data, 'utf8') +
-				Buffer.byteLength(JSON.stringify(snapshot), 'utf8') +
-				Buffer.byteLength(versionId ?? '', 'utf8');
-
-			it('records the whole-bundle size on the db fast path', async () => {
-				const executionPersistence = createPersistenceService('db');
-				mockEntity('db');
-
-				const mockTx = createMockTransaction();
-				executionRepository.manager.transaction = createMockTx(mockTx);
-
-				await executionPersistence.updateExistingExecution(executionId, {
-					data: runData,
-					workflowData,
-				});
-
-				const snapshot = {
-					id: workflowData.id,
-					name: workflowData.name,
-					nodes: workflowData.nodes,
-					connections: workflowData.connections,
-					settings: workflowData.settings,
-				};
-				const expectedSize = fullBundleSize(stringify(runData), snapshot, 'version-abc');
-				expect(mockTx.update).toHaveBeenCalledWith(
-					ExecutionEntity,
-					{ id: executionId },
-					{ sizeBytes: expectedSize },
-				);
-				expect(eventService.emit).toHaveBeenCalledWith(
-					'execution-data-write',
-					expect.objectContaining({ sizeBytes: expectedSize }),
-				);
-			});
-
-			it('records the merged-bundle size on the read-merge path (new data, existing snapshot)', async () => {
+			it('persists the size the store reports on the read-merge path and emits it', async () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
 				fsStore.read.mockResolvedValue(existingBundle);
+				fsStore.write.mockResolvedValue(2048);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				await executionPersistence.updateExistingExecution(executionId, { data: runData });
 
-				const expectedSize = fullBundleSize(
-					stringify(runData),
-					existingBundle.workflowData,
-					existingBundle.workflowVersionId,
-				);
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ sizeBytes: expectedSize },
+					{ sizeBytes: 2048 },
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
-					expect.objectContaining({ sizeBytes: expectedSize }),
+					expect.objectContaining({ sizeBytes: 2048 }),
 				);
 			});
 
-			it('changes the recorded size when only the workflow snapshot changes', async () => {
-				const executionPersistence = createPersistenceService('fs');
-				mockEntity('fs');
-				fsStore.read.mockResolvedValue(existingBundle);
+			it('persists the size the store reports for the db fast path and emits it', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.overwrite.mockResolvedValue(1536);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
-				await executionPersistence.updateExistingExecution(executionId, { workflowData });
+				// fast path overwrites via `dbStore.overwrite`, which reports the byte size
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+				});
 
-				// run data is unchanged (existing.data), but the new snapshot is counted in the size
-				const snapshot = {
-					id: workflowData.id,
-					name: workflowData.name,
-					nodes: workflowData.nodes,
-					connections: workflowData.connections,
-					settings: workflowData.settings,
-				};
-				const expectedSize = fullBundleSize(
-					existingBundle.data,
-					snapshot,
-					existingBundle.workflowVersionId,
-				);
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ sizeBytes: expectedSize },
+					{ sizeBytes: 1536 },
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-data-write',
+					expect.objectContaining({ sizeBytes: 1536 }),
 				);
 			});
 
-			it('computes sizeBytes locally and ignores a caller-supplied value', async () => {
+			it('records the reported size and ignores a caller-supplied sizeBytes', async () => {
 				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
+				dbStore.overwrite.mockResolvedValue(1536);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -1044,18 +988,10 @@ describe('ExecutionPersistence', () => {
 					sizeBytes: 999_999,
 				});
 
-				const snapshot = {
-					id: workflowData.id,
-					name: workflowData.name,
-					nodes: workflowData.nodes,
-					connections: workflowData.connections,
-					settings: workflowData.settings,
-				};
-				const expectedSize = fullBundleSize(stringify(runData), snapshot, 'version-abc');
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ sizeBytes: expectedSize },
+					{ sizeBytes: 1536 },
 				);
 				expect(mockTx.update).not.toHaveBeenCalledWith(
 					ExecutionEntity,

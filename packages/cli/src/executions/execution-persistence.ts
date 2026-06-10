@@ -13,7 +13,7 @@ import type {
 	IExecutionResponse,
 	UpdateExecutionConditions,
 } from '@n8n/db';
-import { ExecutionData, ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
+import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
@@ -94,8 +94,7 @@ export class ExecutionPersistence {
 						workflowData: workflowSnapshot,
 						workflowVersionId,
 					};
-					await store.write(ref, bundle, tx);
-					return this.computeBundleSizeBytes(bundle);
+					return await store.write(ref, bundle, tx);
 				});
 				await this.persistSizeBytes(tx, executionId, sizeBytes);
 
@@ -476,21 +475,15 @@ export class ExecutionPersistence {
 			}
 
 			if (data !== undefined && workflowData !== undefined && store === this.dbStore) {
+				// Both data and snapshot are overwritten, so skip reading the existing bundle.
+				// `workflowVersionId` is immutable, so the caller's snapshot already carries it.
 				const sizeBytes = await this.trackWrite(mode, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(data),
 						workflowData: this.toWorkflowSnapshot(workflowData),
 						workflowVersionId: workflowData.versionId ?? null,
 					};
-
-					const result = await tx.update(
-						ExecutionData,
-						{ executionId: ref.executionId },
-						{ data: bundle.data, workflowData: bundle.workflowData },
-					);
-					if ((result.affected ?? 0) === 0) throw new MissingExecutionDataError(ref);
-
-					return this.computeBundleSizeBytes(bundle);
+					return await this.dbStore.overwrite(ref, bundle, tx);
 				});
 				await this.persistSizeBytes(tx, ref.executionId, sizeBytes);
 				return true;
@@ -508,8 +501,7 @@ export class ExecutionPersistence {
 					workflowVersionId: existing.workflowVersionId,
 				};
 
-				await store.write(ref, bundle, tx);
-				return this.computeBundleSizeBytes(bundle);
+				return await store.write(ref, bundle, tx);
 			});
 			await this.persistSizeBytes(tx, ref.executionId, sizeBytes);
 
@@ -522,18 +514,6 @@ export class ExecutionPersistence {
 	 */
 	private async persistSizeBytes(tx: EntityManager, executionId: string, sizeBytes: number) {
 		await tx.update(ExecutionEntity, { id: executionId }, { sizeBytes });
-	}
-
-	/**
-	 * Byte size of a persisted bundle: serialized run data + JSON workflow snapshot + version id,
-	 * summed as they land in storage.
-	 */
-	private computeBundleSizeBytes(bundle: ExecutionDataPayload): number {
-		return (
-			Buffer.byteLength(bundle.data, 'utf8') +
-			Buffer.byteLength(JSON.stringify(bundle.workflowData), 'utf8') +
-			Buffer.byteLength(bundle.workflowVersionId ?? '', 'utf8')
-		);
 	}
 
 	/**
