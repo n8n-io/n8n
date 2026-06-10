@@ -27,7 +27,8 @@ const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentD
 const permissionLabels = computed<string[]>(() =>
 	(clentDetails.value?.scopes ?? []).map((scope) => {
 		const key = `oauth.consentView.scope.${scope}`;
-		return i18n.exists(key) ? i18n.baseText(key as BaseTextKey) : scope;
+		const label = i18n.baseText(key as BaseTextKey);
+		return label === key ? scope : label;
 	}),
 );
 
