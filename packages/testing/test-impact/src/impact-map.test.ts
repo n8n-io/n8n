@@ -528,3 +528,33 @@ describe('parseLcov hardening', () => {
 		expect(b.fns).toEqual([{ name: 'shared', line: 0, hits: 2 }]);
 	});
 });
+
+describe('resolveImpact — onUncovered: declare', () => {
+	const map: ImpactMap = {
+		'packages/cli/src/known.ts': { '0': ['tests/e2e/a.spec.ts'] },
+	};
+
+	it('declares an unmapped file instead of forcing broad', () => {
+		const r = resolveImpact(
+			[{ file: 'packages/cli/src/known.ts' }, { file: 'packages/new/src/x.ts' }],
+			map,
+			{ onUncovered: 'declare' },
+		);
+		expect(r.mode).toBe('scoped');
+		expect(r.specs).toEqual(['tests/e2e/a.spec.ts']);
+		expect(r.uncovered).toEqual(['packages/new/src/x.ts']);
+	});
+
+	it('does NOT climb under declare (the sibling-fallback theater is off)', () => {
+		// known.ts is covered; sibling.ts shares its dir. With siblingFallback it
+		// would climb to a.spec.ts; under declare it is reported uncovered instead.
+		const r = resolveImpact([{ file: 'packages/cli/src/sibling.ts' }], map, {
+			onUncovered: 'declare',
+			siblingFallback: true,
+		});
+		expect(r.mode).toBe('scoped');
+		expect(r.specs).toEqual([]);
+		expect(r.uncovered).toEqual(['packages/cli/src/sibling.ts']);
+		expect(r.viaSibling).toBeUndefined();
+	});
+});

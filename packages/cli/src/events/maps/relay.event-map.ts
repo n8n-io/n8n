@@ -360,6 +360,7 @@ export type RelayEventMap = {
 	'public-api-key-deleted': {
 		user: UserLike;
 		publicApi: boolean;
+		isOwn: boolean;
 	};
 
 	'public-api-invoked': {
