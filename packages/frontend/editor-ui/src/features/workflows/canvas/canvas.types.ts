@@ -161,8 +161,8 @@ export interface CanvasConnectionData {
 	target: CanvasConnectionPort;
 	status?: 'success' | 'error' | 'pinned' | 'running';
 	maxConnections?: number;
-	// Real workflow endpoints, kept across collapsed-group remapping so mutations target the right nodes.
-	canonical?: Connection;
+	// Real workflow endpoints behind this collapsed-group edge, one per merged connection.
+	canonicals?: Connection[];
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;

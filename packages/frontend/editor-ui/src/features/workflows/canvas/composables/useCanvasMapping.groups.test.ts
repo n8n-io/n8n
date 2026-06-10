@@ -303,18 +303,44 @@ describe('remapCollapsedGroupConnections', () => {
 		const result = remapCollapsedGroupConnections([makeConnection('external', 'm1')], collapsedMap);
 		expect(result[0].source).toBe('external');
 		expect(result[0].target).toBe('group:g1');
-		expect(result[0].data?.canonical).toEqual({
-			source: 'external',
-			target: 'm1',
-			sourceHandle: 'outputs/main/0',
-			targetHandle: 'inputs/main/0',
-		});
+		expect(result[0].data?.canonicals).toEqual([
+			{
+				source: 'external',
+				target: 'm1',
+				sourceHandle: 'outputs/main/0',
+				targetHandle: 'inputs/main/0',
+			},
+		]);
 	});
 
-	it('does not set canonical on connections that were not remapped', () => {
+	it('does not set canonicals on connections that were not remapped', () => {
 		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
 		const result = remapCollapsedGroupConnections([makeConnection('a', 'b')], collapsedMap);
-		expect(result[0].data?.canonical).toBeUndefined();
+		expect(result[0].data?.canonicals).toBeUndefined();
+	});
+
+	it('merges edges remapping to the same endpoints into one, keeping every canonical', () => {
+		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
+		const result = remapCollapsedGroupConnections(
+			[makeConnection('m1', 'external'), makeConnection('m2', 'external')],
+			collapsedMap,
+		);
+		expect(result).toHaveLength(1);
+		expect(result[0].source).toBe('group:g1');
+		expect(result[0].data?.canonicals).toEqual([
+			{
+				source: 'm1',
+				target: 'external',
+				sourceHandle: 'outputs/main/0',
+				targetHandle: 'inputs/main/0',
+			},
+			{
+				source: 'm2',
+				target: 'external',
+				sourceHandle: 'outputs/main/0',
+				targetHandle: 'inputs/main/0',
+			},
+		]);
 	});
 
 	it('structural invariant: no connection references a collapsed member as endpoint', () => {

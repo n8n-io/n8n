@@ -78,7 +78,7 @@ describe('CanvasEdge', () => {
 				target: 'real-target-id',
 				sourceHandleId: 'right',
 				targetHandleId: 'inputs/main/0',
-				data: { ...DEFAULT_PROPS.data, canonical },
+				data: { ...DEFAULT_PROPS.data, canonicals: [canonical] },
 				hovered: true,
 			},
 		});

@@ -815,12 +815,14 @@ describe('resolveCanonicalConnection', () => {
 			data: {
 				source: { node: 'A', type: NodeConnectionTypes.Main, index: 0 },
 				target: { node: 'B', type: NodeConnectionTypes.Main, index: 0 },
-				canonical: {
-					source: 'node-a',
-					target: 'node-b',
-					sourceHandle: 'outputs/main/0',
-					targetHandle: 'inputs/main/0',
-				},
+				canonicals: [
+					{
+						source: 'node-a',
+						target: 'node-b',
+						sourceHandle: 'outputs/main/0',
+						targetHandle: 'inputs/main/0',
+					},
+				],
 			},
 		});
 
@@ -832,7 +834,7 @@ describe('resolveCanonicalConnection', () => {
 		});
 	});
 
-	it('should fall back to rendered endpoints when canonical is absent', () => {
+	it('should fall back to rendered endpoints when canonicals are absent', () => {
 		const result = resolveCanonicalConnection({
 			source: 'node-a',
 			target: 'node-b',

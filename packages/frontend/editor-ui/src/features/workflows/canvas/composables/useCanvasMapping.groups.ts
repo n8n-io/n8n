@@ -196,6 +196,12 @@ export function buildCollapsedGroupByNodeId(
  * (left / right) so VueFlow can draw them while the member nodes are hidden.
  * Connections fully inside a collapsed group are dropped.
  * External-only connections pass through unchanged.
+ *
+ * Edges that remap to the same endpoints (e.g. two grouped nodes feeding
+ * the same external port) are merged into one, since VueFlow's behavior on
+ * duplicate edge ids is undefined. The merged edge keeps every underlying
+ * connection's endpoints in `data.canonicals` so consumers can resolve or
+ * aggregate over all of them.
  */
 export function remapCollapsedGroupConnections(
 	connections: CanvasConnection[],
@@ -204,6 +210,7 @@ export function remapCollapsedGroupConnections(
 	if (collapsedGroupByNodeId.size === 0) return connections;
 
 	const result: CanvasConnection[] = [];
+	const emittedById = new Map<string, CanvasConnection>();
 
 	for (const conn of connections) {
 		const sourceGroup = collapsedGroupByNodeId.get(conn.source);
@@ -220,10 +227,14 @@ export function remapCollapsedGroupConnections(
 			continue;
 		}
 
-		const sourceId = sourceGroup ? `${CANVAS_NODE_GROUP_ID_PREFIX}${sourceGroup.id}` : conn.source;
-		const targetId = targetGroup ? `${CANVAS_NODE_GROUP_ID_PREFIX}${targetGroup.id}` : conn.target;
-		const sourceHandle = sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle;
-		const targetHandle = targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle;
+		const remapped = {
+			source: sourceGroup ? `${CANVAS_NODE_GROUP_ID_PREFIX}${sourceGroup.id}` : conn.source,
+			sourceHandle: sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle,
+			target: targetGroup ? `${CANVAS_NODE_GROUP_ID_PREFIX}${targetGroup.id}` : conn.target,
+			targetHandle: targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle,
+		};
+
+		const id = createCanvasConnectionId(remapped);
 
 		// Stash the canonical endpoints so connection mutations can resolve back to real workflow nodes
 		const canonical = {
@@ -233,20 +244,20 @@ export function remapCollapsedGroupConnections(
 			targetHandle: conn.targetHandle,
 		};
 
-		result.push({
+		const existing = emittedById.get(id);
+		if (existing) {
+			existing.data?.canonicals?.push(canonical);
+			continue;
+		}
+
+		const emitted: CanvasConnection = {
 			...conn,
-			id: createCanvasConnectionId({
-				source: sourceId,
-				sourceHandle,
-				target: targetId,
-				targetHandle,
-			}),
-			source: sourceId,
-			target: targetId,
-			sourceHandle,
-			targetHandle,
-			data: conn.data ? { ...conn.data, canonical } : undefined,
-		});
+			id,
+			...remapped,
+			data: conn.data ? { ...conn.data, canonicals: [canonical] } : undefined,
+		};
+		emittedById.set(id, emitted);
+		result.push(emitted);
 	}
 
 	return result;
