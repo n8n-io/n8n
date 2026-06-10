@@ -1,3 +1,16 @@
+## [2.26.2](https://github.com/n8n-io/n8n/compare/n8n@2.26.1...n8n@2.26.2) (2026-06-10)
+
+
+### Bug Fixes
+
+* Move unstable PURL-pinned overrides to version-agnostic byName ([#32038](https://github.com/n8n-io/n8n/issues/32038)) ([2f89ba4](https://github.com/n8n-io/n8n/commit/2f89ba4ea92c5e8b94a29882b8ba4508be9044be))
+
+
+### Features
+
+* **core:** Add instance settings env telemetry ([#32000](https://github.com/n8n-io/n8n/issues/32000)) ([f250bc4](https://github.com/n8n-io/n8n/commit/f250bc493b91d765d51a7c5fb67d6d3d70ca8cde))
+
+
 ## [2.26.1](https://github.com/n8n-io/n8n/compare/n8n@2.26.0...n8n@2.26.1) (2026-06-09)
 
 
