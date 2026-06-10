@@ -113,9 +113,7 @@ async function provision(dbType) {
 function buildDsn(dbType, provisioned, docker) {
 	if (dbType === 'sqlite') {
 		// tbls reads the file directly; under Docker it lives in the /work mount.
-		const filePath = docker
-			? `/work/${relative(REPO_ROOT, provisioned.file)}`
-			: provisioned.file;
+		const filePath = docker ? `/work/${relative(REPO_ROOT, provisioned.file)}` : provisioned.file;
 		return `sqlite://${filePath}`;
 	}
 	const conn = provisioned.dataSourceOptions;
@@ -134,16 +132,26 @@ async function tbls(command, dbType, dsn, docker) {
 
 	if (docker) {
 		const dockerArgs = [
-			'run', '--rm',
-			'--add-host', 'host.docker.internal:host-gateway',
-			'-e', `TBLS_DSN=${dsn}`,
-			'-v', `${REPO_ROOT}:/work`, '-w', '/work',
+			'run',
+			'--rm',
+			'--add-host',
+			'host.docker.internal:host-gateway',
+			'-e',
+			`TBLS_DSN=${dsn}`,
+			'-v',
+			`${REPO_ROOT}:/work`,
+			'-w',
+			'/work',
 			TBLS_IMAGE,
 			...args,
 		];
-		return command === 'diff' ? capture('docker', dockerArgs, env) : { code: await run('docker', dockerArgs, env), stdout: '' };
+		return command === 'diff'
+			? capture('docker', dockerArgs, env)
+			: { code: await run('docker', dockerArgs, env), stdout: '' };
 	}
-	return command === 'diff' ? capture('tbls', args, env) : { code: await run('tbls', args, env), stdout: '' };
+	return command === 'diff'
+		? capture('tbls', args, env)
+		: { code: await run('tbls', args, env), stdout: '' };
 }
 
 async function main() {
