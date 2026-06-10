@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
 import { isExpression } from './expressions/expression-helpers';
+import { isFromAIOnlyExpression } from './from-ai-parse-utils';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
@@ -823,7 +824,12 @@ export function getNodeParameters(
 			// Strip expression prefix if noDataExpression is true
 			if (nodeProperties.noDataExpression && nodeParameters[nodeProperties.name] !== undefined) {
 				const value = nodeParameters[nodeProperties.name];
-				if (isExpression(value)) {
+				// A bare $fromAI() placeholder has to survive on noDataExpression fields
+				// (e.g. the SQL editor query): stripping the leading "=" turns it into a
+				// literal and the AI tool call never resolves it (#30531). The check is
+				// deliberately strict so anything mixing in other expressions still gets
+				// stripped.
+				if (isExpression(value) && !isFromAIOnlyExpression(value)) {
 					nodeParameters[nodeProperties.name] = value.slice(1);
 					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				}
