@@ -1127,6 +1127,41 @@ describe('update-workflow MCP tool', () => {
 				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
 				expect(workflowService.update).not.toHaveBeenCalled();
 			});
+
+			test('does not flip aiBuilderAssisted when the batch contains only tag operations', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags(['existing']));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'existing' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'addTags', names: ['existing'] }],
+				});
+
+				const [, workflowArg, , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.aiBuilderAssisted).toBe(false);
+				expect(workflowArg.meta).not.toEqual(
+					expect.objectContaining({ aiBuilderAssisted: true, builderVariant: 'mcp' }),
+				);
+			});
+
+			test('keeps aiBuilderAssisted=true when tag ops are mixed with node ops', async () => {
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findOrCreateByNamesMock.mockResolvedValue([{ id: 'tag-0', name: 'foo' }]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'setWorkflowMetadata', name: 'Renamed' },
+						{ type: 'addTags', names: ['foo'] },
+					],
+				});
+
+				const [, workflowArg, , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.aiBuilderAssisted).toBe(true);
+				expect(workflowArg.meta).toEqual(
+					expect.objectContaining({ aiBuilderAssisted: true, builderVariant: 'mcp' }),
+				);
+			});
 		});
 	});
 });

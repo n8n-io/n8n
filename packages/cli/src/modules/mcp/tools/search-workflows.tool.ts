@@ -29,7 +29,7 @@ const inputSchema = {
 		.array(z.string())
 		.optional()
 		.describe(
-			'Filter by tag names. A workflow matches only when it has ALL provided tags (AND semantics). Use list_tags to discover valid tag names.',
+			'Filter by tag names. A workflow matches only when it has ALL provided tags (AND semantics).',
 		),
 	sortBy: z
 		.enum(SEARCH_WORKFLOWS_SORT_BY_VALUES)

@@ -28,6 +28,8 @@ describe('TagService', () => {
 		test('builds a limited ordered query and returns data + totalCount in parallel', async () => {
 			const limitFn = jest.fn().mockReturnThis();
 			const orderByFn = jest.fn().mockReturnThis();
+			const orderByCallOrder: jest.Mock = orderByFn;
+			const limitCallOrder: jest.Mock = limitFn;
 			const getMany = jest.fn().mockResolvedValue([makeTag()]);
 			const builder = {
 				select: jest.fn().mockReturnThis(),
@@ -43,9 +45,29 @@ describe('TagService', () => {
 
 			expect(orderByFn).toHaveBeenCalledWith('tag.name', 'ASC');
 			expect(limitFn).toHaveBeenCalledWith(10);
+			// orderBy must run before limit, or generated SQL is invalid
+			expect(orderByCallOrder.mock.invocationCallOrder[0]).toBeLessThan(
+				limitCallOrder.mock.invocationCallOrder[0],
+			);
 			expect(tagRepository.count).toHaveBeenCalledTimes(1);
 			expect(result.totalCount).toBe(42);
 			expect(result.data).toHaveLength(1);
+		});
+
+		test('does not order when called via getAll without orderByName', async () => {
+			const orderByFn = jest.fn().mockReturnThis();
+			const builder = {
+				select: jest.fn().mockReturnThis(),
+				loadRelationCountAndMap: jest.fn().mockReturnThis(),
+				orderBy: orderByFn,
+				limit: jest.fn().mockReturnThis(),
+				getMany: jest.fn().mockResolvedValue([]),
+			};
+			tagRepository.createQueryBuilder.mockReturnValue(builder as never);
+
+			await tagService.getAll({ withUsageCount: true });
+
+			expect(orderByFn).not.toHaveBeenCalled();
 		});
 	});
 
@@ -99,18 +121,32 @@ describe('TagService', () => {
 			expect(tagRepository.save).not.toHaveBeenCalled();
 		});
 
-		test('deduplicates names before lookup', async () => {
-			tagRepository.find.mockResolvedValue([makeTag({ id: 'tag-1', name: 'production' })]);
+		test('deduplicates case-insensitively before lookup and create', async () => {
+			tagRepository.find.mockResolvedValue([]);
+			const createdTag = makeTag({ id: 'tag-new', name: 'Prod' });
+			tagRepository.create.mockReturnValue(createdTag);
+			tagRepository.save.mockResolvedValue(createdTag);
 
-			await tagService.findOrCreateByNames(['production', 'production', '  production  ']);
+			const result = await tagService.findOrCreateByNames(['Prod', 'prod', 'PROD']);
 
 			expect(tagRepository.find).toHaveBeenCalledTimes(1);
 			const findArg = tagRepository.find.mock.calls[0][0] as unknown as {
-				where: { name: FindOperator<string[]> };
+				where: { name: FindOperator<unknown> };
 			};
 			expect(findArg.where.name).toBeInstanceOf(FindOperator);
-			expect(findArg.where.name.type).toBe('in');
-			expect(findArg.where.name.value).toEqual(['production']);
+			// Only one entity is created, using the first-seen original case.
+			expect(tagRepository.save).toHaveBeenCalledTimes(1);
+			expect(tagRepository.create).toHaveBeenCalledWith({ name: 'Prod' });
+			expect(result.map((t) => t.name)).toEqual(['Prod']);
+		});
+
+		test('matches existing tag case-insensitively without creating a duplicate', async () => {
+			tagRepository.find.mockResolvedValue([makeTag({ id: 'tag-1', name: 'Production' })]);
+
+			const result = await tagService.findOrCreateByNames(['production']);
+
+			expect(result.map((t) => t.id)).toEqual(['tag-1']);
+			expect(tagRepository.save).not.toHaveBeenCalled();
 		});
 
 		const uniqueViolationError = (code: string | number) => {
@@ -124,12 +160,12 @@ describe('TagService', () => {
 
 			tagRepository.create.mockReturnValue(racedTag);
 			tagRepository.save.mockRejectedValueOnce(uniqueViolationError('23505'));
-			tagRepository.findOneBy.mockResolvedValue(racedTag);
+			tagRepository.findOne.mockResolvedValue(racedTag);
 
 			const result = await tagService.findOrCreateByNames(['critical']);
 
 			expect(result).toEqual([racedTag]);
-			expect(tagRepository.findOneBy).toHaveBeenCalledWith({ name: 'critical' });
+			expect(tagRepository.findOne).toHaveBeenCalledTimes(1);
 		});
 
 		test('recognises sqlite unique-constraint code', async () => {
@@ -138,7 +174,7 @@ describe('TagService', () => {
 
 			tagRepository.create.mockReturnValue(racedTag);
 			tagRepository.save.mockRejectedValueOnce(uniqueViolationError('SQLITE_CONSTRAINT_UNIQUE'));
-			tagRepository.findOneBy.mockResolvedValue(racedTag);
+			tagRepository.findOne.mockResolvedValue(racedTag);
 
 			const result = await tagService.findOrCreateByNames(['critical']);
 
@@ -152,7 +188,7 @@ describe('TagService', () => {
 			tagRepository.save.mockRejectedValueOnce(unrelated);
 
 			await expect(tagService.findOrCreateByNames(['critical'])).rejects.toBe(unrelated);
-			expect(tagRepository.findOneBy).not.toHaveBeenCalled();
+			expect(tagRepository.findOne).not.toHaveBeenCalled();
 		});
 
 		test('rethrows when the loser of the race cannot find the row afterwards', async () => {
@@ -160,7 +196,7 @@ describe('TagService', () => {
 			tagRepository.create.mockReturnValue(makeTag({ name: 'critical' }));
 			const err = uniqueViolationError('23505');
 			tagRepository.save.mockRejectedValueOnce(err);
-			tagRepository.findOneBy.mockResolvedValue(null);
+			tagRepository.findOne.mockResolvedValue(null);
 
 			await expect(tagService.findOrCreateByNames(['critical'])).rejects.toBe(err);
 		});

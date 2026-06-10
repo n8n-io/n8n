@@ -339,6 +339,10 @@ export const createUpdateWorkflowTool = (
 				throw new Error(dataTableCheck.error);
 			}
 
+			const hasNonTagOperations = strictOperations.some(
+				(op) => op.type !== 'addTags' && op.type !== 'removeTags',
+			);
+
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
 				name: result.workflow.name,
@@ -347,11 +351,13 @@ export const createUpdateWorkflowTool = (
 					: {}),
 				nodes: result.workflow.nodes,
 				connections: result.workflow.connections,
-				meta: {
-					...(existingWorkflow.meta ?? {}),
-					aiBuilderAssisted: true,
-					builderVariant: 'mcp',
-				},
+				meta: hasNonTagOperations
+					? {
+							...(existingWorkflow.meta ?? {}),
+							aiBuilderAssisted: true,
+							builderVariant: 'mcp',
+						}
+					: (existingWorkflow.meta ?? {}),
 			});
 
 			resolveNodeWebhookIds(workflowUpdateData, nodeTypes);
@@ -393,8 +399,10 @@ export const createUpdateWorkflowTool = (
 					tagIds = resolvedTags.map((t) => t.id);
 				} else {
 					const resolvedTags = await tagService.findByNames(result.tagNames);
-					const resolvedNames = new Set(resolvedTags.map((t) => t.name));
-					const missing = result.tagNames.filter((name) => !resolvedNames.has(name));
+					const resolvedLowerNames = new Set(resolvedTags.map((t) => t.name.toLowerCase()));
+					const missing = result.tagNames.filter(
+						(name) => !resolvedLowerNames.has(name.trim().toLowerCase()),
+					);
 					if (missing.length > 0) {
 						throw new Error(
 							`User does not have permission to create tags. The following tags do not exist: ${missing.join(', ')}`,
@@ -405,7 +413,7 @@ export const createUpdateWorkflowTool = (
 			}
 
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
-				aiBuilderAssisted: true,
+				aiBuilderAssisted: hasNonTagOperations,
 				source: 'n8n-mcp',
 				...(tagIds !== undefined ? { tagIds } : {}),
 			});

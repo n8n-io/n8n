@@ -2,7 +2,7 @@ import type { TagEntity, ITagWithCountDb } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, QueryFailedError } from '@n8n/typeorm';
+import { QueryFailedError, Raw } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -58,7 +58,7 @@ export class TagService {
 		return await deleteResult;
 	}
 
-	async getAll<T extends { withUsageCount: boolean; limit?: number }>(
+	async getAll<T extends { withUsageCount: boolean; limit?: number; orderByName?: boolean }>(
 		options?: T,
 	): Promise<GetAllResult<T>> {
 		if (options?.withUsageCount) {
@@ -69,8 +69,8 @@ export class TagService {
 					qb2.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
 						isArchived: false,
 					}),
-				)
-				.orderBy('tag.name', 'ASC');
+				);
+			if (options.orderByName) qb.orderBy('tag.name', 'ASC');
 			if (options.limit !== undefined) qb.limit(options.limit);
 			const tags = await qb.getMany();
 
@@ -79,7 +79,7 @@ export class TagService {
 
 		return await (this.tagRepository.find({
 			select: ['id', 'name', 'createdAt', 'updatedAt'],
-			order: { name: 'ASC' },
+			...(options?.orderByName ? { order: { name: 'ASC' as const } } : {}),
 			...(options?.limit !== undefined ? { take: options.limit } : {}),
 		}) as Promise<GetAllResult<T>>);
 	}
@@ -101,7 +101,7 @@ export class TagService {
 		totalCount: number;
 	}> {
 		const [data, totalCount] = await Promise.all([
-			this.getAll({ withUsageCount: true, limit }),
+			this.getAll({ withUsageCount: true, limit, orderByName: true }),
 			this.tagRepository.count(),
 		]);
 		return { data, totalCount };
@@ -121,19 +121,33 @@ export class TagService {
 
 	/**
 	 * Look up tags by name without creating missing ones. Returns existing
-	 * entities only; the input order is preserved for found names. Use this
-	 * when the caller doesn't have permission to create new tags.
+	 * entities only; the input order is preserved for found names.
+	 *
+	 * Case-insensitive: 'Production' and 'production' resolve to the same row.
+	 * Returned entities are deduped, so each existing tag appears at most once
+	 * even if the input contained multiple case-variants of its name.
 	 */
 	async findByNames(names: string[]): Promise<TagEntity[]> {
-		const uniqueNames = Array.from(new Set(names.map((n) => n.trim()).filter((n) => n.length > 0)));
-		if (uniqueNames.length === 0) return [];
+		const uniqueLowerNames = Array.from(
+			new Set(
+				names
+					.map((n) => n.trim())
+					.filter((n) => n.length > 0)
+					.map((n) => n.toLowerCase()),
+			),
+		);
+		if (uniqueLowerNames.length === 0) return [];
 
-		const existing = await this.tagRepository.find({ where: { name: In(uniqueNames) } });
-		const existingByName = new Map(existing.map((t) => [t.name, t]));
+		const existing = await this.tagRepository.find({
+			where: {
+				name: Raw((alias) => `LOWER(${alias}) IN (:...names)`, { names: uniqueLowerNames }),
+			},
+		});
+		const existingByLowerName = new Map(existing.map((t) => [t.name.toLowerCase(), t]));
 
 		const result: TagEntity[] = [];
-		for (const name of uniqueNames) {
-			const hit = existingByName.get(name);
+		for (const lowerName of uniqueLowerNames) {
+			const hit = existingByLowerName.get(lowerName);
 			if (hit) result.push(hit);
 		}
 		return result;
@@ -141,23 +155,35 @@ export class TagService {
 
 	/**
 	 * Resolve a set of tag names to their entities, creating any that don't exist.
-	 * Names are trimmed and de-duplicated before lookup. Returns one entity per
-	 * unique input name, in the same order as the de-duplicated input.
+	 * Names are trimmed, then de-duplicated case-insensitively before lookup —
+	 * so 'Prod', 'prod', 'PROD' map to a single entity. New tags are created
+	 * using the first-seen case from the input.
 	 *
 	 * Race-safe: if two callers concurrently create a tag with the same novel
 	 * name, the loser of the unique-index race re-fetches the now-existing row
 	 * instead of surfacing a raw DB error.
 	 */
 	async findOrCreateByNames(names: string[]): Promise<TagEntity[]> {
-		const uniqueNames = Array.from(new Set(names.map((n) => n.trim()).filter((n) => n.length > 0)));
-		if (uniqueNames.length === 0) return [];
+		const canonical = new Map<string, string>(); // lower -> first-seen original
+		for (const raw of names) {
+			const trimmed = raw.trim();
+			if (trimmed.length === 0) continue;
+			const lower = trimmed.toLowerCase();
+			if (!canonical.has(lower)) canonical.set(lower, trimmed);
+		}
+		if (canonical.size === 0) return [];
 
-		const existing = await this.tagRepository.find({ where: { name: In(uniqueNames) } });
-		const existingByName = new Map(existing.map((t) => [t.name, t]));
+		const lowerNames = Array.from(canonical.keys());
+		const existing = await this.tagRepository.find({
+			where: {
+				name: Raw((alias) => `LOWER(${alias}) IN (:...names)`, { names: lowerNames }),
+			},
+		});
+		const existingByLowerName = new Map(existing.map((t) => [t.name.toLowerCase(), t]));
 
 		const result: TagEntity[] = [];
-		for (const name of uniqueNames) {
-			const hit = existingByName.get(name);
+		for (const [lower, name] of canonical) {
+			const hit = existingByLowerName.get(lower);
 			if (hit) {
 				result.push(hit);
 				continue;
@@ -167,7 +193,13 @@ export class TagService {
 				result.push(created);
 			} catch (error) {
 				if (!isUniqueConstraintViolation(error)) throw error;
-				const raced = await this.tagRepository.findOneBy({ name });
+				// Race recovery: another caller created the tag concurrently.
+				// Look it up case-insensitively to handle different-case races.
+				const raced = await this.tagRepository.findOne({
+					where: {
+						name: Raw((alias) => `LOWER(${alias}) = LOWER(:name)`, { name }),
+					},
+				});
 				if (!raced) throw error;
 				result.push(raced);
 			}
