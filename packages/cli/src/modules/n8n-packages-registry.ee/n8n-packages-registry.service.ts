@@ -26,7 +26,6 @@ const PROJECT_IMPORT_RESOURCE_TYPES = new Set<SourceControlledFile['type']>([
 	'workflow',
 	'credential',
 	'datatable',
-	'variables',
 ]);
 
 @Service()
