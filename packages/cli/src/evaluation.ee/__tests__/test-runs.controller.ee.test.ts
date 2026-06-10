@@ -168,6 +168,98 @@ describe('TestRunsController', () => {
 		});
 	});
 
+	describe('delete', () => {
+		const buildReq = () =>
+			({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId },
+				user: mockUser,
+			}) as TestRunsRequest.Delete;
+
+		it('deletes a test run', async () => {
+			const result = await testRunsController.delete(buildReq());
+
+			expect(mockTestRunRepository.delete).toHaveBeenCalledWith({ id: mockTestRunId });
+
+			expect(result).toEqual({ success: true });
+		});
+
+		it('requires workflow:execute so a read-only user cannot delete', async () => {
+			const result = await testRunsController.delete(buildReq());
+
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:execute'],
+			);
+
+			expect(result).toEqual({ success: true });
+		});
+
+		it('returns NotFoundError without mutating state when read-only user lacks execute scope', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(testRunsController.delete(buildReq())).rejects.toThrow(NotFoundError);
+			expect(mockTestRunRepository.delete).not.toHaveBeenCalled();
+			expect(mockTelemetry.track).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('cancel', () => {
+		const buildReq = () =>
+			({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId },
+				user: mockUser,
+			}) as TestRunsRequest.Cancel;
+
+		const mockResponse = () => {
+			const res = { status: jest.fn(), json: jest.fn() } as unknown as express.Response;
+			(res.status as jest.Mock).mockReturnValue(res);
+			(res.json as jest.Mock).mockReturnValue(res);
+			return res;
+		};
+
+		it('cancels a running test run and returns 202', async () => {
+			mockTestRunnerService.canBeCancelled.mockReturnValue(false);
+
+			const res = mockResponse();
+			await testRunsController.cancel(buildReq(), res as any);
+
+			expect(mockTestRunnerService.cancelTestRun).toHaveBeenCalledWith(mockTestRunId);
+			expect(res.status).toHaveBeenCalledWith(202);
+			expect(res.json).toHaveBeenCalledWith({ success: true });
+		});
+
+		it('requires workflow:execute (not just workflow:read) so a read-only user cannot cancel', async () => {
+			mockTestRunnerService.canBeCancelled.mockReturnValue(false);
+
+			await testRunsController.cancel(buildReq(), mockResponse() as any);
+
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:execute'],
+			);
+		});
+
+		it('returns NotFoundError without mutating state when read-only user lacks execute scope', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(testRunsController.cancel(buildReq(), mockResponse() as any)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(mockTestRunnerService.cancelTestRun).not.toHaveBeenCalled();
+		});
+
+		it('throws ConflictError when the test run is not cancellable', async () => {
+			mockTestRunnerService.canBeCancelled.mockReturnValue(true);
+
+			await expect(testRunsController.cancel(buildReq(), mockResponse() as any)).rejects.toThrow(
+				ConflictError,
+			);
+			expect(mockTestRunnerService.cancelTestRun).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('cancelCase', () => {
 		const caseId = 'case-1';
 
@@ -287,6 +379,31 @@ describe('TestRunsController', () => {
 			// fire-and-forget create returned before `createTestRun` had
 			// committed and the FE refetch picked up no new row.
 			expect(res.json).toHaveBeenCalledWith({ success: true, testRunId: 'testrun123' });
+		});
+
+		it('requires workflow:execute so a read-only user cannot start a test run', async () => {
+			await testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any);
+
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:execute'],
+			);
+		});
+
+		it('returns NotFoundError without starting execution when user has read but not execute scope', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockImplementation(
+				async (_workflowId, _user, scopes) => {
+					if (scopes.includes('workflow:execute')) return null;
+					return { id: mockWorkflowId } as any;
+				},
+			);
+
+			await expect(
+				testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any),
+			).rejects.toThrow(NotFoundError);
+
+			expect(mockTestRunnerService.startTestRun).not.toHaveBeenCalled();
 		});
 	});
 });

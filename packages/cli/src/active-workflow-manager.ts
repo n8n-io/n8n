@@ -191,7 +191,10 @@ export class ActiveWorkflowManager {
 			}
 
 			try {
-				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
+				// `storeWebhook` registers the webhook atomically on the
+				// (webhookPath, method) primary key and rejects a path already owned
+				// by another workflow. The `catch` below still cleans up any webhooks
+				// already registered for this workflow if a later step fails.
 				await this.webhookService.storeWebhook(webhook);
 				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
 			} catch (error) {
