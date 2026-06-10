@@ -1,4 +1,5 @@
 import type {
+	DesktopAssistantHistoryResponse,
 	DesktopAssistantPromoteRequest,
 	DesktopAssistantPromoteResponse,
 	DesktopAssistantTaskRequest,
@@ -59,7 +60,7 @@ const EMPTY_HISTORY = Object.freeze({
 	results: [],
 	estimated: false,
 	count: 0,
-} satisfies Awaited<ReturnType<ExecutionService['findRangeWithCount']>>);
+} satisfies DesktopAssistantHistoryResponse);
 
 /**
  * BFF for the n8n personal-automation desktop assistant.
@@ -493,7 +494,7 @@ export class DesktopAssistantService {
 	async getHistory(
 		user: User,
 		query: { limit?: number; firstId?: string; lastId?: string },
-	): Promise<Awaited<ReturnType<ExecutionService['findRangeWithCount']>>> {
+	): Promise<DesktopAssistantHistoryResponse> {
 		const accessibleWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
 		});
@@ -509,7 +510,7 @@ export class DesktopAssistantService {
 		if (liveWorkflowIds.length === 0) return EMPTY_HISTORY;
 
 		const sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
-		return await this.executionService.findRangeWithCount({
+		const { results, count, estimated } = await this.executionService.findRangeWithCount({
 			kind: 'range',
 			user,
 			sharingOptions,
@@ -521,5 +522,28 @@ export class DesktopAssistantService {
 			},
 			order: { startedAt: 'DESC' },
 		});
+
+		// Project the internal execution summary down to the narrow shape the
+		// desktop client renders. The leading emoji is stripped from the workflow
+		// name so the History row reads cleanly, matching the Tasks classifier.
+		// `ExecutionSummary` types its dates as `Date`, but the range query already
+		// normalises them to ISO strings (`toSummary`); some drivers still hand
+		// back `Date`, so coerce defensively either way.
+		const toIso = (value: Date | string | null | undefined): string | null => {
+			if (!value) return null;
+			return value instanceof Date ? value.toISOString() : value;
+		};
+		return {
+			results: results.map((execution) => ({
+				id: execution.id,
+				workflowId: execution.workflowId,
+				workflowName: splitLeadingEmoji(execution.workflowName ?? '').rest,
+				status: execution.status,
+				startedAt: toIso(execution.startedAt),
+				createdAt: toIso(execution.createdAt) ?? '',
+			})),
+			count,
+			estimated,
+		};
 	}
 }

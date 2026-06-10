@@ -1,6 +1,8 @@
 import {
+	DesktopAssistantHistoryQueryDto,
 	DesktopAssistantPromoteRequestDto,
 	DesktopAssistantTaskRequestDto,
+	type DesktopAssistantHistoryResponse,
 	type DesktopAssistantPromoteResponse,
 	type DesktopAssistantTaskResponse,
 	type DesktopAssistantTasksResponse,
@@ -69,12 +71,11 @@ export class DesktopAssistantController {
 	async getHistory(
 		req: AuthenticatedRequest,
 		_res: unknown,
-		@Query query: { limit?: string; firstId?: string; lastId?: string },
-	) {
+		@Query query: DesktopAssistantHistoryQueryDto,
+	): Promise<DesktopAssistantHistoryResponse> {
 		this.requireEnabled();
-		const parsedLimit = query.limit ? Number.parseInt(query.limit, 10) : undefined;
 		return await this.desktopAssistantService.getHistory(req.user, {
-			limit: Number.isFinite(parsedLimit) ? parsedLimit : undefined,
+			limit: query.limit,
 			firstId: query.firstId,
 			lastId: query.lastId,
 		});

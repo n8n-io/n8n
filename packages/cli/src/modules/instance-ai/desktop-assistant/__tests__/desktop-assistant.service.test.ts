@@ -514,6 +514,92 @@ describe('DesktopAssistantService.getHistory', () => {
 			expect.objectContaining({ workflowId: ['wf-untagged'] }),
 		);
 	});
+
+	test('projects executions to the narrow client shape and strips the name emoji', async () => {
+		const ctx = makeService();
+		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.executionService.buildSharingOptions.mockResolvedValue({});
+		ctx.executionService.findRangeWithCount.mockResolvedValue({
+			results: [
+				{
+					id: 'exec-1',
+					workflowId: 'wf-1',
+					workflowName: '🍌 Morning news brief',
+					status: 'success',
+					startedAt: new Date('2026-06-10T08:00:00.000Z'),
+					createdAt: new Date('2026-06-10T07:59:59.000Z'),
+					mode: 'manual',
+				} as never,
+				{
+					id: 'exec-2',
+					workflowId: 'wf-1',
+					workflowName: 'Tidy up my desktop',
+					status: 'error',
+					startedAt: null,
+					createdAt: new Date('2026-06-09T08:00:00.000Z'),
+					mode: 'manual',
+				} as never,
+			],
+			count: 42,
+			estimated: true,
+		});
+
+		const result = await ctx.service.getHistory(USER, {});
+
+		expect(result).toEqual({
+			results: [
+				{
+					id: 'exec-1',
+					workflowId: 'wf-1',
+					workflowName: 'Morning news brief',
+					status: 'success',
+					startedAt: '2026-06-10T08:00:00.000Z',
+					createdAt: '2026-06-10T07:59:59.000Z',
+				},
+				{
+					id: 'exec-2',
+					workflowId: 'wf-1',
+					workflowName: 'Tidy up my desktop',
+					status: 'error',
+					startedAt: null,
+					createdAt: '2026-06-09T08:00:00.000Z',
+				},
+			],
+			count: 42,
+			estimated: true,
+		});
+	});
+
+	test('passes through ISO-string dates as the range query already normalises them', async () => {
+		// The range query (`toSummary`) hands back ISO strings, not Date objects.
+		const ctx = makeService();
+		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.executionService.buildSharingOptions.mockResolvedValue({});
+		ctx.executionService.findRangeWithCount.mockResolvedValue({
+			results: [
+				{
+					id: 'exec-1',
+					workflowId: 'wf-1',
+					workflowName: 'Morning news brief',
+					status: 'success',
+					startedAt: '2026-06-10T08:00:00.000Z',
+					createdAt: '2026-06-10T07:59:59.000Z',
+					mode: 'manual',
+				} as never,
+			],
+			count: 1,
+			estimated: false,
+		});
+
+		const result = await ctx.service.getHistory(USER, {});
+
+		expect(result.results[0]).toMatchObject({
+			startedAt: '2026-06-10T08:00:00.000Z',
+			createdAt: '2026-06-10T07:59:59.000Z',
+		});
+	});
 });
 
 describe('DesktopAssistantService.resolveNodeIcon', () => {
