@@ -85,10 +85,10 @@ with direct `data-tables` and `parse-file` calls.
 - Each `spec` must be the complete executor briefing for that task. The task
   executor may not see your broader planning notes.
 - For `build-workflow` tasks, make `spec` a structured executor briefing, not
-  freeform prose. Include these labels in this order: `Outcome`,
-  `Trigger mode`, `External systems`, `Required effects`, `Required branches`,
-  `Required data`, `Explicit constraints`, `Empty/invalid behavior`, and
-  `Done when`.
+  freeform prose. Include these labels in this order:
+  `Outcome`, `Trigger mode`, `External systems`, `Required effects`,
+  `Required branches`, `Required data`, `Explicit constraints`,
+  `Empty/invalid behavior`, and `Done when`.
 - In `Required effects`, list every observable action the user asked for, such
   as send email, send Telegram, write Google Sheets, create Notion pages, upsert
   Data Table rows, or post one Slack summary.
@@ -105,10 +105,6 @@ with direct `data-tables` and `parse-file` calls.
   requirement unless it is impossible or contradicts another stated requirement.
   Do not move those values to assumptions, replace them with placeholders, or
   silently swap them for a more convenient alternative.
-- In `Empty/invalid behavior`, distinguish data that invalidates the whole item
-  from data that only affects one requested effect. For multi-effect intake
-  workflows, do not turn a field into a workflow-wide rejection requirement
-  merely because one message or side effect uses it.
 - In `Done when`, write observable acceptance checks, including final actions
   and branch behavior. Do not write node-by-node wiring or fake user data.
 - If a `build-workflow` task's final deliverable is a supporting sub-workflow,
@@ -131,25 +127,15 @@ with direct `data-tables` and `parse-file` calls.
   structure.
 - Never ask for implementation details such as node choices, column names, or
   trigger mechanics when a sensible default exists.
-- Never ask for the user's timezone when the current date/time section includes
-  it. Use that timezone for schedule times, cron assumptions, and digest windows.
 - Never default resource identifiers the user did not mention, such as Slack
   channels, calendars, spreadsheets, folders, databases, or recipient lists.
   Leave them for the builder to resolve or collect through setup.
-- Trust already-collected briefing context. If the conversation or task briefing
-  includes already-collected answers or already-discovered resources, treat them
-  as authoritative and do not ask again for purpose, trigger, integrations,
-  schedule, model, resource, or credential choices already listed there.
 - If exactly one matching credential exists, assume it and mention the
   credential name in `planningContext.assumptions`.
 - If no matching credential exists, plan normally. The builder will mock or
   leave it unresolved and route setup after verification.
 - If multiple matching credentials exist and the user did not name one, ask once
   with `ask-user` because the choice cannot be discovered.
-- Use credential-backed resource investigation only when it changes the plan,
-  for example validating a named Slack channel that affects the architecture. Do
-  not turn resource lookup into a credential-choice question unless the
-  multiple-credentials rule applies.
 
 ## Checkpoints
 
