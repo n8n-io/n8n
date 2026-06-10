@@ -14,11 +14,10 @@ import {
 	type EffectScope,
 } from 'vue';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
-import type { Workflow, IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
+import type { IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
 import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
-	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
@@ -40,14 +39,10 @@ export function mapConnections(connections: CanvasConnection[]) {
 	);
 }
 
-function createWorkflowRefs(
-	workflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
-	createWorkflowObject: (nodes: INodeUi[], connections: IConnections) => Workflow,
-) {
+function createWorkflowRefs(workflow: MaybeRefOrGetter<IWorkflowDb | undefined>) {
 	const workflowRef = computed(() => toValue(workflow));
 	const workflowNodes = ref<INodeUi[]>([]);
 	const workflowConnections = ref<IConnections>({});
-	const workflowObjectRef = shallowRef<Workflow>(createWorkflowObject([], {}));
 
 	watchEffect(() => {
 		const workflowValue = workflowRef.value;
@@ -61,7 +56,6 @@ function createWorkflowRefs(
 				return node;
 			});
 
-			workflowObjectRef.value = createWorkflowObject(nodesWithIds, workflowValue.connections);
 			workflowNodes.value = nodesWithIds;
 			workflowConnections.value = workflowValue.connections;
 		}
@@ -71,7 +65,6 @@ function createWorkflowRefs(
 		workflowRef,
 		workflowNodes,
 		workflowConnections,
-		workflowObjectRef,
 	};
 }
 
@@ -176,17 +169,10 @@ export const useWorkflowDiff = (
 	sourceWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 	targetWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 ) => {
-	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const sourceRefs = createWorkflowRefs(
-		sourceWorkflow,
-		workflowDocumentStore.value.createWorkflowObject,
-	);
-	const targetRefs = createWorkflowRefs(
-		targetWorkflow,
-		workflowDocumentStore.value.createWorkflowObject,
-	);
+	const sourceRefs = createWorkflowRefs(sourceWorkflow);
+	const targetRefs = createWorkflowRefs(targetWorkflow);
 
 	const { renderData: sourceRenderData, dispose: disposeSource } = createDiffRenderData(
 		sourceRefs.workflowRef,

@@ -1,14 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { computed, effectScope } from 'vue';
 import { setActivePinia, createPinia } from 'pinia';
-import { createTestNode } from '@/__tests__/mocks';
+import type { INode } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+import {
+	createTestNode,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+} from '@/__tests__/mocks';
+import { STICKY_NODE_TYPE } from '@/app/constants';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/executionData.store';
 import { useWorkflowDocumentRenderData } from './useWorkflowDocumentRenderData';
+
+const TEST_TRIGGER_NODE_TYPE = 'n8n-nodes-base.testTrigger';
 
 // External-surface mocks only — node-types and dirtiness pull in unrelated
 // stores that aren't needed to exercise renderData's wiring. The actual
@@ -22,17 +32,27 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		isConfigNode: () => false,
 		isConfigurableNode: () => false,
-		isTriggerNode: () => false,
-		getNodeType: () => null,
+		isTriggerNode: (type: string) => type === 'n8n-nodes-base.testTrigger',
+		getNodeType: (type: string) =>
+			type === 'n8n-nodes-base.testTrigger'
+				? {
+						name: 'n8n-nodes-base.testTrigger',
+						displayName: 'Test Trigger',
+						description: '',
+						version: 1,
+						defaults: {},
+						group: ['trigger'],
+						inputs: [],
+						outputs: ['main'],
+						properties: [],
+					}
+				: null,
 		communityNodeType: () => undefined,
 		getAllNodeTypes: () => [],
 	})),
 }));
 
-function setupWorkflow(
-	id: string,
-	nodes: Array<Partial<{ id: string; name: string; type: string }>> = [],
-) {
+function setupWorkflow(id: string, nodes: Array<Partial<INodeUi>> = []) {
 	const docId = createWorkflowDocumentId(id, 'v1');
 	const doc = useWorkflowDocumentStore(docId);
 	doc.setNodes(
@@ -41,10 +61,36 @@ function setupWorkflow(
 				id: n.id ?? `${n.name}-id`,
 				name: n.name ?? 'Node',
 				type: n.type ?? 'test',
-			}),
+				...n,
+			} as Partial<INode>),
 		),
 	);
 	return { docId, doc };
+}
+
+/**
+ * Loads an execution into a per-execution data store (with a workflowData
+ * snapshot providing the id↔name mapping) and marks it active on the
+ * document's execution state store, so the active-execution by-id projections
+ * resolve through it.
+ */
+function setActiveExecution(
+	docId: WorkflowDocumentId,
+	nodes: INode[],
+	runData: Record<string, Array<Record<string, unknown>>>,
+) {
+	const executionId = `exec-${docId}`;
+	const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
+	executionDataStore.setExecution(
+		createTestWorkflowExecutionResponse({
+			id: executionId,
+			finished: false,
+			status: 'running',
+			workflowData: createTestWorkflow({ nodes }),
+			data: { resultData: { runData, lastNodeExecuted: '' } } as never,
+		}),
+	);
+	useWorkflowExecutionStateStore(docId).setActiveExecutionId(executionId);
 }
 
 // The composable is side-effectful and registers `onScopeDispose`, so it must
@@ -174,9 +220,222 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 	});
 });
 
+describe('useWorkflowDocumentRenderData — hasIssuesByNodeId precedence', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	const alpha = () => createTestNode({ id: 'a', name: 'Alpha' });
+
+	it('reports issues when the execution status is crashed', () => {
+		const { docId } = setupWorkflow('wf-issues-crashed', [{ id: 'a', name: 'Alpha' }]);
+		setActiveExecution(docId, [alpha()], { Alpha: [{ executionStatus: 'crashed' }] });
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.hasIssuesByNodeId.get('a')?.value).toBe(true);
+	});
+
+	it('reports issues when the execution status is error', () => {
+		const { docId } = setupWorkflow('wf-issues-error', [{ id: 'a', name: 'Alpha' }]);
+		setActiveExecution(docId, [alpha()], { Alpha: [{ executionStatus: 'error' }] });
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.hasIssuesByNodeId.get('a')?.value).toBe(true);
+	});
+
+	it('reports no issues when the node has pinned data despite validation issues', () => {
+		const { docId, doc } = setupWorkflow('wf-issues-pinned', [
+			{ id: 'a', name: 'Alpha', issues: { typeUnknown: true } },
+		]);
+		doc.pinNodeData('Alpha', [{ json: {} }]);
+		const { renderData } = createRenderData(docId);
+
+		// The node genuinely has validation errors — pinned data must still win.
+		expect(renderData.validationErrorsByNodeId.get('a')?.value?.length).toBeGreaterThan(0);
+		expect(renderData.hasIssuesByNodeId.get('a')?.value).toBe(false);
+	});
+
+	it('reports issues for validation errors when there is no pinned data', () => {
+		const { docId } = setupWorkflow('wf-issues-validation', [
+			{ id: 'a', name: 'Alpha', issues: { typeUnknown: true } },
+		]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.hasIssuesByNodeId.get('a')?.value).toBe(true);
+	});
+
+	it('reports issues when the active execution reports execution errors', () => {
+		const { docId } = setupWorkflow('wf-issues-execution', [{ id: 'a', name: 'Alpha' }]);
+		setActiveExecution(docId, [alpha()], {
+			Alpha: [{ executionStatus: 'error', error: { message: 'boom' } }],
+		});
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.hasIssuesByNodeId.get('a')?.value).toBe(true);
+	});
+
+	it('reports no issues when a successful run follows an errored one', () => {
+		const { docId } = setupWorkflow('wf-issues-retry', [{ id: 'a', name: 'Alpha' }]);
+		setActiveExecution(docId, [alpha()], {
+			Alpha: [
+				{ executionStatus: 'error', error: { message: 'boom' } },
+				{ executionStatus: 'success' },
+			],
+		});
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.hasIssuesByNodeId.get('a')?.value).toBe(false);
+	});
+});
+
+describe('useWorkflowDocumentRenderData — trigger tooltip', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	function setupRunningWorkflow(id: string, nodes: Array<Partial<INodeUi>>) {
+		const result = setupWorkflow(id, nodes);
+		// `null` marks an execution as started with its id still pending, which
+		// flips `isWorkflowRunning` without needing execution data.
+		useWorkflowExecutionStateStore(result.docId).setActiveExecutionId(null);
+		return result;
+	}
+
+	it('shows the waiting tooltip on the single active trigger while the workflow is running', () => {
+		const { docId } = setupRunningWorkflow('wf-tooltip-shown', [
+			{ id: 't', name: 'Trigger', type: TEST_TRIGGER_NODE_TYPE },
+			{ id: 'a', name: 'Alpha' },
+		]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.tooltipByNodeId.get('t')?.value).toBe(
+			'Waiting for you to create an event in Test',
+		);
+	});
+
+	it('does not show a tooltip when the trigger has pinned data', () => {
+		const { docId, doc } = setupRunningWorkflow('wf-tooltip-pinned', [
+			{ id: 't', name: 'Trigger', type: TEST_TRIGGER_NODE_TYPE },
+		]);
+		doc.pinNodeData('Trigger', [{ json: {} }]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.tooltipByNodeId.get('t')?.value).toBeUndefined();
+	});
+
+	it('does not show a tooltip when the workflow is not running', () => {
+		const { docId } = setupWorkflow('wf-tooltip-idle', [
+			{ id: 't', name: 'Trigger', type: TEST_TRIGGER_NODE_TYPE },
+		]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.tooltipByNodeId.get('t')?.value).toBeUndefined();
+	});
+
+	it('does not show a tooltip on disabled triggers', () => {
+		const { docId } = setupRunningWorkflow('wf-tooltip-disabled', [
+			{ id: 't', name: 'Trigger', type: TEST_TRIGGER_NODE_TYPE, disabled: true },
+		]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.tooltipByNodeId.get('t')?.value).toBeUndefined();
+	});
+
+	it('suppresses tooltips when multiple triggers are active and the driving trigger is unknown', () => {
+		const { docId } = setupRunningWorkflow('wf-tooltip-multi', [
+			{ id: 't1', name: 'Trigger 1', type: TEST_TRIGGER_NODE_TYPE },
+			{ id: 't2', name: 'Trigger 2', type: TEST_TRIGGER_NODE_TYPE },
+		]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.tooltipByNodeId.get('t1')?.value).toBeUndefined();
+		expect(renderData.tooltipByNodeId.get('t2')?.value).toBeUndefined();
+	});
+});
+
+describe('useWorkflowDocumentRenderData — sticky z-index ordering', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	// Grid-aligned positions so the document store's snap-to-grid is a no-op
+	// and the overlap geometry below is exact.
+	function sticky(id: string, position: [number, number], size: number): Partial<INodeUi> {
+		return {
+			id,
+			name: `Sticky ${id}`,
+			type: STICKY_NODE_TYPE,
+			position,
+			parameters: { width: size, height: size },
+		};
+	}
+
+	it('assigns the base z-index to a single sticky', () => {
+		const { docId } = setupWorkflow('wf-sticky-single', [sticky('s1', [0, 0], 100)]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.additionalPropertiesByNodeId.value.s1).toEqual({
+			style: { zIndex: -100 },
+		});
+	});
+
+	it('assigns sequential z-indexes to non-overlapping stickies', () => {
+		const { docId } = setupWorkflow('wf-sticky-apart', [
+			sticky('s1', [0, 0], 100),
+			sticky('s2', [320, 320], 100),
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const props = renderData.additionalPropertiesByNodeId.value;
+		expect(props.s1).toEqual({ style: { zIndex: -100 } });
+		expect(props.s2).toEqual({ style: { zIndex: -99 } });
+	});
+
+	it('raises a smaller sticky above a larger overlapping one', () => {
+		const { docId } = setupWorkflow('wf-sticky-overlap', [
+			sticky('small', [48, 48], 100),
+			sticky('large', [0, 0], 160),
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const props = renderData.additionalPropertiesByNodeId.value;
+		expect(props.large).toEqual({ style: { zIndex: -100 } });
+		expect(props.small).toEqual({ style: { zIndex: -99 } });
+	});
+
+	it('orders multiple overlapping stickies by area with smaller ones on top', () => {
+		const { docId } = setupWorkflow('wf-sticky-multi', [
+			sticky('s1', [0, 0], 100),
+			sticky('s2', [32, 32], 50),
+			sticky('s3', [48, 48], 100),
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const props = renderData.additionalPropertiesByNodeId.value;
+		expect(props.s1).toEqual({ style: { zIndex: -100 } });
+		expect(props.s2).toEqual({ style: { zIndex: -98 } });
+		expect(props.s3).toEqual({ style: { zIndex: -99 } });
+	});
+});
+
 describe('useWorkflowDocumentRenderData — lifecycle', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+	});
+
+	it('constructs without inject() warnings outside a component context', () => {
+		// Production constructs this composable in detached effect scopes (watch
+		// callbacks in WorkflowCanvas.vue / useWorkflowDiff.ts), where Vue's
+		// inject() is unavailable. Nothing in the construction path may inject.
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		try {
+			const { docId } = setupWorkflow('wf-inject', [{ id: 'a', name: 'Alpha' }]);
+			createRenderData(docId);
+			const warnings = warnSpy.mock.calls.flat().filter((arg) => typeof arg === 'string');
+			expect(warnings.join('\n')).not.toContain('inject() can only be used');
+		} finally {
+			warnSpy.mockRestore();
+		}
 	});
 
 	it('stops reconciling once its scope is disposed', () => {

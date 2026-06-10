@@ -18,6 +18,20 @@ import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/cre
 import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
 
 /**
+ * Assigns a freshly generated id to the given node and returns it.
+ *
+ * Pure with respect to application state: it touches only its argument — it
+ * must not access stores or `inject()`, because the workflow document store
+ * wires it into `useWorkflowDocumentNodes` and may itself be constructed
+ * outside component setup (e.g. from `useWorkflowDiff`'s watch effects).
+ */
+export function assignNodeId(node: INodeUi): string {
+	const id = window.crypto.randomUUID();
+	node.id = id;
+	return id;
+}
+
+/**
  * Returns the credentials that are displayable for the given node.
  */
 export function getNodeTypeDisplayableCredentials(

@@ -9,10 +9,9 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
-import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
+import { getNodeSubtitle, getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import {
 	CUSTOM_API_CALL_KEY,
 	SIMULATE_NODE_TYPE,
@@ -71,7 +70,6 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
 	const executionStateStore = useWorkflowExecutionStateStore(workflowDocumentId);
 	const nodeTypesStore = useNodeTypesStore();
-	const nodeHelpers = useNodeHelpers();
 	const i18n = useI18n();
 	const { dirtinessByName } = useNodeDirtiness(workflowDocumentId);
 
@@ -123,7 +121,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 			const nodeTypeDescription = computeNodeTypeDescription(nodeId);
 			if (!nodeTypeDescription) return '';
 
-			const subtitle = nodeHelpers.getNodeSubtitle(
+			const subtitle = getNodeSubtitle(
 				node,
 				nodeTypeDescription,
 				workflowDocumentStore.getWorkflowObjectAccessorSnapshot(),
@@ -205,9 +203,10 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 
 	// --- hasIssuesByNodeId ---------------------------------------------------
 	// Original: useCanvasMapping `nodeHasIssuesById`. Decides whether the node
-	// renders with the "has issues" affordance. Pinned data wins (false). Then
-	// hard-error execution statuses, validation errors, execution-issue map,
-	// and finally a last-task `.error` check.
+	// renders with the "has issues" affordance. Hard-error execution statuses
+	// (crashed/error) win first — a pinned node that crashed still shows issues.
+	// Otherwise pinned data clears issues (false), then validation errors, the
+	// execution-issue map, and finally a last-task `.error` check.
 	function computeHasIssues(nodeId: string): boolean {
 		const node = getNode(nodeId);
 		if (!node) return false;

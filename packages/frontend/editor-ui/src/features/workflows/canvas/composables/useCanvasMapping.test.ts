@@ -3,10 +3,11 @@
  *
  * The composable is now a thin glue layer that reads from `CanvasRenderData`
  * to assemble `mappedNodes` / `mappedConnections`. The heavy by-id projections
- * (subtitle / issues / execution status / render type / sticky z-index / etc.)
- * live in `useWorkflowDocumentRenderData` and are tested there. These tests
- * verify the shape of the canvas output and that renderData values flow into
- * the right fields.
+ * live in their new owners and are tested there: tooltip / hasIssues / render
+ * type / sticky z-index in `useWorkflowDocumentRenderData.test.ts`, and the
+ * per-node execution status / waiting message / output-map aggregation in
+ * `executionData.store.test.ts`. These tests verify the shape of the canvas
+ * output and that renderData values flow into the right fields.
  */
 import type { ITaskData, IConnections } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -437,5 +438,83 @@ describe('useCanvasMapping — mapped connections', () => {
 		});
 
 		expect(mapped.value[0].label).toBe('');
+	});
+
+	describe('connection status with canceled tasks', () => {
+		// Note: the output-map aggregation counts data items of canceled tasks
+		// (see executionData.store.test.ts), so runDataTotal can be > 0 while
+		// the last task is canceled — the status logic peeks past it.
+		function mainConnections(): IConnections {
+			return { Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] } };
+		}
+
+		it('does not mark the connection successful when the only source task is canceled', () => {
+			const { allNodes, connections } = makeWorkflow(mainConnections());
+			const rd = createEmptyCanvasRenderData();
+			setRunData(rd, 'a', [{ executionStatus: 'canceled' } as ITaskData]);
+			rd.executionRunDataOutputMapByNodeId.set('a', { main: { '0': { total: 1, iterations: 0 } } });
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(allNodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+			});
+
+			expect(mapped.value[0].data?.status).toBeUndefined();
+		});
+
+		it('marks the connection successful when the last task is canceled but the previous one succeeded', () => {
+			const { allNodes, connections } = makeWorkflow(mainConnections());
+			const rd = createEmptyCanvasRenderData();
+			setRunData(rd, 'a', [
+				{ executionStatus: 'success' } as ITaskData,
+				{ executionStatus: 'canceled' } as ITaskData,
+			]);
+			rd.executionRunDataOutputMapByNodeId.set('a', { main: { '0': { total: 2, iterations: 1 } } });
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(allNodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+			});
+
+			expect(mapped.value[0].data?.status).toBe('success');
+		});
+
+		it('leaves the status unset when all source tasks are canceled', () => {
+			const { allNodes, connections } = makeWorkflow(mainConnections());
+			const rd = createEmptyCanvasRenderData();
+			setRunData(rd, 'a', [
+				{ executionStatus: 'canceled' } as ITaskData,
+				{ executionStatus: 'canceled' } as ITaskData,
+			]);
+			rd.executionRunDataOutputMapByNodeId.set('a', { main: { '0': { total: 2, iterations: 0 } } });
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(allNodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+			});
+
+			expect(mapped.value[0].data?.status).toBeUndefined();
+		});
+
+		it('prioritizes running status over canceled-task handling', () => {
+			const { allNodes, connections } = makeWorkflow(mainConnections());
+			const rd = createEmptyCanvasRenderData();
+			rd.executionRunningByNodeId.set(
+				'a',
+				computed(() => true),
+			);
+			setRunData(rd, 'a', [{ executionStatus: 'canceled' } as ITaskData]);
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(allNodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+			});
+
+			expect(mapped.value[0].data?.status).toBe('running');
+		});
 	});
 });
