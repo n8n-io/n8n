@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
@@ -17,13 +17,14 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import isEqual from 'lodash/isEqual';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
@@ -78,6 +79,7 @@ export class WorkflowService {
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	async getMany(
@@ -253,16 +255,49 @@ export class WorkflowService {
 		}
 
 		const isDraftPublishDisabled = !this.globalConfig.workflows.draftPublishEnabled;
+		const hasNodesKey = 'nodes' in workflowUpdateData;
 
-		if (
-			Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active', 'activeVersionId']))
-				.length > 0
-		) {
-			// Update the workflow's version when changing properties such as
-			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
-			// This is necessary for collaboration to work properly - even when only name or settings
-			// change, we need to update the version to detect conflicts when multiple users are editing.
+		if (hasNodesKey) {
+			// check credentials for old format - scope to the workflow's owner project
+			const ownerProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
+			await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
 
+			// Central credential guard for every workflow write path. With sharing
+			// enabled, reject new nodes that reference credentials the acting user
+			// cannot access and revert edits to existing read-only credential nodes.
+			// Runs after replaceInvalidCredentials so old-format/name references are
+			// already resolved to IDs before the check.
+			// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
+			// folder/project services which import this module).
+			if (this.licenseState.isSharingLicensed()) {
+				const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
+				await Container.get(EnterpriseWorkflowService).preventTampering(
+					workflowUpdateData,
+					workflowId,
+					user,
+				);
+			}
+		}
+
+		const hasConnectionsKey = 'connections' in workflowUpdateData;
+		const nodesChanged = hasNodesKey && !isEqual(workflowUpdateData.nodes, workflow.nodes);
+		const connectionsChanged =
+			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
+		const hasStructuralChange = nodesChanged || connectionsChanged;
+		const nonStructuralUpdateData = omit(workflowUpdateData, [
+			'id',
+			'versionId',
+			'active',
+			'activeVersionId',
+			'nodes',
+			'connections',
+		]);
+		const hasNonStructuralChange = Object.entries(nonStructuralUpdateData).some(
+			([key, value]) => !isEqual(value, workflow[key as keyof WorkflowEntity]),
+		);
+		const saveNewVersion = hasStructuralChange || hasNonStructuralChange;
+
+		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
 			this.logger.debug(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
@@ -293,12 +328,6 @@ export class WorkflowService {
 			// To save a version, we need both nodes and connections
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
 			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
-		}
-
-		// check credentials for old format - scope to the workflow's owner project
-		const ownerProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
-		if (ownerProject) {
-			await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
 		}
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
