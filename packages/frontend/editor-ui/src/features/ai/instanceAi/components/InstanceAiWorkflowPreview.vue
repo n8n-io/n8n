@@ -2,12 +2,15 @@
 import { computed, onBeforeUnmount, provide, useTemplateRef } from 'vue';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
-import { EditorExternalReadOnlyKey } from '@/app/constants/injectionKeys';
+import {
+	EditorEnabledFeaturesKey,
+	type EditorEnabledFeatures,
+} from '@/app/constants/injectionKeys';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import type { FixWithAiError } from '../fixWithAi';
+import { IS_FIX_WITH_AI_OFFER_ENABLED, type FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
 
 export interface WorkflowFailuresReport {
@@ -70,6 +73,10 @@ const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 	if (event.type !== 'executionFinished') return;
 	if (event.data.workflowId !== props.workflowId) return;
 	if (event.data.status === 'success') return;
+	// Only offer "Fix with AI" for human-initiated runs. When the agent ran the
+	// workflow itself (source 'instance_ai'), it already sees the errors in its
+	// tool result and fixes them on its own.
+	if (event.data.source === 'instance_ai') return;
 
 	const execStore = useExecutionDataStore(createExecutionDataId(event.data.executionId));
 	const runData = execStore.executionRunData;
@@ -86,6 +93,7 @@ const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 		});
 	}
 	if (errors.length === 0) return;
+	if (!IS_FIX_WITH_AI_OFFER_ENABLED) return;
 
 	emit('workflow-failures', {
 		workflowId: event.data.workflowId,
@@ -157,11 +165,17 @@ const isAgentEditingThisWorkflow = computed(() => {
 	return false;
 });
 
-// Surface the signal to NodeView as an external read-only source. NodeView's
-// own isCanvasReadOnly check ORs this in alongside its existing signals
-// (permissions, archive, collab, etc.), so the canvas + chrome use their
-// native read-only rendering instead of a separate overlay.
-provide(EditorExternalReadOnlyKey, isAgentEditingThisWorkflow);
+// Per-editor host overrides for the embedded editor. Instance AI supersedes the
+// standalone AI helpers (`false`), and forces the canvas read-only while a
+// workflow-builder agent is mutating this workflow. NodeView derives its
+// read-only state from these via useEditorContext().
+const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
+	aiAssistant: false,
+	aiBuilder: false,
+	askAi: false,
+	readOnly: isAgentEditingThisWorkflow.value,
+}));
+provide(EditorEnabledFeaturesKey, enabledFeatures);
 </script>
 
 <template>

@@ -5,6 +5,7 @@ export type {
 	BuiltMemory,
 	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
+	PiiDetectionType,
 	BuiltEval,
 	RunOptions,
 	AgentResult,
@@ -62,12 +63,12 @@ export type {
 	NewEpisodicMemoryEntrySource,
 	NewEpisodicMemoryEntrySourceForEntry,
 	RetrievedEpisodicMemoryEntry,
-	SemanticRecallConfig,
 	ResumeOptions,
 	McpServerConfig,
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
+	SmoothStreamOptions,
 	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	BuiltTelemetry,
@@ -103,6 +104,23 @@ export type { Cancellation } from './sdk/cancellation';
 export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { Guardrail } from './sdk/guardrail';
+export {
+	redactText,
+	redactDeep,
+	redactionOptionsFromGuardrail,
+	DEFAULT_PLACEHOLDER,
+	StreamingRedactor,
+	resolvePatterns,
+	passesLuhn,
+	SUPPORTED_PII_CATEGORIES,
+} from './sdk/guardrails';
+export type {
+	RedactionOptions,
+	RedactionResult,
+	DeepRedactionResult,
+	RedactionCategory,
+	RedactionPattern,
+} from './sdk/guardrails';
 export { Eval } from './sdk/eval';
 export { evaluate } from './sdk/evaluate';
 export type { DatasetRow, EvaluateConfig } from './sdk/evaluate';
@@ -199,9 +217,8 @@ export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model-factory';
 export {
+	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,
-	assertSubAgentPolicyAllowsChild,
-	assertSubAgentPolicyAllowsChildCount,
 	assertSubAgentTaskPath,
 	createChildSubAgentTaskPath,
 	isSubAgentTaskPath,
@@ -210,8 +227,13 @@ export {
 export type { SubAgentTaskPath, SubAgentTaskPathPolicy } from './runtime/sub-agent-task-path';
 export {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
+	DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE,
+	INLINE_SUB_AGENT_ID,
+	SUB_AGENT_TASK_DIFFICULTIES,
 	createDelegateSubAgentTool,
+	failedDelegatedChildSuspendOutput,
 	generateResultToDelegateSubAgentOutput,
+	getInlineDelegateSubAgentToolOptions,
 	renderDelegateSubAgentPrompt,
 } from './runtime/delegate-sub-agent-tool';
 export type {
@@ -219,8 +241,13 @@ export type {
 	DelegateSubAgentInput,
 	DelegateSubAgentPolicy,
 	DelegateSubAgentRequest,
+	DelegateSubAgentRunner,
+	DelegateSubAgentRunnerHelpers,
 	DelegateSubAgentToolOutput,
+	InlineSubAgentProviderToolsResolver,
+	SubAgentTaskDifficulty,
 } from './runtime/delegate-sub-agent-tool';
+export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/write-todos-tool';
 export { createEmbeddingModel } from './runtime/model-factory';
 export { generateTitleFromMessage } from './runtime/title-generation';
 export {

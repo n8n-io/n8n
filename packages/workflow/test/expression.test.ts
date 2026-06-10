@@ -1292,6 +1292,66 @@ describe('Expression', () => {
 		});
 	});
 
+	// CAT-3267: `$jmespath($json, query)` returned null under the VM engine
+	// because `$json` is an in-isolate lazy proxy that could not cross the
+	// isolate bridge to the host-side `$jmespath` wrapper. The fix resolves
+	// `$jmespath` / `$jmesPath` entirely in-isolate so the proxy never crosses
+	// the bridge. Both engines must return the queried value.
+	describe('$jmespath through expression engine (engine parity)', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const workflow = new Workflow({
+			id: 'test-jmespath',
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-id',
+					name: 'node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			nodeTypes,
+		});
+
+		beforeAll(async () => {
+			await workflow.expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await workflow.expression.releaseIsolate();
+		});
+
+		const evaluate = (expr: string, data: INodeExecutionData[]) =>
+			workflow.expression.getParameterValue(expr, null, 0, 0, 'node', data, 'manual', {});
+
+		it('queries an in-isolate $json proxy (parity)', () => {
+			expect(
+				evaluate('={{ $jmespath($json, "users[*].name") }}', [
+					{ json: { users: [{ name: 'a' }, { name: 'b' }] } },
+				]),
+			).toEqual(['a', 'b']);
+		});
+
+		it('queries via the $jmesPath alias (parity)', () => {
+			expect(
+				evaluate('={{ $jmesPath($json, "users[*].name") }}', [
+					{ json: { users: [{ name: 'a' }, { name: 'b' }] } },
+				]),
+			).toEqual(['a', 'b']);
+		});
+
+		it('resolves a nested-object query (parity)', () => {
+			expect(
+				evaluate('={{ $jmespath($json, "user.address.city") }}', [
+					{ json: { user: { address: { city: 'Berlin' } } } },
+				]),
+			).toBe('Berlin');
+		});
+	});
+
 	describe('getParameterValue with IWorkflowDataProxyData', () => {
 		it('should evaluate simple expression with provided IWorkflowDataProxyData', async () => {
 			const nodeTypes = Helpers.NodeTypes();

@@ -6,7 +6,12 @@ import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/app/constants';
 
-import { NodeHelpers, NodeConnectionTypes, MANUAL_TRIGGER_NODE_TYPES } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionTypes,
+	MANUAL_TRIGGER_NODE_TYPES,
+	nodeIssuesToString,
+} from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -1053,44 +1058,6 @@ export function useNodeHelpers() {
 		}
 
 		return hints;
-	}
-
-	/**
-	 * Returns the issues of the node as string
-	 *
-	 * @param {INodeIssues} issues The issues of the node
-	 * @param {INode} node The node
-	 */
-	function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
-		const nodeIssues = [];
-
-		if (issues.execution !== undefined) {
-			nodeIssues.push('Execution Error.');
-		}
-
-		const objectProperties = ['parameters', 'credentials', 'input'];
-
-		let issueText: string;
-		let parameterName: string;
-		for (const propertyName of objectProperties) {
-			if (issues[propertyName] !== undefined) {
-				for (parameterName of Object.keys(issues[propertyName] as object)) {
-					for (issueText of (issues[propertyName] as INodeIssueObjectProperty)[parameterName]) {
-						nodeIssues.push(issueText);
-					}
-				}
-			}
-		}
-
-		if (issues.typeUnknown !== undefined) {
-			if (node !== undefined) {
-				nodeIssues.push(`Node Type "${node.type}" is not known.`);
-			} else {
-				nodeIssues.push('Node Type is not known.');
-			}
-		}
-
-		return nodeIssues;
 	}
 
 	function getDefaultNodeName(node: AddedNode | INode) {

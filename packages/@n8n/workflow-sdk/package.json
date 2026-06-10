@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -44,6 +44,7 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -100,5 +101,6 @@
     "n8n-workflow": "workspace:*",
     "uuid": "catalog:",
     "zod": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

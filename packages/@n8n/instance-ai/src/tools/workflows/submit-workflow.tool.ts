@@ -7,6 +7,7 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { validateWorkflow } from '@n8n/workflow-sdk';
@@ -28,7 +29,6 @@ import {
 	runInSandbox,
 	type SandboxWorkspace,
 } from '../../workspace/sandbox-fs';
-import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
 export interface SubmitWorkflowAttempt {
 	filePath: string;
@@ -57,6 +57,8 @@ export interface SubmitWorkflowAttempt {
 	referencedWorkflowIds?: string[];
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders?: boolean;
+	/** Builder-facing instruction for the next verification step. */
+	verificationGuidance?: string;
 	remediation?: RemediationMetadata;
 	errors?: string[];
 	errorDetails?: SubmitWorkflowErrorDetail[];
@@ -307,6 +309,10 @@ export const submitWorkflowOutputSchema = z.object({
 	success: z.boolean(),
 	workflowId: z.string().optional(),
 	workflowName: z.string().optional(),
+	verificationGuidance: z
+		.string()
+		.optional()
+		.describe('Builder-facing next step after a successful submit. Follow this before setup.'),
 	/** Node names whose credentials were mocked via pinned data. */
 	mockedNodeNames: z.array(z.string()).optional(),
 	/** Credential types that were mocked (not resolved to real credentials). */
@@ -347,6 +353,10 @@ export const submitWorkflowOutputSchema = z.object({
 export type SubmitWorkflowInput = z.infer<typeof submitWorkflowInputSchema>;
 export type SubmitWorkflowOutput = z.infer<typeof submitWorkflowOutputSchema>;
 export type SubmitWorkflowErrorDetail = z.infer<typeof submitWorkflowErrorDetailSchema>;
+
+const POST_SUBMIT_VERIFICATION_GUIDANCE =
+	'Call verify-built-workflow next with the work item ID from your briefing and this workflowId. ' +
+	'It uses sidecar or saved pin data to fake unavailable services, so run it before any setup handoff.';
 
 export interface SubmitWorkflowToolOptions {
 	root?: string;
@@ -711,6 +721,7 @@ export function createSubmitWorkflowTool(
 					success: true,
 					workflowId: savedId,
 					workflowName: json.name || undefined,
+					verificationGuidance: POST_SUBMIT_VERIFICATION_GUIDANCE,
 					mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
 					mockedCredentialTypes: hasMockedCredentials
 						? mockResult.mockedCredentialTypes

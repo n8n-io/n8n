@@ -5,6 +5,7 @@ import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-ch
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
+import { sanitizeSkillsUsed } from './skills-used';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
@@ -19,11 +20,31 @@ import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
+
+function normalizeWorkflowDescription(description?: string) {
+	if (!description) return { description: undefined, truncated: false };
+	if (description.length <= MAX_WORKFLOW_DESCRIPTION_LENGTH) {
+		return { description, truncated: false };
+	}
+
+	return {
+		description: description.slice(0, MAX_WORKFLOW_DESCRIPTION_LENGTH),
+		truncated: true,
+	};
+}
+
 const inputSchema = {
 	code: z
 		.string()
 		.describe(
 			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
+		),
+	skillsUsed: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Names of n8n skills (lowercase kebab-case identifiers) used by the MCP client to produce this workflow create call. Server-side normalization will trim, lowercase, dedupe, and drop entries that are not valid skill identifiers.',
 		),
 	name: z
 		.string()
@@ -32,11 +53,8 @@ const inputSchema = {
 		.describe('Optional workflow name. If not provided, uses the name from the code.'),
 	description: z
 		.string()
-		.max(255)
 		.optional()
-		.describe(
-			'Short workflow description summarizing what it does (1-2 sentences, max 255 chars).',
-		),
+		.describe('Workflow description. Longer text is shortened to 255 chars before saving.'),
 	projectId: z
 		.string()
 		.optional()
@@ -105,7 +123,7 @@ export const createCreateWorkflowFromCodeTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
+		description: `Create a workflow in n8n from validated SDK code. This tool expects code that already follows the n8n Workflow SDK patterns and has passed ${CODE_BUILDER_VALIDATE_TOOL.toolName}. If code fails to parse, call get_sdk_reference, rewrite the code using the reference, validate again, then retry creation. If the user named a target project, resolve it via search_projects before calling this tool; when projectId is omitted, the workflow is created in the user's personal project. If you used n8n skills while preparing this workflow, pass their identifiers in skillsUsed. After creation, always tell the user which project the workflow landed in (see the targetProject field in the response).`,
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -118,22 +136,26 @@ export const createCreateWorkflowFromCodeTool = (
 	},
 	handler: async ({
 		code,
+		skillsUsed,
 		name,
 		description,
 		projectId,
 		folderId,
 	}: {
 		code: string;
+		skillsUsed?: string[];
 		name?: string;
 		description?: string;
 		projectId?: string;
 		folderId?: string;
 	}) => {
+		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 			parameters: {
 				codeLength: code.length,
+				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				hasName: !!name,
 				hasProjectId: !!projectId,
 				hasFolderId: !!folderId,
@@ -164,6 +186,8 @@ export const createCreateWorkflowFromCodeTool = (
 			const result = await handler.parseAndValidate(strippedCode);
 
 			const workflowJson = result.workflow;
+			const { description: workflowDescription, truncated: descriptionTruncated } =
+				normalizeWorkflowDescription(description);
 
 			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
 				workflowJson,
@@ -177,7 +201,7 @@ export const createCreateWorkflowFromCodeTool = (
 			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
 				name: name ?? workflowJson.name ?? 'Untitled Workflow',
-				...(description ? { description } : {}),
+				...(workflowDescription ? { description: workflowDescription } : {}),
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
@@ -235,6 +259,15 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const notes = [
+				descriptionTruncated
+					? `Workflow description was shortened to ${MAX_WORKFLOW_DESCRIPTION_LENGTH} characters.`
+					: undefined,
+				skippedHttpNodes.length
+					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
+					: undefined,
+			].filter((note): note is string => note !== undefined);
+
 			const output = {
 				workflowId: savedWorkflow.id,
 				name: savedWorkflow.name,
@@ -246,9 +279,7 @@ export const createCreateWorkflowFromCodeTool = (
 					name: landingProject.name,
 					type: landingProject.type,
 				},
-				note: skippedHttpNodes.length
-					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
-					: undefined,
+				note: notes.length ? notes.join(' ') : undefined,
 			};
 
 			return {

@@ -7,11 +7,11 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import path from 'node:path';
 import { z } from 'zod';
 
 import { writeFileViaSandbox, type SandboxWorkspace } from '../../workspace/sandbox-fs';
-import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
 export const writeSandboxFileInputSchema = z.object({
 	filePath: z

@@ -5,9 +5,10 @@ import type { JSONSchema7 } from 'json-schema';
 import {
 	AgentJsonConfigSchema,
 	RunnableAgentJsonConfigSchema,
+	SUB_AGENT_TASK_DIFFICULTIES,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
-import { buildFromJson } from '../json-config/from-json-config';
+import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
 type EmbeddingProviderOpts = {
@@ -40,6 +41,12 @@ jest.mock('@ai-sdk/openai', () => ({
 // ---------------------------------------------------------------------------
 // buildFromJson() tests
 // ---------------------------------------------------------------------------
+
+describe('sub-agent difficulty contract', () => {
+	it('keeps persisted config difficulties aligned with the agents SDK', () => {
+		expect(SUB_AGENT_TASK_DIFFICULTIES).toEqual(AgentsRuntime.SUB_AGENT_TASK_DIFFICULTIES);
+	});
+});
 
 describe('buildFromJson()', () => {
 	afterEach(() => {
@@ -103,6 +110,9 @@ describe('buildFromJson()', () => {
 						};
 						extract?: unknown;
 						reflect?: unknown;
+					};
+					titleGeneration?: {
+						sync?: boolean;
 					};
 				};
 			}
@@ -357,6 +367,25 @@ describe('buildFromJson()', () => {
 		).rejects.toThrow('Tool name "load_skill" is reserved for runtime skills');
 	});
 
+	it('rejects custom tools that reuse SDK built-in tool names', async () => {
+		const descriptor = makeToolDescriptor({ name: 'write_todos' });
+		const config = makeConfig({
+			tools: [{ type: 'custom', id: 'planner_tool' }],
+		});
+
+		await expect(
+			buildFromJson(
+				config,
+				{ planner_tool: descriptor },
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+				},
+			),
+		).rejects.toThrow('Tool name "write_todos" is reserved for SDK built-in tools');
+	});
+
 	it('throws when custom tool id is not found in descriptors', async () => {
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'missing_tool' }] });
 
@@ -427,7 +456,7 @@ describe('buildFromJson()', () => {
 
 		const tool = agent.declaredTools.find((t) => t.name === 'run_workflow');
 		expect(tool).toBeDefined();
-		expect(tool!.withDefaultApproval).toBe(true);
+		expect(tool!.approval?.required).toBe(true);
 	});
 
 	it('wraps node tool with approval when requireApproval is true', async () => {
@@ -463,7 +492,7 @@ describe('buildFromJson()', () => {
 
 		const tool = agent.declaredTools.find((t) => t.name === 'my_node_tool');
 		expect(tool).toBeDefined();
-		expect(tool!.withDefaultApproval).toBe(true);
+		expect(tool!.approval?.required).toBe(true);
 	});
 
 	it('does not wrap workflow tool with approval when requireApproval is not set', async () => {
@@ -491,7 +520,7 @@ describe('buildFromJson()', () => {
 
 		const tool = agent.declaredTools.find((t) => t.name === 'run_workflow');
 		expect(tool).toBeDefined();
-		expect(tool!.withDefaultApproval).toBeUndefined();
+		expect(tool!.approval).toBeUndefined();
 	});
 
 	it('falls back to marker tool when resolveTool is not provided for workflow tools', async () => {
@@ -528,6 +557,49 @@ describe('buildFromJson()', () => {
 
 		expect(snap.thinking).not.toBeNull();
 		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
+	});
+
+	it('builds native provider tools for an inline child model, not the parent model', () => {
+		const config = makeConfig({
+			model: 'openai/gpt-4o',
+			config: { webSearch: { enabled: true } },
+		});
+
+		const anthropicTools = buildProviderToolsForModel(config, 'anthropic/claude-sonnet-4-6');
+		expect(anthropicTools.map((tool) => tool.name)).toEqual(['anthropic.web_search_20250305']);
+		expect(anthropicTools.map((tool) => tool.name)).not.toContain('openai.web_search');
+	});
+
+	it('preserves explicit provider-specific child args when building provider tools for a model', () => {
+		const config = makeConfig({
+			model: 'openai/gpt-4o',
+			config: { webSearch: { enabled: true } },
+			providerTools: {
+				'anthropic.web_search': { maxUses: 3 },
+				'openai.web_search': { searchContextSize: 'medium' },
+			},
+		});
+
+		const anthropicTools = buildProviderToolsForModel(config, 'anthropic/claude-sonnet-4-6');
+		expect(anthropicTools).toEqual([
+			{ name: 'anthropic.web_search_20250305', args: { maxUses: 3 } },
+		]);
+	});
+
+	it('filters non-current-provider provider tools for inline children', () => {
+		const config = makeConfig({
+			model: 'openai/gpt-4o',
+			config: { webSearch: { enabled: true } },
+			providerTools: {
+				'openai.image_generation': {},
+			},
+		});
+
+		const anthropicTools = buildProviderToolsForModel(config, 'anthropic/claude-sonnet-4-6');
+		expect(anthropicTools.map((tool) => tool.name)).not.toContain('openai.image_generation');
+
+		const openaiTools = buildProviderToolsForModel(config, 'openai/gpt-4o');
+		expect(openaiTools.map((tool) => tool.name)).toContain('openai.image_generation');
 	});
 
 	it.each([
@@ -781,6 +853,24 @@ describe('buildFromJson()', () => {
 		});
 		expect(getMemoryConfig(agent)?.observationalMemory?.observe).toBeUndefined();
 		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();
+	});
+
+	it('uses synchronous title generation so the first message can sync the title', async () => {
+		const config = makeConfig({
+			memory: { enabled: true, storage: 'n8n' },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: jest.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.titleGeneration?.sync).toBe(true);
 	});
 
 	it('configures observational memory worker models with their own credentials', async () => {

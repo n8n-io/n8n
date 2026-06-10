@@ -3,6 +3,7 @@ import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	APPROVAL_TOOL_NAME,
 	type AgentPersistedMessageContentPart,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -76,6 +77,49 @@ describe('rebuildInteractiveFromHistory', () => {
 			state: 'done',
 		});
 		expect(result).toBeUndefined();
+	});
+
+	it('rebuilds an OPEN approval card from an approval suspend payload', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'calculator',
+			toolCallId: 'call-approval-1',
+			input: {
+				type: 'approval',
+				toolName: 'calculator',
+				displayName: 'Calculator',
+				args: { input: '2 + 2' },
+			},
+			state: 'suspended',
+		});
+
+		expect(result).toBeTruthy();
+		expect(result?.toolName).toBe(APPROVAL_TOOL_NAME);
+		expect(result?.input).toEqual({
+			type: 'approval',
+			toolName: 'calculator',
+			displayName: 'Calculator',
+			args: { input: '2 + 2' },
+		});
+		expect(result?.resolvedAt).toBeUndefined();
+		expect(result?.resolvedValue).toBeUndefined();
+	});
+
+	it('rebuilds a rejected approval card from a declined tool result', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'calculator',
+			toolCallId: 'call-approval-2',
+			input: {
+				type: 'approval',
+				toolName: 'calculator',
+				args: { input: '2 + 2' },
+			},
+			output: { declined: true, message: 'Tool "calculator" was not approved' },
+			state: 'done',
+		});
+
+		expect(result?.toolName).toBe(APPROVAL_TOOL_NAME);
+		expect(result?.resolvedAt).toBeDefined();
+		expect(result?.resolvedValue).toEqual({ approved: false });
 	});
 });
 
@@ -233,7 +277,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 						type: 'tool-call',
 						toolName: 'delegate_subagent',
 						toolCallId: 'tc-d',
-						input: { taskName: 'research' },
+						input: { subAgentId: 'inline', taskName: 'research' },
 						state: 'resolved',
 						output: { status: 'failed', answer: '', error: 'child failed' },
 					},
@@ -257,7 +301,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 						type: 'tool-call',
 						toolName: 'delegate_subagent',
 						toolCallId: 'tc-d2',
-						input: {},
+						input: { subAgentId: 'inline' },
 						state: 'resolved',
 						output: { status: 'completed', answer: 'all good' },
 					},
@@ -268,6 +312,37 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		const chat = convertDbMessages(dbMessages);
 		const tc = chat[0].toolCalls?.[0];
 		expect(tc?.state).toBe('done');
+	});
+
+	it('leaves delegate difficulty summary for render-time i18n on reload', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delegate_subagent',
+						toolCallId: 'tc-d3',
+						input: { subAgentId: 'inline', taskName: 'research_api', difficulty: 'high' },
+						state: 'resolved',
+						output: {
+							status: 'completed',
+							answer: 'all good',
+							model: 'anthropic/claude-haiku-4-5',
+						},
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat[0].toolCalls?.[0].displaySummary).toBeUndefined();
+		expect(chat[0].toolCalls?.[0].input).toEqual({
+			subAgentId: 'inline',
+			taskName: 'research_api',
+			difficulty: 'high',
+		});
 	});
 });
 

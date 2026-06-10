@@ -1,6 +1,6 @@
 {
   "name": "@n8n/tournament",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Output compatible rewrite of riot tmpl",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -14,8 +14,11 @@
     "./*": "./*"
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "start": "ts-node src/index.ts",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "build": "tsc -p ./tsconfig.build.json",
+    "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck",
     "prepack": "pnpm build",
     "test": "vitest run",
     "test:unit": "vitest run",

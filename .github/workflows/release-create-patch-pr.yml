@@ -46,7 +46,7 @@ jobs:
   skip-release-pr:
     name: Skip release PR (no new commits)
     needs: [determine-version-info]
-    if: needs.determine-version-info.outputs.should_update != 'true'
+    if: needs.determine-version-info.outputs.should_update != 'true' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Log skip reason
@@ -55,7 +55,7 @@ jobs:
   create-release-pr:
     name: Create release PR
     needs: [determine-version-info]
-    if: needs.determine-version-info.outputs.should_update == 'true'
+    if: needs.determine-version-info.outputs.should_update == 'true' || github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/release-create-pr.yml
     secrets: inherit
     with:

@@ -1,7 +1,7 @@
 {
   "name": "@n8n/utils",
   "type": "module",
-  "version": "1.33.0",
+  "version": "1.34.0",
   "files": [
     "dist"
   ],
@@ -26,8 +26,10 @@
     }
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "dev": "tsdown --watch",
     "build": "tsdown",
+    "build:unchecked": "pnpm run build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -53,5 +55,5 @@
     "vite": "catalog:",
     "vitest": "catalog:"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

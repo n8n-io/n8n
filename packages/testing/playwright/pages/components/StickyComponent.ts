@@ -43,4 +43,16 @@ export class StickyComponent extends BasePage {
 	getDefaultStickyGuideLink(): Locator {
 		return this.getStickies().first().getByRole('link', { name: 'Guide' });
 	}
+
+	/**
+	 * Open the color picker for a sticky via its right-click context menu.
+	 */
+	async openColorPickerFromContextMenu(sticky: Locator): Promise<void> {
+		await sticky.click({ button: 'right' });
+		await this.page.getByTestId('context-menu-item-change_color').click();
+	}
+
+	getColorOptions(): Locator {
+		return this.page.getByTestId('color');
+	}
 }

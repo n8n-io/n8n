@@ -13,7 +13,9 @@
     "dist"
   ],
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "build": "tsc",
+    "build:unchecked": "tsc --noCheck",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
@@ -35,6 +37,7 @@
   "license": "MIT",
   "dependencies": {
     "@n8n/rules-engine": "workspace:*",
+    "@n8n/test-impact": "workspace:*",
     "glob": "^10.0.0",
     "yaml": "catalog:"
   },

@@ -1,4 +1,4 @@
-import { TextEditorDocument } from '@n8n/ai-utilities/text-editor';
+import { TextEditorDocument } from '@n8n/ai-utilities/generic-text-editor';
 import { z } from 'zod';
 
 import { Tool } from '../../sdk/tool';
