@@ -452,11 +452,30 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 
 	return {
 		// --- workflowDocument projections ---
-		nodeInputsByNodeId: workflowDocumentStore.nodeInputsByNodeId,
-		nodeOutputsByNodeId: workflowDocumentStore.nodeOutputsByNodeId,
-		pinnedDataByNodeName: workflowDocumentStore.pinnedDataByNodeName,
-		pinnedDataByNodeId: workflowDocumentStore.pinnedDataByNodeId,
-		validationErrorsByNodeId: workflowDocumentStore.validationErrorsByNodeId,
+		// All exposed as getters, mirroring the execution-state block below.
+		// `pinnedDataByNodeName` requires it: pin mutations *replace* the
+		// underlying ref's value (immutable-update pattern), and this setup
+		// runs once per document id in an untracked scope — a direct capture
+		// would be a permanently stale snapshot. The getter re-resolves through
+		// the store on each access, so consumer computeds track the ref and
+		// invalidate on pin/unpin. The by-id maps are stable containers today,
+		// but getters keep the store passthroughs uniform and stay correct if
+		// any later becomes resolver-backed.
+		get nodeInputsByNodeId() {
+			return workflowDocumentStore.nodeInputsByNodeId;
+		},
+		get nodeOutputsByNodeId() {
+			return workflowDocumentStore.nodeOutputsByNodeId;
+		},
+		get pinnedDataByNodeName() {
+			return workflowDocumentStore.pinnedDataByNodeName;
+		},
+		get pinnedDataByNodeId() {
+			return workflowDocumentStore.pinnedDataByNodeId;
+		},
+		get validationErrorsByNodeId() {
+			return workflowDocumentStore.validationErrorsByNodeId;
+		},
 
 		// --- node-type derivations (inlined) ---
 		nodeTypeDescriptionByNodeId,

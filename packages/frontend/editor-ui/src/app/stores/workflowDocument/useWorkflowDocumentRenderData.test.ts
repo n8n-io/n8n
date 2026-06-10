@@ -212,4 +212,23 @@ describe('useWorkflowDocumentRenderData — lifecycle', () => {
 		);
 		expect(renderData.executionStatusByNodeId).not.toBe(emptyMap);
 	});
+
+	it('exposes pinnedDataByNodeName as a live getter that computeds track across pin/unpin', () => {
+		const { docId, doc } = setupWorkflow('wf-pin-live', [{ id: 'a', name: 'Alpha' }]);
+		const { renderData } = createRenderData(docId);
+
+		// Mirrors the canvas pin-badge computed in CanvasNodeStatusIcons /
+		// CanvasNodeDefault: `!!renderData.value.pinnedDataByNodeName[name]`.
+		const hasPinnedData = computed(() => !!renderData.pinnedDataByNodeName.Alpha);
+		expect(hasPinnedData.value).toBe(false);
+
+		// Pin mutations replace the store ref's value; a snapshot captured at
+		// setup would keep returning the pre-pin object and the computed would
+		// never invalidate.
+		doc.pinNodeData('Alpha', [{ json: { value: 1 } }]);
+		expect(hasPinnedData.value).toBe(true);
+
+		doc.unpinNodeData('Alpha');
+		expect(hasPinnedData.value).toBe(false);
+	});
 });
