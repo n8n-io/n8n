@@ -125,7 +125,9 @@ export class SourceControlProjectImportPlanner {
 		return supportedChanges;
 	}
 
-	private buildFolderProjectLookup(status: SourceControlGetStatusVerboseResult): Map<string, string> {
+	private buildFolderProjectLookup(
+		status: SourceControlGetStatusVerboseResult,
+	): Map<string, string> {
 		const folders = [
 			...status.foldersMissingInLocal,
 			...status.foldersMissingInRemote,
