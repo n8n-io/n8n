@@ -466,10 +466,24 @@ watch(
 				<div v-else-if="isSetupMode" :key="`setup-${currentView}`" :class="$style.setupView">
 					<AgentChannelSlackSetup
 						v-if="selectedChannelType === 'slack'"
+						ref="channelSetupRef"
+						v-model="selectedCredentials.slack"
 						mode="setup"
 						:connected="isConnected('slack')"
 						:is-published="isPublished"
 						:setup-slack-app="setupSlackApp"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:integration="currentIntegration ?? undefined"
+						:credentials="credentialsByType.slack ?? []"
+						:credential-permissions="credentialPermissions"
+						:credentials-loading="credentialsLoading"
+						:loading="isLoading('slack')"
+						:error-message="hasError('slack') ? errorMessages.slack : ''"
+						:error-is-conflict="errorIsConflict.slack"
+						@create="createCredential"
+						@edit="editCredential"
+						@connect="saveChannelConfig"
 					/>
 					<AgentChannelLinearSetup
 						v-else-if="currentIntegration?.type === 'linear'"

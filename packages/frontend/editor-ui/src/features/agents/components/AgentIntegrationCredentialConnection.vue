@@ -102,7 +102,7 @@ const connectDisabled = computed(
 				v-if="showDisconnectButton"
 				variant="destructive"
 				:loading="loading"
-				size="small"
+				size="large"
 				:data-testid="`${integrationType}-disconnect-button`"
 				@click="emit('disconnect')"
 			>
@@ -114,7 +114,7 @@ const connectDisabled = computed(
 				variant="solid"
 				:disabled="connectDisabled"
 				:loading="loading || publishing"
-				size="small"
+				size="large"
 				:data-testid="`${integrationType}-connect-button`"
 				@click="emit('connect')"
 			>
