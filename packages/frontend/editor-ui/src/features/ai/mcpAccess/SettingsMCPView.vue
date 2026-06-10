@@ -51,20 +51,29 @@ const uiStore = useUIStore();
 const mcpStatusLoading = ref(false);
 const selectedTab = ref<MCPTabs>('workflows');
 
-const tabs = ref<Array<TabOptions<MCPTabs>>>([
-	{
-		label: i18n.baseText('settings.mcp.tabs.workflows'),
-		value: 'workflows',
-	},
-	{
-		label: i18n.baseText('settings.mcp.tabs.oauth'),
-		value: 'oauth',
-	},
-	{
-		label: i18n.baseText('settings.mcp.tabs.oauthSettings'),
-		value: 'settings',
-	},
-]);
+const isOwner = computed(() => usersStore.isInstanceOwner);
+const isAdmin = computed(() => usersStore.isAdmin);
+const canManageMcpInstance = computed(() => isOwner.value || isAdmin.value);
+
+const tabs = computed<Array<TabOptions<MCPTabs>>>(() => {
+	const base: Array<TabOptions<MCPTabs>> = [
+		{
+			label: i18n.baseText('settings.mcp.tabs.workflows'),
+			value: 'workflows',
+		},
+		{
+			label: i18n.baseText('settings.mcp.tabs.oauth'),
+			value: 'oauth',
+		},
+	];
+	if (canManageMcpInstance.value) {
+		base.push({
+			label: i18n.baseText('settings.mcp.tabs.oauthSettings'),
+			value: 'settings',
+		});
+	}
+	return base;
+});
 
 const workflowsLoading = ref(false);
 const availableWorkflows = ref<WorkflowListItem[]>([]);
@@ -84,12 +93,9 @@ const redirectUrisError = ref('');
 const redirectUrisLoading = ref(false);
 const redirectUriWarningDismissed = ref(false);
 
-const isOwner = computed(() => usersStore.isInstanceOwner);
-const isAdmin = computed(() => usersStore.isAdmin);
+const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
 
-const canToggleMCP = computed(() => (isOwner.value || isAdmin.value) && !mcpStore.mcpManagedByEnv);
-
-const canSeeInstanceStats = computed(() => isOwner.value || isAdmin.value);
+const canSeeInstanceStats = canManageMcpInstance;
 
 const showInstanceCapacityNotice = computed(
 	() => canSeeInstanceStats.value && mcpStore.instanceClientStats?.atCapacity === true,
@@ -105,6 +111,7 @@ const instanceCapacityNoticeContent = computed(() => {
 
 const showRedirectUriWarning = computed(
 	() =>
+		canManageMcpInstance.value &&
 		mcpStore.mcpAccessEnabled &&
 		mcpStore.allowedRedirectUris.length === 0 &&
 		!redirectUriWarningDismissed.value,
@@ -360,12 +367,9 @@ onMounted(async () => {
 	if (!mcpStore.mcpAccessEnabled) {
 		return;
 	}
-	const fetches: Array<Promise<unknown>> = [
-		fetchAvailableWorkflows(),
-		fetchoAuthCLients(),
-		loadRedirectUris(),
-	];
-	if (canSeeInstanceStats.value) {
+	const fetches: Array<Promise<unknown>> = [fetchAvailableWorkflows(), fetchoAuthCLients()];
+	if (canManageMcpInstance.value) {
+		fetches.push(loadRedirectUris());
 		fetches.push(mcpStore.getInstanceClientStats());
 	}
 	await Promise.all(fetches);
