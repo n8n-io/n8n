@@ -111,15 +111,59 @@ function formatLineStatsCell(lineStats, key) {
 }
 
 /**
+ * @param { LineStats } lineStats
+ * @returns { number }
+ */
+function totalLineChanges(lineStats) {
+	return (
+		lineStats.sourceCodeAdded +
+		lineStats.sourceCodeRemoved +
+		lineStats.testFilesAdded +
+		lineStats.testFilesRemoved +
+		lineStats.miscAdded +
+		lineStats.miscRemoved
+	);
+}
+
+/**
+ * @param { LineStats } target
+ * @param { LineStats } source
+ */
+function addLineStats(target, source) {
+	target.sourceCodeAdded += source.sourceCodeAdded;
+	target.sourceCodeRemoved += source.sourceCodeRemoved;
+	target.testFilesAdded += source.testFilesAdded;
+	target.testFilesRemoved += source.testFilesRemoved;
+	target.miscAdded += source.miscAdded;
+	target.miscRemoved += source.miscRemoved;
+}
+
+/**
+ * @param { Allocation[] } allocations
+ * @param { Map<string, LineStats> } lineStatsByTeam
+ * @returns { LineStats }
+ */
+function aggregateLineStats(allocations, lineStatsByTeam) {
+	const stats = createEmptyLineStats();
+
+	for (const { team } of allocations) {
+		addLineStats(stats, lineStatsByTeam.get(team) ?? createEmptyLineStats());
+	}
+
+	return stats;
+}
+
+/**
  * Build an ownership-first overview table with line stats grouped by team.
  *
  * @param { Allocation[] } allocations
  * @param { Set<string> } changedFiles
  * @param { LineStats } totalLineStats
  * @param { Map<string, LineStats> } lineStatsByTeam
+ * @param { Allocation[] } [otherAllocations]
  * @returns { string }
  */
-export function buildOverviewTable(allocations, changedFiles, totalLineStats, lineStatsByTeam) {
+export function buildOverviewTable(allocations, changedFiles, totalLineStats, lineStatsByTeam, otherAllocations = []) {
 	const total = changedFiles.size;
 	const rows = allocations.length > 0 && total > 0
 		? allocations.map(({ team, fileCount }) => {
@@ -128,6 +172,13 @@ export function buildOverviewTable(allocations, changedFiles, totalLineStats, li
 			return `| ${team} | ${fileCount} | ${pct}% | ${formatLineStatsCell(teamLineStats, 'sourceCode')} | ${formatLineStatsCell(teamLineStats, 'testFiles')} | ${formatLineStatsCell(teamLineStats, 'misc')} |`;
 		})
 		: [`| _No owning teams matched_ | 0 | 0% | ${formatLineStatsCell(totalLineStats, 'sourceCode')} | ${formatLineStatsCell(totalLineStats, 'testFiles')} | ${formatLineStatsCell(totalLineStats, 'misc')} |`];
+
+	if (otherAllocations.length > 0 && total > 0) {
+		const otherFileCount = otherAllocations.reduce((sum, { fileCount }) => sum + fileCount, 0);
+		const otherPct = Math.round((otherFileCount / total) * 100);
+		const otherLineStats = aggregateLineStats(otherAllocations, lineStatsByTeam);
+		rows.push(`| Other teams | ${otherFileCount} | ${otherPct}% | ${formatLineStatsCell(otherLineStats, 'sourceCode')} | ${formatLineStatsCell(otherLineStats, 'testFiles')} | ${formatLineStatsCell(otherLineStats, 'misc')} |`);
+	}
 
 	return [
 		'## PR review overview',
@@ -148,12 +199,13 @@ export function buildOverviewTable(allocations, changedFiles, totalLineStats, li
  * @param { Set<string> } changedFiles
  * @param { LineStats } lineStats
  * @param { Map<string, LineStats> } lineStatsByTeam
+ * @param { Allocation[] } [otherAllocations]
  * @returns { string }
  */
-export function buildComment(allocations, changedFiles, lineStats, lineStatsByTeam = new Map()) {
+export function buildComment(allocations, changedFiles, lineStats, lineStatsByTeam = new Map(), otherAllocations = []) {
 	const body = [
 		BOT_MARKER,
-		buildOverviewTable(allocations, changedFiles, lineStats, lineStatsByTeam),
+		buildOverviewTable(allocations, changedFiles, lineStats, lineStatsByTeam, otherAllocations),
 	];
 
 	if (lineStats.sourceCodeAdded > SIZE_LIMIT) {
@@ -179,10 +231,19 @@ export async function run(pullRequestNumber) {
 	const owners = parseOwnersFile();
 	const ownerships = assignOwnership(changedFiles, owners);
 	const allocations = ownershipsToAllocations(ownerships);
-	const topAllocations = allocations.sort((a, b) => b.fileCount - a.fileCount).slice(0, 3);
-	const lineStatsByTeam = computeAllocationLineStats(topAllocations, ownerships, files);
+	const lineStatsByTeam = computeAllocationLineStats(allocations, ownerships, files);
+	const sortedAllocations = allocations
+		.toSorted((a, b) => {
+			const lineChangeDiff =
+				totalLineChanges(lineStatsByTeam.get(b.team) ?? createEmptyLineStats()) -
+				totalLineChanges(lineStatsByTeam.get(a.team) ?? createEmptyLineStats());
 
-	const body = buildComment(topAllocations, changedFiles, lineStats, lineStatsByTeam);
+			return lineChangeDiff || b.fileCount - a.fileCount;
+		});
+	const topAllocations = sortedAllocations.slice(0, 3);
+	const otherAllocations = sortedAllocations.slice(3);
+
+	const body = buildComment(topAllocations, changedFiles, lineStats, lineStatsByTeam, otherAllocations);
 
 	await postOrUpdateComment(pullRequestNumber, body, BOT_MARKER);
 }

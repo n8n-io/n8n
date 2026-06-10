@@ -135,6 +135,25 @@ describe('buildOverviewTable', () => {
 
 		assert.match(table, /ownership of the 2 changed files in this PR/);
 	});
+
+	it('renders an aggregate row for allocations outside the displayed teams', () => {
+		const table = buildOverviewTable(
+			[{ team: '@n8n-io/cli-team', fileCount: 2 }],
+			new Set(['a.ts', 'b.ts', 'c.ts']),
+			{ ...EMPTY_LINE_STATS, sourceCodeAdded: 13, sourceCodeRemoved: 3 },
+			new Map([
+				['@n8n-io/cli-team', { ...EMPTY_LINE_STATS, sourceCodeAdded: 10, sourceCodeRemoved: 1 }],
+				['@n8n-io/team-a', { ...EMPTY_LINE_STATS, sourceCodeAdded: 2, sourceCodeRemoved: 1 }],
+				['@n8n-io/team-b', { ...EMPTY_LINE_STATS, sourceCodeAdded: 1, sourceCodeRemoved: 1 }],
+			]),
+			[
+				{ team: '@n8n-io/team-a', fileCount: 1 },
+				{ team: '@n8n-io/team-b', fileCount: 1 },
+			],
+		);
+
+		assert.match(table, /\| Other teams \| 2 \| 67% \| \+3 \/ -2 \| \+0 \/ -0 \| \+0 \/ -0 \|/);
+	});
 });
 
 describe('buildComment', () => {
@@ -328,25 +347,33 @@ describe('run', () => {
 		assert.ok(capturedChangedFiles.has('old-name.ts'), 'previous filename must be included');
 	});
 
-	it('limits recommendations to the top 3 allocations by file count', async () => {
+	it('limits recommendations to the top 3 allocations by total line changes', async () => {
 		getPrFilesImpl = async () => [
 			{ filename: 'a.ts', additions: 1, deletions: 0 },
-			{ filename: 'b.ts', additions: 1, deletions: 0 },
+			{ filename: 'b.ts', additions: 50, deletions: 50 },
+			{ filename: 'c.ts', additions: 20, deletions: 20 },
+			{ filename: 'd.ts', additions: 10, deletions: 10 },
 		];
+		assignOwnershipImpl = () =>
+			new Map([
+				['@n8n-io/team-a', ['a.ts']],
+				['@n8n-io/team-b', ['b.ts']],
+				['@n8n-io/team-c', ['c.ts']],
+				['@n8n-io/team-d', ['d.ts']],
+			]);
 		ownershipsToAllocationsImpl = () => [
 			{ team: '@n8n-io/team-a', fileCount: 1 },
-			{ team: '@n8n-io/team-b', fileCount: 5 },
-			{ team: '@n8n-io/team-c', fileCount: 3 },
-			{ team: '@n8n-io/team-d', fileCount: 2 },
+			{ team: '@n8n-io/team-b', fileCount: 1 },
+			{ team: '@n8n-io/team-c', fileCount: 1 },
+			{ team: '@n8n-io/team-d', fileCount: 1 },
 		];
 
 		await run(42);
 
 		const body = postOrUpdateComment.mock.calls[0].arguments[1];
-		assert.match(body, /@n8n-io\/team-b/);
-		assert.match(body, /@n8n-io\/team-c/);
-		assert.match(body, /@n8n-io\/team-d/);
+		assert.match(body, /@n8n-io\/team-b[\s\S]*@n8n-io\/team-c[\s\S]*@n8n-io\/team-d/);
 		assert.doesNotMatch(body, /@n8n-io\/team-a/);
+		assert.match(body, /\| Other teams \| 1 \| 25% \| \+1 \/ -0 \| \+0 \/ -0 \| \+0 \/ -0 \|/);
 	});
 
 	it('posted comment body includes the ownership-first overview table', async () => {
