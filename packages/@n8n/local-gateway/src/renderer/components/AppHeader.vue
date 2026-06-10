@@ -45,7 +45,7 @@ const STATUS_CLASS: Record<AuthState, string> = {
 	align-items: center;
 	justify-content: space-between;
 	padding: var(--spacing--sm) var(--spacing--md);
-	border-bottom: 1px solid var(--border-color);
+	border-bottom: 1px solid var(--da-border);
 }
 
 .brand {

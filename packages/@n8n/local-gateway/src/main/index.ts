@@ -3,6 +3,7 @@ import { app, shell } from 'electron';
 import * as path from 'node:path';
 
 import { DaemonController } from './daemon-controller';
+import { InstanceApi } from './instance-api';
 import { registerIpcHandlers } from './ipc-handlers';
 import { showMainWindow, toggleMainWindow, notifyMainWindow } from './main-window';
 import { parseOAuthCallback } from './oauth/oauth-callback';
@@ -41,12 +42,14 @@ if (!app.requestSingleInstanceLock()) {
 			logger.info('n8n Assistant starting');
 
 			const controller = new DaemonController();
+			const openExternal = async (url: string) => {
+				await shell.openExternal(url);
+			};
 			const oauthFlow = new OAuthFlow({
 				store: new TokenStore(),
-				openExternal: async (url) => {
-					await shell.openExternal(url);
-				},
+				openExternal,
 			});
+			const instanceApi = new InstanceApi(oauthFlow);
 
 			const preloadPath = path.join(__dirname, 'preload.js');
 			const rendererPath = path.join(__dirname, '..', 'renderer', 'index.html');
@@ -81,7 +84,14 @@ if (!app.requestSingleInstanceLock()) {
 				}
 			}
 
-			registerIpcHandlers(controller, settingsStore, disconnectGateway, oauthFlow);
+			registerIpcHandlers({
+				controller,
+				settingsStore,
+				disconnectGateway,
+				oauthFlow,
+				instanceApi,
+				openExternal,
+			});
 
 			controller.on('statusChanged', (snapshot) => {
 				notifyMainWindow('statusChanged', snapshot);

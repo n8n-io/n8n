@@ -38,4 +38,10 @@ export type DesktopAssistantTriggerSummary =
 
 export type DesktopAssistantTaskIcon =
 	| { type: 'emoji'; value: string }
-	| { type: 'node'; nodeType: string };
+	/**
+	 * A node-typed icon. One of:
+	 * - `iconUrl`: an SVG/PNG file icon path (absolute-ised by the desktop client).
+	 * - `iconName` (+ optional `iconColor` palette name): a built-in icon, e.g. `fa:code` → `code`.
+	 * Both absent → the client falls back to the workflow name's initial.
+	 */
+	| { type: 'node'; nodeType: string; iconUrl?: string; iconName?: string; iconColor?: string };

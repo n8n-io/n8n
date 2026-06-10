@@ -1,0 +1,24 @@
+/*
+ * Desktop-assistant design tokens — mirror the reference mockup's palette 1:1.
+ * These intentionally diverge from @n8n/design-system tokens to match the agreed
+ * design spec (its coral/blue/amber/green and dark surfaces don't map onto the
+ * DS primary/secondary/warning/success scales). Scoped with a `--da-` prefix so
+ * they never collide with design-system variables.
+ */
+:root {
+	--da-bg: #212121;
+	--da-surface: #262626;
+	--da-surface-2: #2e2e2e;
+	--da-border: #ffffff1a;
+	--da-border-strong: #ffffff29;
+	--da-text: #fff;
+	--da-subtler: #bbb;
+	--da-subtlest: #888;
+	--da-accent: #ff6d5a;
+	--da-blue: #7aa2ff;
+	--da-green: #3fcf8e;
+	--da-amber: #f5b84b;
+	--da-red: #ff6b6b;
+	--da-radius: 10px;
+	--da-radius-sm: 6px;
+}

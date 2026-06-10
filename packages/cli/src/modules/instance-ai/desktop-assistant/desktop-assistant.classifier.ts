@@ -291,6 +291,7 @@ function deriveDescription(
 	bucket: Bucket,
 	summary: DesktopAssistantTriggerSummary,
 	missingCredential: { serviceName: string } | undefined,
+	timezone: string | undefined,
 ): string {
 	if (bucket === 'actionNeeded') {
 		if (missingCredential) {
@@ -299,10 +300,15 @@ function deriveDescription(
 		return 'Activation required';
 	}
 	if (bucket === 'upcoming') {
-		if (summary.kind !== 'schedule' || summary.nextRunAt === null) {
-			return 'Recurring task';
+		if (summary.kind === 'schedule' && summary.nextRunAt) {
+			return humanizeNextRun(summary.nextRunAt, timezone);
 		}
-		return `Next run at ${summary.nextRunAt}`;
+		// Poll/webhook tasks surface what they watch (the trigger node) rather than
+		// a generic "recurring" line.
+		if (summary.kind === 'poll' || summary.kind === 'webhook') {
+			return summary.sourceLabel;
+		}
+		return 'Recurring task';
 	}
 	// readyToRun — manual and "other" triggers have no useful one-liner; only
 	// poll/webhook surface their source label.
@@ -310,6 +316,25 @@ function deriveDescription(
 		return summary.sourceLabel;
 	}
 	return '';
+}
+
+/**
+ * Render a schedule's next run as a friendly line (e.g. `Next Saturday 07:00`)
+ * in the user's timezone, rather than a raw ISO timestamp.
+ */
+function humanizeNextRun(iso: string, timezone: string | undefined): string {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return 'Recurring task';
+	const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: timezone }).format(
+		date,
+	);
+	const time = new Intl.DateTimeFormat('en-US', {
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false,
+		timeZone: timezone,
+	}).format(date);
+	return `Next ${weekday} ${time}`;
 }
 
 function classifyOne(input: ClassifierInput): {
@@ -352,7 +377,10 @@ function classifyOne(input: ClassifierInput): {
 		bucket = 'readyToRun';
 	}
 
-	const description = bucket === null ? '' : deriveDescription(bucket, summary, missingCredential);
+	const description =
+		bucket === null
+			? ''
+			: deriveDescription(bucket, summary, missingCredential, input.settings?.timezone);
 
 	const card: DesktopAssistantTaskCard = {
 		workflowId: input.workflowId,

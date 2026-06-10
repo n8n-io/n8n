@@ -10,7 +10,8 @@ let mainWindow: BrowserWindow | null = null;
  * signal the renderer's `prefers-color-scheme` follows.
  */
 function surfaceColor(): string {
-	return nativeTheme.shouldUseDarkColors ? '#1c1c1c' : '#ffffff';
+	// Dark matches the app header surface (App.vue `.app` → --da-bg) so there's no seam/flash.
+	return nativeTheme.shouldUseDarkColors ? '#212121' : '#ffffff';
 }
 
 const WINDOW_WIDTH = 420;

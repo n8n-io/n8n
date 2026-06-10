@@ -1,16 +1,6 @@
 import type { AppSettings, DaemonStatus, LogLevel, StatusSnapshot } from '../shared/types';
 
-declare global {
-	interface Window {
-		electronAPI: {
-			getSettings: () => Promise<AppSettings>;
-			setSettings: (partial: Partial<AppSettings>) => Promise<{ ok: boolean; error?: string }>;
-			getDaemonStatus: () => Promise<StatusSnapshot>;
-			disconnectGateway: () => Promise<{ ok: boolean }>;
-			onStatusChanged: (onChangeCallback: (snapshot: StatusSnapshot) => void) => void;
-		};
-	}
-}
+// `window.electronAPI` is typed globally via `electron-api.d.ts` (the shared `ElectronApi` contract).
 
 const STATUS_TEXT: Record<DaemonStatus, string> = {
 	connected: 'Connected',

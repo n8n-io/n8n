@@ -515,3 +515,61 @@ describe('DesktopAssistantService.getHistory', () => {
 		);
 	});
 });
+
+describe('DesktopAssistantService.resolveNodeIcon', () => {
+	function withDescription(description: unknown) {
+		const ctx = makeService();
+		ctx.nodeTypes.getByNameAndVersion.mockReturnValue({ description } as never);
+		return ctx.service;
+	}
+
+	test('returns a string file iconUrl as-is', () => {
+		const service = withDescription({ iconUrl: 'icons/n8n-nodes-base/Slack/slack.svg' });
+		expect(service.resolveNodeIcon('n8n-nodes-base.slack')).toEqual({
+			iconUrl: 'icons/n8n-nodes-base/Slack/slack.svg',
+		});
+	});
+
+	test('prefers the dark variant of a themed file iconUrl', () => {
+		const service = withDescription({ iconUrl: { light: 'light.svg', dark: 'dark.svg' } });
+		expect(service.resolveNodeIcon('x')).toEqual({ iconUrl: 'dark.svg' });
+	});
+
+	test('maps a fa: icon to a name plus the palette color', () => {
+		const service = withDescription({ icon: 'fa:code', iconColor: 'amber' });
+		expect(service.resolveNodeIcon('n8n-nodes-base.code')).toEqual({
+			iconName: 'code',
+			iconColor: 'amber',
+		});
+	});
+
+	test('maps an icon: icon to a name (color optional)', () => {
+		const service = withDescription({ icon: 'icon:bug' });
+		expect(service.resolveNodeIcon('x')).toEqual({ iconName: 'bug', iconColor: undefined });
+	});
+
+	test('keeps the full ref for a node: icon (the client set is keyed by it)', () => {
+		const service = withDescription({ icon: 'node:edit-fields', iconColor: 'blue' });
+		expect(service.resolveNodeIcon('n8n-nodes-base.set')).toEqual({
+			iconName: 'node:edit-fields',
+			iconColor: 'blue',
+		});
+	});
+
+	test('prefers a file iconUrl over a fa: icon when both are present', () => {
+		const service = withDescription({ icon: 'fa:code', iconColor: 'amber', iconUrl: 'code.svg' });
+		expect(service.resolveNodeIcon('x')).toEqual({ iconUrl: 'code.svg' });
+	});
+
+	test('returns empty for icon-less nodes', () => {
+		expect(withDescription({}).resolveNodeIcon('x')).toEqual({});
+	});
+
+	test('returns empty when the node type is unknown', () => {
+		const ctx = makeService();
+		ctx.nodeTypes.getByNameAndVersion.mockImplementation(() => {
+			throw new Error('Unrecognized node type');
+		});
+		expect(ctx.service.resolveNodeIcon('does-not-exist')).toEqual({});
+	});
+});

@@ -2103,12 +2103,18 @@ importers:
 
   packages/@n8n/local-gateway:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../api-types
       '@n8n/computer-use':
         specifier: workspace:*
         version: link:../computer-use
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../../frontend/@n8n/design-system
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../../frontend/@n8n/i18n
       electron-store:
         specifier: ^8.2.0
         version: 8.2.0

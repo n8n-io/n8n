@@ -1,8 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { AppSettings, AuthStatus, StatusSnapshot } from '../shared/types';
+import type {
+	AppSettings,
+	AuthStatus,
+	DesktopAssistantTasksResponse,
+	ElectronApi,
+	RunTaskResult,
+	StatusSnapshot,
+} from '../shared/types';
 
-const electronApi = {
+const electronApi: ElectronApi = {
 	signIn: async (instanceUrl: string): Promise<{ ok: boolean; error?: string }> =>
 		await (ipcRenderer.invoke('oauth:signIn', instanceUrl) as Promise<{
 			ok: boolean;
@@ -36,13 +43,23 @@ const electronApi = {
 			onChangeCallback(snapshot),
 		);
 	},
+
+	getTasks: async (): Promise<DesktopAssistantTasksResponse> =>
+		await (ipcRenderer.invoke('tasks:list') as Promise<DesktopAssistantTasksResponse>),
+
+	runTask: async (workflowId: string): Promise<RunTaskResult> =>
+		await (ipcRenderer.invoke('tasks:run', workflowId) as Promise<RunTaskResult>),
+
+	openWorkflow: async (workflowId: string): Promise<void> => {
+		await ipcRenderer.invoke('tasks:openWorkflow', workflowId);
+	},
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronApi);
 
 declare global {
 	interface Window {
-		/** Bridge exposed by this preload — typed from `electronApi`, never hand-maintained. */
-		electronAPI: typeof electronApi;
+		/** Bridge exposed by this preload — the shared `ElectronApi` contract. */
+		electronAPI: ElectronApi;
 	}
 }
