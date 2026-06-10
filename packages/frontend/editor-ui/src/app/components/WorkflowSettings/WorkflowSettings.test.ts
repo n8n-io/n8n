@@ -327,6 +327,60 @@ describe('WorkflowSettingsVue', () => {
 		});
 	});
 
+	// The modal is mounted globally, so it can be opened from views whose route has no
+	// `workflowId` param (e.g. the AI artifact view). Saving must target the document
+	// store's workflow, never the route param — these tests diverge the two ids to prove it.
+	describe('when the document store workflow differs from the route param', () => {
+		const DOCUMENT_WORKFLOW_ID = 'document-workflow-id';
+
+		beforeEach(() => {
+			const documentWorkflow = createTestWorkflow({
+				id: DOCUMENT_WORKFLOW_ID,
+				name: 'Document Workflow',
+				active: true,
+				scopes: ['workflow:update'],
+			});
+			workflowsListStore.workflowsById = { [DOCUMENT_WORKFLOW_ID]: documentWorkflow };
+			workflowsListStore.getWorkflowById.mockImplementation(() => documentWorkflow);
+			workflowsStore.setWorkflowId(DOCUMENT_WORKFLOW_ID);
+			workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(DOCUMENT_WORKFLOW_ID),
+			);
+			workflowDocumentStore.setName('Document Workflow');
+		});
+
+		it('should save settings using the document store workflow id, not the route param', async () => {
+			const { getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				DOCUMENT_WORKFLOW_ID,
+				expect.any(Object),
+			);
+		});
+
+		it('should save custom span attributes using the document store workflow id, not the route param', async () => {
+			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];
+			settingsStore.settings.enterprise.otelCustomSpanAttributes = true;
+			settingsStore.moduleSettings = { otel: { enabled: true } };
+			workflowDocumentStore.setChecksum('test-checksum');
+
+			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save-immediate'));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(DOCUMENT_WORKFLOW_ID, {
+				settings: {
+					customTelemetryTags: [{ key: 'env', value: 'production' }],
+				},
+				expectedChecksum: 'test-checksum',
+			});
+		});
+	});
+
 	it('should render list of workflows field when policy is set to workflowsFromAList', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 		const { getByTestId } = createComponent({ pinia });
