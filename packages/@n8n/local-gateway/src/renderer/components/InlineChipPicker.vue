@@ -98,6 +98,10 @@ function select(choice: string) {
 	font: inherit;
 	font-size: inherit;
 	font-weight: inherit;
+	/* The prototype chip keeps the button's own (normal) line-height instead of the
+	   sentence's 1.65 — inheriting 33px makes the chips ~9px too tall and stretches
+	   the line boxes, which reads as extra padding/margin. */
+	line-height: normal;
 	color: var(--da-text);
 	vertical-align: baseline;
 	cursor: pointer;

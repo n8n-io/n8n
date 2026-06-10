@@ -55,6 +55,7 @@ function cancel() {
 	padding: 1px 7px;
 	font: inherit;
 	font-size: 12px;
+	line-height: normal;
 	color: var(--da-text);
 	vertical-align: baseline;
 	cursor: pointer;
@@ -73,6 +74,7 @@ function cancel() {
 	padding: 1px var(--spacing--3xs);
 	font: inherit;
 	font-size: 12px;
+	line-height: normal;
 	color: var(--da-text);
 	background: var(--da-surface-2);
 	border: 1px solid var(--da-subtlest);
