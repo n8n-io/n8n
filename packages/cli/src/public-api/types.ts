@@ -122,6 +122,15 @@ export declare namespace WorkflowRequest {
 	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }
 
+export declare namespace PackageRequest {
+	type Import = AuthenticatedRequest<
+		{},
+		{},
+		{ projectId?: string; folderId?: string },
+		Record<string, never>
+	>;
+}
+
 export declare namespace UserRequest {
 	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
 
@@ -229,12 +238,10 @@ export type OffsetPagination = PaginationBase & { offset: number; numberOfTotalR
 export type CursorPagination = PaginationBase & { lastId: string; numberOfNextRecords: number };
 export interface IRequired {
 	required?: string[];
-	not?: { required?: string[] };
 }
 export interface IDependency {
-	if?: { properties: {} };
+	if?: { properties: {}; required?: string[] };
 	then?: { allOf: IRequired[] };
-	else?: { allOf: IRequired[] };
 }
 
 export interface IJsonSchema {

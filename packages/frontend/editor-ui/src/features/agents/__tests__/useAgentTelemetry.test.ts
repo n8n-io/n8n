@@ -37,6 +37,7 @@ describe('useAgentTelemetry', () => {
 			instructions: 'hello',
 			tools: ['a'],
 			skills: [],
+			tasks: [],
 			triggers: [],
 			memory: null,
 			model: 'gpt-4',
@@ -127,6 +128,42 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
+	it('trackAddedTasks fires with task_added, tasks list, config_version and status', () => {
+		useAgentTelemetry().trackAddedTasks({
+			agentId: 'ag-1',
+			taskAdded: 'task-1',
+			tasks: ['task-1', 'task-2'],
+			configVersion: 'v7',
+			status: 'draft',
+		});
+		expect(trackMock).toHaveBeenCalledWith('User added tasks to agent', {
+			agent_id: 'ag-1',
+			task_added: 'task-1',
+			tasks: ['task-1', 'task-2'],
+			config_version: 'v7',
+			status: 'draft',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackRemovedTasks fires with task_removed, tasks list, config_version and status', () => {
+		useAgentTelemetry().trackRemovedTasks({
+			agentId: 'ag-1',
+			taskRemoved: 'task-1',
+			tasks: ['task-2'],
+			configVersion: 'v8',
+			status: 'production',
+		});
+		expect(trackMock).toHaveBeenCalledWith('User removed tasks from agent', {
+			agent_id: 'ag-1',
+			task_removed: 'task-1',
+			tasks: ['task-2'],
+			config_version: 'v8',
+			status: 'production',
+			session_id: 'session-xyz',
+		});
+	});
+
 	it('trackPublishedAgent fires with config_version and status=production', () => {
 		useAgentTelemetry().trackPublishedAgent({ agentId: 'ag-1', configVersion: 'v3' });
 		expect(trackMock).toHaveBeenCalledWith('User published agent', {
@@ -142,6 +179,32 @@ describe('useAgentTelemetry', () => {
 		expect(trackMock).toHaveBeenCalledWith('User unpublished agent', {
 			agent_id: 'ag-1',
 			status: 'draft',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackOpenedToolFromList fires with agent_id and tool_type', () => {
+		useAgentTelemetry().trackOpenedToolFromList({ agentId: 'ag-1', toolType: 'node' });
+		expect(trackMock).toHaveBeenCalledWith('User opened agent tool', {
+			agent_id: 'ag-1',
+			tool_type: 'node',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackOpenedSkillFromList fires with agent_id and skill_id', () => {
+		useAgentTelemetry().trackOpenedSkillFromList({ agentId: 'ag-1', skillId: 'skill-42' });
+		expect(trackMock).toHaveBeenCalledWith('User opened agent skill', {
+			agent_id: 'ag-1',
+			skill_id: 'skill-42',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackOpenedAddSkillModal fires with agent_id', () => {
+		useAgentTelemetry().trackOpenedAddSkillModal({ agentId: 'ag-1' });
+		expect(trackMock).toHaveBeenCalledWith('User opened add skill modal', {
+			agent_id: 'ag-1',
 			session_id: 'session-xyz',
 		});
 	});

@@ -27,6 +27,8 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 		value: {
 			nodeInputsByNodeId: new Map(),
 			nodeOutputsByNodeId: new Map(),
+			pinnedDataByNodeName: {},
+			executionIssuesByNodeName: new Map(),
 		},
 	})),
 }));
@@ -65,10 +67,11 @@ describe('CanvasNodeSettingsIcons', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 
 		workflowsStore.workflowId = WORKFLOW_ID;
-		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
 
 		// Default: feature flag disabled
 		mockFeatureFlag(false);
+
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(WORKFLOW_ID));
 	});
 
 	describe('dynamic credentials icon', () => {

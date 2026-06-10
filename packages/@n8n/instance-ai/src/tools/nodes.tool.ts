@@ -1,13 +1,13 @@
 /**
  * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { NodeSearchEngine } from './nodes/node-search-engine';
-import { AI_CONNECTION_TYPES } from './nodes/node-search-engine.types';
+import { AI_CONNECTION_TYPES, type SearchableNodeType } from './nodes/node-search-engine.types';
 import { categoryList, suggestedNodesData } from './nodes/suggested-nodes-data';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -123,6 +123,12 @@ const fullInputSchema = sanitizeInputSchema(
 
 type FullInput = z.infer<typeof fullInputSchema>;
 
+interface SearchEngineCache {
+	nodeTypes?: SearchableNodeType[];
+	nodeCount?: number;
+	engine?: NodeSearchEngine;
+}
+
 // ── Handlers ────────────────────────────────────────────────────────────────
 
 async function handleList(
@@ -138,9 +144,16 @@ async function handleList(
 async function handleSearch(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'search' }>,
+	cache: SearchEngineCache,
 ) {
 	const nodeTypes = await context.nodeService.listSearchable();
-	const engine = new NodeSearchEngine(nodeTypes);
+	let engine = cache.engine;
+	if (!engine || cache.nodeTypes !== nodeTypes || cache.nodeCount !== nodeTypes.length) {
+		cache.nodeTypes = nodeTypes;
+		cache.nodeCount = nodeTypes.length;
+		engine = new NodeSearchEngine(nodeTypes);
+		cache.engine = engine;
+	}
 
 	let results;
 	if (input.connectionType) {
@@ -192,7 +205,7 @@ async function handleTypeDefinition(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'type-definition' }>,
 ) {
-	// Mastra validates against the flattened top-level schema (required for
+	// Native tool validation uses the flattened top-level schema (required for
 	// Anthropic's `type: "object"` constraint), which makes every variant field
 	// optional. Re-assert the variant contract so missing/invalid inputs return
 	// a structured error the model can self-correct from, instead of crashing
@@ -312,6 +325,8 @@ export function createNodesTool(
 	context: InstanceAiContext,
 	surface: 'full' | 'orchestrator' = 'full',
 ) {
+	const searchEngineCache: SearchEngineCache = {};
+
 	if (surface === 'orchestrator') {
 		const orchestratorExploreAction = z.object({
 			action: z
@@ -356,36 +371,36 @@ export function createNodesTool(
 
 		type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
 
-		return createTool({
-			id: 'nodes',
-			description:
+		return new Tool('nodes')
+			.description(
 				"Read node type definitions or query real resources for a node's RLC parameters " +
-				'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
-				'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
-				'`explore-resources` with the real method name and a credential.',
-			inputSchema: orchestratorInputSchema,
-			execute: async (input: OrchestratorInput) => {
+					'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
+					'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
+					'`explore-resources` with the real method name and a credential.',
+			)
+			.input(orchestratorInputSchema)
+			.handler(async (input: OrchestratorInput) => {
 				switch (input.action) {
 					case 'type-definition':
 						return await handleTypeDefinition(context, input);
 					case 'explore-resources':
 						return await handleExploreResources(context, input);
 				}
-			},
-		});
+			})
+			.build();
 	}
 
-	return createTool({
-		id: 'nodes',
-		description:
+	return new Tool('nodes')
+		.description(
 			'Work with n8n node types — discover, search, describe, get type definitions, and explore real resources.',
-		inputSchema: fullInputSchema,
-		execute: async (input: FullInput) => {
+		)
+		.input(fullInputSchema)
+		.handler(async (input: FullInput) => {
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);
 				case 'search':
-					return await handleSearch(context, input);
+					return await handleSearch(context, input, searchEngineCache);
 				case 'describe':
 					return await handleDescribe(context, input);
 				case 'type-definition':
@@ -395,6 +410,6 @@ export function createNodesTool(
 				case 'explore-resources':
 					return await handleExploreResources(context, input);
 			}
-		},
-	});
+		})
+		.build();
 }

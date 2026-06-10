@@ -6,13 +6,15 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
+import {
+	EXPERIMENTS_TO_TRACK,
+	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
+	TELEMETRY_EVENTS,
+} from '@/app/constants';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
-const EVENTS = {
-	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
-};
+const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
 
 export type PosthogStore = ReturnType<typeof usePostHog>;
 
@@ -142,7 +144,7 @@ export const usePostHog = defineStore('posthog', () => {
 			return;
 		}
 
-		telemetry.track(EVENTS.IS_PART_OF_EXPERIMENT, {
+		telemetry.track(TELEMETRY_EVENTS.IS_PART_OF_EXPERIMENT, {
 			name,
 			variant,
 		});
@@ -185,16 +187,24 @@ export const usePostHog = defineStore('posthog', () => {
 			},
 		};
 
-		window.posthog?.init(config.apiKey, options);
-		identify();
+		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
+			options.bootstrap = {
+				distinctID: distinctId,
+				featureFlags: evaluatedFeatureFlags,
+			};
+		}
+
+		window.posthog?.init(config.apiKey, {
+			...options,
+			loaded: () => {
+				identify();
+				groupIdentify(POSTHOG_GROUP_TYPE_INSTANCE, instanceId);
+			},
+		});
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
 			resolveFeatureFlagsWaiters(featureFlags.value);
-			options.bootstrap = {
-				distinctId,
-				featureFlags: evaluatedFeatureFlags,
-			};
 
 			// does not need to be debounced really, but tracking does not fire without delay on page load
 			trackExperimentsDebounced(featureFlags.value);
@@ -222,7 +232,7 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
-	const capture = (event: string, properties: IDataObject) => {
+	const capture = (event: string, properties: IDataObject = {}) => {
 		if (typeof window.posthog?.capture === 'function') {
 			window.posthog.capture(event, properties);
 		}

@@ -157,4 +157,56 @@ describe('resolveNodeTool → tool name sanitization', () => {
 		expect(tool.inputSchema).toBe(inputSchema);
 		expect(introspectSupplyDataToolSchema).toHaveBeenCalled();
 	});
+
+	it('uses a string-compatible object schema when native string tool introspection returns null', async () => {
+		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
+		const introspectSupplyDataToolSchema = jest.fn().mockResolvedValue(null);
+		Container.set(NodeTypes, {
+			getByNameAndVersion: jest.fn().mockReturnValue({
+				description: { description: 'Think about something' },
+				supplyData: jest.fn(),
+			}),
+		} as unknown as NodeTypes);
+
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				description: 'Use this to think',
+				node: {
+					nodeType: '@n8n/n8n-nodes-langchain.toolThink',
+					nodeTypeVersion: 1.1,
+					nodeParameters: {},
+				},
+			},
+			{
+				executor: {
+					executeInline,
+					introspectSupplyDataToolSchema,
+				} as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+			},
+		);
+
+		const schema = tool.inputSchema as z.ZodType;
+		const parsedString = schema.safeParse('thinking about this problem');
+		const parsedObject = schema.safeParse({ input: 'thinking about this problem' });
+
+		expect(parsedString).toEqual({
+			success: true,
+			data: { input: 'thinking about this problem' },
+		});
+		expect(parsedObject).toEqual({
+			success: true,
+			data: { input: 'thinking about this problem' },
+		});
+
+		if (!parsedString.success) throw new Error('Expected string input to parse');
+		await tool.handler?.(parsedString.data, {} as never);
+
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputData: [{ json: { input: 'thinking about this problem' } }],
+			}),
+		);
+	});
 });

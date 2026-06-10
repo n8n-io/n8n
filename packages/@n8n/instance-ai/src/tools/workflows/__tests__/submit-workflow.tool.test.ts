@@ -1,52 +1,29 @@
-import type { Workspace } from '@mastra/core/workspace';
-import { validateWorkflow } from '@n8n/workflow-sdk';
-import { mock } from 'jest-mock-extended';
-import type { INodeTypes } from 'n8n-workflow';
+/* eslint-disable import-x/order */
+import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
+import type { INodeTypes, WorkflowStructureIssue } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import type { InstanceAiContext, InstanceAiTraceRun } from '../../../types';
+import { executeTool } from '../../../__tests__/tool-test-utils';
+import type { InstanceAiContext } from '../../../types';
+import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import {
+	buildErrorDetails,
+	buildNodeIndex,
 	classifySubmitFailure,
-	isTriggerNodeType,
+	extractStructureIssues,
+	normalizeWorkflowNodeParameters,
 	type SubmitWorkflowAttempt,
+	type SubmitWorkflowOutput,
 } from '../submit-workflow.tool';
+import { isTriggerNodeType } from '../workflow-json-utils';
 
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
+vi.mock('@n8n/workflow-sdk', () => ({
+	validateWorkflow: vi.fn(() => ({ errors: [], warnings: [] })),
 }));
 
-jest.mock(
-	'@n8n/utils',
-	() => ({
-		hasPlaceholderDeep: jest.fn(() => false),
-	}),
-	{ virtual: true },
-);
+import { createSubmitWorkflowTool } from '../submit-workflow.tool';
 
-jest.mock(
-	'@n8n/workflow-sdk',
-	() => ({
-		validateWorkflow: jest.fn(() => ({ errors: [], warnings: [] })),
-	}),
-	{ virtual: true },
-);
-
-// `require` (rather than `import`) is needed because `submit-workflow.tool`
-// transitively pulls in @mastra/core (ESM-only); the require call here runs
-// AFTER the `jest.mock('@mastra/core/tools', …)` above, so the mock is in
-// place before the module is evaluated.
-const { createSubmitWorkflowTool } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../submit-workflow.tool') as typeof import('../submit-workflow.tool');
-
-const mockedValidateWorkflow = jest.mocked(validateWorkflow);
-
-type Executable = {
-	execute: (input: Record<string, unknown>) => Promise<{
-		success: boolean;
-		usesWorkflowPinDataForVerification?: boolean;
-		errors?: string[];
-	}>;
-};
+const mockedValidateWorkflow = vi.mocked(validateWorkflow);
 
 function makeContext(
 	permissions: InstanceAiContext['permissions'] = {} as InstanceAiContext['permissions'],
@@ -64,7 +41,7 @@ function makeContext(
  * `readFileViaSandbox` (`cat ...`) — both run before the permission check so
  * the pre-check reportAttempt path gets a resolved filePath + sourceHash.
  */
-function makeWorkspace(): Workspace {
+function makeWorkspace(): SandboxWorkspace {
 	return {
 		sandbox: {
 			executeCommand: async (command: string) => {
@@ -75,7 +52,7 @@ function makeWorkspace(): Workspace {
 					: { exitCode: 0, stdout: '', stderr: '' };
 			},
 		},
-	} as unknown as Workspace;
+	};
 }
 
 /** Workspace stub that simulates a successful sandbox build by emitting
@@ -87,7 +64,7 @@ function makeBuildSuccessWorkspace(
 		nodes: [],
 		connections: {},
 	},
-): Workspace {
+): SandboxWorkspace {
 	return {
 		sandbox: {
 			executeCommand: async (command: string) => {
@@ -109,7 +86,7 @@ function makeBuildSuccessWorkspace(
 				return { exitCode: 0, stdout: '', stderr: '' };
 			},
 		},
-	} as unknown as Workspace;
+	};
 }
 
 describe('createSubmitWorkflowTool — schema validation wiring', () => {
@@ -128,12 +105,9 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 			nodeTypesProvider,
 		});
 
-		const tool = createSubmitWorkflowTool(
-			context,
-			makeBuildSuccessWorkspace(),
-		) as unknown as Executable;
+		const tool = createSubmitWorkflowTool(context, makeBuildSuccessWorkspace(), new Map());
 
-		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
+		await executeTool(tool, { filePath: 'src/workflow.ts', name: 'Test' });
 
 		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
 			nodeTypesProvider,
@@ -142,12 +116,9 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 	});
 
 	it('passes undefined nodeTypesProvider when context has none, strictMode still on', async () => {
-		const tool = createSubmitWorkflowTool(
-			makeContext(),
-			makeBuildSuccessWorkspace(),
-		) as unknown as Executable;
+		const tool = createSubmitWorkflowTool(makeContext(), makeBuildSuccessWorkspace(), new Map());
 
-		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
+		await executeTool(tool, { filePath: 'src/workflow.ts', name: 'Test' });
 
 		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
 			nodeTypesProvider: undefined,
@@ -189,12 +160,13 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext({ createWorkflow: 'blocked' } as InstanceAiContext['permissions']),
 			makeWorkspace(),
+			new Map(),
 			(attempt) => {
 				attempts.push(attempt);
 			},
-		) as unknown as Executable;
+		);
 
-		const out = await tool.execute({ filePath: 'src/workflow.ts', name: 'New workflow' });
+		const out = await executeTool(tool, { filePath: 'src/workflow.ts', name: 'New workflow' });
 
 		expect(out.success).toBe(false);
 		expect(out.errors).toEqual(['Action blocked by admin']);
@@ -209,12 +181,13 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 		const tool = createSubmitWorkflowTool(
 			makeContext({ updateWorkflow: 'blocked' } as InstanceAiContext['permissions']),
 			makeWorkspace(),
+			new Map(),
 			(attempt) => {
 				attempts.push(attempt);
 			},
-		) as unknown as Executable;
+		);
 
-		const out = await tool.execute({ filePath: 'src/workflow.ts', workflowId: 'abc123' });
+		const out = await executeTool(tool, { filePath: 'src/workflow.ts', workflowId: 'abc123' });
 
 		expect(out.success).toBe(false);
 		expect(out.errors).toEqual(['Action blocked by admin']);
@@ -226,181 +199,148 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 	});
 });
 
-describe('createSubmitWorkflowTool — credential verification metadata', () => {
-	it('surfaces workflow pin-data availability when mocked credentials reuse saved pin data', async () => {
+describe('createSubmitWorkflowTool — successful submit metadata', () => {
+	beforeEach(() => {
+		mockedValidateWorkflow.mockReset();
 		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
-		const attempts: SubmitWorkflowAttempt[] = [];
-		const context = makeContext({} as InstanceAiContext['permissions'], {
-			workflowService: {
-				createFromWorkflowJSON: jest.fn().mockResolvedValue({ id: 'wf-1' }),
-			} as unknown as InstanceAiContext['workflowService'],
-		});
-		const tool = createSubmitWorkflowTool(
-			context,
-			makeBuildSuccessWorkspace({
-				name: 'Test',
-				nodes: [
-					{
-						id: '1',
-						name: 'Slack',
-						type: 'n8n-nodes-base.slack',
-						typeVersion: 2,
-						position: [0, 0],
-						parameters: {},
-						credentials: { slackApi: null },
-					},
-				],
-				connections: {},
-				pinData: { Slack: [{ ok: true }] },
+	});
+
+	it('uses the provided root for default file path and build cwd', async () => {
+		const root = '/home/test/workspace/builders/builder-1';
+		const calls: Array<{ command: string; cwd?: string }> = [];
+		const workflowService = {
+			createFromWorkflowJSON: vi.fn(async () => {
+				await Promise.resolve();
+				return { id: 'main-workflow-id' };
 			}),
+		};
+		const workspace: SandboxWorkspace = {
+			sandbox: {
+				executeCommand: async (command: string, _args?: string[], options?: { cwd?: string }) => {
+					await Promise.resolve();
+					calls.push({ command, cwd: options?.cwd });
+					if (command.startsWith('node --import tsx build.mjs')) {
+						return {
+							exitCode: 0,
+							stdout: JSON.stringify({
+								success: true,
+								workflow: { id: 'wf-1', name: 'Test', nodes: [], connections: {} },
+								warnings: [],
+							}),
+							stderr: '',
+						};
+					}
+					return { exitCode: 0, stdout: '', stderr: '' };
+				},
+			},
+		};
+		const tool = createSubmitWorkflowTool(
+			makeContext({} as InstanceAiContext['permissions'], {
+				workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
+			}),
+			workspace,
+			new Map(),
+			undefined,
+			{ root },
+		);
+
+		await executeTool(tool, { name: 'Test' });
+
+		expect(calls.some((call) => call.command === `cat '${root}/src/workflow.ts' 2>/dev/null`)).toBe(
+			true,
+		);
+		expect(calls.find((call) => call.command.startsWith('node --import tsx build.mjs'))?.cwd).toBe(
+			root,
+		);
+	});
+
+	it('returns and reports workflow pin-data verification and referenced workflow IDs', async () => {
+		const attempts: SubmitWorkflowAttempt[] = [];
+		const workflowService = {
+			createFromWorkflowJSON: vi.fn(async () => {
+				await Promise.resolve();
+				return { id: 'main-workflow-id' };
+			}),
+		};
+		const workflowJson = {
+			name: 'Main workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					credentials: { slackApi: null },
+				},
+				{
+					id: 'node-2',
+					name: 'Call Sub',
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {
+						source: 'database',
+						workflowId: 'sub-workflow-id',
+					},
+				},
+			],
+			connections: {
+				Slack: { main: [[{ node: 'Call Sub', type: 'main', index: 0 }]] },
+			},
+			pinData: {
+				Slack: [{ ok: true }],
+			},
+		};
+		const tool = createSubmitWorkflowTool(
+			makeContext({} as InstanceAiContext['permissions'], {
+				workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
+			}),
+			makeBuildSuccessWorkspace(workflowJson),
+			new Map(),
 			(attempt) => {
 				attempts.push(attempt);
 			},
-		) as unknown as Executable;
+		);
 
-		const out = await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
+		const output = await executeTool<SubmitWorkflowOutput>(tool, {
+			filePath: 'src/workflow.ts',
+			name: 'Main workflow',
+		});
 
-		expect(out.success).toBe(true);
-		expect(out.usesWorkflowPinDataForVerification).toBe(true);
-		expect(attempts[0]).toMatchObject({
+		expect(output).toMatchObject({
 			success: true,
-			workflowId: 'wf-1',
+			workflowId: 'main-workflow-id',
 			usesWorkflowPinDataForVerification: true,
+			referencedWorkflowIds: ['sub-workflow-id'],
 		});
-	});
-
-	it('appends successful workflowId to the tracingRoot metadata', async () => {
-		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
-		const context = makeContext({} as InstanceAiContext['permissions'], {
-			workflowService: {
-				createFromWorkflowJSON: jest.fn().mockResolvedValue({ id: 'wf-1' }),
-			} as unknown as InstanceAiContext['workflowService'],
-		});
-		const tracingRoot = {
-			id: 'root-1',
-			name: 'subagent:workflow-builder',
-			runType: 'chain',
-			projectName: 'instance-ai',
-			startTime: 0,
-			traceId: 'trace-1',
-			dottedOrder: '',
-			executionOrder: 0,
-			childExecutionOrder: 0,
-		} as InstanceAiTraceRun;
-
-		const tool = createSubmitWorkflowTool(
-			context,
-			makeBuildSuccessWorkspace({ name: 'Test', nodes: [], connections: {} }),
-			undefined,
-			undefined,
-			tracingRoot,
-		) as unknown as Executable;
-
-		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
-
-		expect(tracingRoot.metadata?.generated_workflow_ids).toEqual(['wf-1']);
-	});
-
-	it('does not write tracingRoot metadata when submission fails', async () => {
-		mockedValidateWorkflow.mockReturnValue({
-			errors: [{ code: 'INVALID_PARAM', message: 'bad', nodeName: 'X' }],
-			warnings: [],
-		} as never);
-		const context = makeContext();
-		const tracingRoot = {
-			id: 'root-2',
-			name: 'subagent:workflow-builder',
-			runType: 'chain',
-			projectName: 'instance-ai',
-			startTime: 0,
-			traceId: 'trace-2',
-			dottedOrder: '',
-			executionOrder: 0,
-			childExecutionOrder: 0,
-		} as InstanceAiTraceRun;
-
-		const tool = createSubmitWorkflowTool(
-			context,
-			makeBuildSuccessWorkspace(),
-			undefined,
-			undefined,
-			tracingRoot,
-		) as unknown as Executable;
-
-		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
-
-		expect(tracingRoot.metadata?.generated_workflow_ids).toBeUndefined();
-	});
-
-	it('reports Execute Workflow references from the submitted workflow', async () => {
-		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
-		const attempts: SubmitWorkflowAttempt[] = [];
-		const context = makeContext({} as InstanceAiContext['permissions'], {
-			workflowService: {
-				createFromWorkflowJSON: jest.fn().mockResolvedValue({ id: 'wf-main' }),
-			} as unknown as InstanceAiContext['workflowService'],
-		});
-		const tool = createSubmitWorkflowTool(
-			context,
-			makeBuildSuccessWorkspace({
-				name: 'Main',
-				nodes: [
-					{
-						id: '1',
-						name: 'Run Chunk',
-						type: 'n8n-nodes-base.executeWorkflow',
-						typeVersion: 1.2,
-						position: [0, 0],
-						parameters: {
-							source: 'database',
-							workflowId: { __rl: true, mode: 'id', value: 'wf-chunk' },
-						},
-					},
-				],
-				connections: {},
-			}),
-			(attempt) => {
-				attempts.push(attempt);
-			},
-		) as unknown as Executable;
-
-		await tool.execute({ filePath: 'src/workflow.ts', name: 'Main' });
-
+		expect(output.verificationGuidance).toContain('Call verify-built-workflow next');
+		expect(attempts).toHaveLength(1);
 		expect(attempts[0]).toMatchObject({
 			success: true,
-			workflowId: 'wf-main',
-			referencedWorkflowIds: ['wf-chunk'],
+			workflowId: 'main-workflow-id',
+			usesWorkflowPinDataForVerification: true,
+			referencedWorkflowIds: ['sub-workflow-id'],
 		});
 	});
 });
 
 describe('classifySubmitFailure', () => {
-	it('routes credential access save failures to setup instead of code remediation', () => {
+	it('treats structural workflow save validation failures as code-fixable', () => {
 		const remediation = classifySubmitFailure(
-			['Workflow save failed: You do not have access to the credentials "mock-gmail-oauth2"'],
+			[
+				'Workflow save failed: Workflow structure is invalid. nodes[0].parameters (invalid_type): Expected object, received null',
+			],
 			'workflow_save_failed',
 		);
 
 		expect(remediation).toMatchObject({
-			category: 'needs_setup',
-			shouldEdit: false,
+			category: 'code_fixable',
+			shouldEdit: true,
 			reason: 'workflow_save_failed',
 		});
-		expect(remediation.guidance).toContain('credential');
-	});
-
-	it('routes missing credential save failures to setup instead of code remediation', () => {
-		const remediation = classifySubmitFailure(
-			['Workflow save failed: Credentials not found for id WHATSAPP_CREDENTIAL_ID'],
-			'workflow_save_failed',
-		);
-
-		expect(remediation).toMatchObject({
-			category: 'needs_setup',
-			shouldEdit: false,
-			reason: 'workflow_save_failed',
-		});
-		expect(remediation.guidance).toContain('credential');
+		expect(remediation.guidance).toContain('Fix the workflow code');
 	});
 
 	it('treats workflow save failures as terminal blockers', () => {
@@ -415,5 +355,367 @@ describe('classifySubmitFailure', () => {
 			reason: 'workflow_save_failed',
 		});
 		expect(remediation.guidance).toContain('Stop editing');
+	});
+
+	it('treats a not-found workflowId as code-fixable so the agent can drop the id', () => {
+		const remediation = classifySubmitFailure(
+			['Workflow save failed: Workflow not found'],
+			'workflow_save_failed',
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'workflow_save_failed',
+		});
+		expect(remediation.guidance).toContain('Omit the workflowId');
+	});
+
+	it('routes missing or inaccessible credential save failures to setup', () => {
+		const remediation = classifySubmitFailure(
+			['Workflow save failed: Credential "slackApi" is not accessible'],
+			'workflow_save_failed',
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+		});
+		expect(remediation.guidance).toContain('credential setup');
+	});
+});
+
+describe('extractStructureIssues', () => {
+	it('returns the issues array when the error carries WorkflowStructureIssue[]', () => {
+		const caused = Object.assign(new Error('boom'), {
+			issues: [{ path: ['nodes', 0, 'parameters'], code: 'invalid_type', message: 'no good' }],
+		});
+		const result = extractStructureIssues(caused);
+		expect(result).toHaveLength(1);
+		expect(result?.[0].path).toEqual(['nodes', 0, 'parameters']);
+	});
+
+	it('returns undefined for a plain Error without issues', () => {
+		expect(extractStructureIssues(new Error('plain'))).toBeUndefined();
+	});
+
+	it('returns undefined when issues is an empty array', () => {
+		const caused = Object.assign(new Error('x'), { issues: [] });
+		expect(extractStructureIssues(caused)).toBeUndefined();
+	});
+
+	it('returns undefined when issue entries have wrong shape', () => {
+		const caused = Object.assign(new Error('x'), {
+			issues: [{ path: 'nope', message: 'wrong shape' }],
+		});
+		expect(extractStructureIssues(caused)).toBeUndefined();
+	});
+
+	it('returns undefined for non-objects', () => {
+		expect(extractStructureIssues(null)).toBeUndefined();
+		expect(extractStructureIssues(undefined)).toBeUndefined();
+		expect(extractStructureIssues('error')).toBeUndefined();
+	});
+});
+
+describe('buildNodeIndex', () => {
+	it('returns one entry per node with stable index ordering', () => {
+		const json = {
+			nodes: [
+				{ name: 'Gmail Trigger', type: 'x', position: [0, 0], parameters: {} },
+				{ name: 'Route', type: 'y', position: [0, 0], parameters: {} },
+				{ name: 'Manual Trigger (temp)', type: 'z', position: [0, 0], parameters: {} },
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		expect(buildNodeIndex(json)).toEqual([
+			{ index: 0, name: 'Gmail Trigger' },
+			{ index: 1, name: 'Route' },
+			{ index: 2, name: 'Manual Trigger (temp)' },
+		]);
+	});
+
+	it('returns an empty array when nodes is missing', () => {
+		expect(buildNodeIndex({ connections: {} } as unknown as WorkflowJSON)).toEqual([]);
+	});
+
+	it('coerces non-string node names to an empty string', () => {
+		const json = {
+			nodes: [
+				{ name: 123, type: 'x', position: [0, 0], parameters: {} },
+				{ type: 'y', position: [0, 0], parameters: {} },
+				{ name: null, type: 'z', position: [0, 0], parameters: {} },
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		expect(buildNodeIndex(json)).toEqual([
+			{ index: 0, name: '' },
+			{ index: 1, name: '' },
+			{ index: 2, name: '' },
+		]);
+	});
+});
+
+describe('buildErrorDetails', () => {
+	const json = {
+		name: 'Test',
+		nodes: [
+			{
+				id: 'n-0',
+				name: 'Gmail Trigger',
+				type: 'n8n-nodes-base.gmailTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { foo: 'bar' },
+			},
+			{
+				id: 'n-1',
+				name: 'Manual Trigger (temp)',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 200],
+				parameters: null,
+			},
+		],
+		connections: {
+			'Gmail Trigger': { main: [[{ node: 'GhostNode', type: 'main', index: 0 }]] },
+		},
+	} as unknown as WorkflowJSON;
+
+	it('attaches nodeJson when the path starts with nodes[N]', () => {
+		const issues: WorkflowStructureIssue[] = [
+			{
+				path: ['nodes', 1, 'parameters'],
+				code: 'invalid_type',
+				message: 'Expected object, received null',
+			} as WorkflowStructureIssue,
+		];
+
+		const [detail] = buildErrorDetails(issues, json);
+
+		expect(detail.path).toBe('nodes[1].parameters');
+		expect(detail.code).toBe('invalid_type');
+		expect(detail.offendingValue).toBeNull();
+		expect(detail.nodeJson).toEqual(json.nodes[1]);
+		expect(detail.connectionSlice).toBeUndefined();
+	});
+
+	it('attaches connectionSlice when the path starts with connections.<sourceName>', () => {
+		const issues: WorkflowStructureIssue[] = [
+			{
+				path: ['connections', 'Gmail Trigger', 'main', 0, 0, 'node'],
+				code: 'unknown_connection_target',
+				message: 'Connection target "GhostNode" does not reference an existing node',
+			},
+		];
+
+		const [detail] = buildErrorDetails(issues, json);
+
+		expect(detail.path).toBe('connections.Gmail Trigger.main[0][0].node');
+		expect(detail.offendingValue).toBe('GhostNode');
+		expect(detail.connectionSlice).toEqual(json.connections['Gmail Trigger']);
+		expect(detail.nodeJson).toBeUndefined();
+	});
+
+	it('attaches neither slice for workflow-level paths and keeps offendingValue', () => {
+		const issues: WorkflowStructureIssue[] = [
+			{
+				path: ['name'],
+				code: 'invalid_type',
+				message: 'Required',
+			} as WorkflowStructureIssue,
+		];
+
+		const [detail] = buildErrorDetails(issues, json);
+		expect(detail.path).toBe('name');
+		expect(detail.code).toBe('invalid_type');
+		expect(detail.offendingValue).toBe('Test');
+		expect(detail.nodeJson).toBeUndefined();
+		expect(detail.connectionSlice).toBeUndefined();
+	});
+
+	it('uses "workflow" as the path label for root-level issues', () => {
+		const issues: WorkflowStructureIssue[] = [
+			{
+				path: [],
+				code: 'invalid_type',
+				message: 'root payload bad',
+			} as unknown as WorkflowStructureIssue,
+		];
+
+		const [detail] = buildErrorDetails(issues, json);
+		expect(detail.path).toBe('workflow');
+	});
+});
+
+describe('createSubmitWorkflowTool — structured save-failure payload', () => {
+	beforeEach(() => {
+		mockedValidateWorkflow.mockReset();
+		mockedValidateWorkflow.mockReturnValue({ errors: [], warnings: [] } as never);
+	});
+
+	it('returns errorDetails and nodeIndex when the save throws a structured error', async () => {
+		// Mimic WorkflowStructureBadRequestError from packages/cli/src/workflow-helpers.ts:
+		// a regular Error with an `issues` property. Use `position` (not `parameters`)
+		// because `normalizeWorkflowNodeParameters` runs before save and would coerce
+		// a `null` parameters value to `{}` — invalidating any assertion about it.
+		const saveError = Object.assign(
+			new Error(
+				'Workflow structure is invalid. nodes[1].position (invalid_type): Expected tuple, received null',
+			),
+			{
+				issues: [
+					{
+						path: ['nodes', 1, 'position'],
+						code: 'invalid_type',
+						message: 'Expected tuple, received null',
+					},
+				],
+			},
+		);
+
+		const workflowJson = {
+			name: 'Triage workflow',
+			nodes: [
+				{
+					id: 'n-0',
+					name: 'Gmail Trigger',
+					type: 'n8n-nodes-base.gmailTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'n-1',
+					name: 'Manual Trigger (temp)',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: null,
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		const workflowService = {
+			createFromWorkflowJSON: vi.fn(async () => {
+				await Promise.resolve();
+				throw saveError;
+			}),
+		};
+
+		const attempts: SubmitWorkflowAttempt[] = [];
+		const tool = createSubmitWorkflowTool(
+			makeContext({} as InstanceAiContext['permissions'], {
+				workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
+			}),
+			makeBuildSuccessWorkspace(workflowJson),
+			new Map(),
+			(attempt) => {
+				attempts.push(attempt);
+			},
+		);
+
+		const output = await executeTool<SubmitWorkflowOutput>(tool, {
+			filePath: 'src/workflow.ts',
+			name: 'Triage workflow',
+		});
+
+		expect(output.success).toBe(false);
+		expect(output.errors?.[0]).toContain('nodes[1].position');
+		expect(output.errorDetails).toHaveLength(1);
+		expect(output.errorDetails?.[0]).toMatchObject({
+			path: 'nodes[1].position',
+			code: 'invalid_type',
+			message: 'Expected tuple, received null',
+			offendingValue: null,
+		});
+		expect(output.errorDetails?.[0].nodeJson).toMatchObject({
+			name: 'Manual Trigger (temp)',
+			type: 'n8n-nodes-base.manualTrigger',
+		});
+		expect(output.nodeIndex).toEqual([
+			{ index: 0, name: 'Gmail Trigger' },
+			{ index: 1, name: 'Manual Trigger (temp)' },
+		]);
+
+		expect(attempts).toHaveLength(1);
+		expect(attempts[0].errorDetails?.[0].path).toBe('nodes[1].position');
+		expect(attempts[0].nodeIndex).toHaveLength(2);
+	});
+
+	it('still emits nodeIndex (but no errorDetails) when the save error is plain', async () => {
+		const workflowService = {
+			createFromWorkflowJSON: vi.fn(async () => {
+				await Promise.resolve();
+				throw new Error('database unavailable');
+			}),
+		};
+
+		const workflowJson = {
+			name: 'Plain failure',
+			nodes: [
+				{
+					id: 'n-0',
+					name: 'A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		};
+
+		const tool = createSubmitWorkflowTool(
+			makeContext({} as InstanceAiContext['permissions'], {
+				workflowService: workflowService as unknown as InstanceAiContext['workflowService'],
+			}),
+			makeBuildSuccessWorkspace(workflowJson),
+			new Map(),
+		);
+
+		const output = await executeTool<SubmitWorkflowOutput>(tool, {
+			filePath: 'src/workflow.ts',
+			name: 'Plain failure',
+		});
+
+		expect(output.success).toBe(false);
+		expect(output.errorDetails).toBeUndefined();
+		expect(output.nodeIndex).toEqual([{ index: 0, name: 'A' }]);
+	});
+});
+
+describe('normalizeWorkflowNodeParameters', () => {
+	it('normalizes missing and null node parameters to empty objects', () => {
+		const workflow = {
+			id: 'wf-1',
+			name: 'Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: null,
+				},
+				{
+					id: 'node-2',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		normalizeWorkflowNodeParameters(workflow);
+
+		expect(workflow.nodes.map((node) => node.parameters)).toEqual([{}, {}]);
 	});
 });

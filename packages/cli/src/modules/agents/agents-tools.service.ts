@@ -1,5 +1,9 @@
-import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { Tool } from '@n8n/agents/tool';
+import {
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
@@ -7,8 +11,10 @@ import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { EphemeralNodeExecutor, isAgentProviderNode } from '@/node-execution';
+import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
+
 import { NodeCatalogService } from '@/node-catalog';
+import { EphemeralNodeExecutor, isAgentProviderNode } from '@/node-execution';
 
 type NodeRequest =
 	| string
@@ -26,6 +32,11 @@ type NodeRequest =
  */
 export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeType(nodeId);
 
+const hiddenAgentToolNodeTypes = new Set<string>(AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES);
+const aiUtilityAgentToolNodeTypes = new Set<string>(
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+);
+
 /**
  * Node IDs the agent builder should surface when configuring node-backed
  * tools. For regular nodes marked `usableAsTool`, the loader creates a
@@ -34,13 +45,29 @@ export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeT
  * not approval-gated workflow steps. Provider nodes (OpenAI etc.) are
  * admitted via the explicit whitelist — they ship the full vendor API
  * (image, audio, …) but lack the `usableAsTool` flag.
+ * Frontend-hidden tool variants are excluded here too, so `search_nodes`
+ * cannot offer tools the modal intentionally hides.
  *
  * Exported as a stable reference so the catalog service can cache its
  * filtered search tool per filter identity.
  */
-export const isAgentToolNodeType = (nodeId: string): boolean =>
-	isExecutableNodeType(nodeId) &&
-	(isToolType(nodeId, { includeHitl: false }) || isAgentProviderNode(nodeId));
+export const isAgentToolNodeType = (nodeId: string): boolean => {
+	if (!isExecutableNodeType(nodeId)) {
+		return false;
+	}
+	if (hiddenAgentToolNodeTypes.has(nodeId)) {
+		return false;
+	}
+
+	const isAllowedAiUtilityTool = aiUtilityAgentToolNodeTypes.has(nodeId);
+	const isAllowedTool = isToolType(nodeId, { includeHitl: false }) && !isMcpToolNodeType(nodeId);
+	const isAllowedProviderNode = isAgentProviderNode(nodeId);
+	return isAllowedAiUtilityTool || isAllowedTool || isAllowedProviderNode;
+};
+
+const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
+const isMcpToolNodeType = (nodeId: string): boolean =>
+	nodeId === MCP_CLIENT_TOOL_NODE_TYPE || nodeId.startsWith(MCP_REGISTRY_PACKAGE_NAME);
 
 const searchNodesInputSchema = z.object({
 	queries: z.array(z.string()).min(1).describe('Search queries (e.g., ["gmail", "slack", "http"])'),
@@ -142,6 +169,7 @@ export class AgentsToolsService {
 			)
 			.input(searchNodesInputSchema)
 			.handler(async ({ queries }: { queries: string[] }) => {
+				await this.nodeCatalogService.initialize();
 				const { results } = await this.nodeCatalogService.searchNodes(queries, {
 					nodeFilter: isAgentToolNodeType,
 				});
@@ -160,6 +188,7 @@ export class AgentsToolsService {
 			)
 			.input(getNodeTypesInputSchema)
 			.handler(async ({ nodeIds }: { nodeIds: NodeRequest[] }) => {
+				await this.nodeCatalogService.initialize();
 				const results = await this.nodeCatalogService.getNodeTypes(
 					nodeIds.map(normalizeNodeRequestForCatalog),
 				);

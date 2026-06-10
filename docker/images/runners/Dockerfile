@@ -4,7 +4,7 @@ ARG PYTHON_VERSION=3.13
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
 # ==============================================================================
-FROM node:${NODE_VERSION}-alpine3.23 AS javascript-runner-builder
+FROM node:${NODE_VERSION}-alpine3.22 AS javascript-runner-builder
 COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 WORKDIR /app/task-runner-javascript
@@ -29,12 +29,6 @@ RUN node -e "const pkg = require('./package.json'); \
 # Install moment (special case for backwards compatibility)
 RUN rm -f node_modules/.modules.yaml && \
     pnpm add moment@2.30.1 --prod --no-lockfile
-
-# Rebuild isolated-vm for the container platform. Install build tools as
-# fallback in case prebuild-install cannot find a prebuilt binary.
-RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
-    npm rebuild isolated-vm && \
-    apk del .build-deps
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
@@ -86,9 +80,9 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
-FROM alpine:3.23 AS launcher-downloader
+FROM alpine:3.22 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.5
+ARG LAUNCHER_VERSION=1.4.6
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -108,7 +102,7 @@ RUN set -e; \
 # ==============================================================================
 # STAGE 4: Node alpine base for JS task runner
 # ==============================================================================
-FROM node:${NODE_VERSION}-alpine3.23 AS node-alpine
+FROM node:${NODE_VERSION}-alpine3.22 AS node-alpine
 
 # ==============================================================================
 # STAGE 5: Runtime

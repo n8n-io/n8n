@@ -5,10 +5,12 @@ import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from './instanceAi.store';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { INSTANCE_AI_THREAD_VIEW } from './constants';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
@@ -22,10 +24,21 @@ import {
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_VERSION,
 	useInstanceAiPromptSuggestionsV2Experiment,
 } from '@/experiments/instanceAiPromptSuggestionsV2';
+import {
+	WorkflowPreviewSuggestions,
+	WorkflowPreviewCanvas,
+	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
+	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
+	getPreviewWorkflow,
+	useInstanceAiWorkflowPreviewSuggestionsExperiment,
+} from '@/experiments/instanceAiWorkflowPreviewSuggestions';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
+import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import ProjectSelect from './components/ProjectSelect.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const INSTANCE_AI_DEFAULT_TITLE_KEY: BaseTextKey = 'instanceAi.emptyState.title';
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -33,8 +46,15 @@ const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
 	'experiments.instanceAiPromptSuggestionsV2.emptyState.title';
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY: BaseTextKey =
 	'experiments.instanceAiPromptSuggestionsV2.input.placeholder';
+const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY =
+	'experiments.instanceAiWorkflowPreviewSuggestions.emptyState.title' as BaseTextKey;
+const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY =
+	'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder' as BaseTextKey;
 
 const store = useInstanceAiStore();
+const projectsStore = useProjectsStore();
+const selectedProject = ref(projectsStore.personalProject?.id);
+const settingsStore = useInstanceAiSettingsStore();
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const router = useRouter();
@@ -45,7 +65,15 @@ const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
+const { isFeatureEnabled: isWorkflowPreviewSuggestionsExperimentEnabled } =
+	useInstanceAiWorkflowPreviewSuggestionsExperiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
+const activeWorkflowPreviewFile = ref<string | null>(null);
+const activeWorkflowPreview = computed(() => {
+	if (!activeWorkflowPreviewFile.value) return null;
+	return getPreviewWorkflow(activeWorkflowPreviewFile.value) ?? null;
+});
+
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
 	if (showProactiveStarter.value) {
@@ -61,24 +89,51 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		};
 	}
 
+	if (isWorkflowPreviewSuggestionsExperimentEnabled.value) {
+		return {
+			suggestions: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS,
+			suggestionsComponent: WorkflowPreviewSuggestions,
+			suggestionCatalogVersion: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
+			placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY,
+		};
+	}
+
 	return {
 		suggestions: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS,
 	};
 });
-const emptyStateTitleKey = computed<BaseTextKey>(() =>
-	isPromptSuggestionsV2ExperimentEnabled.value
-		? INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY
-		: INSTANCE_AI_DEFAULT_TITLE_KEY,
-);
+const emptyStateTitleKey = computed<BaseTextKey>(() => {
+	if (isPromptSuggestionsV2ExperimentEnabled.value) {
+		return INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY;
+	}
+	if (isWorkflowPreviewSuggestionsExperimentEnabled.value) {
+		return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
+	}
+	return INSTANCE_AI_DEFAULT_TITLE_KEY;
+});
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
+
+useChatInputAutoFocus(chatInputRef, { disabled: isStartingThread });
+function handleWorkflowPreview(workflowFile: string | null) {
+	activeWorkflowPreviewFile.value = workflowFile;
+}
 
 onMounted(() => {
 	void nextTick(() => chatInputRef.value?.focus());
 });
 
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+	if (!settingsStore.isWorkflowBuilderAvailable) {
+		return;
+	}
+
+	if (!selectedProject.value) {
+		toast.showError(new Error('Please select a project before starting a thread.'), 'Send failed');
+		return;
+	}
+
 	const threadId = uuidv4();
 	isStartingThread.value = true;
 
@@ -86,14 +141,14 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	// `/instance-ai/:threadId` for a thread the BE doesn't know about, and the
 	// follow-up `postMessage` would 404.
 	try {
-		await store.syncThread(threadId);
+		await store.syncThread(threadId, selectedProject.value);
 	} catch {
 		isStartingThread.value = false;
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');
 		return;
 	}
 
-	const thread = store.getOrCreateRuntime(threadId);
+	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
 	void thread.sendMessage(message, attachments, rootStore.pushRef);
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
@@ -119,13 +174,19 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
+					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
-						:research-mode="store.researchMode"
+						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						@submit="handleSubmit"
-						@toggle-research-mode="store.toggleResearchMode()"
-					/>
+					>
+						<template #footer>
+							<div :class="$style.inputFooter">
+								<ProjectSelect v-model="selectedProject" />
+							</div>
+						</template>
+					</InstanceAiInput>
 				</div>
 			</div>
 			<div v-else :class="$style.emptyLayout">
@@ -138,21 +199,49 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
+					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
-						:research-mode="store.researchMode"
+						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
-						@toggle-research-mode="store.toggleResearchMode()"
-					/>
+						@workflow-preview="handleWorkflowPreview"
+					>
+						<template #footer>
+							<div :class="$style.inputFooter">
+								<ProjectSelect v-model="selectedProject" />
+							</div>
+						</template>
+					</InstanceAiInput>
 				</div>
+				<Transition name="workflow-preview-fade">
+					<WorkflowPreviewCanvas
+						v-if="isWorkflowPreviewSuggestionsExperimentEnabled && activeWorkflowPreview"
+						:workflow="activeWorkflowPreview"
+						:class="$style.workflowPreview"
+					/>
+				</Transition>
 			</div>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+.inputFooter {
+	padding-top: calc(var(--spacing--2xs) + var(--radius--xl));
+	padding-bottom: var(--spacing--2xs);
+	padding-left: var(--spacing--2xs);
+	padding-right: var(--spacing--2xs);
+
+	margin-top: calc(-1 * var(--radius--xl));
+	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+	border-bottom-left-radius: var(--radius--xl);
+	border-bottom-right-radius: var(--radius--xl);
+	display: flex;
+	flex-direction: row;
+}
+
 .chatArea {
 	flex: 1;
 	display: flex;
@@ -183,6 +272,14 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 .centeredInput {
 	width: 100%;
 	max-width: 680px;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.workflowPreview {
+	width: 100%;
+	max-width: 1600px;
 }
 
 .proactiveLayout {
@@ -208,5 +305,30 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	max-width: 750px;
 	margin: 0 auto;
 	padding: 0 var(--spacing--lg) var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+:global(.workflow-preview-fade-enter-active) {
+	transition:
+		opacity 0.25s ease,
+		transform 0.25s ease;
+}
+
+:global(.workflow-preview-fade-leave-active) {
+	transition:
+		opacity 0.18s ease,
+		transform 0.18s ease;
+}
+
+:global(.workflow-preview-fade-enter-from) {
+	opacity: 0;
+	transform: translateY(8px);
+}
+
+:global(.workflow-preview-fade-leave-to) {
+	opacity: 0;
+	transform: translateY(4px);
 }
 </style>

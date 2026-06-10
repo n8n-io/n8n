@@ -9,7 +9,7 @@ const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
 const routerPush = vi.fn();
 const routerResolve = vi.fn((to: { params?: { projectId?: string } }) => ({
-	href: `/projects/${to.params?.projectId ?? ''}/workflows`,
+	href: `/projects/${to.params?.projectId ?? ''}/agents`,
 }));
 
 vi.mock('../composables/useProjectAgentsList', () => ({
@@ -38,6 +38,12 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['variant', 'size', 'icon', 'iconOnly', 'disabled'],
 		emits: ['click'],
 	},
+	N8nDropdownMenuItem: {
+		name: 'N8nDropdownMenuItem',
+		template: '<button :data-testid="testId" @click="$emit(\'select\', id)">{{ label }}</button>',
+		props: ['id', 'label', 'icon', 'testId'],
+		emits: ['select'],
+	},
 	N8nTooltip: {
 		name: 'N8nTooltip',
 		template:
@@ -52,13 +58,13 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
-		template: '<div v-bind="$attrs"><slot name="trigger" /></div>',
+		template: '<div v-bind="$attrs"><slot name="trigger" /><slot name="footer" /></div>',
 		props: ['items'],
 		emits: ['select'],
 	},
 	'n8n-dropdown-menu': {
 		name: 'N8nDropdownMenu',
-		template: '<div v-bind="$attrs"><slot name="trigger" /></div>',
+		template: '<div v-bind="$attrs"><slot name="trigger" /><slot name="footer" /></div>',
 		props: ['items'],
 		emits: ['select'],
 	},
@@ -162,16 +168,16 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.text()).toContain('Darwin');
 	});
 
-	it('links the project breadcrumb to the project workflows page', () => {
+	it('links the project breadcrumb to the project agents page', () => {
 		const wrapper = mountHeader();
 		const bc = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
 		const items = bc.props('items') as Array<{ href: string }>;
-		expect(items[0].href).toBe('/projects/p1/workflows');
+		expect(items[0].href).toBe('/projects/p1/agents');
 
 		bc.vm.$emit('itemSelected', { id: 'p1' });
 
 		expect(routerPush).toHaveBeenCalledWith({
-			name: 'ProjectsWorkflows',
+			name: 'ProjectAgents',
 			params: { projectId: 'p1' },
 		});
 	});
@@ -258,42 +264,6 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('open-preview')).toBeUndefined();
 	});
 
-	it('renders preview actions and hides publish actions in preview mode', () => {
-		const wrapper = mountHeader({
-			mode: 'preview',
-			currentSessionTitle: 'Support session',
-			sessionOptions: [{ id: 'thread-1', label: 'Support session' }],
-			headerActions: [{ id: 'delete', label: 'Delete' }],
-		});
-
-		expect(wrapper.find('[data-testid="agent-preview-session-picker"]').exists()).toBe(true);
-		expect(
-			wrapper.find('[data-testid="agent-preview-new-chat-btn"]').attributes('data-variant'),
-		).toBe('outline');
-		expect(wrapper.find('[data-testid="agent-preview-close-btn"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="stub-publish"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(false);
-	});
-
-	it('forwards preview session and header action events', async () => {
-		const wrapper = mountHeader({
-			mode: 'preview',
-			currentSessionTitle: 'Support session',
-			sessionOptions: [{ id: 'thread-1', label: 'Support session' }],
-		});
-
-		const sessionPicker = wrapper.findComponent(
-			'[data-testid="agent-preview-session-picker"]',
-		) as DropdownStubWrapper;
-		sessionPicker.vm.$emit('select', 'thread-1');
-		await wrapper.find('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
-		await wrapper.find('[data-testid="agent-preview-close-btn"]').trigger('click');
-
-		expect(wrapper.emitted('session-select')).toEqual([['thread-1']]);
-		expect(wrapper.emitted('new-chat')).toEqual([[]]);
-		expect(wrapper.emitted('close-preview')).toEqual([[]]);
-	});
-
 	it('emits switch-agent when a switcher item is selected', async () => {
 		agentsListRef.value = [baseAgent, { id: 'a2', name: 'Other' } as unknown as AgentResource];
 		ensureLoadedMock.mockResolvedValue(agentsListRef.value);
@@ -304,5 +274,16 @@ describe('AgentBuilderHeader', () => {
 		) as DropdownStubWrapper;
 		nav.vm.$emit('select', 'a2');
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
+	});
+
+	it('navigates to the new agent page from the switcher footer', async () => {
+		const wrapper = mountHeader();
+
+		await wrapper.find('[data-testid="agent-header-new-agent"]').trigger('click');
+
+		expect(routerPush).toHaveBeenCalledWith({
+			name: 'NewAgentView',
+			query: { projectId: 'p1' },
+		});
 	});
 });

@@ -55,6 +55,68 @@ describe('OAuth1 API', () => {
 		nock.cleanAll();
 	});
 
+	describe('callback route accessibility', () => {
+		// The callback route must be reachable without
+		// an n8n session (so external/dynamic-credential OAuth flows complete) while the handler
+		// still enforces session-bound validation for static credentials.
+		it('should reach the handler when called without authentication', async () => {
+			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			await testServer.authlessAgent
+				.get('/oauth1-credential/callback')
+				.query({
+					oauth_token: 'request_token',
+					oauth_verifier: 'verifier',
+					state: 'invalid_state',
+				})
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({ message: expect.any(String) }),
+				}),
+			);
+		});
+
+		it('should reject an unauthenticated callback for a static credential', async () => {
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+			nock('https://test.domain')
+				.post('/oauth1/request_token')
+				.reply(200, 'oauth_token=request_token&oauth_token_secret=request_secret');
+
+			await testServer
+				.authAgentFor(owner)
+				.get('/oauth1-credential/auth')
+				.query({ id: credential.id })
+				.expect(200);
+
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			await testServer.authlessAgent
+				.get('/oauth1-credential/callback')
+				.query({
+					oauth_token: 'request_token',
+					oauth_verifier: 'verifier',
+					state,
+				})
+				.expect(200);
+
+			expect(renderSpy).toHaveBeenCalledWith('oauth-error-callback', {
+				error: { message: 'Unauthorized' },
+			});
+		});
+	});
+
 	describe('OAuth reconnect authorization', () => {
 		const expectNoCsrfStateOnCredential = async (credentialId: string) => {
 			const stored = await getCredentialById(credentialId);
@@ -182,6 +244,120 @@ describe('OAuth1 API', () => {
 			);
 			const credentials = await stored.getData();
 			expect(credentials.oauthTokenData).toBeUndefined();
+		});
+	});
+
+	describe('per-flow state isolation', () => {
+		const renderCallback = () =>
+			jest.spyOn(Response, 'render').mockImplementation(function (this: any) {
+				this.end();
+				return this;
+			});
+
+		const mockRequestTokenEndpoint = () => {
+			nock('https://test.domain')
+				.post('/oauth1/request_token')
+				.reply(200, 'oauth_token=request_token&oauth_token_secret=request_secret');
+		};
+
+		// IAM-719: concurrent OAuth1 flows on the same shared credential must not race
+		// on the per-flow csrfSecret.
+		it('lets two users complete concurrent OAuth1 flows on the same credential', async () => {
+			const teamProject = await createTeamProject(undefined, owner);
+			const editorA = await createMember();
+			const editorB = await createMember();
+			await linkUserToProject(editorA, teamProject, 'project:editor');
+			await linkUserToProject(editorB, teamProject, 'project:editor');
+			const projectCredential = await saveCredential(sharedCredentialPayload, {
+				project: teamProject,
+				role: 'credential:owner',
+			});
+			const editorAAgent = testServer.authAgentFor(editorA);
+			const editorBAgent = testServer.authAgentFor(editorB);
+
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			renderCallback();
+
+			mockRequestTokenEndpoint();
+			await editorAAgent
+				.get('/oauth1-credential/auth')
+				.query({ id: projectCredential.id })
+				.expect(200);
+			mockRequestTokenEndpoint();
+			await editorBAgent
+				.get('/oauth1-credential/auth')
+				.query({ id: projectCredential.id })
+				.expect(200);
+
+			const [, stateA] = await csrfSpy.mock.results[0].value;
+			const [, stateB] = await csrfSpy.mock.results[1].value;
+			expect(stateA).not.toBe(stateB);
+
+			nock('https://test.domain')
+				.post('/oauth1/access_token')
+				.reply(200, 'oauth_token=token_A&oauth_token_secret=secret_A');
+			nock('https://test.domain')
+				.post('/oauth1/access_token')
+				.reply(200, 'oauth_token=token_B&oauth_token_secret=secret_B');
+
+			await editorAAgent
+				.get('/oauth1-credential/callback')
+				.query({
+					oauth_token: 'request_token',
+					oauth_verifier: 'verifier',
+					state: stateA,
+				})
+				.expect(200);
+
+			await editorBAgent
+				.get('/oauth1-credential/callback')
+				.query({
+					oauth_token: 'request_token',
+					oauth_verifier: 'verifier',
+					state: stateB,
+				})
+				.expect(200);
+		});
+
+		it('rejects a replayed OAuth1 callback (state token already consumed)', async () => {
+			const ownerAgent = testServer.authAgentFor(owner);
+			const oauthService = Container.get(OauthService);
+			const csrfSpy = jest.spyOn(oauthService, 'createCsrfState').mockClear();
+			const renderSpy = renderCallback();
+
+			mockRequestTokenEndpoint();
+			await ownerAgent.get('/oauth1-credential/auth').query({ id: credential.id }).expect(200);
+			const [, state] = await csrfSpy.mock.results[0].value;
+
+			nock('https://test.domain')
+				.post('/oauth1/access_token')
+				.reply(200, 'oauth_token=first_token&oauth_token_secret=first_secret');
+
+			await ownerAgent
+				.get('/oauth1-credential/callback')
+				.query({
+					oauth_token: 'request_token',
+					oauth_verifier: 'verifier',
+					state,
+				})
+				.expect(200);
+			expect(renderSpy).toHaveBeenLastCalledWith('oauth-callback');
+
+			await ownerAgent
+				.get('/oauth1-credential/callback')
+				.query({
+					oauth_token: 'request_token',
+					oauth_verifier: 'verifier',
+					state,
+				})
+				.expect(200);
+			expect(renderSpy).toHaveBeenLastCalledWith(
+				'oauth-error-callback',
+				expect.objectContaining({
+					error: expect.objectContaining({ message: 'The OAuth callback state is invalid!' }),
+				}),
+			);
 		});
 	});
 });

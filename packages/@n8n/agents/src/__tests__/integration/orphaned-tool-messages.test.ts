@@ -1,7 +1,7 @@
 import { expect, it, afterEach } from 'vitest';
 import { z } from 'zod';
 
-import { describeIf, getModel, createSqliteMemory } from './helpers';
+import { describeIf, getModel, createInMemoryAgentMemory } from './helpers';
 import { Agent, Memory, Tool } from '../../index';
 import type { AgentDbMessage } from '../../index';
 
@@ -101,8 +101,8 @@ describe('orphaned tool messages in memory', () => {
 		];
 	}
 
-	it('handles partial history window when earlier messages are truncated', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+	it('handles history containing settled tool-call blocks', async () => {
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-orphan-result';
@@ -110,10 +110,9 @@ describe('orphaned tool messages in memory', () => {
 		// Seed 6 messages into the thread
 		await memory.saveMessages({ threadId, messages: buildSeedMessages() });
 
-		// lastMessages=4 → loads messages 2–5
-		// Each tool-call block carries its own result (state:'resolved'), so there
-		// are no orphan issues regardless of window boundaries.
-		const mem = new Memory().storage(memory).lastMessages(4);
+		// Each tool-call block carries its own result (state:'resolved'), so the
+		// full history loads without orphaned tool-result messages.
+		const mem = new Memory().storage(memory);
 
 		const agent = new Agent('orphan-result-test')
 			.model(getModel('anthropic'))
@@ -130,7 +129,7 @@ describe('orphaned tool messages in memory', () => {
 	});
 
 	it('handles pending tool-call blocks (interrupted turn) in history', async () => {
-		const { memory, cleanup } = createSqliteMemory();
+		const { memory, cleanup } = createInMemoryAgentMemory();
 		cleanups.push(cleanup);
 
 		const threadId = 'thread-orphan-call';
@@ -166,7 +165,7 @@ describe('orphaned tool messages in memory', () => {
 
 		await memory.saveMessages({ threadId, messages });
 
-		const mem = new Memory().storage(memory).lastMessages(10);
+		const mem = new Memory().storage(memory);
 
 		const agent = new Agent('orphan-call-test')
 			.model(getModel('anthropic'))

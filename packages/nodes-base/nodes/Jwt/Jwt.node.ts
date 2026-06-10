@@ -185,6 +185,24 @@ export class Jwt implements INodeType {
 				},
 			},
 			{
+				displayName: 'Header Claims (JSON)',
+				name: 'headerClaims',
+				type: 'json',
+				default: '{}',
+				description:
+					'Custom claims to add to the JWT header, such as a certificate thumbprint (x5t) or key ID (kid). These are merged with the auto-generated header, and values set here take precedence. Useful for building Microsoft Entra certificate client assertions.',
+				validateType: 'object',
+				ignoreValidationDuringExecution: true,
+				typeOptions: {
+					rows: 5,
+				},
+				displayOptions: {
+					show: {
+						operation: ['sign'],
+					},
+				},
+			},
+			{
 				displayName: 'Token',
 				name: 'token',
 				type: 'string',
@@ -390,10 +408,23 @@ export class Jwt implements INodeType {
 						secretOrPrivateKey = formatPrivateKey(credentials.privateKey);
 					}
 
+					const algorithm = options.algorithm ?? credentials.algorithm;
+
 					const signingOptions: jwt.SignOptions = {
-						algorithm: options.algorithm ?? credentials.algorithm,
+						algorithm,
 					};
 					if (options.kid) signingOptions.keyid = options.kid;
+
+					const headerClaims = parseJsonParameter(
+						this.getNodeParameter('headerClaims', itemIndex, {}) as IDataObject,
+						this.getNode(),
+						itemIndex,
+					);
+					if (Object.keys(headerClaims).length > 0) {
+						const header: jwt.JwtHeader = { alg: algorithm };
+						Object.assign(header, headerClaims);
+						signingOptions.header = header;
+					}
 
 					const token = jwt.sign(payload, secretOrPrivateKey, signingOptions);
 

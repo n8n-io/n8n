@@ -10,7 +10,7 @@ import {
 } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
-import type { INode } from 'n8n-workflow';
+import type { INode, IWorkflowGroup } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestampsAndStringId, dbType } from './abstract-entity';
 import { type Folder } from './folder';
@@ -24,6 +24,7 @@ import { objectRetriever, sqlite } from '../utils/transformers';
 
 @Entity()
 export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {
+	// TODO: Add XSS check
 	@Index({ unique: true })
 	@Length(1, 128, {
 		message: 'Workflow name must be $constraint1 to $constraint2 characters long.',
@@ -68,6 +69,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 		transformer: objectRetriever,
 	})
 	meta?: WorkflowFEMeta;
+
+	@JsonColumn({ default: '[]' })
+	nodeGroups: IWorkflowGroup[];
 
 	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({
@@ -123,4 +127,12 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@OneToMany('TestRun', 'workflow')
 	testRuns: TestRun[];
+
+	/**
+	 * Optional lineage id used by package import to match re-imports when it
+	 * differs from this workflow's local id.
+	 */
+	@Index()
+	@Column({ type: 'varchar', nullable: true })
+	sourceWorkflowId: string | null;
 }

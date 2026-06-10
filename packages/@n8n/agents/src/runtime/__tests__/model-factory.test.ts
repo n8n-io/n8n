@@ -1,6 +1,6 @@
 import type { LanguageModel } from 'ai';
 
-import { createModel } from '../model-factory';
+import { createEmbeddingModel, createModel } from '../model-factory';
 
 type ProviderOpts = {
 	apiKey?: string;
@@ -9,9 +9,9 @@ type ProviderOpts = {
 	headers?: Record<string, string>;
 };
 
-// All providers are mocked via jest.mock so require() inside the registry entries
+// All providers are mocked via vi.mock so require() inside the registry entries
 // returns these stubs instead of the real packages.
-jest.mock('@ai-sdk/anthropic', () => ({
+vi.mock('@ai-sdk/anthropic', () => ({
 	createAnthropic: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'anthropic',
 		modelId: model,
@@ -23,19 +23,31 @@ jest.mock('@ai-sdk/anthropic', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/openai', () => ({
-	createOpenAI: (opts?: ProviderOpts) => (model: string) => ({
-		provider: 'openai',
-		modelId: model,
-		apiKey: opts?.apiKey,
-		baseURL: opts?.baseURL,
-		fetch: opts?.fetch,
-		headers: opts?.headers,
-		specificationVersion: 'v3',
-	}),
+vi.mock('@ai-sdk/openai', () => ({
+	createOpenAI: (opts?: ProviderOpts) =>
+		Object.assign(
+			(model: string) => ({
+				provider: 'openai',
+				modelId: model,
+				apiKey: opts?.apiKey,
+				baseURL: opts?.baseURL,
+				fetch: opts?.fetch,
+				headers: opts?.headers,
+				specificationVersion: 'v3',
+			}),
+			{
+				embeddingModel: (model: string) => ({
+					provider: 'openai',
+					modelId: model,
+					apiKey: opts?.apiKey,
+					baseURL: opts?.baseURL,
+					specificationVersion: 'v2',
+				}),
+			},
+		),
 }));
 
-jest.mock('@ai-sdk/google', () => ({
+vi.mock('@ai-sdk/google', () => ({
 	createGoogleGenerativeAI: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'google',
 		modelId: model,
@@ -45,7 +57,7 @@ jest.mock('@ai-sdk/google', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/xai', () => ({
+vi.mock('@ai-sdk/xai', () => ({
 	createXai: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'xai',
 		modelId: model,
@@ -55,7 +67,7 @@ jest.mock('@ai-sdk/xai', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/groq', () => ({
+vi.mock('@ai-sdk/groq', () => ({
 	createGroq: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'groq',
 		modelId: model,
@@ -65,7 +77,7 @@ jest.mock('@ai-sdk/groq', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/deepseek', () => ({
+vi.mock('@ai-sdk/deepseek', () => ({
 	createDeepSeek: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'deepseek',
 		modelId: model,
@@ -75,7 +87,7 @@ jest.mock('@ai-sdk/deepseek', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/cohere', () => ({
+vi.mock('@ai-sdk/cohere', () => ({
 	createCohere: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'cohere',
 		modelId: model,
@@ -85,7 +97,7 @@ jest.mock('@ai-sdk/cohere', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/mistral', () => ({
+vi.mock('@ai-sdk/mistral', () => ({
 	createMistral: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'mistral',
 		modelId: model,
@@ -95,7 +107,7 @@ jest.mock('@ai-sdk/mistral', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/gateway', () => ({
+vi.mock('@ai-sdk/gateway', () => ({
 	createGateway: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'vercel',
 		modelId: model,
@@ -106,7 +118,7 @@ jest.mock('@ai-sdk/gateway', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/azure', () => ({
+vi.mock('@ai-sdk/azure', () => ({
 	createAzure:
 		(opts?: { apiKey?: string; resourceName?: string; apiVersion?: string; baseURL?: string }) =>
 		(model: string) => ({
@@ -119,7 +131,7 @@ jest.mock('@ai-sdk/azure', () => ({
 		}),
 }));
 
-jest.mock('@openrouter/ai-sdk-provider', () => ({
+vi.mock('@openrouter/ai-sdk-provider', () => ({
 	createOpenRouter: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'openrouter',
 		modelId: model,
@@ -130,7 +142,19 @@ jest.mock('@openrouter/ai-sdk-provider', () => ({
 	}),
 }));
 
-jest.mock('@ai-sdk/amazon-bedrock', () => ({
+vi.mock('@ai-sdk/openai-compatible', () => ({
+	createOpenAICompatible: (opts: ProviderOpts & { name: string }) => (model: string) => ({
+		provider: opts.name,
+		modelId: model,
+		apiKey: opts.apiKey,
+		baseURL: opts.baseURL,
+		headers: opts.headers,
+		fetch: opts.fetch,
+		specificationVersion: 'v3',
+	}),
+}));
+
+vi.mock('@ai-sdk/amazon-bedrock', () => ({
 	createAmazonBedrock:
 		(opts?: {
 			region?: string;
@@ -148,8 +172,8 @@ jest.mock('@ai-sdk/amazon-bedrock', () => ({
 		}),
 }));
 
-const mockProxyAgent = jest.fn();
-jest.mock('undici', () => ({
+const { mockProxyAgent } = vi.hoisted(() => ({ mockProxyAgent: vi.fn() }));
+vi.mock('undici', () => ({
 	ProxyAgent: mockProxyAgent,
 }));
 
@@ -185,8 +209,8 @@ describe('createModel', () => {
 
 	it('should pass through a prebuilt LanguageModel', () => {
 		const prebuilt = {
-			doGenerate: jest.fn(),
-			doStream: jest.fn(),
+			doGenerate: vi.fn(),
+			doStream: vi.fn(),
 			specificationVersion: 'v2' as const,
 			modelId: 'custom-model',
 			provider: 'custom',
@@ -276,6 +300,18 @@ describe('createModel', () => {
 			expect(model.modelId).toBe('openai/gpt-4o');
 			expect(model.apiKey).toBe('or-test');
 		});
+
+		it('should create model for nvidia', () => {
+			const model = createModel({
+				id: 'nvidia/nvidia/llama-3.3-nemotron-super-49b-v1',
+				apiKey: 'nv-test',
+				baseURL: 'https://integrate.api.nvidia.com/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('nvidia');
+			expect(model.modelId).toBe('nvidia/llama-3.3-nemotron-super-49b-v1');
+			expect(model.apiKey).toBe('nv-test');
+			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
+		});
 	});
 
 	describe('azure-openai', () => {
@@ -351,5 +387,30 @@ describe('createModel', () => {
 		it('should throw when model has no slash', () => {
 			expect(() => createModel('anthropic-only')).toThrow(/expected "provider\/model-name"/);
 		});
+	});
+});
+
+describe('createEmbeddingModel', () => {
+	it('should accept a legacy api key string', () => {
+		const model = createEmbeddingModel(
+			'openai/text-embedding-3-small',
+			'sk-test',
+		) as unknown as Record<string, unknown>;
+
+		expect(model.provider).toBe('openai');
+		expect(model.modelId).toBe('text-embedding-3-small');
+		expect(model.apiKey).toBe('sk-test');
+	});
+
+	it('should pass baseURL through to OpenAI-compatible embedding providers', () => {
+		const model = createEmbeddingModel('openai/text-embedding-3-small', {
+			apiKey: 'sk-test',
+			baseURL: 'https://custom.example/v1',
+		}) as unknown as Record<string, unknown>;
+
+		expect(model.provider).toBe('openai');
+		expect(model.modelId).toBe('text-embedding-3-small');
+		expect(model.apiKey).toBe('sk-test');
+		expect(model.baseURL).toBe('https://custom.example/v1');
 	});
 });

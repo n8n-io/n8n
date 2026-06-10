@@ -68,6 +68,27 @@ function parseJsonValue(value: JSONValue): unknown {
 	return value;
 }
 
+function toToolInputObject(value: JSONValue): Record<string, unknown> {
+	const parsed = parseJsonValue(value);
+	if (isRecord(parsed)) return parsed;
+	if (parsed === null || parsed === undefined) return {};
+	return { value: parsed };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function getRecord(value: unknown): Record<string, unknown> | undefined {
+	return isRecord(value) ? value : undefined;
+}
+
+type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
+
+function isContentToolResultOutput(value: JSONValue): value is ContentToolResultOutput {
+	return isRecord(value) && value.type === 'content' && Array.isArray(value.value);
+}
+
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
 function toAiContent(block: MessageContent): AiContentPart | undefined {
 	let base: AiContentPart | undefined;
@@ -84,15 +105,22 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 			type: 'tool-call',
 			toolCallId: block.toolCallId ?? '',
 			toolName: block.toolName,
-			input: parseJsonValue(block.input),
+			input: toToolInputObject(block.input),
 			providerExecuted: block.providerExecuted,
 		};
 	} else if (isReasoning(block)) {
 		base = { type: 'reasoning', text: block.text };
 	}
 
-	if (base && block.providerOptions) {
-		return { ...base, providerOptions: block.providerOptions } as AiContentPart;
+	if (base) {
+		// Provider metadata can be required for replay. Gemini attaches
+		// `google.thoughtSignature` to function-call parts, and the next request
+		// is rejected if that signature is dropped from conversation history.
+		return {
+			...base,
+			...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
+			...(block.providerOptions && { providerOptions: block.providerOptions }),
+		} as AiContentPart;
 	}
 	return base;
 }
@@ -106,7 +134,9 @@ function toolCallToResultPart(
 			type: 'tool-result',
 			toolCallId: block.toolCallId,
 			toolName: block.toolName,
-			output: { type: 'json', value: block.output },
+			output: isContentToolResultOutput(block.output)
+				? block.output
+				: { type: 'json', value: block.output },
 		};
 	}
 	// rejected
@@ -129,6 +159,9 @@ function toolCallToResultPart(
 
 /** Convert a single AI SDK content part to an n8n MessageContent block. */
 function fromAiContent(part: AiContentPart): MessageContent | undefined {
+	const providerMetadata = getRecord(
+		'providerMetadata' in part ? part.providerMetadata : undefined,
+	);
 	const providerOptions = 'providerOptions' in part ? part.providerOptions : undefined;
 
 	let base: MessageContent | undefined;
@@ -170,8 +203,11 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 			return undefined;
 	}
 
-	if (base && providerOptions) {
-		return { ...base, providerOptions };
+	if (base) {
+		// Keep provider metadata on persisted content parts so provider-specific
+		// replay data, such as Gemini thought signatures, survives memory/checkpoints.
+		if (providerMetadata) base.providerMetadata = providerMetadata;
+		if (providerOptions) base.providerOptions = providerOptions;
 	}
 	return base;
 }
@@ -220,13 +256,21 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 						continue;
 					}
 					// Emit tool-call part (without result fields)
-					assistantParts.push({
+					const toolCallPart: ToolCallPart = {
 						type: 'tool-call',
 						toolCallId: block.toolCallId,
 						toolName: block.toolName,
-						input: parseJsonValue(block.input),
+						input: toToolInputObject(block.input),
 						providerExecuted: block.providerExecuted,
-					});
+					};
+					// Replayed settled tool calls still need their original provider
+					// metadata. Gemini validates thought signatures on historical
+					// function-call parts, even after the tool result is available.
+					assistantParts.push({
+						...toolCallPart,
+						...(block.providerMetadata && { providerMetadata: block.providerMetadata }),
+						...(block.providerOptions && { providerOptions: block.providerOptions }),
+					} as ToolCallPart);
 					// Emit corresponding tool-result message immediately after
 					const resultPart = toolCallToResultPart(block);
 					resultMessages.push({ role: 'tool', content: [resultPart] });
@@ -301,6 +345,10 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 					const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
 					mutableBlock.state = 'resolved';
 					mutableBlock.output = output.value as JSONValue;
+				} else if (output.type === 'content') {
+					const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
+					mutableBlock.state = 'resolved';
+					mutableBlock.output = output as JSONValue;
 				} else if (output.type === 'error-json') {
 					const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
 					mutableBlock.state = 'rejected';

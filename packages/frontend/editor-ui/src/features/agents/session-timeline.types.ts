@@ -1,11 +1,4 @@
-export type EventKind =
-	| 'user'
-	| 'agent'
-	| 'tool'
-	| 'node'
-	| 'workflow'
-	| 'working-memory'
-	| 'suspension';
+export type EventKind = 'user' | 'agent' | 'tool' | 'node' | 'workflow' | 'suspension';
 
 export interface TimelineItem {
 	kind: EventKind;
@@ -32,6 +25,12 @@ export interface TimelineItem {
 	 * the LLM's runtime input items.
 	 */
 	nodeParameters?: Record<string, unknown>;
+	/**
+	 * Resolved display name for a `delegate_subagent` tool call — the configured
+	 * sub-agent's name, falling back to the humanized task name. Set by the view
+	 * so the row/chart/detail can render "Sub-agent · <name>".
+	 */
+	subAgentName?: string;
 	resumed?: boolean;
 }
 

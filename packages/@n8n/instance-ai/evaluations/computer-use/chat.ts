@@ -13,6 +13,8 @@
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { computeTokenStats } from './tokens';
+import type { CapturedConfirmation, ScenarioTrace } from './types';
 import type { N8nClient } from '../clients/n8n-client';
 import {
 	SSE_SETTLE_DELAY_MS,
@@ -23,8 +25,6 @@ import {
 import type { EvalLogger } from '../harness/logger';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent } from '../types';
-import { computeTokenStats } from './tokens';
-import type { CapturedConfirmation, ScenarioTrace } from './types';
 
 export interface RunChatOptions {
 	client: N8nClient;
@@ -42,7 +42,7 @@ export interface RunChatOptions {
  */
 export async function runChat(options: RunChatOptions): Promise<ScenarioTrace> {
 	const { client, prompt, timeoutMs, logger } = options;
-	const threadId = `cu-eval-${crypto.randomUUID()}`;
+	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 
 	const abortController = new AbortController();

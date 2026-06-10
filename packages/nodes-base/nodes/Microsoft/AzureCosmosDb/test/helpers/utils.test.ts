@@ -22,7 +22,7 @@ import {
 } from '../../helpers/utils';
 
 interface RequestBodyWithParameters extends IDataObject {
-	parameters: Array<{ name: string; value: string }>;
+	parameters: Array<{ name: string; value: string | number | boolean | null }>;
 }
 
 const mockExecuteSingleFunctions = mock<IExecuteSingleFunctions>();
@@ -52,11 +52,9 @@ describe('getPartitionKey', () => {
 		const mockApiResponse = {};
 		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
-		await expect(getPartitionKey.call(mockExecuteSingleFunctions)).rejects.toThrowError(
-			new NodeOperationError(mockExecuteSingleFunctions.getNode(), 'Partition key not found', {
-				description: 'Failed to determine the partition key for this collection',
-			}),
-		);
+		const execution = getPartitionKey.call(mockExecuteSingleFunctions);
+		await expect(execution).rejects.toThrow(NodeOperationError);
+		await expect(execution).rejects.toThrow('Partition key not found');
 	});
 
 	test('should throw NodeApiError for 404 error', async () => {
@@ -77,16 +75,9 @@ describe('getPartitionKey', () => {
 
 		azureCosmosDbApiRequest.mockRejectedValue(mockError);
 
-		await expect(getPartitionKey.call(mockExecuteSingleFunctions)).rejects.toThrowError(
-			new NodeApiError(
-				mockExecuteSingleFunctions.getNode(),
-				{},
-				{
-					message: errorMessage,
-					description: ErrorMap.Container.NotFound.description,
-				},
-			),
-		);
+		const execution = getPartitionKey.call(mockExecuteSingleFunctions);
+		await expect(execution).rejects.toThrow(NodeApiError);
+		await expect(execution).rejects.toThrow(errorMessage);
 	});
 });
 
@@ -110,18 +101,9 @@ describe('validatePartitionKey', () => {
 		};
 		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
-		await expect(
-			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
-			new NodeOperationError(
-				mockExecuteSingleFunctions.getNode(),
-				"Partition key not found in 'Item Contents'",
-				{
-					description:
-						"Partition key 'partitionKey' must be present and have a valid, non-empty value in 'Item Contents'.",
-				},
-			),
-		);
+		const execution = validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions);
+		await expect(execution).rejects.toThrow(NodeOperationError);
+		await expect(execution).rejects.toThrow("Partition key not found in 'Item Contents'");
 	});
 
 	test('should throw NodeOperationError when partition key is missing for "update" operation', async () => {
@@ -135,17 +117,9 @@ describe('validatePartitionKey', () => {
 		};
 		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
-		await expect(
-			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
-			new NodeOperationError(
-				mockExecuteSingleFunctions.getNode(),
-				'Partition key is missing or empty',
-				{
-					description: 'Ensure the "Partition Key" field has a valid, non-empty value.',
-				},
-			),
-		);
+		const execution = validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions);
+		await expect(execution).rejects.toThrow(NodeOperationError);
+		await expect(execution).rejects.toThrow('Partition key is missing or empty');
 	});
 
 	test('should throw NodeOperationError when partition key is missing for "get" operation', async () => {
@@ -159,17 +133,9 @@ describe('validatePartitionKey', () => {
 		};
 		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
-		await expect(
-			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
-			new NodeOperationError(
-				mockExecuteSingleFunctions.getNode(),
-				'Partition key is missing or empty',
-				{
-					description: 'Ensure the "Partition Key" field exists and has a valid, non-empty value.',
-				},
-			),
-		);
+		const execution = validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions);
+		await expect(execution).rejects.toThrow(NodeOperationError);
+		await expect(execution).rejects.toThrow('Partition key is missing or empty');
 	});
 
 	test('should throw NodeOperationError when invalid JSON is provided for customProperties', async () => {
@@ -183,17 +149,9 @@ describe('validatePartitionKey', () => {
 		};
 		azureCosmosDbApiRequest.mockResolvedValue(mockApiResponse);
 
-		await expect(
-			validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
-			new NodeOperationError(
-				mockExecuteSingleFunctions.getNode(),
-				'Invalid JSON format in "Item Contents"',
-				{
-					description: 'Ensure the "Item Contents" field contains a valid JSON object',
-				},
-			),
-		);
+		const execution = validatePartitionKey.call(mockExecuteSingleFunctions, requestOptions);
+		await expect(execution).rejects.toThrow(NodeOperationError);
+		await expect(execution).rejects.toThrow('Invalid JSON format in "Item Contents"');
 	});
 });
 
@@ -229,17 +187,9 @@ describe('validateQueryParameters', () => {
 			.mockReturnValueOnce('$1')
 			.mockReturnValueOnce({ queryParameters: 'param1, param2' });
 
-		await expect(
-			validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
-			new NodeOperationError(
-				mockExecuteSingleFunctions.getNode(),
-				'Empty parameter value provided',
-				{
-					description: 'Please provide non-empty values for the query parameters',
-				},
-			),
-		);
+		const execution = validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+		await expect(execution).rejects.toThrow(NodeOperationError);
+		await expect(execution).rejects.toThrow('Empty parameter value provided');
 	});
 
 	test('should successfully map parameters when they match', async () => {
@@ -277,6 +227,129 @@ describe('validateQueryParameters', () => {
 		}
 	});
 
+	test('should treat all comma-separated values as strings (regression: no numeric heuristic)', async () => {
+		mockExecuteSingleFunctions.getNodeParameter
+			.mockReturnValueOnce('$1, $2')
+			.mockReturnValueOnce({ queryParameters: 'P12223, 1737062400000' });
+
+		const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+		expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+			{ name: '@Param1', value: 'P12223' },
+			{ name: '@Param2', value: '1737062400000' },
+		]);
+	});
+
+	describe('queryParametersJson', () => {
+		test('should preserve string with leading zeros', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '["012345"]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: '012345' },
+			]);
+		});
+
+		test('should preserve integer value', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '[1737062400000]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: 1737062400000 },
+			]);
+		});
+
+		test('should lose precision for integers larger than Number.MAX_SAFE_INTEGER', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '[9007199254740993]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: 9007199254740992 },
+			]);
+		});
+
+		test('should preserve boolean values', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1, $2')
+				.mockReturnValueOnce({ queryParametersJson: '[true, false]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: true },
+				{ name: '@Param2', value: false },
+			]);
+		});
+
+		test('should preserve null value', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '[null]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: null },
+			]);
+		});
+
+		test('should handle empty string value', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '[""]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: '' },
+			]);
+		});
+
+		test('should handle empty parameters array', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('')
+				.mockReturnValueOnce({ queryParametersJson: '[]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([]);
+		});
+
+		test('should handle mixed types', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1, $2, $3, $4')
+				.mockReturnValueOnce({ queryParametersJson: '[1737062400000, "01234", true, null]' });
+
+			const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+			expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+				{ name: '@Param1', value: 1737062400000 },
+				{ name: '@Param2', value: '01234' },
+				{ name: '@Param3', value: true },
+				{ name: '@Param4', value: null },
+			]);
+		});
+
+		test('should throw NodeOperationError when value is not a JSON array', async () => {
+			mockExecuteSingleFunctions.getNodeParameter
+				.mockReturnValueOnce('$1')
+				.mockReturnValueOnce({ queryParametersJson: '{"a": 1}' });
+
+			const execution = validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow('Query Parameters (JSON) must be a JSON array');
+		});
+	});
+
 	test('should extract and map parameter names correctly using regex', async () => {
 		const query = '$1, $2, $3';
 		const queryParamsString = 'value1, value2, value3';
@@ -305,16 +378,16 @@ describe('processJsonInput', () => {
 
 	test('should throw OperationalError for invalid JSON string', () => {
 		const invalidJson = '{key: value}';
-		expect(() => processJsonInput(invalidJson)).toThrowError(
-			new OperationalError('Input must contain a valid JSON', { level: 'warning' }),
-		);
+		const throwFn = () => processJsonInput(invalidJson);
+		expect(throwFn).toThrow(OperationalError);
+		expect(throwFn).toThrow('Input must contain a valid JSON');
 	});
 
 	test('should throw OperationalError for invalid non-string and non-object input', () => {
 		const invalidInput = 123;
-		expect(() => processJsonInput(invalidInput, 'testInput')).toThrowError(
-			new OperationalError("Input 'testInput' must contain a valid JSON", { level: 'warning' }),
-		);
+		const throwFn = () => processJsonInput(invalidInput, 'testInput');
+		expect(throwFn).toThrow(OperationalError);
+		expect(throwFn).toThrow("Input 'testInput' must contain a valid JSON");
 	});
 });
 
@@ -338,23 +411,21 @@ describe('validateCustomProperties', () => {
 		const emptyCustomProperties = {};
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValue(emptyCustomProperties);
 
-		await expect(
-			validateCustomProperties.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
-			new NodeOperationError(mockExecuteSingleFunctions.getNode(), 'Item contents are empty', {
-				description: 'Ensure the "Item Contents" field contains at least one valid property.',
-			}),
+		const emptyExecution = validateCustomProperties.call(
+			mockExecuteSingleFunctions,
+			requestOptions,
 		);
+		await expect(emptyExecution).rejects.toThrow(NodeOperationError);
+		await expect(emptyExecution).rejects.toThrow('Item contents are empty');
 
 		const invalidValues = { property1: null, property2: '' };
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValue(invalidValues);
 
-		await expect(
-			validateCustomProperties.call(mockExecuteSingleFunctions, requestOptions),
-		).rejects.toThrowError(
-			new NodeOperationError(mockExecuteSingleFunctions.getNode(), 'Item contents are empty', {
-				description: 'Ensure the "Item Contents" field contains at least one valid property.',
-			}),
+		const invalidExecution = validateCustomProperties.call(
+			mockExecuteSingleFunctions,
+			requestOptions,
 		);
+		await expect(invalidExecution).rejects.toThrow(NodeOperationError);
+		await expect(invalidExecution).rejects.toThrow('Item contents are empty');
 	});
 });

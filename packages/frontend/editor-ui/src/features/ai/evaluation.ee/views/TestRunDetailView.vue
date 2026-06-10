@@ -14,10 +14,12 @@ import { getUserDefinedMetricNames } from '../evaluation.utils';
 import MetricSummaryStrip from '../components/RunDetail/MetricSummaryStrip.vue';
 import RunStatusPill from '../components/RunDetail/RunStatusPill.vue';
 import TestCaseCard from '../components/RunDetail/TestCaseCard.vue';
+import { useWorkflowEvaluationState } from '../composables/useWorkflowEvaluationState';
 
 const router = useRouter();
 const toast = useToast();
 const evaluationStore = useEvaluationStore();
+const evaluationState = useWorkflowEvaluationState();
 const locale = useI18n();
 const telemetry = useTelemetry();
 
@@ -72,7 +74,7 @@ const orderedTestCases = computed(() =>
 	),
 );
 
-const metricSources = computed(() => evaluationStore.metricSourceByKey);
+const metricSources = computed(() => evaluationState.metricSourceByKey.value);
 
 const caseValuesByKey = computed(() => {
 	const result: Record<string, Array<number | undefined>> = {};
