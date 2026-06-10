@@ -69,7 +69,8 @@ export class TagService {
 					qb2.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
 						isArchived: false,
 					}),
-				);
+				)
+				.orderBy('tag.name', 'ASC');
 			if (options.limit !== undefined) qb.limit(options.limit);
 			const tags = await qb.getMany();
 
@@ -78,6 +79,7 @@ export class TagService {
 
 		return await (this.tagRepository.find({
 			select: ['id', 'name', 'createdAt', 'updatedAt'],
+			order: { name: 'ASC' },
 			...(options?.limit !== undefined ? { take: options.limit } : {}),
 		}) as Promise<GetAllResult<T>>);
 	}

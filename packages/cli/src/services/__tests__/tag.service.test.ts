@@ -25,12 +25,14 @@ describe('TagService', () => {
 	});
 
 	describe('listWithUsageCount', () => {
-		test('builds a limited query and returns data + totalCount in parallel', async () => {
+		test('builds a limited ordered query and returns data + totalCount in parallel', async () => {
 			const limitFn = jest.fn().mockReturnThis();
+			const orderByFn = jest.fn().mockReturnThis();
 			const getMany = jest.fn().mockResolvedValue([makeTag()]);
 			const builder = {
 				select: jest.fn().mockReturnThis(),
 				loadRelationCountAndMap: jest.fn().mockReturnThis(),
+				orderBy: orderByFn,
 				limit: limitFn,
 				getMany,
 			};
@@ -39,6 +41,7 @@ describe('TagService', () => {
 
 			const result = await tagService.listWithUsageCount({ limit: 10 });
 
+			expect(orderByFn).toHaveBeenCalledWith('tag.name', 'ASC');
 			expect(limitFn).toHaveBeenCalledWith(10);
 			expect(tagRepository.count).toHaveBeenCalledTimes(1);
 			expect(result.totalCount).toBe(42);

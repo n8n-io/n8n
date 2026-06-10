@@ -332,8 +332,10 @@ export class McpService {
 			listCredentialsTool.handler,
 		);
 
-		const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
-		server.registerTool(listTagsTool.name, listTagsTool.config, listTagsTool.handler);
+		if (!this.globalConfig.tags.disabled) {
+			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
+			server.registerTool(listTagsTool.name, listTagsTool.config, listTagsTool.handler);
+		}
 
 		// Data table tools
 		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
