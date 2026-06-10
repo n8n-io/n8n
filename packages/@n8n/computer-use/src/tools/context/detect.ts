@@ -173,21 +173,34 @@ async function runOsascript(script: string): Promise<string | undefined> {
 	});
 }
 
+/**
+ * An AppleScript application reference, preferring the locale-independent bundle
+ * id (`tell application id "com.apple.Preview"`). get-windows reports the
+ * *localized* app name (e.g. "Vorschau"), which `tell application "<name>"`
+ * can't resolve — the bundle id always can. Falls back to the quoted name.
+ */
+function appReference(target: { bundleId?: string; app?: string }): string | undefined {
+	if (target.bundleId) return `id "${target.bundleId.replace(/"/g, '\\"')}"`;
+	if (target.app) return `"${target.app.replace(/"/g, '\\"')}"`;
+	return undefined;
+}
+
 /** Absolute POSIX path of the front Finder window's folder, or `undefined`. */
 export async function detectFinderFolder(): Promise<string | undefined> {
 	return await runOsascript(
-		'tell application "Finder" to if (count of windows) > 0 then return POSIX path of (target of front window as alias)',
+		'tell application id "com.apple.finder" to if (count of windows) > 0 then return POSIX path of (target of front window as alias)',
 	);
 }
 
 /** Best-effort file path of the frontmost document in a PDF/document viewer. */
-export async function detectDocumentPath(app: string | undefined): Promise<string | undefined> {
-	if (!app) return undefined;
-	// Preview/Acrobat expose `path of front document`; quote the app name so
-	// names with spaces (e.g. "Adobe Acrobat") are handled.
-	const escaped = app.replace(/"/g, '\\"');
+export async function detectDocumentPath(target: {
+	bundleId?: string;
+	app?: string;
+}): Promise<string | undefined> {
+	const ref = appReference(target);
+	if (!ref) return undefined;
 	return await runOsascript(
-		`tell application "${escaped}" to if (count of documents) > 0 then return path of front document`,
+		`tell application ${ref} to if (count of documents) > 0 then return path of front document`,
 	);
 }
 
@@ -206,7 +219,7 @@ export async function detectFinderFolders(): Promise<string[]> {
 	// Accumulate into a newline-joined string and `return` it (osascript `log`
 	// goes to stderr, which we don't read).
 	const script = [
-		'tell application "Finder"',
+		'tell application id "com.apple.finder"',
 		'set out to ""',
 		'repeat with w in windows',
 		'try',
@@ -220,11 +233,14 @@ export async function detectFinderFolders(): Promise<string[]> {
 }
 
 /** File path of *every* open document in a PDF/document viewer (front-to-back). */
-export async function detectDocumentPaths(app: string | undefined): Promise<string[]> {
-	if (!app) return [];
-	const escaped = app.replace(/"/g, '\\"');
+export async function detectDocumentPaths(target: {
+	bundleId?: string;
+	app?: string;
+}): Promise<string[]> {
+	const ref = appReference(target);
+	if (!ref) return [];
 	const script = [
-		`tell application "${escaped}"`,
+		`tell application ${ref}`,
 		'set out to ""',
 		'repeat with d in documents',
 		'try',
@@ -271,7 +287,7 @@ async function buildContext(info: WindowInfo): Promise<DetectedContext> {
 	if (kind === 'finder') {
 		context.path = await detectFinderFolder();
 	} else if (kind === 'pdf') {
-		context.path = await detectDocumentPath(info.app);
+		context.path = await detectDocumentPath({ bundleId: info.bundleId, app: info.app });
 	}
 	return context;
 }
@@ -316,11 +332,17 @@ export async function detectOpenContexts(): Promise<DetectedContext[]> {
 	const finderFolders = kinds.some((entry) => entry.kind === 'finder')
 		? await detectFinderFolders()
 		: [];
-	const documentApps = [...new Set(kinds.filter((e) => e.kind === 'pdf').map((e) => e.info.app))];
+	// Key document apps by bundle id (locale-independent) so "Vorschau"/"Preview"
+	// resolve to the same entry and the AppleScript can address them reliably.
+	const docKey = (info: WindowInfo) => info.bundleId ?? info.app ?? '';
+	const documentApps = new Map<string, { bundleId?: string; app?: string }>();
+	for (const { info, kind } of kinds) {
+		if (kind === 'pdf') documentApps.set(docKey(info), { bundleId: info.bundleId, app: info.app });
+	}
 	const documentsByApp = new Map<string, string[]>();
 	await Promise.all(
-		documentApps.map(async (appName) =>
-			documentsByApp.set(appName, await detectDocumentPaths(appName)),
+		[...documentApps].map(async ([key, target]) =>
+			documentsByApp.set(key, await detectDocumentPaths(target)),
 		),
 	);
 
@@ -348,10 +370,11 @@ export async function detectOpenContexts(): Promise<DetectedContext[]> {
 				add({ ...base, windowTitle: info.windowTitle }); // path unknown (e.g. no Automation)
 			}
 		} else if (kind === 'pdf') {
-			if (clustered.has(`pdf:${info.app}`)) continue;
-			clustered.add(`pdf:${info.app}`);
+			const key = docKey(info);
+			if (clustered.has(`pdf:${key}`)) continue;
+			clustered.add(`pdf:${key}`);
 			const base = { kind, app: info.app, bundleId: info.bundleId };
-			const documents = documentsByApp.get(info.app) ?? [];
+			const documents = documentsByApp.get(key) ?? [];
 			if (documents.length) {
 				for (const doc of documents) add({ ...base, windowTitle: basename(doc), path: doc });
 			} else {

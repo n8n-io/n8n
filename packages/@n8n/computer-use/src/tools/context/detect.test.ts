@@ -173,7 +173,7 @@ describe('detectOpenContexts', () => {
 			onResult: (error: Error | null, stdout: string, stderr: string) => void,
 		) => {
 			const script = args.join(' ');
-			const lines = /application "Finder"/.test(script) ? paths.finder : paths.documents;
+			const lines = /com\.apple\.finder/.test(script) ? paths.finder : paths.documents;
 			onResult(null, (lines ?? []).join('\n'), '');
 			return {} as never;
 		}) as never);
@@ -209,6 +209,28 @@ describe('detectOpenContexts', () => {
 			{ kind: 'finder', path: '/Users/me/Downloads', url: undefined },
 			{ kind: 'pdf', path: '/docs/A.pdf', url: undefined },
 			{ kind: 'pdf', path: '/docs/B.pdf', url: undefined },
+		]);
+	});
+
+	test('resolves a document path even when the app name is localized', async () => {
+		// get-windows reports the localized name ("Vorschau"); the bundle id lets
+		// the AppleScript address Preview and read the real path.
+		openWindowsMock.mockResolvedValue([
+			{
+				id: 1,
+				title: 'plan Kopie.pdf',
+				owner: { name: 'Vorschau', bundleId: 'com.apple.Preview' },
+			},
+		]);
+		mockEnumeration({ documents: ['/Users/berni/Desktop/plan_Kopie.pdf'] });
+
+		const result = await detectOpenContexts();
+		expect(result).toEqual([
+			expect.objectContaining({
+				kind: 'pdf',
+				app: 'Vorschau',
+				path: '/Users/berni/Desktop/plan_Kopie.pdf',
+			}),
 		]);
 	});
 
