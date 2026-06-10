@@ -122,7 +122,10 @@ function reportWorkflowFailures(executionId: string, workflowId: string) {
 const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 	if (event.type !== 'executionFinished') return;
 	if (event.data.workflowId !== props.workflowId) return;
-	if (event.data.status === 'success') return;
+	// Only genuine failures. Anything else — success, but also canceled — must
+	// not fall through to collectValidationIssues(), which would show a
+	// misleading Fix with AI card right after the user stopped a run.
+	if (event.data.status !== 'error' && event.data.status !== 'crashed') return;
 	// Only offer "Fix with AI" for human-initiated runs. When the agent ran the
 	// workflow itself (source 'instance_ai'), it already sees the errors in its
 	// tool result and fixes them on its own.
