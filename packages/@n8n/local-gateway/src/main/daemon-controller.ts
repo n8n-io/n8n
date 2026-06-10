@@ -68,9 +68,13 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 		}
 	}
 
-	async connect(config: GatewayConfig, url: string, apiKey: string): Promise<void> {
+	async connect(
+		config: GatewayConfig,
+		url: string,
+		getAuthToken: () => Promise<string>,
+	): Promise<void> {
 		const normalizedUrl = url.replace(/\/$/, '');
-		logger.debug('Direct gateway connect requested', { url: normalizedUrl });
+		logger.debug('Gateway connect requested', { url: normalizedUrl });
 
 		this.setStatus('connecting');
 		this._lastError = null;
@@ -81,7 +85,7 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 		const session = new GatewaySession(defaults, store);
 		const client = new GatewayClient({
 			url: normalizedUrl,
-			apiKey,
+			getAuthToken,
 			config,
 			session,
 			confirmResourceAccess: () => 'denyOnce',

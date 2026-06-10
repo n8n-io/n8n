@@ -52,9 +52,8 @@ function tagCategory(defs: ToolDefinition[], category: string): ToolDefinition[]
 	return defs;
 }
 
-export interface GatewayClientOptions {
+export type GatewayClientOptions = {
 	url: string;
-	apiKey: string;
 	/** Non-permission config (browser, shell, logLevel, etc.) */
 	config: GatewayConfig;
 	/** Permissions + dir + session rules for this connection. */
@@ -64,7 +63,20 @@ export interface GatewayClientOptions {
 	onPersistentFailure?: () => void;
 	/** Called after disconnect() has finished tearing down the client. */
 	onDisconnected?: () => void;
-}
+} & (
+	| {
+			// Legacy gateway pairing/session key, sent as `X-Gateway-Key`. Used by the standalone CLI.
+			apiKey: string;
+			// Token for OAuth mode
+			getAuthToken?: never;
+	  }
+	| {
+			// Legacy gateway pairing/session key, sent as `X-Gateway-Key`. Used by the standalone CLI.
+			apiKey?: never;
+			// Token for OAuth mode
+			getAuthToken: () => Promise<string>;
+	  }
+);
 
 interface FilesystemRequestEvent {
 	type: 'filesystem-request';
@@ -115,7 +127,19 @@ export class GatewayClient {
 
 	/** Session key when the server has upgraded the pairing token; otherwise the original token. */
 	private get apiKey(): string {
-		return this.sessionKey ?? this.options.apiKey;
+		return this.sessionKey ?? this.options.apiKey ?? '';
+	}
+
+	/**
+	 * Set the auth header for a gateway request. OAuth mode (`getAuthToken`) sends a fresh
+	 * `Authorization: Bearer` token; legacy mode sends the `X-Gateway-Key` pairing/session key.
+	 */
+	private async applyAuthHeaders(headers: Headers): Promise<void> {
+		if (this.options.getAuthToken) {
+			headers.set('Authorization', `Bearer ${await this.options.getAuthToken()}`);
+		} else {
+			headers.set('X-Gateway-Key', this.apiKey);
+		}
 	}
 
 	private get dir(): string {
@@ -160,7 +184,7 @@ export class GatewayClient {
 				const url = `${this.options.url}/rest/instance-ai/gateway/disconnect`;
 				const headers = new Headers();
 				headers.set('Content-Type', 'application/json');
-				headers.set('X-Gateway-Key', this.apiKey);
+				await this.applyAuthHeaders(headers);
 				const response = await fetch(url, {
 					method: 'POST',
 					headers,
@@ -299,7 +323,7 @@ export class GatewayClient {
 		const url = `${this.options.url}/rest/instance-ai/gateway/init`;
 		const headers = new Headers();
 		headers.set('Content-Type', 'application/json');
-		headers.set('X-Gateway-Key', this.apiKey);
+		await this.applyAuthHeaders(headers);
 		const response = await fetch(url, {
 			method: 'POST',
 			headers,
@@ -319,10 +343,11 @@ export class GatewayClient {
 			throw new Error(`Failed to upload capabilities: ${response.status} ${text}`);
 		}
 
-		// If the server returned a session key, switch to it for all subsequent requests
+		// Legacy mode only: if the server returned a session key, switch to it for all subsequent
+		// requests. In OAuth mode the access token (via getAuthToken) is the credential.
 		// n8n wraps controller responses in { data: ... }
 		const body = (await response.json()) as { data: { ok: boolean; sessionKey?: string } };
-		if (body.data.sessionKey) {
+		if (!this.options.getAuthToken && body.data.sessionKey) {
 			this.sessionKey = body.data.sessionKey;
 			logger.debug('Pairing token consumed, switched to session key');
 		}
@@ -333,12 +358,11 @@ export class GatewayClient {
 	private connectSSE(): void {
 		const url = `${this.options.url}/rest/instance-ai/gateway/events`;
 
-		logger.debug('Connecting to gateway', { keyPrefix: this.apiKey.slice(0, 8) });
-		const apiKey = this.apiKey;
+		logger.debug('Connecting to gateway');
 		this.eventSource = new EventSource(url, {
 			fetch: async (input, init) => {
 				const headers = new Headers(init?.headers);
-				headers.set('X-Gateway-Key', apiKey);
+				await this.applyAuthHeaders(headers);
 				return await fetch(input, { ...init, headers });
 			},
 		});
@@ -456,7 +480,6 @@ export class GatewayClient {
 		const typedArgs: unknown = def.inputSchema.parse(cleanArgs);
 		const session = this.options.session;
 		const instanceUrl = this.options.url;
-		const gatewayKey = this.apiKey;
 		const context = {
 			dir: this.dir,
 			secretsBuffer: {
@@ -468,7 +491,7 @@ export class GatewayClient {
 				const url = `${instanceUrl}/rest/instance-ai/gateway/credentials`;
 				const headers = new Headers();
 				headers.set('Content-Type', 'application/json');
-				headers.set('X-Gateway-Key', gatewayKey);
+				await this.applyAuthHeaders(headers);
 				const res = await fetch(url, {
 					method: 'POST',
 					headers,
@@ -549,7 +572,7 @@ export class GatewayClient {
 		try {
 			const headers = new Headers();
 			headers.set('Content-Type', 'application/json');
-			headers.set('X-Gateway-Key', this.apiKey);
+			await this.applyAuthHeaders(headers);
 			const response = await fetch(url, {
 				method: 'POST',
 				headers,

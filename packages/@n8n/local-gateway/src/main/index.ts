@@ -12,6 +12,7 @@ import { TokenStore } from './oauth/token-store';
 import { SettingsStore } from './settings-store';
 import { createTray } from './tray';
 import { APP_URL_SCHEME } from '../shared/constants';
+import type { AuthStatus } from '../shared/types';
 
 // Windows: required for proper taskbar/notification grouping
 if (process.platform === 'win32') {
@@ -57,14 +58,40 @@ if (!app.requestSingleInstanceLock()) {
 				await controller.disconnect();
 			}
 
-			registerIpcHandlers({
-				controller,
-				settingsStore,
-				disconnectGateway,
-				oauthFlow,
+			/**
+			 * Connect computer-use to the signed-in n8n instance. The token provider returns a valid
+			 * (refreshed) OAuth access token, which the gateway client sends as `Authorization: Bearer`.
+			 */
+			async function connectGateway(instanceUrl: string): Promise<void> {
+				const config = settingsStore.toGatewayConfig();
+				await controller.connect(config, instanceUrl, async () => {
+					const token = await oauthFlow.getValidAccessToken();
+					if (!token) throw new Error('Not signed in to n8n');
+					return token;
+				});
+			}
+
+			/** Bring the gateway connection in line with the current auth state. */
+			function syncGatewayConnection(status: AuthStatus): void {
+				if (status.state === 'signedIn' && status.instanceUrl) {
+					void connectGateway(status.instanceUrl).catch((error: unknown) => {
+						logger.error('Gateway connect failed', {
+							error: error instanceof Error ? error.message : String(error),
+						});
+					});
+				} else if (status.state === 'signedOut') {
+					void disconnectGateway().catch(() => {});
+				}
+			}
+
+			registerIpcHandlers(
+        controller,
+        settingsStore,
+        disconnectGateway,
+        oauthFlow,
 				instanceApi,
 				openExternal,
-			});
+      );
 
 			controller.on('statusChanged', (snapshot) => {
 				notifyMainWindow('statusChanged', snapshot);
@@ -72,6 +99,8 @@ if (!app.requestSingleInstanceLock()) {
 
 			oauthFlow.on('authStatusChanged', (status) => {
 				notifyMainWindow('authStatusChanged', status);
+				// Connect computer-use on sign-in; tear it down on sign-out.
+				syncGatewayConnection(status);
 				// The window auto-hid on blur when the system browser opened — bring it back so the
 				// user sees the result (the signed-in view, or a sign-in error).
 				if (status.state === 'signedIn' || status.state === 'error') {
@@ -112,6 +141,9 @@ if (!app.requestSingleInstanceLock()) {
 
 			// Cold start: handle an OAuth redirect passed in argv (Windows/Linux deep link).
 			handleOAuthDeepLinkFromArgv(process.argv);
+
+			// Persisted session: reconnect the gateway on launch if already signed in.
+			syncGatewayConnection(oauthFlow.getStatus());
 
 			// The window opens only from the tray — nothing to auto-open on launch.
 
