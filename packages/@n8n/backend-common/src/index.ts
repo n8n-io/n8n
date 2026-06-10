@@ -11,3 +11,4 @@ export { isContainedWithin, safeJoinPath } from './utils/path-util';
 export { assertDir, exists } from './utils/fs';
 export { parseFlatted } from './utils/parse-flatted';
 export { CliParser } from './cli-parser';
+export { TypedEmitter } from './typed-emitter';
