@@ -23,7 +23,7 @@ import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-const testServer = setupTestServer({ endpointGroups: ['mcp'] });
+const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['mcp'] });
 
 let owner: User;
 let member: User;

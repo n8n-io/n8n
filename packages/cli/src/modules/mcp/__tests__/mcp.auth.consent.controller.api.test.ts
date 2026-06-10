@@ -60,6 +60,7 @@ describe('GET /rest/consent/details', () => {
 		expect(response.body.data).toEqual({
 			clientName: 'Test OAuth Client',
 			clientId: 'test-client-id',
+			scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
 		});
 	});
 
