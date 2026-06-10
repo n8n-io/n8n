@@ -3,6 +3,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
 	AppSettings,
 	AuthStatus,
+	DesktopAssistantHistoryParams,
+	DesktopAssistantHistoryResponse,
 	DesktopAssistantTasksResponse,
 	ElectronApi,
 	RunTaskResult,
@@ -52,6 +54,21 @@ const electronApi: ElectronApi = {
 
 	openWorkflow: async (workflowId: string): Promise<void> => {
 		await ipcRenderer.invoke('tasks:openWorkflow', workflowId);
+	},
+
+	getHistory: async (
+		params?: DesktopAssistantHistoryParams,
+	): Promise<DesktopAssistantHistoryResponse> =>
+		await (ipcRenderer.invoke('history:list', params) as Promise<DesktopAssistantHistoryResponse>),
+
+	openExecution: async (workflowId: string, executionId: string): Promise<void> => {
+		await ipcRenderer.invoke('history:openExecution', workflowId, executionId);
+	},
+
+	onWindowActiveChanged: (onChangeCallback: (active: boolean) => void): (() => void) => {
+		const handler = (_event: unknown, active: boolean) => onChangeCallback(active);
+		ipcRenderer.on('windowActiveChanged', handler);
+		return () => ipcRenderer.removeListener('windowActiveChanged', handler);
 	},
 };
 

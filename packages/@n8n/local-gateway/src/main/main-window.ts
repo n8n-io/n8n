@@ -43,8 +43,20 @@ function createMainWindow(preloadPath: string, rendererPath: string): BrowserWin
 
 	void window.loadFile(rendererPath);
 
+	// Tell the renderer when the window is actually on screen, so background polling
+	// can pause while it's hidden. The renderer's own visibility/focus events are
+	// unreliable for a frameless hide-on-blur window, so the main process is the
+	// source of truth.
+	const broadcastActive = (active: boolean) => {
+		if (!window.isDestroyed()) window.webContents.send('windowActiveChanged', active);
+	};
+	window.on('show', () => broadcastActive(true));
+	window.on('focus', () => broadcastActive(true));
+	window.on('hide', () => broadcastActive(false));
+
 	// Menubar behaviour: dismiss when the window loses focus (e.g. clicking elsewhere).
 	window.on('blur', () => {
+		broadcastActive(false);
 		if (!window.webContents.isDevToolsOpened()) window.hide();
 	});
 	window.on('closed', () => {

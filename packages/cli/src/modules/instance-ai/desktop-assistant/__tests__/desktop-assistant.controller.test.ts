@@ -101,9 +101,11 @@ describe('DesktopAssistantController', () => {
 			expect(result).toEqual({ status: 'building', threadId: 't-1', runId: 'r-1' });
 		});
 
-		test('getHistory parses the limit query param', async () => {
+		test('getHistory forwards the validated cursor query to the service', async () => {
+			// The query DTO (coercion + bounds) runs in the controller registry before
+			// the handler; the handler receives already-parsed values and forwards them.
 			service.getHistory.mockResolvedValue({ results: [], count: 0, estimated: false });
-			await controller.getHistory(req, null, { limit: '50', firstId: 'a', lastId: 'z' });
+			await controller.getHistory(req, null, { limit: 50, firstId: 'a', lastId: 'z' });
 			expect(service.getHistory).toHaveBeenCalledWith(user, {
 				limit: 50,
 				firstId: 'a',

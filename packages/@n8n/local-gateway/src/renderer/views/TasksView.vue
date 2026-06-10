@@ -9,6 +9,8 @@ import type { DesktopAssistantTasksResponse } from '../../shared/types';
 
 const i18n = useI18n();
 
+const emit = defineEmits<{ executed: [] }>();
+
 const tasks = ref<DesktopAssistantTasksResponse | null>(null);
 const loading = ref(true);
 const error = ref(false);
@@ -40,8 +42,14 @@ function openWorkflow(workflowId: string) {
 }
 
 async function runTask(workflowId: string) {
-	await window.electronAPI.runTask(workflowId);
-	// Reflect the new run (e.g. the "Last run" line) without a manual refresh.
+	const result = await window.electronAPI.runTask(workflowId);
+	if (result.ok) {
+		// Hand off to the History tab so the user watches the run progress (spinner
+		// → done/failed). Reloading the task list here is moot since we're leaving.
+		emit('executed');
+		return;
+	}
+	// On failure, stay put and refresh the list so it reflects current state.
 	await load();
 }
 

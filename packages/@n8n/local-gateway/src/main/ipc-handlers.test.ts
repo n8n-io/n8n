@@ -45,6 +45,8 @@ function register(overrides: {
 	controller?: unknown;
 	settingsStore?: unknown;
 	disconnectGateway?: HandlerFn;
+	instanceApi?: unknown;
+	openExternal?: HandlerFn;
 }): void {
 	registerIpcHandlers({
 		controller: (overrides.controller ?? { disconnect: vi.fn(), getSnapshot: vi.fn() }) as never,
@@ -56,8 +58,14 @@ function register(overrides: {
 		disconnectGateway: (overrides.disconnectGateway ??
 			vi.fn().mockResolvedValue(undefined)) as never,
 		oauthFlow: { getStatus: vi.fn(), getValidAccessToken: vi.fn() } as never,
-		instanceApi: { getTasks: vi.fn(), runWorkflow: vi.fn(), workflowUrl: vi.fn() } as never,
-		openExternal: vi.fn().mockResolvedValue(undefined) as never,
+		instanceApi: (overrides.instanceApi ?? {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn(),
+		}) as never,
+		openExternal: (overrides.openExternal ?? vi.fn().mockResolvedValue(undefined)) as never,
 	});
 }
 
@@ -174,6 +182,56 @@ describe('registerIpcHandlers', () => {
 		expect(mockConfigure).toHaveBeenCalledWith({ level: 'debug' });
 		expect(disconnectGateway).not.toHaveBeenCalled();
 		expect(result).toEqual({ ok: true });
+	});
+
+	it('history:list forwards cursor params to the instance api', async () => {
+		const historyResponse = { results: [{ id: 'exec-1' }], count: 1, estimated: false };
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn().mockResolvedValue(historyResponse),
+			executionUrl: vi.fn(),
+		};
+		register({ instanceApi });
+
+		const result = await getRegisteredHandler('history:list')(undefined, { lastId: 'exec-9' });
+
+		expect(instanceApi.getHistory).toHaveBeenCalledWith({ lastId: 'exec-9' });
+		expect(result).toEqual(historyResponse);
+	});
+
+	it('history:openExecution opens the resolved execution url externally', async () => {
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn().mockReturnValue('https://n.example/workflow/wf-1/executions/exec-1'),
+		};
+		const openExternal = vi.fn().mockResolvedValue(undefined);
+		register({ instanceApi, openExternal });
+
+		await getRegisteredHandler('history:openExecution')(undefined, 'wf-1', 'exec-1');
+
+		expect(instanceApi.executionUrl).toHaveBeenCalledWith('wf-1', 'exec-1');
+		expect(openExternal).toHaveBeenCalledWith('https://n.example/workflow/wf-1/executions/exec-1');
+	});
+
+	it('history:openExecution does not open anything when signed out', async () => {
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn().mockReturnValue(null),
+		};
+		const openExternal = vi.fn().mockResolvedValue(undefined);
+		register({ instanceApi, openExternal });
+
+		await getRegisteredHandler('history:openExecution')(undefined, 'wf-1', 'exec-1');
+
+		expect(openExternal).not.toHaveBeenCalled();
 	});
 
 	it('settings:set persists capability toggles', async () => {

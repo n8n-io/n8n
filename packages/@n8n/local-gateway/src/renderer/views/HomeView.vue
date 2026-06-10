@@ -44,7 +44,7 @@ const TABS: Array<{
 		</div>
 
 		<div :class="$style.content">
-			<TasksView v-if="activeTab === 'tasks'" />
+			<TasksView v-if="activeTab === 'tasks'" @executed="activeTab = 'history'" />
 			<HistoryView v-else />
 		</div>
 	</main>

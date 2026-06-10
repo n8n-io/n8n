@@ -13,6 +13,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -38,6 +39,9 @@ function makeService() {
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const executionService = mock<ExecutionService>();
 	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
+	// Default: no error data to enrich; specific tests override.
+	executionPersistence.findMultipleExecutions.mockResolvedValue([]);
 	const projectService = mock<ProjectService>();
 	const nodeTypes = mock<NodeTypes>();
 
@@ -54,6 +58,7 @@ function makeService() {
 		credentialsFinderService,
 		executionService,
 		executionRepository,
+		executionPersistence,
 		projectService,
 		nodeTypes,
 	);
@@ -72,6 +77,7 @@ function makeService() {
 		credentialsFinderService,
 		executionService,
 		executionRepository,
+		executionPersistence,
 		projectService,
 		nodeTypes,
 	};
@@ -513,6 +519,147 @@ describe('DesktopAssistantService.getHistory', () => {
 		expect(ctx.executionService.findRangeWithCount).toHaveBeenCalledWith(
 			expect.objectContaining({ workflowId: ['wf-untagged'] }),
 		);
+	});
+
+	test('projects executions to the narrow client shape and strips the name emoji', async () => {
+		const ctx = makeService();
+		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.executionService.buildSharingOptions.mockResolvedValue({});
+		ctx.executionService.findRangeWithCount.mockResolvedValue({
+			results: [
+				{
+					id: 'exec-1',
+					workflowId: 'wf-1',
+					workflowName: '🍌 Morning news brief',
+					status: 'success',
+					startedAt: new Date('2026-06-10T08:00:00.000Z'),
+					createdAt: new Date('2026-06-10T07:59:59.000Z'),
+					mode: 'manual',
+				} as never,
+				{
+					id: 'exec-2',
+					workflowId: 'wf-1',
+					workflowName: 'Tidy up my desktop',
+					status: 'error',
+					startedAt: null,
+					createdAt: new Date('2026-06-09T08:00:00.000Z'),
+					mode: 'manual',
+				} as never,
+			],
+			count: 42,
+			estimated: true,
+		});
+
+		const result = await ctx.service.getHistory(USER, {});
+
+		expect(result).toEqual({
+			results: [
+				{
+					id: 'exec-1',
+					workflowId: 'wf-1',
+					workflowName: 'Morning news brief',
+					status: 'success',
+					startedAt: '2026-06-10T08:00:00.000Z',
+					createdAt: '2026-06-10T07:59:59.000Z',
+				},
+				{
+					id: 'exec-2',
+					workflowId: 'wf-1',
+					workflowName: 'Tidy up my desktop',
+					status: 'error',
+					startedAt: null,
+					createdAt: '2026-06-09T08:00:00.000Z',
+				},
+			],
+			count: 42,
+			estimated: true,
+		});
+	});
+
+	test('passes through ISO-string dates as the range query already normalises them', async () => {
+		// The range query (`toSummary`) hands back ISO strings, not Date objects.
+		const ctx = makeService();
+		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.executionService.buildSharingOptions.mockResolvedValue({});
+		ctx.executionService.findRangeWithCount.mockResolvedValue({
+			results: [
+				{
+					id: 'exec-1',
+					workflowId: 'wf-1',
+					workflowName: 'Morning news brief',
+					status: 'success',
+					startedAt: '2026-06-10T08:00:00.000Z',
+					createdAt: '2026-06-10T07:59:59.000Z',
+					mode: 'manual',
+				} as never,
+			],
+			count: 1,
+			estimated: false,
+		});
+
+		const result = await ctx.service.getHistory(USER, {});
+
+		expect(result.results[0]).toMatchObject({
+			startedAt: '2026-06-10T08:00:00.000Z',
+			createdAt: '2026-06-10T07:59:59.000Z',
+		});
+	});
+
+	test('attaches a derived error one-liner to failed rows only', async () => {
+		const ctx = makeService();
+		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.executionService.buildSharingOptions.mockResolvedValue({});
+		ctx.executionService.findRangeWithCount.mockResolvedValue({
+			results: [
+				{ id: 'exec-ok', workflowId: 'wf-1', workflowName: 'A', status: 'success' } as never,
+				{ id: 'exec-bad', workflowId: 'wf-1', workflowName: 'B', status: 'error' } as never,
+			],
+			count: 2,
+			estimated: false,
+		});
+		ctx.executionPersistence.findMultipleExecutions.mockResolvedValue([
+			{
+				id: 'exec-bad',
+				data: {
+					resultData: { error: { message: 'Authorization failed', node: { name: 'Dropbox' } } },
+				},
+			} as never,
+		]);
+
+		const result = await ctx.service.getHistory(USER, {});
+
+		// Only the failed row's id is loaded for enrichment.
+		expect(ctx.executionPersistence.findMultipleExecutions).toHaveBeenCalledWith(
+			expect.objectContaining({ where: expect.objectContaining({ id: expect.anything() }) }),
+			{ includeData: true, unflattenData: true },
+		);
+		const [ok, bad] = result.results;
+		expect(ok.errorMessage).toBeUndefined();
+		expect(bad).toMatchObject({
+			errorMessage: 'Dropbox: Authorization failed',
+			failedNode: 'Dropbox',
+		});
+	});
+
+	test('does not load execution data when the page has no failed rows', async () => {
+		const ctx = makeService();
+		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.executionService.buildSharingOptions.mockResolvedValue({});
+		ctx.executionService.findRangeWithCount.mockResolvedValue({
+			results: [
+				{ id: 'exec-ok', workflowId: 'wf-1', workflowName: 'A', status: 'success' } as never,
+			],
+			count: 1,
+			estimated: false,
+		});
+
+		await ctx.service.getHistory(USER, {});
+
+		expect(ctx.executionPersistence.findMultipleExecutions).not.toHaveBeenCalled();
 	});
 });
 

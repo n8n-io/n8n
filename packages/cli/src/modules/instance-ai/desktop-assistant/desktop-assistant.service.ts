@@ -1,4 +1,5 @@
 import type {
+	DesktopAssistantHistoryResponse,
 	DesktopAssistantPromoteRequest,
 	DesktopAssistantPromoteResponse,
 	DesktopAssistantTaskRequest,
@@ -21,6 +22,7 @@ import type { ExecutionStatus } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
@@ -42,6 +44,7 @@ import {
 	extractWorkflowLoopBuildOutcome,
 	readDesktopAssistantMeta,
 	splitLeadingEmoji,
+	summarizeExecutionError,
 } from './desktop-assistant.helpers';
 import { computeNodesRequiringCredentialSetup } from './node-credential-requirements';
 
@@ -55,11 +58,20 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 const PROMOTE_FINALIZE_TIMEOUT_MS = 5 * 60 * 1000;
 
+/** Statuses we treat as a failure worth surfacing an error message for. `canceled`
+ * is excluded — a user-stopped run has no meaningful error. */
+const FAILED_HISTORY_STATUSES: ReadonlySet<ExecutionStatus> = new Set(['error', 'crashed']);
+
+/** Upper bound on failed rows we load full execution data for per page, to cap
+ * the cost of parsing many large execution blobs. The default page is 20, so
+ * this only bites a pathological all-failed page near the 100-row limit. */
+const MAX_ERROR_ENRICHMENTS = 30;
+
 const EMPTY_HISTORY = Object.freeze({
 	results: [],
 	estimated: false,
 	count: 0,
-} satisfies Awaited<ReturnType<ExecutionService['findRangeWithCount']>>);
+} satisfies DesktopAssistantHistoryResponse);
 
 /**
  * BFF for the n8n personal-automation desktop assistant.
@@ -95,6 +107,7 @@ export class DesktopAssistantService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly executionService: ExecutionService,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly projectService: ProjectService,
 		private readonly nodeTypes: NodeTypes,
 	) {}
@@ -493,7 +506,7 @@ export class DesktopAssistantService {
 	async getHistory(
 		user: User,
 		query: { limit?: number; firstId?: string; lastId?: string },
-	): Promise<Awaited<ReturnType<ExecutionService['findRangeWithCount']>>> {
+	): Promise<DesktopAssistantHistoryResponse> {
 		const accessibleWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
 			scopes: ['workflow:read'],
 		});
@@ -509,7 +522,7 @@ export class DesktopAssistantService {
 		if (liveWorkflowIds.length === 0) return EMPTY_HISTORY;
 
 		const sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
-		return await this.executionService.findRangeWithCount({
+		const { results, count, estimated } = await this.executionService.findRangeWithCount({
 			kind: 'range',
 			user,
 			sharingOptions,
@@ -521,5 +534,68 @@ export class DesktopAssistantService {
 			},
 			order: { startedAt: 'DESC' },
 		});
+
+		// Project the internal execution summary down to the narrow shape the
+		// desktop client renders. The leading emoji is stripped from the workflow
+		// name so the History row reads cleanly, matching the Tasks classifier.
+		// `ExecutionSummary` types its dates as `Date`, but the range query already
+		// normalises them to ISO strings (`toSummary`); some drivers still hand
+		// back `Date`, so coerce defensively either way.
+		const toIso = (value: Date | string | null | undefined): string | null => {
+			if (!value) return null;
+			return value instanceof Date ? value.toISOString() : value;
+		};
+		const entries: DesktopAssistantHistoryResponse['results'] = results.map((execution) => ({
+			id: execution.id,
+			workflowId: execution.workflowId,
+			workflowName: splitLeadingEmoji(execution.workflowName ?? '').rest,
+			status: execution.status,
+			startedAt: toIso(execution.startedAt),
+			createdAt: toIso(execution.createdAt) ?? '',
+		}));
+
+		await this.attachErrorMessages(entries, liveWorkflowIds);
+
+		return { results: entries, count, estimated };
+	}
+
+	/**
+	 * Enrich failed rows in-place with a short error one-liner. The history list
+	 * query only carries `status`; the real error lives in the execution data
+	 * blob, so we batch-load the data for the failed rows in this page and derive
+	 * a message from `data.resultData.error`. Bounded by `MAX_ERROR_ENRICHMENTS`.
+	 */
+	private async attachErrorMessages(
+		entries: DesktopAssistantHistoryResponse['results'],
+		liveWorkflowIds: string[],
+	): Promise<void> {
+		const failed = entries.filter((entry) => FAILED_HISTORY_STATUSES.has(entry.status));
+		if (failed.length === 0) return;
+
+		const toEnrich = failed.slice(0, MAX_ERROR_ENRICHMENTS);
+		if (failed.length > toEnrich.length) {
+			this.logger.debug('Skipping error enrichment for some failed history rows', {
+				failed: failed.length,
+				enriched: toEnrich.length,
+			});
+		}
+
+		const failedIds = toEnrich.map((entry) => entry.id);
+		const executions = await this.executionPersistence.findMultipleExecutions(
+			{ where: { id: In(failedIds), workflowId: In(liveWorkflowIds) } },
+			{ includeData: true, unflattenData: true },
+		);
+
+		const summaryByExecutionId = new Map<string, ReturnType<typeof summarizeExecutionError>>();
+		for (const execution of executions) {
+			summaryByExecutionId.set(execution.id, summarizeExecutionError(execution.data));
+		}
+
+		for (const entry of toEnrich) {
+			const summary = summaryByExecutionId.get(entry.id);
+			if (!summary?.message) continue;
+			entry.errorMessage = summary.message;
+			entry.failedNode = summary.node;
+		}
 	}
 }
