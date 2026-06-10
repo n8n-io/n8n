@@ -79,7 +79,7 @@ function register(overrides: {
 			triggerTask: vi.fn(),
 		}) as never,
 		contextDetector: (overrides.contextDetector ?? {
-			getCurrent: vi.fn().mockReturnValue({ kind: 'other' }),
+			getOptions: vi.fn().mockReturnValue([]),
 			captureScreenshot: vi.fn(),
 		}) as never,
 		threadService: (overrides.threadService ?? {
@@ -307,17 +307,20 @@ describe('registerIpcHandlers', () => {
 		expect(threadService.unlisten).toHaveBeenCalledWith('t1');
 	});
 
-	it('context:get returns the detector current context', () => {
-		const detected = { kind: 'finder' as const, app: 'Finder', path: '/Users/me/Downloads' };
+	it('context:list returns the detector options', () => {
+		const options = [
+			{ id: '1', kind: 'browser' as const, app: 'Safari' },
+			{ id: '2', kind: 'finder' as const, app: 'Finder', path: '/Users/me/Downloads' },
+		];
 		const contextDetector = {
-			getCurrent: vi.fn().mockReturnValue(detected),
+			getOptions: vi.fn().mockReturnValue(options),
 			captureScreenshot: vi.fn(),
 		};
 		register({ contextDetector });
 
-		const result = getRegisteredHandler('context:get')();
-		expect(contextDetector.getCurrent).toHaveBeenCalled();
-		expect(result).toEqual(detected);
+		const result = getRegisteredHandler('context:list')();
+		expect(contextDetector.getOptions).toHaveBeenCalled();
+		expect(result).toEqual(options);
 	});
 
 	it('context:captureScreenshot returns the captured attachment', async () => {

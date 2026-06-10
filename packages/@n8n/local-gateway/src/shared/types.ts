@@ -140,13 +140,13 @@ export interface ElectronApi {
 	onThreadEvent: (
 		onEventCallback: (threadId: string, event: InstanceAiEvent) => void,
 	) => () => void;
-	/** The context detected for the current/last tray open ("what you're looking at"). */
-	getActiveContext: () => Promise<DetectedContext>;
+	/** The open windows the user can pick as context (first = frontmost). */
+	getContextOptions: () => Promise<DetectedContext[]>;
 	/**
-	 * Subscribe to context changes, pushed by the main process when it re-detects
-	 * (on tray open). Returns a disposer to unsubscribe.
+	 * Subscribe to context-option changes, pushed by the main process when it
+	 * re-detects (on tray open). Returns a disposer to unsubscribe.
 	 */
-	onContextChanged: (onChangeCallback: (context: DetectedContext) => void) => () => void;
+	onContextChanged: (onChangeCallback: (contexts: DetectedContext[]) => void) => () => void;
 	/** Capture the current screen as a task attachment (base64 JPEG). */
 	captureScreenshot: () => Promise<ScreenshotAttachment>;
 	/** Fire a one-shot task with the prompt + detected context; returns thread/run ids. */

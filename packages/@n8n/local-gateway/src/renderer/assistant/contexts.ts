@@ -92,7 +92,9 @@ function detectedLabel(detected: DetectedContext): string {
 /** Map the main-process `DetectedContext` to the `AssistantContext` the pill renders. */
 export function assistantContextFromDetected(detected: DetectedContext): AssistantContext {
 	return {
-		key: ACTIVE_CONTEXT_KEY,
+		// Key by window id so the picker can list several windows distinctly; fall
+		// back to app name, then the sentinel for an empty/synthetic context.
+		key: detected.id ?? detected.app ?? ACTIVE_CONTEXT_KEY,
 		label: detectedLabel(detected),
 		icon: ICON_BY_KIND[detected.kind],
 		kind: detected.kind,

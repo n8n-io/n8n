@@ -7,6 +7,7 @@
  */
 export {
 	detectActiveContext,
+	detectOpenContexts,
 	detectActiveWindow,
 	detectFinderFolder,
 	detectDocumentPath,

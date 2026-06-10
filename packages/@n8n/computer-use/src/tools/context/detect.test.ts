@@ -1,10 +1,18 @@
 import { execFile } from 'node:child_process';
 
-import { deriveKind, detectActiveContext, detectActiveWindow, detectFinderFolder } from './detect';
+import {
+	deriveKind,
+	detectActiveContext,
+	detectActiveWindow,
+	detectFinderFolder,
+	detectOpenContexts,
+} from './detect';
 
 const activeWindowMock = vi.fn<() => Promise<unknown>>();
+const openWindowsMock = vi.fn<() => Promise<unknown>>();
 vi.mock('get-windows', () => ({
 	activeWindow: async () => await activeWindowMock(),
+	openWindows: async () => await openWindowsMock(),
 }));
 
 vi.mock('node:child_process', () => ({
@@ -148,5 +156,55 @@ describe('detectActiveContext', () => {
 		const result = await detectActiveContext();
 		expect(result).toMatchObject({ kind: 'browser', url: 'https://theatlantic.com/article' });
 		expect(execFileMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('detectOpenContexts', () => {
+	test('returns [] on non-macOS', async () => {
+		setPlatform('win32');
+		expect(await detectOpenContexts()).toEqual([]);
+	});
+
+	test('lists one context per app, front-to-back, with ids and kinds', async () => {
+		openWindowsMock.mockResolvedValue([
+			{
+				id: 1,
+				title: 'The Atlantic',
+				owner: { name: 'Safari', bundleId: 'com.apple.Safari' },
+				url: 'https://theatlantic.com',
+			},
+			{ id: 2, title: 'Downloads', owner: { name: 'Finder', bundleId: 'com.apple.finder' } },
+			{ id: 3, title: 'Q2.pdf', owner: { name: 'Preview', bundleId: 'com.apple.Preview' } },
+		]);
+		mockOsascript({ stdout: '/Users/me/Downloads' }); // Finder folder + Preview doc path
+
+		const result = await detectOpenContexts();
+		expect(result.map((c) => ({ id: c.id, kind: c.kind, app: c.app }))).toEqual([
+			{ id: '1', kind: 'browser', app: 'Safari' },
+			{ id: '2', kind: 'finder', app: 'Finder' },
+			{ id: '3', kind: 'pdf', app: 'Preview' },
+		]);
+		expect(result[0].url).toBe('https://theatlantic.com');
+		expect(result[1].path).toBe('/Users/me/Downloads');
+	});
+
+	test('dedupes multiple windows of the same app to the frontmost', async () => {
+		openWindowsMock.mockResolvedValue([
+			{ id: 1, title: 'Tab A', owner: { name: 'Safari', bundleId: 'com.apple.Safari' } },
+			{ id: 2, title: 'Tab B', owner: { name: 'Safari', bundleId: 'com.apple.Safari' } },
+		]);
+		const result = await detectOpenContexts();
+		expect(result).toHaveLength(1);
+		expect(result[0]).toMatchObject({ id: '1', windowTitle: 'Tab A' });
+	});
+
+	test('skips windows without an app name', async () => {
+		openWindowsMock.mockResolvedValue([{ id: 1, title: 'orphan', owner: { name: '' } }]);
+		expect(await detectOpenContexts()).toEqual([]);
+	});
+
+	test('returns [] when openWindows throws on both attempts', async () => {
+		openWindowsMock.mockRejectedValue(new Error('Command failed: .../main'));
+		expect(await detectOpenContexts()).toEqual([]);
 	});
 });

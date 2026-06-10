@@ -206,10 +206,10 @@ export function registerIpcHandlers({
 		threadService.unlisten(threadId);
 	});
 
-	ipcMain.handle('context:get', (): DetectedContext => {
-		const context = contextDetector.getCurrent();
-		logger.debug('IPC context:get', { context });
-		return context;
+	ipcMain.handle('context:list', (): DetectedContext[] => {
+		const options = contextDetector.getOptions();
+		logger.debug('IPC context:list', { count: options.length });
+		return options;
 	});
 
 	ipcMain.handle('context:captureScreenshot', async (): Promise<ScreenshotAttachment> => {

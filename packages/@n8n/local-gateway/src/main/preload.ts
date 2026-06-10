@@ -110,11 +110,11 @@ const electronApi: ElectronApi = {
 		return () => ipcRenderer.removeListener('threadEvent', handler);
 	},
 
-	getActiveContext: async (): Promise<DetectedContext> =>
-		await (ipcRenderer.invoke('context:get') as Promise<DetectedContext>),
+	getContextOptions: async (): Promise<DetectedContext[]> =>
+		await (ipcRenderer.invoke('context:list') as Promise<DetectedContext[]>),
 
-	onContextChanged: (onChangeCallback: (context: DetectedContext) => void): (() => void) => {
-		const handler = (_event: unknown, context: DetectedContext) => onChangeCallback(context);
+	onContextChanged: (onChangeCallback: (contexts: DetectedContext[]) => void): (() => void) => {
+		const handler = (_event: unknown, contexts: DetectedContext[]) => onChangeCallback(contexts);
 		ipcRenderer.on('contextChanged', handler);
 		return () => ipcRenderer.removeListener('contextChanged', handler);
 	},

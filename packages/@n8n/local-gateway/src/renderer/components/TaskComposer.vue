@@ -7,7 +7,6 @@ import ContextPill from './ContextPill.vue';
 import MiniSpinner from './MiniSpinner.vue';
 
 import {
-	ACTIVE_CONTEXT_KEY,
 	assistantContextFromDetected,
 	suggestionChipsFor,
 	type AssistantContext,
@@ -30,17 +29,22 @@ const text = ref('');
 const state = ref<ComposerState>('idle');
 const doneCard = ref<DoneCard | null>(null);
 
-// The live, locally-detected context ("what you're looking at"), seeded and
-// updated from the main process. `detected` is the raw structured payload we
-// forward to the backend; `liveContext` is its UI projection.
-const detected = ref<DetectedContext>({ kind: 'other' });
-const liveContext = computed(() => assistantContextFromDetected(detected.value));
-// A manual override picked from the switch menu (the demo contexts); `null`
-// means "use whatever is actually detected".
-const overrideKey = ref<string | null>(null);
-const contextOptions = computed<AssistantContext[]>(() => [liveContext.value]);
-const activeContext = computed(
-	() => contextOptions.value.find((c) => c.key === overrideKey.value) ?? liveContext.value,
+// The open windows the user can pick as context, detected locally and pushed
+// from the main process (first = frontmost). `selectedKey` is the user's pick;
+// `null` means "use the frontmost". `detected` is the chosen raw context we
+// forward to the backend; `activeContext`/`contextOptions` are its UI projection.
+const optionsList = ref<DetectedContext[]>([]);
+const selectedKey = ref<string | null>(null);
+
+const detected = computed<DetectedContext>(() => {
+	const list = optionsList.value;
+	return list.find((c) => (c.id ?? c.app) === selectedKey.value) ?? list[0] ?? { kind: 'other' };
+});
+const activeContext = computed(() => assistantContextFromDetected(detected.value));
+const contextOptions = computed<AssistantContext[]>(() =>
+	optionsList.value.length
+		? optionsList.value.map(assistantContextFromDetected)
+		: [activeContext.value],
 );
 
 // Screenshot opt-in: off by default, auto-on when the context is just "the
@@ -56,11 +60,11 @@ watch(
 
 let disposeContext: (() => void) | undefined;
 onMounted(async () => {
-	detected.value = await window.electronAPI.getActiveContext();
-	disposeContext = window.electronAPI.onContextChanged((context) => {
-		detected.value = context;
-		// A fresh detection supersedes a stale manual override.
-		overrideKey.value = null;
+	optionsList.value = await window.electronAPI.getContextOptions();
+	disposeContext = window.electronAPI.onContextChanged((contexts) => {
+		optionsList.value = contexts;
+		// A fresh detection supersedes a stale manual pick.
+		selectedKey.value = null;
 	});
 });
 onBeforeUnmount(() => disposeContext?.());
@@ -265,7 +269,7 @@ function dismissDone() {
 			<ContextPill
 				:context="activeContext"
 				:options="contextOptions"
-				@select="overrideKey = $event === ACTIVE_CONTEXT_KEY ? null : $event"
+				@select="selectedKey = $event"
 			/>
 			<button
 				type="button"
