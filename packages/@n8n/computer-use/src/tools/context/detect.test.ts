@@ -56,12 +56,17 @@ describe('deriveKind', () => {
 		['company.thebrowser.Browser', undefined, 'browser'],
 		['com.operasoftware.Opera', undefined, 'browser'],
 		['org.mozilla.firefox', undefined, 'browser'],
-		['com.apple.Preview', undefined, 'pdf'],
+		['com.apple.Preview', undefined, 'file'], // file viewer → file even without an extension
 		['com.apple.iCal', undefined, 'calendar'],
 		['com.flexibits.fantastical2.mac', undefined, 'calendar'],
 		['com.apple.mail', undefined, 'email'],
 		['com.microsoft.Outlook', undefined, 'email'],
-		['com.unknown.app', 'Report.pdf', 'pdf'],
+		['com.unknown.app', 'Report.pdf', 'file'],
+		['com.unknown.app', 'notes.md', 'file'],
+		['com.unknown.app', 'data.csv', 'file'],
+		['com.unknown.app', 'photo.png', 'file'],
+		['com.unknown.app', 'report.xlsx', 'other'], // unreadable binary → other
+		['com.unknown.app', 'report.docx', 'other'],
 		['com.unknown.app', 'Some doc', 'other'],
 		['', undefined, 'other'],
 	])('bundleId %s / title %s -> %s', (bundleId, windowTitle, expected) => {
@@ -184,7 +189,7 @@ describe('detectOpenContexts', () => {
 		expect(await detectOpenContexts()).toEqual([]);
 	});
 
-	test('lists each Finder folder and each open PDF as a separate context', async () => {
+	test('lists each Finder folder and each open file as a separate context, with fileType', async () => {
 		openWindowsMock.mockResolvedValue([
 			{
 				id: 1,
@@ -195,20 +200,22 @@ describe('detectOpenContexts', () => {
 			{ id: 2, title: 'Desktop', owner: { name: 'Finder', bundleId: 'com.apple.finder' } },
 			{ id: 3, title: 'Downloads', owner: { name: 'Finder', bundleId: 'com.apple.finder' } },
 			{ id: 4, title: 'A.pdf', owner: { name: 'Preview', bundleId: 'com.apple.Preview' } },
-			{ id: 5, title: 'B.pdf', owner: { name: 'Preview', bundleId: 'com.apple.Preview' } },
+			{ id: 5, title: 'notes.md', owner: { name: 'TextEdit', bundleId: 'com.apple.TextEdit' } },
 		]);
 		mockEnumeration({
 			finder: ['/Users/me/Desktop', '/Users/me/Downloads'],
-			documents: ['/docs/A.pdf', '/docs/B.pdf'],
+			// Both document apps share the mocked osascript result here.
+			documents: ['/docs/A.pdf'],
 		});
 
 		const result = await detectOpenContexts();
-		expect(result.map((c) => ({ kind: c.kind, path: c.path, url: c.url }))).toEqual([
-			{ kind: 'browser', path: undefined, url: 'https://theatlantic.com' },
-			{ kind: 'finder', path: '/Users/me/Desktop', url: undefined },
-			{ kind: 'finder', path: '/Users/me/Downloads', url: undefined },
-			{ kind: 'pdf', path: '/docs/A.pdf', url: undefined },
-			{ kind: 'pdf', path: '/docs/B.pdf', url: undefined },
+		expect(
+			result.map((c) => ({ kind: c.kind, path: c.path, url: c.url, fileType: c.fileType })),
+		).toEqual([
+			{ kind: 'browser', path: undefined, url: 'https://theatlantic.com', fileType: undefined },
+			{ kind: 'finder', path: '/Users/me/Desktop', url: undefined, fileType: undefined },
+			{ kind: 'finder', path: '/Users/me/Downloads', url: undefined, fileType: undefined },
+			{ kind: 'file', path: '/docs/A.pdf', url: undefined, fileType: 'pdf' },
 		]);
 	});
 
@@ -227,10 +234,30 @@ describe('detectOpenContexts', () => {
 		const result = await detectOpenContexts();
 		expect(result).toEqual([
 			expect.objectContaining({
-				kind: 'pdf',
+				kind: 'file',
+				fileType: 'pdf',
 				app: 'Vorschau',
 				path: '/Users/berni/Desktop/plan_Kopie.pdf',
 			}),
+		]);
+	});
+
+	test('classifies a readable text file (csv) as file/text and excludes office binaries', async () => {
+		openWindowsMock.mockResolvedValue([
+			{ id: 1, title: 'data.csv', owner: { name: 'TextEdit', bundleId: 'com.apple.TextEdit' } },
+			{
+				id: 2,
+				title: 'report.xlsx',
+				owner: { name: 'Microsoft Excel', bundleId: 'com.microsoft.Excel' },
+			},
+		]);
+		mockEnumeration({ documents: ['/Users/me/data.csv'] });
+
+		const result = await detectOpenContexts();
+		// The .xlsx window is `other` (unreadable) and has no document path, so only
+		// the csv surfaces as a file.
+		expect(result.filter((c) => c.kind === 'file')).toEqual([
+			expect.objectContaining({ kind: 'file', fileType: 'text', path: '/Users/me/data.csv' }),
 		]);
 	});
 

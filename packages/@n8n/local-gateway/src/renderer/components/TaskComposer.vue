@@ -82,7 +82,9 @@ const doneCardRef = ref<HTMLElement | null>(null);
 
 const busy = computed(() => state.value === 'thinking' || state.value === 'doing');
 
-const chips = computed(() => suggestionChipsFor(activeContext.value.kind));
+const chips = computed(() =>
+	suggestionChipsFor(activeContext.value.kind, activeContext.value.fileType),
+);
 
 /**
  * Forward the prompt + detected context (and an optional screenshot) to the
@@ -95,6 +97,7 @@ async function dispatchToBackend(prompt: string) {
 		const ctx = detected.value;
 		const context: NonNullable<Parameters<typeof window.electronAPI.triggerTask>[0]['context']> = {
 			kind: ctx.kind,
+			fileType: ctx.fileType,
 			app: ctx.app,
 			windowTitle: ctx.windowTitle,
 			url: ctx.url,

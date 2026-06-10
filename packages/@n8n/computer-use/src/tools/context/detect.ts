@@ -17,7 +17,15 @@ import { execFile } from 'node:child_process';
 import { logger } from '../../logger';
 
 /** The context shapes the UI distinguishes; mirrors the renderer's `AssistantContextKind`. */
-export type DetectedContextKind = 'browser' | 'finder' | 'pdf' | 'calendar' | 'email' | 'other';
+export type DetectedContextKind = 'browser' | 'finder' | 'file' | 'calendar' | 'email' | 'other';
+
+/**
+ * Coarse category of a `file` context, derived from its extension. Only types
+ * the `read_file` tool can actually consume are represented — there is no
+ * spreadsheet/office category because `.xlsx`/`.docx` are unreadable binaries
+ * (they classify as `other`). CSV/JSON/code all fall under `text`.
+ */
+export type FileType = 'pdf' | 'image' | 'markdown' | 'text';
 
 export interface DetectedContext {
 	/** Stable per-window id (from get-windows), so the picker can key/select. */
@@ -31,8 +39,10 @@ export interface DetectedContext {
 	windowTitle?: string;
 	/** Browser tab URL (Chromium/WebKit browsers only — not Firefox). */
 	url?: string;
-	/** Absolute folder path (Finder) or document file path (PDF/doc). */
+	/** Absolute folder path (Finder) or document file path (`file` kind). */
 	path?: string;
+	/** For `file` kind: the readable category derived from the extension. */
+	fileType?: FileType;
 }
 
 /** Raw window metadata, before kind-specific enrichment. */
@@ -68,7 +78,65 @@ const URLLESS_BROWSER_BUNDLE_IDS = new Set([
 	'org.mozilla.firefoxdeveloperedition',
 ]);
 
-const PDF_BUNDLE_IDS = new Set(['com.apple.Preview', 'com.adobe.Reader', 'com.adobe.Acrobat.Pro']);
+// File-viewer apps whose windows always represent a (readable) file, so they're
+// treated as `file` even when the window title carries no extension.
+const DOCUMENT_VIEWER_BUNDLE_IDS = new Set([
+	'com.apple.Preview',
+	'com.adobe.Reader',
+	'com.adobe.Acrobat.Pro',
+]);
+
+// Extension → readable `fileType`. Only types `read_file` can consume are listed;
+// anything not here (e.g. xlsx/docx/pptx/zip) is treated as `other`.
+const FILE_TYPE_BY_EXTENSION = new Map<string, FileType>([
+	['pdf', 'pdf'],
+	['png', 'image'],
+	['jpg', 'image'],
+	['jpeg', 'image'],
+	['gif', 'image'],
+	['webp', 'image'],
+	['md', 'markdown'],
+	['markdown', 'markdown'],
+	['mdx', 'markdown'],
+	// Plain-text family — read as UTF-8 text by `read_file`.
+	['txt', 'text'],
+	['text', 'text'],
+	['csv', 'text'],
+	['tsv', 'text'],
+	['json', 'text'],
+	['yaml', 'text'],
+	['yml', 'text'],
+	['xml', 'text'],
+	['html', 'text'],
+	['htm', 'text'],
+	['css', 'text'],
+	['scss', 'text'],
+	['sql', 'text'],
+	['toml', 'text'],
+	['ini', 'text'],
+	['log', 'text'],
+	['ts', 'text'],
+	['tsx', 'text'],
+	['js', 'text'],
+	['jsx', 'text'],
+	['py', 'text'],
+	['rb', 'text'],
+	['go', 'text'],
+	['rs', 'text'],
+	['java', 'text'],
+	['c', 'text'],
+	['h', 'text'],
+	['cpp', 'text'],
+	['sh', 'text'],
+]);
+
+/** The readable `fileType` for a path/title, or `undefined` if not a supported readable file. */
+function fileTypeForName(name: string | undefined): FileType | undefined {
+	if (!name) return undefined;
+	const dot = name.lastIndexOf('.');
+	if (dot < 0) return undefined;
+	return FILE_TYPE_BY_EXTENSION.get(name.slice(dot + 1).toLowerCase());
+}
 
 // Common calendar apps. (Google Calendar etc. live in the browser → 'browser'.)
 const CALENDAR_BUNDLE_IDS = new Set([
@@ -97,8 +165,10 @@ export function deriveKind(info: WindowInfo): DetectedContextKind {
 		return 'browser';
 	if (CALENDAR_BUNDLE_IDS.has(bundleId)) return 'calendar';
 	if (EMAIL_BUNDLE_IDS.has(bundleId)) return 'email';
-	if (PDF_BUNDLE_IDS.has(bundleId)) return 'pdf';
-	if (info.windowTitle?.toLowerCase().endsWith('.pdf')) return 'pdf';
+	// A window represents a file when it's a known file viewer, or its title is a
+	// readable filename (e.g. "notes.md"). Unreadable types (e.g. "report.xlsx")
+	// don't match `fileTypeForName`, so they stay `other`.
+	if (DOCUMENT_VIEWER_BUNDLE_IDS.has(bundleId) || fileTypeForName(info.windowTitle)) return 'file';
 	return 'other';
 }
 
@@ -263,8 +333,8 @@ function contextIdentity(context: DetectedContext): string {
 	switch (context.kind) {
 		case 'finder':
 			return `finder:${context.path ?? context.app ?? ''}`;
-		case 'pdf':
-			return `pdf:${context.path ?? context.windowTitle ?? context.app ?? ''}`;
+		case 'file':
+			return `file:${context.path ?? context.windowTitle ?? context.app ?? ''}`;
 		case 'browser':
 			return `browser:${context.url ?? context.windowTitle ?? context.app ?? ''}`;
 		default:
@@ -286,8 +356,9 @@ async function buildContext(info: WindowInfo): Promise<DetectedContext> {
 	};
 	if (kind === 'finder') {
 		context.path = await detectFinderFolder();
-	} else if (kind === 'pdf') {
+	} else if (kind === 'file') {
 		context.path = await detectDocumentPath({ bundleId: info.bundleId, app: info.app });
+		context.fileType = fileTypeForName(context.path) ?? fileTypeForName(info.windowTitle);
 	}
 	return context;
 }
@@ -337,7 +408,7 @@ export async function detectOpenContexts(): Promise<DetectedContext[]> {
 	const docKey = (info: WindowInfo) => info.bundleId ?? info.app ?? '';
 	const documentApps = new Map<string, { bundleId?: string; app?: string }>();
 	for (const { info, kind } of kinds) {
-		if (kind === 'pdf') documentApps.set(docKey(info), { bundleId: info.bundleId, app: info.app });
+		if (kind === 'file') documentApps.set(docKey(info), { bundleId: info.bundleId, app: info.app });
 	}
 	const documentsByApp = new Map<string, string[]>();
 	await Promise.all(
@@ -369,16 +440,25 @@ export async function detectOpenContexts(): Promise<DetectedContext[]> {
 			} else {
 				add({ ...base, windowTitle: info.windowTitle }); // path unknown (e.g. no Automation)
 			}
-		} else if (kind === 'pdf') {
+		} else if (kind === 'file') {
 			const key = docKey(info);
-			if (clustered.has(`pdf:${key}`)) continue;
-			clustered.add(`pdf:${key}`);
+			if (clustered.has(`file:${key}`)) continue;
+			clustered.add(`file:${key}`);
 			const base = { kind, app: info.app, bundleId: info.bundleId };
-			const documents = documentsByApp.get(key) ?? [];
+			// Keep only documents whose extension is a readable file type; that's
+			// what makes them a usable `file` context (others stay implicit `other`).
+			const documents = (documentsByApp.get(key) ?? []).filter((doc) => fileTypeForName(doc));
 			if (documents.length) {
-				for (const doc of documents) add({ ...base, windowTitle: basename(doc), path: doc });
+				for (const doc of documents) {
+					add({ ...base, windowTitle: basename(doc), path: doc, fileType: fileTypeForName(doc) });
+				}
 			} else {
-				add({ ...base, windowTitle: info.windowTitle });
+				// No resolvable readable path — fall back to a title-derived type.
+				add({
+					...base,
+					windowTitle: info.windowTitle,
+					fileType: fileTypeForName(info.windowTitle),
+				});
 			}
 		} else if (kind === 'browser') {
 			add({

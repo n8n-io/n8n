@@ -1,22 +1,25 @@
 /*
- * Context→suggestion-chip mapping for the composer, plus the mapping from the
- * locally-detected context (`DetectedContext`, produced in the main process) to
- * the `AssistantContext` the pill renders.
- *
- * `ASSISTANT_CONTEXTS` remains as manual-override options in the switch menu;
- * the *active* context is the real detected one (see `assistantContextFromDetected`).
+ * Mapping from the locally-detected context (`DetectedContext`, produced in the
+ * main process) to the `AssistantContext` the pill renders, plus the suggestion
+ * chips and icons. For the `file` kind, icons and chips are chosen by the
+ * `fileType` category (pdf/image/markdown/text) rather than the kind.
  */
 import type { IconName } from '@n8n/design-system';
 
 import type { DetectedContext } from '../../shared/types';
 
-export type AssistantContextKind = 'browser' | 'finder' | 'pdf' | 'calendar' | 'email' | 'other';
+export type AssistantContextKind = 'browser' | 'finder' | 'file' | 'calendar' | 'email' | 'other';
+
+/** Readable file categories — mirrors `FileType` in `@n8n/computer-use`. */
+export type FileType = 'pdf' | 'image' | 'markdown' | 'text';
 
 export interface AssistantContext {
 	key: string;
 	label: string;
 	icon: IconName;
 	kind: AssistantContextKind;
+	/** Set when `kind === 'file'`; drives the icon and chips. */
+	fileType?: FileType;
 }
 
 export interface SuggestionChip {
@@ -25,12 +28,12 @@ export interface SuggestionChip {
 }
 
 /**
- * Context-dependent suggestion chips.
+ * Context-dependent suggestion chips, keyed by kind for non-file contexts.
  * Icon substitutions vs the prototype (names missing from the DS icon set):
  * - `bookmark` → `star` (Save to my reading list)
  * - `calendar-days` → `calendar` (Plan my week)
  */
-const CHIPS_BY_KIND: Record<AssistantContextKind, SuggestionChip[]> = {
+const CHIPS_BY_KIND: Record<Exclude<AssistantContextKind, 'file'>, SuggestionChip[]> = {
 	browser: [
 		{ label: 'Summarise this page', icon: 'text' },
 		{ label: 'Save to my reading list', icon: 'star' },
@@ -43,12 +46,6 @@ const CHIPS_BY_KIND: Record<AssistantContextKind, SuggestionChip[]> = {
 		{ label: 'Rename these files', icon: 'pencil' },
 		{ label: 'Find duplicates', icon: 'copy' },
 		{ label: 'Back these up', icon: 'hard-drive' },
-	],
-	pdf: [
-		{ label: 'Summarise this PDF', icon: 'file-text' },
-		{ label: 'Pull out the tables', icon: 'table' },
-		{ label: 'Extract the action items', icon: 'list-checks' },
-		{ label: 'Translate it', icon: 'languages' },
 	],
 	calendar: [
 		{ label: 'Summarise my day', icon: 'text' },
@@ -70,20 +67,53 @@ const CHIPS_BY_KIND: Record<AssistantContextKind, SuggestionChip[]> = {
 	],
 };
 
+/** Suggestion chips for the `file` kind, keyed by the readable file category. */
+const CHIPS_BY_FILE_TYPE: Record<FileType, SuggestionChip[]> = {
+	pdf: [
+		{ label: 'Summarise this PDF', icon: 'file-text' },
+		{ label: 'Pull out the tables', icon: 'table' },
+		{ label: 'Extract the action items', icon: 'list-checks' },
+		{ label: 'Translate it', icon: 'languages' },
+	],
+	image: [
+		{ label: 'Describe this image', icon: 'image' },
+		{ label: 'Extract the text', icon: 'text' },
+		{ label: 'Summarise it', icon: 'list-checks' },
+	],
+	markdown: [
+		{ label: 'Summarise this file', icon: 'file-text' },
+		{ label: 'Extract the action items', icon: 'list-checks' },
+		{ label: 'Tidy up the formatting', icon: 'pencil' },
+		{ label: 'Translate it', icon: 'languages' },
+	],
+	text: [
+		{ label: 'Summarise this file', icon: 'file-text' },
+		{ label: 'Extract the key points', icon: 'list-checks' },
+		{ label: 'Pull out the tables', icon: 'table' },
+		{ label: 'Translate it', icon: 'languages' },
+	],
+};
+
 /** Max suggestion chips shown (matches the prototype's cap). */
 export const MAX_SUGGESTION_CHIPS = 6;
 
-export function suggestionChipsFor(kind: AssistantContextKind): SuggestionChip[] {
-	return CHIPS_BY_KIND[kind].slice(0, MAX_SUGGESTION_CHIPS);
+export function suggestionChipsFor(
+	kind: AssistantContextKind,
+	fileType?: FileType,
+): SuggestionChip[] {
+	const chips = kind === 'file' ? CHIPS_BY_FILE_TYPE[fileType ?? 'text'] : CHIPS_BY_KIND[kind];
+	return chips.slice(0, MAX_SUGGESTION_CHIPS);
 }
 
 /** Stable key for the live, detected context option. */
 export const ACTIVE_CONTEXT_KEY = 'active';
 
+// Every `file` uses the same generic file icon — the fileType only tailors the
+// suggestion chips, not the icon.
 const ICON_BY_KIND: Record<AssistantContextKind, IconName> = {
 	browser: 'globe',
 	finder: 'folder',
-	pdf: 'file-text',
+	file: 'file-text',
 	calendar: 'calendar',
 	email: 'mail',
 	other: 'monitor',
@@ -112,5 +142,6 @@ export function assistantContextFromDetected(detected: DetectedContext): Assista
 		label: detectedLabel(detected),
 		icon: ICON_BY_KIND[detected.kind],
 		kind: detected.kind,
+		fileType: detected.fileType,
 	};
 }
