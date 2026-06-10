@@ -14,7 +14,82 @@ import type {
 	SetupCardItem,
 	TriggerSetupState,
 } from '@/features/setupPanel/setupPanel.types';
-import { type INode, type INodeParameters, type INodeProperties, NodeHelpers } from 'n8n-workflow';
+import {
+	type ICredentialType,
+	type INode,
+	type INodeParameters,
+	type INodeProperties,
+	type NodeParameterValueType,
+	NodeHelpers,
+} from 'n8n-workflow';
+
+/**
+ * Credential property types that the in-chat inline credential form can render.
+ * Anything else (OAuth redirects, nested collections, etc.) falls back to the
+ * standard credential picker/modal.
+ */
+const INLINE_SUPPORTED_FIELD_TYPES = new Set(['string', 'number', 'options']);
+
+/**
+ * Evaluate a credential property's `displayOptions.show` against the values the
+ * user has entered so far. Keeps the inline form in sync with conditional fields
+ * (e.g. a field that only appears once an auth method is chosen).
+ */
+function isCredentialFieldVisible(
+	prop: INodeProperties,
+	values: Record<string, NodeParameterValueType>,
+): boolean {
+	const show = prop.displayOptions?.show;
+	if (!show) return true;
+	return Object.entries(show).every(([key, allowed]) => {
+		if (!allowed) return true;
+		return allowed.some((expected) => expected === values[key]);
+	});
+}
+
+/**
+ * Returns the credential properties that should be rendered in the inline
+ * (in-chat) credential form, given the values entered so far. Hidden fields are
+ * excluded from the UI but their defaults are still persisted by the caller.
+ */
+export function getInlineCredentialFields(
+	credentialType: ICredentialType,
+	values: Record<string, NodeParameterValueType> = {},
+): INodeProperties[] {
+	return (credentialType.properties ?? []).filter(
+		(prop) =>
+			prop.type !== 'hidden' &&
+			INLINE_SUPPORTED_FIELD_TYPES.has(prop.type) &&
+			isCredentialFieldVisible(prop, values),
+	);
+}
+
+/**
+ * Whether a credential type can be created directly from the in-chat inline form.
+ * OAuth-based credentials (which require a browser redirect) and credentials with
+ * required fields we can't render inline fall back to the standard picker/modal.
+ */
+export function canCreateCredentialInline(credentialType: ICredentialType | undefined): boolean {
+	if (!credentialType) return false;
+
+	const isOAuth =
+		(credentialType.extends ?? []).some((parent) => /oauth/i.test(parent)) ||
+		/oauth/i.test(credentialType.name);
+	if (isOAuth) return false;
+
+	const visibleProps = (credentialType.properties ?? []).filter((prop) => prop.type !== 'hidden');
+
+	// Every required & visible field must be a type we can render inline.
+	const allRequiredSupported = visibleProps.every(
+		(prop) => !prop.required || INLINE_SUPPORTED_FIELD_TYPES.has(prop.type),
+	);
+
+	const hasEditableField = visibleProps.some((prop) =>
+		INLINE_SUPPORTED_FIELD_TYPES.has(prop.type),
+	);
+
+	return allRequiredSupported && hasEditableField;
+}
 
 /**
  * Collects all credential types that a node requires from three sources:

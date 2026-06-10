@@ -6,6 +6,7 @@ import { type INodeProperties, NodeHelpers } from 'n8n-workflow';
 
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
+import InlineCredentialSetup from '@/features/setupPanel/components/cards/InlineCredentialSetup.vue';
 
 import type {
 	NodeSetupState,
@@ -14,8 +15,12 @@ import type {
 } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
+import {
+	canCreateCredentialInline,
+	isHttpRequestNodeType,
+} from '@/features/setupPanel/setupPanel.utils';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -50,6 +55,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const ndvStore = injectNDVStore();
@@ -59,6 +65,37 @@ const nodeType = computed(() =>
 );
 
 const isHttpRequestNode = computed(() => isHttpRequestNodeType(props.state.node.type));
+
+// In-chat inline credential creation: when a credential is required but none is
+// selected yet, offer to create one right here (instead of opening the modal),
+// unless it needs OAuth or the user opts for the standard picker.
+const useExistingPicker = ref(false);
+
+const inlineCredentialType = computed(() => {
+	if (!props.state.credentialType || props.state.selectedCredentialId) return undefined;
+	return credentialsStore.getCredentialTypeByName(props.state.credentialType) ?? undefined;
+});
+
+const showInlineCredential = computed(
+	() =>
+		props.state.showCredentialPicker &&
+		!useExistingPicker.value &&
+		!isHttpRequestNode.value &&
+		canCreateCredentialInline(inlineCredentialType.value),
+);
+
+const onInlineCredentialCreated = (payload: {
+	credentialType: string;
+	credentialId: string;
+	name: string;
+}) => {
+	emit('interacted');
+	emit('credentialSelected', {
+		credentialType: payload.credentialType,
+		credentialId: payload.credentialId,
+		nodeName: props.state.node.name,
+	});
+};
 
 const isNestedParam = (p: INodeProperties) =>
 	NESTED_PARAM_TYPES.has(p.type) || p.typeOptions?.multipleValues === true;
@@ -185,7 +222,15 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 
 <template>
 	<div :class="$style.body">
-		<div v-if="state.showCredentialPicker" :class="$style.credentialContainer">
+		<InlineCredentialSetup
+			v-if="showInlineCredential"
+			:credential-type="state.credentialType ?? ''"
+			@credential-created="onInlineCredentialCreated"
+			@use-existing="useExistingPicker = true"
+			@unsupported="useExistingPicker = true"
+		/>
+
+		<div v-else-if="state.showCredentialPicker" :class="$style.credentialContainer">
 			<NodeCredentials
 				:node="state.node"
 				:override-cred-type="state.credentialType ?? ''"

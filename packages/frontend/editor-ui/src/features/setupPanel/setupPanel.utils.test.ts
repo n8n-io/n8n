@@ -1,6 +1,6 @@
 import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
 import {
 	getNodeCredentialTypes,
@@ -8,6 +8,8 @@ import {
 	groupCredentialsByType,
 	isCredentialCardComplete,
 	buildTriggerSetupState,
+	canCreateCredentialInline,
+	getInlineCredentialFields,
 	type CompletionContext,
 } from '@/features/setupPanel/setupPanel.utils';
 import type { CredentialTypeSetupState } from '@/features/setupPanel/setupPanel.types';
@@ -1012,6 +1014,112 @@ describe('setupPanel.utils', () => {
 			const result = buildTriggerSetupState(node, ['unknownApi'], [], true);
 
 			expect(result.isComplete).toBe(true);
+		});
+	});
+});
+
+describe('canCreateCredentialInline', () => {
+	const apiKeyCred: ICredentialType = {
+		name: 'openAiApi',
+		displayName: 'OpenAI',
+		properties: [
+			{ displayName: 'API Key', name: 'apiKey', type: 'string', required: true, default: '' },
+			{ displayName: 'Base URL', name: 'url', type: 'string', default: '' },
+		],
+	};
+
+	it('returns true for a simple API-key credential', () => {
+		expect(canCreateCredentialInline(apiKeyCred)).toBe(true);
+	});
+
+	it('returns false for OAuth credentials (by extends)', () => {
+		expect(
+			canCreateCredentialInline({
+				name: 'slackOAuth2Api',
+				displayName: 'Slack',
+				extends: ['oAuth2Api'],
+				properties: [{ displayName: 'Scope', name: 'scope', type: 'string', default: '' }],
+			}),
+		).toBe(false);
+	});
+
+	it('returns false for OAuth credentials (by name)', () => {
+		expect(
+			canCreateCredentialInline({
+				name: 'googleOAuth2Api',
+				displayName: 'Google',
+				properties: [{ displayName: 'Scope', name: 'scope', type: 'string', default: '' }],
+			}),
+		).toBe(false);
+	});
+
+	it('returns false when a required field is an unsupported type', () => {
+		expect(
+			canCreateCredentialInline({
+				name: 'weirdApi',
+				displayName: 'Weird',
+				properties: [
+					{
+						displayName: 'Config',
+						name: 'config',
+						type: 'collection',
+						required: true,
+						default: {},
+					},
+				],
+			}),
+		).toBe(false);
+	});
+
+	it('returns false for undefined', () => {
+		expect(canCreateCredentialInline(undefined)).toBe(false);
+	});
+
+	describe('getInlineCredentialFields', () => {
+		it('excludes hidden fields but keeps editable ones', () => {
+			const fields = getInlineCredentialFields({
+				name: 'x',
+				displayName: 'X',
+				properties: [
+					{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' },
+					{ displayName: 'Hidden', name: 'grantType', type: 'hidden', default: 'clientCredentials' },
+				],
+			});
+			expect(fields.map((f) => f.name)).toEqual(['apiKey']);
+		});
+
+		it('respects displayOptions.show based on current values', () => {
+			const credType: ICredentialType = {
+				name: 'x',
+				displayName: 'X',
+				properties: [
+					{
+						displayName: 'Auth',
+						name: 'authType',
+						type: 'options',
+						default: 'apiKey',
+						options: [
+							{ name: 'API Key', value: 'apiKey' },
+							{ name: 'Token', value: 'token' },
+						],
+					},
+					{
+						displayName: 'Token',
+						name: 'token',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { authType: ['token'] } },
+					},
+				],
+			};
+
+			expect(getInlineCredentialFields(credType, { authType: 'apiKey' }).map((f) => f.name)).toEqual(
+				['authType'],
+			);
+			expect(getInlineCredentialFields(credType, { authType: 'token' }).map((f) => f.name)).toEqual([
+				'authType',
+				'token',
+			]);
 		});
 	});
 });
