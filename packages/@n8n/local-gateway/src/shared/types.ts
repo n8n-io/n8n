@@ -77,6 +77,11 @@ export interface ElectronApi {
 	openWorkflow: (workflowId: string) => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
 	openExecution: (workflowId: string, executionId: string) => Promise<void>;
+	/**
+	 * Subscribe to window active-state changes (shown/focused vs hidden/blurred),
+	 * driven by the main process. Returns a disposer to unsubscribe.
+	 */
+	onWindowActiveChanged: (onChangeCallback: (active: boolean) => void) => () => void;
 }
 
 export type AuthState = 'signedOut' | 'authorizing' | 'signedIn' | 'error';

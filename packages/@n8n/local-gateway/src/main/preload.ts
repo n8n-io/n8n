@@ -64,6 +64,12 @@ const electronApi: ElectronApi = {
 	openExecution: async (workflowId: string, executionId: string): Promise<void> => {
 		await ipcRenderer.invoke('history:openExecution', workflowId, executionId);
 	},
+
+	onWindowActiveChanged: (onChangeCallback: (active: boolean) => void): (() => void) => {
+		const handler = (_event: unknown, active: boolean) => onChangeCallback(active);
+		ipcRenderer.on('windowActiveChanged', handler);
+		return () => ipcRenderer.removeListener('windowActiveChanged', handler);
+	},
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronApi);

@@ -71,13 +71,32 @@ function openExecution(workflowId: string, executionId: string) {
 	void window.electronAPI.openExecution(workflowId, executionId);
 }
 
+/**
+ * The tray window hides on blur but stays mounted, so the poll must pause while
+ * the window isn't on screen — otherwise we keep hitting the instance the user
+ * can't see. The main process tells us when the window is shown/focused vs
+ * hidden/blurred (the renderer's own visibility events are unreliable here).
+ */
+const windowActive = ref(true);
+let unsubscribeActive: (() => void) | undefined;
+
+function refreshIfActive() {
+	if (windowActive.value) void load();
+}
+
 onMounted(() => {
 	void load();
-	pollTimer = setInterval(() => void load(), POLL_INTERVAL_MS);
+	pollTimer = setInterval(refreshIfActive, POLL_INTERVAL_MS);
+	unsubscribeActive = window.electronAPI.onWindowActiveChanged((active) => {
+		windowActive.value = active;
+		// Refresh immediately on return rather than waiting for the next tick.
+		if (active) void load();
+	});
 });
 
 onUnmounted(() => {
 	if (pollTimer) clearInterval(pollTimer);
+	unsubscribeActive?.();
 });
 </script>
 
