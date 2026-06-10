@@ -119,15 +119,10 @@ runs:
         rm install-safe-chain.sh
       shell: bash
 
-    # pnpm install failures used to arrive with no actionable output: a bare
-    # `ELIFECYCLE  Command failed with exit code 1.` and nothing else, forcing
-    # blind retries. Root cause: the repo `.npmrc` sets `loglevel = warn`, which
-    # in a pnpm *workspace* suppresses lifecycle/build-script output (the
-    # `> pkg postinstall` header and the script's own stdout/stderr). A bare
     # `--loglevel` CLI flag does NOT override `.npmrc` for that path, but
     # `--config.loglevel` does — so the failing script's real output reaches us.
     # (Confirmed on CI across Blacksmith + GitHub-hosted, through the SafeChain
-    # shim and the real pnpm binary: it was never SafeChain or the runner.)
+    # shim and the real pnpm binary)
     #
     # Layered so the cause survives even failure modes pnpm can't report itself:
     #  1. `--config.loglevel=info` un-suppresses lifecycle output (the actual fix).
