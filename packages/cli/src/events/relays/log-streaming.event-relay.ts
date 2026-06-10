@@ -554,10 +554,10 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private publicApiKeyDeleted({ user }: RelayEventMap['public-api-key-deleted']) {
+	private publicApiKeyDeleted({ user, isOwn }: RelayEventMap['public-api-key-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
-			payload: user,
+			payload: { ...user, is_own: isOwn },
 		});
 	}
 
