@@ -74,65 +74,32 @@ jobs:
       currents-project-id: 'LRxcNt'
     secrets: inherit
 
-  # Full unit + nodes coverage — no change-scoping. Runs in parallel with E2E
-  # shards; Turbo cache hit from the shared `build` job keeps setup fast.
+  # Unit + integration coverage, one leg per suite — no change-scoping, run in
+  # parallel with the E2E shards (the shared `build` job keeps Turbo cache warm).
+  # The integration leg adds a Postgres pre-pull and runs from packages/cli to
+  # reach branches a mocked DB can't (real query paths, multi-main, migrations).
   unit-coverage:
-    name: Unit Coverage (backend + nodes)
+    name: ${{ matrix.name }}
     needs: build
     runs-on: blacksmith-4vcpu-ubuntu-2204
-    env:
-      COVERAGE_ENABLED: 'true'
-      NODE_OPTIONS: --max-old-space-size=7168
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup
-        uses: ./.github/actions/setup-nodejs
-
-      - name: Test Unit (backend + nodes)
-        run: pnpm test:ci:backend:unit
-
-      - name: Upload coverage artifact
-        if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: unit-coverage
-          path: packages/**/coverage/lcov.info
-          retention-days: 3
-
-  frontend-coverage:
-    name: Unit Coverage (frontend)
-    needs: build
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    env:
-      COVERAGE_ENABLED: 'true'
-      NODE_OPTIONS: --max-old-space-size=7168
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup
-        uses: ./.github/actions/setup-nodejs
-
-      - name: Test Unit (frontend)
-        run: pnpm test:ci:frontend
-
-      - name: Upload coverage artifact
-        if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: frontend-coverage
-          path: packages/**/coverage/lcov.info
-          retention-days: 3
-
-  # CLI integration tests against Postgres via testcontainers — captures
-  # branches that unit tests can't reach with a mocked DB: real query paths,
-  # multi-main coordination, migration logic.
-  integration-coverage:
-    name: Unit Coverage (CLI integration + Postgres)
-    needs: build
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Unit Coverage (backend + nodes)
+            artifact: unit-coverage
+            test-command: pnpm test:ci:backend:unit
+            artifact-path: packages/**/coverage/lcov.info
+          - name: Unit Coverage (frontend)
+            artifact: frontend-coverage
+            test-command: pnpm test:ci:frontend
+            artifact-path: packages/**/coverage/lcov.info
+          - name: Unit Coverage (CLI integration + Postgres)
+            artifact: integration-coverage
+            test-command: pnpm test:postgres:integration:tc
+            artifact-path: packages/cli/coverage/lcov.info
+            working-directory: packages/cli
+            pre-pull-containers: true
     env:
       COVERAGE_ENABLED: 'true'
       NODE_OPTIONS: --max-old-space-size=7168
@@ -144,18 +111,19 @@ jobs:
         uses: ./.github/actions/setup-nodejs
 
       - name: Pre-pull Test Container Images
+        if: matrix.pre-pull-containers
         run: pnpm tsx packages/testing/containers/pull-test-images.ts || true
 
-      - name: Test Integration (CLI + Postgres)
-        working-directory: packages/cli
-        run: pnpm test:postgres:integration:tc
+      - name: Run tests
+        working-directory: ${{ matrix.working-directory || github.workspace }}
+        run: ${{ matrix.test-command }}
 
       - name: Upload coverage artifact
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: integration-coverage
-          path: packages/cli/coverage/lcov.info
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact-path }}
           retention-days: 3
 
   # Both Python packages in one job — they're fast and share the uv install
@@ -213,7 +181,7 @@ jobs:
 
   aggregate:
     name: Aggregate Coverage
-    needs: [e2e, unit-coverage, frontend-coverage, integration-coverage, python-coverage]
+    needs: [e2e, unit-coverage, python-coverage]
     if: always() && needs.e2e.result != 'skipped' && needs.e2e.result != 'cancelled'
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
