@@ -84,14 +84,14 @@ if (!app.requestSingleInstanceLock()) {
 				}
 			}
 
-			registerIpcHandlers(
-        controller,
-        settingsStore,
-        disconnectGateway,
-        oauthFlow,
+			registerIpcHandlers({
+				controller,
+				settingsStore,
+				disconnectGateway,
+				oauthFlow,
 				instanceApi,
 				openExternal,
-      );
+			});
 
 			controller.on('statusChanged', (snapshot) => {
 				notifyMainWindow('statusChanged', snapshot);
