@@ -27,6 +27,25 @@ const planEditSubmitState = vi.hoisted(() => ({
 }));
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
+const localStorageState = vi.hoisted(() => ({
+	store: new Map<string, string>(),
+}));
+
+Object.defineProperty(globalThis, 'localStorage', {
+	configurable: true,
+	value: {
+		getItem: vi.fn((key: string) => localStorageState.store.get(key) ?? null),
+		setItem: vi.fn((key: string, value: string) => {
+			localStorageState.store.set(key, value);
+		}),
+		removeItem: vi.fn((key: string) => {
+			localStorageState.store.delete(key);
+		}),
+		clear: vi.fn(() => {
+			localStorageState.store.clear();
+		}),
+	},
+});
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
@@ -164,16 +183,16 @@ const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> 
 };
 
 function makePlanReviewMessage(): InstanceAiMessage {
-	const planner: InstanceAiAgentNode = {
-		agentId: 'planner-1',
-		role: 'planner',
+	const orchestrator: InstanceAiAgentNode = {
+		agentId: 'root',
+		role: 'orchestrator',
 		status: 'completed',
 		textContent: '',
 		reasoning: '',
 		toolCalls: [
 			{
 				toolCallId: 'tc-plan',
-				toolName: 'submit-plan',
+				toolName: 'create-tasks',
 				args: {},
 				isLoading: true,
 				confirmationStatus: 'pending',
@@ -196,7 +215,7 @@ function makePlanReviewMessage(): InstanceAiMessage {
 			},
 		],
 		children: [],
-		timeline: [],
+		timeline: [{ type: 'tool-call', toolCallId: 'tc-plan' }],
 	};
 
 	return {
@@ -207,14 +226,8 @@ function makePlanReviewMessage(): InstanceAiMessage {
 		isStreaming: true,
 		createdAt: '2026-04-01T00:00:00.000Z',
 		agentTree: {
-			agentId: 'root',
-			role: 'orchestrator',
+			...orchestrator,
 			status: 'active',
-			textContent: '',
-			reasoning: '',
-			toolCalls: [],
-			children: [planner],
-			timeline: [{ type: 'child', agentId: 'planner-1' }],
 		},
 	};
 }
@@ -427,7 +440,7 @@ describe('InstanceAiThreadView', () => {
 		expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
 	});
 
-	it('uses edge reveal when the viewport is too narrow for pinned artifacts', async () => {
+	it('opens the artifacts panel from the header toggle when too narrow for pinned artifacts', async () => {
 		mockWindowSizeState.width.value = 900;
 		thread.messages = [
 			{
@@ -440,15 +453,56 @@ describe('InstanceAiThreadView', () => {
 		] as typeof thread.messages;
 		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
 
+		const user = userEvent.setup();
 		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-artifacts-sidebar-edge')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
 		});
+		expect(queryByTestId('instance-ai-artifacts-sidebar-edge')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-content-area'));
+
 		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
 	});
 
-	describe('Fix with AI card', () => {
+	it('keeps the artifacts panel toggle available when the panel is in the layout', async () => {
+		mockWindowSizeState.width.value = 1700;
+		thread.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				content: 'already loaded',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof thread.messages;
+		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
+
+		const user = userEvent.setup();
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
+		});
+		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+	});
+
+	// Re-enable when IS_FIX_WITH_AI_OFFER_ENABLED is true (INS-407).
+	describe.skip('Fix with AI card', () => {
 		const failureReport: WorkflowFailuresReport = {
 			workflowId: 'wf-1',
 			executionId: 'exec-1',
@@ -586,7 +640,10 @@ describe('InstanceAiThreadView', () => {
 
 		expect(telemetryTrackSpy).toHaveBeenCalledWith(
 			'User finished providing input',
-			expect.objectContaining({ feedback: 'use [REDACTED] to call the API' }),
+			expect.objectContaining({
+				feedback: 'use [REDACTED] to call the API',
+				plan_feedback_type: 'changes_requested',
+			}),
 		);
 		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
 			kind: 'approval',

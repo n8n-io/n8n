@@ -9,6 +9,7 @@ import { CAPABILITIES, type Capability } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
+import { backendV8CoverageFixtures } from '../fixtures/backend-v8-coverage';
 import { observabilityFixtures, type ObservabilityTestFixtures } from '../fixtures/observability';
 import {
 	quarantineFixtures,
@@ -41,6 +42,9 @@ type TestFixtures = {
 	 * @param mainIndex - 0-based index of the main (0 = main-1, 1 = main-2, etc.)
 	 */
 	createApiForMain: (mainIndex: number) => Promise<ApiHelpers>;
+	/** Internal auto fixture: per-spec backend V8 coverage (DEVP-370). No-op
+	 *  unless COVERAGE_ENABLED. */
+	backendCoverage: undefined;
 };
 
 type WorkerFixtures = {
@@ -81,6 +85,7 @@ export const test = base.extend<
 >({
 	...currentsFixtures.baseFixtures,
 	...v8CoverageFixtures,
+	...backendV8CoverageFixtures,
 	...currentsFixtures.actionFixtures,
 	...observabilityFixtures,
 	...consoleErrorFixtures,

@@ -34,6 +34,12 @@ export const reportVerificationVerdictInputSchema = z.object({
 			'"needs_user_input" if user action is required (e.g. missing credentials), ' +
 			'"failed_terminal" if the failure cannot be fixed automatically',
 	),
+	workflowInspection: z
+		.string()
+		.min(1)
+		.describe(
+			'Brief note from inspecting the persisted workflow JSON/code after save. Mention why the saved graph does or does not match the requested outcome.',
+		),
 	failureSignature: z
 		.string()
 		.optional()
@@ -102,7 +108,7 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 	return new Tool('report-verification-verdict')
 		.description(
 			'Report the result of verifying a workflow after building it. ' +
-				'Call this after running a workflow and (optionally) debugging a failed execution. ' +
+				'Call this after inspecting the persisted workflow, running it, and (optionally) debugging a failed execution. ' +
 				'Returns deterministic guidance on what to do next (done, rebuild, or blocked).',
 		)
 		.input(reportVerificationVerdictInputSchema)
@@ -144,6 +150,7 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 				workflowId: input.workflowId,
 				executionId: input.executionId,
 				verdict: forcedTerminalVerdict ?? input.verdict,
+				workflowInspection: input.workflowInspection,
 				failureSignature: forcedTerminalVerdict
 					? (remediation?.reason ?? input.failureSignature)
 					: input.failureSignature,

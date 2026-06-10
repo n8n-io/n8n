@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -8,6 +8,9 @@
   "typesVersions": {
     "*": {
       "text-editor": [
+        "dist/esm/utils/workflow-text-editor.d.ts"
+      ],
+      "generic-text-editor": [
         "dist/esm/utils/text-editor.d.ts"
       ],
       "node-catalog": [
@@ -31,6 +34,11 @@
       "require": "./dist/cjs/index.js"
     },
     "./text-editor": {
+      "types": "./dist/esm/utils/workflow-text-editor.d.ts",
+      "import": "./dist/esm/utils/workflow-text-editor.js",
+      "require": "./dist/cjs/utils/workflow-text-editor.js"
+    },
+    "./generic-text-editor": {
       "types": "./dist/esm/utils/text-editor.d.ts",
       "import": "./dist/esm/utils/text-editor.js",
       "require": "./dist/cjs/utils/text-editor.js"
@@ -105,9 +113,10 @@
     "@thednp/dommatrix": "^2.0.12",
     "pdf-parse": "catalog:",
     "proxy-from-env": "^1.1.0",
-    "undici": "^6.21.0"
+    "undici": "catalog:undici-v6"
   },
   "peerDependencies": {
     "n8n-workflow": "*"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

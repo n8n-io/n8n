@@ -2,7 +2,6 @@ import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
-import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -16,6 +15,7 @@ import {
 } from './workflow-json-utils';
 import type { InstanceAiContext } from '../../types';
 import { parseAndValidate, partitionWarnings } from '../../workflow-builder';
+import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { extractWorkflowCode } from '../../workflow-builder/extract-code';
 import { applyPatches } from '../../workflow-builder/patch-code';
 import { createRemediation } from '../../workflow-loop/remediation';
@@ -86,7 +86,7 @@ export const buildWorkflowInputSchema = z.object({
 		.optional()
 		.describe(
 			'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
-				'Supporting workflows are saved and can be verified, but do not complete the planned build task.',
+				'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
 		),
 });
 
@@ -138,6 +138,40 @@ function hasCredentialVerificationData(
 	return (
 		Object.keys(outcome.verificationPinData ?? {}).length > 0 ||
 		outcome.usesWorkflowPinDataForVerification === true
+	);
+}
+
+function getBuildFailureTrackingKey({
+	workItemId,
+	workflowId,
+	workflowName,
+	isAuxiliarySupportingWorkflow,
+	buildContext,
+	runId,
+}: {
+	workItemId?: string;
+	workflowId?: string;
+	workflowName?: string;
+	isAuxiliarySupportingWorkflow: boolean;
+	buildContext?: InstanceAiContext['workflowBuildContext'];
+	runId?: string;
+}): string {
+	if (workItemId) return workItemId;
+
+	if (isAuxiliarySupportingWorkflow) {
+		return [
+			'supporting-workflow',
+			buildContext?.taskId ?? (runId ? `run:${runId}` : 'unknown-run'),
+			workflowId ?? workflowName ?? 'new',
+		].join(':');
+	}
+
+	return (
+		buildContext?.workItemId ??
+		buildContext?.taskId ??
+		workflowId ??
+		workflowName ??
+		`run:${runId ?? 'unknown'}`
 	);
 }
 
@@ -245,14 +279,6 @@ function isApprovedBuildContext(context: InstanceAiContext): boolean {
 	return Boolean(buildContext?.plannedTaskService ?? buildContext?.allowPostPlanWorkflowCreate);
 }
 
-function isBuildViaPlanGuardEnabled(): boolean {
-	const raw = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
-	if (raw === undefined) return true;
-	return raw.toLowerCase() !== 'false' && raw !== '0';
-}
-
-const PLAN_GUARD_REJECTION_LIMIT = 3;
-
 async function resolveWorkflowName(
 	context: InstanceAiContext,
 	workflowId: string,
@@ -332,34 +358,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 	// invalidates the cache so patches don't silently overwrite the user's work.
 	let lastCode: string | null = null;
 	let lastCodeVersionId: string | null = null;
-	let planGuardRejectionCount = 0;
-
-	const rejectPlanGuardCall = () => {
-		planGuardRejectionCount++;
-		context.logger?.warn('build-workflow called outside plan/replan context — rejecting', {
-			threadId: context.workflowBuildContext?.threadId,
-			runId: context.runId,
-			rejectionCount: planGuardRejectionCount,
-		});
-
-		if (planGuardRejectionCount >= PLAN_GUARD_REJECTION_LIMIT) {
-			context.logger?.warn('build-workflow plan-guard rejection limit reached — aborting run', {
-				threadId: context.workflowBuildContext?.threadId,
-				runId: context.runId,
-				rejectionCount: planGuardRejectionCount,
-			});
-			throw new UserError(
-				'Stopped: the agent looped on `build-workflow` rejections without correcting them. Try again or rephrase the request.',
-			);
-		}
-
-		return {
-			success: false,
-			errors: [
-				'New workflow builds must be planned first: call `plan` so the user can approve the build plan before saving.',
-			],
-		};
-	};
+	const failureTracker = new BuildFailureTracker();
 
 	return new Tool('build-workflow')
 		.description(
@@ -400,10 +399,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				return { success: false, errors: ['Action blocked by admin'] };
 			}
 
-			if (!input.workflowId && !isApprovedBuildContext(context) && isBuildViaPlanGuardEnabled()) {
-				return rejectPlanGuardCall();
-			}
-
 			if (
 				input.workflowId &&
 				!isApprovedBuildContext(context) &&
@@ -432,6 +427,24 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			const { code, patches, workflowId, projectId, name, workItemId } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
+			const buildContext = context.workflowBuildContext;
+			const isAuxiliarySupportingWorkflow =
+				isSupportingWorkflow && buildContext?.isSupportingWorkflowTask !== true;
+			const workItemKey = getBuildFailureTrackingKey({
+				workItemId,
+				workflowId,
+				workflowName: name,
+				isAuxiliarySupportingWorkflow,
+				buildContext,
+				runId: context.runId,
+			});
+			const withEscalation = (
+				errors: string[],
+				options: { includeSdkLanguageGuidance?: boolean } = {},
+			): string[] => {
+				const escalation = failureTracker.record(workItemKey, errors, options);
+				return escalation ? [...errors, escalation] : errors;
+			};
 			let finalCode: string;
 
 			if (patches) {
@@ -507,7 +520,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			} catch (error) {
 				return {
 					success: false,
-					errors: [error instanceof Error ? error.message : 'Failed to parse workflow code'],
+					errors: withEscalation(
+						[error instanceof Error ? error.message : 'Failed to parse workflow code'],
+						{
+							includeSdkLanguageGuidance: true,
+						},
+					),
 				};
 			}
 
@@ -517,8 +535,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			if (errors.length > 0) {
 				return {
 					success: false,
-					errors: errors.map(
-						(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
+					errors: withEscalation(
+						errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
 					),
 					warnings:
 						informational.length > 0
@@ -564,12 +582,18 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							Boolean(t.nodeName) && Boolean(t.nodeType),
 					);
 				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
-				const buildContext = context.workflowBuildContext;
+				const plannedTaskId =
+					buildContext?.plannedTaskService && !isAuxiliarySupportingWorkflow
+						? buildContext.taskId
+						: undefined;
+				const owner = plannedTaskId
+					? { type: 'planned' as const, taskId: plannedTaskId }
+					: { type: 'direct' as const };
 				const resolvedWorkItemId =
 					workItemId ??
-					(isSupportingWorkflow ? undefined : buildContext?.workItemId) ??
+					(isAuxiliarySupportingWorkflow ? undefined : buildContext?.workItemId) ??
 					`wi_${nanoid(8)}`;
-				const resolvedTaskId = isSupportingWorkflow
+				const resolvedTaskId = isAuxiliarySupportingWorkflow
 					? `${buildContext?.taskId ?? (context.runId ? `build-${context.runId}` : 'build')}:supporting-${nanoid(6)}`
 					: (buildContext?.taskId ??
 						(context.runId ? `build-${context.runId}` : `build-${nanoid(8)}`));
@@ -591,6 +615,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						...(runId ? { runId } : {}),
 						taskId: resolvedTaskId,
+						owner,
+						plannedTaskId,
 						workflowId: savedId,
 						submitted: true,
 						triggerType: 'manual_or_testable',
@@ -619,9 +645,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 					await promoteMainWorkflow(context, savedId);
 					await reportWorkflowBuildOutcome(context, outcome, {
-						storeOnRunContext: !isSupportingWorkflow,
-						markPlannedTaskSucceeded: !isSupportingWorkflow,
+						storeOnRunContext: !isAuxiliarySupportingWorkflow,
+						markPlannedTaskSucceeded: !isAuxiliarySupportingWorkflow,
 					});
+
+					failureTracker.clear(workItemKey);
 
 					return {
 						success: true,

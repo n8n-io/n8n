@@ -153,6 +153,7 @@ export type RelayEventMap = {
 		runData?: IRun;
 		projectId?: string;
 		projectName?: string;
+		source?: IWorkflowExecutionDataProcess['source'];
 		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
 	};
 

@@ -421,6 +421,65 @@ jobs:
             --predicate security/vex.openvex.json \
             ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
 
+  # SBOM Attestation - one enriched, license-gated CycloneDX SBOM per image.
+  # cdxgen scans the image (OS + npm), enrich-sbom resolves first-party + override
+  # licenses, check-sbom-licenses gates the npm components, and the result is
+  # attested to the image digest via cosign (same mechanism as VEX/provenance).
+  # This replaces BuildKit's `sbom: true` so the image carries the same resolved
+  # license picture as the release SBOM rather than the un-enriched syft output.
+  sbom-attestation:
+    name: SBOM Attestation
+    needs:
+      [
+        determine-build-context,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+        provenance-n8n,
+        provenance-runners,
+        provenance-runners-distroless,
+      ]
+    if: |
+      always() &&
+      needs.create_multi_arch_manifest.result == 'success' &&
+      (needs.determine-build-context.outputs.release_type == 'stable' ||
+       needs.determine-build-context.outputs.release_type == 'rc' ||
+       needs.determine-build-context.outputs.release_type == 'nightly')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js and install SBOM tooling
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+
+      - name: Login to GHCR
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate, enrich, gate and attest SBOM per image
+        env:
+          N8N_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
+          N8N_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+          RUNNERS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
+          RUNNERS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
+          DISTROLESS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
+          DISTROLESS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
+        run: node .github/scripts/attest-image-sbom.mjs
+
   security-scan:
     name: Security Scan
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]

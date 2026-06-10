@@ -16,6 +16,7 @@
  * invoked from any package via `pnpm exec janitor ...`.
  */
 
+import { encodeImpactMap, buildImpactMap, distributeShards, selectTests } from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -45,14 +46,6 @@ import {
 	formatBaselineInfo,
 	getBaselinePath,
 } from './core/baseline.js';
-import {
-	type ImpactMap,
-	type InternedImpactMap,
-	decodeImpactMap,
-	encodeImpactMap,
-	mergeCoverage,
-	resolveImpact,
-} from './core/coverage-map.js';
 import { extractDiffs } from './core/extract-diffs.js';
 import {
 	ImpactAnalyzer,
@@ -78,7 +71,6 @@ import {
 	formatMethodUsageIndexConsole,
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
-import { orchestrate } from './core/orchestrator.js';
 import { createProject } from './core/project-loader.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
@@ -492,7 +484,7 @@ async function runFilterShard(options: CliOptions): Promise<void> {
 	}
 }
 
-async function runOrchestrate(options: CliOptions): Promise<void> {
+async function runDistribute(options: CliOptions): Promise<void> {
 	const config = getConfig();
 
 	if (!options.shards || options.shards < 1) {
@@ -539,6 +531,24 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		}
 	}
 
+	// Composable allowlist filter. distribute-tests.mjs pre-computes the union
+	// of AST + V8 selection and writes it here; distributeShards then balances shards
+	// against that subset instead of the full discovered set.
+	if (options.includeSpecsFile) {
+		const includeRaw = fs.readFileSync(options.includeSpecsFile, 'utf-8');
+		const include = new Set(
+			includeRaw
+				.split(/[\n,]+/)
+				.map((s) => s.trim())
+				.filter(Boolean),
+		);
+		const totalBefore = specs.length;
+		specs = specs.filter((s) => include.has(s.path));
+		console.error(
+			`Include: ${specs.length}/${totalBefore} specs after applying allowlist (${include.size} entries)`,
+		);
+	}
+
 	const metrics: Record<string, number> = {};
 	if (config.orchestration.metricsPath) {
 		const metricsPath = path.isAbsolute(config.orchestration.metricsPath)
@@ -565,7 +575,7 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 		}
 	}
 
-	const result = orchestrate(specs, options.shards, metrics, config.orchestration);
+	const result = distributeShards(specs, options.shards, metrics, config.orchestration);
 
 	if (options.shardIndex !== undefined) {
 		if (Number.isNaN(options.shardIndex) || options.shardIndex < 0) {
@@ -659,7 +669,7 @@ function runMergeCoverage(options: CliOptions): void {
 	const files = fs.existsSync(options.inputsDir) ? findLcovFiles(options.inputsDir) : [];
 	// spec attribution comes from each lcov's TN:; the path is only a fallback.
 	const inputs = files.map((f) => ({ text: fs.readFileSync(f, 'utf8'), spec: f }));
-	const result = mergeCoverage(inputs);
+	const result = buildImpactMap(inputs);
 	fs.writeFileSync(options.outLcov, result.lcov);
 	// Interned on-disk form — spec paths once, referenced by index (~10x smaller).
 	fs.writeFileSync(options.outMap, JSON.stringify(encodeImpactMap(result.impactMap)));
@@ -669,45 +679,15 @@ function runMergeCoverage(options: CliOptions): void {
 	);
 }
 
-/** select-e2e: changed files + impact map → spec list (JSON).
- *
- *  Two layers of safety, both biased to OVER-select (never miss a regression):
- *   - FAIL-OPEN on the map source: a missing/unreadable/corrupt map → broad
- *     (run everything). This is what makes swapping the committed file for a
- *     remote webhook safe — a fetch failure degrades to running the full suite,
- *     never to skipping tests.
- *   - DEFAULT-BROAD on content: any changed file absent from a loaded map → broad.
- */
-function runSelectE2e(options: CliOptions): void {
-	const changed = (readChangedFiles(options) ?? []).map((file) => ({ file }));
-	const allSpecs = options.allSpecsFile
-		? fs
-				.readFileSync(options.allSpecsFile, 'utf8')
-				.split(/[\n,]+/)
-				.map((s) => s.trim())
-				.filter(Boolean)
-		: undefined;
-
-	let map: ImpactMap = {};
-	let failOpen: string | undefined;
-	if (options.mapFile && fs.existsSync(options.mapFile)) {
-		try {
-			const parsed: unknown = JSON.parse(fs.readFileSync(options.mapFile, 'utf8'));
-			// Interned form ({specs, files}) is decoded; a plain ImpactMap is used as-is.
-			const isInterned =
-				typeof parsed === 'object' && parsed !== null && 'specs' in parsed && 'files' in parsed;
-			map = isInterned ? decodeImpactMap(parsed as InternedImpactMap) : (parsed as ImpactMap);
-		} catch (error) {
-			failOpen = `unreadable map: ${String(error)}`;
-		}
-	} else {
-		failOpen = options.mapFile ? `map not found: ${options.mapFile}` : 'no --map provided';
-	}
-
-	// With an empty map every changed file is "unmapped" → resolveImpact returns
-	// broad, so fail-open falls out of the same code path — no special-casing.
-	const result = resolveImpact(changed, map, { allSpecs });
-	console.log(JSON.stringify({ ...result, failOpen }));
+/** select: changed files + impact map → spec list (JSON). I/O wrapper
+ *  around {@link selectTests}, where the fail-open safety contract lives. */
+function runSelect(options: CliOptions): void {
+	const result = selectTests({
+		changedFiles: readChangedFiles(options) ?? [],
+		mapFile: options.mapFile,
+		allSpecsFile: options.allSpecsFile,
+	});
+	console.log(JSON.stringify(result));
 }
 
 async function main(): Promise<void> {
@@ -737,7 +717,7 @@ async function main(): Promise<void> {
 			case 'discover':
 				showDiscoverHelp();
 				break;
-			case 'orchestrate':
+			case 'distribute':
 				showOrchestrateHelp();
 				break;
 			case 'affected-packages':
@@ -772,8 +752,8 @@ async function main(): Promise<void> {
 		runMergeCoverage(options);
 		return;
 	}
-	if (options.command === 'select-e2e') {
-		runSelectE2e(options);
+	if (options.command === 'select') {
+		runSelect(options);
 		return;
 	}
 
@@ -814,8 +794,8 @@ async function main(): Promise<void> {
 		case 'discover':
 			runDiscover();
 			break;
-		case 'orchestrate':
-			await runOrchestrate(options);
+		case 'distribute':
+			await runDistribute(options);
 			break;
 		case 'filter-shard':
 			await runFilterShard(options);

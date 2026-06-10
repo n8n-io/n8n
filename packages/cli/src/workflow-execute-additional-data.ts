@@ -2,11 +2,13 @@
 
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
-import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
+import type { JSONSchema7 } from 'json-schema';
+import { ExternalSecretsProxy, SsrfProtectionService, WorkflowExecute } from 'n8n-core';
 import {
 	UnexpectedError,
 	Workflow,
@@ -44,6 +46,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
@@ -53,7 +56,6 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { UrlService } from '@/services/url.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
@@ -202,6 +204,57 @@ export async function getPublishedWorkflowData(
 }
 
 /**
+ * Determines a workflow's deadline given its start time, its settings
+ * and global execution config.
+ */
+function determineWorkflowDeadline(
+	startTime: number,
+	workflowSettings: IWorkflowSettings | undefined,
+	executionsConfig: ExecutionsConfig,
+): number | undefined {
+	const effectiveMaxTimeout =
+		executionsConfig.maxTimeout > 0 ? executionsConfig.maxTimeout : Infinity;
+
+	if (workflowSettings?.executionTimeout !== undefined) {
+		// A defined timeout of <= 0 means the workflow's own timeout is explicitly
+		// disabled, so it runs unbounded rather than falling back to the global
+		// default. Otherwise it is clamped to the configurable maximum. This mirrors
+		// the main-workflow path in workflow-runner.ts and job-processor.ts.
+		if (workflowSettings.executionTimeout <= 0) {
+			return undefined;
+		}
+		return (
+			startTime +
+			Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
+	}
+	if (executionsConfig.timeout > 0) {
+		return (
+			startTime +
+			Math.min(executionsConfig.timeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
+	}
+	return undefined;
+}
+
+/**
+ * Resolves a sub-workflow deadline depending on its parent.
+ */
+function resolveSubworkflowDeadline(
+	subWorkflowDeadline: number | undefined,
+	parentDeadline: number | undefined,
+	doNotWaitToFinish: boolean | undefined,
+): number | undefined {
+	if (doNotWaitToFinish) {
+		return subWorkflowDeadline;
+	}
+	if (parentDeadline !== undefined && subWorkflowDeadline !== undefined) {
+		return Math.min(parentDeadline, subWorkflowDeadline);
+	}
+	return parentDeadline ?? subWorkflowDeadline;
+}
+
+/**
  * Executes the workflow with the given ID
  */
 export async function executeWorkflow(
@@ -267,6 +320,7 @@ export async function executeAgent(
 	threadId: string,
 	additionalData: IWorkflowExecuteAdditionalData,
 	executionMode: WorkflowExecuteMode,
+	outputSchema?: JSONSchema7,
 ): Promise<ExecuteAgentData> {
 	let userId = additionalData.userId;
 	const telemetryUserId = additionalData.userId;
@@ -311,6 +365,7 @@ export async function executeAgent(
 		projectId,
 		telemetryUserId,
 		useDraftVersion,
+		outputSchema,
 	);
 }
 
@@ -443,18 +498,15 @@ async function startExecution(
 		// Propagate streaming state to subworkflows
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
 
-		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
-			// We might have received a max timeout timestamp from the parent workflow
-			// If we did, then we get the minimum time between the two timeouts
-			// If no timeout was given from the parent, then we use our timeout.
-			subworkflowTimeout = Math.min(
-				additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER,
-				startTime + workflowSettings.executionTimeout * 1000,
-			);
-		}
+		const executionsConfig = Container.get(ExecutionsConfig);
 
-		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
+		const subworkflowDeadline = resolveSubworkflowDeadline(
+			determineWorkflowDeadline(startTime, workflowSettings, executionsConfig),
+			additionalData.executionTimeoutTimestamp,
+			options.doNotWaitToFinish,
+		);
+
+		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowDeadline;
 
 		const runExecutionData = runData.executionData as IRunExecutionData;
 
@@ -496,7 +548,10 @@ async function startExecution(
 
 		activeExecutions.finalizeExecution(executionId, fullRunData);
 
-		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
+		await Container.get(ExecutionPersistence).updateExistingExecution(
+			executionId,
+			fullExecutionData,
+		);
 		throw objectToError(
 			{
 				...executionError,
@@ -628,8 +683,8 @@ export async function getBase({
 			);
 		},
 		async getRunExecutionData(executionId) {
-			const executionRepository = Container.get(ExecutionRepository);
-			const executionData = await executionRepository.findSingleExecution(executionId, {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionData = await executionPersistence.findSingleExecution(executionId, {
 				unflattenData: true,
 				includeData: true,
 			});

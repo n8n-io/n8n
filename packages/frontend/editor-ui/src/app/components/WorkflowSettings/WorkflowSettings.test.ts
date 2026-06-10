@@ -235,13 +235,14 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy')).toBeVisible();
 	});
 
-	describe('Custom telemetry tags', () => {
+	describe('Custom span attributes', () => {
 		beforeEach(() => {
 			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];
+			settingsStore.settings.enterprise.otelCustomSpanAttributes = true;
 			settingsStore.moduleSettings = { otel: { enabled: true } };
 		});
 
-		it('should show custom telemetry tag settings when OTel is enabled', async () => {
+		it('should show custom span attribute settings when OTel custom span attributes are enabled', async () => {
 			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 
 			await flushPromises();
@@ -249,7 +250,7 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-custom-telemetry-tags')).toBeVisible();
 		});
 
-		it('should hide custom telemetry tag settings when OTel is disabled', async () => {
+		it('should hide custom span attribute settings when OTel is disabled', async () => {
 			settingsStore.moduleSettings = { otel: { enabled: false } };
 			const { queryByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 
@@ -258,7 +259,16 @@ describe('WorkflowSettingsVue', () => {
 			expect(queryByTestId('workflow-settings-custom-telemetry-tags')).not.toBeInTheDocument();
 		});
 
-		it('should save workflow settings with custom telemetry tags emitted by the child', async () => {
+		it('should hide custom span attribute settings when OTel custom span attributes are not licensed', async () => {
+			settingsStore.settings.enterprise.otelCustomSpanAttributes = false;
+			const { queryByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
+
+			await flushPromises();
+
+			expect(queryByTestId('workflow-settings-custom-telemetry-tags')).not.toBeInTheDocument();
+		});
+
+		it('should save workflow settings with custom span attributes emitted by the child', async () => {
 			const { getByTestId, getByRole } = createComponentWithCustomTelemetryTagsStub({ pinia });
 			await flushPromises();
 
@@ -275,7 +285,7 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
-		it('should persist custom telemetry tags immediately with a partial settings payload', async () => {
+		it('should persist custom span attributes immediately with a partial settings payload', async () => {
 			workflowDocumentStore.setChecksum('test-checksum');
 			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 			await flushPromises();
@@ -293,7 +303,7 @@ describe('WorkflowSettingsVue', () => {
 			]);
 		});
 
-		it('should show an error when immediate custom telemetry tag persistence fails', async () => {
+		it('should show an error when immediate custom span attribute persistence fails', async () => {
 			const error = new Error('Save failed');
 			workflowsStore.updateWorkflow.mockRejectedValue(error);
 			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
@@ -307,7 +317,7 @@ describe('WorkflowSettingsVue', () => {
 			expect(workflowDocumentStore.settings.customTelemetryTags).toBeUndefined();
 		});
 
-		it('should disable workflow settings save when custom telemetry tags are invalid', async () => {
+		it('should disable workflow settings save when custom span attributes are invalid', async () => {
 			const { getByTestId, getByRole } = createComponentWithCustomTelemetryTagsStub({ pinia });
 			await flushPromises();
 
@@ -980,6 +990,40 @@ describe('WorkflowSettingsVue', () => {
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ credentialResolverId: '' }),
+				}),
+			);
+		});
+
+		it('should save with empty credentialResolverId when switching back to the system resolver', async () => {
+			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-1' });
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
+			});
+
+			// Open the dropdown and pick the n8n system resolver
+			const resolverContainer = getByTestId('workflow-settings-credential-resolver');
+			await userEvent.click(within(resolverContainer).getByRole('combobox'));
+
+			await waitFor(async () => {
+				const options = within(document.body as HTMLElement).getAllByRole('option');
+				const systemResolver = options.find((o) => o.textContent?.includes('N8n Resolver'));
+				expect(systemResolver).toBeTruthy();
+				await userEvent.click(systemResolver!);
+			});
+			await flushPromises();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			// `undefined` would be stripped during serialization and the merge on the backend
+			// would keep the old id, so the clear must be sent as an explicit empty string.
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 				'1',
 				expect.objectContaining({
@@ -1707,7 +1751,7 @@ describe('WorkflowSettingsVue', () => {
 				).not.toBeInTheDocument();
 			});
 
-			it('persists coerced redactionPolicy on save under floor "production"', async () => {
+			it('does not persist the floor-coerced production value when the user made no redaction change under floor "production"', async () => {
 				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'none' });
 
 				const { getByRole } = createComponent({ pinia });
@@ -1717,15 +1761,17 @@ describe('WorkflowSettingsVue', () => {
 				await userEvent.click(getByRole('button', { name: 'Save' }));
 				expect(toast.showError).not.toHaveBeenCalled();
 
+				// The floor coerces the production select to "Redact" for display only — the workflow's
+				// own stored policy must be preserved, not overwritten with the floor's value. (ENT-35)
 				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 					expect.any(String),
 					expect.objectContaining({
-						settings: expect.objectContaining({ redactionPolicy: 'non-manual' }),
+						settings: expect.objectContaining({ redactionPolicy: 'none' }),
 					}),
 				);
 			});
 
-			it('persists coerced redactionPolicy on save under floor "all"', async () => {
+			it('does not persist the floor-coerced values when the user made no redaction change under floor "all"', async () => {
 				setUpFloor({ floor: 'all', flagEnabled: true, redactionPolicy: 'none' });
 
 				const { getByRole } = createComponent({ pinia });
@@ -1738,7 +1784,55 @@ describe('WorkflowSettingsVue', () => {
 				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
 					expect.any(String),
 					expect.objectContaining({
+						settings: expect.objectContaining({ redactionPolicy: 'none' }),
+					}),
+				);
+			});
+
+			it('persists "all" when the user genuinely enables manual redaction under floor "production"', async () => {
+				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'none' });
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				// Production is floor-locked to "Redact"; manual stays editable. Turning manual on
+				// implies production (IAM-697), so the genuine, intended save is "all".
+				const manualSelect = getByTestId('workflow-settings-redact-manual-select');
+				await userEvent.click(within(manualSelect).getByRole('combobox'));
+				await waitFor(async () => {
+					const options = within(document.body as HTMLElement).getAllByRole('option');
+					const redactOption = options.find((o) => o.textContent?.trim() === 'Redact');
+					expect(redactOption).toBeTruthy();
+					await userEvent.click(redactOption!);
+				});
+				await flushPromises();
+
+				toast.showError.mockClear();
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+				expect(toast.showError).not.toHaveBeenCalled();
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
 						settings: expect.objectContaining({ redactionPolicy: 'all' }),
+					}),
+				);
+			});
+
+			it('preserves an existing stricter stored policy on save under floor "production"', async () => {
+				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'non-manual' });
+
+				const { getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				toast.showError.mockClear();
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+				expect(toast.showError).not.toHaveBeenCalled();
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({ redactionPolicy: 'non-manual' }),
 					}),
 				);
 			});

@@ -1,0 +1,44 @@
+oneOf:
+  - type: object
+    description: >
+      A workflow whose source id already matches one in the target project, under
+      the `fail` conflict policy.
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-conflict
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      name:
+        type: string
+  - type: object
+    description: A credential reference that could not be resolved in the target project.
+    required:
+      - type
+      - kind
+      - sourceId
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - credential-unresolved
+      kind:
+        type: string
+        enum:
+          - not_found
+          - unknown_type
+      sourceId:
+        type: string
+      usedByWorkflows:
+        type: array
+        items:
+          type: string

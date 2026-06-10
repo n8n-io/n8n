@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Config, Env, Nested } from '../decorators';
 
 @Config
-class PrometheusMetricsConfig {
+export class PrometheusMetricsConfig {
 	/** Whether to enable the `/metrics` endpoint to expose Prometheus metrics. */
 	@Env('N8N_METRICS')
 	enable: boolean = false;
@@ -79,6 +79,10 @@ class PrometheusMetricsConfig {
 	/** How often (in seconds) to update workflow statistics metrics. */
 	@Env('N8N_METRICS_WORKFLOW_STATISTICS_INTERVAL')
 	workflowStatisticsInterval: number = 300;
+
+	/** Whether to include metrics for execution data reads and writes. */
+	@Env('N8N_METRICS_INCLUDE_EXECUTION_DATA_METRICS')
+	includeExecutionDataMetrics: boolean = false;
 }
 
 @Config

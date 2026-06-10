@@ -36,6 +36,15 @@ import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
+const getDefaultInstanceSettingsLoaderConfig = () => ({
+	ownerManagedByEnv: false,
+	ssoManagedByEnv: false,
+	securityPolicyManagedByEnv: false,
+	logStreamingManagedByEnv: false,
+	mcpManagedByEnv: false,
+	communityPackagesManagedByEnv: false,
+});
+
 describe('TelemetryEventRelay', () => {
 	const telemetry = mock<Telemetry>({
 		sanitizeTelemetryProperties: jest.fn((data) => data),
@@ -62,6 +71,7 @@ describe('TelemetryEventRelay', () => {
 				includeCacheMetrics: false,
 				includeMessageEventBusMetrics: false,
 				includeQueueMetrics: false,
+				includeExecutionDataMetrics: false,
 			},
 		},
 		logging: {
@@ -103,6 +113,7 @@ describe('TelemetryEventRelay', () => {
 		database: {
 			type: 'sqlite',
 		},
+		instanceSettingsLoader: getDefaultInstanceSettingsLoaderConfig(),
 	});
 	const binaryDataConfig = mock<BinaryDataConfig>({
 		mode: 'default',
@@ -142,6 +153,7 @@ describe('TelemetryEventRelay', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		globalConfig.diagnostics.enabled = true;
+		Object.assign(globalConfig.instanceSettingsLoader, getDefaultInstanceSettingsLoaderConfig());
 		const otelConfig = Container.get(OtelConfig);
 		otelConfig.enabled = false;
 		otelConfig.includeNodeSpans = true;
@@ -2082,6 +2094,14 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `server-started` event', async () => {
 			const firstWorkflow = mock<WorkflowEntity>({ createdAt: new Date() });
 			workflowRepository.findOne.mockResolvedValue(firstWorkflow);
+			Object.assign(globalConfig.instanceSettingsLoader, {
+				ownerManagedByEnv: true,
+				ssoManagedByEnv: true,
+				securityPolicyManagedByEnv: true,
+				logStreamingManagedByEnv: true,
+				mcpManagedByEnv: true,
+				communityPackagesManagedByEnv: true,
+			});
 
 			eventService.emit('server-started');
 
@@ -2105,6 +2125,7 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_logs: false,
 						metrics_category_queue: false,
 						metrics_category_routes: false,
+						metrics_category_execution_data: false,
 						metrics_enabled: true,
 					},
 					n8n_binary_data_mode: 'default',
@@ -2131,10 +2152,23 @@ describe('TelemetryEventRelay', () => {
 					otel: expect.anything(),
 				}),
 			);
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					settings_managed_by_env_vars: expect.anything(),
+				}),
+			);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'Instance started',
 				expect.objectContaining({
 					earliest_workflow_created: firstWorkflow.createdAt,
+					settings_managed_by_env_vars: {
+						owner_managed_by_env: true,
+						sso_managed_by_env: true,
+						security_policy_managed_by_env: true,
+						log_streaming_managed_by_env: true,
+						mcp_managed_by_env: true,
+						community_packages_managed_by_env: true,
+					},
 					metrics: {
 						metrics_enabled: true,
 						metrics_category_default: true,
@@ -2142,6 +2176,7 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_cache: false,
 						metrics_category_logs: false,
 						metrics_category_queue: false,
+						metrics_category_execution_data: false,
 					},
 					otel: {
 						enabled: false,
@@ -2149,6 +2184,90 @@ describe('TelemetryEventRelay', () => {
 					},
 				}),
 			);
+		});
+
+		it('should track instance settings env management on `server-started` event', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			Object.assign(globalConfig.instanceSettingsLoader, {
+				ownerManagedByEnv: true,
+				ssoManagedByEnv: true,
+				securityPolicyManagedByEnv: true,
+				logStreamingManagedByEnv: true,
+				mcpManagedByEnv: true,
+				communityPackagesManagedByEnv: true,
+			});
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Instance started',
+				expect.objectContaining({
+					settings_managed_by_env_vars: {
+						owner_managed_by_env: true,
+						sso_managed_by_env: true,
+						security_policy_managed_by_env: true,
+						log_streaming_managed_by_env: true,
+						mcp_managed_by_env: true,
+						community_packages_managed_by_env: true,
+					},
+				}),
+			);
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					settings_managed_by_env_vars: expect.anything(),
+				}),
+			);
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					traits: expect.not.objectContaining({
+						settings_managed_by_env_vars: expect.anything(),
+					}),
+				}),
+			);
+		});
+
+		it('should not include sensitive instance settings loader values in startup telemetry', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			Object.assign(globalConfig.instanceSettingsLoader, {
+				ownerManagedByEnv: true,
+				ownerEmail: 'owner@example.com',
+				ownerPasswordHash: '$2b$12$012345678901234567890u012345678901234567890123456789012',
+				ssoManagedByEnv: true,
+				oidcClientId: 'oidc-client-id',
+				oidcClientSecret: 'oidc-client-secret',
+				oidcDiscoveryEndpoint: 'https://idp.example.com/.well-known/openid-configuration',
+				samlMetadata: '<EntityDescriptor entityID="sensitive-idp" />',
+				samlMetadataUrl: 'https://idp.example.com/metadata',
+				logStreamingManagedByEnv: true,
+				logStreamingDestinations: '[{"type":"webhook","url":"https://hooks.example.com/audit"}]',
+				mcpManagedByEnv: true,
+				mcpAccessEnabled: true,
+				communityPackagesManagedByEnv: true,
+				communityPackages: '[{"name":"n8n-nodes-sensitive","version":"1.2.3"}]',
+			});
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			const startupEvent = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Instance started',
+			);
+			expect(startupEvent).toBeDefined();
+			if (!startupEvent) throw new Error('Expected Instance started telemetry event');
+
+			const telemetryPayload = JSON.stringify(startupEvent[1]);
+
+			expect(telemetryPayload).not.toContain('owner@example.com');
+			expect(telemetryPayload).not.toContain('$2b$12$012345678901234567890u');
+			expect(telemetryPayload).not.toContain('oidc-client-id');
+			expect(telemetryPayload).not.toContain('oidc-client-secret');
+			expect(telemetryPayload).not.toContain('idp.example.com');
+			expect(telemetryPayload).not.toContain('sensitive-idp');
+			expect(telemetryPayload).not.toContain('hooks.example.com');
+			expect(telemetryPayload).not.toContain('n8n-nodes-sensitive');
 		});
 
 		it('should track OTEL startup configuration on `server-started` event', async () => {
@@ -2396,8 +2515,8 @@ describe('TelemetryEventRelay', () => {
 				executionId: 'execution123',
 				userId: 'user123',
 				runData,
+				source: 'instance_ai',
 				telemetryMetadata: {
-					source: 'instance_ai',
 					mockDataSources: ['trigger_input', 'verification_pin_data'],
 				},
 			};
