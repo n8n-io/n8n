@@ -28,6 +28,7 @@ const SUPPORTED_IMPORT_TYPES = new Set<SourceControlledFile['type']>([
 	'workflow',
 	'credential',
 	'datatable',
+	'folders',
 ]);
 
 const RESOURCE_TYPES: Array<SourceControlledFile['type']> = [
