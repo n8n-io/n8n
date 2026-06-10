@@ -94,13 +94,16 @@ function partitionFiles(filesCsv) {
  *
  * Any thrown error from the wrapper is caught and treated as broad — fail-open.
  */
-function selectV8Specs(externalFiles) {
+function selectV8Specs(externalFiles, base) {
 	if (externalFiles.length === 0)
 		return { broad: false, specs: new Set(), reason: 'no app-source changes' };
 	try {
 		const out = execFileSync('node', [SELECT_AFFECTED_E2E, ...externalFiles], {
 			encoding: 'utf-8',
 			stdio: ['pipe', 'pipe', 'inherit'],
+			// Pass the merge-base so `select` can read changed package.json
+			// before/after and drop a devDependency-only lockfile change.
+			env: { ...process.env, BASE_REF: base ?? '' },
 		});
 		const parsed = JSON.parse(out);
 		if (parsed.mode === 'broad') {
@@ -108,6 +111,15 @@ function selectV8Specs(externalFiles) {
 				broad: true,
 				reason: parsed.failOpen ?? `unmapped: ${(parsed.unmapped ?? []).join(', ')}`,
 			};
+		}
+		// Coverage-gap alarm: changes with no E2E that verifies them aren't run
+		// (unit + the sanity spec are the net) — but surface the gap, don't hide it.
+		if (parsed.uncovered?.length) {
+			const sample = parsed.uncovered.slice(0, 5).join(', ');
+			const more = parsed.uncovered.length > 5 ? `, +${parsed.uncovered.length - 5} more` : '';
+			console.error(
+				`  ⚠ ${parsed.uncovered.length} changed file(s) have no E2E coverage — not run, relying on unit + sanity: ${sample}${more}`,
+			);
 		}
 		return { broad: false, specs: new Set(parsed.specs ?? []) };
 	} catch (error) {
@@ -194,7 +206,7 @@ function getOrchestration(numShards, options = {}) {
  */
 function resolveImpactAllowlist(filesCsv, base) {
 	const { internal, external } = partitionFiles(filesCsv);
-	const v8 = selectV8Specs(external);
+	const v8 = selectV8Specs(external, base);
 	const ast = selectAstSpecs(internal, base);
 
 	// Fail-open: either bails → broad wins. Run everything.

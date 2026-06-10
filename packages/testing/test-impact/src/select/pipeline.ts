@@ -19,6 +19,7 @@ export function selectImpactedTests(
 	const specs = new Set<string>();
 	const unmapped = new Set<string>();
 	const viaSibling = new Set<string>();
+	const uncovered = new Set<string>();
 
 	for (const selector of selectors) {
 		const result = selector.resolve(changed);
@@ -26,6 +27,7 @@ export function selectImpactedTests(
 		for (const spec of result.specs) specs.add(spec);
 		for (const file of result.unmapped) unmapped.add(file);
 		for (const file of result.viaSibling ?? []) viaSibling.add(file);
+		for (const file of result.uncovered ?? []) uncovered.add(file);
 	}
 
 	return {
@@ -33,5 +35,6 @@ export function selectImpactedTests(
 		unmapped: [...unmapped],
 		mode: 'scoped',
 		...(viaSibling.size ? { viaSibling: [...viaSibling] } : {}),
+		...(uncovered.size ? { uncovered: [...uncovered] } : {}),
 	};
 }

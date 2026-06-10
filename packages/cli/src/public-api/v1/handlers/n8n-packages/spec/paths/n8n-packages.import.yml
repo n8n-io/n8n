@@ -73,10 +73,10 @@ post:
               description: >
                 `new-version` updates matching workflows and creates a new version,
                 `fail` rejects the import when any matching workflow exists, and
-                `skip` leaves matching workflows untouched while importing the rest.
+                      description: Workflow id on the target instance (newly created for `created`, existing for `updated`/`skipped`).
   responses:
     '200':
-      description: Import succeeded.
+      description: Import succeeded; the listed workflows were written to the target project.
       content:
         application/json:
           schema:
@@ -160,66 +160,40 @@ post:
                     additionalProperties:
                       type: string
     '409':
-      description: Workflow source id conflict.
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              code:
-                type: number
-              message:
-                type: string
-              meta:
-                type: object
-                properties:
-                  code:
-                    type: string
-                    enum:
-                      - WORKFLOW_CONFLICT
-                  conflicts:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        sourceWorkflowId:
-                          type: string
-                        existingWorkflowId:
-                          type: string
-                        name:
-                          type: string
-    '422':
-      description: One or more credential references could not be resolved.
+      description: >
+        Import blocked, with at least one workflow source-id conflict among the
+        issues.
       content:
         application/json:
           schema:
             type: object
             required:
               - message
-              - failures
+              - issues
             properties:
               message:
                 type: string
-              failures:
+              issues:
                 type: array
                 items:
-                  type: object
-                  required:
-                    - kind
-                    - sourceId
-                    - usedByWorkflows
-                  properties:
-                    kind:
-                      type: string
-                      enum:
-                        - not_found
-                        - unknown_type
-                    sourceId:
-                      type: string
-                    usedByWorkflows:
-                      type: array
-                      items:
-                        type: string
+                  $ref: '../schemas/importBlockingIssue.yml'
+    '422':
+      description: >
+        Import blocked by non-conflict issues only (e.g. unresolved credentials).
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+              - issues
+            properties:
+              message:
+                type: string
+              issues:
+                type: array
+                items:
+                  $ref: '../schemas/importBlockingIssue.yml'
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
