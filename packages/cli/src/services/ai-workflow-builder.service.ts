@@ -1,12 +1,18 @@
 import { AiWorkflowBuilderService, createPassthroughSsrfGuard } from '@n8n/ai-workflow-builder';
-import type { ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
+import type {
+	ResourceLocatorCallbackFactory,
+	BuilderModelConfig,
+	BuilderProvider,
+} from '@n8n/ai-workflow-builder';
 import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
+import { agentBuilderAdminSettingsSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
-import * as path from 'path';
+import { jsonParse } from 'n8n-workflow';
 import type {
 	INodeCredentials,
 	INodeParameters,
@@ -14,14 +20,30 @@ import type {
 	IUser,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
+import * as path from 'path';
 
 import { N8N_VERSION } from '@/constants';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+
+/** Persisted admin settings key shared with the agent builder. */
+const AGENT_BUILDER_SETTINGS_KEY = 'agentBuilder.settings';
+
+/** Map an admin-settings provider id onto a provider the workflow builder supports. */
+function toBuilderProvider(provider: string): BuilderProvider | undefined {
+	if (provider === 'openai') return 'openai';
+	if (provider === 'anthropic') return 'anthropic';
+	if (provider.startsWith('google')) return 'google';
+	return undefined;
+}
 import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+
 import { InstanceSettings, SsrfProtectionService } from 'n8n-core';
+
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { getBase } from '@/workflow-execute-additional-data';
@@ -51,6 +73,9 @@ export class WorkflowBuilderService {
 		private readonly sessionRepository: WorkflowBuilderSessionRepository,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly settingsRepository: SettingsRepository,
+		private readonly credentialsService: CredentialsService,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {
 		// Register a post-processor to update node types when they change.
 		// This ensures newly installed/updated/uninstalled community packages are recognized
@@ -192,9 +217,82 @@ export class WorkflowBuilderService {
 		return dirs;
 	}
 
+	/**
+	 * Resolve which provider + API key the workflow builder should run on.
+	 *
+	 * Priority:
+	 *   1. Managed AI proxy (n8n Cloud) — keeps its existing Anthropic path.
+	 *   2. In-app admin setting (Agent Builder → custom credential) — any of
+	 *      Anthropic / OpenAI / Google, with the key entered in the app.
+	 *   3. Env-var keys for OpenAI / Google (Anthropic env is handled downstream).
+	 *
+	 * Returns `undefined` to let the underlying service use its default
+	 * (proxy or `N8N_AI_ANTHROPIC_KEY`) behaviour.
+	 */
+	private async resolveModelOverride(): Promise<BuilderModelConfig | undefined> {
+		if (this.client) return undefined;
+
+		const fromSettings = await this.resolveModelFromSettings();
+		if (fromSettings) return fromSettings;
+
+		return this.resolveModelFromEnv();
+	}
+
+	private async resolveModelFromSettings(): Promise<BuilderModelConfig | undefined> {
+		try {
+			const row = await this.settingsRepository.findByKey(AGENT_BUILDER_SETTINGS_KEY);
+			if (!row) return undefined;
+
+			const parsed = agentBuilderAdminSettingsSchema.safeParse(
+				jsonParse<unknown>(row.value, { fallbackValue: undefined }),
+			);
+			if (!parsed.success || parsed.data.mode !== 'custom') return undefined;
+
+			const provider = toBuilderProvider(parsed.data.provider);
+			if (!provider) {
+				this.logger.warn(
+					`Workflow builder: provider "${parsed.data.provider}" is not supported, ignoring custom model settings`,
+				);
+				return undefined;
+			}
+
+			const credential = await this.credentialsFinderService.findCredentialById(
+				parsed.data.credentialId,
+			);
+			if (!credential) return undefined;
+
+			const data = await this.credentialsService.decrypt(credential, true);
+			const apiKey = typeof data.apiKey === 'string' ? data.apiKey : undefined;
+			if (!apiKey) return undefined;
+
+			const baseUrl =
+				typeof data.url === 'string'
+					? data.url
+					: typeof data.baseUrl === 'string'
+						? data.baseUrl
+						: undefined;
+
+			return { provider, apiKey, model: parsed.data.modelName, baseUrl };
+		} catch (error) {
+			this.logger.warn('Workflow builder: failed to resolve in-app model settings', { error });
+			return undefined;
+		}
+	}
+
+	private resolveModelFromEnv(): BuilderModelConfig | undefined {
+		const openAiKey = process.env.N8N_AI_OPENAI_KEY;
+		if (openAiKey) return { provider: 'openai', apiKey: openAiKey };
+
+		const googleKey = process.env.N8N_AI_GOOGLE_KEY;
+		if (googleKey) return { provider: 'google', apiKey: googleKey };
+
+		return undefined;
+	}
+
 	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
 		const service = await this.getService();
-		yield* service.chat(payload, user, abortSignal);
+		const modelOverride = await this.resolveModelOverride();
+		yield* service.chat(payload, user, abortSignal, modelOverride);
 	}
 
 	async getSessions(workflowId: string | undefined, user: IUser, isCodeBuilder?: boolean) {

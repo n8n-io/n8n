@@ -1,4 +1,5 @@
 export * from './ai-workflow-builder-agent.service';
+export { createBuilderModel, type BuilderModelConfig, type BuilderProvider } from './llm-config';
 export * from './types';
 export * from './workflow-state';
 export { resolveConnections } from '@/validation/utils/resolve-connections';
