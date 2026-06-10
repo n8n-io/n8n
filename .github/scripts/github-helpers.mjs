@@ -408,6 +408,23 @@ export async function getChangedFiles(pullRequestNumber) {
 }
 
 /**
+ * Returns all files changed in a PR with full metadata including addition counts.
+ *
+ * @param { number } pullRequestNumber
+ * @returns { Promise<Array<{ filename: string, additions: number, previous_filename?: string }>> }
+ * */
+export async function getPrFiles(pullRequestNumber) {
+	const { octokit, owner, repo } = initGithub();
+
+	return await octokit.paginate(octokit.rest.pulls.listFiles, {
+		owner,
+		repo,
+		pull_number: pullRequestNumber,
+		per_page: 100,
+	});
+}
+
+/**
  * @param {string} tag
  */
 export async function getExistingRelease(tag) {

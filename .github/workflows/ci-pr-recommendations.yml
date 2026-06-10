@@ -1,7 +1,8 @@
-name: 'CI: Owners Review Recommendations'
+name: 'CI: PR Recommendations'
 
-# Posts (or updates) a PR comment recommending which @n8n-io teams should
-# review the PR, based on file ownership defined in .github/OWNERS.
+# Posts (or updates) a PR comment with recommended reviewer teams (based on
+# file ownership in .github/OWNERS) and a breakdown of changed lines by
+# category (source code, test files, misc).
 #
 # Advisory only — does not gate merging.
 
@@ -15,8 +16,8 @@ on:
       - master
 
 jobs:
-  recommend-reviewers:
-    name: Recommend reviewers
+  pr-recommendations:
+    name: PR recommendations
     # Skipped for:
     #  - PRs from forks (no token to comment with)
     #  - Bot-authored PRs (Dependabot, Renovate, etc. — noise, not useful)
@@ -44,8 +45,8 @@ jobs:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
-      - name: Post review recommendations
+      - name: Post PR recommendations
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-        run: node .github/scripts/owners-review-recommendations.mjs
+        run: node .github/scripts/pr-recommendations.mjs
