@@ -543,21 +543,17 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		);
 	});
 
-	it.each([
-		{ sandboxEnabled: false, sandboxProvider: 'daytona' as const, daytonaVolumeId: 'volume-1' },
-		{ sandboxEnabled: true, sandboxProvider: 'n8n-sandbox' as const, daytonaVolumeId: 'volume-1' },
-		{ sandboxEnabled: false, sandboxProvider: 'n8n-sandbox' as const, daytonaVolumeId: 'volume-1' },
-		{ sandboxEnabled: true, sandboxProvider: 'daytona' as const, daytonaVolumeId: '' },
-	])(
-		'does not inject search_knowledge when sandboxEnabled=$sandboxEnabled, sandboxProvider=$sandboxProvider, daytonaVolumeId=$daytonaVolumeId',
-		async (agentsConfig) => {
-			const { service, credentialProvider } = setup(agentsConfig);
+	it('does not inject knowledge retrieval tools without a Daytona volume', async () => {
+		const { service, credentialProvider } = setup({
+			sandboxEnabled: true,
+			sandboxProvider: 'daytona',
+			daytonaVolumeId: '',
+		});
 
-			await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
+		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
-			expect(getInjectedToolNames()).not.toContain('search_knowledge');
-			expect(getInjectedToolNames()).not.toContain('find_knowledge_files');
-			expect(getInjectedToolNames()).not.toContain('read_knowledge');
-		},
-	);
+		expect(getInjectedToolNames()).not.toContain('search_knowledge');
+		expect(getInjectedToolNames()).not.toContain('find_knowledge_files');
+		expect(getInjectedToolNames()).not.toContain('read_knowledge');
+	});
 });

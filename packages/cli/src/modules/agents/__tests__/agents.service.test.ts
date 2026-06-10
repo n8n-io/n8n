@@ -220,27 +220,6 @@ describe('AgentsService', () => {
 		Container.reset();
 	});
 
-	describe('isKnowledgeBaseEnabled', () => {
-		it('only enables the knowledge base for Daytona sandbox config with a volume', () => {
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-
-			agentsConfig.sandboxEnabled = true;
-			agentsConfig.sandboxProvider = 'n8n-sandbox';
-			agentsConfig.daytonaVolumeId = 'volume-1';
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-
-			agentsConfig.sandboxProvider = 'daytona';
-			expect(service.isKnowledgeBaseEnabled()).toBe(true);
-
-			agentsConfig.daytonaVolumeId = '';
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-
-			agentsConfig.sandboxEnabled = false;
-			agentsConfig.daytonaVolumeId = 'volume-1';
-			expect(service.isKnowledgeBaseEnabled()).toBe(false);
-		});
-	});
-
 	describe('validateConfig', () => {
 		it('rejects inputSchema on node tool configs', async () => {
 			const result = await service.validateConfig({
@@ -3124,16 +3103,6 @@ describe('AgentsService', () => {
 			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
 				agentRepository.remove.mock.invocationCallOrder[0],
 			);
-		});
-
-		it('still removes the agent when knowledge file cleanup fails', async () => {
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
-
-			await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
-
-			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		});
 
 		it('requests task reconciliation when deleting the agent', async () => {

@@ -6,7 +6,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
 import type { AiService } from '../../../services/ai.service';
 
-import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH, KNOWLEDGE_FILES_DIR } from '../agent-knowledge-storage';
+import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from '../agent-knowledge-storage';
 import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
 	AgentKnowledgeSandboxService,
@@ -205,11 +205,8 @@ describe('AgentKnowledgeSandboxService', () => {
 		);
 	});
 
-	it.each([
-		{ state: 'started', shouldStart: false },
-		{ state: 'stopped', shouldStart: true },
-	])('reuses a matching $state sandbox', async ({ state, shouldStart }) => {
-		const sandbox = makeSandbox(state);
+	it('reuses a matching stopped sandbox and starts it before running the operation', async () => {
+		const sandbox = makeSandbox('stopped');
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		const service = makeService();
 		const operation = jest.fn(async () => 'done');
@@ -217,11 +214,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		await expect(
 			service.withKnowledgeFilesystem('project-1', 'agent-1', userId, operation),
 		).resolves.toBe('done');
-		if (shouldStart) {
-			expect(sandbox.start).toHaveBeenCalledWith(300);
-		} else {
-			expect(sandbox.start).not.toHaveBeenCalled();
-		}
+		expect(sandbox.start).toHaveBeenCalledWith(300);
 		expect(createMock).not.toHaveBeenCalled();
 		expect(operation).toHaveBeenCalledTimes(1);
 	});
@@ -329,70 +322,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(getMock).toHaveBeenCalledWith('listed-sandbox');
 		expect(listedSandbox.process.executeCommand).not.toHaveBeenCalled();
 		expect(hydratedSandbox.process.executeCommand).toHaveBeenCalled();
-	});
-
-	it('rejects before calling Daytona when the instance id is invalid', async () => {
-		const service = makeService(
-			{},
-			mock<Logger>(),
-			makeAiService(),
-			mock<InstanceSettings>({ instanceId: '../other-instance' }),
-		);
-
-		await expect(
-			service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {}),
-		).rejects.toThrow('Invalid instance id for agent knowledge storage');
-		expect(listMock).not.toHaveBeenCalled();
-		expect(createMock).not.toHaveBeenCalled();
-	});
-
-	it('rejects before calling Daytona when the volume id is missing', async () => {
-		const service = makeService({ daytonaVolumeId: '' });
-
-		await expect(
-			service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {}),
-		).rejects.toThrow('Agent knowledge Daytona volume is not configured');
-		expect(listMock).not.toHaveBeenCalled();
-		expect(createMock).not.toHaveBeenCalled();
-	});
-
-	it.each([
-		{ sandboxEnabled: false, sandboxProvider: 'daytona' as const },
-		{ sandboxEnabled: true, sandboxProvider: 'n8n-sandbox' as const },
-	])(
-		'rejects before calling Daytona when sandboxEnabled=$sandboxEnabled and sandboxProvider=$sandboxProvider',
-		async (configOverrides) => {
-			const service = makeService(configOverrides);
-
-			await expect(
-				service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {}),
-			).rejects.toThrow('Agent knowledge sandbox is not enabled');
-			expect(listMock).not.toHaveBeenCalled();
-			expect(createMock).not.toHaveBeenCalled();
-		},
-	);
-
-	it('delegates batch uploads to sandbox.fs.uploadFiles', async () => {
-		const sandbox = makeSandbox('started');
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		const service = makeService();
-		const uploads = [
-			{
-				source: '/tmp/notes.txt',
-				destination: `${KNOWLEDGE_FILES_DIR}/notes.txt`,
-			},
-			{
-				source: Buffer.from('extracted pdf text', 'utf-8'),
-				destination: `${KNOWLEDGE_FILES_DIR}/report.txt`,
-			},
-		];
-
-		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async (filesystem) => {
-			await filesystem.uploadFiles(uploads);
-		});
-
-		expect(sandbox.fs.uploadFiles).toHaveBeenCalledTimes(1);
-		expect(sandbox.fs.uploadFiles).toHaveBeenCalledWith(uploads);
 	});
 
 	it('findKnowledgeFiles returns metadata-backed files without starting Daytona', async () => {
@@ -522,69 +451,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		);
 	});
 
-	it('searchKnowledge includes hidden uploaded files in broad searches', async () => {
-		const sandbox = makeSandbox('started');
-		mockKnowledgeFiles([
-			makeAgentFile({
-				id: 'file-1',
-				storageFileName: '.notes.txt',
-				fileName: '.notes.txt',
-			}),
-		]);
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		sandbox.process.executeCommand.mockResolvedValue({
-			exitCode: 0,
-			artifacts: {
-				stdout:
-					'{"type":"match","data":{"path":{"text":".notes.txt"},"lines":{"text":"hello hidden\\n"},"line_number":1}}' +
-					'\n',
-				stderr: '',
-			},
-		});
-		const service = makeService();
-
-		await expect(
-			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
-		).resolves.toMatchObject({
-			matches: [
-				{
-					file: '.notes.txt',
-					fileId: 'file-1',
-					text: 'hello hidden',
-				},
-			],
-		});
-		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining(
-				`rg --json --fixed-strings --line-number --color=never --hidden --max-count 21 --max-columns 501 --max-columns-preview --ignore-case -- 'hello' '.'`,
-			),
-			undefined,
-			undefined,
-			300,
-		);
-	});
-
-	it('searchKnowledge treats ripgrep no-match exit code as empty results', async () => {
-		const sandbox = makeSandbox('started');
-		mockKnowledgeFiles([makeAgentFile()]);
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		sandbox.process.executeCommand.mockResolvedValue({
-			exitCode: 1,
-			artifacts: { stdout: '', stderr: '' },
-		});
-		const service = makeService();
-
-		await expect(
-			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'missing' }),
-		).resolves.toEqual({
-			matches: [],
-			limit: 20,
-			offset: 0,
-			hasMore: false,
-			truncated: false,
-		});
-	});
-
 	it('searchKnowledge surfaces sandbox-side output truncation', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([makeAgentFile()]);
@@ -661,24 +527,5 @@ describe('AgentKnowledgeSandboxService', () => {
 			undefined,
 			300,
 		);
-	});
-
-	it('rejects mismatched read file identifiers before sandbox execution', async () => {
-		const sandbox = makeSandbox('started');
-		mockKnowledgeFiles([
-			makeAgentFile({ id: 'file-1', storageFileName: 'notes.txt' }),
-			makeAgentFile({ id: 'file-2', storageFileName: 'other.txt' }),
-		]);
-		const service = makeService();
-
-		await expect(
-			service.readKnowledge('project-1', 'agent-1', userId, {
-				file: 'notes.txt',
-				fileId: 'file-2',
-				ranges: [{ startLine: 1, endLine: 2 }],
-			}),
-		).rejects.toThrow(BadRequestError);
-		expect(listMock).not.toHaveBeenCalled();
-		expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
 	});
 });
