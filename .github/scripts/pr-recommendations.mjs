@@ -86,10 +86,12 @@ export function buildReviewersSection(allocations, changedFiles) {
  * Build the changed-lines section of the PR comment.
  *
  * @param { LineStats } lineStats
+ * @param { number } totalFiles
  * @returns { string }
  */
-export function buildChangedLinesSection(lineStats) {
+export function buildChangedLinesSection(lineStats, totalFiles) {
 	const sourceLabel = lineStats.sourceCode > SIZE_LIMIT ? 'Source code ❗' : 'Source code';
+	const totalLines = lineStats.sourceCode + lineStats.testFiles + lineStats.misc;
 
 	return [
 		'## Changed lines',
@@ -99,6 +101,9 @@ export function buildChangedLinesSection(lineStats) {
 		`| ${sourceLabel} | ${lineStats.sourceCode.toLocaleString()} |`,
 		`| Test files | ${lineStats.testFiles.toLocaleString()} |`,
 		`| Misc | ${lineStats.misc.toLocaleString()} |`,
+		`| **Total** | **${totalLines.toLocaleString()}** |`,
+		'',
+		`${totalFiles.toLocaleString()} file${totalFiles === 1 ? '' : 's'} changed`,
 	].join('\n');
 }
 
@@ -115,7 +120,7 @@ export function buildComment(allocations, changedFiles, lineStats) {
 		BOT_MARKER,
 		buildReviewersSection(allocations, changedFiles),
 		'',
-		buildChangedLinesSection(lineStats),
+		buildChangedLinesSection(lineStats, changedFiles.size),
 	].join('\n');
 }
 

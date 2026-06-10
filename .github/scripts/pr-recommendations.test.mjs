@@ -147,51 +147,66 @@ describe('buildReviewersSection', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildChangedLinesSection', () => {
-	it('renders a table with all three categories', () => {
-		const section = buildChangedLinesSection({ sourceCode: 100, testFiles: 50, misc: 10 });
+	it('renders a table with all three categories and a total row', () => {
+		const section = buildChangedLinesSection({ sourceCode: 100, testFiles: 50, misc: 10 }, 5);
 
 		assert.match(section, /## Changed lines/);
 		assert.match(section, /\| Source code \| 100 \|/);
 		assert.match(section, /\| Test files \| 50 \|/);
 		assert.match(section, /\| Misc \| 10 \|/);
+		assert.match(section, /\| \*\*Total\*\* \| \*\*160\*\* \|/);
+	});
+
+	it('shows the total files changed count below the table', () => {
+		const section = buildChangedLinesSection({ sourceCode: 10, testFiles: 0, misc: 0 }, 7);
+
+		assert.match(section, /7 files changed/);
+	});
+
+	it('uses singular "file" when exactly one file changed', () => {
+		const section = buildChangedLinesSection({ sourceCode: 10, testFiles: 0, misc: 0 }, 1);
+
+		assert.match(section, /1 file changed/);
+		assert.doesNotMatch(section, /1 files changed/);
 	});
 
 	it('adds ❗ to source code label when it exceeds the size limit', () => {
-		const section = buildChangedLinesSection({ sourceCode: 1001, testFiles: 0, misc: 0 });
+		const section = buildChangedLinesSection({ sourceCode: 1001, testFiles: 0, misc: 0 }, 1);
 
 		assert.match(section, /\| Source code ❗ \|/);
 	});
 
 	it('does not add ❗ when source code is exactly at the size limit', () => {
-		const section = buildChangedLinesSection({ sourceCode: 1000, testFiles: 0, misc: 0 });
+		const section = buildChangedLinesSection({ sourceCode: 1000, testFiles: 0, misc: 0 }, 1);
 
 		assert.match(section, /\| Source code \|/);
 		assert.doesNotMatch(section, /❗/);
 	});
 
 	it('does not add ❗ when source code is below the size limit', () => {
-		const section = buildChangedLinesSection({ sourceCode: 999, testFiles: 0, misc: 0 });
+		const section = buildChangedLinesSection({ sourceCode: 999, testFiles: 0, misc: 0 }, 1);
 
 		assert.doesNotMatch(section, /❗/);
 	});
 
 	it('formats large numbers with locale thousands separator', () => {
-		const section = buildChangedLinesSection({ sourceCode: 12345, testFiles: 1000, misc: 0 });
+		const section = buildChangedLinesSection({ sourceCode: 12345, testFiles: 1000, misc: 0 }, 10);
 
 		assert.match(section, /12[,.]345/); // separator varies by locale, both are valid
 		assert.match(section, /1[,.]000/);
 	});
 
-	it('renders zero values as 0', () => {
-		const section = buildChangedLinesSection(EMPTY_LINE_STATS);
+	it('renders zero values as 0 and total as 0', () => {
+		const section = buildChangedLinesSection(EMPTY_LINE_STATS, 0);
 
 		assert.match(section, /\| Source code \| 0 \|/);
 		assert.match(section, /\| Test files \| 0 \|/);
 		assert.match(section, /\| Misc \| 0 \|/);
+		assert.match(section, /\| \*\*Total\*\* \| \*\*0\*\* \|/);
 	});
 
 	it('includes the table header', () => {
-		const section = buildChangedLinesSection(EMPTY_LINE_STATS);
+		const section = buildChangedLinesSection(EMPTY_LINE_STATS, 0);
 
 		assert.match(section, /\| Category \| Lines added \|/);
 	});
