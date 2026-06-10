@@ -15,10 +15,25 @@
 	--da-subtler: #bbb;
 	--da-subtlest: #888;
 	--da-accent: #ff6d5a;
+	--da-accent-press: #e85d4b;
+	--da-purple: #a78bfa;
 	--da-blue: #7aa2ff;
 	--da-green: #3fcf8e;
 	--da-amber: #f5b84b;
 	--da-red: #ff6b6b;
 	--da-radius: 10px;
 	--da-radius-sm: 6px;
+}
+
+/*
+ * Shared keyboard focus ring. Applied via `:focus-visible` only, so it never
+ * shows on mouse/touch interaction — it's the single accessibility affordance
+ * the prototype lacks. Components reference `--da-focus-ring` for an outline or
+ * `--da-focus-shadow` for a box-shadow ring where an outline would be clipped
+ * (e.g. overflow-hidden rows / scroll containers).
+ */
+:root {
+	--da-focus-ring: 2px solid var(--da-accent);
+	--da-focus-ring-offset: 1px;
+	--da-focus-shadow: 0 0 0 2px var(--da-bg), 0 0 0 4px var(--da-accent);
 }

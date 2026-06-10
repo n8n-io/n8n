@@ -15,12 +15,18 @@ const tasks = ref<DesktopAssistantTasksResponse | null>(null);
 const loading = ref(true);
 const error = ref(false);
 
+const sections = computed(() => ({
+	actionNeeded: tasks.value?.actionNeeded ?? [],
+	upcoming: tasks.value?.upcoming ?? [],
+	readyToRun: tasks.value?.readyToRun ?? [],
+}));
+
 const isEmpty = computed(
 	() =>
 		tasks.value !== null &&
-		!tasks.value.actionNeeded?.length &&
-		!tasks.value.upcoming?.length &&
-		!tasks.value.readyToRun?.length,
+		!sections.value.actionNeeded.length &&
+		!sections.value.upcoming.length &&
+		!sections.value.readyToRun.length,
 );
 
 async function load() {
@@ -58,14 +64,14 @@ onMounted(load);
 
 <template>
 	<div :class="$style.view">
-		<div v-if="loading" :class="$style.state">
-			<N8nSpinner />
+		<div v-if="loading" :class="$style.state" role="status" aria-live="polite">
+			<N8nSpinner aria-hidden="true" />
 			<N8nText color="text-light" size="small">{{
 				i18n.baseText('desktopAssistant.tasks.loading')
 			}}</N8nText>
 		</div>
 
-		<div v-else-if="error" :class="$style.state">
+		<div v-else-if="error" :class="$style.state" role="alert">
 			<N8nText color="text-light" size="small">{{
 				i18n.baseText('desktopAssistant.tasks.error')
 			}}</N8nText>
@@ -81,9 +87,9 @@ onMounted(load);
 		</div>
 
 		<template v-else-if="tasks">
-			<section v-if="tasks.actionNeeded.length" :class="$style.section">
+			<section v-if="sections.actionNeeded.length" :class="$style.section">
 				<TaskCard
-					v-for="card in tasks.actionNeeded"
+					v-for="card in sections.actionNeeded"
 					:key="card.workflowId"
 					:card="card"
 					variant="actionNeeded"
@@ -92,12 +98,12 @@ onMounted(load);
 				/>
 			</section>
 
-			<section v-if="tasks.upcoming.length" :class="$style.section">
+			<section v-if="sections.upcoming.length" :class="$style.section">
 				<N8nText :class="$style.sectionTitle">{{
 					i18n.baseText('desktopAssistant.sections.upcoming')
 				}}</N8nText>
 				<TaskCard
-					v-for="card in tasks.upcoming"
+					v-for="card in sections.upcoming"
 					:key="card.workflowId"
 					:card="card"
 					variant="upcoming"
@@ -106,12 +112,12 @@ onMounted(load);
 				/>
 			</section>
 
-			<section v-if="tasks.readyToRun.length" :class="$style.section">
+			<section v-if="sections.readyToRun.length" :class="$style.section">
 				<N8nText :class="$style.sectionTitle">{{
 					i18n.baseText('desktopAssistant.sections.readyToRun')
 				}}</N8nText>
 				<TaskCard
-					v-for="card in tasks.readyToRun"
+					v-for="card in sections.readyToRun"
 					:key="card.workflowId"
 					:card="card"
 					variant="readyToRun"
@@ -127,7 +133,7 @@ onMounted(load);
 .view {
 	display: flex;
 	flex-direction: column;
-	padding: 4px 8px 8px;
+	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs);
 }
 
 .section {
@@ -138,8 +144,8 @@ onMounted(load);
 /* Scoped under `.section` so font-size/weight win over N8nText's own size/weight
    classes (2 classes vs 1); color/transform/spacing have no N8nText equivalent. */
 .section .sectionTitle {
-	padding: 10px 6px 4px;
-	font-size: 11px;
+	padding: 10px var(--spacing--2xs) var(--spacing--4xs);
+	font-size: 10px;
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.8px;

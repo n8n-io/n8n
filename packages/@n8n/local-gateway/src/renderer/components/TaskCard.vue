@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nNodeIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nNodeIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -97,7 +97,7 @@ function open() {
 		@keydown.enter="open"
 		@keydown.space.prevent="open"
 	>
-		<span :class="[$style.tile, $style[tileClass]]">
+		<span :class="[$style.tile, $style[tileClass]]" aria-hidden="true">
 			<N8nNodeIcon
 				v-if="nodeIcon"
 				:type="nodeIcon.type"
@@ -111,13 +111,13 @@ function open() {
 		</span>
 
 		<span :class="$style.body">
-			<N8nText bold :class="$style.title">{{ card.name }}</N8nText>
+			<span :class="$style.title">{{ card.name }}</span>
 			<span
 				v-if="subtitle"
 				:class="[$style.subtitle, { [$style.actionNeededText]: variant === 'actionNeeded' }]"
 			>
-				<N8nIcon v-if="leadingIcon" :icon="leadingIcon" size="small" />
-				<N8nText size="small">{{ subtitle }}</N8nText>
+				<N8nIcon v-if="leadingIcon" :icon="leadingIcon" :size="12" aria-hidden="true" />
+				<span :class="$style.subtitleText">{{ subtitle }}</span>
 			</span>
 		</span>
 
@@ -143,7 +143,7 @@ function open() {
 				"
 				@click.stop="emit('run', card.workflowId)"
 			>
-				<N8nIcon icon="play" size="medium" />
+				<N8nIcon icon="play" :size="17" aria-hidden="true" />
 			</button>
 		</span>
 	</div>
@@ -153,21 +153,35 @@ function open() {
 .card {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 11px;
 	width: 100%;
-	padding: 11px 6px;
+	padding: 10px var(--spacing--2xs);
 	border: none;
 	background: transparent;
 	text-align: left;
 	cursor: pointer;
 	font: inherit;
 	color: var(--da-text);
-	border-radius: var(--da-radius-sm);
+	border-radius: var(--radius--xs);
 	transition: background-color 0.12s;
 }
 
 .card:hover {
 	background: var(--da-surface-2);
+}
+
+.card:focus-visible {
+	background: var(--da-surface-2);
+	outline: var(--da-focus-ring);
+	/* Inset so the ring isn't clipped at the edges of the scrolling task list. */
+	outline-offset: calc(-1 * var(--da-focus-ring-offset));
+}
+
+/* Keep the run button visible while the card or the button itself has focus, so
+   keyboard users can see and reach it (it's otherwise revealed on hover only). */
+.card:focus-within .play {
+	opacity: 1;
+	color: var(--da-accent);
 }
 
 .tile {
@@ -177,7 +191,7 @@ function open() {
 	flex-shrink: 0;
 	width: 34px;
 	height: 34px;
-	border-radius: 8px;
+	border-radius: var(--radius--xs);
 	border: 1px solid var(--da-border);
 	font-size: 15px;
 	line-height: 1;
@@ -190,7 +204,7 @@ function open() {
 }
 
 .tileUpcoming {
-	background: rgba(122, 162, 255, 0.16);
+	background: rgba(122, 162, 255, 0.14);
 	color: var(--da-blue);
 }
 
@@ -202,24 +216,36 @@ function open() {
 .body {
 	display: flex;
 	flex-direction: column;
-	gap: 1px;
 	flex: 1;
 	min-width: 0;
 }
 
+/* Prototype: font-size 13px, font-weight 500 (not bold/700) */
 .title {
+	font-size: 13px;
+	font-weight: 500;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	color: var(--da-text);
 }
 
+/* Prototype: font-size 11px, margin-top 2px */
 .subtitle {
 	display: flex;
 	align-items: center;
 	gap: 5px;
 	min-width: 0;
+	font-size: 11px;
+	margin-top: var(--spacing--5xs);
 	color: var(--da-subtler);
+}
+
+/* Subtitle text node: inherits 11px from .subtitle, truncates overflowing text. */
+.subtitleText {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 /* Action-needed subtitle (and its leading icon) take the amber accent. */
@@ -230,7 +256,7 @@ function open() {
 .trailing {
 	display: flex;
 	align-items: center;
-	gap: 2px;
+	gap: var(--spacing--5xs);
 	flex-shrink: 0;
 }
 
@@ -255,5 +281,12 @@ function open() {
 .card:hover .play {
 	opacity: 1;
 	color: var(--da-accent);
+}
+
+.play:focus-visible {
+	opacity: 1;
+	color: var(--da-accent);
+	outline: var(--da-focus-ring);
+	outline-offset: var(--da-focus-ring-offset);
 }
 </style>
