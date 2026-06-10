@@ -228,6 +228,28 @@ describe('Canvas', () => {
 		);
 	});
 
+	it('should expand a selected collapsed group to its members when copying', async () => {
+		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const groupNode = createCanvasGroupElement({ id: 'g1', nodeIds: ['node-1', 'node-2'] });
+
+		const { container, emitted } = renderComponent({
+			props: { nodes: [groupNode] },
+		});
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+		const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+		addSelectedNodes(graphNodes.value);
+
+		await fireEvent.keyDown(document, { key: 'c', ctrlKey: true, metaKey: true });
+
+		// The group title bar isn't a real node, so copy must carry its members.
+		expect(emitted()['copy:nodes']).toEqual([[['node-1', 'node-2']]]);
+	});
+
 	it('should emit `update:nodes:position` event', async () => {
 		const nodes = [createCanvasNodeElement()];
 		const { container, emitted } = renderComponent({

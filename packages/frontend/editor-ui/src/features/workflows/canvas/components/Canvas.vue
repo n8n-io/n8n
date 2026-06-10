@@ -489,6 +489,19 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
 const hasSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
 
+// Selected node ids, with each selected collapsed group expanded to its members
+// so bulk operations (copy, duplicate, …) reach the nodes its title bar stands for.
+const selectedNodeIdsWithGroupMembers = computed(() => {
+	const ids = new Set(selectedNodeIds.value);
+	for (const node of selectedNodesAndGroups.value) {
+		if (!isCanvasGroupNode(node)) continue;
+		for (const memberId of (node.data as CanvasGroupNodeData).group.nodeIds) {
+			ids.add(memberId);
+		}
+	}
+	return [...ids];
+});
+
 const lastSelectedNode = ref<GraphNode>();
 const triggerNodes = computed<CanvasNode[]>(() =>
 	props.nodes.filter((node): node is CanvasNode => {
@@ -823,8 +836,8 @@ function onRunNode(id: string) {
 
 function emitWithSelectedNodes(emitFn: (ids: string[]) => void) {
 	return () => {
-		if (hasSelection.value) {
-			emitFn(selectedNodeIds.value);
+		if (selectedNodeIdsWithGroupMembers.value.length > 0) {
+			emitFn(selectedNodeIdsWithGroupMembers.value);
 		}
 	};
 }
