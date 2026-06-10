@@ -197,6 +197,7 @@ import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/178
 import type { Migration } from '../migration-types';
 import { CreateAgentTaskDefinitionTable1784000000021 } from './1784000000021-CreateAgentTaskDefinitionTable';
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
+import { AddSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddSizeBytesAndWorkflowVersionIdToExecutionEntity';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -397,6 +398,7 @@ const sqliteMigrations: Migration[] = [
 	AddScopeColumnToOAuthTables1784000000026,
 	CreateWorkflowPublicationOutboxTable1784000000027,
 	AddProjectIdToInstanceAiThread1784000000028,
+	AddSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
 ];
 
 export { sqliteMigrations };

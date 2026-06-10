@@ -10,6 +10,7 @@ import {
 	type ExecutionRepository,
 } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
+import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -120,6 +121,65 @@ describe('ExecutionPersistence', () => {
 					mockTx,
 				);
 				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('records sizeBytes for the whole bundle (run data + snapshot + version id)', async () => {
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.create(createPayload);
+
+				const snapshot = {
+					connections: workflowData.connections,
+					nodes: workflowData.nodes,
+					name: workflowData.name,
+					settings: workflowData.settings,
+					id: workflowData.id,
+				};
+				const expectedSize =
+					Buffer.byteLength(stringify(runData), 'utf8') +
+					Buffer.byteLength(JSON.stringify(snapshot), 'utf8') +
+					Buffer.byteLength('version-abc', 'utf8');
+
+				// size is persisted after the timed write, not folded into the insert
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: 'exec-1' },
+					{ sizeBytes: expectedSize },
+				);
+				// the snapshot + version id add to the run-data size, so the bundle is strictly larger
+				expect(expectedSize).toBeGreaterThan(Buffer.byteLength(stringify(runData), 'utf8'));
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-data-write',
+					expect.objectContaining({ sizeBytes: expectedSize }),
+				);
+			});
+
+			it('records the workflow version id on the entity from the workflow snapshot', async () => {
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.create(createPayload);
+
+				expect(mockTx.insert).toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.objectContaining({ workflowVersionId: 'version-abc' }),
+				);
+			});
+
+			it('records a null workflow version id when the workflow has no version', async () => {
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.create({
+					...createPayload,
+					workflowData: { ...workflowData, versionId: undefined },
+				});
+
+				expect(mockTx.insert).toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.objectContaining({ workflowVersionId: null }),
+				);
 			});
 		});
 
@@ -663,8 +723,14 @@ describe('ExecutionPersistence', () => {
 				});
 
 				expect(result).toBe(true);
-				expect(mockTx.update).not.toHaveBeenCalled();
 				expect(fsStore.write).toHaveBeenCalled();
+				// No caller-supplied entity columns, so the only entity-row update is the bundle size.
+				expect(mockTx.update).toHaveBeenCalledTimes(1);
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ sizeBytes: expect.any(Number) as number },
+				);
 			});
 
 			it('should skip the fs write on a data-only update when conditions do not match', async () => {
@@ -868,6 +934,145 @@ describe('ExecutionPersistence', () => {
 					ExecutionEntity,
 					{ id: executionId },
 					{ status: 'success' },
+				);
+			});
+		});
+
+		describe('sizeBytes tracking', () => {
+			const fullBundleSize = (data: string, snapshot: object, versionId: string | null) =>
+				Buffer.byteLength(data, 'utf8') +
+				Buffer.byteLength(JSON.stringify(snapshot), 'utf8') +
+				Buffer.byteLength(versionId ?? '', 'utf8');
+
+			it('records the whole-bundle size on the db fast path', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+				});
+
+				const snapshot = {
+					id: workflowData.id,
+					name: workflowData.name,
+					nodes: workflowData.nodes,
+					connections: workflowData.connections,
+					settings: workflowData.settings,
+				};
+				const expectedSize = fullBundleSize(stringify(runData), snapshot, 'version-abc');
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ sizeBytes: expectedSize },
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-data-write',
+					expect.objectContaining({ sizeBytes: expectedSize }),
+				);
+			});
+
+			it('records the merged-bundle size on the read-merge path (new data, existing snapshot)', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, { data: runData });
+
+				const expectedSize = fullBundleSize(
+					stringify(runData),
+					existingBundle.workflowData,
+					existingBundle.workflowVersionId,
+				);
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ sizeBytes: expectedSize },
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-data-write',
+					expect.objectContaining({ sizeBytes: expectedSize }),
+				);
+			});
+
+			it('changes the recorded size when only the workflow snapshot changes', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, { workflowData });
+
+				// run data is unchanged (existing.data), but the new snapshot is counted in the size
+				const snapshot = {
+					id: workflowData.id,
+					name: workflowData.name,
+					nodes: workflowData.nodes,
+					connections: workflowData.connections,
+					settings: workflowData.settings,
+				};
+				const expectedSize = fullBundleSize(
+					existingBundle.data,
+					snapshot,
+					existingBundle.workflowVersionId,
+				);
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ sizeBytes: expectedSize },
+				);
+			});
+
+			it('computes sizeBytes locally and ignores a caller-supplied value', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+					sizeBytes: 999_999,
+				});
+
+				const snapshot = {
+					id: workflowData.id,
+					name: workflowData.name,
+					nodes: workflowData.nodes,
+					connections: workflowData.connections,
+					settings: workflowData.settings,
+				};
+				const expectedSize = fullBundleSize(stringify(runData), snapshot, 'version-abc');
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ sizeBytes: expectedSize },
+				);
+				expect(mockTx.update).not.toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.anything(),
+					expect.objectContaining({ sizeBytes: 999_999 }),
+				);
+			});
+
+			it('does not touch sizeBytes on a metadata-only update', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue({ affected: 1, generatedMaps: [], raw: {} });
+
+				await executionPersistence.updateExistingExecution(executionId, { status: 'success' });
+
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId },
+					expect.not.objectContaining({ sizeBytes: expect.anything() }),
 				);
 			});
 		});

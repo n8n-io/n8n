@@ -3,6 +3,7 @@ import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
 	CreateExecutionPayload,
+	EntityManager,
 	ExecutionDataStorageLocation,
 	ExecutionDeletionCriteria,
 	FindManyOptions,
@@ -25,6 +26,7 @@ import { FsStore } from './execution-data/fs-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import type {
 	ExecutionDataBundle,
+	ExecutionDataPayload,
 	ExecutionDataStore,
 	ExecutionRef,
 	WorkflowSnapshot,
@@ -76,8 +78,8 @@ export class ExecutionPersistence {
 		const { connections, nodes, name, settings, id } = workflowData;
 		const workflowSnapshot: WorkflowSnapshot = { connections, nodes, name, settings, id };
 		const storedAt = this.storageConfig.modeTag;
-		const executionEntity = { ...rest, createdAt: new Date(), storedAt };
 		const workflowVersionId = workflowData.versionId ?? null;
+		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
 		try {
 			return await this.executionRepository.manager.transaction(async (tx) => {
@@ -86,14 +88,16 @@ export class ExecutionPersistence {
 				const ref = { workflowId: id, executionId };
 				const store = this.getStoreFor(storedAt);
 
-				await this.trackWrite(storedAt, async () => {
-					const bundle = {
+				const sizeBytes = await this.trackWrite(storedAt, async () => {
+					const bundle: ExecutionDataPayload = {
 						data: stringify(rawData),
 						workflowData: workflowSnapshot,
 						workflowVersionId,
 					};
 					await store.write(ref, bundle, tx);
+					return this.computeBundleSizeBytes(bundle);
 				});
+				await this.persistSizeBytes(tx, executionId, sizeBytes);
 
 				return executionId;
 			});
@@ -472,38 +476,65 @@ export class ExecutionPersistence {
 			}
 
 			if (data !== undefined && workflowData !== undefined && store === this.dbStore) {
-				await this.trackWrite(mode, async () => {
+				// Both data and snapshot are overwritten, so skip reading the existing bundle.
+				// `workflowVersionId` is immutable, so the caller's snapshot already carries it.
+				const sizeBytes = await this.trackWrite(mode, async () => {
+					const bundle: ExecutionDataPayload = {
+						data: stringify(data),
+						workflowData: this.toWorkflowSnapshot(workflowData),
+						workflowVersionId: workflowData.versionId ?? null,
+					};
 					const result = await tx.update(
 						ExecutionData,
 						{ executionId: ref.executionId },
-						{ data: stringify(data), workflowData: this.toWorkflowSnapshot(workflowData) },
+						{ data: bundle.data, workflowData: bundle.workflowData },
 					);
 					if ((result.affected ?? 0) === 0) throw new MissingExecutionDataError(ref);
+					return this.computeBundleSizeBytes(bundle);
 				});
+				await this.persistSizeBytes(tx, ref.executionId, sizeBytes);
 				return true;
 			}
 
 			const existing = await this.trackRead(mode, async () => await store.read(ref, tx));
 			if (!existing) throw new MissingExecutionDataError(ref);
 
-			await this.trackWrite(
-				mode,
-				async () =>
-					await store.write(
-						ref,
-						{
-							data: data !== undefined ? stringify(data) : existing.data,
-							workflowData: workflowData
-								? this.toWorkflowSnapshot(workflowData)
-								: existing.workflowData,
-							workflowVersionId: existing.workflowVersionId,
-						},
-						tx,
-					),
-			);
+			// Merge supplied fields over the existing bundle; changing `data` or `workflowData`
+			// changes the size.
+			const sizeBytes = await this.trackWrite(mode, async () => {
+				const bundle: ExecutionDataPayload = {
+					data: data !== undefined ? stringify(data) : existing.data,
+					workflowData: workflowData
+						? this.toWorkflowSnapshot(workflowData)
+						: existing.workflowData,
+					workflowVersionId: existing.workflowVersionId,
+				};
+				await store.write(ref, bundle, tx);
+				return this.computeBundleSizeBytes(bundle);
+			});
+			await this.persistSizeBytes(tx, ref.executionId, sizeBytes);
 
 			return true;
 		});
+	}
+
+	/**
+	 * Record the bundle's byte size on the execution row, once the guarded write has matched it.
+	 */
+	private async persistSizeBytes(tx: EntityManager, executionId: string, sizeBytes: number) {
+		await tx.update(ExecutionEntity, { id: executionId }, { sizeBytes });
+	}
+
+	/**
+	 * Byte size of a persisted bundle: serialized run data + JSON workflow snapshot + version id,
+	 * summed as they land in storage.
+	 */
+	private computeBundleSizeBytes(bundle: ExecutionDataPayload): number {
+		return (
+			Buffer.byteLength(bundle.data, 'utf8') +
+			Buffer.byteLength(JSON.stringify(bundle.workflowData), 'utf8') +
+			Buffer.byteLength(bundle.workflowVersionId ?? '', 'utf8')
+		);
 	}
 
 	/**
@@ -518,6 +549,8 @@ export class ExecutionPersistence {
 	 * - **Immutable after creation**: `workflowVersionId`, `createdAt`,
 	 *   `startedAt` — set once at insert time and never overwritten.
 	 * - **Not persisted on the entity**: `customData` — handled separately.
+	 * - **Computed locally**: `sizeBytes` — derived from the persisted bundle by
+	 *   {@link applyDataUpdate}, never trusted from the caller.
 	 */
 	private pickUpdatableEntityColumns(
 		execution: Partial<IExecutionResponse>,
@@ -531,6 +564,7 @@ export class ExecutionPersistence {
 			createdAt: _createdAt,
 			startedAt: _startedAt,
 			customData: _customData,
+			sizeBytes: _sizeBytes,
 			...updatableColumns
 		} = execution;
 		return updatableColumns;
@@ -576,20 +610,27 @@ export class ExecutionPersistence {
 		}
 	}
 
+	/**
+	 * Time and emit a metric for a data write. `op` serializes and writes the bundle — both counted
+	 * in the duration — and returns the written byte size, which rides the event (`0` on failure).
+	 */
 	private async trackWrite(
 		mode: ExecutionDataStorageLocation,
-		op: () => Promise<void>,
-	): Promise<void> {
+		op: () => Promise<number>,
+	): Promise<number> {
 		const start = Date.now();
 		let success = false;
+		let sizeBytes = 0;
 		try {
-			await op();
+			sizeBytes = await op();
 			success = true;
+			return sizeBytes;
 		} finally {
 			this.eventService.emit('execution-data-write', {
 				mode,
 				durationMs: Date.now() - start,
 				success,
+				sizeBytes,
 			});
 		}
 	}

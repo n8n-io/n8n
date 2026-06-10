@@ -18,7 +18,7 @@ import type { ExecutionAnnotation } from './execution-annotation.ee';
 import type { ExecutionData } from './execution-data';
 import type { ExecutionMetadata } from './execution-metadata';
 import { WorkflowEntity } from './workflow-entity';
-import { idStringifier } from '../utils/transformers';
+import { bigintStringToNumber, idStringifier } from '../utils/transformers';
 
 export type ExecutionDataStorageLocation = 'db' | 'fs';
 
@@ -98,6 +98,21 @@ export class ExecutionEntity {
 	 */
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	deduplicationKey: string | null;
+
+	/**
+	 * Size in bytes of the serialized execution data bundle as last persisted.
+	 * `null` means not yet calculated, distinct from a genuine `0`.
+	 */
+	@Column({ type: 'bigint', nullable: true, transformer: bigintStringToNumber })
+	sizeBytes: number | null;
+
+	/**
+	 * Version id of the workflow this execution ran, denormalized from the data
+	 * bundle so it can be queried without loading the bundle. `null` when the
+	 * workflow had no version (e.g. unsaved manual executions).
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	workflowVersionId: string | null;
 
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];
