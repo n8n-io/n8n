@@ -3,7 +3,6 @@ import { QueryFailedError } from '@n8n/typeorm';
 import { access, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { OperationalError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -586,8 +585,7 @@ describe('AgentKnowledgeService', () => {
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
-	it('deletes all DB-tracked volume files and rows for an agent', async () => {
-		agentRepository.findOne.mockResolvedValue({ id: agentId, projectId } as never);
+	it('deletes the scoped knowledge files directory and rows for an agent', async () => {
 		await agentFileRepository.save(
 			makeAgentFile({
 				id: 'file-1',
@@ -605,18 +603,22 @@ describe('AgentKnowledgeService', () => {
 		await filesystem.writeFile(`${KNOWLEDGE_FILES_DIR}/file-1.txt`, 'hello');
 		await filesystem.writeFile(`${KNOWLEDGE_FILES_DIR}/file-2.md`, '# Title');
 
-		await expect(service.deleteAllFilesForAgent(agentId, userId)).resolves.toBeUndefined();
+		await expect(
+			service.deleteAllFilesForAgent(projectId, agentId, userId),
+		).resolves.toBeUndefined();
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/file-1.txt`)).toBeUndefined();
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/file-2.md`)).toBeUndefined();
 		expect(agentFileRepository.all()).toEqual([]);
-		expect(filesystem.deleteCalls).toEqual([
-			{ filePath: `${KNOWLEDGE_FILES_DIR}/file-1.txt`, recursive: undefined },
-			{ filePath: `${KNOWLEDGE_FILES_DIR}/file-2.md`, recursive: undefined },
-		]);
+		expect(filesystem.deleteCalls).toEqual([{ filePath: KNOWLEDGE_FILES_DIR, recursive: true }]);
+		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+			userId,
+			expect.any(Function),
+		);
 	});
 
-	it('attempts every DB-tracked volume file before failing deleteAllFilesForAgent', async () => {
-		agentRepository.findOne.mockResolvedValue({ id: agentId, projectId } as never);
+	it('does not depend on DB storage references for agent cleanup', async () => {
 		await agentFileRepository.save(
 			makeAgentFile({
 				id: 'legacy-file',
@@ -635,8 +637,21 @@ describe('AgentKnowledgeService', () => {
 		);
 		await filesystem.writeFile(`${KNOWLEDGE_FILES_DIR}/file-2.md`, '# Title');
 
-		await expect(service.deleteAllFilesForAgent(agentId, userId)).rejects.toThrow(OperationalError);
+		await expect(
+			service.deleteAllFilesForAgent(projectId, agentId, userId),
+		).resolves.toBeUndefined();
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/file-2.md`)).toBeUndefined();
-		expect(agentFileRepository.all()).toHaveLength(2);
+		expect(agentFileRepository.all()).toEqual([]);
+		expect(filesystem.deleteCalls).toEqual([{ filePath: KNOWLEDGE_FILES_DIR, recursive: true }]);
+	});
+
+	it('keeps DB rows when scoped knowledge directory cleanup fails', async () => {
+		await agentFileRepository.save(makeAgentFile());
+		filesystem.deleteFile = jest.fn().mockRejectedValue(new Error('volume unavailable'));
+
+		await expect(service.deleteAllFilesForAgent(projectId, agentId, userId)).rejects.toThrow(
+			'volume unavailable',
+		);
+		expect(agentFileRepository.all()).toHaveLength(1);
 	});
 });

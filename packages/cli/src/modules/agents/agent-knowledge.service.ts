@@ -120,28 +120,18 @@ export class AgentKnowledgeService {
 		await this.agentFileRepository.delete({ id: fileId, agentId });
 	}
 
-	async deleteAllFilesForAgent(agentId: string, userId: string): Promise<void> {
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-		if (!agent) return;
-
-		const files = await this.agentFileRepository.findByAgentId(agentId);
-		if (files.length === 0) return;
-
+	async deleteAllFilesForAgent(projectId: string, agentId: string, userId: string): Promise<void> {
 		await this.agentKnowledgeSandboxService.withKnowledgeFilesystem(
-			agent.projectId,
+			projectId,
 			agentId,
 			userId,
 			async (filesystem) => {
-				const errors: unknown[] = [];
-				for (const file of files) {
-					try {
-						await this.deleteVolumeFile(filesystem, file);
-					} catch (error) {
-						errors.push(error);
+				try {
+					await filesystem.deleteFile(KNOWLEDGE_FILES_DIR, true);
+				} catch (error) {
+					if (!isFilesystemNotFoundError(error)) {
+						throw error;
 					}
-				}
-				if (errors.length > 0) {
-					throw errors[0];
 				}
 			},
 		);

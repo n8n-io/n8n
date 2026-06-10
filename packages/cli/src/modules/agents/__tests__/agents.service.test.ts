@@ -3111,7 +3111,11 @@ describe('AgentsService', () => {
 
 			await service.delete(agentId, projectId, 'user-1');
 
-			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(agentId, 'user-1');
+			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
+				projectId,
+				agentId,
+				'user-1',
+			);
 			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
 				agentRepository.remove.mock.invocationCallOrder[0],
 			);
