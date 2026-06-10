@@ -219,7 +219,8 @@ export function createCanvasConnectionId(connection: Connection) {
  * Resolve a rendered canvas connection back to real workflow node endpoints.
  * Collapsed-group remapping rewrites `source` / `target` for display only,
  * while storing the canonical workflow ids and handles on `data.canonicals`.
- * A merged edge represents several workflow connections; this returns the first.
+ * A merged edge represents several workflow connections - this returns the first,
+ * as we only allow groups with single input/output connections.
  */
 export function resolveCanonicalConnection(
 	connection: Connection & { data?: CanvasConnectionData },
