@@ -64,6 +64,7 @@ function register(overrides: {
 			workflowUrl: vi.fn(),
 			getHistory: vi.fn(),
 			executionUrl: vi.fn(),
+			getTimeSaved: vi.fn(),
 		}) as never,
 		openExternal: (overrides.openExternal ?? vi.fn().mockResolvedValue(undefined)) as never,
 	});
@@ -232,6 +233,24 @@ describe('registerIpcHandlers', () => {
 		await getRegisteredHandler('history:openExecution')(undefined, 'wf-1', 'exec-1');
 
 		expect(openExternal).not.toHaveBeenCalled();
+	});
+
+	it('insights:timeSaved returns the week/month figures from the instance api', async () => {
+		const timeSaved = { weekMinutes: 73, monthMinutes: null };
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn(),
+			getTimeSaved: vi.fn().mockResolvedValue(timeSaved),
+		};
+		register({ instanceApi });
+
+		const result = await getRegisteredHandler('insights:timeSaved')();
+
+		expect(instanceApi.getTimeSaved).toHaveBeenCalled();
+		expect(result).toEqual(timeSaved);
 	});
 
 	it('settings:set persists capability toggles', async () => {

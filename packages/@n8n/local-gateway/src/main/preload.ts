@@ -6,6 +6,7 @@ import type {
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantTasksResponse,
+	DesktopAssistantTimeSaved,
 	ElectronApi,
 	RunTaskResult,
 	StatusSnapshot,
@@ -64,6 +65,9 @@ const electronApi: ElectronApi = {
 	openExecution: async (workflowId: string, executionId: string): Promise<void> => {
 		await ipcRenderer.invoke('history:openExecution', workflowId, executionId);
 	},
+
+	getTimeSaved: async (): Promise<DesktopAssistantTimeSaved> =>
+		await (ipcRenderer.invoke('insights:timeSaved') as Promise<DesktopAssistantTimeSaved>),
 
 	onWindowActiveChanged: (onChangeCallback: (active: boolean) => void): (() => void) => {
 		const handler = (_event: unknown, active: boolean) => onChangeCallback(active);

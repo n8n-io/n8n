@@ -1,4 +1,4 @@
-import { formatRelativeTime, statusPresentation } from './history-format';
+import { formatMinutesSaved, formatRelativeTime, statusPresentation } from './history-format';
 import type { DesktopAssistantHistoryEntry } from './types';
 
 type ExecutionStatus = DesktopAssistantHistoryEntry['status'];
@@ -58,5 +58,22 @@ describe('formatRelativeTime', () => {
 
 	it('clamps future timestamps to "just now" rather than negative values', () => {
 		expect(formatRelativeTime('2026-06-10T12:05:00.000Z', now)).toBe('just now');
+	});
+});
+
+describe('formatMinutesSaved', () => {
+	it('renders a motivational dash for zero, negative, or non-finite input', () => {
+		expect(formatMinutesSaved(0)).toBe('--');
+		expect(formatMinutesSaved(-5)).toBe('--');
+		expect(formatMinutesSaved(Number.NaN)).toBe('--');
+	});
+
+	it('renders minutes under an hour', () => {
+		expect(formatMinutesSaved(45)).toBe('45m');
+	});
+
+	it('renders hours and minutes, omitting a zero minutes part', () => {
+		expect(formatMinutesSaved(73)).toBe('1h 13m');
+		expect(formatMinutesSaved(120)).toBe('2h');
 	});
 });
