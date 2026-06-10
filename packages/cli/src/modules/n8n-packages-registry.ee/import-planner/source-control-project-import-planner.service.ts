@@ -1,6 +1,7 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { CredentialsRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -24,7 +25,10 @@ import {
 import { SourceControlRemoteResourceReader } from './source-control-remote-resource-reader.service';
 import { WorkflowDependencyExtractor } from './workflow-dependency-extractor';
 import { SourceControlService } from '../../source-control.ee/source-control.service.ee';
-import type { SourceControlGetStatus } from '../../source-control.ee/types/source-control-get-status';
+import type {
+	SourceControlGetStatus,
+	SourceControlGetStatusVerboseResult,
+} from '../../source-control.ee/types/source-control-get-status';
 
 @Service()
 export class SourceControlProjectImportPlanner {
@@ -54,7 +58,7 @@ export class SourceControlProjectImportPlanner {
 			graph: dependencyGraph.filter((edge) => edge.kind !== 'credentialId'),
 			selectedResources,
 			futureState,
-			status,
+			status: status.sourceControlledFiles,
 		});
 		validation.warnings.push(...extractionResults.flatMap(({ warnings }) => warnings));
 		validation.blockingIssues.push(
@@ -71,22 +75,30 @@ export class SourceControlProjectImportPlanner {
 		};
 	}
 
-	private async getSourceControlStatus(user: User): Promise<SourceControlledFile[]> {
+	private async getSourceControlStatus(user: User): Promise<SourceControlGetStatusVerboseResult> {
 		const options = {
 			direction: 'pull',
 			preferLocalVersion: false,
-			verbose: false,
+			verbose: true,
 		} satisfies SourceControlGetStatus;
 
 		const status = await this.sourceControlService.getStatus(user, options);
-		return Array.isArray(status) ? status : status.sourceControlledFiles;
+		if (!Array.isArray(status)) return status;
+
+		throw new UnexpectedError('Expected verbose source control status for project import');
 	}
 
 	private selectChangesForProject(
-		changes: SourceControlledFile[],
+		status: SourceControlGetStatusVerboseResult,
 		projectId: string,
 	): SourceControlledFile[] {
-		const projectChanges = changes.filter((change) => change.owner?.projectId === projectId);
+		const folderProjectIds = this.buildFolderProjectLookup(status);
+		const changes = status.sourceControlledFiles;
+		const projectChanges = changes.filter(
+			(change) =>
+				change.owner?.projectId === projectId ||
+				(change.type === 'folders' && folderProjectIds.get(change.id) === projectId),
+		);
 
 		if (projectChanges.length === 0) {
 			throw new BadRequestError(
@@ -111,6 +123,16 @@ export class SourceControlProjectImportPlanner {
 		}
 
 		return supportedChanges;
+	}
+
+	private buildFolderProjectLookup(status: SourceControlGetStatusVerboseResult): Map<string, string> {
+		const folders = [
+			...status.foldersMissingInLocal,
+			...status.foldersMissingInRemote,
+			...status.foldersModifiedInEither,
+		];
+
+		return new Map(folders.map((folder) => [folder.id, folder.homeProjectId]));
 	}
 
 	private async loadLocalResources(): Promise<LocalResourceSet> {
