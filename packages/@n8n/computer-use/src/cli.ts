@@ -215,11 +215,14 @@ async function main(
 		confirmResourceAccess: makeConfirmResourceAccess(parsed.nonInteractive, parsed.autoConfirm),
 	});
 
+	let shutdownPromise: Promise<void> | null = null;
 	const shutdown = () => {
-		logger.info('Shutting down');
-		void Promise.all([client.disconnect(), session.flush()]).finally(() => {
-			process.exit(0);
-		});
+		shutdownPromise ??= (async () => {
+			logger.info('Shutting down');
+			await Promise.all([client.disconnect(), session.flush()]).finally(() => {
+				process.exit(0);
+			});
+		})();
 	};
 	process.on('SIGINT', shutdown);
 	process.on('SIGTERM', shutdown);
