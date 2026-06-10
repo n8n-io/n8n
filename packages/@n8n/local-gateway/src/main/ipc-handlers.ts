@@ -1,5 +1,9 @@
 import { configure, logger } from '@n8n/computer-use/logger';
 import { ipcMain } from 'electron';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import type { ContextDetector } from './context-detector';
 import type { DaemonController } from './daemon-controller';
@@ -37,11 +41,40 @@ export interface IpcHandlerDeps {
 	openExternal: (url: string) => Promise<void>;
 }
 
+/** Where forwarded attachments are written for inspection — next to the log file. */
+const ATTACHMENT_INSPECT_DIR = join(homedir(), '.n8n-local-gateway', 'attachments');
+
+/** Monotonic suffix so successive submits don't overwrite each other within a session. */
+let attachmentInspectSeq = 0;
+
+/**
+ * Write a forwarded attachment to disk so it can be opened/inspected, returning
+ * a `file://` URL. Best-effort: on any failure it just returns `undefined` and
+ * logging continues. Inspection aid while the UI flow is stubbed.
+ */
+function persistAttachmentForInspection(
+	attachment: ScreenshotAttachment | { data: string; fileName: string },
+): string | undefined {
+	try {
+		mkdirSync(ATTACHMENT_INSPECT_DIR, { recursive: true });
+		attachmentInspectSeq += 1;
+		const filePath = join(ATTACHMENT_INSPECT_DIR, `${attachmentInspectSeq}-${attachment.fileName}`);
+		writeFileSync(filePath, Buffer.from(attachment.data, 'base64'));
+		return pathToFileURL(filePath).href;
+	} catch (error) {
+		logger.debug('Failed to persist attachment for inspection', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
+}
+
 /**
  * A log-safe view of a task request: the full structured context the desktop
- * detected, but with attachments reduced to `{ fileName, mimeType, bytes }` so a
- * multi-MB base64 screenshot never lands in the logs. Handy for inspecting what
- * "Looking at …" actually forwarded while the UI flow is still stubbed.
+ * detected, but with attachments reduced to `{ fileName, mimeType, bytes, fileUrl }`
+ * so a multi-MB base64 screenshot never lands in the logs — `fileUrl` points at
+ * the on-disk copy so the screenshot can be opened. Handy for inspecting what
+ * "Looking at …" actually forwarded while the UI flow is stubbed.
  */
 function summarizeTaskRequest(body: DesktopAssistantTaskRequest): Record<string, unknown> {
 	const context = body.context;
@@ -59,6 +92,7 @@ function summarizeTaskRequest(body: DesktopAssistantTaskRequest): Record<string,
 				mimeType: attachment.mimeType,
 				// base64 inflates ~4/3; this is the approximate decoded size.
 				bytes: Math.round((attachment.data.length * 3) / 4),
+				fileUrl: persistAttachmentForInspection(attachment),
 			})),
 		},
 	};
