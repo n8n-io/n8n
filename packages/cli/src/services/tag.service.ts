@@ -109,10 +109,8 @@ export class TagService {
 	}
 
 	/**
-	 * Return up to `limit` tags with their non-archived usage counts plus the
-	 * total tag count, both via DB-level queries rather than in-memory slicing.
-	 * Issues `count` and the data query in parallel so the additional round-trip
-	 * is pipelined with the data fetch.
+	 * Paginated tags with non-archived usage counts plus the total count, both
+	 * via DB-level queries. Runs the data query and `count` in parallel.
 	 */
 	async listWithUsageCount({ limit }: { limit: number }): Promise<{
 		data: ITagWithCountDb[];
@@ -138,11 +136,8 @@ export class TagService {
 	}
 
 	/**
-	 * Look up tags by name without creating missing ones. Names are trimmed and
-	 * deduped case-insensitively within the input (so an LLM passing 'Prod',
-	 * 'prod', 'PROD' collapses to one) — but matched against the DB exactly,
-	 * preserving the same case-sensitive contract as the REST tags API where
-	 * 'Product' and 'product' may coexist.
+	 * Look up tags by name; never creates. Input is deduped case-insensitively
+	 * but matched against the DB exactly (REST tag API contract).
 	 */
 	async findByNames(names: string[]): Promise<TagEntity[]> {
 		const uniqueNames = dedupeNamesPreservingCase(names);
@@ -160,15 +155,9 @@ export class TagService {
 	}
 
 	/**
-	 * Resolve a set of tag names to their entities, creating any that don't exist.
-	 * Names are trimmed and deduped case-insensitively within the input (so an
-	 * LLM passing 'Prod', 'prod', 'PROD' collapses to one) — but matched against
-	 * the DB exactly, preserving the same case-sensitive contract as the REST
-	 * tags API. New tags are created using the first-seen case from the input.
-	 *
-	 * Race-safe: if two callers concurrently create a tag with the same novel
-	 * name, the loser of the unique-index race re-fetches the now-existing row
-	 * instead of surfacing a raw DB error.
+	 * Resolve names to tag entities, creating any missing. Input is deduped
+	 * case-insensitively (first-seen case wins) but matched against the DB
+	 * exactly. Race-safe against concurrent same-name creates.
 	 */
 	async findOrCreateByNames(names: string[]): Promise<TagEntity[]> {
 		const uniqueNames = dedupeNamesPreservingCase(names);

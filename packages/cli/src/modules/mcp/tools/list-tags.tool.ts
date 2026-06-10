@@ -64,8 +64,7 @@ export const createListTagsTool = (
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'list_tags',
 	config: {
-		description:
-			'List all workflow tags in the instance. Use the returned tag names with search_workflows to filter workflows by tag.',
+		description: 'List all workflow tags in the instance.',
 		inputSchema,
 		outputSchema,
 		annotations: {

@@ -174,9 +174,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			.array(z.string().trim().min(1).max(24))
 			.min(1)
 			.max(50)
-			.describe(
-				'Tag names to add to the workflow. Missing tags are auto-created. Idempotent: names already on the workflow are left in place.',
-			),
+			.describe('Tag names to attach. Unknown names are auto-created. Idempotent.'),
 	}),
 	z.object({
 		type: z.literal('removeTags'),
@@ -184,9 +182,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			.array(z.string().trim().min(1).max(24))
 			.min(1)
 			.max(50)
-			.describe(
-				'Tag names to remove from the workflow. Names not currently on the workflow are silently ignored. Does not delete the tag from the instance.',
-			),
+			.describe('Tag names to detach from the workflow. Unknown names are ignored.'),
 	}),
 ]);
 
@@ -197,12 +193,7 @@ interface WorkflowSlice {
 	description?: string;
 	nodes: INode[];
 	connections: IConnections;
-	/**
-	 * Tag names currently on the workflow. Loaded by the caller from the existing
-	 * workflow's `tags` relation when the operation batch contains `addTags` or
-	 * `removeTags`. Left undefined when the caller did not load tags — in that
-	 * case tag operations would fail at apply time.
-	 */
+	/** Existing tag names on the workflow. Undefined when not loaded; tag ops require this. */
 	tagNames?: string[];
 }
 
@@ -210,11 +201,7 @@ export interface ApplyOperationsSuccess {
 	success: true;
 	workflow: WorkflowSlice;
 	addedNodeNames: string[];
-	/**
-	 * Final tag-name set after applying all `addTags`/`removeTags` ops in order.
-	 * Undefined when no tag ops ran, signaling that the tag set should be left
-	 * unchanged. Empty array means "clear all tags".
-	 */
+	/** Final tag set after applying tag ops. Undefined means "leave unchanged". */
 	tagNames?: string[];
 }
 
