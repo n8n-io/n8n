@@ -21,11 +21,18 @@ import {
 	getNonDeletedResources,
 } from '../../source-control.ee/source-control-resource-helper';
 import { SourceControlService } from '../../source-control.ee/source-control.service.ee';
-import type { SourceControlGetStatus } from '../../source-control.ee/types/source-control-get-status';
+import type {
+	SourceControlGetStatus,
+	SourceControlGetStatusVerboseResult,
+} from '../../source-control.ee/types/source-control-get-status';
 
 type ProjectGroupIdentifier = N8nPackagesRegistryProjectGroup['project'] & {
 	groupId: string;
 };
+
+type FolderProjectLookup = Map<string, string>;
+
+type ProjectGroupLookup = Map<string, ProjectGroupIdentifier>;
 
 @Service()
 export class SourceControlPackagesRegistryProvider implements N8nPackagesRegistryProvider {
@@ -60,15 +67,21 @@ export class SourceControlPackagesRegistryProvider implements N8nPackagesRegistr
 		const options = {
 			direction: 'pull',
 			preferLocalVersion: false,
-			verbose: false,
+			verbose: true,
 		} satisfies SourceControlGetStatus;
 
 		const status = await this.sourceControlService.getStatus(user, options);
 		const changes = Array.isArray(status) ? status : status.sourceControlledFiles;
+		const folderProjectIds = Array.isArray(status)
+			? new Map<string, string>()
+			: this.buildFolderProjectLookup(status);
+		const projectsById = Array.isArray(status)
+			? new Map<string, ProjectGroupIdentifier>()
+			: this.buildProjectGroupLookup(status);
 		const groupsByProjectId = new Map<string, N8nPackagesRegistryProjectGroup>();
 
 		for (const change of changes) {
-			const project = this.getProjectGroupIdentifier(change);
+			const project = this.getProjectGroupIdentifier(change, folderProjectIds, projectsById);
 			const existingGroup = groupsByProjectId.get(project.groupId);
 
 			if (existingGroup) {
@@ -88,6 +101,40 @@ export class SourceControlPackagesRegistryProvider implements N8nPackagesRegistr
 
 		return [...groupsByProjectId.values()].sort((a, b) =>
 			a.project.name.localeCompare(b.project.name),
+		);
+	}
+
+	private buildFolderProjectLookup(
+		status: SourceControlGetStatusVerboseResult,
+	): FolderProjectLookup {
+		const folders = [
+			...status.foldersMissingInLocal,
+			...status.foldersMissingInRemote,
+			...status.foldersModifiedInEither,
+		];
+
+		return new Map(folders.map((folder) => [folder.id, folder.homeProjectId]));
+	}
+
+	private buildProjectGroupLookup(status: SourceControlGetStatusVerboseResult): ProjectGroupLookup {
+		const projects = [
+			...status.projectsRemote,
+			...status.projectsLocal,
+			...status.projectsMissingInLocal,
+			...status.projectsMissingInRemote,
+			...status.projectsModifiedInEither,
+		];
+
+		return new Map(
+			projects.map((project) => [
+				project.id,
+				{
+					groupId: project.id,
+					id: project.id,
+					name: project.name,
+					type: 'team' as const,
+				},
+			]),
 		);
 	}
 
@@ -196,7 +243,11 @@ export class SourceControlPackagesRegistryProvider implements N8nPackagesRegistr
 		return statusResult;
 	}
 
-	private getProjectGroupIdentifier(change: SourceControlledFile): ProjectGroupIdentifier {
+	private getProjectGroupIdentifier(
+		change: SourceControlledFile,
+		folderProjectIds: FolderProjectLookup,
+		projectsById: ProjectGroupLookup,
+	): ProjectGroupIdentifier {
 		if (change.owner) {
 			return {
 				groupId: change.owner.projectId,
@@ -204,6 +255,15 @@ export class SourceControlPackagesRegistryProvider implements N8nPackagesRegistr
 				name: change.owner.projectName,
 				type: change.owner.type,
 			};
+		}
+
+		if (change.type === 'folders') {
+			const projectId = folderProjectIds.get(change.id);
+			const project = projectId ? projectsById.get(projectId) : undefined;
+
+			if (project) {
+				return project;
+			}
 		}
 
 		return {
