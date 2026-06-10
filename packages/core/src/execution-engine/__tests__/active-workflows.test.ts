@@ -497,6 +497,40 @@ describe('ActiveWorkflows', () => {
 			// The superseded registration must not trigger an execution.
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
 			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+
+			// The dropped poll still releases the isolate it acquired.
+			expect(acquireIsolate).toHaveBeenCalledTimes(1);
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not emit an error from a poll that was already in flight when the workflow was removed', async () => {
+			let rejectInFlightPoll!: (error: Error) => void;
+
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null) // initial activation test poll
+				.mockReturnValueOnce(
+					new Promise<INodeExecutionData[][] | null>((_resolve, reject) => {
+						rejectInFlightPoll = reject;
+					}),
+				); // scheduled poll that hangs in flight
+
+			await addWorkflow({ pollNodes: [pollNode] });
+			const executeScheduledPoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+
+			executeScheduledPoll();
+			await flushPromises();
+
+			// While the poll is still in flight, deactivate the workflow
+			await activeWorkflows.remove(workflowId);
+
+			// The in-flight poll now fails
+			rejectInFlightPoll(new Error('poll failed'));
+			await flushPromises();
+
+			// The superseded registration must not create an error execution
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
 		it('should skip the poll entirely when the workflow is removed before running the poller', async () => {
@@ -556,10 +590,11 @@ describe('ActiveWorkflows', () => {
 			expect(pollFunctions.__emit).toHaveBeenCalledWith([[{ json: { fresh: true } }]]);
 		});
 
-		it('does not lose events: a dropped poll is re-delivered exactly once by the reactivated workflow', async () => {
-			// Test whether dropping a poll run would cause poll static data e.g. cursors, pagination
-			// to be updated without starting a workflow, which would cause data loss.
-			// Instead we want the poller to not update its data, whether or not the poll function ran
+		it('redelivers a dropped poll result exactly once through the reactivated registration', async () => {
+			// Test whether dropping a poll run would cause poll static data
+			// to be updated without starting a workflow, which would cause data loss, as the poller would
+			// advance its state without resulting in an execution.
+			// Instead we want the poller to not update its state, whether or not the poll function ran
 			// so the newly activated workflow's poller can naturally pick up from the previous static data
 			// and resume polling.
 			const events = [[{ json: { id: 'meow' } }]];

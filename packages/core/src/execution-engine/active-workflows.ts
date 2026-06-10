@@ -356,8 +356,10 @@ export class ActiveWorkflows {
 						// Same as the above `isSuperseded` check; last chance to check before
 						// potentially starting the execution. Emitting now if superseded would run
 						// an execution against the old version of the workflow, so drop it.
-						// Bailing out here is safe since pollers store their results to the node
-						// in `__emit` as static data, so any dropped calls don't affect poller state.
+						// Bailing out here is safe even though `poll()` may have already advanced
+						// its state in the in-memory static data: persistence only happens inside
+						// `__emit` (`saveStaticData`), so the dropped call leaves the stored state
+						// untouched and the newly registered poller re-fetches the same events.
 						if (!testingTrigger && isSuperseded()) {
 							this.logger.debug(
 								`Discarding in-flight poll result for superseded workflow "${workflow.name}"`,
@@ -383,6 +385,10 @@ export class ActiveWorkflows {
 
 						// Ignore poll errors that are against a superseded workflow
 						if (isSuperseded()) {
+							this.logger.debug(
+								`Ignoring in-flight poll error for superseded workflow "${workflow.name}"`,
+								{ workflowId: workflow.id },
+							);
 							span.setStatus({ code: SpanStatus.ok });
 							return;
 						}
