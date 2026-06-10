@@ -12,6 +12,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -22,6 +23,23 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
 }));
+
+// useContextMenuItems resolves per-editor host overrides via inject, which is
+// unavailable in this non-component harness — stub it with mutable flags.
+const editorContextFlags = vi.hoisted(() => ({ aiAssistant: true, aiBuilder: true }));
+vi.mock('@/app/composables/useEditorContext', async () => {
+	const { computed } = await import('vue');
+	return {
+		useEditorContext: () => ({
+			aiAssistant: computed(() => editorContextFlags.aiAssistant),
+			aiBuilder: computed(() => editorContextFlags.aiBuilder),
+			askAi: computed(() => true),
+			readOnly: computed(() => false),
+			executionSuccessToasts: computed(() => true),
+			executionErrorToasts: computed(() => true),
+		}),
+	};
+});
 import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	NodeConnectionTypes,
@@ -45,6 +63,7 @@ describe('useContextMenu', () => {
 	let uiStore: ReturnType<typeof useUIStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+	let focusedNodesStore: ReturnType<typeof useFocusedNodesStore>;
 	const nodes = [nodeFactory(), nodeFactory(), nodeFactory()];
 	const selectedNodes = nodes.slice(0, 2);
 	const testWorkflowId = 'test-workflow-id';
@@ -58,6 +77,8 @@ describe('useContextMenu', () => {
 
 		uiStore = useUIStore();
 		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
+
+		focusedNodesStore = useFocusedNodesStore();
 
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.setWorkflowId(testWorkflowId);
@@ -76,6 +97,31 @@ describe('useContextMenu', () => {
 	});
 
 	const mockEvent = new MouseEvent('contextmenu', { clientX: 500, clientY: 300 });
+
+	describe('focus_ai_on_selected gating', () => {
+		beforeEach(() => {
+			editorContextFlags.aiAssistant = true;
+			editorContextFlags.aiBuilder = true;
+			vi.spyOn(focusedNodesStore, 'isFeatureEnabled', 'get').mockReturnValue(true);
+		});
+
+		it('shows "Focus AI on selected" when the focused-nodes feature is on and AI is available', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: selectedNodes.map((n) => n.id) });
+
+			expect(actions.value.some((action) => action.id === 'focus_ai_on_selected')).toBe(true);
+		});
+
+		it('hides "Focus AI on selected" when the editor host disables AI', () => {
+			editorContextFlags.aiAssistant = false;
+			editorContextFlags.aiBuilder = false;
+
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: selectedNodes.map((n) => n.id) });
+
+			expect(actions.value.some((action) => action.id === 'focus_ai_on_selected')).toBe(false);
+		});
+	});
 
 	it('should support opening and closing (default = right click on canvas)', () => {
 		const { open, close, isOpen, actions, position, target, targetNodeIds } = useContextMenu();
