@@ -18,6 +18,7 @@ import {
 	DataDeduplicationService,
 	ErrorReporter,
 	ExecutionContextHookRegistry,
+	StorageConfig,
 } from 'n8n-core';
 import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
 import { ensureError, Expression, sleep, UnexpectedError } from 'n8n-workflow';
@@ -26,6 +27,7 @@ import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
@@ -263,6 +265,23 @@ export abstract class BaseCommand<F = never> {
 		}
 
 		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
+		const isExecutionDataS3Mode = Container.get(StorageConfig).mode === 's3';
+
+		if (isExecutionDataS3Mode) {
+			// TEMP(local-testing): license gate disabled to exercise S3 execution data without an issued SKU.
+			// if (!Container.get(LicenseState).isExecutionDataS3Licensed()) {
+			// 	this.logger.error(
+			// 		'S3 execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
+			// 	);
+			// 	process.exit(1);
+			// }
+			if (!isS3Configured) {
+				this.logger.error(
+					'S3 execution data storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
+				);
+				process.exit(1);
+			}
+		}
 
 		if (isS3Configured) {
 			try {
@@ -275,11 +294,12 @@ export abstract class BaseCommand<F = never> {
 					'n8n-core/dist/binary-data/object-store.manager'
 				);
 				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
+
+				const { S3Store } = await import('@/executions/execution-data/s3-store');
+				Container.get(ExecutionPersistence).setS3Store(Container.get(S3Store));
 			} catch {
-				if (isS3WriteMode) {
-					this.logger.error(
-						'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
-					);
+				if (isS3WriteMode || isExecutionDataS3Mode) {
+					this.logger.error('Failed to connect to S3. Please check your S3 configuration.');
 					process.exit(1);
 				}
 			}

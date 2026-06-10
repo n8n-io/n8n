@@ -745,7 +745,7 @@ export class PrometheusMetricsService {
 				labelNames: ['mode'],
 			}));
 
-		for (const mode of ['db', 'fs'] as const) {
+		for (const mode of ['db', 'fs', 's3'] as const) {
 			for (const result of ['success', 'failure'] as const) {
 				readsTotal.inc({ mode, result }, 0);
 				writesTotal.inc({ mode, result }, 0);
@@ -774,6 +774,7 @@ export class PrometheusMetricsService {
 		});
 		this.gauges.executionDataStorageMode.set({ mode: 'db' }, 0);
 		this.gauges.executionDataStorageMode.set({ mode: 'fs' }, 0);
+		this.gauges.executionDataStorageMode.set({ mode: 's3' }, 0);
 		this.gauges.executionDataStorageMode.set({ mode: this.storageConfig.modeTag }, 1);
 
 		if (this.executionDataListenersRegistered) return;

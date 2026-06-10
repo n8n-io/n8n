@@ -54,6 +54,8 @@ type UpdatableEntityColumns = Omit<
  */
 @Service()
 export class ExecutionPersistence {
+	private s3Store: ExecutionDataStore | undefined;
+
 	constructor(
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -65,6 +67,10 @@ export class ExecutionPersistence {
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
 	) {}
+
+	setS3Store(store: ExecutionDataStore) {
+		this.s3Store = store;
+	}
 
 	/**
 	 * Create an execution entity and persist its data to the configured storage.
@@ -205,7 +211,7 @@ export class ExecutionPersistence {
 			const bundle = await store.read(ref);
 			if (!bundle) {
 				unreadableBundles = 1;
-				if (entity.storedAt === 'db') {
+				if (entity.storedAt !== 'fs') {
 					this.executionRepository.reportInvalidExecutions([entity]);
 					return undefined;
 				}
@@ -600,6 +606,13 @@ export class ExecutionPersistence {
 				return this.dbStore;
 			case 'fs':
 				return this.fsStore;
+			case 's3':
+				if (!this.s3Store) {
+					throw new UnexpectedError(
+						'Execution data is stored on S3 but the S3 store is not initialized. Check that S3 is configured.',
+					);
+				}
+				return this.s3Store;
 		}
 		const _exhaustive: never = location;
 		throw new Error(`Unknown storage location: ${String(_exhaustive)}`);

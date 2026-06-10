@@ -108,7 +108,7 @@ export type ExecutionError =
 	| NodeOperationError
 	| NodeApiError;
 
-export type ExecutionStorageLocation = 'db' | 'fs';
+export type ExecutionStorageLocation = 'db' | 'fs' | 's3';
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {

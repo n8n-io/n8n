@@ -126,6 +126,10 @@ export class LicenseState {
 		return this.isLicensed('feat:binaryDataS3');
 	}
 
+	isExecutionDataS3Licensed() {
+		return this.isLicensed('feat:executionDataS3');
+	}
+
 	isMultiMainLicensed() {
 		return this.isLicensed('feat:multipleMainInstances');
 	}
