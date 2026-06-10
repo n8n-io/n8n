@@ -89,7 +89,7 @@ export function buildReviewersSection(allocations, changedFiles) {
  * @param { number } totalFiles
  * @returns { string }
  */
-export function buildChangedLinesSection(lineStats, totalFiles) {
+export function buildChangedLinesSection(lineStats) {
 	const sourceLabel = lineStats.sourceCode > SIZE_LIMIT ? 'Source code ❗' : 'Source code';
 	const totalLines = lineStats.sourceCode + lineStats.testFiles + lineStats.misc;
 
@@ -102,8 +102,6 @@ export function buildChangedLinesSection(lineStats, totalFiles) {
 		`| Test files | ${lineStats.testFiles.toLocaleString()} |`,
 		`| Misc | ${lineStats.misc.toLocaleString()} |`,
 		`| **Total** | **${totalLines.toLocaleString()}** |`,
-		'',
-		`${totalFiles.toLocaleString()} file${totalFiles === 1 ? '' : 's'} changed`,
 	].join('\n');
 }
 
@@ -120,7 +118,7 @@ export function buildComment(allocations, changedFiles, lineStats) {
 		BOT_MARKER,
 		buildReviewersSection(allocations, changedFiles),
 		'',
-		buildChangedLinesSection(lineStats, changedFiles.size),
+		buildChangedLinesSection(lineStats),
 	].join('\n');
 }
 
