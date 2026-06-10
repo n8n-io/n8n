@@ -1546,6 +1546,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@testcontainers/postgresql':
+        specifier: 'catalog:'
+        version: 11.13.0
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17

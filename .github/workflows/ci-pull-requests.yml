@@ -133,6 +133,9 @@ jobs:
               packages/cli/**/__tests__/**
               packages/testing/containers/services/postgres.ts
               .github/workflows/test-db-reusable.yml
+              docs/db/**
+              .tbls.sqlite.yml
+              .tbls.postgres.yml
 
       - name: Setup and Build
         if: fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e
@@ -302,6 +305,26 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
+  schema-docs-check:
+    name: DB Schema Docs Check
+    if: needs.install-and-build.outputs.db == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    needs: install-and-build
+    steps:
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/db
+
+      # Regenerates the schema docs (sqlite + postgres-in-a-container) and fails
+      # if they differ from what's committed. tbls runs as a Docker image in CI.
+      - name: Verify schema docs are up to date
+        run: pnpm --filter=@n8n/db schema:check
+
   performance:
     name: Performance
     needs: install-and-build
@@ -376,6 +399,7 @@ jobs:
         e2e,
         dev-server-smoke,
         db-tests,
+        schema-docs-check,
         performance,
         security-checks,
         workflow-scripts,

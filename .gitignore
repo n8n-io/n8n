@@ -1,6 +1,7 @@
 node_modules
 .DS_Store
 .tmp
+.tmp-schema-docs
 tmp
 dist
 coverage
