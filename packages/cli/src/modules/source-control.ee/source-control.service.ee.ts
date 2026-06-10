@@ -655,6 +655,14 @@ export class SourceControlService {
 		const dataTablesToBeDeleted = getDeletedResources(statusResult, 'datatable');
 		await this.sourceControlImportService.deleteDataTablesNotInWorkFolder(dataTablesToBeDeleted);
 
+		const variablesToBeImported = getNonDeletedResources(statusResult, 'variables')[0];
+		if (variablesToBeImported) {
+			await this.sourceControlImportService.importVariablesFromWorkFolder(variablesToBeImported);
+		}
+
+		const variablesToBeDeleted = getDeletedResources(statusResult, 'variables');
+		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
+
 		const projectsToBeDeleted = getDeletedResources(statusResult, 'project');
 		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(projectsToBeDeleted);
 
