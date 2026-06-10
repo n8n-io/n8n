@@ -594,6 +594,73 @@ export class SourceControlService {
 		};
 	}
 
+	async importSelectedWorkfolderChanges(
+		user: User,
+		statusResult: SourceControlledFile[],
+		options: { autoPublish?: PullWorkFolderRequestDto['autoPublish'] } = {},
+	): Promise<SourceControlledFile[]> {
+		const projectsToBeImported = getNonDeletedResources(statusResult, 'project');
+		await this.sourceControlImportService.importTeamProjectsFromWorkFolder(
+			projectsToBeImported,
+			user.id,
+		);
+
+		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
+		const workflowImportResults =
+			await this.sourceControlImportService.importWorkflowFromWorkFolder(
+				workflowsToBeImported,
+				user.id,
+				options.autoPublish,
+			);
+
+		const statusByWorkflowId = new Map(
+			statusResult.filter((item) => item.type === 'workflow').map((item) => [item.id, item]),
+		);
+
+		for (const { id, publishingError } of workflowImportResults) {
+			if (!publishingError) continue;
+
+			const statusItem = statusByWorkflowId.get(id);
+			if (statusItem) {
+				statusItem.publishingError = publishingError;
+			}
+		}
+
+		const workflowsToBeDeleted = getDeletedResources(statusResult, 'workflow');
+		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
+			user,
+			workflowsToBeDeleted,
+		);
+
+		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
+		await this.sourceControlImportService.importCredentialsFromWorkFolder(
+			credentialsToBeImported,
+			user.id,
+		);
+
+		const credentialsToBeDeleted = getDeletedResources(statusResult, 'credential');
+		await this.sourceControlImportService.deleteCredentialsNotInWorkfolder(
+			user,
+			credentialsToBeDeleted,
+		);
+
+		const dataTableCandidates = getNonDeletedResources(statusResult, 'datatable');
+		if (dataTableCandidates.length > 0) {
+			await this.sourceControlImportService.importDataTablesFromWorkFolder(
+				dataTableCandidates,
+				user.id,
+			);
+		}
+
+		const dataTablesToBeDeleted = getDeletedResources(statusResult, 'datatable');
+		await this.sourceControlImportService.deleteDataTablesNotInWorkFolder(dataTablesToBeDeleted);
+
+		const projectsToBeDeleted = getDeletedResources(statusResult, 'project');
+		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(projectsToBeDeleted);
+
+		return statusResult;
+	}
+
 	async getStatus(user: User, options: SourceControlGetStatus) {
 		await this.sanityCheck();
 		return await this.sourceControlStatusService.getStatus(user, options);

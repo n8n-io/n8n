@@ -1,5 +1,6 @@
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, RestController } from '@n8n/decorators';
+import { Get, Param, Post, RestController } from '@n8n/decorators';
+import { Response } from 'express';
 
 import { N8nPackagesRegistryService } from './n8n-packages-registry.service';
 
@@ -19,8 +20,16 @@ export class N8nPackagesRegistryController {
 	}
 
 	@Get('/importable-changes')
-	@GlobalScope('sourceControl:pull')
 	async findImportableChanges(req: AuthenticatedRequest) {
 		return await this.registryService.findImportableChangesGroupedByProject(req.user);
+	}
+
+	@Post('/projects/:projectId/import')
+	async importProjectChanges(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+	) {
+		return await this.registryService.importProjectChanges(req.user, projectId);
 	}
 }

@@ -1,11 +1,12 @@
-import { Logger } from '@n8n/backend-common';
 import type { SourceControlledFile } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+
+import { GitFolderReaderService } from './git-resource-reader/git-folder-reader.service';
 import { SourceControlPreferencesService } from '../source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '../source-control.ee/source-control.service.ee';
 import type { SourceControlGetStatus } from '../source-control.ee/types/source-control-get-status';
-import { GitFolderReaderService } from './git-resource-reader/git-folder-reader.service';
 
 type SourceControlProjectGroup = {
 	project: {
@@ -19,6 +20,13 @@ type SourceControlProjectGroup = {
 type ProjectGroupIdentifier = SourceControlProjectGroup['project'] & {
 	groupId: string;
 };
+
+const PROJECT_IMPORT_RESOURCE_TYPES = new Set<SourceControlledFile['type']>([
+	'project',
+	'workflow',
+	'credential',
+	'datatable',
+]);
 
 @Service()
 export class N8nPackagesRegistryService {
@@ -35,6 +43,9 @@ export class N8nPackagesRegistryService {
 		return isConnected;
 	}
 
+	/**
+	 * @deprecated for now we'll try to re-use as much as possible the existing implemenation in the sources-control.ee module
+	 */
 	async findAllProjects() {
 		return await this.gitFolderReaderService.findAllResources({ resourceType: 'project' });
 	}
@@ -72,6 +83,16 @@ export class N8nPackagesRegistryService {
 		return [...groupsByProjectId.values()].sort((a, b) =>
 			a.project.name.localeCompare(b.project.name),
 		);
+	}
+
+	async importProjectChanges(user: User, projectId: string): Promise<SourceControlledFile[]> {
+		const groups = await this.findImportableChangesGroupedByProject(user);
+		const projectGroup = groups.find((group) => group.project.id === projectId);
+		const changesToImport =
+			projectGroup?.changes.filter((change) => PROJECT_IMPORT_RESOURCE_TYPES.has(change.type)) ??
+			[];
+
+		return await this.sourceControlService.importSelectedWorkfolderChanges(user, changesToImport);
 	}
 
 	private getProjectGroupIdentifier(change: SourceControlledFile): ProjectGroupIdentifier {
