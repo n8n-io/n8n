@@ -7,6 +7,7 @@ import {
 	WorkflowRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
+	WebhookRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
@@ -320,4 +321,9 @@ export async function createActiveWorkflow(
 	workflow.activeVersionId = workflow.versionId;
 
 	return workflow;
+}
+
+export async function deleteWorkflowAndWebhooks(workflowId: string) {
+	await Container.get(WorkflowRepository).delete({ id: workflowId });
+	await Container.get(WebhookRepository).delete({ workflowId });
 }
