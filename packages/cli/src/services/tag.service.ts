@@ -58,23 +58,27 @@ export class TagService {
 		return await deleteResult;
 	}
 
-	async getAll<T extends { withUsageCount: boolean }>(options?: T): Promise<GetAllResult<T>> {
+	async getAll<T extends { withUsageCount: boolean; limit?: number }>(
+		options?: T,
+	): Promise<GetAllResult<T>> {
 		if (options?.withUsageCount) {
-			const tags = await this.tagRepository
+			const qb = this.tagRepository
 				.createQueryBuilder('tag')
 				.select(['tag.id', 'tag.name', 'tag.createdAt', 'tag.updatedAt'])
-				.loadRelationCountAndMap('tag.usageCount', 'tag.workflowMappings', 'wm', (qb) =>
-					qb.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
+				.loadRelationCountAndMap('tag.usageCount', 'tag.workflowMappings', 'wm', (qb2) =>
+					qb2.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
 						isArchived: false,
 					}),
-				)
-				.getMany();
+				);
+			if (options.limit !== undefined) qb.limit(options.limit);
+			const tags = await qb.getMany();
 
 			return tags as GetAllResult<T>;
 		}
 
 		return await (this.tagRepository.find({
 			select: ['id', 'name', 'createdAt', 'updatedAt'],
+			...(options?.limit !== undefined ? { take: options.limit } : {}),
 		}) as Promise<GetAllResult<T>>);
 	}
 
@@ -87,27 +91,18 @@ export class TagService {
 	/**
 	 * Return up to `limit` tags with their non-archived usage counts plus the
 	 * total tag count, both via DB-level queries rather than in-memory slicing.
-	 * Issues `count` and `find` in parallel so the additional round-trip is
-	 * pipelined with the data fetch.
+	 * Issues `count` and the data query in parallel so the additional round-trip
+	 * is pipelined with the data fetch.
 	 */
 	async listWithUsageCount({ limit }: { limit: number }): Promise<{
 		data: ITagWithCountDb[];
 		totalCount: number;
 	}> {
-		const [rows, totalCount] = await Promise.all([
-			this.tagRepository
-				.createQueryBuilder('tag')
-				.select(['tag.id', 'tag.name', 'tag.createdAt', 'tag.updatedAt'])
-				.loadRelationCountAndMap('tag.usageCount', 'tag.workflowMappings', 'wm', (qb) =>
-					qb.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
-						isArchived: false,
-					}),
-				)
-				.limit(limit)
-				.getMany(),
+		const [data, totalCount] = await Promise.all([
+			this.getAll({ withUsageCount: true, limit }),
 			this.tagRepository.count(),
 		]);
-		return { data: rows as unknown as ITagWithCountDb[], totalCount };
+		return { data, totalCount };
 	}
 
 	/**
