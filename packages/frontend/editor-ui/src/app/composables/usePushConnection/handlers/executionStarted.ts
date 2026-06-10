@@ -44,9 +44,11 @@ export async function executionStarted(
 
 	if (needsInit) {
 		workflowExecutionStateStore.promotePendingExecution(data.executionId);
-		// Clear any sub-workflow progress overlays left from a previous run of
-		// this parent execution before its child events start streaming in.
-		useSubworkflowProgressStore().resetForExecution(data.executionId);
+		// Wipe sub-workflow progress overlays left over from previous runs.
+		// Stale entries are keyed by old execution ids and would otherwise
+		// accumulate until page reload; overlays of any still-running
+		// execution self-heal on its next progress event.
+		useSubworkflowProgressStore().reset();
 	}
 
 	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));

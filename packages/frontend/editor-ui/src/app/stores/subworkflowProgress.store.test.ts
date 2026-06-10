@@ -94,7 +94,7 @@ describe('subworkflowProgress.store', () => {
 		expect(store.getFor('p1', 'B')).toBeDefined();
 	});
 
-	it('resets all entries for a parent execution', () => {
+	it('reset wipes all entries', () => {
 		store.setStarted({
 			parentExecutionId: 'p1',
 			parentNodeName: 'A',
@@ -108,10 +108,10 @@ describe('subworkflowProgress.store', () => {
 			totalNodes: 1,
 		});
 
-		store.resetForExecution('p1');
+		store.reset();
 
 		expect(store.getFor('p1', 'A')).toBeUndefined();
-		expect(store.getFor('p2', 'A')).toBeDefined();
+		expect(store.getFor('p2', 'A')).toBeUndefined();
 	});
 
 	it('keys are independent per parent node so parallel sub-workflows do not collide', () => {

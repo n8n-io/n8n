@@ -271,9 +271,6 @@ export function useCanvasMapping({
 	const subworkflowProgressByNodeId = computed(() => {
 		const activeExecutionId = workflowExecutionStateStore.value.activeExecutionId;
 		if (typeof activeExecutionId !== 'string') return {} as Record<string, undefined>;
-		// Subscribe to the reactive map so this computed re-evaluates on updates.
-		const _track = subworkflowProgressStore.progressByKey;
-		void _track;
 		return nodes.value.reduce<
 			Record<
 				string,

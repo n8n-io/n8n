@@ -73,19 +73,6 @@ export const useSubworkflowProgressStore = defineStore(STORES.SUBWORKFLOW_PROGRE
 		progressByKey.value = next;
 	}
 
-	function resetForExecution(parentExecutionId: string) {
-		const prefix = `${parentExecutionId}::`;
-		const next = new Map(progressByKey.value);
-		let changed = false;
-		for (const key of next.keys()) {
-			if (key.startsWith(prefix)) {
-				next.delete(key);
-				changed = true;
-			}
-		}
-		if (changed) progressByKey.value = next;
-	}
-
 	function getFor(
 		parentExecutionId: string,
 		parentNodeName: string,
@@ -103,7 +90,6 @@ export const useSubworkflowProgressStore = defineStore(STORES.SUBWORKFLOW_PROGRE
 		setStarted,
 		updateProgress,
 		clear,
-		resetForExecution,
 		getFor,
 		reset,
 	};
