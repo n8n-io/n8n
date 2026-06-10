@@ -203,8 +203,8 @@ import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/178
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
 import { AddScopeColumnToOAuthTables1784000000026 } from '../common/1784000000026-AddScopeColumnToOAuthTables';
 import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
-import type { Migration } from '../migration-types';
 import { AddUniqueAgentFileNames1784000000029 } from '../common/1784000000029-AddUniqueAgentFileNames';
+import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,

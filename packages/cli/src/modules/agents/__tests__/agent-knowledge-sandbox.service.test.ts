@@ -4,6 +4,7 @@ import { mock, type MockProxy } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError } from '../../../errors/response-errors/bad-request.error';
+import { NotFoundError } from '../../../errors/response-errors/not-found.error';
 import type { AiService } from '../../../services/ai.service';
 
 import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from '../agent-knowledge-storage';
@@ -13,6 +14,7 @@ import {
 } from '../agent-knowledge-sandbox.service';
 import type { AgentFile } from '../entities/agent-file.entity';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 interface MockFilesystem {
 	uploadFiles: jest.Mock;
@@ -79,6 +81,7 @@ const expectedVolumeMount = {
 	subpath: `agent-knowledge/instances/${instanceId}/projects/project-1/agents/agent-1/knowledge`,
 };
 let agentFileRepository: MockProxy<AgentFileRepository>;
+let agentRepository: MockProxy<AgentRepository>;
 
 function makeAiService(overrides: Partial<AiService> = {}): AiService {
 	const aiService = mock<AiService>();
@@ -128,6 +131,7 @@ function makeService(
 		aiService,
 		instanceSettings,
 		fileRepository,
+		agentRepository,
 	);
 }
 
@@ -193,6 +197,8 @@ describe('AgentKnowledgeSandboxService', () => {
 		jest.clearAllMocks();
 		agentFileRepository = mock<AgentFileRepository>();
 		agentFileRepository.findByAgentId.mockResolvedValue([]);
+		agentRepository = mock<AgentRepository>();
+		agentRepository.existsBy.mockResolvedValue(true);
 		daytonaInstances.length = 0;
 		listMock.mockResolvedValue({ items: [], totalPages: 1 });
 		createMock.mockResolvedValue(makeSandbox('started'));
@@ -439,12 +445,106 @@ describe('AgentKnowledgeSandboxService', () => {
 
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
 			expect.stringContaining(
-				"rg --json --fixed-strings --line-number --color=never --hidden --sort path --max-count 21 --max-columns 501 --max-columns-preview --ignore-case --context 1 -- 'hello' './notes.txt'",
+				"rg --json --fixed-strings --line-number --color=never --hidden --sort path --max-count 21 --max-columns 501 --max-columns-preview --ignore-case --context 1 -e 'hello' -- './notes.txt'",
 			),
 			undefined,
 			undefined,
 			300,
 		);
+	});
+
+	it('searchKnowledge ORs multiple deduplicated query terms in a single command', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		const service = makeService();
+
+		await service.searchKnowledge('project-1', 'agent-1', userId, {
+			query: 'u-net',
+			queries: ['unet', 'u net', 'u-net'],
+		});
+
+		expect(sandbox.process.executeCommand).toHaveBeenCalledTimes(1);
+		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
+			expect.stringContaining("-e 'u-net' -e 'unet' -e 'u net' -- '.'"),
+			undefined,
+			undefined,
+			300,
+		);
+	});
+
+	it('searchKnowledge returns partial matches when rg fails on an unreadable scoped file', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([
+			makeAgentFile(),
+			makeAgentFile({ id: 'file-2', storageFileName: 'gone.txt' }),
+		]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 2,
+			artifacts: {
+				stdout:
+					'{"type":"match","data":{"path":{"text":"notes.txt"},"lines":{"text":"hello\\n"},"line_number":1}}' +
+					'\n',
+				stderr: 'rg: ./gone.txt: No such file or directory (os error 2)\n',
+			},
+		});
+		const service = makeService();
+
+		await expect(
+			service.searchKnowledge('project-1', 'agent-1', userId, {
+				query: 'hello',
+				files: ['notes.txt', 'gone.txt'],
+			}),
+		).resolves.toMatchObject({
+			matches: [{ file: 'notes.txt', lineNumber: 1 }],
+			hasMore: true,
+			truncated: true,
+		});
+	});
+
+	it('searchKnowledge fails when rg errors without producing any matches', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 2,
+			artifacts: { stdout: '', stderr: 'rg: ./notes.txt: No such file or directory\n' },
+		});
+		const service = makeService();
+
+		await expect(
+			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
+		).rejects.toThrow('Agent knowledge search failed');
+	});
+
+	it('rejects pagination offsets beyond the cap before sandbox execution', async () => {
+		mockKnowledgeFiles([makeAgentFile()]);
+		const service = makeService();
+
+		await expect(
+			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello', offset: 1001 }),
+		).rejects.toThrow();
+		expect(listMock).not.toHaveBeenCalled();
+	});
+
+	it('rejects retrieval for agents that do not belong to the project', async () => {
+		agentRepository.existsBy.mockResolvedValue(false);
+		mockKnowledgeFiles([makeAgentFile()]);
+		const service = makeService();
+
+		await expect(service.findKnowledgeFiles('other-project', 'agent-1', {})).rejects.toThrow(
+			NotFoundError,
+		);
+		await expect(
+			service.searchKnowledge('other-project', 'agent-1', userId, { query: 'hello' }),
+		).rejects.toThrow(NotFoundError);
+		expect(agentRepository.existsBy).toHaveBeenCalledWith({
+			id: 'agent-1',
+			projectId: 'other-project',
+		});
+		expect(listMock).not.toHaveBeenCalled();
+		expect(createMock).not.toHaveBeenCalled();
 	});
 
 	it('searchKnowledge surfaces sandbox-side output truncation', async () => {
@@ -553,7 +653,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(createMock).toHaveBeenCalledTimes(1);
 	});
 
-	it('drops the cached sandbox after a failed command and re-acquires on the next call', async () => {
+	it('retries once on a fresh sandbox when the cached handle fails mid-command', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([makeAgentFile()]);
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
@@ -562,12 +662,32 @@ describe('AgentKnowledgeSandboxService', () => {
 
 		await expect(
 			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
-		).rejects.toThrow('sandbox gone');
+		).resolves.toMatchObject({ matches: [] });
 
+		expect(sandbox.process.executeCommand).toHaveBeenCalledTimes(2);
+		expect(listMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('surfaces the failure and drops the cached handle when the retry also fails', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockRejectedValue(new Error('sandbox gone'));
+		const service = makeService();
+
+		await expect(
+			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
+		).rejects.toThrow('sandbox gone');
+		expect(sandbox.process.executeCommand).toHaveBeenCalledTimes(2);
+
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 1,
+			artifacts: { stdout: '', stderr: '' },
+		});
 		await expect(
 			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
 		).resolves.toMatchObject({ matches: [] });
 
-		expect(listMock).toHaveBeenCalledTimes(2);
+		expect(listMock).toHaveBeenCalledTimes(3);
 	});
 });

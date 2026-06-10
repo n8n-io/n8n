@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { OperationalError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AiService } from '@/services/ai.service';
 
 import {
@@ -46,6 +47,7 @@ import {
 	type SearchKnowledgeResult,
 } from './agent-knowledge-retrieval';
 import { AgentFileRepository } from './repositories/agent-file.repository';
+import { AgentRepository } from './repositories/agent.repository';
 
 interface AgentKnowledgeCommandResult {
 	exitCode: number;
@@ -147,6 +149,7 @@ export class AgentKnowledgeSandboxService {
 		private readonly aiService: AiService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentRepository: AgentRepository,
 	) {}
 
 	async withKnowledgeFilesystem<T>(
@@ -155,6 +158,9 @@ export class AgentKnowledgeSandboxService {
 		userId: string,
 		operation: (filesystem: AgentKnowledgeFilesystem) => Promise<T>,
 	): Promise<T> {
+		// Callers (AgentKnowledgeService) verify project↔agent ownership before
+		// invoking filesystem operations, so only configuration is asserted here.
+		this.assertKnowledgeConfiguration(projectId, agentId);
 		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
 		const filesystem = this.createFilesystemAdapter(sandbox);
 		try {
@@ -171,9 +177,7 @@ export class AgentKnowledgeSandboxService {
 		request: FindKnowledgeFilesRequest,
 	): Promise<FindKnowledgeFilesResult> {
 		const validatedRequest = parseFindKnowledgeFilesRequest(request);
-		this.assertKnowledgeSandboxEnabled();
-		this.assertKnowledgeVolumeConfigured();
-		this.assertValidPathSegments(projectId, agentId);
+		await this.assertKnowledgeAccess(projectId, agentId);
 
 		const limit = validatedRequest.limit ?? DEFAULT_FIND_FILES_LIMIT;
 		const offset = validatedRequest.offset ?? 0;
@@ -223,13 +227,20 @@ export class AgentKnowledgeSandboxService {
 			};
 		}
 
-		if (result.exitCode !== 0) {
+		const parsed = parseRipgrepJsonOutput(stdout.text, references.byFile);
+
+		// rg exits 2 when any scoped file could not be read (e.g. a DB row whose
+		// volume file is missing), but it still emits valid matches for the files
+		// it did read. Surface those as partial, truncated results instead of
+		// discarding them; only fail when there is nothing to return.
+		const commandFailed = result.exitCode !== 0;
+		if (commandFailed && parsed.matches.length === 0) {
 			throw new OperationalError(
 				`Agent knowledge search failed${stderr.text ? `: ${stderr.text}` : ''}`,
 			);
 		}
 
-		const parsed = parseRipgrepJsonOutput(stdout.text, references.byFile);
+		const incomplete = parsed.incomplete || commandFailed;
 		const matches = parsed.matches.slice(offset, offset + limit);
 
 		return {
@@ -240,8 +251,8 @@ export class AgentKnowledgeSandboxService {
 				parsed.matches.length > offset + limit ||
 				stdout.truncated ||
 				stderr.truncated ||
-				parsed.incomplete,
-			truncated: stdout.truncated || stderr.truncated || parsed.incomplete,
+				incomplete,
+			truncated: stdout.truncated || stderr.truncated || incomplete,
 		};
 	}
 
@@ -280,24 +291,39 @@ export class AgentKnowledgeSandboxService {
 		userId: string,
 		command: string,
 	): Promise<AgentKnowledgeCommandResult> {
-		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command);
 
-		let result;
+		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
 		try {
-			result = await sandbox.process.executeCommand(
-				scopedCommand,
-				undefined,
-				undefined,
-				timeoutSeconds,
-			);
+			return await this.runSandboxCommand(sandbox, scopedCommand, timeoutSeconds);
+		} catch {
+			// The cached handle may point at a stopped or destroyed sandbox; drop
+			// it and retry once on a freshly acquired one so transient handle
+			// staleness never surfaces as a failed tool call.
+			this.invalidateSandboxCache(projectId, agentId, userId);
+		}
+
+		const freshSandbox = await this.acquireSandbox(projectId, agentId, userId);
+		try {
+			return await this.runSandboxCommand(freshSandbox, scopedCommand, timeoutSeconds);
 		} catch (error) {
-			// The cached handle may point at a stopped or destroyed sandbox;
-			// drop it so the next operation re-acquires a fresh one.
 			this.invalidateSandboxCache(projectId, agentId, userId);
 			throw error;
 		}
+	}
+
+	private async runSandboxCommand(
+		sandbox: Sandbox,
+		scopedCommand: string,
+		timeoutSeconds: number,
+	): Promise<AgentKnowledgeCommandResult> {
+		const result = await sandbox.process.executeCommand(
+			scopedCommand,
+			undefined,
+			undefined,
+			timeoutSeconds,
+		);
 
 		return {
 			exitCode: result.exitCode,
@@ -310,9 +336,7 @@ export class AgentKnowledgeSandboxService {
 		projectId: string,
 		agentId: string,
 	): Promise<AgentKnowledgeReferenceLookup> {
-		this.assertKnowledgeSandboxEnabled();
-		this.assertKnowledgeVolumeConfigured();
-		this.assertValidPathSegments(projectId, agentId);
+		await this.assertKnowledgeAccess(projectId, agentId);
 
 		const files = await this.loadKnowledgeFileReferences(agentId);
 		return {
@@ -415,10 +439,6 @@ export class AgentKnowledgeSandboxService {
 		agentId: string,
 		userId: string,
 	): Promise<Sandbox> {
-		this.assertKnowledgeSandboxEnabled();
-		this.assertKnowledgeVolumeConfigured();
-		this.assertValidPathSegments(projectId, agentId);
-
 		const cacheKey = buildSandboxScopeKey(projectId, agentId, userId);
 		const cached = this.sandboxCache.get(cacheKey);
 		if (cached && cached.expiresAt > Date.now()) {
@@ -564,6 +584,25 @@ export class AgentKnowledgeSandboxService {
 		}
 
 		return await daytona.get(sandbox.name);
+	}
+
+	/**
+	 * Guards the model-facing retrieval entry points: configuration plus a
+	 * defense-in-depth check that the agent actually belongs to the project,
+	 * mirroring `AgentKnowledgeService.ensureAgentBelongsToProject`.
+	 */
+	private async assertKnowledgeAccess(projectId: string, agentId: string): Promise<void> {
+		this.assertKnowledgeConfiguration(projectId, agentId);
+		const agentExists = await this.agentRepository.existsBy({ id: agentId, projectId });
+		if (!agentExists) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+	}
+
+	private assertKnowledgeConfiguration(projectId: string, agentId: string): void {
+		this.assertKnowledgeSandboxEnabled();
+		this.assertKnowledgeVolumeConfigured();
+		this.assertValidPathSegments(projectId, agentId);
 	}
 
 	private assertValidPathSegments(projectId: string, agentId: string): void {

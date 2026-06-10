@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { hasControlCharacter } from './agent-knowledge-storage';
 
 const MAX_QUERY_LENGTH = 500;
+const MAX_QUERY_TERMS = 5;
 const MAX_FILE_PATH_LENGTH = 512;
 const MAX_FIND_FILES_LIMIT = 100;
 const MAX_SEARCH_TEXT_LIMIT = 100;
@@ -11,6 +12,9 @@ const MAX_RANGES = 5;
 const MAX_RANGE_LINES = 80;
 const MAX_FILTER_FILES = 10;
 const MAX_FILE_ID_LENGTH = 64;
+// Deep pagination re-runs the search with a growing per-file match budget, so
+// an unbounded offset would let a single call force a full-corpus scan.
+const MAX_PAGINATION_OFFSET = 1_000;
 
 export const DEFAULT_FIND_FILES_LIMIT = 20;
 export const DEFAULT_SEARCH_TEXT_LIMIT = 20;
@@ -21,24 +25,32 @@ export const MAX_OPERATION_OUTPUT_CHARS = 20_000;
 
 const filePathSchema = z.string().trim().min(1).max(MAX_FILE_PATH_LENGTH);
 const fileIdSchema = z.string().trim().min(1).max(MAX_FILE_ID_LENGTH);
+const queryTermSchema = z.string().trim().min(1).max(MAX_QUERY_LENGTH);
+const offsetSchema = z.number().int().min(0).max(MAX_PAGINATION_OFFSET);
 
 export const findKnowledgeFilesInputSchema = z
 	.object({
-		query: z.string().trim().min(1).max(MAX_QUERY_LENGTH).optional(),
+		query: queryTermSchema.optional(),
 		limit: z.number().int().min(1).max(MAX_FIND_FILES_LIMIT).optional(),
-		offset: z.number().int().min(0).optional(),
+		offset: offsetSchema.optional(),
 	})
 	.strict();
 
 export const searchKnowledgeInputSchema = z
 	.object({
-		query: z.string().trim().min(1).max(MAX_QUERY_LENGTH),
+		query: queryTermSchema,
+		queries: z
+			.array(queryTermSchema)
+			.min(1)
+			.max(MAX_QUERY_TERMS)
+			.optional()
+			.describe('Additional literal terms matched with OR semantics alongside query'),
 		file: filePathSchema.optional(),
 		fileId: fileIdSchema.optional(),
 		files: z.array(filePathSchema).max(MAX_FILTER_FILES).optional(),
 		fileIds: z.array(fileIdSchema).max(MAX_FILTER_FILES).optional(),
 		limit: z.number().int().min(1).max(MAX_SEARCH_TEXT_LIMIT).optional(),
-		offset: z.number().int().min(0).optional(),
+		offset: offsetSchema.optional(),
 		caseSensitive: z.boolean().optional(),
 		contextLines: z.number().int().min(0).max(MAX_CONTEXT_LINES).optional(),
 	})

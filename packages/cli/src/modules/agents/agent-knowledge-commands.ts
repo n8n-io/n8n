@@ -22,6 +22,7 @@ export function buildSearchKnowledgeCommand(
 	files: AgentKnowledgeFileReference[] | undefined,
 ): string {
 	const matchLimit = (request.offset ?? 0) + (request.limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
+	const queryTerms = [...new Set([request.query, ...(request.queries ?? [])])];
 	const args = [
 		'rg',
 		'--json',
@@ -42,8 +43,10 @@ export function buildSearchKnowledgeCommand(
 		...(request.contextLines && request.contextLines > 0
 			? ['--context', String(request.contextLines)]
 			: []),
+		// One -e flag per literal term; rg ORs them in a single pass so the
+		// model does not need a sandbox round trip per term variant.
+		...queryTerms.flatMap((term) => ['-e', quoteShellArg(term)]),
 		'--',
-		quoteShellArg(request.query),
 		...(files?.map((file) => quoteShellArg(`./${file.file}`)) ?? [quoteShellArg('.')]),
 	];
 
@@ -254,10 +257,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function truncateOperationOutput(text: string): { text: string; truncated: boolean } {
-	const markerIndex = text.indexOf(OUTPUT_TRUNCATED_MARKER);
-	const markerTruncated = markerIndex !== -1;
+	// The wrapper echoes the marker only after the capped pipeline completes,
+	// so a genuine truncation marker is always the last thing on the stream.
+	// Anchoring to the end keeps untrusted file content that happens to contain
+	// the marker string from faking the truncation signal.
+	const trimmedText = text.trimEnd();
+	const markerTruncated = trimmedText.endsWith(OUTPUT_TRUNCATED_MARKER);
 	const textWithoutMarker = markerTruncated
-		? text.replaceAll(OUTPUT_TRUNCATED_MARKER, '').trimEnd()
+		? trimmedText.slice(0, trimmedText.length - OUTPUT_TRUNCATED_MARKER.length).trimEnd()
 		: text;
 
 	if (textWithoutMarker.length <= MAX_OPERATION_OUTPUT_CHARS) {
@@ -268,6 +275,10 @@ export function truncateOperationOutput(text: string): { text: string; truncated
 }
 
 function buildOutputLimitedShellCommand(command: string): string {
+	// Joined with newlines: awk statements on a single line need explicit
+	// separators, and a space-joined script is a syntax error that the wrapper
+	// would otherwise swallow (the exit status comes from the producing
+	// command, not the awk stage).
 	const capOutputScript = [
 		'BEGIN { used = 0 }',
 		'{',
@@ -282,7 +293,7 @@ function buildOutputLimitedShellCommand(command: string): string {
 		'  printf "%s", line',
 		'  used += length(line)',
 		'}',
-	].join(' ');
+	].join('\n');
 
 	return [
 		'status_file=$(mktemp)',
