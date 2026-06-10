@@ -693,7 +693,7 @@ describe('SsrfProtectionService', () => {
 			expect(() => service.validateRedirectSync('http://127.0.0.1/admin')).toThrow();
 
 			expect(blocked).toHaveBeenCalledWith(
-				expect.objectContaining({ phase: 'redirect', reason: 'blocked_redirect' }),
+				expect.objectContaining({ phase: 'redirect', reason: 'blocked_ip' }),
 			);
 		});
 	});
