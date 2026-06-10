@@ -427,6 +427,7 @@ onBeforeUnmount(() => {
 		>
 			<template #default="{ bp }">
 				<FolderBreadcrumbs
+					v-if="!settingsStore.isBreadcrumbHidden"
 					:current-folder="currentFolderForBreadcrumbs"
 					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbsItemSelected"
@@ -452,6 +453,20 @@ onBeforeUnmount(() => {
 						/>
 					</template>
 				</FolderBreadcrumbs>
+				<N8nInlineTextEdit
+					v-else
+					ref="renameInput"
+					:key="id"
+					placeholder="Workflow name"
+					data-test-id="workflow-name-input"
+					class="name"
+					:model-value="name"
+					:max-length="MAX_WORKFLOW_NAME_LENGTH"
+					:max-width="WORKFLOW_NAME_BP_TO_WIDTH[bp]"
+					:read-only="readOnlyActions"
+					:disabled="readOnlyActions"
+					@update:model-value="onNameSubmit"
+				/>
 			</template>
 		</BreakpointsObserver>
 		<span class="tags" data-test-id="workflow-tags-container">

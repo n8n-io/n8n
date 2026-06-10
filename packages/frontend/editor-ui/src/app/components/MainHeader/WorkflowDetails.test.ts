@@ -133,7 +133,7 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 		stubs: {
 			RouterLink: true,
 			FolderBreadcrumbs: {
-				template: '<div><slot name="append" /></div>',
+				template: '<div data-test-id="folder-breadcrumbs"><slot name="append" /></div>',
 			},
 		},
 		directives: {
@@ -760,6 +760,28 @@ describe('WorkflowDetails', () => {
 				expect.objectContaining({ id: workflow.id }),
 				expect.anything(),
 			);
+		});
+	});
+
+	describe('Breadcrumb visibility', () => {
+		it('renders the workflow-hierarchy breadcrumb by default', () => {
+			const { getByTestId } = renderComponent({
+				props: { ...defaultProps },
+			});
+
+			expect(getByTestId('folder-breadcrumbs')).toBeInTheDocument();
+			expect(getByTestId('inline-edit-input')).toBeInTheDocument();
+		});
+
+		it('keeps the workflow name and `...` actions menu rendered alongside the breadcrumb', () => {
+			const { getByTestId } = renderComponent({
+				props: { ...defaultProps },
+			});
+
+			// Workflow name input
+			expect(getByTestId('inline-edit-input')).toBeInTheDocument();
+			// `...` actions menu
+			expect(getByTestId('workflow-menu')).toBeInTheDocument();
 		});
 	});
 

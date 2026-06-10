@@ -237,9 +237,69 @@ export class GlobalConfig {
 	@Env('N8N_SSL_CERT')
 	ssl_cert: string = '';
 
-	/** Whether to enable canvas-only mode, hiding the chrome UI. */
+	/**
+	 * Whether to enable canvas-only mode, hiding the chrome UI.
+	 *
+	 * Shorthand for hiding both the sidebar and the workflow header. When set,
+	 * {@link hideSidebar} and {@link hideHeader} are implicitly enabled (via the
+	 * effective getters {@link isSidebarHidden} and {@link isHeaderHidden}). The
+	 * breadcrumb is intentionally NOT implied so existing deployments behave
+	 * exactly as before.
+	 *
+	 * For granular embedding chrome controls prefer the dedicated flags:
+	 * {@link hideSidebar}, {@link hideHeader}, {@link hideBreadcrumb}.
+	 */
 	@Env('N8N_CANVAS_ONLY')
 	canvasOnly: boolean = false;
+
+	/**
+	 * Granular embedding chrome control: hide the left sidebar.
+	 *
+	 * Independent of {@link hideHeader} and {@link hideBreadcrumb}. Implicitly
+	 * enabled when {@link canvasOnly} is true. Read effective state via
+	 * {@link isSidebarHidden}.
+	 */
+	@Env('N8N_HIDE_SIDEBAR')
+	hideSidebar: boolean = false;
+
+	/**
+	 * Granular embedding chrome control: hide the workflow header (the bar
+	 * containing the workflow name, breadcrumb, Save, Activate, Publish, History
+	 * and the actions menu).
+	 *
+	 * Independent of {@link hideSidebar} and {@link hideBreadcrumb}. Implicitly
+	 * enabled when {@link canvasOnly} is true. Read effective state via
+	 * {@link isHeaderHidden}.
+	 */
+	@Env('N8N_HIDE_HEADER')
+	hideHeader: boolean = false;
+
+	/**
+	 * Granular embedding chrome control: hide just the workflow hierarchy
+	 * breadcrumb (parent-folder links). The workflow name and header actions
+	 * remain visible.
+	 *
+	 * Independent of {@link hideSidebar} and {@link hideHeader}. NOT implied by
+	 * {@link canvasOnly} (preserves existing canvas-only behaviour). Read
+	 * effective state via {@link isBreadcrumbHidden}.
+	 */
+	@Env('N8N_HIDE_BREADCRUMB')
+	hideBreadcrumb: boolean = false;
+
+	/** Effective sidebar visibility: granular flag OR legacy canvas-only shorthand. */
+	get isSidebarHidden(): boolean {
+		return this.hideSidebar || this.canvasOnly;
+	}
+
+	/** Effective header visibility: granular flag OR legacy canvas-only shorthand. */
+	get isHeaderHidden(): boolean {
+		return this.hideHeader || this.canvasOnly;
+	}
+
+	/** Effective breadcrumb visibility. NOT implied by the legacy canvas-only shorthand. */
+	get isBreadcrumbHidden(): boolean {
+		return this.hideBreadcrumb;
+	}
 
 	/** Public URL where the editor is accessible. Also used for emails sent from n8n. */
 	@Env('N8N_EDITOR_BASE_URL')

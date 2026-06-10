@@ -296,4 +296,59 @@ describe('settings.store', () => {
 			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(true);
 		});
 	});
+
+	describe('embedding chrome visibility flags', () => {
+		it('exposes all granular getters as false by default', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				canvasOnly: false,
+				isSidebarHidden: false,
+				isHeaderHidden: false,
+				isBreadcrumbHidden: false,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCanvasOnly).toBe(false);
+			expect(settingsStore.isSidebarHidden).toBe(false);
+			expect(settingsStore.isHeaderHidden).toBe(false);
+			expect(settingsStore.isBreadcrumbHidden).toBe(false);
+		});
+
+		it('reads the granular hidden flags from the backend', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				canvasOnly: false,
+				isSidebarHidden: true,
+				isHeaderHidden: false,
+				isBreadcrumbHidden: true,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isSidebarHidden).toBe(true);
+			expect(settingsStore.isHeaderHidden).toBe(false);
+			expect(settingsStore.isBreadcrumbHidden).toBe(true);
+		});
+
+		it('falls back to canvasOnly for sidebar/header when granular fields are missing', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				canvasOnly: true,
+				isSidebarHidden: undefined,
+				isHeaderHidden: undefined,
+				isBreadcrumbHidden: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCanvasOnly).toBe(true);
+			expect(settingsStore.isSidebarHidden).toBe(true);
+			expect(settingsStore.isHeaderHidden).toBe(true);
+			expect(settingsStore.isBreadcrumbHidden).toBe(false);
+		});
+	});
 });

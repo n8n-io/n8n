@@ -181,6 +181,9 @@ export const defaultSettings: FrontendSettings = {
 	},
 	activeModules: [],
 	canvasOnly: false,
+	isSidebarHidden: false,
+	isHeaderHidden: false,
+	isBreadcrumbHidden: false,
 	envFeatureFlags: {},
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',

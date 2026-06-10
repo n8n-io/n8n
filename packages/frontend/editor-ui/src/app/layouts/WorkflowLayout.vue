@@ -20,7 +20,7 @@ const assistantStore = useAssistantStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const pushConnectionStore = usePushConnectionStore();
 const settingsStore = useSettingsStore();
-const isCanvasOnly = settingsStore.isCanvasOnly;
+const isSidebarHidden = settingsStore.isSidebarHidden;
 
 const {
 	isLoading,
@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
 		<template #header>
 			<AppHeader />
 		</template>
-		<template v-if="!isCanvasOnly" #sidebar>
+		<template v-if="!isSidebarHidden" #sidebar>
 			<AppSidebar />
 		</template>
 		<LoadingView v-if="isLoading" />
@@ -87,7 +87,7 @@ onBeforeUnmount(() => {
 		<template v-if="layoutProps.logs" #footer>
 			<LogsPanel />
 		</template>
-		<template v-if="!isCanvasOnly" #overlays>
+		<template v-if="!isSidebarHidden" #overlays>
 			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
 			<CanvasChatOverlay v-if="chatHubPanelStore.isFloatingChatEnabled" />
 		</template>

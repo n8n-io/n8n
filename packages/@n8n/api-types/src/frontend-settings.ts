@@ -250,7 +250,18 @@ export interface FrontendSettings {
 
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];
+	/**
+	 * Legacy single-toggle "canvas-only" mode. Kept for backwards compatibility.
+	 * For finer-grained control prefer {@link isSidebarHidden}, {@link isHeaderHidden}
+	 * and {@link isBreadcrumbHidden}.
+	 */
 	canvasOnly: boolean;
+	/** Effective sidebar visibility (granular flag OR legacy `canvasOnly`). */
+	isSidebarHidden: boolean;
+	/** Effective workflow-header visibility (granular flag OR legacy `canvasOnly`). */
+	isHeaderHidden: boolean;
+	/** Effective workflow-hierarchy breadcrumb visibility. Not implied by legacy `canvasOnly`. */
+	isBreadcrumbHidden: boolean;
 	envFeatureFlags: N8nEnvFeatFlags;
 }
 

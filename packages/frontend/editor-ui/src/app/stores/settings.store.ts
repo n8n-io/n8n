@@ -83,6 +83,14 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isCanvasOnly = computed(() => settings.value.canvasOnly);
 
+	const isSidebarHidden = computed(
+		() => settings.value.isSidebarHidden ?? settings.value.canvasOnly,
+	);
+
+	const isHeaderHidden = computed(() => settings.value.isHeaderHidden ?? settings.value.canvasOnly);
+
+	const isBreadcrumbHidden = computed(() => settings.value.isBreadcrumbHidden ?? false);
+
 	const publicApiLatestVersion = computed(() => api.value.latestVersion);
 
 	const publicApiPath = computed(() => api.value.path);
@@ -422,6 +430,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isSwaggerUIEnabled,
 		isPreviewMode,
 		isCanvasOnly,
+		isSidebarHidden,
+		isHeaderHidden,
+		isBreadcrumbHidden,
 		publicApiLatestVersion,
 		publicApiPath,
 		showSetupPage,

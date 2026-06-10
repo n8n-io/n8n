@@ -404,6 +404,9 @@ export class FrontendService {
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly,
+			isSidebarHidden: this.globalConfig.isSidebarHidden,
+			isHeaderHidden: this.globalConfig.isHeaderHidden,
+			isBreadcrumbHidden: this.globalConfig.isBreadcrumbHidden,
 			envFeatureFlags: this.collectEnvFeatureFlags(),
 		};
 	}

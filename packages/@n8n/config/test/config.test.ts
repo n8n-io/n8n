@@ -16,17 +16,18 @@ vi.mock('node:fs', () => ({
 const consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 // Ignore the sanitize function from the GlobalConfig nested types
-type ConfigShape<T> = T extends ReadonlyArray<infer U>
-	? Array<ConfigShape<U>>
-	: T extends object
-		? {
-				[K in keyof T as K extends 'sanitize'
-					? never
-					: T[K] extends (...args: unknown[]) => unknown
+type ConfigShape<T> =
+	T extends ReadonlyArray<infer U>
+		? Array<ConfigShape<U>>
+		: T extends object
+			? {
+					[K in keyof T as K extends 'sanitize'
 						? never
-						: K]: ConfigShape<T[K]>;
-			}
-		: T;
+						: T[K] extends (...args: unknown[]) => unknown
+							? never
+							: K]: ConfigShape<T[K]>;
+				}
+			: T;
 
 type GlobalConfigShape = ConfigShape<GlobalConfig>;
 
@@ -72,6 +73,9 @@ describe('GlobalConfig', () => {
 		ssl_key: '',
 		ssl_cert: '',
 		canvasOnly: false,
+		hideSidebar: false,
+		hideHeader: false,
+		hideBreadcrumb: false,
 		editorBaseUrl: '',
 		dataTable: {
 			maxSize: 200 * 1024 * 1024,
@@ -784,6 +788,90 @@ describe('GlobalConfig', () => {
 
 			const config = Container.get(GlobalConfig);
 			expect(config.endpoints.health).toEqual('/api/v1/health');
+		});
+	});
+
+	describe('Embedding chrome visibility flags', () => {
+		it('defaults all chrome to visible', () => {
+			process.env = {};
+			const config = Container.get(GlobalConfig);
+
+			expect(config.canvasOnly).toBe(false);
+			expect(config.hideSidebar).toBe(false);
+			expect(config.hideHeader).toBe(false);
+			expect(config.hideBreadcrumb).toBe(false);
+			expect(config.isSidebarHidden).toBe(false);
+			expect(config.isHeaderHidden).toBe(false);
+			expect(config.isBreadcrumbHidden).toBe(false);
+		});
+
+		it('treats legacy N8N_CANVAS_ONLY=true as hiding sidebar and header but not breadcrumb', () => {
+			process.env = { N8N_CANVAS_ONLY: 'true' };
+			const config = Container.get(GlobalConfig);
+
+			expect(config.canvasOnly).toBe(true);
+			expect(config.hideSidebar).toBe(false);
+			expect(config.hideHeader).toBe(false);
+			expect(config.hideBreadcrumb).toBe(false);
+			expect(config.isSidebarHidden).toBe(true);
+			expect(config.isHeaderHidden).toBe(true);
+			expect(config.isBreadcrumbHidden).toBe(false);
+		});
+
+		it('honors N8N_HIDE_SIDEBAR independently', () => {
+			process.env = { N8N_HIDE_SIDEBAR: 'true' };
+			const config = Container.get(GlobalConfig);
+
+			expect(config.isSidebarHidden).toBe(true);
+			expect(config.isHeaderHidden).toBe(false);
+			expect(config.isBreadcrumbHidden).toBe(false);
+		});
+
+		it('honors N8N_HIDE_HEADER independently', () => {
+			process.env = { N8N_HIDE_HEADER: 'true' };
+			const config = Container.get(GlobalConfig);
+
+			expect(config.isSidebarHidden).toBe(false);
+			expect(config.isHeaderHidden).toBe(true);
+			expect(config.isBreadcrumbHidden).toBe(false);
+		});
+
+		it('honors N8N_HIDE_BREADCRUMB independently', () => {
+			process.env = { N8N_HIDE_BREADCRUMB: 'true' };
+			const config = Container.get(GlobalConfig);
+
+			expect(config.isSidebarHidden).toBe(false);
+			expect(config.isHeaderHidden).toBe(false);
+			expect(config.isBreadcrumbHidden).toBe(true);
+		});
+
+		it('composes the granular flags together', () => {
+			process.env = {
+				N8N_HIDE_SIDEBAR: 'true',
+				N8N_HIDE_HEADER: 'true',
+				N8N_HIDE_BREADCRUMB: 'true',
+			};
+			const config = Container.get(GlobalConfig);
+
+			expect(config.isSidebarHidden).toBe(true);
+			expect(config.isHeaderHidden).toBe(true);
+			expect(config.isBreadcrumbHidden).toBe(true);
+		});
+
+		it('layers a granular breadcrumb hide on top of the legacy canvas-only shorthand', () => {
+			process.env = { N8N_CANVAS_ONLY: 'true', N8N_HIDE_BREADCRUMB: 'true' };
+			const config = Container.get(GlobalConfig);
+
+			expect(config.isSidebarHidden).toBe(true);
+			expect(config.isHeaderHidden).toBe(true);
+			expect(config.isBreadcrumbHidden).toBe(true);
+		});
+
+		it('does not mutate the raw legacy flag when granular flags are set', () => {
+			process.env = { N8N_HIDE_SIDEBAR: 'true', N8N_HIDE_HEADER: 'true' };
+			const config = Container.get(GlobalConfig);
+
+			expect(config.canvasOnly).toBe(false);
 		});
 	});
 

@@ -285,7 +285,7 @@ async function onWorkflowDeactivated() {
 				[$style['canvas-only']]: settingsStore.isCanvasOnly,
 			}"
 		>
-			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
+			<div v-show="!hideMenuBar && !settingsStore.isHeaderHidden" :class="$style['top-menu']">
 				<WorkflowDetails
 					v-if="workflowName"
 					:id="workflowId"
