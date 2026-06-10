@@ -11,7 +11,11 @@ import {
 import type { ModelConfig } from '../types/sdk/agent';
 
 type FetchFn = typeof globalThis.fetch;
-type CreateEmbeddingProviderFn = (opts?: { apiKey?: string }) => {
+type EmbeddingProviderOptions = {
+	apiKey?: string;
+	baseURL?: string;
+};
+type CreateEmbeddingProviderFn = (opts?: EmbeddingProviderOptions) => {
 	embeddingModel(model: string): EmbeddingModel;
 };
 
@@ -120,6 +124,19 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			const { createOpenRouter } =
 				require('@openrouter/ai-sdk-provider') as typeof import('@openrouter/ai-sdk-provider');
 			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
+		},
+	},
+	nvidia: {
+		build: (creds, model, fetch) => {
+			const { createOpenAICompatible } =
+				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+			return createOpenAICompatible({
+				name: 'nvidia',
+				baseURL: creds.baseURL ?? 'https://integrate.api.nvidia.com/v1',
+				apiKey: creds.apiKey,
+				headers: creds.headers,
+				fetch,
+			})(model);
 		},
 	},
 	'azure-openai': {
@@ -232,7 +249,7 @@ type EmbeddingModelId = `${EmbeddingProvider}/${string}`;
  */
 export function createEmbeddingModel(
 	embedderString: EmbeddingModelId | (string & {}),
-	apiKey?: string,
+	options?: string | EmbeddingProviderOptions,
 ): EmbeddingModel {
 	const [provider, ...rest] = embedderString.split('/');
 	const modelName = rest.join('/');
@@ -245,5 +262,6 @@ export function createEmbeddingModel(
 
 	const mod = require(entry.pkg) as Record<string, CreateEmbeddingProviderFn>;
 	const factory = mod[entry.factory];
-	return factory({ apiKey }).embeddingModel(modelName);
+	const providerOptions = typeof options === 'string' ? { apiKey: options } : options;
+	return factory(providerOptions).embeddingModel(modelName);
 }

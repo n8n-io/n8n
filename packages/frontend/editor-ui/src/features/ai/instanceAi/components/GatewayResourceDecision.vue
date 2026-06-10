@@ -75,7 +75,7 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 	const tc = thread.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const eventProps = {
-		thread_id: thread.currentThreadId,
+		thread_id: thread.id,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'resource-decision',

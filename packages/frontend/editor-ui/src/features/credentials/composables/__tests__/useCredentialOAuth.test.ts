@@ -28,11 +28,25 @@ const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
 	displayName: 'OAuth2 API',
 	properties: [
-		{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '', required: true },
+		{
+			displayName: 'Use Dynamic Client Registration',
+			name: 'useDynamicClientRegistration',
+			type: 'hidden',
+			default: false,
+		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'string',
+			displayOptions: { show: { useDynamicClientRegistration: [false] } },
+			default: '',
+			required: true,
+		},
 		{
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
+			displayOptions: { show: { useDynamicClientRegistration: [false] } },
 			default: '',
 			required: true,
 		},
@@ -95,6 +109,31 @@ const mcpOAuth2ApiWithNoVisibleProps: ICredentialType = {
 			name: 'serverUrl',
 			type: 'hidden',
 			default: 'https://mcp.example.com/mcp',
+		},
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'hidden',
+			default: 'none',
+		},
+	],
+};
+
+const oauth2ApiWithVisibleAllowedHttpRequestDomains: ICredentialType = {
+	name: 'customOAuth2Api',
+	extends: ['oAuth2Api'],
+	displayName: 'Custom OAuth2 API',
+	properties: [
+		{
+			displayName: 'Allowed HTTP Request Domains',
+			name: 'allowedHttpRequestDomains',
+			type: 'options',
+			options: [
+				{ name: 'All', value: 'all' },
+				{ name: 'Specific Domains', value: 'domains' },
+				{ name: 'None', value: 'none' },
+			],
+			default: 'all',
 		},
 	],
 };
@@ -239,7 +278,7 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.state.credentialTypes.slackOAuth2Api = {
 				...slackOAuth2Api,
-				__overwrittenProperties: ['clientId'],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
 			};
 
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
@@ -260,7 +299,7 @@ describe('useCredentialOAuth', () => {
 						required: true,
 					},
 				],
-				__overwrittenProperties: ['clientId'],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
 			};
 
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
@@ -319,6 +358,25 @@ describe('useCredentialOAuth', () => {
 
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
 			expect(canOAuthCredentialQuickConnect('mcpOAuth2Api')).toBe(true);
+		});
+
+		it('should not stack-overflow when the extends chain has a cycle', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.cyclicA = {
+				name: 'cyclicA',
+				extends: ['cyclicB'],
+				displayName: 'Cyclic A',
+				properties: [],
+			};
+			credentialsStore.state.credentialTypes.cyclicB = {
+				name: 'cyclicB',
+				extends: ['cyclicA', 'oAuth2Api'],
+				displayName: 'Cyclic B',
+				properties: [],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(() => canOAuthCredentialQuickConnect('cyclicA')).not.toThrow();
 		});
 	});
 
@@ -559,6 +617,43 @@ describe('useCredentialOAuth', () => {
 
 			return credentialsStore;
 		}
+
+		it('should not set allowedHttpRequestDomains for hidden property', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.state.credentialTypes.mcpOAuth2Api = mcpOAuth2ApiWithNoVisibleProps;
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('mcpOAuth2Api');
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'mcpOAuth2Api',
+					data: {},
+				}),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
+
+		it('should set allowedHttpRequestDomains when property is not hidden', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			credentialsStore.state.credentialTypes.customOAuth2Api =
+				oauth2ApiWithVisibleAllowedHttpRequestDomains;
+
+			const { createAndAuthorize } = useCredentialOAuth();
+			await createAndAuthorize('customOAuth2Api');
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'customOAuth2Api',
+					data: { allowedHttpRequestDomains: 'none' },
+				}),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true },
+			);
+		});
 
 		it('should track "User created credentials" after credential creation', async () => {
 			setupSuccessfulOAuthFlow();

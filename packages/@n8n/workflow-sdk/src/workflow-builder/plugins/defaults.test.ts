@@ -21,6 +21,7 @@ describe('Default Plugins', () => {
 		expect(validatorIds).toContain('core:agent');
 		expect(validatorIds).toContain('core:http-request');
 		expect(validatorIds).toContain('core:memory-session-key');
+		expect(validatorIds).toContain('core:unknown-config-keys');
 	});
 
 	it('registerDefaultPlugins registers core composite handlers', () => {

@@ -31,6 +31,7 @@ import {
 	createSendAndWaitMessageBody,
 	processThreadOptions,
 	slackApiRequestAllItemsWithRateLimit,
+	toMultiOptionsCsv,
 } from './GenericFunctions';
 import {
 	channelRLC,
@@ -58,7 +59,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3, 2.4],
+			version: [2, 2.1, 2.2, 2.3, 2.4, 2.5],
 			defaults: {
 				name: 'Slack',
 			},
@@ -380,12 +381,19 @@ export class SlackV2 implements INodeType {
 		const instanceId = this.getInstanceId();
 
 		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
-			await slackApiRequest.call(
-				this,
-				'POST',
-				'/chat.postMessage',
-				createSendAndWaitMessageBody(this),
-			);
+			try {
+				await slackApiRequest.call(
+					this,
+					'POST',
+					'/chat.postMessage',
+					createSendAndWaitMessageBody(this),
+				);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					return [[{ json: { error: (error as JsonObject).message } }]];
+				}
+				throw error;
+			}
 
 			const waitTill = configureWaitTillDate(this);
 
@@ -519,7 +527,7 @@ export class SlackV2 implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i);
 						if (filters.types) {
-							qs.types = (filters.types as string[]).join(',');
+							qs.types = toMultiOptionsCsv(filters.types);
 						}
 						if (filters.excludeArchived) {
 							qs.exclude_archived = filters.excludeArchived as boolean;
@@ -594,7 +602,7 @@ export class SlackV2 implements INodeType {
 							{},
 							{ extractValue: true },
 						) as string;
-						const userIds = (this.getNodeParameter('userIds', i) as string[]).join(',');
+						const userIds = toMultiOptionsCsv(this.getNodeParameter('userIds', i));
 						const body: IDataObject = {
 							channel,
 							users: userIds,
@@ -685,7 +693,7 @@ export class SlackV2 implements INodeType {
 							body.return_im = options.returnIm as boolean;
 						}
 						if (options.users) {
-							body.users = (options.users as string[]).join(',');
+							body.users = toMultiOptionsCsv(options.users);
 						}
 						responseData = await slackApiRequest.call(
 							this,
@@ -1093,7 +1101,7 @@ export class SlackV2 implements INodeType {
 						const fileBody: IDataObject = {};
 
 						if (options.channelIds) {
-							body.channels = (options.channelIds as string[]).join(',');
+							body.channels = toMultiOptionsCsv(options.channelIds);
 						}
 						if (options.channelId) {
 							body.channel_id = options.channelId as string;
@@ -1218,7 +1226,7 @@ export class SlackV2 implements INodeType {
 							qs.ts_to = filters.tsTo as string;
 						}
 						if (filters.types) {
-							qs.types = (filters.types as string[]).join(',');
+							qs.types = toMultiOptionsCsv(filters.types);
 						}
 						if (filters.userId) {
 							qs.user = filters.userId as string;

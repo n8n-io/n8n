@@ -1,5 +1,4 @@
-import { EVAL_PARALLEL_EXECUTION_FLAG, StartTestRunRequestDto } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { StartTestRunRequestDto } from '@n8n/api-types';
 import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
@@ -12,7 +11,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
-import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -24,27 +22,7 @@ export class TestRunsController {
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly telemetry: Telemetry,
-		private readonly postHogClient: PostHogClient,
-		private readonly logger: Logger,
 	) {}
-
-	/**
-	 * Resolves the parallel-execution rollout flag for a user, defaulting to
-	 * `false` (sequential) on any PostHog failure. Fail-open semantics: a
-	 * PostHog outage degrades the rollout cohort to the legacy sequential
-	 * behaviour rather than 500ing the test-run start.
-	 */
-	private async isParallelExecutionFlagEnabled(user: User): Promise<boolean> {
-		try {
-			const flags = await this.postHogClient.getFeatureFlags(user);
-			return flags?.[EVAL_PARALLEL_EXECUTION_FLAG] === true;
-		} catch (error) {
-			this.logger.warn('Failed to resolve eval parallel-execution flag', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return false;
-		}
-	}
 
 	private async assertUserHasAccessToWorkflow(
 		workflowId: string,
@@ -121,8 +99,7 @@ export class TestRunsController {
 	async delete(req: TestRunsRequest.Delete) {
 		const { id: testRunId } = req.params;
 
-		// Check test run exist
-		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
 
 		await this.testRunRepository.delete({ id: testRunId });
 
@@ -135,8 +112,9 @@ export class TestRunsController {
 	async cancel(req: TestRunsRequest.Cancel, res: express.Response) {
 		const { id: testRunId } = req.params;
 
-		// Check test definition and test run exist
-		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user, [
+			'workflow:execute',
+		]);
 
 		if (this.testRunnerService.canBeCancelled(testRun)) {
 			const message = `The test run "${testRunId}" cannot be cancelled`;
@@ -184,29 +162,22 @@ export class TestRunsController {
 	) {
 		const { workflowId } = req.params;
 
-		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
+		await this.assertUserHasAccessToWorkflow(workflowId, req.user, ['workflow:execute']);
 
-		// Resolve the rollout flag for this user. Cached 10 min by PostHogClient
-		// so the hot path is one outbound call per user per 10-min window at
-		// most. Flag-off users are silently coerced to sequential — no error,
-		// no flag-id in the response — so the cohort wall is invisible to
-		// direct API callers and stale tabs. Fail-open on PostHog errors.
-		const flagEnabledForUser = await this.isParallelExecutionFlagEnabled(req.user);
+		const concurrency = payload.concurrency ?? 1;
 
-		const requestedConcurrency = payload.concurrency ?? 1;
-		const concurrency = flagEnabledForUser ? requestedConcurrency : 1;
-
-		// Await the synchronous setup (workflow find + test-run row insert) so
-		// the response carries the new `testRunId` and the FE can route to the
-		// detail view without polling. The actual case-by-case execution is
-		// detached inside `startTestRun` and exposed as `finished`, which we
-		// intentionally discard here — fire-and-forget for the long-running
-		// part is preserved.
+		// Await sync setup so the 202 carries testRunId; case execution is
+		// detached inside startTestRun via `finished` (discarded here).
 		const { testRun } = await this.testRunnerService.startTestRun(
 			req.user,
 			workflowId,
 			concurrency,
-			flagEnabledForUser,
+			payload.evaluationConfigId
+				? {
+						evaluationConfigId: payload.evaluationConfigId,
+						compileFromConfig: payload.compileFromConfig === true,
+					}
+				: undefined,
 		);
 
 		res.status(202).json({ success: true, testRunId: testRun.id });

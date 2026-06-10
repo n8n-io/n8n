@@ -17,10 +17,10 @@ import { ref, watch } from 'vue';
 import { N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import type { AgentJsonToolRef } from '../types';
+import type { WorkflowToolRef } from '../types';
 
 const props = defineProps<{
-	initialRef: AgentJsonToolRef;
+	initialRef: WorkflowToolRef;
 }>();
 
 const emit = defineEmits<{
@@ -98,6 +98,8 @@ defineExpose({
 				{{ i18n.baseText('agents.toolConfig.workflow.allOutputs.hint') }}
 			</N8nText>
 		</div>
+
+		<slot name="commonSettings" />
 	</div>
 </template>
 

@@ -71,7 +71,7 @@ const executionHandlers: ExecutionHandlers = {
 
 			// look for the execution on the workflow the user owns
 			const execution = await Container.get(
-				ExecutionRepository,
+				ExecutionPersistence,
 			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
 
 			if (!execution) {
@@ -116,7 +116,7 @@ const executionHandlers: ExecutionHandlers = {
 
 			// look for the execution on the workflow the user owns
 			const execution = await Container.get(
-				ExecutionRepository,
+				ExecutionPersistence,
 			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, includeData);
 
 			if (!execution) {
@@ -230,7 +230,7 @@ const executionHandlers: ExecutionHandlers = {
 	retryExecution: [
 		publicApiScope('execution:retry'),
 		async (req, res) => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
@@ -266,7 +266,7 @@ const executionHandlers: ExecutionHandlers = {
 			}
 
 			const execution = await Container.get(
-				ExecutionRepository,
+				ExecutionPersistence,
 			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
 
 			if (!execution) {
@@ -290,7 +290,7 @@ const executionHandlers: ExecutionHandlers = {
 			}
 
 			const execution = await Container.get(
-				ExecutionRepository,
+				ExecutionPersistence,
 			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
 
 			if (!execution) {

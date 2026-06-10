@@ -10,6 +10,7 @@ import NodeErrorView from './NodeErrorView.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const mockRouterResolve = vi.fn(() => ({
@@ -28,6 +29,18 @@ vi.mock('vue-router', () => ({
 Object.defineProperty(window, 'open', {
 	value: vi.fn(),
 	writable: true,
+});
+
+vi.mock('@/app/composables/useEditorContext', async () => {
+	const { computed } = await import('vue');
+	return {
+		useEditorContext: () => ({
+			aiAssistant: computed(() => true),
+			aiBuilder: computed(() => true),
+			askAi: computed(() => true),
+			readOnly: computed(() => false),
+		}),
+	};
 });
 
 let mockChatPanelStore: ReturnType<typeof mockedStore<typeof useChatPanelStore>>;
@@ -50,8 +63,9 @@ describe('NodeErrorView.vue', () => {
 		createTestingPinia();
 		mockChatPanelStore = mockedStore(useChatPanelStore);
 		mockNodeTypeStore = mockedStore(useNodeTypesStore);
-		mockNDVStore = mockedStore(useNDVStore);
 		mockWorkflowsStore = mockedStore(useWorkflowsStore);
+		mockWorkflowsStore.workflowId = 'test-workflow-id';
+		mockNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
 
 		//@ts-expect-error
 		error = {
@@ -125,7 +139,7 @@ describe('NodeErrorView.vue', () => {
 			hidden: true,
 		}));
 
-		mockChatPanelStore.canShowAiButtonOnCanvas = true;
+		mockChatPanelStore.isEditableCanvasView = true;
 
 		const { queryByTestId } = renderComponent({
 			props: {
@@ -184,7 +198,7 @@ describe('NodeErrorView.vue', () => {
 	});
 
 	it('does not renders open node button when the error is in sub node', () => {
-		mockChatPanelStore.canShowAiButtonOnCanvas = true;
+		mockChatPanelStore.isEditableCanvasView = true;
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				error,
@@ -258,6 +272,7 @@ describe('NodeErrorView.vue', () => {
 
 		it('sets active node name when error is in current workflow/execution', async () => {
 			mockWorkflowsStore.workflowId = 'current-workflow-id';
+			mockNDVStore = mockedStore(useNDVStore, createWorkflowDocumentId('current-workflow-id'));
 			mockWorkflowsStore.getWorkflowExecution = {
 				id: 'current-execution-id',
 			} as IExecutionResponse;

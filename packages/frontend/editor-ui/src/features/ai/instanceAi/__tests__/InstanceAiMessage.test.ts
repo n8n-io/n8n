@@ -50,7 +50,7 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 
 describe('InstanceAiMessage', () => {
 	beforeEach(() => {
-		createTestingPinia();
+		createTestingPinia({ stubActions: false });
 	});
 
 	it('should render user message with user bubble', () => {
@@ -186,13 +186,13 @@ describe('InstanceAiMessage', () => {
 					content: '',
 					agentTree: makeAgentTree({
 						status: 'active',
-						statusMessage: 'Recalling conversation...',
+						statusMessage: 'Processing request...',
 					}),
 				}),
 			},
 		});
 
-		expect(getByText('Recalling conversation...')).toBeInTheDocument();
+		expect(getByText('Processing request...')).toBeInTheDocument();
 	});
 
 	it('should render agent activity tree when agentTree is present', () => {

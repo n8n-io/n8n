@@ -8,32 +8,10 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
-export * from './agents';
-export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from './agent-sse';
-export {
-	ASK_LLM_TOOL_NAME,
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
-	interactiveToolNameSchema,
-	askLlmInputSchema,
-	askLlmResumeSchema,
-	askCredentialInputSchema,
-	askCredentialResumeSchema,
-	askQuestionOptionSchema,
-	askQuestionInputSchema,
-	askQuestionResumeSchema,
-	interactiveResumeDataSchema,
-	type InteractiveToolName,
-	type AskLlmInput,
-	type AskLlmResume,
-	type AskCredentialInput,
-	type AskCredentialResume,
-	type AskQuestionOption,
-	type AskQuestionInput,
-	type AskQuestionResume,
-	type InteractiveResumeData,
-} from './agent-builder-interactive';
+export * from './agents/index';
 export * from './instance-registry-types';
+export * from './redaction-enforcement';
+export * from './redaction-enforcement-floor';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -139,6 +117,7 @@ export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export {
+	SYSTEM_RESOLVER_ID,
 	credentialResolverSchema,
 	credentialResolversSchema,
 	credentialResolverTypeSchema,
@@ -220,6 +199,7 @@ export {
 	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
+	dataTableIdSchema,
 } from './schemas/data-table.schema';
 
 export type {
@@ -321,6 +301,7 @@ export {
 	isSafeObjectKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	UNLIMITED_CREDITS,
+	EVAL_VENDOR_SDK_INTERCEPTION_FLAG,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
@@ -328,10 +309,11 @@ export {
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
+	instanceAiSandboxProviderSchema,
+	isInstanceAiSandboxProvider,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
-	InstanceAiEvalSubAgentRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -341,6 +323,7 @@ export {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	applyBranchReadOnlyOverrides,
 } from './schemas/instance-ai.schema';
@@ -398,6 +381,8 @@ export type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiModelCredential,
+	InstanceAiSandboxProvider,
+	InstanceAiMcpConnectionResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
@@ -416,11 +401,16 @@ export type {
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
 	InstanceAiEvalMockedCredential,
+	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
-	InstanceAiEvalToolCall,
-	InstanceAiEvalToolResult,
-	InstanceAiEvalSubAgentResponse,
 } from './schemas/instance-ai.schema';
+
+export type {
+	McpRegistryServerStatus,
+	McpRegistryServerIconResponse,
+	McpRegistryServerToolResponse,
+	McpRegistryServerResponse,
+} from './schemas/mcp-registry.schema';
 
 export {
 	createInitialState,
@@ -432,14 +422,56 @@ export {
 export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
 
 export {
-	EVAL_PARALLEL_EXECUTION_FLAG,
 	startTestRunPayloadSchema,
 	StartTestRunRequestDto,
 	type StartTestRunPayload,
 } from './schemas/evaluations.schema';
 
+export {
+	MCP_APPS_FLAG,
+	MCP_APPS_VARIANT_CONTROL,
+	MCP_APPS_VARIANT_ENABLED,
+} from './schemas/mcp.schema';
+
+export {
+	EVAL_COLLECTIONS_FLAG,
+	evalCollectionVersionEntrySchema,
+	createEvaluationCollectionSchema,
+	CreateEvaluationCollectionDto,
+	updateEvaluationCollectionSchema,
+	UpdateEvaluationCollectionDto,
+	addRunToCollectionSchema,
+	AddRunToCollectionDto,
+	type EvalCollectionVersionEntry,
+	type CreateEvaluationCollectionPayload,
+	type UpdateEvaluationCollectionPayload,
+	type AddRunToCollectionPayload,
+	type EvalCollectionRunStatus,
+	type EvaluationCollectionRecord,
+	type EvaluationCollectionRunSummary,
+	type EvaluationCollectionDetail,
+	type EvalVersionEntry,
+	type EvalVersionsResponse,
+} from './schemas/eval-collections.schema';
+
+export {
+	aiInsightsStatusSchema,
+	aiInsightsPayloadSchema,
+	aiInsightsResponseSchema,
+	generateInsightsSchema,
+	GenerateInsightsDto,
+	type AiInsightsStatus,
+	type AiInsightsWinner,
+	type AiInsightsRegression,
+	type AiInsightsSuggestedNext,
+	type AiInsightsPayload,
+	type AiInsightsResponse,
+	type GenerateInsightsPayload,
+} from './schemas/eval-insights.schema';
+
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 
+export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';
 export {
 	X_N8N_FEATURE_HEADER,
 	X_N8N_VERSION_HEADER,

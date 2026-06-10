@@ -13,6 +13,7 @@ const props = defineProps<{
 	icon: IconName;
 	status: ConnectionStatus;
 	actions: RowAction[];
+	dropdownPortalTarget?: HTMLElement;
 }>();
 
 const emit = defineEmits<{
@@ -77,6 +78,7 @@ function handleSelect(action: RowAction) {
 			v-if="menuItems.length > 0"
 			:items="menuItems"
 			placement="bottom-end"
+			:portal-target="dropdownPortalTarget"
 			@select="handleSelect"
 		/>
 	</div>
@@ -88,6 +90,7 @@ function handleSelect(action: RowAction) {
 	align-items: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xs) 0;
+	margin-left: var(--spacing--2xs);
 }
 
 .iconWrap {

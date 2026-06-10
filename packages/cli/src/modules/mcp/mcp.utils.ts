@@ -4,11 +4,12 @@ import type { INode } from 'n8n-workflow';
 
 import { SUPPORTED_MCP_TRIGGERS, SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import { isRecord, isJSONRPCRequest } from './mcp.typeguards';
+import type { McpClientInfo } from './mcp.types';
 
 type McpExecutionMode = 'manual' | 'production';
 
 export const getClientInfo = (req: Request | AuthenticatedRequest) => {
-	let clientInfo: { name?: string; version?: string } | undefined;
+	let clientInfo: McpClientInfo | undefined;
 	if (isJSONRPCRequest(req.body) && req.body.params?.clientInfo) {
 		clientInfo = req.body.params.clientInfo;
 	}

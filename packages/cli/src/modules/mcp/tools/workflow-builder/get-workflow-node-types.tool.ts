@@ -9,7 +9,7 @@ import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_GET_NODE_TYPES_TOOL } from './constants';
 
-const nodeIdWithDiscriminators = z.object({
+const nodeRequestSchema = z.object({
 	nodeId: z.string().describe('The node type ID (e.g. "n8n-nodes-base.gmail")'),
 	version: z.string().optional().describe('Specific version (e.g. "2.1")'),
 	resource: z.string().optional().describe('Resource discriminator (e.g. "message")'),
@@ -19,10 +19,10 @@ const nodeIdWithDiscriminators = z.object({
 
 const inputSchema = {
 	nodeIds: z
-		.array(z.union([z.string(), nodeIdWithDiscriminators]))
+		.array(nodeRequestSchema)
 		.min(1)
 		.describe(
-			'Node IDs to get type definitions for. Use plain strings for simple nodes, or objects with discriminators from search results.',
+			'Node type requests to get definitions for. Always pass an array of objects, even for a single node. Include discriminators from search_nodes results when available.',
 		),
 } satisfies z.ZodRawShape;
 
@@ -30,15 +30,7 @@ const outputSchema = {
 	definitions: z.string().describe('TypeScript type definitions for the requested nodes'),
 } satisfies z.ZodRawShape;
 
-type NodeRequest =
-	| string
-	| {
-			nodeId: string;
-			version?: string;
-			resource?: string;
-			operation?: string;
-			mode?: string;
-	  };
+type NodeRequest = z.infer<typeof nodeRequestSchema>;
 
 /**
  * MCP tool that retrieves TypeScript type definitions for n8n nodes.
@@ -52,7 +44,7 @@ export const createGetWorkflowNodeTypesTool = (
 	name: CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName,
 	config: {
 		description:
-			'Get TypeScript type definitions for n8n nodes. Returns exact parameter names and structures. MUST be called before writing workflow code — guessing parameter names creates invalid workflows. Include discriminators (resource/operation/mode) from search results.',
+			'Get TypeScript type definitions for n8n nodes. Returns exact parameter names and structures. MUST be called before writing workflow code — guessing parameter names creates invalid workflows. Pass nodeIds as an array of objects like { nodeId: "n8n-nodes-base.gmail" }. Include discriminators (resource/operation/mode) from search_nodes results.',
 		inputSchema,
 		outputSchema,
 		annotations: {
