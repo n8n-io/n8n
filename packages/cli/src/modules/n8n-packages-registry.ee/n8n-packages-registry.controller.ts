@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Get, RestController } from '@n8n/decorators';
+import { Get, GlobalScope, RestController } from '@n8n/decorators';
 
 import { N8nPackagesRegistryService } from './n8n-packages-registry.service';
 
@@ -16,5 +16,11 @@ export class N8nPackagesRegistryController {
 	@Get('/projects')
 	async findAllProjects(_req: AuthenticatedRequest) {
 		return await this.registryService.findAllProjects();
+	}
+
+	@Get('/importable-changes')
+	@GlobalScope('sourceControl:pull')
+	async findImportableChanges(req: AuthenticatedRequest) {
+		return await this.registryService.findImportableChangesGroupedByProject(req.user);
 	}
 }
