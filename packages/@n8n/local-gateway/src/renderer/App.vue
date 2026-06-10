@@ -26,7 +26,7 @@ onMounted(async () => {
 	<div :class="$style.app">
 		<AppHeader :state="auth.state" />
 		<div :class="$style.content">
-			<HomeView v-if="auth.state === 'signedIn'" :instance-url="auth.instanceUrl" />
+			<HomeView v-if="auth.state === 'signedIn'" />
 			<SignInView v-else :status="auth" />
 		</div>
 	</div>
@@ -37,6 +37,8 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	height: 100vh;
+	/* Header/window sit on the darker base; the content body is a touch lighter. */
+	background: var(--da-bg);
 }
 
 .content {
@@ -44,5 +46,6 @@ onMounted(async () => {
 	flex: 1;
 	flex-direction: column;
 	overflow: auto;
+	background: var(--da-surface);
 }
 </style>
