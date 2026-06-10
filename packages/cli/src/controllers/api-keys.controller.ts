@@ -3,6 +3,7 @@ import {
 	ListApiKeysQueryDto,
 	UpdateApiKeyRequestDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -22,6 +23,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/public-api';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
+import { UrlService } from '@/services/url.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isApiEnabled()) {
@@ -31,11 +34,33 @@ export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	}
 };
 
+const REVOKED_AT_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+	day: 'numeric',
+	month: 'short',
+	year: 'numeric',
+});
+
+function formatRevokedAt(date: Date): string {
+	return REVOKED_AT_FORMATTER.format(date);
+}
+
+function formatRevokedBy(user: {
+	firstName?: string | null;
+	lastName?: string | null;
+	email: string;
+}): string {
+	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+	return fullName || user.email;
+}
+
 @RestController('/api-keys')
 export class ApiKeysController {
 	constructor(
 		private readonly eventService: EventService,
 		private readonly publicApiKeyService: PublicApiKeyService,
+		private readonly mailer: UserManagementMailer,
+		private readonly urlService: UrlService,
+		private readonly logger: Logger,
 	) {}
 
 	@GlobalScope('apiKey:create')
@@ -78,13 +103,33 @@ export class ApiKeysController {
 	@GlobalScope('apiKey:delete')
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
-		const { isOwn } = await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
+		const { isOwn, apiKey } = await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
 
 		this.eventService.emit('public-api-key-deleted', {
 			user: req.user,
 			publicApi: false,
 			isOwn,
 		});
+
+		if (!isOwn) {
+			try {
+				await this.mailer.apiKeyRevoked({
+					email: apiKey.user.email,
+					firstName: apiKey.user.firstName ?? 'there',
+					label: apiKey.label,
+					suffix: apiKey.apiKey.slice(-4),
+					revokedBy: formatRevokedBy(req.user),
+					revokedAt: formatRevokedAt(new Date()),
+					createApiKeyUrl: `${this.urlService.getInstanceBaseUrl()}/settings/api`,
+				});
+			} catch (e) {
+				this.logger.error('Failed to send API key revocation email', {
+					apiKeyId: apiKey.id,
+					ownerId: apiKey.userId,
+					error: e instanceof Error ? e.message : String(e),
+				});
+			}
+		}
 
 		return { success: true };
 	}

@@ -10,7 +10,12 @@ import Handlebars from 'handlebars';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { join as pathJoin } from 'path';
 
-import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces';
+import type {
+	ApiKeyRevokedEmailData,
+	InviteEmailData,
+	PasswordResetData,
+	SendEmailResult,
+} from './interfaces';
 import { NodeMailer } from './node-mailer';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -27,7 +32,8 @@ type TemplateName =
 	| 'workflow-shared'
 	| 'credentials-shared'
 	| 'project-shared'
-	| 'workflow-failure';
+	| 'workflow-failure'
+	| 'api-key-revoked';
 
 @Service()
 export class UserManagementMailer {
@@ -75,6 +81,17 @@ export class UserManagementMailer {
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
 			body: template({ ...this.basePayload, ...passwordResetData }),
+		});
+	}
+
+	async apiKeyRevoked(data: ApiKeyRevokedEmailData): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const template = await this.getTemplate('api-key-revoked');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Your n8n API key was revoked',
+			body: template({ ...this.basePayload, ...data }),
 		});
 	}
 
