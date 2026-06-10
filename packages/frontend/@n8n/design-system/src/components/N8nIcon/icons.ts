@@ -56,6 +56,7 @@ import IconLucideAtSign from '~icons/lucide/at-sign';
 import IconLucideBadgeCheck from '~icons/lucide/badge-check';
 import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
+import IconLucideBlocks from '~icons/lucide/blocks';
 import IconLucideBold from '~icons/lucide/bold';
 import IconLucideBook from '~icons/lucide/book';
 import IconLucideBookOpen from '~icons/lucide/book-open';
@@ -132,6 +133,7 @@ import IconLucideFolder from '~icons/lucide/folder';
 import IconLucideFolderOpen from '~icons/lucide/folder-open';
 import IconLucideFolderPlus from '~icons/lucide/folder-plus';
 import IconLucideFunnel from '~icons/lucide/funnel';
+import IconLucideGauge from '~icons/lucide/gauge';
 import IconLucideGem from '~icons/lucide/gem';
 import IconLucideGift from '~icons/lucide/gift';
 import IconLucideGitBranch from '~icons/lucide/git-branch';
@@ -163,6 +165,7 @@ import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideListTree from '~icons/lucide/list-tree';
 import IconLucideLoaderCircle from '~icons/lucide/loader-circle';
 import IconLucideLoader2 from '~icons/lucide/loader2';
 import IconLucideLock from '~icons/lucide/lock';
@@ -549,6 +552,7 @@ export const updatedIconSet = {
 	ban: IconLucideBan,
 	'badge-check': IconLucideBadgeCheck,
 	bell: IconLucideBell,
+	blocks: IconLucideBlocks,
 	bold: IconLucideBold,
 	book: IconLucideBook,
 	'book-open': IconLucideBookOpen,
@@ -622,6 +626,7 @@ export const updatedIconSet = {
 	'folder-open': IconLucideFolderOpen,
 	'folder-plus': IconLucideFolderPlus,
 	funnel: IconLucideFunnel,
+	gauge: IconLucideGauge,
 	gem: IconLucideGem,
 	gift: IconLucideGift,
 	'git-branch': IconLucideGitBranch,
@@ -653,6 +658,7 @@ export const updatedIconSet = {
 	link: IconLucideLink,
 	list: IconLucideList,
 	'list-checks': IconLucideListChecks,
+	'list-tree': IconLucideListTree,
 	lock: IconLucideLock,
 	'log-in': IconLucideLogIn,
 	'log-out': IconLucideLogOut,

@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { Logger, TypedEmitter } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { MultiMainMetadata } from '@n8n/decorators';
@@ -7,7 +7,6 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
 
 import { LeaderElectionClient } from '@/scaling/leader-election-client';
-import { TypedEmitter } from '@/typed-emitter';
 
 type MultiMainEvents = {
 	/**

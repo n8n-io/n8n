@@ -1,10 +1,12 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "2.10.0",
+  "version": "2.11.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -51,5 +53,6 @@
     "bin": "n8n-benchmark",
     "commands": "./dist/commands",
     "topicSeparator": " "
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

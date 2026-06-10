@@ -6,12 +6,10 @@ import type {
 import type { ComputedRef, InjectionKey, Ref, ShallowRef } from 'vue';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { TelemetryContext } from '@/app/types/telemetry';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import type { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 export const WorkflowIdKey = 'workflowId' as unknown as InjectionKey<ComputedRef<string>>;
 export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
@@ -23,7 +21,6 @@ export const ExpressionLocalResolveContextSymbol: InjectionKey<
 	ComputedRef<ExpressionLocalResolveContext | undefined>
 > = Symbol('ExpressionLocalResolveContext');
 export const TelemetryContextSymbol: InjectionKey<TelemetryContext> = Symbol('TelemetryContext');
-export const WorkflowStateKey: InjectionKey<WorkflowState> = Symbol('WorkflowState');
 export const WorkflowDocumentStoreKey: InjectionKey<ShallowRef<WorkflowDocumentStore | null>> =
 	Symbol('WorkflowDocumentStore');
 export const ExecutionDataStoreKey: InjectionKey<
@@ -32,17 +29,25 @@ export const ExecutionDataStoreKey: InjectionKey<
 export const WorkflowExecutionStateStoreKey: InjectionKey<
 	ShallowRef<ReturnType<typeof useWorkflowExecutionStateStore> | null>
 > = Symbol('WorkflowExecutionStateStore');
-export const NDVStoreKey: InjectionKey<ShallowRef<ReturnType<typeof useNDVStore> | null>> =
-	Symbol('NDVStore');
 export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('CanvasRenderData');
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
 /**
- * Context-supplied read-only signal for the workflow editor. When provided and
- * its current value is `true`, the canvas is treated as read-only on top of
- * the editor's own read-only signals (permissions, archive, branch, collab,
- * builder streaming). Used by adapters (e.g. the AI artifact host) to lock
- * editing while an external agent is mutating the workflow.
+ * AI editor capabilities a host can toggle per editor, using enablement
+ * semantics (an explicit `false` supersedes; omitted or `true` falls back to
+ * the editor's own gating). Grows over time.
  */
-export const EditorExternalReadOnlyKey: InjectionKey<Readonly<Ref<boolean>>> =
-	Symbol('EditorExternalReadOnly');
+export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi';
+/**
+ * Per-editor host overrides. The AI features use enablement semantics
+ * (`false` = superseded/off; omitted or `true` falls back to the editor's own
+ * gating, and a `true` can never grant a feature the instance disabled).
+ * `readOnly` is a direct state flag — `true` forces the canvas read-only on top
+ * of the editor's own gating. Provided by editor hosts that supersede
+ * capabilities — e.g. the Instance AI preview.
+ */
+export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
+	readOnly?: boolean;
+};
+export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
+	Symbol('EditorEnabledFeatures');

@@ -33,7 +33,12 @@ function buildNativeMcpConfigs(configs: McpServerConfig[]): NativeMcpServerConfi
 	const servers: NativeMcpServerConfig[] = [];
 	for (const server of configs) {
 		if (server.url) {
-			servers.push({ name: server.name, url: server.url });
+			servers.push({
+				name: server.name,
+				url: server.url,
+				transport: server.transport,
+				fetch: server.fetch,
+			});
 		} else if (server.command) {
 			servers.push({
 				name: server.name,

@@ -79,6 +79,36 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		return await this.markExpiredOlderThan(olderThan);
 	}
 
+	/**
+	 * Look up the most recent suspended sub-agent run for a given resourceId
+	 * and pull the info needed to resume it. This supports deterministic
+	 * sub-agent persistence for suspended background or delegated work.
+	 */
+	async findSuspendedSubAgentResumeInfo(resourceId: string): Promise<
+		| {
+				runId: string;
+				toolCallId: string;
+				persistence: { threadId: string; resourceId: string };
+		  }
+		| undefined
+	> {
+		const row = await this.checkpointRepo.findActiveByResourceId(resourceId);
+		if (!row?.state) return undefined;
+		// `pendingToolCalls` can hold parallel tool calls from one turn, only
+		// some of which suspended. Pick the suspended entry explicitly so we
+		// don't try to resume a tool that ran to completion in the same batch.
+		const suspendedEntry = Object.entries(row.state.pendingToolCalls ?? {}).find(
+			([, call]) => call.suspended,
+		);
+		const persistence = row.state.persistence;
+		if (!suspendedEntry || !persistence?.threadId || !persistence.resourceId) return undefined;
+		return {
+			runId: row.key,
+			toolCallId: suspendedEntry[0],
+			persistence: { threadId: persistence.threadId, resourceId: persistence.resourceId },
+		};
+	}
+
 	/** Drop expired tombstones outright once they're past the GC horizon. */
 	async hardDeleteExpiredOlderThan(olderThan: Date): Promise<number> {
 		const result = await this.checkpointRepo.delete({

@@ -154,11 +154,12 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	}
 
 	async function fetchGlobalSecrets(projectId?: string) {
-		// CE guard: moduleSettings['external-secrets'] is absent on Community Edition.
-		// All paths below this point assume EE with the module loaded.
-		if (!externalSecretsModuleSettings.value) return;
-
+		// Community Edition does not register the external-secrets module, so
+		// `moduleSettings['external-secrets']` is absent. Skip the fetch entirely
+		// to avoid calling the EE-only endpoint (which 404s on CE). Everything
+		// below assumes EE with the module loaded.
 		const moduleConfig = externalSecretsModuleSettings.value;
+		if (!moduleConfig) return;
 
 		if (moduleConfig.roleBasedAccess) {
 			// In principle when roleBasedAccess is enabled, projectId is always provided
@@ -179,6 +180,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	}
 
 	async function fetchProjectSecrets(projectId: string) {
+		// Community Edition: external-secrets module is absent, so there is nothing to fetch.
 		if (!externalSecretsModuleSettings.value) return;
 
 		if (!externalSecretsModuleSettings.value.forProjects) {
@@ -213,6 +215,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	}
 
 	async function fetchSecretsForProject(projectId: string) {
+		// Community Edition: external-secrets module is absent, so there is nothing to fetch.
 		if (!externalSecretsModuleSettings.value) return;
 
 		await Promise.all([fetchGlobalSecrets(projectId), fetchProjectSecrets(projectId)]);

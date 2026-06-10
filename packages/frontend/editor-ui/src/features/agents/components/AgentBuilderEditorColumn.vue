@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { N8nCard, N8nRadioButtons } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
@@ -12,8 +13,10 @@ import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentJsonEditor from './AgentJsonEditor.vue';
+import AgentFilesPanel from './AgentFilesPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
+import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -22,11 +25,17 @@ const props = defineProps<{
 	agent: AgentResource | null;
 	projectId: string;
 	agentId: string;
+	agentFiles: AgentFileDto[];
+	agentFilesLoading: boolean;
+	agentFilesUploading: boolean;
+	knowledgeBaseEnabled: boolean;
+	deletingAgentFileId?: string | null;
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
 	isBuildChatStreaming: boolean;
 	canEditAgent: boolean;
 	executionsDescription: string;
+	tasksReloadKey?: number;
 }>();
 
 const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
@@ -42,8 +51,12 @@ const emit = defineEmits<{
 	'add-trigger': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
+	'upload-files': [files: File[]];
+	'delete-file': [file: AgentFileDto];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
+	'toggle-task': [payload: { id: string; enabled: boolean }];
+	'tasks-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -96,6 +109,8 @@ const i18n = useI18n();
 							:project-id="projectId"
 							:agent-id="agentId"
 							:is-published="Boolean(agent?.activeVersionId)"
+							:task-refs="localConfig?.tasks ?? []"
+							:reload-key="tasksReloadKey"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
 							@open-trigger="emit('open-trigger', $event)"
@@ -106,14 +121,40 @@ const i18n = useI18n();
 							@remove-skill="emit('remove-skill', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
+							@toggle-task="emit('toggle-task', $event)"
+							@tasks-changed="emit('tasks-changed')"
 						/>
 					</N8nCard>
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentInfoPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
+							:project-id="projectId"
 							embedded
 							@update:config="emit('update:config', $event)"
+						/>
+					</N8nCard>
+
+					<N8nCard variant="outlined" :class="$style.card">
+						<AgentSubAgentsPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							:agent-id="agentId"
+							@update:config="emit('update:config', $event)"
+						/>
+					</N8nCard>
+
+					<N8nCard v-if="knowledgeBaseEnabled" variant="outlined" :class="$style.card">
+						<AgentFilesPanel
+							:files="agentFiles"
+							:disabled="childrenDisabled"
+							:loading="agentFilesLoading"
+							:uploading="agentFilesUploading"
+							:deleting-file-id="deletingAgentFileId"
+							data-testid="agent-files-card"
+							@upload-files="emit('upload-files', $event)"
+							@delete-file="emit('delete-file', $event)"
 						/>
 					</N8nCard>
 

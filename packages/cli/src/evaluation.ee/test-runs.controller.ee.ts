@@ -99,8 +99,7 @@ export class TestRunsController {
 	async delete(req: TestRunsRequest.Delete) {
 		const { id: testRunId } = req.params;
 
-		// Check test run exist
-		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
 
 		await this.testRunRepository.delete({ id: testRunId });
 
@@ -113,8 +112,9 @@ export class TestRunsController {
 	async cancel(req: TestRunsRequest.Cancel, res: express.Response) {
 		const { id: testRunId } = req.params;
 
-		// Check test definition and test run exist
-		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user, [
+			'workflow:execute',
+		]);
 
 		if (this.testRunnerService.canBeCancelled(testRun)) {
 			const message = `The test run "${testRunId}" cannot be cancelled`;
@@ -162,22 +162,22 @@ export class TestRunsController {
 	) {
 		const { workflowId } = req.params;
 
-		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
+		await this.assertUserHasAccessToWorkflow(workflowId, req.user, ['workflow:execute']);
 
 		const concurrency = payload.concurrency ?? 1;
 
-		// Await the synchronous setup (workflow find + test-run row insert) so
-		// the response carries the new `testRunId` and the FE can route to the
-		// detail view without polling. The actual case-by-case execution is
-		// detached inside `startTestRun` and exposed as `finished`, which we
-		// intentionally discard here — fire-and-forget for the long-running
-		// part is preserved. `startTestRun` clamps `concurrency` against the
-		// effective limit (env override → license tier default), so callers
-		// can request more than the instance allows without erroring.
+		// Await sync setup so the 202 carries testRunId; case execution is
+		// detached inside startTestRun via `finished` (discarded here).
 		const { testRun } = await this.testRunnerService.startTestRun(
 			req.user,
 			workflowId,
 			concurrency,
+			payload.evaluationConfigId
+				? {
+						evaluationConfigId: payload.evaluationConfigId,
+						compileFromConfig: payload.compileFromConfig === true,
+					}
+				: undefined,
 		);
 
 		res.status(202).json({ success: true, testRunId: testRun.id });

@@ -13,6 +13,7 @@ export const ATTR = {
 	WORKFLOW_VERSION_ID: 'n8n.workflow.version_id',
 	WORKFLOW_NAME: 'n8n.workflow.name',
 	WORKFLOW_NODE_COUNT: 'n8n.workflow.node_count',
+	WORKFLOW_CUSTOM_PREFIX: 'n8n.workflow.custom.',
 
 	EXECUTION_ID: 'n8n.execution.id',
 	EXECUTION_MODE: 'n8n.execution.mode',
@@ -28,6 +29,7 @@ export const ATTR = {
 	NODE_ITEMS_INPUT: 'n8n.node.items.input',
 	NODE_ITEMS_OUTPUT: 'n8n.node.items.output',
 	NODE_TERMINATION_REASON: 'n8n.node.termination_reason',
+	PROJECT_CUSTOM_PREFIX: 'n8n.project.custom.',
 	NODE_CUSTOM_PREFIX: 'n8n.node.custom.',
 
 	CONTINUATION_REASON: 'n8n.continuation.reason',

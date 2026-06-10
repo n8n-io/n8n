@@ -1,0 +1,131 @@
+name: 'Test: E2E Coverage Nightly'
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # Nightly at 02:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare-docker:
+    name: Prepare Docker (coverage)
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    with:
+      build-variant: coverage
+      runner: blacksmith-8vcpu-ubuntu-2204
+    secrets: inherit
+
+  # Distribute the full e2e suite across shards by historical duration
+  # (janitor orchestrator) instead of Playwright's count-based --shard=N/total.
+  # Count-based sharding stacked the heavy + flaky specs onto one shard, which
+  # then blew past the timeout; duration-weighting keeps every shard even.
+  generate-matrix:
+    name: Generate shard matrix
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup and Build janitor
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor
+
+      - name: Generate matrix (10 shards, duration-weighted)
+        id: gen
+        run: |
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 10 --orchestrate)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  e2e:
+    name: E2E (coverage)
+    needs: [prepare-docker, generate-matrix]
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-artifact
+      # Runs the coverage project + resolves this shard's V8 to lcov/per-spec
+      # (keeps test-e2e-reusable coverage-agnostic). See run-coverage-shard.mjs.
+      test-command: pnpm --filter=n8n-playwright coverage:shard
+      workers: '1'
+      runner: blacksmith-4vcpu-ubuntu-2204
+      timeout-minutes: 55
+      pre-generated-matrix: ${{ needs.generate-matrix.outputs.matrix }}
+      artifact-prefix: coverage
+      build-variant: coverage
+      currents-project-id: 'LRxcNt'
+    secrets: inherit
+
+  aggregate:
+    name: Aggregate Coverage
+    needs: e2e
+    if: always() && needs.e2e.result != 'skipped' && needs.e2e.result != 'cancelled'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Download shard artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: coverage-shard-*
+          path: /tmp/shards/
+
+      - name: Build janitor (tested merge-coverage)
+        run: pnpm turbo run build --filter=@n8n/playwright-janitor
+
+      # Report (shard lcovs → unified lcov) + impact map (per-spec lcovs →
+      # spec-keyed map), both via the property-tested janitor merge-coverage.
+      # Logic lives in the tested aggregate-coverage.mjs, not inline bash.
+      - name: Aggregate coverage + build impact map
+        working-directory: packages/testing/playwright
+        run: node scripts/aggregate-coverage.mjs --shards=/tmp/shards --out=coverage
+
+      - name: Upload Coverage Report Artifact
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: coverage-report
+          path: packages/testing/playwright/coverage/
+          retention-days: 14
+
+      - name: Upload E2E Coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: packages/testing/playwright/coverage/lcov.info
+          flags: frontend-e2e
+          name: playwright-e2e
+          fail_ci_if_error: false
+
+      # Codecov needs ~60-90s to finish indexing the fresh upload before its
+      # report API will return the new flag data. Without this wait the
+      # gap-analysis step that follows runs into 503s and bails.
+      - name: Wait for Codecov to index upload
+        if: always()
+        shell: bash
+        run: sleep 60
+
+      - name: Analyse Coverage Gaps
+        if: always()
+        env:
+          CODECOV_API_TOKEN: ${{ secrets.CODECOV_API_TOKEN }}
+        run: |
+          node packages/testing/playwright/scripts/coverage-analysis.mjs \
+            --md --top=15 --out-json=coverage-gaps.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Coverage Gap Report
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: coverage-gap-report
+          path: coverage-gaps.json
+          retention-days: 21
