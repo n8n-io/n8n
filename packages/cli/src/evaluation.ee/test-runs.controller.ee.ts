@@ -1,6 +1,7 @@
 import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Delete, Get, Post, RestController } from '@n8n/decorators';
+import type { Scope } from '@n8n/permissions';
 import express from 'express';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
@@ -29,8 +30,13 @@ export class TestRunsController {
 	/**
 	 * Get the test run (or just check that it exists and the user has access to it)
 	 */
-	private async getTestRun(testRunId: string, workflowId: string, user: User) {
-		const sharedWorkflowsIds = await getSharedWorkflowIds(user, ['workflow:read']);
+	private async getTestRun(
+		testRunId: string,
+		workflowId: string,
+		user: User,
+		scopes: Scope[] = ['workflow:read'],
+	) {
+		const sharedWorkflowsIds = await getSharedWorkflowIds(user, scopes);
 
 		if (!sharedWorkflowsIds.includes(workflowId)) {
 			throw new NotFoundError('Test run not found');
@@ -78,8 +84,7 @@ export class TestRunsController {
 	async delete(req: TestRunsRequest.Delete) {
 		const { id: testRunId } = req.params;
 
-		// Check test run exist
-		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
 
 		await this.testRunRepository.delete({ id: testRunId });
 
@@ -96,8 +101,9 @@ export class TestRunsController {
 
 		const { id: testRunId } = req.params;
 
-		// Check test definition and test run exist
-		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user, [
+			'workflow:execute',
+		]);
 
 		if (this.testRunnerService.canBeCancelled(testRun)) {
 			const message = `The test run "${testRunId}" cannot be cancelled`;
@@ -114,7 +120,7 @@ export class TestRunsController {
 		const { workflowId } = req.params;
 
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
-			'workflow:read',
+			'workflow:execute',
 		]);
 
 		if (!workflow) {

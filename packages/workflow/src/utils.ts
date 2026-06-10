@@ -34,6 +34,11 @@ export const isObjectEmpty = (obj: object | null | undefined): boolean => {
 
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 
+// Property keys that must never be copied onto a clone: assigning `__proto__`
+// reassigns the clone's prototype, and `constructor`/`prototype` can shadow
+// built-ins. Source data parsed from JSON can carry these as own properties.
+const reservedCopyKeys = new Set(['__proto__', 'constructor', 'prototype']);
+
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
 	source: T,
@@ -66,7 +71,7 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 	const clone = Object.create(Object.getPrototypeOf({}));
 	hash.set(source, clone);
 	for (const i in source) {
-		if (hasOwnProp(i)) {
+		if (hasOwnProp(i) && !reservedCopyKeys.has(i)) {
 			clone[i] = deepCopy((source as any)[i], hash, path + `.${i}`);
 		}
 	}
@@ -193,6 +198,7 @@ export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSe
 	knownObjects.add(value);
 	const copy = (Array.isArray(value) ? [] : {}) as T;
 	for (const key in value) {
+		if (reservedCopyKeys.has(key)) continue;
 		try {
 			copy[key] = replaceCircularReferences(value[key], knownObjects);
 		} catch (error: unknown) {

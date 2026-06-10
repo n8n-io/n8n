@@ -415,7 +415,7 @@ export class WorkflowsController {
 		const { workflowId } = req.params;
 		const forceSave = req.query.forceSave === 'true';
 
-		let updateData = new WorkflowEntity();
+		const updateData = new WorkflowEntity();
 		const { tags, parentFolderId, ...rest } = req.body;
 
 		// TODO: Add zod validation for entire `rest` object before assigning to `updateData`
@@ -428,15 +428,8 @@ export class WorkflowsController {
 
 		Object.assign(updateData, rest);
 
+		// Credential tamper protection is enforced centrally in WorkflowService.update
 		const isSharingEnabled = this.license.isSharingEnabled();
-		if (isSharingEnabled) {
-			updateData = await this.enterpriseWorkflowService.preventTampering(
-				updateData,
-				workflowId,
-				req.user,
-			);
-		}
-
 		const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
 			tagIds: tags,
 			parentFolderId,
