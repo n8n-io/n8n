@@ -35,6 +35,26 @@ async function toJpeg(
 	return await pipeline.jpeg(85);
 }
 
+/**
+ * Capture the primary monitor as a base64-encoded JPEG (downscaled to the LLM
+ * token budget, same as `screen_screenshot`). Exported so callers that need a
+ * screenshot outside the MCP tool path (e.g. the desktop context picker) can
+ * reuse the exact capture pipeline rather than reimplementing it.
+ */
+export async function captureFullScreenJpegBase64(): Promise<string> {
+	const monitor = await getPrimaryMonitor();
+	const image = await monitor.captureImage();
+	const rawBuffer = await image.toRaw();
+	const jpegBuffer = await toJpeg(
+		rawBuffer,
+		image.width,
+		image.height,
+		monitor.width(),
+		monitor.height(),
+	);
+	return jpegBuffer.toString('base64');
+}
+
 export const screenshotTool: ToolDefinition<typeof screenshotSchema> = {
 	name: 'screen_screenshot',
 	description: 'Capture a screenshot of the full screen and return it as a base64-encoded JPEG',
@@ -44,21 +64,11 @@ export const screenshotTool: ToolDefinition<typeof screenshotSchema> = {
 		return [{ toolGroup: 'computer' as const, resource: '*', description: 'Capture screenshot' }];
 	},
 	async execute(_input: z.infer<typeof screenshotSchema>, _context: ToolContext) {
-		const monitor = await getPrimaryMonitor();
-		const image = await monitor.captureImage();
-		const rawBuffer = await image.toRaw();
-		const jpegBuffer = await toJpeg(
-			rawBuffer,
-			image.width,
-			image.height,
-			monitor.width(),
-			monitor.height(),
-		);
 		return {
 			content: [
 				{
 					type: 'image' as const,
-					data: jpegBuffer.toString('base64'),
+					data: await captureFullScreenJpegBase64(),
 					mimeType: 'image/jpeg',
 				},
 			],

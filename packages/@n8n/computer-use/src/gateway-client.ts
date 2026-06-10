@@ -240,6 +240,9 @@ export class GatewayClient {
 		// Lazy-load Screenshot and MouseKeyboard to avoid eager native module imports
 		const { ScreenshotModule } = await import('./tools/screenshot');
 		const { MouseKeyboardModule } = await import('./tools/mouse-keyboard');
+		// Context detection: lazy-loaded from the tool entry (not the barrel) so
+		// it doesn't pull in the screenshot capture chain unless used.
+		const { ContextModule } = await import('./tools/context/context-tool');
 
 		const computerModules: Array<{
 			name: string;
@@ -252,6 +255,12 @@ export class GatewayClient {
 				category: 'shell',
 				enabled: session.getGroupMode('shell') !== 'deny',
 				module: ShellModule,
+			},
+			{
+				name: 'Context',
+				category: 'context',
+				enabled: session.getGroupMode('filesystemRead') !== 'deny',
+				module: ContextModule,
 			},
 			{
 				name: 'Screenshot',
