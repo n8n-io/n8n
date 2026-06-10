@@ -8,6 +8,7 @@ import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
+import CanvasNodeSubworkflowProgress from './parts/CanvasNodeSubworkflowProgress.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '../../../../experimental/components/ExperimentalEmbeddedNodeDetails.vue';
@@ -44,6 +45,7 @@ const {
 	executionWaiting,
 	executionWaitingForNext,
 	executionRunning,
+	subworkflowProgress,
 	hasRunData,
 	render,
 	isNotInstalledCommunityNode,
@@ -218,6 +220,7 @@ function onActivate(event: MouseEvent) {
 			<div v-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
 				{{ subtitle }}
 			</div>
+			<CanvasNodeSubworkflowProgress v-if="subworkflowProgress" :progress="subworkflowProgress" />
 		</div>
 		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
 	</div>

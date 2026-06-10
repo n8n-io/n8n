@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useSubworkflowProgressStore } from '@/app/stores/subworkflowProgress.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { CanvasRenderData } from '../canvas.utils';
 import type { Ref } from 'vue';
@@ -265,6 +266,35 @@ export function useCanvasMapping({
 			return acc;
 		}, {}),
 	);
+
+	const subworkflowProgressStore = useSubworkflowProgressStore();
+	const subworkflowProgressByNodeId = computed(() => {
+		const activeExecutionId = workflowExecutionStateStore.value.activeExecutionId;
+		if (typeof activeExecutionId !== 'string') return {} as Record<string, undefined>;
+		return nodes.value.reduce<
+			Record<
+				string,
+				| {
+						currentNodeName?: string;
+						currentNodeIndex: number;
+						totalNodes: number;
+						phase: 'running' | 'success' | 'error';
+				  }
+				| undefined
+			>
+		>((acc, node) => {
+			const progress = subworkflowProgressStore.getFor(activeExecutionId, node.name);
+			acc[node.id] = progress
+				? {
+						currentNodeName: progress.currentNodeName,
+						currentNodeIndex: progress.currentNodeIndex,
+						totalNodes: progress.totalNodes,
+						phase: progress.phase,
+					}
+				: undefined;
+			return acc;
+		}, {});
+	});
 
 	const nodeExecutionStatusById = computed(() =>
 		nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
@@ -617,6 +647,7 @@ export function useCanvasMapping({
 					waiting: nodeExecutionWaitingById.value[node.id],
 					waitingForNext: nodeExecutionWaitingForNextById.value[node.id],
 					running: nodeExecutionRunningById.value[node.id],
+					subworkflowProgress: subworkflowProgressByNodeId.value[node.id],
 				},
 				runData: {
 					outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
