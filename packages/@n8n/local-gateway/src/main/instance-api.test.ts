@@ -85,6 +85,42 @@ describe('InstanceApi', () => {
 		});
 	});
 
+	describe('getHistory', () => {
+		it('builds the cursor query string and unwraps the data envelope', async () => {
+			mockFetch.mockResolvedValue(
+				jsonResponse({ data: { results: [{ id: 'exec-1' }], count: 5, estimated: false } }),
+			);
+
+			const result = await new InstanceApi(makeOAuth()).getHistory({ limit: 20, lastId: 'exec-9' });
+
+			const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n.example/rest/desktop-assistant/history?limit=20&lastId=exec-9');
+			expect((init.headers as Record<string, string>).authorization).toBe('Bearer tok');
+			expect(result).toEqual({ results: [{ id: 'exec-1' }], count: 5, estimated: false });
+		});
+
+		it('omits the query string entirely when no params are given', async () => {
+			mockFetch.mockResolvedValue(
+				jsonResponse({ data: { results: [], count: 0, estimated: false } }),
+			);
+
+			await new InstanceApi(makeOAuth()).getHistory();
+
+			expect(mockFetch.mock.calls[0][0]).toBe('https://n.example/rest/desktop-assistant/history');
+		});
+	});
+
+	describe('executionUrl', () => {
+		it('builds the execution url, or null when signed out', () => {
+			expect(new InstanceApi(makeOAuth()).executionUrl('wf-1', 'exec-1')).toBe(
+				'https://n.example/workflow/wf-1/executions/exec-1',
+			);
+			expect(
+				new InstanceApi(makeOAuth({ instanceUrl: null })).executionUrl('wf-1', 'exec-1'),
+			).toBeNull();
+		});
+	});
+
 	describe('runWorkflow', () => {
 		it('starts a full run from the workflow trigger node', async () => {
 			mockFetch

@@ -1,6 +1,10 @@
-import type { DesktopAssistantTasksResponse } from '@n8n/api-types';
+import type {
+	DesktopAssistantHistoryResponse,
+	DesktopAssistantTasksResponse,
+} from '@n8n/api-types';
 import { logger } from '@n8n/computer-use/logger';
 
+import type { DesktopAssistantHistoryParams } from '../shared/types';
 import type { OAuthFlow } from './oauth/oauth-flow';
 
 /** Abort instance requests that stall so IPC handlers can't hang the renderer. */
@@ -29,6 +33,23 @@ export class InstanceApi {
 		const response = await this.authedFetch('/desktop-assistant/tasks');
 		const tasks = await this.unwrap<DesktopAssistantTasksResponse>(response);
 		return this.absolutizeIconUrls(tasks);
+	}
+
+	/**
+	 * `GET /rest/desktop-assistant/history` — a newest-first page of recent
+	 * executions across the user's workflows. `lastId` walks older (the "Load
+	 * more" cursor); `firstId`/`limit` are passed through verbatim.
+	 */
+	async getHistory(
+		params: DesktopAssistantHistoryParams = {},
+	): Promise<DesktopAssistantHistoryResponse> {
+		const query = new URLSearchParams();
+		if (params.limit !== undefined) query.set('limit', String(params.limit));
+		if (params.firstId) query.set('firstId', params.firstId);
+		if (params.lastId) query.set('lastId', params.lastId);
+		const qs = query.toString();
+		const response = await this.authedFetch(`/desktop-assistant/history${qs ? `?${qs}` : ''}`);
+		return await this.unwrap<DesktopAssistantHistoryResponse>(response);
 	}
 
 	/**
@@ -85,6 +106,13 @@ export class InstanceApi {
 	workflowUrl(workflowId: string): string | null {
 		const { instanceUrl } = this.oauthFlow.getStatus();
 		return instanceUrl ? `${instanceUrl}/workflow/${encodeURIComponent(workflowId)}` : null;
+	}
+
+	/** Public editor URL for a single execution, or `null` when signed out. */
+	executionUrl(workflowId: string, executionId: string): string | null {
+		const { instanceUrl } = this.oauthFlow.getStatus();
+		if (!instanceUrl) return null;
+		return `${instanceUrl}/workflow/${encodeURIComponent(workflowId)}/executions/${encodeURIComponent(executionId)}`;
 	}
 
 	/** Every n8n REST endpoint wraps its payload in a `data` key; peel it off. */

@@ -28,14 +28,26 @@ export interface ConnectPayload {
 // Re-export the desktop-assistant task DTOs so the renderer can consume them
 // without reaching across packages — the shapes live in @n8n/api-types and are
 // reused verbatim, never redefined here.
-import type { DesktopAssistantTasksResponse } from '@n8n/api-types';
+import type {
+	DesktopAssistantHistoryResponse,
+	DesktopAssistantTasksResponse,
+} from '@n8n/api-types';
 
 export type {
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTaskCard,
 	DesktopAssistantTaskIcon,
 	DesktopAssistantTriggerSummary,
+	DesktopAssistantHistoryResponse,
+	DesktopAssistantHistoryEntry,
 } from '@n8n/api-types';
+
+/** Cursor + page-size params for the history list. */
+export interface DesktopAssistantHistoryParams {
+	limit?: number;
+	firstId?: string;
+	lastId?: string;
+}
 
 /** Result of a renderer-initiated task run, surfaced back over IPC. */
 export interface RunTaskResult {
@@ -63,6 +75,8 @@ export interface ElectronApi {
 	getTasks: () => Promise<DesktopAssistantTasksResponse>;
 	runTask: (workflowId: string) => Promise<RunTaskResult>;
 	openWorkflow: (workflowId: string) => Promise<void>;
+	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
+	openExecution: (workflowId: string, executionId: string) => Promise<void>;
 }
 
 export type AuthState = 'signedOut' | 'authorizing' | 'signedIn' | 'error';

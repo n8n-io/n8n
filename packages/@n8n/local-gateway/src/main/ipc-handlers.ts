@@ -5,7 +5,13 @@ import type { DaemonController } from './daemon-controller';
 import { InstanceApiError, type InstanceApi } from './instance-api';
 import type { OAuthFlow } from './oauth/oauth-flow';
 import type { AppSettings, SettingsStore } from './settings-store';
-import type { AuthStatus, DesktopAssistantTasksResponse, RunTaskResult } from '../shared/types';
+import type {
+	AuthStatus,
+	DesktopAssistantHistoryParams,
+	DesktopAssistantHistoryResponse,
+	DesktopAssistantTasksResponse,
+	RunTaskResult,
+} from '../shared/types';
 
 export interface IpcHandlerDeps {
 	controller: DaemonController;
@@ -110,4 +116,24 @@ export function registerIpcHandlers({
 		const url = instanceApi.workflowUrl(workflowId);
 		if (url) await openExternal(url);
 	});
+
+	ipcMain.handle(
+		'history:list',
+		async (
+			_event,
+			params?: DesktopAssistantHistoryParams,
+		): Promise<DesktopAssistantHistoryResponse> => {
+			logger.debug('IPC history:list', { ...params });
+			return await instanceApi.getHistory(params);
+		},
+	);
+
+	ipcMain.handle(
+		'history:openExecution',
+		async (_event, workflowId: string, executionId: string): Promise<void> => {
+			logger.debug('IPC history:openExecution', { workflowId, executionId });
+			const url = instanceApi.executionUrl(workflowId, executionId);
+			if (url) await openExternal(url);
+		},
+	);
 }
