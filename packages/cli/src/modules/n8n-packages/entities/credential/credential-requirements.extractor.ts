@@ -4,11 +4,13 @@ import { Service } from '@n8n/di';
 import type { WorkflowCredentialRequirement } from './credential.types';
 import type { RequirementsExtractor } from '../requirements-extractor';
 
+type WorkflowWithCredentialReferences = Pick<WorkflowEntity, 'id' | 'nodes'>;
+
 @Service()
 export class CredentialRequirementsExtractor
 	implements RequirementsExtractor<WorkflowCredentialRequirement>
 {
-	extract(workflow: WorkflowEntity): WorkflowCredentialRequirement[] {
+	extract(workflow: WorkflowWithCredentialReferences): WorkflowCredentialRequirement[] {
 		const byId = new Map<string, WorkflowCredentialRequirement>();
 
 		for (const node of workflow.nodes ?? []) {
