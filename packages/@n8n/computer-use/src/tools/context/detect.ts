@@ -172,6 +172,71 @@ export async function detectDocumentPath(app: string | undefined): Promise<strin
 	);
 }
 
+/** Run an AppleScript that emits one value per line; returns the trimmed, non-empty lines. */
+async function runOsascriptLines(script: string): Promise<string[]> {
+	const out = await runOsascript(script);
+	if (!out) return [];
+	return out
+		.split('\n')
+		.map((line) => line.trim())
+		.filter(Boolean);
+}
+
+/** Absolute POSIX folder path of *every* open Finder window (front-to-back). */
+export async function detectFinderFolders(): Promise<string[]> {
+	// Accumulate into a newline-joined string and `return` it (osascript `log`
+	// goes to stderr, which we don't read).
+	const script = [
+		'tell application "Finder"',
+		'set out to ""',
+		'repeat with w in windows',
+		'try',
+		'set out to out & POSIX path of (target of w as alias) & linefeed',
+		'end try',
+		'end repeat',
+		'return out',
+		'end tell',
+	].join('\n');
+	return await runOsascriptLines(script);
+}
+
+/** File path of *every* open document in a PDF/document viewer (front-to-back). */
+export async function detectDocumentPaths(app: string | undefined): Promise<string[]> {
+	if (!app) return [];
+	const escaped = app.replace(/"/g, '\\"');
+	const script = [
+		`tell application "${escaped}"`,
+		'set out to ""',
+		'repeat with d in documents',
+		'try',
+		'set out to out & (path of d) & linefeed',
+		'end try',
+		'end repeat',
+		'return out',
+		'end tell',
+	].join('\n');
+	return await runOsascriptLines(script);
+}
+
+/** Last path segment, for a short folder/document label. */
+function basename(p: string): string {
+	return p.replace(/\/+$/, '').split('/').pop() ?? p;
+}
+
+/** Stable identity used to condense windows that point at the same context. */
+function contextIdentity(context: DetectedContext): string {
+	switch (context.kind) {
+		case 'finder':
+			return `finder:${context.path ?? context.app ?? ''}`;
+		case 'pdf':
+			return `pdf:${context.path ?? context.windowTitle ?? context.app ?? ''}`;
+		case 'browser':
+			return `browser:${context.url ?? context.windowTitle ?? context.app ?? ''}`;
+		default:
+			return `other:${context.app ?? ''}`;
+	}
+}
+
 /** Derive kind and enrich a window's path (Finder folder / document path). */
 async function buildContext(info: WindowInfo): Promise<DetectedContext> {
 	const kind = deriveKind(info);
@@ -200,26 +265,92 @@ export async function detectActiveContext(): Promise<DetectedContext> {
 }
 
 /**
- * Detect every open window the user could pick as context — one entry per app
- * (the app's frontmost window), ordered front-to-back, enriched with the Finder
- * folder / document path where applicable. Empty on non-macOS or failure.
+ * Detect every open window the user could pick as context, ordered front-to-back
+ * and deduped by *context identity* rather than by app:
+ *
+ * - Finder/PDF windows are condensed by their folder / document path — two
+ *   windows on the same Downloads folder collapse to one, but Desktop and
+ *   Downloads (or PDF A and PDF B) stay separate. Paths come from enumerating
+ *   every Finder window / open document via osascript (get-windows only exposes
+ *   the frontmost window's path).
+ * - Browser windows are condensed by URL; other apps to one entry per app.
+ *
+ * Empty on non-macOS or failure.
  */
 export async function detectOpenContexts(): Promise<DetectedContext[]> {
 	const windows = await withGetWindows(async (gw, options) => await gw.openWindows(options));
 	if (!windows || windows.length === 0) return [];
 
-	// Dedupe to one window per app (keep the frontmost — `openWindows` is ordered
-	// front-to-back), dropping anything without an app name.
+	const infos = windows
+		.map(toWindowInfo)
+		.filter((info): info is WindowInfo & { app: string } => Boolean(info.app));
+	const kinds = infos.map((info) => ({ info, kind: deriveKind(info) }));
+
+	// Enumerate Finder folders and per-app document paths up front — get-windows
+	// can't tell us the folder/document behind each window, only osascript can.
+	const finderFolders = kinds.some((entry) => entry.kind === 'finder')
+		? await detectFinderFolders()
+		: [];
+	const documentApps = [...new Set(kinds.filter((e) => e.kind === 'pdf').map((e) => e.info.app))];
+	const documentsByApp = new Map<string, string[]>();
+	await Promise.all(
+		documentApps.map(async (appName) =>
+			documentsByApp.set(appName, await detectDocumentPaths(appName)),
+		),
+	);
+
+	const contexts: DetectedContext[] = [];
 	const seen = new Set<string>();
-	const perApp: WindowInfo[] = [];
-	for (const win of windows) {
-		const info = toWindowInfo(win);
-		if (!info.app) continue;
-		const key = info.bundleId ?? info.app;
-		if (seen.has(key)) continue;
+	const add = (context: DetectedContext) => {
+		const key = contextIdentity(context);
+		if (seen.has(key)) return;
 		seen.add(key);
-		perApp.push(info);
+		contexts.push({ ...context, id: context.id ?? key });
+	};
+
+	// Emit the Finder / document clusters once, at the position of that app's
+	// frontmost window so ordering still tracks front-to-back.
+	const clustered = new Set<string>();
+	for (const { info, kind } of kinds) {
+		if (kind === 'finder') {
+			if (clustered.has('finder')) continue;
+			clustered.add('finder');
+			const base = { kind, app: info.app, bundleId: info.bundleId };
+			if (finderFolders.length) {
+				for (const folder of finderFolders)
+					add({ ...base, windowTitle: basename(folder), path: folder });
+			} else {
+				add({ ...base, windowTitle: info.windowTitle }); // path unknown (e.g. no Automation)
+			}
+		} else if (kind === 'pdf') {
+			if (clustered.has(`pdf:${info.app}`)) continue;
+			clustered.add(`pdf:${info.app}`);
+			const base = { kind, app: info.app, bundleId: info.bundleId };
+			const documents = documentsByApp.get(info.app) ?? [];
+			if (documents.length) {
+				for (const doc of documents) add({ ...base, windowTitle: basename(doc), path: doc });
+			} else {
+				add({ ...base, windowTitle: info.windowTitle });
+			}
+		} else if (kind === 'browser') {
+			add({
+				kind,
+				id: info.id,
+				app: info.app,
+				bundleId: info.bundleId,
+				windowTitle: info.windowTitle,
+				url: info.url,
+			});
+		} else {
+			add({
+				kind,
+				id: info.id,
+				app: info.app,
+				bundleId: info.bundleId,
+				windowTitle: info.windowTitle,
+			});
+		}
 	}
 
-	return await Promise.all(perApp.map(buildContext));
+	return contexts;
 }

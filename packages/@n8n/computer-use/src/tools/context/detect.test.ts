@@ -160,12 +160,27 @@ describe('detectActiveContext', () => {
 });
 
 describe('detectOpenContexts', () => {
+	/** Branch the osascript mock by which app the enumeration script targets. */
+	function mockEnumeration(paths: { finder?: string[]; documents?: string[] }) {
+		execFileMock.mockImplementation(((
+			_cmd: string,
+			args: string[],
+			_opts: unknown,
+			onResult: (error: Error | null, stdout: string, stderr: string) => void,
+		) => {
+			const script = args.join(' ');
+			const lines = /application "Finder"/.test(script) ? paths.finder : paths.documents;
+			onResult(null, (lines ?? []).join('\n'), '');
+			return {} as never;
+		}) as never);
+	}
+
 	test('returns [] on non-macOS', async () => {
 		setPlatform('win32');
 		expect(await detectOpenContexts()).toEqual([]);
 	});
 
-	test('lists one context per app, front-to-back, with ids and kinds', async () => {
+	test('lists each Finder folder and each open PDF as a separate context', async () => {
 		openWindowsMock.mockResolvedValue([
 			{
 				id: 1,
@@ -173,29 +188,73 @@ describe('detectOpenContexts', () => {
 				owner: { name: 'Safari', bundleId: 'com.apple.Safari' },
 				url: 'https://theatlantic.com',
 			},
-			{ id: 2, title: 'Downloads', owner: { name: 'Finder', bundleId: 'com.apple.finder' } },
-			{ id: 3, title: 'Q2.pdf', owner: { name: 'Preview', bundleId: 'com.apple.Preview' } },
+			{ id: 2, title: 'Desktop', owner: { name: 'Finder', bundleId: 'com.apple.finder' } },
+			{ id: 3, title: 'Downloads', owner: { name: 'Finder', bundleId: 'com.apple.finder' } },
+			{ id: 4, title: 'A.pdf', owner: { name: 'Preview', bundleId: 'com.apple.Preview' } },
+			{ id: 5, title: 'B.pdf', owner: { name: 'Preview', bundleId: 'com.apple.Preview' } },
 		]);
-		mockOsascript({ stdout: '/Users/me/Downloads' }); // Finder folder + Preview doc path
+		mockEnumeration({
+			finder: ['/Users/me/Desktop', '/Users/me/Downloads'],
+			documents: ['/docs/A.pdf', '/docs/B.pdf'],
+		});
 
 		const result = await detectOpenContexts();
-		expect(result.map((c) => ({ id: c.id, kind: c.kind, app: c.app }))).toEqual([
-			{ id: '1', kind: 'browser', app: 'Safari' },
-			{ id: '2', kind: 'finder', app: 'Finder' },
-			{ id: '3', kind: 'pdf', app: 'Preview' },
+		expect(result.map((c) => ({ kind: c.kind, path: c.path, url: c.url }))).toEqual([
+			{ kind: 'browser', path: undefined, url: 'https://theatlantic.com' },
+			{ kind: 'finder', path: '/Users/me/Desktop', url: undefined },
+			{ kind: 'finder', path: '/Users/me/Downloads', url: undefined },
+			{ kind: 'pdf', path: '/docs/A.pdf', url: undefined },
+			{ kind: 'pdf', path: '/docs/B.pdf', url: undefined },
 		]);
-		expect(result[0].url).toBe('https://theatlantic.com');
-		expect(result[1].path).toBe('/Users/me/Downloads');
 	});
 
-	test('dedupes multiple windows of the same app to the frontmost', async () => {
+	test('condenses multiple Finder windows on the same folder', async () => {
 		openWindowsMock.mockResolvedValue([
-			{ id: 1, title: 'Tab A', owner: { name: 'Safari', bundleId: 'com.apple.Safari' } },
-			{ id: 2, title: 'Tab B', owner: { name: 'Safari', bundleId: 'com.apple.Safari' } },
+			{ id: 1, title: 'Downloads', owner: { name: 'Finder', bundleId: 'com.apple.finder' } },
+			{ id: 2, title: 'Downloads', owner: { name: 'Finder', bundleId: 'com.apple.finder' } },
 		]);
+		mockEnumeration({ finder: ['/Users/me/Downloads', '/Users/me/Downloads'] });
+
 		const result = await detectOpenContexts();
 		expect(result).toHaveLength(1);
-		expect(result[0]).toMatchObject({ id: '1', windowTitle: 'Tab A' });
+		expect(result[0]).toMatchObject({ kind: 'finder', path: '/Users/me/Downloads' });
+	});
+
+	test('condenses browser windows by URL but keeps distinct URLs', async () => {
+		openWindowsMock.mockResolvedValue([
+			{
+				id: 1,
+				title: 'A',
+				owner: { name: 'Safari', bundleId: 'com.apple.Safari' },
+				url: 'https://a.com',
+			},
+			{
+				id: 2,
+				title: 'A again',
+				owner: { name: 'Safari', bundleId: 'com.apple.Safari' },
+				url: 'https://a.com',
+			},
+			{
+				id: 3,
+				title: 'B',
+				owner: { name: 'Safari', bundleId: 'com.apple.Safari' },
+				url: 'https://b.com',
+			},
+		]);
+		const result = await detectOpenContexts();
+		expect(result.map((c) => c.url)).toEqual(['https://a.com', 'https://b.com']);
+	});
+
+	test('falls back to an app-level Finder entry when folders can not be read', async () => {
+		openWindowsMock.mockResolvedValue([
+			{ id: 1, title: 'Finder', owner: { name: 'Finder', bundleId: 'com.apple.finder' } },
+		]);
+		mockEnumeration({ finder: [] }); // e.g. Automation denied
+
+		const result = await detectOpenContexts();
+		expect(result).toHaveLength(1);
+		expect(result[0]).toMatchObject({ kind: 'finder', app: 'Finder' });
+		expect(result[0].path).toBeUndefined();
 	});
 
 	test('skips windows without an app name', async () => {
