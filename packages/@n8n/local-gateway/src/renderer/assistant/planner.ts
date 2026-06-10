@@ -1,10 +1,10 @@
 /*
  * Stub planner for the desktop-assistant composer.
  *
- * TODO(desktop-assistant): replace `planTask` with a real backend/IPC call
- * (the prototype POSTs to `/api/plan`). This is throwaway demo plumbing: a few
- * keyword checks pick which plan variant to return so every branch of the
- * post-submit flow (one-off / recurring / trigger / complex) can be viewed.
+ * TODO(desktop-assistant): replace `planTask` with a real backend/IPC call.
+ * Keywords in the prompt only pick which canned plan comes back, so every
+ * branch of the post-submit flow (one-off / recurring / trigger / complex)
+ * can be viewed; the plan contents are fixed.
  */
 import type { AssistantContextKind } from './contexts';
 
@@ -29,94 +29,100 @@ export interface Plan {
 	complex: boolean;
 }
 
-function summarise(parts: PlanPart[]): string {
-	return parts.map((part) => (typeof part === 'string' ? part : part.value)).join('');
+function makePlan(plan: Omit<Plan, 'summary' | 'location'>): Plan {
+	const summary = plan.parts.map((part) => (typeof part === 'string' ? part : part.value)).join('');
+	return { ...plan, summary, location: 'cloud' };
 }
 
-function toTitle(prompt: string): string {
-	const title = prompt.trim().slice(0, 40);
-	return title.charAt(0).toUpperCase() + title.slice(1);
-}
+const CANNED = {
+	recurring: makePlan({
+		title: 'Weekly email summary',
+		icon: '🔁',
+		parts: [
+			'Every ',
+			{ value: 'Friday', options: ['Friday', 'weekday', 'morning'] },
+			", I'll ",
+			{
+				value: 'email you a summary of your week',
+				options: ['email you a summary of your week', 'post a summary to Slack'],
+			},
+			'.',
+		],
+		recurring: true,
+		requiredConnections: ['Gmail'],
+		timeSavedMin: 15,
+		complex: false,
+	}),
+	trigger: makePlan({
+		title: 'Watch for changes',
+		icon: '🔔',
+		parts: [
+			'When ',
+			{
+				value: 'something changes',
+				options: ['something changes', 'a new file arrives', 'I get a new email'],
+			},
+			", I'll ",
+			{ value: 'let you know', options: ['let you know', 'log it for you'] },
+			'.',
+		],
+		recurring: false,
+		trigger: 'On change',
+		requiredConnections: [],
+		timeSavedMin: 10,
+		complex: false,
+	}),
+	complex: makePlan({
+		title: 'Bigger automation',
+		icon: '🧩',
+		parts: [
+			"I'll set up ",
+			{ value: 'a multi-step automation' },
+			' — connecting a few services and adding some logic along the way.',
+		],
+		recurring: false,
+		requiredConnections: [],
+		timeSavedMin: 20,
+		complex: true,
+	}),
+	oneOff: makePlan({
+		title: 'Quick task',
+		icon: '✨',
+		parts: [
+			"I'll ",
+			{ value: 'take care of that', options: ['take care of that', 'summarise it for you'] },
+			' right now.',
+		],
+		recurring: false,
+		requiredConnections: [],
+		timeSavedMin: 5,
+		complex: false,
+	}),
+};
 
 /**
  * Fallback plan used when planning fails. Exported so the composer can build
  * the confirmation screen on error.
  */
 export function buildFallbackPlan(prompt: string): Plan {
-	const parts: PlanPart[] = ["I'll help you: ", { value: prompt }];
-	return {
-		title: toTitle(prompt),
+	return makePlan({
+		title: prompt.slice(0, 40),
 		icon: '✨',
-		parts,
-		summary: summarise(parts),
+		parts: ["I'll help you: ", { value: prompt }],
 		recurring: false,
 		requiredConnections: [],
-		location: 'cloud',
 		complex: false,
-	};
+	});
 }
 
-function buildMockPlan(prompt: string, context: AssistantContextKind): Plan {
+function pickCannedPlan(prompt: string): Plan {
 	const lower = prompt.toLowerCase();
-	const recurring = ['every', 'each', 'daily', 'weekly', 'hourly', 'monthly'].some((word) =>
-		lower.includes(word),
-	);
-	const complex = prompt.length > 120 || lower.includes(' and then ');
-	const requiredConnections = [
-		lower.includes('mail') ? 'Gmail' : undefined,
-		lower.includes('slack') ? 'Slack' : undefined,
-	].filter((service): service is string => !!service);
-
-	const base = {
-		...buildFallbackPlan(prompt),
-		requiredConnections,
-		location: context === 'finder' ? ('local' as const) : ('cloud' as const),
-		timeSavedMin: 10,
-	};
-	const chip = { value: prompt, options: [prompt, 'summarise it for me'] };
-
-	if (complex) {
-		const parts: PlanPart[] = [
-			"I'll help you: ",
-			chip,
-			' — connecting a few services and adding some logic along the way.',
-		];
-		return { ...base, icon: '🧩', parts, summary: summarise(parts), complex: true };
+	if (prompt.length > 120 || lower.includes(' and then ')) return CANNED.complex;
+	if (['every', 'each', 'daily', 'weekly', 'hourly', 'monthly'].some((w) => lower.includes(w))) {
+		return CANNED.recurring;
 	}
-	if (recurring) {
-		const parts: PlanPart[] = [
-			'Every ',
-			{ value: 'weekday', options: ['weekday', 'morning', 'Monday'] },
-			", I'll help you: ",
-			chip,
-			'.',
-		];
-		return {
-			...base,
-			icon: '🔁',
-			parts,
-			summary: summarise(parts),
-			recurring: true,
-		};
-	}
-	if (lower.includes('when')) {
-		const parts: PlanPart[] = [
-			'When ',
-			{ value: 'something changes', options: ['something changes', 'I get a new email'] },
-			", I'll help you: ",
-			chip,
-			'.',
-		];
-		return {
-			...base,
-			icon: '🔔',
-			parts,
-			summary: summarise(parts),
-			trigger: 'On change',
-		};
-	}
-	const parts: PlanPart[] = ["I'll help you: ", chip, ' right now.'];
-	return { ...base, parts, summary: summarise(parts) };
+	if (lower.includes('when')) return CANNED.trigger;
+	return CANNED.oneOff;
 }
 
 /** Simulated planner latency so the pending state is visible. */
@@ -124,11 +130,15 @@ const PLAN_DELAY_MS = 900;
 
 /**
  * TODO(desktop-assistant): swap for a backend/IPC planner call.
- * Resolves a mock plan after a short delay.
+ * Resolves a canned plan after a short delay.
  */
 export async function planTask(prompt: string, context: AssistantContextKind): Promise<Plan> {
-	const plan = buildMockPlan(prompt, context);
+	const plan = { ...pickCannedPlan(prompt), location: pickLocation(context) };
 	return await new Promise((resolve) => {
 		window.setTimeout(() => resolve(plan), PLAN_DELAY_MS);
 	});
+}
+
+function pickLocation(context: AssistantContextKind): Plan['location'] {
+	return context === 'finder' ? 'local' : 'cloud';
 }
