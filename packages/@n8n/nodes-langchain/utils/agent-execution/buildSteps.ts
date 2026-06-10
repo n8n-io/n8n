@@ -137,8 +137,11 @@ function buildMessageContent(
 ): string | Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
 	const { thinkingContent, thinkingType, thinkingSignature } = providerMetadata;
 
-	// Anthropic thinking mode: build content blocks
-	if (thinkingContent && thinkingType) {
+	// Anthropic thinking mode: build content blocks.
+	// thinkingContent may be an empty string (thinking display "omitted", the default on
+	// Claude Fable 5, Mythos 5, and Opus 4.7+): the signature still carries the encrypted
+	// reasoning, so the thinking block must be rebuilt rather than degraded to a string.
+	if (thinkingContent !== undefined && thinkingType) {
 		return buildAnthropicContentBlocks(
 			thinkingContent,
 			thinkingType,
