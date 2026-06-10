@@ -8,7 +8,6 @@ import MiniSpinner from './MiniSpinner.vue';
 
 import {
 	ACTIVE_CONTEXT_KEY,
-	ASSISTANT_CONTEXTS,
 	assistantContextFromDetected,
 	suggestionChipsFor,
 	type AssistantContext,
@@ -39,10 +38,7 @@ const liveContext = computed(() => assistantContextFromDetected(detected.value))
 // A manual override picked from the switch menu (the demo contexts); `null`
 // means "use whatever is actually detected".
 const overrideKey = ref<string | null>(null);
-const contextOptions = computed<AssistantContext[]>(() => [
-	liveContext.value,
-	...ASSISTANT_CONTEXTS,
-]);
+const contextOptions = computed<AssistantContext[]>(() => [liveContext.value]);
 const activeContext = computed(
 	() => contextOptions.value.find((c) => c.key === overrideKey.value) ?? liveContext.value,
 );
@@ -95,6 +91,13 @@ async function dispatchToBackend(prompt: string) {
 		if (screenshotEnabled.value) {
 			context.attachments = [await window.electronAPI.captureScreenshot()];
 		}
+		// Inspection aid while the UI flow is stubbed: see exactly what context the
+		// composer forwards. Attachment data is omitted (it's multi-MB base64); the
+		// main process logs a fuller summary too.
+		console.info('[desktop-assistant] triggerTask', {
+			prompt,
+			context: { ...context, attachments: context.attachments?.length ?? 0 },
+		});
 		await window.electronAPI.triggerTask({ prompt, context });
 	} catch (error) {
 		console.error('triggerTask failed', error);

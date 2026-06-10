@@ -24,14 +24,6 @@ export interface SuggestionChip {
 	icon: IconName;
 }
 
-export const ASSISTANT_CONTEXTS: readonly AssistantContext[] = [
-	{ key: 'atlantic', label: 'The Atlantic', icon: 'globe', kind: 'browser' },
-	{ key: 'youtube', label: 'YouTube video', icon: 'globe', kind: 'browser' },
-	{ key: 'downloads', label: 'Downloads folder', icon: 'folder', kind: 'finder' },
-	{ key: 'report', label: 'Q2 Report.pdf', icon: 'file-text', kind: 'pdf' },
-	{ key: 'desktop', label: 'Desktop', icon: 'monitor', kind: 'other' },
-];
-
 /**
  * Context-dependent suggestion chips.
  * Icon substitutions vs the prototype (names missing from the DS icon set):

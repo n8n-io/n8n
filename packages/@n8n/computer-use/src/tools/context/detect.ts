@@ -84,16 +84,43 @@ export async function detectActiveWindow(): Promise<ActiveWindowInfo> {
 		// ESM-only module — loaded lazily so the native addon is only required
 		// when detection actually runs (and never on unsupported platforms).
 		const { activeWindow } = await import('get-windows');
-		const win = await activeWindow();
-		if (!win) return {};
-		return {
+
+		// get-windows spawns a helper binary that, by default, *hard-fails* its
+		// upfront Screen-Recording / Accessibility permission check (a separately
+		// spawned binary doesn't inherit the host app's TCC grant). So we try the
+		// full call first — when permissions are present it yields title + URL —
+		// and on failure retry with the permission gates disabled, which still
+		// returns the app name + bundleId (enough for `kind` and the label), just
+		// without title/URL. Graceful degradation rather than an empty context.
+		let win: Awaited<ReturnType<typeof activeWindow>>;
+		try {
+			win = await activeWindow();
+		} catch (gatedError) {
+			logger.debug('Active-window full detection failed; retrying without permission gate', {
+				error: gatedError instanceof Error ? gatedError.message : String(gatedError),
+			});
+			win = await activeWindow({
+				screenRecordingPermission: false,
+				accessibilityPermission: false,
+			});
+		}
+
+		if (!win) {
+			logger.warn('Active-window detection returned nothing (likely missing permission)');
+			return {};
+		}
+		const info: ActiveWindowInfo = {
 			app: win.owner?.name,
 			bundleId: 'bundleId' in win.owner ? win.owner.bundleId : undefined,
 			windowTitle: win.title || undefined,
 			url: 'url' in win ? win.url : undefined,
 		};
+		logger.debug('Active-window detected', { ...info });
+		return info;
 	} catch (error) {
-		logger.debug('detectActiveWindow failed', {
+		// `warn` (not debug) so a silent empty context is never a mystery — this is
+		// the line that says whether get-windows failed to load or the OS denied it.
+		logger.warn('Active-window detection failed', {
 			error: error instanceof Error ? error.message : String(error),
 		});
 		return {};

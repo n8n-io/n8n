@@ -80,7 +80,21 @@ describe('detectActiveWindow', () => {
 		});
 	});
 
-	test('degrades to {} when get-windows throws (e.g. missing permission)', async () => {
+	test('retries without the permission gate and still returns app + bundleId', async () => {
+		// First (full) call fails its permission check; retry without the gate
+		// succeeds but yields no title/URL.
+		activeWindowMock
+			.mockRejectedValueOnce(new Error('Command failed: .../main'))
+			.mockResolvedValueOnce({
+				title: '',
+				owner: { name: 'Safari', bundleId: 'com.apple.Safari' },
+			});
+		const result = await detectActiveWindow();
+		expect(result).toEqual({ app: 'Safari', bundleId: 'com.apple.Safari' });
+		expect(activeWindowMock).toHaveBeenCalledTimes(2);
+	});
+
+	test('degrades to {} when both the full call and the retry throw', async () => {
 		activeWindowMock.mockRejectedValue(new Error('no screen recording permission'));
 		const result = await detectActiveWindow();
 		expect(result).toEqual({});

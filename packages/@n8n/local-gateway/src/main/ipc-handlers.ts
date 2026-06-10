@@ -34,6 +34,33 @@ export interface IpcHandlerDeps {
 	openExternal: (url: string) => Promise<void>;
 }
 
+/**
+ * A log-safe view of a task request: the full structured context the desktop
+ * detected, but with attachments reduced to `{ fileName, mimeType, bytes }` so a
+ * multi-MB base64 screenshot never lands in the logs. Handy for inspecting what
+ * "Looking at …" actually forwarded while the UI flow is still stubbed.
+ */
+function summarizeTaskRequest(body: DesktopAssistantTaskRequest): Record<string, unknown> {
+	const context = body.context;
+	return {
+		prompt: body.prompt,
+		context: context && {
+			kind: context.kind,
+			app: context.app,
+			windowTitle: context.windowTitle,
+			url: context.url,
+			path: context.path,
+			selectedTextChars: context.selectedText?.length,
+			attachments: context.attachments?.map((attachment) => ({
+				fileName: attachment.fileName,
+				mimeType: attachment.mimeType,
+				// base64 inflates ~4/3; this is the approximate decoded size.
+				bytes: Math.round((attachment.data.length * 3) / 4),
+			})),
+		},
+	};
+}
+
 export function registerIpcHandlers({
 	controller,
 	settingsStore,
@@ -177,8 +204,9 @@ export function registerIpcHandlers({
 	});
 
 	ipcMain.handle('context:get', (): DetectedContext => {
-		logger.debug('IPC context:get');
-		return contextDetector.getCurrent();
+		const context = contextDetector.getCurrent();
+		logger.debug('IPC context:get', { context });
+		return context;
 	});
 
 	ipcMain.handle('context:captureScreenshot', async (): Promise<ScreenshotAttachment> => {
@@ -189,7 +217,9 @@ export function registerIpcHandlers({
 	ipcMain.handle(
 		'tasks:trigger',
 		async (_event, body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> => {
-			logger.debug('IPC tasks:trigger', { kind: body.context?.kind });
+			// `info` so it shows without enabling debug, and a summary rather than the
+			// raw body — screenshot attachments are multi-MB base64 we never want in logs.
+			logger.info('Triggering one-shot task', summarizeTaskRequest(body));
 			return await instanceApi.triggerTask(body);
 		},
 	);
