@@ -37,6 +37,7 @@ const STATUS_CLASS: Record<AuthState, string> = {
 				<N8nText size="small" color="text-light">{{ STATUS_LABEL[state] }}</N8nText>
 			</span>
 			<N8nIconButton
+				v-if="state === 'signedIn'"
 				icon="settings"
 				variant="ghost"
 				size="small"
