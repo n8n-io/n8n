@@ -301,9 +301,7 @@ export class AgentsService {
 	 * Gates the file endpoints. Public so the controller can guard its file endpoints.
 	 */
 	isKnowledgeBaseEnabled(): boolean {
-		return (
-			this.agentsConfig.sandboxEnabled === true && this.agentsConfig.sandboxProvider === 'daytona'
-		);
+		return this.agentsConfig.sandboxEnabled && this.agentsConfig.sandboxProvider === 'daytona';
 	}
 
 	/**
