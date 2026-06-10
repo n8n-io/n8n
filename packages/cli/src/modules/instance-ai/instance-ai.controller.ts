@@ -19,6 +19,7 @@ import {
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import {
 	RestController,
@@ -656,7 +657,7 @@ export class InstanceAiController {
 
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
 	async gatewayEvents(req: Request, res: FlushableResponse) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
+		const { userId } = await this.resolveGatewayUserId(req);
 		await this.assertGatewayEnabled(userId);
 
 		const gateway = this.gatewayService.getLocalGateway(userId);
@@ -721,9 +722,9 @@ export class InstanceAiController {
 
 	@Post('/gateway/init', { skipAuth: true })
 	async gatewayInit(req: Request, _res: Response, @Body payload: InstanceAiGatewayCapabilitiesDto) {
-		const key = this.getGatewayKeyHeader(req);
-		const userId = this.validateGatewayApiKey(key);
-		await this.assertGatewayEnabled(userId);
+		const { userId, viaOAuth } = await this.resolveGatewayUserId(req);
+		// Connecting from the app enables computer-use for the user — no manual toggle in the n8n UI.
+		await this.ensureGatewayEnabledForUser(userId);
 
 		this.gatewayService.initGateway(userId, payload);
 
@@ -745,17 +746,21 @@ export class InstanceAiController {
 			this.instanceAiService.ensureDeviceCredential(userId, payload.hostIdentifier ?? null),
 		).catch(() => {});
 
-		// Try to consume a pairing token and upgrade to a session key
-		const sessionKey = key ? this.gatewayService.consumePairingToken(userId, key) : null;
-		if (sessionKey) {
-			return { ok: true, sessionKey };
+		// Legacy pairing path only: consume the one-time pairing token and upgrade to a session key.
+		// OAuth clients authenticate with the access token itself, so there is no session key to issue.
+		if (!viaOAuth) {
+			const key = this.getGatewayKeyHeader(req);
+			const sessionKey = key ? this.gatewayService.consumePairingToken(userId, key) : null;
+			if (sessionKey) {
+				return { ok: true, sessionKey };
+			}
 		}
 		return { ok: true };
 	}
 
 	@Post('/gateway/disconnect', { skipAuth: true })
-	gatewayDisconnect(req: Request) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
+	async gatewayDisconnect(req: Request) {
+		const { userId } = await this.resolveGatewayUserId(req);
 
 		this.gatewayService.clearDisconnectTimer(userId);
 		this.gatewayService.disconnectGateway(userId);
@@ -771,13 +776,13 @@ export class InstanceAiController {
 	}
 
 	@Post('/gateway/response/:requestId', { skipAuth: true })
-	gatewayResponse(
+	async gatewayResponse(
 		req: Request,
 		_res: Response,
 		@Param('requestId') requestId: string,
 		@Body payload: InstanceAiFilesystemResponseDto,
 	) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
+		const { userId } = await this.resolveGatewayUserId(req);
 
 		const resolved = this.gatewayService.resolveGatewayRequest(
 			userId,
@@ -797,7 +802,7 @@ export class InstanceAiController {
 		_res: Response,
 		@Body payload: InstanceAiGatewayCreateCredentialDto,
 	) {
-		const user = await this.resolveGatewayUser(this.getGatewayKeyHeader(req));
+		const user = await this.resolveGatewayUser(req);
 		await this.assertGatewayEnabled(user.id);
 		const credential = await this.credentialsService.createUnmanagedCredential(payload, user);
 		return { credentialId: credential.id };
@@ -940,6 +945,57 @@ export class InstanceAiController {
 	}
 
 	/**
+	 * Enable the local gateway (computer-use) for this user on connect, so desktop-app users never
+	 * have to toggle it in the n8n UI. Admin-level disable (Instance AI off, or the gateway turned
+	 * off instance-wide) is not overridable; the per-user preference is flipped on when needed.
+	 */
+	private async ensureGatewayEnabledForUser(userId: string): Promise<void> {
+		if (!this.settingsService.isAgentEnabled() || this.settingsService.isLocalGatewayDisabled()) {
+			throw new ForbiddenError('Local gateway is disabled');
+		}
+		// The static env-gateway key has no associated user preferences to flip.
+		if (userId === 'env-gateway') return;
+		if (!(await this.settingsService.isLocalGatewayDisabledForUser(userId))) return;
+
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
+		if (!user) throw new ForbiddenError('Invalid API key');
+		await this.settingsService.updateUserPreferences(user, { localGatewayDisabled: false });
+	}
+
+	/** Extract a Bearer token from the Authorization header (case-insensitive scheme). */
+	private extractBearerToken(req: Request): string | undefined {
+		const match = req.headers.authorization?.match(/^Bearer\s+(.+)$/i);
+		return match ? match[1].trim() : undefined;
+	}
+
+	/**
+	 * Resolve the user a gateway request authenticates as. Accepts either an OAuth2 access token
+	 * (`Authorization: Bearer`, scope `instanceAi:gateway`) — used by the desktop app — or the
+	 * legacy `X-Gateway-Key` pairing/session key — used by the standalone computer-use CLI.
+	 *
+	 * The MCP module owns OAuth verification, so it's resolved lazily to avoid a static import.
+	 */
+	private async resolveGatewayUserId(req: Request): Promise<{ userId: string; viaOAuth: boolean }> {
+		const bearer = this.extractBearerToken(req);
+		if (bearer) {
+			const { McpOAuthTokenService } = await import('@/modules/mcp/mcp-oauth-token.service');
+			const tokenService = Container.get(McpOAuthTokenService);
+			const result = await tokenService.verifyOAuthAccessToken(
+				bearer,
+				tokenService.getCanonicalResourceUrl(),
+			);
+			if (result.user) {
+				if (!result.scopes?.includes('instanceAi:gateway')) {
+					throw new ForbiddenError('OAuth token lacks the required instanceAi:gateway scope');
+				}
+				return { userId: result.user.id, viaOAuth: true };
+			}
+			// Bearer present but not a valid OAuth token — fall through to the gateway-key path.
+		}
+		return { userId: this.validateGatewayApiKey(this.getGatewayKeyHeader(req)), viaOAuth: false };
+	}
+
+	/**
 	 * Safely extract and validate the x-gateway-key header value.
 	 * Headers can be string | string[] | undefined — take only the first value
 	 * and validate against the shared gateway key schema.
@@ -981,8 +1037,8 @@ export class InstanceAiController {
 	 * Resolve a gateway API key to its associated User. Requires a user-scoped
 	 * key — the static env-var key (which has no associated DB user) is rejected.
 	 */
-	private async resolveGatewayUser(key: string | undefined): Promise<User> {
-		const userId = this.validateGatewayApiKey(key);
+	private async resolveGatewayUser(req: Request): Promise<User> {
+		const { userId } = await this.resolveGatewayUserId(req);
 		if (userId === 'env-gateway') {
 			throw new ForbiddenError('Credential creation requires a user-scoped gateway key');
 		}

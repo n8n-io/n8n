@@ -24,6 +24,10 @@ jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
 }));
 
+// Lazily imported by the gateway OAuth path; stub so the dynamic import resolves to a class
+// the Container.get spy can match.
+jest.mock('@/modules/mcp/mcp-oauth-token.service', () => ({ McpOAuthTokenService: class {} }));
+
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
@@ -64,6 +68,7 @@ import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
+import { McpOAuthTokenService } from '@/modules/mcp/mcp-oauth-token.service';
 
 const USER_ID = 'user-1';
 const THREAD_ID = 'thread-1';
@@ -874,6 +879,14 @@ describe('InstanceAiController', () => {
 		const makeGatewayReq = (key: string | undefined, body: unknown) =>
 			({ headers: key ? { 'x-gateway-key': key } : {}, body }) as unknown as Request;
 
+		beforeEach(() => {
+			// init now enables computer-use for the user: admin-level gating must allow it, and the
+			// per-user flag is already enabled (so no preference write on the happy path).
+			settingsService.isAgentEnabled.mockReturnValue(true);
+			settingsService.isLocalGatewayDisabled.mockReturnValue(false);
+			settingsService.isLocalGatewayDisabledForUser.mockResolvedValue(false);
+		});
+
 		it('should have no access scope (skipAuth)', () => {
 			expect(scopeOf('gatewayInit')).toBeUndefined();
 		});
@@ -957,6 +970,84 @@ describe('InstanceAiController', () => {
 				}),
 			).rejects.toThrow(ForbiddenError);
 		});
+
+		it('enables computer-use for the user when their per-user flag is off', async () => {
+			const user = mock<User>({ id: USER_ID });
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.consumePairingToken.mockReturnValue(null);
+			settingsService.isLocalGatewayDisabledForUser.mockResolvedValue(true);
+			userRepository.findOne.mockResolvedValue(user);
+			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/tmp' });
+
+			await controller.gatewayInit(gatewayReq, res, {
+				rootPath: '/tmp',
+				tools: [],
+				toolCategories: [],
+			});
+
+			expect(settingsService.updateUserPreferences).toHaveBeenCalledWith(user, {
+				localGatewayDisabled: false,
+			});
+			expect(gatewayService.initGateway).toHaveBeenCalledWith(USER_ID, expect.anything());
+		});
+
+		it('does not write user preferences when computer-use is already enabled', async () => {
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			gatewayService.consumePairingToken.mockReturnValue(null);
+			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/tmp' });
+
+			await controller.gatewayInit(gatewayReq, res, {
+				rootPath: '/tmp',
+				tools: [],
+				toolCategories: [],
+			});
+
+			expect(settingsService.updateUserPreferences).not.toHaveBeenCalled();
+		});
+
+		it('does not write user preferences for the static env-var key', async () => {
+			gatewayService.consumePairingToken.mockReturnValue(null);
+			const gatewayReq = makeGatewayReq('static-key', { rootPath: '/tmp' });
+
+			await controller.gatewayInit(gatewayReq, res, {
+				rootPath: '/tmp',
+				tools: [],
+				toolCategories: [],
+			});
+
+			expect(settingsService.updateUserPreferences).not.toHaveBeenCalled();
+		});
+
+		it('rejects init when Instance AI is disabled instance-wide', async () => {
+			settingsService.isAgentEnabled.mockReturnValue(false);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/tmp' });
+
+			await expect(
+				controller.gatewayInit(gatewayReq, res, {
+					rootPath: '/tmp',
+					tools: [],
+					toolCategories: [],
+				}),
+			).rejects.toThrow(ForbiddenError);
+			expect(gatewayService.initGateway).not.toHaveBeenCalled();
+			expect(settingsService.updateUserPreferences).not.toHaveBeenCalled();
+		});
+
+		it('rejects init when the gateway is disabled instance-wide', async () => {
+			settingsService.isLocalGatewayDisabled.mockReturnValue(true);
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/tmp' });
+
+			await expect(
+				controller.gatewayInit(gatewayReq, res, {
+					rootPath: '/tmp',
+					tools: [],
+					toolCategories: [],
+				}),
+			).rejects.toThrow(ForbiddenError);
+			expect(gatewayService.initGateway).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('gatewayEvents', () => {
@@ -1012,12 +1103,12 @@ describe('InstanceAiController', () => {
 			expect(scopeOf('gatewayResponse')).toBeUndefined();
 		});
 
-		it('should resolve gateway request', () => {
+		it('should resolve gateway request', async () => {
 			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			gatewayService.resolveGatewayRequest.mockReturnValue(true);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
-			const result = controller.gatewayResponse(gatewayReq, res, 'req-1', {
+			const result = await controller.gatewayResponse(gatewayReq, res, 'req-1', {
 				result: { content: [] },
 			});
 
@@ -1030,14 +1121,14 @@ describe('InstanceAiController', () => {
 			);
 		});
 
-		it('should throw NotFoundError when request not found', () => {
+		it('should throw NotFoundError when request not found', async () => {
 			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			gatewayService.resolveGatewayRequest.mockReturnValue(false);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
-			expect(() =>
+			await expect(
 				controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } }),
-			).toThrow(NotFoundError);
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 
@@ -1046,13 +1137,13 @@ describe('InstanceAiController', () => {
 			expect(scopeOf('gatewayDisconnect')).toBeUndefined();
 		});
 
-		it('should disconnect gateway and send push notification', () => {
+		it('should disconnect gateway and send push notification', async () => {
 			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			const gatewayReq = {
 				headers: { 'x-gateway-key': 'session-key' },
 			} as unknown as Request;
 
-			const result = controller.gatewayDisconnect(gatewayReq);
+			const result = await controller.gatewayDisconnect(gatewayReq);
 
 			expect(result).toEqual({ ok: true });
 			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
@@ -1176,7 +1267,7 @@ describe('InstanceAiController', () => {
 	});
 
 	describe('getGatewayKeyHeader', () => {
-		it('should extract first element from array header', () => {
+		it('should extract first element from array header', async () => {
 			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
 			gatewayService.resolveGatewayRequest.mockReturnValue(true);
 			const gatewayReq = {
@@ -1184,10 +1275,68 @@ describe('InstanceAiController', () => {
 				body: { result: { content: [] } },
 			} as unknown as Request;
 
-			controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } });
+			await controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } });
 
 			// validateGatewayApiKey receives 'key1' (the first element)
 			expect(gatewayService.getUserIdForApiKey).toHaveBeenCalledWith('key1');
+		});
+	});
+
+	describe('resolveGatewayUserId (OAuth bearer)', () => {
+		const actualContainerGet = Container.get.bind(Container);
+		let containerGetSpy: jest.SpyInstance;
+		const tokenService = {
+			verifyOAuthAccessToken: jest.fn(),
+			getCanonicalResourceUrl: jest.fn().mockReturnValue('http://localhost:5678/mcp-server/http'),
+		};
+
+		beforeEach(() => {
+			containerGetSpy = jest
+				.spyOn(Container, 'get')
+				.mockImplementation((cls: unknown) =>
+					cls === McpOAuthTokenService ? tokenService : actualContainerGet(cls as never),
+				);
+		});
+
+		afterEach(() => {
+			containerGetSpy.mockRestore();
+		});
+
+		const bearerReq = (token: string) =>
+			({ headers: { authorization: `Bearer ${token}` } }) as unknown as Request;
+
+		it('resolves the user from a valid OAuth token with the gateway scope', async () => {
+			tokenService.verifyOAuthAccessToken.mockResolvedValue({
+				user: { id: 'oauth-user' },
+				scopes: ['instanceAi:gateway', 'instanceAi:message'],
+			});
+
+			await controller.gatewayDisconnect(bearerReq('oauth-access-token'));
+
+			expect(gatewayService.disconnectGateway).toHaveBeenCalledWith('oauth-user');
+			// OAuth tokens are self-contained — no X-Gateway-Key reverse lookup.
+			expect(gatewayService.getUserIdForApiKey).not.toHaveBeenCalled();
+		});
+
+		it('rejects an OAuth token lacking the instanceAi:gateway scope', async () => {
+			tokenService.verifyOAuthAccessToken.mockResolvedValue({
+				user: { id: 'oauth-user' },
+				scopes: ['instanceAi:message'],
+			});
+
+			await expect(controller.gatewayDisconnect(bearerReq('scoped-out-token'))).rejects.toThrow(
+				ForbiddenError,
+			);
+		});
+
+		it('falls back to the X-Gateway-Key path when there is no bearer token', async () => {
+			gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			const gatewayReq = { headers: { 'x-gateway-key': 'session-key' } } as unknown as Request;
+
+			await controller.gatewayDisconnect(gatewayReq);
+
+			expect(tokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
+			expect(gatewayService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
 		});
 	});
 });
