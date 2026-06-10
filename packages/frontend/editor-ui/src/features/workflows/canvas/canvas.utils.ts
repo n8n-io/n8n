@@ -4,13 +4,68 @@ import type {
 	INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import type { Ref } from 'vue';
 import type { INodeUi } from '@/Interface';
-import type { BoundingBox, CanvasConnection, CanvasConnectionPort } from './canvas.types';
+import type {
+	BoundingBox,
+	CanvasConnection,
+	CanvasConnectionPort,
+	CanvasNodeDefaultRender,
+	CanvasNodeDefaultRenderLabelSize,
+} from './canvas.types';
 import { CanvasConnectionMode } from './canvas.types';
 import type { Connection } from '@vue-flow/core';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
+import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
+import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
+import { injectStrict } from '@/app/utils/injectStrict';
+import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+
+/**
+ * Per-node canvas render data (input/output port maps) shape, as produced by
+ * `useWorkflowDocumentRenderData` and consumed by canvas components.
+ */
+export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>;
+
+/**
+ * Display size for a node with `Default` render type — pulls port counts from
+ * render data and forwards to `calculateNodeSize`. Single source of truth for
+ * "what size would this node render at?" outside of the actual VueFlow runtime.
+ */
+export function computeNodeDisplaySize(
+	nodeId: string,
+	renderOptions: CanvasNodeDefaultRender['options'],
+	renderData: CanvasRenderData,
+	isExperimentalNdvActive: boolean,
+): { width: number; height: number } {
+	const inputs = renderData.nodeInputsByNodeId.get(nodeId)?.value ?? [];
+	const outputs = renderData.nodeOutputsByNodeId.get(nodeId)?.value ?? [];
+
+	const mainInputCount = inputs.filter((p) => p.type === 'main').length || 1;
+	const mainOutputCount = outputs.filter((p) => p.type === 'main').length || 1;
+	const nonMainInputCount =
+		inputs.filter((p) => p.type !== 'main').length +
+		outputs.filter((p) => p.type !== 'main').length;
+
+	return calculateNodeSize(
+		renderOptions.configuration ?? false,
+		renderOptions.configurable ?? false,
+		mainInputCount,
+		mainOutputCount,
+		nonMainInputCount,
+		isExperimentalNdvActive,
+	);
+}
+
+/**
+ * Injects the canvas render data from the component tree. Provided by an
+ * ancestor canvas component. Throws if no provider is registered.
+ */
+export function injectCanvasRenderData(): Ref<CanvasRenderData> {
+	return injectStrict(CanvasRenderDataKey);
+}
 
 /**
  * Maps multiple legacy n8n connections to VueFlow connections
@@ -263,6 +318,34 @@ export function insertSpacersBetweenEndpoints<T>(endpoints: T[], requiredEndpoin
 	}
 
 	return endpointsWithSpacers;
+}
+
+export function getLabelSize(label: string = ''): number {
+	if (label.length <= 2) {
+		return 0;
+	} else if (label.length <= 6) {
+		return 1;
+	} else {
+		return 2;
+	}
+}
+
+export function getMaxNodePortsLabelSize(
+	ports: CanvasConnectionPort[],
+): CanvasNodeDefaultRenderLabelSize {
+	const labelSizes: CanvasNodeDefaultRenderLabelSize[] = ['small', 'medium', 'large'];
+	const labelSizeIndexes = ports.reduce<number[]>(
+		(sizeAcc, input) => {
+			if (input.type === NodeConnectionTypes.Main) {
+				sizeAcc.push(getLabelSize(input.label ?? ''));
+			}
+
+			return sizeAcc;
+		},
+		[0],
+	);
+
+	return labelSizes[Math.max(...labelSizeIndexes)];
 }
 
 export function shouldIgnoreCanvasShortcut(el: Element): boolean {

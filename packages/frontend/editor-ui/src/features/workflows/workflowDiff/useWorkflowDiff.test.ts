@@ -23,11 +23,27 @@ const mockDocumentStore = vi.hoisted(() => ({
 		nodes: [],
 		connections: {},
 	}),
+	hydrate: vi.fn(),
+	render: {
+		nodeInputsByNodeId: new Map(),
+		nodeOutputsByNodeId: new Map(),
+		pinnedDataByNodeName: {},
+		executionIssuesByNodeName: new Map(),
+	},
+	$id: 'test-store',
+	$dispose: vi.fn(),
 }));
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockDocumentStore,
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 	injectWorkflowDocumentStore: () => ({ value: mockDocumentStore }),
+	disposeWorkflowDocumentStore: vi.fn(),
+}));
+
+vi.mock('@/app/stores/workflowExecutionState.store', () => ({
+	useWorkflowExecutionStateStore: () => ({
+		activeExecutionIssuesByNodeName: new Map(),
+	}),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -45,6 +61,7 @@ vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
 		nodeExecutionRunDataOutputMapById: computed(() => ({})),
 		nodeExecutionWaitingForNextById: computed(() => ({})),
 		nodeHasIssuesById: computed(() => ({})),
+		nodeDisplaySizeById: computed(() => ({})),
 		nodes: computed(() => []),
 		connections: computed(() => []),
 	}),
@@ -146,6 +163,9 @@ describe('useWorkflowDiff', () => {
 			nodeExecutionRunDataOutputMapById: computed(() => ({}) as Record<string, ExecutionOutputMap>),
 			nodeExecutionWaitingForNextById: computed(() => ({}) as Record<string, boolean>),
 			nodeHasIssuesById: computed(() => ({}) as Record<string, boolean>),
+			nodeDisplaySizeById: computed(
+				() => ({}) as Record<string, { width: number; height: number }>,
+			),
 			nodes: computed(() => nodes as CanvasNode[]),
 			connections: computed(() => connections as CanvasConnection[]),
 		});

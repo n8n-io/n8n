@@ -1,4 +1,4 @@
-import { isRecord, parseSuspension, asResumable } from '../stream-helpers';
+import { isRecord, parseSuspension, asResumable, resumeAgentStream } from '../stream-helpers';
 
 describe('isRecord', () => {
 	it('returns true for plain objects', () => {
@@ -50,6 +50,25 @@ describe('parseSuspension', () => {
 			toolCallId: 'tc-1',
 			requestId: 'req-1',
 			toolName: 'setup-credentials',
+			suspendPayload: { requestId: 'req-1' },
+		});
+	});
+
+	it('parses native agent suspension chunks', () => {
+		const chunk = {
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			toolName: 'setup-credentials',
+			suspendPayload: {
+				requestId: 'req-1',
+			},
+		};
+
+		expect(parseSuspension(chunk)).toEqual({
+			toolCallId: 'tc-1',
+			requestId: 'req-1',
+			toolName: 'setup-credentials',
+			suspendPayload: { requestId: 'req-1' },
 		});
 	});
 
@@ -66,6 +85,7 @@ describe('parseSuspension', () => {
 			toolCallId: 'tc-1',
 			requestId: 'tc-1',
 			toolName: undefined,
+			suspendPayload: {},
 		});
 	});
 
@@ -99,14 +119,33 @@ describe('parseSuspension', () => {
 			toolCallId: 'tc-1',
 			requestId: 'tc-1',
 			toolName: undefined,
+			suspendPayload: {},
 		});
 	});
 });
 
 describe('asResumable', () => {
 	it('casts agent to Resumable interface', () => {
-		const agent = { resumeStream: jest.fn() };
+		const agent = { resume: vi.fn() };
 		const resumable = asResumable(agent);
-		expect(resumable.resumeStream).toBe(agent.resumeStream);
+		expect(resumable.resume).toBe(agent.resume);
+	});
+});
+
+describe('resumeAgentStream', () => {
+	it('uses native agent resume in stream mode', async () => {
+		const resumed = { runId: 'run-2' };
+		const agent = { resume: vi.fn().mockResolvedValue(resumed) };
+
+		await expect(resumeAgentStream(agent, { approved: true }, { runId: 'run-1' })).resolves.toBe(
+			resumed,
+		);
+		expect(agent.resume).toHaveBeenCalledWith('stream', { approved: true }, { runId: 'run-1' });
+	});
+
+	it('throws when the agent cannot resume streams', async () => {
+		await expect(resumeAgentStream({}, { approved: true }, { runId: 'run-1' })).rejects.toThrow(
+			'Agent does not support stream resume',
+		);
 	});
 });

@@ -75,7 +75,7 @@ jobs:
     steps:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: 24.14.1
+          node-version: 24.15.0
 
       # Remove after https://github.com/npm/cli/issues/8547 gets resolved
       - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
@@ -167,7 +167,8 @@ jobs:
     name: Update latest and next in the docs
     runs-on: ubuntu-latest
     needs: [validate-inputs, release-to-npm, release-to-docker-hub]
+    timeout-minutes: 2
     environment: release
     steps:
       - continue-on-error: true
-        run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'
+        run: curl --connect-timeout 10 --max-time 30 -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/update-latest-next'

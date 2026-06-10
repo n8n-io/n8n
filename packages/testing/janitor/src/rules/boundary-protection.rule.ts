@@ -1,73 +1,53 @@
-import type { Project, SourceFile } from 'ts-morph';
+import type { Violation } from '@n8n/rules-engine';
+import { AstRule } from '@n8n/rules-engine/ast';
+import type { AstProjectConfig } from '@n8n/rules-engine/ast';
+import type { Project } from 'ts-morph';
 
-import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
-import type { Violation } from '../types.js';
-import { getImportPaths, isPageImport } from '../utils/ast-helpers.js';
+import { isPageImport } from '../utils/ast-helpers.js';
 import { isExcludedPage } from '../utils/paths.js';
 
 /**
- * Boundary Protection Rule
- *
- * Pages should not import other pages directly.
- * This prevents tight coupling between page objects.
- *
- * Allowed:
- * - Imports from components directory
- * - Imports from base classes (BasePage, BaseModal, etc.)
- * - Imports from external packages
- *
- * Violations:
- * - import { CanvasPage } from './CanvasPage' (in a page file)
- * - import { WorkflowPage } from '../WorkflowPage'
+ * Pages must not import other pages directly. Janitor-owned (playwright domain
+ * logic via {@link isPageImport} + config-driven {@link isExcludedPage}) but
+ * built on the shared `@n8n/rules-engine/ast` substrate rather than a janitor base.
  */
-export class BoundaryProtectionRule extends BaseRule {
+export class BoundaryProtectionRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'boundary-protection';
 	readonly name = 'Boundary Protection';
-	readonly description = 'Pages should not import other pages directly';
+	readonly description = 'Page objects should not import other page objects directly';
 	readonly severity = 'error' as const;
 
 	getTargetGlobs(): string[] {
-		const config = getConfig();
-		// Only analyze page files (excluding components)
-		return config.patterns.pages.filter((p) => !p.includes('components'));
+		return getConfig().patterns.pages.filter((p) => !p.includes('components'));
 	}
 
-	analyze(_project: Project, files: SourceFile[]): Violation[] {
+	protected projectConfig(): AstProjectConfig {
+		return { packages: ['.'], spec: { globs: this.getTargetGlobs() } };
+	}
+
+	analyze(context: { rootDir: string }): Violation[] {
+		return this.projects(context).flatMap(({ project }) => this.analyzeProject(project));
+	}
+
+	analyzeProject(project: Project): Violation[] {
 		const violations: Violation[] = [];
 
-		for (const file of files) {
+		for (const file of project.getSourceFiles()) {
 			const filePath = file.getFilePath();
+			if (isExcludedPage(filePath)) continue;
+			if (filePath.includes('/components/')) continue;
 
-			// Skip excluded files (facades, base classes)
-			if (isExcludedPage(filePath)) {
-				continue;
-			}
-
-			// Skip if file is in components directory
-			if (filePath.includes('/components/')) {
-				continue;
-			}
-
-			const importPaths = getImportPaths(file);
-
-			for (const importPath of importPaths) {
-				if (isPageImport(importPath, filePath)) {
-					const importDecl = file
-						.getImportDeclarations()
-						.find((d) => d.getModuleSpecifierValue() === importPath);
-
-					if (importDecl) {
-						violations.push(
-							this.createViolation(
-								file,
-								importDecl.getStartLineNumber(),
-								0,
-								`Page imports another page: ${importPath}`,
-								'Use composition through composables or inject via constructor instead',
-							),
-						);
-					}
+			for (const decl of file.getImportDeclarations()) {
+				const spec = decl.getModuleSpecifierValue();
+				if (isPageImport(spec, filePath)) {
+					violations.push(
+						this.nodeViolation(
+							decl,
+							`Page imports another page: ${spec}`,
+							'Use composition through composables or inject via constructor instead',
+						),
+					);
 				}
 			}
 		}

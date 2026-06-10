@@ -208,10 +208,13 @@ export const setupTestServer = ({
 						break;
 
 					case 'metrics': {
-						const { PrometheusMetricsService } = await import(
-							'@/metrics/prometheus-metrics.service'
-						);
-						await Container.get(PrometheusMetricsService).init(app);
+						// CacheService must be initialized before PrometheusMetricsService
+						// because cache-metrics.service calls isRedis() during init, which
+						// reads this.cache.kind — only set after CacheService.init() resolves.
+						const { CacheService } = await import('@/services/cache/cache.service');
+						await Container.get(CacheService).init();
+						const { PrometheusMetricsService } = await import('@/metrics/prometheus');
+						Container.get(PrometheusMetricsService).init(app);
 						break;
 					}
 
@@ -221,6 +224,10 @@ export const setupTestServer = ({
 
 					case 'auth':
 						await import('@/controllers/auth.controller');
+						break;
+
+					case 'oauth1':
+						await import('@/controllers/oauth/oauth1-credential.controller');
 						break;
 
 					case 'oauth2':
@@ -365,8 +372,21 @@ export const setupTestServer = ({
 	});
 
 	afterAll(async () => {
+		// Close the HTTP server first so any in-flight requests can't reach the
+		// DI container after testDb.terminate() resets it. Await the close so
+		// pending handlers drain before the next file's beforeAll runs in
+		// persistent Jest workers — otherwise stale handlers call
+		// Container.get(Logger), construct a fresh Logger, and trip Jest's
+		// "environment torn down" guard when winston is imported.
+		// Skip when the server never started listening (some suites bail in
+		// beforeAll); calling close() on a non-listening server throws
+		// "Server is not running" and would mask the real beforeAll failure.
+		if (testServer.httpServer.listening) {
+			await new Promise<void>((resolve, reject) => {
+				testServer.httpServer.close((err) => (err ? reject(err) : resolve()));
+			});
+		}
 		await testDb.terminate();
-		testServer.httpServer.close();
 	});
 
 	beforeEach(() => {

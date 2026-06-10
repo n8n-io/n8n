@@ -14,10 +14,9 @@
  * cross-module coordinator, eviction hook, or TTL sweep is required.
  */
 
-import { createTool } from '@mastra/core/tools';
-import type { Workspace } from '@mastra/core/workspace';
+import { Tool } from '@n8n/agents';
 
-import type { CredentialEntry } from './resolve-credentials';
+import type { CredentialMap } from './resolve-credentials';
 import {
 	createSubmitWorkflowTool,
 	resolveSandboxWorkflowFilePath,
@@ -37,11 +36,13 @@ import type {
 	RemediationMetadata,
 	WorkflowLoopState,
 } from '../../workflow-loop/workflow-loop-state';
+import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
 
 export type SubmitExecute = (input: SubmitWorkflowInput) => Promise<SubmitWorkflowOutput>;
 
 interface SubmitGuardOptions {
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
+	getTerminalRemediation?: () => RemediationMetadata | undefined;
 	currentRunId?: string;
 	onGuardFired?: (event: {
 		workflowId?: string;
@@ -49,6 +50,7 @@ interface SubmitGuardOptions {
 		attemptCount?: number;
 		reason?: string;
 	}) => void;
+	onTerminalRemediation?: (remediation: RemediationMetadata) => void;
 }
 
 interface SubmitBudgetTracker {
@@ -116,7 +118,7 @@ export function createPreSaveBudgetTracker(): SubmitBudgetTracker {
  * - On dispatch failure, the map entry is cleared and waiters see a failure result.
  *
  * Exposed separately from the tool factory so it can be unit-tested without
- * constructing a Mastra tool or a sandbox workspace.
+ * constructing a tool or a sandbox workspace.
  */
 export function wrapSubmitExecuteWithIdentity(
 	underlying: SubmitExecute,
@@ -125,15 +127,40 @@ export function wrapSubmitExecuteWithIdentity(
 ): SubmitExecute {
 	const pending = new Map<string, Promise<string>>();
 
+	function recordTerminalRemediation(
+		workflowId: string | undefined,
+		remediation: RemediationMetadata | undefined,
+	): void {
+		if (!remediation || remediation.shouldEdit) return;
+
+		options.onTerminalRemediation?.(remediation);
+		options.onGuardFired?.({
+			workflowId,
+			category: remediation.category,
+			attemptCount: remediation.attemptCount,
+			reason: remediation.reason,
+		});
+	}
+
+	function applyOutputGuards(
+		path: string,
+		output: SubmitWorkflowOutput,
+		fallbackWorkflowId?: string,
+	): SubmitWorkflowOutput {
+		const guarded = options.budgetTracker?.applyToOutput(path, output) ?? output;
+		recordTerminalRemediation(guarded.workflowId ?? fallbackWorkflowId, guarded.remediation);
+		return guarded;
+	}
+
 	async function blockedByTerminalRemediation(
 		workflowId: string | undefined,
 	): Promise<SubmitWorkflowOutput | undefined> {
-		const terminalRemediation = terminalRemediationFromState(
-			await options.getWorkflowLoopState?.(),
-			options.currentRunId,
-		);
+		const terminalRemediation =
+			options.getTerminalRemediation?.() ??
+			terminalRemediationFromState(await options.getWorkflowLoopState?.(), options.currentRunId);
 		if (!terminalRemediation) return undefined;
 
+		options.onTerminalRemediation?.(terminalRemediation);
 		options.onGuardFired?.({
 			workflowId,
 			category: terminalRemediation.category,
@@ -159,6 +186,9 @@ export function wrapSubmitExecuteWithIdentity(
 			try {
 				boundId = await existing;
 			} catch (error) {
+				const terminalAfterFailure = await blockedByTerminalRemediation(input.workflowId);
+				if (terminalAfterFailure) return terminalAfterFailure;
+
 				const message = error instanceof Error ? error.message : String(error);
 				return {
 					success: false,
@@ -176,7 +206,7 @@ export function wrapSubmitExecuteWithIdentity(
 			if (terminalAfterWait) return terminalAfterWait;
 
 			const result = await underlying({ ...input, workflowId: boundId });
-			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
+			return applyOutputGuards(resolvedPath, result, boundId);
 		}
 
 		let resolveFn: ((id: string) => void) | undefined;
@@ -192,13 +222,14 @@ export function wrapSubmitExecuteWithIdentity(
 
 		try {
 			const result = await underlying(input);
-			if (result.success && typeof result.workflowId === 'string') {
-				resolveFn?.(result.workflowId);
+			const guarded = applyOutputGuards(resolvedPath, result, input.workflowId);
+			if (guarded.success && typeof guarded.workflowId === 'string') {
+				resolveFn?.(guarded.workflowId);
 			} else {
-				rejectFn?.(new Error(result.errors?.join(' ') ?? 'submit-workflow failed'));
+				rejectFn?.(new Error(guarded.errors?.join(' ') ?? 'submit-workflow failed'));
 				pending.delete(resolvedPath);
 			}
-			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
+			return guarded;
 		} catch (error) {
 			rejectFn?.(error);
 			pending.delete(resolvedPath);
@@ -207,16 +238,24 @@ export function wrapSubmitExecuteWithIdentity(
 	};
 }
 
+export function withDefaultWorkflowFilePath(
+	input: SubmitWorkflowInput,
+	defaultFilePath: string | undefined,
+): SubmitWorkflowInput {
+	return defaultFilePath && !input.filePath ? { ...input, filePath: defaultFilePath } : input;
+}
+
 /**
- * Build a submit-workflow Mastra tool wired with identity enforcement.
+ * Build a submit-workflow tool wired with identity enforcement.
  * Convenience factory used at the builder-agent callsite.
  */
 export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	context: InstanceAiContext;
-	workspace: Workspace;
-	availableCredentials?: CredentialEntry[];
+	workspace: SandboxWorkspace;
+	credentialMap?: CredentialMap;
 	onAttempt: (attempt: SubmitWorkflowAttempt) => Promise<void> | void;
 	root: string;
+	defaultFilePath?: string;
 	currentRunId?: string;
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
 	onGuardFired?: SubmitGuardOptions['onGuardFired'];
@@ -225,20 +264,24 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	const underlying = createSubmitWorkflowTool(
 		args.context,
 		args.workspace,
+		args.credentialMap,
 		async (attempt) => {
 			await args.onAttempt(budgetTracker.recordAttempt(attempt));
 		},
-		args.availableCredentials,
+		{ root: args.root, defaultFilePath: args.defaultFilePath },
 	);
 
-	const underlyingExecute = underlying.execute as SubmitExecute | undefined;
+	const underlyingExecute = underlying.handler as SubmitExecute | undefined;
 	if (!underlyingExecute) {
-		throw new Error('createSubmitWorkflowTool returned a tool without an execute handler');
+		throw new Error('createSubmitWorkflowTool returned a tool without a handler');
 	}
 
 	const wrappedExecute = wrapSubmitExecuteWithIdentity(
 		underlyingExecute,
-		(rawFilePath) => resolveSandboxWorkflowFilePath(rawFilePath, args.root),
+		(rawFilePath) =>
+			rawFilePath
+				? resolveSandboxWorkflowFilePath(rawFilePath, args.root)
+				: (args.defaultFilePath ?? resolveSandboxWorkflowFilePath(rawFilePath, args.root)),
 		{
 			budgetTracker,
 			currentRunId: args.currentRunId,
@@ -247,11 +290,13 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 		},
 	);
 
-	return createTool({
-		id: 'submit-workflow',
-		description: underlying.description ?? '',
-		inputSchema: submitWorkflowInputSchema,
-		outputSchema: submitWorkflowOutputSchema,
-		execute: wrappedExecute,
-	});
+	return new Tool('submit-workflow')
+		.description(underlying.description)
+		.input(submitWorkflowInputSchema)
+		.output(submitWorkflowOutputSchema)
+		.handler(
+			async (input) =>
+				await wrappedExecute(withDefaultWorkflowFilePath(input, args.defaultFilePath)),
+		)
+		.build();
 }

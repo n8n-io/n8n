@@ -99,7 +99,10 @@ describe('useFavoriteNavItems', () => {
 
 			const { favoriteProjectItems } = useFavoriteNavItems();
 
-			expect(favoriteProjectItems.value[0].menuItem.icon).toBe('layers');
+			expect(favoriteProjectItems.value[0].menuItem.icon).toEqual({
+				type: 'icon',
+				value: 'layers',
+			});
 		});
 
 		it('should use raw resourceId as item id (no prefix)', () => {

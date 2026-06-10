@@ -1,6 +1,7 @@
 import { computed, nextTick, ref, type ComputedRef, type Ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { ThreadRuntime } from '../../instanceAi.store';
 import type { WorkflowSetupSection, WorkflowSetupStep } from '../workflowSetup.types';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
@@ -32,7 +33,7 @@ interface Harness {
 	defer: ReturnType<typeof vi.fn>;
 	markSectionSkipped: ReturnType<typeof vi.fn>;
 	buildCompletedSetupPayload: ReturnType<typeof vi.fn>;
-	thread: { currentThreadId: string; findToolCallByRequestId: ReturnType<typeof vi.fn> };
+	thread: { id: string; findToolCallByRequestId: ReturnType<typeof vi.fn> };
 	actions: ReturnType<typeof useWorkflowSetupActions>;
 }
 
@@ -86,7 +87,7 @@ function setupHarness(): Harness {
 	});
 
 	const thread = {
-		currentThreadId: 'thread-1',
+		id: 'thread-1',
 		findToolCallByRequestId: vi.fn(() => ({
 			confirmation: { inputThreadId: 'input-thread-1' },
 		})),
@@ -108,8 +109,7 @@ function setupHarness(): Harness {
 			buildCompletedSetupPayload,
 		},
 		applyMachine: { apply, defer },
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		thread: thread as any,
+		thread: thread as unknown as ThreadRuntime,
 	});
 
 	return {
@@ -402,7 +402,7 @@ describe('useWorkflowSetupActions', () => {
 			}));
 
 			const thread = {
-				currentThreadId: 'thread-1',
+				id: 'thread-1',
 				findToolCallByRequestId: vi.fn(() => ({
 					confirmation: { inputThreadId: 'input-thread-1' },
 				})),
@@ -424,8 +424,7 @@ describe('useWorkflowSetupActions', () => {
 					buildCompletedSetupPayload,
 				},
 				applyMachine: { apply, defer },
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				thread: thread as any,
+				thread: thread as unknown as ThreadRuntime,
 			});
 
 			await actions.skipCurrentStep();
@@ -500,8 +499,7 @@ describe('useWorkflowSetupActions', () => {
 					buildCompletedSetupPayload: vi.fn(() => ({})),
 				},
 				applyMachine: { apply: vi.fn(), defer: vi.fn() },
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				thread: { currentThreadId: 't', findToolCallByRequestId: vi.fn() } as any,
+				thread: { id: 't', findToolCallByRequestId: vi.fn() } as unknown as ThreadRuntime,
 			});
 
 			expect(actions.isStepHandled(steps.value[0])).toBe(true);

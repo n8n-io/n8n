@@ -5,8 +5,8 @@ import type { SsrfBridge } from 'n8n-core';
 import { createResultOk } from 'n8n-workflow';
 import type { LookupFunction } from 'node:net';
 
-import type { DnsResolver } from '@/services/ssrf/dns-resolver';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import type { DnsResolver } from 'n8n-core';
+import { SsrfProtectionService } from 'n8n-core';
 
 import { fetchAndExtract } from '../fetch-and-extract';
 

@@ -2,7 +2,17 @@ import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
-import { createResultError, createResultOk, type GenericValue, type Result } from 'n8n-workflow';
+import {
+	createResultError,
+	createResultOk,
+	NodeHelpers,
+	type CredentialInformation,
+	type GenericValue,
+	type ICredentialDataDecryptedObject,
+	type ICredentialType,
+	type INodeProperties,
+	type Result,
+} from 'n8n-workflow';
 
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
@@ -84,14 +94,11 @@ export function useCredentialOAuth() {
 		}
 
 		const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
-		const visibleProperties = credentialType.properties.filter(
-			(prop) =>
-				prop.type !== 'hidden' &&
-				prop.type !== 'notice' &&
-				!overwrittenProperties.includes(prop.name),
-		);
+		const nonOverwrittenConfigurableProperties = getManuallyConfigurableProperties(
+			credentialType,
+		).filter((prop) => !overwrittenProperties.includes(prop.name));
 
-		if (visibleProperties.length === 0) {
+		if (nonOverwrittenConfigurableProperties.length === 0) {
 			return true;
 		}
 
@@ -99,9 +106,52 @@ export function useCredentialOAuth() {
 			return false;
 		}
 
-		return visibleProperties.every(
+		return nonOverwrittenConfigurableProperties.every(
 			(prop) => prop.required !== true || (prop.type !== 'string' && prop.type !== 'number'),
 		);
+	}
+
+	/**
+	 * Returns properties the user must fill in. Walks the extends chain so
+	 * inherited fields (e.g. `clientId`/`clientSecret` from `oAuth2Api`) are
+	 * considered, and applies `displayOptions` against the effective defaults
+	 * — matching the credential edit modal's `credentialProperties` /
+	 * `displayCredentialParameter` logic.
+	 */
+	function getManuallyConfigurableProperties(credentialType: ICredentialType): INodeProperties[] {
+		const mergedProperties = getMergedCredentialProperties(credentialType.name);
+		const defaults: ICredentialDataDecryptedObject = {};
+		for (const prop of mergedProperties) {
+			defaults[prop.name] = prop.default as CredentialInformation;
+		}
+
+		return mergedProperties.filter((prop) => {
+			if (prop.type === 'hidden' || prop.type === 'notice') return false;
+			return NodeHelpers.displayParameter(defaults, prop, null, null);
+		});
+	}
+
+	function getMergedCredentialProperties(
+		credentialTypeName: string,
+		visited = new Set<string>(),
+	): INodeProperties[] {
+		if (visited.has(credentialTypeName)) return [];
+		visited.add(credentialTypeName);
+
+		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
+		if (!credentialType) return [];
+		if (credentialType.extends === undefined) return credentialType.properties;
+
+		const merged: INodeProperties[] = [];
+		for (const parentName of credentialType.extends) {
+			NodeHelpers.mergeNodeProperties(merged, getMergedCredentialProperties(parentName, visited));
+		}
+		NodeHelpers.mergeNodeProperties(merged, credentialType.properties);
+		return merged;
+	}
+
+	function hasManualCredentialInputFields(credentialType: ICredentialType): boolean {
+		return getManuallyConfigurableProperties(credentialType).length > 0;
 	}
 
 	async function getOAuthAuthorizationUrl(
@@ -232,6 +282,14 @@ export function useCredentialOAuth() {
 			return null;
 		}
 
+		const data: ICredentialDataDecryptedObject = {};
+		const allowedHttpRequestDomainsProperty = credentialType.properties.find(
+			(prop) => prop.name === 'allowedHttpRequestDomains',
+		);
+		if (!allowedHttpRequestDomainsProperty || allowedHttpRequestDomainsProperty.type !== 'hidden') {
+			data.allowedHttpRequestDomains = 'none';
+		}
+
 		let credential: ICredentialsResponse;
 		try {
 			credential = await credentialsStore.createNewCredential(
@@ -239,7 +297,7 @@ export function useCredentialOAuth() {
 					id: '',
 					name: credentialType.displayName,
 					type: credentialTypeName,
-					data: { allowedHttpRequestDomains: 'none' },
+					data,
 				},
 				projectsStore.currentProject?.id,
 				undefined,
@@ -308,6 +366,7 @@ export function useCredentialOAuth() {
 		isOAuthCredentialType,
 		isGoogleOAuthType,
 		canOAuthCredentialQuickConnect,
+		hasManualCredentialInputFields,
 		authorize,
 		createAndAuthorize,
 		cancelAuthorize,

@@ -25,6 +25,17 @@ export function useConnection() {
 	const settings = ref<TabManagementSettings>({ ...DEFAULT_SETTINGS });
 	const relayUrl = ref<string | null>(null);
 
+	// Set when the page is opened with `?autoConnect=1` AND the relay URL
+	// points to localhost. Skips the manual click: every available tab is
+	// selected and `connect()` fires once relayUrl + tab registry are ready.
+	//
+	// The localhost gate keeps this safe for the only legitimate use case
+	// (an eval daemon running on the user's machine spawning a local relay),
+	// while blocking the remote-phishing path where an attacker tricks a
+	// user into opening a crafted chrome-extension URL pointing at an
+	// attacker-controlled WSS endpoint.
+	const isAutoConnect = ref<boolean>(false);
+
 	// ── Single source of truth: reactive tab registry ─────────────────────────
 	// Maps chromeTabId → tab object. Kept in sync by Chrome tab event listeners.
 	const tabRegistry = reactive(new Map<number, chrome.tabs.Tab>());
@@ -224,6 +235,14 @@ export function useConnection() {
 			}
 		}
 
+		// Auto-connect is only honored when the relay URL points to localhost.
+		// See the comment on `isAutoConnect` above for the threat model.
+		const wantsAutoConnect = params.get('autoConnect') === '1';
+		isAutoConnect.value = wantsAutoConnect && isLocalhostRelay(relayUrl.value);
+		if (wantsAutoConnect && !isAutoConnect.value) {
+			log.warn('autoConnect ignored: relay URL is not localhost', relayUrl.value);
+		}
+
 		// Set status + controlledTabIds before loading registry to prevent
 		// pre-connect UI from rendering briefly while status is still being read.
 		const currentStatus: unknown = await chrome.runtime.sendMessage({ type: 'getStatus' });
@@ -241,6 +260,17 @@ export function useConnection() {
 		chrome.tabs.onCreated.addListener(onTabCreated);
 		chrome.tabs.onRemoved.addListener(onTabRemoved);
 		chrome.tabs.onUpdated.addListener(onTabUpdated);
+
+		// Auto-connect for eval harness — select all eligible tabs and connect.
+		// The eval daemon sets `?autoConnect=1` so subsequent `browser_connect`
+		// calls don't require a manual click between scenarios. Already
+		// gated on a localhost relay URL above.
+		if (isAutoConnect.value && relayUrl.value && status.value === 'disconnected') {
+			for (const tab of availableTabs.value) {
+				if (tab.id !== undefined) selectedTabIds.add(tab.id);
+			}
+			void connect();
+		}
 	});
 
 	return {
@@ -252,6 +282,7 @@ export function useConnection() {
 		settings,
 		relayUrl,
 		hasRelayUrl,
+		isAutoConnect,
 		controlledTabs: controlledTabDetails,
 		allSelected,
 		someSelected,
@@ -261,4 +292,19 @@ export function useConnection() {
 		disconnect,
 		updateSettings,
 	};
+}
+
+/**
+ * Returns true if the relay URL points to the local machine. Used to gate
+ * the `?autoConnect=1` shortcut so a crafted chrome-extension URL with a
+ * remote `mcpRelayUrl` cannot trigger an unattended connect.
+ */
+function isLocalhostRelay(url: string | null): boolean {
+	if (!url) return false;
+	try {
+		const { hostname } = new URL(url);
+		return hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '[::1]';
+	} catch {
+		return false;
+	}
 }

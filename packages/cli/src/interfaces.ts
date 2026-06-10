@@ -22,6 +22,7 @@ import type {
 	ExecutionSummary,
 	IWorkflowExecutionDataProcess,
 	IExecutionContext,
+	WorkflowExecutionSource,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -184,7 +185,21 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	error_node_type?: string;
 	is_manual: boolean;
 	crashed?: boolean;
-	used_dynamic_credentials?: boolean;
+	used_private_credentials?: boolean;
+	execution_source?: WorkflowExecutionSource;
+	mock_data_sources?: string;
+}
+
+export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {
+	agent_id: string;
+	/** n8n user ID, present only when the agent run has direct n8n user context. */
+	user_id?: string;
+	/** Fresh user turns only. Resume continuations do not increment this count. */
+	message_count?: number;
+	/** AI SDK usage from agent, title, memory generation, and embedding calls. */
+	token_count?: number;
+	/** Tool invocations only. Resuming a suspended tool does not double-count it. */
+	tool_call_count?: number;
 }
 
 // ----------------------------------

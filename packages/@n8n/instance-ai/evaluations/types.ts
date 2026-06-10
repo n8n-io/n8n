@@ -4,6 +4,7 @@
 
 import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 
+import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
 
 // ---------------------------------------------------------------------------
@@ -53,6 +54,8 @@ export interface AgentActivity {
 	agentId: string;
 	role: string;
 	parentId?: string;
+	/** Tool names the sub-agent was spawned with, captured from the `agent-spawned` event payload. */
+	tools: string[];
 	toolCalls: CapturedToolCall[];
 	textContent: string;
 	reasoning: string;
@@ -72,6 +75,30 @@ export interface InstanceAiMetrics {
 	confirmationRequests: number;
 	agentActivities: AgentActivity[];
 	events: CapturedEvent[];
+}
+
+// ---------------------------------------------------------------------------
+// Per-turn conversation metrics
+// ---------------------------------------------------------------------------
+
+/** Counters for one turn (run-start → run-finish). */
+export interface TurnCounter {
+	turn: number;
+	toolCallCount: number;
+	toolErrorCount: number;
+	confirmationAskedTotal: number;
+	confirmationAskedByKind: Record<string, number>;
+	replanAfterErrorCount: number;
+	repeatQuestionCount: number;
+	runFinishStatus?: string;
+}
+
+export interface ConversationMetrics {
+	turnCount: number;
+	perTurn: TurnCounter[];
+	confirmationAskedTotal: number;
+	confirmationAskedByKind: Record<string, number>;
+	reachedRunFinishCleanly: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,11 +150,17 @@ export interface EventOutcome {
 	agentActivities: AgentActivity[];
 }
 
+export interface BuildTrace {
+	finalText: string;
+	toolCalls: CapturedToolCall[];
+	agentActivities: AgentActivity[];
+}
+
 // ---------------------------------------------------------------------------
 // Workflow evaluation test cases
 // ---------------------------------------------------------------------------
 
-export interface TestScenario {
+export interface ExecutionScenario {
 	name: string;
 	description: string;
 	/** Instructions for mock data generation — passed as scenario hints to the LLM mock endpoint */
@@ -136,20 +169,39 @@ export interface TestScenario {
 	successCriteria: string;
 }
 
+export interface ConversationTurn {
+	role: 'user' | 'assistant';
+	text: string;
+}
+
 export interface WorkflowTestCase {
-	prompt: string;
+	/**
+	 * Hand-authored conversation that drives the build. Must have ≥1 turn,
+	 * and the first turn must be `user`.
+	 *
+	 * - One user turn, no assistant turns → auto-approve mode (single-prompt build).
+	 * - Anything else → multi-turn UserProxyLlm engages (answers clarifications,
+	 *   sends follow-ups consuming `messageBudget`).
+	 */
+	conversation: ConversationTurn[];
 	complexity: 'simple' | 'medium' | 'complex';
 	tags: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-	scenarios: TestScenario[];
+	executionScenarios: ExecutionScenario[];
+	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
+	messageBudget?: number;
+	/** Optional NL assertions about the build conversation; LLM-judged, informational only. */
+	buildExpectations?: string[];
+	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
+	datasets: string[];
 }
 
 // ---------------------------------------------------------------------------
 // Workflow test case results
 // ---------------------------------------------------------------------------
 
-export interface ScenarioResult {
-	scenario: TestScenario;
+export interface ExecutionScenarioResult {
+	scenario: ExecutionScenario;
 	success: boolean;
 	evalResult?: InstanceAiEvalExecutionResult;
 	score: number;
@@ -160,23 +212,113 @@ export interface ScenarioResult {
 	rootCause?: string;
 }
 
+/** Verdict for one author-written build expectation. Informational only. */
+export interface BuildExpectationResult {
+	expectation: string;
+	pass: boolean;
+	reason: string;
+	/** Judge returned no verdict (flaky/partial). Rendered neutrally, kept out of the count. */
+	incomplete?: boolean;
+}
+
 export interface WorkflowTestCaseResult {
 	testCase: WorkflowTestCase;
 	workflowId?: string;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
-	scenarioResults: ScenarioResult[];
+	executionScenarioResults: ExecutionScenarioResult[];
 	/** The built workflow JSON — saved for debugging and cross-run comparison */
 	workflowJson?: WorkflowResponse;
+	conversationMetrics?: ConversationMetrics;
+	threadId?: string;
+	transcript?: TranscriptTurn[];
+	workflowChecks?: CheckOutcome[];
+	/** Captured build-time sub-agent/tool activity for builder debugging. */
+	buildTrace?: BuildTrace;
+	/** Per-expectation verdicts from the build-expectations judge. Not consumed by pass@k. */
+	buildExpectationResults?: BuildExpectationResult[];
+	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
+	 *  configs each get their own URL for canvas/execution links. */
+	n8nBaseUrl?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Conversation transcript (synthesized from the SSE event stream)
+// ---------------------------------------------------------------------------
+
+export interface TranscriptTurn {
+	userMessage?: string;
+	/** Agent narration and tool interactions, interleaved in the order they occurred. */
+	steps: TranscriptStep[];
+}
+
+/** One ordered step within a turn: a slice of agent narration or a tool interaction. */
+export type TranscriptStep = ToolInteraction | { kind: 'agent-text'; text: string };
+
+export type ToolInteraction =
+	| { kind: 'plan'; tasks: PlanTask[] }
+	| { kind: 'ask-user'; questions: AskUserQuestion[]; answers?: AskUserAnswer[] }
+	| {
+			kind: 'setup-wizard';
+			completedNodes: SetupWizardCompletedNode[];
+			skippedNodes: SetupWizardSkippedNode[];
+			reason?: string;
+	  }
+	| {
+			kind: 'confirmation';
+			toolName: string;
+			resumeReason: string;
+			approved?: boolean;
+			/** Prompt the agent showed when requesting confirmation. */
+			message?: string;
+			/** Free-text the user sent with their decision (e.g. plan-review feedback). */
+			feedback?: string;
+	  }
+	| {
+			kind: 'tool-call';
+			toolName: string;
+			toolCallId?: string;
+			args?: Record<string, unknown>;
+			/** Tool output (success) or error message — paired to the call by toolCallId. */
+			result?: unknown;
+			error?: string;
+	  };
+
+export interface PlanTask {
+	title?: string;
+	description?: string;
+}
+
+export interface AskUserQuestion {
+	id: string;
+	question: string;
+	options?: string[];
+}
+
+export interface AskUserAnswer {
+	questionId: string;
+	selectedOptions: string[];
+	customText?: string;
+	skipped?: boolean;
+}
+
+export interface SetupWizardCompletedNode {
+	nodeName: string;
+	parametersSet?: string[];
+}
+
+export interface SetupWizardSkippedNode {
+	nodeName: string;
+	credentialType?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Multi-run aggregation
 // ---------------------------------------------------------------------------
 
-export interface ScenarioAggregation {
-	scenario: TestScenario;
-	runs: ScenarioResult[];
+export interface ExecutionScenarioAggregation {
+	scenario: ExecutionScenario;
+	runs: ExecutionScenarioResult[];
 	passCount: number;
 	passRate: number;
 	/** probability at least 1 of k attempts passes */
@@ -189,7 +331,7 @@ export interface TestCaseAggregation {
 	testCase: WorkflowTestCase;
 	runs: WorkflowTestCaseResult[];
 	buildSuccessCount: number;
-	scenarios: ScenarioAggregation[];
+	executionScenarios: ExecutionScenarioAggregation[];
 }
 
 export interface MultiRunEvaluation {

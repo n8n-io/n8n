@@ -1,12 +1,14 @@
 <script lang="ts" setup>
-import { computed, provide, onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
-import { NDVStoreKey, WorkflowStateKey } from '@/app/constants/injectionKeys';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
+import { useReportWorkflowFailuresToParent } from '@/app/composables/useReportWorkflowFailuresToParent';
 import { usePushConnection } from '@/app/composables/usePushConnection/usePushConnection';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -23,30 +25,26 @@ if (window !== window.parent) {
 	useRootStore().setPushRef(randomString(10).toLowerCase());
 }
 
-const workflowState = useWorkflowState();
-provide(WorkflowStateKey, workflowState);
+const workflowId = useWorkflowId();
 
 const {
 	initializeData,
 	initializeWorkflow,
 	currentWorkflowDocumentStore,
-	currentNDVStore,
 	cleanup: cleanupInitialization,
-} = useWorkflowInitialization(workflowState);
-
-provide(NDVStoreKey, currentNDVStore);
+} = useWorkflowInitialization();
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
-	workflowState,
 	currentWorkflowDocumentStore,
-	currentNDVStore,
 });
+
+useReportWorkflowFailuresToParent();
 
 // Initialize push event handlers so relayed execution events (via postMessage
 // from the parent) are processed for node highlighting, execution state, etc.
 // When canExecute is enabled, the iframe also establishes its own WebSocket
 // connection for user-triggered executions (pushConnect below).
-const pushConnection = usePushConnection({ router: useRouter(), workflowState });
+const pushConnection = usePushConnection({ router: useRouter() });
 const pushConnectionStore = usePushConnectionStore();
 
 // When canExecute is disabled (read-only preview), set activeExecutionId to null
@@ -55,7 +53,9 @@ const pushConnectionStore = usePushConnectionStore();
 // button is not disabled — the normal execution flow will set it to null when
 // the user actually starts an execution.
 if (!canExecute.value) {
-	workflowState.setActiveExecutionId(null);
+	useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId.value)).setActiveExecutionId(
+		null,
+	);
 }
 
 onMounted(async () => {
@@ -84,7 +84,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<BaseLayout>
-		<RouterView v-if="currentWorkflowDocumentStore && currentNDVStore" />
+		<RouterView v-if="currentWorkflowDocumentStore" />
 		<template #footer>
 			<DemoFooter />
 		</template>

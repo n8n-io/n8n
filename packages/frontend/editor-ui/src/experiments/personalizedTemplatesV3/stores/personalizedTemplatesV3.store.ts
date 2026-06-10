@@ -1,5 +1,5 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/app/constants';
+import { PERSONALIZED_TEMPLATES_V3, TELEMETRY_EVENTS, VIEWS } from '@/app/constants';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -117,7 +117,7 @@ export const usePersonalizedTemplatesV3Store = defineStore(STORES.PERSONALIZED_T
 
 		const variant = posthogStore.getVariant(PERSONALIZED_TEMPLATES_V3.name);
 		if (variant) {
-			telemetry.track('User is part of experiment', {
+			telemetry.track(TELEMETRY_EVENTS.IS_PART_OF_EXPERIMENT, {
 				name: PERSONALIZED_TEMPLATES_V3.name,
 				variant,
 			});

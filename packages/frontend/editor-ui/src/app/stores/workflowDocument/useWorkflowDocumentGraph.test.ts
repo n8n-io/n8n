@@ -38,13 +38,17 @@ function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
 }
 
-function createNodesDeps(): WorkflowDocumentNodesDeps {
+function createNodesDeps(
+	workflowObj?: ReturnType<typeof useWorkflowDocumentWorkflowObject>,
+): WorkflowDocumentNodesDeps {
+	const obj = workflowObj ?? useWorkflowDocumentWorkflowObject({ workflowId: '' });
 	return {
 		getNodeType: vi.fn().mockReturnValue(null),
 		assignNodeId: vi.fn().mockReturnValue(''),
 		syncWorkflowObject: vi.fn(),
 		unpinNodeData: vi.fn(),
 		nodeMetadata: useWorkflowDocumentNodeMetadata(),
+		workflowObject: obj.workflowObject,
 	};
 }
 
@@ -55,13 +59,13 @@ describe('useWorkflowDocumentGraph', () => {
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		nodes = useWorkflowDocumentNodes(createNodesDeps());
+		workflowObj = useWorkflowDocumentWorkflowObject({
+			workflowId: '',
+		});
+		nodes = useWorkflowDocumentNodes(createNodesDeps(workflowObj));
 		connections = useWorkflowDocumentConnections({
 			getNodeById: (id) => nodes.getNodeById(id),
 			syncWorkflowObject: vi.fn(),
-		});
-		workflowObj = useWorkflowDocumentWorkflowObject({
-			workflowId: '',
 		});
 	});
 

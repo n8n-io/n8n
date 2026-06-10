@@ -1,8 +1,12 @@
-import { CredentialsEntity, CredentialsRepository, In, WorkflowRepository } from '@n8n/db';
+import { CredentialsEntity, CredentialsRepository, In, User, WorkflowRepository } from '@n8n/db';
 import { ICredentialResolver } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { ICredentialContext, jsonParse } from 'n8n-workflow';
+
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
@@ -37,6 +41,8 @@ export class CredentialResolverWorkflowService {
 		private readonly resolverRegistry: DynamicCredentialResolverRegistry,
 		private readonly resolverRepository: DynamicCredentialResolverRepository,
 		private readonly cipher: Cipher,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	private async getResolver(resolverId: string): Promise<{
@@ -76,16 +82,20 @@ export class CredentialResolverWorkflowService {
 	async getWorkflowStatus(
 		workflowId: string,
 		credentialContext: ICredentialContext,
+		user?: User,
 	): Promise<CredentialStatus[]> {
-		const workflow = await this.workflowRepository.get({
-			id: workflowId,
-		});
+		// When the request carries an n8n session user, enforce that user's access
+		// to the workflow. Execution-time/external callers have no user and resolve
+		// by id (their identity is validated via the credential context).
+		const workflow = user
+			? await this.workflowFinderService.findWorkflowForUser(workflowId, user, ['workflow:read'])
+			: await this.workflowRepository.get({ id: workflowId });
 
 		if (!workflow) {
-			throw new Error('Workflow not found');
+			throw new NotFoundError('Workflow not found');
 		}
 
-		const resolverId = workflow.settings?.credentialResolverId;
+		const resolverId = this.dynamicCredentialsProxy.getEffectiveResolverId(workflow.settings);
 
 		let workflowResolverInstance: ICredentialResolver | null = null;
 		let workflowResolverConfig: Record<string, unknown> | null = null;
@@ -137,7 +147,7 @@ export class CredentialResolverWorkflowService {
 		options: {
 			workflowResolverInstance: ICredentialResolver | null;
 			workflowResolverConfig: Record<string, unknown> | null;
-			resolverId: string | undefined;
+			resolverId: string | null;
 			credentialContext: ICredentialContext;
 		},
 	): Promise<CredentialStatus | null> {

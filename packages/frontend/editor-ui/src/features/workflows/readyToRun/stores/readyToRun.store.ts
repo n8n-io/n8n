@@ -5,7 +5,7 @@ import { useLocalStorage } from '@vueuse/core';
 import { OPEN_AI_API_CREDENTIAL_TYPE, deepCopy } from 'n8n-workflow';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRouter, type RouteLocationNormalized } from 'vue-router';
 import { READY_TO_RUN_AI_WORKFLOW } from '../workflows/aiWorkflow';
 import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
@@ -50,6 +50,62 @@ export const useReadyToRunStore = defineStore(STORES.READY_TO_RUN, () => {
 	const userHasClaimedAiCreditsAlready = computed(
 		() => !!usersStore.currentUser?.settings?.userClaimedAiCredits,
 	);
+
+	const BUTTON_MAX_ACCOUNT_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+
+	const currentTimeForNewUserCheck = ref(Date.now());
+	let newUserVisibilityTimeout: ReturnType<typeof setTimeout> | undefined;
+
+	const clearNewUserVisibilityTimeout = () => {
+		if (newUserVisibilityTimeout === undefined) return;
+
+		clearTimeout(newUserVisibilityTimeout);
+		newUserVisibilityTimeout = undefined;
+	};
+
+	const getCurrentUserCreatedAtMs = () => {
+		const createdAt = usersStore.currentUser?.createdAt;
+		if (!createdAt) return undefined;
+
+		const createdAtMs = new Date(createdAt).getTime();
+		return Number.isFinite(createdAtMs) ? createdAtMs : undefined;
+	};
+
+	const scheduleNewUserVisibilityRefresh = () => {
+		clearNewUserVisibilityTimeout();
+
+		const createdAtMs = getCurrentUserCreatedAtMs();
+		if (createdAtMs === undefined) return;
+
+		const msUntilThreshold = createdAtMs + BUTTON_MAX_ACCOUNT_AGE_MS - Date.now();
+		if (msUntilThreshold <= 0) return;
+
+		// Recompute visibility exactly when the 14-day "new user" window expires.
+		newUserVisibilityTimeout = setTimeout(() => {
+			currentTimeForNewUserCheck.value = Date.now();
+			newUserVisibilityTimeout = undefined;
+		}, msUntilThreshold);
+	};
+
+	watch(
+		() => usersStore.currentUser?.createdAt,
+		() => {
+			currentTimeForNewUserCheck.value = Date.now();
+			scheduleNewUserVisibilityRefresh();
+		},
+		{ immediate: true },
+	);
+
+	onScopeDispose(() => {
+		clearNewUserVisibilityTimeout();
+	});
+
+	const isNewUser = () => {
+		const createdAtMs = getCurrentUserCreatedAtMs();
+		if (createdAtMs === undefined) return false;
+
+		return currentTimeForNewUserCheck.value - createdAtMs < BUTTON_MAX_ACCOUNT_AGE_MS;
+	};
 
 	const userCanClaimOpenAiCredits = computed(() => {
 		return (
@@ -154,7 +210,9 @@ export const useReadyToRunStore = defineStore(STORES.READY_TO_RUN, () => {
 		canCreate: boolean | undefined,
 		readOnlyEnv: boolean,
 	) => {
-		return userCanClaimOpenAiCredits.value && !readOnlyEnv && canCreate && hasWorkflows;
+		return (
+			userCanClaimOpenAiCredits.value && !readOnlyEnv && canCreate && hasWorkflows && isNewUser()
+		);
 	};
 
 	const { isTrulyEmpty } = useEmptyStateDetection();
