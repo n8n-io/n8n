@@ -3524,6 +3524,32 @@ describe('tool systemInstruction merging', () => {
 		expect(block![1]).not.toContain('Rule C');
 	});
 
+	it('includes an identical systemInstruction shared by multiple tools only once', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const sharedInstruction = 'Use the knowledge tools only for uploaded files.';
+		const makeTool = (name: string): BuiltTool => ({
+			name,
+			description: name,
+			systemInstruction: sharedInstruction,
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve('ok'),
+		});
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base',
+			tools: [makeTool('find'), makeTool('search'), makeTool('read')],
+		});
+
+		await runtime.generate('hello');
+
+		const text = getSystemMessageText();
+		const occurrences = text.split(sharedInstruction).length - 1;
+		expect(occurrences).toBe(1);
+	});
+
 	it('does not add a built_in_rules block when no tool sets a systemInstruction', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 

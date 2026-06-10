@@ -2544,9 +2544,15 @@ export class AgentRuntime {
 	 * override defaults if needed.
 	 */
 	private composeEffectiveInstructions(tools: BuiltTool[]): string {
-		const fragments = tools
-			.map((t) => t.systemInstruction)
-			.filter((s): s is string => typeof s === 'string' && s.trim().length > 0);
+		// Dedupe: related tools (e.g. knowledge retrieval) share one
+		// instruction fragment that should appear only once in the prompt.
+		const fragments = [
+			...new Set(
+				tools
+					.map((t) => t.systemInstruction)
+					.filter((s): s is string => typeof s === 'string' && s.trim().length > 0),
+			),
+		];
 
 		const userInstructions = this.config.instructions;
 		if (fragments.length === 0) return userInstructions;

@@ -69,6 +69,9 @@ const DEAD_SANDBOX_STATES = new Set<SandboxState>([
 
 const DEFAULT_SANDBOX_IMAGE = 'daytonaio/sandbox:0.5.0';
 const AUTO_STOP_INTERVAL_MINUTES = 5;
+// Must stay well below AUTO_STOP_INTERVAL_MINUTES so a cached handle never
+// outlives the sandbox's idle auto-stop window.
+const SANDBOX_CACHE_TTL_MS = 60_000;
 const SANDBOX_LIST_PAGE_SIZE = 100;
 const OUTPUT_TRUNCATED_MARKER = '__N8N_AGENT_KNOWLEDGE_OUTPUT_TRUNCATED__';
 const SHELL_OUTPUT_LIMIT_CHARS = MAX_OPERATION_OUTPUT_CHARS - OUTPUT_TRUNCATED_MARKER.length - 2;
@@ -90,6 +93,10 @@ interface AgentKnowledgeReferenceLookup {
 	files: AgentKnowledgeFileReference[];
 	byFile: Map<string, AgentKnowledgeFileReference>;
 	byId: Map<string, AgentKnowledgeFileReference>;
+}
+
+function buildSandboxScopeKey(projectId: string, agentId: string, userId: string): string {
+	return `${projectId}:${agentId}:${userId}`;
 }
 
 function buildScopeLabels(
@@ -130,6 +137,10 @@ function hasMatchingVolumeMount(sandbox: Sandbox, expected: KnowledgeVolumeMount
 
 @Service()
 export class AgentKnowledgeSandboxService {
+	private readonly sandboxCache = new Map<string, { sandbox: Sandbox; expiresAt: number }>();
+
+	private readonly pendingSandboxAcquisitions = new Map<string, Promise<Sandbox>>();
+
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
@@ -146,7 +157,12 @@ export class AgentKnowledgeSandboxService {
 	): Promise<T> {
 		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
 		const filesystem = this.createFilesystemAdapter(sandbox);
-		return await operation(filesystem);
+		try {
+			return await operation(filesystem);
+		} catch (error) {
+			this.invalidateSandboxCache(projectId, agentId, userId);
+			throw error;
+		}
 	}
 
 	async findKnowledgeFiles(
@@ -267,12 +283,21 @@ export class AgentKnowledgeSandboxService {
 		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command);
-		const result = await sandbox.process.executeCommand(
-			scopedCommand,
-			undefined,
-			undefined,
-			timeoutSeconds,
-		);
+
+		let result;
+		try {
+			result = await sandbox.process.executeCommand(
+				scopedCommand,
+				undefined,
+				undefined,
+				timeoutSeconds,
+			);
+		} catch (error) {
+			// The cached handle may point at a stopped or destroyed sandbox;
+			// drop it so the next operation re-acquires a fresh one.
+			this.invalidateSandboxCache(projectId, agentId, userId);
+			throw error;
+		}
 
 		return {
 			exitCode: result.exitCode,
@@ -403,6 +428,44 @@ export class AgentKnowledgeSandboxService {
 		this.assertKnowledgeVolumeConfigured();
 		this.assertValidPathSegments(projectId, agentId);
 
+		const cacheKey = buildSandboxScopeKey(projectId, agentId, userId);
+		const cached = this.sandboxCache.get(cacheKey);
+		if (cached && cached.expiresAt > Date.now()) {
+			return cached.sandbox;
+		}
+		this.sandboxCache.delete(cacheKey);
+
+		// Coalesce concurrent acquisitions for the same scope so parallel tool
+		// calls cannot both miss the list-then-create check and spawn
+		// duplicate sandboxes.
+		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
+		if (!pending) {
+			pending = this.acquireSandboxFresh(projectId, agentId, userId)
+				.then((sandbox) => {
+					this.sandboxCache.set(cacheKey, {
+						sandbox,
+						expiresAt: Date.now() + SANDBOX_CACHE_TTL_MS,
+					});
+					return sandbox;
+				})
+				.finally(() => {
+					this.pendingSandboxAcquisitions.delete(cacheKey);
+				});
+			this.pendingSandboxAcquisitions.set(cacheKey, pending);
+		}
+
+		return await pending;
+	}
+
+	private invalidateSandboxCache(projectId: string, agentId: string, userId: string): void {
+		this.sandboxCache.delete(buildSandboxScopeKey(projectId, agentId, userId));
+	}
+
+	private async acquireSandboxFresh(
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<Sandbox> {
 		const { Daytona } = loadDaytona();
 		const connection = await this.resolveDaytonaConnection(userId);
 		const daytona = new Daytona({
@@ -549,6 +612,10 @@ function buildSearchKnowledgeCommand(
 		'--line-number',
 		'--color=never',
 		'--hidden',
+		// Deterministic match order across runs; without it rg's parallel
+		// traversal makes offset/limit pagination skip or repeat matches.
+		'--sort',
+		'path',
 		'--max-count',
 		String(matchLimit),
 		'--max-columns',
@@ -588,14 +655,17 @@ function compactKnowledgeFileLookupText(value: string): string {
 }
 
 function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRequest): string {
-	const script = request.ranges
-		.map(
+	const maxEndLine = Math.max(...request.ranges.map((range) => range.endLine));
+	const script = [
+		...request.ranges.map(
 			(range, index) =>
 				`NR >= ${range.startLine} && NR <= ${range.endLine} { printf "${index}\\t%d\\t%s\\n", NR, substr($0, 1, ${
 					MAX_READ_LINE_CHARS + 1
 				}) }`,
-		)
-		.join(' ');
+		),
+		// Stop scanning once all requested ranges are behind us.
+		`NR > ${maxEndLine} { exit }`,
+	].join(' ');
 
 	return `awk ${quoteShellArg(script)} ${quoteShellArg(`./${file}`)}`;
 }

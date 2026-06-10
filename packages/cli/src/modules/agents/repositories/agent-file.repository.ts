@@ -12,7 +12,9 @@ export class AgentFileRepository extends Repository<AgentFile> {
 	async findByAgentId(agentId: string): Promise<AgentFile[]> {
 		return await this.find({
 			where: { agentId },
-			order: { createdAt: 'ASC' },
+			// Secondary id sort keeps pagination stable when batch uploads
+			// share the same createdAt timestamp.
+			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 	}
 

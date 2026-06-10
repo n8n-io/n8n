@@ -443,7 +443,7 @@ describe('AgentKnowledgeSandboxService', () => {
 
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
 			expect.stringContaining(
-				`rg --json --fixed-strings --line-number --color=never --hidden --max-count 21 --max-columns 501 --max-columns-preview --ignore-case --context 1 -- 'hello' './notes.txt'`,
+				`rg --json --fixed-strings --line-number --color=never --hidden --sort path --max-count 21 --max-columns 501 --max-columns-preview --ignore-case --context 1 -- 'hello' './notes.txt'`,
 			),
 			undefined,
 			undefined,
@@ -522,10 +522,56 @@ describe('AgentKnowledgeSandboxService', () => {
 			300,
 		);
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining(`substr($0, 1, 2001) }' './notes.txt'`),
+			expect.stringContaining(`substr($0, 1, 2001) } NR > 3 { exit }' './notes.txt'`),
 			undefined,
 			undefined,
 			300,
 		);
+	});
+
+	it('reuses the cached sandbox across operations without re-listing', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		const service = makeService();
+
+		await service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' });
+		await service.readKnowledge('project-1', 'agent-1', userId, {
+			file: 'notes.txt',
+			ranges: [{ startLine: 1, endLine: 1 }],
+		});
+
+		expect(listMock).toHaveBeenCalledTimes(1);
+		expect(sandbox.process.executeCommand).toHaveBeenCalledTimes(2);
+	});
+
+	it('coalesces concurrent acquisitions so parallel calls do not create duplicate sandboxes', async () => {
+		mockKnowledgeFiles([makeAgentFile()]);
+		const service = makeService();
+
+		await Promise.all([
+			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
+			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'world' }),
+		]);
+
+		expect(createMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('drops the cached sandbox after a failed command and re-acquires on the next call', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockRejectedValueOnce(new Error('sandbox gone'));
+		const service = makeService();
+
+		await expect(
+			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
+		).rejects.toThrow('sandbox gone');
+
+		await expect(
+			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
+		).resolves.toMatchObject({ matches: [] });
+
+		expect(listMock).toHaveBeenCalledTimes(2);
 	});
 });
