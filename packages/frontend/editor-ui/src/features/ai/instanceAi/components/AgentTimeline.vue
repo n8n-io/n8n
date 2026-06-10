@@ -264,7 +264,10 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				:compact="props.compact"
 				:class="$style.timelineItem"
 			>
-				<InstanceAiMarkdown :content="entry.content" />
+				<InstanceAiMarkdown
+					:content="entry.content"
+					:streaming="props.agentNode.status === 'active'"
+				/>
 			</N8nText>
 
 			<!-- Tool call (skip internal tools like updateWorkingMemory) -->

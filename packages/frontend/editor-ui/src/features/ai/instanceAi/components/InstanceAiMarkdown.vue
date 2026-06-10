@@ -5,6 +5,13 @@ import { useThread } from '../instanceAi.store';
 
 const props = defineProps<{
 	content: string;
+	/**
+	 * True while the source text is still streaming in. While streaming we skip
+	 * the resource-name decoration and the post-render DOM link enhancement —
+	 * both are O(content × resources) and re-run on every token — and apply them
+	 * once the block settles. Markdown formatting still renders live.
+	 */
+	streaming?: boolean;
 }>();
 
 const thread = useThread();
@@ -184,7 +191,7 @@ function decorateResourceNames(content: string): string {
 
 const source = computed(() => ({
 	type: 'text' as const,
-	content: decorateResourceNames(rawContent.value),
+	content: props.streaming ? rawContent.value : decorateResourceNames(rawContent.value),
 }));
 
 /** Route patterns that map internal n8n URLs to resource types. */
@@ -348,6 +355,9 @@ function cleanupLinkHandlers(): void {
 
 onMounted(enhanceResourceLinks);
 onUpdated(() => {
+	// While streaming the content has no decorated resource links yet, so the
+	// DOM walk is pure overhead — defer it to the settled render.
+	if (props.streaming) return;
 	cleanupLinkHandlers();
 	enhanceResourceLinks();
 });
