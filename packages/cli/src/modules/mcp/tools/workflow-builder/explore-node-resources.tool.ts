@@ -132,9 +132,11 @@ export const createExploreNodeResourcesTool = (
 				structuredContent: { ...result },
 			};
 		} catch (error) {
+			// Send the error class name only — error.message may contain credential IDs
+			// or fragments of upstream API responses we don't want in product analytics.
 			telemetryPayload.results = {
 				success: false,
-				error: error instanceof Error ? error.message : String(error),
+				error: error instanceof Error ? error.name : 'UnknownError',
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 			throw error;

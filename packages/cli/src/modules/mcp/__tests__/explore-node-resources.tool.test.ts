@@ -174,9 +174,21 @@ describe('explore-node-resources MCP tool', () => {
 				tool_name: 'explore_node_resources',
 				results: {
 					success: false,
-					error: 'Credential cred-1 not found or not accessible',
+					error: 'Error',
 				},
 			}),
 		);
+	});
+
+	test('does not include the raw error message in telemetry', async () => {
+		nodeResourceExplorerService.exploreResources.mockRejectedValueOnce(
+			new Error('Credential cred-secret-id not found or not accessible'),
+		);
+
+		const tool = createTool();
+		await expect(tool.handler(baseInput, {} as never)).rejects.toThrow();
+
+		const payload = telemetry.track.mock.calls[0][1] as { results: { error: string } };
+		expect(payload.results.error).not.toContain('cred-secret-id');
 	});
 });
