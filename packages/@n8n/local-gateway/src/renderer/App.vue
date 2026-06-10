@@ -1,13 +1,19 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 
 import AppHeader from './components/AppHeader.vue';
 import HomeView from './views/HomeView.vue';
+import SettingsView from './views/SettingsView.vue';
 import SignInView from './views/SignInView.vue';
 
 import type { AuthStatus } from '../shared/types';
 
-const auth = ref<AuthStatus>({ state: 'signedOut', instanceUrl: null, error: null });
+const auth = ref<AuthStatus>({
+	state: 'signedOut',
+	instanceUrl: null,
+	lastInstanceUrl: null,
+	error: null,
+});
 
 onMounted(async () => {
 	// Subscribe before fetching the initial status so a transition emitted while we await can't slip
@@ -20,13 +26,27 @@ onMounted(async () => {
 	const initial = await window.electronAPI.getAuthStatus();
 	if (!receivedEvent) auth.value = initial;
 });
+
+const showSettings = ref(false);
+
+// Leaving the signed-in state (sign-out, token expiry) always lands on the sign-in
+// view; reset so settings isn't unexpectedly open again after the next sign-in.
+watch(
+	() => auth.value.state,
+	(state) => {
+		if (state !== 'signedIn') showSettings.value = false;
+	},
+);
 </script>
 
 <template>
 	<div :class="$style.app">
-		<AppHeader :state="auth.state" />
+		<AppHeader :state="auth.state" @open-settings="showSettings = !showSettings" />
 		<div :class="$style.content">
-			<HomeView v-if="auth.state === 'signedIn'" />
+			<template v-if="auth.state === 'signedIn'">
+				<SettingsView v-if="showSettings" :status="auth" @close="showSettings = false" />
+				<HomeView v-else />
+			</template>
 			<SignInView v-else :status="auth" />
 		</div>
 	</div>

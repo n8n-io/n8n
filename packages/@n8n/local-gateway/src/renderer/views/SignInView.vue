@@ -1,17 +1,32 @@
 <script setup lang="ts">
 import { N8nButton, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
+import { CLOUD_SUFFIX, toSignInPrefill } from './sign-in-prefill';
 import type { AuthStatus } from '../../shared/types';
 
 const props = defineProps<{ status: AuthStatus }>();
-
-const CLOUD_SUFFIX = '.app.n8n.cloud';
 
 const useCustomUrl = ref(false);
 const slug = ref('');
 const customUrl = ref('');
 const submitting = ref(false);
+
+// Prefill from the last signed-in instance. A watcher rather than initial ref values:
+// the initial auth status is fetched async, so the remembered URL can arrive after
+// mount. Never clobber anything the user has already typed.
+watch(
+	() => props.status.lastInstanceUrl,
+	(lastInstanceUrl) => {
+		if (slug.value || customUrl.value) return;
+		const prefill = toSignInPrefill(lastInstanceUrl);
+		if (!prefill) return;
+		useCustomUrl.value = prefill.kind === 'custom';
+		if (prefill.kind === 'cloud') slug.value = prefill.slug;
+		else customUrl.value = prefill.url;
+	},
+	{ immediate: true },
+);
 
 /** The fully-qualified instance URL, composed from whichever input mode is active. */
 const instanceUrl = computed(() =>

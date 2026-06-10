@@ -21,6 +21,7 @@ function makeOAuth(opts: { instanceUrl?: string | null; token?: string | null } 
 		getStatus: () => ({
 			state: 'signedIn',
 			instanceUrl: opts.instanceUrl === undefined ? 'https://n.example' : opts.instanceUrl,
+			lastInstanceUrl: null,
 			error: null,
 		}),
 		getValidAccessToken: vi.fn().mockResolvedValue(opts.token === undefined ? 'tok' : opts.token),

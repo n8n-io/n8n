@@ -7,6 +7,8 @@ import type { AuthState } from '../../shared/types';
 // connection once that is wired up.
 defineProps<{ state: AuthState }>();
 
+const emit = defineEmits<{ openSettings: [] }>();
+
 const STATUS_LABEL: Record<AuthState, string> = {
 	signedIn: 'Connected',
 	authorizing: 'Connecting…',
@@ -34,7 +36,15 @@ const STATUS_CLASS: Record<AuthState, string> = {
 				<span :class="[$style.dot, $style[STATUS_CLASS[state]]]" />
 				<N8nText size="small" color="text-light">{{ STATUS_LABEL[state] }}</N8nText>
 			</span>
-			<N8nIconButton icon="settings" variant="ghost" size="small" aria-label="Settings" />
+			<N8nIconButton
+				v-if="state === 'signedIn'"
+				icon="settings"
+				variant="ghost"
+				size="small"
+				aria-label="Settings"
+				data-testid="header-settings"
+				@click="emit('openSettings')"
+			/>
 		</div>
 	</header>
 </template>
