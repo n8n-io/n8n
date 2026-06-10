@@ -1929,7 +1929,7 @@ export interface INodeListSearchItems extends INodePropertyOptions {
 
 export interface INodeListSearchResult {
 	results: INodeListSearchItems[];
-	paginationToken?: unknown;
+	paginationToken?: string;
 }
 
 export interface INodePropertyCollection {

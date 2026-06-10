@@ -63,7 +63,7 @@ const outputSchema = {
 		)
 		.describe('Resources returned by the node method. `value` is the id to use in workflow code.'),
 	paginationToken: z
-		.unknown()
+		.string()
 		.optional()
 		.describe('Pass back as `paginationToken` to fetch the next page. Absent if no more results.'),
 	builderHint: z
