@@ -6,6 +6,7 @@ tmp
 dist
 coverage
 coverage-by-spec
+coverage-by-spec-backend
 npm-debug.log*
 yarn.lock
 google-generated-credentials.json

@@ -59,14 +59,49 @@ describe('wizardSidepanel.store', () => {
 		expect(store.isOpen).toBe(false);
 	});
 
+	it('goNext() advances through all 4 steps and stops at step 3', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(0);
+		expect(store.activeStep).toBe(0);
+		store.goNext();
+		expect(store.activeStep).toBe(1);
+		store.goNext();
+		expect(store.activeStep).toBe(2);
+		store.goNext();
+		expect(store.activeStep).toBe(3);
+		// Calling goNext at the last step is a no-op
+		store.goNext();
+		expect(store.activeStep).toBe(3);
+	});
+
+	it('goBack() retreats through all 4 steps and stops at step 0', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(3);
+		expect(store.activeStep).toBe(3);
+		store.goBack();
+		expect(store.activeStep).toBe(2);
+		store.goBack();
+		expect(store.activeStep).toBe(1);
+		store.goBack();
+		expect(store.activeStep).toBe(0);
+		// Calling goBack at the first step is a no-op
+		store.goBack();
+		expect(store.activeStep).toBe(0);
+	});
+
+	it('selectedMetricKeys defaults to correctness (pre-selected for the user)', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		expect(store.selectedMetricKeys).toEqual(['correctness']);
+	});
+
 	it('toggleMetric() adds a metric and removes it on second call', () => {
 		const store = useEvaluationsWizardSidepanelStore();
-		store.toggleMetric('correctness');
+		// Correctness is selected by default.
 		expect(store.selectedMetricKeys).toEqual(['correctness']);
 		store.toggleMetric('helpfulness');
 		expect(store.selectedMetricKeys).toEqual(['correctness', 'helpfulness']);
-		store.toggleMetric('correctness');
-		expect(store.selectedMetricKeys).toEqual(['helpfulness']);
+		store.toggleMetric('helpfulness');
+		expect(store.selectedMetricKeys).toEqual(['correctness']);
 	});
 
 	it('defaults to single-AI-node mode (slice mode off, no node picked)', () => {
@@ -131,5 +166,48 @@ describe('wizardSidepanel.store', () => {
 		store.open(0);
 		expect(store.customChecks).toEqual([]);
 		expect(store.isCustomCheckModalOpen).toBe(false);
+	});
+
+	it('reset() clears all wizard state back to defaults', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+
+		// Set some state (correctness is on by default; add another to differ from defaults)
+		store.setStep(2);
+		store.toggleMetric('toolsUsed');
+		store.setAiNodeName('AI Agent');
+		store.setInputValue('input1', 'hello');
+		store.addCustomCheck({ name: 'Check A', expression: '1 === 1' });
+		store.openCustomCheckModal();
+		store.setActiveRunId('run-99');
+		store.setLastWorkflowId('wf-1');
+
+		// Confirm state was applied
+		expect(store.activeStep).toBe(2);
+		expect(store.selectedMetricKeys).toEqual(['correctness', 'toolsUsed']);
+		expect(store.aiNodeName).toBe('AI Agent');
+		expect(store.inputs).toEqual({ input1: 'hello' });
+		expect(store.customChecks).toHaveLength(1);
+		expect(store.isCustomCheckModalOpen).toBe(true);
+		expect(store.activeRunId).toBe('run-99');
+
+		// Reset and assert all back to defaults
+		store.reset();
+
+		expect(store.activeStep).toBe(0);
+		// Reset restores the default pre-selection, not an empty list.
+		expect(store.selectedMetricKeys).toEqual(['correctness']);
+		expect(store.judgeSelectionByMetric).toEqual({});
+		expect(store.aiNodeName).toBe('');
+		expect(store.isSliceMode).toBe(false);
+		expect(store.startNodeName).toBe('');
+		expect(store.endNodeName).toBe('');
+		expect(store.inputs).toEqual({});
+		expect(store.expectedValues).toEqual({});
+		expect(store.customChecks).toEqual([]);
+		expect(store.isCustomCheckModalOpen).toBe(false);
+		expect(store.activeRunId).toBeNull();
+		// lastWorkflowId is bookkeeping that must survive reset so a remount on a
+		// different workflow can still detect the switch.
+		expect(store.lastWorkflowId).toBe('wf-1');
 	});
 });

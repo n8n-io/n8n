@@ -68,6 +68,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useNodeIconSource } from '@/app/composables/useNodeIconSource';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 
 const props = withDefaults(
 	defineProps<{
@@ -126,6 +127,7 @@ const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
+const { aiAssistant } = useEditorContext();
 
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
@@ -757,6 +759,7 @@ function handleSelectAction(params: INodeParameters) {
 				:readonly="isReadOnly"
 				:show-all="true"
 				:hide-issues="hiddenIssuesInputs.includes('credentials')"
+				:hide-ask-assistant="!aiAssistant"
 				@credential-selected="credentialSelected"
 				@value-changed="valueChanged"
 				@blur="onParameterBlur"
@@ -789,6 +792,7 @@ function handleSelectAction(params: INodeParameters) {
 						:readonly="isReadOnly"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
+						:hide-ask-assistant="!aiAssistant"
 						@credential-selected="credentialSelected"
 						@value-changed="valueChanged"
 						@blur="onParameterBlur"

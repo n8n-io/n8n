@@ -16,9 +16,11 @@ import type {
 	SetupWizardCompletedNode,
 	SetupWizardSkippedNode,
 	ToolInteraction,
+	TranscriptStep,
 	TranscriptTurn,
 } from '../types';
 import { splitEventsIntoTurns } from './event-parser';
+import { redactSecrets, redactSecretsInText } from '../harness/redact';
 import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe-extract';
 
 type ProxyResponses = Map<string, InstanceAiConfirmRequest>;
@@ -41,7 +43,7 @@ export function buildTranscriptFromEvents(opts: BuildTranscriptOptions): Transcr
 	const turns: TranscriptTurn[] = [];
 	for (const turnEvents of splitEventsIntoTurns(events)) {
 		const turn = buildTurn(turnEvents, userMessages.shift(), proxyResponses);
-		if (turn.userMessage || turn.agentText || turn.toolInteractions.length > 0) {
+		if (turn.userMessage || turn.steps.length > 0) {
 			turns.push(turn);
 		}
 	}
@@ -63,81 +65,122 @@ function buildTurn(
 	userMessage: string | undefined,
 	proxyResponses: ProxyResponses | undefined,
 ): TranscriptTurn {
-	const textChunks: string[] = [];
-	const toolInteractions: ToolInteraction[] = [];
-	const seenPlainTools = new Set<string>();
+	const steps: TranscriptStep[] = [];
+	const outcomeByCallId = collectToolOutcomes(events);
+	let textBuffer = '';
+
+	const flushText = () => {
+		if (textBuffer.length > 0) {
+			steps.push({ kind: 'agent-text', text: textBuffer });
+			textBuffer = '';
+		}
+	};
 
 	for (const event of events) {
 		if (event.type === 'text-delta') {
 			const text =
 				getString(event.data, 'text') ?? getString(getRecord(event.data, 'payload') ?? {}, 'text');
-			if (text) textChunks.push(text);
+			if (text) textBuffer += text;
 			continue;
 		}
 
+		let interaction: ToolInteraction | null = null;
+		// A tool call or confirmation is an action boundary: flush the narration
+		// before it even when the action itself doesn't render a step, so distinct
+		// thoughts never fuse across a dropped/empty interaction.
+		let isActionBoundary = false;
 		if (event.type === 'tool-call') {
-			handleToolCall(event, toolInteractions, seenPlainTools);
-			continue;
+			interaction = interpretToolCall(event, outcomeByCallId);
+			isActionBoundary = true;
+		} else if (event.type === 'tool-result') {
+			interaction = interpretToolResult(event);
+		} else if (event.type === 'confirmation-request') {
+			interaction = interpretConfirmationRequest(event, proxyResponses);
+			isActionBoundary = true;
 		}
 
-		if (event.type === 'tool-result') {
-			handleToolResult(event, toolInteractions);
-			continue;
-		}
-
-		if (event.type === 'confirmation-request') {
-			handleConfirmationRequest(event, proxyResponses, toolInteractions);
-			continue;
-		}
+		if (isActionBoundary || interaction) flushText();
+		if (interaction) steps.push(interaction);
 	}
 
-	return {
-		userMessage,
-		agentText: textChunks.join(''),
-		toolInteractions,
-	};
+	flushText();
+	return { userMessage, steps };
 }
 
-function handleToolCall(
+interface ToolOutcome {
+	result?: unknown;
+	error?: string;
+}
+
+/** Pair every tool result/error in the turn to its originating call by toolCallId. */
+function collectToolOutcomes(events: CapturedEvent[]): Map<string, ToolOutcome> {
+	const map = new Map<string, ToolOutcome>();
+	for (const event of events) {
+		if (event.type !== 'tool-result' && event.type !== 'tool-error') continue;
+		const payload = getRecord(event.data, 'payload') ?? event.data;
+		const callId = getString(payload, 'toolCallId');
+		if (!callId) continue;
+		if (event.type === 'tool-error') {
+			// Flat string, so content-scrub (key-based redaction can't reach an inline token).
+			map.set(callId, { error: redactSecretsInText(getString(payload, 'error') ?? 'tool error') });
+		} else {
+			// Redact secret-shaped keys before the result reaches the report/judge.
+			map.set(callId, { result: redactSecrets(payload.result) });
+		}
+	}
+	return map;
+}
+
+function interpretToolCall(
 	event: CapturedEvent,
-	out: ToolInteraction[],
-	seenPlainTools: Set<string>,
-): void {
+	outcomeByCallId: Map<string, ToolOutcome>,
+): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
 	const toolName = getString(payload, 'toolName') ?? '';
 	const args = getRecord(payload, 'args') ?? {};
 
 	// ask-user is rendered from the confirmation-request (which has the answers).
-	if (toolName === 'ask-user') return;
+	if (toolName === 'ask-user') return null;
 
-	if (toolName === 'plan' || toolName === 'add-plan-item') {
+	if (toolName === 'create-tasks') {
 		const tasks = Array.isArray(args.tasks) ? extractPlanTasks(args.tasks) : [];
-		if (tasks.length > 0) out.push({ kind: 'plan', tasks });
-		return;
+		if (tasks.length > 0) return { kind: 'plan', tasks };
+		// Empty plan: fall through and render as a plain tool-call so the call
+		// stays visible (1:1 with what happened) instead of vanishing.
 	}
 
-	// Plain tool-call — collapsed to one entry per tool name within the turn.
-	if (!toolName || seenPlainTools.has(toolName)) return;
-	seenPlainTools.add(toolName);
-	out.push({ kind: 'tool-call', toolName });
+	// Every named call renders — no de-duping, so repeat calls aren't dropped.
+	if (!toolName) return null;
+	const callId = getString(payload, 'toolCallId');
+	const outcome = callId ? outcomeByCallId.get(callId) : undefined;
+	// `workflows` output is rendered as the setup-wizard block — don't duplicate its result here.
+	const result = toolName === 'workflows' ? undefined : outcome?.result;
+	return {
+		kind: 'tool-call',
+		toolName,
+		toolCallId: callId,
+		args:
+			Object.keys(args).length > 0 ? (redactSecrets(args) as Record<string, unknown>) : undefined,
+		result,
+		error: outcome?.error,
+	};
 }
 
-function handleToolResult(event: CapturedEvent, out: ToolInteraction[]): void {
+function interpretToolResult(event: CapturedEvent): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? event.data;
 	const toolName = getString(payload, 'toolName') ?? '';
 	const result = payload.result;
 
 	if (toolName === 'workflows' && isRecord(result)) {
-		const interaction = extractSetupWizardOutcome(result);
-		if (interaction) out.push(interaction);
+		return extractSetupWizardOutcome(result);
 	}
+	return null;
 }
 
-function handleConfirmationRequest(
+function interpretConfirmationRequest(
 	event: CapturedEvent,
 	proxyResponses: ProxyResponses | undefined,
-	out: ToolInteraction[],
-): void {
+): ToolInteraction | null {
 	const payload = getRecord(event.data, 'payload') ?? {};
 	const requestId = getString(payload, 'requestId');
 	const response = requestId ? proxyResponses?.get(requestId) : undefined;
@@ -146,24 +189,30 @@ function handleConfirmationRequest(
 		const questions = Array.isArray(payload.questions)
 			? extractAskUserQuestions(payload.questions)
 			: [];
-		if (questions.length === 0) return;
+		if (questions.length === 0) return null;
 		const answers =
 			response?.kind === 'questions' ? extractAskUserAnswers(response.answers) : undefined;
-		out.push({ kind: 'ask-user', questions, answers });
-		return;
+		return { kind: 'ask-user', questions, answers };
 	}
 
 	// setup wizard suspend — its outcome is rendered from the tool-result instead.
-	if (Array.isArray(payload.setupRequests)) return;
+	if (Array.isArray(payload.setupRequests)) return null;
 
 	const toolName =
 		getString(payload, 'toolName') ?? getString(payload, 'agentId') ?? 'confirmation';
-	out.push({
+	return {
 		kind: 'confirmation',
 		toolName,
 		resumeReason: inferResumeReason(payload, response),
 		approved: inferApproval(response),
-	});
+		// Plan-review prompts are boilerplate and the plan is rendered separately;
+		// keep the message only for confirm types where it's specific.
+		message:
+			payload.inputType === 'plan-review'
+				? undefined
+				: (getString(payload, 'message') ?? getString(payload, 'introMessage')),
+		feedback: inferFeedback(response),
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -198,7 +247,14 @@ function inferResumeReason(
 function inferApproval(response: InstanceAiConfirmRequest | undefined): boolean | undefined {
 	if (!response) return undefined;
 	if (response.kind === 'approval') return response.approved;
+	if (response.kind === 'planDeny' || response.kind === 'domainAccessDeny') return false;
 	return true;
+}
+
+/** Free-text the user attached to their decision (e.g. plan-review feedback via userInput). */
+function inferFeedback(response: InstanceAiConfirmRequest | undefined): string | undefined {
+	if (response?.kind === 'approval' && response.userInput) return response.userInput;
+	return undefined;
 }
 
 function extractPlanTasks(raw: unknown[]): PlanTask[] {

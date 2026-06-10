@@ -73,6 +73,19 @@ const SCREENSHOT_RESULT: McpToolCallResult = {
 	],
 };
 
+const PDF_RESULT: McpToolCallResult = {
+	content: [
+		{
+			type: 'resource',
+			resource: {
+				uri: 'file:///doc.pdf',
+				mimeType: 'application/pdf',
+				blob: 'base64-pdf',
+			},
+		},
+	],
+};
+
 const GENERIC_ERROR_RESULT: McpToolCallResult = {
 	content: [{ type: 'text', text: 'Permission denied' }],
 	isError: true,
@@ -275,6 +288,40 @@ describe('createToolsFromLocalMcpServer', () => {
 					{ type: 'text', text: 'current browser screenshot' },
 					{ type: 'image-data', data: 'base64-screenshot', mediaType: 'image/png' },
 				],
+			});
+		});
+
+		it('returns a native file part from toMessage for gateway resource results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+
+			expect(tool?.toMessage?.(PDF_RESULT)).toEqual({
+				role: 'assistant',
+				content: [{ type: 'file', data: 'base64-pdf', mediaType: 'application/pdf' }],
+			});
+		});
+
+		it('falls back to application/octet-stream when resource has no mimeType', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+
+			const result: McpToolCallResult = {
+				content: [{ type: 'resource', resource: { uri: 'file:///x', blob: 'base64-bytes' } }],
+			};
+
+			expect(tool?.toMessage?.(result)).toEqual({
+				role: 'assistant',
+				content: [{ type: 'file', data: 'base64-bytes', mediaType: 'application/octet-stream' }],
+			});
+		});
+
+		it('returns AI SDK content output for gateway resource results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+
+			expect(tool?.toModelOutput?.(PDF_RESULT)).toEqual({
+				type: 'content',
+				value: [{ type: 'file-data', data: 'base64-pdf', mediaType: 'application/pdf' }],
 			});
 		});
 	});

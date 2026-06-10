@@ -24,6 +24,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
@@ -93,6 +94,7 @@ export function useNodeExecution(
 	const toast = useToast();
 	const message = useMessage();
 	const externalHooks = useExternalHooks();
+	const { askAi } = useEditorContext();
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -291,6 +293,7 @@ export function useNodeExecution(
 				workflowDocumentStore.value.documentId,
 				ndvStore.value.activeNode,
 				ndvStore.value.pushRef,
+				askAi.value,
 				5,
 			);
 

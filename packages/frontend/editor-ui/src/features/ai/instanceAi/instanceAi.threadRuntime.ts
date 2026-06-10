@@ -32,6 +32,7 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceAi.reducer';
+import { getLatestBuildResult } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
 
@@ -236,7 +237,11 @@ export type ThreadRuntime = ReturnType<typeof createThreadRuntime>;
  * Owns state for exactly one thread: messages, SSE, reducer state, hydration,
  * feedback and resource registries.
  */
-export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks) {
+export function createThreadRuntime(
+	threadId: string,
+	hooks: ThreadRuntimeHooks,
+	initialProjectId?: string,
+) {
 	const rootStore = useRootStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const toast = useToast();
@@ -244,6 +249,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 
 	// --- Reactive state ---
 	const messages = ref<InstanceAiMessage[]>([]);
+	const projectId = ref<string | undefined>(initialProjectId);
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
@@ -291,6 +297,44 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 	/** The latest task list, preferring explicit tasks-update events over tree snapshots. */
 	const currentTasks = computed(
 		() => latestTasks.value ?? findLatestTasksFromMessages(messages.value),
+	);
+
+	// --- Telemetry: 'User viewed new builder workflow' ---
+	// FE counterpart of the backend 'Builder created workflow' event, which carries
+	// no session id and so can't filter PostHog session recordings — this FE-sent
+	// event does. It fires the moment the builder produces a workflow, i.e. when the
+	// canvas preview opens: `latestBuildResult.toolCallId` changes only on a live
+	// build, so re-hydrating past messages or rebuilding the same workflow won't
+	// re-fire. Emitted once per workflow id for this runtime.
+	const latestBuildResult = computed(() => {
+		for (let i = messages.value.length - 1; i >= 0; i--) {
+			const tree = messages.value[i].agentTree;
+			if (tree) {
+				const result = getLatestBuildResult(tree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+	const reportedBuiltWorkflowIds = new Set<string>();
+
+	watch(
+		() => latestBuildResult.value?.toolCallId,
+		(toolCallId) => {
+			// `flush: 'sync'` mirrors useCanvasPreview: hydration assigns messages and
+			// flips hydrationStatus to 'ready' within the same tick, so only a
+			// synchronous callback still sees the hydrating flag and skips past builds.
+			if (!toolCallId || isHydratingThread.value) return;
+			const workflowId = latestBuildResult.value?.workflowId;
+			if (!workflowId || reportedBuiltWorkflowIds.has(workflowId)) return;
+			reportedBuiltWorkflowIds.add(workflowId);
+			telemetry.track('User viewed new builder workflow', {
+				thread_id: threadId,
+				instance_id: rootStore.instanceId,
+				workflow_id: workflowId,
+			});
+		},
+		{ flush: 'sync' },
 	);
 
 	/**
@@ -687,6 +731,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 				if (result.nextEventId !== null && result.nextEventId !== undefined) {
 					lastEventId.value = result.nextEventId - 1;
 				}
+				if (result.projectId) projectId.value = result.projectId;
 				return 'applied';
 			} catch {
 				// Silently ignore — messages will appear if SSE delivers them.
@@ -946,6 +991,7 @@ export function createThreadRuntime(threadId: string, hooks: ThreadRuntimeHooks)
 
 		// state refs
 		messages,
+		projectId,
 		activeRunId,
 		archivedWorkflowIds,
 		latestTasks,

@@ -2,7 +2,10 @@
 import { computed, onBeforeUnmount, provide, useTemplateRef } from 'vue';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
-import { EditorExternalReadOnlyKey } from '@/app/constants/injectionKeys';
+import {
+	EditorEnabledFeaturesKey,
+	type EditorEnabledFeatures,
+} from '@/app/constants/injectionKeys';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -162,11 +165,17 @@ const isAgentEditingThisWorkflow = computed(() => {
 	return false;
 });
 
-// Surface the signal to NodeView as an external read-only source. NodeView's
-// own isCanvasReadOnly check ORs this in alongside its existing signals
-// (permissions, archive, collab, etc.), so the canvas + chrome use their
-// native read-only rendering instead of a separate overlay.
-provide(EditorExternalReadOnlyKey, isAgentEditingThisWorkflow);
+// Per-editor host overrides for the embedded editor. Instance AI supersedes the
+// standalone AI helpers (`false`), and forces the canvas read-only while a
+// workflow-builder agent is mutating this workflow. NodeView derives its
+// read-only state from these via useEditorContext().
+const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
+	aiAssistant: false,
+	aiBuilder: false,
+	askAi: false,
+	readOnly: isAgentEditingThisWorkflow.value,
+}));
+provide(EditorEnabledFeaturesKey, enabledFeatures);
 </script>
 
 <template>

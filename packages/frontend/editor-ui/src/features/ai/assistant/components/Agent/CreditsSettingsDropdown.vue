@@ -3,12 +3,19 @@ import { ref, computed } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import type { ButtonSize } from '@n8n/design-system/types';
 
-const props = defineProps<{
-	creditsRemaining?: number;
-	creditsQuota?: number;
-	isLowCredits: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		creditsRemaining?: number;
+		creditsQuota?: number;
+		isLowCredits: boolean;
+		buttonSize?: ButtonSize;
+	}>(),
+	{
+		buttonSize: 'large',
+	},
+);
 
 const emit = defineEmits<{
 	'upgrade-click': [];
@@ -77,7 +84,7 @@ function onGetMoreCredits() {
 		<N8nButton
 			icon="circle-dollar-sign"
 			variant="ghost"
-			size="large"
+			:size="props.buttonSize"
 			icon-only
 			:class="{ [$style.active]: isOpen }"
 			data-test-id="credits-dropdown-button"

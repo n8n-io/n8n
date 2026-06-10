@@ -256,8 +256,8 @@ the tier ceiling here.
 | Spec file                     | Metrics emitted (per tier `S/M/L`)                                                                                                                                                                                                                              |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `canvas-load.spec.ts`         | `canvas-cold-load-{tier}-ms`, `canvas-server-heap-{tier}-mb`, `canvas-server-rss-{tier}-mb`, `canvas-browser-heap-{tier}-mb`, `canvas-dom-nodes-{tier}`, `canvas-layout-duration-{tier}-ms`, `canvas-script-duration-{tier}-ms`                                 |
-| `canvas-interactions.spec.ts` | `canvas-zoom-frame-p95-{tier}-ms`, `canvas-pan-frame-p95-{tier}-ms`, `canvas-pan-longtask-count-{tier}`, `canvas-drag-response-{tier}-ms`, `canvas-move-multi-{tier}-ms`, `canvas-duplicate-{tier}-ms`, `canvas-ndv-open-{tier}-ms`, `canvas-tidy-up-{tier}-ms` |
-| `canvas-execution.spec.ts`    | `canvas-exec-{small,medium,heavy}-{tier}-ms`, `canvas-exec-render-{slug}-{tier}-ms`, `canvas-post-exec-{browser,server}-heap-{tier}-mb`, `canvas-exec-pin-bytes-{tier}-{slug}`                                                                                  |
+| `canvas-interactions.spec.ts` | `canvas-zoom-frame-p95-{tier}-ms`, `canvas-pan-frame-p95-{tier}-ms`, `canvas-pan-longtask-count-{tier}`, `canvas-drag-response-{tier}-ms`, `canvas-move-multi-{tier}-ms`, `canvas-duplicate-{tier}-ms`, `canvas-ndv-open-{tier}-ms`, `canvas-tidy-up-{tier}-ms`, `canvas-rerender-drag-{tier}`, `canvas-rerender-move-{tier}` |
+| `canvas-execution.spec.ts`    | `canvas-exec-{small,medium,heavy}-{tier}-ms`, `canvas-exec-render-{slug}-{tier}-ms`, `canvas-rerender-exec-{slug}-{tier}`, `canvas-post-exec-{browser,server}-heap-{tier}-mb`, `canvas-exec-pin-bytes-{tier}-{slug}`                                            |
 
 Iteration count is tuned per spec to balance precision vs. budget:
 
@@ -274,6 +274,31 @@ Browser-side metrics use Chromium CDP (`Performance.getMetrics` +
 Frame stats use a RAF loop wrapped around the interaction plus
 `PerformanceObserver({ type: 'longtask' })` for main-thread blocking.
 
+#### Re-render counts
+
+`canvas-rerender-*` metrics count how many Vue component re-renders an
+interaction triggers — a complement to the wall-clock timings. Two interactions
+that take the same time can differ wildly in re-render count, and a count that
+balloons as a workflow grows is a reactivity-thrash signal (the canvas
+re-rendering far more than the change required) that timing alone hides.
+
+The count comes from a tiny, opt-in tracker in editor-ui
+(`src/app/dev/render-tracker.ts`): a global mixin whose `beforeUpdate` hook —
+which fires once per component re-render, never on the initial mount —
+increments a counter exposed on `window.n8nRenderTracker`. It is gated
+behind the `N8N_RENDER_TRACKING` localStorage flag and installs **nothing**
+unless the flag is set, so it carries no cost for real users and none for the
+other benchmark specs.
+
+The `render-stats.ts` helper drives it: `enableRenderTracking(page)` sets the
+flag via `addInitScript` **before** the first navigation (so the mixin is
+installed on boot), then `startRenderTracking` / `readRenderStats` bracket the
+measured action. Counting only happens inside that window, so the frame-stat
+measurements (pan / zoom) aren't charged for it. `total` is the headline metric
+(robust regardless of production name-mangling); the per-component breakdown
+(top re-renderers after the heavy-concentrated execution) is logged in the
+execution report for diagnosis.
+
 ### Storage and regression detection
 
 - **Trend dashboards**: `attachMetric` routes to Currents.dev project `O9BJaN`
@@ -282,10 +307,15 @@ Frame stats use a RAF loop wrapped around the interaction plus
   14-day rolling baseline (same channel as `memory-heap-used-baseline`).
 - **Catastrophic sentinel**: `scripts/canvas-perf-sentinels.mjs` runs after
   the nightly job, parses `test-results.json`, and fails the job on hard
-  breaches (cold load > 30s at M, pan p95 > 100ms, etc.). Thresholds live at
-  the top of the script and are intentionally loose — wall-clock variance
-  in browser e2e is 15–30%, so soft regressions are caught by trends, not
-  gates.
+  breaches (cold load > 30s at M, pan p95 > 100ms, re-renders > 7k on the S
+  heavy execution, etc.). Thresholds live at the top of the script and are
+  intentionally loose — wall-clock variance in browser e2e is 15–30%, so soft
+  regressions are caught by trends, not gates. The `canvas-rerender-*` gate is
+  the exception: re-render counts are near-deterministic (driven by graph
+  structure, not wall-clock), so its threshold sits ~2× the observed baseline
+  rather than the ~10× the timing gates allow — only a reactivity loop / runaway
+  re-render trips it. It's gated at S because that's the tier with a measured
+  baseline and the one that always runs; add M/L once those are baselined.
 
 ### When it runs
 

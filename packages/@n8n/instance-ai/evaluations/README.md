@@ -52,7 +52,8 @@ You need an n8n instance running with Instance AI enabled, a seeded owner accoun
 
 1. **Create `.env.local`** at the repo root with at minimum:
    ```env
-   N8N_INSTANCE_AI_MODEL_API_KEY=sk-ant-...
+   N8N_INSTANCE_AI_MODEL=openai/gpt-5.5
+   OPENAI_API_KEY=sk-proj-...
    N8N_EVAL_EMAIL=nathan@n8n.io
    N8N_EVAL_PASSWORD=PlaywrightTest123
    # Optional — see "Environment variables" for the full list
@@ -132,6 +133,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--exclude` | — | Skip test cases whose filename matches any of the substrings. Same comma-separated shape as `--filter`; applied after `--filter` |
 | `--prebuilt-workflows` | — | Path to a JSON manifest mapping test-case slugs to existing workflow IDs. Skips the orchestrator build for matched test cases — see [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows) |
 | `--keep-workflows` | `false` | Don't delete built workflows after the run. Pair with the HTML report's "view in n8n" links to inspect each scenario's canvas execution |
+| `--delete-prebuilt-workflows` | `false` | With `--prebuilt-workflows`, delete successfully used manifest workflows after the eval run. Mutually exclusive with `--keep-workflows` |
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
@@ -164,7 +166,7 @@ Every run produces:
 
 - **Console** — live progress, per-scenario pass/fail with `[failure_category]` tag, and a grouped summary.
 - **`eval-results.json`** — structured results in `--output-dir` (or cwd). Consumed by the CI PR comment.
-- **`.data/workflow-eval-report.html`** — self-contained debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
+- **`.data/workflow-eval-report.html`** — self-contained debugging view with a green/red stage review for prompt, planner, builder, and verifier behavior, generalized prompt-improvement suggestions for failures, per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
 - **LangSmith experiment** — only when `LANGSMITH_API_KEY` is set. See the caveat in [Environment variables](#environment-variables).
 
 ### Workflow checks (per built workflow)
@@ -195,11 +197,42 @@ Operational details:
 - Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
 - LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
 
+### Build expectations (per test case)
+
+A test case can declare optional natural-language assertions about *how the build went* — `buildExpectations: string[]` in its JSON. Each is graded by a separate Sonnet judge (`build-expectations/verifier.ts`) against the **conversation transcript + final workflow + conversation metrics**, and is **informational only** — it never affects `scenario_pass`, pass@k, or the score badge.
+
+Use it for things the binary checks and `successCriteria` don't cover:
+
+- **Process / conversational** — `"Before building, the agent asked which Slack channel to use."` (judged from the transcript)
+- **Outcome tied to the conversation** — `"The final workflow reflects the user's follow-up to split the records envelope before posting."` (judged from the workflow)
+
+```json
+"buildExpectations": [
+  "Before building, the agent asked which Airtable table and which Slack channel to use.",
+  "The agent honored the user's instruction to fetch via an HTTP Request node, not the Airtable node."
+]
+```
+
+The signal surfaces in:
+
+- **HTML report** — a "Build expectations" disclosure on the test case: per-expectation &#10003;/&#10007; with a one-line judge reason.
+- **`eval-results.json`** — `buildExpectationResultsPerRun` (per-iteration verdicts), so pass rates are queryable.
+
+Operational details:
+
+- Judged **once per build** (not per scenario), fired concurrently with the scenario batch — ~0 added wall-clock in the common case.
+- Runs on both eval paths (direct loop + LangSmith). Requires a build transcript, so it's judged even when the build fails, and skipped only when no transcript was captured.
+- The judge never affects scoring, retries on failure, has a per-attempt timeout, and falls back to an all-fail verdict — a judge failure can't break a run.
+- Absent the field, it's a complete no-op.
+
 ## Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `N8N_INSTANCE_AI_MODEL_API_KEY` | Yes | Anthropic API key for the agent, mock generation, and verification |
+| `N8N_INSTANCE_AI_MODEL` | Yes | Model used by Instance AI and, by default, the eval helper calls for mock generation and verification |
+| `N8N_INSTANCE_AI_MODEL_API_KEY` | No | Generic eval-model API key override |
+| `OPENAI_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `openai/` |
+| `ANTHROPIC_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `anthropic/` |
 | `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
 | `N8N_EVAL_PASSWORD` | No | n8n login password (defaults to E2E test owner) |
 | `LANGSMITH_API_KEY` | No | Enables experiment tracking + tracing. **See caveat below.** |
@@ -279,7 +312,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
   --experiment-name mcp-cohort
 ```
 
-The harness leaves prebuilt workflows alone after the run (no auto-delete), so the manifest can be re-used across multiple eval runs.
+The harness leaves prebuilt workflows alone after the run (no auto-delete), so the manifest can be re-used across multiple eval runs. If the workflows were created only for this eval cohort, pass `--delete-prebuilt-workflows` with `--prebuilt-workflows` to delete every successfully used manifest workflow once after the run. This is destructive: the manifest will still contain the deleted IDs and should not be re-used afterward.
 
 ### Producing a manifest
 
@@ -321,8 +354,8 @@ pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fai
 
 Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
-and `data-tables(action="list")`, and verify there are no planner,
-workflow-builder, or delegate sub-agent entries in the spawned-agent section.
+and `data-tables(action="list")`, and verify there are no planning,
+workflow-builder, or delegate entries in the spawned-agent section.
 
 ## Pairwise evals
 
@@ -420,7 +453,7 @@ The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
 - `askUserCount` — `ask-user` tool was invoked (eval responds with `{ approved: false }`)
-- `planToolCount` — `plan` tool was invoked (single-prompt dataset shouldn't trigger planning)
+- `planToolCount` — `create-tasks` was invoked (single-prompt dataset shouldn't trigger planning)
 - `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data-tables` create); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 

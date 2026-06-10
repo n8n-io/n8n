@@ -3136,6 +3136,115 @@ describe('Validation', () => {
 		});
 	});
 
+	describe('SWITCH_NO_OUTPUT_CONNECTIONS validation', () => {
+		const switchRules = {
+			values: [
+				{
+					outputKey: 'High',
+					conditions: {
+						options: { caseSensitive: false, leftValue: '', typeValidation: 'strict' },
+						conditions: [
+							{
+								leftValue: '={{ $json.level }}',
+								rightValue: 'High',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+						combinator: 'and',
+					},
+				},
+				{
+					outputKey: 'Low',
+					conditions: {
+						options: { caseSensitive: false, leftValue: '', typeValidation: 'strict' },
+						conditions: [
+							{
+								leftValue: '={{ $json.level }}',
+								rightValue: 'Low',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+						combinator: 'and',
+					},
+				},
+			],
+		};
+
+		function createTerminalSwitchWorkflow(connectOutput = false): WorkflowJSON {
+			return {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Incoming Notification',
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 2.1,
+						position: [0, 0],
+						parameters: { path: 'notifications', httpMethod: 'POST' },
+					},
+					{
+						id: 'switch-1',
+						name: 'Route by Urgency',
+						type: 'n8n-nodes-base.switch',
+						typeVersion: 3.4,
+						position: [200, 0],
+						parameters: {
+							mode: 'rules',
+							rules: switchRules,
+						},
+					},
+					...(connectOutput
+						? [
+								{
+									id: 'action-1',
+									name: 'Handle High',
+									type: 'n8n-nodes-base.noOp',
+									typeVersion: 1,
+									position: [400, 0] as [number, number],
+									parameters: {},
+								},
+							]
+						: []),
+				],
+				connections: {
+					'Incoming Notification': {
+						main: [[{ node: 'Route by Urgency', type: 'main', index: 0 }]],
+					},
+					...(connectOutput
+						? {
+								'Route by Urgency': {
+									main: [[{ node: 'Handle High', type: 'main', index: 0 }]],
+								},
+							}
+						: {}),
+				},
+			};
+		}
+
+		function getTerminalSwitchWarnings(workflowJson: WorkflowJSON) {
+			return validateWorkflow(workflowJson).warnings.filter(
+				(w) => w.code === 'SWITCH_NO_OUTPUT_CONNECTIONS',
+			);
+		}
+
+		it('warns when a Switch node has no outgoing branch connections', () => {
+			const warnings = getTerminalSwitchWarnings(createTerminalSwitchWorkflow());
+
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Route by Urgency');
+			expect(warnings[0].parameterPath).toBe('connections');
+			expect(warnings[0].message).toContain('has no outgoing connections');
+			expect(warnings[0].violationLevel).toBe('major');
+		});
+
+		it('does not warn when at least one Switch output is connected', () => {
+			const warnings = getTerminalSwitchWarnings(createTerminalSwitchWorkflow(true));
+
+			expect(warnings).toHaveLength(0);
+		});
+	});
+
 	describe('validatePlaceholderSlots (builderHint.placeholderSupported=false)', () => {
 		const mockNodeTypesProviderWithPlaceholderOptOut = {
 			getByNameAndVersion: (_type: string, _version?: number) => ({

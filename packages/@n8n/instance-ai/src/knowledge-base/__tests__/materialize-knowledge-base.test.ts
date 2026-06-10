@@ -49,8 +49,8 @@ function createSandboxWorkspace(files: Map<string, string>): {
 }
 
 describe('buildKnowledgeBaseWorkspaceBundle', () => {
-	it('builds best-practice markdown files, section indexes, root index, and manifest v4', () => {
-		const bundle = buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
+	it('builds best-practice markdown files, section indexes, root index, and manifest v4', async () => {
+		const bundle = await buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
 
 		expect(bundle.rootDir).toBe(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}`);
 		expect(
@@ -87,27 +87,58 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			),
 		).toBe(true);
 
+		expect(
+			bundle.files.get(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/trigger-input-data-shapes.md`,
+			),
+		).toContain('# Per-trigger `inputData` shape');
+		expect(
+			bundle.files.get(
+				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-builder-guardrails.md`,
+			),
+		).toContain('# Workflow Builder Guardrails');
+
+		expect(
+			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`),
+		).toContain('# Workflow SDK language reference');
+
 		const rootIndex = jsonParse<{
 			bestPractices: { indexFile: string; entries: Array<{ id: string }> };
 			templates: { indexFile: string; entries: unknown[] };
+			reference: { indexFile: string; entries: Array<{ id: string; file: string }> };
 		}>(
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`) ?? '',
 		);
 		expect(rootIndex.bestPractices.indexFile).toBe('best-practices/index.json');
 		expect(rootIndex.templates.indexFile).toBe('templates/index.json');
+		expect(rootIndex.reference.indexFile).toBe('reference/index.json');
 		expect(rootIndex.templates.entries).toEqual([]);
+		expect(rootIndex.reference.entries).toEqual([
+			expect.objectContaining({
+				id: 'trigger-input-data-shapes',
+				file: 'reference/trigger-input-data-shapes.md',
+			}),
+			expect.objectContaining({
+				id: 'workflow-builder-guardrails',
+				file: 'reference/workflow-builder-guardrails.md',
+			}),
+			expect.objectContaining({
+				id: 'workflow-sdk-language',
+				file: 'reference/workflow-sdk-language.md',
+			}),
+		]);
 		expect(rootIndex.bestPractices.entries.some((entry) => entry.id === 'scheduling')).toBe(true);
 		expect(bundle.indexPath).toBe(
 			`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/${KNOWLEDGE_BASE_INDEX_FILE}`,
 		);
 	});
 
-	it('materializes CDN index.txt archives as templates/index.json', () => {
+	it('materializes CDN index.txt archives as templates/index.json', async () => {
 		const archive = makeBuilderTemplatesTarGz([
 			{ name: 'index.txt', content: 'example.ts | Example template' },
 			{ name: 'example.ts', content: 'export default {};' },
 		]);
-		const bundle = buildKnowledgeBaseWorkspaceBundle({
+		const bundle = await buildKnowledgeBaseWorkspaceBundle({
 			root: ROOT,
 			templatesArchive: archive,
 		});
@@ -131,8 +162,8 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 		).toBe(false);
 	});
 
-	it('materializes templates as index.json and includes them in the root index', () => {
-		const withoutTemplates = buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
+	it('materializes templates as index.json and includes them in the root index', async () => {
+		const withoutTemplates = await buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
 		const archive = makeBuilderTemplatesTarGz([
 			{
 				name: 'index.json',
@@ -148,7 +179,7 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			},
 			{ name: 'example.ts', content: 'export default {};' },
 		]);
-		const withTemplates = buildKnowledgeBaseWorkspaceBundle({
+		const withTemplates = await buildKnowledgeBaseWorkspaceBundle({
 			root: ROOT,
 			templatesArchive: archive,
 		});
@@ -211,7 +242,7 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 	});
 
 	it('reuses prebaked knowledge base when the manifest hash matches', async () => {
-		const bundle = buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
+		const bundle = await buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
 		const files = new Map<string, string>();
 		for (const [path, content] of bundle.files) {
 			files.set(path, content);
@@ -233,7 +264,7 @@ describe('materializeKnowledgeBaseIntoWorkspace', () => {
 	});
 
 	it('rematerializes when prebaked manifest exists but payload is incomplete', async () => {
-		const bundle = buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
+		const bundle = await buildKnowledgeBaseWorkspaceBundle({ root: ROOT });
 		const files = new Map<string, string>([
 			[bundle.manifestPath, bundle.files.get(bundle.manifestPath) ?? ''],
 		]);
