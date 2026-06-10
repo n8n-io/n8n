@@ -1,0 +1,45 @@
+import type { User } from '@n8n/db';
+import { Service } from '@n8n/di';
+import type { DesktopAssistantPromptMode } from '@n8n/instance-ai';
+
+import { InstanceAiService } from '../instance-ai.service';
+
+/**
+ * The desktop assistant's single entry point into the Instance AI run engine.
+ *
+ * This facade is the ONLY place in the desktop-assistant directory that knows
+ * about `InstanceAiService.startRun` and the desktop prompt modes. Everything
+ * else (one-shot tasks, promote builds) goes through these two methods, so the
+ * coupling surface to the orchestrator stays one file wide.
+ */
+@Service()
+export class DesktopAssistantRunner {
+	constructor(private readonly instanceAiService: InstanceAiService) {}
+
+	/** Kick off a one-shot "do it now" task run on a (fresh) desktop thread. */
+	startOneShotTask(user: User, threadId: string, message: string): string {
+		return this.startRun(user, threadId, message, 'desktop-assistant-one-shot');
+	}
+
+	/** Kick off a promote run that compiles an executed task into a workflow. */
+	startPromoteBuild(user: User, threadId: string, message: string): string {
+		return this.startRun(user, threadId, message, 'desktop-assistant-promote');
+	}
+
+	private startRun(
+		user: User,
+		threadId: string,
+		message: string,
+		promptMode: DesktopAssistantPromptMode,
+	): string {
+		return this.instanceAiService.startRun(
+			user,
+			threadId,
+			message,
+			undefined,
+			undefined,
+			undefined,
+			{ promptMode },
+		);
+	}
+}

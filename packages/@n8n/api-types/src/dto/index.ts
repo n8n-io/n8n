@@ -55,6 +55,13 @@ export {
 	type DesktopAssistantHistoryEntry,
 	type DesktopAssistantHistoryResponse,
 } from './desktop-assistant/desktop-assistant-history-response.dto';
+export {
+	DesktopAssistantTaskRunQueryDto,
+	type DesktopAssistantTaskRunQuery,
+	type DesktopAssistantTaskOutcome,
+	type DesktopAssistantTaskRunStatus,
+	type DesktopAssistantTaskRunEvent,
+} from './desktop-assistant/desktop-assistant-task-run.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
 export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';

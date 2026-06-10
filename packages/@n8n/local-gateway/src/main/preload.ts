@@ -2,12 +2,15 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 import type {
 	AppSettings,
+	AssistantRunResult,
 	AuthStatus,
+	CreateAssistantTaskResult,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
 	ElectronApi,
+	PromoteAssistantThreadResult,
 	RunTaskResult,
 	StatusSnapshot,
 } from '../shared/types';
@@ -52,6 +55,26 @@ const electronApi: ElectronApi = {
 
 	runTask: async (workflowId: string): Promise<RunTaskResult> =>
 		await (ipcRenderer.invoke('tasks:run', workflowId) as Promise<RunTaskResult>),
+
+	createAssistantTask: async (prompt: string, appHint?: string): Promise<CreateAssistantTaskResult> =>
+		await (ipcRenderer.invoke(
+			'assistant:createTask',
+			prompt,
+			appHint,
+		) as Promise<CreateAssistantTaskResult>),
+
+	waitForAssistantRun: async (threadId: string, runId: string): Promise<AssistantRunResult> =>
+		await (ipcRenderer.invoke('assistant:waitForRun', threadId, runId) as Promise<AssistantRunResult>),
+
+	promoteAssistantThread: async (
+		threadId: string,
+		name?: string,
+	): Promise<PromoteAssistantThreadResult> =>
+		await (ipcRenderer.invoke(
+			'assistant:promote',
+			threadId,
+			name,
+		) as Promise<PromoteAssistantThreadResult>),
 
 	openWorkflow: async (workflowId: string): Promise<void> => {
 		await ipcRenderer.invoke('tasks:openWorkflow', workflowId);

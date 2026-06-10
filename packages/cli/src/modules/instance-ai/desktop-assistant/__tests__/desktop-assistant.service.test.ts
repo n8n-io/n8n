@@ -21,14 +21,14 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { DESKTOP_ASSISTANT_TAG } from '../constants';
+import type { DesktopAssistantRunner } from '../desktop-assistant-runner';
 import { DesktopAssistantService } from '../desktop-assistant.service';
 import type { InProcessEventBus } from '../../event-bus/in-process-event-bus';
 import type { InstanceAiMemoryService } from '../../instance-ai-memory.service';
-import type { InstanceAiService } from '../../instance-ai.service';
 
 function makeService() {
 	const logger = mock<Logger>();
-	const instanceAiService = mock<InstanceAiService>();
+	const runner = mock<DesktopAssistantRunner>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const eventBus = mock<InProcessEventBus>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -47,7 +47,7 @@ function makeService() {
 
 	const service = new DesktopAssistantService(
 		logger,
-		instanceAiService,
+		runner,
 		memoryService,
 		eventBus,
 		workflowRepository,
@@ -66,7 +66,7 @@ function makeService() {
 	return {
 		service,
 		logger,
-		instanceAiService,
+		runner,
 		memoryService,
 		eventBus,
 		workflowRepository,
@@ -105,15 +105,18 @@ describe('DesktopAssistantService.triggerTask', () => {
 			},
 			created: true,
 		});
-		ctx.instanceAiService.startRun.mockReturnValue('run-123');
+		ctx.runner.startOneShotTask.mockReturnValue('run-123');
 
 		const result = await ctx.service.triggerTask(USER, { prompt: 'rename desktop files' });
 
 		expect(ctx.memoryService.ensureThread).toHaveBeenCalledTimes(1);
-		const [calledUser, , message, , , , options] = ctx.instanceAiService.startRun.mock.calls[0];
+		// The thread is marked as desktop-originated at creation so the chat UI
+		// can hide it from its thread list.
+		const [, , , threadMetadata] = ctx.memoryService.ensureThread.mock.calls[0];
+		expect(threadMetadata).toEqual({ source: 'desktop-assistant' });
+		const [calledUser, , message] = ctx.runner.startOneShotTask.mock.calls[0];
 		expect(calledUser).toBe(USER);
 		expect(message).toContain('rename desktop files');
-		expect(options).toEqual({ promptMode: 'desktop-assistant-one-shot' });
 		expect(result).toMatchObject({ runId: 'run-123' });
 		expect(result.threadId).toBeDefined();
 	});
@@ -143,7 +146,7 @@ describe('DesktopAssistantService.promoteThread', () => {
 		const result = await ctx.service.promoteThread(USER, body);
 
 		expect(result).toEqual({ status: 'done', threadId: 't-1', workflowId: 'wf-99' });
-		expect(ctx.instanceAiService.startRun).not.toHaveBeenCalled();
+		expect(ctx.runner.startPromoteBuild).not.toHaveBeenCalled();
 	});
 
 	test('first call: returns { status: building, runId } and subscribes to the bus', async () => {
@@ -162,18 +165,17 @@ describe('DesktopAssistantService.promoteThread', () => {
 				},
 			],
 		});
-		ctx.instanceAiService.startRun.mockReturnValue('run-promote');
+		ctx.runner.startPromoteBuild.mockReturnValue('run-promote');
 		const unsubscribe = jest.fn();
 		ctx.eventBus.subscribe.mockReturnValue(unsubscribe);
 
 		const result = await ctx.service.promoteThread(USER, { threadId: 't-1', name: 'Banana' });
 
 		expect(ctx.eventBus.subscribe).toHaveBeenCalledWith('t-1', expect.any(Function));
-		expect(ctx.instanceAiService.startRun).toHaveBeenCalled();
-		const [, , message, , , , options] = ctx.instanceAiService.startRun.mock.calls[0];
+		expect(ctx.runner.startPromoteBuild).toHaveBeenCalled();
+		const [, , message] = ctx.runner.startPromoteBuild.mock.calls[0];
 		expect(message).toContain('Banana');
 		expect(message).toContain('rename desktop files');
-		expect(options).toEqual({ promptMode: 'desktop-assistant-promote' });
 		expect(result).toEqual({ status: 'building', threadId: 't-1', runId: 'run-promote' });
 	});
 
@@ -193,7 +195,7 @@ describe('DesktopAssistantService.promoteThread', () => {
 				},
 			],
 		});
-		ctx.instanceAiService.startRun.mockReturnValue('run-promote');
+		ctx.runner.startPromoteBuild.mockReturnValue('run-promote');
 		ctx.tagRepository.findOne.mockResolvedValue(null);
 		ctx.tagRepository.create.mockReturnValue({ name: DESKTOP_ASSISTANT_TAG } as never);
 		ctx.tagRepository.save.mockResolvedValue({
@@ -289,7 +291,7 @@ describe('DesktopAssistantService.promoteThread', () => {
 				},
 			],
 		});
-		ctx.instanceAiService.startRun.mockReturnValue('run-promote');
+		ctx.runner.startPromoteBuild.mockReturnValue('run-promote');
 		ctx.tagRepository.findOne.mockResolvedValue(null);
 		ctx.tagRepository.create.mockReturnValue({ name: DESKTOP_ASSISTANT_TAG } as never);
 		ctx.tagRepository.save.mockResolvedValue({
@@ -345,7 +347,7 @@ describe('DesktopAssistantService.promoteThread', () => {
 				},
 			],
 		});
-		ctx.instanceAiService.startRun.mockReturnValue('run-promote');
+		ctx.runner.startPromoteBuild.mockReturnValue('run-promote');
 
 		let handler: ((e: StoredEvent) => void) | undefined;
 		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
@@ -387,7 +389,7 @@ describe('DesktopAssistantService.promoteThread', () => {
 				},
 			],
 		});
-		ctx.instanceAiService.startRun.mockReturnValue('run-promote');
+		ctx.runner.startPromoteBuild.mockReturnValue('run-promote');
 
 		let handler: ((e: StoredEvent) => void) | undefined;
 		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {

@@ -1,5 +1,6 @@
 import { Agent, Memory } from '@n8n/agents';
 
+import { getDesktopAssistantProfile } from './desktop-assistant-profile';
 import {
 	addSafeMcpTools,
 	createClaimedToolNames,
@@ -8,7 +9,12 @@ import {
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { getSystemPrompt } from './system-prompt';
 import { hasRuntimeSkills } from '../skills/runtime-skills';
-import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
+import {
+	createToolRegistry,
+	createToolRegistryFromTools,
+	mergeToolRegistries,
+	toolRegistryValues,
+} from '../tool-registry';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
@@ -76,8 +82,17 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
+	// Desktop-assistant runs add profile-specific tools (e.g. the outcome report).
+	const desktopProfileTools = createToolRegistryFromTools(
+		getDesktopAssistantProfile(options.promptMode, orchestrationContext).extraTools,
+	);
+
 	// Keep MCP tools from shadowing domain or orchestration tools during object composition.
-	const reservedToolNames = new Set([...domainTools.keys(), ...orchestrationTools.keys()]);
+	const reservedToolNames = new Set([
+		...domainTools.keys(),
+		...orchestrationTools.keys(),
+		...desktopProfileTools.keys(),
+	]);
 
 	// Store all MCP tools on orchestrationContext for sub-agents.
 	const allMcpTools = createToolRegistry();
@@ -113,6 +128,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const allOrchestratorTools = mergeToolRegistries(
 		orchestratorDomainTools,
 		orchestrationTools,
+		desktopProfileTools,
 		safeLocalMcpTools,
 		safeMcpTools,
 	);

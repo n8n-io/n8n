@@ -23,14 +23,15 @@ export function composeOneShotMessage(body: DesktopAssistantTaskRequest): string
 	return lines.join('\n');
 }
 
-/** Compose the promote-thread message: grounds the build on the original
- *  prompt and nudges the model to pick a short, emoji-led workflow name. */
+/** Compose the promote-thread message: asks the model to compile the task it
+ *  already executed in this thread into a repeatable workflow, and nudges it
+ *  to pick a short, emoji-led workflow name. */
 export function composePromoteMessage(originalPrompt: string, name: string | undefined): string {
 	const trimmedName = name?.trim();
-	const intro = trimmedName
-		? `Promote this idea into a real workflow. Use the name "${trimmedName}" (prepend a fitting emoji if it does not already start with one):`
-		: 'Promote this idea into a real workflow. Pick a short descriptive name for it as part of the build, and start that name with a single emoji that captures what the workflow does:';
-	return `${intro}\n\n${originalPrompt}`;
+	const naming = trimmedName
+		? `Use the name "${trimmedName}" (prepend a fitting emoji if it does not already start with one).`
+		: 'Pick a short descriptive name for it as part of the build, and start that name with a single emoji that captures what the workflow does.';
+	return `Compile the task you already executed in this thread into a repeatable workflow that mirrors what was actually done. ${naming} The original request:\n\n${originalPrompt}`;
 }
 
 // ── Display helpers ─────────────────────────────────────────────────────────

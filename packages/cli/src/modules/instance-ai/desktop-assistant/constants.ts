@@ -16,3 +16,13 @@ export const PROMOTED_WORKFLOW_ID_KEY = 'promotedWorkflowId';
 
 /** Reverse pointer written on the workflow's meta JSON column. */
 export const PROMOTED_FROM_THREAD_ID_KEY = 'promotedFromThreadId';
+
+/** Thread metadata key recording which surface created the thread. */
+export const THREAD_SOURCE_METADATA_KEY = 'source';
+
+/**
+ * Metadata value marking a thread as desktop-assistant-originated. Threads
+ * carrying this source are hidden from the chat UI's thread list; everything
+ * else (promote, metadata reads/updates) treats them like any other thread.
+ */
+export const DESKTOP_ASSISTANT_THREAD_SOURCE = 'desktop-assistant';

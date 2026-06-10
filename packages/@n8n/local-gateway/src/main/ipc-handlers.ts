@@ -6,11 +6,14 @@ import { InstanceApiError, type InstanceApi } from './instance-api';
 import type { OAuthFlow } from './oauth/oauth-flow';
 import type { AppSettings, SettingsStore } from './settings-store';
 import type {
+	AssistantRunResult,
 	AuthStatus,
+	CreateAssistantTaskResult,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
+	PromoteAssistantThreadResult,
 	RunTaskResult,
 } from '../shared/types';
 
@@ -111,6 +114,55 @@ export function registerIpcHandlers({
 			return { ok: false, error: message };
 		}
 	});
+
+	ipcMain.handle(
+		'assistant:createTask',
+		async (_event, prompt: string, appHint?: string): Promise<CreateAssistantTaskResult> => {
+			logger.debug('IPC assistant:createTask', { appHint });
+			try {
+				const { threadId, runId } = await instanceApi.createAssistantTask(prompt, appHint);
+				return { ok: true, threadId, runId };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.error('IPC assistant:createTask failed', { error: message });
+				return { ok: false, error: message };
+			}
+		},
+	);
+
+	ipcMain.handle(
+		'assistant:waitForRun',
+		async (_event, threadId: string, runId: string): Promise<AssistantRunResult> => {
+			logger.debug('IPC assistant:waitForRun', { threadId, runId });
+			try {
+				const { status, tookAction, outcome } = await instanceApi.waitForRunFinish(threadId, runId);
+				return { ok: status === 'success', status, tookAction, outcome };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.error('IPC assistant:waitForRun failed', { threadId, runId, error: message });
+				return { ok: false, status: 'error', tookAction: false, error: message };
+			}
+		},
+	);
+
+	ipcMain.handle(
+		'assistant:promote',
+		async (_event, threadId: string, name?: string): Promise<PromoteAssistantThreadResult> => {
+			logger.debug('IPC assistant:promote', { threadId });
+			try {
+				const result = await instanceApi.promoteThread(threadId, name);
+				return {
+					ok: true,
+					status: result.status,
+					workflowId: result.status === 'done' ? result.workflowId : undefined,
+				};
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.error('IPC assistant:promote failed', { threadId, error: message });
+				return { ok: false, error: message };
+			}
+		},
+	);
 
 	ipcMain.handle('tasks:openWorkflow', async (_event, workflowId: string): Promise<void> => {
 		logger.debug('IPC tasks:openWorkflow', { workflowId });

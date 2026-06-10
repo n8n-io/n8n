@@ -6,8 +6,7 @@ import { computed, onMounted, ref } from 'vue';
 import InlineChipPicker from '../components/InlineChipPicker.vue';
 import MinutesChip from '../components/MinutesChip.vue';
 
-import type { Plan, PlanPart } from '../assistant/planner';
-import { useAssistantScreen } from '../assistant/use-assistant-screen';
+import { useAssistantScreen, type Plan, type PlanPart } from '../assistant/use-assistant-screen';
 
 const props = defineProps<{ plan: Plan }>();
 

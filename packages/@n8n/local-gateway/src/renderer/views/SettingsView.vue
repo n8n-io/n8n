@@ -3,6 +3,7 @@ import { N8nButton, N8nHeading, N8nIconButton, N8nText } from '@n8n/design-syste
 import { ref } from 'vue';
 
 import type { AuthStatus } from '../../shared/types';
+import { signOut as apiSignOut } from '../assistant/tasks-api';
 
 defineProps<{ status: AuthStatus }>();
 
@@ -15,7 +16,7 @@ async function signOut() {
 	signingOut.value = true;
 	try {
 		// The resulting signedOut status arrives via onAuthStatusChanged and swaps the view.
-		await window.electronAPI.signOut();
+		await apiSignOut();
 	} finally {
 		signingOut.value = false;
 	}

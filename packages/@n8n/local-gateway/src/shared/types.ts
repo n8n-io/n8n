@@ -30,6 +30,7 @@ export interface ConnectPayload {
 // reused verbatim, never redefined here.
 import type {
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantTaskOutcome,
 	DesktopAssistantTasksResponse,
 } from '@n8n/api-types';
 
@@ -40,6 +41,7 @@ export type {
 	DesktopAssistantTriggerSummary,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantHistoryEntry,
+	DesktopAssistantTaskOutcome,
 } from '@n8n/api-types';
 
 /** Cursor + page-size params for the history list. */
@@ -67,6 +69,42 @@ export interface RunTaskResult {
 	error?: string;
 }
 
+/** Result of starting a one-shot assistant task run from the composer. */
+export interface CreateAssistantTaskResult {
+	ok: boolean;
+	threadId?: string;
+	runId?: string;
+	error?: string;
+}
+
+/**
+ * Final outcome of a one-shot assistant run. `timeout` means the app stopped
+ * waiting; the run may still finish on the instance. `tookAction` is false when
+ * the run ended without making any tool calls — the assistant declined the ask
+ * (ambiguous, recurring, or out of scope) and the client should hand off to the
+ * instance UI instead of claiming success. `outcome` is the agent's structured
+ * self-report (task success, title, summary) when it filed one; prefer it over
+ * the `tookAction` heuristic, and use `outcome.title` as the task label.
+ */
+export interface AssistantRunResult {
+	ok: boolean;
+	status: 'success' | 'error' | 'canceled' | 'timeout';
+	tookAction: boolean;
+	outcome?: DesktopAssistantTaskOutcome;
+	error?: string;
+}
+
+/**
+ * Result of asking the instance to promote a thread into a saved workflow.
+ * The endpoint is idempotent — poll it until `status === 'done'`.
+ */
+export interface PromoteAssistantThreadResult {
+	ok: boolean;
+	status?: 'building' | 'done';
+	workflowId?: string;
+	error?: string;
+}
+
 /**
  * The contract exposed on `window.electronAPI` by the preload bridge. This is the
  * single source of truth shared by both sides: `preload.ts` implements it, and the
@@ -85,6 +123,9 @@ export interface ElectronApi {
 	onStatusChanged: (onChangeCallback: (snapshot: StatusSnapshot) => void) => void;
 	getTasks: () => Promise<DesktopAssistantTasksResponse>;
 	runTask: (workflowId: string) => Promise<RunTaskResult>;
+	createAssistantTask: (prompt: string, appHint?: string) => Promise<CreateAssistantTaskResult>;
+	waitForAssistantRun: (threadId: string, runId: string) => Promise<AssistantRunResult>;
+	promoteAssistantThread: (threadId: string, name?: string) => Promise<PromoteAssistantThreadResult>;
 	openWorkflow: (workflowId: string) => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
 	openExecution: (workflowId: string, executionId: string) => Promise<void>;

@@ -2,6 +2,7 @@ import {
 	DesktopAssistantHistoryQueryDto,
 	DesktopAssistantPromoteRequestDto,
 	DesktopAssistantTaskRequestDto,
+	DesktopAssistantTaskRunQueryDto,
 	type DesktopAssistantHistoryResponse,
 	type DesktopAssistantPromoteResponse,
 	type DesktopAssistantTaskResponse,
@@ -10,6 +11,10 @@ import {
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Post, Query, RestController } from '@n8n/decorators';
 
+import {
+	DesktopAssistantTaskRunService,
+	type FlushableResponse,
+} from './desktop-assistant-task-run.service';
 import { DesktopAssistantService } from './desktop-assistant.service';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -28,6 +33,7 @@ import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 export class DesktopAssistantController {
 	constructor(
 		private readonly desktopAssistantService: DesktopAssistantService,
+		private readonly taskRunService: DesktopAssistantTaskRunService,
 		private readonly settingsService: InstanceAiSettingsService,
 	) {}
 
@@ -64,6 +70,18 @@ export class DesktopAssistantController {
 	): Promise<DesktopAssistantPromoteResponse> {
 		this.requireEnabled();
 		return await this.desktopAssistantService.promoteThread(req.user, body);
+	}
+
+	// usesTemplates bypasses the send() wrapper so SSE frames can be written directly
+	@Get('/task-run/events', { usesTemplates: true })
+	@GlobalScope('instanceAi:message')
+	async taskRunEvents(
+		req: AuthenticatedRequest,
+		res: FlushableResponse,
+		@Query query: DesktopAssistantTaskRunQueryDto,
+	): Promise<void> {
+		this.requireEnabled();
+		await this.taskRunService.streamRunEvents(req, res, query);
 	}
 
 	@Get('/history')

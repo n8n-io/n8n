@@ -7,26 +7,40 @@ import ContextPill from './ContextPill.vue';
 import MiniSpinner from './MiniSpinner.vue';
 
 import { ASSISTANT_CONTEXTS, suggestionChipsFor } from '../assistant/contexts';
-import { formatMinutes } from '../assistant/format';
-import { buildFallbackPlan, planTask, type Plan } from '../assistant/planner';
-import { useAssistantScreen } from '../assistant/use-assistant-screen';
+import { createAssistantTask, waitForAssistantRun } from '../assistant/tasks-api';
+import { usePendingTasks } from '../assistant/use-pending-tasks';
 
 type ComposerState = 'idle' | 'thinking' | 'doing';
 
-interface DoneCard {
-	plan: Plan;
-}
+/**
+ * The card shown above the input once a run finishes:
+ * - `done`: the assistant did the thing — offer to keep it as a saved task.
+ *   `label` is the agent's outcome title (or the truncated prompt) and doubles
+ *   as the workflow name when the task is kept.
+ * - `handoff`: the run finished but the task wasn't done (declined, ambiguous,
+ *   or failed per the agent's own outcome report) — point the user to the
+ *   instance UI; `message` is the agent's failure reason when it gave one.
+ * - `error`: the run errored, timed out, or was canceled.
+ */
+type ResultCard =
+	| { kind: 'done'; threadId: string; label: string }
+	| { kind: 'handoff'; message?: string }
+	| { kind: 'error'; message: string };
+
+const MAX_LABEL_LENGTH = 60;
 
 const i18n = useI18n();
-const { goTo } = useAssistantScreen();
+const pendingTasks = usePendingTasks();
+
+const emit = defineEmits<{ kept: [] }>();
 
 const text = ref('');
 const state = ref<ComposerState>('idle');
-const doneCard = ref<DoneCard | null>(null);
+const resultCard = ref<ResultCard | null>(null);
 const activeContextKey = ref(ASSISTANT_CONTEXTS[0].key);
 
 const inputRef = ref<HTMLInputElement | null>(null);
-const doneCardRef = ref<HTMLElement | null>(null);
+const resultCardRef = ref<HTMLElement | null>(null);
 
 const busy = computed(() => state.value === 'thinking' || state.value === 'doing');
 
@@ -36,28 +50,15 @@ const activeContext = computed(
 
 const chips = computed(() => suggestionChipsFor(activeContext.value.kind));
 
-const doneSubtitle = computed(() => {
-	if (!doneCard.value) return '';
-	const { plan } = doneCard.value;
-	return plan.timeSavedMin
-		? `${plan.title} · ${i18n.baseText('desktopAssistant.composer.savedAmount', {
-				interpolate: { amount: formatMinutes(plan.timeSavedMin) },
-			})}`
-		: plan.title;
-});
+function truncateLabel(value: string): string {
+	return value.length > MAX_LABEL_LENGTH ? `${value.slice(0, MAX_LABEL_LENGTH - 1)}…` : value;
+}
 
-const DOING_DURATION_MS = 2000;
-
-/** One-off plans never navigate — they "do" for 2s then offer the Done card. */
-function runOneOff(plan: Plan) {
-	state.value = 'doing';
-	window.setTimeout(() => {
-		state.value = 'idle';
-		doneCard.value = { plan };
-		// The card is interactive and appears far from the input, so move focus to
-		// it; the live region still announces it for screen readers.
-		void nextTick(() => doneCardRef.value?.focus());
-	}, DOING_DURATION_MS);
+function showResult(card: ResultCard) {
+	resultCard.value = card;
+	// The card is interactive and appears far from the input, so move focus to
+	// it; the live region still announces it for screen readers.
+	void nextTick(() => resultCardRef.value?.focus());
 }
 
 async function submit(prompt?: string) {
@@ -65,45 +66,73 @@ async function submit(prompt?: string) {
 	if (!value || busy.value) return;
 
 	text.value = '';
-	doneCard.value = null;
+	resultCard.value = null;
 	state.value = 'thinking';
 
 	try {
-		const plan = await planTask(value, activeContext.value.kind);
-		const isOneOff = !plan.recurring && !plan.trigger && plan.requiredConnections.length === 0;
-
-		if (plan.complex) {
-			state.value = 'idle';
-			goTo({ name: 'complex', plan });
-		} else if (isOneOff) {
-			runOneOff(plan);
-		} else {
-			state.value = 'idle';
-			goTo({ name: 'draft', plan });
+		// `appHint` is a short "what the user is looking at" string — the active
+		// context's label (e.g. "Downloads folder") is exactly that.
+		const created = await createAssistantTask(value, activeContext.value.label);
+		if (!created.ok || !created.threadId || !created.runId) {
+			showResult({
+				kind: 'error',
+				message: created.error ?? i18n.baseText('desktopAssistant.composer.errorFallback'),
+			});
+			return;
 		}
-	} catch {
-		// On planning failure, fall back to the confirmation screen with a best-effort plan.
+
+		// The run executes on the user's machine and can take minutes; the input
+		// stays disabled and the Doing pill stays up until it resolves.
+		state.value = 'doing';
+		const run = await waitForAssistantRun(created.threadId, created.runId);
+
+		// Prefer the agent's structured outcome report over the tookAction heuristic.
+		if (run.outcome?.success) {
+			showResult({ kind: 'done', threadId: created.threadId, label: run.outcome.title });
+		} else if (run.outcome) {
+			showResult({ kind: 'handoff', message: run.outcome.failureReason });
+		} else if (run.status === 'success' && run.tookAction) {
+			showResult({ kind: 'done', threadId: created.threadId, label: truncateLabel(value) });
+		} else if (run.status === 'success') {
+			showResult({ kind: 'handoff' });
+		} else {
+			showResult({
+				kind: 'error',
+				message: run.error ?? i18n.baseText('desktopAssistant.composer.errorFallback'),
+			});
+		}
+	} catch (error) {
+		showResult({
+			kind: 'error',
+			message:
+				error instanceof Error
+					? error.message
+					: i18n.baseText('desktopAssistant.composer.errorFallback'),
+		});
+	} finally {
 		state.value = 'idle';
-		goTo({ name: 'draft', plan: buildFallbackPlan(value) });
 	}
 }
 
-// Return focus to the input once the Done card goes away, so keyboard users
+// Return focus to the input once the result card goes away, so keyboard users
 // aren't stranded on the removed card.
 function returnFocusToInput() {
 	void nextTick(() => inputRef.value?.focus());
 }
 
-function saveAsReady() {
-	if (!doneCard.value) return;
-	// TODO(desktop-assistant): persist the one-off as a runnable task via the
-	// backend; it then shows up in the Tasks list via getTasks().
-	doneCard.value = null;
+/** Keep the one-off: promote its thread into a saved task and show the Tasks list. */
+function keepTask() {
+	if (resultCard.value?.kind !== 'done') return;
+	const { threadId, label } = resultCard.value;
+	// The label is also the requested workflow name (the instance respects it).
+	pendingTasks.promote(threadId, label);
+	resultCard.value = null;
 	returnFocusToInput();
+	emit('kept');
 }
 
-function dismissDone() {
-	doneCard.value = null;
+function dismissResult() {
+	resultCard.value = null;
 	returnFocusToInput();
 }
 </script>
@@ -113,8 +142,8 @@ function dismissDone() {
 		<div :class="$style.fieldArea">
 			<!--
 				Persistent live region: it stays mounted across states so screen
-				readers announce the Thinking/Doing pill and the Done card when their
-				content changes, rather than missing the insertion of a fresh node.
+				readers announce the Thinking/Doing pill and the result cards when
+				their content changes, rather than missing the insertion of a fresh node.
 			-->
 			<div
 				role="status"
@@ -126,42 +155,108 @@ function dismissDone() {
 					<MiniSpinner aria-hidden="true" />
 					<span>{{
 						state === 'doing'
-							? i18n.baseText('desktopAssistant.composer.doing')
+							? i18n.baseText('desktopAssistant.composer.working')
 							: i18n.baseText('desktopAssistant.composer.thinking')
 					}}</span>
 				</div>
 
 				<!-- Done card -->
-				<div v-if="doneCard" ref="doneCardRef" tabindex="-1" :class="$style.doneCard">
-					<div :class="$style.doneHeader">
-						<span :class="$style.doneBadge">
+				<div
+					v-if="resultCard?.kind === 'done'"
+					ref="resultCardRef"
+					tabindex="-1"
+					:class="[$style.resultCard, $style.doneCard]"
+					data-testid="composer-done-card"
+				>
+					<div :class="[$style.resultHeader, $style.doneHeader]">
+						<span :class="[$style.resultBadge, $style.doneBadge]">
 							<N8nIcon icon="check" :size="13" aria-hidden="true" />
 						</span>
-						<span :class="$style.doneTitle">{{
+						<span :class="[$style.resultTitle, $style.doneTitle]">{{
 							i18n.baseText('desktopAssistant.composer.done')
 						}}</span>
-						<span :class="$style.doneSubtitle">{{ doneSubtitle }}</span>
+						<span :class="$style.resultSubtitle">{{ resultCard.label }}</span>
 						<button
 							type="button"
-							:class="$style.doneDismiss"
+							:class="$style.resultDismiss"
 							:aria-label="i18n.baseText('desktopAssistant.composer.dismiss')"
-							@click="dismissDone"
+							@click="dismissResult"
 						>
 							<N8nIcon icon="x" :size="14" aria-hidden="true" />
 						</button>
 					</div>
-					<div :class="$style.doneBody">
-						<div :class="$style.donePrompt">
+					<div :class="$style.resultBody">
+						<div :class="$style.resultMessage">
 							{{ i18n.baseText('desktopAssistant.composer.keepPrompt') }}
 						</div>
-						<div :class="$style.doneActions">
-							<button type="button" :class="[$style.btn, $style.btnSubtle]" @click="dismissDone">
+						<div :class="$style.resultActions">
+							<button type="button" :class="[$style.btn, $style.btnSubtle]" @click="dismissResult">
 								{{ i18n.baseText('desktopAssistant.composer.noThanks') }}
 							</button>
-							<button type="button" :class="[$style.btn, $style.btnSolid]" @click="saveAsReady">
+							<button type="button" :class="[$style.btn, $style.btnSolid]" @click="keepTask">
 								{{ i18n.baseText('desktopAssistant.composer.saveAsReady') }}
 							</button>
 						</div>
+					</div>
+				</div>
+
+				<!-- Handoff card: the run finished but the task wasn't done — this needs the instance UI -->
+				<div
+					v-if="resultCard?.kind === 'handoff'"
+					ref="resultCardRef"
+					tabindex="-1"
+					:class="[$style.resultCard, $style.handoffCard]"
+					data-testid="composer-handoff-card"
+				>
+					<div :class="[$style.resultHeader, $style.handoffHeader]">
+						<span :class="[$style.resultBadge, $style.handoffBadge]">
+							<N8nIcon icon="info" :size="13" aria-hidden="true" />
+						</span>
+						<span :class="[$style.resultTitle, $style.handoffTitle]">{{
+							i18n.baseText('desktopAssistant.composer.handoffTitle')
+						}}</span>
+						<button
+							type="button"
+							:class="$style.resultDismiss"
+							:aria-label="i18n.baseText('desktopAssistant.composer.dismiss')"
+							@click="dismissResult"
+						>
+							<N8nIcon icon="x" :size="14" aria-hidden="true" />
+						</button>
+					</div>
+					<div :class="$style.resultBody">
+						<div :class="$style.resultMessage">
+							{{ resultCard.message ?? i18n.baseText('desktopAssistant.composer.handoffMessage') }}
+						</div>
+					</div>
+				</div>
+
+				<!-- Error card -->
+				<div
+					v-if="resultCard?.kind === 'error'"
+					ref="resultCardRef"
+					tabindex="-1"
+					:class="[$style.resultCard, $style.errorCard]"
+					data-testid="composer-error-card"
+				>
+					<div :class="[$style.resultHeader, $style.errorHeader]">
+						<span :class="[$style.resultBadge, $style.errorBadge]">
+							<N8nIcon icon="triangle-alert" :size="13" aria-hidden="true" />
+						</span>
+						<span :class="[$style.resultTitle, $style.errorTitle]">{{
+							i18n.baseText('desktopAssistant.composer.errorTitle')
+						}}</span>
+						<button
+							type="button"
+							:class="$style.resultDismiss"
+							:aria-label="i18n.baseText('desktopAssistant.composer.dismiss')"
+							@click="dismissResult"
+						>
+							<N8nIcon icon="x" :size="14" aria-hidden="true" />
+						</button>
+					</div>
+					<div :class="$style.resultBody">
+						<div :class="$style.resultMessage">{{ resultCard.message }}</div>
 					</div>
 				</div>
 			</div>
@@ -243,46 +338,47 @@ function dismissDone() {
 	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
-.doneCard {
+/* Shared result-card shell; the done/handoff/error variants only swap accents. */
+.resultCard {
 	position: absolute;
 	right: 0;
 	bottom: calc(100% + var(--spacing--2xs));
 	left: 0;
 	overflow: hidden;
 	background: var(--da-surface-2);
-	border: 1px solid rgba(63, 207, 142, 0.45);
 	border-radius: var(--da-radius);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
-.doneHeader {
+/* The card receives programmatic focus when it appears; suppress the ring there
+   (it's an announcement target, not an interactive control). */
+.resultCard:focus {
+	outline: none;
+}
+
+.resultHeader {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: 10px var(--spacing--xs);
-	background: rgba(63, 207, 142, 0.12);
-	border-bottom: 1px solid rgba(63, 207, 142, 0.22);
 }
 
-.doneBadge {
+.resultBadge {
 	display: inline-flex;
 	flex-shrink: 0;
 	align-items: center;
 	justify-content: center;
 	width: 20px;
 	height: 20px;
-	color: var(--da-green);
-	background: rgba(63, 207, 142, 0.2);
 	border-radius: 50%;
 }
 
-.doneTitle {
+.resultTitle {
 	font-size: 13px;
 	font-weight: 600;
-	color: var(--da-green);
 }
 
-.doneSubtitle {
+.resultSubtitle {
 	overflow: hidden;
 	font-size: 12px;
 	color: var(--da-subtler);
@@ -290,7 +386,7 @@ function dismissDone() {
 	white-space: nowrap;
 }
 
-.doneDismiss {
+.resultDismiss {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -307,38 +403,89 @@ function dismissDone() {
 		color 0.12s;
 }
 
-.doneDismiss:hover {
+.resultDismiss:hover {
 	color: var(--da-text);
 	background: var(--da-surface);
 }
 
-.doneDismiss:focus-visible {
+.resultDismiss:focus-visible {
 	color: var(--da-text);
 	background: var(--da-surface);
 	outline: var(--da-focus-ring);
 	outline-offset: var(--da-focus-ring-offset);
 }
 
-/* The card receives programmatic focus when it appears; suppress the ring there
-   (it's an announcement target, not an interactive control). */
-.doneCard:focus {
-	outline: none;
-}
-
-.doneBody {
+.resultBody {
 	padding: var(--spacing--xs);
 }
 
-.donePrompt {
-	margin-bottom: var(--spacing--xs);
+.resultMessage {
 	font-size: 12px;
 	color: var(--da-subtler);
 }
 
-.doneActions {
+.resultActions {
 	display: flex;
 	gap: var(--spacing--2xs);
 	justify-content: space-between;
+	margin-top: var(--spacing--xs);
+}
+
+/* Done variant: green accents. */
+.doneCard {
+	border: 1px solid rgba(63, 207, 142, 0.45);
+}
+
+.doneHeader {
+	background: rgba(63, 207, 142, 0.12);
+	border-bottom: 1px solid rgba(63, 207, 142, 0.22);
+}
+
+.doneBadge {
+	color: var(--da-green);
+	background: rgba(63, 207, 142, 0.2);
+}
+
+.doneTitle {
+	color: var(--da-green);
+}
+
+/* Handoff variant: amber accents — informational, not a failure. */
+.handoffCard {
+	border: 1px solid rgba(245, 184, 75, 0.45);
+}
+
+.handoffHeader {
+	background: rgba(245, 184, 75, 0.12);
+	border-bottom: 1px solid rgba(245, 184, 75, 0.22);
+}
+
+.handoffBadge {
+	color: var(--da-amber);
+	background: rgba(245, 184, 75, 0.2);
+}
+
+.handoffTitle {
+	color: var(--da-amber);
+}
+
+/* Error variant: red accents. */
+.errorCard {
+	border: 1px solid rgba(255, 107, 107, 0.45);
+}
+
+.errorHeader {
+	background: rgba(255, 107, 107, 0.12);
+	border-bottom: 1px solid rgba(255, 107, 107, 0.22);
+}
+
+.errorBadge {
+	color: var(--da-red);
+	background: rgba(255, 107, 107, 0.2);
+}
+
+.errorTitle {
+	color: var(--da-red);
 }
 
 .field {
@@ -475,7 +622,7 @@ function dismissDone() {
 	background: linear-gradient(to right, rgba(33, 33, 33, 0), var(--da-bg));
 }
 
-/* Done-card buttons reuse the reference button variants. */
+/* Result-card buttons reuse the reference button variants. */
 .btn {
 	padding: 9px 14px;
 	font: inherit;

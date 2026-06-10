@@ -31,9 +31,12 @@ import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import {
 	DESKTOP_ASSISTANT_TAG,
+	DESKTOP_ASSISTANT_THREAD_SOURCE,
 	PROMOTED_FROM_THREAD_ID_KEY,
 	PROMOTED_WORKFLOW_ID_KEY,
+	THREAD_SOURCE_METADATA_KEY,
 } from './constants';
+import { DesktopAssistantRunner } from './desktop-assistant-runner';
 import { classifyWorkflowsForDesktopAssistant } from './desktop-assistant.classifier';
 import type { ClassifierInput } from './desktop-assistant.classifier';
 import {
@@ -50,7 +53,6 @@ import { computeNodesRequiringCredentialSetup } from './node-credential-requirem
 
 import { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
-import { InstanceAiService } from '../instance-ai.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -96,7 +98,7 @@ export class DesktopAssistantService {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly instanceAiService: InstanceAiService,
+		private readonly runner: DesktopAssistantRunner,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly workflowRepository: WorkflowRepository,
@@ -161,10 +163,9 @@ export class DesktopAssistantService {
 		const inputs: ClassifierInput[] = workflows.map((workflow) => {
 			// Icon priority: explicit `meta.desktopAssistant.icon` wins, then any
 			// leading emoji the orchestrator put on the workflow name (the
-			// `desktop-assistant-promote` and recurring one-shot prompts both
-			// instruct picking one), then the classifier falls back to a node-type
-			// icon. The display name strips the leading emoji so the desktop card
-			// shows it once, in the icon slot.
+			// `desktop-assistant-promote` prompt instructs picking one), then the
+			// classifier falls back to a node-type icon. The display name strips
+			// the leading emoji so the desktop card shows it once, in the icon slot.
 			const metaIcon = readDesktopAssistantMeta(workflow.meta)?.icon;
 			const { emoji: nameEmoji, rest: displayName } = splitLeadingEmoji(workflow.name);
 			const lastExec = lastExecutionByWorkflowId.get(workflow.id);
@@ -273,18 +274,14 @@ export class DesktopAssistantService {
 		// redundant validation needed here.
 		const threadId = randomUUID();
 		const projectId = await this.resolvePersonalProjectId(user);
-		await this.memoryService.ensureThread(user.id, threadId, projectId);
+		// Mark the thread as desktop-originated at creation so the chat UI's
+		// thread list can filter it out.
+		await this.memoryService.ensureThread(user.id, threadId, projectId, {
+			[THREAD_SOURCE_METADATA_KEY]: DESKTOP_ASSISTANT_THREAD_SOURCE,
+		});
 
 		const composedMessage = composeOneShotMessage(body);
-		const runId = this.instanceAiService.startRun(
-			user,
-			threadId,
-			composedMessage,
-			undefined,
-			undefined,
-			undefined,
-			{ promptMode: 'desktop-assistant-one-shot' },
-		);
+		const runId = this.runner.startOneShotTask(user, threadId, composedMessage);
 		return { threadId, runId };
 	}
 
@@ -323,15 +320,7 @@ export class DesktopAssistantService {
 		const originalPrompt = await this.recoverOriginalPrompt(body.threadId);
 		const buildPrompt = composePromoteMessage(originalPrompt, body.name);
 
-		const runId = this.instanceAiService.startRun(
-			user,
-			body.threadId,
-			buildPrompt,
-			undefined,
-			undefined,
-			undefined,
-			{ promptMode: 'desktop-assistant-promote' },
-		);
+		const runId = this.runner.startPromoteBuild(user, body.threadId, buildPrompt);
 
 		// Subscribe AFTER we have the runId so the listener can scope itself to
 		// the exact run we just kicked off. `subscribe` is synchronous and

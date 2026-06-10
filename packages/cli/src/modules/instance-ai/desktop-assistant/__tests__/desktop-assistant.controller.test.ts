@@ -7,6 +7,7 @@ import { mock } from 'jest-mock-extended';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { DesktopAssistantController } from '../desktop-assistant.controller';
+import type { DesktopAssistantTaskRunService } from '../desktop-assistant-task-run.service';
 import type { DesktopAssistantService } from '../desktop-assistant.service';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 
@@ -22,8 +23,9 @@ function scopeOf(handlerName: string): { scope: Scope; globalOnly: boolean } | u
 
 describe('DesktopAssistantController', () => {
 	const service = mock<DesktopAssistantService>();
+	const taskRunService = mock<DesktopAssistantTaskRunService>();
 	const settingsService = mock<InstanceAiSettingsService>();
-	const controller = new DesktopAssistantController(service, settingsService);
+	const controller = new DesktopAssistantController(service, taskRunService, settingsService);
 	const user = mock<User>({ id: 'user-1' });
 	const req = mock<AuthenticatedRequest>({ user });
 
@@ -41,6 +43,7 @@ describe('DesktopAssistantController', () => {
 				globalOnly: true,
 			});
 			expect(scopeOf('getHistory')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+			expect(scopeOf('taskRunEvents')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
 	});
 

@@ -321,6 +321,14 @@ export type TerminalOutcomeStorage = StorageMod.TerminalOutcomeStorage;
 export const TerminalOutcomeStorage: typeof StorageMod.TerminalOutcomeStorage = lazyClass(
 	() => loadStorage().TerminalOutcomeStorage,
 );
+export declare const DESKTOP_TASK_OUTCOME_METADATA_KEY: typeof StorageMod.DESKTOP_TASK_OUTCOME_METADATA_KEY;
+export type DesktopTaskOutcomeStorage = StorageMod.DesktopTaskOutcomeStorage;
+export const DesktopTaskOutcomeStorage: typeof StorageMod.DesktopTaskOutcomeStorage = lazyClass(
+	() => loadStorage().DesktopTaskOutcomeStorage,
+);
+export const readDesktopTaskOutcome: typeof StorageMod.readDesktopTaskOutcome = lazyFunction(
+	() => loadStorage().readDesktopTaskOutcome,
+);
 export const patchThread: typeof StorageMod.patchThread = lazyFunction(
 	() => loadStorage().patchThread,
 );
@@ -378,6 +386,10 @@ defineLazyExport(
 	() => loadAgentPersistence().SUB_AGENT_RESOURCE_PREFIX,
 );
 defineLazyExport('iterationEntrySchema', () => loadStorage().iterationEntrySchema);
+defineLazyExport(
+	'DESKTOP_TASK_OUTCOME_METADATA_KEY',
+	() => loadStorage().DESKTOP_TASK_OUTCOME_METADATA_KEY,
+);
 defineLazyExport('INSTANCE_AI_SKILLS_DIR', () => loadRuntimeSkills().INSTANCE_AI_SKILLS_DIR);
 defineLazyExport(
 	'SANDBOX_RUNTIME_SKILLS_DIR',

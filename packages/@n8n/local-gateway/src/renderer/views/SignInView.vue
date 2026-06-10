@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 
 import { CLOUD_SUFFIX, toSignInPrefill } from './sign-in-prefill';
 import type { AuthStatus } from '../../shared/types';
+import { signIn as apiSignIn } from '../assistant/tasks-api';
 
 const props = defineProps<{ status: AuthStatus }>();
 
@@ -49,7 +50,7 @@ async function signIn() {
 	if (!canSubmit.value || loading.value) return;
 	submitting.value = true;
 	try {
-		await window.electronAPI.signIn(instanceUrl.value);
+		await apiSignIn(instanceUrl.value);
 	} finally {
 		// The browser flow continues out-of-band; `status` drives the UI from here.
 		submitting.value = false;
