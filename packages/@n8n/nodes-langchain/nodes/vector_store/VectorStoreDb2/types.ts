@@ -22,9 +22,9 @@ export interface Db2Connection {
 	query<T = unknown>(sql: string, params: unknown[], callback: Db2QueryCallback<T>): void;
 	query<T = unknown>(sql: string, callback: Db2QueryCallback<T>): void;
 	close(callback: (err?: Error | null) => void): void;
-	beginTransaction(callback: (err?: Error | null) => void): void;
-	commitTransaction(callback: (err?: Error | null) => void): void;
-	rollbackTransaction(callback: (err?: Error | null) => void): void;
+	beginTransaction?(callback: (err?: Error | null) => void): void;
+	commitTransaction?(callback: (err?: Error | null) => void): void;
+	rollbackTransaction?(callback: (err?: Error | null) => void): void;
 	commit?(callback: (err?: Error | null) => void): void;
 	rollback?(callback: (err?: Error | null) => void): void;
 	prepare?(sql: string, callback: (err: Error | null, stmt: Db2Statement) => void): void;
@@ -68,6 +68,12 @@ export interface DB2VectorStoreConfig {
 		metadataColumnName?: string;
 		embeddingColumnName?: string;
 	};
+	/**
+	 * If true, drops the table before creating a new one in fromTexts().
+	 * WARNING: This will permanently delete all data in the table.
+	 * @default false
+	 */
+	dropTableBeforeCreate?: boolean;
 }
 
 export interface ConnectionPoolConfig {

@@ -23,13 +23,14 @@
  * @see {@link https://www.ibm.com/docs/en/db2/11.5?topic=support-vector-data-type IBM Db2 Vector Documentation}
  */
 
-import { createHash, randomUUID } from 'crypto';
 import { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
-import { VectorStore } from '@langchain/core/vectorstores';
 import { maximalMarginalRelevance } from '@langchain/core/utils/math';
+import { VectorStore } from '@langchain/core/vectorstores';
+import { randomUUID } from 'crypto';
 import { OperationalError, UserError } from 'n8n-workflow';
-import type { DB2VectorStoreConfig, Db2Connection, SearchFilter, Db2Statement } from './types';
+
+import type { DB2VectorStoreConfig, Db2Connection, SearchFilter } from './types';
 
 export type DistanceStrategy = 'euclidean' | 'cosine' | 'dot_product';
 
@@ -84,19 +85,15 @@ export function validatePositiveInteger(value: number, paramName: string): numbe
  * getColumnValue(row, 'metadata'); // Returns '{}'
  */
 export function getColumnValue(row: Record<string, unknown>, columnName: string): unknown {
-	// Try direct match first
 	const directValue = row[columnName];
 	if (directValue !== undefined) return directValue;
 
-	// Try lowercase
 	const lowerCaseValue = row[columnName.toLowerCase()];
 	if (lowerCaseValue !== undefined) return lowerCaseValue;
 
-	// Try uppercase
 	const upperCaseValue = row[columnName.toUpperCase()];
 	if (upperCaseValue !== undefined) return upperCaseValue;
 
-	// Try normalized (remove underscores and lowercase)
 	const normalizedColumnName = columnName.replace(/_/g, '').toLowerCase();
 	const matchingKey = Object.keys(row).find(
 		(key) => key.replace(/_/g, '').toLowerCase() === normalizedColumnName,
@@ -106,31 +103,8 @@ export function getColumnValue(row: Record<string, unknown>, columnName: string)
 }
 
 /**
- * Check if table exists in Db2
- * Matches Python: _table_exists (db2vs.py:73-83)
- */
-export async function tableExists(client: Db2Connection, tableName: string): Promise<boolean> {
-	try {
-		const validatedTableName = validateTableName(tableName);
-		const query = `SELECT COUNT(*) FROM ${validatedTableName}`;
-		await new Promise<unknown[]>((resolve, reject) => {
-			client.query(query, (err: Error | null, result?: unknown[]) => {
-				if (err) reject(err);
-				else resolve(result ?? []);
-			});
-		});
-		return true;
-	} catch (error: unknown) {
-		if (error instanceof Error && error.message.includes('SQL0204N')) {
-			return false;
-		}
-		throw error;
-	}
-}
-
-/**
  * Check if table exists using SYSCAT.TABLES
- * More reliable method for checking table existence
+ * More reliable than SELECT COUNT(*) approach as it doesn't require table access permissions
  */
 export async function checkTableExists(
 	client: Db2Connection,
@@ -218,7 +192,7 @@ export async function createTable(
 	const embeddingCol = columnNames?.embeddingColumnName || 'embedding';
 
 	const colsDict = {
-		[idCol]: 'CHAR(16) PRIMARY KEY NOT NULL',
+		[idCol]: 'VARCHAR(255) PRIMARY KEY NOT NULL',
 		[contentCol]: 'CLOB',
 		[metadataCol]: 'BLOB',
 		[embeddingCol]: `vector(${validatedDim}, FLOAT32)`,
@@ -245,13 +219,25 @@ export async function createTable(
 			});
 
 			await new Promise<void>((resolve, reject) => {
-				client.commitTransaction((err?: Error | null) => {
-					if (err) {
-						reject(new Error(`Failed to commit table creation: ${err.message}`));
-					} else {
-						resolve();
-					}
-				});
+				if (typeof client.commitTransaction === 'function') {
+					client.commitTransaction((err?: Error | null) => {
+						if (err) {
+							reject(new Error(`Failed to commit table creation: ${err.message}`));
+						} else {
+							resolve();
+						}
+					});
+				} else if (typeof client.commit === 'function') {
+					client.commit((err?: Error | null) => {
+						if (err) {
+							reject(new Error(`Failed to commit table creation: ${err.message}`));
+						} else {
+							resolve();
+						}
+					});
+				} else {
+					resolve();
+				}
 			});
 		}
 	} catch (error) {
@@ -287,13 +273,14 @@ export class DB2VectorStore extends VectorStore {
 	private qualifiedTableName: string;
 	private distanceStrategy: DistanceStrategy;
 	private filter?: Record<string, unknown>;
-	private initialized = false;
+	private initializationState: 'idle' | 'initializing' | 'initialized' | 'failed' = 'idle';
 	private initializationPromise: Promise<void> | null = null;
 	private batchSize: number;
 	private readonly idColumnName: string;
 	private readonly contentColumnName: string;
 	private readonly metadataColumnName: string;
 	private readonly embeddingColumnName: string;
+	private cachedEmbeddingDimension: number | null = null;
 
 	_vectorstoreType(): string {
 		return 'db2';
@@ -360,14 +347,26 @@ export class DB2VectorStore extends VectorStore {
 	}
 
 	private async initialize(): Promise<void> {
-		if (this.initialized) {
+		// CRITICAL: Check and set state synchronously BEFORE any async work
+		// This closes the TOCTOU race window between check and state assignment
+
+		if (this.initializationState === 'initialized') {
 			return;
 		}
 
-		if (this.initializationPromise) {
-			return await this.initializationPromise;
+		if (this.initializationState === 'initializing') {
+			if (this.initializationPromise) {
+				return await this.initializationPromise;
+			}
+			throw new OperationalError('Invalid initialization state: initializing without promise');
 		}
 
+		if (this.initializationState === 'failed') {
+			throw new OperationalError('Previous initialization failed. Create a new instance to retry.');
+		}
+
+		// Atomically set state and create promise to prevent TOCTOU race
+		this.initializationState = 'initializing';
 		this.initializationPromise = (async () => {
 			try {
 				const embeddingDim = await this.getEmbeddingDimension();
@@ -377,8 +376,9 @@ export class DB2VectorStore extends VectorStore {
 					metadataColumnName: this.metadataColumnName,
 					embeddingColumnName: this.embeddingColumnName,
 				});
-				this.initialized = true;
+				this.initializationState = 'initialized';
 			} catch (error) {
+				this.initializationState = 'failed';
 				this.initializationPromise = null;
 				throw error;
 			}
@@ -388,10 +388,6 @@ export class DB2VectorStore extends VectorStore {
 	}
 
 	protected async ensureInitialized(): Promise<void> {
-		if (this.initialized) {
-			return;
-		}
-
 		try {
 			await this.initialize();
 		} catch (error) {
@@ -402,6 +398,11 @@ export class DB2VectorStore extends VectorStore {
 	}
 
 	private async getEmbeddingDimension(): Promise<number> {
+		// Return cached dimension if available
+		if (this.cachedEmbeddingDimension !== null) {
+			return this.cachedEmbeddingDimension;
+		}
+
 		try {
 			const embeddedDocument = await this.embeddings.embedQuery('test');
 
@@ -423,7 +424,9 @@ export class DB2VectorStore extends VectorStore {
 				);
 			}
 
-			return embeddedDocument.length;
+			// Cache the dimension for future use
+			this.cachedEmbeddingDimension = embeddedDocument.length;
+			return this.cachedEmbeddingDimension;
 		} catch (error) {
 			if (error instanceof OperationalError || error instanceof UserError) {
 				throw error;
@@ -467,28 +470,147 @@ export class DB2VectorStore extends VectorStore {
 	/**
 	 * Add vectors to the vector store (required by VectorStore abstract class)
 	 *
-	 * @param _vectors - Pre-computed embedding vectors (not used, embeddings are regenerated)
+	 * @param vectors - Pre-computed embedding vectors to store
 	 * @param documents - Array of documents to add
 	 * @param options - Optional configuration
-	 * @returns Array of document IDs
+	 * @param options.ids - Optional array of IDs for the documents
+	 * @returns Array of successfully inserted document IDs
 	 *
 	 * @remarks
-	 * This method is required by the VectorStore interface but regenerates embeddings
-	 * from document content rather than using the provided vectors.
+	 * **Partial Failure Behavior:**
+	 * - Processes documents in batches for optimal performance
+	 * - On batch failure, continues processing remaining batches
+	 * - Returns IDs only for successfully inserted documents
+	 * - Logs warnings to console for failed batches
+	 * - **Returned array may be shorter than input if batches fail**
+	 * - Check console warnings or compare return length to detect partial failures
+	 *
+	 * **Dimension Handling:**
+	 * - Uses dimension from first vector (no API call needed)
+	 * - Validates all vectors have consistent dimensions
+	 *
+	 * @throws {UserError} If vectors array is empty, length mismatches, or dimension inconsistencies
 	 *
 	 * @internal
 	 */
 	async addVectors(
-		_vectors: number[][],
+		vectors: number[][],
 		documents: Document[],
 		options?: { ids?: string[] },
 	): Promise<string[]> {
 		await this.ensureInitialized();
-		// This method is not in Python, but required by VectorStore interface
-		// We'll implement it by converting vectors back to texts and using addTexts
+
+		// Validate that vectors are provided and match documents
+		if (!vectors || vectors.length === 0) {
+			throw new UserError('vectors array cannot be empty');
+		}
+
+		if (vectors.length !== documents.length) {
+			throw new UserError(
+				`vectors length (${vectors.length}) must match documents length (${documents.length})`,
+			);
+		}
+
+		// Use the provided vectors directly instead of re-embedding
 		const texts = documents.map((doc) => doc.pageContent);
 		const metadatas = documents.map((doc) => doc.metadata);
-		return await this.addTexts(texts, metadatas, options);
+
+		// Handle ID generation
+		let processedIds: string[];
+		if (options?.ids) {
+			if (options.ids.length !== texts.length) {
+				throw new UserError(
+					`ids length (${options.ids.length}) must match texts length (${texts.length})`,
+				);
+			}
+			processedIds = options.ids;
+		} else if (metadatas) {
+			const allHaveIds = metadatas.every((metadata) => 'id' in metadata);
+			if (allHaveIds) {
+				processedIds = metadatas.map((metadata) => String(metadata.id));
+			} else {
+				processedIds = metadatas.map((metadata) =>
+					'id' in metadata ? String(metadata.id) : randomUUID(),
+				);
+			}
+		} else {
+			processedIds = texts.map(() => randomUUID());
+		}
+
+		const metadatasArray = metadatas || texts.map(() => ({}));
+
+		// Get dimension from first vector (no API call needed)
+		const embeddingLen = vectors[0].length;
+		const validatedEmbeddingLen = validatePositiveInteger(embeddingLen, 'embeddingLen');
+
+		// Validate all vectors have consistent dimension
+		for (let i = 0; i < vectors.length; i++) {
+			if (!Array.isArray(vectors[i]) || vectors[i].length !== validatedEmbeddingLen) {
+				throw new UserError(
+					`Vector at index ${i} has dimension ${vectors[i]?.length ?? 0}, expected ${validatedEmbeddingLen} (from first vector)`,
+				);
+			}
+		}
+
+		// Validate dimension against cached schema if available
+		if (
+			this.cachedEmbeddingDimension !== null &&
+			validatedEmbeddingLen !== this.cachedEmbeddingDimension
+		) {
+			throw new UserError(
+				`Vector dimension mismatch: provided vectors have dimension ${validatedEmbeddingLen}, but table schema expects ${this.cachedEmbeddingDimension}`,
+			);
+		}
+
+		// Process in batches
+		const batchSize = validatePositiveInteger(this.batchSize, 'batchSize');
+		const successfulIds: string[] = [];
+		const failedBatches: Array<{ batchIndex: number; error: string }> = [];
+
+		for (let i = 0; i < texts.length; i += batchSize) {
+			const batchEnd = Math.min(i + batchSize, texts.length);
+			const currentBatchSize = batchEnd - i;
+			const batchIndex = Math.floor(i / batchSize);
+
+			const batchIds = processedIds.slice(i, batchEnd);
+			const batchVectors = vectors.slice(i, batchEnd);
+			const batchMetadatas = metadatasArray.slice(i, batchEnd);
+			const batchTexts = texts.slice(i, batchEnd);
+
+			try {
+				await this.insertBatch(
+					batchIds,
+					batchVectors,
+					batchMetadatas,
+					batchTexts,
+					validatedEmbeddingLen,
+					currentBatchSize,
+				);
+				// Only add IDs for successful batches
+				successfulIds.push(...batchIds);
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+				failedBatches.push({ batchIndex, error: errorMessage });
+				console.error(`Batch ${batchIndex} (items ${i}-${batchEnd - 1}) failed: ${errorMessage}`);
+			}
+		}
+
+		// Log warnings for failed batches but return successful IDs
+		if (failedBatches.length > 0) {
+			const totalBatches = Math.ceil(texts.length / batchSize);
+			const failureDetails = failedBatches
+				.slice(0, 3)
+				.map((f) => `Batch ${f.batchIndex}: ${f.error}`)
+				.join('; ');
+
+			console.warn(
+				`[addVectors] Partial failure: ${failedBatches.length}/${totalBatches} batches failed. ` +
+					`Successfully inserted ${successfulIds.length} items. ` +
+					`First failures: ${failureDetails}${failedBatches.length > 3 ? '...' : ''}`,
+			);
+		}
+
+		return successfulIds;
 	}
 
 	/**
@@ -498,14 +620,24 @@ export class DB2VectorStore extends VectorStore {
 	 * @param metadatas - Optional array of metadata objects
 	 * @param options - Optional configuration
 	 * @param options.ids - Optional array of IDs for the texts
-	 * @returns Array of document IDs
+	 * @returns Array of successfully inserted document IDs
 	 *
 	 * @remarks
-	 * Matches Python implementation: add_texts (db2vs.py:248-346)
-	 * Processes texts in batches using the configured batch size for optimal performance.
+	 * **Partial Failure Behavior:**
+	 * - Processes texts in batches for optimal performance
+	 * - On batch failure, continues processing remaining batches
+	 * - Returns IDs only for successfully inserted documents
+	 * - Logs warnings to console for failed batches
+	 * - **Returned array may be shorter than input if batches fail**
+	 * - Check console warnings or compare return length to detect partial failures
+	 *
+	 * **Implementation Notes:**
+	 * - Matches Python implementation: add_texts (db2vs.py:248-346)
+	 * - Generates embeddings automatically using configured embedding function
+	 * - Uses configured batch size for optimal performance
 	 *
 	 * @throws {UserError} If texts array is empty, contains invalid data, or length mismatches
-	 * @throws {OperationalError} If embedding generation or database operation fails
+	 * @throws {OperationalError} If embedding generation fails completely
 	 */
 	async addTexts(
 		texts: string[],
@@ -549,32 +681,18 @@ export class DB2VectorStore extends VectorStore {
 		let processedIds: string[];
 
 		if (options?.ids) {
-			// Validate IDs length
-			if (options.ids.length !== texts.length) {
-				throw new Error(
-					'ids must be the same length as texts. ' +
-						`Got ${options.ids.length} ids and ${texts.length} texts.`,
-				);
-			}
-			// Hash provided IDs
-			processedIds = options.ids.map((id) => this.hashAndTruncateId(id));
+			processedIds = options.ids;
 		} else if (metadatas) {
-			// Check if all metadatas have 'id' field
 			const allHaveIds = metadatas.every((metadata) => 'id' in metadata);
 			if (allHaveIds) {
-				// Generate IDs from metadata
-				processedIds = metadatas.map((metadata) => this.hashAndTruncateId(String(metadata.id)));
+				processedIds = metadatas.map((metadata) => String(metadata.id));
 			} else {
-				// Partial metadata has id, generate new id if metadata doesn't have it
 				processedIds = metadatas.map((metadata) =>
-					'id' in metadata
-						? this.hashAndTruncateId(String(metadata.id))
-						: this.hashAndTruncateId(randomUUID()),
+					'id' in metadata ? String(metadata.id) : randomUUID(),
 				);
 			}
 		} else {
-			// Generate new random IDs
-			processedIds = texts.map(() => this.hashAndTruncateId(randomUUID()));
+			processedIds = texts.map(() => randomUUID());
 		}
 
 		// Wrap embedding generation in try-catch
@@ -603,9 +721,13 @@ export class DB2VectorStore extends VectorStore {
 
 		// Process in batches using configured batch size
 		const batchSize = validatePositiveInteger(this.batchSize, 'batchSize');
+		const successfulIds: string[] = [];
+		const failedBatches: Array<{ batchIndex: number; error: string }> = [];
+
 		for (let i = 0; i < texts.length; i += batchSize) {
 			const batchEnd = Math.min(i + batchSize, texts.length);
 			const currentBatchSize = batchEnd - i;
+			const batchIndex = Math.floor(i / batchSize);
 
 			// Prepare batch data
 			const batchIds = processedIds.slice(i, batchEnd);
@@ -613,17 +735,40 @@ export class DB2VectorStore extends VectorStore {
 			const batchMetadatas = metadatasArray.slice(i, batchEnd);
 			const batchTexts = texts.slice(i, batchEnd);
 
-			await this.insertBatch(
-				batchIds,
-				batchEmbeddings,
-				batchMetadatas,
-				batchTexts,
-				validatedEmbeddingLen,
-				currentBatchSize,
+			try {
+				await this.insertBatch(
+					batchIds,
+					batchEmbeddings,
+					batchMetadatas,
+					batchTexts,
+					validatedEmbeddingLen,
+					currentBatchSize,
+				);
+				// Only add IDs for successful batches
+				successfulIds.push(...batchIds);
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+				failedBatches.push({ batchIndex, error: errorMessage });
+				console.error(`Batch ${batchIndex} (items ${i}-${batchEnd - 1}) failed: ${errorMessage}`);
+			}
+		}
+
+		// Log warnings for failed batches but return successful IDs
+		if (failedBatches.length > 0) {
+			const totalBatches = Math.ceil(texts.length / batchSize);
+			const failureDetails = failedBatches
+				.slice(0, 3)
+				.map((f) => `Batch ${f.batchIndex}: ${f.error}`)
+				.join('; ');
+
+			console.warn(
+				`[addTexts] Partial failure: ${failedBatches.length}/${totalBatches} batches failed. ` +
+					`Successfully inserted ${successfulIds.length} items. ` +
+					`First failures: ${failureDetails}${failedBatches.length > 3 ? '...' : ''}`,
 			);
 		}
 
-		return processedIds;
+		return successfulIds;
 	}
 
 	async clearTable(): Promise<void> {
@@ -634,10 +779,15 @@ export class DB2VectorStore extends VectorStore {
 		return await new Promise<void>((resolve, reject) => {
 			this.client.query(truncateQuery, (err: Error | null) => {
 				if (err) {
+					// Log original TRUNCATE error before falling back to DELETE
+					console.warn(`[clearTable] TRUNCATE failed, falling back to DELETE: ${err.message}`);
+
 					const deleteQuery = `DELETE FROM ${this.qualifiedTableName} WHERE 1=1`;
 					this.client.query(deleteQuery, (deleteErr: Error | null) => {
 						if (deleteErr) {
-							reject(new OperationalError(`Failed to clear table: ${deleteErr.message}`));
+							reject(
+								new OperationalError(`Failed to clear table: ${deleteErr.message}`, { cause: err }),
+							);
 							return;
 						}
 						resolve();
@@ -657,8 +807,6 @@ export class DB2VectorStore extends VectorStore {
 		embeddingLen: number,
 		batchSize: number,
 	): Promise<void> {
-		const sqlInsert = `INSERT INTO ${this.qualifiedTableName} (${this.idColumnName}, ${this.embeddingColumnName}, ${this.metadataColumnName}, ${this.contentColumnName}) VALUES (?, VECTOR(?, ${embeddingLen}, FLOAT32), SYSTOOLS.JSON2BSON(?), ?)`;
-
 		if (
 			ids.length !== batchSize ||
 			embeddings.length !== batchSize ||
@@ -668,15 +816,46 @@ export class DB2VectorStore extends VectorStore {
 			throw new OperationalError('Batch data length mismatch');
 		}
 
-		return await new Promise<void>((resolve, reject) => {
-			if (typeof this.client.prepare !== 'function') {
-				void this.insertBatchFallback(ids, embeddings, metadatas, texts, embeddingLen).then(
-					resolve,
-					reject,
-				);
-				return;
+		// Validate all items before attempting insert
+		for (let i = 0; i < batchSize; i++) {
+			if (typeof ids[i] !== 'string' || ids[i].length === 0) {
+				throw new UserError(`Invalid ID at index ${i}`);
 			}
+			if (!Array.isArray(embeddings[i]) || embeddings[i].length !== embeddingLen) {
+				throw new UserError(
+					`Invalid embedding at index ${i}: expected length ${embeddingLen}, got ${embeddings[i]?.length ?? 0}`,
+				);
+			}
+			if (!embeddings[i].every((v) => typeof v === 'number' && isFinite(v))) {
+				throw new UserError(`Embedding at index ${i} contains NaN or Infinity`);
+			}
+			if (typeof texts[i] !== 'string') {
+				throw new UserError(`Invalid text at index ${i}: must be string`);
+			}
+		}
 
+		// Build multi-row INSERT with parameterized VECTOR values
+		const valuesClauses: string[] = [];
+		const params: unknown[] = [];
+
+		for (let i = 0; i < batchSize; i++) {
+			// Use parameterized binding for vector data to reduce string allocation
+			// Format: VECTOR(?, dimension, type) where ? is bound to JSON array string
+			const embeddingJson = `[${embeddings[i].join(',')}]`;
+			const metadataStr = JSON.stringify(metadatas[i] ?? {});
+
+			valuesClauses.push(`(?, VECTOR(?, ${embeddingLen}, FLOAT32), SYSTOOLS.JSON2BSON(?), ?)`);
+			params.push(
+				ids[i],
+				embeddingJson, // Parameterized vector data
+				metadataStr,
+				texts[i],
+			);
+		}
+
+		const sqlInsert = `INSERT INTO ${this.qualifiedTableName} (${this.idColumnName}, ${this.embeddingColumnName}, ${this.metadataColumnName}, ${this.contentColumnName}) VALUES ${valuesClauses.join(', ')}`;
+
+		return await new Promise<void>((resolve, reject) => {
 			const beginTransaction = (callback: (err?: Error | null) => void) => {
 				if (typeof this.client.beginTransaction === 'function') {
 					this.client.beginTransaction(callback);
@@ -711,234 +890,59 @@ export class DB2VectorStore extends VectorStore {
 					return;
 				}
 
-				this.client.prepare!(sqlInsert, (prepareErr: Error | null, stmt: Db2Statement) => {
-					if (prepareErr) {
+				this.client.query(sqlInsert, params, (execErr: Error | null) => {
+					if (execErr) {
 						rollbackTransaction(() => {
-							reject(new OperationalError(`Failed to prepare statement: ${prepareErr.message}`));
+							reject(new OperationalError(`Batch insert failed: ${execErr.message}`));
 						});
-						return;
-					}
-
-					let statementClosed = false;
-					const closeStatement = () => {
-						if (!statementClosed) {
-							try {
-								stmt.closeSync();
-								statementClosed = true;
-							} catch (closeErr) {
-								console.error('Failed to close statement:', closeErr);
-							}
-						}
-					};
-
-					let currentIndex = 0;
-
-					// Execute row by row within transaction
-					const executeNext = (): void => {
-						if (currentIndex >= batchSize) {
-							// All rows inserted, commit transaction
-							closeStatement();
-							commitTransaction((commitErr?: Error | null) => {
-								if (commitErr) {
-									rollbackTransaction(() => {
-										reject(
-											new OperationalError(`Failed to commit transaction: ${commitErr.message}`),
-										);
-									});
-								} else {
-									resolve();
-								}
-							});
-							return;
-						}
-
-						const i = currentIndex;
-						currentIndex++;
-
-						// Validate each item
-						if (typeof ids[i] !== 'string' || ids[i].length === 0) {
-							closeStatement();
-							rollbackTransaction(() => {
-								reject(new UserError(`Invalid ID at index ${i}`));
-							});
-							return;
-						}
-						if (!Array.isArray(embeddings[i]) || embeddings[i].length !== embeddingLen) {
-							closeStatement();
-							rollbackTransaction(() => {
-								reject(
-									new UserError(
-										`Invalid embedding at index ${i}: expected length ${embeddingLen}, got ${embeddings[i]?.length ?? 0}`,
-									),
-								);
-							});
-							return;
-						}
-						if (!embeddings[i].every((v) => typeof v === 'number' && isFinite(v))) {
-							closeStatement();
-							rollbackTransaction(() => {
-								reject(new UserError(`Embedding at index ${i} contains NaN or Infinity`));
-							});
-							return;
-						}
-						if (typeof texts[i] !== 'string') {
-							closeStatement();
-							rollbackTransaction(() => {
-								reject(new UserError(`Invalid text at index ${i}: must be string`));
-							});
-							return;
-						}
-
-						// Prepare row parameters
-						const params = [
-							ids[i],
-							`[${embeddings[i].join(',')}]`,
-							JSON.stringify(metadatas[i] ?? {}),
-							texts[i],
-						];
-
-						try {
-							// Bind parameters for this row
-							stmt.bindSync(params);
-
-							// Execute this row
-							stmt.execute((execErr: Error | null) => {
-								if (execErr) {
-									closeStatement();
-									rollbackTransaction(() => {
-										reject(new OperationalError(`Insert failed at index ${i}: ${execErr.message}`));
-									});
-								} else {
-									// Continue to next row
-									executeNext();
-								}
-							});
-						} catch (err) {
-							closeStatement();
-							rollbackTransaction(() => {
-								reject(
-									new OperationalError(
-										`Failed to bind/execute at index ${i}: ${err instanceof Error ? err.message : 'Unknown error'}`,
-									),
-								);
-							});
-						}
-					};
-
-					// Start executing rows
-					executeNext();
-				});
-			});
-		});
-	}
-
-	/**
-	 * Fallback method for batch insert when prepare() is not available
-	 * Uses row-by-row inserts within a transaction
-	 */
-	private async insertBatchFallback(
-		ids: string[],
-		embeddings: number[][],
-		metadatas: Array<Record<string, unknown>>,
-		texts: string[],
-		embeddingLen: number,
-	): Promise<void> {
-		const sqlInsert = `INSERT INTO ${this.qualifiedTableName} (${this.idColumnName}, ${this.embeddingColumnName}, ${this.metadataColumnName}, ${this.contentColumnName}) VALUES (?, VECTOR(?, ${embeddingLen}, FLOAT32), SYSTOOLS.JSON2BSON(?), ?)`;
-
-		return await new Promise<void>((resolve, reject) => {
-			const rollback = (callback: (err?: Error) => void) => {
-				if (typeof this.client.rollbackTransaction === 'function') {
-					this.client.rollbackTransaction((rollbackErr) => {
-						if (rollbackErr) {
-							console.error('Rollback failed:', rollbackErr);
-						}
-						callback(rollbackErr ?? undefined);
-					});
-				} else if (typeof this.client.rollback === 'function') {
-					this.client.rollback((rollbackErr) => {
-						if (rollbackErr) {
-							console.error('Rollback failed:', rollbackErr);
-						}
-						callback(rollbackErr ?? undefined);
-					});
-				} else {
-					callback();
-				}
-			};
-
-			const commit = (callback: (err?: Error | null) => void) => {
-				if (typeof this.client.commitTransaction === 'function') {
-					this.client.commitTransaction(callback);
-				} else if (typeof this.client.commit === 'function') {
-					this.client.commit(callback);
-				} else {
-					this.client.query('COMMIT', callback);
-				}
-			};
-
-			const begin = (callback: (err?: Error | null) => void) => {
-				if (typeof this.client.beginTransaction === 'function') {
-					this.client.beginTransaction(callback);
-				} else {
-					callback(null);
-				}
-			};
-
-			begin((beginError?: Error | null) => {
-				if (beginError) {
-					reject(new OperationalError(`Failed to begin transaction: ${beginError.message}`));
-					return;
-				}
-
-				let currentIndex = 0;
-
-				const executeNext = (): void => {
-					if (currentIndex >= ids.length) {
-						commit((commitError?: Error | null) => {
-							if (commitError) {
-								rollback(() => {
+					} else {
+						commitTransaction((commitErr?: Error | null) => {
+							if (commitErr) {
+								rollbackTransaction(() => {
 									reject(
-										new OperationalError(`Failed to commit transaction: ${commitError.message}`),
+										new OperationalError(`Failed to commit transaction: ${commitErr.message}`),
 									);
 								});
 							} else {
 								resolve();
 							}
 						});
-						return;
 					}
-
-					const index = currentIndex;
-					currentIndex++;
-
-					// Validate data
-					if (!ids[index] || !embeddings[index] || !texts[index]) {
-						rollback(() => {
-							reject(new UserError(`Invalid data at index ${index}`));
-						});
-						return;
-					}
-
-					const params = [
-						ids[index],
-						`[${embeddings[index].join(',')}]`,
-						JSON.stringify(metadatas[index] ?? {}),
-						texts[index],
-					];
-
-					this.client.query(sqlInsert, params, (err: Error | null) => {
-						if (err) {
-							rollback(() => {
-								reject(new OperationalError(`Insert failed at index ${index}: ${err.message}`));
-							});
-						} else {
-							executeNext();
-						}
-					});
-				};
-
-				executeNext();
+				});
 			});
+		});
+	}
+
+	/**
+	 * Check if metadata matches the given filter
+	 *
+	 * @param metadata - Document metadata to check
+	 * @param filter - Filter criteria to match against
+	 * @returns true if metadata matches all filter conditions
+	 *
+	 * @remarks
+	 * **Supported operators:**
+	 * - Scalar values use strict equality (===)
+	 * - Array values use Array.includes (SQL IN semantics)
+	 * - Nested keys and operators like gt/lt are not supported
+	 *
+	 * **Extension point:** To add new filter operators (range, regex, exists),
+	 * modify this method's logic and update the SearchFilter type definition.
+	 */
+	private matchesFilter(
+		metadata: Record<string, unknown>,
+		filter: SearchFilter | undefined,
+	): boolean {
+		if (!filter || Object.keys(filter).length === 0) {
+			return true;
+		}
+
+		return Object.entries(filter).every(([key, value]) => {
+			const metadataValue = metadata[key];
+			if (Array.isArray(value)) {
+				return value.includes(metadataValue);
+			}
+			return metadataValue === value;
 		});
 	}
 
@@ -979,30 +983,43 @@ export class DB2VectorStore extends VectorStore {
 		const docsAndScores = await this.similaritySearchVectorWithScore(embedding, k, filter);
 		return docsAndScores.map(([doc]) => doc);
 	}
-
 	/**
-	 * Similarity search by vector with score
-	 * Matches Python implementation with post-query filtering (db2vs.py:428-446)
+	 * Execute similarity search query with optional filtering
+	 *
+	 * @param embedding - Query embedding vector
+	 * @param k - Number of results to return
+	 * @param filter - Optional metadata filter
+	 * @returns Raw query results before document construction
+	 *
+	 * @remarks
+	 * **Why filtering happens in application code:**
+	 * DB2's BSON metadata column cannot be efficiently filtered in SQL without JSON path
+	 * functions, which may not be available in all target DB2 versions. Application-level
+	 * filtering ensures compatibility across DB2 deployments while maintaining the Python
+	 * implementation's behavior. Over-fetching compensates for post-query filtering.
 	 */
-	async similaritySearchVectorWithScore(
+	private async executeSearchQuery(
 		embedding: number[],
-		k: number = 4,
+		k: number,
 		filter?: SearchFilter,
-	): Promise<Array<[Document, number]>> {
-		await this.ensureInitialized();
-
-		// Validate inputs
+	): Promise<Array<Record<string, unknown>>> {
 		const validatedK = validatePositiveInteger(k, 'k');
 		const vectorDimension = validatePositiveInteger(embedding.length, 'vectorDimension');
 		const distanceFunc = getDistanceFunction(this.distanceStrategy);
 
 		// Merge instance filter with parameter filter
 		const effectiveFilter = { ...this.filter, ...filter };
+		const hasFilter = Object.keys(effectiveFilter).length > 0;
 
 		// Prepare embedding as JSON array string for parameterized query
 		const embeddingList = `[${embedding.join(',')}]`;
 
-		// No filter clause in SQL - filtering happens after query (matching Python)
+		// Over-fetch when filtering to ensure we get k results after post-filter
+		// Hardcoded 3x multiplier; no selectivity information available at query time
+		const fetchLimit = hasFilter ? validatedK * 3 : validatedK;
+
+		// No filter clause in SQL - filtering happens after query
+		// Over-fetching compensates for post-query filter reducing result count
 		// Table name is already validated in constructor
 		// OPTIMIZE FOR clause hints to Db2 optimizer for better query plan
 		const query = `
@@ -1016,11 +1033,11 @@ export class DB2VectorStore extends VectorStore {
 			       ) AS distance
 			FROM ${this.qualifiedTableName}
 			ORDER BY distance
-			FETCH FIRST ${validatedK} ROWS ONLY
-			OPTIMIZE FOR ${validatedK} ROWS
+			FETCH FIRST ${fetchLimit} ROWS ONLY
+			OPTIMIZE FOR ${fetchLimit} ROWS
 		`;
 
-		return await new Promise<Array<[Document, number]>>((resolve, reject) => {
+		return await new Promise<Array<Record<string, unknown>>>((resolve, reject) => {
 			this.client.query<Record<string, unknown>>(
 				query,
 				[embeddingList],
@@ -1046,57 +1063,49 @@ export class DB2VectorStore extends VectorStore {
 						return;
 					}
 
-					const queryResults = results ?? [];
-					const documents: Array<[Document, number]> = [];
-
-					// Apply filtering in application code after query (matching Python db2vs.py:428-446)
-					for (const result of queryResults) {
-						const metaRaw = getColumnValue(result, 'metadata');
-						let metadata = {};
-						try {
-							metadata =
-								typeof metaRaw === 'string'
-									? JSON.parse(metaRaw || '{}')
-									: ((metaRaw ?? {}) as Record<string, unknown>);
-						} catch {
-							metadata = {};
-						}
-
-						// Apply filtering based on the 'filter' dictionary
-						if (effectiveFilter && Object.keys(effectiveFilter).length > 0) {
-							// Check if all filter conditions match
-							const matches = Object.entries(effectiveFilter).every(([key, value]) => {
-								const metadataValue = (metadata as Record<string, unknown>)[key];
-								// Handle array values (for "in" operations)
-								if (Array.isArray(value)) {
-									return value.includes(metadataValue);
-								}
-								return metadataValue === value;
-							});
-
-							if (!matches) {
-								continue;
-							}
-						}
-
-						const doc = new Document({
-							pageContent: String(getColumnValue(result, 'text') ?? ''),
-							metadata,
-						});
-
-						const distanceValue = getColumnValue(result, 'distance');
-						const distance =
-							typeof distanceValue === 'number'
-								? distanceValue
-								: Number(distanceValue ?? Number.NaN);
-
-						documents.push([doc, distance]);
-					}
-
-					resolve(documents);
+					resolve(results ?? []);
 				},
 			);
 		});
+	}
+
+	/**
+	 * Similarity search by vector with score
+	 * Matches Python implementation with post-query filtering (db2vs.py:428-446)
+	 */
+	async similaritySearchVectorWithScore(
+		embedding: number[],
+		k: number = 4,
+		filter?: SearchFilter,
+	): Promise<Array<[Document, number]>> {
+		await this.ensureInitialized();
+
+		const validatedK = validatePositiveInteger(k, 'k');
+		const effectiveFilter = { ...this.filter, ...filter };
+
+		// Execute search query using shared helper
+		const queryResults = await this.executeSearchQuery(embedding, k, filter);
+		const documents: Array<[Document, number]> = [];
+
+		// Apply filtering in application code after query (matching Python db2vs.py:428-446)
+		for (const result of queryResults) {
+			const parsed = this.parseResultRow(result);
+
+			// Apply filtering based on the 'filter' dictionary
+			if (!this.matchesFilter(parsed.metadata, effectiveFilter)) {
+				continue;
+			}
+
+			const doc = new Document({
+				pageContent: parsed.text,
+				metadata: parsed.metadata,
+			});
+
+			documents.push([doc, parsed.distance]);
+		}
+
+		// Trim to exactly k results after filtering
+		return documents.slice(0, validatedK);
 	}
 
 	/**
@@ -1113,120 +1122,72 @@ export class DB2VectorStore extends VectorStore {
 		await this.ensureInitialized();
 
 		const validatedK = validatePositiveInteger(k, 'k');
-		const vectorDimension = validatePositiveInteger(embedding.length, 'vectorDimension');
-		const distanceFunc = getDistanceFunction(this.distanceStrategy);
-
 		const effectiveFilter = { ...this.filter, ...filter };
 
-		const embeddingList = `[${embedding.join(',')}]`;
+		// Execute search query using shared helper
+		const queryResults = await this.executeSearchQuery(embedding, k, filter);
+		const documents: Array<[Document, number, number[]]> = [];
 
-		const query = `
-			SELECT ${this.idColumnName}, ${this.contentColumnName},
-			       SYSTOOLS.BSON2JSON(${this.metadataColumnName}) AS metadata,
-			       ${this.embeddingColumnName},
-			       vector_distance(
-			           ${this.embeddingColumnName},
-			           VECTOR(?, ${vectorDimension}, FLOAT32),
-			           ${distanceFunc}
-			       ) AS distance
-			FROM ${this.qualifiedTableName}
-			ORDER BY distance
-			FETCH FIRST ${validatedK} ROWS ONLY
-			OPTIMIZE FOR ${validatedK} ROWS
-		`;
+		// Apply filtering in application code after query (matching Python db2vs.py:486-490)
+		for (const result of queryResults) {
+			const parsed = this.parseResultRow(result);
 
-		return await new Promise<Array<[Document, number, number[]]>>((resolve, reject) => {
-			this.client.query<Record<string, unknown>>(
-				query,
-				[embeddingList],
-				(err: Error | null, results?: Array<Record<string, unknown>>) => {
-					if (err) {
-						const message = err.message;
+			// Apply filter if provided and matches; otherwise, add all documents
+			if (!this.matchesFilter(parsed.metadata, effectiveFilter)) {
+				continue;
+			}
 
-						// Check for table not found error (SQL0204N)
-						if (message.includes('SQL0204N') || message.includes('undefined name')) {
-							reject(
-								new Error(
-									`Table '${this.qualifiedTableName}' not found. Please ensure the table exists.`,
-								),
-							);
-						}
-						// Check for column not found error (SQL0206N)
-						else if (message.includes('SQL0206N') || message.includes('not valid in the context')) {
-							reject(
-								new Error(
-									'Invalid table structure. The table must have columns: id, text, embedding, and metadata.',
-								),
-							);
-						} else {
-							reject(new Error(`Similarity search failed: ${err.message}`));
-						}
-						return;
-					}
+			const doc = new Document({
+				pageContent: parsed.text,
+				metadata: parsed.metadata,
+			});
 
-					const queryResults = results ?? [];
-					const documents: Array<[Document, number, number[]]> = [];
+			const embeddingRaw = getColumnValue(result, this.embeddingColumnName);
+			let resultEmbedding: number[] = [];
+			try {
+				if (Array.isArray(embeddingRaw)) {
+					resultEmbedding = embeddingRaw.map((value) => Number(value));
+				} else if (typeof embeddingRaw === 'string') {
+					resultEmbedding = JSON.parse(embeddingRaw) as number[];
+				}
+			} catch {
+				resultEmbedding = [];
+			}
 
-					// Apply filtering in application code after query (matching Python db2vs.py:486-490)
-					for (const result of queryResults) {
-						const metaRaw = getColumnValue(result, 'metadata');
-						let metadata = {};
-						try {
-							metadata =
-								typeof metaRaw === 'string'
-									? JSON.parse(metaRaw || '{}')
-									: ((metaRaw ?? {}) as Record<string, unknown>);
-						} catch {
-							metadata = {};
-						}
+			documents.push([doc, parsed.distance, resultEmbedding]);
+		}
 
-						// Apply filter if provided and matches; otherwise, add all documents
-						if (effectiveFilter && Object.keys(effectiveFilter).length > 0) {
-							// Check if all filter conditions match
-							const matches = Object.entries(effectiveFilter).every(([key, value]) => {
-								const metadataValue = (metadata as Record<string, unknown>)[key];
-								// Handle array values (for "in" operations)
-								if (Array.isArray(value)) {
-									return value.includes(metadataValue);
-								}
-								return metadataValue === value;
-							});
+		// Trim to exactly k results after filtering
+		return documents.slice(0, validatedK);
+	}
 
-							if (!matches) {
-								continue;
-							}
-						}
+	/**
+	 * Parse a result row from similarity search query
+	 * @private
+	 */
+	private parseResultRow(result: Record<string, unknown>): {
+		text: string;
+		metadata: Record<string, unknown>;
+		distance: number;
+	} {
+		const metaRaw = getColumnValue(result, this.metadataColumnName);
+		let metadata: Record<string, unknown> = {};
+		try {
+			metadata =
+				typeof metaRaw === 'string'
+					? JSON.parse(metaRaw || '{}')
+					: ((metaRaw ?? {}) as Record<string, unknown>);
+		} catch {
+			metadata = {};
+		}
 
-						const doc = new Document({
-							pageContent: String(getColumnValue(result, 'text') ?? ''),
-							metadata,
-						});
+		const text = String(getColumnValue(result, this.contentColumnName) ?? '');
 
-						const distanceValue = getColumnValue(result, 'distance');
-						const distance =
-							typeof distanceValue === 'number'
-								? distanceValue
-								: Number(distanceValue ?? Number.NaN);
+		const distanceValue = getColumnValue(result, 'distance');
+		const distance =
+			typeof distanceValue === 'number' ? distanceValue : Number(distanceValue ?? Number.NaN);
 
-						const embeddingRaw = getColumnValue(result, 'embedding');
-						let resultEmbedding: number[] = [];
-						try {
-							if (Array.isArray(embeddingRaw)) {
-								resultEmbedding = embeddingRaw.map((value) => Number(value));
-							} else if (typeof embeddingRaw === 'string') {
-								resultEmbedding = JSON.parse(embeddingRaw) as number[];
-							}
-						} catch {
-							resultEmbedding = [];
-						}
-
-						documents.push([doc, distance, resultEmbedding]);
-					}
-
-					resolve(documents);
-				},
-			);
-		});
+		return { text, metadata, distance };
 	}
 
 	/**
@@ -1327,7 +1288,6 @@ export class DB2VectorStore extends VectorStore {
 
 	/**
 	 * Delete documents by IDs
-	 * Matches Python implementation - hashes IDs before deletion (db2vs.py:659-662)
 	 */
 	async delete(options: { ids: string[] }): Promise<void> {
 		await this.ensureInitialized();
@@ -1337,24 +1297,48 @@ export class DB2VectorStore extends VectorStore {
 			throw new Error('No IDs provided for deletion');
 		}
 
-		// Hash IDs before deletion to match Python implementation (db2vs.py:659-662)
-		const hashedIds = ids.map((id) => this.hashAndTruncateId(id));
-
-		// Use parameterized query with placeholders
-		const placeholders = hashedIds.map(() => '?').join(',');
+		const placeholders = ids.map(() => '?').join(',');
 		const ddl = `DELETE FROM ${this.qualifiedTableName} WHERE ${this.idColumnName} IN (${placeholders})`;
+
+		const beginTransaction = (callback: (err?: Error | null) => void) => {
+			if (typeof this.client.beginTransaction === 'function') {
+				this.client.beginTransaction(callback);
+			} else {
+				callback(null);
+			}
+		};
+
+		const commitTransaction = (callback: (err?: Error | null) => void) => {
+			if (typeof this.client.commitTransaction === 'function') {
+				this.client.commitTransaction(callback);
+			} else if (typeof this.client.commit === 'function') {
+				this.client.commit(callback);
+			} else {
+				callback(null);
+			}
+		};
+
+		const rollbackTransaction = (callback: (err?: Error | null) => void) => {
+			if (typeof this.client.rollbackTransaction === 'function') {
+				this.client.rollbackTransaction(callback);
+			} else if (typeof this.client.rollback === 'function') {
+				this.client.rollback(callback);
+			} else {
+				callback(null);
+			}
+		};
 
 		try {
 			// Begin transaction
 			await new Promise<void>((resolve, reject) => {
-				this.client.beginTransaction((err?: Error | null) => {
+				beginTransaction((err?: Error | null) => {
 					if (err) reject(err);
 					else resolve();
 				});
 			});
 
 			await new Promise<void>((resolve, reject) => {
-				this.client.query(ddl, hashedIds, (err: Error | null) => {
+				this.client.query(ddl, ids, (err: Error | null) => {
 					if (err) {
 						reject(err);
 					} else {
@@ -1364,7 +1348,7 @@ export class DB2VectorStore extends VectorStore {
 			});
 
 			await new Promise<void>((resolve, reject) => {
-				this.client.commitTransaction((err?: Error | null) => {
+				commitTransaction((err?: Error | null) => {
 					if (err) {
 						reject(err);
 					} else {
@@ -1375,7 +1359,7 @@ export class DB2VectorStore extends VectorStore {
 		} catch (error) {
 			// Rollback on error
 			await new Promise((resolve) => {
-				this.client.rollbackTransaction(() => resolve(null));
+				rollbackTransaction(() => resolve(null));
 			});
 			throw error;
 		}
@@ -1406,93 +1390,108 @@ export class DB2VectorStore extends VectorStore {
 		// Generate embeddings for new texts
 		const embeddings = await this.embeddings.embedDocuments(texts);
 
-		// Get embedding dimension
+		// Get embedding dimension (uses cache)
 		const embeddingLen = await this.getEmbeddingDimension();
 		const validatedEmbeddingLen = validatePositiveInteger(embeddingLen, 'embeddingLen');
 
-		return await new Promise((resolve, reject) => {
-			this.client.beginTransaction((beginErr?: Error | null) => {
-				if (beginErr) {
-					reject(new Error(`Failed to begin transaction: ${beginErr.message}`));
-					return;
-				}
+		const beginTransaction = (callback: (err?: Error | null) => void) => {
+			if (typeof this.client.beginTransaction === 'function') {
+				this.client.beginTransaction(callback);
+			} else {
+				callback(null);
+			}
+		};
 
-				const commit = (commitCallback: (err?: Error | null) => void) => {
-					this.client.commitTransaction(commitCallback);
-				};
+		const commitTransaction = (callback: (err?: Error | null) => void) => {
+			if (typeof this.client.commitTransaction === 'function') {
+				this.client.commitTransaction(callback);
+			} else if (typeof this.client.commit === 'function') {
+				this.client.commit(callback);
+			} else {
+				callback(null);
+			}
+		};
 
-				const rollback = () => {
-					this.client.rollbackTransaction((rollbackErr?: Error | null) => {
-						if (rollbackErr) {
-							console.error('Rollback failed:', rollbackErr);
-						}
-					});
-				};
+		const rollbackTransaction = (callback: (err?: Error | null) => void) => {
+			if (typeof this.client.rollbackTransaction === 'function') {
+				this.client.rollbackTransaction(callback);
+			} else if (typeof this.client.rollback === 'function') {
+				this.client.rollback(callback);
+			} else {
+				callback(null);
+			}
+		};
 
-				let completed = 0;
-				let hasError = false;
+		try {
+			// Begin transaction
+			await new Promise<void>((resolve, reject) => {
+				beginTransaction((err?: Error | null) => {
+					if (err)
+						reject(new Error(`Failed to begin transaction: ${err?.message ?? 'Unknown error'}`));
+					else resolve();
+				});
+			});
 
-				const executeUpdate = (index: number): void => {
-					if (hasError || index >= ids.length) {
-						if (!hasError) {
-							commit((commitErr?: Error | null) => {
-								if (commitErr) {
-									reject(new Error(`Failed to commit transaction: ${commitErr.message}`));
-								} else {
-									resolve();
-								}
-							});
-						}
-						return;
-					}
+			// Execute updates sequentially using for...of loop
+			for (let i = 0; i < ids.length; i++) {
+				const id = ids[i];
+				const text = texts[i];
+				const metadata = metadatas ? metadatas[i] : {};
+				const embedding = embeddings[i];
+				const embeddingList = `[${embedding.join(',')}]`;
 
-					const id = this.hashAndTruncateId(ids[index]);
-					const text = texts[index];
-					const metadata = metadatas ? metadatas[index] : {};
-					const embedding = embeddings[index];
-					const embeddingList = `[${embedding.join(',')}]`;
+				const sqlUpdate = `
+					UPDATE ${this.qualifiedTableName}
+					SET ${this.contentColumnName} = ?,
+							${this.embeddingColumnName} = VECTOR(?, ${validatedEmbeddingLen}, FLOAT32),
+							${this.metadataColumnName} = SYSTOOLS.JSON2BSON(?)
+					WHERE ${this.idColumnName} = ?
+				`;
 
-					const sqlUpdate = `
-						UPDATE ${this.qualifiedTableName}
-						SET ${this.contentColumnName} = ?,
-								${this.embeddingColumnName} = VECTOR(?, ${validatedEmbeddingLen}, FLOAT32),
-								${this.metadataColumnName} = SYSTOOLS.JSON2BSON(?)
-						WHERE ${this.idColumnName} = ?
-					`;
+				const params = [text, embeddingList, JSON.stringify(metadata), id];
 
-					const params = [text, embeddingList, JSON.stringify(metadata), id];
-
+				await new Promise<void>((resolve, reject) => {
 					this.client.query(sqlUpdate, params, (err: Error | null) => {
 						if (err) {
-							hasError = true;
-							rollback();
-							reject(new Error(`Failed to update document ${ids[index]}: ${err.message}`));
-							return;
+							reject(new Error(`Failed to update document ${ids[i]}: ${err.message}`));
+						} else {
+							resolve();
 						}
-
-						completed++;
-						executeUpdate(index + 1);
 					});
-				};
+				});
+			}
 
-				executeUpdate(0);
+			// Commit transaction
+			await new Promise<void>((resolve, reject) => {
+				commitTransaction((err?: Error | null) => {
+					if (err)
+						reject(new Error(`Failed to commit transaction: ${err?.message ?? 'Unknown error'}`));
+					else resolve();
+				});
 			});
-		});
-	}
-
-	/**
-	 * Hash and truncate ID to 16 characters (matching Python implementation)
-	 * Python: hashlib.sha256(_id.encode()).hexdigest()[:16].upper()
-	 * This ensures IDs fit in CHAR(16) column
-	 */
-	private hashAndTruncateId(id: string): string {
-		const hash = createHash('sha256').update(id).digest('hex');
-		return hash.substring(0, 16).toUpperCase();
+		} catch (error) {
+			// Rollback on error
+			await new Promise<void>((resolve) => {
+				rollbackTransaction((rollbackErr?: Error | null) => {
+					if (rollbackErr) {
+						console.error('Rollback failed:', rollbackErr?.message ?? 'Unknown error');
+					}
+					resolve();
+				});
+			});
+			throw error;
+		}
 	}
 
 	/**
 	 * Create Db2VectorStore from texts
 	 * Matches Python: from_texts (db2vs.py:674-713)
+	 *
+	 * @param texts - Array of text documents to add
+	 * @param metadatas - Metadata for each document
+	 * @param embeddings - Embedding function
+	 * @param dbConfig - Database configuration
+	 * @param dbConfig.dropTableBeforeCreate - If true, drops existing table (WARNING: destroys all data)
 	 */
 	static async fromTexts(
 		texts: string[],
@@ -1500,8 +1499,13 @@ export class DB2VectorStore extends VectorStore {
 		embeddings: Embeddings,
 		dbConfig: Omit<DB2VectorStoreConfig, 'embeddingFunction'>,
 	): Promise<DB2VectorStore> {
-		// Drop table before creating new instance (matching Python db2vs.py:702)
-		await dropTable(dbConfig.client, dbConfig.tableName);
+		// Only drop table if explicitly requested
+		if (dbConfig.dropTableBeforeCreate === true) {
+			console.warn(
+				`[DB2VectorStore] Dropping table '${dbConfig.tableName}' - all existing data will be permanently deleted`,
+			);
+			await dropTable(dbConfig.client, dbConfig.tableName);
+		}
 
 		const instance = new DB2VectorStore(embeddings, {
 			...dbConfig,
@@ -1510,49 +1514,24 @@ export class DB2VectorStore extends VectorStore {
 
 		const metadatasArray = Array.isArray(metadatas) ? metadatas : texts.map(() => metadatas);
 
-		await instance.initialize();
+		await instance.ensureInitialized();
 		await instance.addTexts(texts, metadatasArray);
 
 		return instance;
 	}
-}
-
-// Made with Bob
-
-/**
- * Extended DB2 Vector Store with automatic filter merging
- * Implements the standard n8n vector store pattern for filter handling
- */
-export class ExtendedDB2VectorStore extends DB2VectorStore {
-	private defaultFilter?: Record<string, unknown>;
 
 	/**
-	 * Create an ExtendedDB2VectorStore from an existing table
+	 * Static factory method to create a DB2VectorStore from an existing table
 	 * @param embeddings - Embeddings instance
 	 * @param config - DB2 vector store configuration
-	 * @param defaultFilter - Default filter to merge with query filters
+	 * @returns Promise resolving to initialized DB2VectorStore instance
 	 */
 	static async fromExistingTable(
 		embeddings: Embeddings,
 		config: DB2VectorStoreConfig,
-		defaultFilter?: Record<string, unknown>,
-	): Promise<ExtendedDB2VectorStore> {
-		const store = new ExtendedDB2VectorStore(embeddings, config);
-		store.defaultFilter = defaultFilter;
+	): Promise<DB2VectorStore> {
+		const store = new DB2VectorStore(embeddings, config);
 		await store.ensureInitialized();
 		return store;
-	}
-
-	/**
-	 * Override similaritySearchVectorWithScore to merge default filter with query filter
-	 */
-	async similaritySearchVectorWithScore(
-		embedding: number[],
-		k: number = 4,
-		filter?: SearchFilter,
-	): Promise<Array<[Document, number]>> {
-		// Merge default filter with query filter
-		const mergedFilter = { ...this.defaultFilter, ...filter };
-		return await super.similaritySearchVectorWithScore(embedding, k, mergedFilter);
 	}
 }

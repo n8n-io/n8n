@@ -1,10 +1,4 @@
-import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	INodeProperties,
-	INodePropertyOptions,
-	ISupplyDataFunctions,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Database as Db2Database } from 'ibm_db';
 import { NodeOperationError, OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import type { Embeddings } from '@langchain/core/embeddings';
@@ -13,9 +7,19 @@ import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 import { DB2VectorStore, checkTableExists } from './Db2VectorStore';
 import type { DistanceStrategy } from './Db2VectorStore';
 import type { Db2Connection, Db2ConnectionConfig, Db2Credentials } from './types';
-import { db2Schema, db2TableNameRLC, db2ColumnOptions } from '../shared/descriptions';
 
-const sharedFields: INodeProperties[] = [db2TableNameRLC, db2Schema, db2ColumnOptions];
+const db2TableNameField: INodeProperties = {
+	displayName: 'Table Name',
+	name: 'tableName',
+	type: 'string',
+	default: '',
+	required: true,
+	placeholder: 'e.g., VECTOR_STORE',
+	description:
+		'The DB2 vector store table name. If Schema is provided, the table is resolved within that schema; otherwise the current schema is used.',
+};
+
+const sharedFields: INodeProperties[] = [db2TableNameField];
 
 interface Db2Pool {
 	open(connStr: string, callback: (err: Error | null, conn?: Db2Connection) => void): void;
@@ -24,9 +28,8 @@ interface Db2Pool {
 	setConnectTimeout(timeout: number): void;
 }
 
-class Db2ConnectionPool {
-	private pool: Db2Pool | null = null;
-	private connectionString: string | null = null;
+class Db2ConnectionPoolManager {
+	private pools: Map<string, Db2Pool> = new Map();
 	private readonly maxPoolSize = 10;
 	private readonly connectTimeout = 30;
 
@@ -52,36 +55,26 @@ class Db2ConnectionPool {
 			.join(';');
 	}
 
-	private initializePool(credentials: Db2Credentials): void {
-		const connectionString = this.buildConnectionString(credentials);
+	private getOrCreatePool(connectionString: string): Db2Pool {
+		let pool = this.pools.get(connectionString);
 
-		if (this.pool && this.connectionString === connectionString) {
-			return;
+		if (!pool) {
+			// eslint-disable-next-line @typescript-eslint/no-require-imports
+			const ibmDb = require('ibm_db') as Db2Database;
+
+			// @ts-expect-error Pool exists at runtime but is missing from type definitions
+			pool = new ibmDb.Pool() as unknown as Db2Pool;
+			pool.setMaxPoolSize(this.maxPoolSize);
+			pool.setConnectTimeout(this.connectTimeout);
+			this.pools.set(connectionString, pool);
 		}
 
-		if (this.pool) {
-			this.pool.close(() => {});
-		}
-
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const ibmDb = require('ibm_db') as Db2Database;
-
-		// @ts-expect-error Pool exists at runtime but is missing from type definitions
-		this.pool = new ibmDb.Pool() as unknown as Db2Pool;
-		this.pool.setMaxPoolSize(this.maxPoolSize);
-		this.pool.setConnectTimeout(this.connectTimeout);
-		this.connectionString = connectionString;
+		return pool;
 	}
 
 	async acquire(credentials: Db2Credentials): Promise<Db2Connection> {
-		this.initializePool(credentials);
-
-		const pool = this.pool;
-		const connectionString = this.connectionString;
-
-		if (!pool || !connectionString) {
-			throw new UnexpectedError('Connection pool not initialized');
-		}
+		const connectionString = this.buildConnectionString(credentials);
+		const pool = this.getOrCreatePool(connectionString);
 
 		return await new Promise((resolve, reject) => {
 			const timeoutMs = this.connectTimeout * 1000;
@@ -174,24 +167,25 @@ class Db2ConnectionPool {
 	}
 
 	async shutdown(): Promise<void> {
-		if (!this.pool) {
-			return;
+		const shutdownPromises: Array<Promise<void>> = [];
+
+		for (const [connectionString, pool] of this.pools.entries()) {
+			const promise = new Promise<void>((resolve) => {
+				try {
+					pool.close(() => {
+						this.pools.delete(connectionString);
+						resolve();
+					});
+				} catch (error) {
+					console.error(`Error closing pool for ${connectionString}:`, error);
+					this.pools.delete(connectionString);
+					resolve();
+				}
+			});
+			shutdownPromises.push(promise);
 		}
 
-		await new Promise<void>((resolve) => {
-			try {
-				this.pool?.close(() => {
-					this.pool = null;
-					this.connectionString = null;
-					resolve();
-				});
-			} catch (error) {
-				console.error('Error during pool shutdown:', error);
-				this.pool = null;
-				this.connectionString = null;
-				resolve();
-			}
-		});
+		await Promise.all(shutdownPromises);
 	}
 }
 
@@ -221,10 +215,92 @@ function toDb2Credentials(credentials: Record<string, unknown>): Db2Credentials 
 	};
 }
 
-const connectionPool = new Db2ConnectionPool();
+const connectionPoolManager = new Db2ConnectionPoolManager();
 
 async function getConnection(credentials: Db2Credentials): Promise<Db2Connection> {
-	return await connectionPool.acquire(credentials);
+	return await connectionPoolManager.acquire(credentials);
+}
+
+function wrapDb2Error(
+	error: unknown,
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	itemIndex: number,
+	operation: 'initialize' | 'populate',
+	tableName?: string,
+): never {
+	if (error instanceof NodeOperationError) {
+		throw error;
+	}
+
+	if (error instanceof Error && error.message.includes('connect')) {
+		const message = error.message.toLowerCase();
+
+		if (message.includes('authentication') || message.includes('password')) {
+			throw new NodeOperationError(context.getNode(), 'Failed to authenticate with Db2 database', {
+				itemIndex,
+				description: 'Please check your credentials (username and password) are correct.',
+			});
+		}
+
+		if (message.includes('host') || message.includes('connection refused')) {
+			throw new NodeOperationError(context.getNode(), 'Failed to connect to Db2 database', {
+				itemIndex,
+				description:
+					'Please check the host and port are correct and the database is accessible from this network.',
+			});
+		}
+
+		if (message.includes('timeout')) {
+			throw new NodeOperationError(context.getNode(), 'Connection to Db2 database timed out', {
+				itemIndex,
+				description:
+					'The database took too long to respond. Please check your network connection and database availability.',
+			});
+		}
+
+		throw new NodeOperationError(
+			context.getNode(),
+			`Failed to connect to Db2 database: ${error.message}`,
+			{
+				itemIndex,
+				description: 'Please check your connection settings and ensure the database is accessible.',
+			},
+		);
+	}
+
+	// Check for table structure errors (only relevant for populate operation)
+	if (
+		operation === 'populate' &&
+		tableName &&
+		error instanceof Error &&
+		(error.message.includes('column') || error.message.includes('SQL0206N'))
+	) {
+		throw new NodeOperationError(
+			context.getNode(),
+			`Table '${tableName}' does not have the required structure for vector storage`,
+			{
+				itemIndex,
+				description:
+					'The table must have columns: id (CHAR(16)), text (CLOB), embedding (VECTOR), and metadata (BLOB). Use the "Insert" operation to create a properly structured table.',
+			},
+		);
+	}
+
+	const operationText = operation === 'initialize' ? 'initialize' : 'populate';
+	const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+	const description =
+		operation === 'initialize'
+			? 'An unexpected error occurred. Please check your configuration and try again.'
+			: 'An unexpected error occurred while adding documents. Please check your configuration and try again.';
+
+	throw new NodeOperationError(
+		context.getNode(),
+		`Failed to ${operationText} Db2 Vector Store: ${errorMessage}`,
+		{
+			itemIndex,
+			description,
+		},
+	);
 }
 
 const insertFields: INodeProperties[] = [
@@ -235,17 +311,6 @@ const insertFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		options: [
-			{
-				displayName: 'Batch Size',
-				name: 'batchSize',
-				type: 'number',
-				default: 100,
-				description: 'Number of documents to insert in each batch. Optimal range: 50-200.',
-				typeOptions: {
-					minValue: 1,
-					maxValue: 1000,
-				},
-			},
 			{
 				displayName: 'Clear Table',
 				name: 'clearTable',
@@ -321,58 +386,6 @@ export class VectorStoreDb2 extends createVectorStoreNode({
 	insertFields,
 	loadFields: retrieveFields,
 	retrieveFields,
-	methods: {
-		listSearch: {
-			async db2TableNameSearch(
-				this: ILoadOptionsFunctions,
-			): Promise<{ results: INodePropertyOptions[] }> {
-				const credentials = await this.getCredentials('db2Api');
-
-				const connStr = `DATABASE=${credentials.database};HOSTNAME=${credentials.host};PORT=${credentials.port};PROTOCOL=TCPIP;UID=${credentials.user};PWD=${credentials.password}`;
-
-				const ibmDb = await import('ibm_db');
-
-				return await new Promise((resolve, reject) => {
-					ibmDb.open(connStr, (err, conn) => {
-						if (err) {
-							reject(new OperationalError('Failed to connect to DB2', { cause: err }));
-							return;
-						}
-
-						const query = `
-							SELECT TABNAME, TABSCHEMA
-							FROM SYSCAT.TABLES
-							WHERE TABSCHEMA = CURRENT SCHEMA
-								AND TYPE = 'T'
-							ORDER BY TABNAME
-						`;
-
-						conn.query(query, (queryErr, rows) => {
-							conn.close(() => {});
-
-							if (queryErr) {
-								reject(new OperationalError('Failed to list tables', { cause: queryErr as Error }));
-								return;
-							}
-
-							const results = (rows || []).map((row) => {
-								const rowData = row as unknown as Record<string, unknown>;
-								const tableName = rowData.TABNAME || rowData.tabname || rowData.name;
-								const schemaName = rowData.TABSCHEMA || rowData.tabschema || rowData.schema;
-
-								return {
-									name: schemaName ? `${schemaName}.${tableName}` : String(tableName),
-									value: String(tableName),
-								};
-							});
-
-							resolve({ results });
-						});
-					});
-				});
-			},
-		},
-	},
 	async getVectorStoreClient(
 		context: IExecuteFunctions | ISupplyDataFunctions,
 		filter: unknown,
@@ -380,27 +393,42 @@ export class VectorStoreDb2 extends createVectorStoreNode({
 		itemIndex: number,
 	) {
 		const credentials = await context.getCredentials('db2Api');
-		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
-			extractValue: true,
-		}) as string;
-		const schema = context.getNodeParameter('schema', itemIndex, '') as string;
 
-		const columnNames = context.getNodeParameter('columnNames', itemIndex, {}) as {
-			idColumnName?: string;
-			contentColumnName?: string;
-			metadataColumnName?: string;
-			embeddingColumnName?: string;
-		};
+		// Handle both old resource locator format and new string format
+		const tableNameParam = context.getNodeParameter('tableName', itemIndex);
+		let tableName: string;
+
+		if (typeof tableNameParam === 'string') {
+			tableName = tableNameParam;
+		} else if (typeof tableNameParam === 'object' && tableNameParam !== null) {
+			// Handle old resource locator format: { mode: 'list', value: 'table_name' }
+			const rlc = tableNameParam as { mode?: string; value?: string };
+			tableName = rlc.value || '';
+
+			if (!tableName) {
+				throw new NodeOperationError(context.getNode(), 'Table name is required', {
+					itemIndex,
+					description: 'Please provide a valid table name.',
+				});
+			}
+		} else {
+			throw new NodeOperationError(context.getNode(), 'Invalid table name parameter', {
+				itemIndex,
+				description: 'Table name must be a string.',
+			});
+		}
 
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
 			distanceStrategy?: DistanceStrategy;
 		};
 		const distanceStrategy = (options.distanceStrategy || 'euclidean') as DistanceStrategy;
 
-		try {
-			const client = await getConnection(toDb2Credentials(credentials));
+		let client: Db2Connection | null = null;
 
-			const exists = await checkTableExists(client, tableName, schema || undefined);
+		try {
+			client = await getConnection(toDb2Credentials(credentials));
+
+			const exists = await checkTableExists(client, tableName);
 			if (!exists) {
 				throw new NodeOperationError(
 					context.getNode(),
@@ -416,74 +444,19 @@ export class VectorStoreDb2 extends createVectorStoreNode({
 			const vectorStore = new DB2VectorStore(embeddings, {
 				client,
 				tableName,
-				schema: schema || undefined,
 				distanceStrategy,
 				embeddingFunction: embeddings,
 				filter: filter as Record<string, unknown>,
-				columns: {
-					idColumnName: columnNames.idColumnName,
-					contentColumnName: columnNames.contentColumnName,
-					metadataColumnName: columnNames.metadataColumnName,
-					embeddingColumnName: columnNames.embeddingColumnName,
-				},
 			});
 
 			return vectorStore;
 		} catch (error) {
-			if (error instanceof NodeOperationError) {
-				throw error;
+			// Release connection on error
+			if (client) {
+				connectionPoolManager.release(client);
 			}
 
-			if (error instanceof Error && error.message.includes('connect')) {
-				const message = error.message.toLowerCase();
-
-				if (message.includes('authentication') || message.includes('password')) {
-					throw new NodeOperationError(
-						context.getNode(),
-						'Failed to authenticate with Db2 database',
-						{
-							itemIndex,
-							description: 'Please check your credentials (username and password) are correct.',
-						},
-					);
-				}
-
-				if (message.includes('host') || message.includes('connection refused')) {
-					throw new NodeOperationError(context.getNode(), 'Failed to connect to Db2 database', {
-						itemIndex,
-						description:
-							'Please check the host and port are correct and the database is accessible from this network.',
-					});
-				}
-
-				if (message.includes('timeout')) {
-					throw new NodeOperationError(context.getNode(), 'Connection to Db2 database timed out', {
-						itemIndex,
-						description:
-							'The database took too long to respond. Please check your network connection and database availability.',
-					});
-				}
-
-				throw new NodeOperationError(
-					context.getNode(),
-					`Failed to connect to Db2 database: ${error.message}`,
-					{
-						itemIndex,
-						description:
-							'Please check your connection settings and ensure the database is accessible.',
-					},
-				);
-			}
-
-			throw new NodeOperationError(
-				context.getNode(),
-				`Failed to initialize Db2 Vector Store: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				{
-					itemIndex,
-					description:
-						'An unexpected error occurred. Please check your configuration and try again.',
-				},
-			);
+			wrapDb2Error(error, context, itemIndex, 'initialize');
 		}
 	},
 	async populateVectorStore(
@@ -493,44 +466,50 @@ export class VectorStoreDb2 extends createVectorStoreNode({
 		itemIndex: number,
 	) {
 		const credentials = await context.getCredentials('db2Api');
-		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
-			extractValue: true,
-		}) as string;
-		const schema = context.getNodeParameter('schema', itemIndex, '') as string;
 
-		const columnNames = context.getNodeParameter('columnNames', itemIndex, {}) as {
-			idColumnName?: string;
-			contentColumnName?: string;
-			metadataColumnName?: string;
-			embeddingColumnName?: string;
-		};
+		// Handle both old resource locator format and new string format
+		const tableNameParam = context.getNodeParameter('tableName', itemIndex);
+		let tableName: string;
+
+		if (typeof tableNameParam === 'string') {
+			tableName = tableNameParam;
+		} else if (typeof tableNameParam === 'object' && tableNameParam !== null) {
+			// Handle old resource locator format: { mode: 'list', value: 'table_name' }
+			const rlc = tableNameParam as { mode?: string; value?: string };
+			tableName = rlc.value || '';
+
+			if (!tableName) {
+				throw new NodeOperationError(context.getNode(), 'Table name is required', {
+					itemIndex,
+					description: 'Please provide a valid table name.',
+				});
+			}
+		} else {
+			throw new NodeOperationError(context.getNode(), 'Invalid table name parameter', {
+				itemIndex,
+				description: 'Table name must be a string.',
+			});
+		}
 
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
-			batchSize?: number;
 			clearTable?: boolean;
 		};
 
-		const batchSize = options.batchSize ?? 100;
 		const clearTable = options.clearTable ?? false;
 
 		const distanceStrategy = 'euclidean' as DistanceStrategy;
 
+		let client: Db2Connection | null = null;
+
 		try {
-			const client = await getConnection(toDb2Credentials(credentials));
+			client = await getConnection(toDb2Credentials(credentials));
 
 			const vectorStore = new DB2VectorStore(embeddings, {
 				client,
 				tableName,
-				schema: schema || undefined,
 				distanceStrategy,
 				embeddingFunction: embeddings,
-				batchSize,
-				columns: {
-					idColumnName: columnNames.idColumnName,
-					contentColumnName: columnNames.contentColumnName,
-					metadataColumnName: columnNames.metadataColumnName,
-					embeddingColumnName: columnNames.embeddingColumnName,
-				},
+				batchSize: 100, // Fixed default batch size for DB2 inserts
 			});
 
 			if (clearTable) {
@@ -539,92 +518,29 @@ export class VectorStoreDb2 extends createVectorStoreNode({
 
 			await vectorStore.addDocuments(documents);
 		} catch (error) {
-			if (error instanceof NodeOperationError) {
-				throw error;
+			wrapDb2Error(error, context, itemIndex, 'populate', tableName);
+		} finally {
+			// Always release connection after insert operation completes
+			if (client) {
+				connectionPoolManager.release(client);
 			}
-
-			if (error instanceof Error && error.message.includes('connect')) {
-				const message = error.message.toLowerCase();
-
-				if (message.includes('authentication') || message.includes('password')) {
-					throw new NodeOperationError(
-						context.getNode(),
-						'Failed to authenticate with Db2 database',
-						{
-							itemIndex,
-							description: 'Please check your credentials (username and password) are correct.',
-						},
-					);
-				}
-
-				if (message.includes('host') || message.includes('connection refused')) {
-					throw new NodeOperationError(context.getNode(), 'Failed to connect to Db2 database', {
-						itemIndex,
-						description:
-							'Please check the host and port are correct and the database is accessible from this network.',
-					});
-				}
-
-				if (message.includes('timeout')) {
-					throw new NodeOperationError(context.getNode(), 'Connection to Db2 database timed out', {
-						itemIndex,
-						description:
-							'The database took too long to respond. Please check your network connection and database availability.',
-					});
-				}
-
-				throw new NodeOperationError(
-					context.getNode(),
-					`Failed to connect to Db2 database: ${error.message}`,
-					{
-						itemIndex,
-						description:
-							'Please check your connection settings and ensure the database is accessible.',
-					},
-				);
-			}
-
-			if (
-				error instanceof Error &&
-				(error.message.includes('column') || error.message.includes('SQL0206N'))
-			) {
-				throw new NodeOperationError(
-					context.getNode(),
-					`Table '${tableName}' does not have the required structure for vector storage`,
-					{
-						itemIndex,
-						description:
-							'The table must have columns: id (CHAR(16)), text (CLOB), embedding (VECTOR), and metadata (BLOB). Use the "Insert" operation to create a properly structured table.',
-					},
-				);
-			}
-
-			throw new NodeOperationError(
-				context.getNode(),
-				`Failed to populate Db2 Vector Store: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				{
-					itemIndex,
-					description:
-						'An unexpected error occurred while adding documents. Please check your configuration and try again.',
-				},
-			);
 		}
 	},
 	releaseVectorStoreClient(vectorStore: DB2VectorStore) {
 		const client = vectorStore.getClient();
 		if (client) {
-			connectionPool.release(client);
+			connectionPoolManager.release(client);
 		}
 	},
 }) {}
 
 process.on('SIGTERM', async () => {
-	await connectionPool.shutdown();
+	await connectionPoolManager.shutdown();
 });
 
 process.on('SIGINT', async () => {
-	await connectionPool.shutdown();
+	await connectionPoolManager.shutdown();
 });
 
-export { DB2VectorStore, ExtendedDB2VectorStore, DistanceStrategy } from './Db2VectorStore';
+export { DB2VectorStore, DistanceStrategy } from './Db2VectorStore';
 export { dropTable } from './Db2VectorStore';

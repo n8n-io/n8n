@@ -1696,5 +1696,3 @@ describe('DB2VectorStore - Metadata Filtering', () => {
 		expect(results[0][2]).toEqual([0.1, 0.2, 0.3]); // Check embedding is returned
 	});
 });
-
-// Made with Bob
