@@ -1,10 +1,10 @@
 import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { SsrfProtectionService } from 'n8n-core';
 import promClient from 'prom-client';
 
 import type { PrometheusMetricsCollector } from './base';
 import { DURATION_BUCKETS_SECONDS } from './constant';
+import { SsrfProtectionService } from '@n8n/backend-network';
 
 /**
  * Tracks SSRF check results as counters and duration as a histogram.
