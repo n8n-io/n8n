@@ -4,6 +4,7 @@ import {
 	computed,
 	effectScope,
 	inject,
+	onScopeDispose,
 	readonly,
 	ref,
 	shallowReactive,
@@ -408,6 +409,19 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		if (initialNodesById && typeof initialNodesById.keys === 'function') {
 			applyReconcileRunningEntries(Array.from(initialNodesById.keys()));
 		}
+
+		// Scopes created from `onNodesChange` callbacks have no active parent
+		// (event dispatch runs outside any scope), so `$dispose()` never
+		// reaches them. Vue 3.5 computeds are not scope-owned and detach from
+		// deps once unsubscribed, so this is deterministic cleanup hygiene
+		// rather than leak prevention: stop the scopes and drop the per-node
+		// entries when the store is disposed.
+		onScopeDispose(() => {
+			for (const stop of runningScopes.values()) stop();
+			runningScopes.clear();
+			executionRunningByNodeId.clear();
+			executionWaitingForNextByNodeId.clear();
+		});
 
 		/**
 		 * Resolves the trigger node name driving the active execution.

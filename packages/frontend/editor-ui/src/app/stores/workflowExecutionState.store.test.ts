@@ -13,7 +13,10 @@ import {
 	getWorkflowExecutionStateStoreId,
 	disposeWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/executionData.store';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -1366,6 +1369,31 @@ describe('workflowExecutionState.store', () => {
 			const recreated = useWorkflowExecutionStateStore(createWorkflowDocumentId(id));
 			expect(recreated).not.toBe(executionStateStore);
 			expect(recreated.executionWaitingForWebhook).toBe(false);
+		});
+
+		it('releases running entries created from node-change events on dispose', () => {
+			const id = createWorkflowDocumentId('wf-dispose-running');
+			const documentStore = useWorkflowDocumentStore(id);
+			const executionStateStore = useWorkflowExecutionStateStore(id);
+
+			// Fired after store setup, so the entry's effect scope is created
+			// outside any active parent scope.
+			documentStore.addNode({
+				id: 'node-1',
+				name: 'Node 1',
+				position: [0, 0],
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				parameters: {},
+			});
+
+			expect(executionStateStore.executionRunningByNodeId.has('node-1')).toBe(true);
+			expect(executionStateStore.executionWaitingForNextByNodeId.has('node-1')).toBe(true);
+
+			disposeWorkflowExecutionStateStore(executionStateStore);
+
+			expect(executionStateStore.executionRunningByNodeId.size).toBe(0);
+			expect(executionStateStore.executionWaitingForNextByNodeId.size).toBe(0);
 		});
 	});
 });
