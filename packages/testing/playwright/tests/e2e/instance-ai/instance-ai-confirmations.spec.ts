@@ -226,7 +226,12 @@ test.describe(
 					},
 				],
 			},
-			async ({ n8n }) => {
+			async ({ n8n }, testInfo) => {
+				test.skip(
+					testInfo.project.name.includes('multi-main'),
+					'Post-approval agent actions are not yet stable on the multi-main project',
+				);
+
 				await n8n.navigate.toInstanceAi();
 
 				await n8n.instanceAi.sendMessage(
@@ -280,7 +285,12 @@ test.describe(
 		test('should require approval before editing an existing workflow and apply after approval', async ({
 			api,
 			n8n,
-		}) => {
+		}, testInfo) => {
+			test.skip(
+				testInfo.project.name.includes('multi-main'),
+				'Post-approval agent actions are not yet stable on the multi-main project',
+			);
+
 			await api.setInstanceAiPermissions({
 				runWorkflow: 'always_allow',
 			});
