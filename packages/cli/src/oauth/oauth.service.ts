@@ -1210,9 +1210,10 @@ export class OauthService {
 					Array.isArray(data.authorization_servers) &&
 					data.authorization_servers.length > 0
 				) {
+					const rawResource = (data as Record<string, unknown>).resource;
 					const resource =
-						typeof data.resource === 'string'
-							? this.validateResourceUrlOrThrow(data.resource)
+						typeof rawResource === 'string'
+							? this.validateResourceUrlOrThrow(rawResource)
 							: undefined;
 					return {
 						authorization_servers: data.authorization_servers,

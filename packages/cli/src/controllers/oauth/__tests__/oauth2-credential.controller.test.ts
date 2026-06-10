@@ -185,6 +185,7 @@ describe('OAuth2CredentialController', () => {
 					authentication: 'header',
 				},
 				mockState,
+				{} as any,
 			]);
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
@@ -211,7 +212,6 @@ describe('OAuth2CredentialController', () => {
 						resource: 'https://mcp.example.com/mcp',
 					}),
 				}),
-				['csrfSecret'],
 			);
 		});
 
@@ -330,6 +330,7 @@ describe('OAuth2CredentialController', () => {
 					authentication: 'header',
 				},
 				mockState,
+				{} as any,
 			]);
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
@@ -826,6 +827,7 @@ describe('OAuth2CredentialController', () => {
 					authentication: 'header',
 				},
 				mockState as any, // force incorrect type to test robustness
+				{} as any,
 			]);
 			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
 			externalHooks.run.mockResolvedValue(undefined);
@@ -846,7 +848,6 @@ describe('OAuth2CredentialController', () => {
 				expect.objectContaining({
 					oauthTokenData: expect.not.objectContaining({ resource: expect.anything() }),
 				}),
-				['csrfSecret'],
 			);
 		});
 
