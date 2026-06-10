@@ -3,6 +3,7 @@ import {
 	detectOpenContexts,
 	type DetectedContext,
 	type ScreenshotAttachment,
+	type WindowCaptureTarget,
 } from '@n8n/computer-use/context';
 import { logger } from '@n8n/computer-use/logger';
 import { app } from 'electron';
@@ -68,9 +69,13 @@ export class ContextDetector extends EventEmitter {
 		return this.options;
 	}
 
-	/** Capture the current screen as an attachment for the task request. */
-	async captureScreenshot(): Promise<ScreenshotAttachment> {
-		return await captureScreenshotAttachment();
+	/**
+	 * Capture a screenshot attachment for the task request. With a `target` it
+	 * grabs just that window (so our own window in front of it isn't captured);
+	 * without one it falls back to the full screen.
+	 */
+	async captureScreenshot(target?: WindowCaptureTarget): Promise<ScreenshotAttachment> {
+		return await captureScreenshotAttachment(target);
 	}
 
 	/**

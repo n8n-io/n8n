@@ -26,6 +26,7 @@ import type {
 	MacPermissionStatus,
 	RunTaskResult,
 	ScreenshotAttachment,
+	WindowCaptureTarget,
 } from '../shared/types';
 
 export interface IpcHandlerDeps {
@@ -246,10 +247,13 @@ export function registerIpcHandlers({
 		return options;
 	});
 
-	ipcMain.handle('context:captureScreenshot', async (): Promise<ScreenshotAttachment> => {
-		logger.debug('IPC context:captureScreenshot');
-		return await contextDetector.captureScreenshot();
-	});
+	ipcMain.handle(
+		'context:captureScreenshot',
+		async (_event, target?: WindowCaptureTarget): Promise<ScreenshotAttachment> => {
+			logger.debug('IPC context:captureScreenshot', { app: target?.app });
+			return await contextDetector.captureScreenshot(target);
+		},
+	);
 
 	ipcMain.handle(
 		'tasks:trigger',

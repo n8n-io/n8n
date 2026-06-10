@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
@@ -58,6 +58,14 @@ watch(
 	{ immediate: true },
 );
 
+const screenshotTooltip = computed(() =>
+	i18n.baseText(
+		screenshotEnabled.value
+			? 'desktopAssistant.composer.screenshotOnTooltip'
+			: 'desktopAssistant.composer.screenshotOffTooltip',
+	),
+);
+
 let disposeContext: (() => void) | undefined;
 onMounted(async () => {
 	optionsList.value = await window.electronAPI.getContextOptions();
@@ -93,7 +101,14 @@ async function dispatchToBackend(prompt: string) {
 			path: ctx.path,
 		};
 		if (screenshotEnabled.value) {
-			context.attachments = [await window.electronAPI.captureScreenshot()];
+			// Capture just the selected window (so our own window isn't in the shot);
+			// falls back to full screen in the main process when it can't be matched.
+			const shot = await window.electronAPI.captureScreenshot({
+				windowId: ctx.id,
+				app: ctx.app,
+				title: ctx.windowTitle,
+			});
+			context.attachments = [shot];
 		}
 		// Inspection aid while the UI flow is stubbed: see exactly what context the
 		// composer forwards. Attachment data is omitted (it's multi-MB base64); the
@@ -271,15 +286,17 @@ function dismissDone() {
 				:options="contextOptions"
 				@select="selectedKey = $event"
 			/>
-			<button
-				type="button"
-				:class="[$style.screenshotToggle, { [$style.screenshotOn]: screenshotEnabled }]"
-				:aria-pressed="screenshotEnabled"
-				:aria-label="i18n.baseText('desktopAssistant.composer.attachScreenshot')"
-				@click="screenshotEnabled = !screenshotEnabled"
-			>
-				<N8nIcon icon="image" :size="13" aria-hidden="true" />
-			</button>
+			<N8nTooltip :content="screenshotTooltip" placement="top">
+				<button
+					type="button"
+					:class="[$style.screenshotToggle, { [$style.screenshotOn]: screenshotEnabled }]"
+					:aria-pressed="screenshotEnabled"
+					:aria-label="i18n.baseText('desktopAssistant.composer.attachScreenshot')"
+					@click="screenshotEnabled = !screenshotEnabled"
+				>
+					<N8nIcon icon="image" :size="13" aria-hidden="true" />
+				</button>
+			</N8nTooltip>
 		</div>
 
 		<div :class="$style.chipRowWrapper">

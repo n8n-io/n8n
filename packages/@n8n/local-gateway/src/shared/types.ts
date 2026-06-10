@@ -36,7 +36,11 @@ import type {
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
-import type { DetectedContext, ScreenshotAttachment } from '@n8n/computer-use/context';
+import type {
+	DetectedContext,
+	ScreenshotAttachment,
+	WindowCaptureTarget,
+} from '@n8n/computer-use/context';
 
 export type {
 	DesktopAssistantTasksResponse,
@@ -54,7 +58,11 @@ export type {
 // Type-only re-export: the detected-context shape comes from @n8n/computer-use,
 // but importing it `type`-only means no Node runtime dependency leaks into the
 // renderer bundle.
-export type { DetectedContext, ScreenshotAttachment } from '@n8n/computer-use/context';
+export type {
+	DetectedContext,
+	ScreenshotAttachment,
+	WindowCaptureTarget,
+} from '@n8n/computer-use/context';
 
 /** Cursor + page-size params for the history list. */
 export interface DesktopAssistantHistoryParams {
@@ -149,8 +157,12 @@ export interface ElectronApi {
 	 * re-detects (on tray open). Returns a disposer to unsubscribe.
 	 */
 	onContextChanged: (onChangeCallback: (contexts: DetectedContext[]) => void) => () => void;
-	/** Capture the current screen as a task attachment (base64 JPEG). */
-	captureScreenshot: () => Promise<ScreenshotAttachment>;
+	/**
+	 * Capture a task attachment (base64 JPEG). With a `target` window it captures
+	 * just that window (excluding the assistant in front of it); otherwise the
+	 * full screen.
+	 */
+	captureScreenshot: (target?: WindowCaptureTarget) => Promise<ScreenshotAttachment>;
 	/** Fire a one-shot task with the prompt + detected context; returns thread/run ids. */
 	triggerTask: (body: DesktopAssistantTaskRequest) => Promise<DesktopAssistantTaskResponse>;
 	/** Current grant state of the macOS permissions context detection relies on. */

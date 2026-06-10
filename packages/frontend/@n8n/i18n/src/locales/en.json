@@ -74,6 +74,8 @@
 	"desktopAssistant.composer.noThanks": "No thanks",
 	"desktopAssistant.composer.saveAsReady": "Save as ready to run",
 	"desktopAssistant.composer.attachScreenshot": "Attach a screenshot of your screen",
+	"desktopAssistant.composer.screenshotOnTooltip": "A screenshot of the window you're looking at will be sent with your task. Click to turn off.",
+	"desktopAssistant.composer.screenshotOffTooltip": "Also send a screenshot of the window you're looking at with your task. Click to turn on.",
 	"desktopAssistant.composer.lookingAt": "Looking at",
 	"desktopAssistant.composer.switchContext": "Switch context",
 	"desktopAssistant.draft.savesBefore": "Saves about",

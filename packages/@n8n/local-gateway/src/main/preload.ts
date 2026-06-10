@@ -18,6 +18,7 @@ import type {
 	RunTaskResult,
 	ScreenshotAttachment,
 	StatusSnapshot,
+	WindowCaptureTarget,
 } from '../shared/types';
 
 const electronApi: ElectronApi = {
@@ -119,8 +120,11 @@ const electronApi: ElectronApi = {
 		return () => ipcRenderer.removeListener('contextChanged', handler);
 	},
 
-	captureScreenshot: async (): Promise<ScreenshotAttachment> =>
-		await (ipcRenderer.invoke('context:captureScreenshot') as Promise<ScreenshotAttachment>),
+	captureScreenshot: async (target?: WindowCaptureTarget): Promise<ScreenshotAttachment> =>
+		await (ipcRenderer.invoke(
+			'context:captureScreenshot',
+			target,
+		) as Promise<ScreenshotAttachment>),
 
 	triggerTask: async (body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> =>
 		await (ipcRenderer.invoke('tasks:trigger', body) as Promise<DesktopAssistantTaskResponse>),

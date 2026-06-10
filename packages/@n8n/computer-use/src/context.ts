@@ -18,4 +18,5 @@ export type {
 	DetectedContext,
 	DetectedContextKind,
 	ScreenshotAttachment,
+	WindowCaptureTarget,
 } from './tools/context';

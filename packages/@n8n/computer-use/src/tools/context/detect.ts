@@ -296,6 +296,11 @@ export async function detectActiveContext(): Promise<DetectedContext> {
  * - Browser windows are condensed by URL; other apps to one entry per app.
  *
  * Empty on non-macOS or failure.
+ *
+ * Limitation: get-windows uses macOS's on-screen window list, which only covers
+ * the *current* Space — windows on other Spaces aren't returned. There's no
+ * option to enumerate across Spaces without private CoreGraphics / Accessibility
+ * APIs, so the picker reflects the Space the assistant was opened on.
  */
 export async function detectOpenContexts(): Promise<DetectedContext[]> {
 	const windows = await withGetWindows(async (gw, options) => await gw.openWindows(options));
