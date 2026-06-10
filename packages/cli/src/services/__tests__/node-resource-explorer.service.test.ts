@@ -93,6 +93,39 @@ describe('NodeResourceExplorerService', () => {
 		);
 	});
 
+	test("does not mutate the caller's currentNodeParameters when auto-filling authentication", async () => {
+		mockCredentialOwned({ type: 'googleSheetsOAuth2Api' });
+		mockNodeDescription({
+			properties: [
+				{
+					name: 'authentication',
+					displayName: 'Auth',
+					type: 'options',
+					default: '',
+					options: [{ name: 'OAuth2', value: 'oAuth2' }],
+				},
+			] as never,
+			credentials: [
+				{
+					name: 'googleSheetsOAuth2Api',
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+			] as never,
+		});
+		dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+		} as never);
+
+		const callerParams = { documentId: 'sheet-1' };
+		await service.exploreResources(user, {
+			...baseParams,
+			credentialType: 'googleSheetsOAuth2Api',
+			currentNodeParameters: callerParams,
+		});
+
+		expect(callerParams).toEqual({ documentId: 'sheet-1' });
+	});
+
 	test('listSearch path: calls getResourceLocatorResults with mapped credentials and params', async () => {
 		mockCredentialOwned({ name: 'Resolved' });
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {

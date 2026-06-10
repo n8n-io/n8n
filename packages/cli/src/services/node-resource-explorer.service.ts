@@ -49,7 +49,9 @@ export class NodeResourceExplorerService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 
 		const nodeTypeAndVersion = { name: params.nodeType, version: params.version };
-		const currentNodeParameters = (params.currentNodeParameters ?? {}) as INodeParameters;
+		const currentNodeParameters = structuredClone(
+			params.currentNodeParameters ?? {},
+		) as INodeParameters;
 		const credentials: INodeCredentials = {
 			[credential.type]: { id: credential.id, name: credential.name },
 		};
