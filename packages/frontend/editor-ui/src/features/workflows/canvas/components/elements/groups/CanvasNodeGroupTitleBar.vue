@@ -194,7 +194,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 					class="nodrag"
 					:class="$style.toggle"
 					variant="ghost"
-					size="small"
+					size="large"
 					:icon="isCollapsed ? 'chevrons-up-down' : 'chevrons-down-up'"
 					:aria-label="toggleLabel"
 					:aria-expanded="!isCollapsed"
@@ -265,14 +265,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 .content {
 	display: flex;
 	align-items: center;
-	gap: 0;
+	gap: var(--spacing--2xs);
 	height: 100%;
-	padding: 0 var(--spacing--sm);
+	padding: var(--spacing--lg);
 	overflow: hidden;
 }
 
 .toggle {
-	margin-right: var(--spacing--sm);
 	flex-shrink: 0;
 }
 
@@ -332,8 +331,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 .handle {
-	top: 50%;
-	transform: translateY(-50%);
 	opacity: 0;
 	pointer-events: none;
 }
