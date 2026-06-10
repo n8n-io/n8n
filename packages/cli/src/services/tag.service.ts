@@ -97,6 +97,26 @@ export class TagService {
 	}
 
 	/**
+	 * Look up tags by name without creating missing ones. Returns existing
+	 * entities only; the input order is preserved for found names. Use this
+	 * when the caller doesn't have permission to create new tags.
+	 */
+	async findByNames(names: string[]): Promise<TagEntity[]> {
+		const uniqueNames = Array.from(new Set(names.map((n) => n.trim()).filter((n) => n.length > 0)));
+		if (uniqueNames.length === 0) return [];
+
+		const existing = await this.tagRepository.find({ where: { name: In(uniqueNames) } });
+		const existingByName = new Map(existing.map((t) => [t.name, t]));
+
+		const result: TagEntity[] = [];
+		for (const name of uniqueNames) {
+			const hit = existingByName.get(name);
+			if (hit) result.push(hit);
+		}
+		return result;
+	}
+
+	/**
 	 * Resolve a set of tag names to their entities, creating any that don't exist.
 	 * Names are trimmed and de-duplicated before lookup. Returns one entity per
 	 * unique input name, in the same order as the de-duplicated input.

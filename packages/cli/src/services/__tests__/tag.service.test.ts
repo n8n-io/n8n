@@ -24,6 +24,28 @@ describe('TagService', () => {
 		jest.resetAllMocks();
 	});
 
+	describe('findByNames', () => {
+		test('returns existing tags by name, preserving input order', async () => {
+			const tags = [
+				makeTag({ id: 'tag-1', name: 'production' }),
+				makeTag({ id: 'tag-2', name: 'critical' }),
+			];
+			tagRepository.find.mockResolvedValue(tags);
+
+			const result = await tagService.findByNames(['critical', 'production', 'missing']);
+
+			expect(result.map((t) => t.name)).toEqual(['critical', 'production']);
+			expect(tagRepository.save).not.toHaveBeenCalled();
+		});
+
+		test('returns empty for whitespace-only inputs without querying', async () => {
+			const result = await tagService.findByNames(['', '   ']);
+
+			expect(result).toEqual([]);
+			expect(tagRepository.find).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findOrCreateByNames', () => {
 		test('returns empty array for empty input', async () => {
 			const result = await tagService.findOrCreateByNames([]);

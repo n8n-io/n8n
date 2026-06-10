@@ -17,8 +17,14 @@ const buildTag = (overrides: Partial<ITagWithCountDb> = {}): ITagWithCountDb =>
 		...overrides,
 	}) as ITagWithCountDb;
 
+const userWithScopes = (scopeSlugs: string[]) =>
+	Object.assign(new User(), {
+		id: 'user-1',
+		role: { slug: 'global:test', scopes: scopeSlugs.map((slug) => ({ slug })) },
+	});
+
 describe('list-tags MCP tool', () => {
-	const user = Object.assign(new User(), { id: 'user-1' });
+	const user = userWithScopes(['tag:list']);
 
 	const createMocks = (tags: ITagWithCountDb[] | Error = []) => {
 		const getAll =
@@ -131,6 +137,18 @@ describe('list-tags MCP tool', () => {
 					results: { success: false, error: 'boom' },
 				}),
 			);
+		});
+
+		test('rejects when the user does not have tag:list scope', async () => {
+			const noScopeUser = userWithScopes([]);
+			const { tagService, telemetry } = createMocks([buildTag()]);
+			const tool = createListTagsTool(noScopeUser, tagService, telemetry);
+
+			await expect(
+				tool.handler({ limit: undefined as unknown as number }, {} as never),
+			).rejects.toThrow('permission to list tags');
+
+			expect(tagService.getAll).not.toHaveBeenCalled();
 		});
 	});
 });

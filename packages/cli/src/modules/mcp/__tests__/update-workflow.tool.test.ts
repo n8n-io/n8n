@@ -50,8 +50,14 @@ type DataTableOpsMock = {
 	getManyAndCount: jest.Mock;
 };
 
+const userWithScopes = (scopeSlugs: string[]) =>
+	Object.assign(new User(), {
+		id: 'user-1',
+		role: { slug: 'global:test', scopes: scopeSlugs.map((slug) => ({ slug })) },
+	});
+
 describe('update-workflow MCP tool', () => {
-	const user = Object.assign(new User(), { id: 'user-1' });
+	const user = userWithScopes(['tag:create']);
 	let workflowFinderService: WorkflowFinderService;
 	let findWorkflowMock: jest.Mock;
 	let workflowService: WorkflowService;
@@ -65,6 +71,7 @@ describe('update-workflow MCP tool', () => {
 	let dataTableOps: DataTableOpsMock;
 	let tagService: TagService;
 	let findOrCreateByNamesMock: jest.Mock;
+	let findByNamesMock: jest.Mock;
 	let globalConfig: GlobalConfig;
 
 	const buildExistingWorkflow = () =>
@@ -129,7 +136,11 @@ describe('update-workflow MCP tool', () => {
 		};
 
 		findOrCreateByNamesMock = jest.fn();
-		tagService = mockInstance(TagService, { findOrCreateByNames: findOrCreateByNamesMock });
+		findByNamesMock = jest.fn();
+		tagService = mockInstance(TagService, {
+			findOrCreateByNames: findOrCreateByNamesMock,
+			findByNames: findByNamesMock,
+		});
 		globalConfig = mockInstance(GlobalConfig, { tags: { disabled: false } });
 	});
 
@@ -1048,6 +1059,73 @@ describe('update-workflow MCP tool', () => {
 				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
 				expect(workflowService.update).not.toHaveBeenCalled();
 				expect(findWorkflowMock).not.toHaveBeenCalled();
+			});
+
+			test('without tag:create scope, attaches only existing tags', async () => {
+				const memberUser = userWithScopes([]);
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
+
+				const tool = createUpdateWorkflowTool(
+					memberUser,
+					workflowFinderService,
+					workflowService,
+					urlService,
+					telemetry,
+					nodeTypes,
+					credentialsService,
+					sharedWorkflowRepository,
+					collaborationService,
+					dataTableOps as never,
+					tagService,
+					globalConfig,
+				);
+
+				await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'addTags', names: ['production'] }],
+					},
+					tool,
+				);
+
+				expect(findByNamesMock).toHaveBeenCalledWith(['production']);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				const [, , , updateOptions] = updateMock.mock.calls[0];
+				expect(updateOptions.tagIds).toEqual(['tag-existing']);
+			});
+
+			test('without tag:create scope, fails when a tag name does not exist', async () => {
+				const memberUser = userWithScopes([]);
+				findWorkflowMock.mockResolvedValue(workflowWithTags([]));
+				findByNamesMock.mockResolvedValue([{ id: 'tag-existing', name: 'production' }]);
+
+				const tool = createUpdateWorkflowTool(
+					memberUser,
+					workflowFinderService,
+					workflowService,
+					urlService,
+					telemetry,
+					nodeTypes,
+					credentialsService,
+					sharedWorkflowRepository,
+					collaborationService,
+					dataTableOps as never,
+					tagService,
+					globalConfig,
+				);
+
+				const result = await callHandler(
+					{
+						workflowId: 'wf-1',
+						operations: [{ type: 'addTags', names: ['production', 'novel-tag'] }],
+					},
+					tool,
+				);
+
+				expect(result.isError).toBe(true);
+				expect(findOrCreateByNamesMock).not.toHaveBeenCalled();
+				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 		});
 	});

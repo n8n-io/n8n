@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import { hasGlobalScope } from '@n8n/permissions';
 import z from 'zod';
 
 import type { TagService } from '@/services/tag.service';
@@ -83,6 +84,10 @@ export const createListTagsTool = (
 		};
 
 		try {
+			if (!hasGlobalScope(user, 'tag:list')) {
+				throw new Error('User does not have permission to list tags');
+			}
+
 			const payload = await listTags(tagService, { limit });
 
 			telemetryPayload.results = {

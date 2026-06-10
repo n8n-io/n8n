@@ -1,5 +1,6 @@
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
@@ -387,8 +388,20 @@ export const createUpdateWorkflowTool = (
 
 			let tagIds: string[] | undefined;
 			if (result.tagNames !== undefined) {
-				const resolvedTags = await tagService.findOrCreateByNames(result.tagNames);
-				tagIds = resolvedTags.map((t) => t.id);
+				if (hasGlobalScope(user, 'tag:create')) {
+					const resolvedTags = await tagService.findOrCreateByNames(result.tagNames);
+					tagIds = resolvedTags.map((t) => t.id);
+				} else {
+					const resolvedTags = await tagService.findByNames(result.tagNames);
+					const resolvedNames = new Set(resolvedTags.map((t) => t.name));
+					const missing = result.tagNames.filter((name) => !resolvedNames.has(name));
+					if (missing.length > 0) {
+						throw new Error(
+							`User does not have permission to create tags. The following tags do not exist: ${missing.join(', ')}`,
+						);
+					}
+					tagIds = resolvedTags.map((t) => t.id);
+				}
 			}
 
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
