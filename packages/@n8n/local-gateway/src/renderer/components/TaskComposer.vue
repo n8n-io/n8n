@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import ContextPill from './ContextPill.vue';
 import MiniSpinner from './MiniSpinner.vue';
 
-import { ASSISTANT_CONTEXTS, suggestionChipsFor } from '../assistant/contexts';
+import {
+	ACTIVE_CONTEXT_KEY,
+	ASSISTANT_CONTEXTS,
+	assistantContextFromDetected,
+	suggestionChipsFor,
+	type AssistantContext,
+} from '../assistant/contexts';
 import { formatMinutes } from '../assistant/format';
 import { buildFallbackPlan, planTask, type Plan } from '../assistant/planner';
 import { useAssistantScreen } from '../assistant/use-assistant-screen';
+import type { DetectedContext } from '../../shared/types';
 
 type ComposerState = 'idle' | 'thinking' | 'doing';
 
@@ -23,18 +30,76 @@ const { goTo } = useAssistantScreen();
 const text = ref('');
 const state = ref<ComposerState>('idle');
 const doneCard = ref<DoneCard | null>(null);
-const activeContextKey = ref(ASSISTANT_CONTEXTS[0].key);
+
+// The live, locally-detected context ("what you're looking at"), seeded and
+// updated from the main process. `detected` is the raw structured payload we
+// forward to the backend; `liveContext` is its UI projection.
+const detected = ref<DetectedContext>({ kind: 'other' });
+const liveContext = computed(() => assistantContextFromDetected(detected.value));
+// A manual override picked from the switch menu (the demo contexts); `null`
+// means "use whatever is actually detected".
+const overrideKey = ref<string | null>(null);
+const contextOptions = computed<AssistantContext[]>(() => [
+	liveContext.value,
+	...ASSISTANT_CONTEXTS,
+]);
+const activeContext = computed(
+	() => contextOptions.value.find((c) => c.key === overrideKey.value) ?? liveContext.value,
+);
+
+// Screenshot opt-in: off by default, auto-on when the context is just "the
+// screen" (kind 'other'), where pixels are the only signal. User can override.
+const screenshotEnabled = ref(false);
+watch(
+	() => activeContext.value.kind,
+	(kind) => {
+		screenshotEnabled.value = kind === 'other';
+	},
+	{ immediate: true },
+);
+
+let disposeContext: (() => void) | undefined;
+onMounted(async () => {
+	detected.value = await window.electronAPI.getActiveContext();
+	disposeContext = window.electronAPI.onContextChanged((context) => {
+		detected.value = context;
+		// A fresh detection supersedes a stale manual override.
+		overrideKey.value = null;
+	});
+});
+onBeforeUnmount(() => disposeContext?.());
 
 const inputRef = ref<HTMLInputElement | null>(null);
 const doneCardRef = ref<HTMLElement | null>(null);
 
 const busy = computed(() => state.value === 'thinking' || state.value === 'doing');
 
-const activeContext = computed(
-	() => ASSISTANT_CONTEXTS.find((c) => c.key === activeContextKey.value) ?? ASSISTANT_CONTEXTS[0],
-);
-
 const chips = computed(() => suggestionChipsFor(activeContext.value.kind));
+
+/**
+ * Forward the prompt + detected context (and an optional screenshot) to the
+ * backend one-shot endpoint. This is the real data path; the on-screen plan
+ * flow below is the (still-stubbed) UI. Fire-and-forget — failures are logged,
+ * never block the composer.
+ */
+async function dispatchToBackend(prompt: string) {
+	try {
+		const ctx = detected.value;
+		const context: NonNullable<Parameters<typeof window.electronAPI.triggerTask>[0]['context']> = {
+			kind: ctx.kind,
+			app: ctx.app,
+			windowTitle: ctx.windowTitle,
+			url: ctx.url,
+			path: ctx.path,
+		};
+		if (screenshotEnabled.value) {
+			context.attachments = [await window.electronAPI.captureScreenshot()];
+		}
+		await window.electronAPI.triggerTask({ prompt, context });
+	} catch (error) {
+		console.error('triggerTask failed', error);
+	}
+}
 
 const doneSubtitle = computed(() => {
 	if (!doneCard.value) return '';
@@ -67,6 +132,9 @@ async function submit(prompt?: string) {
 	text.value = '';
 	doneCard.value = null;
 	state.value = 'thinking';
+
+	// Send the real, context-enriched request to the backend.
+	void dispatchToBackend(value);
 
 	try {
 		const plan = await planTask(value, activeContext.value.kind);
@@ -193,9 +261,18 @@ function dismissDone() {
 		<div :class="$style.pillRow">
 			<ContextPill
 				:context="activeContext"
-				:options="ASSISTANT_CONTEXTS"
-				@select="activeContextKey = $event"
+				:options="contextOptions"
+				@select="overrideKey = $event === ACTIVE_CONTEXT_KEY ? null : $event"
 			/>
+			<button
+				type="button"
+				:class="[$style.screenshotToggle, { [$style.screenshotOn]: screenshotEnabled }]"
+				:aria-pressed="screenshotEnabled"
+				:aria-label="i18n.baseText('desktopAssistant.composer.attachScreenshot')"
+				@click="screenshotEnabled = !screenshotEnabled"
+			>
+				<N8nIcon icon="image" :size="13" aria-hidden="true" />
+			</button>
 		</div>
 
 		<div :class="$style.chipRowWrapper">
@@ -412,7 +489,43 @@ function dismissDone() {
 }
 
 .pillRow {
+	display: flex;
+	gap: var(--spacing--3xs);
+	align-items: center;
 	margin-top: 10px;
+}
+
+.screenshotToggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	color: var(--da-subtler);
+	cursor: pointer;
+	background: var(--da-surface-2);
+	border: 1px solid var(--da-border);
+	border-radius: var(--radius--full);
+	transition:
+		background 0.12s,
+		border-color 0.12s,
+		color 0.12s;
+}
+
+.screenshotToggle:hover {
+	color: var(--da-text);
+	border-color: var(--da-subtler);
+}
+
+.screenshotToggle:focus-visible {
+	outline: var(--da-focus-ring);
+	outline-offset: var(--da-focus-ring-offset);
+}
+
+.screenshotOn {
+	color: var(--da-purple);
+	background: rgba(167, 139, 250, 0.1);
+	border-color: rgba(167, 139, 250, 0.35);
 }
 
 .chipRowWrapper {

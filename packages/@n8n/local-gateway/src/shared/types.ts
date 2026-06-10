@@ -30,10 +30,13 @@ export interface ConnectPayload {
 // reused verbatim, never redefined here.
 import type {
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantTaskRequest,
+	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
+import type { DetectedContext, ScreenshotAttachment } from '@n8n/computer-use/context';
 
 export type {
 	DesktopAssistantTasksResponse,
@@ -42,9 +45,16 @@ export type {
 	DesktopAssistantTriggerSummary,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantHistoryEntry,
+	DesktopAssistantTaskRequest,
+	DesktopAssistantTaskResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
+
+// Type-only re-export: the detected-context shape comes from @n8n/computer-use,
+// but importing it `type`-only means no Node runtime dependency leaks into the
+// renderer bundle.
+export type { DetectedContext, ScreenshotAttachment } from '@n8n/computer-use/context';
 
 /** Cursor + page-size params for the history list. */
 export interface DesktopAssistantHistoryParams {
@@ -114,6 +124,17 @@ export interface ElectronApi {
 	onThreadEvent: (
 		onEventCallback: (threadId: string, event: InstanceAiEvent) => void,
 	) => () => void;
+	/** The context detected for the current/last tray open ("what you're looking at"). */
+	getActiveContext: () => Promise<DetectedContext>;
+	/**
+	 * Subscribe to context changes, pushed by the main process when it re-detects
+	 * (on tray open). Returns a disposer to unsubscribe.
+	 */
+	onContextChanged: (onChangeCallback: (context: DetectedContext) => void) => () => void;
+	/** Capture the current screen as a task attachment (base64 JPEG). */
+	captureScreenshot: () => Promise<ScreenshotAttachment>;
+	/** Fire a one-shot task with the prompt + detected context; returns thread/run ids. */
+	triggerTask: (body: DesktopAssistantTaskRequest) => Promise<DesktopAssistantTaskResponse>;
 }
 
 export type AuthState = 'signedOut' | 'authorizing' | 'signedIn' | 'error';

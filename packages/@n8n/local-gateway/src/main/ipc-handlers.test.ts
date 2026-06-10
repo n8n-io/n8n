@@ -47,6 +47,7 @@ function register(overrides: {
 	disconnectGateway?: HandlerFn;
 	instanceApi?: unknown;
 	threadService?: unknown;
+	contextDetector?: unknown;
 	openExternal?: HandlerFn;
 }): void {
 	registerIpcHandlers({
@@ -66,6 +67,11 @@ function register(overrides: {
 			getHistory: vi.fn(),
 			executionUrl: vi.fn(),
 			getTimeSaved: vi.fn(),
+			triggerTask: vi.fn(),
+		}) as never,
+		contextDetector: (overrides.contextDetector ?? {
+			getCurrent: vi.fn().mockReturnValue({ kind: 'other' }),
+			captureScreenshot: vi.fn(),
 		}) as never,
 		threadService: (overrides.threadService ?? {
 			getMessages: vi.fn(),
@@ -290,6 +296,52 @@ describe('registerIpcHandlers', () => {
 
 		expect(threadService.listen).toHaveBeenCalledWith('t1', 7);
 		expect(threadService.unlisten).toHaveBeenCalledWith('t1');
+	});
+
+	it('context:get returns the detector current context', () => {
+		const detected = { kind: 'finder' as const, app: 'Finder', path: '/Users/me/Downloads' };
+		const contextDetector = {
+			getCurrent: vi.fn().mockReturnValue(detected),
+			captureScreenshot: vi.fn(),
+		};
+		register({ contextDetector });
+
+		const result = getRegisteredHandler('context:get')();
+		expect(contextDetector.getCurrent).toHaveBeenCalled();
+		expect(result).toEqual(detected);
+	});
+
+	it('context:captureScreenshot returns the captured attachment', async () => {
+		const attachment = { data: 'base64', mimeType: 'image/jpeg', fileName: 'screen.jpg' };
+		const contextDetector = {
+			getCurrent: vi.fn(),
+			captureScreenshot: vi.fn().mockResolvedValue(attachment),
+		};
+		register({ contextDetector });
+
+		const result = await getRegisteredHandler('context:captureScreenshot')();
+		expect(contextDetector.captureScreenshot).toHaveBeenCalled();
+		expect(result).toEqual(attachment);
+	});
+
+	it('tasks:trigger forwards the body to the instance api', async () => {
+		const response = { threadId: 't-1', runId: 'r-1' };
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn(),
+			getTimeSaved: vi.fn(),
+			triggerTask: vi.fn().mockResolvedValue(response),
+		};
+		register({ instanceApi });
+
+		const body = { prompt: 'clean up the folder', context: { kind: 'finder' as const } };
+		const result = await getRegisteredHandler('tasks:trigger')(undefined, body);
+
+		expect(instanceApi.triggerTask).toHaveBeenCalledWith(body);
+		expect(result).toEqual(response);
 	});
 
 	it('settings:set persists capability toggles', async () => {

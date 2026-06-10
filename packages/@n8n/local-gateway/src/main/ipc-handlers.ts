@@ -1,6 +1,7 @@
 import { configure, logger } from '@n8n/computer-use/logger';
 import { ipcMain } from 'electron';
 
+import type { ContextDetector } from './context-detector';
 import type { DaemonController } from './daemon-controller';
 import { InstanceApiError, type InstanceApi } from './instance-api';
 import type { OAuthFlow } from './oauth/oauth-flow';
@@ -10,10 +11,14 @@ import type {
 	AuthStatus,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantTaskRequest,
+	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
+	DetectedContext,
 	InstanceAiRichMessagesResponse,
 	RunTaskResult,
+	ScreenshotAttachment,
 } from '../shared/types';
 
 export interface IpcHandlerDeps {
@@ -24,6 +29,7 @@ export interface IpcHandlerDeps {
 	oauthFlow: OAuthFlow;
 	instanceApi: InstanceApi;
 	threadService: ThreadService;
+	contextDetector: ContextDetector;
 	/** Opens a URL in the user's default browser (e.g. shell.openExternal). */
 	openExternal: (url: string) => Promise<void>;
 }
@@ -35,6 +41,7 @@ export function registerIpcHandlers({
 	oauthFlow,
 	instanceApi,
 	threadService,
+	contextDetector,
 	openExternal,
 }: IpcHandlerDeps): void {
 	ipcMain.handle(
@@ -168,4 +175,22 @@ export function registerIpcHandlers({
 		logger.debug('IPC thread:unlisten', { threadId });
 		threadService.unlisten(threadId);
 	});
+
+	ipcMain.handle('context:get', (): DetectedContext => {
+		logger.debug('IPC context:get');
+		return contextDetector.getCurrent();
+	});
+
+	ipcMain.handle('context:captureScreenshot', async (): Promise<ScreenshotAttachment> => {
+		logger.debug('IPC context:captureScreenshot');
+		return await contextDetector.captureScreenshot();
+	});
+
+	ipcMain.handle(
+		'tasks:trigger',
+		async (_event, body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> => {
+			logger.debug('IPC tasks:trigger', { kind: body.context?.kind });
+			return await instanceApi.triggerTask(body);
+		},
+	);
 }

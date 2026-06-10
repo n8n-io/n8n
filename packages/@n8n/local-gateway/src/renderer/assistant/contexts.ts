@@ -1,11 +1,14 @@
 /*
- * Demo contexts + context→suggestion-chip mapping for the composer.
+ * Context→suggestion-chip mapping for the composer, plus the mapping from the
+ * locally-detected context (`DetectedContext`, produced in the main process) to
+ * the `AssistantContext` the pill renders.
  *
- * These are demo/mock constants (the prototype's `qj` / `Qj`), kept as TS
- * rather than i18n. The "active context" is purely a demo affordance — in the
- * real app it would reflect what the user is actually looking at.
+ * `ASSISTANT_CONTEXTS` remains as manual-override options in the switch menu;
+ * the *active* context is the real detected one (see `assistantContextFromDetected`).
  */
 import type { IconName } from '@n8n/design-system';
+
+import type { DetectedContext } from '../../shared/types';
 
 export type AssistantContextKind = 'browser' | 'finder' | 'pdf' | 'other';
 
@@ -68,4 +71,38 @@ export const MAX_SUGGESTION_CHIPS = 6;
 
 export function suggestionChipsFor(kind: AssistantContextKind): SuggestionChip[] {
 	return CHIPS_BY_KIND[kind].slice(0, MAX_SUGGESTION_CHIPS);
+}
+
+/** Stable key for the live, detected context option. */
+export const ACTIVE_CONTEXT_KEY = 'active';
+
+const ICON_BY_KIND: Record<AssistantContextKind, IconName> = {
+	browser: 'globe',
+	finder: 'folder',
+	pdf: 'file-text',
+	other: 'monitor',
+};
+
+/** A short human label for what was detected: the window title, then the URL host, then the app. */
+function detectedLabel(detected: DetectedContext): string {
+	if (detected.windowTitle) return detected.windowTitle;
+	if (detected.url) {
+		try {
+			return new URL(detected.url).hostname;
+		} catch {
+			return detected.url;
+		}
+	}
+	if (detected.path) return detected.path.split('/').filter(Boolean).pop() ?? detected.path;
+	return detected.app ?? 'Your screen';
+}
+
+/** Map the main-process `DetectedContext` to the `AssistantContext` the pill renders. */
+export function assistantContextFromDetected(detected: DetectedContext): AssistantContext {
+	return {
+		key: ACTIVE_CONTEXT_KEY,
+		label: detectedLabel(detected),
+		icon: ICON_BY_KIND[detected.kind],
+		kind: detected.kind,
+	};
 }

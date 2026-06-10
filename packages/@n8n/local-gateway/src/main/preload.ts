@@ -5,12 +5,16 @@ import type {
 	AuthStatus,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantTaskRequest,
+	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
+	DetectedContext,
 	ElectronApi,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 	RunTaskResult,
+	ScreenshotAttachment,
 	StatusSnapshot,
 } from '../shared/types';
 
@@ -103,6 +107,21 @@ const electronApi: ElectronApi = {
 		ipcRenderer.on('threadEvent', handler);
 		return () => ipcRenderer.removeListener('threadEvent', handler);
 	},
+
+	getActiveContext: async (): Promise<DetectedContext> =>
+		await (ipcRenderer.invoke('context:get') as Promise<DetectedContext>),
+
+	onContextChanged: (onChangeCallback: (context: DetectedContext) => void): (() => void) => {
+		const handler = (_event: unknown, context: DetectedContext) => onChangeCallback(context);
+		ipcRenderer.on('contextChanged', handler);
+		return () => ipcRenderer.removeListener('contextChanged', handler);
+	},
+
+	captureScreenshot: async (): Promise<ScreenshotAttachment> =>
+		await (ipcRenderer.invoke('context:captureScreenshot') as Promise<ScreenshotAttachment>),
+
+	triggerTask: async (body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> =>
+		await (ipcRenderer.invoke('tasks:trigger', body) as Promise<DesktopAssistantTaskResponse>),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronApi);

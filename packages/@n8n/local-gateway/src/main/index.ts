@@ -2,9 +2,11 @@ import { configure, logger } from '@n8n/computer-use/logger';
 import { app, shell } from 'electron';
 import * as path from 'node:path';
 
+import { ContextDetector } from './context-detector';
 import { DaemonController } from './daemon-controller';
 import { InstanceApi } from './instance-api';
 import { registerIpcHandlers } from './ipc-handlers';
+import { requestMacPermissions } from './mac-permissions';
 import {
 	showMainWindow,
 	toggleMainWindow,
@@ -65,6 +67,13 @@ if (!app.requestSingleInstanceLock()) {
 			// reload) those are lost, so drop the SSE connections it asked for.
 			onMainWindowReset(() => threadService.reset());
 
+			const contextDetector = new ContextDetector();
+			// Push freshly-detected context to the renderer so the composer's
+			// "Looking at …" pill updates the moment the window opens.
+			contextDetector.on('contextChanged', (context) => {
+				notifyMainWindow('contextChanged', context);
+			});
+
 			const preloadPath = path.join(__dirname, 'preload.js');
 			const rendererPath = path.join(__dirname, '..', 'renderer', 'index.html');
 
@@ -105,6 +114,7 @@ if (!app.requestSingleInstanceLock()) {
 				oauthFlow,
 				instanceApi,
 				threadService,
+				contextDetector,
 				openExternal,
 			});
 
@@ -119,6 +129,10 @@ if (!app.requestSingleInstanceLock()) {
 				// Leaving the signed-in state invalidates thread streams and cached
 				// messages — another user must never see them.
 				if (status.state !== 'signedIn') threadService.reset();
+				// Ask for the macOS context-detection permissions upfront, once signed in.
+				if (status.state === 'signedIn') {
+					void requestMacPermissions();
+				}
 				// The window auto-hid on blur when the system browser opened — bring it back so the
 				// user sees the result (the signed-in view, or a sign-in error).
 				if (status.state === 'signedIn' || status.state === 'error') {
@@ -141,7 +155,13 @@ if (!app.requestSingleInstanceLock()) {
 
 			createTray(
 				controller,
-				(trayBounds) => toggleMainWindow(preloadPath, rendererPath, trayBounds),
+				(trayBounds) => {
+					// Detect what the user is looking at *before* showing our window —
+					// once it shows, it becomes the frontmost app. Fire-and-forget so
+					// the toggle stays snappy; the pill updates via `contextChanged`.
+					void contextDetector.refresh().catch(() => {});
+					toggleMainWindow(preloadPath, rendererPath, trayBounds);
+				},
 				() => {
 					logger.info('n8n Assistant quitting');
 					void controller
