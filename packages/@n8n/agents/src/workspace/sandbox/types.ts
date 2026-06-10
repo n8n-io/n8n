@@ -72,6 +72,15 @@ export interface DaytonaSandboxConfig extends SandboxConfigBase {
 	daytonaApiKey?: string;
 	image?: CreateSandboxFromImageParams['image'];
 	snapshot?: string;
+	/**
+	 * When true, Daytona auto-deletes the sandbox when it stops (instead of leaving it
+	 * stopped). Used for throwaway sandboxes (e.g. eval runs) so they don't accumulate.
+	 * Overrides {@link autoDeleteInterval} (Daytona forces it to 0 when ephemeral).
+	 */
+	ephemeral?: boolean;
+	autoStopInterval?: number;
+	autoArchiveInterval?: number;
+	autoDeleteInterval?: number;
 	createTimeoutSeconds?: number;
 	getAuthToken?: () => Promise<string>;
 	refreshSkewMs?: number;

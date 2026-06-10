@@ -65,6 +65,7 @@ import {
 } from '@/app/constants';
 
 import { useDebounce } from '@/app/composables/useDebounce';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -176,6 +177,7 @@ const ndvStore = injectNDVStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
+const { askAi } = useEditorContext();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
@@ -1548,6 +1550,7 @@ onUpdated(async () => {
 							:default-value="parameter.default"
 							:language="editorLanguage"
 							:is-read-only="isReadOnly"
+							:disable-ask-ai="!askAi"
 							fill-parent
 							@update:model-value="valueChangedDebounced"
 						/>
@@ -1620,6 +1623,7 @@ onUpdated(async () => {
 					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
 					:ai-button-enabled="settingsStore.isCloudDeployment"
+					:disable-ask-ai="!askAi"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
@@ -1762,6 +1766,7 @@ onUpdated(async () => {
 						:language="editorLanguage"
 						:is-read-only="true"
 						:rows="editorRows"
+						:disable-ask-ai="!askAi"
 					/>
 				</div>
 				<N8nInput

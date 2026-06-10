@@ -5,6 +5,7 @@ import { ref, computed, onMounted } from 'vue';
 import { N8nButton, N8nInput, N8nInputLabel, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	getParentNodes,
@@ -52,7 +53,13 @@ const inputFieldMaxLength = computed(
 const buttonLabel = computed(
 	() => props.parameter.typeOptions?.buttonConfig?.label ?? props.parameter.displayName,
 );
+const { askAi } = useEditorContext();
+const isAiTransformButton = computed(() => {
+	const action = props.parameter.typeOptions?.buttonConfig?.action;
+	return typeof action === 'object' && action?.type === 'askAiCodeGeneration';
+});
 const isSubmitEnabled = computed(() => {
+	if (isAiTransformButton.value && !askAi.value) return false;
 	if (!hasExecutionData.value || !prompt.value || props.isReadOnly) return false;
 
 	const maxlength = inputFieldMaxLength.value;
@@ -112,6 +119,7 @@ async function onSubmit() {
 					workflowDocumentStore.value.documentId,
 					ndvStore.value.activeNode,
 					ndvStore.value.pushRef,
+					askAi.value,
 					5,
 				);
 				if (!updateInformation) return;

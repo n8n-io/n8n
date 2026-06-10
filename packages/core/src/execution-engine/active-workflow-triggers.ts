@@ -12,6 +12,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	ensureError,
 	toCronExpression,
 	TriggerCloseError,
 	UserError,
@@ -81,6 +82,9 @@ export class ActiveWorkflowTriggers {
 		getTriggerFunctions: IGetExecuteTriggerFunctions,
 		getPollFunctions: IGetExecutePollFunctions,
 	) {
+		// Tear down any registration still lingering for this workflow before readding it.
+		await this.remove(workflowId);
+
 		const nodeIds = [...workflow.getTriggerNodes(), ...workflow.getPollNodes()].map(
 			(node) => node.id,
 		);
@@ -115,6 +119,8 @@ export class ActiveWorkflowTriggers {
 		const nodeIdSet = new Set(nodeIds);
 		const existing = this.activeTriggersByWorkflowId.get(workflowId);
 		const triggers = existing ?? new WorkflowActiveTriggersState();
+		const triggersAddedDuringThisCall = new WorkflowActiveTriggersState();
+		const triggerNodeIdsAddedDuringThisCall: string[] = [];
 
 		const triggerFunctionNodes = workflow
 			.getTriggerNodes()
@@ -132,9 +138,22 @@ export class ActiveWorkflowTriggers {
 				);
 				if (triggerResponse !== undefined) {
 					triggers.add(triggerNode.id, triggerResponse);
+					triggersAddedDuringThisCall.add(triggerNode.id, triggerResponse);
+					triggerNodeIdsAddedDuringThisCall.push(triggerNode.id);
 				}
 			} catch (e) {
-				const error = e instanceof Error ? e : new Error(`${e}`);
+				const error = ensureError(e);
+
+				// Tear down anything an earlier node already registered, so a failed
+				// activation doesn't leave triggers or crons running.
+				await this.rollbackPartialActivation(
+					workflowId,
+					triggersAddedDuringThisCall,
+					existing ? nodeIdSet : undefined,
+				);
+				for (const nodeId of triggerNodeIdsAddedDuringThisCall) {
+					triggers.delete(nodeId);
+				}
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
@@ -152,6 +171,7 @@ export class ActiveWorkflowTriggers {
 		for (const pollNode of pollTriggerNodes) {
 			try {
 				await this.activatePollTrigger(
+					workflowId,
 					pollNode,
 					workflow,
 					additionalData,
@@ -160,14 +180,19 @@ export class ActiveWorkflowTriggers {
 					activation,
 				);
 			} catch (e) {
-				// Do not mark this workflow as active if there are no active or schedule
-				// trigger responses, and any poll trigger activation failed. Leave an
-				// already-active workflow's triggers in place.
-				if (!existing && triggers.isEmpty) {
+				if (!existing) {
 					this.activeTriggersByWorkflowId.delete(workflowId);
 				}
+				await this.rollbackPartialActivation(
+					workflowId,
+					triggersAddedDuringThisCall,
+					existing ? nodeIdSet : undefined,
+				);
+				for (const nodeId of triggerNodeIdsAddedDuringThisCall) {
+					triggers.delete(nodeId);
+				}
 
-				const error = e instanceof Error ? e : new Error(`${e}`);
+				const error = ensureError(e);
 
 				throw new WorkflowActivationError(
 					`There was a problem activating the workflow: "${error.message}"`,
@@ -186,6 +211,9 @@ export class ActiveWorkflowTriggers {
 	async removeTriggers(workflowId: string, nodeIds: Set<INode['id']>) {
 		const activeTriggers = this.activeTriggersByWorkflowId.get(workflowId);
 		if (!activeTriggers) {
+			for (const nodeId of nodeIds) {
+				this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
+			}
 			return;
 		}
 
@@ -205,9 +233,41 @@ export class ActiveWorkflowTriggers {
 	}
 
 	/**
+	 * Tears down everything an in-progress activation registered before it
+	 * failed — the trigger responses' close functions and any crons — so a
+	 * failed activation leaves nothing running. Best-effort: a failing close
+	 * function is reported but does not stop the remaining cleanup, and the
+	 * original activation error is still surfaced to the caller.
+	 */
+	private async rollbackPartialActivation(
+		workflowId: string,
+		triggers: WorkflowActiveTriggersState,
+		nodeIds?: Iterable<string>,
+	) {
+		// Stop the crons first: deregistration is synchronous and is what actually
+		// prevents the failed activation from continuing to fire.
+		if (nodeIds) {
+			for (const nodeId of nodeIds) {
+				this.scheduledTaskManager.deregisterCron(workflowId, nodeId);
+			}
+		} else {
+			this.scheduledTaskManager.deregisterCrons(workflowId);
+		}
+
+		for (const response of triggers.triggerResponses) {
+			try {
+				await this.closeTrigger(response, workflowId);
+			} catch (e) {
+				this.errorReporter.error(ensureError(e), { extra: { workflowId } });
+			}
+		}
+	}
+
+	/**
 	 * Activates the given poll trigger node.
 	 */
 	private async activatePollTrigger(
+		workflowId: string,
 		node: INode,
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -223,7 +283,12 @@ export class ActiveWorkflowTriggers {
 
 		// Get all the trigger times
 		const cronExpressions = (pollTimes.item || []).map(toCronExpression);
-		const executePollTrigger = this.createPollTriggerExecuteFn(workflow, node, pollFunctions);
+		const executePollTrigger = this.createPollTriggerExecuteFn(
+			workflowId,
+			workflow,
+			node,
+			pollFunctions,
+		);
 
 		// Execute the poll trigger directly to be able to know if it works.
 		await executePollTrigger(true);
@@ -254,12 +319,20 @@ export class ActiveWorkflowTriggers {
 	 * Makes a workflow inactive in memory.
 	 */
 	async remove(workflowId: string) {
+		// Ensure crons are deregistered to prevent executions on inactive workflows
+		const hadRegisteredCrons = this.scheduledTaskManager.deregisterCrons(workflowId);
+
 		if (!this.isActive(workflowId)) {
-			this.logger.warn(`Cannot deactivate already inactive workflow ID "${workflowId}"`);
+			if (hadRegisteredCrons) {
+				// Crons were registered for an inactive workflow, which shouldn't happen
+				this.logger.warn(
+					`Deregistered orphaned crons for workflow not tracked as active: "${workflowId}"`,
+					{ workflowId },
+				);
+			}
+
 			return false;
 		}
-
-		this.scheduledTaskManager.deregisterCrons(workflowId);
 
 		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
 		for (const r of triggers?.triggerResponses ?? []) {
@@ -272,16 +345,23 @@ export class ActiveWorkflowTriggers {
 	}
 
 	async removeAllNonWebhookTriggerWorkflows() {
-		const activeWorkflowIds = Array.from(this.activeTriggersByWorkflowId.keys());
+		// Sweep both workflows tracked as active AND any that still have registered
+		// crons but are no longer tracked (stranded orphans). On leader stepdown the
+		// process keeps running as a follower, so an orphan left behind here would
+		// survive the demotion and resurface/stack on the next leader takeover.
+		const workflowIds = new Set([
+			...this.activeTriggersByWorkflowId.keys(),
+			...this.scheduledTaskManager.getWorkflowIdsWithCrons(),
+		]);
 
-		if (activeWorkflowIds.length === 0) return;
+		if (workflowIds.size === 0) return;
 
-		for (const workflowId of activeWorkflowIds) {
+		for (const workflowId of workflowIds) {
 			await this.remove(workflowId);
 		}
 
-		this.logger.debug('Deactivated all non-webhook trigger workflows', {
-			workflowIds: activeWorkflowIds,
+		this.logger.debug('Deactivated non-webhook triggers and cleared any stranded crons', {
+			workflowIds: Array.from(workflowIds),
 		});
 	}
 
@@ -313,10 +393,18 @@ export class ActiveWorkflowTriggers {
 	 * trigger node and triggers a workflow execution based on the output.
 	 */
 	private createPollTriggerExecuteFn(
+		workflowId: string,
 		workflow: Workflow,
 		node: INode,
 		pollFunctions: IPollFunctions,
 	): (testingTrigger?: boolean) => Promise<void> {
+		// Capture this activation's registration; `remove()` deletes this entry and
+		// `add()` always assigns a fresh one, so if a scheduled poll finishes after the
+		// workflow was removed or reactivated, it no longer matches and its
+		// result, belonging to the now superseded version, must not be emitted.
+		const registration = this.activeTriggersByWorkflowId.get(workflowId);
+		const isSuperseded = () => this.activeTriggersByWorkflowId.get(workflowId) !== registration;
+
 		return async (testingTrigger = false) => {
 			return await this.tracing.startSpan(
 				{
@@ -341,6 +429,16 @@ export class ActiveWorkflowTriggers {
 					// that window and must acquire/release per tick — see CAT-3147.
 					const ownsIsolate = !testingTrigger;
 
+					// A scheduled poll can finish after the workflow was removed or
+					// reactivated, so drop it if superseded to prevent executing the old version.
+					if (!testingTrigger && isSuperseded()) {
+						this.logger.debug(`Skipping poll for superseded workflow "${workflow.name}"`, {
+							workflowId: workflow.id,
+						});
+						span.setStatus({ code: SpanStatus.ok });
+						return;
+					}
+
 					try {
 						if (ownsIsolate) await workflow.expression.acquireIsolate();
 
@@ -350,19 +448,47 @@ export class ActiveWorkflowTriggers {
 							pollFunctions,
 						);
 
+						// Same as the above `isSuperseded` check; last chance to check before
+						// potentially starting the execution. Emitting now if superseded would run
+						// an execution against the old version of the workflow, so drop it.
+						// Bailing out here is safe even though `poll()` may have already advanced
+						// its state in the in-memory static data: persistence only happens inside
+						// `__emit` (`saveStaticData`), so the dropped call leaves the stored state
+						// untouched and the newly registered poller re-fetches the same events.
+						if (!testingTrigger && isSuperseded()) {
+							this.logger.debug(
+								`Discarding in-flight poll result for superseded workflow "${workflow.name}"`,
+								{ workflowId: workflow.id },
+							);
+							span.setStatus({ code: SpanStatus.ok });
+							return;
+						}
+
 						if (pollResponse !== null) {
 							pollFunctions.__emit(pollResponse);
 						}
 
 						span.setStatus({ code: SpanStatus.ok });
 					} catch (error) {
-						span.setStatus({ code: SpanStatus.error });
 						// If the poll trigger fails in the first activation
 						// throw the error back so we let the user know there is
 						// an issue with the trigger.
 						if (testingTrigger) {
+							span.setStatus({ code: SpanStatus.error });
 							throw error;
 						}
+
+						// Ignore poll errors that are against a superseded workflow
+						if (isSuperseded()) {
+							this.logger.debug(
+								`Ignoring in-flight poll error for superseded workflow "${workflow.name}"`,
+								{ workflowId: workflow.id },
+							);
+							span.setStatus({ code: SpanStatus.ok });
+							return;
+						}
+
+						span.setStatus({ code: SpanStatus.error });
 						pollFunctions.__emitError(error as Error);
 					} finally {
 						if (ownsIsolate) await workflow.expression.releaseIsolate();

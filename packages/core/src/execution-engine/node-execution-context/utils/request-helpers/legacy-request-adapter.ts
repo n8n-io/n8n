@@ -25,7 +25,7 @@ import { NodeSslError } from 'n8n-workflow';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 
-import type { SsrfBridge } from '@/execution-engine';
+import type { SsrfBridge } from '@/ssrf';
 
 import { binaryToString } from '../binary-helper-functions';
 import { parseIncomingMessage } from '../parse-incoming-message';

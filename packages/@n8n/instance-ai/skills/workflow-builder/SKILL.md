@@ -133,6 +133,19 @@ tokens, Slack channel IDs, Telegram chat IDs, or sample recipient lists. After
 the build, `workflows(action="setup")` opens an inline setup card in the AI
 Assistant panel so the user can fill placeholder values.
 
+Do not replace concrete user-provided or discoverable values with placeholders.
+If the prompt gives a real URL, channel name, table name, label, folder,
+database, or other literal selector, preserve that value and only use a
+placeholder for the unknown part.
+
+## Knowledge Base Guardrails
+
+For workflows with multiple external systems, multiple requested effects,
+digests or reports, non-trivial branching, or Code nodes, read
+`knowledge-base/reference/workflow-builder-guardrails.md` before writing code.
+Use it as the build checklist for source preservation, fan-out/fan-in,
+effect-specific gating, list itemization, and Code-node safety.
+
 ## Mandatory Process
 
 1. Research. If the workflow fits a known category, call
@@ -347,6 +360,15 @@ tables directly with `data-tables`; do not invent table IDs, table names, or
 column names.
 
 ## SDK Code Rules
+
+- SDK builder code is a restricted subset of TypeScript that builds a static
+  graph; it is not a Code node and does not run. Only SDK builder methods chain
+  on SDK objects. Native array/string methods (`.join()`, `.map()`), loops, arrow
+  functions, `new`, and globals like `Math`, `Date`, and `Object` are
+  unavailable. Build strings with template literals or explicit lines; do runtime
+  joining, aggregation, or transforms in a Code node or an n8n expression
+  (`expr()`). Full allowed/forbidden list:
+  `knowledge-base/reference/workflow-sdk-language.md`.
 
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.

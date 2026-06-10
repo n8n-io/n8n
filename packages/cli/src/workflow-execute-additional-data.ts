@@ -8,7 +8,7 @@ import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
+import { ExternalSecretsProxy, SsrfProtectionService, WorkflowExecute } from 'n8n-core';
 import {
 	UnexpectedError,
 	Workflow,
@@ -56,7 +56,6 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { UrlService } from '@/services/url.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';

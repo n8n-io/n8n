@@ -2314,6 +2314,7 @@
 	"nodeView.showError.getWorkflowDataFromUrl.title": "Problem loading workflow",
 	"nodeView.showError.importWorkflowData.title": "Problem importing workflow",
 	"nodeView.showError.importWorkflowData.invalidNodes": "Skipped {count} node(s) with missing type",
+	"nodeView.showError.importWorkflowData.invalidStructure": "The imported data does not contain valid workflow data ('nodes' and 'connections' are missing)",
 	"nodeView.showError.mounted1.message": "There was a problem loading init data",
 	"nodeView.showError.mounted1.title": "Init Problem",
 	"nodeView.showError.mounted2.message": "There was a problem initializing the workflow",

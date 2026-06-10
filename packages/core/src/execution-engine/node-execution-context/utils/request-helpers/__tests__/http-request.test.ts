@@ -6,7 +6,7 @@ import type { IHttpRequestMethods, IHttpRequestOptions, IRequestOptions } from '
 import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfBridge } from '@/execution-engine';
+import type { SsrfBridge } from '@/ssrf';
 
 // Imported for side effects: sets axios defaults and registers the vendor-header interceptor
 import '../axios-config';

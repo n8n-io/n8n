@@ -3,7 +3,13 @@ import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { HookContext, WebhookContext } from 'n8n-core';
-import { ensureError, Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
+import {
+	ensureError,
+	Node,
+	NodeHelpers,
+	UnexpectedError,
+	WebhookPathTakenError,
+} from 'n8n-workflow';
 import type {
 	IHttpRequestMethods,
 	INode,
@@ -124,6 +130,33 @@ export class WebhookService {
 	}
 
 	async storeWebhook(webhook: WebhookEntity) {
+		// The (webhookPath, method) primary key serializes concurrent registrations
+		// at the database level (also across processes, e.g. multi-main).
+		try {
+			await this.webhookRepository.insert(webhook);
+		} catch (error) {
+			const existing = await this.webhookRepository.findOneBy({
+				method: webhook.method,
+				webhookPath: webhook.webhookPath,
+			});
+
+			// Not a duplicate-path failure (or the row vanished) - surface the original error.
+			if (!existing) throw error;
+
+			// Path is held by a different workflow - reject instead of overwriting.
+			if (existing.workflowId !== webhook.workflowId) {
+				throw new WebhookPathTakenError(webhook.node, ensureError(error));
+			}
+
+			// Same workflow re-registering its own path (e.g. a stale row left after an
+			// unclean shutdown on init/leadershipChange) - refresh it.
+			await this.webhookRepository.update(
+				{ method: webhook.method, webhookPath: webhook.webhookPath },
+				webhook,
+			);
+		}
+
+		// Cache only after the write succeeds, so a rejected write never poisons the cache.
 		try {
 			await this.cacheService.set(webhook.cacheKey, webhook);
 		} catch (error) {
@@ -131,8 +164,6 @@ export class WebhookService {
 				error: ensureError(error).message,
 			});
 		}
-
-		await this.webhookRepository.upsert(webhook, ['method', 'webhookPath']);
 	}
 
 	createWebhook(data: Partial<WebhookEntity>) {

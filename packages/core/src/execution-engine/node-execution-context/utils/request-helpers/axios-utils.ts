@@ -12,8 +12,8 @@ import {
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
 
-import type { SsrfBridge } from '@/execution-engine';
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
+import type { SsrfBridge } from '@/ssrf';
 
 export function throwIfDomainNotAllowed(
 	configOrUrl: AxiosRequestConfig | string,
