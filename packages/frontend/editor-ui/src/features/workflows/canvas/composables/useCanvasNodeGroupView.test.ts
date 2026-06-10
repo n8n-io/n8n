@@ -2,13 +2,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { useWorkflowDocumentNodeGroups } from '@/app/stores/workflowDocument/useWorkflowDocumentNodeGroups';
 import { useCanvasNodeGroupView } from './useCanvasNodeGroupView';
 
-function setup(initialGroups: Array<{ id: string; name: string; nodeIds: string[] }> = []) {
+function setup(
+	initialGroups: Array<{ id: string; name: string; nodeIds: string[] }> = [],
+	isGroupingEnabled?: () => boolean,
+) {
 	const nodeGroups = useWorkflowDocumentNodeGroups();
 	if (initialGroups.length > 0) {
 		nodeGroups.setNodeGroups(initialGroups);
 	}
 	const view = useCanvasNodeGroupView({
 		onNodeGroupsChange: nodeGroups.onNodeGroupsChange,
+		isGroupingEnabled,
 	});
 	return { nodeGroups, view };
 }
@@ -98,6 +102,24 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.isGroupCollapsed('g1')).toBe(false);
 
 			view.toggleCollapsed('g1');
+			expect(view.isGroupCollapsed('g1')).toBe(true);
+		});
+	});
+
+	describe('grouping disabled', () => {
+		it('never reports a group as collapsed so member nodes stay visible', () => {
+			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }], () => false);
+
+			expect(view.isGroupCollapsed('g1')).toBe(false);
+		});
+
+		it('reflects the latest enabled state on each read', () => {
+			let enabled = false;
+			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }], () => enabled);
+
+			expect(view.isGroupCollapsed('g1')).toBe(false);
+
+			enabled = true;
 			expect(view.isGroupCollapsed('g1')).toBe(true);
 		});
 	});

@@ -4,6 +4,7 @@ import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 
 export interface UseCanvasNodeGroupViewDeps {
 	onNodeGroupsChange: (handler: (event: NodeGroupChangeEvent) => void) => { off: () => void };
+	isGroupingEnabled?: () => boolean;
 }
 
 export type CanvasNodeGroupView = ReturnType<typeof useCanvasNodeGroupView>;
@@ -26,7 +27,9 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		}
 	}
 
-	const isGroupCollapsed = (id: string) => !expandedIds.value.has(id);
+	const isGroupingEnabled = () => deps.isGroupingEnabled?.() ?? true;
+
+	const isGroupCollapsed = (id: string) => isGroupingEnabled() && !expandedIds.value.has(id);
 
 	function toggleCollapsed(id: string) {
 		setExpanded(id, isGroupCollapsed(id));

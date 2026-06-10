@@ -15,6 +15,8 @@ import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
 
 defineOptions({
 	inheritAttrs: false,
@@ -63,8 +65,14 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
+const posthogStore = usePostHog();
+const isCanvasNodeGroupingEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
+);
+
 const nodeGroupView = useCanvasNodeGroupView({
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
+	isGroupingEnabled: () => isCanvasNodeGroupingEnabled.value,
 });
 const readOnlyRef = computed(() => props.readOnly ?? false);
 const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
