@@ -2,6 +2,7 @@ import type {
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantTasksResponse,
 	InsightsSummary,
+	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
 import { logger } from '@n8n/computer-use/logger';
 
@@ -136,6 +137,14 @@ export class InstanceApi {
 			nodes.find((node) => /trigger$/i.test(node.type)) ??
 			nodes.find((node) => /webhook/i.test(node.type));
 		return trigger?.name;
+	}
+
+	/** `GET /rest/instance-ai/threads/:threadId/messages` — the thread's stored messages plus the `nextEventId` SSE cursor. */
+	async getThreadMessages(threadId: string): Promise<InstanceAiRichMessagesResponse> {
+		const response = await this.authedFetch(
+			`/instance-ai/threads/${encodeURIComponent(threadId)}/messages`,
+		);
+		return await this.unwrap<InstanceAiRichMessagesResponse>(response);
 	}
 
 	/** Public editor URL for a workflow on the signed-in instance, or `null` when signed out. */

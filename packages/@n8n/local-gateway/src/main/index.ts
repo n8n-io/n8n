@@ -5,11 +5,17 @@ import * as path from 'node:path';
 import { DaemonController } from './daemon-controller';
 import { InstanceApi } from './instance-api';
 import { registerIpcHandlers } from './ipc-handlers';
-import { showMainWindow, toggleMainWindow, notifyMainWindow } from './main-window';
+import {
+	showMainWindow,
+	toggleMainWindow,
+	notifyMainWindow,
+	onMainWindowReset,
+} from './main-window';
 import { parseOAuthCallback } from './oauth/oauth-callback';
 import { OAuthFlow } from './oauth/oauth-flow';
 import { TokenStore } from './oauth/token-store';
 import { SettingsStore } from './settings-store';
+import { ThreadService } from './thread-service';
 import { createTray } from './tray';
 import { APP_URL_SCHEME } from '../shared/constants';
 import type { AuthStatus } from '../shared/types';
@@ -50,6 +56,14 @@ if (!app.requestSingleInstanceLock()) {
 				openExternal,
 			});
 			const instanceApi = new InstanceApi(oauthFlow);
+			const threadService = new ThreadService({
+				oauthFlow,
+				instanceApi,
+				emit: (threadId, event) => notifyMainWindow('threadEvent', threadId, event),
+			});
+			// The renderer owns the listener refcounts; when it goes away (window closed,
+			// reload) those are lost, so drop the SSE connections it asked for.
+			onMainWindowReset(() => threadService.reset());
 
 			const preloadPath = path.join(__dirname, 'preload.js');
 			const rendererPath = path.join(__dirname, '..', 'renderer', 'index.html');
@@ -90,6 +104,7 @@ if (!app.requestSingleInstanceLock()) {
 				disconnectGateway,
 				oauthFlow,
 				instanceApi,
+				threadService,
 				openExternal,
 			});
 
@@ -101,6 +116,9 @@ if (!app.requestSingleInstanceLock()) {
 				notifyMainWindow('authStatusChanged', status);
 				// Connect computer-use on sign-in; tear it down on sign-out.
 				syncGatewayConnection(status);
+				// Leaving the signed-in state invalidates thread streams and cached
+				// messages — another user must never see them.
+				if (status.state !== 'signedIn') threadService.reset();
 				// The window auto-hid on blur when the system browser opened — bring it back so the
 				// user sees the result (the signed-in view, or a sign-in error).
 				if (status.state === 'signedIn' || status.state === 'error') {

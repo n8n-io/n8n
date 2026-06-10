@@ -5,7 +5,7 @@ vi.mock('@n8n/computer-use/logger', () => ({
 }));
 
 import { InstanceApi } from './instance-api';
-import type { OAuthFlow } from './oauth/oauth-flow';
+import { makeOAuth } from './test-fixtures';
 
 /** A minimal fetch Response double — `json()` is re-readable so error + unwrap paths can both call it. */
 function jsonResponse(body: unknown, init: { ok?: boolean; status?: number } = {}): Response {
@@ -14,18 +14,6 @@ function jsonResponse(body: unknown, init: { ok?: boolean; status?: number } = {
 		status: init.status ?? 200,
 		json: vi.fn().mockResolvedValue(body),
 	} as unknown as Response;
-}
-
-function makeOAuth(opts: { instanceUrl?: string | null; token?: string | null } = {}): OAuthFlow {
-	return {
-		getStatus: () => ({
-			state: 'signedIn',
-			instanceUrl: opts.instanceUrl === undefined ? 'https://n.example' : opts.instanceUrl,
-			lastInstanceUrl: null,
-			error: null,
-		}),
-		getValidAccessToken: vi.fn().mockResolvedValue(opts.token === undefined ? 'tok' : opts.token),
-	} as unknown as OAuthFlow;
 }
 
 describe('InstanceApi', () => {
@@ -139,6 +127,20 @@ describe('InstanceApi', () => {
 			const result = await new InstanceApi(makeOAuth()).getTimeSaved();
 
 			expect(result).toEqual({ weekMinutes: 73, monthMinutes: null });
+		});
+	});
+
+	describe('getThreadMessages', () => {
+		it('fetches the encoded thread path and unwraps the data envelope', async () => {
+			const snapshot = { threadId: 't/1', messages: [{ id: 'm1' }], nextEventId: 7 };
+			mockFetch.mockResolvedValue(jsonResponse({ data: snapshot }));
+
+			const result = await new InstanceApi(makeOAuth()).getThreadMessages('t/1');
+
+			expect(mockFetch.mock.calls[0][0]).toBe(
+				'https://n.example/rest/instance-ai/threads/t%2F1/messages',
+			);
+			expect(result).toEqual(snapshot);
 		});
 	});
 

@@ -5,12 +5,14 @@ import type { DaemonController } from './daemon-controller';
 import { InstanceApiError, type InstanceApi } from './instance-api';
 import type { OAuthFlow } from './oauth/oauth-flow';
 import type { AppSettings, SettingsStore } from './settings-store';
+import type { ThreadService } from './thread-service';
 import type {
 	AuthStatus,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
+	InstanceAiRichMessagesResponse,
 	RunTaskResult,
 } from '../shared/types';
 
@@ -21,6 +23,7 @@ export interface IpcHandlerDeps {
 	disconnectGateway: () => Promise<void>;
 	oauthFlow: OAuthFlow;
 	instanceApi: InstanceApi;
+	threadService: ThreadService;
 	/** Opens a URL in the user's default browser (e.g. shell.openExternal). */
 	openExternal: (url: string) => Promise<void>;
 }
@@ -31,6 +34,7 @@ export function registerIpcHandlers({
 	disconnectGateway,
 	oauthFlow,
 	instanceApi,
+	threadService,
 	openExternal,
 }: IpcHandlerDeps): void {
 	ipcMain.handle(
@@ -141,5 +145,27 @@ export function registerIpcHandlers({
 	ipcMain.handle('insights:timeSaved', async (): Promise<DesktopAssistantTimeSaved> => {
 		logger.debug('IPC insights:timeSaved');
 		return await instanceApi.getTimeSaved();
+	});
+
+	ipcMain.handle(
+		'thread:get',
+		async (
+			_event,
+			threadId: string,
+			options?: { refresh?: boolean },
+		): Promise<InstanceAiRichMessagesResponse> => {
+			logger.debug('IPC thread:get', { threadId, ...options });
+			return await threadService.getMessages(threadId, options);
+		},
+	);
+
+	ipcMain.handle('thread:listen', (_event, threadId: string, lastEventId?: number): void => {
+		logger.debug('IPC thread:listen', { threadId, lastEventId });
+		threadService.listen(threadId, lastEventId);
+	});
+
+	ipcMain.handle('thread:unlisten', (_event, threadId: string): void => {
+		logger.debug('IPC thread:unlisten', { threadId });
+		threadService.unlisten(threadId);
 	});
 }

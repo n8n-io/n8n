@@ -4,6 +4,21 @@ import { BrowserWindow, nativeTheme, screen, type Rectangle } from 'electron';
 let mainWindow: BrowserWindow | null = null;
 
 /**
+ * Callbacks fired when the renderer's state is wiped — the window is closed or its
+ * webContents navigates (reload). Lets main-process services drop per-renderer state
+ * (e.g. thread SSE connections whose refcounts live in the renderer).
+ */
+const resetCallbacks = new Set<() => void>();
+
+export function onMainWindowReset(onResetCallback: () => void): void {
+	resetCallbacks.add(onResetCallback);
+}
+
+function fireMainWindowReset(): void {
+	for (const onResetCallback of resetCallbacks) onResetCallback();
+}
+
+/**
  * The window's opaque background, matching the app surface for the active OS theme. Set at
  * creation so there's no white flash before the renderer paints (or while it tears down).
  * Electron reads the OS theme via `nativeTheme` (default `themeSource: 'system'`), the same
@@ -61,7 +76,10 @@ function createMainWindow(preloadPath: string, rendererPath: string): BrowserWin
 	});
 	window.on('closed', () => {
 		mainWindow = null;
+		fireMainWindowReset();
 	});
+	// Fires on reload (and harmlessly on the initial load, before any renderer state exists).
+	window.webContents.on('did-navigate', () => fireMainWindowReset());
 
 	return window;
 }

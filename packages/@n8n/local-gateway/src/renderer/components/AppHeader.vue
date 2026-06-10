@@ -34,7 +34,7 @@ const STATUS_CLASS: Record<AuthState, string> = {
 		<div :class="$style.actions">
 			<span :class="$style.connection">
 				<span :class="[$style.dot, $style[STATUS_CLASS[state]]]" />
-				<N8nText size="small" color="text-light">{{ STATUS_LABEL[state] }}</N8nText>
+				<N8nText size="small">{{ STATUS_LABEL[state] }}</N8nText>
 			</span>
 			<N8nIconButton
 				v-if="state === 'signedIn'"
@@ -56,6 +56,10 @@ const STATUS_CLASS: Record<AuthState, string> = {
 	justify-content: space-between;
 	padding: var(--spacing--sm) var(--spacing--md);
 	border-bottom: 1px solid var(--da-border);
+	/* Design-system components resolve their color from --text-color, which defaults to the
+	   light theme's dark text; pin it to the assistant palette so the header reads white. */
+	--text-color: var(--da-text);
+	color: var(--da-text);
 }
 
 .brand {
@@ -74,20 +78,24 @@ const STATUS_CLASS: Record<AuthState, string> = {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+	padding: 3px 10px;
+	border-radius: 20px;
+	background: var(--da-surface-2);
+	border: 1px solid var(--da-border);
 }
 
 .dot {
 	width: 0.5em;
 	height: 0.5em;
 	border-radius: var(--radius--full);
-	background: var(--color--text--tint-1);
+	background: var(--da-subtlest);
 }
 
 .connected {
-	background: var(--color--text--success);
+	background: var(--da-green);
 }
 
 .connecting {
-	background: var(--color--text--warning);
+	background: var(--da-amber);
 }
 </style>
