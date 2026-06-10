@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import type { SourceControlledFile } from '@n8n/api-types';
+import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import SettingsN8nPackagesRegistryView from './SettingsN8nPackagesRegistryView.vue';
@@ -67,6 +68,16 @@ const renderComponent = createComponentRenderer(SettingsN8nPackagesRegistryView,
 			N8nCallout: {
 				template: '<div><slot /></div>',
 			},
+			N8nCard: {
+				template: `
+					<div v-bind="$attrs">
+						<slot name="prepend" />
+						<slot name="header" />
+						<slot />
+						<slot name="append" />
+					</div>
+				`,
+			},
 			N8nDataTableServer: {
 				props: {
 					items: { type: Array, required: true },
@@ -92,15 +103,14 @@ const renderComponent = createComponentRenderer(SettingsN8nPackagesRegistryView,
 			N8nIcon: {
 				template: '<span />',
 			},
-			N8nOption: {
-				props: {
-					label: String,
-					value: String,
-				},
-				template: '<option :value="value">{{ label }}</option>',
+			N8nTooltip: {
+				template: '<span><slot /><slot name="content" /></span>',
 			},
-			N8nSelect: {
-				template: '<select><slot /></select>',
+			Modal: {
+				template: '<div><slot name="content" /></div>',
+			},
+			ProjectIcon: {
+				template: '<span />',
 			},
 			N8nText: {
 				props: {
@@ -141,6 +151,11 @@ describe('SettingsN8nPackagesRegistryView', () => {
 		const { getByTestId, getByText } = renderComponent({
 			pinia: createTestingPinia({ stubActions: false }),
 		});
+
+		await vi.waitFor(() =>
+			expect(getByTestId('n8n-packages-registry-card-source-control')).toBeInTheDocument(),
+		);
+		await fireEvent.click(getByTestId('n8n-packages-registry-card-source-control'));
 
 		await vi.waitFor(() => expect(getByText('Folder Project')).toBeInTheDocument());
 

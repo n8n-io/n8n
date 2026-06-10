@@ -13,10 +13,11 @@ export type N8nPackagesRegistryProjectGroup = {
 
 export type N8nPackagesRegistryConnection = {
 	id: string;
-	type: 'source-control' | 'git';
+	type: 'source-control' | 'git' | 's3';
 	name: string;
 	enabled: boolean;
 	readonly: boolean;
+	projectId?: string;
 };
 
 const apiRoot = '/n8n-packages-registry';
