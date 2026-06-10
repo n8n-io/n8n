@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIconButton, N8nLogo, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nLogo } from '@n8n/design-system';
 
 import type { AuthState } from '../../shared/types';
 
@@ -14,11 +14,12 @@ const STATUS_LABEL: Record<AuthState, string> = {
 	error: 'Disconnected',
 };
 
-const STATUS_CLASS: Record<AuthState, string> = {
-	signedIn: 'connected',
-	authorizing: 'connecting',
-	signedOut: 'disconnected',
-	error: 'error',
+/** Dot color per state. signedIn = green; authorizing = amber; others = neutral subtlest. */
+const DOT_CLASS: Record<AuthState, string> = {
+	signedIn: 'dotConnected',
+	authorizing: 'dotConnecting',
+	signedOut: 'dotDisconnected',
+	error: 'dotDisconnected',
 };
 </script>
 
@@ -26,15 +27,20 @@ const STATUS_CLASS: Record<AuthState, string> = {
 	<header :class="$style.header">
 		<div :class="$style.brand">
 			<N8nLogo size="small" :collapsed="true" />
-			<N8nText bold>Assistant</N8nText>
+			<span :class="$style.brandLabel">Assistant</span>
 		</div>
 
 		<div :class="$style.actions">
-			<span :class="$style.connection">
-				<span :class="[$style.dot, $style[STATUS_CLASS[state]]]" />
-				<N8nText size="small" color="text-light">{{ STATUS_LABEL[state] }}</N8nText>
+			<!-- Status pill: flex container with dot + label, styled as a rounded pill -->
+			<span :class="$style.statusPill">
+				<span :class="[$style.dot, $style[DOT_CLASS[state]]]" />
+				{{ STATUS_LABEL[state] }}
 			</span>
-			<N8nIconButton icon="settings" variant="ghost" size="small" aria-label="Settings" />
+
+			<!-- Settings icon button: 30×30, radius-7, matches prototype .iconbtn -->
+			<button type="button" :class="$style.iconBtn" aria-label="Settings">
+				<N8nIcon icon="settings" :size="16" aria-hidden="true" />
+			</button>
 		</div>
 	</header>
 </template>
@@ -43,8 +49,9 @@ const STATUS_CLASS: Record<AuthState, string> = {
 .header {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--sm) var(--spacing--md);
+	gap: 9px;
+	padding: 14px var(--spacing--sm);
+	background: var(--da-bg);
 	border-bottom: 1px solid var(--da-border);
 }
 
@@ -52,32 +59,80 @@ const STATUS_CLASS: Record<AuthState, string> = {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	font-weight: 600;
+	font-size: 14px;
+	color: var(--da-text);
+}
+
+.brandLabel {
+	font-weight: 600;
+	font-size: 14px;
+	color: var(--da-text);
 }
 
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--3xs);
+	margin-left: auto;
 }
 
-.connection {
+/* Prototype pill: surface-2 bg, single-pixel border, 20px radius */
+.statusPill {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+	font-size: 12px;
+	color: var(--da-subtler);
+	background: var(--da-surface-2);
+	padding: var(--spacing--4xs) 9px;
+	border-radius: var(--radius--full);
+	border: 1px solid var(--da-border);
 }
 
 .dot {
-	width: 0.5em;
-	height: 0.5em;
-	border-radius: var(--radius--full);
-	background: var(--color--text--tint-1);
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	flex-shrink: 0;
 }
 
-.connected {
-	background: var(--color--text--success);
+.dotConnected {
+	background: var(--da-green);
 }
 
-.connecting {
-	background: var(--color--text--warning);
+.dotConnecting {
+	background: var(--da-amber);
+}
+
+.dotDisconnected {
+	background: var(--da-subtlest);
+}
+
+/* Prototype .iconbtn: 30×30, radius-7, subtler color, hover = surface-2 + text color */
+.iconBtn {
+	width: 30px;
+	height: 30px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: none;
+	border: none;
+	border-radius: 7px;
+	color: var(--da-subtler);
+	cursor: pointer;
+	transition:
+		background 0.12s,
+		color 0.12s;
+}
+
+.iconBtn:hover {
+	background: var(--da-surface-2);
+	color: var(--da-text);
+}
+
+.iconBtn:focus-visible {
+	outline: var(--da-focus-ring);
+	outline-offset: var(--da-focus-ring-offset);
 }
 </style>
