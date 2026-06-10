@@ -4,6 +4,7 @@ import { ManualExecutionCancelledError } from '../src/errors/execution-cancelled
 import {
 	jsonParse,
 	jsonStringify,
+	replaceCircularReferences,
 	deepCopy,
 	isObjectEmpty,
 	fileTypeFromMimeType,
@@ -314,6 +315,20 @@ describe('jsonStringify', () => {
 	});
 });
 
+describe('replaceCircularReferences', () => {
+	it('should not promote an own __proto__ key onto the copy', () => {
+		const source = jsonParse<{ note: string; id?: string }>(
+			'{"note":"x","__proto__":{"id":"injected"}}',
+		);
+
+		const copy = replaceCircularReferences(source);
+
+		expect(copy.note).toBe('x');
+		expect(copy.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
+	});
+});
+
 describe('deepCopy', () => {
 	it('should deep copy an object', () => {
 		const serializable = {
@@ -389,6 +404,45 @@ describe('deepCopy', () => {
 		expect(copy.deep.props.circular).not.toBe(object);
 		expect(copy.deep.arr.slice(-1)[0]).toBe(copy);
 		expect(copy.deep.arr.slice(-1)[0]).not.toBe(object);
+	});
+
+	it('should not promote an own __proto__ key onto the clone', () => {
+		// An object literal `{ __proto__: ... }` sets the prototype; only parsed
+		// JSON produces an own enumerable `__proto__` property, as a request body would.
+		const source = jsonParse<{ note: string; id?: string }>(
+			'{"note":"x","__proto__":{"id":"injected"}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.note).toBe('x');
+		expect(copy.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
+	});
+
+	it('should not copy own constructor or prototype keys onto the clone', () => {
+		const source = jsonParse<{ keep: string }>(
+			'{"keep":"y","constructor":{"polluted":true},"prototype":{"polluted":true}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.keep).toBe('y');
+		expect(Object.prototype.hasOwnProperty.call(copy, 'constructor')).toBe(false);
+		expect(Object.prototype.hasOwnProperty.call(copy, 'prototype')).toBe(false);
+		expect(copy.constructor).toBe(Object);
+	});
+
+	it('should not promote a nested own __proto__ key', () => {
+		const source = jsonParse<{ body: { note: string; id?: string } }>(
+			'{"body":{"note":"x","__proto__":{"id":"injected"}}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.body.note).toBe('x');
+		expect(copy.body.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy.body)).toBe(Object.prototype);
 	});
 });
 
