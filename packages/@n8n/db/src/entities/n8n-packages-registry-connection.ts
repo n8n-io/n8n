@@ -8,6 +8,7 @@ export type N8nPackagesRegistryConnectionConfig = {
 	repositoryUrl?: string;
 	branch?: string;
 	basePath?: string;
+	projectId?: string;
 };
 
 @Entity({ name: 'n8n_packages_registry_connection' })

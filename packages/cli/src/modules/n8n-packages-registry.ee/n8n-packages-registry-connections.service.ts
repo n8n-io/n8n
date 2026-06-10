@@ -26,6 +26,7 @@ export class N8nPackagesRegistryConnectionsService {
 					name: connection.name,
 					enabled: connection.isEnabled,
 					readonly: false,
+					projectId: connection.config.projectId,
 					config: connection.config,
 					credentialId: connection.credentialId,
 				};
@@ -45,6 +46,7 @@ export class N8nPackagesRegistryConnectionsService {
 			name: connection.name,
 			enabled: connection.isEnabled,
 			readonly: false,
+			projectId: connection.config.projectId,
 			config: connection.config,
 			credentialId: connection.credentialId,
 		};

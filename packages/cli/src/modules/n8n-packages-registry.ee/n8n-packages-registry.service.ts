@@ -9,6 +9,7 @@ import { N8nPackagesRegistryConnectionsService } from './n8n-packages-registry-c
 import {
 	SOURCE_CONTROL_REGISTRY_ID,
 	type N8nPackagesRegistryConnection,
+	type N8nPackagesRegistryProjectGroup,
 } from './n8n-packages-registry.types';
 import { N8nPackagesRegistryProviders } from './providers/n8n-packages-registry-providers.service';
 
@@ -40,7 +41,8 @@ export class N8nPackagesRegistryService {
 
 	async findImportableChangesGroupedByProject(user: User, registryId = SOURCE_CONTROL_REGISTRY_ID) {
 		const registry = await this.createRegistry(registryId);
-		return await registry.getImportableChangesGroupedByProject(user);
+		const groups = await registry.getImportableChangesGroupedByProject(user);
+		return this.filterGroupsByProjectScope(registry.connection, groups);
 	}
 
 	async importProjectChanges(
@@ -49,6 +51,7 @@ export class N8nPackagesRegistryService {
 		registryId = SOURCE_CONTROL_REGISTRY_ID,
 	) {
 		const registry = await this.createRegistry(registryId);
+		this.assertProjectMatchesRegistryScope(registry.connection, projectId);
 		return await registry.importProjectChanges(user, projectId);
 	}
 
@@ -69,6 +72,27 @@ export class N8nPackagesRegistryService {
 			throw new UnprocessableRequestError(`Unsupported package registry type: ${connection.type}`);
 		}
 
-		return await provider.init(connection);
+		return {
+			...(await provider.init(connection)),
+			connection,
+		};
+	}
+
+	private filterGroupsByProjectScope(
+		connection: N8nPackagesRegistryConnection,
+		groups: N8nPackagesRegistryProjectGroup[],
+	): N8nPackagesRegistryProjectGroup[] {
+		if (!connection.projectId) return groups;
+
+		return groups.filter((group) => group.project.id === connection.projectId);
+	}
+
+	private assertProjectMatchesRegistryScope(
+		connection: N8nPackagesRegistryConnection,
+		projectId: string,
+	) {
+		if (!connection.projectId || connection.projectId === projectId) return;
+
+		throw new UnprocessableRequestError('Project is outside the registry scope');
 	}
 }

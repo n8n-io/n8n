@@ -19,6 +19,7 @@ export type N8nPackagesRegistryConnection = {
 	name: string;
 	enabled: boolean;
 	readonly: boolean;
+	projectId?: string;
 	config: N8nPackagesRegistryConnectionConfig;
 	credentialId: string | null;
 };
