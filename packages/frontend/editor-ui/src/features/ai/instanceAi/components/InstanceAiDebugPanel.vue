@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiDebugStore } from '../instanceAiDebug.store';
+import InstanceAiLlmStepsModal from './InstanceAiLlmStepsModal.vue';
 
 const emit = defineEmits<{ close: [] }>();
 const i18n = useI18n();
@@ -11,11 +12,13 @@ const currentThread = useThread();
 const debugStore = useInstanceAiDebugStore();
 
 // --- Tab state ---
-type Tab = 'events' | 'threads';
+type Tab = 'events' | 'threads' | 'llmSteps' | 'workflowCode';
 const activeTab = ref<Tab>('events');
 
 // --- Events tab state ---
 const expandedIndex = ref<number | null>(null);
+const expandedWorkflowIndex = ref<number | null>(null);
+const showLlmStepsModal = ref(false);
 const eventListRef = useTemplateRef<HTMLElement>('eventList');
 const events = computed(() => currentThread.debugEvents);
 
@@ -28,6 +31,24 @@ function toggleEvent(index: number) {
 
 function toggleMessage(index: number) {
 	expandedMessageIndex.value = expandedMessageIndex.value === index ? null : index;
+}
+
+function toggleWorkflowSnapshot(index: number) {
+	expandedWorkflowIndex.value = expandedWorkflowIndex.value === index ? null : index;
+}
+
+async function handleSelectDebugRun(runId: string) {
+	expandedWorkflowIndex.value = null;
+
+	if (activeTab.value === 'llmSteps') {
+		await debugStore.loadRunDebug(runId);
+		if (debugStore.runDebug?.runId === runId) {
+			showLlmStepsModal.value = true;
+		}
+		return;
+	}
+
+	void debugStore.loadRunDebug(runId);
 }
 
 function formatJson(value: unknown): string {
@@ -63,6 +84,14 @@ function formatTime(iso: string): string {
 	}
 }
 
+function formatTimestamp(ms: number): string {
+	try {
+		return new Date(ms).toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 3 });
+	} catch {
+		return String(ms);
+	}
+}
+
 function formatDateTime(iso: string): string {
 	try {
 		const d = new Date(iso);
@@ -70,6 +99,10 @@ function formatDateTime(iso: string): string {
 	} catch {
 		return iso;
 	}
+}
+
+async function refreshRunDebugData() {
+	await debugStore.refreshRunDebug(currentThread.id, currentThread.activeRunId);
 }
 
 function contentPreview(content: unknown): string {
@@ -102,7 +135,23 @@ watch(activeTab, (tab) => {
 	if (tab === 'threads' && debugStore.threads.length === 0) {
 		void debugStore.loadThreads();
 	}
+	if (tab === 'llmSteps' || tab === 'workflowCode') {
+		void refreshRunDebugData();
+	}
 });
+
+watch(
+	() => currentThread.isStreaming,
+	(isStreaming, wasStreaming) => {
+		if (
+			wasStreaming &&
+			!isStreaming &&
+			(activeTab.value === 'llmSteps' || activeTab.value === 'workflowCode')
+		) {
+			void refreshRunDebugData();
+		}
+	},
+);
 
 function handleSelectThread(threadId: string) {
 	expandedMessageIndex.value = null;
@@ -170,6 +219,18 @@ onMounted(() => {
 				@click="activeTab = 'threads'"
 			>
 				{{ i18n.baseText('instanceAi.debug.tab.threads') }}
+			</button>
+			<button
+				:class="[$style.tab, activeTab === 'llmSteps' && $style.tabActive]"
+				@click="activeTab = 'llmSteps'"
+			>
+				{{ i18n.baseText('instanceAi.debug.tab.llmSteps') }}
+			</button>
+			<button
+				:class="[$style.tab, activeTab === 'workflowCode' && $style.tabActive]"
+				@click="activeTab = 'workflowCode'"
+			>
+				{{ i18n.baseText('instanceAi.debug.tab.workflowCode') }}
 			</button>
 		</div>
 
@@ -289,6 +350,103 @@ onMounted(() => {
 				</div>
 			</template>
 		</template>
+
+		<!-- LLM Steps / Workflow Code tabs -->
+		<template v-if="activeTab === 'llmSteps' || activeTab === 'workflowCode'">
+			<div :class="$style.threadListHeader">
+				<span :class="$style.sectionLabel">{{
+					i18n.baseText('instanceAi.debug.runDebug.selectRun')
+				}}</span>
+				<button :class="$style.copyButton" @click="refreshRunDebugData">
+					{{ i18n.baseText('instanceAi.debug.runDebug.refresh') }}
+				</button>
+			</div>
+
+			<div v-if="debugStore.isLoadingThreadDebugRuns" :class="$style.loadingState">
+				<N8nIcon icon="spinner" color="primary" spin size="small" />
+			</div>
+
+			<div v-else-if="debugStore.threadDebugRuns.length === 0" :class="$style.emptyState">
+				{{ i18n.baseText('instanceAi.debug.runDebug.noRuns') }}
+			</div>
+
+			<div v-else :class="$style.threadList">
+				<div
+					v-for="run in debugStore.threadDebugRuns"
+					:key="run.runId"
+					:class="[
+						$style.threadRow,
+						debugStore.selectedRunId === run.runId && $style.threadRowSelected,
+					]"
+					data-test-id="instance-ai-debug-run-row"
+					@click="handleSelectDebugRun(run.runId)"
+				>
+					<div :class="$style.threadRowMain">
+						<div :class="$style.runMeta">
+							<span :class="$style.threadTitle">{{ run.runId.slice(0, 12) }}</span>
+							<span v-if="run.label" :class="$style.runLabel">{{ run.label }}</span>
+						</div>
+						<span v-if="run.runId === currentThread.activeRunId" :class="$style.currentBadge">
+							{{ i18n.baseText('instanceAi.debug.threads.current') }}
+						</span>
+					</div>
+					<span :class="$style.threadTime">{{ formatTimestamp(run.startedAt) }}</span>
+				</div>
+			</div>
+
+			<div
+				v-if="debugStore.isLoadingRunDebug && activeTab === 'llmSteps'"
+				:class="$style.loadingState"
+			>
+				<N8nIcon icon="spinner" color="primary" spin size="small" />
+			</div>
+
+			<div
+				v-if="debugStore.isLoadingRunDebug && activeTab === 'workflowCode'"
+				:class="$style.loadingState"
+			>
+				<N8nIcon icon="spinner" color="primary" spin size="small" />
+			</div>
+
+			<template v-else-if="debugStore.runDebug && activeTab === 'workflowCode'">
+				<!-- Workflow Code -->
+				<div v-if="debugStore.runDebug.workflowCode.length === 0" :class="$style.emptyState">
+					{{ i18n.baseText('instanceAi.debug.runDebug.noWorkflowCode') }}
+				</div>
+				<div v-else :class="$style.threadDetailContent">
+					<div
+						v-for="(snapshot, wIdx) in debugStore.runDebug.workflowCode"
+						:key="`${snapshot.capturedAt}-${wIdx}`"
+						:class="$style.messageRow"
+						@click="toggleWorkflowSnapshot(wIdx)"
+					>
+						<div :class="$style.messageHeader">
+							<span :class="[$style.eventType, snapshot.success ? $style.start : $style.error]">
+								{{
+									snapshot.success
+										? i18n.baseText('instanceAi.debug.runDebug.success')
+										: i18n.baseText('instanceAi.debug.runDebug.failed')
+								}}
+							</span>
+							<span :class="$style.eventTime">{{ formatTimestamp(snapshot.capturedAt) }}</span>
+						</div>
+						<div :class="$style.messagePreview">
+							{{ snapshot.source }} · {{ snapshot.code.length }} chars
+						</div>
+						<pre v-if="expandedWorkflowIndex === wIdx" :class="$style.workflowCodeBlock">{{
+							snapshot.code
+						}}</pre>
+						<pre
+							v-if="expandedWorkflowIndex === wIdx && snapshot.errors?.length"
+							:class="$style.eventPayload"
+							>{{ formatJson(snapshot.errors) }}</pre
+						>
+					</div>
+				</div>
+			</template>
+		</template>
+
+		<InstanceAiLlmStepsModal v-model:open="showLlmStepsModal" />
 	</div>
 </template>
 
@@ -519,6 +677,21 @@ onMounted(() => {
 	color: var(--color--text--tint-1);
 }
 
+.workflowCodeBlock {
+	margin: var(--spacing--4xs) 0 0;
+	padding: var(--spacing--4xs);
+	background: var(--color--foreground--tint-2);
+	border-radius: var(--radius);
+	font-family: monospace;
+	font-size: var(--font-size--3xs);
+	line-height: var(--line-height--xl);
+	white-space: pre-wrap;
+	word-break: break-word;
+	max-height: 320px;
+	overflow-y: auto;
+	color: var(--color--text--tint-1);
+}
+
 /* Thread Inspector styles */
 .threadListHeader {
 	display: flex;
@@ -577,8 +750,25 @@ onMounted(() => {
 
 .threadRowMain {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
+	justify-content: space-between;
 	gap: var(--spacing--3xs);
+}
+
+.runMeta {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+	flex: 1;
+}
+
+.runLabel {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .threadTitle {

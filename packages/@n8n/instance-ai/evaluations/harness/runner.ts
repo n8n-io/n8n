@@ -20,6 +20,7 @@ import {
 	recordUserTurn,
 	type ConfirmationStrategy,
 } from './chat-loop';
+import { captureThreadRunDebug } from './capture-run-debug';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import { buildWorkflowContextBlock } from './workflow-context';
@@ -206,6 +207,9 @@ export async function runWorkflowTestCase(
 	}
 	if (build.threadId) {
 		result.threadId = build.threadId;
+		if (!config.prebuiltWorkflowId) {
+			result.runDebug = await captureThreadRunDebug(client, build.threadId, logger);
+		}
 	}
 	if (build.transcript) {
 		result.transcript = build.transcript;

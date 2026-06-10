@@ -476,6 +476,21 @@ export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = laz
 	() => loadRunStateRegistry().RunStateRegistry,
 );
 export type {
+	RunDebugRecord,
+	RunDebugStep,
+	SanitizedStepFinish,
+	SanitizedStepStart,
+	WorkflowCodeSnapshot,
+	WorkflowCodeSnapshotInput,
+} from './debug/run-debug-buffer';
+export {
+	RunDebugBuffer,
+	buildRunDebugLabel,
+	createRunDebugStepHooks,
+	sanitizeStepFinish,
+	sanitizeStepStart,
+} from './debug/run-debug-buffer';
+export type {
 	ActiveRunState,
 	BackgroundTaskStatusSnapshot,
 	ConfirmationData,

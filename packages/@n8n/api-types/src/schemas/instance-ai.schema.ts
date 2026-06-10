@@ -882,6 +882,49 @@ export interface InstanceAiThreadMessagesResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Run debug buffer (dev panel — orchestrator LLM steps + workflow code)
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiRunDebugSummary {
+	runId: string;
+	threadId: string;
+	startedAt: number;
+	stepCount: number;
+	workflowCodeCount: number;
+	label?: string;
+}
+
+export interface InstanceAiRunDebugStep {
+	stepNumber: number;
+	input?: Record<string, unknown>;
+	output?: Record<string, unknown>;
+}
+
+export interface InstanceAiRunDebugWorkflowCodeSnapshot {
+	code: string;
+	source: 'full-code' | 'patch';
+	patches?: unknown;
+	workflowId?: string;
+	toolCallId?: string;
+	success: boolean;
+	errors?: string[];
+	capturedAt: number;
+}
+
+export interface InstanceAiRunDebugResponse {
+	threadId: string;
+	runId: string;
+	startedAt: number;
+	steps: InstanceAiRunDebugStep[];
+	workflowCode: InstanceAiRunDebugWorkflowCodeSnapshot[];
+}
+
+export interface InstanceAiThreadDebugRunsResponse {
+	runs: InstanceAiRunDebugSummary[];
+	threadId: string;
+}
+
+// ---------------------------------------------------------------------------
 // Rich messages response (session-restored view with agent trees)
 // ---------------------------------------------------------------------------
 

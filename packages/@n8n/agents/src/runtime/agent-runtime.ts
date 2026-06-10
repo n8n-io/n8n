@@ -770,9 +770,13 @@ export class AgentRuntime {
 	): {
 		experimental_telemetry?: TelemetrySettings;
 		experimental_repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
+		experimental_onStepStart?: ExecutionOptions['onStepStart'];
+		onStepFinish?: ExecutionOptions['onStepFinish'];
 	} {
 		return {
 			...this.buildTelemetryOptions(options),
+			...(options?.onStepStart ? { experimental_onStepStart: options.onStepStart } : {}),
+			...(options?.onStepFinish ? { onStepFinish: options.onStepFinish } : {}),
 			experimental_repairToolCall: async (options) => {
 				return await fixToolCall(
 					{
