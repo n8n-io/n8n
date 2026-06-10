@@ -183,7 +183,12 @@ describe('AgentsService', () => {
 		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
-		agentsConfig = { modules: [] } as unknown as AgentsConfig;
+		agentsConfig = {
+			modules: [],
+			sandboxEnabled: false,
+			sandboxProvider: '',
+			daytonaVolumeId: '',
+		} as unknown as AgentsConfig;
 		globalConfig = mock<GlobalConfig>({
 			multiMainSetup: { enabled: false },
 		} as Partial<GlobalConfig>);
