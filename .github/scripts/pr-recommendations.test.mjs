@@ -1,4 +1,4 @@
-import { describe, it, mock, beforeEach } from 'node:test';
+import { beforeEach, describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
 /**
@@ -7,21 +7,20 @@ import assert from 'node:assert/strict';
  * node --test --experimental-test-module-mocks ./.github/scripts/pr-recommendations.test.mjs
  * */
 
-// ---------------------------------------------------------------------------
-// Mutable stubs — individual tests can override these before calling `run`.
-// mock.module must be called before the module under test is imported.
-// ---------------------------------------------------------------------------
-
 let getPrFilesImpl = async () => [];
-let initGithubImpl = () => ({ owner: 'o', repo: 'r', octokit: null });
+let postOrUpdateCommentImpl = async () => {};
 
 mock.module('./github-helpers.mjs', {
 	namedExports: {
 		ensureEnvVar: () => {},
-		initGithub: () => initGithubImpl(),
+		initGithub: () => {
+			throw new Error('initGithub should not be called in these tests');
+		},
 		getChangedFiles: () => Promise.resolve(new Set()),
 		getEventFromGithubEventPath: () => ({}),
 		getPrFiles: (n) => getPrFilesImpl(n),
+		postOrUpdateComment: (pullRequestNumber, body, botMarker) =>
+			postOrUpdateCommentImpl(pullRequestNumber, body, botMarker),
 	},
 });
 
@@ -37,171 +36,101 @@ mock.module('./owners.mjs', {
 	},
 });
 
-const {
-	buildReviewersSection,
-	buildChangedLinesSection,
-	buildComment,
-	computeLineStats,
-	run,
-} = await import('./pr-recommendations.mjs');
+const { buildOverviewTable, buildComment, computeAllocationLineStats, computeLineStats, run } =
+	await import('./pr-recommendations.mjs');
 
 const BOT_MARKER = '<!-- pr-recommendations -->';
-const EMPTY_LINE_STATS = { sourceCode: 0, testFiles: 0, misc: 0 };
+const EMPTY_LINE_STATS = {
+	sourceCodeAdded: 0,
+	sourceCodeRemoved: 0,
+	testFilesAdded: 0,
+	testFilesRemoved: 0,
+	miscAdded: 0,
+	miscRemoved: 0,
+};
 
-// ---------------------------------------------------------------------------
-// Helper: build a minimal octokit mock whose call history is inspectable
-// ---------------------------------------------------------------------------
-function makeOctokitMock({ existingComments = [] } = {}) {
-	const createComment = mock.fn(async () => {});
-	const updateComment = mock.fn(async () => {});
-
-	const octokit = {
-		paginate: async (_fn, _opts) => existingComments,
-		rest: {
-			issues: {
-				listComments: {},
-				createComment,
-				updateComment,
-			},
-		},
-	};
-
-	return { octokit, createComment, updateComment };
-}
-
-// ---------------------------------------------------------------------------
-// buildReviewersSection
-// ---------------------------------------------------------------------------
-
-describe('buildReviewersSection', () => {
-	it('returns the fallback message when there are no allocations', () => {
-		const section = buildReviewersSection([], new Set(['a.ts']));
-
-		assert.match(section, /No owning teams matched/);
-	});
-
-	it('returns the fallback message when no files changed', () => {
-		const section = buildReviewersSection(
-			[{ team: '@n8n-io/cli-team', fileCount: 0 }],
-			new Set(),
-		);
-
-		assert.match(section, /No owning teams matched/);
-	});
-
-	it('renders a table with team name, file count, and rounded percentage', () => {
-		const section = buildReviewersSection(
+describe('buildOverviewTable', () => {
+	it('renders an ownership-first table with per-team line stats', () => {
+		const table = buildOverviewTable(
 			[
-				{ team: '@n8n-io/cli-team', fileCount: 6 },
-				{ team: '@n8n-io/catalysts', fileCount: 3 },
-				{ team: '@n8n-io/ai-team', fileCount: 1 },
+				{ team: '@n8n-io/cli-team', fileCount: 2 },
+				{ team: '@n8n-io/editor-ui-team', fileCount: 1 },
 			],
-			new Set(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']),
+			new Set(['a.ts', 'b.test.ts', 'README.md']),
+			{
+				sourceCodeAdded: 10,
+				sourceCodeRemoved: 2,
+				testFilesAdded: 5,
+				testFilesRemoved: 1,
+				miscAdded: 3,
+				miscRemoved: 0,
+			},
+			new Map([
+				[
+					'@n8n-io/cli-team',
+					{
+						sourceCodeAdded: 10,
+						sourceCodeRemoved: 2,
+						testFilesAdded: 5,
+						testFilesRemoved: 1,
+						miscAdded: 0,
+						miscRemoved: 0,
+					},
+				],
+				[
+					'@n8n-io/editor-ui-team',
+					{
+						sourceCodeAdded: 0,
+						sourceCodeRemoved: 0,
+						testFilesAdded: 0,
+						testFilesRemoved: 0,
+						miscAdded: 3,
+						miscRemoved: 0,
+					},
+				],
+			]),
 		);
 
-		assert.match(section, /\| @n8n-io\/cli-team \| 6 \| 60% \|/);
-		assert.match(section, /\| @n8n-io\/catalysts \| 3 \| 30% \|/);
-		assert.match(section, /\| @n8n-io\/ai-team \| 1 \| 10% \|/);
+		assert.match(table, /## PR review overview/);
+		assert.match(table, /\| Ownership \| Files owned \| Share \| Source code \| Test files \| Misc \|/);
+		assert.match(table, /\| @n8n-io\/cli-team \| 2 \| 67% \| \+10 \/ -2 \| \+5 \/ -1 \| \+0 \/ -0 \|/);
+		assert.match(table, /\| @n8n-io\/editor-ui-team \| 1 \| 33% \| \+0 \/ -0 \| \+0 \/ -0 \| \+3 \/ -0 \|/);
+		assert.match(table, /\| \*\*Total\*\* \| \*\*3\*\* \| \*\*100%\*\* \| \*\*\+10 \/ -2\*\* \| \*\*\+5 \/ -1\*\* \| \*\*\+3 \/ -0\*\* \|/);
 	});
 
-	it('rounds the percentage to the nearest integer', () => {
-		// 2 out of 3 = 66.66…% → rounds to 67%
-		const section = buildReviewersSection(
-			[{ team: '@n8n-io/cli-team', fileCount: 2 }],
-			new Set(['a.ts', 'b.ts', 'c.ts']),
+	it('renders a no-owner row when no owners matched', () => {
+		const table = buildOverviewTable(
+			[],
+			new Set(['a.ts']),
+			{ ...EMPTY_LINE_STATS, sourceCodeAdded: 12, sourceCodeRemoved: 1 },
+			new Map(),
 		);
 
-		assert.match(section, /\| @n8n-io\/cli-team \| 2 \| 67% \|/);
+		assert.match(table, /\| _No owning teams matched_ \| 0 \| 0% \| \+12 \/ -1 \| \+0 \/ -0 \| \+0 \/ -0 \|/);
 	});
 
 	it('uses singular "file" when exactly one file changed', () => {
-		const section = buildReviewersSection(
+		const table = buildOverviewTable(
 			[{ team: '@n8n-io/cli-team', fileCount: 1 }],
 			new Set(['only.ts']),
+			EMPTY_LINE_STATS,
+			new Map(),
 		);
 
-		assert.match(section, /ownership of the 1 changed file in this PR/);
+		assert.match(table, /ownership of the 1 changed file in this PR/);
 	});
 
-	it('uses plural "files" for more than one changed file', () => {
-		const section = buildReviewersSection(
-			[{ team: '@n8n-io/cli-team', fileCount: 2 }],
-			new Set(['a.ts', 'b.ts']),
-		);
-
-		assert.match(section, /ownership of the 2 changed files in this PR/);
-	});
-
-	it('includes the table header', () => {
-		const section = buildReviewersSection(
+	it('uses plural "files" for more than one file changed', () => {
+		const table = buildOverviewTable(
 			[{ team: '@n8n-io/cli-team', fileCount: 1 }],
-			new Set(['a.ts']),
+			new Set(['a.ts', 'b.ts']),
+			EMPTY_LINE_STATS,
+			new Map(),
 		);
 
-		assert.match(section, /\| Team \| Files owned \| Share \|/);
+		assert.match(table, /ownership of the 2 changed files in this PR/);
 	});
 });
-
-// ---------------------------------------------------------------------------
-// buildChangedLinesSection
-// ---------------------------------------------------------------------------
-
-describe('buildChangedLinesSection', () => {
-	it('renders a table with all three categories and a total row', () => {
-		const section = buildChangedLinesSection({ sourceCode: 100, testFiles: 50, misc: 10 });
-
-		assert.match(section, /## Changed lines/);
-		assert.match(section, /\| Source code \| 100 \|/);
-		assert.match(section, /\| Test files \| 50 \|/);
-		assert.match(section, /\| Misc \| 10 \|/);
-		assert.match(section, /\| \*\*Total\*\* \| \*\*160\*\* \|/);
-	});
-
-	it('adds ❗ to source code label when it exceeds the size limit', () => {
-		const section = buildChangedLinesSection({ sourceCode: 1001, testFiles: 0, misc: 0 });
-
-		assert.match(section, /\| Source code ❗ \|/);
-	});
-
-	it('does not add ❗ when source code is exactly at the size limit', () => {
-		const section = buildChangedLinesSection({ sourceCode: 1000, testFiles: 0, misc: 0 });
-
-		assert.match(section, /\| Source code \|/);
-		assert.doesNotMatch(section, /❗/);
-	});
-
-	it('does not add ❗ when source code is below the size limit', () => {
-		const section = buildChangedLinesSection({ sourceCode: 999, testFiles: 0, misc: 0 });
-
-		assert.doesNotMatch(section, /❗/);
-	});
-
-	it('formats large numbers with locale thousands separator', () => {
-		const section = buildChangedLinesSection({ sourceCode: 12345, testFiles: 1000, misc: 0 });
-
-		assert.match(section, /12[,.]345/); // separator varies by locale, both are valid
-		assert.match(section, /1[,.]000/);
-	});
-
-	it('renders zero values as 0 and total as 0', () => {
-		const section = buildChangedLinesSection(EMPTY_LINE_STATS);
-
-		assert.match(section, /\| Source code \| 0 \|/);
-		assert.match(section, /\| Test files \| 0 \|/);
-		assert.match(section, /\| Misc \| 0 \|/);
-		assert.match(section, /\| \*\*Total\*\* \| \*\*0\*\* \|/);
-	});
-
-	it('includes the table header', () => {
-		const section = buildChangedLinesSection(EMPTY_LINE_STATS);
-
-		assert.match(section, /\| Category \| Lines added \|/);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// buildComment
-// ---------------------------------------------------------------------------
 
 describe('buildComment', () => {
 	it('starts with the bot marker', () => {
@@ -210,56 +139,39 @@ describe('buildComment', () => {
 		assert.ok(body.startsWith(BOT_MARKER), 'body must start with the bot marker');
 	});
 
-	it('includes both sections', () => {
+	it('includes the overview table', () => {
 		const body = buildComment(
 			[{ team: '@n8n-io/cli-team', fileCount: 1 }],
 			new Set(['a.ts']),
-			{ sourceCode: 42, testFiles: 5, misc: 1 },
+			{ ...EMPTY_LINE_STATS, sourceCodeAdded: 42 },
 		);
 
-		assert.match(body, /## Recommended reviewers/);
-		assert.match(body, /## Changed lines/);
+		assert.match(body, /## PR review overview/);
+		assert.match(body, /\| @n8n-io\/cli-team \| 1 \| 100% \|/);
 	});
 
-	it('reviewer fallback and changed-lines section both appear when no owners matched', () => {
-		const body = buildComment([], new Set(['a.ts']), { sourceCode: 10, testFiles: 0, misc: 0 });
+	it('shows a warning below the table when source code additions exceed the size limit', () => {
+		const body = buildComment([], new Set(['a.ts']), { ...EMPTY_LINE_STATS, sourceCodeAdded: 1001 });
 
-		assert.match(body, /No owning teams matched/);
-		assert.match(body, /## Changed lines/);
-	});
-
-	it('sections are separated by a blank line', () => {
-		const body = buildComment(
-			[{ team: '@n8n-io/cli-team', fileCount: 1 }],
-			new Set(['a.ts']),
-			EMPTY_LINE_STATS,
-		);
-
-		// The reviewers section ends before "## Changed lines" with a blank line between them
-		assert.match(body, /\n\n## Changed lines/);
+		assert.match(body, /❗ Source code additions \(1[,.]001\) exceed the 1[,.]000-line limit\./);
 	});
 });
 
-// ---------------------------------------------------------------------------
-// computeLineStats — source code vs test files vs misc classification
-// ---------------------------------------------------------------------------
-
 describe('computeLineStats', () => {
 	it('returns all zeros for an empty file list', () => {
-		const stats = computeLineStats([]);
-
-		assert.deepEqual(stats, { sourceCode: 0, testFiles: 0, misc: 0 });
+		assert.deepEqual(computeLineStats([]), EMPTY_LINE_STATS);
 	});
 
 	it('categorises a plain source file as source code', () => {
-		const stats = computeLineStats([{ filename: 'src/foo.ts', additions: 10 }]);
+		const stats = computeLineStats([{ filename: 'src/foo.ts', additions: 10, deletions: 3 }]);
 
-		assert.equal(stats.sourceCode, 10);
-		assert.equal(stats.testFiles, 0);
-		assert.equal(stats.misc, 0);
+		assert.equal(stats.sourceCodeAdded, 10);
+		assert.equal(stats.sourceCodeRemoved, 3);
+		assert.equal(stats.testFilesAdded, 0);
+		assert.equal(stats.miscAdded, 0);
 	});
 
-	describe('test file patterns → testFiles', () => {
+	describe('test file patterns', () => {
 		for (const [label, filename] of [
 			['*.test.ts', 'src/foo.test.ts'],
 			['*.test.js', 'src/foo.test.js'],
@@ -277,16 +189,17 @@ describe('computeLineStats', () => {
 			['packages/testing/**', 'packages/testing/playwright/spec.ts'],
 		]) {
 			it(`classifies ${label} as testFiles`, () => {
-				const stats = computeLineStats([{ filename, additions: 7 }]);
+				const stats = computeLineStats([{ filename, additions: 7, deletions: 2 }]);
 
-				assert.equal(stats.testFiles, 7, `expected ${filename} to be a test file`);
-				assert.equal(stats.sourceCode, 0);
-				assert.equal(stats.misc, 0);
+				assert.equal(stats.testFilesAdded, 7, `expected ${filename} to be a test file`);
+				assert.equal(stats.testFilesRemoved, 2);
+				assert.equal(stats.sourceCodeAdded, 0);
+				assert.equal(stats.miscAdded, 0);
 			});
 		}
 	});
 
-	describe('misc file patterns → misc', () => {
+	describe('misc file patterns', () => {
 		for (const [label, filename] of [
 			['pnpm-lock.yaml', 'pnpm-lock.yaml'],
 			['*.md', 'README.md'],
@@ -295,86 +208,106 @@ describe('computeLineStats', () => {
 			['nested *.mdx', 'packages/editor-ui/docs/page.mdx'],
 		]) {
 			it(`classifies ${label} as misc`, () => {
-				const stats = computeLineStats([{ filename, additions: 3 }]);
+				const stats = computeLineStats([{ filename, additions: 3, deletions: 1 }]);
 
-				assert.equal(stats.misc, 3, `expected ${filename} to be misc`);
-				assert.equal(stats.sourceCode, 0);
-				assert.equal(stats.testFiles, 0);
+				assert.equal(stats.miscAdded, 3, `expected ${filename} to be misc`);
+				assert.equal(stats.miscRemoved, 1);
+				assert.equal(stats.sourceCodeAdded, 0);
+				assert.equal(stats.testFilesAdded, 0);
 			});
 		}
 	});
 
-	it('sums additions across multiple files per category', () => {
+	it('sums additions and deletions across multiple files per category', () => {
 		const stats = computeLineStats([
-			{ filename: 'src/a.ts', additions: 10 },
-			{ filename: 'src/b.ts', additions: 15 },
-			{ filename: 'src/a.test.ts', additions: 5 },
-			{ filename: 'src/b.spec.ts', additions: 8 },
-			{ filename: 'pnpm-lock.yaml', additions: 100 },
-			{ filename: 'README.md', additions: 20 },
+			{ filename: 'src/a.ts', additions: 10, deletions: 5 },
+			{ filename: 'src/b.ts', additions: 15, deletions: 3 },
+			{ filename: 'src/a.test.ts', additions: 5, deletions: 1 },
+			{ filename: 'src/b.spec.ts', additions: 8, deletions: 2 },
+			{ filename: 'pnpm-lock.yaml', additions: 100, deletions: 50 },
+			{ filename: 'README.md', additions: 20, deletions: 10 },
 		]);
 
-		assert.equal(stats.sourceCode, 25);
-		assert.equal(stats.testFiles, 13);
-		assert.equal(stats.misc, 120);
-	});
-
-	it('test patterns take priority over misc patterns', () => {
-		// A *.test.md file — matches both test extension logic and *.md misc pattern.
-		// test classification wins because it is checked first.
-		const stats = computeLineStats([{ filename: 'src/foo.test.ts', additions: 5 }]);
-
-		assert.equal(stats.testFiles, 5);
-		assert.equal(stats.misc, 0);
+		assert.equal(stats.sourceCodeAdded, 25);
+		assert.equal(stats.sourceCodeRemoved, 8);
+		assert.equal(stats.testFilesAdded, 13);
+		assert.equal(stats.testFilesRemoved, 3);
+		assert.equal(stats.miscAdded, 120);
+		assert.equal(stats.miscRemoved, 60);
 	});
 });
 
-// ---------------------------------------------------------------------------
-// run — integration tests (GitHub API interactions)
-// ---------------------------------------------------------------------------
+describe('computeAllocationLineStats', () => {
+	it('computes line stats per owner allocation', () => {
+		const statsByTeam = computeAllocationLineStats(
+			[
+				{ team: '@n8n-io/cli-team', fileCount: 2 },
+				{ team: '@n8n-io/docs-team', fileCount: 1 },
+			],
+			new Map([
+				['@n8n-io/cli-team', ['src/a.ts', 'src/a.test.ts']],
+				['@n8n-io/docs-team', ['README.md']],
+			]),
+			[
+				{ filename: 'src/a.ts', additions: 10, deletions: 1 },
+				{ filename: 'src/a.test.ts', additions: 5, deletions: 2 },
+				{ filename: 'README.md', additions: 3, deletions: 1 },
+			],
+		);
+
+		assert.deepEqual(statsByTeam.get('@n8n-io/cli-team'), {
+			sourceCodeAdded: 10,
+			sourceCodeRemoved: 1,
+			testFilesAdded: 5,
+			testFilesRemoved: 2,
+			miscAdded: 0,
+			miscRemoved: 0,
+		});
+		assert.deepEqual(statsByTeam.get('@n8n-io/docs-team'), {
+			sourceCodeAdded: 0,
+			sourceCodeRemoved: 0,
+			testFilesAdded: 0,
+			testFilesRemoved: 0,
+			miscAdded: 3,
+			miscRemoved: 1,
+		});
+	});
+
+	it('matches renamed files by previous filename', () => {
+		const statsByTeam = computeAllocationLineStats(
+			[{ team: '@n8n-io/cli-team', fileCount: 1 }],
+			new Map([['@n8n-io/cli-team', ['old-name.ts']]]),
+			[{ filename: 'new-name.ts', previous_filename: 'old-name.ts', additions: 7, deletions: 3 }],
+		);
+
+		assert.equal(statsByTeam.get('@n8n-io/cli-team').sourceCodeAdded, 7);
+		assert.equal(statsByTeam.get('@n8n-io/cli-team').sourceCodeRemoved, 3);
+	});
+});
 
 describe('run', () => {
+	const postOrUpdateComment = mock.fn(async () => {});
+
 	beforeEach(() => {
-		// Reset stubs to safe defaults before each test
 		getPrFilesImpl = async () => [];
+		postOrUpdateCommentImpl = postOrUpdateComment;
 		parseOwnersFileImpl = () => [];
 		assignOwnershipImpl = () => new Map();
 		ownershipsToAllocationsImpl = () => [];
 	});
 
-	it('creates a new comment when no existing bot-marker comment is found', async () => {
-		const { octokit, createComment, updateComment } = makeOctokitMock({
-			existingComments: [],
-		});
-		initGithubImpl = () => ({ owner: 'o', repo: 'r', octokit });
-
+	it('calls postOrUpdateComment with the PR number, generated body, and bot marker', async () => {
 		await run(42);
 
-		assert.equal(createComment.mock.calls.length, 1, 'createComment should be called once');
-		assert.equal(updateComment.mock.calls.length, 0, 'updateComment should not be called');
-
-		const { body } = createComment.mock.calls[0].arguments[0];
-		assert.ok(body.includes(BOT_MARKER));
+		assert.equal(postOrUpdateComment.mock.calls.length, 1, 'postOrUpdateComment should be called once');
+		assert.equal(postOrUpdateComment.mock.calls[0].arguments[0], 42);
+		assert.ok(postOrUpdateComment.mock.calls[0].arguments[1].includes(BOT_MARKER));
+		assert.equal(postOrUpdateComment.mock.calls[0].arguments[2], BOT_MARKER);
 	});
 
-	it('updates the existing comment when the bot-marker comment is found', async () => {
-		const existingComments = [{ id: 99, body: `${BOT_MARKER}\nold content` }];
-		const { octokit, createComment, updateComment } = makeOctokitMock({ existingComments });
-		initGithubImpl = () => ({ owner: 'o', repo: 'r', octokit });
-
-		await run(42);
-
-		assert.equal(updateComment.mock.calls.length, 1, 'updateComment should be called once');
-		assert.equal(createComment.mock.calls.length, 0, 'createComment should not be called');
-
-		const args = updateComment.mock.calls[0].arguments[0];
-		assert.equal(args.comment_id, 99);
-		assert.ok(args.body.includes(BOT_MARKER));
-	});
-
-	it('includes renamed files (previous_filename) in the changed files set', async () => {
+	it('includes renamed files in the changed files set', async () => {
 		getPrFilesImpl = async () => [
-			{ filename: 'new-name.ts', additions: 5, previous_filename: 'old-name.ts' },
+			{ filename: 'new-name.ts', additions: 5, deletions: 0, previous_filename: 'old-name.ts' },
 		];
 
 		let capturedChangedFiles;
@@ -383,19 +316,16 @@ describe('run', () => {
 			return new Map();
 		};
 
-		const { octokit } = makeOctokitMock();
-		initGithubImpl = () => ({ owner: 'o', repo: 'r', octokit });
-
 		await run(42);
 
 		assert.ok(capturedChangedFiles.has('new-name.ts'), 'new filename must be included');
 		assert.ok(capturedChangedFiles.has('old-name.ts'), 'previous filename must be included');
 	});
 
-	it('limits reviewer recommendations to the top 3 allocations by file count', async () => {
+	it('limits recommendations to the top 3 allocations by file count', async () => {
 		getPrFilesImpl = async () => [
-			{ filename: 'a.ts', additions: 1 },
-			{ filename: 'b.ts', additions: 1 },
+			{ filename: 'a.ts', additions: 1, deletions: 0 },
+			{ filename: 'b.ts', additions: 1, deletions: 0 },
 		];
 		ownershipsToAllocationsImpl = () => [
 			{ team: '@n8n-io/team-a', fileCount: 1 },
@@ -404,30 +334,24 @@ describe('run', () => {
 			{ team: '@n8n-io/team-d', fileCount: 2 },
 		];
 
-		const { octokit, createComment } = makeOctokitMock();
-		initGithubImpl = () => ({ owner: 'o', repo: 'r', octokit });
-
 		await run(42);
 
-		const { body } = createComment.mock.calls[0].arguments[0];
-		assert.match(body, /@n8n-io\/team-b/); // rank 1
-		assert.match(body, /@n8n-io\/team-c/); // rank 2
-		assert.match(body, /@n8n-io\/team-d/); // rank 3
-		assert.doesNotMatch(body, /@n8n-io\/team-a/); // rank 4 — excluded
+		const body = postOrUpdateComment.mock.calls[0].arguments[1];
+		assert.match(body, /@n8n-io\/team-b/);
+		assert.match(body, /@n8n-io\/team-c/);
+		assert.match(body, /@n8n-io\/team-d/);
+		assert.doesNotMatch(body, /@n8n-io\/team-a/);
 	});
 
-	it('posted comment body includes both reviewer and changed-lines sections', async () => {
-		getPrFilesImpl = async () => [{ filename: 'src/foo.ts', additions: 50 }];
+	it('posted comment body includes the ownership-first overview table', async () => {
+		getPrFilesImpl = async () => [{ filename: 'src/foo.ts', additions: 50, deletions: 5 }];
 		ownershipsToAllocationsImpl = () => [{ team: '@n8n-io/cli-team', fileCount: 1 }];
 		assignOwnershipImpl = () => new Map([['@n8n-io/cli-team', ['src/foo.ts']]]);
 
-		const { octokit, createComment } = makeOctokitMock();
-		initGithubImpl = () => ({ owner: 'o', repo: 'r', octokit });
-
 		await run(42);
 
-		const { body } = createComment.mock.calls[0].arguments[0];
-		assert.match(body, /## Recommended reviewers/);
-		assert.match(body, /## Changed lines/);
+		const body = postOrUpdateComment.mock.calls[0].arguments[1];
+		assert.match(body, /## PR review overview/);
+		assert.match(body, /\| @n8n-io\/cli-team \| 1 \| 100% \| \+50 \/ -5 \|/);
 	});
 });

@@ -9,99 +9,135 @@
  */
 
 import { minimatch } from 'minimatch';
-import { ensureEnvVar, getPrFiles, initGithub } from './github-helpers.mjs';
+import { ensureEnvVar, getPrFiles, postOrUpdateComment } from './github-helpers.mjs';
 import { assignOwnership, ownershipsToAllocations, parseOwnersFile } from './owners.mjs';
 import { MISC_PATTERNS, SIZE_LIMIT, TEST_PATTERNS } from './quality/check-pr-size.mjs';
 
 /** @typedef {import('./owners.mjs').Allocation} Allocation */
 
 /**
- * @typedef {{ sourceCode: number, testFiles: number, misc: number }} LineStats
+ * @typedef {{
+ *   sourceCodeAdded: number, sourceCodeRemoved: number,
+ *   testFilesAdded: number, testFilesRemoved: number,
+ *   miscAdded: number, miscRemoved: number,
+ * }} LineStats
  */
 
 const BOT_MARKER = '<!-- pr-recommendations -->';
 
+function createEmptyLineStats() {
+	return {
+		sourceCodeAdded: 0,
+		sourceCodeRemoved: 0,
+		testFilesAdded: 0,
+		testFilesRemoved: 0,
+		miscAdded: 0,
+		miscRemoved: 0,
+	};
+}
+
 /**
- * Compute line addition counts categorised as source code, test files, or misc.
+ * @param { LineStats } stats
+ * @param {{ filename: string, additions: number, deletions: number }} file
+ */
+function addFileToLineStats(stats, file) {
+	const isTest = TEST_PATTERNS.some((p) => minimatch(file.filename, p));
+	const isMisc = !isTest && MISC_PATTERNS.some((p) => minimatch(file.filename, p));
+
+	if (isTest) {
+		stats.testFilesAdded += file.additions;
+		stats.testFilesRemoved += file.deletions;
+	} else if (isMisc) {
+		stats.miscAdded += file.additions;
+		stats.miscRemoved += file.deletions;
+	} else {
+		stats.sourceCodeAdded += file.additions;
+		stats.sourceCodeRemoved += file.deletions;
+	}
+}
+
+/**
+ * Compute line addition and deletion counts categorised as source code,
+ * test files, or misc.
  *
- * @param { Array<{ filename: string, additions: number }> } files
+ * @param { Array<{ filename: string, additions: number, deletions: number }> } files
  * @returns { LineStats }
  */
 export function computeLineStats(files) {
-	let sourceCode = 0;
-	let testFiles = 0;
-	let misc = 0;
+	const stats = createEmptyLineStats();
 
 	for (const file of files) {
-		const isTest = TEST_PATTERNS.some((p) => minimatch(file.filename, p));
-		const isMisc = !isTest && MISC_PATTERNS.some((p) => minimatch(file.filename, p));
-
-		if (isTest) {
-			testFiles += file.additions;
-		} else if (isMisc) {
-			misc += file.additions;
-		} else {
-			sourceCode += file.additions;
-		}
+		addFileToLineStats(stats, file);
 	}
 
-	return { sourceCode, testFiles, misc };
+	return stats;
 }
 
 /**
- * Build the reviewer recommendations section (no bot marker).
+ * Compute line stats for each owner allocation. Renamed files can be owned by
+ * either their previous or current filename, but are counted only once per team.
+ *
+ * @param { Allocation[] } allocations
+ * @param { Map<string, string[]> } ownerships
+ * @param { Array<{ filename: string, previous_filename?: string, additions: number, deletions: number }> } files
+ * @returns { Map<string, LineStats> }
+ */
+export function computeAllocationLineStats(allocations, ownerships, files) {
+	const statsByTeam = new Map();
+
+	for (const { team } of allocations) {
+		const stats = createEmptyLineStats();
+		const ownedFiles = new Set(ownerships.get(team) ?? []);
+
+		for (const file of files) {
+			if (ownedFiles.has(file.filename) || ownedFiles.has(file.previous_filename)) {
+				addFileToLineStats(stats, file);
+			}
+		}
+
+		statsByTeam.set(team, stats);
+	}
+
+	return statsByTeam;
+}
+
+/**
+ * @param { LineStats } lineStats
+ * @param {'sourceCode' | 'testFiles' | 'misc'} key
+ * @returns { string }
+ */
+function formatLineStatsCell(lineStats, key) {
+	return `+${lineStats[`${key}Added`].toLocaleString()} / -${lineStats[`${key}Removed`].toLocaleString()}`;
+}
+
+/**
+ * Build an ownership-first overview table with line stats grouped by team.
  *
  * @param { Allocation[] } allocations
  * @param { Set<string> } changedFiles
+ * @param { LineStats } totalLineStats
+ * @param { Map<string, LineStats> } lineStatsByTeam
  * @returns { string }
  */
-export function buildReviewersSection(allocations, changedFiles) {
+export function buildOverviewTable(allocations, changedFiles, totalLineStats, lineStatsByTeam) {
 	const total = changedFiles.size;
-
-	if (allocations.length === 0 || total === 0) {
-		return [
-			'## Recommended reviewers',
-			'',
-			'_No owning teams matched the files changed in this PR._',
-		].join('\n');
-	}
-
-	const rows = allocations.map(({ team, fileCount }) => {
-		const pct = Math.round((fileCount / total) * 100);
-		return `| ${team} | ${fileCount} | ${pct}% |`;
-	});
+	const rows = allocations.length > 0 && total > 0
+		? allocations.map(({ team, fileCount }) => {
+			const pct = Math.round((fileCount / total) * 100);
+			const teamLineStats = lineStatsByTeam.get(team) ?? createEmptyLineStats();
+			return `| ${team} | ${fileCount} | ${pct}% | ${formatLineStatsCell(teamLineStats, 'sourceCode')} | ${formatLineStatsCell(teamLineStats, 'testFiles')} | ${formatLineStatsCell(teamLineStats, 'misc')} |`;
+		})
+		: [`| _No owning teams matched_ | 0 | 0% | ${formatLineStatsCell(totalLineStats, 'sourceCode')} | ${formatLineStatsCell(totalLineStats, 'testFiles')} | ${formatLineStatsCell(totalLineStats, 'misc')} |`];
 
 	return [
-		'## Recommended reviewers',
+		'## PR review overview',
 		'',
 		`Based on ownership of the ${total} changed file${total === 1 ? '' : 's'} in this PR:`,
 		'',
-		'| Team | Files owned | Share |',
-		'| --- | ---: | ---: |',
+		'| Ownership | Files owned | Share | Source code | Test files | Misc |',
+		'| --- | ---: | ---: | ---: | ---: | ---: |',
 		...rows,
-	].join('\n');
-}
-
-/**
- * Build the changed-lines section of the PR comment.
- *
- * @param { LineStats } lineStats
- * @param { number } totalFiles
- * @returns { string }
- */
-export function buildChangedLinesSection(lineStats) {
-	const sourceLabel = lineStats.sourceCode > SIZE_LIMIT ? 'Source code ❗' : 'Source code';
-	const totalLines = lineStats.sourceCode + lineStats.testFiles + lineStats.misc;
-
-	return [
-		'## Changed lines',
-		'',
-		'| Category | Lines added |',
-		'| --- | ---: |',
-		`| ${sourceLabel} | ${lineStats.sourceCode.toLocaleString()} |`,
-		`| Test files | ${lineStats.testFiles.toLocaleString()} |`,
-		`| Misc | ${lineStats.misc.toLocaleString()} |`,
-		`| **Total** | **${totalLines.toLocaleString()}** |`,
+		`| **Total** | **${total.toLocaleString()}** | **${total === 0 ? 0 : 100}%** | **${formatLineStatsCell(totalLineStats, 'sourceCode')}** | **${formatLineStatsCell(totalLineStats, 'testFiles')}** | **${formatLineStatsCell(totalLineStats, 'misc')}** |`,
 	].join('\n');
 }
 
@@ -111,59 +147,20 @@ export function buildChangedLinesSection(lineStats) {
  * @param { Allocation[] } allocations
  * @param { Set<string> } changedFiles
  * @param { LineStats } lineStats
+ * @param { Map<string, LineStats> } lineStatsByTeam
  * @returns { string }
  */
-export function buildComment(allocations, changedFiles, lineStats) {
-	return [
+export function buildComment(allocations, changedFiles, lineStats, lineStatsByTeam = new Map()) {
+	const body = [
 		BOT_MARKER,
-		buildReviewersSection(allocations, changedFiles),
-		'',
-		buildChangedLinesSection(lineStats),
-	].join('\n');
-}
+		buildOverviewTable(allocations, changedFiles, lineStats, lineStatsByTeam),
+	];
 
-/**
- * Post the comment on the PR, or update the existing one if a previous run
- * already left one (identified by BOT_MARKER).
- *
- * @param { number } pullRequestNumber
- * @param { string } body
- */
-async function postOrUpdateComment(pullRequestNumber, body) {
-	const { octokit, owner, repo } = initGithub();
-
-	const comments = await octokit.paginate(octokit.rest.issues.listComments, {
-		owner,
-		repo,
-		issue_number: pullRequestNumber,
-		per_page: 100,
-	});
-
-	const existing = comments.find((c) => c.body?.includes(BOT_MARKER));
-
-	if (existing) {
-		await octokit.rest.issues.updateComment({
-			owner,
-			repo,
-			comment_id: existing.id,
-			body,
-		});
-	} else {
-		await octokit.rest.issues.createComment({
-			owner,
-			repo,
-			issue_number: pullRequestNumber,
-			body,
-		});
+	if (lineStats.sourceCodeAdded > SIZE_LIMIT) {
+		body.push('', `❗ Source code additions (${lineStats.sourceCodeAdded.toLocaleString()}) exceed the ${SIZE_LIMIT.toLocaleString()}-line limit.`);
 	}
-}
 
-function getTopAllocations(changedFiles) {
-	const owners = parseOwnersFile();
-	const ownerships = assignOwnership(changedFiles, owners);
-	const allocations = ownershipsToAllocations(ownerships);
-	const topAllocations = allocations.sort((a, b) => b.fileCount - a.fileCount).slice(0, 3);
-	return topAllocations;
+	return body.join('\n');
 }
 
 /**
@@ -178,11 +175,16 @@ export async function run(pullRequestNumber) {
 	]);
 
 	const lineStats = computeLineStats(files);
-	const topAllocations = getTopAllocations(changedFiles);
 
-	const body = buildComment(topAllocations, changedFiles, lineStats);
+	const owners = parseOwnersFile();
+	const ownerships = assignOwnership(changedFiles, owners);
+	const allocations = ownershipsToAllocations(ownerships);
+	const topAllocations = allocations.sort((a, b) => b.fileCount - a.fileCount).slice(0, 3);
+	const lineStatsByTeam = computeAllocationLineStats(topAllocations, ownerships, files);
 
-	await postOrUpdateComment(pullRequestNumber, body);
+	const body = buildComment(topAllocations, changedFiles, lineStats, lineStatsByTeam);
+
+	await postOrUpdateComment(pullRequestNumber, body, BOT_MARKER);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -425,6 +425,43 @@ export async function getPrFiles(pullRequestNumber) {
 }
 
 /**
+ * Post a PR comment, or update the existing one if a previous run already
+ * left one identified by the provided bot marker.
+ *
+ * @param { number } pullRequestNumber
+ * @param { string } body
+ * @param { string } botMarker
+ */
+export async function postOrUpdateComment(pullRequestNumber, body, botMarker) {
+	const { octokit, owner, repo } = initGithub();
+
+	const comments = await octokit.paginate(octokit.rest.issues.listComments, {
+		owner,
+		repo,
+		issue_number: pullRequestNumber,
+		per_page: 100,
+	});
+
+	const existing = comments.find((c) => c.body?.includes(botMarker));
+
+	if (existing) {
+		await octokit.rest.issues.updateComment({
+			owner,
+			repo,
+			comment_id: existing.id,
+			body,
+		});
+	} else {
+		await octokit.rest.issues.createComment({
+			owner,
+			repo,
+			issue_number: pullRequestNumber,
+			body,
+		});
+	}
+}
+
+/**
  * @param {string} tag
  */
 export async function getExistingRelease(tag) {
