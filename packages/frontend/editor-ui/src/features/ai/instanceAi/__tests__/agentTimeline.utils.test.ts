@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
-import { extractArtifacts } from '../agentTimeline.utils';
+import { extractArtifacts, isVisibleTimelineEntry } from '../agentTimeline.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
 	return {
@@ -240,5 +240,107 @@ describe('extractArtifacts', () => {
 			],
 		});
 		expect(extractArtifacts(node)).toEqual([]);
+	});
+});
+
+describe('isVisibleTimelineEntry', () => {
+	const toolCallEntry = { type: 'tool-call' as const, toolCallId: 'tc-1' };
+
+	function visibilityOf(tc: InstanceAiToolCallState): boolean {
+		return isVisibleTimelineEntry(toolCallEntry, { [tc.toolCallId]: tc }, {});
+	}
+
+	test('text entries are always visible', () => {
+		expect(isVisibleTimelineEntry({ type: 'text', content: 'hi' }, {}, {})).toBe(true);
+	});
+
+	test('tool-call entries without a matching tool call are hidden', () => {
+		expect(isVisibleTimelineEntry(toolCallEntry, {}, {})).toBe(false);
+	});
+
+	test('internal bookkeeping tools are hidden', () => {
+		expect(visibilityOf(makeToolCall({ toolName: 'updateWorkingMemory' }))).toBe(false);
+	});
+
+	test('builder/data-table/eval-setup hints are hidden (represented by artifact cards)', () => {
+		expect(visibilityOf(makeToolCall({ renderHint: 'builder' }))).toBe(false);
+		expect(visibilityOf(makeToolCall({ renderHint: 'data-table' }))).toBe(false);
+		expect(visibilityOf(makeToolCall({ renderHint: 'eval-setup' }))).toBe(false);
+	});
+
+	test('builder hint stays hidden even with a plan-review confirmation (template order)', () => {
+		expect(
+			visibilityOf(
+				makeToolCall({
+					renderHint: 'builder',
+					confirmation: {
+						requestId: 'r1',
+						severity: 'info',
+						message: 'Review plan',
+						inputType: 'plan-review',
+					},
+				}),
+			),
+		).toBe(false);
+	});
+
+	test('plan-review confirmations render a panel', () => {
+		expect(
+			visibilityOf(
+				makeToolCall({
+					renderHint: 'planner',
+					confirmation: {
+						requestId: 'r1',
+						severity: 'info',
+						message: 'Review plan',
+						inputType: 'plan-review',
+					},
+				}),
+			),
+		).toBe(true);
+	});
+
+	test('planner hint without a plan review renders nothing', () => {
+		expect(visibilityOf(makeToolCall({ renderHint: 'planner' }))).toBe(false);
+	});
+
+	test('question forms are suppressed while pending, visible once answered', () => {
+		const questions = (isLoading: boolean) =>
+			makeToolCall({
+				isLoading,
+				confirmation: {
+					requestId: 'r1',
+					severity: 'info',
+					message: 'Answer questions',
+					inputType: 'questions',
+				},
+			});
+		expect(visibilityOf(questions(true))).toBe(false);
+		expect(visibilityOf(questions(false))).toBe(true);
+	});
+
+	test('tasks, delegate, and generic tool calls are visible', () => {
+		expect(visibilityOf(makeToolCall({ renderHint: 'tasks' }))).toBe(true);
+		expect(visibilityOf(makeToolCall({ renderHint: 'delegate' }))).toBe(true);
+		expect(visibilityOf(makeToolCall({ renderHint: 'skill' }))).toBe(true);
+		expect(visibilityOf(makeToolCall({}))).toBe(true);
+	});
+
+	test('child entries are visible unless the child is a hoisted active builder', () => {
+		const entry = { type: 'child' as const, agentId: 'sub-1' };
+		const completedBuilder = makeAgentNode({
+			agentId: 'sub-1',
+			role: 'workflow-builder',
+			status: 'completed',
+		});
+		const activeBuilder = makeAgentNode({
+			agentId: 'sub-1',
+			role: 'workflow-builder',
+			status: 'active',
+		});
+
+		expect(isVisibleTimelineEntry(entry, {}, { 'sub-1': completedBuilder })).toBe(true);
+		expect(isVisibleTimelineEntry(entry, {}, { 'sub-1': activeBuilder })).toBe(false);
+		expect(isVisibleTimelineEntry(entry, {}, {})).toBe(false);
 	});
 });

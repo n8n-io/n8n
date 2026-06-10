@@ -1,7 +1,48 @@
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+} from '@n8n/api-types';
+import { isActiveBuilderAgent } from './builderAgents';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user. */
 export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
+
+/** Render hints whose tool calls produce no output in the timeline — they are
+ *  represented elsewhere (child agent sections, artifact cards). */
+const INVISIBLE_RENDER_HINTS = new Set(['builder', 'data-table', 'eval-setup']);
+
+/**
+ * True when a timeline entry produces visible output in `AgentTimeline`.
+ *
+ * Mirrors the template's branch chain (same order): hidden tools and
+ * builder/data-table/eval-setup hints render nothing; plan-review
+ * confirmations render a panel; bare planner calls render nothing; pending
+ * question forms are suppressed until answered; hoisted active builder
+ * children are rendered elsewhere. Used to skip the timeline wrapper
+ * entirely when a segment has no visible entries (avoids empty divs and
+ * their phantom flex-gap spacing).
+ */
+export function isVisibleTimelineEntry(
+	entry: InstanceAiTimelineEntry,
+	toolCallsById: Record<string, InstanceAiToolCallState>,
+	childrenById: Record<string, InstanceAiAgentNode>,
+): boolean {
+	if (entry.type === 'text') return true;
+
+	if (entry.type === 'tool-call') {
+		const tc = toolCallsById[entry.toolCallId];
+		if (!tc || HIDDEN_TOOLS.has(tc.toolName)) return false;
+		if (tc.renderHint && INVISIBLE_RENDER_HINTS.has(tc.renderHint)) return false;
+		if (tc.confirmation?.inputType === 'plan-review') return true;
+		if (tc.renderHint === 'planner') return false;
+		if (tc.confirmation?.inputType === 'questions') return !tc.isLoading;
+		return true;
+	}
+
+	const child = childrenById[entry.agentId];
+	return child !== undefined && !isActiveBuilderAgent(child);
+}
 
 export interface ArtifactInfo {
 	type: 'workflow' | 'data-table';
