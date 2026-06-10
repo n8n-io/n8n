@@ -104,7 +104,6 @@ runs:
         key: safe-chain-1.5.7-${{ runner.os }}-${{ runner.arch }}
 
     - name: Install Aikido SafeChain
-      if: steps.cache-safe-chain.outputs.cache-hit != 'true'
       run: |
         VERSION="1.5.7"
         EXPECTED_SHA256="07ab512fd8795ce41b2275be369aced4c9a93cc7bca9b397951507891a955239"
@@ -120,39 +119,97 @@ runs:
         rm install-safe-chain.sh
       shell: bash
 
-    # Capture pnpm's combined stdout+stderr through `tee` so the ERR_PNPM_* code
-    # and offending package survive even when `timeout` terminates the process
-    # group. Stderr-only capture misses the failure footer because pnpm's
-    # default reporter routes it through stdout; `--reporter=append-only` is
-    # set explicitly so we don't drift if pnpm changes its CI default again.
-    # `--loglevel=debug` and `DEBUG=pnpm:*` add registry/store/fetch traces.
+    # `--loglevel` CLI flag does NOT override `.npmrc` for that path, but
+    # `--config.loglevel` does — so the failing script's real output reaches us.
+    # (Confirmed on CI across Blacksmith + GitHub-hosted, through the SafeChain
+    # shim and the real pnpm binary)
+    #
+    # Layered so the cause survives even failure modes pnpm can't report itself:
+    #  1. `--config.loglevel=info` un-suppresses lifecycle output (the actual fix).
+    #     `--reporter=append-only` is pinned so we don't drift if pnpm changes its
+    #     CI default; combined stdout+stderr is streamed live AND persisted to
+    #     `$INSTALL_LOG` via `tee`; `${PIPESTATUS[0]}` preserves pnpm's exit code.
+    #  2. `--config.logs-dir` routes pnpm's own `ERR_PNPM_*` diagnostic logs into
+    #     a dir we always collect.
+    #  3. On failure we dump an environment snapshot written by *this* shell —
+    #     node/pnpm versions, the resolved pnpm binary, SafeChain wiring, free
+    #     memory, disk, and kernel OOM lines — so OOM / wrong-binary deaths that
+    #     produce no pnpm output at all are still diagnosable.
+    #  4. Everything is uploaded as an artifact by the next step, so the full log
+    #     survives even when the live console stream is truncated by the runner.
+    #
     # `SAFE_CHAIN_LOGGING=verbose` surfaces safe-chain's proxy decisions, which
     # are otherwise buffered (and lost on failure) while pnpm is in flight.
-    # `${PIPESTATUS[0]}` preserves pnpm's real exit code through the pipe.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
+      id: install-deps
       env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
         INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
+        PNPM_DIAG_DIR: ${{ runner.temp }}/pnpm-diagnostics
         SAFE_CHAIN_LOGGING: verbose
-        DEBUG: pnpm:*
       run: |
+        # Stable, artifact-name-safe id for the upload step (written first so it
+        # exists even if the install dies immediately).
+        DIAG_ID="$(printf '%s' "${GITHUB_JOB}-${RUNNER_NAME}-${GITHUB_RUN_ATTEMPT}-${RANDOM}" | tr -c 'A-Za-z0-9._-' '-')"
+        echo "diag-id=$DIAG_ID" >> "$GITHUB_OUTPUT"
+        mkdir -p "$PNPM_DIAG_DIR/pnpm-logs"
+
         set +o pipefail
         timeout --kill-after=30s 300s $INSTALL_COMMAND \
-          --reporter=append-only --loglevel=debug 2>&1 | tee "$INSTALL_LOG"
+          --config.logs-dir="$PNPM_DIAG_DIR/pnpm-logs" \
+          --reporter=append-only --config.loglevel=info 2>&1 | tee "$INSTALL_LOG"
         rc=${PIPESTATUS[0]}
         set -o pipefail
-        if [ $rc -ne 0 ]; then
-          echo "::group::pnpm install full output (captured)"
-          cat "$INSTALL_LOG" 2>/dev/null || echo "(no captured log)"
+
+        if [ "$rc" -ne 0 ]; then
+          # Self-emitted environment snapshot — cannot be swallowed by pnpm.
+          {
+            echo "exit_code=$rc"
+            echo "date=$(date -u +%FT%TZ)"
+            echo "install_command=$INSTALL_COMMAND"
+            echo "node=$(node --version 2>&1)"
+            echo "pnpm=$(pnpm --version 2>&1)"
+            echo "pnpm_resolved=$(command -v pnpm 2>&1) -> $(readlink -f "$(command -v pnpm 2>/dev/null)" 2>&1)"
+            echo "pnpm_on_path=$(which -a pnpm 2>&1 | tr '\n' ' ')"
+            echo "safe_chain_bin=$(ls -la "$HOME/.safe-chain/bin" 2>&1 | tr '\n' ' ')"
+            echo "mem_mb=$(free -m 2>/dev/null | tr '\n' ' ' || echo 'free unavailable')"
+            echo "disk=$(df -h "$PWD" 2>/dev/null | tail -1)"
+            echo "oom=$(dmesg 2>/dev/null | grep -iE 'killed process|out of memory' | tail -5 || true)"
+          } > "$PNPM_DIAG_DIR/environment.txt" 2>&1
+          cp "$INSTALL_LOG" "$PNPM_DIAG_DIR/" 2>/dev/null || true
+
+          echo "::error::pnpm install failed (exit $rc). Full output + diagnostics below; also uploaded as artifact 'pnpm-install-logs-${DIAG_ID}'."
+          echo "::group::Environment diagnostics"
+          cat "$PNPM_DIAG_DIR/environment.txt"
           echo "::endgroup::"
-          case $rc in
+          echo "::group::pnpm install combined output ($INSTALL_LOG)"
+          cat "$INSTALL_LOG" 2>/dev/null || echo "(combined log empty — pnpm produced no capturable output; see environment diagnostics and the uploaded artifact)"
+          echo "::endgroup::"
+          echo "::group::pnpm diagnostic logs ($PNPM_DIAG_DIR/pnpm-logs)"
+          find "$PNPM_DIAG_DIR/pnpm-logs" -type f -exec sh -c 'echo "----- $1 -----"; cat "$1"' _ {} \; 2>/dev/null || echo "(none)"
+          echo "::endgroup::"
+          case "$rc" in
             124) echo "::error::pnpm install timed out after 300s (exit 124)" ;;
             137) echo "::error::pnpm install received SIGKILL (exit 137 — likely OOM or kill-after timeout)" ;;
           esac
         fi
-        exit $rc
+        exit "$rc"
       shell: bash
+
+    # Persist the full combined log + diagnostics so the real cause survives even
+    # when the runner truncates the live console stream. Scoped to the install
+    # step's own failure so unrelated step failures don't trigger an empty upload.
+    - name: Upload pnpm install diagnostics
+      if: ${{ failure() && steps.install-deps.outcome == 'failure' }}
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: pnpm-install-logs-${{ steps.install-deps.outputs.diag-id }}
+        path: |
+          ${{ runner.temp }}/pnpm-install.log
+          ${{ runner.temp }}/pnpm-diagnostics/**
+        if-no-files-found: ignore
+        retention-days: 7
 
     - name: Configure Turborepo Cache
       uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2

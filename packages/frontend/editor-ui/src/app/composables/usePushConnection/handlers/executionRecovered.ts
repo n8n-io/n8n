@@ -15,7 +15,7 @@ export async function executionRecovered(
 	{ data }: ExecutionRecovered,
 	options: PushHandlerOptions,
 ) {
-	const { documentId } = options;
+	const { documentId, suppressExecutionSuccessToasts, suppressExecutionErrorToasts } = options;
 	const workflowExecutionStateStore = useWorkflowExecutionStateStore(documentId);
 	const uiStore = useUIStore();
 
@@ -40,9 +40,19 @@ export async function executionRecovered(
 	if (execution.data?.waitTill !== undefined) {
 		handleExecutionFinishedWithWaitTill(execution.workflowId ?? '', options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
-		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData, documentId);
+		handleExecutionFinishedWithErrorOrCanceled(
+			execution,
+			runExecutionData,
+			documentId,
+			suppressExecutionErrorToasts,
+		);
 	} else {
-		handleExecutionFinishedWithSuccessOrOther(documentId, execution.status, false);
+		handleExecutionFinishedWithSuccessOrOther(
+			documentId,
+			execution.status,
+			false,
+			suppressExecutionSuccessToasts,
+		);
 	}
 
 	setRunExecutionData(execution, runExecutionData, documentId);
