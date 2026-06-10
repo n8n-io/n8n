@@ -919,31 +919,38 @@ export class AgentsService {
 			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
 
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
-			yield value;
-		}
-
-		// Always record resumed executions — even if they suspend again (chained HITL).
-		// Don't repeat the original user message — the pre-suspension execution already has it.
-		const messageRecord = recorder.getMessageRecord();
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: '',
-				record: messageRecord,
-				hitlStatus: 'resumed',
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record resumed agent execution', {
-					agentId,
+		try {
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
+				yield value;
+			}
+		} finally {
+			// Record in a finally: the SSE pump stops consuming when a chained
+			// HITL suspension arrives, abandoning this generator mid-yield —
+			// code after the loop never runs for re-suspended segments. Segments
+			// that suspend again are recorded as 'suspended' so the usage
+			// backfill picks them up when the chain finally completes.
+			// Don't repeat the original user message — the pre-suspension
+			// execution already has it.
+			const messageRecord = recorder.getMessageRecord();
+			void this.agentExecutionService
+				.recordMessage({
 					threadId,
-					error: error instanceof Error ? error.message : String(error),
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userMessage: '',
+					record: messageRecord,
+					hitlStatus: recorder.suspended ? 'suspended' : 'resumed',
+				})
+				.catch((error) => {
+					this.logger.warn('Failed to record resumed agent execution', {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
 				});
-			});
+		}
 	}
 
 	/**
@@ -1310,46 +1317,52 @@ export class AgentsService {
 			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 		});
 
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
-			if (value.type === 'tool-call-suspended') {
-				this.logger.info('Chat: tool-call-suspended chunk received', {
-					agentId,
-					toolCallId: value.toolCallId,
-					toolName: value.toolName,
-				});
-			}
-			if (value.type === 'finish' && value.finishReason === 'max-iterations') {
-				for (const chunk of getMaxIterationsChunks()) {
-					yield chunk;
+		try {
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
+				if (value.type === 'tool-call-suspended') {
+					this.logger.info('Chat: tool-call-suspended chunk received', {
+						agentId,
+						toolCallId: value.toolCallId,
+						toolName: value.toolName,
+					});
 				}
+				if (value.type === 'finish' && value.finishReason === 'max-iterations') {
+					for (const chunk of getMaxIterationsChunks()) {
+						yield chunk;
+					}
+				}
+				yield value;
 			}
-			yield value;
-		}
-
-		// Always record — even if suspended, the pre-suspension response text
-		// and tool calls are valuable. Usage/model will be null for suspended runs.
-		const messageRecord = recorder.getMessageRecord();
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: message,
-				record: messageRecord,
-				hitlStatus: recorder.suspended ? 'suspended' : undefined,
-				source,
-				taskId,
-				taskVersionId,
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record agent execution', {
-					agentId,
+		} finally {
+			// Record in a finally: the SSE pump stops consuming at a suspension
+			// event, which abandons this generator mid-yield — code after the
+			// loop never runs for suspended segments. Even then, the
+			// pre-suspension response text and tool calls are valuable.
+			// Usage/model will be null for suspended runs (backfilled when the
+			// resumed execution completes).
+			const messageRecord = recorder.getMessageRecord();
+			void this.agentExecutionService
+				.recordMessage({
 					threadId,
-					error: error instanceof Error ? error.message : String(error),
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userMessage: message,
+					record: messageRecord,
+					hitlStatus: recorder.suspended ? 'suspended' : undefined,
+					source,
+					taskId,
+					taskVersionId,
+				})
+				.catch((error) => {
+					this.logger.warn('Failed to record agent execution', {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
 				});
-			});
+		}
 	}
 
 	/**

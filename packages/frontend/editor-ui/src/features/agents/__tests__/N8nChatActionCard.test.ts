@@ -2,6 +2,8 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
+import { N8nButton } from '@n8n/design-system';
+
 import N8nChatActionCard from '../components/interactive/N8nChatActionCard.vue';
 
 const input = {
@@ -26,13 +28,12 @@ function mountCard(props = {}) {
 		props: { input, ...props },
 		global: {
 			stubs: {
-				N8nButton: {
+				ElRadio: {
 					template:
-						'<button v-bind="$attrs" :disabled="$attrs.disabled" @click="$emit(\'click\')"><slot/></button>',
-					props: ['disabled', 'type', 'size'],
-					emits: ['click'],
+						'<label v-bind="$attrs"><input type="radio" :disabled="disabled" @change="$emit(\'update:modelValue\', label)" /><slot/></label>',
+					props: ['modelValue', 'label', 'disabled'],
+					emits: ['update:modelValue'],
 				},
-				N8nText: { template: '<p><slot/></p>' },
 			},
 		},
 	});
@@ -135,5 +136,79 @@ describe('N8nChatActionCard', () => {
 		// Submit value is still value, not text
 		await wrapper.find('[data-testid="n8n-chat-card-button"]').trigger('click');
 		expect(wrapper.emitted('submit')?.[0]).toEqual([{ type: 'button', value: 'confirm' }]);
+	});
+
+	it('groups consecutive buttons into a single wrapping row', () => {
+		const threeButtons = {
+			card: {
+				components: [
+					{ type: 'section', text: 'Pick:' },
+					{ type: 'button', label: 'A', value: 'a' },
+					{ type: 'button', label: 'B', value: 'b' },
+					{ type: 'button', label: 'C', value: 'c' },
+				],
+			},
+		};
+		const wrapper = mountCard({ input: threeButtons });
+		const rows = wrapper.findAll('[data-testid="n8n-chat-card-button-row"]');
+		expect(rows).toHaveLength(1);
+		expect(rows[0].findAll('[data-testid="n8n-chat-card-button"]')).toHaveLength(3);
+	});
+
+	it('maps button style to design-system props', () => {
+		const styled = {
+			card: {
+				components: [
+					{ type: 'button', label: 'Go', value: 'go', style: 'primary' },
+					{ type: 'button', label: 'Delete', value: 'delete', style: 'danger' },
+					{ type: 'button', label: 'Later', value: 'later' },
+				],
+			},
+		};
+		const wrapper = mountCard({ input: styled });
+		const buttons = wrapper.findAllComponents(N8nButton);
+		expect(buttons[0].props('variant')).toBe('solid');
+		expect(buttons[1].props('variant')).toBe('destructive');
+		expect(buttons[2].props('variant')).toBe('outline');
+	});
+
+	it('renders radio_select options as radio buttons and submits on change', async () => {
+		const radio = {
+			card: {
+				components: [
+					{
+						type: 'radio_select',
+						id: 'next_step',
+						label: 'Next step',
+						options: [
+							{ label: 'Call', value: 'call' },
+							{ label: 'Email', value: 'email' },
+						],
+					},
+				],
+			},
+		};
+		const wrapper = mountCard({ input: radio });
+		const radios = wrapper.findAll('[data-testid="n8n-chat-card-radio"]');
+		expect(radios).toHaveLength(2);
+		expect(radios[0].find('input[type="radio"]').exists()).toBe(true);
+
+		await radios[1].find('input').trigger('change');
+		expect(wrapper.emitted('submit')?.[0]).toEqual([
+			{ type: 'select', id: 'next_step', value: 'email' },
+		]);
+	});
+
+	it('disabled blocks radio submission', async () => {
+		const radio = {
+			card: {
+				components: [
+					{ type: 'radio_select', id: 'x', options: [{ label: 'Call', value: 'call' }] },
+				],
+			},
+		};
+		const wrapper = mountCard({ input: radio, disabled: true });
+		await wrapper.find('[data-testid="n8n-chat-card-radio"] input').trigger('change');
+		expect(wrapper.emitted('submit')).toBeUndefined();
 	});
 });

@@ -1517,6 +1517,65 @@ describe('AgentsService', () => {
 			const streamConfig = (streamSpy.mock.calls[0] as [{ userId?: string }])[0];
 			expect(streamConfig.userId).toBe(userId);
 		});
+
+		it('records a suspended execution when the consumer stops at the suspension event', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({ schema });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const chunks = [
+				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'n8n_chat_action', input: {} },
+				{
+					type: 'tool-call-suspended',
+					toolCallId: 'tc-1',
+					toolName: 'n8n_chat_action',
+					runId: 'run-1',
+					suspendPayload: { type: 'integration_action' },
+				},
+			];
+			const runtimeAgent = {
+				name: 'Test Agent',
+				stream: jest.fn().mockResolvedValue({
+					stream: new ReadableStream({
+						start(controller) {
+							for (const chunk of chunks) controller.enqueue(chunk);
+							controller.close();
+						},
+					}),
+				}),
+			};
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: runtimeAgent, toolRegistry: new Map() } as never);
+
+			// Mimic the SSE pump: stop consuming as soon as the suspension arrives.
+			// This abandons the generator mid-yield — recording must still happen.
+			for await (const chunk of service.executeForChat({
+				agentId,
+				projectId,
+				message: 'show me a card',
+				userId,
+				memory: { threadId: 'thread-1', resourceId: userId },
+			})) {
+				if (chunk.type === 'tool-call-suspended') break;
+			}
+			// recordMessage is fired-and-forgotten from a finally block — flush microtasks.
+			await new Promise(process.nextTick);
+
+			expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'thread-1',
+					userMessage: 'show me a card',
+					hitlStatus: 'suspended',
+				}),
+			);
+		});
 	});
 
 	describe('integration runtime tools', () => {

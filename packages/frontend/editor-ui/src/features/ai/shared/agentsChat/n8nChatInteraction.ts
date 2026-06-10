@@ -19,7 +19,13 @@ const cardComponentSchema = z
 		options: z.array(selectOptionSchema).optional(),
 		fields: z.array(fieldPairSchema).optional(),
 		/** Section button accessory (counted as interactive, like the backend). */
-		button: z.object({ label: z.string().optional(), value: z.string().optional() }).optional(),
+		button: z
+			.object({
+				label: z.string().optional(),
+				value: z.string().optional(),
+				style: z.string().optional(),
+			})
+			.optional(),
 	})
 	.passthrough();
 

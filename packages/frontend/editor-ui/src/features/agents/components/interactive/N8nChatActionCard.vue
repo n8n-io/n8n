@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import { ElRadio } from 'element-plus';
 import { N8nButton, N8nText } from '@n8n/design-system';
 
 import type {
@@ -17,12 +19,55 @@ const emit = defineEmits<{
 	submit: [resumeData: N8nChatResumeValue];
 }>();
 
+interface CardButton {
+	label?: string;
+	text?: string;
+	value?: string;
+	style?: string;
+}
+
+/**
+ * Consecutive `button` components flow together on one (wrapping) row instead
+ * of stacking one per line; every other component renders as its own block.
+ */
+type CardBlock =
+	| { kind: 'buttons'; buttons: N8nChatCardComponent[] }
+	| { kind: 'component'; component: N8nChatCardComponent };
+
+const blocks = computed<CardBlock[]>(() => {
+	const result: CardBlock[] = [];
+	for (const component of props.input.card.components) {
+		if (component.type === 'button') {
+			const last = result[result.length - 1];
+			if (last?.kind === 'buttons') {
+				last.buttons.push(component);
+			} else {
+				result.push({ kind: 'buttons', buttons: [component] });
+			}
+		} else {
+			result.push({ kind: 'component', component });
+		}
+	}
+	return result;
+});
+
+/**
+ * Map the card's button style to a design-system button variant, mirroring
+ * how the platform mappers treat them: `primary` = emphasized, `danger` =
+ * destructive, `default`/unset = neutral.
+ */
+function buttonVariant(btn: CardButton): 'solid' | 'destructive' | 'outline' {
+	if (btn.style === 'primary') return 'solid';
+	if (btn.style === 'danger') return 'destructive';
+	return 'outline';
+}
+
 /** The resume value a button submits: explicit value, else its label. */
-function buttonValue(btn: { label?: string; value?: string }): string {
+function buttonValue(btn: CardButton): string {
 	return btn.value ?? btn.label ?? '';
 }
 
-function submitButton(btn: { label?: string; value?: string }) {
+function submitButton(btn: CardButton) {
 	if (props.disabled) return;
 	emit('submit', { type: 'button', value: buttonValue(btn) });
 }
@@ -32,7 +77,7 @@ function submitOption(component: N8nChatCardComponent, value: string) {
 	emit('submit', { type: 'select', ...(component.id && { id: component.id }), value });
 }
 
-function isButtonSelected(btn: { label?: string; value?: string }): boolean {
+function isButtonSelected(btn: CardButton): boolean {
 	return props.resolvedValue?.type === 'button' && props.resolvedValue.value === buttonValue(btn);
 }
 
@@ -43,6 +88,14 @@ function isOptionSelected(component: N8nChatCardComponent, value: string): boole
 		(props.resolvedValue.id === undefined || props.resolvedValue.id === component.id)
 	);
 }
+
+/** Checked radio value for a radio_select group: the resolved answer, if any. */
+function selectedRadioValue(component: N8nChatCardComponent): string | undefined {
+	const match = (component.options ?? []).find((option) =>
+		isOptionSelected(component, option.value),
+	);
+	return match?.value;
+}
 </script>
 
 <template>
@@ -52,78 +105,110 @@ function isOptionSelected(component: N8nChatCardComponent, value: string): boole
 			{{ input.card.message }}
 		</N8nText>
 
-		<template v-for="(component, idx) in input.card.components" :key="idx">
+		<template v-for="(block, blockIdx) in blocks" :key="blockIdx">
 			<div
-				v-if="component.type === 'section' && (component.text || component.button)"
-				:class="$style.section"
+				v-if="block.kind === 'buttons'"
+				:class="$style.buttonRow"
+				data-testid="n8n-chat-card-button-row"
 			>
-				<N8nText v-if="component.text">{{ component.text }}</N8nText>
 				<N8nButton
-					v-if="component.button"
-					:class="$style.button"
+					v-for="(button, buttonIdx) in block.buttons"
+					:key="buttonIdx"
 					size="small"
-					:type="isButtonSelected(component.button) ? 'primary' : 'secondary'"
-					:disabled="disabled && !isButtonSelected(component.button)"
-					data-testid="n8n-chat-card-section-button"
-					@click="submitButton(component.button)"
+					:variant="buttonVariant(button)"
+					:disabled="disabled && !isButtonSelected(button)"
+					data-testid="n8n-chat-card-button"
+					@click="submitButton(button)"
 				>
-					{{ component.button.label ?? component.button.value }}
+					{{ button.label ?? button.text ?? button.value }}
 				</N8nButton>
 			</div>
 
-			<hr v-else-if="component.type === 'divider'" :class="$style.divider" />
-
-			<N8nButton
-				v-else-if="component.type === 'button'"
-				:class="$style.button"
-				size="small"
-				:type="isButtonSelected(component) ? 'primary' : 'secondary'"
-				:disabled="disabled && !isButtonSelected(component)"
-				data-testid="n8n-chat-card-button"
-				@click="submitButton(component)"
-			>
-				{{ component.label ?? component.text ?? component.value }}
-			</N8nButton>
-
-			<div
-				v-else-if="component.type === 'select' || component.type === 'radio_select'"
-				:class="$style.selectGroup"
-			>
-				<N8nText v-if="component.label" :class="$style.selectLabel" bold>
-					{{ component.label }}
-				</N8nText>
-				<button
-					v-for="option in component.options ?? []"
-					:key="option.value"
-					type="button"
-					:class="[
-						$style.option,
-						isOptionSelected(component, option.value) && $style.optionSelected,
-					]"
-					:disabled="disabled"
-					data-testid="n8n-chat-card-option"
-					@click="submitOption(component, option.value)"
+			<template v-else>
+				<div
+					v-if="
+						block.component.type === 'section' && (block.component.text || block.component.button)
+					"
+					:class="$style.section"
 				>
-					<span>{{ option.label }}</span>
-					<N8nText v-if="option.description" size="xsmall" color="text-light">
-						{{ option.description }}
-					</N8nText>
-				</button>
-			</div>
-
-			<div v-else-if="component.type === 'fields'" :class="$style.fieldsGroup">
-				<div v-for="field in component.fields ?? []" :key="field.label" :class="$style.fieldRow">
-					<N8nText size="small" bold>{{ field.label }}</N8nText>
-					<N8nText size="small">{{ field.value }}</N8nText>
+					<N8nText v-if="block.component.text">{{ block.component.text }}</N8nText>
+					<N8nButton
+						v-if="block.component.button"
+						:class="$style.sectionButton"
+						size="small"
+						:variant="buttonVariant(block.component.button)"
+						:disabled="disabled && !isButtonSelected(block.component.button)"
+						data-testid="n8n-chat-card-section-button"
+						@click="submitButton(block.component.button)"
+					>
+						{{ block.component.button.label ?? block.component.button.value }}
+					</N8nButton>
 				</div>
-			</div>
 
-			<img
-				v-else-if="component.type === 'image' && component.url"
-				:src="component.url"
-				:alt="component.alt ?? ''"
-				:class="$style.image"
-			/>
+				<hr v-else-if="block.component.type === 'divider'" :class="$style.divider" />
+
+				<div v-else-if="block.component.type === 'radio_select'" :class="$style.selectGroup">
+					<N8nText v-if="block.component.label" :class="$style.selectLabel" bold>
+						{{ block.component.label }}
+					</N8nText>
+					<ElRadio
+						v-for="option in block.component.options ?? []"
+						:key="option.value"
+						:class="$style.radio"
+						:model-value="selectedRadioValue(block.component) ?? ''"
+						:label="option.value"
+						:disabled="disabled"
+						data-testid="n8n-chat-card-radio"
+						@update:model-value="submitOption(block.component, option.value)"
+					>
+						<span>{{ option.label }}</span>
+						<N8nText v-if="option.description" size="xsmall" color="text-light">
+							{{ option.description }}
+						</N8nText>
+					</ElRadio>
+				</div>
+
+				<div v-else-if="block.component.type === 'select'" :class="$style.selectGroup">
+					<N8nText v-if="block.component.label" :class="$style.selectLabel" bold>
+						{{ block.component.label }}
+					</N8nText>
+					<button
+						v-for="option in block.component.options ?? []"
+						:key="option.value"
+						type="button"
+						:class="[
+							$style.option,
+							isOptionSelected(block.component, option.value) && $style.optionSelected,
+						]"
+						:disabled="disabled"
+						data-testid="n8n-chat-card-option"
+						@click="submitOption(block.component, option.value)"
+					>
+						<span>{{ option.label }}</span>
+						<N8nText v-if="option.description" size="xsmall" color="text-light">
+							{{ option.description }}
+						</N8nText>
+					</button>
+				</div>
+
+				<div v-else-if="block.component.type === 'fields'" :class="$style.fieldsGroup">
+					<div
+						v-for="field in block.component.fields ?? []"
+						:key="field.label"
+						:class="$style.fieldRow"
+					>
+						<N8nText size="small" bold>{{ field.label }}</N8nText>
+						<N8nText size="small">{{ field.value }}</N8nText>
+					</div>
+				</div>
+
+				<img
+					v-else-if="block.component.type === 'image' && block.component.url"
+					:src="block.component.url"
+					:alt="block.component.alt ?? ''"
+					:class="$style.image"
+				/>
+			</template>
 		</template>
 	</div>
 </template>
@@ -147,7 +232,14 @@ function isOptionSelected(component: N8nChatCardComponent, value: string): boole
 }
 
 .section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 	margin-bottom: var(--spacing--4xs);
+}
+
+.sectionButton {
+	align-self: flex-start;
 }
 
 .divider {
@@ -156,9 +248,10 @@ function isOptionSelected(component: N8nChatCardComponent, value: string): boole
 	margin: var(--spacing--3xs) 0;
 }
 
-.button {
-	align-self: flex-start;
-	margin-right: var(--spacing--4xs);
+.buttonRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--3xs);
 }
 
 .selectGroup {
@@ -169,6 +262,10 @@ function isOptionSelected(component: N8nChatCardComponent, value: string): boole
 
 .selectLabel {
 	margin-bottom: var(--spacing--5xs);
+}
+
+.radio {
+	margin-right: 0;
 }
 
 .option {
