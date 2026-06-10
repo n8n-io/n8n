@@ -517,7 +517,49 @@ describe('AgentKnowledgeSandboxService', () => {
 
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
 			expect.stringContaining(
-				`cd ${KNOWLEDGE_FILES_DIR} && rg --json --fixed-strings --line-number --color=never --ignore-case --context 1 -- 'hello' './notes.txt'`,
+				`cd ${KNOWLEDGE_FILES_DIR} && rg --json --fixed-strings --line-number --color=never --hidden --ignore-case --context 1 -- 'hello' './notes.txt'`,
+			),
+			undefined,
+			undefined,
+			300,
+		);
+	});
+
+	it('searchKnowledge includes hidden uploaded files in broad searches', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([
+			makeAgentFile({
+				id: 'file-1',
+				storageFileName: '.notes.txt',
+				fileName: '.notes.txt',
+			}),
+		]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: {
+				stdout:
+					'{"type":"match","data":{"path":{"text":".notes.txt"},"lines":{"text":"hello hidden\\n"},"line_number":1}}' +
+					'\n',
+				stderr: '',
+			},
+		});
+		const service = makeService();
+
+		await expect(
+			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
+		).resolves.toMatchObject({
+			matches: [
+				{
+					file: '.notes.txt',
+					fileId: 'file-1',
+					text: 'hello hidden',
+				},
+			],
+		});
+		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
+			expect.stringContaining(
+				`cd ${KNOWLEDGE_FILES_DIR} && rg --json --fixed-strings --line-number --color=never --hidden --ignore-case -- 'hello' '.'`,
 			),
 			undefined,
 			undefined,

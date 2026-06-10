@@ -554,6 +554,7 @@ function buildSearchKnowledgeCommand(
 		'--fixed-strings',
 		'--line-number',
 		'--color=never',
+		'--hidden',
 		...(request.caseSensitive === true ? [] : ['--ignore-case']),
 		...(request.contextLines && request.contextLines > 0
 			? ['--context', String(request.contextLines)]
