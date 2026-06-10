@@ -8,6 +8,7 @@ import type {
 	DesktopAssistantTaskRunEvent,
 	DesktopAssistantTasksResponse,
 	InsightsSummary,
+	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
 import { logger } from '@n8n/computer-use/logger';
 
@@ -259,6 +260,14 @@ export class InstanceApi {
 			// Close the SSE connection on every exit path (deadline, errors, finish).
 			abort.abort();
 		}
+	}
+
+	/** `GET /rest/instance-ai/threads/:threadId/messages` — the thread's stored messages plus the `nextEventId` SSE cursor. */
+	async getThreadMessages(threadId: string): Promise<InstanceAiRichMessagesResponse> {
+		const response = await this.authedFetch(
+			`/instance-ai/threads/${encodeURIComponent(threadId)}/messages`,
+		);
+		return await this.unwrap<InstanceAiRichMessagesResponse>(response);
 	}
 
 	/** Public editor URL for a workflow on the signed-in instance, or `null` when signed out. */

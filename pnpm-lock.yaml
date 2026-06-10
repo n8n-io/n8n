@@ -2121,6 +2121,9 @@ importers:
       electron-store:
         specifier: ^8.2.0
         version: 8.2.0
+      eventsource:
+        specifier: ^3.0.6
+        version: 3.0.6
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
