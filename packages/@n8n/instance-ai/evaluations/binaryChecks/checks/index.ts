@@ -8,6 +8,7 @@ import type { BinaryCheck } from '../types';
 import { agentHasDynamicPrompt } from './agent-has-dynamic-prompt';
 import { agentHasLanguageModel } from './agent-has-language-model';
 import { allNodesConnected } from './all-nodes-connected';
+import { codeNodeNoHttpRequests } from './code-node-no-http-requests';
 import { correctNodeOperations } from './correct-node-operations';
 import { descriptiveNodeNames } from './descriptive-node-names';
 import { expressionsReferenceExistingNodes } from './expressions-reference-existing-nodes';
@@ -76,6 +77,7 @@ export const AI_NODES_CHECKS: BinaryCheck[] = [
 
 export const NODES_CRAFTSMANSHIP_CHECKS: BinaryCheck[] = [
 	noUnnecessaryCodeNodes,
+	codeNodeNoHttpRequests,
 	descriptiveNodeNames,
 	responseMatchesWorkflowChanges,
 ];
