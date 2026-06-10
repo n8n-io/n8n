@@ -176,14 +176,14 @@ describe('Canvas', () => {
 		});
 	});
 
-	it('should exclude group title bars from select all', async () => {
+	it('should exclude expanded group title bars from select all', async () => {
 		const posthogStore = usePostHog();
 		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
 			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
 		);
 
 		const node = createCanvasNodeElement({ id: 'node-1' });
-		const groupNode = createCanvasGroupNode();
+		const groupNode = createCanvasGroupNode({ selectable: false });
 		const eventBus = createEventBus<CanvasEventBusEvents>();
 
 		const { container } = renderComponent({
@@ -199,6 +199,33 @@ describe('Canvas', () => {
 		eventBus.emit('nodes:selectAll');
 
 		await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).toEqual([node.id]));
+	});
+
+	it('should include collapsed group title bars in select all', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const node = createCanvasNodeElement({ id: 'node-1' });
+		const groupNode = createCanvasGroupNode({ selectable: true });
+		const eventBus = createEventBus<CanvasEventBusEvents>();
+
+		const { container } = renderComponent({
+			props: {
+				nodes: [node, groupNode],
+				eventBus,
+			},
+		});
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+
+		const { getSelectedNodes } = useVueFlow(canvasId);
+		eventBus.emit('nodes:selectAll');
+
+		await waitFor(() =>
+			expect(getSelectedNodes.value.map(({ id }) => id).sort()).toEqual([groupNode.id, node.id]),
+		);
 	});
 
 	it('should emit `update:nodes:position` event', async () => {

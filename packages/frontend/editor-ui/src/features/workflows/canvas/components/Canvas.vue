@@ -250,8 +250,8 @@ const { layout } = useCanvasLayout(props.id, isExperimentalNdvActive, toRef(prop
 const selectedNodes = computed(() =>
 	selectedNodesAndGroups.value.filter((node) => !isCanvasGroupNode(node)),
 );
-const workflowGraphNodes = computed(() =>
-	graphNodes.value.filter((node) => !isCanvasGroupNode(node)),
+const selectableNodesAndGroups = computed(() =>
+	graphNodes.value.filter((node) => !isCanvasGroupNode(node) || node.selectable),
 );
 
 const isPaneReady = ref(false);
@@ -410,7 +410,7 @@ const keyMap = computed(() => {
 			run: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 		},
 		enter: emitWithLastSelectedNode((id) => onSetNodeActivated(id)),
-		ctrl_a: () => addSelectedNodes(workflowGraphNodes.value),
+		ctrl_a: () => addSelectedNodes(selectableNodesAndGroups.value),
 		// Support both key and code for zooming in and out
 		'shift_+|+|=|shift_Equal|Equal': async () => await onZoomIn(),
 		'shift+_|-|_|shift_Minus|Minus': async () => await onZoomOut(),
@@ -969,7 +969,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'delete':
 			return emit('delete:nodes', nodeIds);
 		case 'select_all':
-			return addSelectedNodes(workflowGraphNodes.value);
+			return addSelectedNodes(selectableNodesAndGroups.value);
 		case 'deselect_all':
 			return clearSelectedNodes();
 		case 'duplicate':
@@ -1143,7 +1143,7 @@ onMounted(() => {
 	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.on('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.on('nodes:select', onSelectNodes);
-	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(workflowGraphNodes.value));
+	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(selectableNodesAndGroups.value));
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
 	document.addEventListener('visibilitychange', onVisibilityChange);
