@@ -133,6 +133,19 @@ tokens, Slack channel IDs, Telegram chat IDs, or sample recipient lists. After
 the build, `workflows(action="setup")` opens an inline setup card in the AI
 Assistant panel so the user can fill placeholder values.
 
+Do not replace concrete user-provided or discoverable values with placeholders.
+If the prompt gives a real URL, channel name, table name, label, folder,
+database, or other literal selector, preserve that value and only use a
+placeholder for the unknown part.
+
+## Knowledge Base Guardrails
+
+For workflows with multiple external systems, multiple requested effects,
+digests or reports, non-trivial branching, or Code nodes, read
+`knowledge-base/reference/workflow-builder-guardrails.md` before writing code.
+Use it as the build checklist for source preservation, fan-out/fan-in,
+effect-specific gating, list itemization, and Code-node safety.
+
 ## Mandatory Process
 
 1. Research. If the workflow fits a known category, call

@@ -1,5 +1,10 @@
-import { testDb, mockInstance, createActiveWorkflow } from '@n8n/backend-test-utils';
-import type { IWorkflowDb, User } from '@n8n/db';
+import {
+	testDb,
+	mockInstance,
+	createActiveWorkflow,
+	deleteWorkflowAndWebhooks,
+} from '@n8n/backend-test-utils';
+import { type IWorkflowDb, type User, type WorkflowEntity } from '@n8n/db';
 import { readFileSync } from 'fs';
 import {
 	type INode,
@@ -81,6 +86,7 @@ describe('Webhook API', () => {
 
 	let user: User;
 	let agent: SuperAgentTest;
+	let workflow: WorkflowEntity | undefined;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -93,8 +99,15 @@ describe('Webhook API', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['WorkflowEntity']);
-		await createActiveWorkflow(workflowData, user);
+		workflow = await createActiveWorkflow(workflowData, user);
 		await initActiveWorkflowManager();
+	});
+
+	afterEach(async () => {
+		if (workflow) {
+			await deleteWorkflowAndWebhooks(workflow.id);
+		}
+		workflow = undefined;
 	});
 
 	afterAll(async () => {

@@ -5,6 +5,7 @@ export type {
 	BuiltMemory,
 	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
+	PiiDetectionType,
 	BuiltEval,
 	RunOptions,
 	AgentResult,
@@ -103,6 +104,23 @@ export type { Cancellation } from './sdk/cancellation';
 export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { Guardrail } from './sdk/guardrail';
+export {
+	redactText,
+	redactDeep,
+	redactionOptionsFromGuardrail,
+	DEFAULT_PLACEHOLDER,
+	StreamingRedactor,
+	resolvePatterns,
+	passesLuhn,
+	SUPPORTED_PII_CATEGORIES,
+} from './sdk/guardrails';
+export type {
+	RedactionOptions,
+	RedactionResult,
+	DeepRedactionResult,
+	RedactionCategory,
+	RedactionPattern,
+} from './sdk/guardrails';
 export { Eval } from './sdk/eval';
 export { evaluate } from './sdk/evaluate';
 export type { DatasetRow, EvaluateConfig } from './sdk/evaluate';

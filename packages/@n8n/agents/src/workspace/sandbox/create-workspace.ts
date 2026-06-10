@@ -36,6 +36,7 @@ function buildSandbox(
 			logger,
 			apiUrl: config.daytonaApiUrl,
 			labels: config.labels,
+			...(config.ephemeral !== undefined ? { ephemeral: config.ephemeral } : {}),
 			...(config.image ? { image: config.image } : {}),
 			...(config.snapshot ? { snapshot: config.snapshot } : {}),
 			language: 'typescript',
