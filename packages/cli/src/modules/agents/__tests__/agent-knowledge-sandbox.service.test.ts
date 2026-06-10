@@ -517,7 +517,7 @@ describe('AgentKnowledgeSandboxService', () => {
 
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
 			expect.stringContaining(
-				`cd ${KNOWLEDGE_FILES_DIR} && rg --json --fixed-strings --line-number --color=never --hidden --ignore-case --context 1 -- 'hello' './notes.txt'`,
+				`rg --json --fixed-strings --line-number --color=never --hidden --max-count 21 --max-columns 501 --max-columns-preview --ignore-case --context 1 -- 'hello' './notes.txt'`,
 			),
 			undefined,
 			undefined,
@@ -559,7 +559,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
 			expect.stringContaining(
-				`cd ${KNOWLEDGE_FILES_DIR} && rg --json --fixed-strings --line-number --color=never --hidden --ignore-case -- 'hello' '.'`,
+				`rg --json --fixed-strings --line-number --color=never --hidden --max-count 21 --max-columns 501 --max-columns-preview --ignore-case -- 'hello' '.'`,
 			),
 			undefined,
 			undefined,
@@ -585,6 +585,30 @@ describe('AgentKnowledgeSandboxService', () => {
 			offset: 0,
 			hasMore: false,
 			truncated: false,
+		});
+	});
+
+	it('searchKnowledge surfaces sandbox-side output truncation', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: {
+				stdout:
+					'{"type":"match","data":{"path":{"text":"notes.txt"},"lines":{"text":"hello\\n"},"line_number":1}}' +
+					'\n',
+				stderr: '__N8N_AGENT_KNOWLEDGE_OUTPUT_TRUNCATED__\n',
+			},
+		});
+		const service = makeService();
+
+		await expect(
+			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
+		).resolves.toMatchObject({
+			matches: [{ file: 'notes.txt', lineNumber: 1 }],
+			hasMore: true,
+			truncated: true,
 		});
 	});
 
@@ -629,13 +653,13 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining(`cd ${KNOWLEDGE_FILES_DIR} && awk `),
+			expect.stringContaining('awk '),
 			undefined,
 			undefined,
 			300,
 		);
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining("'./notes.txt'"),
+			expect.stringContaining(`substr($0, 1, 2001) }' './notes.txt'`),
 			undefined,
 			undefined,
 			300,

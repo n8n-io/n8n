@@ -76,6 +76,8 @@ const DEAD_SANDBOX_STATES = new Set<SandboxState>([
 const DEFAULT_SANDBOX_IMAGE = 'daytonaio/sandbox:0.5.0';
 const AUTO_STOP_INTERVAL_MINUTES = 5;
 const SANDBOX_LIST_PAGE_SIZE = 100;
+const OUTPUT_TRUNCATED_MARKER = '__N8N_AGENT_KNOWLEDGE_OUTPUT_TRUNCATED__';
+const SHELL_OUTPUT_LIMIT_CHARS = MAX_OPERATION_OUTPUT_CHARS - OUTPUT_TRUNCATED_MARKER.length - 2;
 
 interface KnowledgeVolumeMount {
 	volumeId: string;
@@ -233,7 +235,11 @@ export class AgentKnowledgeSandboxService {
 			matches,
 			limit,
 			offset,
-			hasMore: parsed.matches.length > offset + limit || stdout.truncated,
+			hasMore:
+				parsed.matches.length > offset + limit ||
+				stdout.truncated ||
+				stderr.truncated ||
+				parsed.incomplete,
 			truncated: stdout.truncated || stderr.truncated || parsed.incomplete,
 		};
 	}
@@ -548,6 +554,7 @@ function buildSearchKnowledgeCommand(
 	request: SearchKnowledgeRequest,
 	files: AgentKnowledgeFileReference[] | undefined,
 ): string {
+	const matchLimit = (request.offset ?? 0) + (request.limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
 	const args = [
 		'rg',
 		'--json',
@@ -555,6 +562,11 @@ function buildSearchKnowledgeCommand(
 		'--line-number',
 		'--color=never',
 		'--hidden',
+		'--max-count',
+		String(matchLimit),
+		'--max-columns',
+		String(MAX_SEARCH_LINE_CHARS + 1),
+		'--max-columns-preview',
 		...(request.caseSensitive === true ? [] : ['--ignore-case']),
 		...(request.contextLines && request.contextLines > 0
 			? ['--context', String(request.contextLines)]
@@ -592,7 +604,9 @@ function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRequest):
 	const script = request.ranges
 		.map(
 			(range, index) =>
-				`NR >= ${range.startLine} && NR <= ${range.endLine} { printf "${index}\\t%d\\t%s\\n", NR, $0 }`,
+				`NR >= ${range.startLine} && NR <= ${range.endLine} { printf "${index}\\t%d\\t%s\\n", NR, substr($0, 1, ${
+					MAX_READ_LINE_CHARS + 1
+				}) }`,
 		)
 		.join(' ');
 
@@ -766,15 +780,55 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function truncateOperationOutput(text: string): { text: string; truncated: boolean } {
-	if (text.length <= MAX_OPERATION_OUTPUT_CHARS) {
-		return { text, truncated: false };
+	const markerIndex = text.indexOf(OUTPUT_TRUNCATED_MARKER);
+	const markerTruncated = markerIndex !== -1;
+	const textWithoutMarker = markerTruncated
+		? text.replaceAll(OUTPUT_TRUNCATED_MARKER, '').trimEnd()
+		: text;
+
+	if (textWithoutMarker.length <= MAX_OPERATION_OUTPUT_CHARS) {
+		return { text: textWithoutMarker, truncated: markerTruncated };
 	}
 
-	return { text: text.slice(0, MAX_OPERATION_OUTPUT_CHARS), truncated: true };
+	return { text: textWithoutMarker.slice(0, MAX_OPERATION_OUTPUT_CHARS), truncated: true };
+}
+
+function buildOutputLimitedShellCommand(command: string): string {
+	const capOutputScript = [
+		'BEGIN { used = 0 }',
+		'{',
+		'  line = $0 "\\n"',
+		'  remaining = max - used',
+		'  if (remaining <= 0) { print "1" > truncated_file; exit 0 }',
+		'  if (length(line) > remaining) {',
+		'    printf "%s", substr(line, 1, remaining)',
+		'    print "1" > truncated_file',
+		'    exit 0',
+		'  }',
+		'  printf "%s", line',
+		'  used += length(line)',
+		'}',
+	].join(' ');
+
+	return [
+		'status_file=$(mktemp)',
+		'truncated_file=$(mktemp)',
+		`{ ${command}; printf '%s' "$?" > "$status_file"; } | awk -v max=${SHELL_OUTPUT_LIMIT_CHARS} -v truncated_file="$truncated_file" ${quoteShellArg(
+			capOutputScript,
+		)}`,
+		'status=$(cat "$status_file" 2>/dev/null || printf 0)',
+		`if [ -s "$truncated_file" ]; then echo ${quoteShellArg(
+			OUTPUT_TRUNCATED_MARKER,
+		)} >&2; status=0; fi`,
+		'rm -f "$status_file" "$truncated_file"',
+		'exit "$status"',
+	].join('; ');
 }
 
 function buildScopedKnowledgeShellCommand(command: string): string {
-	return `if [ ! -d ${KNOWLEDGE_FILES_DIR} ]; then echo 'Agent knowledge files directory is unavailable' >&2; exit 2; fi; cd ${KNOWLEDGE_FILES_DIR} && ${command}`;
+	return `if [ ! -d ${KNOWLEDGE_FILES_DIR} ]; then echo 'Agent knowledge files directory is unavailable' >&2; exit 2; fi; cd ${KNOWLEDGE_FILES_DIR} && ${buildOutputLimitedShellCommand(
+		command,
+	)}`;
 }
 
 function readCommandStderr(artifacts: { stdout?: string; stderr?: string } | undefined): string {
