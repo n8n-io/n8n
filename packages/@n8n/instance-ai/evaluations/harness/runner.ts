@@ -21,6 +21,7 @@ import {
 	recordUserTurn,
 	type ConfirmationStrategy,
 } from './chat-loop';
+import { captureThreadRunDebug } from './capture-run-debug';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import { buildWorkflowContextBlock } from './workflow-context';
