@@ -318,8 +318,11 @@ export class ApiHelpers {
 		return body.data?.events ?? [];
 	}
 
-	async createInstanceAiThread(): Promise<InstanceAiThreadInfo> {
-		const response = await this.request.post('/rest/instance-ai/threads', { data: {} });
+	async createInstanceAiThread(projectId?: string): Promise<InstanceAiThreadInfo> {
+		const resolvedProjectId = projectId ?? (await this.projects.getMyPersonalProject()).id;
+		const response = await this.request.post('/rest/instance-ai/threads', {
+			data: { projectId: resolvedProjectId },
+		});
 		if (!response.ok()) {
 			throw new TestError(
 				`POST /rest/instance-ai/threads failed (${response.status()}): ${await response.text()}`,

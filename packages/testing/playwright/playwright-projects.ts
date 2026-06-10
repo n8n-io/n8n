@@ -30,7 +30,8 @@ const CONTAINER_ONLY = new RegExp(
 const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
 
 /** TODO: Temporarily disable all instance ai e2e tests. Re-enable when ready. */
-const INSTANCE_AI_E2E_IGNORE = '**/instance-ai/**';
+const INSTANCE_AI_E2E_IGNORE =
+	process.env.PLAYWRIGHT_INCLUDE_INSTANCE_AI === 'true' ? undefined : '**/instance-ai/**';
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'sqlite', config: {} },
