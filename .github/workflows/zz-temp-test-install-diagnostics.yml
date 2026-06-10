@@ -22,12 +22,18 @@
 #   - parallel-a / parallel-b : two concurrent failing jobs sharing the same
 #     github.job — validates the uploaded artifact names don't collide.
 #
-# Run:       gh workflow run zz-temp-test-install-diagnostics.yml --ref <branch>
+# Triggers on push to this branch (workflow_dispatch only works once the file is
+# on the default branch, which it isn't yet). Every job is EXPECTED to fail —
+# assert on the artifacts, not on success — so the job is marked non-blocking
+# via continue-on-error to keep the branch/PR checks green.
+#
 # Inspect:   gh run download <run-id> -D /tmp/diag && find /tmp/diag
-#            (every job is EXPECTED to fail — assert on the artifacts, not success)
 name: zz-temp Test install diagnostics
 
 on:
+  push:
+    branches:
+      - devp-409-surface-pnpm-install-debug-logs
   workflow_dispatch:
 
 jobs:
@@ -35,6 +41,8 @@ jobs:
     # Mirror the real Typecheck/E2E jobs so we exercise the same runner class
     # (Blacksmith) where the silent swallow was observed.
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    # Jobs are designed to fail; don't let that mark the run/PR as broken.
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
