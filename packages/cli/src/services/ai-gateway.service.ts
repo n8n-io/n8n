@@ -46,8 +46,6 @@ export class AiGatewayService {
 
 	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
 
-	private static readonly PROXY_PATH_PREFIX = '/v1/gateway/proxy';
-
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
@@ -173,10 +171,10 @@ export class AiGatewayService {
 			}
 
 			const config = await this.getGatewayConfig();
-			const matches = managedTypes.some((type) =>
-				config.providerConfig[type]?.hosts?.includes(hostname),
-			);
-			if (!matches) return undefined;
+			const gatewayPath = managedTypes
+				.map((type) => config.providerConfig[type]?.hosts?.[hostname])
+				.find((path): path is string => Boolean(path));
+			if (!gatewayPath) return undefined;
 
 			// From here the request is destined for a managed host: fail closed. If the
 			// gateway/token is unavailable we throw rather than pass through, so a managed
@@ -195,7 +193,7 @@ export class AiGatewayService {
 			return {
 				...requestOptions,
 				baseURL: undefined,
-				url: this.buildProxyUrl(baseUrl, targetUrl, { executionId, workflowId }),
+				url: this.buildProxyUrl(baseUrl, gatewayPath, targetUrl, { executionId, workflowId }),
 				headers: {
 					...requestOptions.headers,
 					Authorization: `Bearer ${jwt}`,
@@ -225,23 +223,24 @@ export class AiGatewayService {
 	}
 
 	/**
-	 * Builds a host-preserving proxy URL. The original host and path are embedded after
-	 * the proxy prefix so the gateway can route to the correct upstream and inject the
-	 * real provider credentials. Embeds execution context for attribution when available.
+	 * Builds the gateway proxy URL for a hard-coded-URL node by mapping the request's
+	 * host to its gateway path segment (from `providerConfig[type].hosts`) and
+	 * appending the original request path and query. Reuses `buildGatewayUrl` so the
+	 * exec-attribution prefix is constructed identically to the credential path.
 	 *
-	 * Example: `https://api.browserbase.com/v1/fetch`
-	 *   → `<base>/v1/gateway/proxy/api.browserbase.com/v1/fetch`
-	 *   → with context: `<base>/v1/gateway/proxy/exec/<execId>/<wfId>/api.browserbase.com/v1/fetch`
+	 * Example: host `api.stagehand.browserbase.com` → `/v1/gateway/browserbaseStagehand`,
+	 *   request `…/v1/sessions/start`
+	 *   → `<base>/v1/gateway/browserbaseStagehand/v1/sessions/start`
+	 *   → with context: `<base>/v1/gateway/exec/<execId>/<wfId>/browserbaseStagehand/v1/sessions/start`
 	 */
 	private buildProxyUrl(
 		baseUrl: string,
+		gatewayPath: string,
 		targetUrl: string,
 		context: { executionId?: string; workflowId?: string },
 	): string {
 		const parsed = new URL(targetUrl);
-		const hostAndPath = `${parsed.host}${parsed.pathname}`;
-		const prefix = this.withExecPrefix(AiGatewayService.PROXY_PATH_PREFIX, context);
-		return `${baseUrl}${prefix}/${hostAndPath}${parsed.search}`;
+		return `${this.buildGatewayUrl(baseUrl, gatewayPath, context)}${parsed.pathname}${parsed.search}`;
 	}
 
 	/**

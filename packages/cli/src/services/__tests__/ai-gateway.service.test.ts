@@ -185,7 +185,7 @@ describe('AiGatewayService', () => {
 					browserbaseApi: {
 						gatewayPath: '/v1/gateway/browserbase',
 						apiKeyField: 'browserbaseApiKey',
-						hosts: ['api.browserbase.com'],
+						hosts: { 'api.browserbase.com': '/v1/gateway/browserbase' },
 					},
 				},
 			};
@@ -812,7 +812,10 @@ describe('AiGatewayService', () => {
 				browserbaseApi: {
 					gatewayPath: '/v1/gateway/browserbase',
 					apiKeyField: 'browserbaseApiKey',
-					hosts: ['api.browserbase.com', 'api.stagehand.browserbase.com'],
+					hosts: {
+						'api.browserbase.com': '/v1/gateway/browserbase',
+						'api.stagehand.browserbase.com': '/v1/gateway/browserbaseStagehand',
+					},
 				},
 			},
 		};
@@ -849,7 +852,7 @@ describe('AiGatewayService', () => {
 
 			expect(result).toEqual({
 				method: 'POST',
-				url: `${BASE_URL}/v1/gateway/proxy/api.browserbase.com/v1/fetch`,
+				url: `${BASE_URL}/v1/gateway/browserbase/v1/fetch`,
 				baseURL: undefined,
 				headers: { 'x-bb-api-key': 'jwt-1', Authorization: 'Bearer jwt-1' },
 			});
@@ -865,7 +868,7 @@ describe('AiGatewayService', () => {
 				managedNode,
 			);
 
-			expect(result?.url).toBe(`${BASE_URL}/v1/gateway/proxy/api.browserbase.com/v1/fetch`);
+			expect(result?.url).toBe(`${BASE_URL}/v1/gateway/browserbase/v1/fetch`);
 		});
 
 		it('preserves the query string when rewriting', async () => {
@@ -878,9 +881,7 @@ describe('AiGatewayService', () => {
 				managedNode,
 			);
 
-			expect(result?.url).toBe(
-				`${BASE_URL}/v1/gateway/proxy/api.stagehand.browserbase.com/v1/sessions?live=true`,
-			);
+			expect(result?.url).toBe(`${BASE_URL}/v1/gateway/browserbaseStagehand/v1/sessions?live=true`);
 		});
 
 		it('embeds execution context in the proxy path when executionId and workflowId are present', async () => {
@@ -896,7 +897,7 @@ describe('AiGatewayService', () => {
 			);
 
 			expect(result?.url).toBe(
-				`${BASE_URL}/v1/gateway/proxy/exec/29021/R9JFXwkUCL1jZBuw/api.browserbase.com/v1/fetch`,
+				`${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/browserbase/v1/fetch`,
 			);
 		});
 
@@ -910,7 +911,7 @@ describe('AiGatewayService', () => {
 				managedNode,
 			);
 
-			expect(result?.url).toBe(`${BASE_URL}/v1/gateway/proxy/api.browserbase.com/v1/fetch`);
+			expect(result?.url).toBe(`${BASE_URL}/v1/gateway/browserbase/v1/fetch`);
 			expect(result?.baseURL).toBeUndefined();
 		});
 

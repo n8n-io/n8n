@@ -11,12 +11,15 @@ const aiGatewayProviderConfigEntryShape = {
 	urlField: z.string().optional(),
 	apiKeyField: z.string(),
 	/**
-	 * Provider hosts (e.g. `api.browserbase.com`) whose outbound HTTP traffic should be
-	 * rerouted to the gateway at the request level. Used for nodes that hard-code their
-	 * base URL instead of reading it from the credential, so a `urlField` override alone
-	 * cannot redirect them.
+	 * Maps a provider host to the gateway path segment that proxies it, e.g.
+	 * `{ 'api.browserbase.com': '/v1/gateway/browserbase' }`. Used for nodes that
+	 * hard-code their base URL (so a `urlField` override cannot redirect them): the
+	 * HTTP-level rewriter looks up the request's host here and rebuilds the URL against
+	 * the mapped gateway path, preserving the original path and query. A single provider
+	 * may span multiple hosts that route to different segments (e.g. Browserbase REST vs
+	 * Stagehand), which is why this is a map rather than a flat host list.
 	 */
-	hosts: z.array(z.string()).optional(),
+	hosts: z.record(z.string()).optional(),
 };
 
 export class AiGatewayProviderConfigEntry extends Z.class(aiGatewayProviderConfigEntryShape) {}
@@ -26,7 +29,7 @@ export class AiGatewayProviderConfigEntry extends Z.class(aiGatewayProviderConfi
 // (Layer 2, HTTP-level rewrite). An entry with neither would be a silent no-op.
 const aiGatewayProviderConfigEntry = z
 	.object(aiGatewayProviderConfigEntryShape)
-	.refine((entry) => Boolean(entry.urlField) || (entry.hosts?.length ?? 0) > 0, {
+	.refine((entry) => Boolean(entry.urlField) || Object.keys(entry.hosts ?? {}).length > 0, {
 		message: 'Provider config must define either "urlField" or "hosts".',
 	});
 
