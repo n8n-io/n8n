@@ -1,0 +1,57 @@
+packages/cli/src/modules/mcp/mcp-server-middleware.service.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 7-8,13,26-27,52-53
+packages/cli/test/integration/shared/types.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 62
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 5-6
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.test.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 7
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 3-4,6,8,10-11,13,15-17,19-30,32,34-39,41-44,46-49,51-55,57-58
+packages/cli/src/modules/mcp/mcp-api-key.service.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 7-8
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 11
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 27,61
+packages/cli/src/modules/oauth-server/oauth-server.module.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 1-3,5-10,12-17,20-29
+packages/cli/src/modules/mcp/__tests__/mcp-server-middleware.service.test.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 7,12,29-30,39-40,46,54
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 12,15-18,20-21,26-28,30-31,33,46,51-52,54,59,66-106,108-112,123-124,137-145,165,181-189,198-202,205,208
+packages/cli/src/modules/mcp/mcp.module.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 9-10,17-25
+packages/cli/src/modules/oauth-server/__tests__/protected-resource-registry.test.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 1-26,28-32,35-39,42-45,48-49,52-56,58-63,66-72,75-80,83-88,92-94,97-98,101-106,108-113
+packages/cli/src/modules/oauth-server/protected-resource-registry.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 4-9,11-13,16-19,21,24-25,27,29-30,32-37,40-42,44-57,59-60,63-71,73-89,91-93,95-98,100-101,103-117,120-124,126,129-135,137
+packages/cli/src/modules/oauth-server/oauth.types.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 1-26
+packages/cli/src/modules/__tests__/main-only-modules.test.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 10,15-25
+packages/cli/src/modules/oauth-server/oauth.constants.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 1-8
+packages/cli/src/modules/oauth-server/oauth.errors.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 1-39
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 5-6,8-11,17-20,23-25,28-30,34-37,39-40,44-47,49-50,54-55
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_d080cd0071e0f4::t_be78856c594c8d 38-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "01449b5964e1f1c89bfec9804656549c5a916cb8",
+  "prompts": {},
+  "sessions": {
+    "s_d080cd0071e0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6faeb930-cf57-48d0-aa3c-235422c166e5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}
