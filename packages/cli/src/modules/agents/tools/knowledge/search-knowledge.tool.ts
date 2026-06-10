@@ -3,9 +3,6 @@ import { Tool } from '@n8n/agents/tool';
 import type { AgentKnowledgeSandboxService } from '../../agent-knowledge-sandbox.service';
 import {
 	findKnowledgeFilesInputSchema,
-	parseFindKnowledgeFilesRequest,
-	parseReadKnowledgeRequest,
-	parseSearchKnowledgeRequest,
 	readKnowledgeInputSchema,
 	searchKnowledgeInputSchema,
 } from '../../agent-knowledge-retrieval';
@@ -38,11 +35,11 @@ export function createKnowledgeRetrievalTools({
 		)
 		.systemInstruction(KNOWLEDGE_RETRIEVAL_SYSTEM_INSTRUCTION)
 		.input(findKnowledgeFilesInputSchema)
-		.handler(async (input) => {
-			const request = parseFindKnowledgeFilesRequest(input);
-			const result = await sandboxService.findKnowledgeFiles(projectId, agentId, request);
-			return { cwd: 'files' as const, result };
-		});
+		.handler(
+			// The runtime validates input against the schema before invoking the
+			// handler; the sandbox service re-parses at its own boundary.
+			async (input) => await sandboxService.findKnowledgeFiles(projectId, agentId, input),
+		);
 
 	const searchTool = new Tool('search_knowledge')
 		.description(
@@ -50,11 +47,9 @@ export function createKnowledgeRetrievalTools({
 		)
 		.systemInstruction(KNOWLEDGE_RETRIEVAL_SYSTEM_INSTRUCTION)
 		.input(searchKnowledgeInputSchema)
-		.handler(async (input) => {
-			const request = parseSearchKnowledgeRequest(input);
-			const result = await sandboxService.searchKnowledge(projectId, agentId, userId, request);
-			return { cwd: 'files' as const, result };
-		});
+		.handler(
+			async (input) => await sandboxService.searchKnowledge(projectId, agentId, userId, input),
+		);
 
 	const readTool = new Tool('read_knowledge')
 		.description(
@@ -62,11 +57,9 @@ export function createKnowledgeRetrievalTools({
 		)
 		.systemInstruction(KNOWLEDGE_RETRIEVAL_SYSTEM_INSTRUCTION)
 		.input(readKnowledgeInputSchema)
-		.handler(async (input) => {
-			const request = parseReadKnowledgeRequest(input);
-			const result = await sandboxService.readKnowledge(projectId, agentId, userId, request);
-			return { cwd: 'files' as const, result };
-		});
+		.handler(
+			async (input) => await sandboxService.readKnowledge(projectId, agentId, userId, input),
+		);
 
 	return [findFilesTool, searchTool, readTool];
 }

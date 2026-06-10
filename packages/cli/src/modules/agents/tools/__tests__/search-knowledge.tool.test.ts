@@ -93,7 +93,7 @@ describe('createKnowledgeRetrievalTools', () => {
 		).toBe(false);
 	});
 
-	it('dispatches parsed requests to the sandbox service', async () => {
+	it('dispatches requests to the sandbox service', async () => {
 		const sandboxService = mock<AgentKnowledgeSandboxService>();
 		sandboxService.findKnowledgeFiles.mockResolvedValue({
 			files: [],
@@ -118,16 +118,15 @@ describe('createKnowledgeRetrievalTools', () => {
 		const tools = makeTools({ sandboxService });
 
 		await expect(
-			getTool('find_knowledge_files', tools).handler?.({ query: '  notes  ' }, {}),
+			getTool('find_knowledge_files', tools).handler?.({ query: 'notes' }, {}),
 		).resolves.toMatchObject({
-			cwd: 'files',
-			result: { files: [] },
+			files: [],
 		});
 		expect(sandboxService.findKnowledgeFiles).toHaveBeenCalledWith(projectId, agentId, {
 			query: 'notes',
 		});
 
-		await getTool('search_knowledge', tools).handler?.({ query: '  flow control  ' }, {});
+		await getTool('search_knowledge', tools).handler?.({ query: 'flow control' }, {});
 		expect(sandboxService.searchKnowledge).toHaveBeenCalledWith(projectId, agentId, userId, {
 			query: 'flow control',
 		});

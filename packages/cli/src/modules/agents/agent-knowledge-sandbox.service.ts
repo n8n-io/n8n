@@ -51,13 +51,7 @@ interface AgentKnowledgeCommandResult {
 	stderr: string;
 }
 
-export const SEARCH_KNOWLEDGE_SANDBOX_CREATED = 'sandbox created' as const;
-export const SEARCH_KNOWLEDGE_SANDBOX_REUSED = 'sandbox reused' as const;
 export const AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX = 'agents-knowledgebase';
-
-export type SearchKnowledgeSandboxResult =
-	| typeof SEARCH_KNOWLEDGE_SANDBOX_CREATED
-	| typeof SEARCH_KNOWLEDGE_SANDBOX_REUSED;
 
 const LABEL_KNOWLEDGE_BASE = 'n8n-agents-knowledgebase';
 const LABEL_PROJECT_ID = 'n8n-project-id';
@@ -144,22 +138,13 @@ export class AgentKnowledgeSandboxService {
 		private readonly agentFileRepository: AgentFileRepository,
 	) {}
 
-	async ensureSandbox(
-		projectId: string,
-		agentId: string,
-		userId: string,
-	): Promise<SearchKnowledgeSandboxResult> {
-		const { reused } = await this.acquireSandbox(projectId, agentId, userId);
-		return reused ? SEARCH_KNOWLEDGE_SANDBOX_REUSED : SEARCH_KNOWLEDGE_SANDBOX_CREATED;
-	}
-
 	async withKnowledgeFilesystem<T>(
 		projectId: string,
 		agentId: string,
 		userId: string,
 		operation: (filesystem: AgentKnowledgeFilesystem) => Promise<T>,
 	): Promise<T> {
-		const { sandbox } = await this.acquireSandbox(projectId, agentId, userId);
+		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
 		const filesystem = this.createFilesystemAdapter(sandbox);
 		return await operation(filesystem);
 	}
@@ -203,7 +188,7 @@ export class AgentKnowledgeSandboxService {
 		const offset = validatedRequest.offset ?? 0;
 		const scopedFiles = this.resolveSearchScope(validatedRequest, references);
 
-		if (references.files.length === 0 || scopedFiles?.length === 0) {
+		if (references.files.length === 0) {
 			return { matches: [], limit, offset, hasMore: false, truncated: false };
 		}
 
@@ -279,7 +264,7 @@ export class AgentKnowledgeSandboxService {
 		userId: string,
 		command: string,
 	): Promise<AgentKnowledgeCommandResult> {
-		const { sandbox } = await this.acquireSandbox(projectId, agentId, userId);
+		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command);
 		const result = await sandbox.process.executeCommand(
@@ -413,7 +398,7 @@ export class AgentKnowledgeSandboxService {
 		projectId: string,
 		agentId: string,
 		userId: string,
-	): Promise<{ sandbox: Sandbox; reused: boolean }> {
+	): Promise<Sandbox> {
 		this.assertKnowledgeSandboxEnabled();
 		this.assertKnowledgeVolumeConfigured();
 		this.assertValidPathSegments(projectId, agentId);
@@ -442,7 +427,7 @@ export class AgentKnowledgeSandboxService {
 
 				const reusableSandbox = await this.resolveReusableSandbox(daytona, sandbox, connection);
 				this.logger.debug('Reused agent knowledge sandbox', { projectId, agentId });
-				return { sandbox: reusableSandbox, reused: true };
+				return reusableSandbox;
 			}
 
 			if (page >= listedSandboxes.totalPages) {
@@ -470,15 +455,17 @@ export class AgentKnowledgeSandboxService {
 			);
 		} catch (error) {
 			if (connection.mode === 'proxy' && isVolumeMountFailure(error)) {
+				const message = error instanceof Error ? error.message : String(error);
 				throw new OperationalError(
-					'Agent knowledge Daytona proxy does not support volume mounts. Enable volume mounts in the AI Assistant sandbox proxy before using agent knowledge base sandboxing.',
+					`Agent knowledge sandbox creation failed through the AI Assistant sandbox proxy: ${message}. If the proxy does not support volume mounts, enable them before using the agent knowledge base.`,
+					{ cause: error },
 				);
 			}
 			throw error;
 		}
 
 		this.logger.debug('Created agent knowledge sandbox', { projectId, agentId, name });
-		return { sandbox, reused: false };
+		return sandbox;
 	}
 
 	private async resolveDaytonaConnection(userId: string): Promise<AgentKnowledgeDaytonaConnection> {
@@ -817,9 +804,13 @@ function buildOutputLimitedShellCommand(command: string): string {
 			capOutputScript,
 		)}`,
 		'status=$(cat "$status_file" 2>/dev/null || printf 0)',
+		// When awk stops reading at the output cap, the producing command dies
+		// from SIGPIPE (exit 141). That is our own truncation, not a command
+		// failure, so normalize it to success. Any other non-zero status is a
+		// genuine failure and must propagate even when output was truncated.
 		`if [ -s "$truncated_file" ]; then echo ${quoteShellArg(
 			OUTPUT_TRUNCATED_MARKER,
-		)} >&2; status=0; fi`,
+		)} >&2; if [ "$status" = 141 ]; then status=0; fi; fi`,
 		'rm -f "$status_file" "$truncated_file"',
 		'exit "$status"',
 	].join('; ');

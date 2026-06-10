@@ -10,8 +10,6 @@ import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH, KNOWLEDGE_FILES_DIR } from '../agent
 import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
 	AgentKnowledgeSandboxService,
-	SEARCH_KNOWLEDGE_SANDBOX_CREATED,
-	SEARCH_KNOWLEDGE_SANDBOX_REUSED,
 } from '../agent-knowledge-sandbox.service';
 import type { AgentFile } from '../entities/agent-file.entity';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
@@ -214,25 +212,25 @@ describe('AgentKnowledgeSandboxService', () => {
 		const sandbox = makeSandbox(state);
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		const service = makeService();
+		const operation = jest.fn(async () => 'done');
 
-		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
-			SEARCH_KNOWLEDGE_SANDBOX_REUSED,
-		);
+		await expect(
+			service.withKnowledgeFilesystem('project-1', 'agent-1', userId, operation),
+		).resolves.toBe('done');
 		if (shouldStart) {
 			expect(sandbox.start).toHaveBeenCalledWith(300);
 		} else {
 			expect(sandbox.start).not.toHaveBeenCalled();
 		}
 		expect(createMock).not.toHaveBeenCalled();
+		expect(operation).toHaveBeenCalledTimes(1);
 	});
 
 	it('creates a sandbox with scoped labels, volume mount, and expected params when list is empty', async () => {
 		const aiService = makeAiService();
 		const service = makeService({}, mock<Logger>(), aiService);
 
-		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
-			SEARCH_KNOWLEDGE_SANDBOX_CREATED,
-		);
+		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {});
 
 		expect(aiService.getClient).not.toHaveBeenCalled();
 		expect(daytonaInstances).toHaveLength(1);
@@ -267,10 +265,9 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		const service = makeService({}, mock<Logger>(), aiService);
 
-		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).resolves.toBe(
-			SEARCH_KNOWLEDGE_SANDBOX_CREATED,
-		);
+		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {});
 
+		expect(createMock).toHaveBeenCalledTimes(1);
 		expect(aiService.getClient).toHaveBeenCalledTimes(1);
 		expect(mockClient.getSandboxProxyConfig).toHaveBeenCalledTimes(1);
 		expect(mockClient.getBuilderApiProxyToken).toHaveBeenCalledWith(
@@ -342,9 +339,9 @@ describe('AgentKnowledgeSandboxService', () => {
 			mock<InstanceSettings>({ instanceId: '../other-instance' }),
 		);
 
-		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).rejects.toThrow(
-			'Invalid instance id for agent knowledge storage',
-		);
+		await expect(
+			service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {}),
+		).rejects.toThrow('Invalid instance id for agent knowledge storage');
 		expect(listMock).not.toHaveBeenCalled();
 		expect(createMock).not.toHaveBeenCalled();
 	});
@@ -352,9 +349,9 @@ describe('AgentKnowledgeSandboxService', () => {
 	it('rejects before calling Daytona when the volume id is missing', async () => {
 		const service = makeService({ daytonaVolumeId: '' });
 
-		await expect(service.ensureSandbox('project-1', 'agent-1', userId)).rejects.toThrow(
-			'Agent knowledge Daytona volume is not configured',
-		);
+		await expect(
+			service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {}),
+		).rejects.toThrow('Agent knowledge Daytona volume is not configured');
 		expect(listMock).not.toHaveBeenCalled();
 		expect(createMock).not.toHaveBeenCalled();
 	});
@@ -367,9 +364,9 @@ describe('AgentKnowledgeSandboxService', () => {
 		async (configOverrides) => {
 			const service = makeService(configOverrides);
 
-			await expect(service.ensureSandbox('project-1', 'agent-1', userId)).rejects.toThrow(
-				'Agent knowledge sandbox is not enabled',
-			);
+			await expect(
+				service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {}),
+			).rejects.toThrow('Agent knowledge sandbox is not enabled');
 			expect(listMock).not.toHaveBeenCalled();
 			expect(createMock).not.toHaveBeenCalled();
 		},
