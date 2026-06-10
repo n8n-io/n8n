@@ -87,7 +87,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		try {
 			return jsonParse<T>(fileString);
 		} catch (error) {
-			throw new UserError('Failed to parse JSON', { extra: { filePath } });
+			throw new UserError('Failed to parse JSON', { cause: error, extra: { filePath } });
 		}
 	}
 
