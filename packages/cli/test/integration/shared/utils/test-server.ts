@@ -1,4 +1,4 @@
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { APIRequest, User } from '@n8n/db';
@@ -110,7 +110,7 @@ export const setupTestServer = ({
 	});
 
 	// Mock all telemetry and logging
-	mockLogger();
+	Container.set(Logger, mockLogger());
 	mockInstance(PostHogClient);
 	mockInstance(Push);
 	mockInstance(Telemetry);
