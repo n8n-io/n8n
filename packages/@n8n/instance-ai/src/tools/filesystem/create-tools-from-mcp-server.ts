@@ -46,7 +46,8 @@ import type { InstanceAiToolRegistry, LocalMcpServer } from '../../types';
 type McpContentBlock = McpToolCallResult['content'][number];
 type ModelContentPart =
 	| { type: 'text'; text: string }
-	| { type: 'image-data'; data: string; mediaType: string };
+	| { type: 'image-data'; data: string; mediaType: string }
+	| { type: 'file-data'; data: string; mediaType: string };
 
 // ---------------------------------------------------------------------------
 // Schemas shared across all gateway-gated tools
@@ -91,6 +92,10 @@ function isMcpContentBlock(value: unknown): value is McpContentBlock {
 	if (value.type === 'text') return typeof value.text === 'string';
 	if (value.type === 'image') {
 		return typeof value.data === 'string' && typeof value.mimeType === 'string';
+	}
+	if (value.type === 'resource') {
+		if (!isRecord(value.resource)) return false;
+		return typeof value.resource.uri === 'string' && typeof value.resource.blob === 'string';
 	}
 	return false;
 }
@@ -162,6 +167,14 @@ function mcpBlockToMessagePart(block: McpContentBlock): ContentText | ContentFil
 		};
 	}
 
+	if (block.type === 'resource' && block.resource.blob) {
+		return {
+			type: 'file',
+			data: block.resource.blob,
+			mediaType: block.resource.mimeType ?? 'application/octet-stream',
+		};
+	}
+
 	return undefined;
 }
 
@@ -178,12 +191,24 @@ function mcpBlockToModelContentPart(block: McpContentBlock): ModelContentPart | 
 		};
 	}
 
+	if (block.type === 'resource' && block.resource.blob) {
+		return {
+			type: 'file-data',
+			data: block.resource.blob,
+			mediaType: block.resource.mimeType ?? 'application/octet-stream',
+		};
+	}
+
 	return undefined;
+}
+
+function isMcpMediaBlock(block: McpContentBlock): boolean {
+	return block.type === 'image' || block.type === 'resource';
 }
 
 function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 	const raw = unwrapMcpToolResult(result);
-	if (!raw?.content.some((item) => item.type === 'image')) return undefined;
+	if (!raw?.content.some(isMcpMediaBlock)) return undefined;
 
 	const content = raw.content
 		.map(mcpBlockToMessagePart)
