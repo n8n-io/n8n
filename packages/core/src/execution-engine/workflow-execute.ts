@@ -1646,8 +1646,9 @@ export class WorkflowExecute {
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
 
-					// Reset per-node dynamic credential flag before each node execution
+					// Reset per-node dynamic credential flags before each node execution
 					this.additionalData.currentNodeUsedDynamicCredentials = false;
+					this.additionalData.currentNodeAttemptedDynamicCredentials = false;
 
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
@@ -1990,6 +1991,8 @@ export class WorkflowExecute {
 						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
 						usedDynamicCredentials:
 							this.additionalData.currentNodeUsedDynamicCredentials || undefined,
+						attemptedDynamicCredentials:
+							this.additionalData.currentNodeAttemptedDynamicCredentials || undefined,
 					};
 
 					// Record the n8n user a dynamically-resolved private credential

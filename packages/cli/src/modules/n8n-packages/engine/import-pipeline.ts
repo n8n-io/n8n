@@ -1,28 +1,37 @@
-import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
-import { ProjectRepository, WorkflowEntity } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse, UserError } from 'n8n-workflow';
-import { ZodError } from 'zod';
+import { UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 
 import { CredentialImporter } from '../entities/credential/credential-importer';
-import { resolvedBindingsToSummaries } from '../entities/credential/credential.types';
-import { WorkflowSerializer } from '../entities/workflow/workflow.serializer';
+import type {
+	CredentialBindingRequest,
+	CredentialResolution,
+} from '../entities/credential/credential.types';
+import type {
+	WorkflowImportOutcome,
+	WorkflowImportPlan,
+} from '../entities/workflow/workflow-import.types';
+import { WorkflowImporter } from '../entities/workflow/workflow-importer';
+import { toImportBlockedError } from './import-blocked.error';
+import { N8nPackageParser } from './n8n-package-parser';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
-import type { ImportPackageRequest, ImportResult, PreparedWorkflow } from '../n8n-packages.types';
-import { packageManifestSchema } from '../spec/manifest.schema';
-import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
+import { PackageImportConfig } from '../n8n-packages.config';
 
-const MEGABYTE_IN_BYTES = 1024 * 1024;
+import { createBindings, serializeBindings } from '../n8n-packages.types';
+import type {
+	BlockingIssue,
+	ImportPackageRequest,
+	ImportPackageSummary,
+	ImportResult,
+	PackageImportBindings,
+} from '../n8n-packages.types';
 
 interface ImportTarget {
 	projectId: string;
@@ -31,137 +40,120 @@ interface ImportTarget {
 
 @Service()
 export class ImportPipeline {
-	private readonly maxUncompressedPackageBytes: number;
-
 	constructor(
-		private readonly workflowSerializer: WorkflowSerializer,
+		private readonly packageParser: N8nPackageParser,
 		private readonly credentialImporter: CredentialImporter,
-		private readonly workflowCreationService: WorkflowCreationService,
-		globalConfig: GlobalConfig,
+		private readonly packageImportConfig: PackageImportConfig,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly eventService: EventService,
-	) {
-		this.maxUncompressedPackageBytes = globalConfig.endpoints.payloadSizeMax * MEGABYTE_IN_BYTES;
-	}
+		private readonly workflowImporter: WorkflowImporter,
+	) {}
 
 	async run(request: ImportPackageRequest): Promise<ImportResult> {
-		const reader = new TarPackageReader(request.packageBuffer, this.maxUncompressedPackageBytes);
-
-		const manifest = await this.loadPackageManifest(reader);
-
 		const { target, project } = await this.resolveTarget(
 			request.user,
 			request.projectId,
 			request.folderId,
 		);
 
-		// Validates every workflow first so a malformed package aborts before the first DB write.
-		const prepared = await this.prepareWorkflows(manifest.workflows ?? [], reader);
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
+		const manifest = await this.packageParser.getManifest(reader);
+		const workflowsForImport = await this.packageParser.getWorkflows(reader);
 
-		const credentialResolution = await this.credentialImporter.resolveForImport({
+		const credentialRequest: CredentialBindingRequest = {
 			requirements: manifest.requirements?.credentials,
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
 			targetProject: project,
 			user: request.user,
-		});
-		const matchedCredentials = resolvedBindingsToSummaries(credentialResolution.successes);
+		};
 
-		const created: WorkflowEntity[] = [];
-		for (const { entity, sourceId } of prepared) {
-			const saved = await this.workflowCreationService.createWorkflow(request.user, entity, {
-				projectId: target.projectId,
-				parentFolderId: target.folderId ?? undefined,
-				publicApi: true,
-				source: 'import',
-				sourceWorkflowId: sourceId,
-			});
-			created.push(saved);
+		const credentialPlan = await this.credentialImporter.plan(credentialRequest);
+		const workflowPlan = await this.workflowImporter.plan(
+			workflowsForImport,
+			request.workflowConflictPolicy,
+			target.projectId,
+		);
+
+		const blockingIssues = this.collectBlockingIssues(
+			workflowPlan,
+			credentialPlan,
+			credentialRequest,
+		);
+
+		const packageSummary: ImportPackageSummary = {
+			sourceN8nVersion: manifest.sourceN8nVersion,
+			sourceId: manifest.sourceId,
+			exportedAt: manifest.exportedAt,
+		};
+
+		if (blockingIssues.length > 0) {
+			throw toImportBlockedError(blockingIssues);
 		}
 
+		const { outcomes, bindings } = await this.workflowImporter.apply(
+			workflowPlan,
+			{ user: request.user, ...target },
+			createBindings({ credentials: credentialPlan.successes }),
+		);
+
+		const imported = outcomes.filter(({ status }) => status !== 'skipped');
 		this.eventService.emit('workflows-imported', {
 			user: request.user,
 			projectId: target.projectId,
-			workflowIds: created.map((w) => w.id),
+			workflowIds: imported.map(({ workflow }) => workflow.id),
 			packageSourceId: manifest.sourceId,
 			packageVersion: manifest.packageFormatVersion,
-			matchedCredentialIds: matchedCredentials.map((m) => m.targetId),
+			matchedCredentialIds: [...credentialPlan.successes.values()],
 		});
 
+		return this.buildResult(packageSummary, target.projectId, outcomes, bindings);
+	}
+
+	/** Folds every subsystem's blocking conditions into one uniformly-typed list. */
+	private collectBlockingIssues(
+		workflowPlan: WorkflowImportPlan,
+		credentialResolution: CredentialResolution,
+		credentialRequest: CredentialBindingRequest,
+	): BlockingIssue[] {
+		const workflowConflicts: BlockingIssue[] = workflowPlan.conflicts.map((conflict) => ({
+			type: 'workflow-conflict',
+			...conflict,
+		}));
+
+		const credentialFailures: BlockingIssue[] = this.credentialImporter
+			.blockingFailures(credentialResolution, credentialRequest)
+			.map(({ kind, sourceId, usedByWorkflows }) => ({
+				type: 'credential-unresolved',
+				kind,
+				sourceId,
+				usedByWorkflows,
+			}));
+
+		return [...workflowConflicts, ...credentialFailures];
+	}
+
+	private buildResult(
+		packageSummary: ImportPackageSummary,
+		projectId: string,
+		outcomes: WorkflowImportOutcome[],
+		bindings: PackageImportBindings,
+	): ImportResult {
 		return {
-			package: {
-				sourceN8nVersion: manifest.sourceN8nVersion,
-				sourceId: manifest.sourceId,
-				exportedAt: manifest.exportedAt,
-			},
-			workflows: created.map((w) => ({
-				sourceId: w.sourceWorkflowId ?? '',
-				localId: w.id,
-				name: w.name,
-				projectId: target.projectId,
-				parentFolderId: w.parentFolder?.id ?? null,
-				activeVersionId: w.activeVersionId ?? null,
+			package: packageSummary,
+			workflows: outcomes.map(({ workflow, sourceWorkflowId, status }) => ({
+				sourceWorkflowId,
+				localId: workflow.id,
+				name: workflow.name,
+				projectId,
+				parentFolderId: workflow.parentFolder?.id ?? null,
+				activeVersionId: workflow.activeVersionId ?? null,
+				status,
 			})),
-			credentials: { matched: matchedCredentials },
+			bindings: serializeBindings(bindings),
 		};
-	}
-
-	private async loadPackageManifest(reader: TarPackageReader) {
-		try {
-			const rawManifest = await reader.readManifest();
-			return packageManifestSchema.parse(rawManifest);
-		} catch (error) {
-			if (error instanceof BadRequestError) throw error;
-			if (error instanceof ZodError) {
-				throw new BadRequestError('Package manifest failed validation');
-			}
-			throw new BadRequestError('Failed to read package manifest');
-		}
-	}
-
-	private async prepareWorkflows(
-		entries: ReadonlyArray<{ id: string; target: string }>,
-		reader: TarPackageReader,
-	): Promise<PreparedWorkflow[]> {
-		const prepared: PreparedWorkflow[] = [];
-
-		for (const entry of entries) {
-			const path = `${entry.target}/workflow.json`;
-
-			let content: Buffer;
-			try {
-				content = await reader.readFile(path);
-			} catch (cause) {
-				throw new UserError(`Package manifest references a missing workflow file at ${path}.`, {
-					cause,
-				});
-			}
-
-			const wire = jsonParse<SerializedWorkflow>(content.toString('utf-8'), {
-				errorMessage: `Package workflow file at ${path} is not valid JSON.`,
-			});
-
-			let entity: WorkflowEntity;
-			try {
-				const partial = this.workflowSerializer.deserialize(wire);
-				entity = Object.assign(new WorkflowEntity(), partial);
-			} catch (cause) {
-				if (cause instanceof ZodError) {
-					throw new UserError(`Package workflow file at ${path} failed schema validation.`, {
-						cause,
-					});
-				}
-				throw cause;
-			}
-
-			WorkflowHelpers.validateWorkflowStructure(entity);
-
-			prepared.push({ entity, sourceId: entry.id });
-		}
-
-		return prepared;
 	}
 
 	private async resolveTarget(

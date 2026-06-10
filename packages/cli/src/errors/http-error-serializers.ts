@@ -19,9 +19,10 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 			const body: { message: string } & Record<string, unknown> = {
 				message: descriptor.message,
 			};
-			// Only `failures` is safe to expose publicly; the rest of `meta` stays internal.
-			if (descriptor.meta?.failures !== undefined) {
-				body.failures = descriptor.meta.failures;
+			// Blocking-issue errors (package import) expose the structured list so
+			// clients can see every blocker; the rest of `meta` stays internal.
+			if (descriptor.meta?.issues !== undefined) {
+				body.issues = descriptor.meta.issues;
 			}
 			return {
 				status: descriptor.status,

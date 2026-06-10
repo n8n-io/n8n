@@ -12,10 +12,10 @@
  * positives on file paths, IDs, or base64 payloads would make the output
  * unreadable.
  */
-const SECRET_KEYS =
+export const SECRET_KEYS =
 	'password|passwd|secret|credentials?|api[_-]?key|authorization|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token';
 
-const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
+export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// Authorization-header substrings: `Bearer <token>`, `Basic <token>`, `Token <token>`
 	/\b(?:Bearer|Basic|Token)\s+[A-Za-z0-9._~+/=-]{12,}/gi,
 	// OpenAI / Anthropic API keys

@@ -33,11 +33,21 @@ export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
 /**
- * Context-supplied read-only signal for the workflow editor. When provided and
- * its current value is `true`, the canvas is treated as read-only on top of
- * the editor's own read-only signals (permissions, archive, branch, collab,
- * builder streaming). Used by adapters (e.g. the AI artifact host) to lock
- * editing while an external agent is mutating the workflow.
+ * AI editor capabilities a host can toggle per editor, using enablement
+ * semantics (an explicit `false` supersedes; omitted or `true` falls back to
+ * the editor's own gating). Grows over time.
  */
-export const EditorExternalReadOnlyKey: InjectionKey<Readonly<Ref<boolean>>> =
-	Symbol('EditorExternalReadOnly');
+export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi';
+/**
+ * Per-editor host overrides. The AI features use enablement semantics
+ * (`false` = superseded/off; omitted or `true` falls back to the editor's own
+ * gating, and a `true` can never grant a feature the instance disabled).
+ * `readOnly` is a direct state flag — `true` forces the canvas read-only on top
+ * of the editor's own gating. Provided by editor hosts that supersede
+ * capabilities — e.g. the Instance AI preview.
+ */
+export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
+	readOnly?: boolean;
+};
+export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
+	Symbol('EditorEnabledFeatures');

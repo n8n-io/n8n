@@ -572,6 +572,72 @@ describe('useImportCurlCommand', () => {
 			const curl = 'curl -X POST -d "key=value"';
 			expect(() => toHttpNodeParameters(curl)).toThrow('no URL specified!');
 		});
+
+		test('Should wrap integer JSON body values in expressions', () => {
+			const curl =
+				"curl 'http://hostname' -H 'content-type: application/json' --data-raw '{\"size\":100}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('keypair');
+			expect(parameters.bodyParameters?.parameters[0]).toEqual({
+				name: 'size',
+				value: '={{ 100 }}',
+			});
+		});
+
+		test('Should wrap boolean JSON body values in expressions', () => {
+			const curl =
+				"curl 'http://hostname' -H 'content-type: application/json' --data-raw '{\"active\":true,\"verified\":false}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('keypair');
+			expect(parameters.bodyParameters?.parameters[0]).toEqual({
+				name: 'active',
+				value: '={{ true }}',
+			});
+			expect(parameters.bodyParameters?.parameters[1]).toEqual({
+				name: 'verified',
+				value: '={{ false }}',
+			});
+		});
+
+		test('Should wrap null JSON body values in expressions', () => {
+			const curl =
+				"curl 'http://hostname' -H 'content-type: application/json' --data-raw '{\"name\":null}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('keypair');
+			expect(parameters.bodyParameters?.parameters[0]).toEqual({
+				name: 'name',
+				value: '={{ null }}',
+			});
+		});
+
+		test('Should use plain strings and expressions for mixed JSON body values', () => {
+			const curl =
+				'curl \'http://hostname\' -H \'content-type: application/json\' --data-raw \'{"name":"Alice","age":30}\'';
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('keypair');
+			expect(parameters.bodyParameters?.parameters[0]).toEqual({ name: 'name', value: 'Alice' });
+			expect(parameters.bodyParameters?.parameters[1]).toEqual({
+				name: 'age',
+				value: '={{ 30 }}',
+			});
+		});
+
+		test('Should use keypair mode with plain strings when all JSON body values are strings', () => {
+			const curl =
+				'curl \'http://hostname\' -H \'content-type: application/json\' --data-raw \'{"login":"user","password":"pass"}\'';
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('keypair');
+			expect(parameters.bodyParameters?.parameters[0]).toEqual({ name: 'login', value: 'user' });
+			expect(parameters.bodyParameters?.parameters[1]).toEqual({
+				name: 'password',
+				value: 'pass',
+			});
+		});
 	});
 });
 

@@ -4,7 +4,24 @@ import { nextTick, ref, shallowRef } from 'vue';
 
 import { WORKFLOW_PREVIEW_ORIGIN } from '@mcp-apps/server/constants';
 
+import {
+	WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS,
+	WORKFLOW_PREVIEW_TELEMETRY_EVENTS,
+	WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES,
+	WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES,
+	WORKFLOW_PREVIEW_TOOL_NAMES,
+} from '../constants';
 import { useWorkflowPreview } from './use-workflow-preview';
+
+const { telemetryTrack } = vi.hoisted(() => ({
+	telemetryTrack: vi.fn(),
+}));
+
+vi.mock('@mcp-apps/telemetry', () => ({
+	useTelemetry: () => ({
+		track: telemetryTrack,
+	}),
+}));
 
 vi.mock('@mcp-apps/i18n', () => ({
 	useI18n: () => ({
@@ -43,6 +60,7 @@ function createDeferred<T>() {
 
 describe('useWorkflowPreview', () => {
 	beforeEach(() => {
+		telemetryTrack.mockClear();
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 	});
 
@@ -189,5 +207,246 @@ describe('useWorkflowPreview', () => {
 		await flushPromises();
 
 		expect(preview.previewWorkflow.value?.id).toBe('rerun');
+	});
+
+	it('tracks preview rendered successfully only after the workflow is sent to the iframe', async () => {
+		const callServerTool = vi.fn().mockResolvedValue({
+			isError: false,
+			structuredContent: { workflow: { id: 'abc123', nodes: [], connections: {} } },
+		});
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ callServerTool } as unknown as App),
+			appSlug: 'workflow-preview',
+			hostContext: ref<McpUiHostContext>(),
+			hostVersion: shallowRef({ name: 'Claude Desktop', version: '1.2.3' }),
+			toolResult,
+		});
+
+		toolResult.value = {
+			url: 'https://n8n.example.com/workflow/abc123',
+			workflowId: 'abc123',
+		};
+		await flushPromises();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDERED_SUCCESSFULLY,
+			expect.anything(),
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_TOOL_CALL_REQUESTED,
+			{
+				app: 'workflow-preview',
+				load_request_id: expect.any(Number),
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				preview_status: 'loading',
+				tool_name: WORKFLOW_PREVIEW_TOOL_NAMES.GET_WORKFLOW_DETAILS,
+				workflow_id: 'abc123',
+			},
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_TOOL_CALL_COMPLETED,
+			expect.objectContaining({
+				app: 'workflow-preview',
+				load_request_id: expect.any(Number),
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				outcome: WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES.SUCCESS,
+				tool_name: WORKFLOW_PREVIEW_TOOL_NAMES.GET_WORKFLOW_DETAILS,
+				workflow_id: 'abc123',
+			}),
+		);
+
+		preview.previewSent.value = true;
+		await nextTick();
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDERED_SUCCESSFULLY,
+			{
+				app: 'workflow-preview',
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				preview_status: 'visible',
+				workflow_id: 'abc123',
+			},
+		);
+	});
+
+	it('tracks preview render failure when the preview iframe is not supported', async () => {
+		const callServerTool = vi.fn().mockResolvedValue({
+			isError: false,
+			structuredContent: { workflow: { id: 'abc123', nodes: [], connections: {} } },
+		});
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ callServerTool } as unknown as App),
+			appSlug: 'workflow-preview',
+			hostContext: ref<McpUiHostContext>(),
+			hostVersion: shallowRef({ name: 'Claude Desktop', version: '1.2.3' }),
+			toolResult,
+		});
+
+		toolResult.value = {
+			url: 'https://n8n.example.com/workflow/abc123',
+			workflowId: 'abc123',
+		};
+		await flushPromises();
+
+		preview.handlePreviewError('Preview not supported');
+		await nextTick();
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED,
+			{
+				app: 'workflow-preview',
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				preview_status: 'error',
+				reason: WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.PREVIEW_NOT_SUPPORTED,
+				workflow_id: 'abc123',
+			},
+		);
+	});
+
+	it('tracks preview render failure when workflow details cannot be loaded', async () => {
+		const callServerTool = vi.fn().mockResolvedValue({ isError: true });
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ callServerTool } as unknown as App),
+			appSlug: 'workflow-preview',
+			hostContext: ref<McpUiHostContext>(),
+			hostVersion: shallowRef({ name: 'Claude Desktop', version: '1.2.3' }),
+			toolResult,
+		});
+
+		toolResult.value = {
+			url: 'https://n8n.example.com/workflow/abc123',
+			workflowId: 'abc123',
+		};
+		await flushPromises();
+
+		expect(preview.previewError.value).toBe('workflowPreview.error.detailsUnavailable');
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_TOOL_CALL_COMPLETED,
+			expect.objectContaining({
+				app: 'workflow-preview',
+				load_request_id: expect.any(Number),
+				outcome: WORKFLOW_PREVIEW_TOOL_CALL_OUTCOMES.TOOL_ERROR,
+				tool_name: WORKFLOW_PREVIEW_TOOL_NAMES.GET_WORKFLOW_DETAILS,
+				workflow_id: 'abc123',
+			}),
+		);
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED,
+			{
+				app: 'workflow-preview',
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				preview_status: 'error',
+				reason: WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.WORKFLOW_DETAILS_UNAVAILABLE,
+				workflow_id: 'abc123',
+			},
+		);
+	});
+
+	it('tracks preview crashes reported by the preview iframe', async () => {
+		const callServerTool = vi.fn().mockResolvedValue({
+			isError: false,
+			structuredContent: { workflow: { id: 'abc123', nodes: [], connections: {} } },
+		});
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ callServerTool } as unknown as App),
+			appSlug: 'workflow-preview',
+			hostContext: ref<McpUiHostContext>(),
+			hostVersion: shallowRef({ name: 'Claude Desktop', version: '1.2.3' }),
+			toolResult,
+		});
+
+		toolResult.value = {
+			url: 'https://n8n.example.com/workflow/abc123',
+			workflowId: 'abc123',
+		};
+		await flushPromises();
+
+		preview.handlePreviewCrash('iframe crashed with Authorization: Bearer abc.def-ghi_jkl/mno=');
+		await nextTick();
+
+		expect(telemetryTrack).toHaveBeenCalledWith(WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_CRASHED, {
+			app: 'workflow-preview',
+			error_message: 'iframe crashed with [REDACTED]',
+			mcp_client_name: 'Claude Desktop',
+			mcp_client_version: '1.2.3',
+			preview_status: 'visible',
+			source: 'preview_iframe_error',
+			workflow_id: 'abc123',
+		});
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.PREVIEW_RENDER_FAILED,
+			{
+				app: 'workflow-preview',
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				preview_status: 'error',
+				reason: WORKFLOW_PREVIEW_RENDER_FAILURE_REASONS.PREVIEW_CRASHED,
+				workflow_id: 'abc123',
+			},
+		);
+	});
+
+	it('tracks Open in n8n clicks for valid workflow URLs', async () => {
+		const callServerTool = vi.fn(async () => await new Promise(() => {}));
+		const openLink = vi.fn().mockResolvedValue({ isError: false });
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ callServerTool, openLink } as unknown as App),
+			appSlug: 'workflow-preview',
+			hostContext: ref<McpUiHostContext>(),
+			hostVersion: shallowRef({ name: 'Claude Desktop', version: '1.2.3' }),
+			toolResult,
+		});
+
+		toolResult.value = {
+			url: 'https://n8n.example.com/workflow/abc123',
+			workflowId: 'abc123',
+		};
+		await nextTick();
+
+		await preview.handleOpenWorkflow(WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES.PREVIEW_HEADER);
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.OPEN_IN_N8N_CLICKED,
+			{
+				app: 'workflow-preview',
+				mcp_client_name: 'Claude Desktop',
+				mcp_client_version: '1.2.3',
+				preview_status: 'loading',
+				source: WORKFLOW_PREVIEW_OPEN_IN_N8N_SOURCES.PREVIEW_HEADER,
+				workflow_id: 'abc123',
+			},
+		);
+		expect(openLink).toHaveBeenCalledWith({ url: 'https://n8n.example.com/workflow/abc123' });
+	});
+
+	it('does not track Open in n8n clicks for invalid workflow URLs', async () => {
+		const openLink = vi.fn().mockResolvedValue({ isError: false });
+		const toolResult = shallowRef<unknown>();
+		const preview = useWorkflowPreview({
+			app: shallowRef({ openLink } as unknown as App),
+			hostContext: ref<McpUiHostContext>(),
+			toolResult,
+		});
+
+		toolResult.value = { url: 'javascript:alert(1)', workflowId: 'abc123' };
+		await nextTick();
+
+		await preview.handleOpenWorkflow();
+
+		expect(telemetryTrack).not.toHaveBeenCalledWith(
+			WORKFLOW_PREVIEW_TELEMETRY_EVENTS.OPEN_IN_N8N_CLICKED,
+			expect.anything(),
+		);
+		expect(openLink).not.toHaveBeenCalled();
 	});
 });
