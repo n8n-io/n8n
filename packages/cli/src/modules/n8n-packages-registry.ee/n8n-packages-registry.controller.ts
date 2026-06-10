@@ -7,8 +7,9 @@ import { N8nPackagesRegistryService } from './n8n-packages-registry.service';
 export class N8nPackagesRegistryController {
 	constructor(private readonly registryService: N8nPackagesRegistryService) {}
 
-	@Get('/')
-	hello(_req: AuthenticatedRequest) {
-		return { connected: this.registryService.isConnected() };
+	@Get('/settings')
+	async getSettings(_req: AuthenticatedRequest) {
+		const isConnected = await this.registryService.isConnected();
+		return { connected: isConnected };
 	}
 }
