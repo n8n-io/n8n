@@ -585,6 +585,25 @@ export class WorkflowService {
 			await this.activeWorkflowManager.add(workflowId, mode);
 			didPublish = true;
 		} catch (error) {
+			// Activation failed partway through. It may already have registered triggers
+			// e.g. a Schedule Trigger before throwing; this ensures they get deregistered,
+			// which otherwise may cause them to start unintended executions.
+			// Done before the rollback below so the active version is still
+			// resolvable by `clearWebhooks`.
+			try {
+				await this.activeWorkflowManager.remove(workflowId);
+
+				this.logger.warn(
+					`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
+					{ workflowId },
+				);
+			} catch (cleanupError) {
+				this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
+					workflowId,
+					error: cleanupError,
+				});
+			}
+
 			const rollbackPayload = {
 				active: false,
 				activeVersionId: null,
