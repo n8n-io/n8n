@@ -1,6 +1,7 @@
 import { ref, reactive, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentPersistedMessageDto,
@@ -346,6 +347,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					if (found.msg.interactive) {
 						const updated = rebuildInteractiveFromHistory(found.tc);
 						if (updated) found.msg.interactive = updated;
+					} else if (found.tc.tool === N8N_CHAT_ACTION_TOOL_NAME) {
+						// Display-only n8n chat cards never suspend, so no interactive
+						// was attached earlier — build the resolved card now so it
+						// renders as soon as the tool settles.
+						const rebuilt = rebuildInteractiveFromHistory(found.tc);
+						if (rebuilt) found.msg.interactive = rebuilt;
 					}
 					if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
 						found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;

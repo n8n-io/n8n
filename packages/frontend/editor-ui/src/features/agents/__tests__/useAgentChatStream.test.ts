@@ -734,6 +734,48 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(msg.status).toBe('awaitingUser');
 	});
 
+	it('renders a resolved display-only n8n_chat card when its tool result arrives', async () => {
+		// Display-only cards (no interactive components) never suspend — the
+		// card must still attach to the message when the tool resolves.
+		const cardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					text: 'Snapshot:',
+					card: {
+						title: 'Account Snapshot',
+						components: [{ type: 'fields', fields: [{ label: 'ARR', value: '$1m' }] }],
+					},
+				},
+			},
+		};
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: cardInput,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				output: { ok: true },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('show me a snapshot');
+		await nextTick();
+
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(msg.interactive?.resolvedAt).toBeDefined();
+		expect(msg.status).not.toBe('awaitingUser');
+	});
+
 	it('builder tool (ask_question) still sets tc.input from suspend payload and builds card', async () => {
 		const askInput = {
 			question: 'What is your preferred language?',

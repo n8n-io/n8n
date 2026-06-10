@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import type { RichCardComponentType } from '@n8n/api-types';
 
 import {
 	AgentChatIntegration,
@@ -49,7 +50,7 @@ export class SlackIntegration extends AgentChatIntegration {
 		],
 	};
 
-	readonly supportedComponents = [
+	readonly supportedComponents: readonly RichCardComponentType[] = [
 		'section',
 		'button',
 		'select',

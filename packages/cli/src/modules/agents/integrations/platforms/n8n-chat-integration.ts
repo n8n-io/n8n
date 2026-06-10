@@ -1,4 +1,5 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
@@ -41,7 +42,7 @@ export class N8nChatIntegration extends AgentChatIntegration {
 
 	readonly requiresChatInstance = false;
 
-	readonly supportedComponents = [
+	readonly supportedComponents: readonly RichCardComponentType[] = [
 		'section',
 		'button',
 		'select',

@@ -1,7 +1,11 @@
 import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agents';
 import { z } from 'zod';
 
-import type { AgentIntegrationConfig, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	N8N_CHAT_INTEGRATION_TYPE,
+	RichCardComponentType,
+} from '@n8n/api-types';
 import type { ButtonStyle } from 'chat';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
@@ -247,6 +251,21 @@ const cardComponentSchema = z.union([
 		})
 		.strict(),
 ]);
+
+/** Wire shape of a single rich-card component. */
+export type IntegrationCardComponent = z.infer<typeof cardComponentSchema>;
+
+type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+/**
+ * Compile-time lockstep: the wire schema above and the shared
+ * `RICH_CARD_COMPONENT_TYPES` list in `@n8n/api-types` must declare exactly
+ * the same component types. This assignment fails to compile when they drift —
+ * extend the shared list first, then the schema, then the n8n chat renderer.
+ */
+export const richCardComponentTypesInSync: MutuallyAssignable<
+	IntegrationCardComponent['type'],
+	RichCardComponentType
+> = true;
 
 const messageSchema = z
 	.object({

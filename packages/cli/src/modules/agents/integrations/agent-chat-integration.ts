@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
 
 import { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
 import type {
@@ -72,8 +73,11 @@ export abstract class AgentChatIntegration {
 	/**
 	 * Component types this platform supports in integration action cards.
 	 * Omit to signal that the platform has no rich card surface.
+	 * Typed by the shared list so a new component type must be added to
+	 * `RICH_CARD_COMPONENT_TYPES` in `@n8n/api-types` first — which in turn
+	 * forces the wire schema and the n8n chat renderer to handle it.
 	 */
-	readonly supportedComponents?: string[];
+	readonly supportedComponents?: readonly RichCardComponentType[];
 
 	/** Read-only context queries exposed through the generated integration context tool. */
 	readonly contextQueries: IntegrationContextQuery[] = [

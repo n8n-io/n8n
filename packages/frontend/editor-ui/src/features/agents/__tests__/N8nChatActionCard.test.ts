@@ -2,7 +2,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nSelect } from '@n8n/design-system';
 
 import N8nChatActionCard from '../components/interactive/N8nChatActionCard.vue';
 
@@ -45,7 +45,8 @@ describe('N8nChatActionCard', () => {
 		expect(wrapper.text()).toContain('Choose');
 		expect(wrapper.text()).toContain('Options below');
 		expect(wrapper.text()).toContain('Yes');
-		expect(wrapper.text()).toContain('High');
+		// Select options live inside the dropdown popper, not the inline text.
+		expect(wrapper.findComponent(N8nSelect).exists()).toBe(true);
 	});
 
 	it('button click emits the platform resume shape', async () => {
@@ -54,9 +55,12 @@ describe('N8nChatActionCard', () => {
 		expect(wrapper.emitted('submit')?.[0]).toEqual([{ type: 'button', value: 'yes' }]);
 	});
 
-	it('select option click emits the select resume shape', async () => {
+	it('select renders a dropdown and emits the select resume shape on change', async () => {
 		const wrapper = mountCard();
-		await wrapper.find('[data-testid="n8n-chat-card-option"]').trigger('click');
+		const select = wrapper.findComponent(N8nSelect);
+		expect(select.exists()).toBe(true);
+		select.vm.$emit('update:modelValue', 'high');
+		await wrapper.vm.$nextTick();
 		expect(wrapper.emitted('submit')?.[0]).toEqual([
 			{ type: 'select', id: 'priority', value: 'high' },
 		]);
@@ -197,6 +201,17 @@ describe('N8nChatActionCard', () => {
 		expect(wrapper.emitted('submit')?.[0]).toEqual([
 			{ type: 'select', id: 'next_step', value: 'email' },
 		]);
+	});
+
+	it('renders fields provided via the items alias', () => {
+		const itemsCard = {
+			card: {
+				components: [{ type: 'fields', items: [{ label: 'ARR', value: '$1m' }] }],
+			},
+		};
+		const wrapper = mountCard({ input: itemsCard });
+		expect(wrapper.text()).toContain('ARR');
+		expect(wrapper.text()).toContain('$1m');
 	});
 
 	it('disabled blocks radio submission', async () => {

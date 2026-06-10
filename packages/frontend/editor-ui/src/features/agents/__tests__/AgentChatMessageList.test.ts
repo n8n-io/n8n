@@ -33,7 +33,10 @@ vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 }));
 
 vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
-	default: { template: '<div />', props: ['payload', 'projectId', 'agentId'] },
+	default: {
+		template: '<div data-testid="interactive-card-stub" />',
+		props: ['payload', 'projectId', 'agentId'],
+	},
 }));
 
 vi.mock('@/features/ai/chatHub/components/CopyButton.vue', () => ({
@@ -168,6 +171,86 @@ describe('AgentChatMessageList', () => {
 		expect(notices.length).toBeGreaterThan(0);
 		expect(notices[0].text()).toContain('Slack');
 		expect(notices[0].text()).not.toContain('Slack_2');
+	});
+
+	it('keeps a resolved n8n chat card rendered (Slack parity)', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-display-card',
+						role: 'assistant',
+						content: 'Here is your snapshot',
+						interactive: {
+							toolName: 'n8n_chat_action',
+							toolCallId: 'tc-display',
+							resolvedAt: 1,
+							input: {
+								card: {
+									components: [{ type: 'fields', fields: [{ label: 'ARR', value: '$1m' }] }],
+								},
+							},
+						},
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		expect(wrapper.find('[data-testid="interactive-card-stub"]').exists()).toBe(true);
+	});
+
+	it('clears an answered n8n chat card from the chat', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-answered-card',
+						role: 'assistant',
+						content: 'Got it',
+						interactive: {
+							toolName: 'n8n_chat_action',
+							toolCallId: 'tc-answered',
+							resolvedAt: 1,
+							input: {
+								card: { components: [{ type: 'button', label: 'Approve', value: 'approve' }] },
+							},
+							resolvedValue: { type: 'button', value: 'approve' },
+						},
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		expect(wrapper.find('[data-testid="interactive-card-stub"]').exists()).toBe(false);
+	});
+
+	it('collapses resolved builder cards into the tool-step summary (no card)', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-resolved-question',
+						role: 'assistant',
+						content: 'Thanks!',
+						interactive: {
+							toolName: 'ask_question',
+							toolCallId: 'tc-q',
+							resolvedAt: 1,
+							input: { question: 'Pick one', options: [{ label: 'A', value: 'a' }] },
+							resolvedValue: { values: ['a'] },
+						},
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		expect(wrapper.find('[data-testid="interactive-card-stub"]').exists()).toBe(false);
 	});
 
 	it('does not render external-wait notice for suspended n8n_chat_action tool (toolRun path)', () => {

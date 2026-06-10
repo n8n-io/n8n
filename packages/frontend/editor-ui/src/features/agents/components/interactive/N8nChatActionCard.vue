@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { ElRadio } from 'element-plus';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 
 import type {
 	N8nChatCardComponent,
@@ -89,8 +89,8 @@ function isOptionSelected(component: N8nChatCardComponent, value: string): boole
 	);
 }
 
-/** Checked radio value for a radio_select group: the resolved answer, if any. */
-function selectedRadioValue(component: N8nChatCardComponent): string | undefined {
+/** Chosen value for a select/radio_select group: the resolved answer, if any. */
+function selectedOptionValue(component: N8nChatCardComponent): string | undefined {
 	const match = (component.options ?? []).find((option) =>
 		isOptionSelected(component, option.value),
 	);
@@ -155,7 +155,7 @@ function selectedRadioValue(component: N8nChatCardComponent): string | undefined
 						v-for="option in block.component.options ?? []"
 						:key="option.value"
 						:class="$style.radio"
-						:model-value="selectedRadioValue(block.component) ?? ''"
+						:model-value="selectedOptionValue(block.component) ?? ''"
 						:label="option.value"
 						:disabled="disabled"
 						data-testid="n8n-chat-card-radio"
@@ -172,28 +172,26 @@ function selectedRadioValue(component: N8nChatCardComponent): string | undefined
 					<N8nText v-if="block.component.label" :class="$style.selectLabel" bold>
 						{{ block.component.label }}
 					</N8nText>
-					<button
-						v-for="option in block.component.options ?? []"
-						:key="option.value"
-						type="button"
-						:class="[
-							$style.option,
-							isOptionSelected(block.component, option.value) && $style.optionSelected,
-						]"
+					<N8nSelect
+						:model-value="selectedOptionValue(block.component)"
+						size="small"
 						:disabled="disabled"
-						data-testid="n8n-chat-card-option"
-						@click="submitOption(block.component, option.value)"
+						:placeholder="block.component.placeholder"
+						data-testid="n8n-chat-card-select"
+						@update:model-value="submitOption(block.component, $event)"
 					>
-						<span>{{ option.label }}</span>
-						<N8nText v-if="option.description" size="xsmall" color="text-light">
-							{{ option.description }}
-						</N8nText>
-					</button>
+						<N8nOption
+							v-for="option in block.component.options ?? []"
+							:key="option.value"
+							:value="option.value"
+							:label="option.label"
+						/>
+					</N8nSelect>
 				</div>
 
 				<div v-else-if="block.component.type === 'fields'" :class="$style.fieldsGroup">
 					<div
-						v-for="field in block.component.fields ?? []"
+						v-for="field in block.component.fields ?? block.component.items ?? []"
 						:key="field.label"
 						:class="$style.fieldRow"
 					>
@@ -205,7 +203,7 @@ function selectedRadioValue(component: N8nChatCardComponent): string | undefined
 				<img
 					v-else-if="block.component.type === 'image' && block.component.url"
 					:src="block.component.url"
-					:alt="block.component.alt ?? ''"
+					:alt="block.component.alt ?? block.component.altText ?? ''"
 					:class="$style.image"
 				/>
 			</template>
@@ -268,28 +266,6 @@ function selectedRadioValue(component: N8nChatCardComponent): string | undefined
 	margin-right: 0;
 }
 
-.option {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: var(--spacing--5xs);
-	padding: var(--spacing--4xs) var(--spacing--3xs);
-	border: var(--border-width, 1px) var(--border-style, solid) var(--border-color);
-	border-radius: var(--radius--sm);
-	background: transparent;
-	cursor: pointer;
-	text-align: left;
-
-	&:disabled {
-		cursor: default;
-	}
-}
-
-.optionSelected {
-	border-color: var(--color--primary);
-	background-color: var(--color--primary--tint-2);
-}
-
 .fieldsGroup {
 	display: flex;
 	flex-direction: column;
@@ -302,7 +278,11 @@ function selectedRadioValue(component: N8nChatCardComponent): string | undefined
 }
 
 .image {
+	/* The card is a stretching flex column — without align-self the image is
+	   stretched to the card width, upscaling (pixelating) small images. */
+	align-self: flex-start;
 	max-width: 100%;
+	height: auto;
 	border-radius: var(--radius--sm);
 }
 </style>

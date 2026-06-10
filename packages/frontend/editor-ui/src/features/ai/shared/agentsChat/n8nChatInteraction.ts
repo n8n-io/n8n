@@ -1,3 +1,4 @@
+import type { RichCardComponentType } from '@n8n/api-types';
 import { z } from 'zod';
 
 const selectOptionSchema = z
@@ -15,9 +16,13 @@ const cardComponentSchema = z
 		style: z.string().optional(),
 		url: z.string().optional(),
 		alt: z.string().optional(),
+		altText: z.string().optional(),
 		id: z.string().optional(),
+		placeholder: z.string().optional(),
 		options: z.array(selectOptionSchema).optional(),
 		fields: z.array(fieldPairSchema).optional(),
+		/** Alias for `fields` accepted by the wire schema. */
+		items: z.array(fieldPairSchema).optional(),
 		/** Section button accessory (counted as interactive, like the backend). */
 		button: z
 			.object({
@@ -97,3 +102,59 @@ export function parseN8nChatActionInput(input: unknown): N8nChatInteractionInput
 	if (!message.card) return undefined;
 	return { text: message.text, card: message.card };
 }
+
+/**
+ * Human-readable label for a card's resume value: the clicked button's label
+ * or the chosen option's label, falling back to the raw value. Used for the
+ * tool-step summary once an answered card clears from the chat.
+ */
+export function cardChoiceLabel(card: N8nChatCard, resume: N8nChatResumeValue): string {
+	if (resume.type === 'button') {
+		for (const component of card.components) {
+			const candidates =
+				component.type === 'button'
+					? [component]
+					: component.type === 'section' && component.button
+						? [component.button]
+						: [];
+			for (const button of candidates) {
+				if ((button.value ?? button.label ?? '') === resume.value) {
+					return button.label ?? resume.value;
+				}
+			}
+		}
+		return resume.value;
+	}
+	for (const component of card.components) {
+		if (component.type !== 'select' && component.type !== 'radio_select') continue;
+		if (resume.id !== undefined && component.id !== undefined && component.id !== resume.id) {
+			continue;
+		}
+		const option = (component.options ?? []).find((candidate) => candidate.value === resume.value);
+		if (option) return option.label;
+	}
+	return resume.value;
+}
+
+/**
+ * Component types the n8n chat card renderer (`N8nChatActionCard.vue`)
+ * implements. Compile-time lockstep with the shared list: when
+ * `RICH_CARD_COMPONENT_TYPES` in `@n8n/api-types` gains a member (i.e. a new
+ * component type is added for Slack & co), the assignment below fails to
+ * compile until the renderer handles the new type and this list is extended.
+ */
+const RENDERED_CARD_COMPONENT_TYPES = [
+	'section',
+	'fields',
+	'image',
+	'divider',
+	'button',
+	'select',
+	'radio_select',
+] as const;
+
+type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+export const renderedCardComponentTypesInSync: MutuallyAssignable<
+	(typeof RENDERED_CARD_COMPONENT_TYPES)[number],
+	RichCardComponentType
+> = true;

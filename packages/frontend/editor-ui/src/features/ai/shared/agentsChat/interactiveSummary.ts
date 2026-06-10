@@ -2,11 +2,18 @@ import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
 	type AskCredentialResume,
 	type AskLlmResume,
 	type AskQuestionInput,
 	type AskQuestionResume,
 } from '@n8n/api-types';
+
+import {
+	cardChoiceLabel,
+	n8nChatResumeValueSchema,
+	parseN8nChatActionInput,
+} from './n8nChatInteraction';
 
 /**
  * Build a one-line human-readable label for a resolved interactive tool call.
@@ -51,6 +58,17 @@ export function summariseInteractiveOutput(
 		if (!resume.provider || !resume.model) return undefined;
 		const slug = `${resume.provider}/${resume.model}`;
 		return resume.credentialName ? `${slug} · ${resume.credentialName}` : slug;
+	}
+
+	if (toolName === N8N_CHAT_ACTION_TOOL_NAME) {
+		// Answered cards clear from the chat — surface the picked label here.
+		// Display-only cards resolve with an action result (not a resume
+		// value), which fails this parse and correctly yields no summary.
+		const resume = n8nChatResumeValueSchema.safeParse(output);
+		if (!resume.success) return undefined;
+		const parsed = parseN8nChatActionInput(input);
+		if (!parsed) return resume.data.value;
+		return cardChoiceLabel(parsed.card, resume.data);
 	}
 
 	return undefined;

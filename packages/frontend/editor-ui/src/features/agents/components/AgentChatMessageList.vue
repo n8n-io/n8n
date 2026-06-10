@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, wa
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
 import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
 import {
 	buildDisplayGroups,
@@ -58,6 +59,18 @@ function externalWaitPlatform(tc: ToolCall): string | undefined {
 	if (!isIntegrationActionSuspend(tc.suspendPayload)) return undefined;
 	const base = tc.tool.replace(/_action$/, '').replace(/_\d+$/, '');
 	return base.charAt(0).toUpperCase() + base.slice(1);
+}
+
+/**
+ * Open cards always render. Once resolved, answered interactive cards clear
+ * from the chat (builder cards collapse into their tool-step summary; n8n
+ * chat cards leave the picked answer there too) — but display-only n8n chat
+ * cards persist: they are content, and being born resolved they would
+ * otherwise never render at all.
+ */
+function shouldRenderInteractive(payload: InteractivePayload): boolean {
+	if (!payload.resolvedAt) return true;
+	return payload.toolName === N8N_CHAT_ACTION_TOOL_NAME && !isAwaitingCard(payload.input.card);
 }
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
@@ -368,9 +381,9 @@ onBeforeUnmount(() => {
 							}}
 						</N8nText>
 					</template>
-					<div v-if="group.interactives.some((p) => !p.resolvedAt)" :class="$style.interactives">
+					<div v-if="group.interactives.some(shouldRenderInteractive)" :class="$style.interactives">
 						<InteractiveCard
-							v-for="payload in group.interactives.filter((p) => !p.resolvedAt)"
+							v-for="payload in group.interactives.filter(shouldRenderInteractive)"
 							:key="payload.toolCallId"
 							:payload="payload"
 							:project-id="projectId"
@@ -488,7 +501,7 @@ onBeforeUnmount(() => {
 					</div>
 
 					<div
-						v-if="group.message.interactive && !group.message.interactive.resolvedAt"
+						v-if="group.message.interactive && shouldRenderInteractive(group.message.interactive)"
 						:class="$style.interactives"
 					>
 						<InteractiveCard
