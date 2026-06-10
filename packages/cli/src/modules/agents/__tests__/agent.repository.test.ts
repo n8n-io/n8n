@@ -86,8 +86,8 @@ describe('AgentRepository', () => {
 				skip: jest.fn().mockReturnThis(),
 				take: jest.fn().mockReturnThis(),
 				getManyAndCount: jest.fn().mockResolvedValue([agents, 1]),
-			} as never;
-			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb);
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			const result = await repository.findByProjectIdsPaginated(['project-1'], {
 				skip: 0,
@@ -113,8 +113,8 @@ describe('AgentRepository', () => {
 				skip: jest.fn().mockReturnThis(),
 				take: jest.fn().mockReturnThis(),
 				getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
-			} as never;
-			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb);
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			await repository.findByProjectIdsPaginated(['p1', 'p2'], {
 				skip: 0,
