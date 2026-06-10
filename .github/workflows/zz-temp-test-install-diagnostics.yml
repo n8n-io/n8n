@@ -1,0 +1,67 @@
+# TEMPORARY — delete before merge.
+#
+# Deterministically reproduces the DEVP-409 failure the FAITHFUL way: it injects
+# a failing root `postinstall` into package.json (after checkout, never
+# committed), then runs the REAL `pnpm install --frozen-lockfile` through the
+# setup-nodejs composite. That produces a genuine `ELIFECYCLE` through pnpm's
+# real reporter and the SafeChain shim — the same code path as the intermittent
+# CI failures — instead of a synthetic non-pnpm exit.
+#
+# Editing only `scripts.postinstall` does not change dependency resolution, so
+# `--frozen-lockfile` stays valid (verified locally).
+#
+# What each run tells us:
+#   - silent / parallel-* : postinstall exits 1 with NO output — the exact
+#     ticket scenario. If the combined log still captures nothing, the env
+#     snapshot must still appear (proves the breadcrumb works). Comparing the
+#     combined log here vs. local tells us WHO swallows: pnpm's reporter (then
+#     it'd be empty locally too — it isn't) or the CI environment (SafeChain
+#     stdio proxy / Blacksmith console).
+#   - with-output : postinstall prints to stderr then exits 1 — confirms a
+#     talkative lifecycle failure is surfaced end to end.
+#   - parallel-a / parallel-b : two concurrent failing jobs sharing the same
+#     github.job — validates the uploaded artifact names don't collide.
+#
+# Run:       gh workflow run zz-temp-test-install-diagnostics.yml --ref <branch>
+# Inspect:   gh run download <run-id> -D /tmp/diag && find /tmp/diag
+#            (every job is EXPECTED to fail — assert on the artifacts, not success)
+name: zz-temp Test install diagnostics
+
+on:
+  workflow_dispatch:
+
+jobs:
+  force-install-failure:
+    # Mirror the real Typecheck/E2E jobs so we exercise the same runner class
+    # (Blacksmith) where the silent swallow was observed.
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        case:
+          - { name: silent, postinstall: 'node -e "process.exit(1)"' }
+          - { name: with-output, postinstall: 'node -e "console.error(''FORCED_FAILURE_DETAIL_VISIBLE''); process.exit(1)"' }
+          - { name: parallel-a, postinstall: 'node -e "process.exit(1)"' }
+          - { name: parallel-b, postinstall: 'node -e "process.exit(1)"' }
+    name: force-fail (${{ matrix.case.name }})
+    steps:
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+
+      - name: Inject a failing root postinstall (faithful ELIFECYCLE repro)
+        shell: bash
+        env:
+          POSTINSTALL_CMD: ${{ matrix.case.postinstall }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            pkg.scripts = pkg.scripts || {};
+            pkg.scripts.postinstall = process.env.POSTINSTALL_CMD;
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2));
+          '
+          echo "Injected postinstall: $POSTINSTALL_CMD"
+
+      - name: Run setup-nodejs (real pnpm install --frozen-lockfile, expected to fail)
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: '' # install fails first; skip build explicitly
