@@ -313,6 +313,7 @@ export {
 	isInstanceAiSandboxProvider,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
+	instanceAiAttachmentSchema,
 	InstanceAiEvalExecutionRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
