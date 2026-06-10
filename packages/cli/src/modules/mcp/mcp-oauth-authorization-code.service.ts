@@ -1,10 +1,10 @@
+import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
 
 import type { AuthorizationCode } from './database/entities/oauth-authorization-code.entity';
 import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
-import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 /**
  * Handles OAuth 2.1 authorization code lifecycle for MCP server
@@ -62,12 +62,12 @@ export class McpOAuthAuthorizationCodeService {
 		});
 
 		if (!authRecord) {
-			throw new OAuthError('invalid_grant', 'Invalid authorization code');
+			throw new InvalidGrantError('Invalid authorization code');
 		}
 
 		if (authRecord.expiresAt < Date.now()) {
 			await this.authorizationCodeRepository.remove(authRecord);
-			throw new OAuthError('invalid_grant', 'Authorization code expired');
+			throw new InvalidGrantError('Authorization code expired');
 		}
 
 		return authRecord;
@@ -124,7 +124,7 @@ export class McpOAuthAuthorizationCodeService {
 
 		const numAffected = result.affected ?? 0;
 		if (numAffected < 1) {
-			throw new OAuthError('invalid_grant', 'Authorization code already used');
+			throw new InvalidGrantError('Authorization code already used');
 		}
 
 		authRecord.used = true;
@@ -141,7 +141,7 @@ export class McpOAuthAuthorizationCodeService {
 
 		const numAffected = result.affected ?? 0;
 		if (numAffected < 1) {
-			throw new OAuthError('invalid_grant', 'Authorization code already used');
+			throw new InvalidGrantError('Authorization code already used');
 		}
 	}
 
@@ -150,7 +150,7 @@ export class McpOAuthAuthorizationCodeService {
 	async getCodeChallenge(authorizationCode: string, clientId: string): Promise<string> {
 		const authRecord = await this.findAuthorizationCode(authorizationCode, clientId);
 		if (!authRecord) {
-			throw new OAuthError('invalid_grant', 'Invalid authorization code');
+			throw new InvalidGrantError('Invalid authorization code');
 		}
 		return authRecord.codeChallenge;
 	}

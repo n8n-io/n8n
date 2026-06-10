@@ -2,19 +2,6 @@ import { HttpErrorKind, type HttpErrorDescriptor } from '@/errors/http-error-cla
 
 const GENERIC_PUBLIC_MESSAGE = 'Internal server error';
 
-/** `meta` keys from import-conflict errors that are safe to expose publicly. */
-const PUBLIC_CONFLICT_META_KEYS = ['code', 'conflicts'] as const;
-
-function pickPublicConflictMeta(meta: Record<string, unknown> = {}) {
-	const picked = Object.fromEntries(
-		PUBLIC_CONFLICT_META_KEYS.filter((key) => meta[key] !== undefined).map((key) => [
-			key,
-			meta[key],
-		]),
-	);
-	return Object.keys(picked).length > 0 ? picked : undefined;
-}
-
 export type InternalRestErrorBody = {
 	code: number;
 	message: string;
@@ -32,16 +19,10 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 			const body: { message: string } & Record<string, unknown> = {
 				message: descriptor.message,
 			};
-			// Only `failures` is safe to expose publicly; the rest of `meta` stays internal.
-			if (descriptor.meta?.failures !== undefined) {
-				body.failures = descriptor.meta.failures;
-			}
-			// Workflow import conflicts expose structured metadata so clients can
-			// resolve which workflows clashed.
-			const conflictMeta = pickPublicConflictMeta(descriptor.meta);
-			if (conflictMeta) {
-				body.code = descriptor.code;
-				body.meta = conflictMeta;
+			// Blocking-issue errors (package import) expose the structured list so
+			// clients can see every blocker; the rest of `meta` stays internal.
+			if (descriptor.meta?.issues !== undefined) {
+				body.issues = descriptor.meta.issues;
 			}
 			return {
 				status: descriptor.status,
