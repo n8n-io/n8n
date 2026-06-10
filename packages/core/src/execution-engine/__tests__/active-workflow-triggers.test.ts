@@ -488,7 +488,7 @@ describe('ActiveWorkflowTriggers', () => {
 			await flushPromises();
 
 			// While the poll is still in flight, the workflow is deactivated/reactivated.
-			await activeWorkflows.remove(workflowId);
+			await activeWorkflowTriggers.remove(workflowId);
 
 			// The in-flight poll now returns data
 			resolveInFlightPoll([[{ json: {} }]]);
@@ -521,7 +521,7 @@ describe('ActiveWorkflowTriggers', () => {
 			await flushPromises();
 
 			// While the poll is still in flight, deactivate the workflow
-			await activeWorkflows.remove(workflowId);
+			await activeWorkflowTriggers.remove(workflowId);
 
 			// The in-flight poll now fails
 			rejectInFlightPoll(new Error('poll failed'));
@@ -540,7 +540,7 @@ describe('ActiveWorkflowTriggers', () => {
 			const executeScheduledPoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
 
 			// Workflow is removed before the cron ticks
-			await activeWorkflows.remove(workflowId);
+			await activeWorkflowTriggers.remove(workflowId);
 			triggersAndPollers.runPollFunction.mockClear();
 
 			executeScheduledPoll();
@@ -553,6 +553,11 @@ describe('ActiveWorkflowTriggers', () => {
 
 		it('drops a stale in-flight poll but keeps emitting from the reactivated workflow', async () => {
 			// Deactivate then reactivate while a poll is in flight.
+			// Dropping the stale poll loses no events: its cursor advance is never
+			// persisted (persistence happens only inside `__emit`), so the reactivated
+			// registration re-fetches the same events — proven against the real
+			// `__emit`/`saveStaticData` chain in active-workflow-manager.test.ts
+			// ("does not persist the state of an in-flight poll dropped by workflow removal").
 			let resolveStalePoll!: (value: INodeExecutionData[][] | null) => void;
 
 			triggersAndPollers.runPollFunction
@@ -570,7 +575,7 @@ describe('ActiveWorkflowTriggers', () => {
 			await flushPromises();
 
 			// Deactivate, then reactivate while v1 poll is in flight.
-			await activeWorkflows.remove(workflowId);
+			await activeWorkflowTriggers.remove(workflowId);
 			triggersAndPollers.runPollFunction
 				.mockResolvedValueOnce(null) // v2 activation test poll
 				.mockResolvedValueOnce([[{ json: { fresh: true } }]]); // v2 scheduled poll
@@ -588,49 +593,6 @@ describe('ActiveWorkflowTriggers', () => {
 			await flushPromises();
 			expect(pollFunctions.__emit).toHaveBeenCalledTimes(1);
 			expect(pollFunctions.__emit).toHaveBeenCalledWith([[{ json: { fresh: true } }]]);
-		});
-
-		it('redelivers a dropped poll result exactly once through the reactivated registration', async () => {
-			// Test whether dropping a poll run would cause poll static data
-			// to be updated without starting a workflow, which would cause data loss, as the poller would
-			// advance its state without resulting in an execution.
-			// Instead we want the poller to not update its state, whether or not the poll function ran
-			// so the newly activated workflow's poller can naturally pick up from the previous static data
-			// and resume polling.
-			const events = [[{ json: { id: 'meow' } }]];
-
-			let resolveStalePoll!: (value: INodeExecutionData[][] | null) => void;
-
-			triggersAndPollers.runPollFunction
-				.mockResolvedValueOnce(null) // v1 activation test poll
-				.mockReturnValueOnce(
-					new Promise<INodeExecutionData[][] | null>((resolve) => {
-						resolveStalePoll = resolve;
-					}),
-				); // v1 scheduled poll: picks up events, hangs in flight
-
-			await addWorkflow({ pollNodes: [pollNode] });
-			const executeStalePoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
-			executeStalePoll();
-			await flushPromises();
-
-			// Reactivate while the v1 poll is still in flight.
-			await activeWorkflows.remove(workflowId);
-
-			triggersAndPollers.runPollFunction
-				.mockResolvedValueOnce(null) // v2 activation test poll
-				.mockResolvedValueOnce(events); // v2 fetches the same events again since cursor unchanged by dropped `__emit`
-			await addWorkflow({ pollNodes: [pollNode] });
-			const executeFreshPoll = scheduledTaskManager.registerCron.mock.calls[1][1] as () => void;
-
-			resolveStalePoll(events);
-			await flushPromises();
-			expect(pollFunctions.__emit).not.toHaveBeenCalled();
-
-			executeFreshPoll();
-			await flushPromises();
-			expect(pollFunctions.__emit).toHaveBeenCalledTimes(1);
-			expect(pollFunctions.__emit).toHaveBeenCalledWith(events);
 		});
 	});
 

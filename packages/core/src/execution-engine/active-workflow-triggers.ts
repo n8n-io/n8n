@@ -312,8 +312,8 @@ export class ActiveWorkflowTriggers {
 		// `add()` always assigns a fresh one, so if a scheduled poll finishes after the
 		// workflow was removed or reactivated, it no longer matches and its
 		// result, belonging to the now superseded version, must not be emitted.
-		const registration = this.activeWorkflows[workflowId];
-		const isSuperseded = () => this.activeWorkflows[workflowId] !== registration;
+		const registration = this.activeTriggersByWorkflowId.get(workflowId);
+		const isSuperseded = () => this.activeTriggersByWorkflowId.get(workflowId) !== registration;
 
 		return async (testingTrigger = false) => {
 			return await this.tracing.startSpan(

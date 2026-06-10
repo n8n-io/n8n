@@ -627,8 +627,8 @@ describe('ActiveWorkflowManager', () => {
 			});
 
 			test('does not persist the state of an in-flight poll dropped by workflow removal', async () => {
-				// ActiveWorkflows drops in-flight polls of superseded registrations before
-				// `__emit`; see active-workflows.ts. That is only safe because persistence
+				// ActiveWorkflowTriggers drops in-flight polls of superseded registrations before
+				// `__emit`; see active-workflow-triggers.ts. That is only safe because persistence
 				// happens exclusively in `__emit`, and by skipping it, a poller advancing
 				// its state via getWorkflowStaticData() inside poll() only mutates in-memory,
 				// so the next registration's poller re-fetches the same events from the stored state.
@@ -676,7 +676,7 @@ describe('ActiveWorkflowManager', () => {
 
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
-				const realActiveWorkflows = new ActiveWorkflows(
+				const realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
 					mock(),
 					scheduledTaskManager,
 					{
@@ -684,17 +684,17 @@ describe('ActiveWorkflowManager', () => {
 							await wf.nodeTypes
 								.getByNameAndVersion(node.type, node.typeVersion)
 								.poll!.call(pollFunctions),
-					} as ConstructorParameters<typeof ActiveWorkflows>[2],
+					} as ConstructorParameters<typeof ActiveWorkflowTriggers>[2],
 					mock(),
 					{
 						startSpan: async (_options: unknown, fn: (span: unknown) => Promise<void>) =>
 							await fn({ setStatus: () => {} }),
 						pickWorkflowAttributes: () => ({}),
 						pickNodeAttributes: () => ({}),
-					} as unknown as ConstructorParameters<typeof ActiveWorkflows>[4],
+					} as unknown as ConstructorParameters<typeof ActiveWorkflowTriggers>[4],
 				);
 
-				await realActiveWorkflows.add(
+				await realActiveWorkflowTriggers.add(
 					'wf-1',
 					workflow,
 					additionalData,
@@ -722,7 +722,7 @@ describe('ActiveWorkflowManager', () => {
 				// Second cron tick hangs in flight; the workflow is removed during that time
 				executeScheduledPoll();
 				await sleep(0);
-				await realActiveWorkflows.remove('wf-1');
+				await realActiveWorkflowTriggers.remove('wf-1');
 				resolveInFlightPoll([[{ json: { id: 3 } }]]);
 				await sleep(0);
 
