@@ -3434,7 +3434,219 @@ describe('OauthService', () => {
 					),
 				).rejects.toThrow(InvalidOAuthUrlError);
 			});
+
+			it('should throw InvalidOAuthUrlError when discovered authorization server URL is rejected by OAuth URL validation', async () => {
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: {
+						authorization_servers: ['ftp://127.0.0.1'],
+						resource: 'https://mcp.example.com',
+					},
+				});
+
+				await expect(
+					(service as any).discoverAndResolveResource(
+						makeDcrCredentials(),
+						{ cid: '1', origin: 'static-credential' } as any,
+						'https://mcp.example.com',
+					),
+				).rejects.toThrow(InvalidOAuthUrlError);
+			});
+
+			it('should keep the supplied authorization server when discovery fails and DCR is disabled', async () => {
+				const oauthCredentials = makeDcrCredentials({
+					useDynamicClientRegistration: false,
+					resourceUrl: undefined,
+				});
+				const csrfData = { cid: '1', origin: 'static-credential' } as CreateCsrfStateData;
+				const discoverSpy = jest
+					.spyOn(service as any, 'discoverProtectedResourceMetadata')
+					.mockRejectedValueOnce(new Error('not available'));
+
+				const result = await (service as any).discoverAndResolveResource(
+					oauthCredentials,
+					csrfData,
+					'https://auth.example.com',
+				);
+
+				expect(result).toEqual({
+					authorizationServerUrl: 'https://auth.example.com',
+					discoveredResource: undefined,
+				});
+				expect(oauthCredentials.resource).toBeUndefined();
+				expect(csrfData.resource).toBeUndefined();
+				discoverSpy.mockRestore();
+			});
+
+			it('should fall back to serverUrl as the authorization server when discovery fails and DCR is enabled', async () => {
+				const oauthCredentials = makeDcrCredentials({
+					serverUrl: 'https://auth.example.com/issuer',
+					resourceUrl: undefined,
+				});
+				const csrfData = { cid: '1', origin: 'static-credential' } as CreateCsrfStateData;
+				const discoverSpy = jest
+					.spyOn(service as any, 'discoverProtectedResourceMetadata')
+					.mockRejectedValueOnce(new Error('not available'));
+
+				const result = await (service as any).discoverAndResolveResource(
+					oauthCredentials,
+					csrfData,
+					'https://placeholder.example.com',
+				);
+
+				expect(result).toEqual({
+					authorizationServerUrl: 'https://auth.example.com/issuer',
+					discoveredResource: undefined,
+				});
+				expect(oauthCredentials.resource).toBeUndefined();
+				expect(csrfData.resource).toBeUndefined();
+				discoverSpy.mockRestore();
+			});
+
+			it('should store the resolved resource on the credential and CSRF state', async () => {
+				const oauthCredentials = makeDcrCredentials({ resourceUrl: undefined });
+				const csrfData = { cid: '1', origin: 'static-credential' } as CreateCsrfStateData;
+				const discoverSpy = jest
+					.spyOn(service as any, 'discoverProtectedResourceMetadata')
+					.mockResolvedValueOnce({
+						authorization_servers: ['https://auth.example.com'],
+						resource: 'https://mcp.example.com/mcp',
+					});
+
+				await (service as any).discoverAndResolveResource(
+					oauthCredentials,
+					csrfData,
+					'https://placeholder.example.com',
+				);
+
+				expect(oauthCredentials.resource).toBe('https://mcp.example.com/mcp');
+				expect(csrfData.resource).toBe('https://mcp.example.com/mcp');
+				discoverSpy.mockRestore();
+			});
 		});
+
+		describe('performDynamicClientRegistration', () => {
+			const makeMetadata = (overrides: Record<string, unknown> = {}) => ({
+				authorization_endpoint: 'https://auth.example.com/oauth2/auth',
+				token_endpoint: 'https://auth.example.com/oauth2/token',
+				registration_endpoint: 'https://auth.example.com/oauth2/register',
+				grant_types_supported: ['authorization_code'],
+				token_endpoint_auth_methods_supported: ['client_secret_basic'],
+				code_challenge_methods_supported: [],
+				...overrides,
+			});
+
+			it('should register with the second discovery URL when the first one fails', async () => {
+				const oauthCredentials = makeDcrCredentials();
+				const toUpdate = {};
+
+				jest
+					.mocked(axios.get)
+					.mockRejectedValueOnce(new Error('404'))
+					.mockResolvedValueOnce({ data: makeMetadata() });
+				jest.mocked(axios.post).mockResolvedValueOnce({
+					data: { client_id: 'registered-client-id' },
+				});
+
+				await (service as any).performDynamicClientRegistration(
+					oauthCredentials,
+					'https://auth.example.com/issuer',
+					toUpdate,
+				);
+
+				expect(axios.get).toHaveBeenNthCalledWith(
+					1,
+					'https://auth.example.com/.well-known/oauth-authorization-server/issuer',
+					expect.any(Object),
+				);
+				expect(axios.get).toHaveBeenNthCalledWith(
+					2,
+					'https://auth.example.com/.well-known/openid-configuration/issuer',
+					expect.any(Object),
+				);
+				expect(axios.post).toHaveBeenCalledWith(
+					'https://auth.example.com/oauth2/register',
+					expect.objectContaining({
+						grant_types: ['authorization_code', 'refresh_token'],
+						token_endpoint_auth_method: 'client_secret_basic',
+					}),
+				);
+				expect(toUpdate).toEqual(
+					expect.objectContaining({
+						authUrl: 'https://auth.example.com/oauth2/auth',
+						accessTokenUrl: 'https://auth.example.com/oauth2/token',
+						clientId: 'registered-client-id',
+						grantType: 'authorizationCode',
+						authentication: 'header',
+					}),
+				);
+				expect(toUpdate).not.toHaveProperty('clientSecret');
+				expect(toUpdate).not.toHaveProperty('scope');
+			});
+
+			it.each([
+				['header', 'client_secret_basic'],
+				['body', 'client_secret_post'],
+			] as const)(
+				'should register client credentials flow using %s authentication',
+				async (authentication, authMethod) => {
+					const oauthCredentials = makeDcrCredentials();
+					const toUpdate = {};
+
+					jest.mocked(axios.get).mockResolvedValueOnce({
+						data: makeMetadata({
+							grant_types_supported: ['client_credentials'],
+							token_endpoint_auth_methods_supported: [authMethod],
+						}),
+					});
+					jest.mocked(axios.post).mockResolvedValueOnce({
+						data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
+					});
+
+					await (service as any).performDynamicClientRegistration(
+						oauthCredentials,
+						'https://auth.example.com',
+						toUpdate,
+					);
+
+					expect(oauthCredentials.grantType).toBe('clientCredentials');
+					expect(oauthCredentials.authentication).toBe(authentication);
+					expect(toUpdate).toEqual(
+						expect.objectContaining({
+							grantType: 'clientCredentials',
+							authentication,
+							clientId: 'registered-client-id',
+							clientSecret: 'registered-secret',
+						}),
+					);
+					expect(axios.post).toHaveBeenCalledWith(
+						'https://auth.example.com/oauth2/register',
+						expect.objectContaining({
+							grant_types: ['client_credentials'],
+							token_endpoint_auth_method: authMethod,
+						}),
+					);
+				},
+			);
+
+			it('should throw when metadata does not advertise a supported grant/authentication combination', async () => {
+				jest.mocked(axios.get).mockResolvedValueOnce({
+					data: makeMetadata({
+						grant_types_supported: ['implicit'],
+						token_endpoint_auth_methods_supported: ['none'],
+					}),
+				});
+
+				await expect(
+					(service as any).performDynamicClientRegistration(
+						makeDcrCredentials(),
+						'https://auth.example.com',
+						{},
+					),
+				).rejects.toThrow('No supported grant type and authentication method found');
+				expect(axios.post).not.toHaveBeenCalled();
+			});
+		});
+
 		describe('InvalidTargetError', () => {
 			it('should expose OAuth invalid_target response metadata', () => {
 				const error = new InvalidTargetError('Invalid resource');
