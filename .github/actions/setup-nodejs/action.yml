@@ -119,25 +119,27 @@ runs:
         rm install-safe-chain.sh
       shell: bash
 
-    # pnpm install failures have repeatedly arrived with no actionable output:
-    # a bare `ELIFECYCLE  Command failed with exit code 1.` and an otherwise
-    # empty capture, leaving triage to retry blind. The capture here is built so
-    # the real cause survives *every* failure mode, not just the ones where pnpm
-    # cooperates by flushing its error to stdout before exiting:
+    # pnpm install failures used to arrive with no actionable output: a bare
+    # `ELIFECYCLE  Command failed with exit code 1.` and nothing else, forcing
+    # blind retries. Root cause: the repo `.npmrc` sets `loglevel = warn`, which
+    # in a pnpm *workspace* suppresses lifecycle/build-script output (the
+    # `> pkg postinstall` header and the script's own stdout/stderr). A bare
+    # `--loglevel` CLI flag does NOT override `.npmrc` for that path, but
+    # `--config.loglevel` does — so the failing script's real output reaches us.
+    # (Confirmed on CI across Blacksmith + GitHub-hosted, through the SafeChain
+    # shim and the real pnpm binary: it was never SafeChain or the runner.)
     #
-    #  1. Combined stdout+stderr is streamed live AND persisted to `$INSTALL_LOG`
-    #     via `tee`. `--reporter=append-only` is pinned so we don't drift if pnpm
-    #     changes its CI default; `--loglevel=debug` + `DEBUG=pnpm:*` add
-    #     registry/store/fetch traces; `${PIPESTATUS[0]}` preserves pnpm's real
-    #     exit code through the pipe.
+    # Layered so the cause survives even failure modes pnpm can't report itself:
+    #  1. `--config.loglevel=info` un-suppresses lifecycle output (the actual fix).
+    #     `--reporter=append-only` is pinned so we don't drift if pnpm changes its
+    #     CI default; combined stdout+stderr is streamed live AND persisted to
+    #     `$INSTALL_LOG` via `tee`; `${PIPESTATUS[0]}` preserves pnpm's exit code.
     #  2. `--config.logs-dir` routes pnpm's own `ERR_PNPM_*` diagnostic logs into
     #     a dir we always collect.
     #  3. On failure we dump an environment snapshot written by *this* shell —
     #     node/pnpm versions, the resolved pnpm binary, SafeChain wiring, free
-    #     memory, disk, and kernel OOM lines. This breadcrumb is immune to
-    #     whatever swallows pnpm's own output (reporter buffering, a wrapper
-    #     proxying stdio, an abrupt kill), so even a silent pnpm death is
-    #     diagnosable.
+    #     memory, disk, and kernel OOM lines — so OOM / wrong-binary deaths that
+    #     produce no pnpm output at all are still diagnosable.
     #  4. Everything is uploaded as an artifact by the next step, so the full log
     #     survives even when the live console stream is truncated by the runner.
     #
@@ -151,7 +153,6 @@ runs:
         INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
         PNPM_DIAG_DIR: ${{ runner.temp }}/pnpm-diagnostics
         SAFE_CHAIN_LOGGING: verbose
-        DEBUG: pnpm:*
       run: |
         # Stable, artifact-name-safe id for the upload step (written first so it
         # exists even if the install dies immediately).
@@ -162,7 +163,7 @@ runs:
         set +o pipefail
         timeout --kill-after=30s 300s $INSTALL_COMMAND \
           --config.logs-dir="$PNPM_DIAG_DIR/pnpm-logs" \
-          --reporter=append-only --loglevel=debug 2>&1 | tee "$INSTALL_LOG"
+          --reporter=append-only --config.loglevel=info 2>&1 | tee "$INSTALL_LOG"
         rc=${PIPESTATUS[0]}
         set -o pipefail
 
