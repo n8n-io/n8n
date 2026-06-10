@@ -575,14 +575,12 @@ export function useCanvasMapping({
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
 	}
 
-	const collapsedNodeIds = computed(() => {
-		const ids = new Set<string>();
-		if (!nodeGroupView) return ids;
-		for (const group of workflowDocumentStore.value.allGroups) {
-			if (!nodeGroupView.isGroupCollapsed(group.id)) continue;
-			for (const id of group.nodeIds) ids.add(id);
-		}
-		return ids;
+	// Node id → its collapsed group, for nodes hidden by a collapsed group.
+	const collapsedGroupByNodeId = computed<Map<string, IWorkflowGroup>>(() => {
+		if (!nodeGroupView) return new Map();
+		return buildCollapsedGroupByNodeId(workflowDocumentStore.value.allGroups, (id) =>
+			nodeGroupView.isGroupCollapsed(id),
+		);
 	});
 
 	// Display size by node id. WorkflowCanvas uses this for group bounds so
@@ -652,21 +650,14 @@ export function useCanvasMapping({
 				data,
 				...additionalNodePropertiesById.value[node.id],
 				draggable: node.draggable,
-				hidden: collapsedNodeIds.value.has(node.id) ? true : undefined,
+				hidden: collapsedGroupByNodeId.value.has(node.id) ? true : undefined,
 			};
 		});
 	});
 
-	const collapsedGroupByNodeIdIndex = computed<Map<string, IWorkflowGroup>>(() => {
-		if (!nodeGroupView) return new Map();
-		return buildCollapsedGroupByNodeId(workflowDocumentStore.value.allGroups, (id) =>
-			nodeGroupView.isGroupCollapsed(id),
-		);
-	});
-
 	const mappedConnections = computed<CanvasConnection[]>(() => {
 		const raw = mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []);
-		const remapped = remapCollapsedGroupConnections(raw, collapsedGroupByNodeIdIndex.value);
+		const remapped = remapCollapsedGroupConnections(raw, collapsedGroupByNodeId.value);
 		return remapped.map((connection) => {
 			const type = getConnectionType(connection);
 			const label = getConnectionLabel(connection);

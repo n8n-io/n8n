@@ -89,8 +89,8 @@ describe('useCanvasNodeGroupView', () => {
 		});
 	});
 
-	describe('toggleCollapsed / setCollapsed', () => {
-		it('toggleCollapsed flips membership', () => {
+	describe('toggleCollapsed', () => {
+		it('flips membership', () => {
 			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 			expect(view.isGroupCollapsed('g1')).toBe(true);
 
@@ -98,16 +98,6 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.isGroupCollapsed('g1')).toBe(false);
 
 			view.toggleCollapsed('g1');
-			expect(view.isGroupCollapsed('g1')).toBe(true);
-		});
-
-		it('setCollapsed switches state in both directions', () => {
-			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
-
-			view.setCollapsed('g1', false);
-			expect(view.isGroupCollapsed('g1')).toBe(false);
-
-			view.setCollapsed('g1', true);
 			expect(view.isGroupCollapsed('g1')).toBe(true);
 		});
 	});

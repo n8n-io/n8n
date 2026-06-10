@@ -26,15 +26,11 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		}
 	}
 
-	function setCollapsed(id: string, value: boolean) {
-		setExpanded(id, !value);
-	}
+	const isGroupCollapsed = (id: string) => !expandedIds.value.has(id);
 
 	function toggleCollapsed(id: string) {
-		setExpanded(id, !expandedIds.value.has(id));
+		setExpanded(id, isGroupCollapsed(id));
 	}
-
-	const isGroupCollapsed = (id: string) => !expandedIds.value.has(id);
 
 	// Default collapse state per change action: SET (workflow load /
 	// replacement) collapses every group; ADD (new group) starts expanded;
@@ -58,6 +54,5 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	return {
 		isGroupCollapsed,
 		toggleCollapsed,
-		setCollapsed,
 	};
 }
