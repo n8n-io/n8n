@@ -1059,8 +1059,11 @@ export class TelemetryEventRelay extends EventRelay {
 			version_cli: N8N_VERSION,
 			success: false,
 			...executionTelemetryProperties,
+			// True when the execution attempted to run with a private credential, whether
+			// resolution succeeded or failed (e.g. the running user had not connected it).
+			// `attemptedDynamicCredentials` is a superset of `usedDynamicCredentials`.
 			used_private_credentials: Object.values(runData?.data?.resultData?.runData ?? {}).some(
-				(taskDataList) => taskDataList.some((taskData) => taskData.usedDynamicCredentials),
+				(taskDataList) => taskDataList.some((taskData) => taskData.attemptedDynamicCredentials),
 			),
 		};
 

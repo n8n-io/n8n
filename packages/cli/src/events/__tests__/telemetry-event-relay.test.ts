@@ -1616,6 +1616,37 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should set `used_private_credentials` when a private credential resolution was attempted but failed', async () => {
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+				}),
+				userId: 'user123',
+				executionId: 'execution123',
+				runData: {
+					data: {
+						resultData: {
+							runData: {
+								// Node failed to resolve a private credential (e.g. user not connected):
+								// `attemptedDynamicCredentials` is set even though `usedDynamicCredentials` is not.
+								Slack: [{ attemptedDynamicCredentials: true, executionStatus: 'error' }],
+							},
+						},
+					},
+				} as unknown as IRun,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ used_private_credentials: true }),
+			);
+		});
+
 		it('should track on `workflow-saved` event', async () => {
 			const event: RelayEventMap['workflow-saved'] = {
 				user: {
