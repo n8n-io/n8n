@@ -27,6 +27,7 @@ import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
+import { getTrustedOAuthOrigins, parseOAuthCallbackMessage } from '../../composables/oauthCallback';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -1350,8 +1351,20 @@ async function oAuthCredentialAuthorize() {
 	};
 
 	const oauthChannel = new BroadcastChannel('oauth-callback');
-	const receiveMessage = (event: MessageEvent) => {
-		const successfullyConnected = event.data === 'success';
+	const trustedOrigins = getTrustedOAuthOrigins(rootStore.urlBaseEditor);
+	let oauthResultHandled = false;
+
+	const cleanupOAuthListeners = () => {
+		oauthChannel.removeEventListener('message', onChannelMessage);
+		window.removeEventListener('message', onWindowMessage);
+		oauthChannel.close();
+	};
+
+	const handleOAuthResult = (successfullyConnected: boolean) => {
+		if (oauthResultHandled) return;
+
+		oauthResultHandled = true;
+		cleanupOAuthListeners();
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
@@ -1371,8 +1384,6 @@ async function oAuthCredentialAuthorize() {
 		void handleDynamicNotification(successfullyConnected);
 
 		if (successfullyConnected) {
-			oauthChannel.removeEventListener('message', receiveMessage);
-
 			// Set some kind of data that status changes.
 			// As data does not get displayed directly it does not matter what data.
 			credentialData.value = {
@@ -1381,10 +1392,6 @@ async function oAuthCredentialAuthorize() {
 			};
 
 			connectedByMe.value = true;
-
-			void credentialsStore.fetchAllCredentials().then(() => {
-				nodeHelpers.updateNodesCredentialsIssues();
-			});
 
 			void credentialsStore.fetchAllCredentials().then(() => {
 				nodeHelpers.updateNodesCredentialsIssues();
@@ -1400,7 +1407,20 @@ async function oAuthCredentialAuthorize() {
 			}
 		}
 	};
-	oauthChannel.addEventListener('message', receiveMessage);
+
+	function onChannelMessage(event: MessageEvent) {
+		handleOAuthResult(event.data === 'success');
+	}
+
+	// Cross-origin embed fallback: the callback page also posts to the opener.
+	function onWindowMessage(event: MessageEvent) {
+		const result = parseOAuthCallbackMessage(event, trustedOrigins);
+		if (result === null) return;
+		handleOAuthResult(result === 'success');
+	}
+
+	oauthChannel.addEventListener('message', onChannelMessage);
+	window.addEventListener('message', onWindowMessage);
 }
 
 async function onDisconnectMyConnection(): Promise<void> {
