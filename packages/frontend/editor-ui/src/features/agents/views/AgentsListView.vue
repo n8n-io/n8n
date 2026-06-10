@@ -26,6 +26,10 @@ import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '../constants';
 import AgentCard from '../components/AgentCard.vue';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 
+function isAgentResource(value: unknown): value is AgentResource {
+	return typeof value === 'object' && value !== null && 'id' in value;
+}
+
 const AGENTS_SORT_MAP = {
 	lastUpdated: 'updatedAt:desc',
 	lastCreated: 'createdAt:desc',
@@ -222,10 +226,11 @@ onMounted(async () => {
 
 		<template #item="{ item: data }">
 			<AgentCard
+				v-if="isAgentResource(data)"
 				class="mb-2xs"
-				:agent="data as AgentResource"
-				:project-id="(data as AgentResource).projectId"
-				@select="onSelectAgent((data as AgentResource).id, (data as AgentResource).projectId)"
+				:agent="data"
+				:project-id="data.projectId"
+				@select="onSelectAgent(data.id, data.projectId)"
 				@published="onAgentPublished"
 				@unpublished="onAgentUnpublished"
 				@deleted="onAgentDeleted"
