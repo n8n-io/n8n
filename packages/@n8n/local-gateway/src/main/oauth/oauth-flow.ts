@@ -57,9 +57,11 @@ export class OAuthFlow extends EventEmitter<OAuthFlowEvents> {
 		this.now = deps.now ?? (() => Date.now());
 
 		const session = this.store.getSession();
-		this.status = session
-			? { state: 'signedIn', instanceUrl: session.instanceUrl, error: null }
-			: { state: 'signedOut', instanceUrl: null, error: null };
+		this.status = this.withLastInstanceUrl(
+			session
+				? { state: 'signedIn', instanceUrl: session.instanceUrl, error: null }
+				: { state: 'signedOut', instanceUrl: null, error: null },
+		);
 	}
 
 	getStatus(): AuthStatus {
@@ -165,6 +167,8 @@ export class OAuthFlow extends EventEmitter<OAuthFlowEvents> {
 			refreshToken: tokens.refresh_token ?? previousRefreshToken,
 			expiresAt: tokens.expires_in ? this.now() + tokens.expires_in * 1000 : undefined,
 		});
+		// Remembered separately from the session so it survives sign-out and prefills the form.
+		this.store.setLastInstanceUrl(instanceUrl);
 	}
 
 	private failAuthorization(error: unknown): void {
@@ -174,9 +178,14 @@ export class OAuthFlow extends EventEmitter<OAuthFlowEvents> {
 		this.setStatus({ state: 'error', instanceUrl: this.status.instanceUrl, error: message });
 	}
 
-	private setStatus(status: AuthStatus): void {
-		this.status = status;
-		this.emit('authStatusChanged', status);
+	private setStatus(status: Omit<AuthStatus, 'lastInstanceUrl'>): void {
+		this.status = this.withLastInstanceUrl(status);
+		this.emit('authStatusChanged', this.status);
+	}
+
+	/** Every emitted status carries the remembered URL, read fresh in case `persist` just updated it. */
+	private withLastInstanceUrl(status: Omit<AuthStatus, 'lastInstanceUrl'>): AuthStatus {
+		return { ...status, lastInstanceUrl: this.store.getLastInstanceUrl() };
 	}
 }
 

@@ -7,7 +7,12 @@ import SignInView from './views/SignInView.vue';
 
 import type { AuthStatus } from '../shared/types';
 
-const auth = ref<AuthStatus>({ state: 'signedOut', instanceUrl: null, error: null });
+const auth = ref<AuthStatus>({
+	state: 'signedOut',
+	instanceUrl: null,
+	lastInstanceUrl: null,
+	error: null,
+});
 
 onMounted(async () => {
 	// Subscribe before fetching the initial status so a transition emitted while we await can't slip

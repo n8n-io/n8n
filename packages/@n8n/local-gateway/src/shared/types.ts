@@ -71,6 +71,8 @@ export interface AuthStatus {
 	state: AuthState;
 	/** The instance the user is signing in to / signed in to, when known. */
 	instanceUrl: string | null;
+	/** The last successfully signed-in instance URL; survives sign-out and app relaunch. */
+	lastInstanceUrl: string | null;
 	/** Human-readable error, set when `state === 'error'`. */
 	error: string | null;
 }
