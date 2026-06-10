@@ -288,10 +288,6 @@ export class AgentRuntimeReconstructionService {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
 	}
 
-	private isKnowledgeBaseEnabled(): boolean {
-		return isAgentKnowledgeBaseEnabled(this.agentsConfig);
-	}
-
 	private makeToolResolver(projectId: string, userId: string): ToolResolver {
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
@@ -353,7 +349,7 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createGetEnvironmentTool());
 
-		if (this.isKnowledgeBaseEnabled()) {
+		if (isAgentKnowledgeBaseEnabled(this.agentsConfig)) {
 			const { createKnowledgeRetrievalTools } = await import(
 				'./tools/knowledge/search-knowledge.tool'
 			);

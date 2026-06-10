@@ -15,8 +15,6 @@ import type { AgentFile } from '../entities/agent-file.entity';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 
 interface MockFilesystem {
-	downloadFile: jest.Mock;
-	uploadFile: jest.Mock;
 	uploadFiles: jest.Mock;
 	createFolder: jest.Mock;
 	deleteFile: jest.Mock;
@@ -135,8 +133,6 @@ function makeService(
 
 function makeFilesystem(): MockFilesystem {
 	return {
-		downloadFile: jest.fn<Promise<Buffer>, [string]>(async () => Buffer.from('')),
-		uploadFile: jest.fn<Promise<void>, [Buffer, string]>(async () => {}),
 		uploadFiles: jest.fn<Promise<void>, [Array<{ source: Buffer | string; destination: string }>]>(
 			async () => {},
 		),
@@ -443,7 +439,7 @@ describe('AgentKnowledgeSandboxService', () => {
 
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
 			expect.stringContaining(
-				`rg --json --fixed-strings --line-number --color=never --hidden --sort path --max-count 21 --max-columns 501 --max-columns-preview --ignore-case --context 1 -- 'hello' './notes.txt'`,
+				"rg --json --fixed-strings --line-number --color=never --hidden --sort path --max-count 21 --max-columns 501 --max-columns-preview --ignore-case --context 1 -- 'hello' './notes.txt'",
 			),
 			undefined,
 			undefined,
@@ -522,7 +518,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			300,
 		);
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining(`substr($0, 1, 2001) } NR > 3 { exit }' './notes.txt'`),
+			expect.stringContaining("substr($0, 1, 2001) } NR > 3 { exit }' './notes.txt'"),
 			undefined,
 			undefined,
 			300,

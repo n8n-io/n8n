@@ -4,11 +4,10 @@ import { OperationalError } from 'n8n-workflow';
 
 import type { AgentFile } from './entities/agent-file.entity';
 
-export const KNOWLEDGE_MOUNT_PATH = '/home/daytona/workspace/agent-knowledge';
-export const KNOWLEDGE_FILES_DIR = `${KNOWLEDGE_MOUNT_PATH}/files`;
+export const AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH = '/home/daytona/workspace/agent-knowledge';
+export const KNOWLEDGE_FILES_DIR = `${AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH}/files`;
 
-export const AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH = KNOWLEDGE_MOUNT_PATH;
-export const AGENT_KNOWLEDGE_VOLUME_SUBPATH_PREFIX = 'agent-knowledge';
+const AGENT_KNOWLEDGE_VOLUME_SUBPATH_PREFIX = 'agent-knowledge';
 
 const DAYTONA_VOLUME_STORAGE_PREFIX = 'daytona-volume:';
 
@@ -19,14 +18,12 @@ export interface AgentKnowledgeFileUpload {
 }
 
 export interface AgentKnowledgeFilesystem {
-	readFile(filePath: string): Promise<Buffer>;
-	writeFile(filePath: string, content: Buffer | string): Promise<void>;
 	uploadFiles(files: AgentKnowledgeFileUpload[]): Promise<void>;
 	deleteFile(filePath: string, recursive?: boolean): Promise<void>;
 	ensureDir(dirPath: string): Promise<void>;
 }
 
-function hasControlCharacter(value: string): boolean {
+export function hasControlCharacter(value: string): boolean {
 	for (const character of value) {
 		if (character.charCodeAt(0) < 32) {
 			return true;
@@ -62,7 +59,7 @@ export function assertKnowledgePathSegment(segment: string, label: string): void
 	}
 }
 
-export function sanitizeStorageFileName(originalName: string): string {
+function sanitizeStorageFileName(originalName: string): string {
 	const basename = path.basename(originalName);
 	return Array.from(basename, sanitizePathCharacter).join('');
 }

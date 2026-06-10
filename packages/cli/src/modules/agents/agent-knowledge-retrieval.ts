@@ -1,20 +1,23 @@
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { z } from 'zod';
 
-export const MAX_QUERY_LENGTH = 500;
-export const MAX_FILE_PATH_LENGTH = 512;
+import { hasControlCharacter } from './agent-knowledge-storage';
+
+const MAX_QUERY_LENGTH = 500;
+const MAX_FILE_PATH_LENGTH = 512;
+const MAX_FIND_FILES_LIMIT = 100;
+const MAX_SEARCH_TEXT_LIMIT = 100;
+const MAX_RANGES = 5;
+const MAX_RANGE_LINES = 80;
+const MAX_FILTER_FILES = 10;
+const MAX_FILE_ID_LENGTH = 64;
+
 export const DEFAULT_FIND_FILES_LIMIT = 20;
-export const MAX_FIND_FILES_LIMIT = 100;
 export const DEFAULT_SEARCH_TEXT_LIMIT = 20;
-export const MAX_SEARCH_TEXT_LIMIT = 100;
 export const MAX_CONTEXT_LINES = 5;
-export const MAX_RANGES = 5;
-export const MAX_RANGE_LINES = 80;
 export const MAX_SEARCH_LINE_CHARS = 500;
 export const MAX_READ_LINE_CHARS = 2_000;
 export const MAX_OPERATION_OUTPUT_CHARS = 20_000;
-export const MAX_FILTER_FILES = 10;
-export const MAX_FILE_ID_LENGTH = 64;
 
 const filePathSchema = z.string().trim().min(1).max(MAX_FILE_PATH_LENGTH);
 const fileIdSchema = z.string().trim().min(1).max(MAX_FILE_ID_LENGTH);
@@ -195,13 +198,4 @@ export function truncateKnowledgeText(
 	}
 
 	return { text: text.slice(0, maxLength), truncated: true };
-}
-
-function hasControlCharacter(value: string): boolean {
-	for (const character of value) {
-		if (character.charCodeAt(0) < 32) {
-			return true;
-		}
-	}
-	return false;
 }

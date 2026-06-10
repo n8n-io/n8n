@@ -67,21 +67,10 @@ function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 class InMemoryKnowledgeFilesystem implements AgentKnowledgeFilesystem {
 	private readonly files = new Map<string, Buffer>();
 	readonly deleteCalls: Array<{ filePath: string; recursive?: boolean }> = [];
-	readonly writeCalls: string[] = [];
 	readonly uploadFileCalls: AgentKnowledgeFileUpload[] = [];
 
-	async readFile(filePath: string): Promise<Buffer> {
-		const content = this.files.get(filePath);
-		if (!content) {
-			const error = new Error('not found') as Error & { statusCode: number };
-			error.statusCode = 404;
-			throw error;
-		}
-		return content;
-	}
-
-	async writeFile(filePath: string, content: Buffer | string): Promise<void> {
-		this.writeCalls.push(filePath);
+	/** Test-only fixture seeding; not part of AgentKnowledgeFilesystem. */
+	seed(filePath: string, content: Buffer | string): void {
 		const buffer = typeof content === 'string' ? Buffer.from(content, 'utf-8') : content;
 		this.files.set(filePath, buffer);
 	}
@@ -248,7 +237,6 @@ describe('AgentKnowledgeService', () => {
 				destination: `${KNOWLEDGE_FILES_DIR}/notes.txt`,
 			},
 		]);
-		expect(filesystem.writeCalls).toEqual([]);
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/notes.txt`)?.toString('utf-8')).toBe(
 			'hello world',
 		);
@@ -372,7 +360,7 @@ describe('AgentKnowledgeService', () => {
 				binaryDataId: toVolumeStorageReference('file-1.txt'),
 			}),
 		);
-		await filesystem.writeFile(`${KNOWLEDGE_FILES_DIR}/file-1.txt`, 'hello');
+		filesystem.seed(`${KNOWLEDGE_FILES_DIR}/file-1.txt`, 'hello');
 
 		await expect(service.deleteFile(agentId, projectId, 'file-1', userId)).resolves.toBeUndefined();
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/file-1.txt`)).toBeUndefined();
@@ -404,8 +392,8 @@ describe('AgentKnowledgeService', () => {
 				mimeType: 'text/markdown',
 			}),
 		);
-		await filesystem.writeFile(`${KNOWLEDGE_FILES_DIR}/file-1.txt`, 'hello');
-		await filesystem.writeFile(`${KNOWLEDGE_FILES_DIR}/file-2.md`, '# Title');
+		filesystem.seed(`${KNOWLEDGE_FILES_DIR}/file-1.txt`, 'hello');
+		filesystem.seed(`${KNOWLEDGE_FILES_DIR}/file-2.md`, '# Title');
 
 		await expect(
 			service.deleteAllFilesForAgent(projectId, agentId, userId),
