@@ -17,7 +17,7 @@ export class N8nPackagesRegistryService {
 		return isConnected;
 	}
 
-	findAllProjects() {
-		return this.gitFolderReaderService.findAllResources({ resourceType: 'project' });
+	async findAllProjects() {
+		return await this.gitFolderReaderService.findAllResources({ resourceType: 'project' });
 	}
 }

@@ -9,7 +9,12 @@ export class N8nPackagesRegistryController {
 
 	@Get('/settings')
 	async getSettings(_req: AuthenticatedRequest) {
-		const isConnected = await this.registryService.isConnected();
+		const isConnected = this.registryService.isConnected();
 		return { connected: isConnected };
+	}
+
+	@Get('/projects')
+	async findAllProjects(_req: AuthenticatedRequest) {
+		return await this.registryService.findAllProjects();
 	}
 }
