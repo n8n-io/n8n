@@ -84,7 +84,7 @@ declare module 'n8n-workflow' {
 	}
 }
 
-export * from './active-workflows';
+export * from './active-workflow-triggers';
 export * from './scheduled-task-manager';
 export type * from './interfaces';
 export * from './routing-node';

@@ -1,6 +1,7 @@
 import { WorkflowExecutionStatus } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { isAuthenticatedRequest } from '@n8n/db';
 import { Get, Options, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
@@ -62,9 +63,11 @@ export class WorkflowStatusController {
 			throw new BadRequestError('Workflow ID is missing');
 		}
 
+		const user = isAuthenticatedRequest(req) ? req.user : undefined;
 		const status = await this.credentialResolverWorkflowService.getWorkflowStatus(
 			workflowId,
 			credentialContext,
+			user,
 		);
 
 		const isReady = status.every((s) => s.status === 'configured');

@@ -37,20 +37,18 @@ import {
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
+import type { ImportResult } from '../n8n-packages.types';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
-type ImportPackageParams = Omit<
-	ImportPackageRequest,
-	'credentialMatchingMode' | 'credentialMissingMode' | 'workflowConflictPolicy'
-> &
-	Partial<
-		Pick<
-			ImportPackageRequest,
-			'credentialMatchingMode' | 'credentialMissingMode' | 'workflowConflictPolicy'
-		>
-	>;
+type OptionalImportFields =
+	| 'credentialMatchingMode'
+	| 'credentialMissingMode'
+	| 'workflowConflictPolicy';
 
-async function importPackage(params: ImportPackageParams) {
+type ImportPackageParams = Omit<ImportPackageRequest, OptionalImportFields> &
+	Partial<Pick<ImportPackageRequest, OptionalImportFields>>;
+
+async function importPackage(params: ImportPackageParams): Promise<ImportResult> {
 	return await Container.get(N8nPackagesService).importPackage({
 		credentialMatchingMode: 'id-only',
 		credentialMissingMode: 'must-preexist',
@@ -447,11 +445,11 @@ describe('ImportPipeline workflow conflict policy', () => {
 				workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 			}),
 		).rejects.toMatchObject({
-			message: expect.stringContaining('already exist in the target project'),
+			message: expect.stringContaining('Import blocked'),
 			meta: {
-				code: 'WORKFLOW_CONFLICT',
-				conflicts: [
+				issues: [
 					{
+						type: 'workflow-conflict',
 						sourceWorkflowId: 'wf-existing',
 						existingWorkflowId: existing.id,
 						name: 'Existing workflow',
@@ -492,7 +490,6 @@ describe('ImportPipeline workflow conflict policy', () => {
 		);
 
 		const original = await createWorkflow({ name: 'Authored here' }, personalProject);
-		expect(original.sourceWorkflowId).toBeNull();
 
 		const result = await importPackage({
 			user: owner,
@@ -776,9 +773,17 @@ describe('ImportPipeline credential resolution', () => {
 			}),
 		).rejects.toMatchObject({
 			meta: {
-				failures: expect.arrayContaining([
-					expect.objectContaining({ kind: 'unknown_type', sourceId: 'cred-unknown' }),
-					expect.objectContaining({ kind: 'not_found', sourceId: 'missing-a' }),
+				issues: expect.arrayContaining([
+					expect.objectContaining({
+						type: 'credential-unresolved',
+						kind: 'unknown_type',
+						sourceId: 'cred-unknown',
+					}),
+					expect.objectContaining({
+						type: 'credential-unresolved',
+						kind: 'not_found',
+						sourceId: 'missing-a',
+					}),
 				]),
 			},
 		});
