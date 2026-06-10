@@ -737,7 +737,7 @@ describe('ActiveWorkflowManager', () => {
 					} as unknown as ConstructorParameters<typeof ActiveWorkflowTriggers>[4],
 				);
 
-				await realActiveWorkflowTriggers.add(
+				await realActiveWorkflowTriggers.addAllTriggers(
 					'wf-1',
 					workflow,
 					additionalData,
