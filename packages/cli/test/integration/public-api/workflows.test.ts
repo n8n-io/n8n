@@ -26,6 +26,7 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
 
@@ -1670,9 +1671,9 @@ describe('POST /workflows redaction floor enforcement', () => {
 		// persisted/seeded rather than stripped on save. The spy survives the global
 		// restoreMocks reset by being set per-test.
 		license.enable('feat:dataRedaction');
-		jest
-			.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
-			.mockResolvedValue('production');
+		vi.spyOn(Container.get(InstanceRedactionEnforcementService), 'get').mockResolvedValue(
+			'production',
+		);
 	});
 
 	const savedRedactionPolicy = async (workflowId: string) =>
@@ -1736,9 +1737,9 @@ describe('PUT /workflows/:id redaction floor enforcement', () => {
 
 	beforeEach(() => {
 		license.enable('feat:dataRedaction');
-		jest
-			.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
-			.mockResolvedValue('production');
+		vi.spyOn(Container.get(InstanceRedactionEnforcementService), 'get').mockResolvedValue(
+			'production',
+		);
 	});
 
 	const savedRedactionPolicy = async (workflowId: string) =>

@@ -15,11 +15,6 @@ import type { Plugin } from 'vite';
  * and Node-required dist produces two `@n8n/di` Containers. Resolving them to
  * `dist` via Node (`require.resolve`, which ignores the `module` field) and
  * externalizing fixes both.
- *
- * `@n8n/backend-test-utils` is intentionally excluded: it is loaded from source
- * so it picks up `vitest-mock-extended`/`vi` (its `dist/` is the stale jest
- * build). `@n8n/mcp-apps/server` is excluded because a dedicated alias maps it to
- * source for mocking.
  */
 export function workspaceDistExternals(): Plugin {
 	const projectDir = process.cwd();

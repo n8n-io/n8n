@@ -8,7 +8,7 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
@@ -70,7 +70,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		} as WorkflowEntity;
 	}
 
-	/** Pin all tracked mock functions so jest-mock-extended Proxy returns stable instances. */
+	/** Pin all tracked mock functions so vitest-mock-extended Proxy returns stable instances. */
 	function setupDefaultMocks() {
 		workflowRepository.findById.mockResolvedValue(null);
 		workflowRepository.update.mockResolvedValue({} as never);
@@ -92,30 +92,30 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	}
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.useFakeTimers();
+		vi.clearAllMocks();
+		vi.useFakeTimers();
 		setupDefaultMocks();
 		consumer = createConsumer();
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	describe('lifecycle', () => {
 		test('startPolling starts interval when feature flag is on', () => {
 			consumer.startPolling();
 
-			expect(jest.getTimerCount()).toBe(1);
+			expect(vi.getTimerCount()).toBe(1);
 		});
 
 		test('polling schedules the next cycle after a timer fires', async () => {
 			consumer.startPolling();
 
-			await jest.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
 
 			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(1);
-			expect(jest.getTimerCount()).toBe(1);
+			expect(vi.getTimerCount()).toBe(1);
 		});
 
 		test('polling stops scheduling when leadership is lost during a cycle', async () => {
@@ -125,10 +125,10 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			});
 			consumer.startPolling();
 
-			await jest.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
 
 			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(1);
-			expect(jest.getTimerCount()).toBe(0);
+			expect(vi.getTimerCount()).toBe(0);
 		});
 
 		test('polling reports claim errors and schedules the next cycle', async () => {
@@ -136,12 +136,12 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			outboxRepository.claimNextPendingRecord.mockRejectedValueOnce(error);
 			consumer.startPolling();
 
-			await jest.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
 
 			expect(errorReporter.error).toHaveBeenCalledWith(error, { shouldBeLogged: true });
-			expect(jest.getTimerCount()).toBe(1);
+			expect(vi.getTimerCount()).toBe(1);
 
-			await jest.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
 			expect(outboxRepository.claimNextPendingRecord).toHaveBeenCalledTimes(2);
 		});
 
@@ -149,22 +149,22 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			consumer = createConsumer(false);
 			consumer.startPolling();
 
-			expect(jest.getTimerCount()).toBe(0);
+			expect(vi.getTimerCount()).toBe(0);
 		});
 
 		test('stopPolling clears the interval', () => {
 			consumer.startPolling();
-			expect(jest.getTimerCount()).toBe(1);
+			expect(vi.getTimerCount()).toBe(1);
 
 			consumer.stopPolling();
-			expect(jest.getTimerCount()).toBe(0);
+			expect(vi.getTimerCount()).toBe(0);
 		});
 
 		test('shutdown stops polling', () => {
 			consumer.startPolling();
 			consumer.shutdown();
 
-			expect(jest.getTimerCount()).toBe(0);
+			expect(vi.getTimerCount()).toBe(0);
 		});
 	});
 

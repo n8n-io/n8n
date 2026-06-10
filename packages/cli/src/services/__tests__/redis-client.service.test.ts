@@ -263,8 +263,8 @@ describe('RedisClientService', () => {
 
 		it('should not exit the process under test even when the timeout is exceeded', () => {
 			const T0 = 1_700_000_000_000;
-			const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(T0);
-			const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(T0);
+			const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 			// No enableExitOnRedisUnreachable() — exercise the default test behaviour.
 			const service = new RedisClientService(logger, globalConfig);

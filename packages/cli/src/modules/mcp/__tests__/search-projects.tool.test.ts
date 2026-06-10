@@ -26,7 +26,7 @@ describe('search-projects MCP tool', () => {
 		});
 
 		const licenseState = mockInstance(LicenseState, {
-			isTeamProjectsLicensed: jest.fn().mockReturnValue(teamProjectsEnabled),
+			isTeamProjectsLicensed: vi.fn().mockReturnValue(teamProjectsEnabled),
 		});
 
 		const telemetry = mockInstance(Telemetry, {

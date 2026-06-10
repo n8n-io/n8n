@@ -68,7 +68,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	});
 
 	it('forwards resolveInlineSubAgentProviderTools into delegate tool metadata', () => {
-		const resolveInlineSubAgentProviderTools = jest.fn().mockReturnValue([]);
+		const resolveInlineSubAgentProviderTools = vi.fn().mockReturnValue([]);
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },

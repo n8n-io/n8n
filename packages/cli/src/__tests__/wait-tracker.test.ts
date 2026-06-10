@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -57,7 +58,7 @@ describe('WaitTracker', () => {
 		// so the tracker logs through the *return value* of `scoped()`, not the injected mock.
 		// Make `scoped()` return the same mock so `logger.error` assertions observe those calls.
 		logger = mock<Logger>();
-		(logger.scoped as jest.Mock).mockReturnValue(logger);
+		(logger.scoped as Mock).mockReturnValue(logger);
 		Container.set(ExecutionPersistence, executionPersistence);
 		waitTracker = new WaitTracker(
 			logger,
@@ -643,7 +644,7 @@ describe('WaitTracker', () => {
 
 					await waitTracker.startExecution(execution.id);
 					postExecutePromise.resolve(subworkflowResults);
-					await jest.advanceTimersByTimeAsync(1000);
+					await vi.advanceTimersByTimeAsync(1000);
 
 					expect(logger.error).toHaveBeenCalled();
 					expect(workflowRunner.run).toHaveBeenCalledTimes(1);
@@ -663,7 +664,7 @@ describe('WaitTracker', () => {
 
 					await waitTracker.startExecution(execution.id);
 					postExecutePromise.resolve(subworkflowResults);
-					await jest.advanceTimersByTimeAsync(5000);
+					await vi.advanceTimersByTimeAsync(5000);
 
 					// run() is called once for the sub-workflow, then once per parent resume attempt.
 					// The second call is the first parent attempt; all attempts fail, so run() is called 4 times total
@@ -694,7 +695,7 @@ describe('WaitTracker', () => {
 
 					await waitTracker.startExecution(execution.id);
 					postExecutePromise.resolve(subworkflowResults);
-					await jest.advanceTimersByTimeAsync(5000);
+					await vi.advanceTimersByTimeAsync(5000);
 
 					// Parent ultimately resumed (subworkflow + failed parent resume attempt + successful retry = 3 runs),
 					// and because it recovered, nothing is logged as an error
@@ -719,7 +720,7 @@ describe('WaitTracker', () => {
 
 					await waitTracker.startExecution(execution.id);
 					postExecutePromise.resolve(subworkflowResults);
-					await jest.advanceTimersByTimeAsync(5000);
+					await vi.advanceTimersByTimeAsync(5000);
 
 					// `workflowRunner.run` is called once for the sub-workflow and once for the (single) parent attempt
 					// the non-retryable error is not retried, and gets logged
