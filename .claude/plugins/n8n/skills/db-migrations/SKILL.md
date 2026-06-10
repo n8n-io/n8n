@@ -123,6 +123,7 @@ Run through this before requesting review. Each item is a real, recurring review
 - [ ] **One logical change per migration**; split unrelated table changes into separate files. — [Don't combine independent schema changes](#dont-combine-independent-schema-changes)
 - [ ] **`up()` / `down()` reads as a list of intentions.** If either body grows past a screen or mixes schema operations with a multi-statement raw-SQL data move, extract the data move into a `private async` method on the same class (e.g. `private async backfillFromX(ctx)`). The top-level should orchestrate, not implement.
 - [ ] **Precedent is the bar to fix, not perpetuate.** When the checklist conflicts with what an older migration does (e.g. redundant `.primary.notNull`, hand-quoted identifiers, missing `.comment()`), the checklist wins for new code — don't copy the violation forward. Note the old occurrences in the PR if you spotted them.
+- [ ] **Regenerated the schema docs** with `pnpm db:schema:docs` and committed the `docs/db/` changes. The `schema-docs-check` CI job fails on stale docs. — [After authoring](#after-authoring)
 
 Treat the checklist as a floor, not a ceiling.
 If any item fails, fix it before opening review.
@@ -779,4 +780,27 @@ A "polymorphic" column pair is one column that points at different tables depend
 - **Separate join tables per relation type** (`credential_external_secret_dependency`, `credential_node_dependency`, …). Each has a real FK. Queries that need "all dependencies" become a UNION.
 - **One nullable FK per possible target** with a CHECK constraint that exactly one is set. Each column is a real FK.
 - **Supertype table**: hoist parents into a single `dependency_target` with its own type column, then have one FK to that table.
--
+
+---
+
+## After authoring
+
+### Regenerate the schema docs
+
+The database schema documentation under `docs/db/` (one set per engine: `docs/db/sqlite/` and `docs/db/postgres/`) is **auto-generated from the migrations** — it's the rendered output of running every migration and introspecting the result with [tbls](https://github.com/k1LoW/tbls). Any migration that changes the schema makes the committed docs stale.
+
+After adding or changing a migration, regenerate and commit the docs:
+
+```sh
+pnpm db:schema:docs
+```
+
+This runs the migrations against a throwaway SQLite file and a throwaway Postgres container, then rewrites `docs/db/`. **Requires Docker** (and `tbls` locally — `brew install tbls`; CI uses the tbls Docker image). Commit the resulting `docs/db/` changes alongside your migration.
+
+To verify without rewriting (what CI runs):
+
+```sh
+pnpm db:schema:check
+```
+
+**Why:** The `schema-docs-check` CI job regenerates the docs and fails the PR if they differ from what's committed. Regenerating as part of the migration change keeps the docs review-ready and avoids a red check. Do **not** hand-edit files under `docs/db/` — they are overwritten on every regeneration.
