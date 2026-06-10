@@ -8,10 +8,7 @@ export class CreateN8nPackagesRegistryConnectionTable1784000000029 implements Re
 			.withColumns(
 				column('id').varchar(36).primary,
 				column('name').varchar(128).notNull,
-				column('type')
-					.varchar(36)
-					.notNull.withEnumCheck(['git'])
-					.comment('Type of package registry connection. Possible values: git.'),
+				column('type').varchar(36).notNull.comment('Type of package registry connection.'),
 				column('config').json.notNull.comment('Registry connection configuration.'),
 				column('credentialId').varchar(36).comment('Optional credential used by the registry.'),
 				column('isEnabled').bool.default(true).notNull,

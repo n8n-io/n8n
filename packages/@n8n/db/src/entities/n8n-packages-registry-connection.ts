@@ -2,10 +2,12 @@ import { Column, Entity, Index } from '@n8n/typeorm';
 
 import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 
-export type N8nPackagesRegistryConnectionType = 'git';
+export type N8nPackagesRegistryConnectionType = 'git' | 's3';
 
 export type N8nPackagesRegistryConnectionConfig = {
 	repositoryUrl?: string;
+	bucketName?: string;
+	region?: string;
 	branch?: string;
 	basePath?: string;
 	projectId?: string;
