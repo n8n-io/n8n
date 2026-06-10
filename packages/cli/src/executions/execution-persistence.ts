@@ -476,20 +476,20 @@ export class ExecutionPersistence {
 			}
 
 			if (data !== undefined && workflowData !== undefined && store === this.dbStore) {
-				// Both data and snapshot are overwritten, so skip reading the existing bundle.
-				// `workflowVersionId` is immutable, so the caller's snapshot already carries it.
 				const sizeBytes = await this.trackWrite(mode, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(data),
 						workflowData: this.toWorkflowSnapshot(workflowData),
 						workflowVersionId: workflowData.versionId ?? null,
 					};
+
 					const result = await tx.update(
 						ExecutionData,
 						{ executionId: ref.executionId },
 						{ data: bundle.data, workflowData: bundle.workflowData },
 					);
 					if ((result.affected ?? 0) === 0) throw new MissingExecutionDataError(ref);
+
 					return this.computeBundleSizeBytes(bundle);
 				});
 				await this.persistSizeBytes(tx, ref.executionId, sizeBytes);
@@ -499,8 +499,6 @@ export class ExecutionPersistence {
 			const existing = await this.trackRead(mode, async () => await store.read(ref, tx));
 			if (!existing) throw new MissingExecutionDataError(ref);
 
-			// Merge supplied fields over the existing bundle; changing `data` or `workflowData`
-			// changes the size.
 			const sizeBytes = await this.trackWrite(mode, async () => {
 				const bundle: ExecutionDataPayload = {
 					data: data !== undefined ? stringify(data) : existing.data,
@@ -509,6 +507,7 @@ export class ExecutionPersistence {
 						: existing.workflowData,
 					workflowVersionId: existing.workflowVersionId,
 				};
+
 				await store.write(ref, bundle, tx);
 				return this.computeBundleSizeBytes(bundle);
 			});
