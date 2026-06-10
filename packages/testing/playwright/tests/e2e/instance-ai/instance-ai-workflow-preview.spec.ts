@@ -53,13 +53,7 @@ test.describe(
 			await n8n.instanceAi.waitForResponseComplete();
 		});
 
-		test('should mark all nodes as success after execution completes', async ({
-			n8n,
-		}, testInfo) => {
-			test.skip(
-				testInfo.project.name.includes('multi-main'),
-				'Execution preview replay is not yet stable in multi-main mode',
-			);
+		test('should mark all nodes as success after execution completes', async ({ n8n }) => {
 			// End-to-end: plan + approve + build + execute + final assertions take >60s
 			// when recording against the real Anthropic API.
 			test.setTimeout(180_000);

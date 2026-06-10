@@ -13,12 +13,7 @@ test.describe(
 		test(
 			'should recover when a background builder task is cancelled',
 			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
-			async ({ api, n8n }, testInfo) => {
-				test.skip(
-					testInfo.project.name.includes('multi-main'),
-					'Background task simulation state is process-local and not stable in multi-main mode',
-				);
-
+			async ({ api, n8n }) => {
 				const owner = await api.signin('owner');
 				const simulation = await api.startInstanceAiBackgroundTimeoutSimulation(owner.id);
 

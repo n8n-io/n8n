@@ -42,13 +42,6 @@ test.describe(
 	() => {
 		test.describe.configure({ timeout: 180_000 });
 
-		test.beforeEach(({}, testInfo) => {
-			test.skip(
-				testInfo.project.name.includes('multi-main'),
-				'Workflow execution replay is not yet stable in multi-main mode',
-			);
-		});
-
 		test('should show run workflow button in preview', async ({ n8n }) => {
 			await n8n.navigate.toInstanceAi();
 

@@ -169,12 +169,8 @@ test.describe(
 			api,
 			n8n,
 			n8nContainer,
-		}, testInfo) => {
+		}) => {
 			test.skip(!n8nContainer, 'LLM replay requires the container proxy harness');
-			test.skip(
-				testInfo.project.name.includes('multi-main'),
-				'Trace replay state is process-local and not stable in multi-main mode',
-			);
 
 			await api.setInstanceAiPermissions({
 				deleteWorkflow: 'always_allow',

@@ -243,10 +243,6 @@ test.describe(
 			async ({ api, n8nContainer, n8n }, testInfo) => {
 				test.setTimeout(600_000);
 				test.skip(!n8nContainer, 'Replay trace assertions require the container proxy harness');
-				test.skip(
-					testInfo.project.name.includes('multi-main'),
-					'Trace replay state is process-local and not stable in multi-main mode',
-				);
 
 				await n8n.navigate.toInstanceAi();
 				await n8n.instanceAi.sendMessage(
