@@ -77,6 +77,14 @@ describe('NodeResourceExplorerService', () => {
 		expect(dynamicNodeParametersService.getOptionsViaMethodName).not.toHaveBeenCalled();
 	});
 
+	test('does not look up the personal project when the credential check fails', async () => {
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+		await expect(service.exploreResources(user, baseParams)).rejects.toThrow();
+
+		expect(projectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
+	});
+
 	test('rejects when the credential type does not match the requested type', async () => {
 		mockCredentialOwned({ type: 'someOtherApi' });
 

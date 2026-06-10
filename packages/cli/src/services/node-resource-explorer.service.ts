@@ -38,15 +38,15 @@ export class NodeResourceExplorerService {
 		user: User,
 		params: ExploreResourcesParams,
 	): Promise<ExploreResourcesResult> {
-		const [credential, personalProject] = await Promise.all([
-			this.credentialsFinderService.findCredentialForUser(params.credentialId, user, [
-				'credential:read',
-			]),
-			this.projectRepository.getPersonalProjectForUserOrFail(user.id),
-		]);
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			params.credentialId,
+			user,
+			['credential:read'],
+		);
 		if (!credential || credential.type !== params.credentialType) {
 			throw new Error(`Credential ${params.credentialId} not found or not accessible`);
 		}
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 
 		const nodeTypeAndVersion = { name: params.nodeType, version: params.version };
 		const currentNodeParameters = (params.currentNodeParameters ?? {}) as INodeParameters;
