@@ -3,6 +3,7 @@ import {
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
 	askCredentialInputSchema,
 	askCredentialResumeSchema,
 	askLlmInputSchema,
@@ -13,6 +14,11 @@ import {
 	type AgentPersistedMessageDto,
 	type InteractiveToolName,
 } from '@n8n/api-types';
+import {
+	isAwaitingCard,
+	n8nChatResumeValueSchema,
+	parseN8nChatActionInput,
+} from './n8nChatInteraction';
 
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from './constants';
 import type { ToolCallState } from './constants';
@@ -30,8 +36,13 @@ export function isInteractiveToolName(value: unknown): value is InteractiveToolN
 	return typeof value === 'string' && (INTERACTIVE_TOOL_NAMES as readonly string[]).includes(value);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** True when a suspend payload is the approval tool's renderable input. */
+export function isApprovalSuspendInput(value: unknown): boolean {
+	return parseApprovalInput(value) !== undefined;
 }
 
 function parseApprovalInput(value: unknown): ApprovalInput | undefined {
@@ -76,6 +87,21 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 			...(tc.output !== undefined && {
 				resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
 			}),
+		};
+	}
+
+	if (tc.tool === N8N_CHAT_ACTION_TOOL_NAME) {
+		const input = parseN8nChatActionInput(tc.input);
+		if (!input) return undefined;
+		// Display-only cards never suspend: only resolved ones render a card here.
+		if (tc.output === undefined && !isAwaitingCard(input.card)) return undefined;
+		const resolved = tc.output !== undefined ? n8nChatResumeValueSchema.safeParse(tc.output) : null;
+		return {
+			toolCallId: tc.toolCallId,
+			...(tc.output !== undefined && { resolvedAt: 1 }),
+			toolName: N8N_CHAT_ACTION_TOOL_NAME,
+			input,
+			...(resolved?.success && { resolvedValue: resolved.data }),
 		};
 	}
 
@@ -189,14 +215,16 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 		let status: ChatMessage['status'];
 		for (const tc of toolCalls) {
 			const rebuilt = rebuildInteractiveFromHistory(tc);
-			if (rebuilt) {
+			if (!rebuilt) continue;
+			// Prefer the first OPEN card: a resolved display card earlier in the
+			// turn must not shadow a still-awaiting interaction.
+			if (rebuilt.resolvedAt === undefined) {
 				interactive = rebuilt;
-				if (rebuilt.resolvedAt === undefined) {
-					tc.state = TOOL_CALL_STATE.SUSPENDED;
-					status = CHAT_MESSAGE_STATUS.AWAITING_USER;
-				}
+				tc.state = TOOL_CALL_STATE.SUSPENDED;
+				status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				break;
 			}
+			interactive ??= rebuilt;
 		}
 
 		result.push({

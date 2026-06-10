@@ -6,7 +6,9 @@ export {
 export {
 	applyOpenSuspensions,
 	convertDbMessages,
+	isApprovalSuspendInput,
 	isInteractiveToolName,
+	isRecord,
 	rebuildInteractiveFromHistory,
 } from '@/features/ai/shared/agentsChat/messageMappers';
 export type {

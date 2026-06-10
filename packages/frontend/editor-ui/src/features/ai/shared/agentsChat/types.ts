@@ -3,6 +3,7 @@ import {
 	type ASK_LLM_TOOL_NAME,
 	type ASK_QUESTION_TOOL_NAME,
 	type APPROVAL_TOOL_NAME,
+	type N8N_CHAT_ACTION_TOOL_NAME,
 	type AskCredentialInput,
 	type AskCredentialResume,
 	type AskLlmInput,
@@ -10,6 +11,8 @@ import {
 	type AskQuestionInput,
 	type AskQuestionResume,
 } from '@n8n/api-types';
+
+import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
 
 import type { ChatMessageStatus, ToolCallState } from './constants';
 
@@ -32,6 +35,12 @@ export interface ToolCall {
 	 * sees what they picked (e.g. "Slack") instead of just "ask_question".
 	 */
 	displaySummary?: string;
+	/**
+	 * Raw suspend payload from `tool-call-suspended` for non-builder tools
+	 * (e.g. `{ type: 'integration_action', ... }`). Builder interactive tools
+	 * instead overwrite `input` (their suspend payload IS the renderable input).
+	 */
+	suspendPayload?: unknown;
 }
 
 interface InteractivePayloadBase {
@@ -85,6 +94,11 @@ export type InteractivePayload =
 			toolName: typeof ASK_QUESTION_TOOL_NAME;
 			input: AskQuestionInput;
 			resolvedValue?: AskQuestionResume;
+	  })
+	| (InteractivePayloadBase & {
+			toolName: typeof N8N_CHAT_ACTION_TOOL_NAME;
+			input: N8nChatInteractionInput;
+			resolvedValue?: N8nChatResumeValue;
 	  });
 
 export type AgentsChatInteraction = InteractivePayload;

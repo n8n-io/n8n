@@ -1,8 +1,8 @@
 import type {
 	AgentBuilderMessagesResponse,
+	AgentChatMessagesResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
-	AgentPersistedMessageDto,
 	AgentSkill,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
@@ -460,8 +460,8 @@ export const getChatMessages = async (
 	projectId: string,
 	agentId: string,
 	threadId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
@@ -472,8 +472,8 @@ export const getTestChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<AgentPersistedMessageDto[]> => {
-	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+): Promise<AgentChatMessagesResponse> => {
+	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,

@@ -5,6 +5,7 @@ import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
 } from '@n8n/api-types';
 import type {
 	AgentsChatInteractionContext,
@@ -16,6 +17,7 @@ import AskCredentialCard from './AskCredentialCard.vue';
 import AskLlmCard from './AskLlmCard.vue';
 import AskQuestionCard from './AskQuestionCard.vue';
 import ApprovalCard from './ApprovalCard.vue';
+import N8nChatActionCard from './N8nChatActionCard.vue';
 
 /**
  * Single dispatch point for the interactive cards. Switches by `toolName` so
@@ -104,6 +106,18 @@ const interactiveRenderers = [
 				question: payload.input.question,
 				options: payload.input.options,
 				allowMultiple: payload.input.allowMultiple,
+				resolvedValue: payload.resolvedValue,
+			};
+		},
+	},
+	{
+		key: 'n8n_chat_action',
+		component: N8nChatActionCard,
+		matches: (payload) => payload.toolName === N8N_CHAT_ACTION_TOOL_NAME,
+		getProps: (payload) => {
+			if (payload.toolName !== N8N_CHAT_ACTION_TOOL_NAME) return {};
+			return {
+				input: payload.input,
 				resolvedValue: payload.resolvedValue,
 			};
 		},
