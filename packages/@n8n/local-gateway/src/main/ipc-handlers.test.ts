@@ -40,6 +40,27 @@ function getRegisteredHandler(channel: string): HandlerFn {
 	return handler;
 }
 
+/** Register handlers with sensible stubs; only the deps a test cares about need overriding. */
+function register(overrides: {
+	controller?: unknown;
+	settingsStore?: unknown;
+	disconnectGateway?: HandlerFn;
+}): void {
+	registerIpcHandlers({
+		controller: (overrides.controller ?? { disconnect: vi.fn(), getSnapshot: vi.fn() }) as never,
+		settingsStore: (overrides.settingsStore ?? {
+			get: vi.fn(),
+			set: vi.fn(),
+			toGatewayConfig: vi.fn(),
+		}) as never,
+		disconnectGateway: (overrides.disconnectGateway ??
+			vi.fn().mockResolvedValue(undefined)) as never,
+		oauthFlow: { getStatus: vi.fn(), getValidAccessToken: vi.fn() } as never,
+		instanceApi: { getTasks: vi.fn(), runWorkflow: vi.fn(), workflowUrl: vi.fn() } as never,
+		openExternal: vi.fn().mockResolvedValue(undefined) as never,
+	});
+}
+
 describe('registerIpcHandlers', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -58,7 +79,7 @@ describe('registerIpcHandlers', () => {
 		};
 
 		const disconnectGateway = vi.fn().mockResolvedValue(undefined);
-		registerIpcHandlers(controller as never, settingsStore as never, disconnectGateway);
+		register({ controller, settingsStore, disconnectGateway });
 		const disconnectHandler = getRegisteredHandler('gateway:disconnect');
 
 		const result = await disconnectHandler();
@@ -87,11 +108,7 @@ describe('registerIpcHandlers', () => {
 			set: vi.fn(),
 			toGatewayConfig: vi.fn(),
 		};
-		registerIpcHandlers(
-			controller as never,
-			settingsStore as never,
-			vi.fn().mockResolvedValue(undefined),
-		);
+		register({ controller, settingsStore });
 
 		const result = getRegisteredHandler('settings:get')();
 		expect(settingsStore.get).toHaveBeenCalled();
@@ -108,15 +125,7 @@ describe('registerIpcHandlers', () => {
 			disconnect: vi.fn(),
 			getSnapshot: vi.fn().mockReturnValue(snapshot),
 		};
-		registerIpcHandlers(
-			controller as never,
-			{
-				get: vi.fn(),
-				set: vi.fn(),
-				toGatewayConfig: vi.fn(),
-			} as never,
-			vi.fn().mockResolvedValue(undefined),
-		);
+		register({ controller });
 
 		const result = getRegisteredHandler('daemon:status')();
 		expect(controller.getSnapshot).toHaveBeenCalled();
@@ -135,11 +144,7 @@ describe('registerIpcHandlers', () => {
 			}),
 			toGatewayConfig: vi.fn(),
 		};
-		registerIpcHandlers(
-			controller as never,
-			settingsStore as never,
-			vi.fn().mockResolvedValue(undefined),
-		);
+		register({ controller, settingsStore });
 
 		const result = await getRegisteredHandler('settings:set')(undefined, {
 			allowedOrigins: ['https://x.example'],
@@ -161,7 +166,7 @@ describe('registerIpcHandlers', () => {
 		};
 		const disconnectGateway = vi.fn();
 
-		registerIpcHandlers(controller as never, settingsStore as never, disconnectGateway);
+		register({ controller, settingsStore, disconnectGateway });
 		const settingsSetHandler = getRegisteredHandler('settings:set');
 
 		const result = await settingsSetHandler(undefined, { logLevel: 'debug' });
@@ -181,11 +186,7 @@ describe('registerIpcHandlers', () => {
 			set: vi.fn(),
 			toGatewayConfig: vi.fn(),
 		};
-		registerIpcHandlers(
-			controller as never,
-			settingsStore as never,
-			vi.fn().mockResolvedValue(undefined),
-		);
+		register({ controller, settingsStore });
 
 		const result = await getRegisteredHandler('settings:set')(undefined, {
 			filesystemEnabled: false,

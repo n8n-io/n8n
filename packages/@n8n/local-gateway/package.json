@@ -22,8 +22,10 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
+    "@n8n/api-types": "workspace:*",
     "@n8n/computer-use": "workspace:*",
     "@n8n/design-system": "workspace:*",
+    "@n8n/i18n": "workspace:*",
     "electron-store": "^8.2.0",
     "vue": "catalog:frontend"
   },
