@@ -264,7 +264,7 @@ export class SsrfProtectionService implements SsrfBridge {
 		fn: () => Result<T, Error> | Promise<Result<T, Error>>,
 	): Result<T, Error> | Promise<Result<T, Error>> {
 		const start = performance.now();
-		const outcome = fn();
+		const result = fn();
 
 		const emitAndReturn = (result: Result<T, Error>): Result<T, Error> => {
 			const durationMs = performance.now() - start;
@@ -273,7 +273,7 @@ export class SsrfProtectionService implements SsrfBridge {
 			} else {
 				this.events.emit('ssrf.blocked', {
 					phase,
-					reason: this.toReason(result.error, phase),
+					reason: this.toReason(result.error),
 					durationMs,
 				});
 			}
@@ -285,15 +285,12 @@ export class SsrfProtectionService implements SsrfBridge {
 			throw error;
 		};
 
-		return outcome instanceof Promise
-			? outcome.then(emitAndReturn, emitAndRethrow)
-			: emitAndReturn(outcome);
+		return result instanceof Promise
+			? result.then(emitAndReturn, emitAndRethrow)
+			: emitAndReturn(result);
 	}
 
-	private toReason(error: Error, phase: SsrfPhase): string {
-		if (phase === 'redirect') {
-			return 'blocked_redirect';
-		}
+	private toReason(error: Error): string {
 		if (error instanceof SsrfBlockedIpError) {
 			return 'blocked_ip';
 		}

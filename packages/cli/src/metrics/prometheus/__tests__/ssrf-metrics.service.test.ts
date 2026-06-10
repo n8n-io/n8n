@@ -66,34 +66,34 @@ describe('PrometheusSsrfMetricsService', () => {
 	});
 
 	describe('init', () => {
-		it('should create ssrf_requests_total counter with outcome and phase labels', () => {
+		it('should create ssrf_checks_total counter with result and phase labels', () => {
 			service.init();
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_ssrf_requests_total',
-				help: 'Total number of SSRF checks by outcome and phase.',
-				labelNames: ['outcome', 'phase'],
+				name: 'n8n_ssrf_checks_total',
+				help: 'Total number of SSRF checks by result and phase.',
+				labelNames: ['result', 'phase'],
 			});
 		});
 
-		it('should create ssrf_blocked_by_reason_total counter with phase and reason labels', () => {
+		it('should create ssrf_blocked_checks_total counter with phase and reason labels', () => {
 			service.init();
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_ssrf_blocked_by_reason_total',
+				name: 'n8n_ssrf_blocked_checks_total',
 				help: 'Total number of blocked SSRF checks by phase and reason.',
 				labelNames: ['phase', 'reason'],
 			});
 		});
 
-		it('should create ssrf_request_duration_seconds histogram with correct config', () => {
+		it('should create ssrf_check_duration_seconds histogram with correct config', () => {
 			service.init();
 
 			expect(promClient.Histogram).toHaveBeenCalledWith(
 				expect.objectContaining({
-					name: 'n8n_ssrf_request_duration_seconds',
+					name: 'n8n_ssrf_check_duration_seconds',
 					help: 'Duration of SSRF checks in seconds.',
-					labelNames: ['outcome', 'phase'],
+					labelNames: ['result', 'phase'],
 				}),
 			);
 		});
@@ -103,13 +103,13 @@ describe('PrometheusSsrfMetricsService', () => {
 			service.init();
 
 			expect(promClient.Counter).toHaveBeenCalledWith(
-				expect.objectContaining({ name: 'myapp_ssrf_requests_total' }),
+				expect.objectContaining({ name: 'myapp_ssrf_checks_total' }),
 			);
 			expect(promClient.Counter).toHaveBeenCalledWith(
-				expect.objectContaining({ name: 'myapp_ssrf_blocked_by_reason_total' }),
+				expect.objectContaining({ name: 'myapp_ssrf_blocked_checks_total' }),
 			);
 			expect(promClient.Histogram).toHaveBeenCalledWith(
-				expect.objectContaining({ name: 'myapp_ssrf_request_duration_seconds' }),
+				expect.objectContaining({ name: 'myapp_ssrf_check_duration_seconds' }),
 			);
 		});
 
@@ -121,13 +121,13 @@ describe('PrometheusSsrfMetricsService', () => {
 		});
 
 		describe('ssrf.blocked handler', () => {
-			it('should increment requests counter with outcome and phase', () => {
+			it('should increment checks counter with result and phase', () => {
 				service.init();
 				const handler = getEventsHandler('ssrf.blocked')!;
 
 				handler({ phase: 'pre_flight', reason: 'blocked_ip', durationMs: 10 });
 
-				expect(mockCounterInc).toHaveBeenCalledWith({ outcome: 'blocked', phase: 'pre_flight' });
+				expect(mockCounterInc).toHaveBeenCalledWith({ result: 'blocked', phase: 'pre_flight' });
 			});
 
 			it('should increment blocked_by_reason counter with phase and reason', () => {
@@ -146,20 +146,20 @@ describe('PrometheusSsrfMetricsService', () => {
 				handler({ phase: 'connect_time', reason: 'dns_error', durationMs: 250 });
 
 				expect(mockHistogramObserve).toHaveBeenCalledWith(
-					{ outcome: 'blocked', phase: 'connect_time' },
+					{ result: 'blocked', phase: 'connect_time' },
 					0.25,
 				);
 			});
 		});
 
 		describe('ssrf.allowed handler', () => {
-			it('should increment requests counter with outcome and phase only', () => {
+			it('should increment checks counter with result and phase only', () => {
 				service.init();
 				const handler = getEventsHandler('ssrf.allowed')!;
 
 				handler({ phase: 'redirect', durationMs: 5 });
 
-				expect(mockCounterInc).toHaveBeenCalledWith({ outcome: 'allowed', phase: 'redirect' });
+				expect(mockCounterInc).toHaveBeenCalledWith({ result: 'allowed', phase: 'redirect' });
 				expect(mockCounterInc).toHaveBeenCalledTimes(1);
 			});
 
@@ -170,7 +170,7 @@ describe('PrometheusSsrfMetricsService', () => {
 				handler({ phase: 'pre_flight', durationMs: 100 });
 
 				expect(mockHistogramObserve).toHaveBeenCalledWith(
-					{ outcome: 'allowed', phase: 'pre_flight' },
+					{ result: 'allowed', phase: 'pre_flight' },
 					0.1,
 				);
 			});

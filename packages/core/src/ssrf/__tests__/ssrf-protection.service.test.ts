@@ -685,7 +685,7 @@ describe('SsrfProtectionService', () => {
 			);
 		});
 
-		it('should emit ssrf.blocked with reason blocked_redirect for a blocked redirect', () => {
+		it('should emit ssrf.blocked with reason blocked_ip for a blocked redirect', () => {
 			const { service } = createService();
 			const blocked = vi.fn();
 			service.events.on('ssrf.blocked', blocked);
