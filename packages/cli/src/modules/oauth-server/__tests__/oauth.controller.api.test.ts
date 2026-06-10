@@ -6,10 +6,10 @@ import { Container } from '@n8n/di';
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-import { SUPPORTED_SCOPES } from '../mcp-oauth-service';
-import { McpSettingsService } from '../mcp.settings.service';
+import { SUPPORTED_SCOPES } from '@/modules/mcp/mcp-protected-resource';
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 
-const testServer = setupTestServer({ modules: ['mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 
 let owner: User;
 let mcpSettingsService: McpSettingsService;
@@ -291,7 +291,7 @@ describe('POST /mcp-oauth/register', () => {
 	});
 
 	test('should reject with descriptive server_error on the post-insert rollback (race path)', async () => {
-		const { McpOAuthService } = await import('../mcp-oauth-service');
+		const { OAuthServerService } = await import('../oauth-server.service');
 		const globalConfig = Container.get(GlobalConfig);
 		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
 		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
@@ -299,7 +299,7 @@ describe('POST /mcp-oauth/register', () => {
 		// Stub the pre-check guard to always pass, simulating two concurrent
 		// registrations that both saw count < limit and made it past the guard.
 		const guardSpy = jest
-			.spyOn(McpOAuthService.prototype, 'isClientLimitReached')
+			.spyOn(OAuthServerService.prototype, 'isClientLimitReached')
 			.mockResolvedValue(false);
 
 		try {
@@ -524,5 +524,167 @@ describe('OAuth Discovery - Cross-validation', () => {
 		const protectedResourceScopes = protectedResourceResponse.body.scopes_supported;
 
 		expect(authServerScopes).toEqual(protectedResourceScopes);
+	});
+});
+
+describe('Full authorization-code flow (PKCE)', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('should mint a token pair via register → authorize → consent → token', async () => {
+		const { createHash, randomBytes } = await import('node:crypto');
+		const codeVerifier = randomBytes(32).toString('base64url');
+		const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
+
+		// 1. Dynamic Client Registration
+		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Flow Client',
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code', 'refresh_token'],
+			token_endpoint_auth_method: 'none',
+		});
+		expect(registerResponse.statusCode).toBe(201);
+		const clientId = registerResponse.body.client_id;
+
+		// 2. Authorize — sets the OAuth session cookie and redirects to consent
+		const authorizeResponse = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
+			client_id: clientId,
+			redirect_uri: 'https://example.com/callback',
+			response_type: 'code',
+			code_challenge: codeChallenge,
+			code_challenge_method: 'S256',
+			state: 'flow-state',
+		});
+		expect(authorizeResponse.statusCode).toBe(302);
+		expect(authorizeResponse.headers.location).toBe('/oauth/consent');
+
+		const rawSetCookie: string | string[] = authorizeResponse.headers['set-cookie'] ?? [];
+		const setCookies = Array.isArray(rawSetCookie) ? rawSetCookie : [rawSetCookie];
+		const sessionCookie = setCookies
+			.map((cookie) => cookie.split(';')[0])
+			.find((cookie) => cookie.startsWith('n8n-oauth-session='));
+		expect(sessionCookie).toBeDefined();
+
+		// 3. Consent approval as an authenticated user
+		const authAgent = testServer.authAgentFor(owner);
+		authAgent.jar.setCookie(sessionCookie ?? '');
+		const consentResponse = await authAgent.post('/consent/approve').send({ approved: true });
+		expect(consentResponse.statusCode).toBe(200);
+
+		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
+		const code = redirectUrl.searchParams.get('code');
+		expect(code).toBeTruthy();
+		expect(redirectUrl.searchParams.get('state')).toBe('flow-state');
+
+		// 4. Token exchange
+		const tokenResponse = await testServer.restlessAgent
+			.post('/mcp-oauth/token')
+			.type('form')
+			.send({
+				grant_type: 'authorization_code',
+				code: code!,
+				client_id: clientId,
+				code_verifier: codeVerifier,
+				redirect_uri: 'https://example.com/callback',
+			});
+		expect(tokenResponse.body).toEqual({
+			access_token: expect.any(String),
+			token_type: 'Bearer',
+			expires_in: 3600,
+			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
+		});
+		expect(tokenResponse.statusCode).toBe(200);
+
+		// 5. Refresh-token rotation
+		const refreshResponse = await testServer.restlessAgent
+			.post('/mcp-oauth/token')
+			.type('form')
+			.send({
+				grant_type: 'refresh_token',
+				refresh_token: tokenResponse.body.refresh_token,
+				client_id: clientId,
+			});
+		expect(refreshResponse.statusCode).toBe(200);
+		expect(refreshResponse.body.access_token).toEqual(expect.any(String));
+		expect(refreshResponse.body.access_token).not.toBe(tokenResponse.body.access_token);
+	});
+});
+
+describe('Neutral /oauth/* endpoint aliases', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('should register a client via /oauth/register identically to /mcp-oauth/register', async () => {
+		const clientData = {
+			client_name: 'Alias Client',
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+		};
+
+		const response = await testServer.restlessAgent.post('/oauth/register').send(clientData);
+
+		expect(response.statusCode).toBe(201);
+		expect(response.body.client_id).toBeDefined();
+		expect(response.body.client_name).toBe('Alias Client');
+	});
+
+	test('should serve /oauth/token with the same error semantics as /mcp-oauth/token', async () => {
+		const response = await testServer.restlessAgent.post('/oauth/token').send({
+			grant_type: 'authorization_code',
+			code: 'invalid-authorization-code',
+			client_id: 'test-client',
+			redirect_uri: 'https://example.com/callback',
+			code_verifier: 'test-verifier',
+		});
+
+		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.body.error).toBeDefined();
+	});
+
+	test('should serve /oauth/authorize', async () => {
+		const response = await testServer.restlessAgent.get('/oauth/authorize').query({
+			client_id: 'test-client',
+			redirect_uri: 'https://example.com/callback',
+			response_type: 'code',
+			code_challenge: 'challenge',
+			code_challenge_method: 'S256',
+		});
+
+		expect([302, 400, 401, 403]).toContain(response.statusCode);
+		expect(response.statusCode).not.toBe(404);
+	});
+
+	test('should serve /oauth/revoke', async () => {
+		const response = await testServer.restlessAgent.post('/oauth/revoke').send({
+			token: 'some-token',
+			client_id: 'test-client',
+		});
+
+		expect(response.statusCode).toBeGreaterThanOrEqual(200);
+		expect(response.statusCode).not.toBe(404);
+	});
+
+	test('should gate /oauth/* endpoints when no resource is enabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.post('/oauth/register').send({
+			client_name: 'Alias Client',
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+		});
+
+		expect(response.statusCode).toBe(403);
 	});
 });

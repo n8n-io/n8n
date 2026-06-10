@@ -6,29 +6,32 @@ import { Time } from '@n8n/constants';
 import { UserRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { MoreThanOrEqual } from '@n8n/typeorm';
-import { ensureError } from 'n8n-workflow';
+import { ensureError, UnexpectedError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { AccessToken } from './database/entities/oauth-access-token.entity';
 import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
-import { AccessTokenNotFoundError, JWTVerificationError } from './mcp.errors';
-import { UserWithContext } from './mcp.types';
+import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import type {
+	OAuthTokenVerifier,
+	UserWithContext,
+} from '@/services/oauth-token-verifier-proxy.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 /**
- * Manages OAuth 2.1 token lifecycle for MCP server
- * Generates, validates, rotates, and revokes access and refresh tokens
+ * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.
+ * Generates, validates, rotates, and revokes access and refresh tokens.
+ *
+ * Registered as the `OAuthTokenVerifierProxy` provider on module init, so
+ * protected-resource modules can verify tokens through the core proxy
+ * without importing this module.
  */
 @Service()
-export class McpOAuthTokenService {
-	// Pre-RFC-8707 audience value. Do not modify — existing tokens were signed with this string
-	// and changing it would force all active clients to re-authenticate.
-	private readonly LEGACY_MCP_AUDIENCE = 'mcp-server-api';
-	private readonly MCP_RESOURCE_PATH = '/mcp-server/http';
+export class OAuthTokenService implements OAuthTokenVerifier {
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
 
@@ -38,20 +41,8 @@ export class McpOAuthTokenService {
 		private readonly userRepository: UserRepository,
 		private readonly accessTokenRepository: AccessTokenRepository,
 		private readonly refreshTokenRepository: RefreshTokenRepository,
-		private readonly urlService: UrlService,
+		private readonly resourceRegistry: ProtectedResourceRegistry,
 	) {}
-
-	/**
-	 * Canonical MCP resource URL used as the JWT `aud` claim and advertised as the
-	 * RFC 8707 resource indicator. This is the single source of truth — callers in
-	 * the OAuth service and resource-server middleware must delegate here so the
-	 * minted `aud`, the persisted authorization-code `resource`, and the audience
-	 * the middleware validates against can never drift.
-	 */
-	getCanonicalResourceUrl(): string {
-		const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
-		return `${baseUrl}${this.MCP_RESOURCE_PATH}`;
-	}
 
 	getAccessTokenExpirySeconds(): number {
 		return this.ACCESS_TOKEN_EXPIRY_SECONDS;
@@ -62,7 +53,14 @@ export class McpOAuthTokenService {
 		clientId: string,
 		resource?: string,
 	): { accessToken: string; refreshToken: string } {
-		const audience = resource ?? this.getCanonicalResourceUrl();
+		// Pre-RFC-8707 clients omit the resource indicator; fall back to the
+		// registry's default resource (the instance MCP server).
+		const audience = resource ?? this.resourceRegistry.getDefaultResource()?.getResourceUrl();
+		if (!audience) {
+			throw new UnexpectedError(
+				'Cannot mint an OAuth access token: no resource requested and no default protected resource is registered',
+			);
+		}
 
 		const accessToken = this.jwtService.sign({
 			sub: userId,
@@ -273,15 +271,29 @@ export class McpOAuthTokenService {
 		return revoked;
 	}
 
+	/**
+	 * Resolve the `aud` values a token may carry for the given resource.
+	 *
+	 * Audiences come from the matching registered resource ONLY — never union
+	 * audiences across resources, otherwise a token minted for one resource
+	 * would pass another resource's gate (cross-resource token replay).
+	 * Resource-specific legacy audiences (e.g. the instance MCP server's
+	 * pre-RFC-8707 `mcp-server-api`) stay scoped to their own resource this way.
+	 */
 	private getAllowedAudiences(expectedAudience?: string): string[] {
-		if (expectedAudience && expectedAudience !== this.getCanonicalResourceUrl()) {
-			return [expectedAudience, this.getCanonicalResourceUrl(), this.LEGACY_MCP_AUDIENCE];
+		if (expectedAudience) {
+			const resource = this.resourceRegistry.getByResourceUrl(expectedAudience);
+			return resource ? resource.getAudiences() : [expectedAudience];
 		}
-		return [this.getCanonicalResourceUrl(), this.LEGACY_MCP_AUDIENCE];
+
+		// No expected audience: the caller cannot know which resource the token
+		// targets (MCP SDK generic verification), so accept any registered
+		// resource's audiences. Resource gates must pass `expectedAudience`.
+		return this.resourceRegistry.getAllAudiences();
 	}
 
-	// TODO: drop the legacy 'mcp-server-api' audience and the per-audience fallback once
-	// all legacy tokens minted before n8n v2.19 have aged out (refresh-token lifespan).
+	// TODO: drop legacy audiences and the per-audience fallback once all legacy
+	// tokens minted before n8n v2.19 have aged out (refresh-token lifespan).
 	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
 		try {
 			return this.jwtService.verify(token, {

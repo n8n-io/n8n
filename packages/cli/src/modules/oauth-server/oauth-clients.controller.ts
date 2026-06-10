@@ -11,12 +11,12 @@ import type { Response } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { McpOAuthService } from './mcp-oauth-service';
+import { OAuthServerService } from './oauth-server.service';
 
 @RestController('/mcp/oauth-clients')
-export class McpOAuthClientsController {
+export class OAuthClientsController {
 	constructor(
-		private readonly mcpOAuthService: McpOAuthService,
+		private readonly oauthServerService: OAuthServerService,
 		private readonly logger: Logger,
 	) {}
 
@@ -31,7 +31,7 @@ export class McpOAuthClientsController {
 	): Promise<ListOAuthClientsResponseDto> {
 		this.logger.debug('Fetching all OAuth clients for user', { userId: req.user.id });
 
-		const clients = await this.mcpOAuthService.getAllClients(req.user.id);
+		const clients = await this.oauthServerService.getAllClients(req.user.id);
 
 		this.logger.debug(`Found ${clients.length} OAuth clients`);
 
@@ -59,7 +59,7 @@ export class McpOAuthClientsController {
 	@GlobalScope('mcp:manage')
 	@Get('/instance-stats')
 	async getInstanceStats(): Promise<InstanceMcpClientStatsResponseDto> {
-		return await this.mcpOAuthService.getInstanceClientStats();
+		return await this.oauthServerService.getInstanceClientStats();
 	}
 
 	/**
@@ -80,7 +80,7 @@ export class McpOAuthClientsController {
 		});
 
 		try {
-			await this.mcpOAuthService.deleteClient(clientId, req.user.id);
+			await this.oauthServerService.deleteClient(clientId, req.user.id);
 
 			this.logger.info('OAuth client deleted successfully', {
 				clientId,

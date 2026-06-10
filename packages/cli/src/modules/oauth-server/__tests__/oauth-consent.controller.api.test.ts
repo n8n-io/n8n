@@ -10,7 +10,7 @@ import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import type { OAuthSessionPayload } from '../oauth-session.service';
 
-const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['mcp'] });
+const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-server', 'mcp'] });
 
 let owner: User;
 let member: User;

@@ -4,14 +4,14 @@ import { Body, Get, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
-import { McpOAuthConsentService } from './mcp-oauth-consent.service';
+import { OAuthConsentService } from './oauth-consent.service';
 import { OAuthSessionService } from './oauth-session.service';
 
 @RestController('/consent')
-export class McpConsentController {
+export class OAuthConsentController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly consentService: McpOAuthConsentService,
+		private readonly consentService: OAuthConsentService,
 		private readonly oauthSessionService: OAuthSessionService,
 	) {}
 

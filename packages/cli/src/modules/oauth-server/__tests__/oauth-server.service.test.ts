@@ -12,28 +12,42 @@ import type { AuthorizationCode } from '../database/entities/oauth-authorization
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
-import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
-import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
-import { McpOAuthTokenService } from '../mcp-oauth-token.service';
+import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
+import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
+import { OAuthTokenService } from '../oauth-token.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+
+const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
+const TEST_RESOURCE_URL = 'https://n8n.example.com/mcp-server/http';
 
 let logger: jest.Mocked<Logger>;
 let oauthSessionService: jest.Mocked<OAuthSessionService>;
 let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
-let tokenService: jest.Mocked<McpOAuthTokenService>;
-let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
-let service: McpOAuthService;
+let tokenService: jest.Mocked<OAuthTokenService>;
+let authorizationCodeService: jest.Mocked<OAuthAuthorizationCodeService>;
+let service: OAuthServerService;
 let userConsentRepository: jest.Mocked<UserConsentRepository>;
 
-describe('McpOAuthService', () => {
+describe('OAuthServerService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
 		oauthSessionService = mockInstance(OAuthSessionService);
 		oauthClientRepository = mockInstance(OAuthClientRepository);
-		tokenService = mockInstance(McpOAuthTokenService);
-		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
+		tokenService = mockInstance(OAuthTokenService);
+		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
-		service = new McpOAuthService(
+
+		const resourceRegistry = new ProtectedResourceRegistry();
+		resourceRegistry.register({
+			id: 'instance-mcp',
+			getResourceUrl: () => TEST_RESOURCE_URL,
+			getAudiences: () => [TEST_RESOURCE_URL, 'mcp-server-api'],
+			scopes: SUPPORTED_SCOPES,
+			isDefault: true,
+		});
+
+		service = new OAuthServerService(
 			logger,
 			mockInstance(GlobalConfig),
 			oauthSessionService,
@@ -41,12 +55,12 @@ describe('McpOAuthService', () => {
 			tokenService,
 			authorizationCodeService,
 			userConsentRepository,
+			resourceRegistry,
 		);
 	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		tokenService.getCanonicalResourceUrl.mockReturnValue('https://n8n.example.com/mcp-server/http');
 	});
 
 	describe('clientsStore', () => {
@@ -499,7 +513,7 @@ describe('McpOAuthService', () => {
 			);
 		});
 
-		it('should propagate OAuthError when markAuthorizationCodeAsUsed detects concurrent consumption', async () => {
+		it('should propagate InvalidGrantError when markAuthorizationCodeAsUsed detects concurrent consumption', async () => {
 			const client = {
 				client_id: 'client-123',
 				client_name: 'Test Client',
@@ -846,14 +860,46 @@ describe('McpOAuthService', () => {
 		});
 	});
 
-	describe('getCanonicalMcpResourceUrl', () => {
-		it('should delegate to the token service so all callers share one canonical URL', () => {
-			tokenService.getCanonicalResourceUrl.mockReturnValue(
-				'https://example.com/n8n/mcp-server/http',
+	describe('resource indicator validation across multiple resources', () => {
+		it('should accept any registered resource and reject unregistered ones', async () => {
+			const multiRegistry = new ProtectedResourceRegistry();
+			multiRegistry.register({
+				id: 'instance-mcp',
+				getResourceUrl: () => TEST_RESOURCE_URL,
+				getAudiences: () => [TEST_RESOURCE_URL, 'mcp-server-api'],
+				scopes: SUPPORTED_SCOPES,
+				isDefault: true,
+			});
+			const secondResourceUrl = 'https://n8n.example.com/webhook/wf-1/mcp';
+			multiRegistry.register({
+				id: 'workflow-trigger',
+				getResourceUrl: () => secondResourceUrl,
+				getAudiences: () => [secondResourceUrl],
+				scopes: [],
+			});
+
+			const multiResourceService = new OAuthServerService(
+				logger,
+				mockInstance(GlobalConfig),
+				oauthSessionService,
+				oauthClientRepository,
+				tokenService,
+				authorizationCodeService,
+				userConsentRepository,
+				multiRegistry,
 			);
-			const canonical = (service as any).getCanonicalMcpResourceUrl();
-			expect(canonical).toBe('https://example.com/n8n/mcp-server/http');
-			expect(tokenService.getCanonicalResourceUrl).toHaveBeenCalled();
+
+			expect(
+				(multiResourceService as any).resolveAndValidateResourceIndicator(TEST_RESOURCE_URL),
+			).toBe(TEST_RESOURCE_URL);
+			expect(
+				(multiResourceService as any).resolveAndValidateResourceIndicator(secondResourceUrl),
+			).toBe(secondResourceUrl);
+			expect(() =>
+				(multiResourceService as any).resolveAndValidateResourceIndicator(
+					'https://n8n.example.com/webhook/wf-2/mcp',
+				),
+			).toThrow(InvalidTargetError);
 		});
 	});
 });
