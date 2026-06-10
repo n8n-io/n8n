@@ -760,6 +760,51 @@ describe('CredentialEdit', () => {
 			await retry(() => expect(queryByText('Custom Scopes')).toBeInTheDocument());
 			expect(queryByText('Enabled Scopes')).toBeInTheDocument();
 		});
+
+		it('should not block modal when external hooks throw', async () => {
+			window.n8nExternalHooks = {
+				credentialsEdit: {
+					credentialModalOpened: [
+						() => {
+							throw new Error('plugin error');
+						},
+					],
+				},
+			};
+
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			const { getByTestId } = renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				global: {
+					stubs: {
+						Modal: modalLoadingStub,
+					},
+				},
+			});
+
+			try {
+				// Wait for the modal to appear and loading to finish
+				await waitFor(() => {
+					expect(getByTestId('credential-edit-modal-stub')).toHaveAttribute(
+						'data-loading',
+						'false',
+					);
+					expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
+				});
+
+				// The hook error is logged asynchronously; wait for it
+				await waitFor(() => {
+					expect(consoleErrorSpy).toHaveBeenCalledWith(
+						'[CredentialEdit] External hooks execution failed',
+						expect.any(Error),
+					);
+				});
+			} finally {
+				consoleErrorSpy.mockRestore();
+				delete window.n8nExternalHooks;
+			}
+		});
 	});
 
 	test('should use the requested credential type when node has multiple credential types', async () => {
