@@ -3,8 +3,18 @@ import { ref, computed } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { fetchThreads, fetchThreadMessages } from './instanceAi.memory.api';
-import type { InstanceAiThreadInfo, InstanceAiStoredMessage } from '@n8n/api-types';
+import {
+	fetchThreads,
+	fetchThreadMessages,
+	fetchRunDebug,
+	fetchThreadDebugRuns,
+} from './instanceAi.memory.api';
+import type {
+	InstanceAiThreadInfo,
+	InstanceAiStoredMessage,
+	InstanceAiRunDebugResponse,
+	InstanceAiRunDebugSummary,
+} from '@n8n/api-types';
 
 export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 	const rootStore = useRootStore();
@@ -17,6 +27,12 @@ export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 	const threadMessages = ref<InstanceAiStoredMessage[]>([]);
 	const isLoadingThreads = ref(false);
 	const isLoadingMessages = ref(false);
+
+	const selectedRunId = ref<string | null>(null);
+	const runDebug = ref<InstanceAiRunDebugResponse | null>(null);
+	const threadDebugRuns = ref<InstanceAiRunDebugSummary[]>([]);
+	const isLoadingRunDebug = ref(false);
+	const isLoadingThreadDebugRuns = ref(false);
 
 	// --- Computed ---
 	const selectedThread = computed(() => threads.value.find((t) => t.id === selectedThreadId.value));
@@ -63,12 +79,60 @@ export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 		}
 	}
 
+	async function loadThreadDebugRuns(threadId: string): Promise<void> {
+		isLoadingThreadDebugRuns.value = true;
+		try {
+			const result = await fetchThreadDebugRuns(rootStore.restApiContext, threadId);
+			threadDebugRuns.value = result.runs;
+		} catch {
+			toast.showError(
+				new Error(i18n.baseText('instanceAi.debug.runDebug.fetchError')),
+				'Run Debug',
+			);
+		} finally {
+			isLoadingThreadDebugRuns.value = false;
+		}
+	}
+
+	async function loadRunDebug(runId: string): Promise<void> {
+		selectedRunId.value = runId;
+		isLoadingRunDebug.value = true;
+		try {
+			runDebug.value = await fetchRunDebug(rootStore.restApiContext, runId);
+		} catch {
+			runDebug.value = null;
+			toast.showError(
+				new Error(i18n.baseText('instanceAi.debug.runDebug.fetchError')),
+				'Run Debug',
+			);
+		} finally {
+			isLoadingRunDebug.value = false;
+		}
+	}
+
+	async function refreshRunDebug(threadId: string, preferredRunId?: string | null): Promise<void> {
+		await loadThreadDebugRuns(threadId);
+		const runId =
+			preferredRunId ?? selectedRunId.value ?? threadDebugRuns.value.at(-1)?.runId ?? null;
+		if (runId) {
+			await loadRunDebug(runId);
+		} else {
+			selectedRunId.value = null;
+			runDebug.value = null;
+		}
+	}
+
 	function reset(): void {
 		threads.value = [];
 		selectedThreadId.value = null;
 		threadMessages.value = [];
 		isLoadingThreads.value = false;
 		isLoadingMessages.value = false;
+		selectedRunId.value = null;
+		runDebug.value = null;
+		threadDebugRuns.value = [];
+		isLoadingRunDebug.value = false;
+		isLoadingThreadDebugRuns.value = false;
 	}
 
 	return {
@@ -78,12 +142,20 @@ export const useInstanceAiDebugStore = defineStore('instanceAiDebug', () => {
 		threadMessages,
 		isLoadingThreads,
 		isLoadingMessages,
+		selectedRunId,
+		runDebug,
+		threadDebugRuns,
+		isLoadingRunDebug,
+		isLoadingThreadDebugRuns,
 		// Computed
 		selectedThread,
 		// Actions
 		loadThreads,
 		selectThread,
 		loadMessages,
+		loadThreadDebugRuns,
+		loadRunDebug,
+		refreshRunDebug,
 		reset,
 	};
 });

@@ -624,6 +624,33 @@ export class InstanceAiController {
 		return this.instanceAiService.getThreadStatus(threadId);
 	}
 
+	@Get('/debug/runs/:runId')
+	@GlobalScope('instanceAi:message')
+	async getRunDebug(req: AuthenticatedRequest, _res: Response, @Param('runId') runId: string) {
+		this.requireInstanceAiEnabled();
+		const record = this.instanceAiService.getRunDebug(runId);
+		if (!record) {
+			throw new NotFoundError('Run debug record not found');
+		}
+		await this.assertThreadAccess(req.user.id, record.threadId);
+		return record;
+	}
+
+	@Get('/debug/threads/:threadId/runs')
+	@GlobalScope('instanceAi:message')
+	async listThreadDebugRuns(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return {
+			threadId,
+			runs: this.instanceAiService.listThreadDebugRuns(threadId),
+		};
+	}
+
 	// ── Evaluation endpoints ──────────────────────────────────────────────────
 
 	@Post('/eval/execute-with-llm-mock/:workflowId')

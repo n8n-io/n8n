@@ -376,6 +376,11 @@ export type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiStoredMessage,
 	InstanceAiThreadMessagesResponse,
+	InstanceAiRunDebugSummary,
+	InstanceAiRunDebugStep,
+	InstanceAiRunDebugWorkflowCodeSnapshot,
+	InstanceAiRunDebugResponse,
+	InstanceAiThreadDebugRunsResponse,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiAdminSettingsResponse,
@@ -420,6 +425,32 @@ export {
 } from './schemas/agent-run-reducer';
 
 export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
+
+export {
+	formatDebugJson,
+	summarizeJsonValue,
+	parseSystemBlocks,
+	extractObservationsBlock,
+	parseSystemPromptForDisplay,
+	parseMessageBlocks,
+	parseToolCallBlocks,
+	parseToolResultBlocks,
+	parseUsageSummary,
+	parseInputExtras,
+	parseOutputDisplayBlocks,
+	parseOutputExtras,
+	parseInputSettings,
+	parseStepSummary,
+} from './schemas/llm-step-display';
+
+export type {
+	ReadableContentBlock,
+	ReadableSegment,
+	ReadableToolCallBlock,
+	StepDebugSummary,
+	ReadableUsageSummary,
+	ParsedSystemPromptDisplay,
+} from './schemas/llm-step-display';
 
 export {
 	startTestRunPayloadSchema,

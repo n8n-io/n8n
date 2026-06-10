@@ -31,6 +31,7 @@ import type {
 // The backend module provides concrete implementations via InstanceAiAdapterService.
 
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
+import type { WorkflowCodeSnapshotInput } from './debug/run-debug-buffer';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
@@ -759,6 +760,8 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
+	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
 	 * IDs of workflows the agent created during the **currently active plan
 	 * cycle**. Populated by build-workflow and submit-workflow on every

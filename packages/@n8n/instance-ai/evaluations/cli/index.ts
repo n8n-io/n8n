@@ -41,6 +41,7 @@ import { formatComparisonMarkdown, formatComparisonTerminal } from '../compariso
 import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { createLogger } from '../harness/logger';
 import type { EvalLogger } from '../harness/logger';
 import {
@@ -62,6 +63,7 @@ import {
 import { syncDataset, type DatasetExampleInputs } from '../langsmith/dataset-sync';
 import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
+import { writeRunDebugReport } from '../report/run-debug-report';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
 	BuildExpectationResult,
@@ -71,6 +73,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
@@ -215,6 +218,8 @@ async function main(): Promise<void> {
 		const reportResults = flattenRunsForReport(evaluation);
 		const htmlPath = writeWorkflowReport(reportResults);
 		console.log(`Report:     ${htmlPath}`);
+		const debugHtmlPath = writeRunDebugReport(reportResults);
+		console.log(`LLM debug:  ${debugHtmlPath}`);
 		console.log(
 			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase }),
 		);
@@ -242,9 +247,19 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 }> {
 	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
 
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
+	if (testCasesWithFiles.length === 0) {
+		logger.info('No workflow test cases found in evaluations/data/workflows/');
+		return {
+			evaluation: { totalRuns: 0, testCases: [] },
+			experimentName: '',
+			outcome: { kind: 'no_baseline' },
+			slugByTestCase: new Map(),
+		};
+	}
+
 	const lsClient = new Client();
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter, args.exclude);
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
 	// the LangSmith target() output schema doesn't carry the full transcript.
@@ -252,6 +267,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// Build-expectation verdicts, judged once per build and merged the same way —
 	// fired during getOrBuild, awaited before reshapeLangSmithRuns.
 	const buildExpectationsByThreadId = new Map<string, Promise<BuildExpectationResult[]>>();
+	const runDebugByThreadId = new Map<string, Promise<InstanceAiRunDebugResponse[]>>();
 
 	// LangSmith dataset rows carry only per-scenario fields. The conversation and
 	// build expectations for the build are sourced locally, keyed by fileSlug.
@@ -383,6 +399,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
 				stashBuildExpectations(fileSlug, build);
+				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode — checks run with empty prompt context.
 					build.workflowChecks = await runWorkflowChecks({
@@ -409,6 +426,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
 				stashBuildExpectations(fileSlug, build);
+				stashRunDebug(lane.runner.client, build);
 				return { build, lane, buildDurationMs };
 			} finally {
 				allocator.release(lane, fileSlug);
@@ -422,6 +440,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (build.threadId && build.transcript) {
 			transcriptByThreadId.set(build.threadId, build.transcript);
 		}
+	}
+
+	function stashRunDebug(client: N8nClient, build: BuildResult): void {
+		if (!build.threadId) return;
+		runDebugByThreadId.set(build.threadId, captureThreadRunDebug(client, build.threadId, logger));
 	}
 
 	// Judge build expectations once per build (off the scenario critical path);
@@ -656,6 +679,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		for (const [threadId, verdictsPromise] of buildExpectationsByThreadId) {
 			buildExpectationsResolved.set(threadId, await verdictsPromise);
 		}
+		const runDebugResolved = new Map<string, InstanceAiRunDebugResponse[]>();
+		for (const [threadId, runDebugPromise] of runDebugByThreadId) {
+			runDebugResolved.set(threadId, await runDebugPromise);
+		}
 		const allRunResults = reshapeLangSmithRuns(
 			experimentResults.results,
 			testCasesWithFiles,
@@ -663,6 +690,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			transcriptByThreadId,
 			buildExpectationsResolved,
 			lanes[0]?.baseUrl,
+			runDebugResolved,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
