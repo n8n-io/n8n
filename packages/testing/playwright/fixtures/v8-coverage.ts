@@ -87,11 +87,13 @@ export const v8CoverageFixtures = {
 				// V8 coverage entries include full script source text. Tests that navigate
 				// extensively (e.g. signout + signin in one test with resetOnNavigation:false)
 				// accumulate enough script entries that JSON.stringify hits V8's ~536MB string
-				// limit. The shard-level sharedReport already received the data above, so
-				// aggregate coverage is unaffected — only this test's per-spec impact map
-				// entry is dropped.
+				// limit (RangeError: Invalid string length). The shard-level sharedReport
+				// already received the data above, so aggregate coverage is unaffected — only
+				// this test's per-spec impact map entry is dropped. Re-throw anything else: a
+				// real write failure (disk full, permissions) must not silently lose attribution.
+				if (!(error instanceof RangeError)) throw error;
 				console.warn(
-					`[coverage] per-spec raw write skipped for ${testInfo.titlePath.join(' > ')}: ${String(error)}`,
+					`[coverage] per-spec raw write skipped for ${testInfo.titlePath.join(' > ')}: ${error.message}`,
 				);
 			}
 		}
