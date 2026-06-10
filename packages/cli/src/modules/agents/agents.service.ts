@@ -10,6 +10,7 @@ import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
+	N8N_CHAT_INTEGRATION_TYPE,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
@@ -65,6 +66,7 @@ import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -225,6 +227,7 @@ export class AgentsService {
 		}
 		const parts = [params.agentId, 'draft'];
 		if (params.n8nUserId) parts.push(params.n8nUserId);
+		if (params.integrationType) parts.push(params.integrationType);
 		return parts.join(':');
 	}
 
@@ -290,6 +293,7 @@ export class AgentsService {
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
+		private readonly integrationMessageContextService: IntegrationMessageContextService,
 	) {}
 
 	private isNodeToolsModuleEnabled(): boolean {
@@ -355,7 +359,7 @@ export class AgentsService {
 	 */
 	listChatIntegrations(): ChatIntegrationDescriptor[] {
 		return Container.get(ChatIntegrationRegistry)
-			.list()
+			.listPublic()
 			.map((i) => ({
 				type: i.type,
 				label: i.displayLabel,
@@ -1136,7 +1140,26 @@ export class AgentsService {
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, userId, memory } = config;
 
-		const runtime = await this.getRuntime({ agentId, projectId, n8nUserId: userId });
+		const runtime = await this.getRuntime({
+			agentId,
+			projectId,
+			n8nUserId: userId,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+		});
+
+		// Seed the integration message context under memory.threadId — the same
+		// value streamChatResponse hands to agentInstance.stream() as
+		// ctx.persistence.threadId, which is the key the n8n_chat tools use to
+		// read it back. Gives `respond` its target and powers the
+		// get_current_* context queries. Seeded once per send; resumeForChat
+		// intentionally does not re-seed (the context persists from this turn).
+		await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
+			integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+			platform: N8N_CHAT_INTEGRATION_TYPE,
+			target: { type: 'dm', userId, threadId: memory.threadId },
+			interactingUserId: userId,
+			updatedAt: new Date().toISOString(),
+		});
 
 		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,

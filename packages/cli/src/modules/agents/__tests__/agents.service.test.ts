@@ -209,6 +209,7 @@ describe('AgentsService', () => {
 			chatIntegrationService,
 			agentKnowledgeService,
 			mock(),
+			mock(),
 		);
 	});
 

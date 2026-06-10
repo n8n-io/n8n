@@ -1,7 +1,7 @@
 import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agents';
 import { z } from 'zod';
 
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { ButtonStyle } from 'chat';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
@@ -51,9 +51,18 @@ export interface IntegrationSubjectPerson {
 	name: string;
 }
 
+/**
+ * Source of a tool connection: a persisted credential integration, or the
+ * implicit credential-less in-app chat channel (injected per-run, never
+ * stored on the agent).
+ */
+export type IntegrationToolConnectionSource =
+	| AgentIntegrationConfig
+	| { type: typeof N8N_CHAT_INTEGRATION_TYPE; credentialId?: undefined };
+
 export interface IntegrationToolConnectionDescriptor {
 	agentId?: string;
-	integration: AgentIntegrationConfig;
+	integration: IntegrationToolConnectionSource;
 	integrationConnectionId: string;
 	contextToolName: string;
 	actionToolName: string;
@@ -893,10 +902,10 @@ export function getIntegrationToolConnectionDescriptors(
 	});
 }
 
-export function buildIntegrationConnectionId(
-	integration: Pick<AgentIntegrationConfig, 'type' | 'credentialId'>,
-): string {
-	return `${integration.type}:${integration.credentialId}`;
+export function buildIntegrationConnectionId(integration: IntegrationToolConnectionSource): string {
+	return integration.credentialId === undefined
+		? integration.type
+		: `${integration.type}:${integration.credentialId}`;
 }
 
 export function createIntegrationContextTool(params: {

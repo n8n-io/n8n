@@ -38,7 +38,7 @@ const messageSchema = z
 	})
 	.strict();
 
-const respondInputSchema = z.object({ message: messageSchema });
+export const respondInputSchema = z.object({ message: messageSchema });
 const sendDmInputSchema = z.object({
 	userId: z.string().min(1),
 	message: messageSchema,
@@ -76,9 +76,40 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	}): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
+		const unsupportedAction = () =>
+			integrationError(
+				INTEGRATION_ERROR_CODES.UNSUPPORTED_ACTION,
+				`The ${params.descriptor.integration.type} integration does not support ${params.action}.`,
+			);
+
+		const integrationDef = this.integrationRegistry.get(params.descriptor.integration.type);
+		if (integrationDef && !integrationDef.requiresChatInstance) {
+			if (!integrationDef.executeAction) {
+				return unsupportedAction();
+			}
+			try {
+				const result = await integrationDef.executeAction({
+					chat: undefined,
+					descriptor: params.descriptor,
+					action: params.action,
+					input: params.input,
+					currentMessageContext: params.currentMessageContext,
+				});
+				return result ?? unsupportedAction();
+			} catch (error) {
+				return integrationError(
+					INTEGRATION_ERROR_CODES.ACTION_FAILED,
+					error instanceof Error ? error.message : String(error),
+				);
+			}
+		}
+
+		const { credentialId } = params.descriptor.integration;
+		if (!credentialId) return connectionUnavailable();
+
 		const chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
 			type: params.descriptor.integration.type,
-			credentialId: params.descriptor.integration.credentialId,
+			credentialId,
 		});
 		if (!chat) return connectionUnavailable();
 
@@ -91,9 +122,8 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			}
 
 			// Platform-specific actions delegate to the integration implementation.
-			const integration = this.integrationRegistry.get(params.descriptor.integration.type);
-			if (integration?.executeAction) {
-				const result = await integration.executeAction({
+			if (integrationDef?.executeAction) {
+				const result = await integrationDef.executeAction({
 					chat,
 					descriptor: params.descriptor,
 					action: params.action,
@@ -107,10 +137,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 				return await this.sendChannelMessage(chat, params);
 			}
 
-			return integrationError(
-				INTEGRATION_ERROR_CODES.UNSUPPORTED_ACTION,
-				`The ${params.descriptor.integration.type} integration does not support ${params.action}.`,
-			);
+			return unsupportedAction();
 		} catch (error) {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.ACTION_FAILED,
@@ -220,9 +247,11 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	): ShortenCallback | undefined {
 		const { agentId, integration } = descriptor;
 		if (!agentId) return undefined;
+		const { credentialId } = integration;
+		if (!credentialId) return undefined;
 		return this.chatIntegrationService.getShortenCallback(agentId, {
 			type: integration.type,
-			credentialId: integration.credentialId,
+			credentialId,
 		});
 	}
 }
