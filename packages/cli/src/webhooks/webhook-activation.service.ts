@@ -24,8 +24,8 @@ interface AddWebhooksOptions {
 	additionalData: IWorkflowExecuteAdditionalData;
 	mode: WorkflowExecuteMode;
 	activation: WorkflowActivateMode;
-	/** When given, only the webhooks of these node ids are registered. */
-	nodeIds?: Set<string>;
+	/** Only the webhooks of these node ids are registered. */
+	nodeIds: Set<string>;
 }
 
 /**
@@ -47,17 +47,15 @@ export class WebhookActivationService {
 	}
 
 	/**
-	 * Register workflow-defined webhooks in the `workflow_entity` table. When
-	 * `nodeIds` is given, only the webhooks of those nodes are registered.
+	 * Register the webhooks of the given nodes in the `workflow_entity` table.
 	 */
 	async addWebhooks({ workflow, additionalData, mode, activation, nodeIds }: AddWebhooksOptions) {
-		let webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
-
-		if (nodeIds) {
-			webhooks = webhooks.filter((webhookData) =>
-				nodeIds.has(workflow.getNode(webhookData.node)?.id ?? ''),
-			);
-		}
+		const webhooks = WebhookHelpers.getWorkflowWebhooks(
+			workflow,
+			additionalData,
+			undefined,
+			true,
+		).filter((webhookData) => nodeIds.has(workflow.getNode(webhookData.node)?.id ?? ''));
 
 		if (webhooks.length === 0) return false;
 
@@ -166,6 +164,7 @@ export class WebhookActivationService {
 		}
 
 		const { nodes, connections } = workflowData.activeVersion;
+		const nodeIds = new Set(nodes.map((node) => node.id));
 
 		const workflow = new Workflow({
 			id: workflowId,
@@ -183,21 +182,20 @@ export class WebhookActivationService {
 			workflowSettings: workflowData.settings,
 		});
 
-		await this.deregisterWebhooks(workflow, additionalData);
+		await this.deregisterWebhooks(workflow, additionalData, nodeIds);
 
 		await this.webhookService.deleteWorkflowWebhooks(workflowId);
 	}
 
 	/**
-	 * Deregisters a workflow's webhooks from external services and persists any
-	 * resulting static data. When `nodeIds` is given, only the webhooks of those
-	 * nodes are deregistered. Returns the names of the nodes whose webhooks were
-	 * deregistered.
+	 * Deregisters the webhooks of the given nodes from external services and
+	 * persists any resulting static data. Returns the names of the nodes whose
+	 * webhooks were deregistered.
 	 */
 	async deregisterWebhooks(
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
-		nodeIds?: Set<string>,
+		nodeIds: Set<string>,
 	) {
 		const removedNodeNames: string[] = [];
 
@@ -211,7 +209,7 @@ export class WebhookActivationService {
 			);
 
 			for (const webhookData of webhooks) {
-				if (nodeIds && !nodeIds.has(workflow.getNode(webhookData.node)?.id ?? '')) {
+				if (!nodeIds.has(workflow.getNode(webhookData.node)?.id ?? '')) {
 					continue;
 				}
 				await this.webhookService.deleteWebhook(workflow, webhookData, 'internal', 'update');

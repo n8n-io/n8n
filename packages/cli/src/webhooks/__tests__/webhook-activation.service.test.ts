@@ -78,6 +78,7 @@ describe('WebhookActivationService', () => {
 				additionalData,
 				mode: 'trigger',
 				activation: 'update',
+				nodeIds: new Set(),
 			});
 
 			expect(result).toBe(false);
@@ -93,6 +94,7 @@ describe('WebhookActivationService', () => {
 				additionalData,
 				mode: 'trigger',
 				activation: 'update',
+				nodeIds: new Set(['A-id', 'B-id']),
 			});
 
 			expect(result).toBe(true);
@@ -129,6 +131,7 @@ describe('WebhookActivationService', () => {
 					additionalData,
 					mode: 'trigger',
 					activation: 'update',
+					nodeIds: new Set(['A-id']),
 				}),
 			).rejects.toThrow(WebhookPathTakenError);
 
@@ -173,7 +176,11 @@ describe('WebhookActivationService', () => {
 			getWorkflowWebhooks.mockReturnValue([webhookData('A'), webhookData('B')]);
 			const workflow = mockWorkflow();
 
-			const removed = await service.deregisterWebhooks(workflow, additionalData);
+			const removed = await service.deregisterWebhooks(
+				workflow,
+				additionalData,
+				new Set(['A-id', 'B-id']),
+			);
 
 			expect(webhookService.deleteWebhook).toHaveBeenCalledTimes(2);
 			expect(removed).toEqual(['A', 'B']);
