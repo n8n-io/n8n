@@ -43,11 +43,18 @@ export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi';
  * (`false` = superseded/off; omitted or `true` falls back to the editor's own
  * gating, and a `true` can never grant a feature the instance disabled).
  * `readOnly` is a direct state flag — `true` forces the canvas read-only on top
- * of the editor's own gating. Provided by editor hosts that supersede
- * capabilities — e.g. the Instance AI preview.
+ * of the editor's own gating. `executionSuccessToasts` / `executionErrorToasts`
+ * are direct state flags too — both shown by default; an explicit `false`
+ * suppresses that class of workflow execution result toast for this editor
+ * (mirrors the old iframe `suppressNotifications` / `allowErrorNotifications`
+ * knobs, but scoped per editor instead of via the shared UI store). Hosts that
+ * surface results in their own UI — e.g. the Instance AI preview — set them.
+ * Provided by editor hosts that supersede capabilities.
  */
 export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
 	readOnly?: boolean;
+	executionSuccessToasts?: boolean;
+	executionErrorToasts?: boolean;
 };
 export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
 	Symbol('EditorEnabledFeatures');
