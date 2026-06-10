@@ -1,6 +1,7 @@
 import { Time } from '@n8n/constants';
-import { AuthenticatedRequest, CredentialsEntity } from '@n8n/db';
 import { Delete, Options, Param, Post, RestController } from '@n8n/decorators';
+import { CredentialsEntity, AuthenticatedRequest, isAuthenticatedRequest, User } from '@n8n/db';
+import type { Scope } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
@@ -37,8 +38,18 @@ export class DynamicCredentialsController {
 		private readonly eventService: EventService,
 	) {}
 
-	private async findCredentialToUse(credentialId: string): Promise<CredentialsEntity> {
-		const credential = await this.enterpriseCredentialsService.getOne(credentialId);
+	private async findCredentialToUse(
+		credentialId: string,
+		user?: User,
+		scope?: Scope,
+	): Promise<CredentialsEntity> {
+		// External (static-token) callers have no n8n user; their identity is
+		// validated by the resolver, so we resolve the credential by id. When the
+		// request carries an n8n session user, enforce that user's access instead.
+		const credential =
+			user && scope
+				? await this.credentialsFinderService.findCredentialForUser(credentialId, user, [scope])
+				: await this.enterpriseCredentialsService.getOne(credentialId);
 
 		if (!credential) {
 			throw new NotFoundError('Credential not found');
@@ -96,7 +107,8 @@ export class DynamicCredentialsController {
 	async revokeCredential(req: Request, res: Response): Promise<void> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const credential = await this.findCredentialToUse(req.params.id);
+		const user = isAuthenticatedRequest(req) ? req.user : undefined;
+		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:update');
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
@@ -137,7 +149,8 @@ export class DynamicCredentialsController {
 	async authorizeCredential(req: Request, res: Response): Promise<string> {
 		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
 		const credentialContext = this.dynamicCredentialWebService.getCredentialContextFromRequest(req);
-		const credential = await this.findCredentialToUse(req.params.id);
+		const user = isAuthenticatedRequest(req) ? req.user : undefined;
+		const credential = await this.findCredentialToUse(req.params.id, user, 'credential:update');
 
 		const resolverId = req.query.resolverId as string | undefined;
 		const { resolver, resolverEntity } = await this.getResolverInstance(resolverId);
@@ -157,7 +170,7 @@ export class DynamicCredentialsController {
 		const csrfData: CreateCsrfStateData = {
 			cid: credential.id,
 			origin: 'dynamic-credential',
-			authorizationHeader: req.headers.authorization || `Bearer ${credentialContext.identity}`,
+			authorizationHeader: req.headers.authorization ?? `Bearer ${credentialContext.identity}`,
 			authMetadata: credentialContext.metadata,
 			credentialResolverId: req.query.resolverId,
 		};

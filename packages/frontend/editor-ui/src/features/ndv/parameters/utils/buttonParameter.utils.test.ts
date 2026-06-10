@@ -56,6 +56,7 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 			createWorkflowDocumentId(''),
 			null,
 			'mockNdvPushRef',
+			true,
 			2,
 		);
 
@@ -76,6 +77,7 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 				createWorkflowDocumentId(''),
 				null,
 				'mockNdvPushRef',
+				true,
 				3,
 			),
 		).rejects.toThrow('All attempts failed');
@@ -93,6 +95,7 @@ describe('generateCodeForAiTransform - Retry Tests', () => {
 			createWorkflowDocumentId(''),
 			null,
 			'mockNdvPushRef',
+			true,
 		);
 
 		expect(result).toEqual({
