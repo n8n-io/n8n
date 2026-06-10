@@ -24,6 +24,28 @@ describe('TagService', () => {
 		jest.resetAllMocks();
 	});
 
+	describe('listWithUsageCount', () => {
+		test('builds a limited query and returns data + totalCount in parallel', async () => {
+			const limitFn = jest.fn().mockReturnThis();
+			const getMany = jest.fn().mockResolvedValue([makeTag()]);
+			const builder = {
+				select: jest.fn().mockReturnThis(),
+				loadRelationCountAndMap: jest.fn().mockReturnThis(),
+				limit: limitFn,
+				getMany,
+			};
+			tagRepository.createQueryBuilder.mockReturnValue(builder as never);
+			tagRepository.count.mockResolvedValue(42);
+
+			const result = await tagService.listWithUsageCount({ limit: 10 });
+
+			expect(limitFn).toHaveBeenCalledWith(10);
+			expect(tagRepository.count).toHaveBeenCalledTimes(1);
+			expect(result.totalCount).toBe(42);
+			expect(result.data).toHaveLength(1);
+		});
+	});
+
 	describe('findByNames', () => {
 		test('returns existing tags by name, preserving input order', async () => {
 			const tags = [

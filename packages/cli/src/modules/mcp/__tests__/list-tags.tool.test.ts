@@ -26,10 +26,20 @@ const userWithScopes = (scopeSlugs: string[]) =>
 describe('list-tags MCP tool', () => {
 	const user = userWithScopes(['tag:list']);
 
-	const createMocks = (tags: ITagWithCountDb[] | Error = []) => {
-		const getAll =
-			tags instanceof Error ? jest.fn().mockRejectedValue(tags) : jest.fn().mockResolvedValue(tags);
-		const tagService = mockInstance(TagService, { getAll });
+	const createMocks = (
+		tagsOrError: ITagWithCountDb[] | Error = [],
+		opts: { totalCount?: number } = {},
+	) => {
+		const listWithUsageCount =
+			tagsOrError instanceof Error
+				? jest.fn().mockRejectedValue(tagsOrError)
+				: jest
+						.fn()
+						.mockResolvedValue({
+							data: tagsOrError,
+							totalCount: opts.totalCount ?? tagsOrError.length,
+						});
+		const tagService = mockInstance(TagService, { listWithUsageCount });
 		const telemetry = mockInstance(Telemetry, { track: jest.fn() });
 		return { tagService, telemetry };
 	};
@@ -61,7 +71,7 @@ describe('list-tags MCP tool', () => {
 
 			const result = await listTags(tagService);
 
-			expect(tagService.getAll).toHaveBeenCalledWith({ withUsageCount: true });
+			expect(tagService.listWithUsageCount).toHaveBeenCalledWith({ limit: 500 });
 			expect(result.count).toBe(2);
 			expect(result.totalCount).toBe(2);
 			expect(result.data).toEqual([
@@ -91,16 +101,13 @@ describe('list-tags MCP tool', () => {
 			expect(result.data[0].usageCount).toBe(0);
 		});
 
-		test('caps results at the requested limit and reports totalCount', async () => {
-			const tags = [
-				buildTag({ id: 'tag-1' }),
-				buildTag({ id: 'tag-2' }),
-				buildTag({ id: 'tag-3' }),
-			];
-			const { tagService } = createMocks(tags);
+		test('pushes the requested limit into the query and reports totalCount', async () => {
+			const tags = [buildTag({ id: 'tag-1' }), buildTag({ id: 'tag-2' })];
+			const { tagService } = createMocks(tags, { totalCount: 3 });
 
 			const result = await listTags(tagService, { limit: 2 });
 
+			expect(tagService.listWithUsageCount).toHaveBeenCalledWith({ limit: 2 });
 			expect(result.data.map((t) => t.id)).toEqual(['tag-1', 'tag-2']);
 			expect(result.count).toBe(2);
 			expect(result.totalCount).toBe(3);
@@ -148,7 +155,7 @@ describe('list-tags MCP tool', () => {
 				tool.handler({ limit: undefined as unknown as number }, {} as never),
 			).rejects.toThrow('permission to list tags');
 
-			expect(tagService.getAll).not.toHaveBeenCalled();
+			expect(tagService.listWithUsageCount).not.toHaveBeenCalled();
 		});
 	});
 });

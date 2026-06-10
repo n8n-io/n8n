@@ -85,6 +85,32 @@ export class TagService {
 	}
 
 	/**
+	 * Return up to `limit` tags with their non-archived usage counts plus the
+	 * total tag count, both via DB-level queries rather than in-memory slicing.
+	 * Issues `count` and `find` in parallel so the additional round-trip is
+	 * pipelined with the data fetch.
+	 */
+	async listWithUsageCount({ limit }: { limit: number }): Promise<{
+		data: ITagWithCountDb[];
+		totalCount: number;
+	}> {
+		const [rows, totalCount] = await Promise.all([
+			this.tagRepository
+				.createQueryBuilder('tag')
+				.select(['tag.id', 'tag.name', 'tag.createdAt', 'tag.updatedAt'])
+				.loadRelationCountAndMap('tag.usageCount', 'tag.workflowMappings', 'wm', (qb) =>
+					qb.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
+						isArchived: false,
+					}),
+				)
+				.limit(limit)
+				.getMany(),
+			this.tagRepository.count(),
+		]);
+		return { data: rows as unknown as ITagWithCountDb[], totalCount };
+	}
+
+	/**
 	 * Sort tags based on the order of the tag IDs in the request.
 	 */
 	sortByRequestOrder(tags: TagEntity[], { requestOrder }: { requestOrder: string[] }) {

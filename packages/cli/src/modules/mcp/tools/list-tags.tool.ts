@@ -116,9 +116,9 @@ export async function listTags(
 	{ limit = MAX_RESULTS }: ListTagsParams = {},
 ): Promise<ListTagsResult> {
 	const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
-	const tags = await tagService.getAll({ withUsageCount: true });
+	const { data: tags, totalCount } = await tagService.listWithUsageCount({ limit: safeLimit });
 
-	const data: ListTagsItem[] = tags.slice(0, safeLimit).map((tag) => ({
+	const data: ListTagsItem[] = tags.map((tag) => ({
 		id: tag.id,
 		name: tag.name,
 		usageCount: tag.usageCount ?? 0,
@@ -126,5 +126,5 @@ export async function listTags(
 		updatedAt: tag.updatedAt.toISOString(),
 	}));
 
-	return { data, count: data.length, totalCount: tags.length };
+	return { data, count: data.length, totalCount };
 }
