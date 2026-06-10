@@ -64,10 +64,7 @@ jobs:
       test-mode: docker-artifact
       # Runs the coverage project + resolves this shard's V8 to lcov/per-spec
       # (keeps test-e2e-reusable coverage-agnostic). See run-coverage-shard.mjs.
-      # node-options: coverage instrumentation accumulates V8 profiler data in
-      # the Playwright runner heap; 6GB lets it use the 4vcpu box's available RAM.
       test-command: pnpm --filter=n8n-playwright coverage:shard
-      node-options: '--max-old-space-size=6144'
       workers: '1'
       runner: blacksmith-4vcpu-ubuntu-2204
       timeout-minutes: 55
