@@ -16,18 +16,17 @@ vi.mock('node:fs', () => ({
 const consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 // Ignore the sanitize function from the GlobalConfig nested types
-type ConfigShape<T> =
-	T extends ReadonlyArray<infer U>
-		? Array<ConfigShape<U>>
-		: T extends object
-			? {
-					[K in keyof T as K extends 'sanitize'
+type ConfigShape<T> = T extends ReadonlyArray<infer U>
+	? Array<ConfigShape<U>>
+	: T extends object
+		? {
+				[K in keyof T as K extends 'sanitize'
+					? never
+					: T[K] extends (...args: unknown[]) => unknown
 						? never
-						: T[K] extends (...args: unknown[]) => unknown
-							? never
-							: K]: ConfigShape<T[K]>;
-				}
-			: T;
+						: K]: ConfigShape<T[K]>;
+			}
+		: T;
 
 type GlobalConfigShape = ConfigShape<GlobalConfig>;
 
