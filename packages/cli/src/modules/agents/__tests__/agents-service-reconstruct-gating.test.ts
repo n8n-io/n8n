@@ -539,7 +539,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
 		expect(getInjectedToolNames()).toEqual(
-			expect.arrayContaining(['find_knowledge_files', 'search_knowledge', 'read_knowledge']),
+			expect.arrayContaining(['glob_knowledge_files', 'search_knowledge', 'read_knowledge']),
 		);
 	});
 
@@ -553,7 +553,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
 		expect(getInjectedToolNames()).not.toContain('search_knowledge');
-		expect(getInjectedToolNames()).not.toContain('find_knowledge_files');
+		expect(getInjectedToolNames()).not.toContain('glob_knowledge_files');
 		expect(getInjectedToolNames()).not.toContain('read_knowledge');
 	});
 });

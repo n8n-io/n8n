@@ -25,16 +25,14 @@ describe('createKnowledgeRetrievalTools', () => {
 
 	it('exposes read-only knowledge retrieval tools and dispatches to the sandbox service', async () => {
 		const sandboxService = mock<AgentKnowledgeSandboxService>();
-		sandboxService.findKnowledgeFiles.mockResolvedValue({
+		sandboxService.globKnowledgeFiles.mockResolvedValue({
 			files: [],
 			limit: 20,
-			offset: 0,
 			hasMore: false,
 		});
 		sandboxService.searchKnowledge.mockResolvedValue({
 			matches: [],
 			limit: 20,
-			offset: 0,
 			hasMore: false,
 			truncated: false,
 		});
@@ -48,7 +46,7 @@ describe('createKnowledgeRetrievalTools', () => {
 		const tools = makeTools(sandboxService);
 
 		expect(tools.map((tool) => tool.name)).toEqual([
-			'find_knowledge_files',
+			'glob_knowledge_files',
 			'search_knowledge',
 			'read_knowledge',
 		]);
@@ -59,12 +57,12 @@ describe('createKnowledgeRetrievalTools', () => {
 		}
 
 		await expect(
-			getTool('find_knowledge_files', tools).handler?.({ query: 'notes' }, {}),
+			getTool('glob_knowledge_files', tools).handler?.({ pattern: '*notes*' }, {}),
 		).resolves.toMatchObject({
 			files: [],
 		});
-		expect(sandboxService.findKnowledgeFiles).toHaveBeenCalledWith(projectId, agentId, {
-			query: 'notes',
+		expect(sandboxService.globKnowledgeFiles).toHaveBeenCalledWith(projectId, agentId, userId, {
+			pattern: '*notes*',
 		});
 
 		await getTool('search_knowledge', tools).handler?.({ query: 'flow control' }, {});

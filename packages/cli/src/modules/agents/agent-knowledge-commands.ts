@@ -1,12 +1,12 @@
 import {
+	DEFAULT_GLOB_FILES_LIMIT,
 	DEFAULT_SEARCH_TEXT_LIMIT,
-	MAX_CONTEXT_LINES,
 	MAX_OPERATION_OUTPUT_CHARS,
 	MAX_READ_LINE_CHARS,
 	MAX_SEARCH_LINE_CHARS,
 	truncateKnowledgeText,
 	type AgentKnowledgeFileReference,
-	type AgentKnowledgeLine,
+	type GlobKnowledgeFilesRequest,
 	type ReadKnowledgeRangeResult,
 	type ReadKnowledgeRequest,
 	type SearchKnowledgeMatch,
@@ -14,74 +14,65 @@ import {
 } from './agent-knowledge-retrieval';
 import { KNOWLEDGE_FILES_DIR } from './agent-knowledge-storage';
 
-export const OUTPUT_TRUNCATED_MARKER = '__N8N_AGENT_KNOWLEDGE_OUTPUT_TRUNCATED__';
-const SHELL_OUTPUT_LIMIT_CHARS = MAX_OPERATION_OUTPUT_CHARS - OUTPUT_TRUNCATED_MARKER.length - 2;
+const COMMAND_TIMEOUT_SECONDS = 20;
+const READ_OUTPUT_TRUNCATED_MARKER = '__N8N_READ_OUTPUT_TRUNCATED__';
 
-export function buildSearchKnowledgeCommand(
-	request: SearchKnowledgeRequest,
-	files: AgentKnowledgeFileReference[] | undefined,
-): string {
-	const matchLimit = (request.offset ?? 0) + (request.limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
-	const queryTerms = [...new Set([request.query, ...(request.queries ?? [])])];
-	const args = [
+export function buildSearchKnowledgeCommand(request: SearchKnowledgeRequest): string {
+	const matchLimit = (request.limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
+	const target = request.file ? `./${request.file}` : '.';
+	const rgCommand = [
+		'timeout',
+		String(COMMAND_TIMEOUT_SECONDS),
 		'rg',
-		'--json',
-		'--fixed-strings',
+		...(request.mode === 'regex' ? [] : ['--fixed-strings']),
 		'--line-number',
+		'--with-filename',
 		'--color=never',
 		'--hidden',
-		// Deterministic match order across runs; without it rg's parallel
-		// traversal makes offset/limit pagination skip or repeat matches.
-		'--sort',
-		'path',
-		'--max-count',
-		String(matchLimit),
 		'--max-columns',
 		String(MAX_SEARCH_LINE_CHARS + 1),
 		'--max-columns-preview',
+		'--field-match-separator',
+		quoteShellArg('\t'),
 		...(request.caseSensitive === true ? [] : ['--ignore-case']),
-		...(request.contextLines && request.contextLines > 0
-			? ['--context', String(request.contextLines)]
-			: []),
-		// One -e flag per literal term; rg ORs them in a single pass so the
-		// model does not need a sandbox round trip per term variant.
-		...queryTerms.flatMap((term) => ['-e', quoteShellArg(term)]),
+		'-e',
+		quoteShellArg(request.query),
 		'--',
-		...(files?.map((file) => quoteShellArg(`./${file.file}`)) ?? [quoteShellArg('.')]),
+		quoteShellArg(target),
 	];
 
-	return args.join(' ');
+	return buildHeadLimitedPipeline(rgCommand.join(' '), matchLimit);
 }
 
-export function knowledgeFileMatchesQuery(
-	file: AgentKnowledgeFileReference,
-	query: string,
-	compactQuery: string,
-): boolean {
-	const storageName = file.file.toLocaleLowerCase();
-	const displayName = file.displayName.toLocaleLowerCase();
-
-	return (
-		storageName.includes(query) ||
-		displayName.includes(query) ||
-		(compactQuery.length > 0 &&
-			(compactKnowledgeFileLookupText(storageName).includes(compactQuery) ||
-				compactKnowledgeFileLookupText(displayName).includes(compactQuery)))
-	);
-}
-
-export function compactKnowledgeFileLookupText(value: string): string {
-	return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '');
+export function buildGlobKnowledgeFilesCommand(request: GlobKnowledgeFilesRequest): string {
+	const fileLimit = (request.limit ?? DEFAULT_GLOB_FILES_LIMIT) + 1;
+	const rgCommand = `timeout ${COMMAND_TIMEOUT_SECONDS} rg --files --hidden --glob ${quoteShellArg(request.pattern)} -- ${quoteShellArg(
+		'.',
+	)}`;
+	return buildHeadLimitedPipeline(rgCommand, fileLimit);
 }
 
 export function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRequest): string {
+	const emitLineScript = [
+		'function emit(i) {',
+		`line = i "\\t" NR "\\t" substr($0, 1, ${MAX_READ_LINE_CHARS + 1}) "\\n";`,
+		`if (total + length(line) > ${MAX_OPERATION_OUTPUT_CHARS}) { print "${READ_OUTPUT_TRUNCATED_MARKER}"; exit; }`,
+		'printf "%s", line;',
+		'total += length(line);',
+		'}',
+	].join(' ');
+
+	if (!request.ranges) {
+		const script = [emitLineScript, '{ emit(0) }'].join(' ');
+
+		return `awk ${quoteShellArg(script)} ${quoteShellArg(`./${file}`)}`;
+	}
+
 	const maxEndLine = Math.max(...request.ranges.map((range) => range.endLine));
 	const script = [
+		emitLineScript,
 		...request.ranges.map(
-			(range, index) =>
-				`NR >= ${range.startLine} && NR <= ${range.endLine} { printf "${index}\\t%d\\t%s\\n", NR, substr($0, 1, ${
-					MAX_READ_LINE_CHARS + 1
-				}) }`,
+			(range, index) => `NR >= ${range.startLine} && NR <= ${range.endLine} { emit(${index}) }`,
 		),
 		// Stop scanning once all requested ranges are behind us.
 		`NR > ${maxEndLine} { exit }`,
@@ -90,93 +81,76 @@ export function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRe
 	return `awk ${quoteShellArg(script)} ${quoteShellArg(`./${file}`)}`;
 }
 
-export function parseRipgrepJsonOutput(
+export function parseRipgrepOutput(
 	output: string,
 	filesByPath: Map<string, AgentKnowledgeFileReference>,
 ): { matches: SearchKnowledgeMatch[]; incomplete: boolean } {
 	const matches: SearchKnowledgeMatch[] = [];
-	const contextBeforeByFile = new Map<string, AgentKnowledgeLine[]>();
 	let incomplete = false;
 
 	for (const line of output.split(/\r?\n/)) {
 		if (!line) continue;
 
-		let event: unknown;
-		try {
-			event = JSON.parse(line);
-		} catch {
+		const parsedLine = parseRipgrepMatchLine(line);
+		if (!parsedLine) {
 			incomplete = true;
 			continue;
 		}
 
-		if (!isRecord(event) || !isRecord(event.data)) continue;
-
-		if (event.type === 'match') {
-			const file = resolveRipgrepFile(event.data, filesByPath);
-			const lineNumber = readNumber(event.data.line_number);
-			const text = readRipgrepText(event.data);
-			if (!file || lineNumber === undefined || text === undefined) continue;
-
-			const contextBefore = contextBeforeByFile.get(file.file) ?? [];
-			const truncatedText = truncateKnowledgeText(
-				stripTrailingNewline(text),
-				MAX_SEARCH_LINE_CHARS,
-			);
-			const startLine =
-				contextBefore.length > 0 ? Math.min(contextBefore[0].lineNumber, lineNumber) : lineNumber;
-			const match: SearchKnowledgeMatch = {
-				file: file.file,
-				fileId: file.fileId,
-				displayName: file.displayName,
-				lineNumber,
-				text: truncatedText.text,
-				textTruncated: truncatedText.truncated,
-				...(contextBefore.length > 0 ? { contextBefore: [...contextBefore] } : {}),
-				citation: {
-					file: file.file,
-					fileId: file.fileId,
-					displayName: file.displayName,
-					startLine,
-					endLine: lineNumber,
-				},
-			};
-			matches.push(match);
-			contextBeforeByFile.set(file.file, []);
+		const file = filesByPath.get(normalizeRipgrepPath(parsedLine.filePath));
+		if (!file) {
 			continue;
 		}
 
-		if (event.type === 'context') {
-			const file = resolveRipgrepFile(event.data, filesByPath);
-			const lineNumber = readNumber(event.data.line_number);
-			const text = readRipgrepText(event.data);
-			if (!file || lineNumber === undefined || text === undefined) continue;
-
-			const lineEntry = makeKnowledgeLine(lineNumber, text, MAX_SEARCH_LINE_CHARS);
-			const lastMatch = matches[matches.length - 1];
-			if (lastMatch?.file === file.file && lineNumber > lastMatch.lineNumber) {
-				lastMatch.contextAfter = [...(lastMatch.contextAfter ?? []), lineEntry];
-				lastMatch.citation.endLine = Math.max(lastMatch.citation.endLine, lineNumber);
-				continue;
-			}
-
-			const contextBefore = contextBeforeByFile.get(file.file) ?? [];
-			contextBefore.push(lineEntry);
-			contextBeforeByFile.set(file.file, contextBefore.slice(-MAX_CONTEXT_LINES));
-		}
+		const truncatedText = truncateKnowledgeText(
+			stripTrailingNewline(parsedLine.text),
+			MAX_SEARCH_LINE_CHARS,
+		);
+		matches.push({
+			file: file.file,
+			fileId: file.fileId,
+			displayName: file.displayName,
+			lineNumber: parsedLine.lineNumber,
+			text: truncatedText.text,
+			textTruncated: truncatedText.truncated,
+		});
 	}
 
 	return { matches, incomplete };
+}
+
+export function parseGlobKnowledgeFilesOutput(
+	output: string,
+	filesByPath: Map<string, AgentKnowledgeFileReference>,
+): AgentKnowledgeFileReference[] {
+	const matches: AgentKnowledgeFileReference[] = [];
+	const seen = new Set<string>();
+
+	for (const line of output.split(/\r?\n/)) {
+		const filePath = normalizeRipgrepPath(line.trim());
+		if (!filePath || seen.has(filePath)) continue;
+
+		const file = filesByPath.get(filePath);
+		if (!file) continue;
+
+		matches.push(file);
+		seen.add(filePath);
+	}
+
+	return matches;
 }
 
 export function parseReadKnowledgeOutput(
 	output: string,
 	file: AgentKnowledgeFileReference,
 	request: ReadKnowledgeRequest,
-): ReadKnowledgeRangeResult[] {
-	const ranges = request.ranges.map<ReadKnowledgeRangeResult>((range) => ({
+): { ranges: ReadKnowledgeRangeResult[]; truncated: boolean } {
+	const isWholeFileRead = !request.ranges;
+	const requestedRanges = request.ranges ?? [{ startLine: 1, endLine: 0 }];
+	const ranges = requestedRanges.map<ReadKnowledgeRangeResult>((range) => ({
 		startLine: range.startLine,
 		endLine: range.endLine,
-		lines: [],
+		text: '',
 		citation: {
 			file: file.file,
 			fileId: file.fileId,
@@ -185,9 +159,14 @@ export function parseReadKnowledgeOutput(
 			endLine: range.endLine,
 		},
 	}));
+	let truncatedOutput = false;
 
 	for (const line of output.split(/\r?\n/)) {
 		if (!line) continue;
+		if (line === READ_OUTPUT_TRUNCATED_MARKER) {
+			truncatedOutput = true;
+			break;
+		}
 		const [rangeIndexText, lineNumberText, ...textParts] = line.split('\t');
 		const rangeIndex = Number(rangeIndexText);
 		const lineNumber = Number(lineNumberText);
@@ -195,43 +174,61 @@ export function parseReadKnowledgeOutput(
 			continue;
 		}
 
-		ranges[rangeIndex].lines.push(
-			makeKnowledgeLine(lineNumber, textParts.join('\t'), MAX_READ_LINE_CHARS),
+		const truncated = truncateKnowledgeText(
+			stripTrailingNewline(textParts.join('\t')),
+			MAX_READ_LINE_CHARS,
 		);
+		const range = ranges[rangeIndex];
+		if (isWholeFileRead) {
+			range.endLine = lineNumber;
+			range.citation.endLine = lineNumber;
+		}
+		const outputLine = `${lineNumber}|${truncated.text}`;
+		range.text = range.text ? `${range.text}\n${outputLine}` : outputLine;
 	}
 
-	return ranges;
+	return { ranges, truncated: truncatedOutput };
 }
 
-function makeKnowledgeLine(
-	lineNumber: number,
-	text: string,
-	maxLength: number,
-): AgentKnowledgeLine {
-	const truncated = truncateKnowledgeText(stripTrailingNewline(text), maxLength);
-	return { lineNumber, text: truncated.text, truncated: truncated.truncated };
+function parseRipgrepMatchLine(
+	line: string,
+): { filePath: string; lineNumber: number; text: string } | undefined {
+	const tabParts = line.split('\t');
+	if (tabParts.length >= 3) {
+		const [filePath, lineNumberText, ...textParts] = tabParts;
+		const lineNumber = Number(lineNumberText);
+		if (Number.isInteger(lineNumber)) {
+			return { filePath, lineNumber, text: textParts.join('\t') };
+		}
+	}
+
+	const firstMatchSeparator = line.indexOf('\t');
+	if (firstMatchSeparator === -1) {
+		return parseColonSeparatedRipgrepMatchLine(line);
+	}
+
+	const location = line.slice(0, firstMatchSeparator);
+	const text = line.slice(firstMatchSeparator + 1);
+	const lineSeparator = location.lastIndexOf(':');
+	if (lineSeparator === -1) return undefined;
+
+	const lineNumber = Number(location.slice(lineSeparator + 1));
+	if (!Number.isInteger(lineNumber)) return undefined;
+
+	return { filePath: location.slice(0, lineSeparator), lineNumber, text };
 }
 
-function resolveRipgrepFile(
-	data: Record<string, unknown>,
-	filesByPath: Map<string, AgentKnowledgeFileReference>,
-): AgentKnowledgeFileReference | undefined {
-	const path = readTextObject(data.path);
-	if (!path) return undefined;
-	return filesByPath.get(normalizeRipgrepPath(path));
-}
+function parseColonSeparatedRipgrepMatchLine(
+	line: string,
+): { filePath: string; lineNumber: number; text: string } | undefined {
+	const match = /^(.*):(\d+):(.*)$/.exec(line);
+	if (!match) return undefined;
 
-function readRipgrepText(data: Record<string, unknown>): string | undefined {
-	return readTextObject(data.lines);
-}
+	const [, filePath, lineNumberText, text] = match;
+	const lineNumber = Number(lineNumberText);
+	if (!Number.isInteger(lineNumber)) return undefined;
 
-function readTextObject(value: unknown): string | undefined {
-	if (!isRecord(value) || typeof value.text !== 'string') return undefined;
-	return value.text;
-}
-
-function readNumber(value: unknown): number | undefined {
-	return typeof value === 'number' && Number.isInteger(value) ? value : undefined;
+	return { filePath, lineNumber, text };
 }
 
 function normalizeRipgrepPath(filePath: string): string {
@@ -252,81 +249,19 @@ function quoteShellArg(value: string): string {
 	return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
-
-export function truncateOperationOutput(text: string): { text: string; truncated: boolean } {
-	// The wrapper echoes the marker only after the capped pipeline completes,
-	// so a genuine truncation marker is always the last thing on the stream.
-	// Anchoring to the end keeps untrusted file content that happens to contain
-	// the marker string from faking the truncation signal.
-	const trimmedText = text.trimEnd();
-	const markerTruncated = trimmedText.endsWith(OUTPUT_TRUNCATED_MARKER);
-	const textWithoutMarker = markerTruncated
-		? trimmedText.slice(0, trimmedText.length - OUTPUT_TRUNCATED_MARKER.length).trimEnd()
-		: text;
-
-	if (textWithoutMarker.length <= MAX_OPERATION_OUTPUT_CHARS) {
-		return { text: textWithoutMarker, truncated: markerTruncated };
-	}
-
-	return { text: textWithoutMarker.slice(0, MAX_OPERATION_OUTPUT_CHARS), truncated: true };
-}
-
-function buildOutputLimitedShellCommand(command: string): string {
-	// Joined with newlines: awk statements on a single line need explicit
-	// separators, and a space-joined script is a syntax error that the wrapper
-	// would otherwise swallow (the exit status comes from the producing
-	// command, not the awk stage).
-	const capOutputScript = [
-		'BEGIN { used = 0 }',
-		'{',
-		'  line = $0 "\\n"',
-		'  remaining = max - used',
-		'  if (remaining <= 0) { print "1" > truncated_file; exit 0 }',
-		'  if (length(line) > remaining) {',
-		'    printf "%s", substr(line, 1, remaining)',
-		'    print "1" > truncated_file',
-		'    exit 0',
-		'  }',
-		'  printf "%s", line',
-		'  used += length(line)',
-		'}',
-	].join('\n');
-
+function buildHeadLimitedPipeline(command: string, lineLimit: number): string {
 	return [
-		'status_file=$(mktemp)',
-		'truncated_file=$(mktemp)',
-		`{ ${command}; printf '%s' "$?" > "$status_file"; } | awk -v max=${SHELL_OUTPUT_LIMIT_CHARS} -v truncated_file="$truncated_file" ${quoteShellArg(
-			capOutputScript,
-		)}`,
-		'status=$(cat "$status_file" 2>/dev/null || printf 0)',
-		// When awk stops reading at the output cap, the producing command dies
-		// from SIGPIPE (exit 141). That is our own truncation, not a command
-		// failure, so normalize it to success. Any other non-zero status is a
-		// genuine failure and must propagate even when output was truncated.
-		`if [ -s "$truncated_file" ]; then echo ${quoteShellArg(
-			OUTPUT_TRUNCATED_MARKER,
-		)} >&2; if [ "$status" = 141 ]; then status=0; fi; fi`,
-		'rm -f "$status_file" "$truncated_file"',
-		'exit "$status"',
+		// The outer shell uses pipefail, but head intentionally closes the pipe
+		// once the extra limit row is captured. Preserve real rg errors while
+		// treating that expected SIGPIPE as a successful bounded result.
+		'set +o pipefail',
+		`${command} | head -n ${lineLimit}`,
+		'command_status="${PIPESTATUS[0]}"',
+		'if [ "$command_status" = 141 ]; then command_status=0; fi',
+		'exit "$command_status"',
 	].join('; ');
 }
 
 export function buildScopedKnowledgeShellCommand(command: string): string {
-	return `if [ ! -d ${KNOWLEDGE_FILES_DIR} ]; then echo 'Agent knowledge files directory is unavailable' >&2; exit 2; fi; cd ${KNOWLEDGE_FILES_DIR} && ${buildOutputLimitedShellCommand(
-		command,
-	)}`;
-}
-
-export function readCommandStderr(
-	artifacts: { stdout?: string; stderr?: string } | undefined,
-): string {
-	if (!artifacts || !('stderr' in artifacts)) {
-		return '';
-	}
-
-	const stderr = artifacts.stderr;
-	return typeof stderr === 'string' ? stderr : '';
+	return `bash -o pipefail -c ${quoteShellArg(`cd ${KNOWLEDGE_FILES_DIR} && { ${command}; }`)}`;
 }

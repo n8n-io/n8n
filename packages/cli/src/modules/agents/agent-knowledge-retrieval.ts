@@ -4,21 +4,14 @@ import { z } from 'zod';
 import { hasControlCharacter } from './agent-knowledge-storage';
 
 const MAX_QUERY_LENGTH = 500;
-const MAX_QUERY_TERMS = 5;
+const MAX_GLOB_PATTERN_LENGTH = 255;
 const MAX_FILE_PATH_LENGTH = 512;
-const MAX_FIND_FILES_LIMIT = 100;
 const MAX_SEARCH_TEXT_LIMIT = 100;
-const MAX_RANGES = 5;
-const MAX_RANGE_LINES = 80;
-const MAX_FILTER_FILES = 10;
+const MAX_GLOB_FILES_LIMIT = 100;
 const MAX_FILE_ID_LENGTH = 64;
-// Deep pagination re-runs the search with a growing per-file match budget, so
-// an unbounded offset would let a single call force a full-corpus scan.
-const MAX_PAGINATION_OFFSET = 1_000;
 
-export const DEFAULT_FIND_FILES_LIMIT = 20;
 export const DEFAULT_SEARCH_TEXT_LIMIT = 20;
-export const MAX_CONTEXT_LINES = 5;
+export const DEFAULT_GLOB_FILES_LIMIT = 20;
 export const MAX_SEARCH_LINE_CHARS = 500;
 export const MAX_READ_LINE_CHARS = 2_000;
 export const MAX_OPERATION_OUTPUT_CHARS = 20_000;
@@ -26,40 +19,73 @@ export const MAX_OPERATION_OUTPUT_CHARS = 20_000;
 const filePathSchema = z.string().trim().min(1).max(MAX_FILE_PATH_LENGTH);
 const fileIdSchema = z.string().trim().min(1).max(MAX_FILE_ID_LENGTH);
 const queryTermSchema = z.string().trim().min(1).max(MAX_QUERY_LENGTH);
-const offsetSchema = z.number().int().min(0).max(MAX_PAGINATION_OFFSET);
-
-export const findKnowledgeFilesInputSchema = z
-	.object({
-		query: queryTermSchema.optional(),
-		limit: z.number().int().min(1).max(MAX_FIND_FILES_LIMIT).optional(),
-		offset: offsetSchema.optional(),
-	})
-	.strict();
+const globPatternSchema = z.string().trim().min(1).max(MAX_GLOB_PATTERN_LENGTH);
+const searchModeSchema = z.enum(['literal', 'regex']);
+const broadExtensionGlobPattern = /^(?:\*\*\/)?\*\.[A-Za-z0-9][A-Za-z0-9.-]*$/;
 
 export const searchKnowledgeInputSchema = z
 	.object({
 		query: queryTermSchema,
-		queries: z
-			.array(queryTermSchema)
-			.min(1)
-			.max(MAX_QUERY_TERMS)
+		file: filePathSchema
 			.optional()
-			.describe('Additional literal terms matched with OR semantics alongside query'),
-		file: filePathSchema.optional(),
-		fileId: fileIdSchema.optional(),
-		files: z.array(filePathSchema).max(MAX_FILTER_FILES).optional(),
-		fileIds: z.array(fileIdSchema).max(MAX_FILTER_FILES).optional(),
+			.describe(
+				'Optional uploaded knowledge file path to search within. Use only a file value returned by a knowledge tool; do not guess paths.',
+			),
+		fileId: fileIdSchema
+			.optional()
+			.describe(
+				'Optional uploaded knowledge file ID to search within. Use only a fileId returned by a knowledge tool; do not guess IDs.',
+			),
+		mode: searchModeSchema
+			.optional()
+			.describe(
+				'Search mode. Defaults to literal fixed-string search; use regex for exact content patterns.',
+			),
 		limit: z.number().int().min(1).max(MAX_SEARCH_TEXT_LIMIT).optional(),
-		offset: offsetSchema.optional(),
 		caseSensitive: z.boolean().optional(),
-		contextLines: z.number().int().min(0).max(MAX_CONTEXT_LINES).optional(),
 	})
 	.strict();
 
+export const globKnowledgeFilesInputSchema = z
+	.object({
+		pattern: globPatternSchema.describe(
+			'Glob pattern matched against uploaded knowledge file names on the sandbox filesystem, e.g. *knowledge*, *agent*tool*, or *sandbox*.',
+		),
+		limit: z.number().int().min(1).max(MAX_GLOB_FILES_LIMIT).optional(),
+	})
+	.strict()
+	.superRefine((input, ctx) => {
+		const segments = input.pattern.split('/');
+		if (
+			input.pattern.startsWith('/') ||
+			input.pattern.includes('\\') ||
+			hasControlCharacter(input.pattern) ||
+			segments.some((segment) => segment === '.' || segment === '..' || segment.length === 0)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['pattern'],
+				message: 'Invalid knowledge file glob pattern',
+			});
+		}
+
+		if (input.pattern === '*' || broadExtensionGlobPattern.test(input.pattern)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['pattern'],
+				message: 'Use a narrower glob pattern than catch-all or extension-only globs',
+			});
+		}
+	});
+
 export const readKnowledgeInputSchema = z
 	.object({
-		file: filePathSchema.optional(),
-		fileId: fileIdSchema.optional(),
+		file: filePathSchema
+			.optional()
+			.describe('Uploaded knowledge file path returned by a knowledge tool; do not guess paths.'),
+		fileId: fileIdSchema
+			.optional()
+			.describe('Uploaded knowledge file ID returned by a knowledge tool; do not guess IDs.'),
 		ranges: z
 			.array(
 				z
@@ -70,7 +96,7 @@ export const readKnowledgeInputSchema = z
 					.strict(),
 			)
 			.min(1)
-			.max(MAX_RANGES),
+			.optional(),
 	})
 	.strict()
 	.superRefine((input, ctx) => {
@@ -81,7 +107,7 @@ export const readKnowledgeInputSchema = z
 			});
 		}
 
-		for (const [index, range] of input.ranges.entries()) {
+		for (const [index, range] of (input.ranges ?? []).entries()) {
 			if (range.endLine < range.startLine) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
@@ -89,19 +115,11 @@ export const readKnowledgeInputSchema = z
 					message: 'endLine must be greater than or equal to startLine',
 				});
 			}
-
-			if (range.endLine - range.startLine + 1 > MAX_RANGE_LINES) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					path: ['ranges', index],
-					message: `Ranges can include at most ${MAX_RANGE_LINES} lines`,
-				});
-			}
 		}
 	});
 
-export type FindKnowledgeFilesRequest = z.infer<typeof findKnowledgeFilesInputSchema>;
 export type SearchKnowledgeRequest = z.infer<typeof searchKnowledgeInputSchema>;
+export type GlobKnowledgeFilesRequest = z.infer<typeof globKnowledgeFilesInputSchema>;
 export type ReadKnowledgeRequest = z.infer<typeof readKnowledgeInputSchema>;
 
 export interface AgentKnowledgeFileReference {
@@ -127,13 +145,6 @@ export interface AgentKnowledgeLine {
 	truncated: boolean;
 }
 
-export interface FindKnowledgeFilesResult {
-	files: AgentKnowledgeFileReference[];
-	limit: number;
-	offset: number;
-	hasMore: boolean;
-}
-
 export interface SearchKnowledgeMatch {
 	file: string;
 	fileId: string;
@@ -141,23 +152,25 @@ export interface SearchKnowledgeMatch {
 	lineNumber: number;
 	text: string;
 	textTruncated: boolean;
-	contextBefore?: AgentKnowledgeLine[];
-	contextAfter?: AgentKnowledgeLine[];
-	citation: AgentKnowledgeCitation;
 }
 
 export interface SearchKnowledgeResult {
 	matches: SearchKnowledgeMatch[];
 	limit: number;
-	offset: number;
 	hasMore: boolean;
 	truncated: boolean;
+}
+
+export interface GlobKnowledgeFilesResult {
+	files: AgentKnowledgeFileReference[];
+	limit: number;
+	hasMore: boolean;
 }
 
 export interface ReadKnowledgeRangeResult {
 	startLine: number;
 	endLine: number;
-	lines: AgentKnowledgeLine[];
+	text: string;
 	citation: AgentKnowledgeCitation;
 }
 
@@ -169,12 +182,12 @@ export interface ReadKnowledgeResult {
 	truncated: boolean;
 }
 
-export function parseFindKnowledgeFilesRequest(input: unknown): FindKnowledgeFilesRequest {
-	return findKnowledgeFilesInputSchema.parse(input);
-}
-
 export function parseSearchKnowledgeRequest(input: unknown): SearchKnowledgeRequest {
 	return searchKnowledgeInputSchema.parse(input);
+}
+
+export function parseGlobKnowledgeFilesRequest(input: unknown): GlobKnowledgeFilesRequest {
+	return globKnowledgeFilesInputSchema.parse(input);
 }
 
 export function parseReadKnowledgeRequest(input: unknown): ReadKnowledgeRequest {

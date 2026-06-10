@@ -289,9 +289,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		hydratedSandbox.process.executeCommand.mockResolvedValue({
 			exitCode: 0,
 			artifacts: {
-				stdout:
-					'{"type":"match","data":{"path":{"text":"notes.txt"},"lines":{"text":"hello\\n"},"line_number":1}}' +
-					'\n',
+				stdout: 'notes.txt\t1\thello\n',
 				stderr: '',
 			},
 		});
@@ -316,7 +314,6 @@ describe('AgentKnowledgeSandboxService', () => {
 				}),
 			],
 			limit: 20,
-			offset: 0,
 			hasMore: false,
 			truncated: false,
 		});
@@ -324,49 +321,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(getMock).toHaveBeenCalledWith('listed-sandbox');
 		expect(listedSandbox.process.executeCommand).not.toHaveBeenCalled();
 		expect(hydratedSandbox.process.executeCommand).toHaveBeenCalled();
-	});
-
-	it('findKnowledgeFiles returns metadata-backed files without starting Daytona', async () => {
-		mockKnowledgeFiles([
-			makeAgentFile({ id: 'file-1', storageFileName: 'notes.txt', fileName: 'Meeting Notes.txt' }),
-			makeAgentFile({ id: 'file-2', storageFileName: 'report.txt', fileName: 'Report.pdf' }),
-			makeAgentFile({ id: 'file-3', storageFileName: 'u-net.txt', fileName: 'u-net.pdf' }),
-		]);
-		const service = makeService();
-
-		await expect(
-			service.findKnowledgeFiles('project-1', 'agent-1', { query: 'notes', limit: 1 }),
-		).resolves.toEqual({
-			files: [
-				{
-					file: 'notes.txt',
-					fileId: 'file-1',
-					displayName: 'Meeting Notes.txt',
-					mimeType: 'text/plain',
-					fileSizeBytes: 100,
-					createdAt: '2026-06-09T10:00:00.000Z',
-				},
-			],
-			limit: 1,
-			offset: 0,
-			hasMore: false,
-		});
-		expect(listMock).not.toHaveBeenCalled();
-		expect(createMock).not.toHaveBeenCalled();
-
-		for (const query of ['u net', 'unet', 'u-net']) {
-			await expect(
-				service.findKnowledgeFiles('project-1', 'agent-1', { query, limit: 10 }),
-			).resolves.toMatchObject({
-				files: [
-					{
-						file: 'u-net.txt',
-						fileId: 'file-3',
-						displayName: 'u-net.pdf',
-					},
-				],
-			});
-		}
 	});
 
 	it('rejects invalid file paths and unknown files before sandbox execution', async () => {
@@ -393,19 +347,14 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(listMock).not.toHaveBeenCalled();
 	});
 
-	it('searchKnowledge builds scoped fixed-string ripgrep commands and parses matches', async () => {
+	it('searchKnowledge builds global fixed-string ripgrep commands and parses matches', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([makeAgentFile()]);
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		sandbox.process.executeCommand.mockResolvedValue({
 			exitCode: 0,
 			artifacts: {
-				stdout: [
-					'{"type":"context","data":{"path":{"text":"notes.txt"},"lines":{"text":"before\\n"},"line_number":1}}',
-					'{"type":"match","data":{"path":{"text":"notes.txt"},"lines":{"text":"hello world\\n"},"line_number":2}}',
-					'{"type":"context","data":{"path":{"text":"notes.txt"},"lines":{"text":"after\\n"},"line_number":3}}',
-					'',
-				].join('\n'),
+				stdout: './notes.txt:2:hello world\n',
 				stderr: '',
 			},
 		});
@@ -414,8 +363,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		await expect(
 			service.searchKnowledge('project-1', 'agent-1', userId, {
 				query: 'hello',
-				file: 'notes.txt',
-				contextLines: 1,
 			}),
 		).resolves.toEqual({
 			matches: [
@@ -426,54 +373,219 @@ describe('AgentKnowledgeSandboxService', () => {
 					lineNumber: 2,
 					text: 'hello world',
 					textTruncated: false,
-					contextBefore: [{ lineNumber: 1, text: 'before', truncated: false }],
-					contextAfter: [{ lineNumber: 3, text: 'after', truncated: false }],
-					citation: {
-						file: 'notes.txt',
-						fileId: 'file-1',
-						displayName: 'notes.txt',
-						startLine: 1,
-						endLine: 3,
-					},
 				},
 			],
 			limit: 20,
-			offset: 0,
 			hasMore: false,
 			truncated: false,
 		});
 
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
 			expect.stringContaining(
-				"rg --json --fixed-strings --line-number --color=never --hidden --sort path --max-count 21 --max-columns 501 --max-columns-preview --ignore-case --context 1 -e 'hello' -- './notes.txt'",
+				'timeout 20 rg --fixed-strings --line-number --with-filename --color=never --hidden --max-columns 501 --max-columns-preview --field-match-separator',
 			),
 			undefined,
 			undefined,
 			300,
 		);
+		const command = sandbox.process.executeCommand.mock.calls[0][0] as string;
+		expect(command).toContain('bash -o pipefail -c');
+		expect(command).toContain('hello');
+		expect(command).toContain('| head -n 21');
+		expect(command).not.toContain('--context');
+		expect(command).not.toContain('--json');
 	});
 
-	it('searchKnowledge ORs multiple deduplicated query terms in a single command', async () => {
+	it('searchKnowledge sets hasMore from the extra bounded match', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: {
+				stdout: './notes.txt:1\tfirst\n./notes.txt:2\tsecond\n',
+				stderr: '',
+			},
+		});
+		const service = makeService();
+
+		await expect(
+			service.searchKnowledge('project-1', 'agent-1', userId, {
+				query: 'hello',
+				limit: 1,
+			}),
+		).resolves.toMatchObject({
+			matches: [{ lineNumber: 1, text: 'first' }],
+			limit: 1,
+			hasMore: true,
+			truncated: false,
+		});
+	});
+
+	it('coalesces concurrent sandbox acquisition for the same scope', async () => {
+		const sandbox = makeSandbox('stopped');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: {
+				stdout: './notes.txt:1:hello\n',
+				stderr: '',
+			},
+		});
+		let resolveStart: () => void = () => {};
+		let resolveStartEntered: () => void = () => {};
+		const startEntered = new Promise<void>((resolve) => {
+			resolveStartEntered = resolve;
+		});
+		sandbox.start.mockImplementation(async () => {
+			resolveStartEntered();
+			await new Promise<void>((resolve) => {
+				resolveStart = resolve;
+			});
+		});
+		const service = makeService();
+
+		const firstSearch = service.searchKnowledge('project-1', 'agent-1', userId, {
+			query: 'hello',
+		});
+		const secondSearch = service.searchKnowledge('project-1', 'agent-1', userId, {
+			query: 'hello',
+		});
+
+		await startEntered;
+		resolveStart();
+		await expect(Promise.all([firstSearch, secondSearch])).resolves.toHaveLength(2);
+
+		expect(listMock).toHaveBeenCalledTimes(1);
+		expect(sandbox.start).toHaveBeenCalledTimes(1);
+		expect(sandbox.process.executeCommand).toHaveBeenCalledTimes(2);
+	});
+
+	it('globKnowledgeFiles runs a sandbox file-name glob and returns matching metadata', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([
+			makeAgentFile({
+				id: 'file-1',
+				storageFileName: 'agent-tool.txt',
+				fileName: 'Agent Tool.pdf',
+			}),
+			makeAgentFile({ id: 'file-2', storageFileName: 'sandbox-notes.txt', fileName: 'Notes.txt' }),
+			makeAgentFile({ id: 'file-3', storageFileName: 'workflow.txt', fileName: 'Workflow.pdf' }),
+		]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: {
+				stdout: 'agent-tool.txt\n',
+				stderr: '',
+			},
+		});
+		const service = makeService();
+
+		await expect(
+			service.globKnowledgeFiles('project-1', 'agent-1', userId, {
+				pattern: '*agent*tool*',
+				limit: 1,
+			}),
+		).resolves.toEqual({
+			files: [
+				{
+					file: 'agent-tool.txt',
+					fileId: 'file-1',
+					displayName: 'Agent Tool.pdf',
+					mimeType: 'text/plain',
+					fileSizeBytes: 100,
+					createdAt: '2026-06-09T10:00:00.000Z',
+				},
+			],
+			limit: 1,
+			hasMore: false,
+		});
+		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
+			expect.stringContaining('timeout 20 rg --files --hidden --glob'),
+			undefined,
+			undefined,
+			300,
+		);
+		const command = sandbox.process.executeCommand.mock.calls[0][0] as string;
+		expect(command).toContain('bash -o pipefail -c');
+		expect(command).toContain('*agent*tool*');
+		expect(command).toContain('| head -n 2');
+	});
+
+	it.each(['*', '*.txt', '*.md', '**/*.pdf'])(
+		'globKnowledgeFiles rejects broad glob pattern %s before sandbox execution',
+		async (pattern) => {
+			const sandbox = makeSandbox('started');
+			mockKnowledgeFiles([makeAgentFile()]);
+			const service = makeService();
+
+			await expect(
+				service.globKnowledgeFiles('project-1', 'agent-1', userId, {
+					pattern,
+				}),
+			).rejects.toThrow('Use a narrower glob pattern than catch-all or extension-only globs');
+			expect(listMock).not.toHaveBeenCalled();
+			expect(sandbox.process.executeCommand).not.toHaveBeenCalled();
+		},
+	);
+
+	it('globKnowledgeFiles surfaces sandbox command failures', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile({ storageFileName: 'population.csv' })]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 124,
+			artifacts: { stdout: '', stderr: 'timeout: rg timed out\n' },
+		});
+		const service = makeService();
+
+		await expect(
+			service.globKnowledgeFiles('project-1', 'agent-1', userId, {
+				pattern: 'population.csv',
+			}),
+		).rejects.toThrow(
+			'Agent knowledge glob failed; exitCode=124; stderr=timeout: rg timed out; stdout=<empty>',
+		);
+	});
+
+	it('searchKnowledge scopes ripgrep to a resolved file path', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([makeAgentFile()]);
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		const service = makeService();
 
 		await service.searchKnowledge('project-1', 'agent-1', userId, {
-			query: 'u-net',
-			queries: ['unet', 'u net', 'u-net'],
+			query: 'hello',
+			fileId: 'file-1',
+		});
+
+		const command = sandbox.process.executeCommand.mock.calls[0][0] as string;
+		expect(command).toContain('hello');
+		expect(command).toContain('./notes.txt');
+		expect(command).not.toContain("-- '\\''.'\\''");
+	});
+
+	it('searchKnowledge supports regex mode without fixed-string search', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		const service = makeService();
+
+		await service.searchKnowledge('project-1', 'agent-1', userId, {
+			query: '^Germany,DEU,2022,',
+			mode: 'regex',
 		});
 
 		expect(sandbox.process.executeCommand).toHaveBeenCalledTimes(1);
-		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining("-e 'u-net' -e 'unet' -e 'u net' -- '.'"),
-			undefined,
-			undefined,
-			300,
-		);
+		const command = sandbox.process.executeCommand.mock.calls[0][0] as string;
+		expect(command).toContain('timeout 20 rg --line-number --with-filename --color=never --hidden');
+		expect(command).not.toContain('--fixed-strings');
+		expect(command).toContain('^Germany,DEU,2022,');
 	});
 
-	it('searchKnowledge returns partial matches when rg fails on an unreadable scoped file', async () => {
+	it('searchKnowledge surfaces rg failures even when stdout has partial output', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([
 			makeAgentFile(),
@@ -483,9 +595,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		sandbox.process.executeCommand.mockResolvedValue({
 			exitCode: 2,
 			artifacts: {
-				stdout:
-					'{"type":"match","data":{"path":{"text":"notes.txt"},"lines":{"text":"hello\\n"},"line_number":1}}' +
-					'\n',
+				stdout: 'notes.txt\t1\thello\n',
 				stderr: 'rg: ./gone.txt: No such file or directory (os error 2)\n',
 			},
 		});
@@ -494,16 +604,13 @@ describe('AgentKnowledgeSandboxService', () => {
 		await expect(
 			service.searchKnowledge('project-1', 'agent-1', userId, {
 				query: 'hello',
-				files: ['notes.txt', 'gone.txt'],
 			}),
-		).resolves.toMatchObject({
-			matches: [{ file: 'notes.txt', lineNumber: 1 }],
-			hasMore: true,
-			truncated: true,
-		});
+		).rejects.toThrow(
+			'Agent knowledge search failed; exitCode=2; stderr=rg: ./gone.txt: No such file or directory (os error 2); stdout=notes.txt',
+		);
 	});
 
-	it('searchKnowledge fails when rg errors without producing any matches', async () => {
+	it('searchKnowledge surfaces rg errors without producing output', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([makeAgentFile()]);
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
@@ -515,17 +622,21 @@ describe('AgentKnowledgeSandboxService', () => {
 
 		await expect(
 			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
-		).rejects.toThrow('Agent knowledge search failed');
+		).rejects.toThrow(
+			'Agent knowledge search failed; exitCode=2; stderr=rg: ./notes.txt: No such file or directory; stdout=<empty>',
+		);
 	});
 
-	it('rejects pagination offsets beyond the cap before sandbox execution', async () => {
+	it('surfaces sandbox command execution errors', async () => {
+		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockRejectedValue(new Error('sandbox process unavailable'));
 		const service = makeService();
 
 		await expect(
-			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello', offset: 1001 }),
-		).rejects.toThrow();
-		expect(listMock).not.toHaveBeenCalled();
+			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
+		).rejects.toThrow('sandbox process unavailable');
 	});
 
 	it('rejects retrieval for agents that do not belong to the project', async () => {
@@ -533,11 +644,14 @@ describe('AgentKnowledgeSandboxService', () => {
 		mockKnowledgeFiles([makeAgentFile()]);
 		const service = makeService();
 
-		await expect(service.findKnowledgeFiles('other-project', 'agent-1', {})).rejects.toThrow(
-			NotFoundError,
-		);
 		await expect(
 			service.searchKnowledge('other-project', 'agent-1', userId, { query: 'hello' }),
+		).rejects.toThrow(NotFoundError);
+		await expect(
+			service.readKnowledge('other-project', 'agent-1', userId, {
+				file: 'notes.txt',
+				ranges: [{ startLine: 1, endLine: 1 }],
+			}),
 		).rejects.toThrow(NotFoundError);
 		expect(agentRepository.existsBy).toHaveBeenCalledWith({
 			id: 'agent-1',
@@ -547,17 +661,15 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(createMock).not.toHaveBeenCalled();
 	});
 
-	it('searchKnowledge surfaces sandbox-side output truncation', async () => {
+	it('searchKnowledge caps individual match text', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([makeAgentFile()]);
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
 		sandbox.process.executeCommand.mockResolvedValue({
 			exitCode: 0,
 			artifacts: {
-				stdout:
-					'{"type":"match","data":{"path":{"text":"notes.txt"},"lines":{"text":"hello\\n"},"line_number":1}}' +
-					'\n',
-				stderr: '__N8N_AGENT_KNOWLEDGE_OUTPUT_TRUNCATED__\n',
+				stdout: `notes.txt\t1\t${'a'.repeat(20_100)}\n`,
+				stderr: '',
 			},
 		});
 		const service = makeService();
@@ -565,9 +677,9 @@ describe('AgentKnowledgeSandboxService', () => {
 		await expect(
 			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
 		).resolves.toMatchObject({
-			matches: [{ file: 'notes.txt', lineNumber: 1 }],
-			hasMore: true,
-			truncated: true,
+			matches: [{ file: 'notes.txt', lineNumber: 1, textTruncated: true }],
+			hasMore: false,
+			truncated: false,
 		});
 	});
 
@@ -595,10 +707,7 @@ describe('AgentKnowledgeSandboxService', () => {
 				{
 					startLine: 2,
 					endLine: 3,
-					lines: [
-						{ lineNumber: 2, text: 'second line', truncated: false },
-						{ lineNumber: 3, text: 'third line', truncated: false },
-					],
+					text: '2|second line\n3|third line',
 					citation: {
 						file: 'notes.txt',
 						fileId: 'file-1',
@@ -618,76 +727,56 @@ describe('AgentKnowledgeSandboxService', () => {
 			300,
 		);
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining("substr($0, 1, 2001) } NR > 3 { exit }' './notes.txt'"),
+			expect.stringContaining('NR > 3 { exit }'),
 			undefined,
 			undefined,
 			300,
 		);
 	});
 
-	it('reuses the cached sandbox across operations without re-listing', async () => {
+	it('readKnowledge reads a whole file and reports top-level output truncation', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([makeAgentFile()]);
 		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		const service = makeService();
-
-		await service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' });
-		await service.readKnowledge('project-1', 'agent-1', userId, {
-			file: 'notes.txt',
-			ranges: [{ startLine: 1, endLine: 1 }],
-		});
-
-		expect(listMock).toHaveBeenCalledTimes(1);
-		expect(sandbox.process.executeCommand).toHaveBeenCalledTimes(2);
-	});
-
-	it('coalesces concurrent acquisitions so parallel calls do not create duplicate sandboxes', async () => {
-		mockKnowledgeFiles([makeAgentFile()]);
-		const service = makeService();
-
-		await Promise.all([
-			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
-			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'world' }),
-		]);
-
-		expect(createMock).toHaveBeenCalledTimes(1);
-	});
-
-	it('retries once on a fresh sandbox when the cached handle fails mid-command', async () => {
-		const sandbox = makeSandbox('started');
-		mockKnowledgeFiles([makeAgentFile()]);
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		sandbox.process.executeCommand.mockRejectedValueOnce(new Error('sandbox gone'));
-		const service = makeService();
-
-		await expect(
-			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
-		).resolves.toMatchObject({ matches: [] });
-
-		expect(sandbox.process.executeCommand).toHaveBeenCalledTimes(2);
-		expect(listMock).toHaveBeenCalledTimes(2);
-	});
-
-	it('surfaces the failure and drops the cached handle when the retry also fails', async () => {
-		const sandbox = makeSandbox('started');
-		mockKnowledgeFiles([makeAgentFile()]);
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		sandbox.process.executeCommand.mockRejectedValue(new Error('sandbox gone'));
-		const service = makeService();
-
-		await expect(
-			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
-		).rejects.toThrow('sandbox gone');
-		expect(sandbox.process.executeCommand).toHaveBeenCalledTimes(2);
-
 		sandbox.process.executeCommand.mockResolvedValue({
-			exitCode: 1,
-			artifacts: { stdout: '', stderr: '' },
+			exitCode: 0,
+			artifacts: {
+				stdout: '0\t1\tfirst line\n0\t2\tsecond line\n__N8N_READ_OUTPUT_TRUNCATED__\n',
+				stderr: '',
+			},
 		});
-		await expect(
-			service.searchKnowledge('project-1', 'agent-1', userId, { query: 'hello' }),
-		).resolves.toMatchObject({ matches: [] });
+		const service = makeService();
 
-		expect(listMock).toHaveBeenCalledTimes(3);
+		await expect(
+			service.readKnowledge('project-1', 'agent-1', userId, {
+				file: 'notes.txt',
+			}),
+		).resolves.toMatchObject({
+			ranges: [{ startLine: 1, endLine: 2, text: '1|first line\n2|second line' }],
+			truncated: true,
+		});
+	});
+
+	it('readKnowledge surfaces sandbox command failure details', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 2,
+			artifacts: {
+				stdout: 'partial output\n',
+				stderr: "awk: can't open file ./notes.txt\n",
+			},
+		});
+		const service = makeService();
+
+		await expect(
+			service.readKnowledge('project-1', 'agent-1', userId, {
+				file: 'notes.txt',
+				ranges: [{ startLine: 1, endLine: 1 }],
+			}),
+		).rejects.toThrow(
+			"Agent knowledge read failed; exitCode=2; stderr=awk: can't open file ./notes.txt; stdout=partial output",
+		);
 	});
 });

@@ -14,15 +14,13 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AiService } from '@/services/ai.service';
 
 import {
+	buildGlobKnowledgeFilesCommand,
 	buildReadKnowledgeCommand,
 	buildScopedKnowledgeShellCommand,
 	buildSearchKnowledgeCommand,
-	compactKnowledgeFileLookupText,
-	knowledgeFileMatchesQuery,
+	parseGlobKnowledgeFilesOutput,
 	parseReadKnowledgeOutput,
-	parseRipgrepJsonOutput,
-	readCommandStderr,
-	truncateOperationOutput,
+	parseRipgrepOutput,
 } from './agent-knowledge-commands';
 import {
 	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
@@ -33,14 +31,14 @@ import {
 } from './agent-knowledge-storage';
 import {
 	assertValidKnowledgeFilePath,
-	DEFAULT_FIND_FILES_LIMIT,
+	DEFAULT_GLOB_FILES_LIMIT,
 	DEFAULT_SEARCH_TEXT_LIMIT,
-	parseFindKnowledgeFilesRequest,
+	parseGlobKnowledgeFilesRequest,
 	parseReadKnowledgeRequest,
 	parseSearchKnowledgeRequest,
 	type AgentKnowledgeFileReference,
-	type FindKnowledgeFilesRequest,
-	type FindKnowledgeFilesResult,
+	type GlobKnowledgeFilesRequest,
+	type GlobKnowledgeFilesResult,
 	type ReadKnowledgeRequest,
 	type ReadKnowledgeResult,
 	type SearchKnowledgeRequest,
@@ -56,6 +54,8 @@ interface AgentKnowledgeCommandResult {
 }
 
 export const AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX = 'agents-knowledgebase';
+
+const MAX_SANDBOX_ERROR_DETAIL_CHARS = 2_000;
 
 const LABEL_KNOWLEDGE_BASE = 'n8n-agents-knowledgebase';
 const LABEL_PROJECT_ID = 'n8n-project-id';
@@ -73,9 +73,6 @@ const DEAD_SANDBOX_STATES = new Set<SandboxState>([
 
 const DEFAULT_SANDBOX_IMAGE = 'daytonaio/sandbox:0.5.0';
 const AUTO_STOP_INTERVAL_MINUTES = 5;
-// Must stay well below AUTO_STOP_INTERVAL_MINUTES so a cached handle never
-// outlives the sandbox's idle auto-stop window.
-const SANDBOX_CACHE_TTL_MS = 60_000;
 const SANDBOX_LIST_PAGE_SIZE = 100;
 
 interface KnowledgeVolumeMount {
@@ -137,10 +134,25 @@ function hasMatchingVolumeMount(sandbox: Sandbox, expected: KnowledgeVolumeMount
 	});
 }
 
+function truncateSandboxErrorDetail(value: string): string {
+	if (value.length <= MAX_SANDBOX_ERROR_DETAIL_CHARS) return value;
+	return `${value.slice(0, MAX_SANDBOX_ERROR_DETAIL_CHARS)}...[truncated]`;
+}
+
+function formatSandboxCommandFailure(
+	operation: 'glob' | 'read' | 'search',
+	result: AgentKnowledgeCommandResult,
+): string {
+	const stderrText = result.stderr.trimEnd();
+	const stdoutText = result.stdout.trimEnd();
+	const parts = [`Agent knowledge ${operation} failed`, `exitCode=${result.exitCode}`];
+	parts.push(stderrText ? `stderr=${truncateSandboxErrorDetail(stderrText)}` : 'stderr=<empty>');
+	parts.push(stdoutText ? `stdout=${truncateSandboxErrorDetail(stdoutText)}` : 'stdout=<empty>');
+	return parts.join('; ');
+}
+
 @Service()
 export class AgentKnowledgeSandboxService {
-	private readonly sandboxCache = new Map<string, { sandbox: Sandbox; expiresAt: number }>();
-
 	private readonly pendingSandboxAcquisitions = new Map<string, Promise<Sandbox>>();
 
 	constructor(
@@ -163,37 +175,7 @@ export class AgentKnowledgeSandboxService {
 		this.assertKnowledgeConfiguration(projectId, agentId);
 		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
 		const filesystem = this.createFilesystemAdapter(sandbox);
-		try {
-			return await operation(filesystem);
-		} catch (error) {
-			this.invalidateSandboxCache(projectId, agentId, userId);
-			throw error;
-		}
-	}
-
-	async findKnowledgeFiles(
-		projectId: string,
-		agentId: string,
-		request: FindKnowledgeFilesRequest,
-	): Promise<FindKnowledgeFilesResult> {
-		const validatedRequest = parseFindKnowledgeFilesRequest(request);
-		await this.assertKnowledgeAccess(projectId, agentId);
-
-		const limit = validatedRequest.limit ?? DEFAULT_FIND_FILES_LIMIT;
-		const offset = validatedRequest.offset ?? 0;
-		const query = validatedRequest.query?.toLocaleLowerCase();
-		const compactQuery = query ? compactKnowledgeFileLookupText(query) : undefined;
-		const files = await this.loadKnowledgeFileReferences(agentId);
-		const filteredFiles = query
-			? files.filter((file) => knowledgeFileMatchesQuery(file, query, compactQuery ?? ''))
-			: files;
-
-		return {
-			files: filteredFiles.slice(offset, offset + limit),
-			limit,
-			offset,
-			hasMore: filteredFiles.length > offset + limit,
-		};
+		return await operation(filesystem);
 	}
 
 	async searchKnowledge(
@@ -205,54 +187,75 @@ export class AgentKnowledgeSandboxService {
 		const validatedRequest = parseSearchKnowledgeRequest(request);
 		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
 		const limit = validatedRequest.limit ?? DEFAULT_SEARCH_TEXT_LIMIT;
-		const offset = validatedRequest.offset ?? 0;
-		const scopedFiles = this.resolveSearchScope(validatedRequest, references);
 
 		if (references.files.length === 0) {
-			return { matches: [], limit, offset, hasMore: false, truncated: false };
+			return { matches: [], limit, hasMore: false, truncated: false };
 		}
 
-		const command = buildSearchKnowledgeCommand(validatedRequest, scopedFiles);
+		const file = this.resolveOptionalFile(validatedRequest, references);
+		const command = buildSearchKnowledgeCommand({
+			...validatedRequest,
+			...(file ? { file: file.file } : {}),
+		});
 		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
-		const stdout = truncateOperationOutput(result.stdout);
-		const stderr = truncateOperationOutput(result.stderr);
 
 		if (result.exitCode === 1) {
 			return {
 				matches: [],
 				limit,
-				offset,
 				hasMore: false,
-				truncated: stdout.truncated || stderr.truncated,
+				truncated: false,
 			};
 		}
-
-		const parsed = parseRipgrepJsonOutput(stdout.text, references.byFile);
-
-		// rg exits 2 when any scoped file could not be read (e.g. a DB row whose
-		// volume file is missing), but it still emits valid matches for the files
-		// it did read. Surface those as partial, truncated results instead of
-		// discarding them; only fail when there is nothing to return.
-		const commandFailed = result.exitCode !== 0;
-		if (commandFailed && parsed.matches.length === 0) {
-			throw new OperationalError(
-				`Agent knowledge search failed${stderr.text ? `: ${stderr.text}` : ''}`,
-			);
+		if (result.exitCode !== 0) {
+			throw new OperationalError(formatSandboxCommandFailure('search', result));
 		}
 
-		const incomplete = parsed.incomplete || commandFailed;
-		const matches = parsed.matches.slice(offset, offset + limit);
+		const parsed = parseRipgrepOutput(result.stdout, references.byFile);
+		const matches = parsed.matches.slice(0, limit);
 
 		return {
 			matches,
 			limit,
-			offset,
-			hasMore:
-				parsed.matches.length > offset + limit ||
-				stdout.truncated ||
-				stderr.truncated ||
-				incomplete,
-			truncated: stdout.truncated || stderr.truncated || incomplete,
+			hasMore: parsed.matches.length > limit,
+			truncated: parsed.incomplete,
+		};
+	}
+
+	async globKnowledgeFiles(
+		projectId: string,
+		agentId: string,
+		userId: string,
+		request: GlobKnowledgeFilesRequest,
+	): Promise<GlobKnowledgeFilesResult> {
+		const validatedRequest = parseGlobKnowledgeFilesRequest(request);
+		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+		const limit = validatedRequest.limit ?? DEFAULT_GLOB_FILES_LIMIT;
+
+		if (references.files.length === 0) {
+			return { files: [], limit, hasMore: false };
+		}
+
+		const command = buildGlobKnowledgeFilesCommand(validatedRequest);
+		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
+
+		if (result.exitCode === 1) {
+			return {
+				files: [],
+				limit,
+				hasMore: false,
+			};
+		}
+		if (result.exitCode !== 0) {
+			throw new OperationalError(formatSandboxCommandFailure('glob', result));
+		}
+
+		const matches = parseGlobKnowledgeFilesOutput(result.stdout, references.byFile);
+
+		return {
+			files: matches.slice(0, limit),
+			limit,
+			hasMore: matches.length > limit,
 		};
 	}
 
@@ -267,21 +270,18 @@ export class AgentKnowledgeSandboxService {
 		const file = this.resolveRequiredFile(validatedRequest, references);
 		const command = buildReadKnowledgeCommand(file.file, validatedRequest);
 		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
-		const stdout = truncateOperationOutput(result.stdout);
-		const stderr = truncateOperationOutput(result.stderr);
 
 		if (result.exitCode !== 0) {
-			throw new OperationalError(
-				`Agent knowledge read failed${stderr.text ? `: ${stderr.text}` : ''}`,
-			);
+			throw new OperationalError(formatSandboxCommandFailure('read', result));
 		}
 
+		const parsed = parseReadKnowledgeOutput(result.stdout, file, validatedRequest);
 		return {
 			file: file.file,
 			fileId: file.fileId,
 			displayName: file.displayName,
-			ranges: parseReadKnowledgeOutput(stdout.text, file, validatedRequest),
-			truncated: stdout.truncated || stderr.truncated,
+			ranges: parsed.ranges,
+			truncated: parsed.truncated,
 		};
 	}
 
@@ -293,31 +293,7 @@ export class AgentKnowledgeSandboxService {
 	): Promise<AgentKnowledgeCommandResult> {
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command);
-
 		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
-		try {
-			return await this.runSandboxCommand(sandbox, scopedCommand, timeoutSeconds);
-		} catch {
-			// The cached handle may point at a stopped or destroyed sandbox; drop
-			// it and retry once on a freshly acquired one so transient handle
-			// staleness never surfaces as a failed tool call.
-			this.invalidateSandboxCache(projectId, agentId, userId);
-		}
-
-		const freshSandbox = await this.acquireSandbox(projectId, agentId, userId);
-		try {
-			return await this.runSandboxCommand(freshSandbox, scopedCommand, timeoutSeconds);
-		} catch (error) {
-			this.invalidateSandboxCache(projectId, agentId, userId);
-			throw error;
-		}
-	}
-
-	private async runSandboxCommand(
-		sandbox: Sandbox,
-		scopedCommand: string,
-		timeoutSeconds: number,
-	): Promise<AgentKnowledgeCommandResult> {
 		const result = await sandbox.process.executeCommand(
 			scopedCommand,
 			undefined,
@@ -328,7 +304,12 @@ export class AgentKnowledgeSandboxService {
 		return {
 			exitCode: result.exitCode,
 			stdout: result.artifacts?.stdout ?? result.result ?? '',
-			stderr: readCommandStderr(result.artifacts),
+			stderr:
+				result.artifacts &&
+				'stderr' in result.artifacts &&
+				typeof result.artifacts.stderr === 'string'
+					? result.artifacts.stderr
+					: '',
 		};
 	}
 
@@ -360,35 +341,6 @@ export class AgentKnowledgeSandboxService {
 		}));
 	}
 
-	private resolveSearchScope(
-		request: SearchKnowledgeRequest,
-		references: AgentKnowledgeReferenceLookup,
-	): AgentKnowledgeFileReference[] | undefined {
-		const selected = new Map<string, AgentKnowledgeFileReference>();
-		const addByFile = (filePath: string) => {
-			const normalized = assertValidKnowledgeFilePath(filePath);
-			const file = references.byFile.get(normalized);
-			if (!file) {
-				throw new BadRequestError('Knowledge file not found');
-			}
-			selected.set(file.file, file);
-		};
-		const addById = (fileId: string) => {
-			const file = references.byId.get(fileId);
-			if (!file) {
-				throw new BadRequestError('Knowledge file not found');
-			}
-			selected.set(file.file, file);
-		};
-
-		if (request.file) addByFile(request.file);
-		for (const file of request.files ?? []) addByFile(file);
-		if (request.fileId) addById(request.fileId);
-		for (const fileId of request.fileIds ?? []) addById(fileId);
-
-		return selected.size > 0 ? [...selected.values()] : undefined;
-	}
-
 	private resolveRequiredFile(
 		request: ReadKnowledgeRequest,
 		references: AgentKnowledgeReferenceLookup,
@@ -405,11 +357,43 @@ export class AgentKnowledgeSandboxService {
 
 		if (request.file) {
 			const normalized = assertValidKnowledgeFilePath(request.file);
+			const file = references.byFile.get(normalized);
+			if (!file) {
+				throw new BadRequestError('Knowledge file not found');
+			}
+			return file;
+		}
+
+		const file = references.byId.get(request.fileId ?? '');
+		if (!file) {
+			throw new BadRequestError('Knowledge file not found');
+		}
+		return file;
+	}
+
+	private resolveOptionalFile(
+		request: Pick<SearchKnowledgeRequest, 'file' | 'fileId'>,
+		references: AgentKnowledgeReferenceLookup,
+	): AgentKnowledgeFileReference | undefined {
+		if (!request.file && !request.fileId) return undefined;
+
+		if (request.file && request.fileId) {
+			const normalized = assertValidKnowledgeFilePath(request.file);
 			const fileByPath = references.byFile.get(normalized);
-			if (!fileByPath) {
+			const fileById = references.byId.get(request.fileId);
+			if (!fileByPath || !fileById || fileByPath.fileId !== fileById.fileId) {
 				throw new BadRequestError('Knowledge file not found');
 			}
 			return fileByPath;
+		}
+
+		if (request.file) {
+			const normalized = assertValidKnowledgeFilePath(request.file);
+			const file = references.byFile.get(normalized);
+			if (!file) {
+				throw new BadRequestError('Knowledge file not found');
+			}
+			return file;
 		}
 
 		const file = references.byId.get(request.fileId ?? '');
@@ -440,36 +424,16 @@ export class AgentKnowledgeSandboxService {
 		userId: string,
 	): Promise<Sandbox> {
 		const cacheKey = buildSandboxScopeKey(projectId, agentId, userId);
-		const cached = this.sandboxCache.get(cacheKey);
-		if (cached && cached.expiresAt > Date.now()) {
-			return cached.sandbox;
-		}
-		this.sandboxCache.delete(cacheKey);
-
-		// Coalesce concurrent acquisitions for the same scope so parallel tool
-		// calls cannot both miss the list-then-create check and spawn
-		// duplicate sandboxes.
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
+
 		if (!pending) {
-			pending = this.acquireSandboxFresh(projectId, agentId, userId)
-				.then((sandbox) => {
-					this.sandboxCache.set(cacheKey, {
-						sandbox,
-						expiresAt: Date.now() + SANDBOX_CACHE_TTL_MS,
-					});
-					return sandbox;
-				})
-				.finally(() => {
-					this.pendingSandboxAcquisitions.delete(cacheKey);
-				});
+			pending = this.acquireSandboxFresh(projectId, agentId, userId).finally(() => {
+				this.pendingSandboxAcquisitions.delete(cacheKey);
+			});
 			this.pendingSandboxAcquisitions.set(cacheKey, pending);
 		}
 
 		return await pending;
-	}
-
-	private invalidateSandboxCache(projectId: string, agentId: string, userId: string): void {
-		this.sandboxCache.delete(buildSandboxScopeKey(projectId, agentId, userId));
 	}
 
 	private async acquireSandboxFresh(
