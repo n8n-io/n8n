@@ -320,3 +320,100 @@ describe('GatewayClient.uploadCapabilities', () => {
 		await expect(promise).rejects.toThrow(/Failed to upload capabilities: 500/);
 	});
 });
+
+describe('GatewayClient auth headers', () => {
+	const originalFetch = global.fetch;
+
+	beforeEach(() => {
+		global.fetch = vi.fn();
+	});
+
+	afterEach(() => {
+		global.fetch = originalFetch;
+	});
+
+	function prime(client: GatewayClient): GatewayClient {
+		// Bypass tool discovery — uploadCapabilities only needs definitions to exist.
+		// @ts-expect-error — accessing private field for testing
+		client.allDefinitions = [];
+		// @ts-expect-error — accessing private field for testing
+		client.activeToolCategories = [];
+		return client;
+	}
+
+	function mockInitResponse(data: { ok: boolean; sessionKey?: string } = { ok: true }): void {
+		(global.fetch as Mock).mockResolvedValueOnce({
+			ok: true,
+			status: 200,
+			text: vi.fn().mockResolvedValue(''),
+			json: vi.fn().mockResolvedValue({ data }),
+		});
+	}
+
+	function lastRequestHeaders(): Headers {
+		const calls = (global.fetch as Mock).mock.calls;
+		const lastCall = calls[calls.length - 1] as [string, { headers: Headers }];
+		return lastCall[1].headers;
+	}
+
+	it('legacy mode sends the X-Gateway-Key header', async () => {
+		mockInitResponse();
+		const client = prime(
+			new GatewayClient({
+				url: 'http://localhost:5678',
+				apiKey: 'legacy-key',
+				config: makeConfig(),
+				session: makeSession(),
+				confirmResourceAccess: vi.fn(),
+			}),
+		);
+
+		await client['uploadCapabilities']();
+
+		const headers = lastRequestHeaders();
+		expect(headers.get('X-Gateway-Key')).toBe('legacy-key');
+		expect(headers.get('Authorization')).toBeNull();
+	});
+
+	it('OAuth mode sends Authorization: Bearer and no X-Gateway-Key', async () => {
+		mockInitResponse();
+		const client = prime(
+			new GatewayClient({
+				url: 'http://localhost:5678',
+				getAuthToken: async () => await Promise.resolve('access-tok'),
+				config: makeConfig(),
+				session: makeSession(),
+				confirmResourceAccess: vi.fn(),
+			}),
+		);
+
+		await client['uploadCapabilities']();
+
+		const headers = lastRequestHeaders();
+		expect(headers.get('Authorization')).toBe('Bearer access-tok');
+		expect(headers.get('X-Gateway-Key')).toBeNull();
+	});
+
+	it('OAuth mode ignores a server-issued session key and uses a fresh token per request', async () => {
+		// Server tries to hand back a session key — OAuth mode must not adopt it.
+		mockInitResponse({ ok: true, sessionKey: 'sess-should-be-ignored' });
+		let calls = 0;
+		const client = prime(
+			new GatewayClient({
+				url: 'http://localhost:5678',
+				getAuthToken: async () => await Promise.resolve(`tok-${++calls}`),
+				config: makeConfig(),
+				session: makeSession(),
+				confirmResourceAccess: vi.fn(),
+			}),
+		);
+
+		await client['uploadCapabilities'](); // tok-1
+		mockInitResponse();
+		await client['postResponse']('req-1', { content: [] }); // tok-2
+
+		const headers = lastRequestHeaders();
+		expect(headers.get('Authorization')).toBe('Bearer tok-2');
+		expect(headers.get('X-Gateway-Key')).toBeNull();
+	});
+});
