@@ -3,11 +3,20 @@ import { onMounted, ref } from 'vue';
 
 import AppHeader from './components/AppHeader.vue';
 import HomeView from './views/HomeView.vue';
+import SettingsView from './views/SettingsView.vue';
 import SignInView from './views/SignInView.vue';
 
 import type { AuthStatus } from '../shared/types';
 
 const auth = ref<AuthStatus>({ state: 'signedOut', instanceUrl: null, error: null });
+const view = ref<'home' | 'settings'>('home');
+
+// Settings only makes sense while signed in; drop back to home whenever we leave that state
+// (e.g. after logging out from Settings) so a fresh sign-in doesn't land back in Settings.
+function applyAuth(status: AuthStatus) {
+	auth.value = status;
+	if (status.state !== 'signedIn') view.value = 'home';
+}
 
 onMounted(async () => {
 	// Subscribe before fetching the initial status so a transition emitted while we await can't slip
@@ -15,18 +24,21 @@ onMounted(async () => {
 	let receivedEvent = false;
 	window.electronAPI.onAuthStatusChanged((status) => {
 		receivedEvent = true;
-		auth.value = status;
+		applyAuth(status);
 	});
 	const initial = await window.electronAPI.getAuthStatus();
-	if (!receivedEvent) auth.value = initial;
+	if (!receivedEvent) applyAuth(initial);
 });
 </script>
 
 <template>
 	<div :class="$style.app">
-		<AppHeader :state="auth.state" />
+		<AppHeader :state="auth.state" @open-settings="view = 'settings'" />
 		<div :class="$style.content">
-			<HomeView v-if="auth.state === 'signedIn'" />
+			<template v-if="auth.state === 'signedIn'">
+				<SettingsView v-if="view === 'settings'" @back="view = 'home'" />
+				<HomeView v-else />
+			</template>
 			<SignInView v-else :status="auth" />
 		</div>
 	</div>
