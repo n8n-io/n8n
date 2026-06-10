@@ -1,3 +1,4 @@
+import { richMessageSchema } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { SentMessage } from 'chat';
 import { z } from 'zod';
@@ -24,19 +25,9 @@ import type {
 } from './integration-tools';
 import { subscribeSlackThread } from './platforms/slack-operations';
 
-const messageSchema = z
-	.object({
-		text: z.string().optional(),
-		card: z
-			.object({
-				awaitResponse: z.boolean().optional(),
-				title: z.string().optional(),
-				message: z.string().optional(),
-				components: z.array(z.object({ type: z.string() }).passthrough()).min(1),
-			})
-			.optional(),
-	})
-	.strict();
+// The shared wire schema from @n8n/api-types — the same definition the tool
+// boundary validates against and the editor-ui renderer parses with.
+const messageSchema = richMessageSchema;
 
 export const respondInputSchema = z.object({ message: messageSchema });
 const sendDmInputSchema = z.object({

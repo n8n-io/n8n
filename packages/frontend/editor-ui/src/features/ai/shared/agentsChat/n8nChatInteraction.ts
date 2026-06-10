@@ -1,64 +1,21 @@
-import type { RichCardComponentType } from '@n8n/api-types';
+import { richMessageSchema } from '@n8n/api-types';
+import type { RichCard, RichCardComponent, RichCardComponentType } from '@n8n/api-types';
 import { z } from 'zod';
-
-const selectOptionSchema = z
-	.object({ label: z.string(), value: z.string(), description: z.string().optional() })
-	.passthrough();
-
-const fieldPairSchema = z.object({ label: z.string(), value: z.string() }).passthrough();
-
-const cardComponentSchema = z
-	.object({
-		type: z.string(),
-		text: z.string().optional(),
-		label: z.string().optional(),
-		value: z.string().optional(),
-		style: z.string().optional(),
-		url: z.string().optional(),
-		alt: z.string().optional(),
-		altText: z.string().optional(),
-		id: z.string().optional(),
-		placeholder: z.string().optional(),
-		options: z.array(selectOptionSchema).optional(),
-		fields: z.array(fieldPairSchema).optional(),
-		/** Alias for `fields` accepted by the wire schema. */
-		items: z.array(fieldPairSchema).optional(),
-		/** Section button accessory (counted as interactive, like the backend). */
-		button: z
-			.object({
-				label: z.string().optional(),
-				value: z.string().optional(),
-				style: z.string().optional(),
-			})
-			.optional(),
-	})
-	.passthrough();
-
-const cardSchema = z
-	.object({
-		awaitResponse: z.boolean().optional(),
-		title: z.string().optional(),
-		message: z.string().optional(),
-		components: z.array(cardComponentSchema).min(1),
-	})
-	.passthrough();
 
 /**
  * Single-operation integration action tool input — any `<platform>_action`
- * tool's `{ action, input: { message: { text?, card? } } }` shape. Batch
- * inputs (`actions: [...]`) never suspend and don't match this schema; they
- * fall back to raw JSON rendering.
- *
- * @see buildActionInputSchema in packages/cli/src/modules/agents/integrations/integration-tools.ts
+ * tool's `{ action, input: { message: { text?, card? } } }` shape, with the
+ * message validated against the SAME `richMessageSchema` the backend tool
+ * boundary uses (`@n8n/api-types/agents/rich-card.schema.ts`). Batch inputs
+ * (`actions: [...]`) never suspend and don't match this schema; they fall
+ * back to raw JSON rendering.
  */
 const actionToolInputSchema = z
 	.object({
 		action: z.string(),
 		input: z
 			.object({
-				message: z
-					.object({ text: z.string().optional(), card: cardSchema.optional() })
-					.passthrough(),
+				message: richMessageSchema,
 			})
 			.passthrough(),
 	})
@@ -69,8 +26,8 @@ export const n8nChatResumeValueSchema = z
 	.object({ type: z.enum(['button', 'select']), value: z.string(), id: z.string().optional() })
 	.passthrough();
 
-export type N8nChatCard = z.infer<typeof cardSchema>;
-export type N8nChatCardComponent = z.infer<typeof cardComponentSchema>;
+export type N8nChatCard = RichCard;
+export type N8nChatCardComponent = RichCardComponent;
 export type N8nChatResumeValue = z.infer<typeof n8nChatResumeValueSchema>;
 
 export interface N8nChatInteractionInput {
@@ -78,7 +35,11 @@ export interface N8nChatInteractionInput {
 	card: N8nChatCard;
 }
 
-const INTERACTIVE_COMPONENT_TYPES = new Set(['button', 'select', 'radio_select']);
+const INTERACTIVE_COMPONENT_TYPES = new Set<RichCardComponent['type']>([
+	'button',
+	'select',
+	'radio_select',
+]);
 
 /**
  * Mirrors the backend's shouldAwaitResponse: explicit flag or interactive components.
@@ -95,7 +56,7 @@ export function isAwaitingCard(card: N8nChatCard): boolean {
 }
 
 /**
- * Parse any integration action tool input (slack_action, n8n_chat_action, …)
+ * Parse any integration action tool input (slack_action, chat_action, …)
  * into its renderable card, or undefined when it carries none. Used for the
  * live n8n chat cards and for session-log card previews of every integration.
  */
@@ -107,7 +68,7 @@ export function parseIntegrationActionCard(input: unknown): N8nChatInteractionIn
 	return { text: message.text, card: message.card };
 }
 
-/** Parse a persisted/live n8n_chat_action tool input into a renderable card, or undefined. */
+/** Parse a persisted/live chat_action tool input into a renderable card, or undefined. */
 export function parseN8nChatActionInput(input: unknown): N8nChatInteractionInput | undefined {
 	return parseIntegrationActionCard(input);
 }
@@ -127,7 +88,7 @@ export function cardChoiceLabel(card: N8nChatCard, resume: N8nChatResumeValue): 
 						? [component.button]
 						: [];
 			for (const button of candidates) {
-				if ((button.value ?? button.label ?? '') === resume.value) {
+				if (button.value === resume.value) {
 					return button.label ?? resume.value;
 				}
 			}
@@ -139,7 +100,7 @@ export function cardChoiceLabel(card: N8nChatCard, resume: N8nChatResumeValue): 
 		if (resume.id !== undefined && component.id !== undefined && component.id !== resume.id) {
 			continue;
 		}
-		const option = (component.options ?? []).find((candidate) => candidate.value === resume.value);
+		const option = component.options.find((candidate) => candidate.value === resume.value);
 		if (option) return option.label;
 	}
 	return resume.value;

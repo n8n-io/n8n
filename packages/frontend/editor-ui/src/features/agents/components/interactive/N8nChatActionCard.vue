@@ -19,19 +19,17 @@ const emit = defineEmits<{
 	submit: [resumeData: N8nChatResumeValue];
 }>();
 
-interface CardButton {
-	label?: string;
-	text?: string;
-	value?: string;
-	style?: string;
-}
+type ButtonComponent = Extract<N8nChatCardComponent, { type: 'button' }>;
+type SelectComponent = Extract<N8nChatCardComponent, { type: 'select' | 'radio_select' }>;
+/** A top-level button component or a section's accessory button. */
+type CardButton = Pick<ButtonComponent, 'label' | 'text' | 'value' | 'style'>;
 
 /**
  * Consecutive `button` components flow together on one (wrapping) row instead
  * of stacking one per line; every other component renders as its own block.
  */
 type CardBlock =
-	| { kind: 'buttons'; buttons: N8nChatCardComponent[] }
+	| { kind: 'buttons'; buttons: ButtonComponent[] }
 	| { kind: 'component'; component: N8nChatCardComponent };
 
 const blocks = computed<CardBlock[]>(() => {
@@ -62,26 +60,21 @@ function buttonVariant(btn: CardButton): 'solid' | 'destructive' | 'outline' {
 	return 'outline';
 }
 
-/** The resume value a button submits: explicit value, else its label. */
-function buttonValue(btn: CardButton): string {
-	return btn.value ?? btn.label ?? '';
-}
-
 function submitButton(btn: CardButton) {
 	if (props.disabled) return;
-	emit('submit', { type: 'button', value: buttonValue(btn) });
+	emit('submit', { type: 'button', value: btn.value });
 }
 
-function submitOption(component: N8nChatCardComponent, value: string) {
+function submitOption(component: SelectComponent, value: string) {
 	if (props.disabled) return;
 	emit('submit', { type: 'select', ...(component.id && { id: component.id }), value });
 }
 
 function isButtonSelected(btn: CardButton): boolean {
-	return props.resolvedValue?.type === 'button' && props.resolvedValue.value === buttonValue(btn);
+	return props.resolvedValue?.type === 'button' && props.resolvedValue.value === btn.value;
 }
 
-function isOptionSelected(component: N8nChatCardComponent, value: string): boolean {
+function isOptionSelected(component: SelectComponent, value: string): boolean {
 	return (
 		props.resolvedValue?.type === 'select' &&
 		props.resolvedValue.value === value &&
@@ -90,10 +83,8 @@ function isOptionSelected(component: N8nChatCardComponent, value: string): boole
 }
 
 /** Chosen value for a select/radio_select group: the resolved answer, if any. */
-function selectedOptionValue(component: N8nChatCardComponent): string | undefined {
-	const match = (component.options ?? []).find((option) =>
-		isOptionSelected(component, option.value),
-	);
+function selectedOptionValue(component: SelectComponent): string | undefined {
+	const match = component.options.find((option) => isOptionSelected(component, option.value));
 	return match?.value;
 }
 </script>

@@ -66,11 +66,15 @@ describe('parseIntegrationActionCard', () => {
 describe('isAwaitingCard', () => {
 	it('true for interactive components or explicit awaitResponse', () => {
 		expect(isAwaitingCard({ components: [{ type: 'button', value: 'a' }] })).toBe(true);
-		expect(isAwaitingCard({ awaitResponse: true, components: [{ type: 'section' }] })).toBe(true);
+		expect(
+			isAwaitingCard({ awaitResponse: true, components: [{ type: 'section', text: 'x' }] }),
+		).toBe(true);
 	});
 
 	it('false for display-only cards', () => {
-		expect(isAwaitingCard({ components: [{ type: 'fields', fields: [] }] })).toBe(false);
+		expect(
+			isAwaitingCard({ components: [{ type: 'fields', fields: [{ label: 'A', value: 'B' }] }] }),
+		).toBe(false);
 	});
 });
 
@@ -101,7 +105,11 @@ describe('rebuildInteractiveFromHistory — n8n_chat_action', () => {
 	it('does not produce an open card for display-only respond calls', () => {
 		const displayOnly = {
 			action: 'respond',
-			input: { message: { card: { components: [{ type: 'fields', fields: [] }] } } },
+			input: {
+				message: {
+					card: { components: [{ type: 'fields', fields: [{ label: 'A', value: 'B' }] }] },
+				},
+			},
 		};
 		const result = rebuildInteractiveFromHistory({
 			tool: N8N_CHAT_ACTION_TOOL_NAME,

@@ -205,28 +205,3 @@ export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;
 
 /** Chat history envelope — same contract as {@link AgentBuilderMessagesResponse}. */
 export type AgentChatMessagesResponse = AgentBuilderMessagesResponse;
-
-/**
- * Every rich-card component type the integration action tools can emit
- * (Slack / Telegram / n8n chat cards). Single source of truth:
- *
- * - the CLI wire schema (`cardComponentSchema` in
- *   `packages/cli/src/modules/agents/integrations/integration-tools.ts`) and
- * - the editor-ui chat renderer (`N8nChatActionCard.vue`, via
- *   `features/ai/shared/agentsChat/n8nChatInteraction.ts`)
- *
- * are both compile-time lockstep-checked against this list, and each
- * integration's `supportedComponents` is typed by it. To add a component:
- * extend this list first — the type errors then point at every place that
- * must implement it.
- */
-export const RICH_CARD_COMPONENT_TYPES = [
-	'section',
-	'fields',
-	'image',
-	'divider',
-	'button',
-	'select',
-	'radio_select',
-] as const;
-export type RichCardComponentType = (typeof RICH_CARD_COMPONENT_TYPES)[number];

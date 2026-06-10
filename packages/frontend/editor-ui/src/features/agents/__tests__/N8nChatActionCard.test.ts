@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { N8nButton, N8nSelect } from '@n8n/design-system';
 
 import N8nChatActionCard from '../components/interactive/N8nChatActionCard.vue';
+import type { N8nChatInteractionInput } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 
-const input = {
+const input: N8nChatInteractionInput = {
 	text: 'Pick one',
 	card: {
 		title: 'Choose',
@@ -75,26 +76,27 @@ describe('N8nChatActionCard', () => {
 		expect(wrapper.emitted('submit')).toBeUndefined();
 	});
 
-	it('label-only buttons submit and highlight by their label', async () => {
-		const labelOnly = {
-			card: { components: [{ type: 'button', label: 'Approve' }] },
+	it('resolved highlight keeps the chosen button enabled while others disable', () => {
+		const twoButtons: N8nChatInteractionInput = {
+			card: {
+				components: [
+					{ type: 'button', label: 'Approve', value: 'approve' },
+					{ type: 'button', label: 'Reject', value: 'reject' },
+				],
+			},
 		};
-		const wrapper = mountCard({ input: labelOnly });
-		await wrapper.find('[data-testid="n8n-chat-card-button"]').trigger('click');
-		expect(wrapper.emitted('submit')?.[0]).toEqual([{ type: 'button', value: 'Approve' }]);
-
-		// The resolved highlight must use the same derived value the submit emits.
 		const resolved = mountCard({
-			input: labelOnly,
+			input: twoButtons,
 			disabled: true,
-			resolvedValue: { type: 'button', value: 'Approve' },
+			resolvedValue: { type: 'button', value: 'approve' },
 		});
-		const button = resolved.find('[data-testid="n8n-chat-card-button"]');
-		expect(button.attributes('disabled')).toBeUndefined();
+		const buttons = resolved.findAll('[data-testid="n8n-chat-card-button"]');
+		expect(buttons[0].attributes('disabled')).toBeUndefined();
+		expect(buttons[1].attributes('disabled')).toBeDefined();
 	});
 
 	it('renders a section accessory button and submits its value', async () => {
-		const sectionWithButton = {
+		const sectionWithButton: N8nChatInteractionInput = {
 			card: {
 				components: [
 					{ type: 'section', text: 'Deploy?', button: { label: 'Deploy', value: 'deploy' } },
@@ -116,7 +118,7 @@ describe('N8nChatActionCard', () => {
 	});
 
 	it('disabled blocks section accessory button submission', async () => {
-		const sectionWithButton = {
+		const sectionWithButton: N8nChatInteractionInput = {
 			card: {
 				components: [
 					{ type: 'section', text: 'Deploy?', button: { label: 'Deploy', value: 'deploy' } },
@@ -132,7 +134,7 @@ describe('N8nChatActionCard', () => {
 	});
 
 	it('top-level button shows label with text fallback (Slack parity)', async () => {
-		const textButton = {
+		const textButton: N8nChatInteractionInput = {
 			card: { components: [{ type: 'button', text: 'Confirm', value: 'confirm' }] },
 		};
 		const wrapper = mountCard({ input: textButton });
@@ -143,7 +145,7 @@ describe('N8nChatActionCard', () => {
 	});
 
 	it('groups consecutive buttons into a single wrapping row', () => {
-		const threeButtons = {
+		const threeButtons: N8nChatInteractionInput = {
 			card: {
 				components: [
 					{ type: 'section', text: 'Pick:' },
@@ -160,7 +162,7 @@ describe('N8nChatActionCard', () => {
 	});
 
 	it('maps button style to design-system props', () => {
-		const styled = {
+		const styled: N8nChatInteractionInput = {
 			card: {
 				components: [
 					{ type: 'button', label: 'Go', value: 'go', style: 'primary' },
@@ -177,7 +179,7 @@ describe('N8nChatActionCard', () => {
 	});
 
 	it('renders radio_select options as radio buttons and submits on change', async () => {
-		const radio = {
+		const radio: N8nChatInteractionInput = {
 			card: {
 				components: [
 					{
@@ -204,7 +206,7 @@ describe('N8nChatActionCard', () => {
 	});
 
 	it('renders fields provided via the items alias', () => {
-		const itemsCard = {
+		const itemsCard: N8nChatInteractionInput = {
 			card: {
 				components: [{ type: 'fields', items: [{ label: 'ARR', value: '$1m' }] }],
 			},
@@ -215,7 +217,7 @@ describe('N8nChatActionCard', () => {
 	});
 
 	it('disabled blocks radio submission', async () => {
-		const radio = {
+		const radio: N8nChatInteractionInput = {
 			card: {
 				components: [
 					{ type: 'radio_select', id: 'x', options: [{ label: 'Call', value: 'call' }] },
