@@ -59,3 +59,18 @@ export function formatRelativeTime(iso: string | null, now: number): string {
 	if (seconds < DAY) return plural(Math.floor(seconds / HOUR), 'hour');
 	return plural(Math.floor(seconds / DAY), 'day');
 }
+
+/**
+ * Format minutes-saved for the History "Time saved" panel. Zero (or less) renders
+ * as a motivational dash rather than "0m" — a fresh user, or workflows without a
+ * `timeSavedPerExecution` estimate, still see the panel as a nudge.
+ */
+export function formatMinutesSaved(minutes: number): string {
+	if (!Number.isFinite(minutes) || minutes <= 0) return '--';
+	const total = Math.round(minutes);
+	const hours = Math.floor(total / 60);
+	const mins = total % 60;
+	if (hours === 0) return `${mins}m`;
+	if (mins === 0) return `${hours}h`;
+	return `${hours}h ${mins}m`;
+}

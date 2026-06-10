@@ -21,6 +21,7 @@ function makeOAuth(opts: { instanceUrl?: string | null; token?: string | null } 
 		getStatus: () => ({
 			state: 'signedIn',
 			instanceUrl: opts.instanceUrl === undefined ? 'https://n.example' : opts.instanceUrl,
+			lastInstanceUrl: null,
 			error: null,
 		}),
 		getValidAccessToken: vi.fn().mockResolvedValue(opts.token === undefined ? 'tok' : opts.token),
@@ -107,6 +108,37 @@ describe('InstanceApi', () => {
 			await new InstanceApi(makeOAuth()).getHistory();
 
 			expect(mockFetch.mock.calls[0][0]).toBe('https://n.example/rest/desktop-assistant/history');
+		});
+	});
+
+	describe('getTimeSaved', () => {
+		const summary = (minutes: number) => ({
+			data: { timeSaved: { value: minutes, unit: 'minute', deviation: null } },
+		});
+
+		it('fetches the week and month ranges from /insights/summary', async () => {
+			mockFetch
+				.mockResolvedValueOnce(jsonResponse(summary(73)))
+				.mockResolvedValueOnce(jsonResponse(summary(91)));
+
+			const result = await new InstanceApi(makeOAuth()).getTimeSaved();
+
+			expect(result).toEqual({ weekMinutes: 73, monthMinutes: 91 });
+			const urls = mockFetch.mock.calls.map((c) => c[0] as string);
+			expect(urls.every((u) => u.startsWith('https://n.example/rest/insights/summary?'))).toBe(
+				true,
+			);
+			expect(urls.every((u) => u.includes('startDate=') && u.includes('endDate='))).toBe(true);
+		});
+
+		it('degrades a license-capped (or otherwise failing) range to null without failing the rest', async () => {
+			mockFetch
+				.mockResolvedValueOnce(jsonResponse(summary(73)))
+				.mockResolvedValueOnce(jsonResponse({ message: 'capped' }, { ok: false, status: 403 }));
+
+			const result = await new InstanceApi(makeOAuth()).getTimeSaved();
+
+			expect(result).toEqual({ weekMinutes: 73, monthMinutes: null });
 		});
 	});
 

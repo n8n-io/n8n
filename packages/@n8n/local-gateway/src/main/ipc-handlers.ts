@@ -10,6 +10,7 @@ import type {
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantTasksResponse,
+	DesktopAssistantTimeSaved,
 	RunTaskResult,
 } from '../shared/types';
 
@@ -136,4 +137,9 @@ export function registerIpcHandlers({
 			if (url) await openExternal(url);
 		},
 	);
+
+	ipcMain.handle('insights:timeSaved', async (): Promise<DesktopAssistantTimeSaved> => {
+		logger.debug('IPC insights:timeSaved');
+		return await instanceApi.getTimeSaved();
+	});
 }

@@ -13,6 +13,8 @@ export interface PersistedSession {
 interface OAuthStoreSchema {
 	/** The active session, JSON-serialized and (when available) safeStorage-encrypted. */
 	session?: string;
+	/** Last successfully signed-in instance URL. Plaintext: it's not a secret, and it must outlive the session. */
+	lastInstanceUrl?: string;
 }
 
 /**
@@ -37,8 +39,17 @@ export class TokenStore {
 		this.store.set('session', encrypt(JSON.stringify(session)));
 	}
 
+	/** Deliberately keeps `lastInstanceUrl`, so the sign-in form can prefill after sign-out. */
 	clearSession(): void {
 		this.store.delete('session');
+	}
+
+	getLastInstanceUrl(): string | null {
+		return this.store.get('lastInstanceUrl') ?? null;
+	}
+
+	setLastInstanceUrl(instanceUrl: string): void {
+		this.store.set('lastInstanceUrl', instanceUrl);
 	}
 }
 
