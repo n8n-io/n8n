@@ -48,7 +48,6 @@
     "@stryker-mutator/core": "catalog:",
     "@stryker-mutator/vitest-runner": "catalog:",
     "@types/express": "catalog:",
-    "fast-check": "catalog:",
     "@types/jmespath": "^0.15.0",
     "@types/lodash": "catalog:",
     "@types/luxon": "3.2.0",
