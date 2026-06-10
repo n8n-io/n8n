@@ -13,7 +13,11 @@ export class CoverageMapStrategy implements SelectionStrategy {
 
 	constructor(
 		private readonly map: ImpactMap,
-		private readonly opts: { allSpecs?: string[]; siblingFallback?: boolean } = {},
+		private readonly opts: {
+			allSpecs?: string[];
+			siblingFallback?: boolean;
+			onUncovered?: 'broad' | 'declare';
+		} = {},
 	) {}
 
 	resolve(changed: ChangedFile[]): ResolveResult {

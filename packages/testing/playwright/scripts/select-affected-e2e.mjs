@@ -53,20 +53,30 @@ export function resolveMapPath(opts = {}) {
  * can be tested without spawning a subprocess. If `mapPath` is null we omit
  * `--map`, which makes select-e2e fail open to broad.
  *
- * @param {{ changedFiles: string, mapPath: string | null, allSpecs?: string }} input
+ * `base` (the merge-base git ref) lets `select` read changed package.json
+ * before/after so a devDependency-only lockfile change drops out of selection.
+ * Omitted → `select` keeps the conservative (broad) behaviour for dep changes.
+ *
+ * @param {{ changedFiles: string, mapPath: string | null, allSpecs?: string, base?: string }} input
  * @returns {string[]}
  */
-export function buildArgs({ changedFiles, mapPath, allSpecs }) {
+export function buildArgs({ changedFiles, mapPath, allSpecs, base }) {
 	const args = ['select', `--changed-files=${changedFiles}`];
 	if (mapPath) args.push(`--map=${mapPath}`);
 	if (allSpecs) args.push(`--all-specs=${allSpecs}`);
+	if (base) args.push(`--base=${base}`);
 	return args;
 }
 
 function runAsScript() {
 	const changedFiles = process.argv.slice(2).join(',') || process.env.CHANGED_FILES || '';
 	const mapPath = resolveMapPath();
-	const args = buildArgs({ changedFiles, mapPath, allSpecs: process.env.ALL_SPECS_FILE });
+	const args = buildArgs({
+		changedFiles,
+		mapPath,
+		allSpecs: process.env.ALL_SPECS_FILE,
+		base: process.env.BASE_REF,
+	});
 	const out = execFileSync('node', [JANITOR_CLI, ...args], { encoding: 'utf-8' });
 	process.stdout.write(out);
 }
