@@ -49,4 +49,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
-        run: node .github/scripts/pr-recommendations.mjs
+        run: node .github/scripts/owners-review-recommendations.mjs

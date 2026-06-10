@@ -4,10 +4,12 @@ import assert from 'node:assert/strict';
 /**
  * Run these tests by running
  *
- * node --test --experimental-test-module-mocks ./.github/scripts/pr-recommendations.test.mjs
+ * node --test --experimental-test-module-mocks ./.github/scripts/owners-review-recommendations.test.mjs
  * */
 
+/** @type {(pullRequestNumber: number) => Promise<Array<{ filename: string, additions: number, deletions: number, previous_filename?: string }>>} */
 let getPrFilesImpl = async () => [];
+/** @type {(pullRequestNumber: number, body: string, botMarker: string) => Promise<void>} */
 let postOrUpdateCommentImpl = async () => {};
 
 mock.module('./github-helpers.mjs', {
@@ -24,8 +26,11 @@ mock.module('./github-helpers.mjs', {
 	},
 });
 
+/** @type {() => Array<{ filepath: string, team: string }>} */
 let parseOwnersFileImpl = () => [];
+/** @type {(files: Set<string>, owners: Array<{ filepath: string, team: string }>) => Map<string, string[]>} */
 let assignOwnershipImpl = () => new Map();
+/** @type {(ownerships: Map<string, string[]>) => Array<{ team: string, fileCount: number }>} */
 let ownershipsToAllocationsImpl = () => [];
 
 mock.module('./owners.mjs', {
@@ -37,7 +42,7 @@ mock.module('./owners.mjs', {
 });
 
 const { buildOverviewTable, buildComment, computeAllocationLineStats, computeLineStats, run } =
-	await import('./pr-recommendations.mjs');
+	await import('./owners-review-recommendations.mjs');
 
 const BOT_MARKER = '<!-- pr-recommendations -->';
 const EMPTY_LINE_STATS = {
@@ -286,10 +291,11 @@ describe('computeAllocationLineStats', () => {
 });
 
 describe('run', () => {
-	const postOrUpdateComment = mock.fn(async () => {});
+	let postOrUpdateComment;
 
 	beforeEach(() => {
 		getPrFilesImpl = async () => [];
+		postOrUpdateComment = mock.fn(async () => {});
 		postOrUpdateCommentImpl = postOrUpdateComment;
 		parseOwnersFileImpl = () => [];
 		assignOwnershipImpl = () => new Map();
@@ -310,7 +316,7 @@ describe('run', () => {
 			{ filename: 'new-name.ts', additions: 5, deletions: 0, previous_filename: 'old-name.ts' },
 		];
 
-		let capturedChangedFiles;
+		let capturedChangedFiles = new Set();
 		assignOwnershipImpl = (files) => {
 			capturedChangedFiles = files;
 			return new Map();

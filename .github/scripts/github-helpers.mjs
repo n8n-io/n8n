@@ -408,10 +408,10 @@ export async function getChangedFiles(pullRequestNumber) {
 }
 
 /**
- * Returns all files changed in a PR with full metadata including addition counts.
+ * Returns all files changed in a PR with full metadata including line counts.
  *
  * @param { number } pullRequestNumber
- * @returns { Promise<Array<{ filename: string, additions: number, previous_filename?: string }>> }
+ * @returns { Promise<Array<{ filename: string, additions: number, deletions: number, previous_filename?: string }>> }
  * */
 export async function getPrFiles(pullRequestNumber) {
 	const { octokit, owner, repo } = initGithub();
