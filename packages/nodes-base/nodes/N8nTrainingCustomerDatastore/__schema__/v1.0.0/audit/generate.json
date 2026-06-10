@@ -42,7 +42,129 @@
                     }
                 }
             }
+        },
+        "Instance Risk Report": {
+            "type": "object",
+            "properties": {
+                "risk": {
+                    "type": "string"
+                },
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string"
+                            },
+                            "location": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "kind": {
+                                            "type": "string"
+                                        },
+                                        "nodeId": {
+                                            "type": "string"
+                                        },
+                                        "nodeName": {
+                                            "type": "string"
+                                        },
+                                        "nodeType": {
+                                            "type": "string"
+                                        },
+                                        "workflowId": {
+                                            "type": "string"
+                                        },
+                                        "workflowName": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "nextVersions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "createdAt": {
+                                            "type": "string"
+                                        },
+                                        "description": {
+                                            "type": "string"
+                                        },
+                                        "documentationUrl": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "recommendation": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "Nodes Risk Report": {
+            "type": "object",
+            "properties": {
+                "risk": {
+                    "type": "string"
+                },
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string"
+                            },
+                            "location": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "kind": {
+                                            "type": "string"
+                                        },
+                                        "nodeId": {
+                                            "type": "string"
+                                        },
+                                        "nodeName": {
+                                            "type": "string"
+                                        },
+                                        "nodeType": {
+                                            "type": "string"
+                                        },
+                                        "workflowId": {
+                                            "type": "string"
+                                        },
+                                        "workflowName": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "recommendation": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "version": 1
+    "version": 2
 }
