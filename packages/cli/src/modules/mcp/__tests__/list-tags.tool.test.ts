@@ -33,12 +33,10 @@ describe('list-tags MCP tool', () => {
 		const listWithUsageCount =
 			tagsOrError instanceof Error
 				? jest.fn().mockRejectedValue(tagsOrError)
-				: jest
-						.fn()
-						.mockResolvedValue({
-							data: tagsOrError,
-							totalCount: opts.totalCount ?? tagsOrError.length,
-						});
+				: jest.fn().mockResolvedValue({
+						data: tagsOrError,
+						totalCount: opts.totalCount ?? tagsOrError.length,
+					});
 		const tagService = mockInstance(TagService, { listWithUsageCount });
 		const telemetry = mockInstance(Telemetry, { track: jest.fn() });
 		return { tagService, telemetry };
