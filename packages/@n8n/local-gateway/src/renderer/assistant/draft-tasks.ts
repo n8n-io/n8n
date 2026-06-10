@@ -9,7 +9,6 @@
 import { ref } from 'vue';
 
 import type { Plan } from './planner';
-
 import type { DesktopAssistantTaskCard } from '../../shared/types';
 
 /** Which Tasks section a locally-created task belongs to. */
