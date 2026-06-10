@@ -330,4 +330,64 @@ describe('TestRunsController', () => {
 			expect(res.json).toHaveBeenCalledWith({ success: true, testRunId: 'testrun123' });
 		});
 	});
+
+	describe('access scope for mutating endpoints', () => {
+		const res = () => {
+			const r = { status: jest.fn(), json: jest.fn() } as unknown as express.Response;
+			(r.status as jest.Mock).mockReturnValue(r);
+			(r.json as jest.Mock).mockReturnValue(r);
+			return r;
+		};
+
+		it('create (start run) requires workflow:execute, not workflow:read', async () => {
+			await testRunsController.create(
+				{
+					params: { workflowId: mockWorkflowId },
+					user: mockUser,
+				} as unknown as TestRunsRequest.Create,
+				res(),
+				{} as never,
+			);
+
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:execute'],
+			);
+		});
+
+		it('cancel requires workflow:execute, not workflow:read', async () => {
+			mockTestRunRepository.findOne.mockResolvedValue({ id: mockTestRunId } as TestRun);
+			mockTestRunnerService.canBeCancelled.mockReturnValue(false);
+
+			await testRunsController.cancel(
+				{
+					params: { workflowId: mockWorkflowId, id: mockTestRunId },
+					user: mockUser,
+				} as unknown as TestRunsRequest.Cancel,
+				res(),
+			);
+
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:execute'],
+			);
+		});
+
+		it('delete requires workflow:update, not workflow:read', async () => {
+			mockTestRunRepository.findOne.mockResolvedValue({ id: mockTestRunId } as TestRun);
+
+			await testRunsController.delete({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId },
+				user: mockUser,
+			} as unknown as TestRunsRequest.Delete);
+
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:update'],
+			);
+		});
+	});
 });

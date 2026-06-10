@@ -53,6 +53,7 @@ export class SamlController {
 	 * Return SAML config
 	 */
 	@Get('/config', { middlewares: [samlLicensedMiddleware] })
+	@GlobalScope('saml:manage')
 	async configGet() {
 		const prefs = this.samlService.samlPreferences;
 		return {
