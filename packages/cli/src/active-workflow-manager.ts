@@ -13,7 +13,7 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import {
-	ActiveWorkflows,
+	ActiveWorkflowTriggers,
 	ErrorReporter,
 	InstanceSettings,
 	PollContext,
@@ -84,7 +84,7 @@ export class ActiveWorkflowManager {
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly activeWorkflows: ActiveWorkflows,
+		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly externalHooks: ExternalHooks,
 		private readonly nodeTypes: NodeTypes,
@@ -129,7 +129,7 @@ export class ActiveWorkflowManager {
 		let activeWorkflowIds: string[] = [];
 		this.logger.debug('Call to remove all active workflows received (removeAll)');
 
-		activeWorkflowIds.push(...this.activeWorkflows.allActiveWorkflows());
+		activeWorkflowIds.push(...this.activeWorkflowTriggers.allActiveWorkflows());
 
 		const activeWorkflows = await this.activeWorkflowsService.getAllActiveIdsInStorage();
 		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows];
@@ -148,7 +148,7 @@ export class ActiveWorkflowManager {
 	 * Returns the ids of the currently active workflows from memory.
 	 */
 	allActiveInMemory() {
-		return this.activeWorkflows.allActiveWorkflows();
+		return this.activeWorkflowTriggers.allActiveWorkflows();
 	}
 
 	/**
@@ -460,7 +460,7 @@ export class ActiveWorkflowManager {
 
 				// Remove the workflow as "active"
 
-				void this.activeWorkflows.remove(workflowData.id);
+				void this.activeWorkflowTriggers.remove(workflowData.id);
 
 				void this.activationErrorsService.register(workflowData.id, error.message);
 
@@ -661,7 +661,7 @@ export class ActiveWorkflowManager {
 	@OnShutdown()
 	async removeAllNonWebhookTriggerWorkflows() {
 		this.removeAllQueuedWorkflowActivations();
-		await this.activeWorkflows.removeAllNonWebhookTriggerWorkflows();
+		await this.activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows();
 	}
 
 	/**
@@ -678,7 +678,7 @@ export class ActiveWorkflowManager {
 	 * and so qualify as webhook triggers, e.g. Stripe Trigger.
 	 *
 	 * Active triggers, poll triggers, and schedule triggers are registered as
-	 * active in memory at `ActiveWorkflows`, but webhook triggers are registered
+	 * active in memory at `ActiveWorkflowTriggers`, but webhook triggers are registered
 	 * by being entered in the `webhook_entity` table, since webhooks do not
 	 * require continuous execution.
 	 *
@@ -1105,9 +1105,9 @@ export class ActiveWorkflowManager {
 	 * Stop running active, poll, and schedule triggers for a workflow.
 	 */
 	async removeNonWebhookTriggers(workflowId: WorkflowId) {
-		// `activeWorkflows.remove` is idempotent and always deregisters the workflow's
+		// `activeWorkflowTriggers.remove` is idempotent and always deregisters the workflow's
 		// crons, to ensure they stop running on a deactivated workflow
-		const wasRemoved = await this.activeWorkflows.remove(workflowId);
+		const wasRemoved = await this.activeWorkflowTriggers.remove(workflowId);
 
 		if (wasRemoved) {
 			this.logger.debug(`Removed non-webhook triggers for workflow "${workflowId}"`, {
@@ -1154,7 +1154,7 @@ export class ActiveWorkflowManager {
 			return false;
 		}
 
-		await this.activeWorkflows.add(
+		await this.activeWorkflowTriggers.add(
 			workflow.id,
 			workflow,
 			additionalData,

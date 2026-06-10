@@ -5,7 +5,7 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { ActiveWorkflows, ScheduledTaskManager } from 'n8n-core';
+import { ActiveWorkflowTriggers, ScheduledTaskManager } from 'n8n-core';
 import type {
 	CronExpression,
 	ExecutionError,
@@ -325,7 +325,7 @@ describe('ActiveWorkflowManager', () => {
 		const workflowStaticDataService = mock<WorkflowStaticDataService>();
 		const workflowExecutionService = mock<WorkflowExecutionService>();
 		const eventService = mock<EventService>();
-		const activeWorkflows = mock<ActiveWorkflows>();
+		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 		const activationErrorsService = mock<ActivationErrorsService>();
 		const executionService = mock<ExecutionService>();
 		let scopedLogger: Logger;
@@ -334,7 +334,7 @@ describe('ActiveWorkflowManager', () => {
 			jest.clearAllMocks();
 			workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 			workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
-			activeWorkflows.remove.mockResolvedValue(true);
+			activeWorkflowTriggers.remove.mockResolvedValue(true);
 			activationErrorsService.register.mockResolvedValue(undefined);
 			executionService.createErrorExecution.mockResolvedValue(undefined);
 
@@ -344,7 +344,7 @@ describe('ActiveWorkflowManager', () => {
 			activeWorkflowManager = new ActiveWorkflowManager(
 				rootLogger,
 				mock(),
-				activeWorkflows,
+				activeWorkflowTriggers,
 				mock(),
 				mock(),
 				nodeTypes,
@@ -503,7 +503,7 @@ describe('ActiveWorkflowManager', () => {
 		});
 
 		describe('emitError', () => {
-			test('removes workflow from activeWorkflows, registers error, calls executeErrorWorkflow and addQueuedWorkflowActivation', () => {
+			test('removes workflow from activeWorkflowTriggers, registers error, calls executeErrorWorkflow and addQueuedWorkflowActivation', () => {
 				const workflowData = mock<WorkflowEntity>({
 					id: 'wf-1',
 					name: 'Test Workflow',
@@ -537,7 +537,7 @@ describe('ActiveWorkflowManager', () => {
 
 				context.emitError(triggerError);
 
-				expect(activeWorkflows.remove).toHaveBeenCalledWith(workflowData.id);
+				expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith(workflowData.id);
 				expect(activationErrorsService.register).toHaveBeenCalledWith(
 					workflowData.id,
 					triggerError.message,
@@ -590,12 +590,12 @@ describe('ActiveWorkflowManager', () => {
 	});
 
 	describe('removeNonWebhookTriggers', () => {
-		// Wire the real ActiveWorkflows + real ScheduledTaskManager through the manager
+		// Wire the real ActiveWorkflowTriggers + real ScheduledTaskManager through the manager
 		// so the test asserts the cron is actually stopped, not just that a method was
 		// called.
 		const hourly = '0 * * * *' as CronExpression;
 		let realScheduledTaskManager: ScheduledTaskManager;
-		let realActiveWorkflows: ActiveWorkflows;
+		let realActiveWorkflowTriggers: ActiveWorkflowTriggers;
 
 		beforeEach(() => {
 			jest.clearAllMocks();
@@ -606,7 +606,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				mock(),
 			);
-			realActiveWorkflows = new ActiveWorkflows(
+			realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
 				mock(),
 				realScheduledTaskManager,
 				mock(),
@@ -616,7 +616,7 @@ describe('ActiveWorkflowManager', () => {
 			activeWorkflowManager = new ActiveWorkflowManager(
 				mockLogger(),
 				mock(),
-				realActiveWorkflows,
+				realActiveWorkflowTriggers,
 				mock(),
 				mock(),
 				nodeTypes,
@@ -649,7 +649,7 @@ describe('ActiveWorkflowManager', () => {
 				jest.fn(),
 			);
 			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-desynced')).toBe(true);
-			expect(realActiveWorkflows.isActive('wf-desynced')).toBe(false);
+			expect(realActiveWorkflowTriggers.isActive('wf-desynced')).toBe(false);
 
 			await activeWorkflowManager.removeNonWebhookTriggers('wf-desynced');
 
@@ -665,7 +665,7 @@ describe('ActiveWorkflowManager', () => {
 				jest.fn(),
 			);
 			expect(realScheduledTaskManager.cronsByWorkflow.has('wf-orphan')).toBe(true);
-			expect(realActiveWorkflows.isActive('wf-orphan')).toBe(false);
+			expect(realActiveWorkflowTriggers.isActive('wf-orphan')).toBe(false);
 
 			await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
