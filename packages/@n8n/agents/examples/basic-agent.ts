@@ -3,14 +3,14 @@
  *
  * This example demonstrates the complete builder-pattern API for creating
  * and running AI agents. It shows: tools, agents, memory, guardrails,
- * scorers, multi-agent patterns (agent-as-tool), and tool interrupts.
+ * scorers, and tool interrupts.
  *
  * To run with real LLM calls, set ANTHROPIC_API_KEY.
  * Without keys, the runtime will throw on actual LLM calls.
  */
 import { z } from 'zod';
 
-import { Agent, Guardrail, Memory, Tool } from '../src';
+import { Agent, Guardrail, Memory, Tool, createDelegateSubAgentTool } from '../src';
 
 // ---------------------------------------------------------------------------
 // Tools
@@ -64,10 +64,7 @@ const writeFileTool = new Tool('write-file')
 // Memory
 // ---------------------------------------------------------------------------
 
-const memory = new Memory().semanticRecall({
-	topK: 4,
-	messageRange: { before: 1, after: 1 },
-});
+const memory = new Memory();
 
 // ---------------------------------------------------------------------------
 // Agents
@@ -79,6 +76,10 @@ const researcher = new Agent('researcher')
 		'You are a research assistant. Search for information and return structured findings.',
 	)
 	.tool(searchTool)
+	// No runSubAgent callback: the SDK creates an inline child that reuses this
+	// agent's model and filtered tools whenever the model calls delegate_subagent
+	// with subAgentId: "inline".
+	.tool(createDelegateSubAgentTool({ policy: { maxChildren: 2 } }))
 	.memory(memory)
 	.inputGuardrail(
 		new Guardrail('injection-detector').type('prompt-injection').strategy('block').threshold(0.8),
@@ -89,18 +90,6 @@ const writer = new Agent('writer')
 	.instructions('You write clear, engaging content based on research provided to you.')
 	.tool(writeFileTool)
 	.checkpoint('memory');
-
-// ---------------------------------------------------------------------------
-// Multi-Agent: Agent as Tool
-// ---------------------------------------------------------------------------
-
-const orchestrator = new Agent('orchestrator')
-	.model('anthropic/claude-sonnet-4')
-	.instructions(
-		'You coordinate research and writing. Delegate research to the researcher and writing to the writer.',
-	)
-	.tool(researcher.asTool('Delegate research tasks to the research specialist'))
-	.tool(writer.asTool('Delegate writing tasks to the content writer'));
 
 // ---------------------------------------------------------------------------
 // Execution
@@ -132,13 +121,11 @@ async function main() {
 		console.log('   (Set ANTHROPIC_API_KEY to run with real LLM calls)');
 	}
 
-	// --- 2. Orchestrator (agent-as-tool pattern) ---
-	console.log('\n2. Orchestrator (agent-as-tool pattern):');
+	// --- 2. Tool interrupt ---
+	console.log('\n2. Tool interrupt:');
 	try {
-		const orchResult = await orchestrator.generate(
-			'Research RAG architectures and write a summary',
-		);
-		const text = orchResult.messages
+		const writerResult = await writer.generate('Write a short summary to /tmp/rag-summary.txt');
+		const text = writerResult.messages
 			.flatMap((m) => ('content' in m ? m.content : []))
 			.filter((c) => c.type === 'text')
 			.map((c) => ('text' in c ? c.text : ''))

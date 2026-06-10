@@ -115,55 +115,6 @@ export function getLatestWorkflowSetupResult(
 	return undefined;
 }
 
-export interface LatestExecution {
-	executionId: string;
-	workflowId: string;
-}
-
-/**
- * Walks an agent tree depth-first (most recent last) and returns the executionId
- * and workflowId from the latest completed run-workflow tool result.
- *
- * The workflowId preference order is:
- *   1. The sibling build-workflow tool's result.workflowId (always the real
- *      current-run ID, since build-workflow hits the live backend).
- *   2. The run-workflow tool call's args.workflowId (falls back for flows that
- *      run a pre-existing workflow without building it first).
- *
- * This ordering matters for trace-replay: the cached LLM's args.workflowId
- * carries the ID from the original recording, but build-workflow's result
- * always reflects the real workflow created during replay.
- */
-export function getLatestExecutionId(node: InstanceAiAgentNode): LatestExecution | undefined {
-	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestExecutionId(node.children[i]);
-		if (childResult) return childResult;
-	}
-	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
-		const tc = node.toolCalls[i];
-		if (
-			tc.toolName === 'executions' &&
-			(tc.args as Record<string, unknown> | undefined)?.action === 'run' &&
-			!tc.isLoading &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
-			const result = tc.result as Record<string, unknown>;
-			if (typeof result.executionId !== 'string') continue;
-
-			const buildResult = getLatestBuildResult(node);
-			const args = tc.args as Record<string, unknown> | undefined;
-			const workflowId =
-				buildResult?.workflowId ??
-				(typeof args?.workflowId === 'string' ? args.workflowId : undefined);
-			if (!workflowId) continue;
-
-			return { executionId: result.executionId, workflowId };
-		}
-	}
-	return undefined;
-}
-
 const DATA_TABLE_PREVIEW_ACTIONS = new Set([
 	'schema',
 	'query',

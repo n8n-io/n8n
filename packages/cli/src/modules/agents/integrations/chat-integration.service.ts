@@ -1,6 +1,5 @@
 import {
-	AgentCredentialIntegrationConfig,
-	isAgentCredentialIntegration,
+	AgentIntegrationConfig,
 	type AgentIntegrationSettings,
 	type AgentIntegrationStatusResponse,
 } from '@n8n/api-types';
@@ -24,7 +23,7 @@ import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
 } from './agent-chat-integration';
-import { ComponentMapper } from './component-mapper';
+import { ComponentMapper, type ShortenCallback } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { buildIntegrationConnectionId } from './integration-tools';
 import type { Agent } from '../entities/agent.entity';
@@ -116,7 +115,7 @@ export class ChatIntegrationService {
 	 */
 	async broadcastIntegrationChange(
 		agentId: string,
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 		action: 'connect' | 'disconnect',
 	): Promise<void> {
 		if (!this.globalConfig.multiMainSetup.enabled) return;
@@ -157,7 +156,7 @@ export class ChatIntegrationService {
 	 */
 	async connect(
 		agentId: string,
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 		userId: string,
 		projectId: string,
 		options: ConnectOptions = {},
@@ -336,8 +335,8 @@ export class ChatIntegrationService {
 	 */
 	async syncToConfig(
 		agent: Agent,
-		previous: AgentCredentialIntegrationConfig[],
-		next: AgentCredentialIntegrationConfig[],
+		previous: AgentIntegrationConfig[],
+		next: AgentIntegrationConfig[],
 	): Promise<void> {
 		const previousKeys = new Set(previous.map(buildIntegrationConnectionId));
 		const nextKeys = new Set(next.map(buildIntegrationConnectionId));
@@ -365,7 +364,7 @@ export class ChatIntegrationService {
 			return;
 		}
 
-		// TODO: AgentCredentialIntegration has no record of *who* connected the
+		// TODO: AgentIntegration has no record of *who* connected the
 		// integration, so we have no anchor user identity to decrypt credentials
 		// with on reconnect / sync. We fall back to probing project members until
 		// one has `credential:read` on the integration credential.
@@ -441,6 +440,15 @@ export class ChatIntegrationService {
 		return undefined;
 	}
 
+	getShortenCallback(
+		agentId: string,
+		integration: { type: string; credentialId: string },
+	): ShortenCallback | undefined {
+		return this.connections
+			.get(this.connectionKey(agentId, integration.type, integration.credentialId))
+			?.bridge.getShortenCallback();
+	}
+
 	/**
 	 * Return the webhook handler for a specific platform on an agent.
 	 * This is the pre-built handler from `bot.webhooks[platform]` that
@@ -479,10 +487,6 @@ export class ChatIntegrationService {
 		for (const agent of agents) {
 			if (!agent.integrations || agent.integrations.length === 0) continue;
 			for (const integration of agent.integrations) {
-				if (!isAgentCredentialIntegration(integration)) {
-					continue;
-				}
-
 				const definition = this.integrationRegistry.get(integration.type);
 				if (definition?.requiresLeader() && !this.instanceSettings.isLeader) {
 					this.logger.debug(
@@ -673,7 +677,7 @@ export class ChatIntegrationService {
 	}
 
 	private connectOptionsFor(
-		integration: AgentCredentialIntegrationConfig,
+		integration: AgentIntegrationConfig,
 		skipExternalHooks: boolean,
 	): ConnectOptions {
 		return 'settings' in integration

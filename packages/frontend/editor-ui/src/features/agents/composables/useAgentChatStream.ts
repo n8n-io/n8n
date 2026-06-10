@@ -5,6 +5,7 @@ import type {
 	AgentBuilderOpenSuspension,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
+	CancellationResumeData,
 } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import {
@@ -24,6 +25,7 @@ import {
 } from './agentChatMessages';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '../utils/interactive-summary';
+import { isFailedDelegateOutput } from '../utils/delegate-tool';
 
 export interface FatalAgentError {
 	message: string;
@@ -45,6 +47,19 @@ export interface UseAgentChatStreamParams {
 	onConfigUpdated?: () => void;
 	onHistoryLoaded?: (count: number) => void;
 }
+
+type ResumePayload =
+	| {
+			runId: string;
+			toolCallId: string;
+			resumeData: unknown;
+	  }
+	| {
+			runId: string;
+			toolCallId: string;
+			cancelled: true;
+			text: string;
+	  };
 
 export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
@@ -263,7 +278,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					);
 					if (
 						existing.state !== TOOL_CALL_STATE.RUNNING &&
-						existing.state !== TOOL_CALL_STATE.DONE
+						existing.state !== TOOL_CALL_STATE.DONE &&
+						existing.state !== TOOL_CALL_STATE.CANCELLED
 					) {
 						existing.state = TOOL_CALL_STATE.PENDING;
 					}
@@ -271,21 +287,52 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'tool-execution-start': {
+				// Timing is server-measured: store the backend `startTime` verbatim
+				// (no client clock) so the live duration matches the persisted one.
 				const found = findToolCallById(event.toolCallId);
-				if (
-					found &&
-					found.tc.state !== TOOL_CALL_STATE.DONE &&
-					found.tc.state !== TOOL_CALL_STATE.ERROR
-				) {
-					found.tc.state = TOOL_CALL_STATE.RUNNING;
+				if (found) {
+					found.tc.startTime = event.startTime;
+					if (
+						found.tc.state !== TOOL_CALL_STATE.DONE &&
+						found.tc.state !== TOOL_CALL_STATE.ERROR &&
+						found.tc.state !== TOOL_CALL_STATE.CANCELLED
+					) {
+						found.tc.state = TOOL_CALL_STATE.RUNNING;
+					}
+				}
+				break;
+			}
+			case 'tool-execution-end': {
+				// Per-tool completion bridged from the runtime event bus. Flips a
+				// concurrent tool call to its terminal state the moment it settles,
+				// rather than waiting for the batched `tool-result` events. The later
+				// `tool-result` still fills in the output/summary. `endTime` is the
+				// server-measured settle time (no client clock).
+				const found = findToolCallById(event.toolCallId);
+				if (found) {
+					if (
+						found.tc.state !== TOOL_CALL_STATE.DONE &&
+						found.tc.state !== TOOL_CALL_STATE.ERROR &&
+						found.tc.state !== TOOL_CALL_STATE.SUSPENDED
+					) {
+						found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
+					}
+					found.tc.endTime = event.endTime;
 				}
 				break;
 			}
 			case 'tool-result': {
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
+					const toolResultEvent = event as typeof event & { canceled?: boolean };
 					found.tc.output = event.output;
-					found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
+					const failed = event.isError || isFailedDelegateOutput(found.tc.tool, event.output);
+					found.tc.state = failed
+						? TOOL_CALL_STATE.ERROR
+						: toolResultEvent.canceled === true
+							? TOOL_CALL_STATE.CANCELLED
+							: TOOL_CALL_STATE.DONE;
+					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					// If this was an interactive tool call, the result IS the user's
 					// resume payload — refresh the card so it flips to its resolved
@@ -403,10 +450,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// Run a request against a build/chat/resume endpoint
-	// -------------------------------------------------------------------------
-
 	function finalizeStream(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
@@ -490,62 +533,111 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	/**
-	 * Resume a suspended build interaction. Posts to the build/resume endpoint
-	 * and re-enters the same SSE handler. The `runId` is required — it comes
+	 * Resume a suspended interaction. Build-mode interactions post to
+	 * build/resume; preview chat approval prompts post to chat/resume. Both
+	 * paths re-enter the same SSE handler. The `runId` is required — it comes
 	 * from the original `tool-call-suspended` chunk (live) or from the
 	 * `openSuspensions` sidecar applied during history reload.
+	 *
+	 * The UI updates optimistically, then restores the previous card state if
+	 * the resume POST or SSE stream fails.
 	 */
-	async function resume(payload: {
-		runId: string;
-		toolCallId: string;
-		resumeData: unknown;
-	}): Promise<void> {
-		// Optimistic update — the backend emits a matching `tool-result` on the
-		// resume stream, but that arrives only after round-trip. Flipping state
-		// here stops the spinner/clock indicator and disables the card so the
-		// user sees immediate feedback on submit.
-		//
-		// Snapshot the pre-flight state so we can roll back if the resume POST
-		// or the SSE stream fails. Otherwise a transport/expired-checkpoint
-		// error would leave the card permanently disabled and the user with
-		// no way to retry.
+	async function resume(payload: ResumePayload): Promise<void> {
+		const isCancellation = 'cancelled' in payload;
+		const text = isCancellation ? payload.text.trim() : '';
+		if (isCancellation && !text) return;
+
 		const found = findToolCallById(payload.toolCallId);
 		const snapshot = found
 			? {
 					tc: found.tc,
 					prevState: found.tc.state,
 					prevOutput: found.tc.output,
+					prevCanceled: found.tc.canceled,
 					prevSummary: found.tc.displaySummary,
 					msg: found.msg,
 					prevStatus: found.msg.status,
 					prevInteractive: found.msg.interactive,
 				}
 			: null;
+		let optimisticUserMessageId: string | undefined;
 
 		if (found) {
-			found.tc.state = TOOL_CALL_STATE.DONE;
-			found.tc.output = payload.resumeData;
-			found.tc.displaySummary = summariseToolCall(
-				found.tc.tool,
-				payload.resumeData,
-				found.tc.input,
-			);
-			const updated = rebuildInteractiveFromHistory(found.tc);
-			if (updated) found.msg.interactive = updated;
+			if (isCancellation) {
+				found.tc.state = TOOL_CALL_STATE.CANCELLED;
+				found.tc.canceled = true;
+				if (found.msg.interactive) {
+					found.msg.interactive = {
+						...found.msg.interactive,
+						resolvedAt: Date.now(),
+						cancelled: true,
+					};
+				}
+			} else {
+				found.tc.state = TOOL_CALL_STATE.DONE;
+				found.tc.canceled = false;
+				found.tc.output = payload.resumeData;
+				found.tc.displaySummary = summariseToolCall(
+					found.tc.tool,
+					payload.resumeData,
+					found.tc.input,
+				);
+				const updated = rebuildInteractiveFromHistory(found.tc);
+				if (updated) found.msg.interactive = updated;
+			}
 			if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
 				found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 		}
 
+		const resumeData: unknown = isCancellation
+			? ({
+					_type: 'agent.cancellation',
+					message: text,
+				} satisfies CancellationResumeData)
+			: payload.resumeData;
+
+		if (isCancellation) {
+			optimisticUserMessageId = crypto.randomUUID();
+			fatalError.value = null;
+			messages.value.push({
+				id: optimisticUserMessageId,
+				role: 'user',
+				content: text,
+				status: 'success',
+			});
+		}
+
 		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/build/resume`;
-		const { ok } = await postAndConsume(url, payload);
+		const resumeEndpoint = params.endpoint.value === 'chat' ? 'chat/resume' : 'build/resume';
+		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${resumeEndpoint}`;
+		const { ok } = await postAndConsume(url, {
+			runId: payload.runId,
+			toolCallId: payload.toolCallId,
+			resumeData,
+		});
 		if (!ok && snapshot) {
 			snapshot.tc.state = snapshot.prevState;
 			snapshot.tc.output = snapshot.prevOutput;
+			snapshot.tc.canceled = snapshot.prevCanceled;
 			snapshot.tc.displaySummary = snapshot.prevSummary;
 			snapshot.msg.status = snapshot.prevStatus;
 			snapshot.msg.interactive = snapshot.prevInteractive;
 		}
+		if (!ok && optimisticUserMessageId) {
+			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
+		}
+	}
+
+	async function cancelAndSteer(text: string): Promise<void> {
+		const openMsg = messages.value.find((m) => m.interactive && !m.interactive.resolvedAt);
+		if (!openMsg?.interactive?.runId) return;
+
+		await resume({
+			runId: openMsg.interactive.runId,
+			toolCallId: openMsg.interactive.toolCallId,
+			cancelled: true,
+			text,
+		});
 	}
 
 	async function sendMessage(text: string): Promise<void> {
@@ -580,6 +672,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		sendMessage,
 		stopGenerating,
 		resume,
+		cancelAndSteer,
 		dismissFatalError,
 	};
 }

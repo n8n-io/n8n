@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import type { IExecutionDb } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
 import { ensureError, type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { isWorkflowIdValid } from '@/utils';
@@ -104,10 +104,10 @@ export async function updateExistingExecution(parameters: {
 		stoppedAt: executionData.stoppedAt,
 	});
 
-	await Container.get(ExecutionRepository).updateExistingExecution(executionId, executionData);
+	await Container.get(ExecutionPersistence).updateExistingExecution(executionId, executionData);
 
 	if (executionData.finished === true && executionData.retryOf !== undefined) {
-		await Container.get(ExecutionRepository).updateExistingExecution(executionData.retryOf, {
+		await Container.get(ExecutionPersistence).updateExistingExecution(executionData.retryOf, {
 			retrySuccessId: executionId,
 		});
 	}

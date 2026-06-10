@@ -26,7 +26,7 @@ describe('createN8nPackageMulterOptions', () => {
 		expect(options.limits).toEqual({
 			fileSize: 8 * 1024 * 1024,
 			files: 1,
-			parts: 5,
+			parts: 7,
 			fieldSize: 128,
 		});
 	});
@@ -89,11 +89,11 @@ describe('resolveImportPackageUpload', () => {
 		expect(file.buffer).toBe(packageBuffer);
 	});
 
-	it('accepts only optional routing fields in the body', () => {
+	it('accepts routing and workflow update policy fields in the body', () => {
 		expect(() =>
 			resolveImportPackageUpload({
 				files: [makeFile('package', packageBuffer)],
-				body: { folderId: 'fld-1', package: '' },
+				body: { folderId: 'fld-1', workflowConflictPolicy: 'skip', package: '' },
 			}),
 		).not.toThrow();
 	});

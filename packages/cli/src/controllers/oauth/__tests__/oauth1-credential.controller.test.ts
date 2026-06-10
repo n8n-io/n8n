@@ -3,15 +3,12 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import axios from 'axios';
 import type { Response } from 'express';
 import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credential.controller';
 import { EventService } from '@/events/event.service';
 import type { OAuthRequest } from '@/requests';
 import { OauthService } from '@/oauth/oauth.service';
 import { ExternalHooks } from '@/external-hooks';
-
-jest.mock('axios');
 
 describe('OAuth1CredentialController', () => {
 	const oauthService = mockInstance(OauthService);
@@ -24,6 +21,8 @@ describe('OAuth1CredentialController', () => {
 
 	const timestamp = 1706750625678;
 	jest.useFakeTimers({ advanceTimers: true });
+
+	const accessTokenData = { oauth_token: 'token', oauth_token_secret: 'secret' };
 
 	beforeEach(() => {
 		jest.setSystemTime(new Date(timestamp));
@@ -43,12 +42,15 @@ describe('OAuth1CredentialController', () => {
 				user: mock<User>({ id: '123' }),
 				query: { id: '1' },
 			});
-			const authUri = await controller.getAuthUri(req);
+			const res = mock<Response>();
+			const authUri = await controller.getAuthUri(req, res);
 			expect(authUri).toEqual('https://example.domain/oauth/authorize?oauth_token=random-token');
 			expect(oauthService.buildCsrfStateData).toHaveBeenCalledWith(mockResolvedCredential, req);
 			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(
 				mockResolvedCredential,
 				mockCsrfData,
+				req,
+				res,
 			);
 		});
 	});
@@ -85,7 +87,7 @@ describe('OAuth1CredentialController', () => {
 			);
 		});
 
-		it('should exchange the code for a valid token, and save it to DB for static credential', async () => {
+		it('should sign the access token request with the stored request token secret', async () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
 				token: 'token',
@@ -94,26 +96,47 @@ describe('OAuth1CredentialController', () => {
 				createdAt: timestamp,
 				data: 'encrypted-data',
 			};
-			oauthService.getCredentialForUpdate.mockResolvedValueOnce(mockResolvedCredential);
-			// @ts-ignore
-			oauthService.getDecryptedData.mockResolvedValue({ csrfSecret: 'invalid' });
-			oauthService.getOAuthCredentials.mockResolvedValueOnce({
-				requestTokenUrl: 'https://example.domain/oauth/request_token',
-				accessTokenUrl: 'https://example.domain/oauth/access_token',
-				signatureMethod: 'HMAC-SHA1',
-			});
 			oauthService.resolveCredential.mockResolvedValueOnce([
 				mockResolvedCredential,
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret', oauthTokenSecret: 'request-token-secret' },
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 
 			await controller.handleCallback(req, res);
-			// @ts-ignore
+
+			expect(oauthService.getOAuth1AccessToken).toHaveBeenCalledWith(
+				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
+				{
+					oauthToken: 'token',
+					oauthVerifier: 'verifier',
+					oauthTokenSecret: 'request-token-secret',
+				},
+			);
+		});
+
+		it('should exchange the verifier for a valid token, and save it to DB for static credential', async () => {
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				origin: 'static-credential' as const,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'invalid' },
+				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
+				mockState,
+				{ csrfSecret: 'csrf-secret' },
+			]);
+			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
+
+			await controller.handleCallback(req, res);
+
 			expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
 				mockResolvedCredential,
 				expect.objectContaining({
@@ -122,7 +145,6 @@ describe('OAuth1CredentialController', () => {
 						oauth_token_secret: 'secret',
 					}),
 				}),
-				['csrfSecret'],
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
@@ -152,10 +174,9 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
 
 			await controller.handleCallback(dynamicReq, res);
@@ -207,10 +228,9 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 			oauthService.saveDynamicCredential.mockResolvedValueOnce(undefined);
 
 			await controller.handleCallback(dynamicReq, res);
@@ -246,10 +266,9 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 
 			await controller.handleCallback(dynamicReq, res);
 
@@ -284,10 +303,9 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 
 			await controller.handleCallback(dynamicReq, res);
 
@@ -323,10 +341,9 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 
 			await controller.handleCallback(dynamicReq, res);
 
@@ -360,10 +377,9 @@ describe('OAuth1CredentialController', () => {
 				{ csrfSecret: 'invalid' },
 				{ accessTokenUrl: 'https://example.domain/oauth/access_token' },
 				mockState,
+				{ csrfSecret: 'csrf-secret' },
 			]);
-			jest
-				.mocked(axios.post)
-				.mockResolvedValueOnce({ data: 'oauth_token=token&oauth_token_secret=secret' } as any);
+			oauthService.getOAuth1AccessToken.mockResolvedValueOnce(accessTokenData);
 
 			await controller.handleCallback(undefinedOriginReq, res);
 
@@ -375,7 +391,6 @@ describe('OAuth1CredentialController', () => {
 						oauth_token_secret: 'secret',
 					}),
 				}),
-				['csrfSecret'],
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
