@@ -650,8 +650,12 @@ export const test = base.extend<InstanceAiFixtures>({
 
 			await use(undefined);
 
+			// Persist strictly on 'passed': a skipped test also satisfies
+			// status === expectedStatus, and persisting for it clears the
+			// expectations dir (clearDir) with no traffic to rewrite — silently
+			// deleting the recordings of every quarantined/fixme'd test in the run.
 			const shouldPersistRecording =
-				!process.env.CI && HAS_REAL_API_KEY && testInfo.status === testInfo.expectedStatus;
+				!process.env.CI && HAS_REAL_API_KEY && testInfo.status === 'passed';
 
 			if (shouldPersistRecording) {
 				await waitForInstanceAiIdle(backendUrl, testSlug);
