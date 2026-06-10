@@ -182,7 +182,7 @@ describe('AgentChatMessageList', () => {
 						role: 'assistant',
 						content: 'Here is your snapshot',
 						interactive: {
-							toolName: 'n8n_chat_action',
+							toolName: 'chat_action',
 							toolCallId: 'tc-display',
 							resolvedAt: 1,
 							input: {
@@ -210,7 +210,7 @@ describe('AgentChatMessageList', () => {
 						role: 'assistant',
 						content: 'Got it',
 						interactive: {
-							toolName: 'n8n_chat_action',
+							toolName: 'chat_action',
 							toolCallId: 'tc-answered',
 							resolvedAt: 1,
 							input: {
@@ -253,7 +253,7 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-testid="interactive-card-stub"]').exists()).toBe(false);
 	});
 
-	it('does not render external-wait notice for suspended n8n_chat_action tool (toolRun path)', () => {
+	it('does not render external-wait notice for suspended chat_action tool (toolRun path)', () => {
 		// isGroupable: role=assistant, toolCalls.length>0, content is empty → toolRun group
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
@@ -264,7 +264,7 @@ describe('AgentChatMessageList', () => {
 						content: '',
 						toolCalls: [
 							{
-								tool: 'n8n_chat_action',
+								tool: 'chat_action',
 								toolCallId: 'tc-n8n',
 								state: 'suspended',
 								suspendPayload: { type: 'integration_action' },
@@ -309,7 +309,7 @@ describe('AgentChatMessageList', () => {
 		expect(notices[0].text()).toContain('Slack');
 	});
 
-	it('does not render external-wait notice for suspended n8n_chat_action (message path)', () => {
+	it('does not render external-wait notice for suspended chat_action (message path)', () => {
 		// isGroupable: role=assistant, toolCalls.length>0, but content is non-empty → message group
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
@@ -320,7 +320,7 @@ describe('AgentChatMessageList', () => {
 						content: 'Working on it...',
 						toolCalls: [
 							{
-								tool: 'n8n_chat_action',
+								tool: 'chat_action',
 								toolCallId: 'tc-n8n',
 								state: 'suspended',
 								suspendPayload: { type: 'integration_action' },

@@ -1403,6 +1403,7 @@
 	"agentSessions.timeline.tool": "Tool",
 	"agentSessions.timeline.memory": "Memory",
 	"agentSessions.timeline.suspension": "Tool call suspended",
+	"agentSessions.timeline.userFeedback": "User feedback received",
 	"agentSessions.timeline.success": "Success",
 	"agentSessions.timeline.error": "Error",
 	"agentSessions.timeline.id": "ID",

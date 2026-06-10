@@ -1,11 +1,8 @@
 import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agents';
 import { z } from 'zod';
 
-import type {
-	AgentIntegrationConfig,
-	N8N_CHAT_INTEGRATION_TYPE,
-	RichCardComponentType,
-} from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type { AgentIntegrationConfig, RichCardComponentType } from '@n8n/api-types';
 import type { ButtonStyle } from 'chat';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
@@ -1020,9 +1017,18 @@ function buildContextToolDescription(descriptor: IntegrationToolConnectionDescri
 }
 
 function buildActionToolDescription(descriptor: IntegrationToolConnectionDescriptor): string {
+	// The in-app chat is the one channel where the agent's normal reply already
+	// reaches the user, so plain-text responds are redundant there.
+	const n8nChatGuidance =
+		descriptor.integration.type === N8N_CHAT_INTEGRATION_TYPE
+			? [
+					'This is the built-in n8n chat: your normal assistant reply already reaches the user. NEVER call respond with only message.text — write that text directly in your reply instead. Call this tool only with message.card, to render a rich card or collect structured input.',
+				]
+			: [];
 	return [
 		`Take actions in the ${descriptor.integration.type} integration connection.`,
 		`Available actions: ${descriptor.actions.join(', ')}.`,
+		...n8nChatGuidance,
 		'Action inputs:',
 		...descriptor.actions.map((action) => `- ${ACTION_DESCRIPTIONS[action]}`),
 		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include cards that wait for a user response.`,

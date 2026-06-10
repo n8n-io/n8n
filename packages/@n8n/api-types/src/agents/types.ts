@@ -200,8 +200,8 @@ export interface AgentBuilderMessagesResponse {
  */
 export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
-export const N8N_CHAT_ACTION_TOOL_NAME = 'n8n_chat_action' as const;
-export const N8N_CHAT_CONTEXT_TOOL_NAME = 'n8n_chat_context' as const;
+export const N8N_CHAT_ACTION_TOOL_NAME = 'chat_action' as const;
+export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;
 
 /** Chat history envelope — same contract as {@link AgentBuilderMessagesResponse}. */
 export type AgentChatMessagesResponse = AgentBuilderMessagesResponse;

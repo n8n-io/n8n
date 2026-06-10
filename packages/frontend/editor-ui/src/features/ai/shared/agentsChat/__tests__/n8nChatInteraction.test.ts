@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { N8N_CHAT_ACTION_TOOL_NAME, type AgentPersistedMessageDto } from '@n8n/api-types';
 
-import { isAwaitingCard, parseN8nChatActionInput } from '../n8nChatInteraction';
+import {
+	isAwaitingCard,
+	parseIntegrationActionCard,
+	parseN8nChatActionInput,
+} from '../n8nChatInteraction';
 import { convertDbMessages, rebuildInteractiveFromHistory } from '../messageMappers';
 
 const cardInput = {
@@ -33,6 +37,28 @@ describe('parseN8nChatActionInput', () => {
 		expect(parseN8nChatActionInput(null)).toBeUndefined();
 		expect(
 			parseN8nChatActionInput({ action: 'respond', input: { message: { text: 'plain' } } }),
+		).toBeUndefined();
+	});
+});
+
+describe('parseIntegrationActionCard', () => {
+	it('parses any platform action verb carrying a card', () => {
+		const sendDm = {
+			action: 'send_dm',
+			input: {
+				userId: 'U123',
+				message: { card: { components: [{ type: 'section', text: 'Hello' }] } },
+			},
+		};
+		expect(parseIntegrationActionCard(sendDm)?.card.components).toHaveLength(1);
+	});
+
+	it('rejects batch inputs and card-less actions', () => {
+		expect(
+			parseIntegrationActionCard({ actions: [{ action: 'respond', input: { message: {} } }] }),
+		).toBeUndefined();
+		expect(
+			parseIntegrationActionCard({ action: 'add_reaction', input: { emoji: 'tada' } }),
 		).toBeUndefined();
 	});
 });

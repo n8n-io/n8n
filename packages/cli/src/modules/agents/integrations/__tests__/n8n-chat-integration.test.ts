@@ -5,6 +5,7 @@ import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integration-context-query-executor';
 import type { ChatIntegrationService } from '../chat-integration.service';
+import { createIntegrationActionTool } from '../integration-tools';
 import type {
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
@@ -51,7 +52,7 @@ describe('N8nChatIntegration', () => {
 			chat: undefined,
 			descriptor: mock(),
 			action: 'respond',
-			input: { message: { text: 'hi' } },
+			input: { message: { card: { components: [{ type: 'section', text: 'hi' }] } } },
 			currentMessageContext: undefined,
 		});
 		expect(result).toMatchObject({ ok: false, error: { code: 'NO_MESSAGE_CONTEXT' } });
@@ -77,6 +78,20 @@ describe('N8nChatIntegration', () => {
 			currentMessageContext: makeContext(),
 		});
 		expect(result).toMatchObject({ ok: false, error: { code: 'ACTION_FAILED' } });
+	});
+
+	it('respond with only text returns a self-correcting error (nothing renders in-app)', async () => {
+		const result = await integration.executeAction({
+			chat: undefined,
+			descriptor: mock(),
+			action: 'respond',
+			input: { message: { text: 'summary the user will never see' } },
+			currentMessageContext: makeContext(),
+		});
+		expect(result).toMatchObject({ ok: false, error: { code: 'ACTION_FAILED' } });
+		if (result && !result.ok) {
+			expect(result.error.message).toContain('write the text directly in your reply');
+		}
 	});
 
 	it('respond with completely wrong input shape returns ACTION_FAILED', async () => {
@@ -164,18 +179,27 @@ describe('internal integration dispatch', () => {
 		agentId: 'agent-1',
 		integration: { type: 'n8n_chat' },
 		integrationConnectionId: 'n8n_chat',
-		contextToolName: 'n8n_chat_context',
-		actionToolName: 'n8n_chat_action',
+		contextToolName: 'chat_context',
+		actionToolName: 'chat_action',
 		contextQueries: ['get_current_message_context', 'get_current_subject', 'get_current_user'],
 		actions: ['respond'],
 	};
+
+	it('action tool description warns against plain-text responds on the in-app channel', () => {
+		const tool = createIntegrationActionTool({
+			descriptor,
+			messageContextStore: mock(),
+			actionExecutor: mock(),
+		}).build();
+		expect(tool.description).toContain('NEVER call respond with only message.text');
+	});
 
 	it('action executor skips getChatInstance and routes respond to the integration', async () => {
 		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
 		const result = await executor.execute({
 			descriptor,
 			action: 'respond',
-			input: { message: { text: 'hello' } },
+			input: { message: { card: { components: [{ type: 'section', text: 'hello' }] } } },
 			awaitResponse: false,
 			currentMessageContext: makeContext(),
 		});

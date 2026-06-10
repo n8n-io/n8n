@@ -111,7 +111,7 @@ const interactiveRenderers = [
 		},
 	},
 	{
-		key: 'n8n_chat_action',
+		key: 'chat_action',
 		component: N8nChatActionCard,
 		matches: (payload) => payload.toolName === N8N_CHAT_ACTION_TOOL_NAME,
 		getProps: (payload) => {

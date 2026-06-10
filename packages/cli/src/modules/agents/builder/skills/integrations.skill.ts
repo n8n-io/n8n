@@ -62,6 +62,14 @@ The \`integrations\` array controls how the target agent is triggered.
   CRUD. Use Linear node tools unless Linear itself is the chat/trigger context.
 - For recurring or scheduled runs, create a task (\`create_task\`), not an
   integration.
+- Do NOT author platform-specific message-formatting skills (e.g. "Slack
+  Formatting", "Block Kit layouts"). The \`<platform>_action\` tools document
+  the generic cross-platform card format (message.text + message.card with
+  section/fields/image/divider/button/select/radio_select) in their own tool
+  descriptions, and the same card renders on Slack, Telegram, and the built-in
+  Preview chat. If the target agent genuinely needs guidance about composing
+  cards, write it platform-neutral (e.g. "Rich message cards") so it applies
+  to every channel the agent speaks through.
 
 ## Verify
 

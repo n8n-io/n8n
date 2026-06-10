@@ -74,6 +74,16 @@ export class N8nChatIntegration extends AgentChatIntegration {
 		if (!parsed.success) {
 			return integrationError(INTEGRATION_ERROR_CODES.ACTION_FAILED, parsed.error.message);
 		}
+		// Text-only responds deliver nothing in the in-app chat (the agent's
+		// normal reply IS this channel) — returning ok would trick the model
+		// into believing the text reached the user. Fail with a self-correcting
+		// message instead.
+		if (!parsed.data.message.card) {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.ACTION_FAILED,
+				'Plain text is not delivered through this tool in the n8n chat — your normal assistant reply already reaches the user, so write the text directly in your reply. Call this tool only with message.card to render a rich card.',
+			);
+		}
 		if (!params.currentMessageContext) {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.NO_MESSAGE_CONTEXT,

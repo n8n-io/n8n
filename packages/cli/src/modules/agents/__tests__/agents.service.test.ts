@@ -1528,11 +1528,11 @@ describe('AgentsService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			const chunks = [
-				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'n8n_chat_action', input: {} },
+				{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'chat_action', input: {} },
 				{
 					type: 'tool-call-suspended',
 					toolCallId: 'tc-1',
-					toolName: 'n8n_chat_action',
+					toolName: 'chat_action',
 					runId: 'run-1',
 					suspendPayload: { type: 'integration_action' },
 				},

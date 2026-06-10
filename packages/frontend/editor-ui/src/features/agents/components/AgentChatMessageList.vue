@@ -585,13 +585,15 @@ onBeforeUnmount(() => {
 /**
  * Vertical stack for one or more interactive cards inside an assistant message.
  * Adds a small gap between adjacent cards (when a tool run produced several)
- * and a top margin so the cards don't sit flush against the tool-step list.
+ * and vertical margins so the cards sit flush against neither the tool-step
+ * list above nor any message text that follows (e.g. after a display-only card).
  */
 .interactives {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .chatMessage {

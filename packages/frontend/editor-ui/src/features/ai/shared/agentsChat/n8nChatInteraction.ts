@@ -44,16 +44,16 @@ const cardSchema = z
 	.passthrough();
 
 /**
- * Single-operation `n8n_chat_action` tool input — the `{ action, input }`
- * branch of the backend's buildActionInputSchema with respond's
- * `{ message: { text?, card? } }` input. Batch inputs never suspend, so the
- * interactive path only ever sees this shape.
+ * Single-operation integration action tool input — any `<platform>_action`
+ * tool's `{ action, input: { message: { text?, card? } } }` shape. Batch
+ * inputs (`actions: [...]`) never suspend and don't match this schema; they
+ * fall back to raw JSON rendering.
  *
  * @see buildActionInputSchema in packages/cli/src/modules/agents/integrations/integration-tools.ts
  */
 const actionToolInputSchema = z
 	.object({
-		action: z.literal('respond'),
+		action: z.string(),
 		input: z
 			.object({
 				message: z
@@ -94,13 +94,22 @@ export function isAwaitingCard(card: N8nChatCard): boolean {
 	);
 }
 
-/** Parse a persisted/live n8n_chat_action tool input into a renderable card, or undefined. */
-export function parseN8nChatActionInput(input: unknown): N8nChatInteractionInput | undefined {
+/**
+ * Parse any integration action tool input (slack_action, n8n_chat_action, …)
+ * into its renderable card, or undefined when it carries none. Used for the
+ * live n8n chat cards and for session-log card previews of every integration.
+ */
+export function parseIntegrationActionCard(input: unknown): N8nChatInteractionInput | undefined {
 	const parsed = actionToolInputSchema.safeParse(input);
 	if (!parsed.success) return undefined;
 	const { message } = parsed.data.input;
 	if (!message.card) return undefined;
 	return { text: message.text, card: message.card };
+}
+
+/** Parse a persisted/live n8n_chat_action tool input into a renderable card, or undefined. */
+export function parseN8nChatActionInput(input: unknown): N8nChatInteractionInput | undefined {
+	return parseIntegrationActionCard(input);
 }
 
 /**
