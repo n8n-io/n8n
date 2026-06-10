@@ -18,13 +18,15 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
-	async findByProjectIdPaginated(
-		projectId: string,
+	async findByProjectIdsPaginated(
+		projectIds: string[],
 		options: ListAgentsQueryDto,
 	): Promise<{ count: number; data: Agent[] }> {
+		if (projectIds.length === 0) return { count: 0, data: [] };
+
 		const query = this.createQueryBuilder('agent')
 			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
-			.where('agent.projectId = :projectId', { projectId });
+			.where('agent.projectId IN (:...projectIds)', { projectIds });
 
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy);

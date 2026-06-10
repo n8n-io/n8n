@@ -14,7 +14,11 @@ import InsightsSummary from '@/features/execution/insights/components/InsightsSu
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { listAgentsPage, type ListAgentsSortBy } from '../composables/useAgentApi';
+import {
+	listAgentsPage,
+	listAgentsPageGlobal,
+	type ListAgentsSortBy,
+} from '../composables/useAgentApi';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { AgentResource } from '../types';
@@ -43,7 +47,9 @@ const { callDebounced } = useDebounce();
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
-const { canCreate: canCreateAgent } = useAgentPermissions(() => homeProject.value?.id);
+const { canCreate: canCreateAgent } = useAgentPermissions(
+	() => projectId.value ?? homeProject.value?.id,
+);
 
 const allAgents = ref<AgentResource[]>([]);
 const filters = ref<BaseFilters>({ search: '', homeProject: '' });
@@ -53,9 +59,7 @@ const currentSort = ref<ListAgentsSortBy>('updatedAt:desc');
 const totalAgents = ref(0);
 const loading = ref(true);
 
-const projectId = computed(
-	() => (route.params.projectId as string) ?? projectsStore.personalProject?.id ?? '',
-);
+const projectId = computed(() => route.params.projectId as string | undefined);
 
 const sortFns = {
 	lastUpdated: (a: AgentResource, b: AgentResource) =>
@@ -79,12 +83,15 @@ async function fetchAgents() {
 	}
 
 	try {
-		const { count, data } = await listAgentsPage(rootStore.restApiContext, projectId.value, {
+		const fetchOptions = {
 			skip: (currentPage.value - 1) * pageSize.value,
 			take: pageSize.value,
 			sortBy: currentSort.value,
 			filter: filters.value.search ? { query: filters.value.search } : undefined,
-		});
+		};
+		const { count, data } = projectId.value
+			? await listAgentsPage(rootStore.restApiContext, projectId.value, fetchOptions)
+			: await listAgentsPageGlobal(rootStore.restApiContext, fetchOptions);
 		allAgents.value = data;
 		totalAgents.value = count;
 	} finally {
@@ -93,10 +100,10 @@ async function fetchAgents() {
 	}
 }
 
-function onSelectAgent(agentId: string) {
+function onSelectAgent(agentId: string, agentProjectId: string) {
 	void router.push({
 		name: AGENT_BUILDER_VIEW,
-		params: { projectId: projectId.value, agentId },
+		params: { projectId: agentProjectId, agentId },
 	});
 }
 
@@ -153,7 +160,8 @@ async function setPaginationAndSort(payload: SortingAndPaginationUpdates) {
 
 function onCreateAgentClick() {
 	agentTelemetry.trackClickedNewAgent('button');
-	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: projectId.value } });
+	const targetProjectId = projectId.value ?? projectsStore.personalProject?.id;
+	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: targetProjectId } });
 }
 
 onMounted(async () => {
@@ -216,8 +224,8 @@ onMounted(async () => {
 			<AgentCard
 				class="mb-2xs"
 				:agent="data as AgentResource"
-				:project-id="projectId"
-				@select="onSelectAgent"
+				:project-id="(data as AgentResource).projectId"
+				@select="onSelectAgent((data as AgentResource).id, (data as AgentResource).projectId)"
 				@published="onAgentPublished"
 				@unpublished="onAgentUnpublished"
 				@deleted="onAgentDeleted"

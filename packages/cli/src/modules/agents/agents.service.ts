@@ -406,7 +406,7 @@ export class AgentsService {
 		projectId: string,
 		options: ListAgentsQueryDto,
 	): Promise<{ count: number; data: Agent[] }> {
-		return await this.agentRepository.findByProjectIdPaginated(projectId, options);
+		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
 	}
 
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
@@ -468,6 +468,15 @@ export class AgentsService {
 			where: { projectId: In(projectIds) },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	async findByUserPaginated(
+		userId: string,
+		options: ListAgentsQueryDto,
+	): Promise<{ count: number; data: Agent[] }> {
+		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
+		const projectIds = projectRelations.map((pr) => pr.projectId);
+		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
 	}
 
 	/**

@@ -7,20 +7,23 @@ import AgentsListView from '../views/AgentsListView.vue';
 
 const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
+	listAgentsPageGlobal: vi.fn(),
 	routerPush: vi.fn(),
 	setTitle: vi.fn(),
 	trackClickedNewAgent: vi.fn(),
+	routeProjectId: undefined as string | undefined,
 }));
 
 vi.mock('../composables/useAgentApi', () => ({
 	listAgentsPage: mocks.listAgentsPage,
+	listAgentsPageGlobal: mocks.listAgentsPageGlobal,
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('vue-router')>();
 	return {
 		...actual,
-		useRoute: () => ({ params: { projectId: 'project-1' }, query: {} }),
+		useRoute: () => ({ params: { projectId: mocks.routeProjectId }, query: {} }),
 		useRouter: () => ({ push: mocks.routerPush }),
 	};
 });
@@ -48,7 +51,7 @@ vi.mock('@/features/execution/insights/insights.store', () => ({
 }));
 
 vi.mock('@/features/collaboration/projects/composables/useProjectPages', () => ({
-	useProjectPages: () => ({ isOverviewSubPage: true }),
+	useProjectPages: () => ({ isOverviewSubPage: mocks.routeProjectId === undefined }),
 }));
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
@@ -107,12 +110,12 @@ vi.mock('../components/AgentCard.vue', async () => {
 	};
 });
 
-const agent = (id: string, name: string): AgentResource =>
+const agent = (id: string, name: string, projectId = 'project-1'): AgentResource =>
 	({
 		id,
 		name,
 		resourceType: 'agent',
-		projectId: 'project-1',
+		projectId,
 		createdAt: '2026-01-01T00:00:00Z',
 		updatedAt: '2026-01-02T00:00:00Z',
 	}) as AgentResource;
@@ -131,16 +134,17 @@ const mountView = async () => {
 	return wrapper;
 };
 
-describe('AgentsListView', () => {
+describe('AgentsListView — project page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.routeProjectId = 'project-1';
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
 	});
 
-	it('loads agents through the server-driven paginated list endpoint', async () => {
+	it('calls listAgentsPage with the route project ID', async () => {
 		mocks.listAgentsPage.mockResolvedValueOnce({
 			count: 2,
 			data: [agent('agent-1', 'Support Agent')],
@@ -158,6 +162,7 @@ describe('AgentsListView', () => {
 				filter: undefined,
 			},
 		);
+		expect(mocks.listAgentsPageGlobal).not.toHaveBeenCalled();
 		expect(wrapper.find('[data-test-id="agent-card"]').text()).toBe('Support Agent');
 		expect(wrapper.find('[data-test-id="resources-total"]').text()).toBe('2');
 		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
@@ -238,5 +243,58 @@ describe('AgentsListView', () => {
 
 		expect(layout.props('resourcesRefreshing')).toBe(false);
 		expect(wrapper.find('[data-test-id="agent-card"]').text()).toBe('Support Bot');
+	});
+});
+
+describe('AgentsListView — overview page', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.routeProjectId = undefined;
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('calls listAgentsPageGlobal when no project ID is in the route', async () => {
+		mocks.listAgentsPageGlobal.mockResolvedValueOnce({
+			count: 3,
+			data: [agent('agent-1', 'Agent A', 'project-1'), agent('agent-2', 'Agent B', 'project-2')],
+		});
+
+		const wrapper = await mountView();
+
+		expect(mocks.listAgentsPageGlobal).toHaveBeenCalledWith(
+			{ baseUrl: '/rest', pushRef: 'push-ref' },
+			{
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+				filter: undefined,
+			},
+		);
+		expect(mocks.listAgentsPage).not.toHaveBeenCalled();
+		expect(wrapper.find('[data-test-id="resources-total"]').text()).toBe('3');
+	});
+
+	it('refetches via listAgentsPageGlobal when search changes on the overview page', async () => {
+		vi.useFakeTimers();
+		mocks.listAgentsPageGlobal
+			.mockResolvedValueOnce({ count: 2, data: [agent('agent-1', 'Support Agent', 'p1')] })
+			.mockResolvedValueOnce({ count: 1, data: [agent('agent-2', 'Support Bot', 'p2')] });
+
+		const wrapper = await mountView();
+		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+
+		layout.vm.$emit('update:search', 'Support');
+		await flushPromises();
+		vi.advanceTimersByTime(300);
+		await flushPromises();
+
+		expect(mocks.listAgentsPageGlobal).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ filter: { query: 'Support' } }),
+		);
+		expect(mocks.listAgentsPage).not.toHaveBeenCalled();
 	});
 });

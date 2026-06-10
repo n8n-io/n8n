@@ -49,6 +49,13 @@ export const listAgentsPage = async (
 	);
 };
 
+export const listAgentsPageGlobal = async (
+	context: IRestApiContext,
+	options: ListAgentsOptions,
+): Promise<{ count: number; data: AgentResource[] }> => {
+	return await getFullApiResponse<AgentResource[]>(context, 'GET', '/agents/v2', options);
+};
+
 export const listAgents = async (
 	context: IRestApiContext,
 	projectId: string,
