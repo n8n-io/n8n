@@ -28,5 +28,12 @@ export const OAUTH_CONFIG = {
 	 * permissions` and stamps the result into the token's `scope` claim.
 	 * `instanceAi:gateway` is what gates the local-gateway endpoints.
 	 */
-	scopes: ['instanceAi:gateway', 'instanceAi:message', 'workflow:read', 'workflow:execute'],
+	scopes: [
+		'instanceAi:gateway',
+		'instanceAi:message',
+		'workflow:read',
+		'workflow:execute',
+		// Read-only insights, for the History tab's "Time saved" panel (/insights/summary).
+		'insights:list',
+	],
 } as const;

@@ -110,6 +110,37 @@ describe('InstanceApi', () => {
 		});
 	});
 
+	describe('getTimeSaved', () => {
+		const summary = (minutes: number) => ({
+			data: { timeSaved: { value: minutes, unit: 'minute', deviation: null } },
+		});
+
+		it('fetches the week and month ranges from /insights/summary', async () => {
+			mockFetch
+				.mockResolvedValueOnce(jsonResponse(summary(73)))
+				.mockResolvedValueOnce(jsonResponse(summary(91)));
+
+			const result = await new InstanceApi(makeOAuth()).getTimeSaved();
+
+			expect(result).toEqual({ weekMinutes: 73, monthMinutes: 91 });
+			const urls = mockFetch.mock.calls.map((c) => c[0] as string);
+			expect(urls.every((u) => u.startsWith('https://n.example/rest/insights/summary?'))).toBe(
+				true,
+			);
+			expect(urls.every((u) => u.includes('startDate=') && u.includes('endDate='))).toBe(true);
+		});
+
+		it('degrades a license-capped (or otherwise failing) range to null without failing the rest', async () => {
+			mockFetch
+				.mockResolvedValueOnce(jsonResponse(summary(73)))
+				.mockResolvedValueOnce(jsonResponse({ message: 'capped' }, { ok: false, status: 403 }));
+
+			const result = await new InstanceApi(makeOAuth()).getTimeSaved();
+
+			expect(result).toEqual({ weekMinutes: 73, monthMinutes: null });
+		});
+	});
+
 	describe('executionUrl', () => {
 		it('builds the execution url, or null when signed out', () => {
 			expect(new InstanceApi(makeOAuth()).executionUrl('wf-1', 'exec-1')).toBe(

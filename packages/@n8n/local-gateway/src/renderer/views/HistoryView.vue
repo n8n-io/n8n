@@ -4,8 +4,9 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import HistoryRow from '../components/HistoryRow.vue';
+import TimeSavedPanel from '../components/TimeSavedPanel.vue';
 
-import type { DesktopAssistantHistoryEntry } from '../../shared/types';
+import type { DesktopAssistantHistoryEntry, DesktopAssistantTimeSaved } from '../../shared/types';
 
 /** Refresh cadence while the History tab is open; a running execution flips to its final state. */
 const POLL_INTERVAL_MS = 5000;
@@ -18,6 +19,7 @@ const i18n = useI18n();
 const entries = ref<DesktopAssistantHistoryEntry[]>([]);
 const count = ref(0);
 const now = ref(Date.now());
+const timeSaved = ref<DesktopAssistantTimeSaved | null>(null);
 const loading = ref(true);
 const loadingMore = ref(false);
 const error = ref(false);
@@ -28,6 +30,11 @@ let pollTimer: ReturnType<typeof setInterval> | undefined;
 
 const isEmpty = computed(() => entries.value.length === 0);
 const hasMore = computed(() => entries.value.length < count.value);
+// Show the panel once insights is reachable (the week figure resolved). A null
+// week means insights is off / not permitted, so we hide it entirely.
+const showTimeSaved = computed(
+	() => timeSaved.value !== null && timeSaved.value.weekMinutes !== null,
+);
 
 /** Initial load + poll refresh: re-fetch the newest page that covers what's shown. */
 async function load() {
@@ -67,6 +74,15 @@ async function loadMore() {
 	}
 }
 
+/** Time saved moves slowly, so it's fetched on mount/refocus — not on every poll tick. */
+async function loadTimeSaved() {
+	try {
+		timeSaved.value = await window.electronAPI.getTimeSaved();
+	} catch (e) {
+		console.error('Failed to load desktop-assistant time saved', e);
+	}
+}
+
 function openExecution(workflowId: string, executionId: string) {
 	void window.electronAPI.openExecution(workflowId, executionId);
 }
@@ -86,11 +102,15 @@ function refreshIfActive() {
 
 onMounted(() => {
 	void load();
+	void loadTimeSaved();
 	pollTimer = setInterval(refreshIfActive, POLL_INTERVAL_MS);
 	unsubscribeActive = window.electronAPI.onWindowActiveChanged((active) => {
 		windowActive.value = active;
 		// Refresh immediately on return rather than waiting for the next tick.
-		if (active) void load();
+		if (active) {
+			void load();
+			void loadTimeSaved();
+		}
 	});
 });
 
@@ -102,6 +122,12 @@ onUnmounted(() => {
 
 <template>
 	<div :class="$style.view">
+		<TimeSavedPanel
+			v-if="showTimeSaved && timeSaved"
+			:week-minutes="timeSaved.weekMinutes"
+			:month-minutes="timeSaved.monthMinutes"
+		/>
+
 		<div v-if="loading" :class="$style.state">
 			<N8nSpinner />
 			<N8nText color="text-light" size="small">{{

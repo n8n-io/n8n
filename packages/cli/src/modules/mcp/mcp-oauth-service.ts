@@ -39,6 +39,7 @@ export const N8N_OAUTH_SCOPES = [
 	'workflow:execute',
 	'execution:read',
 	'execution:list',
+	'insights:list',
 ];
 
 export const SUPPORTED_SCOPES = [...MCP_TOOL_SCOPES, ...N8N_OAUTH_SCOPES];

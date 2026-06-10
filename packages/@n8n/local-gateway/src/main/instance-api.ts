@@ -1,11 +1,15 @@
 import type {
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantTasksResponse,
+	InsightsSummary,
 } from '@n8n/api-types';
 import { logger } from '@n8n/computer-use/logger';
 
-import type { DesktopAssistantHistoryParams } from '../shared/types';
+import type { DesktopAssistantHistoryParams, DesktopAssistantTimeSaved } from '../shared/types';
 import type { OAuthFlow } from './oauth/oauth-flow';
+
+/** Day in ms, for the trailing time-saved ranges. */
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Abort instance requests that stall so IPC handlers can't hang the renderer. */
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -50,6 +54,38 @@ export class InstanceApi {
 		const qs = query.toString();
 		const response = await this.authedFetch(`/desktop-assistant/history${qs ? `?${qs}` : ''}`);
 		return await this.unwrap<DesktopAssistantHistoryResponse>(response);
+	}
+
+	/**
+	 * `GET /rest/insights/summary` for the History tab's "Time saved" panel, over a
+	 * trailing-week and trailing-month range. The `timeSaved` metric is not
+	 * license-gated, but the insights *history* is (default 7 days unlicensed), so
+	 * the 30-day month call 403s on free tier — each figure is fetched independently
+	 * and degrades to `null` on any error rather than failing the whole panel.
+	 */
+	async getTimeSaved(): Promise<DesktopAssistantTimeSaved> {
+		const end = new Date();
+		const [weekMinutes, monthMinutes] = await Promise.all([
+			this.fetchTimeSavedMinutes(new Date(end.getTime() - 7 * DAY_MS), end),
+			this.fetchTimeSavedMinutes(new Date(end.getTime() - 30 * DAY_MS), end),
+		]);
+		return { weekMinutes, monthMinutes };
+	}
+
+	/** Minutes saved over a range, or `null` when insights is unavailable (e.g. license-capped, disabled, or unauthorized). */
+	private async fetchTimeSavedMinutes(start: Date, end: Date): Promise<number | null> {
+		const query = new URLSearchParams({
+			startDate: start.toISOString(),
+			endDate: end.toISOString(),
+		});
+		try {
+			const response = await this.authedFetch(`/insights/summary?${query.toString()}`);
+			const summary = await this.unwrap<InsightsSummary>(response);
+			return summary.timeSaved.value;
+		} catch (error) {
+			if (error instanceof InstanceApiError) return null;
+			throw error;
+		}
 	}
 
 	/**

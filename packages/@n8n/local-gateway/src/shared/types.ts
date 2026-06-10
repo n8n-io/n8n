@@ -49,6 +49,17 @@ export interface DesktopAssistantHistoryParams {
 	lastId?: string;
 }
 
+/**
+ * Minutes saved over the trailing week and month, for the History "Time saved"
+ * panel. A figure is `null` when its insights call was unavailable (e.g. the
+ * month range is license-capped, or insights is disabled); `0` means nothing
+ * saved yet and is rendered as a motivational dash.
+ */
+export interface DesktopAssistantTimeSaved {
+	weekMinutes: number | null;
+	monthMinutes: number | null;
+}
+
 /** Result of a renderer-initiated task run, surfaced back over IPC. */
 export interface RunTaskResult {
 	ok: boolean;
@@ -77,6 +88,7 @@ export interface ElectronApi {
 	openWorkflow: (workflowId: string) => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
 	openExecution: (workflowId: string, executionId: string) => Promise<void>;
+	getTimeSaved: () => Promise<DesktopAssistantTimeSaved>;
 	/**
 	 * Subscribe to window active-state changes (shown/focused vs hidden/blurred),
 	 * driven by the main process. Returns a disposer to unsubscribe.
