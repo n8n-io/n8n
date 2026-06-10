@@ -532,7 +532,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(closeFunction2).toHaveBeenCalled();
 		});
 
-		it('should throw ApplicationError when close function throws non-Error object', async () => {
+		it('should throw UnexpectedError when close function throws non-Error object', async () => {
 			const mockData = [[{ json: { result: 'test' } }]];
 			const closeFunction1 = vi.fn().mockResolvedValue(undefined);
 			const closeFunction2 = vi.fn().mockRejectedValue('String error'); // Non-Error object to trigger line 1247

@@ -26,7 +26,7 @@ import type {
 	IExecuteFunctions,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	OperationalError,
 	NodeHelpers,
 	NodeConnectionTypes,
@@ -187,14 +187,14 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	protected getInputItems(inputIndex: number, connectionType: NodeConnectionType) {
 		const inputData = this.inputData[connectionType];
 		if (inputData.length < inputIndex) {
-			throw new ApplicationError('Could not get input with given index', {
+			throw new UnexpectedError('Could not get input with given index', {
 				extra: { inputIndex, connectionType },
 			});
 		}
 
 		const allItems = inputData[inputIndex] as INodeExecutionData[] | null | undefined;
 		if (allItems === null) {
-			throw new ApplicationError('Input index was not set', {
+			throw new UnexpectedError('Input index was not set', {
 				extra: { inputIndex, connectionType },
 			});
 		}
@@ -205,7 +205,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	getInputSourceData(inputIndex = 0, connectionType = NodeConnectionTypes.Main): ISourceData {
 		if (this.executeData?.source === null) {
 			// Should never happen as n8n sets it automatically
-			throw new ApplicationError('Source data is missing');
+			throw new UnexpectedError('Source data is missing');
 		}
 		return this.executeData.source[connectionType][inputIndex]!;
 	}

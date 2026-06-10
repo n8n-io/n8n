@@ -661,7 +661,7 @@ describe('requestOAuth2 - client credentials initial token fetch', () => {
 		);
 	});
 
-	test('should throw ApplicationError with clear message when token acquisition fails', async () => {
+	test('should throw OperationalError with clear message when token acquisition fails', async () => {
 		mockThis.getCredentials.mockResolvedValue({
 			clientId: 'client-id',
 			clientSecret: 'wrong-secret',

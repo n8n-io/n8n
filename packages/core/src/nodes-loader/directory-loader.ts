@@ -17,7 +17,7 @@ import type {
 	KnownNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
-import { ApplicationError, isExpression, isSubNodeType, UnexpectedError } from 'n8n-workflow';
+import { isExpression, isSubNodeType, UnexpectedError, UserError } from 'n8n-workflow';
 import { realpathSync } from 'node:fs';
 import * as path from 'path';
 
@@ -154,10 +154,9 @@ export abstract class DirectoryLoader implements NodeLoader {
 			return loadClassInIsolation<T>(filePath, className);
 		} catch (error) {
 			throw error instanceof TypeError
-				? new ApplicationError(
-						'Class could not be found. Please check if the class is named correctly.',
-						{ extra: { className } },
-					)
+				? new UserError('Class could not be found. Please check if the class is named correctly.', {
+						extra: { className },
+					})
 				: error;
 		}
 	}
@@ -196,7 +195,7 @@ export abstract class DirectoryLoader implements NodeLoader {
 			nodeVersion = tempNode.currentVersion;
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
-				throw new ApplicationError(
+				throw new UserError(
 					'"executeSingle" has been removed. Please update the code of this node to use "execute" instead.',
 					{ extra: { nodeType } },
 				);

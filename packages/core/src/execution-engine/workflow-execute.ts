@@ -140,7 +140,7 @@ export class WorkflowExecute {
 		startNode = startNode || workflow.getStartNode(destinationNode?.nodeName);
 
 		if (startNode === undefined) {
-			throw new ApplicationError('No node to start the workflow from could be found');
+			throw new UserError('No node to start the workflow from could be found');
 		}
 
 		// If a destination node is given we only run the direct parent nodes and no others
@@ -1076,7 +1076,7 @@ export class WorkflowExecute {
 						closingError =
 							closingErrors[0] instanceof Error
 								? closingErrors[0]
-								: new ApplicationError("Error on execution node's close function(s)", {
+								: new UnexpectedError("Error on execution node's close function(s)", {
 										extra: { nodeName: node.name },
 										tags: { nodeType: node.type },
 										cause: closingErrors,
@@ -1358,7 +1358,7 @@ export class WorkflowExecute {
 		}
 
 		if (nodeType.supplyData) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				`The node "${node.type}" has a "supplyData" method but no "execute" method.`,
 			);
 		}
@@ -1679,9 +1679,7 @@ export class WorkflowExecute {
 
 					currentExecutionTry = `${executionNode.name}:${runIndex}`;
 					if (currentExecutionTry === lastExecutionTry) {
-						throw new ApplicationError(
-							'Stopped execution because it seems to be in an endless loop',
-						);
+						throw new UserError('Stopped execution because it seems to be in an endless loop');
 					}
 
 					if (
@@ -2168,7 +2166,7 @@ export class WorkflowExecute {
 									outputIndex
 								] ?? []) {
 									if (!Object.hasOwn(workflow.nodes, connectionData.node)) {
-										throw new ApplicationError('Destination node not found', {
+										throw new UnexpectedError('Destination node not found', {
 											extra: {
 												sourceNodeName: executionNode.name,
 												destinationNodeName: connectionData.node,

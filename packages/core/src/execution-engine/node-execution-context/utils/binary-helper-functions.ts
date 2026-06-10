@@ -17,7 +17,7 @@ import type {
 import {
 	NodeOperationError,
 	fileTypeFromMimeType,
-	ApplicationError,
+	UserError,
 	UnexpectedError,
 	isBinaryValue,
 	BINARY_MODE_COMBINED,
@@ -368,6 +368,6 @@ export const getBinaryHelperFunctions = (
 	setBinaryDataBuffer: async (data, binaryData) =>
 		await setBinaryDataBuffer(data, binaryData, workflowId, executionId!),
 	copyBinaryFile: async () => {
-		throw new ApplicationError('`copyBinaryFile` has been removed. Please upgrade this node.');
+		throw new UserError('`copyBinaryFile` has been removed. Please upgrade this node.');
 	},
 });

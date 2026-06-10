@@ -15,7 +15,7 @@ import type {
 	IExecuteWorkflowInfo,
 	IExecutionContext,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { UnexpectedError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
 import { captor, mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
@@ -210,7 +210,7 @@ export const describeCommonTests = (
 		it('should throw an error if the source data is missing', () => {
 			executeData.source = null;
 
-			expect(() => context.getInputSourceData()).toThrow(ApplicationError);
+			expect(() => context.getInputSourceData()).toThrow(UnexpectedError);
 		});
 	});
 
