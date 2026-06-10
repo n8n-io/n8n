@@ -79,52 +79,49 @@ jobs:
         with:
           build-command: '' # install fails first; skip build explicitly
 
-      # A/B: run the SAME failing install two ways to attribute the swallow.
-      #  A = via the shim on PATH (`pnpm` -> the pkg-compiled safe-chain binary)
-      #  B = via the real pnpm binary directly (`$PNPM_HOME/pnpm`, bypassing the shim)
-      # If A captures only `ELIFECYCLE` while B captures the full reporter output
-      # (incl. FORCED_FAILURE_DETAIL_VISIBLE in the with-output case), the swallow
-      # is isolated to the compiled safe-chain binary. Runs even though the prior
-      # step failed (`if: always()`); the composite has already set up node + the
-      # safe-chain shims by the time its install step fails.
-      - name: 'A/B — shim pnpm vs real pnpm (isolate the swallow)'
+      # Root cause (reproduced locally): n8n's .npmrc sets `loglevel = warn`, which
+      # in a pnpm WORKSPACE suppresses lifecycle/build-script output. The action's
+      # CLI `--loglevel=debug` does NOT override .npmrc here, but `--config.loglevel`
+      # DOES. This step verifies the fix ON CI by running the same failing install
+      # four ways and comparing what each captures:
+      #   shim/real  ×  --loglevel=debug (broken)  vs  --config.loglevel=debug (fix)
+      # Expectation: the two `--config.loglevel=debug` variants surface the full
+      # reporter output (incl. FORCED_FAILURE_DETAIL_VISIBLE for with-output) while
+      # the `--loglevel=debug` variants capture only `ELIFECYCLE`. `pnpm` is the
+      # shim (-> compiled safe-chain binary); `$PNPM_HOME/pnpm` is the real binary.
+      - name: 'Verify loglevel fix on CI (broken vs --config.loglevel)'
         if: always()
         shell: bash
-        env:
-          A_LOG: ${{ runner.temp }}/ab-shim.log
-          B_LOG: ${{ runner.temp }}/ab-real.log
         run: |
+          run_variant() {
+            local label="$1" bin="$2"; shift 2
+            local log="$RUNNER_TEMP/v-$label.log"
+            "$bin" install --frozen-lockfile "$@" > "$log" 2>&1 || true
+            echo "[$label] lines=$(wc -l < "$log") visible=$(grep -c FORCED_FAILURE_DETAIL_VISIBLE "$log" || true) header=$(grep -c 'postinstall' "$log" || true)"
+          }
+
           echo "::group::pnpm resolution"
           echo "runner label    = ${{ matrix.runner }} (RUNNER_NAME=$RUNNER_NAME, RUNNER_OS=$RUNNER_OS)"
           echo "command -v pnpm = $(command -v pnpm)"
-          echo "which -a pnpm   = $(which -a pnpm | tr '\n' ' ')"
-          echo "PNPM_HOME       = $PNPM_HOME"
           echo "real pnpm       = $PNPM_HOME/pnpm ($([ -x "$PNPM_HOME/pnpm" ] && echo executable || echo MISSING))"
           echo "::endgroup::"
 
-          echo "::group::A — install via shim (pnpm -> compiled safe-chain binary)"
-          pnpm install --frozen-lockfile --reporter=append-only --loglevel=debug > "$A_LOG" 2>&1 || true
-          cat "$A_LOG"
+          echo "::group::VERDICT (lines/visible/header per variant)"
+          run_variant "shim-loglevel"        pnpm              --reporter=append-only --loglevel=debug
+          run_variant "shim-config-loglevel" pnpm              --reporter=append-only --config.loglevel=debug
+          run_variant "real-loglevel"        "$PNPM_HOME/pnpm" --reporter=append-only --loglevel=debug
+          run_variant "real-config-loglevel" "$PNPM_HOME/pnpm" --reporter=append-only --config.loglevel=debug
           echo "::endgroup::"
 
-          echo "::group::B — install via REAL pnpm (bypass shim)"
-          "$PNPM_HOME/pnpm" install --frozen-lockfile --reporter=append-only --loglevel=debug > "$B_LOG" 2>&1 || true
-          cat "$B_LOG"
+          echo "::group::FIX OUTPUT — shim + --config.loglevel=debug (should contain the real error)"
+          cat "$RUNNER_TEMP/v-shim-config-loglevel.log"
           echo "::endgroup::"
 
-          echo "::group::VERDICT"
-          echo "A (shim) captured $(wc -l < "$A_LOG") lines; B (real) captured $(wc -l < "$B_LOG") lines"
-          echo "FORCED_FAILURE_DETAIL_VISIBLE — A=$(grep -c FORCED_FAILURE_DETAIL_VISIBLE "$A_LOG" || true) B=$(grep -c FORCED_FAILURE_DETAIL_VISIBLE "$B_LOG" || true)"
-          echo "postinstall header lines    — A=$(grep -c 'postinstall' "$A_LOG" || true) B=$(grep -c 'postinstall' "$B_LOG" || true)"
-          echo "::endgroup::"
-
-      - name: Upload A/B logs
+      - name: Upload variant logs
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ab-logs-${{ matrix.case.name }}-${{ matrix.runner }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/ab-shim.log
-            ${{ runner.temp }}/ab-real.log
+          path: ${{ runner.temp }}/v-*.log
           if-no-files-found: ignore
           retention-days: 7
