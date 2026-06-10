@@ -17,7 +17,7 @@
  * `--docker` (auto-enabled when `CI` is set) runs tbls via its image instead of
  * a local binary.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +36,19 @@ function fail(msg) {
 	process.exit(1);
 }
 
+/** Turns a spawn failure into an actionable message for missing binaries. */
+function spawnErrorMessage(cmd, err) {
+	if (err.code === 'ENOENT') {
+		if (cmd === 'tbls') {
+			return 'tbls is not installed. Install it with `brew install tbls` (see https://github.com/k1LoW/tbls#install), or re-run with --docker to use the tbls Docker image instead.';
+		}
+		if (cmd === 'docker') {
+			return 'docker is not installed or not on PATH. Install Docker, or drop --docker to use a local tbls binary.';
+		}
+	}
+	return `failed to spawn ${cmd}: ${err.message}`;
+}
+
 function parseArgs(argv) {
 	const args = { command: null, dbType: null, docker: !!process.env.CI };
 	for (const arg of argv) {
@@ -50,7 +63,7 @@ function parseArgs(argv) {
 function run(cmd, cmdArgs, env) {
 	return new Promise((res) => {
 		const child = spawn(cmd, cmdArgs, { cwd: REPO_ROOT, env, stdio: 'inherit' });
-		child.on('error', (err) => fail(`failed to spawn ${cmd}: ${err.message}`));
+		child.on('error', (err) => fail(spawnErrorMessage(cmd, err)));
 		child.on('close', (code) => res(code ?? 1));
 	});
 }
@@ -60,7 +73,7 @@ function capture(cmd, cmdArgs, env) {
 	return new Promise((res) => {
 		let stdout = '';
 		const child = spawn(cmd, cmdArgs, { cwd: REPO_ROOT, env });
-		child.on('error', (err) => fail(`failed to spawn ${cmd}: ${err.message}`));
+		child.on('error', (err) => fail(spawnErrorMessage(cmd, err)));
 		child.stdout.on('data', (d) => (stdout += d));
 		child.stderr.on('data', (d) => process.stderr.write(d));
 		child.on('close', (code) => res({ code: code ?? 1, stdout }));
@@ -162,6 +175,11 @@ async function main() {
 	if (dbType !== 'sqlite' && dbType !== 'postgres') {
 		fail('--db must be sqlite or postgres');
 	}
+
+	// Fail fast on a missing binary, before spinning up a DB and running migrations.
+	const requiredBin = docker ? 'docker' : 'tbls';
+	const probe = spawnSync(requiredBin, ['version'], { stdio: 'ignore' });
+	if (probe.error) fail(spawnErrorMessage(requiredBin, probe.error));
 
 	const provisioned = await provision(dbType);
 	try {
