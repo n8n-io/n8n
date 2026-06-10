@@ -33,7 +33,7 @@ name: zz-temp Test install diagnostics
 on:
   push:
     branches:
-      - devp-409-surface-pnpm-install-debug-logs
+      - devp-409
   workflow_dispatch:
 
 jobs:
