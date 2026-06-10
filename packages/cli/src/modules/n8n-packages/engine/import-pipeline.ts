@@ -19,6 +19,7 @@ import type {
 	WorkflowImportPlan,
 } from '../entities/workflow/workflow-import.types';
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
+import { WorkflowPublisher } from '../entities/workflow/workflow-publisher';
 import { toImportBlockedError } from './import-blocked.error';
 import { N8nPackageParser } from './n8n-package-parser';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
@@ -49,6 +50,7 @@ export class ImportPipeline {
 		private readonly folderService: FolderService,
 		private readonly eventService: EventService,
 		private readonly workflowImporter: WorkflowImporter,
+		private readonly workflowPublisher: WorkflowPublisher,
 	) {}
 
 	async run(request: ImportPackageRequest): Promise<ImportResult> {
@@ -56,6 +58,13 @@ export class ImportPipeline {
 			request.user,
 			request.projectId,
 			request.folderId,
+		);
+
+		// Fail fast if the actor does not have permission to publish all workflows
+		await this.workflowPublisher.assertCanPublish(
+			request.user,
+			target.projectId,
+			request.workflowPublishingPolicy,
 		);
 
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
@@ -95,7 +104,7 @@ export class ImportPipeline {
 
 		const { outcomes, bindings } = await this.workflowImporter.apply(
 			workflowPlan,
-			{ user: request.user, ...target },
+			{ user: request.user, ...target, publishingPolicy: request.workflowPublishingPolicy },
 			createBindings({ credentials: credentialPlan.successes }),
 		);
 

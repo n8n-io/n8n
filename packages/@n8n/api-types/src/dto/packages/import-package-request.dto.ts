@@ -9,6 +9,7 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'credentialMatchingMode',
 	'credentialMissingMode',
 	'workflowConflictPolicy',
+	'workflowPublishingPolicy',
 ] as const;
 
 /** Multipart text fields: empty / whitespace-only values become `undefined`. */
@@ -27,4 +28,8 @@ export class ImportPackageRequestDto extends Z.class({
 	credentialMatchingMode: z.enum(['id-only']).optional().default('id-only'),
 	credentialMissingMode: z.enum(['must-preexist']).optional().default('must-preexist'),
 	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']),
+	workflowPublishingPolicy: z
+		.enum(['preserve-published-state', 'match-source', 'all-published', 'all-unpublished'])
+		.optional()
+		.default('preserve-published-state'),
 }) {}

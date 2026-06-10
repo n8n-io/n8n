@@ -29,6 +29,7 @@ import { initNodeTypes } from '@test-integration/utils';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { WorkflowConflictPolicy, type ImportPackageRequest } from '../n8n-packages.types';
+import type { WorkflowPublishingPolicy } from '../entities/workflow/workflow-publishing-policy.types';
 import { FORMAT_VERSION } from '../spec/constants';
 import {
 	buildImportPackageBuffer,
@@ -37,22 +38,31 @@ import {
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
-import type { ImportResult } from '../n8n-packages.types';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
-type OptionalImportFields =
+type ImportPackageParams = Omit<
+	ImportPackageRequest,
 	| 'credentialMatchingMode'
 	| 'credentialMissingMode'
-	| 'workflowConflictPolicy';
+	| 'workflowConflictPolicy'
+	| 'workflowPublishingPolicy'
+> &
+	Partial<
+		Pick<
+			ImportPackageRequest,
+			| 'credentialMatchingMode'
+			| 'credentialMissingMode'
+			| 'workflowConflictPolicy'
+			| 'workflowPublishingPolicy'
+		>
+	>;
 
-type ImportPackageParams = Omit<ImportPackageRequest, OptionalImportFields> &
-	Partial<Pick<ImportPackageRequest, OptionalImportFields>>;
-
-async function importPackage(params: ImportPackageParams): Promise<ImportResult> {
+async function importPackage(params: ImportPackageParams) {
 	return await Container.get(N8nPackagesService).importPackage({
 		credentialMatchingMode: 'id-only',
 		credentialMissingMode: 'must-preexist',
 		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+		workflowPublishingPolicy: 'preserve-published-state',
 		...params,
 	});
 }
@@ -387,6 +397,8 @@ describe('ImportPipeline workflow conflict policy', () => {
 				serializedWorkflow({
 					id: 'wf-active',
 					name: 'Active updated',
+					// Published in the package and in the target project so preserve-published-state should publish the new version.
+					isPublished: true,
 					nodes: [
 						{
 							id: 'schedule-trigger',
@@ -405,7 +417,11 @@ describe('ImportPipeline workflow conflict policy', () => {
 		const summary = result.workflows.find(
 			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
 		);
-		expect(summary).toMatchObject({ localId: active.id, status: 'updated' });
+		expect(summary).toMatchObject({
+			localId: active.id,
+			status: 'updated',
+		});
+		// A non-null activeVersionId is how the response signals the workflow is published.
 		expect(summary?.activeVersionId).toEqual(expect.any(String));
 		expect(summary?.activeVersionId).not.toBe(originalActiveVersionId);
 
@@ -789,5 +805,201 @@ describe('ImportPipeline credential resolution', () => {
 		});
 
 		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+});
+
+describe('ImportPipeline workflow publishing policy', () => {
+	// Trigger needed to be able to publish workflows
+	const scheduleTriggerNodes = () => [
+		{
+			id: 'schedule-trigger',
+			name: 'Schedule Trigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		},
+	];
+
+	it.each<WorkflowPublishingPolicy>([
+		'preserve-published-state',
+		'match-source',
+		'all-published',
+		'all-unpublished',
+	])('returns published state for every workflow under "%s"', async (workflowPublishingPolicy) => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-fresh',
+					name: 'Fresh workflow',
+					isPublished: false,
+					nodes: scheduleTriggerNodes(),
+				}),
+			]),
+			workflowConflictPolicy: 'fail',
+			workflowPublishingPolicy,
+		});
+
+		expect(result.workflows).toHaveLength(1);
+		// activeVersionId is non-null exactly when the workflow ends up published.
+		expect(result.workflows[0]?.activeVersionId !== null).toBe(
+			workflowPublishingPolicy === 'all-published',
+		);
+	});
+
+	it('"match-source" publishes only workflows that were active in the package', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-published',
+					name: 'Published in package',
+					isPublished: true,
+					nodes: scheduleTriggerNodes(),
+				}),
+				serializedWorkflow({
+					id: 'wf-unpublished',
+					name: 'Unpublished in package',
+					isPublished: false,
+				}),
+			]),
+			workflowConflictPolicy: 'fail',
+			workflowPublishingPolicy: 'match-source',
+		});
+
+		const publishedSummary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-published',
+		);
+		const unpublishedSummary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-unpublished',
+		);
+
+		expect(publishedSummary?.activeVersionId).toEqual(expect.any(String));
+		expect(unpublishedSummary?.activeVersionId).toBeNull();
+	});
+
+	it('"all-unpublished" unpublishes a previously published matched workflow', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow({ name: 'Active workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-active',
+					name: 'Active updated',
+					isPublished: true,
+					nodes: [
+						{
+							id: 'schedule-trigger',
+							name: 'Schedule Trigger',
+							type: 'n8n-nodes-base.scheduleTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				}),
+			]),
+			workflowConflictPolicy: 'new-version',
+			workflowPublishingPolicy: 'all-unpublished',
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
+		);
+		expect(summary?.activeVersionId).toBeNull();
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.active).toBe(false);
+		expect(stored.activeVersionId).toBeNull();
+	});
+
+	it('"preserve-published-state" republishes on settings-only updates to published workflows', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow(
+			{ name: 'Active workflow', settings: { executionOrder: 'v0' } },
+			personalProject,
+		);
+		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+
+		const baseWorkflow = serializedWorkflow({
+			id: 'wf-active',
+			name: 'Active workflow',
+			isPublished: true,
+			settings: { executionOrder: 'v1' },
+		});
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([baseWorkflow]),
+			workflowConflictPolicy: 'new-version',
+			workflowPublishingPolicy: 'preserve-published-state',
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
+		);
+		expect(summary?.activeVersionId).toEqual(expect.any(String));
+		expect(activeWorkflowManager.add).toHaveBeenCalled();
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.active).toBe(true);
+		expect(stored.activeVersionId).toEqual(expect.any(String));
+	});
+
+	it('"preserve-published-state" does not publish a draft update to a previously published workflow', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow({ name: 'Active workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+		const originalActiveVersionId = active.activeVersionId;
+		expect(originalActiveVersionId).not.toBeNull();
+
+		activeWorkflowManager.add.mockClear();
+
+		const result = await importPackage({
+			user: owner,
+			// New content marked as a draft in the package (isPublished: false) → saves a
+			// new version that preserve-published-state should not bring live.
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-active',
+					name: 'Active updated',
+					isPublished: false,
+					nodes: scheduleTriggerNodes(),
+				}),
+			]),
+			workflowConflictPolicy: 'new-version',
+			workflowPublishingPolicy: 'preserve-published-state',
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
+		);
+		// The previously published version keeps running; the imported draft version
+		// is persisted but never published, so the active version is left untouched.
+		expect(summary?.activeVersionId).toBe(originalActiveVersionId);
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.active).toBe(true);
+		expect(stored.activeVersionId).toBe(originalActiveVersionId);
+
+		// No (re)activation was triggered for the imported draft.
+		expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 	});
 });

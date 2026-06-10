@@ -1,6 +1,9 @@
 import type { User } from '@n8n/db';
 
+import type { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
+
 export type { CredentialResolution } from './entities/credential/credential.types';
+export type { WorkflowPublishingPolicy };
 
 export type CredentialMatchingMode = 'id-only';
 export type CredentialMissingMode = 'must-preexist';
@@ -32,6 +35,7 @@ export interface ImportPackageRequest {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
 	workflowConflictPolicy: WorkflowConflictPolicy;
+	workflowPublishingPolicy: WorkflowPublishingPolicy;
 }
 
 export interface ImportedWorkflowSummary {

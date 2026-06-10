@@ -7,6 +7,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { decideWorkflowConflictAction } from './workflow-conflict-policy';
 import { WorkflowImportMatchService } from './workflow-import-match.service';
 import type {
+	PersistedWorkflowPlanItem,
 	PreparedWorkflow,
 	WorkflowConflict,
 	WorkflowImportContext,
@@ -15,6 +16,7 @@ import type {
 	WorkflowPlanItem,
 	WorkflowPlannedAction,
 } from './workflow-import.types';
+import { WorkflowPublisher } from './workflow-publisher';
 import type { PackageImportBindings, WorkflowConflictPolicy } from '../../n8n-packages.types';
 
 export interface WorkflowImportResult {
@@ -25,7 +27,7 @@ export interface WorkflowImportResult {
 /**
  * Imports a batch of prepared workflows in two phases:
  * {@link plan} matches each workflow against the destination project and decides what action create/update/skip
- * {@link apply} writes that plan into n8n
+ * {@link apply} writes that plan into n8n and publishes the workflows
  */
 @Service()
 export class WorkflowImporter {
@@ -33,6 +35,7 @@ export class WorkflowImporter {
 		private readonly workflowImportMatchService: WorkflowImportMatchService,
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowService: WorkflowService,
+		private readonly workflowPublisher: WorkflowPublisher,
 	) {}
 
 	async plan(
@@ -89,41 +92,52 @@ export class WorkflowImporter {
 		item: WorkflowPlanItem,
 		context: WorkflowImportContext,
 	): Promise<WorkflowImportOutcome> {
-		switch (item.action) {
-			case 'create': {
-				const workflow = await this.workflowCreationService.createWorkflow(
-					context.user,
-					item.entity,
-					{
-						projectId: context.projectId,
-						parentFolderId: context.folderId ?? undefined,
-						publicApi: true,
-						source: 'import',
-						sourceWorkflowId: item.sourceWorkflowId,
-					},
-				);
-				return { status: 'created', workflow, sourceWorkflowId: item.sourceWorkflowId };
-			}
-
-			case 'update': {
-				const workflow = await this.workflowService.update(
-					context.user,
-					item.entity,
-					item.existing.id,
-					{ publicApi: true, publishIfActive: true, source: 'import' },
-				);
-				// update() doesn't re-hydrate parentFolder; carry over the existing folder for the result.
-				workflow.parentFolder = item.existing.parentFolder;
-				return { status: 'updated', workflow, sourceWorkflowId: item.sourceWorkflowId };
-			}
-
-			case 'skip':
-				return {
-					status: 'skipped',
-					workflow: item.existing,
-					sourceWorkflowId: item.sourceWorkflowId,
-				};
+		if (item.action === 'skip') {
+			return {
+				status: 'skipped',
+				workflow: item.existing,
+				sourceWorkflowId: item.sourceWorkflowId,
+			};
 		}
+
+		const savedWorkflow = await this.persistWorkflow(context, item);
+		const workflow = await this.workflowPublisher.apply(
+			context.user,
+			item,
+			savedWorkflow,
+			context.publishingPolicy,
+		);
+
+		return {
+			status: item.action === 'create' ? 'created' : 'updated',
+			workflow,
+			sourceWorkflowId: item.sourceWorkflowId,
+		};
+	}
+
+	private async persistWorkflow(
+		context: WorkflowImportContext,
+		item: PersistedWorkflowPlanItem,
+	): Promise<WorkflowEntity> {
+		if (item.action === 'create') {
+			return await this.workflowCreationService.createWorkflow(context.user, item.entity, {
+				projectId: context.projectId,
+				parentFolderId: context.folderId ?? undefined,
+				publicApi: true,
+				source: 'import',
+				sourceWorkflowId: item.sourceWorkflowId,
+			});
+		}
+
+		const workflow = await this.workflowService.update(
+			context.user,
+			item.entity,
+			item.existing.id,
+			{ publicApi: true, source: 'import' },
+		);
+		// update() doesn't re-hydrate parentFolder; carry over the existing folder for the result.
+		workflow.parentFolder = item.existing.parentFolder;
+		return workflow;
 	}
 }
 

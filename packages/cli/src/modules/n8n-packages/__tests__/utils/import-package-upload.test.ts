@@ -26,7 +26,7 @@ describe('createN8nPackageMulterOptions', () => {
 		expect(options.limits).toEqual({
 			fileSize: 8 * 1024 * 1024,
 			files: 1,
-			parts: 7,
+			parts: 8,
 			fieldSize: 128,
 		});
 	});
