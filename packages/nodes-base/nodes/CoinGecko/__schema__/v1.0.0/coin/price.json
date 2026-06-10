@@ -117,6 +117,15 @@
         "dogecoin": {
             "type": "object",
             "properties": {
+                "mxn": {
+                    "type": "number"
+                },
+                "mxn_24h_change": {
+                    "type": "number"
+                },
+                "mxn_market_cap": {
+                    "type": "number"
+                },
                 "usd": {
                     "type": "number"
                 },
@@ -254,6 +263,18 @@
         "tron": {
             "type": "object",
             "properties": {
+                "krw": {
+                    "type": "number"
+                },
+                "krw_24h_change": {
+                    "type": "number"
+                },
+                "krw_market_cap": {
+                    "type": "number"
+                },
+                "last_updated_at": {
+                    "type": "integer"
+                },
                 "usd": {
                     "type": "number"
                 },
@@ -272,6 +293,9 @@
                     "type": "number"
                 },
                 "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_24h_vol": {
                     "type": "number"
                 },
                 "usd_market_cap": {
@@ -294,5 +318,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }
