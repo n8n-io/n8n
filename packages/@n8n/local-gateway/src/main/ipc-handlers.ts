@@ -4,6 +4,7 @@ import { ipcMain } from 'electron';
 import type { ContextDetector } from './context-detector';
 import type { DaemonController } from './daemon-controller';
 import { InstanceApiError, type InstanceApi } from './instance-api';
+import { getMacPermissionStatus, openMacPermissionSettings } from './mac-permissions';
 import type { OAuthFlow } from './oauth/oauth-flow';
 import type { AppSettings, SettingsStore } from './settings-store';
 import type { ThreadService } from './thread-service';
@@ -17,6 +18,8 @@ import type {
 	DesktopAssistantTimeSaved,
 	DetectedContext,
 	InstanceAiRichMessagesResponse,
+	MacPermissionKind,
+	MacPermissionStatus,
 	RunTaskResult,
 	ScreenshotAttachment,
 } from '../shared/types';
@@ -221,6 +224,19 @@ export function registerIpcHandlers({
 			// raw body — screenshot attachments are multi-MB base64 we never want in logs.
 			logger.info('Triggering one-shot task', summarizeTaskRequest(body));
 			return await instanceApi.triggerTask(body);
+		},
+	);
+
+	ipcMain.handle('permissions:get', (): MacPermissionStatus => {
+		logger.debug('IPC permissions:get');
+		return getMacPermissionStatus();
+	});
+
+	ipcMain.handle(
+		'permissions:openSettings',
+		async (_event, kind: MacPermissionKind): Promise<void> => {
+			logger.debug('IPC permissions:openSettings', { kind });
+			await openMacPermissionSettings(kind);
 		},
 	);
 }

@@ -13,6 +13,8 @@ import type {
 	ElectronApi,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
+	MacPermissionKind,
+	MacPermissionStatus,
 	RunTaskResult,
 	ScreenshotAttachment,
 	StatusSnapshot,
@@ -122,6 +124,13 @@ const electronApi: ElectronApi = {
 
 	triggerTask: async (body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> =>
 		await (ipcRenderer.invoke('tasks:trigger', body) as Promise<DesktopAssistantTaskResponse>),
+
+	getMacPermissions: async (): Promise<MacPermissionStatus> =>
+		await (ipcRenderer.invoke('permissions:get') as Promise<MacPermissionStatus>),
+
+	openMacPermissionSettings: async (kind: MacPermissionKind): Promise<void> => {
+		await ipcRenderer.invoke('permissions:openSettings', kind);
+	},
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronApi);

@@ -28,9 +28,18 @@ vi.mock('@n8n/computer-use/logger', () => ({
 	},
 }));
 
+vi.mock('./mac-permissions', () => ({
+	getMacPermissionStatus: vi.fn(),
+	openMacPermissionSettings: vi.fn(),
+}));
+
 import { logger } from '@n8n/computer-use/logger';
 
 import { registerIpcHandlers } from './ipc-handlers';
+import { getMacPermissionStatus, openMacPermissionSettings } from './mac-permissions';
+
+const mockGetMacPermissionStatus = vi.mocked(getMacPermissionStatus);
+const mockOpenMacPermissionSettings = vi.mocked(openMacPermissionSettings);
 
 function getRegisteredHandler(channel: string): HandlerFn {
 	const handler = registeredHandlers.get(channel);
@@ -342,6 +351,23 @@ describe('registerIpcHandlers', () => {
 
 		expect(instanceApi.triggerTask).toHaveBeenCalledWith(body);
 		expect(result).toEqual(response);
+	});
+
+	it('permissions:get returns the mac permission status', () => {
+		const status = { supported: true, accessibility: 'granted', screenRecording: 'denied' };
+		mockGetMacPermissionStatus.mockReturnValue(status);
+		register({});
+
+		const result = getRegisteredHandler('permissions:get')();
+		expect(result).toEqual(status);
+	});
+
+	it('permissions:openSettings opens the requested pane', async () => {
+		mockOpenMacPermissionSettings.mockResolvedValue(undefined);
+		register({});
+
+		await getRegisteredHandler('permissions:openSettings')(undefined, 'screenRecording');
+		expect(mockOpenMacPermissionSettings).toHaveBeenCalledWith('screenRecording');
 	});
 
 	it('settings:set persists capability toggles', async () => {

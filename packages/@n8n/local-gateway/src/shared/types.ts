@@ -81,6 +81,22 @@ export interface RunTaskResult {
 	error?: string;
 }
 
+/** Grant state of a single macOS permission; `unknown` covers not-determined / non-macOS. */
+export type MacPermissionState = 'granted' | 'denied' | 'unknown';
+
+/** The macOS permissions context detection relies on. */
+export type MacPermissionKind = 'accessibility' | 'screenRecording';
+
+/**
+ * Status of the macOS permissions the context layer uses. `supported` is `false`
+ * off macOS, where the UI hides the whole permissions section.
+ */
+export interface MacPermissionStatus {
+	supported: boolean;
+	accessibility: MacPermissionState;
+	screenRecording: MacPermissionState;
+}
+
 /**
  * The contract exposed on `window.electronAPI` by the preload bridge. This is the
  * single source of truth shared by both sides: `preload.ts` implements it, and the
@@ -135,6 +151,10 @@ export interface ElectronApi {
 	captureScreenshot: () => Promise<ScreenshotAttachment>;
 	/** Fire a one-shot task with the prompt + detected context; returns thread/run ids. */
 	triggerTask: (body: DesktopAssistantTaskRequest) => Promise<DesktopAssistantTaskResponse>;
+	/** Current grant state of the macOS permissions context detection relies on. */
+	getMacPermissions: () => Promise<MacPermissionStatus>;
+	/** Open the System Settings pane to grant a macOS permission. */
+	openMacPermissionSettings: (kind: MacPermissionKind) => Promise<void>;
 }
 
 export type AuthState = 'signedOut' | 'authorizing' | 'signedIn' | 'error';

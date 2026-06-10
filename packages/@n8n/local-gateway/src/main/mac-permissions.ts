@@ -1,5 +1,65 @@
 import { logger } from '@n8n/computer-use/logger';
-import { desktopCapturer, systemPreferences } from 'electron';
+import { desktopCapturer, shell, systemPreferences } from 'electron';
+
+import type { MacPermissionKind, MacPermissionStatus } from '../shared/types';
+
+/** Deep links to the exact System Settings → Privacy & Security panes. */
+const SETTINGS_PANE_URLS: Record<MacPermissionKind, string> = {
+	accessibility: 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility',
+	screenRecording: 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture',
+};
+
+/**
+ * Read the current grant state of the macOS permissions the context layer uses.
+ * Never prompts (pass `false` to the Accessibility check). Off macOS it reports
+ * `supported: false` so the UI can hide the whole section.
+ *
+ * Caveat: this reflects the *host app's* (Electron's) TCC state. In a packaged
+ * build the get-windows helper binary runs under the app bundle's responsibility
+ * so this is accurate; in dev (Electron launched from a terminal) it's
+ * indicative rather than authoritative.
+ */
+export function getMacPermissionStatus(): MacPermissionStatus {
+	if (process.platform !== 'darwin') {
+		return { supported: false, accessibility: 'unknown', screenRecording: 'unknown' };
+	}
+	let accessibility: MacPermissionStatus['accessibility'] = 'unknown';
+	let screenRecording: MacPermissionStatus['screenRecording'] = 'unknown';
+	try {
+		accessibility = systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'denied';
+	} catch (error) {
+		logger.debug('Accessibility status check failed', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+	try {
+		const status = systemPreferences.getMediaAccessStatus('screen');
+		screenRecording =
+			status === 'granted' ? 'granted' : status === 'not-determined' ? 'unknown' : 'denied';
+	} catch (error) {
+		logger.debug('Screen Recording status check failed', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+	return { supported: true, accessibility, screenRecording };
+}
+
+/**
+ * Open the System Settings pane for a permission so the user can grant it. For
+ * Accessibility we also call the trusted-client check with `prompt: true`, which
+ * adds the app to the list (otherwise it may not appear until first use).
+ */
+export async function openMacPermissionSettings(kind: MacPermissionKind): Promise<void> {
+	if (process.platform !== 'darwin') return;
+	if (kind === 'accessibility') {
+		try {
+			systemPreferences.isTrustedAccessibilityClient(true);
+		} catch {
+			// Best-effort: the deep link below still takes the user to the pane.
+		}
+	}
+	await shell.openExternal(SETTINGS_PANE_URLS[kind]);
+}
 
 /**
  * Ask for the macOS permissions the context layer needs, upfront.
