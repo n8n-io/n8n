@@ -83,7 +83,7 @@ export const v8CoverageFixtures = {
 					JSON.stringify(perSpecRaw),
 				);
 				writeFileSync(join(specDir, '.spec'), spec);
-			} catch (err) {
+			} catch (error) {
 				// V8 coverage entries include full script source text. Tests that navigate
 				// extensively (e.g. signout + signin in one test with resetOnNavigation:false)
 				// accumulate enough script entries that JSON.stringify hits V8's ~536MB string
@@ -91,7 +91,7 @@ export const v8CoverageFixtures = {
 				// aggregate coverage is unaffected — only this test's per-spec impact map
 				// entry is dropped.
 				console.warn(
-					`[coverage] per-spec raw write skipped for ${testInfo.titlePath.join(' > ')}: ${String(err)}`,
+					`[coverage] per-spec raw write skipped for ${testInfo.titlePath.join(' > ')}: ${String(error)}`,
 				);
 			}
 		}

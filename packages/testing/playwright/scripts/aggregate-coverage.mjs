@@ -71,10 +71,7 @@ function stage(label, files) {
 	rmSync(dir, { recursive: true, force: true });
 	mkdirSync(dir, { recursive: true });
 	files.forEach((f, i) => {
-		writeFileSync(
-			path.join(dir, `${label}-${i}.lcov`),
-			normalizeLcov(readFileSync(f, 'utf8')),
-		);
+		writeFileSync(path.join(dir, `${label}-${i}.lcov`), normalizeLcov(readFileSync(f, 'utf8')));
 	});
 	return dir;
 }
