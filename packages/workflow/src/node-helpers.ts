@@ -824,11 +824,7 @@ export function getNodeParameters(
 			// Strip expression prefix if noDataExpression is true
 			if (nodeProperties.noDataExpression && nodeParameters[nodeProperties.name] !== undefined) {
 				const value = nodeParameters[nodeProperties.name];
-				// A bare $fromAI() placeholder has to survive on noDataExpression fields
-				// (e.g. the SQL editor query): stripping the leading "=" turns it into a
-				// literal and the AI tool call never resolves it (#30531). The check is
-				// deliberately strict so anything mixing in other expressions still gets
-				// stripped.
+				// A lone $fromAI() placeholder must keep its "=" or the AI tool call never resolves it (#30531)
 				if (isExpression(value) && !isFromAIOnlyExpression(value)) {
 					nodeParameters[nodeProperties.name] = value.slice(1);
 					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];

@@ -6684,9 +6684,6 @@ describe('NodeHelpers', () => {
 			expect(result?.resource).toBe('');
 		});
 
-		// A lone $fromAI() placeholder must reach the tool path with its "=" intact,
-		// otherwise the AI tool call never resolves it (#30531). The carve-out has to
-		// stay tight, so anything that mixes in other expressions is still stripped.
 		describe('$fromAI placeholder carve-out', () => {
 			const resolveQuery = (query: string) => {
 				const properties: INodeProperties[] = [
