@@ -350,19 +350,18 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(activeWorkflowManager.addTriggerNodes).not.toHaveBeenCalled();
 		});
 
-		test('rolls back and marks failed when adding triggers throws', async () => {
+		test('throws unimplemented when adding triggers throws', async () => {
 			setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
 			activeWorkflowManager.addTriggerNodes.mockRejectedValue(new Error('registration failed'));
 
-			await consumer.processRecord(makeRecord());
+			await expect(consumer.processRecord(makeRecord())).rejects.toThrow(
+				'Workflow publication trigger activation failure handling is not implemented yet',
+			);
 
 			expect(outboxRepository.manager.upsert).toHaveBeenCalled();
-			expect(workflowRepository.update).toHaveBeenCalledWith('wf-1', {
-				active: false,
-				activeVersionId: null,
-			});
-			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'registration failed');
-			expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'registration failed');
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+			expect(activationErrorsService.register).not.toHaveBeenCalled();
+			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
 		});
 
 		test('treats a first publication (no published-version mapping yet) as all-added', async () => {
