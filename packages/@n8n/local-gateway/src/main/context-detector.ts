@@ -20,6 +20,9 @@ import { EventEmitter } from 'node:events';
  * app, keeping the last genuine external context instead.
  */
 export class ContextDetector extends EventEmitter {
+	/** Bundle ids that are *us*: the packaged appId, and Electron's default in dev. */
+	private static readonly SELF_BUNDLE_IDS = new Set(['io.n8n.gateway', 'com.github.Electron']);
+
 	private current: DetectedContext = { kind: 'other' };
 
 	/** The last detected external context. */
@@ -49,8 +52,14 @@ export class ContextDetector extends EventEmitter {
 		return await captureScreenshotAttachment();
 	}
 
-	/** True when the detected frontmost app is this Electron app itself. */
+	/**
+	 * True when the detected frontmost app is this Electron app itself. Matches on
+	 * bundle id (reliable across dev and packaged) with a name fallback —
+	 * `app.getName()` can be "Electron" in dev while get-windows reports the
+	 * display name "n8n Assistant", so name alone isn't enough.
+	 */
 	private isSelf(detected: DetectedContext): boolean {
+		if (detected.bundleId && ContextDetector.SELF_BUNDLE_IDS.has(detected.bundleId)) return true;
 		const ownName = app.getName().toLowerCase();
 		return !!detected.app && detected.app.toLowerCase() === ownName;
 	}

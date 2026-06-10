@@ -157,10 +157,15 @@ if (!app.requestSingleInstanceLock()) {
 				controller,
 				(trayBounds) => {
 					// Detect what the user is looking at *before* showing our window —
-					// once it shows, it becomes the frontmost app. Fire-and-forget so
-					// the toggle stays snappy; the pill updates via `contextChanged`.
-					void contextDetector.refresh().catch(() => {});
-					toggleMainWindow(preloadPath, rendererPath, trayBounds);
+					// once it shows, it becomes the frontmost app. Detection must finish
+					// before the show: get-windows is async, so a fire-and-forget call
+					// would race the synchronous show and detect our own window instead.
+					// Clicking a macOS menu-bar icon doesn't change the frontmost app, so
+					// by the time this resolves the user's real previous app is still up.
+					void (async () => {
+						await contextDetector.refresh().catch(() => {});
+						toggleMainWindow(preloadPath, rendererPath, trayBounds);
+					})();
 				},
 				() => {
 					logger.info('n8n Assistant quitting');
