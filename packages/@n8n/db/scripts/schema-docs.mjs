@@ -23,8 +23,13 @@ import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const PKG_ROOT = resolve(__dirname, '..');
 const REPO_ROOT = resolve(__dirname, '../../../../');
-const TMP_DIR = resolve(REPO_ROOT, '.tmp-schema-docs');
+const TMP_DIR = resolve(PKG_ROOT, '.tmp-schema-docs');
+
+// Pinned by tag + digest for reproducible CI runs; bump deliberately.
+const TBLS_IMAGE =
+	'ghcr.io/k1low/tbls:v1.94.5@sha256:ae8a3bff6d4f8495d13a7982cd71fac3e8a3d1dd394888f2c44ef82216aa14e4';
 
 function fail(msg) {
 	console.error(`error: ${msg}`);
@@ -32,10 +37,10 @@ function fail(msg) {
 }
 
 function parseArgs(argv) {
-	const args = { command: null, db: null, docker: !!process.env.CI };
+	const args = { command: null, dbType: null, docker: !!process.env.CI };
 	for (const arg of argv) {
 		if (arg === '--docker') args.docker = true;
-		else if (arg.startsWith('--db=')) args.db = arg.slice('--db='.length);
+		else if (arg.startsWith('--db=')) args.dbType = arg.slice('--db='.length);
 		else if (!arg.startsWith('--') && !args.command) args.command = arg;
 	}
 	return args;
@@ -63,8 +68,8 @@ function capture(cmd, cmdArgs, env) {
 }
 
 /** Spins up an empty database and returns its connection details + a cleanup fn. */
-async function provision(db) {
-	if (db === 'sqlite') {
+async function provision(dbType) {
+	if (dbType === 'sqlite') {
 		const file = resolve(TMP_DIR, 'schema.sqlite');
 		mkdirSync(TMP_DIR, { recursive: true });
 		rmSync(file, { force: true });
@@ -105,22 +110,24 @@ async function provision(db) {
 }
 
 /** Builds the tbls DSN for the freshly-migrated database. */
-function buildDsn(db, provisioned, docker) {
-	if (db === 'sqlite') {
+function buildDsn(dbType, provisioned, docker) {
+	if (dbType === 'sqlite') {
 		// tbls reads the file directly; under Docker it lives in the /work mount.
-		const path = docker ? `/work/${relative(REPO_ROOT, provisioned.file)}` : provisioned.file;
-		return `sqlite://${path}`;
+		const filePath = docker
+			? `/work/${relative(REPO_ROOT, provisioned.file)}`
+			: provisioned.file;
+		return `sqlite://${filePath}`;
 	}
-	const c = provisioned.dataSourceOptions;
+	const conn = provisioned.dataSourceOptions;
 	// Under Docker, tbls runs in its own container and reaches the host-mapped
 	// Postgres port via host.docker.internal (added below with --add-host).
-	const host = docker ? 'host.docker.internal' : c.host;
-	return `postgres://${c.username}:${c.password}@${host}:${c.port}/${c.database}?sslmode=disable&search_path=public`;
+	const host = docker ? 'host.docker.internal' : conn.host;
+	return `postgres://${conn.username}:${conn.password}@${host}:${conn.port}/${conn.database}?sslmode=disable&search_path=public`;
 }
 
 /** Invokes tbls (binary locally, Docker image in CI). */
-async function tbls(command, db, dsn, docker) {
-	const config = `.tbls.${db}.yml`;
+async function tbls(command, dbType, dsn, docker) {
+	const config = `.tbls.${dbType}.yml`;
 	const env = { ...process.env, TBLS_DSN: dsn };
 	const args = command === 'diff' ? ['diff'] : ['doc', '--force'];
 	args.push('-c', config);
@@ -131,7 +138,7 @@ async function tbls(command, db, dsn, docker) {
 			'--add-host', 'host.docker.internal:host-gateway',
 			'-e', `TBLS_DSN=${dsn}`,
 			'-v', `${REPO_ROOT}:/work`, '-w', '/work',
-			'ghcr.io/k1low/tbls',
+			TBLS_IMAGE,
 			...args,
 		];
 		return command === 'diff' ? capture('docker', dockerArgs, env) : { code: await run('docker', dockerArgs, env), stdout: '' };
@@ -140,15 +147,15 @@ async function tbls(command, db, dsn, docker) {
 }
 
 async function main() {
-	const { command, db, docker } = parseArgs(process.argv.slice(2));
+	const { command, dbType, docker } = parseArgs(process.argv.slice(2));
 	if (command !== 'doc' && command !== 'diff') {
 		fail('usage: schema-docs.mjs <doc|diff> --db=<sqlite|postgres> [--docker]');
 	}
-	if (db !== 'sqlite' && db !== 'postgres') {
+	if (dbType !== 'sqlite' && dbType !== 'postgres') {
 		fail('--db must be sqlite or postgres');
 	}
 
-	const provisioned = await provision(db);
+	const provisioned = await provision(dbType);
 	try {
 		// Imported only now: env above must be set before @n8n/db evaluates its
 		// migration context from the DI config.
@@ -157,7 +164,7 @@ async function main() {
 		const { entities, sqliteMigrations, postgresMigrations, wrapMigration } = await import(
 			new URL('../dist/index.js', import.meta.url).href
 		);
-		const migrations = db === 'sqlite' ? sqliteMigrations : postgresMigrations;
+		const migrations = dbType === 'sqlite' ? sqliteMigrations : postgresMigrations;
 
 		const dataSource = new DataSource({
 			...provisioned.dataSourceOptions,
@@ -175,8 +182,8 @@ async function main() {
 		await dataSource.runMigrations({ transaction: 'each' });
 		await dataSource.destroy();
 
-		const dsn = buildDsn(db, provisioned, docker);
-		const { code, stdout } = await tbls(command, db, dsn, docker);
+		const dsn = buildDsn(dbType, provisioned, docker);
+		const { code, stdout } = await tbls(command, dbType, dsn, docker);
 
 		if (command === 'diff') {
 			// `tbls diff` prints the unified diff to stdout and exits non-zero when
@@ -185,15 +192,15 @@ async function main() {
 			if (stdout.trim() !== '') {
 				process.stdout.write(stdout);
 				fail(
-					`schema docs for ${db} are out of date. Run \`pnpm db:schema:docs\` and commit the changes.`,
+					`schema docs for ${dbType} are out of date. Run \`pnpm db:schema:docs\` and commit the changes.`,
 				);
 			}
 			if (code !== 0) fail(`tbls diff failed (exit ${code})`);
-			console.log(`✓ ${db} schema docs are up to date`);
+			console.log(`✓ ${dbType} schema docs are up to date`);
 		} else if (code !== 0) {
 			fail(`tbls doc failed (exit ${code})`);
 		} else {
-			console.log(`✓ generated ${db} schema docs in docs/db/${db}`);
+			console.log(`✓ generated ${dbType} schema docs in docs/db/${dbType}`);
 		}
 	} finally {
 		await provisioned.cleanup();
