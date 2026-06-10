@@ -11,14 +11,16 @@ import type {
 	ExecutionError,
 	INodeExecutionData,
 	INode,
+	INodeType,
+	INodeTypes,
+	IPollFunctions,
 	IRun,
 	IWorkflowExecuteAdditionalData,
-	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { createDeferredPromise, WorkflowActivationError } from 'n8n-workflow';
+import { createDeferredPromise, sleep, Workflow, WorkflowActivationError } from 'n8n-workflow';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -321,7 +323,7 @@ describe('ActiveWorkflowManager', () => {
 		});
 	});
 
-	describe('getExecuteTriggerFunctions', () => {
+	describe('getExecuteTriggerFunctions / getExecutePollFunctions', () => {
 		const workflowStaticDataService = mock<WorkflowStaticDataService>();
 		const workflowExecutionService = mock<WorkflowExecutionService>();
 		const eventService = mock<EventService>();
@@ -390,7 +392,7 @@ describe('ActiveWorkflowManager', () => {
 
 				context.emit(triggerData);
 
-				await new Promise((resolve) => setTimeout(resolve, 0));
+				await sleep(0);
 
 				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
@@ -431,7 +433,7 @@ describe('ActiveWorkflowManager', () => {
 
 				context.emit(triggerData, undefined, undefined, 'wf-1:node-1:1700000000000');
 
-				await new Promise((resolve) => setTimeout(resolve, 0));
+				await sleep(0);
 
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
 					workflowData,
@@ -468,7 +470,7 @@ describe('ActiveWorkflowManager', () => {
 
 				context.emit(triggerData, undefined, undefined, 'wf-1:node-1:1700000000000');
 
-				await new Promise((resolve) => setTimeout(resolve, 0));
+				await sleep(0);
 
 				expect(eventService.emit).not.toHaveBeenCalled();
 			});
@@ -575,7 +577,7 @@ describe('ActiveWorkflowManager', () => {
 
 				context.saveFailedExecution(executionError);
 
-				await new Promise((resolve) => setTimeout(resolve, 0));
+				await sleep(0);
 
 				expect(executionService.createErrorExecution).toHaveBeenCalledWith(
 					executionError,
@@ -585,6 +587,151 @@ describe('ActiveWorkflowManager', () => {
 					mode,
 				);
 				expect(executeErrorWorkflowSpy).toHaveBeenCalledWith(executionError, workflowData, mode);
+			});
+		});
+
+		describe('getExecutePollFunctions', () => {
+			const scheduledTaskManager = mock<ScheduledTaskManager>();
+
+			const createPollContext = () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Poll Node' });
+
+				const getPollFunctions = activeWorkflowManager.getExecutePollFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+				);
+				return {
+					workflow,
+					node,
+					context: getPollFunctions(workflow, node, additionalData, mode, activation),
+				};
+			};
+
+			test('__emit persists static data and starts a workflow execution', async () => {
+				const { workflow, context } = createPollContext();
+
+				context.__emit([[{ json: {} }]]);
+
+				await sleep(0);
+
+				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalled();
+			});
+
+			test('does not persist the state of an in-flight poll dropped by workflow removal', async () => {
+				// ActiveWorkflowTriggers drops in-flight polls of superseded registrations before
+				// `__emit`; see active-workflow-triggers.ts. That is only safe because persistence
+				// happens exclusively in `__emit`, and by skipping it, a poller advancing
+				// its state via getWorkflowStaticData() inside poll() only mutates in-memory,
+				// so the next registration's poller re-fetches the same events from the stored state.
+				let pollCount = 0;
+				let resolveInFlightPoll!: (value: INodeExecutionData[][] | null) => void;
+				const pollNodeType = {
+					description: { properties: [] },
+					async poll(this: IPollFunctions) {
+						const cursor = this.getWorkflowStaticData('node');
+						pollCount++;
+						cursor.lastId = pollCount;
+						if (pollCount === 1) return null; // activation test poll: no new events
+						if (pollCount === 2) return [[{ json: { id: 2 } }]]; // first cron tick: emits
+						// second cron tick: hangs in flight
+						return await new Promise<INodeExecutionData[][] | null>((resolve) => {
+							resolveInFlightPoll = resolve;
+						});
+					},
+				} as unknown as INodeType;
+				const pollNodeTypes = {
+					getByNameAndVersion: () => pollNodeType,
+				} as unknown as INodeTypes;
+
+				const workflow = new Workflow({
+					id: 'wf-1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Poll Node',
+							type: 'test.poll',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: true,
+					nodeTypes: pollNodeTypes,
+					staticData: {},
+				});
+				workflow.nodes['Poll Node'].parameters = {
+					pollTimes: { item: [{ mode: 'everyMinute' }] },
+				};
+
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
+					mock(),
+					scheduledTaskManager,
+					{
+						runPollFunction: async (wf: Workflow, node: INode, pollFunctions: IPollFunctions) =>
+							await wf.nodeTypes
+								.getByNameAndVersion(node.type, node.typeVersion)
+								.poll!.call(pollFunctions),
+					} as ConstructorParameters<typeof ActiveWorkflowTriggers>[2],
+					mock(),
+					{
+						startSpan: async (_options: unknown, fn: (span: unknown) => Promise<void>) =>
+							await fn({ setStatus: () => {} }),
+						pickWorkflowAttributes: () => ({}),
+						pickNodeAttributes: () => ({}),
+					} as unknown as ConstructorParameters<typeof ActiveWorkflowTriggers>[4],
+				);
+
+				await realActiveWorkflowTriggers.add(
+					'wf-1',
+					workflow,
+					additionalData,
+					'trigger',
+					'activate',
+					mock(),
+					activeWorkflowManager.getExecutePollFunctions(
+						workflowData,
+						additionalData,
+						'trigger',
+						'activate',
+						async () => workflowData,
+					),
+				);
+
+				const executeScheduledPoll = scheduledTaskManager.registerCron.mock
+					.calls[0][1] as () => void;
+
+				// First cron tick completes and emits: advanced pool state is persisted.
+				executeScheduledPoll();
+				await sleep(0);
+				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledTimes(1);
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+
+				// Second cron tick hangs in flight; the workflow is removed during that time
+				executeScheduledPoll();
+				await sleep(0);
+				await realActiveWorkflowTriggers.remove('wf-1');
+				resolveInFlightPoll([[{ json: { id: 3 } }]]);
+				await sleep(0);
+
+				// poll() did advance the state in memory, but the dropped poll neither
+				// persisted it nor started an execution; the next registration
+				// fetches the same events from upstream
+				expect(workflow.getStaticData('node', workflow.nodes['Poll Node']).lastId).toBe(3);
+				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledTimes(1);
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
 			});
 		});
 	});

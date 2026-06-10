@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
 	INode,
+	INodeExecutionData,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
@@ -458,6 +459,140 @@ describe('ActiveWorkflowTriggers', () => {
 				expect(pollFunctions.__emit).not.toHaveBeenCalled();
 				expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);
 			});
+		});
+	});
+
+	describe('in-flight poll during workflow activation', () => {
+		// If a poll() is already in flight when the workflow is removed/reactivated,
+		// stopping the cron does not abort it; it still resolves later calling `__emit`,
+		// triggering an execution against the superseded workflow version.
+
+		it('should not emit from a poll that was already in flight when the workflow was removed', async () => {
+			let resolveInFlightPoll!: (value: INodeExecutionData[][] | null) => void;
+
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null) // initial activation test poll
+				.mockReturnValueOnce(
+					new Promise<INodeExecutionData[][] | null>((resolve) => {
+						resolveInFlightPoll = resolve;
+					}),
+				); // scheduled poll that hangs in flight
+
+			await addWorkflow({ pollNodes: [pollNode] });
+
+			const registerCronCall = scheduledTaskManager.registerCron.mock.calls[0];
+			const executeScheduledPoll = registerCronCall[1] as () => void;
+
+			// A cron tick fires and the poll() begins awaiting (e.g. a Gmail API call).
+			executeScheduledPoll();
+			await flushPromises();
+
+			// While the poll is still in flight, the workflow is deactivated/reactivated.
+			await activeWorkflowTriggers.remove(workflowId);
+
+			// The in-flight poll now returns data
+			resolveInFlightPoll([[{ json: {} }]]);
+			await flushPromises();
+
+			// The superseded registration must not trigger an execution.
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+
+			// The dropped poll still releases the isolate it acquired.
+			expect(acquireIsolate).toHaveBeenCalledTimes(1);
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not emit an error from a poll that was already in flight when the workflow was removed', async () => {
+			let rejectInFlightPoll!: (error: Error) => void;
+
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null) // initial activation test poll
+				.mockReturnValueOnce(
+					new Promise<INodeExecutionData[][] | null>((_resolve, reject) => {
+						rejectInFlightPoll = reject;
+					}),
+				); // scheduled poll that hangs in flight
+
+			await addWorkflow({ pollNodes: [pollNode] });
+			const executeScheduledPoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+
+			executeScheduledPoll();
+			await flushPromises();
+
+			// While the poll is still in flight, deactivate the workflow
+			await activeWorkflowTriggers.remove(workflowId);
+
+			// The in-flight poll now fails
+			rejectInFlightPoll(new Error('poll failed'));
+			await flushPromises();
+
+			// The superseded registration must not create an error execution
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		it('should skip the poll entirely when the workflow is removed before running the poller', async () => {
+			triggersAndPollers.runPollFunction.mockResolvedValueOnce(null); // initial activation test poll
+
+			await addWorkflow({ pollNodes: [pollNode] });
+			const executeScheduledPoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+
+			// Workflow is removed before the cron ticks
+			await activeWorkflowTriggers.remove(workflowId);
+			triggersAndPollers.runPollFunction.mockClear();
+
+			executeScheduledPoll();
+			await flushPromises();
+
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(acquireIsolate).not.toHaveBeenCalled();
+		});
+
+		it('drops a stale in-flight poll but keeps emitting from the reactivated workflow', async () => {
+			// Deactivate then reactivate while a poll is in flight.
+			// Dropping the stale poll loses no events: its cursor advance is never
+			// persisted (persistence happens only inside `__emit`), so the reactivated
+			// registration re-fetches the same events — proven against the real
+			// `__emit`/`saveStaticData` chain in active-workflow-manager.test.ts
+			// ("does not persist the state of an in-flight poll dropped by workflow removal").
+			let resolveStalePoll!: (value: INodeExecutionData[][] | null) => void;
+
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null) // v1 activation test poll
+				.mockReturnValueOnce(
+					new Promise<INodeExecutionData[][] | null>((resolve) => {
+						resolveStalePoll = resolve;
+					}),
+				); // v1 scheduled poll: hangs in flight
+
+			await addWorkflow({ pollNodes: [pollNode] });
+			const executeStalePoll = scheduledTaskManager.registerCron.mock.calls[0][1] as () => void;
+
+			executeStalePoll();
+			await flushPromises();
+
+			// Deactivate, then reactivate while v1 poll is in flight.
+			await activeWorkflowTriggers.remove(workflowId);
+			triggersAndPollers.runPollFunction
+				.mockResolvedValueOnce(null) // v2 activation test poll
+				.mockResolvedValueOnce([[{ json: { fresh: true } }]]); // v2 scheduled poll
+
+			await addWorkflow({ pollNodes: [pollNode] });
+			const executeFreshPoll = scheduledTaskManager.registerCron.mock.calls[1][1] as () => void;
+
+			// The superseded v1 poll resolves now; it must be dropped.
+			resolveStalePoll([[{ json: { stale: true } }]]);
+			await flushPromises();
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+
+			// The reactivated v2 poll still emits normally
+			executeFreshPoll();
+			await flushPromises();
+			expect(pollFunctions.__emit).toHaveBeenCalledTimes(1);
+			expect(pollFunctions.__emit).toHaveBeenCalledWith([[{ json: { fresh: true } }]]);
 		});
 	});
 
