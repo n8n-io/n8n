@@ -984,9 +984,9 @@ interface AggregateMetrics {
 	built: number;
 	/** Total scenarios across all test cases. */
 	scenariosTotal: number;
-	/** Mean pass@k across scenarios at k = totalRuns (0..1). */
+	/** Mean pass@k across units (scenarios + evaluated expectations) at k = totalRuns (0..1). */
 	passAtK: number;
-	/** Mean pass^k across scenarios at k = totalRuns (0..1). */
+	/** Mean pass^k across units (scenarios + evaluated expectations) at k = totalRuns (0..1). */
 	passHatK: number;
 	/** Index into each scenario's passAtK/passHatK array for k = totalRuns. */
 	kIndex: number;
@@ -996,17 +996,23 @@ interface AggregateMetrics {
 
 function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetrics {
 	const { totalRuns, testCases } = evaluation;
-	const allScenarios = testCases.flatMap((tc) => tc.executionScenarios);
-	const total = allScenarios.length;
+	// Units = scenarios + evaluated build-expectations — mirrors the per-card badge
+	// and the terminal per-case table so the headline rate can't disagree with them.
+	const units = testCases.flatMap((tc) => [
+		...tc.executionScenarios,
+		...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
+	]);
+	const total = units.length;
+	const scenariosTotal = testCases.reduce((n, tc) => n + tc.executionScenarios.length, 0);
 	const kIndex = Math.max(totalRuns - 1, 0);
 	const built = testCases.filter((tc) => tc.buildSuccessCount > 0).length;
 	const passAtK =
-		total > 0 ? allScenarios.reduce((sum, s) => sum + (s.passAtK[kIndex] ?? 0), 0) / total : 0;
+		total > 0 ? units.reduce((sum, u) => sum + (u.passAtK[kIndex] ?? 0), 0) / total : 0;
 	const passHatK =
-		total > 0 ? allScenarios.reduce((sum, s) => sum + (s.passHatK[kIndex] ?? 0), 0) / total : 0;
+		total > 0 ? units.reduce((sum, u) => sum + (u.passHatK[kIndex] ?? 0), 0) / total : 0;
 	return {
 		built,
-		scenariosTotal: total,
+		scenariosTotal,
 		passAtK,
 		passHatK,
 		kIndex,
@@ -1014,15 +1020,33 @@ function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetri
 	};
 }
 
-/** Pass rate of each iteration formatted as e.g. "37% / 37% / 37%". */
+/** Pass rate of each iteration (over units = scenarios + evaluated expectations). */
 function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 	const { totalRuns, testCases } = evaluation;
-	const allScenarios = testCases.flatMap((tc) => tc.executionScenarios);
-	if (allScenarios.length === 0) return '';
+	const hasUnits = testCases.some(
+		(tc) =>
+			tc.executionScenarios.length > 0 || tc.buildExpectations.some((ea) => ea.evaluatedCount > 0),
+	);
+	if (!hasUnits) return '';
 	const rates: string[] = [];
 	for (let i = 0; i < totalRuns; i++) {
-		const passed = allScenarios.filter((s) => s.runs[i]?.success).length;
-		rates.push(`${String(Math.round((passed / allScenarios.length) * 100))}%`);
+		let passed = 0;
+		let total = 0;
+		for (const tc of testCases) {
+			for (const sa of tc.executionScenarios) {
+				total++;
+				if (sa.runs[i]?.success) passed++;
+			}
+			for (const ea of tc.buildExpectations) {
+				if (ea.evaluatedCount === 0) continue;
+				total++;
+				const verdict = tc.runs[i]?.buildExpectationResults?.find(
+					(e) => e.expectation === ea.expectation,
+				);
+				if (verdict?.pass && !verdict.incomplete) passed++;
+			}
+		}
+		rates.push(`${String(total > 0 ? Math.round((passed / total) * 100) : 0)}%`);
 	}
 	return rates.join(' / ');
 }
@@ -1087,6 +1111,14 @@ function writeEvalResults(
 				run.workflowChecks ? statusMap(run.workflowChecks) : null,
 			),
 			buildExpectationResultsPerRun: tc.runs.map((run) => run.buildExpectationResults ?? null),
+			buildExpectations: tc.buildExpectations.map((ea) => ({
+				expectation: ea.expectation,
+				passCount: ea.passCount,
+				evaluatedCount: ea.evaluatedCount,
+				passAtK: ea.passAtK[metrics.kIndex] ?? 0,
+				passHatK: ea.passHatK[metrics.kIndex] ?? 0,
+			})),
+			threadIds: tc.runs.map((run) => run.threadId ?? null),
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,

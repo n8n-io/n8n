@@ -13,12 +13,14 @@ import type {
 	AskUserQuestion,
 	CapturedEvent,
 	PlanTask,
+	SetupCardRequest,
 	SetupWizardCompletedNode,
 	SetupWizardSkippedNode,
 	ToolInteraction,
 	TranscriptStep,
 	TranscriptTurn,
 } from '../types';
+import { USER_TURN_EVENT } from '../types';
 import { splitEventsIntoTurns } from './event-parser';
 import { redactSecrets, redactSecretsInText } from '../harness/redact';
 import { getNestedRecord as getRecord, getString, isRecord } from '../utils/safe-extract';
@@ -36,18 +38,55 @@ export function buildTranscriptFromEvents(opts: BuildTranscriptOptions): Transcr
 	const { events, openingMessage, followUpMessages = [], proxyResponses } = opts;
 	if (events.length === 0) return [];
 
+	const turns: TranscriptTurn[] = [];
+
+	// Preferred path: the harness injected a USER_TURN_EVENT marker at each send,
+	// so each turn is one user message plus every run it triggered (agent resumes
+	// included) — no positional drift between messages and runs.
+	if (events.some((e) => e.type === USER_TURN_EVENT)) {
+		for (const segment of splitEventsByUserTurn(events)) {
+			const turn = buildTurn(segment.events, segment.userMessage, proxyResponses);
+			if (turn.userMessage || turn.steps.length > 0) turns.push(turn);
+		}
+		return turns;
+	}
+
+	// Fallback (no markers, e.g. legacy captures): align messages to run-start
+	// turns positionally.
 	const userMessages: string[] = [];
 	if (openingMessage) userMessages.push(openingMessage);
 	userMessages.push(...followUpMessages);
-
-	const turns: TranscriptTurn[] = [];
 	for (const turnEvents of splitEventsIntoTurns(events)) {
 		const turn = buildTurn(turnEvents, userMessages.shift(), proxyResponses);
-		if (turn.userMessage || turn.steps.length > 0) {
-			turns.push(turn);
-		}
+		if (turn.userMessage || turn.steps.length > 0) turns.push(turn);
 	}
 	return turns;
+}
+
+/** Split events into per-user-message turns using the injected USER_TURN_EVENT
+ *  markers. Each turn carries the message text and all events up to the next
+ *  marker — spanning any number of agent runs/resumes. */
+function splitEventsByUserTurn(
+	events: CapturedEvent[],
+): Array<{ userMessage?: string; events: CapturedEvent[] }> {
+	const turns: Array<{ userMessage?: string; events: CapturedEvent[] }> = [];
+	let current: { userMessage?: string; events: CapturedEvent[] } | null = null;
+	for (const event of events) {
+		if (event.type === USER_TURN_EVENT) {
+			if (current) turns.push(current);
+			current = { userMessage: extractUserTurnText(event), events: [] };
+		} else {
+			current ??= { userMessage: undefined, events: [] };
+			current.events.push(event);
+		}
+	}
+	if (current) turns.push(current);
+	return turns;
+}
+
+function extractUserTurnText(event: CapturedEvent): string | undefined {
+	const payload = getRecord(event.data, 'payload');
+	return payload ? getString(payload, 'text') : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -195,8 +234,12 @@ function interpretConfirmationRequest(
 		return { kind: 'ask-user', questions, answers };
 	}
 
-	// setup wizard suspend — its outcome is rendered from the tool-result instead.
-	if (Array.isArray(payload.setupRequests)) return null;
+	// Setup card (configure credentials / fill parameters). Render the prompt
+	// itself — generic across node types and params — so it stays visible even
+	// when the proxy skips it; the apply outcome, if any, renders separately.
+	if (Array.isArray(payload.setupRequests)) {
+		return interpretSetupCard(payload.setupRequests, response);
+	}
 
 	const toolName =
 		getString(payload, 'toolName') ?? getString(payload, 'agentId') ?? 'confirmation';
@@ -229,6 +272,99 @@ function extractSetupWizardOutcome(result: Record<string, unknown>): ToolInterac
 	if (completed.length === 0 && skipped.length === 0) return null;
 	const reason = typeof result.reason === 'string' ? result.reason : undefined;
 	return { kind: 'setup-wizard', completedNodes: completed, skippedNodes: skipped, reason };
+}
+
+/**
+ * Render a setup card (a `workflows action:"setup"` suspend) as a transcript
+ * step. Generic: works for any node type, credential, or set of parameters the
+ * card surfaces — it reads the node name, the credential type, and the names of
+ * the parameters the card flags, plus how the proxy responded.
+ */
+function interpretSetupCard(
+	rawRequests: unknown[],
+	response: InstanceAiConfirmRequest | undefined,
+): ToolInteraction | null {
+	const requests = extractSetupCardRequests(rawRequests);
+	if (requests.length === 0) return null;
+	const { outcome, filled } = describeSetupCardResponse(response);
+	return { kind: 'setup-card', requests, outcome, filled };
+}
+
+function extractSetupCardRequests(raw: unknown[]): SetupCardRequest[] {
+	const requests: SetupCardRequest[] = [];
+	for (const item of raw) {
+		if (!isRecord(item)) continue;
+		const node = isRecord(item.node) ? item.node : undefined;
+		// Server payloads nest the name under `node.name`; `nodeName` is only a
+		// loose fallback for hand-built/partial inputs.
+		const nodeName = (node ? getString(node, 'name') : undefined) ?? getString(item, 'nodeName');
+		const credentialType = getString(item, 'credentialType');
+		// The card surfaces `editableParameters` for the user to fill; `parameterIssues`
+		// is only the subset with validation problems. Union both (editable first) so the
+		// "the agent asked for X" evidence isn't under-reported.
+		const editable = Array.isArray(item.editableParameters)
+			? item.editableParameters.flatMap((p) => (isRecord(p) ? [getString(p, 'name')] : []))
+			: [];
+		const issues = isRecord(item.parameterIssues) ? Object.keys(item.parameterIssues) : [];
+		const params = [...new Set([...editable, ...issues].filter((n): n is string => Boolean(n)))];
+		requests.push({
+			nodeName: nodeName ?? 'node',
+			credentialType: credentialType ?? undefined,
+			params: params.length > 0 ? params : undefined,
+		});
+	}
+	return requests;
+}
+
+function describeSetupCardResponse(response: InstanceAiConfirmRequest | undefined): {
+	outcome: 'filled' | 'skipped' | 'declined' | 'pending';
+	filled?: string[];
+} {
+	if (!response) return { outcome: 'pending' };
+	if (response.kind === 'setupWorkflowApply') {
+		// An apply (even the empty auto-approve apply) means the user accepted the
+		// setup — never report "skipped" here; that would contradict the sibling
+		// setup-wizard outcome reporting those same nodes as completed.
+		const filled = collectFilledParams(response.nodeParameters);
+		return { outcome: 'filled', filled: filled.length > 0 ? filled : undefined };
+	}
+	if (response.kind === 'approval' && !response.approved) return { outcome: 'declined' };
+	if (response.kind === 'questions') {
+		const allSkipped = response.answers.length === 0 || response.answers.every((a) => a.skipped);
+		return allSkipped ? { outcome: 'skipped' } : { outcome: 'filled' };
+	}
+	return { outcome: 'pending' };
+}
+
+function collectFilledParams(nodeParameters: unknown): string[] {
+	if (!isRecord(nodeParameters)) return [];
+	const filled: string[] = [];
+	for (const params of Object.values(nodeParameters)) {
+		if (!isRecord(params)) continue;
+		for (const [name, value] of Object.entries(params)) {
+			filled.push(`${name}=${formatParamValue(value)}`);
+		}
+	}
+	return filled;
+}
+
+/** Compact, readable rendering of a filled parameter value (objects → JSON, truncated). */
+function formatParamValue(value: unknown): string {
+	if (typeof value === 'string') return value.length > 0 ? value : '(empty)';
+	// Resource-locator values render the human-readable name (or id), not raw JSON.
+	if (isRecord(value) && value.__rl === true) {
+		const name = getString(value, 'cachedResultName');
+		if (name && name.length > 0) return name;
+		const id = getString(value, 'value');
+		if (id && id.length > 0) return id;
+		return '(unset)';
+	}
+	try {
+		const s = JSON.stringify(value);
+		return s.length > 80 ? `${s.slice(0, 80)}…` : s;
+	} catch {
+		return String(value);
+	}
 }
 
 function inferResumeReason(

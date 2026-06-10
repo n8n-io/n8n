@@ -182,12 +182,24 @@ describe('buildTranscriptFromEvents', () => {
 	});
 
 	describe('setup wizard routing', () => {
-		it('renders the outcome from tool-result and skips the confirmation-request twin', () => {
+		it('renders the setup-card ask and the setup-wizard outcome', () => {
 			const turns = buildTranscriptFromEvents({
 				events: [
 					RUN_START,
 					evt('confirmation-request', {
-						payload: { requestId: 'r1', setupRequests: [{ nodeName: 'Slack' }] },
+						payload: {
+							requestId: 'r1',
+							setupRequests: [
+								{
+									node: { name: 'Slack' },
+									credentialType: 'slackApi',
+									editableParameters: [
+										{ name: 'channel', displayName: 'Channel', type: 'resourceLocator' },
+									],
+									parameterIssues: { text: ['Text is required'] },
+								},
+							],
+						},
 					}),
 					evt('tool-result', {
 						payload: {
@@ -201,8 +213,14 @@ describe('buildTranscriptFromEvents', () => {
 				],
 			});
 			const interactions = turns[0].steps;
-			expect(interactions).toHaveLength(1);
+			expect(interactions).toHaveLength(2);
+			// The confirmation-request renders as the setup-card (what the agent asked for)...
 			expect(interactions[0]).toMatchObject({
+				kind: 'setup-card',
+				requests: [{ nodeName: 'Slack', credentialType: 'slackApi', params: ['channel', 'text'] }],
+			});
+			// ...and the tool-result renders as the setup-wizard outcome (what was configured/skipped).
+			expect(interactions[1]).toMatchObject({
 				kind: 'setup-wizard',
 				completedNodes: [{ nodeName: 'Schedule', parametersSet: ['cron'] }],
 				skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],

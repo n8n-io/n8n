@@ -56,9 +56,9 @@ export type Decision = z.infer<typeof decisionSchema>;
 
 export const TOOL_DESCRIPTIONS = `Available actions:
 
-- answer_questions(answers[]): The agent fired an ask-user confirmation (inputType=questions). Answer every question with a plausible value — stated → implied → invented. Invent rather than skip. Only set skipped=true when the question has no plausible answer of any shape.
+- answer_questions(answers[]): The agent fired an ask-user confirmation (inputType=questions). Answer every question with a plausible value — stated → implied → invented. Invent rather than skip. Set skipped=true only when the question has no plausible answer of any shape, OR when a [stage direction] in the script tells the user to decline or withhold that value — in that case you MUST set skipped=true with an empty selectedOptions and pick NO option (not even one that looks standard or obvious); picking a value defeats the test.
 
-- apply_setup_wizard(nodeParametersJson): The agent fired a setup-wizard event with placeholder parameters. Emit a JSON string that decodes to { "<nodeId>": { "<paramName>": <value>, ... }, ... }. Fill every non-credential placeholder with a plausible value — stated → implied → invented. Never set credentials.
+- apply_setup_wizard(nodeParametersJson): The agent fired a setup-wizard / "configure your workflow" setup card with placeholder parameters. Emit a JSON string that decodes to { "<nodeId>": { "<paramName>": <value>, ... }, ... }. Fill every non-credential placeholder with a plausible value — stated → implied → invented. Never set credentials. This is the ONLY correct way to fill a setup card — do NOT answer it with answer_questions. To deliberately leave a value unset (e.g. a stage direction says the user skips it), dismiss the whole card with approve_or_reject(approved=false) instead of filling it.
 
 - approve_or_reject(approved, userInput?): The agent showed a plan (plan-review) or asked an open free-text question (inputType=text). Approve if the plan matches user intent; reject with reason if it diverges.
 

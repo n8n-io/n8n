@@ -883,25 +883,23 @@ function formatTerminalPerTestCase(
 
 	if (totalRuns > 1) {
 		const rows = testCases.map((tc) => {
+			const units = [
+				...tc.executionScenarios,
+				...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
+			];
 			const meanPassAtK =
-				tc.executionScenarios.length > 0
+				units.length > 0
 					? Math.round(
-							(tc.executionScenarios.reduce(
-								(sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0),
-								0,
-							) /
-								tc.executionScenarios.length) *
+							(units.reduce((sum, u) => sum + (u.passAtK[u.passAtK.length - 1] ?? 0), 0) /
+								units.length) *
 								100,
 						)
 					: 0;
 			const meanPassHatK =
-				tc.executionScenarios.length > 0
+				units.length > 0
 					? Math.round(
-							(tc.executionScenarios.reduce(
-								(sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0),
-								0,
-							) /
-								tc.executionScenarios.length) *
+							(units.reduce((sum, u) => sum + (u.passHatK[u.passHatK.length - 1] ?? 0), 0) /
+								units.length) *
 								100,
 						)
 					: 0;
@@ -963,6 +961,15 @@ function formatTerminalPerTestCase(
 						lines.push(TERMINAL_INDENT + `        error: ${errs.join('; ').slice(0, 200)}`);
 					}
 					lines.push(TERMINAL_INDENT + `        diagnosis: ${sr.reasoning.slice(0, 200)}`);
+				}
+			}
+			for (const ea of tc.buildExpectations) {
+				const er = ea.runs[0];
+				if (!er) continue;
+				const status = er.incomplete ? 'SKIP' : er.pass ? 'PASS' : 'FAIL';
+				lines.push(TERMINAL_INDENT + `  ${status}  expectation: ${ea.expectation.slice(0, 80)}`);
+				if (status === 'FAIL') {
+					lines.push(TERMINAL_INDENT + `        ${er.reason.slice(0, 200)}`);
 				}
 			}
 		}

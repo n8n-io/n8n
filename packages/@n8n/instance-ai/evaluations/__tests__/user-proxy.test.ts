@@ -210,8 +210,15 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(1);
 	});
 
-	it('answers ask-user questions from remaining scripted user turns before consulting the agent', async () => {
+	it('routes ask-user questions to the agent even when scripted user turns remain (no deterministic shortcut)', async () => {
 		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'answer_questions',
+			answers: [
+				{ questionId: 'cities', selectedOptions: [], customText: 'London, New York, Tokyo' },
+				{ questionId: 'destination', selectedOptions: ['Slack'] },
+			],
+		});
 		const proxy = new UserProxyLlm({
 			conversation: [
 				{ role: 'user', text: 'I need weather alerts.' },
@@ -236,22 +243,14 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			]),
 		);
 
+		expect(agent.callCount).toBe(1);
 		expect(response.kind).toBe('questions');
 		if (response.kind === 'questions') {
 			expect(response.answers).toEqual([
-				{
-					questionId: 'cities',
-					selectedOptions: [],
-					customText: 'London, New York, Tokyo. Alert above 30C via Telegram chat -1001234567890.',
-				},
-				{
-					questionId: 'destination',
-					selectedOptions: [],
-					customText: 'London, New York, Tokyo. Alert above 30C via Telegram chat -1001234567890.',
-				},
+				{ questionId: 'cities', selectedOptions: [], customText: 'London, New York, Tokyo' },
+				{ questionId: 'destination', selectedOptions: ['Slack'] },
 			]);
 		}
-		expect(agent.callCount).toBe(0);
 	});
 
 	it('returns approval with userInput when the agent picks approve_or_reject', async () => {

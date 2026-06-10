@@ -880,6 +880,33 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			}
 			return `<details class="transcript-aside" open><summary>🛠 setup wizard — ${escapeHtml(header)}</summary>${sections.join('')}</details>`;
 		}
+		case 'setup-card': {
+			if (interaction.requests.length === 0) return null;
+			const asks = interaction.requests
+				.map((r) => {
+					const bits: string[] = [];
+					if (r.credentialType) bits.push(`${escapeHtml(r.credentialType)} credential`);
+					if (r.params && r.params.length > 0)
+						bits.push(r.params.map((p) => escapeHtml(p)).join(', '));
+					return bits.length > 0
+						? `${escapeHtml(r.nodeName)} (${bits.join('; ')})`
+						: escapeHtml(r.nodeName);
+				})
+				.join(', ');
+			const filledList =
+				interaction.filled && interaction.filled.length > 0
+					? ` (${interaction.filled.map((p) => escapeHtml(p)).join(', ')})`
+					: '';
+			const outcome =
+				interaction.outcome === 'filled'
+					? `user filled it${filledList}`
+					: interaction.outcome === 'skipped'
+						? 'user skipped it'
+						: interaction.outcome === 'declined'
+							? 'user dismissed it'
+							: 'no response';
+			return `<div class="transcript-resume">🪪 <strong>Setup card</strong> — agent asked the user to configure: ${asks} → ${outcome}</div>`;
+		}
 		case 'confirmation': {
 			const decisionTag =
 				typeof interaction.approved === 'boolean'
@@ -1121,8 +1148,12 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 // ---------------------------------------------------------------------------
 
 function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string {
-	const passCount = result.executionScenarioResults.filter((sr) => sr.success).length;
-	const totalCount = result.executionScenarioResults.length;
+	// Pass rate counts scenarios AND build expectations as units (incomplete expectations excluded).
+	const scoredExpectations = (result.buildExpectationResults ?? []).filter((e) => !e.incomplete);
+	const passCount =
+		result.executionScenarioResults.filter((sr) => sr.success).length +
+		scoredExpectations.filter((e) => e.pass).length;
+	const totalCount = result.executionScenarioResults.length + scoredExpectations.length;
 	const allPass = passCount === totalCount && totalCount > 0;
 	const statusClass = result.workflowBuildSuccess ? (allPass ? 'pass' : 'mixed') : 'fail';
 
@@ -1137,14 +1168,27 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 
 	const prompt = result.testCase.conversation[0].text;
 	const truncatedPrompt = prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt;
+	// Header label = the source-file slug (the same identifier the PR comment
+	// uses), falling back to the description then the prompt. The full prompt
+	// stays in the expandable "Prompt" section below.
+	// flattenRunsForReport prefixes the prompt with "[iter N/M] " so multi-run cards stay
+	// distinguishable; carry that marker onto the slug/description header too.
+	const iterPrefix = /^\[iter \d+\/\d+\]\s*/.exec(prompt)?.[0] ?? '';
+	const headerLabel =
+		iterPrefix + (result.fileSlug ?? result.testCase.description ?? truncatedPrompt);
 
-	// Inline scenario indicators for quick triage without expanding
-	const scenarioIndicators = result.executionScenarioResults
-		.map(
+	// Inline indicators for quick triage without expanding — scenarios and expectations as units.
+	const scenarioIndicators = [
+		...result.executionScenarioResults.map(
 			(sr) =>
-				`<span class="scenario-indicator ${sr.success ? 'pass' : 'fail'}" title="${escapeHtml(sr.scenario.name)}">${sr.success ? '✓' : '✗'} ${escapeHtml(sr.scenario.name)}</span>`,
-		)
-		.join(' ');
+				`<span class="scenario-indicator ${sr.success ? 'pass' : 'fail'}" title="${escapeHtml(sr.scenario.name)}">${sr.success ? '✓' : '✗'} scenario: ${escapeHtml(sr.scenario.name)}</span>`,
+		),
+		...(result.buildExpectationResults ?? []).map((e) => {
+			const cls = e.incomplete ? 'na' : e.pass ? 'pass' : 'fail';
+			const icon = e.incomplete ? '⌀' : e.pass ? '✓' : '✗';
+			return `<span class="scenario-indicator ${cls}" title="${escapeHtml(e.expectation)}">${icon} expectation: ${escapeHtml(e.expectation)}</span>`;
+		}),
+	].join(' ');
 
 	let scenariosHtml = '';
 	if (result.executionScenarioResults.length > 0) {
@@ -1167,10 +1211,11 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 		<div class="test-case-header" onclick="this.parentElement.classList.toggle('expanded')">
 			<div class="test-case-title">
 				${buildBadge} ${scoreBadge}
-				<span class="test-case-prompt">${escapeHtml(truncatedPrompt)}</span>
+				<span class="test-case-prompt">${escapeHtml(headerLabel)}</span>
 			</div>
 			<div class="test-case-meta">
 				<span class="badge badge-tag">${escapeHtml(result.testCase.complexity)}</span>
+				${result.threadId ? `<span class="workflow-id" title="thread id — open in the UI">🧵 ${escapeHtml(result.threadId)}</span>` : ''}
 				${result.workflowId ? `<span class="workflow-id">${escapeHtml(result.workflowId)}</span>` : ''}
 				${workflowLink}
 			</div>
@@ -1266,10 +1311,11 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.test-case-prompt { color: var(--text-primary); font-weight: 500; font-size: 13px; }
 	.test-case-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 	.workflow-id { color: var(--text-muted); font-size: 11px; font-family: monospace; }
-	.scenario-indicators { display: flex; gap: 8px; flex-wrap: wrap; }
+	.scenario-indicators { display: flex; flex-direction: column; gap: 3px; }
 	.scenario-indicator { font-size: 11px; font-family: monospace; }
 	.scenario-indicator.pass { color: var(--color-pass); }
 	.scenario-indicator.fail { color: var(--color-fail); }
+	.scenario-indicator.na { color: #8b949e; }
 	.test-case-detail { display: none; padding: 0 16px 16px; }
 	.test-case.expanded .test-case-detail { display: block; }
 

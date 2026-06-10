@@ -17,6 +17,7 @@ import {
 	startSseConnection,
 	waitForAllActivity,
 	runMultiTurnConversation,
+	recordUserTurn,
 	type ConfirmationStrategy,
 } from './chat-loop';
 import { type EvalLogger } from './logger';
@@ -330,6 +331,7 @@ async function driveMultiTurnConversation(
 		return decision;
 	};
 
+	recordUserTurn(config.events, openingMessage);
 	await config.client.sendMessage(config.threadId, openingMessage);
 
 	await runMultiTurnConversation({
@@ -458,6 +460,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				followUpMessagesOut: followUpMessages,
 			});
 		} else {
+			recordUserTurn(events, openingMessage);
 			await client.sendMessage(threadId, openingMessage);
 			await waitForAllActivity({
 				client,
@@ -557,7 +560,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const buildMs = Date.now() - buildStart;
 		const proxySuffix = formatProxyStatsSuffix(proxyDecisionStats);
 		logger.info(
-			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix}`,
+			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix} [thread ${threadId}]`,
 		);
 
 		const workflowChecks = config.skipWorkflowChecks
