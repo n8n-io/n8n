@@ -87,9 +87,7 @@ const workflowExecutionStateStore = computed(() =>
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const activeNode = computed(() => ndvStore.value.activeNode);
-const dirtinessByName = computed(
-	() => useNodeDirtiness(workflowDocumentStore.value.documentId).dirtinessByName.value,
-);
+const { dirtinessByName } = useNodeDirtiness(() => workflowDocumentStore.value.documentId);
 const uiStore = useUIStore();
 
 // Composables
