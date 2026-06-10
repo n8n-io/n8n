@@ -2,7 +2,7 @@ import type { TagEntity, ITagWithCountDb } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { QueryFailedError, Raw } from '@n8n/typeorm';
+import { In, QueryFailedError } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -10,6 +10,24 @@ import { validateEntity } from '@/generic-helpers';
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
 
 type Action = 'Create' | 'Update';
+
+// Trim and dedupe input names case-insensitively, keeping the first-seen case.
+// Inputs are matched against the DB exactly, so this only collapses obvious
+// duplicates like ['Prod','prod','PROD'] within a single batch — it does NOT
+// change the case-sensitive contract that the REST tag API exposes.
+function dedupeNamesPreservingCase(names: string[]): string[] {
+	const seen = new Set<string>();
+	const result: string[] = [];
+	for (const raw of names) {
+		const trimmed = raw.trim();
+		if (trimmed.length === 0) continue;
+		const key = trimmed.toLowerCase();
+		if (seen.has(key)) continue;
+		seen.add(key);
+		result.push(trimmed);
+	}
+	return result;
+}
 
 // n8n supports postgres (SQLSTATE 23505) and sqlite (SQLITE_CONSTRAINT_UNIQUE,
 // or the older SQLITE_CONSTRAINT with a "UNIQUE constraint" message).
@@ -120,34 +138,22 @@ export class TagService {
 	}
 
 	/**
-	 * Look up tags by name without creating missing ones. Returns existing
-	 * entities only; the input order is preserved for found names.
-	 *
-	 * Case-insensitive: 'Production' and 'production' resolve to the same row.
-	 * Returned entities are deduped, so each existing tag appears at most once
-	 * even if the input contained multiple case-variants of its name.
+	 * Look up tags by name without creating missing ones. Names are trimmed and
+	 * deduped case-insensitively within the input (so an LLM passing 'Prod',
+	 * 'prod', 'PROD' collapses to one) — but matched against the DB exactly,
+	 * preserving the same case-sensitive contract as the REST tags API where
+	 * 'Product' and 'product' may coexist.
 	 */
 	async findByNames(names: string[]): Promise<TagEntity[]> {
-		const uniqueLowerNames = Array.from(
-			new Set(
-				names
-					.map((n) => n.trim())
-					.filter((n) => n.length > 0)
-					.map((n) => n.toLowerCase()),
-			),
-		);
-		if (uniqueLowerNames.length === 0) return [];
+		const uniqueNames = dedupeNamesPreservingCase(names);
+		if (uniqueNames.length === 0) return [];
 
-		const existing = await this.tagRepository.find({
-			where: {
-				name: Raw((alias) => `LOWER(${alias}) IN (:...names)`, { names: uniqueLowerNames }),
-			},
-		});
-		const existingByLowerName = new Map(existing.map((t) => [t.name.toLowerCase(), t]));
+		const existing = await this.tagRepository.find({ where: { name: In(uniqueNames) } });
+		const existingByName = new Map(existing.map((t) => [t.name, t]));
 
 		const result: TagEntity[] = [];
-		for (const lowerName of uniqueLowerNames) {
-			const hit = existingByLowerName.get(lowerName);
+		for (const name of uniqueNames) {
+			const hit = existingByName.get(name);
 			if (hit) result.push(hit);
 		}
 		return result;
@@ -155,35 +161,25 @@ export class TagService {
 
 	/**
 	 * Resolve a set of tag names to their entities, creating any that don't exist.
-	 * Names are trimmed, then de-duplicated case-insensitively before lookup —
-	 * so 'Prod', 'prod', 'PROD' map to a single entity. New tags are created
-	 * using the first-seen case from the input.
+	 * Names are trimmed and deduped case-insensitively within the input (so an
+	 * LLM passing 'Prod', 'prod', 'PROD' collapses to one) — but matched against
+	 * the DB exactly, preserving the same case-sensitive contract as the REST
+	 * tags API. New tags are created using the first-seen case from the input.
 	 *
 	 * Race-safe: if two callers concurrently create a tag with the same novel
 	 * name, the loser of the unique-index race re-fetches the now-existing row
 	 * instead of surfacing a raw DB error.
 	 */
 	async findOrCreateByNames(names: string[]): Promise<TagEntity[]> {
-		const canonical = new Map<string, string>(); // lower -> first-seen original
-		for (const raw of names) {
-			const trimmed = raw.trim();
-			if (trimmed.length === 0) continue;
-			const lower = trimmed.toLowerCase();
-			if (!canonical.has(lower)) canonical.set(lower, trimmed);
-		}
-		if (canonical.size === 0) return [];
+		const uniqueNames = dedupeNamesPreservingCase(names);
+		if (uniqueNames.length === 0) return [];
 
-		const lowerNames = Array.from(canonical.keys());
-		const existing = await this.tagRepository.find({
-			where: {
-				name: Raw((alias) => `LOWER(${alias}) IN (:...names)`, { names: lowerNames }),
-			},
-		});
-		const existingByLowerName = new Map(existing.map((t) => [t.name.toLowerCase(), t]));
+		const existing = await this.tagRepository.find({ where: { name: In(uniqueNames) } });
+		const existingByName = new Map(existing.map((t) => [t.name, t]));
 
 		const result: TagEntity[] = [];
-		for (const [lower, name] of canonical) {
-			const hit = existingByLowerName.get(lower);
+		for (const name of uniqueNames) {
+			const hit = existingByName.get(name);
 			if (hit) {
 				result.push(hit);
 				continue;
@@ -193,13 +189,7 @@ export class TagService {
 				result.push(created);
 			} catch (error) {
 				if (!isUniqueConstraintViolation(error)) throw error;
-				// Race recovery: another caller created the tag concurrently.
-				// Look it up case-insensitively to handle different-case races.
-				const raced = await this.tagRepository.findOne({
-					where: {
-						name: Raw((alias) => `LOWER(${alias}) = LOWER(:name)`, { name }),
-					},
-				});
+				const raced = await this.tagRepository.findOneBy({ name });
 				if (!raced) throw error;
 				result.push(raced);
 			}

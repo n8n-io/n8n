@@ -399,10 +399,10 @@ export const createUpdateWorkflowTool = (
 					tagIds = resolvedTags.map((t) => t.id);
 				} else {
 					const resolvedTags = await tagService.findByNames(result.tagNames);
-					const resolvedLowerNames = new Set(resolvedTags.map((t) => t.name.toLowerCase()));
-					const missing = result.tagNames.filter(
-						(name) => !resolvedLowerNames.has(name.trim().toLowerCase()),
-					);
+					const resolvedNames = new Set(resolvedTags.map((t) => t.name));
+					const missing = result.tagNames
+						.map((n) => n.trim())
+						.filter((name) => name.length > 0 && !resolvedNames.has(name));
 					if (missing.length > 0) {
 						throw new Error(
 							`User does not have permission to create tags. The following tags do not exist: ${missing.join(', ')}`,
