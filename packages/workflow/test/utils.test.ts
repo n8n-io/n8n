@@ -5,6 +5,7 @@ import { ManualExecutionCancelledError } from '../src/errors/execution-cancelled
 import {
 	jsonParse,
 	jsonStringify,
+	replaceCircularReferences,
 	deepCopy,
 	isObjectEmpty,
 	fileTypeFromMimeType,
@@ -18,7 +19,6 @@ import {
 	isCommunityPackageName,
 	sanitizeFilename,
 	sanitizeXmlName,
-	replaceCircularReferences,
 } from '../src/utils';
 
 describe('isObjectEmpty', () => {
@@ -317,85 +317,30 @@ describe('jsonStringify', () => {
 });
 
 describe('replaceCircularReferences', () => {
-	// arbSafeKey excludes __proto__ only where a key is used as a live object property
-	// setter in test setup: circKey (obj[circKey] = obj would create a prototype cycle
-	// that breaks for..in) and baseObj spread (spread invokes __proto__ setter).
-	// arbValueKey is unrestricted — it goes into the data that replaceCircularReferences
-	// processes, so __proto__ keys are exercised and the defineProperty fix is tested.
-	const arbSafeKey = fc.string({ minLength: 1 }).filter((k) => k !== '__proto__');
-	const arbValueKey = fc.string({ minLength: 1 });
+	// Reserved keys (__proto__, constructor, prototype) are stripped from the copy
+	// by replaceCircularReferences, so test arbitraries must exclude them to avoid
+	// breaking the round-trip invariants asserted below.
+	const reservedKeys = new Set(['__proto__', 'constructor', 'prototype']);
+	const arbSafeKey = fc.string({ minLength: 1 }).filter((k) => !reservedKeys.has(k));
 
 	const arbJsonValue = fc.jsonValue({ depthSize: 'small' });
 
-	describe('__proto__ key handling', () => {
-		it('should preserve __proto__ as an own enumerable property, not set the prototype', () => {
-			const input = JSON.parse('{"__proto__": {"isAdmin": true}, "normal": "value"}');
-			const result = replaceCircularReferences(input) as Record<string, unknown>;
+	it('should not promote an own __proto__ key onto the copy', () => {
+		const source = jsonParse<{ note: string; id?: string }>(
+			'{"note":"x","__proto__":{"id":"injected"}}',
+		);
 
-			expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
-			expect(result.__proto__).toEqual({ isAdmin: true });
-			expect(({} as Record<string, unknown>).isAdmin).toBeUndefined();
-			expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
-		});
+		const copy = replaceCircularReferences(source);
 
-		it('should preserve __proto__ value through JSON.stringify', () => {
-			const input = JSON.parse('{"__proto__": {"isAdmin": true}, "normal": "value"}');
-			const parsed = JSON.parse(JSON.stringify(replaceCircularReferences(input))) as Record<
-				string,
-				unknown
-			>;
-
-			expect(parsed.__proto__).toEqual({ isAdmin: true });
-			expect(parsed.normal).toBe('value');
-		});
-
-		it('should handle nested __proto__ keys without polluting prototype chain', () => {
-			const input = JSON.parse('{"data": {"__proto__": {"polluted": "yes"}}}');
-			const result = replaceCircularReferences(input) as Record<string, unknown>;
-			const data = result.data as Record<string, unknown>;
-
-			expect(Object.prototype.hasOwnProperty.call(data, '__proto__')).toBe(true);
-			expect(data.__proto__).toEqual({ polluted: 'yes' });
-			expect(({} as Record<string, unknown>).polluted).toBeUndefined();
-			expect(Object.getPrototypeOf(data)).toBe(Object.prototype);
-		});
-
-		it('should produce __proto__ with full data descriptor: writable, configurable, enumerable', () => {
-			const input = JSON.parse('{"__proto__": {"isAdmin": true}, "normal": "value"}');
-			const result = replaceCircularReferences(input);
-
-			const descriptor = Object.getOwnPropertyDescriptor(result, '__proto__');
-			expect(descriptor?.writable).toBe(true);
-			expect(descriptor?.configurable).toBe(true);
-			expect(descriptor?.enumerable).toBe(true);
-
-			// Behavioral: configurable means deletable
-			expect(delete (result as Record<string, unknown>).__proto__).toBe(true);
-			expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(false);
-		});
-
-		it('should handle __proto__ containing a circular reference', () => {
-			const circularValue: Record<string, unknown> = { type: 'socket' };
-			circularValue.self = circularValue;
-			const input: Record<string, unknown> = { normal: 'value' };
-			Object.defineProperty(input, '__proto__', {
-				value: circularValue,
-				writable: true,
-				configurable: true,
-				enumerable: true,
-			});
-
-			const result = replaceCircularReferences(input);
-
-			expect(() => JSON.stringify(result)).not.toThrow();
-			expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
-		});
+		expect(copy.note).toBe('x');
+		expect(copy.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
 	});
 
 	describe('property: output invariants', () => {
 		it('should be JSON.stringify-safe for arbitrary plain objects', () => {
 			fc.assert(
-				fc.property(fc.dictionary(arbValueKey, arbJsonValue), (obj) => {
+				fc.property(fc.dictionary(arbSafeKey, arbJsonValue), (obj) => {
 					expect(() => JSON.stringify(replaceCircularReferences(obj))).not.toThrow();
 				}),
 				{ numRuns: 200 },
@@ -404,9 +349,9 @@ describe('replaceCircularReferences', () => {
 
 		it('should preserve all values in plain objects exactly', () => {
 			fc.assert(
-				fc.property(fc.dictionary(arbValueKey, arbJsonValue), (obj) => {
-					// JSON.stringify is the actual production oracle — catches -0 vs 0 and
-					// __proto__ key preservation (where toEqual would silently pass both).
+				fc.property(fc.dictionary(arbSafeKey, arbJsonValue), (obj) => {
+					// JSON.stringify is the actual production oracle — catches -0 vs 0
+					// (where toEqual would silently pass both).
 					expect(JSON.stringify(replaceCircularReferences(obj))).toBe(JSON.stringify(obj));
 				}),
 				{ numRuns: 200 },
@@ -415,7 +360,7 @@ describe('replaceCircularReferences', () => {
 
 		it('should not mark shared (non-circular) objects as circular — DAG safety', () => {
 			fc.assert(
-				fc.property(fc.dictionary(arbValueKey, arbJsonValue), (shared) => {
+				fc.property(fc.dictionary(arbSafeKey, arbJsonValue), (shared) => {
 					const result = replaceCircularReferences({ a: shared, b: shared }) as {
 						a: unknown;
 						b: unknown;
@@ -429,7 +374,7 @@ describe('replaceCircularReferences', () => {
 
 		it('should be idempotent', () => {
 			fc.assert(
-				fc.property(fc.dictionary(arbValueKey, arbJsonValue), (obj) => {
+				fc.property(fc.dictionary(arbSafeKey, arbJsonValue), (obj) => {
 					const once = replaceCircularReferences(obj);
 					const twice = replaceCircularReferences(replaceCircularReferences(obj));
 					expect(JSON.stringify(twice)).toBe(JSON.stringify(once));
@@ -529,6 +474,45 @@ describe('deepCopy', () => {
 		expect(copy.deep.props.circular).not.toBe(object);
 		expect(copy.deep.arr.slice(-1)[0]).toBe(copy);
 		expect(copy.deep.arr.slice(-1)[0]).not.toBe(object);
+	});
+
+	it('should not promote an own __proto__ key onto the clone', () => {
+		// An object literal `{ __proto__: ... }` sets the prototype; only parsed
+		// JSON produces an own enumerable `__proto__` property, as a request body would.
+		const source = jsonParse<{ note: string; id?: string }>(
+			'{"note":"x","__proto__":{"id":"injected"}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.note).toBe('x');
+		expect(copy.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy)).toBe(Object.prototype);
+	});
+
+	it('should not copy own constructor or prototype keys onto the clone', () => {
+		const source = jsonParse<{ keep: string }>(
+			'{"keep":"y","constructor":{"polluted":true},"prototype":{"polluted":true}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.keep).toBe('y');
+		expect(Object.prototype.hasOwnProperty.call(copy, 'constructor')).toBe(false);
+		expect(Object.prototype.hasOwnProperty.call(copy, 'prototype')).toBe(false);
+		expect(copy.constructor).toBe(Object);
+	});
+
+	it('should not promote a nested own __proto__ key', () => {
+		const source = jsonParse<{ body: { note: string; id?: string } }>(
+			'{"body":{"note":"x","__proto__":{"id":"injected"}}}',
+		);
+
+		const copy = deepCopy(source);
+
+		expect(copy.body.note).toBe('x');
+		expect(copy.body.id).toBeUndefined();
+		expect(Object.getPrototypeOf(copy.body)).toBe(Object.prototype);
 	});
 });
 

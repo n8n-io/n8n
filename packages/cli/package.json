@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.25.1",
+  "version": "2.26.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -154,7 +154,7 @@
     "axios": "catalog:",
     "bcryptjs": "2.4.3",
     "bull": "4.16.4",
-    "cache-manager": "5.2.3",
+    "cache-manager": "catalog:",
     "change-case": "4.1.2",
     "chat": "catalog:",
     "class-transformer": "0.5.1",

@@ -8,6 +8,7 @@ defineProps<{
 	iconFg?: string;
 	title: string;
 	badge?: string;
+	badgeIcon?: IconName;
 }>();
 </script>
 
@@ -25,6 +26,7 @@ defineProps<{
 					{{ title }}
 				</N8nText>
 				<N8nBadge v-if="badge" :class="$style.judgePill">
+					<N8nIcon v-if="badgeIcon" :icon="badgeIcon" size="xsmall" :class="$style.judgePillIcon" />
 					{{ badge }}
 				</N8nBadge>
 			</div>
@@ -71,6 +73,9 @@ defineProps<{
 }
 
 .judgePill {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
 	background-color: var(--background--subtle);
 	color: var(--color--text--tint-1);
 	border: none;
@@ -79,5 +84,9 @@ defineProps<{
 	border-radius: var(--radius--full);
 	line-height: 1.2;
 	font-weight: var(--font-weight--medium);
+}
+
+.judgePillIcon {
+	flex-shrink: 0;
 }
 </style>

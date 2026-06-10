@@ -2,7 +2,18 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type express from 'express';
 import { mock, type MockProxy } from 'jest-mock-extended';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	getHtmlSandboxCSP,
+	isWebhookHtmlSandboxingDisabled,
+} from 'n8n-core';
+
+jest.mock('n8n-core', () => ({
+	...jest.requireActual('n8n-core'),
+	isWebhookHtmlSandboxingDisabled: jest.fn(),
+	getHtmlSandboxCSP: jest.fn(),
+}));
 import type {
 	Workflow,
 	INode,
@@ -218,6 +229,9 @@ describe('setupResponseNodePromise', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 
+		jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(false);
+		jest.mocked(getHtmlSandboxCSP).mockReturnValue('sandbox allow-forms allow-scripts');
+
 		responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
 
 		res.header.mockReturnValue(res);
@@ -271,9 +285,34 @@ describe('setupResponseNodePromise', () => {
 
 		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
 		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'image/jpeg']]));
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(mockStream.pipe).toHaveBeenCalledWith(res, { end: false });
 		expect(finished).toHaveBeenCalledWith(mockStream);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should not set sandbox CSP header on binary stream responses when sandboxing is disabled', async () => {
+		jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+		const mockStream = mock<Readable>();
+		binaryDataService.getAsStream.mockResolvedValue(mockStream);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-123' } },
+			headers: { 'content-type': 'text/html' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
 	});
 
 	test('should handle buffer response', async () => {
@@ -295,8 +334,31 @@ describe('setupResponseNodePromise', () => {
 		await new Promise(process.nextTick);
 
 		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'text/plain']]));
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(res.end).toHaveBeenCalledWith(buffer);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should not set sandbox CSP header on buffer responses when sandboxing is disabled', async () => {
+		jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: Buffer.from('<html></html>'),
+			headers: { 'content-type': 'text/html' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
 	});
 
 	test('should handle errors properly', async () => {

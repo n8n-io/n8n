@@ -518,8 +518,20 @@ const mcpImageContentSchema = z.object({
 	data: z.string(),
 	mimeType: z.string(),
 });
+
+const mcpBlobResourceContentSchema = z.object({
+	type: z.literal('resource'),
+	resource: z.object({
+		uri: z.string(),
+		mimeType: z.string().optional(),
+		blob: z.string(),
+	}),
+});
+
 export const mcpToolCallResultSchema = z.object({
-	content: z.array(z.union([mcpTextContentSchema, mcpImageContentSchema])),
+	content: z.array(
+		z.union([mcpTextContentSchema, mcpImageContentSchema, mcpBlobResourceContentSchema]),
+	),
 	structuredContent: z.record(z.string(), z.unknown()).optional(),
 	isError: z.boolean().optional(),
 });

@@ -53,6 +53,22 @@ describe('snapshot-image-context', () => {
 		);
 	});
 
+	it('removes stale files when reusing a cache-keyed staging directory', async () => {
+		const cacheKey = 'cccccccccccc-dddddddddddd';
+		const filesWithExtra = new Map([
+			[`${WORKSPACE_ROOT}/package.json`, '{"name":"a"}'],
+			[`${WORKSPACE_ROOT}/skills/removed/SKILL.md`, '# Removed'],
+		]);
+		const filesWithoutExtra = new Map([[`${WORKSPACE_ROOT}/package.json`, '{"name":"b"}']]);
+
+		const first = await stageWorkspaceFilesForImage(filesWithExtra, WORKSPACE_ROOT, cacheKey);
+		const second = await stageWorkspaceFilesForImage(filesWithoutExtra, WORKSPACE_ROOT, cacheKey);
+		tempDirs.push(first.stagingDir);
+
+		expect(second.stagingDir).toBe(first.stagingDir);
+		await expect(access(join(first.stagingDir, 'skills/removed/SKILL.md'))).rejects.toThrow();
+	});
+
 	it('disposeSnapshotImageContext removes the staging directory', async () => {
 		const files = new Map([[`${WORKSPACE_ROOT}/build.mjs`, 'export {};']]);
 		const { stagingDir } = await stageWorkspaceFilesForImage(files, WORKSPACE_ROOT);

@@ -13,8 +13,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error';
-import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import { SsrfBlockedIpError } from 'n8n-core';
+import type { SsrfProtectionService } from 'n8n-core';
 
 jest.mock('axios');
 
