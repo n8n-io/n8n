@@ -3076,6 +3076,9 @@ describe('getSandboxConfigFromEnv', () => {
 			sandboxTimeout: number;
 			sandboxNamePrefix: string;
 			sandboxEphemeral: boolean;
+			sandboxAutoStopMinutes: number;
+			sandboxAutoArchiveMinutes: number;
+			sandboxAutoDeleteMinutes: number;
 			daytonaTokenRefreshSkewMs: number;
 		};
 		getSandboxConfigFromEnv: () => SandboxConfig;
@@ -3094,6 +3097,9 @@ describe('getSandboxConfigFromEnv', () => {
 			sandboxTimeout: 1000,
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
+			sandboxAutoStopMinutes: 15,
+			sandboxAutoArchiveMinutes: 10_080,
+			sandboxAutoDeleteMinutes: 43_200,
 			daytonaTokenRefreshSkewMs: 1000,
 			...overrides,
 		};
@@ -3117,5 +3123,33 @@ describe('getSandboxConfigFromEnv', () => {
 			provider: 'daytona',
 			ephemeral: false,
 		});
+	});
+
+	it('forwards stop, archive and delete intervals for non-ephemeral sandboxes', () => {
+		const service = createSandboxConfigService({
+			sandboxEphemeral: false,
+			sandboxAutoStopMinutes: 30,
+			sandboxAutoArchiveMinutes: 1440,
+			sandboxAutoDeleteMinutes: 43_200,
+		});
+
+		expect(service.getSandboxConfigFromEnv()).toMatchObject({
+			provider: 'daytona',
+			autoStopInterval: 30,
+			autoArchiveInterval: 1440,
+			autoDeleteInterval: 43_200,
+		});
+	});
+
+	it('omits the delete interval for ephemeral sandboxes so Daytona deletes on stop', () => {
+		const service = createSandboxConfigService({
+			sandboxEphemeral: true,
+			sandboxAutoDeleteMinutes: 43_200,
+		});
+
+		const config = service.getSandboxConfigFromEnv();
+
+		expect(config).toMatchObject({ provider: 'daytona', ephemeral: true });
+		expect((config as { autoDeleteInterval?: number }).autoDeleteInterval).toBeUndefined();
 	});
 });
