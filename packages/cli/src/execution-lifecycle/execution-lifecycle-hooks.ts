@@ -11,6 +11,7 @@ import {
 	FileLocation,
 	InstanceSettings,
 } from 'n8n-core';
+import { STICKY_NODE_TYPE } from 'n8n-workflow';
 import type {
 	ExecutionStatus,
 	INode,
@@ -483,29 +484,35 @@ function hookFunctionsPushSubExecution(
 	parentExecution: RelatedExecution,
 	parentNode: INode,
 ) {
-	const totalNodes = workflowData.nodes.length;
+	// Sticky notes and disabled nodes never execute, so they must not count
+	// towards the "X / Y" indicator's denominator.
+	const totalNodes = workflowData.nodes.filter(
+		(node) => !node.disabled && node.type !== STICKY_NODE_TYPE,
+	).length;
 
 	// Push + pushRef are resolved lazily on first emit. This keeps hook
 	// registration free of DI side effects (cli tests globally `jest.mock`
 	// `@/push`, which strips its `@Service` metadata) and lets the freshest
-	// ancestor state determine the target pushRef.
-	let resolved = false;
+	// ancestor state determine the target pushRef. A failed resolution is
+	// retried on the next emit rather than cached, so a transient miss
+	// doesn't silence the whole stream.
 	let cached: { pushInstance: Push; pushRef: string } | undefined;
 	const resolveTarget = (): typeof cached => {
-		if (resolved) return cached;
-		resolved = true;
+		if (cached) return cached;
 		const pushRef = findRootPushRef(parentExecution.executionId);
 		if (!pushRef) return undefined;
 		try {
-			const pushInstance = Container.get(Push);
-			cached = { pushInstance, pushRef };
+			cached = { pushInstance: Container.get(Push), pushRef };
 		} catch {
-			cached = undefined;
+			return undefined;
 		}
 		return cached;
 	};
 
-	let nodeIndex = 0;
+	// Counts unique nodes reached, not node executions: in a looping child
+	// workflow the same node runs many times, and execution count would make
+	// the indicator exceed its denominator (e.g. "30 / 3").
+	const reachedNodeNames = new Set<string>();
 	// Coalesces high-frequency repeats on the same node. Any phase change
 	// or node-name change always emits, so the UI never lags behind which
 	// node is actually running.
@@ -534,7 +541,7 @@ function hookFunctionsPushSubExecution(
 	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
 		const target = resolveTarget();
 		if (!target) return;
-		nodeIndex += 1;
+		reachedNodeNames.add(nodeName);
 		const now = Date.now();
 		const isNewNode = nodeName !== lastEmittedNodeName;
 		const isPhaseChange = lastEmittedPhase !== 'running';
@@ -551,7 +558,7 @@ function hookFunctionsPushSubExecution(
 					parentNodeName: parentNode.name,
 					executionId: this.executionId,
 					currentNodeName: nodeName,
-					currentNodeIndex: nodeIndex,
+					currentNodeIndex: reachedNodeNames.size,
 					totalNodes,
 					phase: 'running',
 				},
@@ -563,6 +570,7 @@ function hookFunctionsPushSubExecution(
 	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
 		const target = resolveTarget();
 		if (!target) return;
+		reachedNodeNames.add(nodeName);
 		const phase: 'success' | 'error' = data?.error ? 'error' : 'success';
 		lastEmitAt = Date.now();
 		lastEmittedNodeName = nodeName;
@@ -575,7 +583,7 @@ function hookFunctionsPushSubExecution(
 					parentNodeName: parentNode.name,
 					executionId: this.executionId,
 					currentNodeName: nodeName,
-					currentNodeIndex: nodeIndex,
+					currentNodeIndex: reachedNodeNames.size,
 					totalNodes,
 					phase,
 				},
@@ -862,11 +870,15 @@ export function getLifecycleHooksForSubExecutions(
 	executionId: string,
 	workflowData: IWorkflowBase,
 	userId?: string,
-	parentExecution?: RelatedExecution,
-	projectId?: string,
-	projectName?: string,
-	parentNode?: INode,
+	options: {
+		parentExecution?: RelatedExecution;
+		projectId?: string;
+		projectName?: string;
+		/** The "Execute Sub-workflow" node in the parent workflow that spawned this execution. */
+		parentNode?: INode;
+	} = {},
 ): ExecutionLifecycleHooks {
+	const { parentExecution, projectId, projectName, parentNode } = options;
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);

@@ -1518,7 +1518,7 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 					workflowData,
 					undefined,
-					parentExecution,
+					{ parentExecution },
 				);
 			});
 
@@ -1606,16 +1606,13 @@ describe('Execution Lifecycle Hooks', () => {
 			};
 			const rootPushRef = 'root-push-ref';
 
-			function buildHooks() {
+			function buildHooks(childWorkflowData: IWorkflowBase = workflowData) {
 				return getLifecycleHooksForSubExecutions(
 					'integrated',
 					executionId,
-					workflowData,
+					childWorkflowData,
 					undefined,
-					parentExecution,
-					undefined,
-					undefined,
-					parentNode,
+					{ parentExecution, parentNode },
 				);
 			}
 
@@ -1740,7 +1737,7 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 					workflowData,
 					undefined,
-					parentExecution,
+					{ parentExecution },
 				);
 
 				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
@@ -1799,6 +1796,117 @@ describe('Execution Lifecycle Hooks', () => {
 					expect.objectContaining({ type: 'subworkflowExecutionStarted' }),
 					rootPushRef,
 				);
+			});
+
+			it('retries pushRef resolution after a transient miss', async () => {
+				activeExecutions.has.mockReturnValue(false);
+				const hooks = buildHooks();
+
+				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+				expect(push.send).not.toHaveBeenCalled();
+
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'subworkflowNodeProgress' }),
+					rootPushRef,
+				);
+			});
+
+			it('excludes disabled nodes and sticky notes from totalNodes', async () => {
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				const activeNode = workflowData.nodes[0];
+				const hooks = buildHooks({
+					...workflowData,
+					nodes: [
+						activeNode,
+						{ ...activeNode, id: 'active-2', name: 'Second Node' },
+						{ ...activeNode, id: 'disabled-1', name: 'Disabled Node', disabled: true },
+						{ ...activeNode, id: 'sticky-1', name: 'Sticky', type: 'n8n-nodes-base.stickyNote' },
+					],
+				});
+
+				await hooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({
+						type: 'subworkflowExecutionStarted',
+						data: expect.objectContaining({ totalNodes: 2 }),
+					}),
+					rootPushRef,
+				);
+			});
+
+			it('counts unique nodes, not executions, so loops never exceed the total', async () => {
+				stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+				const hooks = buildHooks();
+
+				// A loop revisits node A: A → B → A
+				await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
+				await hooks.runHook('nodeExecuteAfter', ['Node A', taskData, runExecutionData]);
+				await hooks.runHook('nodeExecuteBefore', ['Node B', taskStartedData]);
+				await hooks.runHook('nodeExecuteAfter', ['Node B', taskData, runExecutionData]);
+				await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
+
+				const lastCall = push.send.mock.calls.at(-1)?.[0];
+				expect(lastCall).toMatchObject({
+					type: 'subworkflowNodeProgress',
+					data: { currentNodeName: 'Node A', currentNodeIndex: 2 },
+				});
+			});
+
+			describe('throttling', () => {
+				it('suppresses same-node running repeats within the throttle window', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const hooks = buildHooks();
+
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+					expect(push.send).toHaveBeenCalledTimes(1);
+				});
+
+				it('emits same-node running repeats once the throttle window has elapsed', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const hooks = buildHooks();
+
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+					jest.advanceTimersByTime(150);
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+					expect(push.send).toHaveBeenCalledTimes(2);
+				});
+
+				it('always emits on node-name change regardless of the window', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const hooks = buildHooks();
+
+					await hooks.runHook('nodeExecuteBefore', ['Node A', taskStartedData]);
+					await hooks.runHook('nodeExecuteBefore', ['Node B', taskStartedData]);
+
+					expect(push.send).toHaveBeenCalledTimes(2);
+					expect(push.send.mock.calls.at(-1)?.[0]).toMatchObject({
+						data: { currentNodeName: 'Node B', phase: 'running' },
+					});
+				});
+
+				it('always emits on phase change regardless of the window', async () => {
+					stubActiveExecution(parentExecutionId, { pushRef: rootPushRef });
+					const hooks = buildHooks();
+
+					// before → after → before on the same node, all within the window:
+					// the after (phase success) and the second before (phase running)
+					// must both emit so the UI never shows a stale phase.
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+					await hooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+					await hooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+					expect(push.send).toHaveBeenCalledTimes(3);
+					expect(push.send.mock.calls.at(-1)?.[0]).toMatchObject({
+						data: { phase: 'running' },
+					});
+				});
 			});
 		});
 	});
