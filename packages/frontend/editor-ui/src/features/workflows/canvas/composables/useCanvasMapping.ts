@@ -24,13 +24,17 @@ import {
 	computeNodeDisplaySize,
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
-	resolveCanonicalConnection,
 } from '../canvas.utils';
 import type { ExecutionStatus, IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { MarkerType } from '@vue-flow/core';
+import type { Connection } from '@vue-flow/core';
 import * as workflowUtils from 'n8n-workflow/common';
+
+// Highest priority first — resolves both a single connection's status and the
+// dominant status across merged collapsed-group connections.
+const EDGE_STATUS_PRIORITY = ['running', 'pinned', 'error', 'success'] as const;
 
 /**
  * Maps workflow nodes and connections into the vue-flow canvas shape.
@@ -191,47 +195,53 @@ export function useCanvasMapping({
 		}));
 	});
 
-	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
+	function getConnectionStatus(connection: Connection): CanvasConnectionData['status'] {
 		const rd = renderData.value;
-		// Collapsed-group remapping rewrites `connection.source` / `.target` to
-		// `group:*` ids for display; the real workflow endpoints live on
-		// `data.canonicals` so execution-state lookups still resolve correctly.
-		const canonical = resolveCanonicalConnection(connection);
-		const sourceNodeId = canonical.source;
-		const targetNodeId = canonical.target;
+		const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
 
-		const { type, index } = parseCanvasConnectionHandleString(canonical.sourceHandle);
-		const outputMap = rd.executionRunDataOutputMapByNodeId.get(sourceNodeId);
-		const runData = outputMap?.[type]?.[index];
+		const runData = rd.executionRunDataOutputMapByNodeId.get(connection.source)?.[type]?.[index];
 		const runDataTotal = runData?.total ?? 0;
 
-		const sourceTasks = rd.executionRunDataByNodeId.get(sourceNodeId)?.value ?? [];
+		const sourceTasks = rd.executionRunDataByNodeId.get(connection.source)?.value ?? [];
 		let lastSourceTask: ITaskData | undefined = sourceTasks[sourceTasks.length - 1];
 		if (lastSourceTask?.executionStatus === 'canceled' && sourceTasks.length > 1) {
 			lastSourceTask = sourceTasks[sourceTasks.length - 2];
 		}
 
-		const sourcePinned = rd.pinnedDataByNodeId.get(sourceNodeId)?.value;
-		const sourceRunData = rd.executionRunDataByNodeId.get(sourceNodeId)?.value;
-		const targetRunData = rd.executionRunDataByNodeId.get(targetNodeId)?.value;
-		const sourceRunning = rd.executionRunningByNodeId.get(sourceNodeId)?.value ?? false;
-		const sourceHasIssues = rd.hasIssuesByNodeId.get(sourceNodeId)?.value ?? false;
+		// For non-main connections (model, memory, tool, etc.), only count as executed
+		// if the target node also executed, since these are passive connections
+		const targetExecuted =
+			type === NodeConnectionTypes.Main ||
+			Boolean(rd.executionRunDataByNodeId.get(connection.target)?.value);
 
-		let status: CanvasConnectionData['status'];
-		if (sourceRunning && runDataTotal === 0) {
-			status = 'running';
-		} else if (sourcePinned && sourceRunData) {
-			status = 'pinned';
-		} else if (sourceHasIssues) {
-			status = 'error';
-		} else if (runDataTotal > 0 && lastSourceTask?.executionStatus !== 'canceled') {
-			// Non-main connections (model/memory/tool) are passive — only mark
-			// success when the target node also produced run data.
-			const isMainConnection = type === NodeConnectionTypes.Main;
-			if (isMainConnection || targetRunData) {
-				status = 'success';
-			}
-		}
+		const matches: Record<(typeof EDGE_STATUS_PRIORITY)[number], boolean> = {
+			running:
+				(rd.executionRunningByNodeId.get(connection.source)?.value ?? false) && runDataTotal === 0,
+			pinned: Boolean(
+				rd.pinnedDataByNodeId.get(connection.source)?.value &&
+					rd.executionRunDataByNodeId.get(connection.source)?.value,
+			),
+			error: rd.hasIssuesByNodeId.get(connection.source)?.value ?? false,
+			success: runDataTotal > 0 && lastSourceTask?.executionStatus !== 'canceled' && targetExecuted,
+		};
+
+		return EDGE_STATUS_PRIORITY.find((status) => matches[status]);
+	}
+
+	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
+		const rd = renderData.value;
+		// Collapsed-group remapping rewrites `connection.source` / `.target` to
+		// `group:*` ids for display; the real workflow endpoints live on
+		// `data.canonicals` — several of them when same-endpoint edges were
+		// merged into one. The edge surfaces the highest-priority status among
+		// the connections it represents.
+		const canonicals: Connection[] = connection.data?.canonicals ?? [connection];
+
+		const statuses = new Set(canonicals.map(getConnectionStatus));
+		const status = EDGE_STATUS_PRIORITY.find((s) => statuses.has(s));
+
+		const { source: sourceNodeId, target: targetNodeId, sourceHandle } = canonicals[0];
+		const { type } = parseCanvasConnectionHandleString(sourceHandle);
 
 		const sourceInputs = rd.nodeInputsByNodeId.get(sourceNodeId)?.value ?? [];
 		const targetInputs = rd.nodeInputsByNodeId.get(targetNodeId)?.value ?? [];
