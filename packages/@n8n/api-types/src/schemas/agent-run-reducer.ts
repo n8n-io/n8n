@@ -4,61 +4,45 @@
  * Used by both the frontend (live SSE updates) and the backend (snapshot building).
  * All state is plain objects/arrays — no Map/Set — so it's serializable, Pinia-safe,
  * and easy to inspect in tests.
+ *
+ * The state is node-centric: `agentsById` holds the actual `InstanceAiAgentNode`
+ * objects, each embedding its own `toolCalls`, `timeline`, and `children`. The
+ * agent tree and the flat lookups share the same objects — the tree rooted at
+ * `rootAgentId` IS the state, viewed hierarchically. Events mutate nodes in
+ * place, so consumers holding a node (or the tree root) always observe current
+ * data without any synchronization layer.
+ *
+ * Nodes never reference their parent (parent links live in `parentByAgentId`
+ * as plain ids), so the structure stays acyclic and JSON-serializable.
  */
 
 import { getRenderHint, isSafeObjectKey } from './instance-ai.schema';
 import type {
 	InstanceAiEvent,
 	InstanceAiAgentNode,
-	InstanceAiAgentKind,
-	InstanceAiAgentStatus,
-	InstanceAiToolCallState,
 	InstanceAiTimelineEntry,
-	InstanceAiTargetResource,
-	PlannedTaskArg,
-	TaskList,
+	InstanceAiToolCallState,
 } from './instance-ai.schema';
 
 // ---------------------------------------------------------------------------
 // State types
 // ---------------------------------------------------------------------------
 
-export interface AgentNode {
-	agentId: string;
-	role: string;
-	tools?: string[];
-	taskId?: string;
-	// Display metadata (from enriched agent-spawned events)
-	kind?: InstanceAiAgentKind;
-	title?: string;
-	subtitle?: string;
-	goal?: string;
-	targetResource?: InstanceAiTargetResource;
-	/** Transient status message (e.g. "Recalling conversation..."). Cleared when empty. */
-	statusMessage?: string;
-	status: InstanceAiAgentStatus;
-	textContent: string;
-	reasoning: string;
-	tasks?: TaskList;
-	planItems?: PlannedTaskArg[];
-	result?: string;
-	error?: string;
-}
-
 export interface AgentRunState {
 	rootAgentId: string;
-	/** Flat agent lookup — supports any nesting depth. */
-	agentsById: Record<string, AgentNode>;
+	/**
+	 * Flat agent lookup — supports any nesting depth. Values are the live tree
+	 * nodes: `agentsById[id].children[n]` is the same object as
+	 * `agentsById[childId]`.
+	 */
+	agentsById: Record<string, InstanceAiAgentNode>;
 	/** Maps child agentId → parent agentId. Root agent has no entry. */
 	parentByAgentId: Record<string, string>;
-	/** Ordered list of children per agent. */
-	childrenByAgentId: Record<string, string[]>;
-	/** Chronological timeline per agent. */
-	timelineByAgentId: Record<string, InstanceAiTimelineEntry[]>;
-	/** Flat tool-call lookup. */
+	/**
+	 * Flat tool-call lookup — same objects as in the owning node's `toolCalls`
+	 * array, so result/error updates are visible from both sides.
+	 */
 	toolCallsById: Record<string, InstanceAiToolCallState>;
-	/** Ordered tool-call IDs per agent (preserves insertion order). */
-	toolCallIdsByAgentId: Record<string, string[]>;
 	/** Run status — tracks the overall run lifecycle. */
 	status: 'active' | 'completed' | 'cancelled' | 'error';
 }
@@ -67,24 +51,28 @@ export interface AgentRunState {
 // Factory
 // ---------------------------------------------------------------------------
 
+function createNode(agentId: string, role: string): InstanceAiAgentNode {
+	return {
+		agentId,
+		role,
+		status: 'active',
+		textContent: '',
+		reasoning: '',
+		toolCalls: [],
+		children: [],
+		timeline: [],
+	};
+}
+
 export function createInitialState(rootAgentId = 'agent-001'): AgentRunState {
 	const safeRootAgentId = isSafeObjectKey(rootAgentId) ? rootAgentId : 'agent-001';
 	return {
 		rootAgentId: safeRootAgentId,
 		agentsById: {
-			[safeRootAgentId]: {
-				agentId: safeRootAgentId,
-				role: 'orchestrator',
-				status: 'active',
-				textContent: '',
-				reasoning: '',
-			},
+			[safeRootAgentId]: createNode(safeRootAgentId, 'orchestrator'),
 		},
 		parentByAgentId: {},
-		childrenByAgentId: { [safeRootAgentId]: [] },
-		timelineByAgentId: { [safeRootAgentId]: [] },
 		toolCallsById: {},
-		toolCallIdsByAgentId: { [safeRootAgentId]: [] },
 		status: 'active',
 	};
 }
@@ -93,7 +81,7 @@ export function createInitialState(rootAgentId = 'agent-001'): AgentRunState {
 // Lookup
 // ---------------------------------------------------------------------------
 
-export function findAgent(state: AgentRunState, agentId: string): AgentNode | undefined {
+export function findAgent(state: AgentRunState, agentId: string): InstanceAiAgentNode | undefined {
 	if (!isSafeObjectKey(agentId)) return undefined;
 	return state.agentsById[agentId];
 }
@@ -102,39 +90,9 @@ export function findAgent(state: AgentRunState, agentId: string): AgentNode | un
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function ensureAgent(state: AgentRunState, agentId: string): AgentNode | undefined {
+function ensureAgent(state: AgentRunState, agentId: string): InstanceAiAgentNode | undefined {
 	if (!isSafeObjectKey(agentId)) return undefined;
 	return state.agentsById[agentId];
-}
-
-function ensureTimeline(state: AgentRunState, agentId: string): InstanceAiTimelineEntry[] {
-	if (!isSafeObjectKey(agentId)) return [];
-	let tl = state.timelineByAgentId[agentId];
-	if (!tl) {
-		tl = [];
-		state.timelineByAgentId[agentId] = tl;
-	}
-	return tl;
-}
-
-function ensureToolCallIds(state: AgentRunState, agentId: string): string[] {
-	if (!isSafeObjectKey(agentId)) return [];
-	let ids = state.toolCallIdsByAgentId[agentId];
-	if (!ids) {
-		ids = [];
-		state.toolCallIdsByAgentId[agentId] = ids;
-	}
-	return ids;
-}
-
-function ensureChildren(state: AgentRunState, agentId: string): string[] {
-	if (!isSafeObjectKey(agentId)) return [];
-	let children = state.childrenByAgentId[agentId];
-	if (!children) {
-		children = [];
-		state.childrenByAgentId[agentId] = children;
-	}
-	return children;
 }
 
 /** Append text to timeline — merges consecutive text entries within the same responseId. */
@@ -164,35 +122,24 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		case 'run-start': {
 			const rootId = event.agentId;
 			if (!isSafeObjectKey(rootId)) break;
+			const root = state.agentsById[state.rootAgentId];
 			const hasExistingAgents =
 				Object.keys(state.agentsById).length > 1 ||
-				(state.agentsById[state.rootAgentId]?.textContent?.length ?? 0) > 0 ||
-				(state.childrenByAgentId[state.rootAgentId]?.length ?? 0) > 0 ||
-				(state.toolCallIdsByAgentId[state.rootAgentId]?.length ?? 0) > 0;
+				(root?.textContent.length ?? 0) > 0 ||
+				(root?.children.length ?? 0) > 0 ||
+				(root?.toolCalls.length ?? 0) > 0;
 
 			if (hasExistingAgents) {
 				// Follow-up run in a merged group: preserve existing agent tree,
 				// just re-activate the root orchestrator for the new run's events.
 				state.status = 'active';
-				const root = state.agentsById[state.rootAgentId];
 				if (root) root.status = 'active';
 			} else {
 				// First run: initialize from scratch.
 				state.rootAgentId = rootId;
-				state.agentsById = {
-					[rootId]: {
-						agentId: rootId,
-						role: 'orchestrator',
-						status: 'active',
-						textContent: '',
-						reasoning: '',
-					},
-				};
+				state.agentsById = { [rootId]: createNode(rootId, 'orchestrator') };
 				state.parentByAgentId = {};
-				state.childrenByAgentId = { [rootId]: [] };
-				state.timelineByAgentId = { [rootId]: [] };
 				state.toolCallsById = {};
-				state.toolCallIdsByAgentId = { [rootId]: [] };
 				state.status = 'active';
 			}
 			break;
@@ -202,11 +149,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.textContent += event.payload.text;
-				appendTimelineText(
-					ensureTimeline(state, event.agentId),
-					event.payload.text,
-					event.responseId,
-				);
+				appendTimelineText(agent.timeline, event.payload.text, event.responseId);
 			}
 			break;
 		}
@@ -232,8 +175,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					startedAt: new Date().toISOString(),
 				};
 				state.toolCallsById[event.payload.toolCallId] = tc;
-				ensureToolCallIds(state, event.agentId).push(event.payload.toolCallId);
-				ensureTimeline(state, event.agentId).push({
+				agent.toolCalls.push(tc);
+				agent.timeline.push({
 					type: 'tool-call',
 					toolCallId: event.payload.toolCallId,
 					...(event.responseId ? { responseId: event.responseId } : {}),
@@ -266,11 +209,13 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'agent-spawned': {
 			if (!isSafeObjectKey(event.agentId) || !isSafeObjectKey(event.payload.parentId)) break;
+			// Idempotency guard: a replayed agent-spawned for an existing agent
+			// must not create a second node for the same id.
+			if (state.agentsById[event.agentId]) break;
 			const parentAgent = ensureAgent(state, event.payload.parentId);
 			if (parentAgent) {
-				state.agentsById[event.agentId] = {
-					agentId: event.agentId,
-					role: event.payload.role,
+				const child: InstanceAiAgentNode = {
+					...createNode(event.agentId, event.payload.role),
 					tools: event.payload.tools,
 					taskId: event.payload.taskId,
 					kind: event.payload.kind,
@@ -278,20 +223,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					subtitle: event.payload.subtitle,
 					goal: event.payload.goal,
 					targetResource: event.payload.targetResource,
-					status: 'active',
-					textContent: '',
-					reasoning: '',
 				};
+				state.agentsById[event.agentId] = child;
 				state.parentByAgentId[event.agentId] = event.payload.parentId;
-				ensureChildren(state, event.payload.parentId).push(event.agentId);
-				ensureChildren(state, event.agentId); // init empty
-				ensureTimeline(state, event.agentId); // init empty
-				ensureToolCallIds(state, event.agentId); // init empty
-				const parentTimeline = ensureTimeline(state, event.payload.parentId);
+				parentAgent.children.push(child);
 				// Inherit responseId from the parent's last entry when not set on the event
 				// (agent-spawned events are emitted from tool code, not the stream executor).
-				const inheritedResponseId = event.responseId ?? parentTimeline.at(-1)?.responseId;
-				parentTimeline.push({
+				const inheritedResponseId = event.responseId ?? parentAgent.timeline.at(-1)?.responseId;
+				parentAgent.timeline.push({
 					type: 'child',
 					agentId: event.agentId,
 					...(inheritedResponseId ? { responseId: inheritedResponseId } : {}),
@@ -306,15 +245,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				agent.status = event.payload.error ? 'error' : 'completed';
 				agent.result = event.payload.result;
 				agent.error = event.payload.error;
-			}
-			// A completed/errored agent can't have tool calls still in-flight.
-			// Clear isLoading so persisted snapshots don't show stale confirmations.
-			if (!isSafeObjectKey(event.agentId)) break;
-			const agentToolCallIds = state.toolCallIdsByAgentId[event.agentId];
-			if (agentToolCallIds) {
-				for (const tcId of agentToolCallIds) {
-					const tc = state.toolCallsById[tcId];
-					if (tc?.isLoading) {
+				// A completed/errored agent can't have tool calls still in-flight.
+				// Clear isLoading so persisted snapshots don't show stale confirmations.
+				for (const tc of agent.toolCalls) {
+					if (tc.isLoading) {
 						tc.isLoading = false;
 					}
 				}
@@ -370,17 +304,10 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'error': {
 			const errorText = '\n\n*Error: ' + event.payload.content + '*';
-			const agent = ensureAgent(state, event.agentId);
+			const agent = ensureAgent(state, event.agentId) ?? state.agentsById[state.rootAgentId];
 			if (agent) {
 				agent.textContent += errorText;
-				appendTimelineText(ensureTimeline(state, event.agentId), errorText, event.responseId);
-			} else {
-				// Fall back to root agent
-				const root = state.agentsById[state.rootAgentId];
-				if (root) {
-					root.textContent += errorText;
-					appendTimelineText(ensureTimeline(state, state.rootAgentId), errorText, event.responseId);
-				}
+				appendTimelineText(agent.timeline, errorText, event.responseId);
 			}
 			break;
 		}
@@ -416,72 +343,63 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 }
 
 // ---------------------------------------------------------------------------
-// Tree reconstruction (for rendering)
+// Tree view (for rendering and snapshot serialization)
 // ---------------------------------------------------------------------------
 
 /**
- * Derives the nested `InstanceAiAgentNode` tree from the flat state.
- * This is what components receive for rendering.
+ * Returns the agent tree rooted at `rootAgentId`. This is a live view — the
+ * root node and everything below it are the state's own objects, kept current
+ * by `reduceEvent` mutations. JSON-serializable (no cycles); callers that need
+ * an immutable snapshot must clone it themselves.
  */
 export function toAgentTree(state: AgentRunState): InstanceAiAgentNode {
-	return buildNodeRecursive(state, state.rootAgentId);
+	return state.agentsById[state.rootAgentId] ?? createNode(state.rootAgentId, 'unknown');
 }
 
-function buildNodeRecursive(state: AgentRunState, agentId: string): InstanceAiAgentNode {
-	if (!isSafeObjectKey(agentId)) {
-		return {
-			agentId,
-			role: 'unknown',
-			status: 'active',
-			textContent: '',
-			reasoning: '',
-			toolCalls: [],
-			children: [],
-			timeline: [],
-		};
-	}
+/**
+ * Inverse of `toAgentTree`: index an existing snapshot tree (e.g. from session
+ * restore or a `run-sync` frame) into an `AgentRunState`.
+ *
+ * The nodes are adopted, not copied — the returned state's `agentsById` points
+ * at the given tree's own objects, so subsequent `reduceEvent` calls mutate the
+ * tree the caller already holds. Entries with unsafe ids (prototype-pollution
+ * hardening) are dropped in place.
+ */
+export function stateFromAgentTree(tree: InstanceAiAgentNode): AgentRunState | undefined {
+	if (!isSafeObjectKey(tree.agentId)) return undefined;
 
-	const agent = state.agentsById[agentId];
-	const childIds = (state.childrenByAgentId[agentId] ?? []).filter((childId) =>
-		isSafeObjectKey(childId),
-	);
-	const toolCallIds = (state.toolCallIdsByAgentId[agentId] ?? []).filter((toolCallId) =>
-		isSafeObjectKey(toolCallId),
-	);
-	const timeline = (state.timelineByAgentId[agentId] ?? []).filter((entry) => {
+	const state: AgentRunState = {
+		rootAgentId: tree.agentId,
+		agentsById: {},
+		parentByAgentId: {},
+		toolCallsById: {},
+		status: tree.status === 'active' ? 'active' : tree.status,
+	};
+	adoptNode(state, tree, undefined);
+	return state;
+}
+
+function adoptNode(
+	state: AgentRunState,
+	node: InstanceAiAgentNode,
+	parentId: string | undefined,
+): void {
+	if (!isSafeObjectKey(node.agentId)) return;
+
+	state.agentsById[node.agentId] = node;
+	if (parentId && isSafeObjectKey(parentId)) state.parentByAgentId[node.agentId] = parentId;
+
+	node.children = node.children.filter((child) => isSafeObjectKey(child.agentId));
+	node.toolCalls = node.toolCalls.filter((toolCall) => isSafeObjectKey(toolCall.toolCallId));
+	node.timeline = node.timeline.filter((entry) => {
 		if (entry.type === 'child') return isSafeObjectKey(entry.agentId);
 		if (entry.type === 'tool-call') return isSafeObjectKey(entry.toolCallId);
 		return true;
 	});
-
-	const toolCalls: InstanceAiToolCallState[] = toolCallIds
-		.map((id) => state.toolCallsById[id])
-		.filter((tc): tc is InstanceAiToolCallState => tc !== undefined);
-
-	const children: InstanceAiAgentNode[] = childIds.map((childId) =>
-		buildNodeRecursive(state, childId),
-	);
-
-	return {
-		agentId: agent?.agentId ?? agentId,
-		role: agent?.role ?? 'unknown',
-		tools: agent?.tools,
-		taskId: agent?.taskId,
-		kind: agent?.kind,
-		title: agent?.title,
-		subtitle: agent?.subtitle,
-		goal: agent?.goal,
-		targetResource: agent?.targetResource,
-		statusMessage: agent?.statusMessage,
-		status: agent?.status ?? 'active',
-		textContent: agent?.textContent ?? '',
-		reasoning: agent?.reasoning ?? '',
-		toolCalls,
-		children,
-		timeline: [...timeline],
-		tasks: agent?.tasks,
-		planItems: agent?.planItems,
-		result: agent?.result,
-		error: agent?.error,
-	};
+	for (const tc of node.toolCalls) {
+		state.toolCallsById[tc.toolCallId] = tc;
+	}
+	for (const child of node.children) {
+		adoptNode(state, child, node.agentId);
+	}
 }
