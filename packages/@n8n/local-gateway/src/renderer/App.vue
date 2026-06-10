@@ -19,7 +19,7 @@ const auth = ref<AuthStatus>({
 	lastInstanceUrl: null,
 	error: null,
 });
-const { screen } = useAssistantScreen();
+const { screen, goHome } = useAssistantScreen();
 
 // The setup and complex screens carry their own back-header, so the main
 // AppHeader is suppressed for them; home and draft keep it.
@@ -45,11 +45,15 @@ onMounted(async () => {
 const showSettings = ref(false);
 
 // Leaving the signed-in state (sign-out, token expiry) always lands on the sign-in
-// view; reset so settings isn't unexpectedly open again after the next sign-in.
+// view; reset settings and the assistant screen so neither reappears after the
+// next sign-in (the screen is module-scope state and would otherwise survive).
 watch(
 	() => auth.value.state,
 	(state) => {
-		if (state !== 'signedIn') showSettings.value = false;
+		if (state !== 'signedIn') {
+			showSettings.value = false;
+			goHome();
+		}
 	},
 );
 </script>
@@ -67,7 +71,6 @@ watch(
 				<TaskDraftView v-else-if="screen.name === 'draft'" :plan="screen.plan" />
 				<TaskSetupView
 					v-else-if="screen.name === 'setup'"
-					:task-id="screen.taskId"
 					:title="screen.title"
 					:icon="screen.icon"
 					:required-connections="screen.requiredConnections"

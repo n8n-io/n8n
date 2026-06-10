@@ -11,7 +11,7 @@ import type { Plan } from './planner';
 export type AssistantScreen =
 	| { name: 'home' }
 	| { name: 'draft'; plan: Plan }
-	| { name: 'setup'; taskId: string; title: string; icon: string; requiredConnections: string[] }
+	| { name: 'setup'; title: string; icon: string; requiredConnections: string[] }
 	| { name: 'complex'; plan: Plan };
 
 const screen = ref<AssistantScreen>({ name: 'home' });

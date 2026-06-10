@@ -6,7 +6,6 @@ import { computed, onMounted, ref } from 'vue';
 import InlineChipPicker from '../components/InlineChipPicker.vue';
 import MinutesChip from '../components/MinutesChip.vue';
 
-import { addTaskFromPlan } from '../assistant/draft-tasks';
 import type { Plan, PlanPart } from '../assistant/planner';
 import { useAssistantScreen } from '../assistant/use-assistant-screen';
 
@@ -85,19 +84,16 @@ function buildEditedPlan(): Plan {
 		...props.plan,
 		parts,
 		summary,
-		assumptions: pickerValues.value,
 		timeSavedMin: minutes.value,
 	};
 }
 
 function setItUp() {
+	// TODO(desktop-assistant): POST the edited plan to the backend; it then
+	// shows up in the Tasks list via getTasks().
 	const plan = buildEditedPlan();
-	// Create the task now (it appears in the Tasks list), then animate the setup screen.
-	// The task's id lets the setup flow re-bucket it once its connections complete.
-	const task = addTaskFromPlan(plan);
 	goTo({
 		name: 'setup',
-		taskId: task.id,
 		title: plan.title,
 		icon: plan.icon,
 		requiredConnections: plan.requiredConnections,

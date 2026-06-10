@@ -5,9 +5,7 @@ import { computed, onMounted, ref } from 'vue';
 
 import TaskCard from '../components/TaskCard.vue';
 
-import { useDraftTasks } from '../assistant/draft-tasks';
-
-import type { DesktopAssistantTaskCard, DesktopAssistantTasksResponse } from '../../shared/types';
+import type { DesktopAssistantTasksResponse } from '../../shared/types';
 
 const i18n = useI18n();
 
@@ -17,19 +15,10 @@ const tasks = ref<DesktopAssistantTasksResponse | null>(null);
 const loading = ref(true);
 const error = ref(false);
 
-// Locally-created tasks (from the composer flow) are merged in until backend
-// persistence lands — see `draft-tasks.ts`.
-const draftTasks = useDraftTasks();
-
-function draftsFor(bucket: 'actionNeeded' | 'upcoming' | 'readyToRun'): DesktopAssistantTaskCard[] {
-	return draftTasks.value.filter((task) => task.bucket === bucket).map((task) => task.card);
-}
-
-/** Merge of IPC-loaded tasks and locally-created drafts, drafts shown first. */
 const sections = computed(() => ({
-	actionNeeded: [...draftsFor('actionNeeded'), ...(tasks.value?.actionNeeded ?? [])],
-	upcoming: [...draftsFor('upcoming'), ...(tasks.value?.upcoming ?? [])],
-	readyToRun: [...draftsFor('readyToRun'), ...(tasks.value?.readyToRun ?? [])],
+	actionNeeded: tasks.value?.actionNeeded ?? [],
+	upcoming: tasks.value?.upcoming ?? [],
+	readyToRun: tasks.value?.readyToRun ?? [],
 }));
 
 const isEmpty = computed(

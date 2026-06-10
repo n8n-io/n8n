@@ -7,7 +7,6 @@ import ContextPill from './ContextPill.vue';
 import MiniSpinner from './MiniSpinner.vue';
 
 import { ASSISTANT_CONTEXTS, suggestionChipsFor } from '../assistant/contexts';
-import { addReadyTaskFromPlan } from '../assistant/draft-tasks';
 import { formatMinutes } from '../assistant/format';
 import { buildFallbackPlan, planTask, type Plan } from '../assistant/planner';
 import { useAssistantScreen } from '../assistant/use-assistant-screen';
@@ -95,10 +94,10 @@ function returnFocusToInput() {
 	void nextTick(() => inputRef.value?.focus());
 }
 
-// "Save as ready to run" persists the one-off as a runnable task; dismiss just clears.
 function saveAsReady() {
 	if (!doneCard.value) return;
-	addReadyTaskFromPlan(doneCard.value.plan);
+	// TODO(desktop-assistant): persist the one-off as a runnable task via the
+	// backend; it then shows up in the Tasks list via getTasks().
 	doneCard.value = null;
 	returnFocusToInput();
 }

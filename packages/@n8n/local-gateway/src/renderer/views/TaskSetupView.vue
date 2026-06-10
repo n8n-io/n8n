@@ -5,11 +5,9 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import MiniSpinner from '../components/MiniSpinner.vue';
 
-import { connectDraftTask } from '../assistant/draft-tasks';
 import { useAssistantScreen } from '../assistant/use-assistant-screen';
 
 const props = defineProps<{
-	taskId: string;
 	title: string;
 	icon: string;
 	requiredConnections: string[];
@@ -90,11 +88,11 @@ function connect() {
 	label.value = i18n.baseText('desktopAssistant.setup.connecting', {
 		interpolate: { service },
 	});
+	// TODO(desktop-assistant): run the real connection/OAuth flow via the backend
+	// instead of this timed simulation.
 	later(() => {
 		pendingConnections.value = pendingConnections.value.slice(1);
 		connecting.value = false;
-		// Re-bucket the just-created task so it leaves "Action needed" once connected.
-		connectDraftTask(props.taskId, service);
 		if (pendingConnections.value.length) {
 			label.value = i18n.baseText('desktopAssistant.setup.waitingForYou');
 		} else {

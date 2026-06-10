@@ -19,9 +19,7 @@ export interface Plan {
 	parts: PlanPart[];
 	/** `parts` joined into a single string. */
 	summary: string;
-	assumptions: string[];
 	recurring: boolean;
-	schedule?: string;
 	trigger?: string;
 	/** Service names the task needs connected, e.g. `['Gmail']`. */
 	requiredConnections: string[];
@@ -51,7 +49,6 @@ export function buildFallbackPlan(prompt: string): Plan {
 		icon: '✨',
 		parts,
 		summary: summarise(parts),
-		assumptions: [prompt],
 		recurring: false,
 		requiredConnections: [],
 		location: 'cloud',
@@ -99,9 +96,7 @@ function buildMockPlan(prompt: string, context: AssistantContextKind): Plan {
 			icon: '🔁',
 			parts,
 			summary: summarise(parts),
-			assumptions: ['Runs on a recurring schedule'],
 			recurring: true,
-			schedule: 'Every weekday at 8am',
 		};
 	}
 	if (lower.includes('when')) {
@@ -117,7 +112,6 @@ function buildMockPlan(prompt: string, context: AssistantContextKind): Plan {
 			icon: '🔔',
 			parts,
 			summary: summarise(parts),
-			assumptions: ['Runs automatically when triggered'],
 			trigger: 'On change',
 		};
 	}
