@@ -28,6 +28,9 @@ export type ExecutionDataStorageLocation = 'db' | 'fs';
 @Index(['finished', 'id'])
 @Index(['workflowId', 'finished', 'id'])
 @Index(['workflowId', 'waitTill', 'id'])
+// Partial index (Postgres only) — supports paginated list queries filtered by
+// workflowId + status without full sequential scans. See migration 1784000000029.
+@Index(['workflowId', 'status', 'id'], { where: '"deletedAt" IS NULL' })
 export class ExecutionEntity {
 	@Generated()
 	@PrimaryColumn({ transformer: idStringifier })
