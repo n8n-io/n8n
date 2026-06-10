@@ -13,6 +13,9 @@ import { useSettingsStore } from '@/app/stores/settings.store';
  * `readOnly` is a direct flag — `true` forces the canvas read-only. When no host
  * provides the key, AI features fall back to their store values and the canvas
  * is editable (`readOnly` is `false`).
+ * `executionSuccessToasts` / `executionErrorToasts` are direct flags too — each
+ * `true` (the default) shows that class of execution result toast; an explicit
+ * `false` from the host suppresses it.
  */
 export function useEditorContext() {
 	const settings = useSettingsStore();
@@ -42,5 +45,9 @@ export function useEditorContext() {
 		aiBuilder: featureEnabled('aiBuilder'),
 		askAi: featureEnabled('askAi'),
 		readOnly: computed(() => enabledFeatures?.value?.readOnly === true),
+		executionSuccessToasts: computed(
+			() => enabledFeatures?.value?.executionSuccessToasts !== false,
+		),
+		executionErrorToasts: computed(() => enabledFeatures?.value?.executionErrorToasts !== false),
 	};
 }
