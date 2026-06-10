@@ -1,6 +1,7 @@
 const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('get-tsconfig').getTsconfig().config;
 const { resolve } = require('path');
+const coverageExcludes = require('./jest.coverage-excludes');
 
 /** @type {import('ts-jest').TsJestTransformerOptions} */
 const tsJestOptions = {
@@ -100,14 +101,7 @@ const config = {
 };
 
 if (process.env.CI === 'true') {
-	config.collectCoverageFrom = [
-		'src/**/*.ts',
-		'!src/**/*.spec.ts',
-		'!src/**/*.test.ts',
-		'!src/**/__tests__/**',
-		'!src/**/__mocks__/**',
-		'!src/**/*.d.ts',
-	];
+	config.collectCoverageFrom = ['src/**/*.ts', ...coverageExcludes];
 	config.reporters = ['default', 'jest-junit'];
 	config.coverageReporters = ['cobertura'];
 }

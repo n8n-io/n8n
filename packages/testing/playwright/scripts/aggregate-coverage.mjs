@@ -59,10 +59,9 @@ function findFiles(dir, predicate, acc = []) {
  * means MCR sees identical keys across all three suites.
  */
 function normalizeLcov(content) {
-	return content.replace(/^SF:(.+)$/gm, (_, p) => {
-		if (p.startsWith(REPO_ROOT)) return `SF:${p.slice(REPO_ROOT.length)}`;
-		return `SF:${p}`;
-	});
+	return content.replace(/^SF:(.+)$/gm, (line, p) =>
+		p.startsWith(REPO_ROOT) ? `SF:${p.slice(REPO_ROOT.length)}` : line,
+	);
 }
 
 /** Stage files into a fresh temp dir with unique names, normalising SF: paths. */

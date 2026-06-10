@@ -264,8 +264,9 @@ export function getProjects(): Project[] {
 			fullyParallel: true,
 			use: {
 				containerConfig: {},
-				// Currents stores artifacts — don't retain them locally so the shard
-				// artifacts stay small (coverage data only, not GB of traces/videos).
+				// Capture only on failure (global default is `on`). The shard artifact
+				// is downloaded and aggregated each run, so keep it to coverage data
+				// plus failure diagnostics, not full traces/videos for every test.
 				trace: 'retain-on-failure',
 				video: 'retain-on-failure',
 				screenshot: 'only-on-failure',

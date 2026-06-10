@@ -161,7 +161,8 @@ jobs:
           path: packages/cli/coverage/lcov.info
           retention-days: 3
 
-  # Both Python packages in one job — they're fast and share the uv setup.
+  # Both Python packages in one job — they're fast and share the uv install
+  # (each still pins its own Python version: 3.13 task-runner, 3.11 evals).
   python-coverage:
     name: Python Coverage (task-runner + ai-workflow-builder)
     runs-on: ubuntu-latest
