@@ -80,6 +80,17 @@ export class ThreadService {
 	}
 
 	/**
+	 * Send a user message to the thread; the assistant's reply arrives over the
+	 * thread's SSE events. Drops the cached snapshot — it is stale once a new turn
+	 * starts, and the next `getMessages` refetch restores the cursor pairing.
+	 */
+	async postMessage(threadId: string, message: string): Promise<{ runId: string }> {
+		const result = await this.deps.instanceApi.sendChatMessage(threadId, message);
+		this.cache.delete(threadId);
+		return result;
+	}
+
+	/**
 	 * Open the SSE event stream for a thread. Idempotent — a second call while the
 	 * connection is open does nothing (in particular, a different `lastEventId` is
 	 * ignored). Without a cursor the server replays the thread's whole event buffer.

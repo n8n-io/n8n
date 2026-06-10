@@ -159,6 +159,14 @@ export function registerIpcHandlers({
 		},
 	);
 
+	ipcMain.handle(
+		'thread:post',
+		async (_event, threadId: string, message: string): Promise<{ runId: string }> => {
+			logger.debug('IPC thread:post', { threadId });
+			return await threadService.postMessage(threadId, message);
+		},
+	);
+
 	ipcMain.handle('thread:listen', (_event, threadId: string, lastEventId?: number): void => {
 		logger.debug('IPC thread:listen', { threadId, lastEventId });
 		threadService.listen(threadId, lastEventId);

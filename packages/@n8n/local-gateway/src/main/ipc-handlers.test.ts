@@ -69,6 +69,7 @@ function register(overrides: {
 		}) as never,
 		threadService: (overrides.threadService ?? {
 			getMessages: vi.fn(),
+			postMessage: vi.fn(),
 			listen: vi.fn(),
 			unlisten: vi.fn(),
 			reset: vi.fn(),
@@ -276,9 +277,26 @@ describe('registerIpcHandlers', () => {
 		expect(result).toEqual(snapshot);
 	});
 
+	it('thread:post delegates to the thread service and returns the run id', async () => {
+		const threadService = {
+			getMessages: vi.fn(),
+			postMessage: vi.fn().mockResolvedValue({ runId: 'r1' }),
+			listen: vi.fn(),
+			unlisten: vi.fn(),
+			reset: vi.fn(),
+		};
+		register({ threadService });
+
+		const result = await getRegisteredHandler('thread:post')(undefined, 't1', 'hi');
+
+		expect(threadService.postMessage).toHaveBeenCalledWith('t1', 'hi');
+		expect(result).toEqual({ runId: 'r1' });
+	});
+
 	it('thread:listen and thread:unlisten delegate to the thread service', () => {
 		const threadService = {
 			getMessages: vi.fn(),
+			postMessage: vi.fn(),
 			listen: vi.fn(),
 			unlisten: vi.fn(),
 			reset: vi.fn(),

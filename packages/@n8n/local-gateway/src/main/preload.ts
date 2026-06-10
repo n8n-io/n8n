@@ -87,6 +87,9 @@ const electronApi: ElectronApi = {
 			options,
 		) as Promise<InstanceAiRichMessagesResponse>),
 
+	postThreadMessage: async (threadId: string, message: string): Promise<{ runId: string }> =>
+		await (ipcRenderer.invoke('thread:post', threadId, message) as Promise<{ runId: string }>),
+
 	listenToThread: async (threadId: string, lastEventId?: number): Promise<void> => {
 		await ipcRenderer.invoke('thread:listen', threadId, lastEventId);
 	},

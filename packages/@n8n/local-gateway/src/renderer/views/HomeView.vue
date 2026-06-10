@@ -3,21 +3,26 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { onMounted, ref } from 'vue';
 
+import ChatView from './ChatView.vue';
 import HistoryView from './HistoryView.vue';
 import TasksView from './TasksView.vue';
 import TaskComposer from '../components/TaskComposer.vue';
 
-type Tab = 'tasks' | 'history';
+type Tab = 'tasks' | 'history' | 'chat';
 
 const i18n = useI18n();
 const activeTab = ref<Tab>('tasks');
 
 const TABS: Array<{
 	id: Tab;
-	labelKey: 'desktopAssistant.tabs.tasks' | 'desktopAssistant.tabs.history';
+	labelKey:
+		| 'desktopAssistant.tabs.tasks'
+		| 'desktopAssistant.tabs.history'
+		| 'desktopAssistant.tabs.chat';
 }> = [
 	{ id: 'tasks', labelKey: 'desktopAssistant.tabs.tasks' },
 	{ id: 'history', labelKey: 'desktopAssistant.tabs.history' },
+	{ id: 'chat', labelKey: 'desktopAssistant.tabs.chat' },
 ];
 
 // Refs to the tab buttons, so arrow keys can move focus along with selection
@@ -101,12 +106,13 @@ onMounted(() => {
 
 		<div
 			id="da-tabpanel"
-			:class="$style.content"
+			:class="[$style.content, { [$style.contentFixed]: activeTab === 'chat' }]"
 			role="tabpanel"
 			:aria-labelledby="`da-tab-${activeTab}`"
 			tabindex="0"
 		>
 			<TasksView v-if="activeTab === 'tasks'" @executed="activeTab = 'history'" />
+			<ChatView v-else-if="activeTab === 'chat'" />
 			<HistoryView v-else />
 		</div>
 
@@ -201,6 +207,12 @@ onMounted(() => {
 	flex-direction: column;
 	min-height: 0;
 	overflow-y: auto;
+}
+
+/* The chat view scrolls its own message list; the panel itself must not scroll,
+   or the pinned composer would scroll away with it. */
+.contentFixed {
+	overflow-y: hidden;
 }
 
 .content:focus-visible {

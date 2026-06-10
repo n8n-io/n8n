@@ -2,7 +2,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
 export default defineConfig(
-	globalIgnores(['electron-builder.config.js', 'scripts/**', 'vite.renderer.config.mts']),
+	globalIgnores(['electron-builder.config.js', 'scripts/**', 'vite.config.mts']),
 	nodeConfig,
 	{
 		rules: {

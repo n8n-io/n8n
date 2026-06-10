@@ -3,6 +3,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref } from 'vue';
 
+import ComposerField from './ComposerField.vue';
 import ContextPill from './ContextPill.vue';
 import MiniSpinner from './MiniSpinner.vue';
 
@@ -25,7 +26,7 @@ const state = ref<ComposerState>('idle');
 const doneCard = ref<DoneCard | null>(null);
 const activeContextKey = ref(ASSISTANT_CONTEXTS[0].key);
 
-const inputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<InstanceType<typeof ComposerField> | null>(null);
 const doneCardRef = ref<HTMLElement | null>(null);
 
 const busy = computed(() => state.value === 'thinking' || state.value === 'doing');
@@ -167,27 +168,16 @@ function dismissDone() {
 			</div>
 
 			<!-- Input field -->
-			<div :class="$style.field">
-				<input
-					ref="inputRef"
-					v-model="text"
-					:class="$style.input"
-					:disabled="busy"
-					:aria-label="i18n.baseText('desktopAssistant.composer.inputAriaLabel')"
-					:placeholder="i18n.baseText('desktopAssistant.composer.placeholder')"
-					@keydown.enter="submit()"
-				/>
-				<button
-					type="button"
-					:class="$style.send"
-					:disabled="busy"
-					:aria-label="i18n.baseText('desktopAssistant.composer.send')"
-					@click="submit()"
-				>
-					<MiniSpinner v-if="busy" light :size="14" aria-hidden="true" />
-					<N8nIcon v-else icon="arrow-up" :size="14" aria-hidden="true" />
-				</button>
-			</div>
+			<ComposerField
+				ref="inputRef"
+				v-model="text"
+				:disabled="busy"
+				:busy="busy"
+				:input-aria-label="i18n.baseText('desktopAssistant.composer.inputAriaLabel')"
+				:placeholder="i18n.baseText('desktopAssistant.composer.placeholder')"
+				:send-aria-label="i18n.baseText('desktopAssistant.composer.send')"
+				@submit="submit()"
+			/>
 		</div>
 
 		<div :class="$style.pillRow">
@@ -339,76 +329,6 @@ function dismissDone() {
 	display: flex;
 	gap: var(--spacing--2xs);
 	justify-content: space-between;
-}
-
-.field {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: 9px 10px 9px var(--spacing--xs);
-	background: var(--da-surface-2);
-	border: 1px solid var(--da-border-strong);
-	border-radius: var(--da-radius);
-	transition:
-		border-color 0.12s,
-		box-shadow 0.12s;
-}
-
-.field:focus-within {
-	border-color: var(--da-accent);
-	box-shadow: 0 0 0 3px rgba(255, 109, 90, 0.12);
-}
-
-.input {
-	flex: 1;
-	min-width: 0;
-	font: inherit;
-	font-size: 13px;
-	color: var(--da-text);
-	background: transparent;
-	border: none;
-	outline: none;
-}
-
-.input::placeholder {
-	color: var(--da-subtlest);
-}
-
-.send {
-	display: flex;
-	flex-shrink: 0;
-	align-items: center;
-	justify-content: center;
-	width: 26px;
-	height: 26px;
-	color: #fff;
-	cursor: pointer;
-	background: var(--da-accent);
-	border: none;
-	border-radius: 7px;
-	transition:
-		background 0.12s,
-		transform 80ms;
-}
-
-.send:hover {
-	background: var(--da-accent-press);
-}
-
-.send:active {
-	transform: scale(0.94);
-}
-
-.send:focus-visible {
-	outline: none;
-	/* Box-shadow ring (white on the coral button) reads better than an outline. */
-	box-shadow:
-		0 0 0 2px var(--da-surface-2),
-		0 0 0 4px #fff;
-}
-
-.send:disabled {
-	cursor: default;
 }
 
 .pillRow {

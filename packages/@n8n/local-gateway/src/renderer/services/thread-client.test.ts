@@ -9,6 +9,7 @@ function makeBridge() {
 	let emitThreadEvent: (threadId: string, event: InstanceAiEvent) => void = () => {};
 	const bridge = {
 		getThread: vi.fn(),
+		postThreadMessage: vi.fn(),
 		listenToThread: vi.fn().mockResolvedValue(undefined),
 		unlistenToThread: vi.fn().mockResolvedValue(undefined),
 		onThreadEvent: vi.fn((onEventCallback: (threadId: string, event: InstanceAiEvent) => void) => {
@@ -126,6 +127,17 @@ describe('ThreadClient', () => {
 		client.listen('t1', listener);
 
 		expect(bridge.listenToThread).toHaveBeenCalledTimes(2);
+	});
+
+	it('delegates post to the bridge', async () => {
+		const { bridge } = makeBridge();
+		bridge.postThreadMessage.mockResolvedValue({ runId: 'r1' });
+		const client = new ThreadClient(bridge);
+
+		const result = await client.post('t1', 'hi');
+
+		expect(bridge.postThreadMessage).toHaveBeenCalledWith('t1', 'hi');
+		expect(result).toEqual({ runId: 'r1' });
 	});
 
 	it('delegates get to the bridge', async () => {
