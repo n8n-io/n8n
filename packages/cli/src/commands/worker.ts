@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import { BinaryDataConfig } from 'n8n-core';
 import { z } from 'zod';
 
+import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
@@ -57,6 +58,10 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		try {
 			await this.externalHooks?.run('n8n.stop');
+
+			// Wait for in-process executions not tracked as Bull jobs,
+			// which are instead drained by `ScalingService.stopWorker`
+			await Container.get(ActiveExecutions).shutdown();
 		} catch (error) {
 			await this.exitWithCrash('Error shutting down worker', error);
 		}

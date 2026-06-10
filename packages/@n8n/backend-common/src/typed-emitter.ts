@@ -1,4 +1,3 @@
-import debounce from 'lodash/debounce';
 import { EventEmitter } from 'node:events';
 
 type Payloads<ListenerMap> = {
@@ -8,7 +7,9 @@ type Payloads<ListenerMap> = {
 type Listener<Payload> = (payload: Payload) => void;
 
 export class TypedEmitter<ListenerMap extends Payloads<ListenerMap>> extends EventEmitter {
-	private debounceWait = 300; // milliseconds
+	private readonly debounceWait = 300; // milliseconds
+
+	private debouncedEmitTimer: NodeJS.Timeout | undefined;
 
 	override on<EventName extends keyof ListenerMap & string>(
 		eventName: EventName,
@@ -38,11 +39,11 @@ export class TypedEmitter<ListenerMap extends Payloads<ListenerMap>> extends Eve
 		return super.emit(eventName, payload);
 	}
 
-	protected debouncedEmit = debounce(
-		<EventName extends keyof ListenerMap & string>(
-			eventName: EventName,
-			payload?: ListenerMap[EventName],
-		) => super.emit(eventName, payload),
-		this.debounceWait,
-	);
+	protected debouncedEmit<EventName extends keyof ListenerMap & string>(
+		eventName: EventName,
+		payload?: ListenerMap[EventName],
+	) {
+		clearTimeout(this.debouncedEmitTimer);
+		this.debouncedEmitTimer = setTimeout(() => this.emit(eventName, payload), this.debounceWait);
+	}
 }

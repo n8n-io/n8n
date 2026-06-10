@@ -117,6 +117,9 @@ async function onTabChange(newOwnership: 'mine' | 'all') {
 	try {
 		loading.value = true;
 		await setOwnership(newOwnership);
+		if (newOwnership === 'all') {
+			telemetry.track('User viewed all API keys');
+		}
 	} catch (error) {
 		showError(error, i18n.baseText('settings.api.view.error'));
 	} finally {
@@ -202,12 +205,17 @@ async function onRevokeConfirm() {
 		showError(e, i18n.baseText('settings.api.delete.error'));
 	} finally {
 		revoking.value = false;
-		telemetry.track('User clicked delete API key button');
+		telemetry.track('User clicked delete API key button', {
+			is_own: apiKey.owner?.id === usersStore.currentUser?.id,
+		});
 	}
 }
 
 function onOpenScopes(apiKey: ApiKey) {
 	scopesModalApiKey.value = apiKey;
+	telemetry.track('User clicked view API key scopes', {
+		is_own: apiKey.owner?.id === usersStore.currentUser?.id,
+	});
 }
 </script>
 

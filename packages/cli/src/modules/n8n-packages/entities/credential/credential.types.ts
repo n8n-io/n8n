@@ -35,16 +35,6 @@ export interface CredentialBindingRequest {
 	user: User;
 }
 
-/**
- * Context a missing-mode handler may need to act on unresolved credentials, e.g.
- * `create-stubs` reads `requirements` for credential type/name and owns new stubs in `targetProject`.
- */
-export interface CredentialMissingModeContext {
-	requirements: PackageCredentialRequirement[] | undefined;
-	targetProject: Project;
-	user: User;
-}
-
 export function createFailure(
 	reference: PackageCredentialRequirement,
 	kind: CredentialResolutionFailureKind,
@@ -54,11 +44,4 @@ export function createFailure(
 		sourceId: reference.id,
 		usedByWorkflows: [...reference.usedByWorkflows].sort(),
 	};
-}
-
-/** Flattens the internal lookup `Map` into the serializable pairs exposed via events/responses. */
-export function resolvedBindingsToSummaries(
-	successes: ImportBindingMap,
-): Array<{ sourceId: string; targetId: string }> {
-	return [...successes].map(([sourceId, targetId]) => ({ sourceId, targetId }));
 }
