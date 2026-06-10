@@ -1,13 +1,40 @@
 import { logger } from '@n8n/computer-use/logger';
 import { desktopCapturer, shell, systemPreferences } from 'electron';
+import { execFile } from 'node:child_process';
 
-import type { MacPermissionKind, MacPermissionStatus } from '../shared/types';
+import type { MacPermissionKind, MacPermissionState, MacPermissionStatus } from '../shared/types';
 
 /** Deep links to the exact System Settings → Privacy & Security panes. */
 const SETTINGS_PANE_URLS: Record<MacPermissionKind, string> = {
 	accessibility: 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility',
 	screenRecording: 'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture',
+	automation: 'x-apple.systempreferences:com.apple.preference.security?Privacy_Automation',
 };
+
+/**
+ * Probe AppleEvents (Automation) access to Finder — the grant our osascript
+ * folder/document detection needs. macOS exposes no read-only API for this, so
+ * we send a harmless command and classify the result: success → granted,
+ * `-1743` ("not authorized") → denied, anything else (incl. the one-time
+ * consent prompt on first run) → unknown. Finder is always running.
+ */
+async function getAutomationStatus(): Promise<MacPermissionState> {
+	return await new Promise<MacPermissionState>((resolve) => {
+		execFile(
+			'osascript',
+			['-e', 'tell application "Finder" to return true'],
+			{ timeout: 3000 },
+			(error, _stdout, stderr) => {
+				if (!error) {
+					resolve('granted');
+					return;
+				}
+				const message = `${stderr ?? ''} ${error.message}`;
+				resolve(/-1743|not authoriz/i.test(message) ? 'denied' : 'unknown');
+			},
+		);
+	});
+}
 
 /**
  * Read the current grant state of the macOS permissions the context layer uses.
@@ -19,12 +46,17 @@ const SETTINGS_PANE_URLS: Record<MacPermissionKind, string> = {
  * so this is accurate; in dev (Electron launched from a terminal) it's
  * indicative rather than authoritative.
  */
-export function getMacPermissionStatus(): MacPermissionStatus {
+export async function getMacPermissionStatus(): Promise<MacPermissionStatus> {
 	if (process.platform !== 'darwin') {
-		return { supported: false, accessibility: 'unknown', screenRecording: 'unknown' };
+		return {
+			supported: false,
+			accessibility: 'unknown',
+			screenRecording: 'unknown',
+			automation: 'unknown',
+		};
 	}
-	let accessibility: MacPermissionStatus['accessibility'] = 'unknown';
-	let screenRecording: MacPermissionStatus['screenRecording'] = 'unknown';
+	let accessibility: MacPermissionState = 'unknown';
+	let screenRecording: MacPermissionState = 'unknown';
 	try {
 		accessibility = systemPreferences.isTrustedAccessibilityClient(false) ? 'granted' : 'denied';
 	} catch (error) {
@@ -41,7 +73,8 @@ export function getMacPermissionStatus(): MacPermissionStatus {
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
-	return { supported: true, accessibility, screenRecording };
+	const automation = await getAutomationStatus();
+	return { supported: true, accessibility, screenRecording, automation };
 }
 
 /**

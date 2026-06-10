@@ -261,9 +261,9 @@ export function registerIpcHandlers({
 		},
 	);
 
-	ipcMain.handle('permissions:get', (): MacPermissionStatus => {
+	ipcMain.handle('permissions:get', async (): Promise<MacPermissionStatus> => {
 		logger.debug('IPC permissions:get');
-		return getMacPermissionStatus();
+		return await getMacPermissionStatus();
 	});
 
 	ipcMain.handle(

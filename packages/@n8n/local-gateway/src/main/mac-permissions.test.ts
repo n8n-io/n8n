@@ -1,3 +1,5 @@
+import { execFile } from 'node:child_process';
+
 const isTrustedAccessibilityClient = vi.fn<(prompt: boolean) => boolean>();
 const getMediaAccessStatus = vi.fn<(media: string) => string>();
 const openExternal = vi.fn<(url: string) => void>();
@@ -11,11 +13,28 @@ vi.mock('electron', () => ({
 	desktopCapturer: { getSources: vi.fn() },
 }));
 
+vi.mock('node:child_process', () => ({ execFile: vi.fn() }));
+
 vi.mock('@n8n/computer-use/logger', () => ({
 	logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
 import { getMacPermissionStatus, openMacPermissionSettings } from './mac-permissions';
+
+const execFileMock = vi.mocked(execFile);
+
+/** Make the mocked osascript probe resolve as granted (no error) or denied (an error). */
+function mockAutomation(result: { error?: Error }) {
+	execFileMock.mockImplementation(((
+		_cmd: string,
+		_args: string[],
+		_opts: unknown,
+		onResult: (error: Error | null, stdout: string, stderr: string) => void,
+	) => {
+		onResult(result.error ?? null, 'true', result.error ? 'execution error: -1743' : '');
+		return {} as never;
+	}) as never);
+}
 
 const originalPlatform = process.platform;
 function setPlatform(platform: NodeJS.Platform) {
@@ -25,53 +44,59 @@ function setPlatform(platform: NodeJS.Platform) {
 beforeEach(() => {
 	vi.clearAllMocks();
 	setPlatform('darwin');
+	mockAutomation({}); // automation granted by default
 });
 
 afterAll(() => setPlatform(originalPlatform));
 
 describe('getMacPermissionStatus', () => {
-	test('off macOS reports unsupported', () => {
+	test('off macOS reports unsupported and probes nothing', async () => {
 		setPlatform('win32');
-		expect(getMacPermissionStatus()).toEqual({
+		expect(await getMacPermissionStatus()).toEqual({
 			supported: false,
 			accessibility: 'unknown',
 			screenRecording: 'unknown',
+			automation: 'unknown',
 		});
 		expect(isTrustedAccessibilityClient).not.toHaveBeenCalled();
+		expect(execFileMock).not.toHaveBeenCalled();
 	});
 
-	test('maps granted permissions', () => {
+	test('maps granted permissions', async () => {
 		isTrustedAccessibilityClient.mockReturnValue(true);
 		getMediaAccessStatus.mockReturnValue('granted');
-		expect(getMacPermissionStatus()).toEqual({
+		expect(await getMacPermissionStatus()).toEqual({
 			supported: true,
 			accessibility: 'granted',
 			screenRecording: 'granted',
+			automation: 'granted',
 		});
 		// status check must not prompt
 		expect(isTrustedAccessibilityClient).toHaveBeenCalledWith(false);
 	});
 
-	test('maps denied / not-determined screen recording', () => {
+	test('maps denied / not-determined / denied-automation', async () => {
 		isTrustedAccessibilityClient.mockReturnValue(false);
 		getMediaAccessStatus.mockReturnValue('denied');
-		expect(getMacPermissionStatus()).toMatchObject({
+		mockAutomation({ error: new Error('Not authorized to send Apple events to Finder. (-1743)') });
+		expect(await getMacPermissionStatus()).toMatchObject({
 			accessibility: 'denied',
 			screenRecording: 'denied',
+			automation: 'denied',
 		});
 
 		getMediaAccessStatus.mockReturnValue('not-determined');
-		expect(getMacPermissionStatus().screenRecording).toBe('unknown');
+		expect((await getMacPermissionStatus()).screenRecording).toBe('unknown');
 	});
 
-	test('degrades to unknown when a check throws', () => {
+	test('degrades to unknown when a check throws', async () => {
 		isTrustedAccessibilityClient.mockImplementation(() => {
 			throw new Error('boom');
 		});
 		getMediaAccessStatus.mockImplementation(() => {
 			throw new Error('boom');
 		});
-		expect(getMacPermissionStatus()).toEqual({
+		expect(await getMacPermissionStatus()).toMatchObject({
 			supported: true,
 			accessibility: 'unknown',
 			screenRecording: 'unknown',
@@ -92,6 +117,13 @@ describe('openMacPermissionSettings', () => {
 		expect(isTrustedAccessibilityClient).toHaveBeenCalledWith(true);
 		expect(openExternal).toHaveBeenCalledWith(
 			'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility',
+		);
+	});
+
+	test('opens the Automation pane', async () => {
+		await openMacPermissionSettings('automation');
+		expect(openExternal).toHaveBeenCalledWith(
+			'x-apple.systempreferences:com.apple.preference.security?Privacy_Automation',
 		);
 	});
 

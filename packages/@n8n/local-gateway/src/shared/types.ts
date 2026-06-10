@@ -85,16 +85,18 @@ export interface RunTaskResult {
 export type MacPermissionState = 'granted' | 'denied' | 'unknown';
 
 /** The macOS permissions context detection relies on. */
-export type MacPermissionKind = 'accessibility' | 'screenRecording';
+export type MacPermissionKind = 'accessibility' | 'screenRecording' | 'automation';
 
 /**
  * Status of the macOS permissions the context layer uses. `supported` is `false`
- * off macOS, where the UI hides the whole permissions section.
+ * off macOS, where the UI hides the whole permissions section. `automation` is
+ * the AppleEvents grant our osascript calls need (e.g. to read the Finder folder).
  */
 export interface MacPermissionStatus {
 	supported: boolean;
 	accessibility: MacPermissionState;
 	screenRecording: MacPermissionState;
+	automation: MacPermissionState;
 }
 
 /**

@@ -28,6 +28,7 @@ const permissions = ref<MacPermissionStatus>({
 	supported: false,
 	accessibility: 'unknown',
 	screenRecording: 'unknown',
+	automation: 'unknown',
 });
 
 const permissionRows: Array<{ kind: MacPermissionKind; label: string; description: string }> = [
@@ -40,6 +41,11 @@ const permissionRows: Array<{ kind: MacPermissionKind; label: string; descriptio
 		kind: 'screenRecording',
 		label: 'Screen Recording',
 		description: 'Read window titles and attach screenshots',
+	},
+	{
+		kind: 'automation',
+		label: 'Automation',
+		description: 'Read the current Finder folder and open document paths',
 	},
 ];
 

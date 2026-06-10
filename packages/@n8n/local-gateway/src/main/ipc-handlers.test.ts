@@ -356,12 +356,17 @@ describe('registerIpcHandlers', () => {
 		expect(result).toEqual(response);
 	});
 
-	it('permissions:get returns the mac permission status', () => {
-		const status = { supported: true, accessibility: 'granted', screenRecording: 'denied' };
-		mockGetMacPermissionStatus.mockReturnValue(status);
+	it('permissions:get returns the mac permission status', async () => {
+		const status = {
+			supported: true,
+			accessibility: 'granted',
+			screenRecording: 'denied',
+			automation: 'granted',
+		};
+		mockGetMacPermissionStatus.mockResolvedValue(status);
 		register({});
 
-		const result = getRegisteredHandler('permissions:get')();
+		const result = await getRegisteredHandler('permissions:get')();
 		expect(result).toEqual(status);
 	});
 
