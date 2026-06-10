@@ -5,12 +5,9 @@ import {
 	serializeInternalRestError,
 	serializePublicApiError,
 } from '@/errors/http-error-serializers';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { toCredentialResolutionFailedError } from '@/modules/n8n-packages/entities/credential/credential-resolution-error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
-import { UnexpectedError, UserError } from 'n8n-workflow';
 
 describe('http-error-serializers', () => {
 	it('serializePublicApiError: minimal message for ResponseError', () => {
