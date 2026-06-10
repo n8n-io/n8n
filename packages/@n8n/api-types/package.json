@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.25.0",
+  "version": "1.26.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -38,5 +38,6 @@
   },
   "peerDependencies": {
     "zod": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

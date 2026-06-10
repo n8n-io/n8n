@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.25.0",
+  "version": "2.26.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -118,6 +118,7 @@
       "dist/nodes/embeddings/EmbeddingsLemonade/EmbeddingsLemonade.node.js",
       "dist/nodes/embeddings/EmbeddingsOllama/EmbeddingsOllama.node.js",
       "dist/nodes/embeddings/EmbeddingsOracleDB/EmbeddingsOracleDb.node.js",
+      "dist/nodes/embeddings/EmbeddingsNvidia/EmbeddingsNvidia.node.js",
       "dist/nodes/llms/LmChatAlibabaCloud/LmChatAlibabaCloud.node.js",
       "dist/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.js",
       "dist/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.js",
@@ -310,5 +311,6 @@
     "weaviate-client": "3.9.0",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

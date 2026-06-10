@@ -191,6 +191,23 @@ if (excludeTestController) {
 }
 
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
+
+// Strip test/example/benchmark dirs shipped inside production deps that lack a
+// `files` field in their package.json. These are valid runtime deps but their
+// authors published full source trees; syft inventories the subdirs as phantom
+// packages with no license, which fails enterprise SBOM license gates.
+echo(chalk.yellow('INFO: Stripping test/example/benchmark dirs from production closure...'));
+const phantomDirs = [
+	'resolve/*/test',
+	'import-in-the-middle/*/test',
+	'github-from-package/*/example',
+	'tedious/*/benchmarks',
+];
+for (const pattern of phantomDirs) {
+	await $`find ${config.compiledAppDir}/node_modules/.pnpm -type d -path "*/${pattern}" -exec rm -rf {} + 2>/dev/null || true`;
+}
+echo(chalk.green('✅ Phantom dirs stripped'));
+
 await fs.ensureDir(config.compiledTaskRunnerDir);
 
 echo(

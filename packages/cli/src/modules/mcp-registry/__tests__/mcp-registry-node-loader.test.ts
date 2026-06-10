@@ -14,7 +14,11 @@ import {
 	MCP_REGISTRY_PACKAGE_NAME,
 } from '../node-description-transform';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
-import { notionMockServer } from '../registry/mock-servers';
+import {
+	gmailDirectExtendMockServer,
+	notionMockServer,
+	slackExtendingMockServer,
+} from '../registry/mock-servers';
 
 const baseDescription: INodeTypeDescription = {
 	displayName: 'MCP Registry Client (internal)',
@@ -58,6 +62,7 @@ function createBaseNodeClass() {
 function createLoadNodesAndCredentials(options?: {
 	withLangchainLoader?: boolean;
 	withBaseNode?: boolean;
+	knownCredentialTypes?: string[];
 }): {
 	loadNodesAndCredentials: LoadNodesAndCredentials;
 	baseNode: INodeType;
@@ -77,8 +82,14 @@ function createLoadNodesAndCredentials(options?: {
 	const loaders =
 		options?.withLangchainLoader === false ? {} : { [LANGCHAIN_PACKAGE_NAME]: langchainLoader };
 
+	const knownCredentials: Record<string, unknown> = {};
+	for (const name of options?.knownCredentialTypes ?? []) {
+		knownCredentials[name] = {};
+	}
+
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		loaders,
+		knownCredentials: knownCredentials as never,
 	});
 
 	return { loadNodesAndCredentials, baseNode, sourcePath };
@@ -204,6 +215,102 @@ describe('McpRegistryNodeLoader', () => {
 
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.credentials).toHaveLength(1);
+		});
+
+		it('registers a synthetic credential extending an existing one when extendsCredential is set', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['slackOAuth2Api'],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([slackExtendingMockServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.nodes[0]).toMatchObject({
+				name: 'slack',
+				credentials: [{ name: 'slackMcpOAuth2Api', required: true }],
+			});
+
+			expect(loader.types.credentials).toHaveLength(1);
+			expect(loader.types.credentials[0]).toMatchObject({
+				name: 'slackMcpOAuth2Api',
+				extends: ['slackOAuth2Api'],
+			});
+
+			expect(loader.known.credentials.slackMcpOAuth2Api).toMatchObject({
+				className: 'McpRegistryApi',
+				extends: ['slackOAuth2Api'],
+				supportedNodes: ['slack'],
+			});
+		});
+
+		it('registers a synthetic credential extending the parent even when no overrides are present', async () => {
+			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['gmailOAuth2'],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([gmailDirectExtendMockServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.nodes[0]).toMatchObject({
+				name: 'gmail',
+				credentials: [{ name: 'gmailMcpOAuth2Api', required: true }],
+			});
+
+			expect(loader.types.credentials).toHaveLength(1);
+			expect(loader.types.credentials[0]).toMatchObject({
+				name: 'gmailMcpOAuth2Api',
+				extends: ['gmailOAuth2'],
+				properties: [
+					{ name: 'allowedHttpRequestDomains', type: 'hidden', default: 'domains' },
+					{ name: 'allowedDomains', type: 'hidden', default: 'mcp.gmail.com' },
+				],
+			});
+
+			expect(loader.known.credentials.gmailMcpOAuth2Api).toMatchObject({
+				className: 'McpRegistryApi',
+				extends: ['gmailOAuth2'],
+				supportedNodes: ['gmail'],
+			});
+
+			const loadedNode = loader.getNode('gmail');
+			expect(loadedNode.sourcePath).toBe(sourcePath);
+		});
+
+		it('skips servers whose extendsCredential parent matches an inherited prototype key', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['slackOAuth2Api'],
+			});
+			const prototypeKeyServer: McpRegistryServer = {
+				...slackExtendingMockServer,
+				extendsCredential: {
+					extends: 'toString',
+					authUrl: 'https://example.com/oauth/authorize',
+				},
+			};
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([prototypeKeyServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(0);
+			expect(loader.types.credentials).toHaveLength(0);
+		});
+
+		it('skips servers whose extendsCredential parent type is not registered', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
+				knownCredentialTypes: [],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([slackExtendingMockServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(0);
+			expect(loader.types.credentials).toHaveLength(0);
 		});
 
 		it('loads deprecated servers when passed through setServers', async () => {

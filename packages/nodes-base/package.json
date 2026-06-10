@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.25.0",
+  "version": "2.26.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -982,5 +982,6 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xml2js": "catalog:",
     "xmlhttprequest-ssl": "3.1.0"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }
