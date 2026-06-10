@@ -19,7 +19,9 @@ async function startEditing() {
 }
 
 // Commit only a finite, positive value; otherwise revert to the current minutes.
+// Guarded so the Enter + blur pair (or a blur after Escape) commits only once.
 function commit() {
+	if (!editing.value) return;
 	editing.value = false;
 	const parsed = Number.parseInt(draft.value, 10);
 	emit('change', Number.isFinite(parsed) && parsed > 0 ? parsed : props.minutes);
@@ -80,6 +82,9 @@ function cancel() {
 	border: 1px solid var(--da-subtlest);
 	border-radius: var(--radius--2xs);
 	outline: none;
-	box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+}
+
+.edit:focus-visible {
+	box-shadow: var(--da-focus-shadow);
 }
 </style>
