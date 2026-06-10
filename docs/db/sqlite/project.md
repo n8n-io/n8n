@@ -15,7 +15,7 @@ CREATE TABLE "project" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(25
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false | [shared_credentials](shared_credentials.md) [shared_workflow](shared_workflow.md) [folder](folder.md) [insights_metadata](insights_metadata.md) [project_relation](project_relation.md) [data_table](data_table.md) [variables](variables.md) [project_secrets_provider_access](project_secrets_provider_access.md) [role_mapping_rule_project](role_mapping_rule_project.md) [agents](agents.md) [agent_execution_threads](agent_execution_threads.md) |  |  |
+| id | varchar(36) |  | false | [shared_credentials](shared_credentials.md) [shared_workflow](shared_workflow.md) [folder](folder.md) [insights_metadata](insights_metadata.md) [project_relation](project_relation.md) [data_table](data_table.md) [variables](variables.md) [project_secrets_provider_access](project_secrets_provider_access.md) [role_mapping_rule_project](role_mapping_rule_project.md) [agents](agents.md) [agent_execution_threads](agent_execution_threads.md) [instance_ai_threads](instance_ai_threads.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -55,6 +55,7 @@ erDiagram
 "role_mapping_rule_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project" }o--o| "user" : "FOREIGN KEY (creatorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "project" {
@@ -161,6 +162,15 @@ erDiagram
   varchar_36_ taskVersionId FK
   varchar_128_ parentThreadId
   varchar_36_ parentAgentId
+}
+"instance_ai_threads" {
+  varchar id PK
+  varchar_255_ resourceId
+  varchar_36_ projectId FK
+  TEXT title
+  TEXT metadata
+  datetime_3_ createdAt
+  datetime_3_ updatedAt
 }
 "user" {
   varchar id PK

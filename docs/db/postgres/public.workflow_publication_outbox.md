@@ -30,7 +30,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | PK_b3e2eeee36a4bd044d56468d311 | CREATE UNIQUE INDEX "PK_b3e2eeee36a4bd044d56468d311" ON public.workflow_publication_outbox USING btree (id) |
-| IDX_workflow_publication_outbox_pending_workflow | CREATE UNIQUE INDEX "IDX_workflow_publication_outbox_pending_workflow" ON public.workflow_publication_outbox USING btree ("workflowId") WHERE ((status)::text = 'pending'::text) |
+| IDX_workflow_publication_outbox_active_workflow_status | CREATE UNIQUE INDEX "IDX_workflow_publication_outbox_active_workflow_status" ON public.workflow_publication_outbox USING btree ("workflowId", status) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'in_progress'::character varying])::text[])) |
 
 ## Relations
 

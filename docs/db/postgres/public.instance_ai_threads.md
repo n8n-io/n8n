@@ -10,6 +10,7 @@
 | metadata | json |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Project this thread is scoped to |
 
 ## Constraints
 
@@ -17,9 +18,11 @@
 | ---- | ---- | ---------- |
 | instance_ai_threads_createdAt_not_null | n | NOT NULL "createdAt" |
 | instance_ai_threads_id_not_null | n | NOT NULL id |
+| instance_ai_threads_projectId_not_null | n | NOT NULL "projectId" |
 | instance_ai_threads_resourceId_not_null | n | NOT NULL "resourceId" |
 | instance_ai_threads_title_not_null | n | NOT NULL title |
 | instance_ai_threads_updatedAt_not_null | n | NOT NULL "updatedAt" |
+| FK_instance_ai_threads_projectId | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_35575100e45cdedeb89ae0643e9 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -28,6 +31,7 @@
 | ---- | ---------- |
 | PK_35575100e45cdedeb89ae0643e9 | CREATE UNIQUE INDEX "PK_35575100e45cdedeb89ae0643e9" ON public.instance_ai_threads USING btree (id) |
 | IDX_f36dea4d38fe92e0e8f44d5a56 | CREATE INDEX "IDX_f36dea4d38fe92e0e8f44d5a56" ON public.instance_ai_threads USING btree ("resourceId") |
+| IDX_instance_ai_threads_projectId | CREATE INDEX "IDX_instance_ai_threads_projectId" ON public.instance_ai_threads USING btree ("projectId") |
 
 ## Relations
 
@@ -44,6 +48,7 @@ erDiagram
 "public.instance_ai_observation_cursors" |o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_observation_locks" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_pending_confirmations" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
+"public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.instance_ai_threads" {
   uuid id
@@ -52,6 +57,7 @@ erDiagram
   json metadata
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
+  varchar_36_ projectId FK
 }
 "public.instance_ai_messages" {
   varchar_36_ id
@@ -174,6 +180,17 @@ erDiagram
   timestamp_3__with_time_zone expiresAt
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
+}
+"public.project" {
+  varchar_36_ id
+  varchar_255_ name
+  varchar_36_ type
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone updatedAt
+  json icon
+  varchar_512_ description
+  uuid creatorId FK
+  json customTelemetryTags
 }
 ```
 

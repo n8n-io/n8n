@@ -67,6 +67,7 @@ erDiagram
 "instance_ai_threads" {
   varchar id PK
   varchar_255_ resourceId
+  varchar_36_ projectId FK
   TEXT title
   TEXT metadata
   datetime_3_ createdAt

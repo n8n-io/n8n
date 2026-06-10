@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "instance_ai_threads" ("id" varchar PRIMARY KEY NOT NULL, "resourceId" varchar(255) NOT NULL, "title" text NOT NULL DEFAULT (''), "metadata" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
+CREATE TABLE "instance_ai_threads" ("id" varchar PRIMARY KEY NOT NULL, "resourceId" varchar(255) NOT NULL, "projectId" varchar(36) NOT NULL, "title" text NOT NULL DEFAULT (''), "metadata" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_instance_ai_threads_projectId" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -17,6 +17,7 @@ CREATE TABLE "instance_ai_threads" ("id" varchar PRIMARY KEY NOT NULL, "resource
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | varchar |  | false | [instance_ai_messages](instance_ai_messages.md) [instance_ai_observational_memory](instance_ai_observational_memory.md) [instance_ai_iteration_logs](instance_ai_iteration_logs.md) [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) [instance_ai_run_snapshots](instance_ai_run_snapshots.md) [instance_ai_observations](instance_ai_observations.md) [instance_ai_observation_cursors](instance_ai_observation_cursors.md) [instance_ai_observation_locks](instance_ai_observation_locks.md) [instance_ai_checkpoints](instance_ai_checkpoints.md) [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) |  |  |
 | resourceId | varchar(255) |  | false |  |  |  |
+| projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | title | TEXT | '' | false |  |  |  |
 | metadata | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -27,13 +28,15 @@ CREATE TABLE "instance_ai_threads" ("id" varchar PRIMARY KEY NOT NULL, "resource
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | sqlite_autoindex_instance_ai_threads_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_f36dea4d38fe92e0e8f44d5a56 | CREATE INDEX "IDX_f36dea4d38fe92e0e8f44d5a56" ON "instance_ai_threads" ("resourceId")  |
+| IDX_instance_ai_threads_projectId | CREATE INDEX "IDX_instance_ai_threads_projectId" ON "instance_ai_threads" ("projectId")  |
+| IDX_instance_ai_threads_resourceId | CREATE INDEX "IDX_instance_ai_threads_resourceId" ON "instance_ai_threads" ("resourceId")  |
 | sqlite_autoindex_instance_ai_threads_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -51,10 +54,12 @@ erDiagram
 "instance_ai_observation_locks" |o--|| "instance_ai_threads" : "FOREIGN KEY (observationScopeId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_checkpoints" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_pending_confirmations" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "instance_ai_threads" {
   varchar id PK
   varchar_255_ resourceId
+  varchar_36_ projectId FK
   TEXT title
   TEXT metadata
   datetime_3_ createdAt
@@ -181,6 +186,17 @@ erDiagram
   datetime_3_ expiresAt
   datetime_3_ createdAt
   datetime_3_ updatedAt
+}
+"project" {
+  varchar_36_ id PK
+  varchar_255_ name
+  varchar_36_ type
+  datetime_3_ createdAt
+  datetime_3_ updatedAt
+  TEXT icon
+  varchar_512_ description
+  varchar creatorId FK
+  TEXT customTelemetryTags
 }
 ```
 

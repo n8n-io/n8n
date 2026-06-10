@@ -63,7 +63,6 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [credential_dependency](credential_dependency.md) | 5 |  | table |
 | [workflow_builder_session](workflow_builder_session.md) | 9 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
-| [instance_ai_threads](instance_ai_threads.md) | 6 |  | table |
 | [instance_ai_messages](instance_ai_messages.md) | 8 |  | table |
 | [instance_ai_resources](instance_ai_resources.md) | 5 |  | table |
 | [instance_ai_observational_memory](instance_ai_observational_memory.md) | 32 |  | table |
@@ -107,7 +106,6 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_files](agent_files.md) | 8 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
 | [project](project.md) | 9 |  | table |
-| [workflow_publication_outbox](workflow_publication_outbox.md) | 7 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 7 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
@@ -115,6 +113,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) | 7 |  | table |
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
 | [oauth_refresh_tokens](oauth_refresh_tokens.md) | 7 |  | table |
+| [workflow_publication_outbox](workflow_publication_outbox.md) | 7 |  | table |
+| [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
 
 ## Relations
 
@@ -271,6 +271,7 @@ erDiagram
 "oauth_authorization_codes" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_refresh_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "settings" {
   TEXT key PK
@@ -713,14 +714,6 @@ erDiagram
   INTEGER minor
   INTEGER patch
   datetime_3_ createdAt
-}
-"instance_ai_threads" {
-  varchar id PK
-  varchar_255_ resourceId
-  TEXT title
-  TEXT metadata
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
 }
 "instance_ai_messages" {
   varchar_36_ id PK
@@ -1202,15 +1195,6 @@ erDiagram
   varchar creatorId FK
   TEXT customTelemetryTags
 }
-"workflow_publication_outbox" {
-  INTEGER id
-  varchar_36_ workflowId
-  varchar_36_ publishedVersionId
-  varchar_20_ status
-  TEXT errorMessage
-  datetime_3_ createdAt
-  datetime_3_ updatedAt
-}
 "agent_task_definition" {
   varchar_32_ id PK
   varchar_36_ agentId FK
@@ -1289,6 +1273,24 @@ erDiagram
   datetime_3_ createdAt
   datetime_3_ updatedAt
   TEXT scope
+}
+"workflow_publication_outbox" {
+  INTEGER id
+  varchar_36_ workflowId
+  varchar_36_ publishedVersionId
+  varchar_20_ status
+  TEXT errorMessage
+  datetime_3_ createdAt
+  datetime_3_ updatedAt
+}
+"instance_ai_threads" {
+  varchar id PK
+  varchar_255_ resourceId
+  varchar_36_ projectId FK
+  TEXT title
+  TEXT metadata
+  datetime_3_ createdAt
+  datetime_3_ updatedAt
 }
 ```
 

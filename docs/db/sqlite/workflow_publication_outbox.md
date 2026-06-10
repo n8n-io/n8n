@@ -34,7 +34,7 @@ CREATE TABLE "workflow_publication_outbox" ("id" integer PRIMARY KEY NOT NULL, "
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_workflow_publication_outbox_pending_workflow | CREATE UNIQUE INDEX "IDX_workflow_publication_outbox_pending_workflow" ON "workflow_publication_outbox" ("workflowId") WHERE status = 'pending' |
+| IDX_workflow_publication_outbox_active_workflow_status | CREATE UNIQUE INDEX "IDX_workflow_publication_outbox_active_workflow_status" ON "workflow_publication_outbox" ("workflowId", "status") WHERE status IN ('pending', 'in_progress') |
 
 ## Relations
 

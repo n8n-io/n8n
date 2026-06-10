@@ -73,7 +73,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.credential_dependency](public.credential_dependency.md) | 5 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
-| [public.instance_ai_threads](public.instance_ai_threads.md) | 6 |  | BASE TABLE |
+| [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_messages](public.instance_ai_messages.md) | 8 |  | BASE TABLE |
 | [public.instance_ai_resources](public.instance_ai_resources.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_observational_memory](public.instance_ai_observational_memory.md) | 32 |  | BASE TABLE |
@@ -110,11 +110,11 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_pending_confirmations](public.instance_ai_pending_confirmations.md) | 12 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 8 |  | BASE TABLE |
-| [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 7 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 7 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) | 7 |  | BASE TABLE |
+| [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 7 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -226,6 +226,7 @@ erDiagram
 "public.role_mapping_rule_project" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.role_mapping_rule_project" }o--|| "public.role_mapping_rule" : "FOREIGN KEY (#quot;roleMappingRuleId#quot;) REFERENCES role_mapping_rule(id) ON DELETE CASCADE"
 "public.credential_dependency" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
+"public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.instance_ai_messages" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_observational_memory" }o--o| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE SET NULL"
 "public.instance_ai_run_snapshots" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
@@ -866,6 +867,7 @@ erDiagram
   json metadata
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
+  varchar_36_ projectId FK
 }
 "public.instance_ai_messages" {
   varchar_36_ id
@@ -1255,15 +1257,6 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }
-"public.workflow_publication_outbox" {
-  integer id
-  varchar_36_ workflowId
-  varchar_36_ publishedVersionId
-  varchar_20_ status
-  text errorMessage
-  timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone updatedAt
-}
 "public.agent_task_definition" {
   varchar_32_ id
   varchar_36_ agentId FK
@@ -1297,6 +1290,15 @@ erDiagram
   varchar_255_ serverSlug FK
   json toolFilter
   uuid userId FK
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone updatedAt
+}
+"public.workflow_publication_outbox" {
+  integer id
+  varchar_36_ workflowId
+  varchar_36_ publishedVersionId
+  varchar_20_ status
+  text errorMessage
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
 }

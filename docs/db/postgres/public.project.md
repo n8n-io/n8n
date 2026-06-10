@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false | [public.variables](public.variables.md) [public.project_relation](public.project_relation.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.data_table](public.data_table.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.agents](public.agents.md) [public.agent_execution_threads](public.agent_execution_threads.md) |  |  |
+| id | varchar(36) |  | false | [public.variables](public.variables.md) [public.project_relation](public.project_relation.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.data_table](public.data_table.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.agents](public.agents.md) [public.agent_execution_threads](public.agent_execution_threads.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -47,6 +47,7 @@ erDiagram
 "public.data_table" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_secrets_provider_access" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.role_mapping_rule_project" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agents" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project" }o--o| "public.user" : "FOREIGN KEY (#quot;creatorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
@@ -121,6 +122,15 @@ erDiagram
 }
 "public.role_mapping_rule_project" {
   varchar_16_ roleMappingRuleId FK
+  varchar_36_ projectId FK
+}
+"public.instance_ai_threads" {
+  uuid id
+  varchar_255_ resourceId
+  text title
+  json metadata
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone updatedAt
   varchar_36_ projectId FK
 }
 "public.agents" {

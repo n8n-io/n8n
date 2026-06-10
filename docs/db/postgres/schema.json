@@ -9529,6 +9529,12 @@
           "type": "timestamp(3) with time zone",
           "nullable": false,
           "default": "CURRENT_TIMESTAMP(3)"
+        },
+        {
+          "name": "projectId",
+          "type": "varchar(36)",
+          "nullable": false,
+          "comment": "Project this thread is scoped to"
         }
       ],
       "indexes": [
@@ -9546,6 +9552,14 @@
           "table": "public.instance_ai_threads",
           "columns": [
             "resourceId"
+          ]
+        },
+        {
+          "name": "IDX_instance_ai_threads_projectId",
+          "def": "CREATE INDEX \"IDX_instance_ai_threads_projectId\" ON public.instance_ai_threads USING btree (\"projectId\")",
+          "table": "public.instance_ai_threads",
+          "columns": [
+            "projectId"
           ]
         }
       ],
@@ -9568,6 +9582,16 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "instance_ai_threads_projectId_not_null",
+          "type": "n",
+          "def": "NOT NULL \"projectId\"",
+          "table": "public.instance_ai_threads",
+          "referenced_table": "",
+          "columns": [
+            "projectId"
           ]
         },
         {
@@ -9598,6 +9622,19 @@
           "referenced_table": "",
           "columns": [
             "updatedAt"
+          ]
+        },
+        {
+          "name": "FK_instance_ai_threads_projectId",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (\"projectId\") REFERENCES project(id) ON DELETE CASCADE",
+          "table": "public.instance_ai_threads",
+          "referenced_table": "public.project",
+          "columns": [
+            "projectId"
+          ],
+          "referenced_columns": [
+            "id"
           ]
         },
         {
@@ -16034,152 +16071,6 @@
       ]
     },
     {
-      "name": "public.workflow_publication_outbox",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "integer",
-          "nullable": false
-        },
-        {
-          "name": "workflowId",
-          "type": "varchar(36)",
-          "nullable": false,
-          "comment": "References workflow_entity.id."
-        },
-        {
-          "name": "publishedVersionId",
-          "type": "varchar(36)",
-          "nullable": false,
-          "comment": "References workflow_history.versionId."
-        },
-        {
-          "name": "status",
-          "type": "varchar(20)",
-          "nullable": false
-        },
-        {
-          "name": "errorMessage",
-          "type": "text",
-          "nullable": true,
-          "comment": "Error details for surfacing failed publications to the user."
-        },
-        {
-          "name": "createdAt",
-          "type": "timestamp(3) with time zone",
-          "nullable": false,
-          "default": "CURRENT_TIMESTAMP(3)"
-        },
-        {
-          "name": "updatedAt",
-          "type": "timestamp(3) with time zone",
-          "nullable": false,
-          "default": "CURRENT_TIMESTAMP(3)"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "PK_b3e2eeee36a4bd044d56468d311",
-          "def": "CREATE UNIQUE INDEX \"PK_b3e2eeee36a4bd044d56468d311\" ON public.workflow_publication_outbox USING btree (id)",
-          "table": "public.workflow_publication_outbox",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "IDX_workflow_publication_outbox_pending_workflow",
-          "def": "CREATE UNIQUE INDEX \"IDX_workflow_publication_outbox_pending_workflow\" ON public.workflow_publication_outbox USING btree (\"workflowId\") WHERE ((status)::text = 'pending'::text)",
-          "table": "public.workflow_publication_outbox",
-          "columns": [
-            "workflowId"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "CHK_workflow_publication_outbox_status",
-          "type": "CHECK",
-          "def": "CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'in_progress'::character varying, 'completed'::character varying, 'partial_success'::character varying, 'failed'::character varying])::text[])))",
-          "table": "public.workflow_publication_outbox",
-          "referenced_table": "",
-          "columns": [
-            "status"
-          ]
-        },
-        {
-          "name": "workflow_publication_outbox_createdAt_not_null",
-          "type": "n",
-          "def": "NOT NULL \"createdAt\"",
-          "table": "public.workflow_publication_outbox",
-          "referenced_table": "",
-          "columns": [
-            "createdAt"
-          ]
-        },
-        {
-          "name": "workflow_publication_outbox_id_not_null",
-          "type": "n",
-          "def": "NOT NULL id",
-          "table": "public.workflow_publication_outbox",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "workflow_publication_outbox_publishedVersionId_not_null",
-          "type": "n",
-          "def": "NOT NULL \"publishedVersionId\"",
-          "table": "public.workflow_publication_outbox",
-          "referenced_table": "",
-          "columns": [
-            "publishedVersionId"
-          ]
-        },
-        {
-          "name": "workflow_publication_outbox_status_not_null",
-          "type": "n",
-          "def": "NOT NULL status",
-          "table": "public.workflow_publication_outbox",
-          "referenced_table": "",
-          "columns": [
-            "status"
-          ]
-        },
-        {
-          "name": "workflow_publication_outbox_updatedAt_not_null",
-          "type": "n",
-          "def": "NOT NULL \"updatedAt\"",
-          "table": "public.workflow_publication_outbox",
-          "referenced_table": "",
-          "columns": [
-            "updatedAt"
-          ]
-        },
-        {
-          "name": "workflow_publication_outbox_workflowId_not_null",
-          "type": "n",
-          "def": "NOT NULL \"workflowId\"",
-          "table": "public.workflow_publication_outbox",
-          "referenced_table": "",
-          "columns": [
-            "workflowId"
-          ]
-        },
-        {
-          "name": "PK_b3e2eeee36a4bd044d56468d311",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.workflow_publication_outbox",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        }
-      ]
-    },
-    {
       "name": "public.agent_task_definition",
       "type": "BASE TABLE",
       "columns": [
@@ -16816,6 +16707,153 @@
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
           "table": "public.instance_ai_mcp_registry_connections",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.workflow_publication_outbox",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "workflowId",
+          "type": "varchar(36)",
+          "nullable": false,
+          "comment": "References workflow_entity.id."
+        },
+        {
+          "name": "publishedVersionId",
+          "type": "varchar(36)",
+          "nullable": false,
+          "comment": "References workflow_history.versionId."
+        },
+        {
+          "name": "status",
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "errorMessage",
+          "type": "text",
+          "nullable": true,
+          "comment": "Error details for surfacing failed publications to the user."
+        },
+        {
+          "name": "createdAt",
+          "type": "timestamp(3) with time zone",
+          "nullable": false,
+          "default": "CURRENT_TIMESTAMP(3)"
+        },
+        {
+          "name": "updatedAt",
+          "type": "timestamp(3) with time zone",
+          "nullable": false,
+          "default": "CURRENT_TIMESTAMP(3)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PK_b3e2eeee36a4bd044d56468d311",
+          "def": "CREATE UNIQUE INDEX \"PK_b3e2eeee36a4bd044d56468d311\" ON public.workflow_publication_outbox USING btree (id)",
+          "table": "public.workflow_publication_outbox",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "IDX_workflow_publication_outbox_active_workflow_status",
+          "def": "CREATE UNIQUE INDEX \"IDX_workflow_publication_outbox_active_workflow_status\" ON public.workflow_publication_outbox USING btree (\"workflowId\", status) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'in_progress'::character varying])::text[]))",
+          "table": "public.workflow_publication_outbox",
+          "columns": [
+            "workflowId",
+            "status"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "CHK_workflow_publication_outbox_status",
+          "type": "CHECK",
+          "def": "CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'in_progress'::character varying, 'completed'::character varying, 'partial_success'::character varying, 'failed'::character varying])::text[])))",
+          "table": "public.workflow_publication_outbox",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "workflow_publication_outbox_createdAt_not_null",
+          "type": "n",
+          "def": "NOT NULL \"createdAt\"",
+          "table": "public.workflow_publication_outbox",
+          "referenced_table": "",
+          "columns": [
+            "createdAt"
+          ]
+        },
+        {
+          "name": "workflow_publication_outbox_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.workflow_publication_outbox",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "workflow_publication_outbox_publishedVersionId_not_null",
+          "type": "n",
+          "def": "NOT NULL \"publishedVersionId\"",
+          "table": "public.workflow_publication_outbox",
+          "referenced_table": "",
+          "columns": [
+            "publishedVersionId"
+          ]
+        },
+        {
+          "name": "workflow_publication_outbox_status_not_null",
+          "type": "n",
+          "def": "NOT NULL status",
+          "table": "public.workflow_publication_outbox",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "workflow_publication_outbox_updatedAt_not_null",
+          "type": "n",
+          "def": "NOT NULL \"updatedAt\"",
+          "table": "public.workflow_publication_outbox",
+          "referenced_table": "",
+          "columns": [
+            "updatedAt"
+          ]
+        },
+        {
+          "name": "workflow_publication_outbox_workflowId_not_null",
+          "type": "n",
+          "def": "NOT NULL \"workflowId\"",
+          "table": "public.workflow_publication_outbox",
+          "referenced_table": "",
+          "columns": [
+            "workflowId"
+          ]
+        },
+        {
+          "name": "PK_b3e2eeee36a4bd044d56468d311",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.workflow_publication_outbox",
           "referenced_table": "",
           "columns": [
             "id"
@@ -17981,6 +18019,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (\"credentialId\") REFERENCES credentials_entity(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.instance_ai_threads",
+      "columns": [
+        "projectId"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.project",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (\"projectId\") REFERENCES project(id) ON DELETE CASCADE"
     },
     {
       "table": "public.instance_ai_messages",

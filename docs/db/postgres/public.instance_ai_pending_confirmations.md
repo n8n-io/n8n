@@ -74,6 +74,7 @@ erDiagram
   json metadata
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone updatedAt
+  varchar_36_ projectId FK
 }
 "public.user" {
   uuid id
