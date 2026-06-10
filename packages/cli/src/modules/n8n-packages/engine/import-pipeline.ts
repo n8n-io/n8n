@@ -21,7 +21,7 @@ import type {
 import { WorkflowImporter } from '../entities/workflow/workflow-importer';
 import { toImportBlockedError } from './import-blocked.error';
 import { N8nPackageParser } from './n8n-package-parser';
-import { TarPackageReader} from '../io/tar/tar-package-reader';
+import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { PackageImportConfig } from '../n8n-packages.config';
 
 import { createBindings, serializeBindings } from '../n8n-packages.types';
