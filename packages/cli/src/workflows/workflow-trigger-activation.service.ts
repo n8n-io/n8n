@@ -35,6 +35,7 @@ import {
 	IsolateError,
 	createRunExecutionData,
 } from 'n8n-workflow';
+import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
@@ -127,6 +128,11 @@ export class WorkflowTriggerActivationService {
 		version: { nodes: INode[]; connections: IConnections },
 		nodeIds: Set<INode['id']>,
 	) {
+		strict(
+			this.workflowsConfig.useWorkflowPublicationService,
+			'WorkflowTriggerActivationService requires the workflow publication service to be enabled',
+		);
+
 		const { nodes, connections } = version;
 		dbWorkflow.nodes = nodes;
 		dbWorkflow.connections = connections;
@@ -147,9 +153,7 @@ export class WorkflowTriggerActivationService {
 			workflowSettings: dbWorkflow.settings,
 		});
 
-		const resolveWorkflowData = this.workflowsConfig.useWorkflowPublicationService
-			? async () => await this.loadPublishedWorkflowData(dbWorkflow)
-			: async () => dbWorkflow as IWorkflowBase;
+		const resolveWorkflowData = async () => await this.loadPublishedWorkflowData(dbWorkflow);
 
 		let triggerCount = 0;
 		await workflow.expression.acquireIsolate();
@@ -163,7 +167,6 @@ export class WorkflowTriggerActivationService {
 			});
 
 			await this.addNonWebhookTriggers(dbWorkflow, workflow, {
-				activationMode: 'update',
 				executionMode: 'trigger',
 				additionalData,
 				resolveWorkflowData,
@@ -263,13 +266,11 @@ export class WorkflowTriggerActivationService {
 		dbWorkflow: WorkflowEntity,
 		workflow: Workflow,
 		{
-			activationMode,
 			executionMode,
 			additionalData,
 			resolveWorkflowData,
 			nodeIds,
 		}: {
-			activationMode: WorkflowActivateMode;
 			executionMode: WorkflowExecuteMode;
 			additionalData: IWorkflowExecuteAdditionalData;
 			resolveWorkflowData: () => Promise<IWorkflowBase>;
@@ -280,7 +281,7 @@ export class WorkflowTriggerActivationService {
 			dbWorkflow,
 			additionalData,
 			executionMode,
-			activationMode,
+			'update',
 			resolveWorkflowData,
 		);
 
@@ -288,7 +289,7 @@ export class WorkflowTriggerActivationService {
 			dbWorkflow,
 			additionalData,
 			executionMode,
-			activationMode,
+			'update',
 			resolveWorkflowData,
 		);
 
@@ -309,7 +310,7 @@ export class WorkflowTriggerActivationService {
 			nodeIdsToAdd,
 			additionalData,
 			executionMode,
-			activationMode,
+			'update',
 			getTriggerFunctions,
 			getPollFunctions,
 		);

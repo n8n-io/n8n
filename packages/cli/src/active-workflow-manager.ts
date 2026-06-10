@@ -77,6 +77,12 @@ interface QueuedActivation {
 	workflowData: IWorkflowDb;
 }
 
+/**
+ * @deprecated The workflow publication outbox flow activates and deactivates
+ * triggers per node via `WorkflowTriggerActivationService`. This class remains
+ * for the legacy whole-workflow activation path (when the workflow publication
+ * service is disabled) and will be removed once that path is gone.
+ */
 @Service()
 export class ActiveWorkflowManager {
 	private queuedActivations: Record<WorkflowId, QueuedActivation> = {};
