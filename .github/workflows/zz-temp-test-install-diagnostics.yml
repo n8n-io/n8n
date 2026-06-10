@@ -10,17 +10,17 @@
 # Editing only `scripts.postinstall` does not change dependency resolution, so
 # `--frozen-lockfile` stays valid (verified locally).
 #
-# What each run tells us:
-#   - silent / parallel-* : postinstall exits 1 with NO output — the exact
-#     ticket scenario. If the combined log still captures nothing, the env
-#     snapshot must still appear (proves the breadcrumb works). Comparing the
-#     combined log here vs. local tells us WHO swallows: pnpm's reporter (then
-#     it'd be empty locally too — it isn't) or the CI environment (SafeChain
-#     stdio proxy / Blacksmith console).
-#   - with-output : postinstall prints to stderr then exits 1 — confirms a
-#     talkative lifecycle failure is surfaced end to end.
-#   - parallel-a / parallel-b : two concurrent failing jobs sharing the same
-#     github.job — validates the uploaded artifact names don't collide.
+# The matrix runs each case on BOTH a Blacksmith runner and a GitHub-hosted
+# runner. The swallow reproduces in neither local nor container runs (incl. the
+# exact compiled safe-chain binary + wrapper + timeout + tee), so the runner
+# environment is the prime suspect. Running both side-by-side answers: is the
+# swallow Blacksmith-specific, or general to GitHub Actions?
+#
+# What each case tells us (per runner):
+#   - silent : postinstall exits 1 with NO output — the exact ticket scenario.
+#   - with-output : postinstall prints FORCED_FAILURE_DETAIL_VISIBLE then exits 1.
+#     Whether that string survives in the A (shim) vs B (real pnpm) logs is the
+#     decisive signal for who/what swallows.
 #
 # Triggers on push to this branch (workflow_dispatch only works once the file is
 # on the default branch, which it isn't yet). Every job is EXPECTED to fail —
@@ -38,22 +38,27 @@ on:
 
 jobs:
   force-install-failure:
-    # Mirror the real Typecheck/E2E jobs so we exercise the same runner class
-    # (Blacksmith) where the silent swallow was observed.
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    # Run the SAME test on BOTH runner classes side-by-side so we can tell whether
+    # the swallow is Blacksmith-specific or general to GitHub Actions. The swallow
+    # reproduces in neither local nor container runs, so the runner environment is
+    # the prime suspect — this isolates which one.
+    runs-on: ${{ matrix.runner }}
     # Jobs are designed to fail; don't let that mark the run/PR as broken.
     continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
+        runner:
+          - blacksmith-4vcpu-ubuntu-2204 # Blacksmith (where the swallow was observed)
+          - ubuntu-latest # GitHub-hosted control
         case:
           - { name: silent, postinstall: 'node -e "process.exit(1)"' }
           - { name: with-output, postinstall: 'node -e "console.error(''FORCED_FAILURE_DETAIL_VISIBLE''); process.exit(1)"' }
-          - { name: parallel-a, postinstall: 'node -e "process.exit(1)"' }
-          - { name: parallel-b, postinstall: 'node -e "process.exit(1)"' }
-    name: force-fail (${{ matrix.case.name }})
+    name: force-fail (${{ matrix.case.name }} on ${{ matrix.runner }})
     steps:
-      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+      # Plain actions/checkout works on both runner classes; Blacksmith's caching
+      # checkout is irrelevant to this diagnostic.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Inject a failing root postinstall (faithful ELIFECYCLE repro)
         shell: bash
@@ -90,6 +95,7 @@ jobs:
           B_LOG: ${{ runner.temp }}/ab-real.log
         run: |
           echo "::group::pnpm resolution"
+          echo "runner label    = ${{ matrix.runner }} (RUNNER_NAME=$RUNNER_NAME, RUNNER_OS=$RUNNER_OS)"
           echo "command -v pnpm = $(command -v pnpm)"
           echo "which -a pnpm   = $(which -a pnpm | tr '\n' ' ')"
           echo "PNPM_HOME       = $PNPM_HOME"
@@ -116,7 +122,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: ab-logs-${{ matrix.case.name }}-${{ github.run_attempt }}
+          name: ab-logs-${{ matrix.case.name }}-${{ matrix.runner }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/ab-shim.log
             ${{ runner.temp }}/ab-real.log
