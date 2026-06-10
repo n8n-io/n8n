@@ -16,8 +16,6 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "artifact card test"',
 			);
 
-			await n8n.instanceAi.approveBuildPlan();
-
 			await expect(n8n.instanceAi.getPreviewTabByName(/artifact card test/i)).toBeVisible({
 				timeout: 120_000,
 			});

@@ -29,10 +29,6 @@ const CONTAINER_ONLY = new RegExp(
 // network calls. Used by `pnpm test:local:isolated` and similar workflows.
 const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
 
-/** TODO: Temporarily disable all instance ai e2e tests. Re-enable when ready. */
-const INSTANCE_AI_E2E_IGNORE =
-	process.env.PLAYWRIGHT_INCLUDE_INSTANCE_AI === 'true' ? undefined : '**/instance-ai/**';
-
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'sqlite', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
@@ -221,7 +217,6 @@ export function getProjects(): Project[] {
 		projects.push({
 			name: 'e2e',
 			testDir: './tests/e2e',
-			testIgnore: INSTANCE_AI_E2E_IGNORE,
 			grepInvert: ALLOW_CONTAINER_ONLY ? undefined : CONTAINER_ONLY,
 			fullyParallel: true,
 			use: { baseURL: getFrontendUrl() },
@@ -241,7 +236,6 @@ export function getProjects(): Project[] {
 				{
 					name: `${name}:e2e`,
 					testDir: './tests/e2e',
-					testIgnore: INSTANCE_AI_E2E_IGNORE,
 					timeout: name === 'sqlite' ? 60000 : 180000, // 60 seconds for sqlite container test, 180 for other modes to allow startup
 					fullyParallel: true,
 					use: { containerConfig: config },
@@ -260,7 +254,6 @@ export function getProjects(): Project[] {
 		projects.push({
 			name: 'coverage',
 			testDir: './tests/e2e',
-			testIgnore: INSTANCE_AI_E2E_IGNORE,
 			timeout: 60000,
 			fullyParallel: true,
 			use: { containerConfig: {} },
