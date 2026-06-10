@@ -117,6 +117,38 @@ describe('DesktopAssistantService.triggerTask', () => {
 		expect(result).toMatchObject({ runId: 'run-123' });
 		expect(result.threadId).toBeDefined();
 	});
+
+	test('forwards context attachments and structured context into the run', async () => {
+		const ctx = makeService();
+		ctx.projectService.getPersonalProject.mockResolvedValue({ id: 'proj-1' } as never);
+		ctx.memoryService.ensureThread.mockResolvedValue({
+			thread: {
+				id: 't',
+				resourceId: USER.id,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			},
+			created: true,
+		});
+		ctx.instanceAiService.startRun.mockReturnValue('run-456');
+
+		const attachments = [{ data: 'abc', mimeType: 'image/jpeg', fileName: 'screen.jpg' }];
+		await ctx.service.triggerTask(USER, {
+			prompt: 'clean up the current folder',
+			context: {
+				kind: 'finder',
+				app: 'Finder',
+				windowTitle: 'Downloads',
+				path: '/Users/me/Downloads',
+				attachments,
+			},
+		});
+
+		const [, , message, forwardedAttachments] = ctx.instanceAiService.startRun.mock.calls[0];
+		expect(forwardedAttachments).toBe(attachments);
+		expect(message).toContain('Currently looking at: Finder — Downloads');
+		expect(message).toContain('Path: /Users/me/Downloads');
+	});
 });
 
 describe('DesktopAssistantService.promoteThread', () => {

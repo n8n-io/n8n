@@ -280,7 +280,7 @@ export class DesktopAssistantService {
 			user,
 			threadId,
 			composedMessage,
-			undefined,
+			body.context?.attachments,
 			undefined,
 			undefined,
 			{ promptMode: 'desktop-assistant-one-shot' },
