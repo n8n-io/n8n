@@ -26,6 +26,7 @@
     "@n8n/design-system": "workspace:*",
     "@n8n/i18n": "workspace:*",
     "electron-store": "^8.2.0",
+    "eventsource": "^3.0.6",
     "vue": "catalog:frontend"
   },
   "devDependencies": {

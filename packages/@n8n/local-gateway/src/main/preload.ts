@@ -8,6 +8,8 @@ import type {
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
 	ElectronApi,
+	InstanceAiEvent,
+	InstanceAiRichMessagesResponse,
 	RunTaskResult,
 	StatusSnapshot,
 } from '../shared/types';
@@ -73,6 +75,33 @@ const electronApi: ElectronApi = {
 		const handler = (_event: unknown, active: boolean) => onChangeCallback(active);
 		ipcRenderer.on('windowActiveChanged', handler);
 		return () => ipcRenderer.removeListener('windowActiveChanged', handler);
+	},
+
+	getThread: async (
+		threadId: string,
+		options?: { refresh?: boolean },
+	): Promise<InstanceAiRichMessagesResponse> =>
+		await (ipcRenderer.invoke(
+			'thread:get',
+			threadId,
+			options,
+		) as Promise<InstanceAiRichMessagesResponse>),
+
+	listenToThread: async (threadId: string, lastEventId?: number): Promise<void> => {
+		await ipcRenderer.invoke('thread:listen', threadId, lastEventId);
+	},
+
+	unlistenToThread: async (threadId: string): Promise<void> => {
+		await ipcRenderer.invoke('thread:unlisten', threadId);
+	},
+
+	onThreadEvent: (
+		onEventCallback: (threadId: string, event: InstanceAiEvent) => void,
+	): (() => void) => {
+		const handler = (_event: unknown, threadId: string, event: InstanceAiEvent) =>
+			onEventCallback(threadId, event);
+		ipcRenderer.on('threadEvent', handler);
+		return () => ipcRenderer.removeListener('threadEvent', handler);
 	},
 };
 

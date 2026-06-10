@@ -31,6 +31,8 @@ export interface ConnectPayload {
 import type {
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantTasksResponse,
+	InstanceAiEvent,
+	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
 
 export type {
@@ -40,6 +42,8 @@ export type {
 	DesktopAssistantTriggerSummary,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantHistoryEntry,
+	InstanceAiEvent,
+	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
 
 /** Cursor + page-size params for the history list. */
@@ -94,6 +98,22 @@ export interface ElectronApi {
 	 * driven by the main process. Returns a disposer to unsubscribe.
 	 */
 	onWindowActiveChanged: (onChangeCallback: (active: boolean) => void) => () => void;
+	/** The thread's message snapshot, served from the main-process cache after the first fetch. */
+	getThread: (
+		threadId: string,
+		options?: { refresh?: boolean },
+	) => Promise<InstanceAiRichMessagesResponse>;
+	/** Open the thread's SSE event stream in the main process (idempotent per thread). */
+	listenToThread: (threadId: string, lastEventId?: number) => Promise<void>;
+	/** Close the thread's SSE event stream. */
+	unlistenToThread: (threadId: string) => Promise<void>;
+	/**
+	 * Subscribe to events from all open thread streams. Returns a disposer to
+	 * unsubscribe. Fan-out per thread is the renderer ThreadClient's job.
+	 */
+	onThreadEvent: (
+		onEventCallback: (threadId: string, event: InstanceAiEvent) => void,
+	) => () => void;
 }
 
 export type AuthState = 'signedOut' | 'authorizing' | 'signedIn' | 'error';

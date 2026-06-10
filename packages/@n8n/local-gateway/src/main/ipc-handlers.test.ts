@@ -46,6 +46,7 @@ function register(overrides: {
 	settingsStore?: unknown;
 	disconnectGateway?: HandlerFn;
 	instanceApi?: unknown;
+	threadService?: unknown;
 	openExternal?: HandlerFn;
 }): void {
 	registerIpcHandlers({
@@ -65,6 +66,12 @@ function register(overrides: {
 			getHistory: vi.fn(),
 			executionUrl: vi.fn(),
 			getTimeSaved: vi.fn(),
+		}) as never,
+		threadService: (overrides.threadService ?? {
+			getMessages: vi.fn(),
+			listen: vi.fn(),
+			unlisten: vi.fn(),
+			reset: vi.fn(),
 		}) as never,
 		openExternal: (overrides.openExternal ?? vi.fn().mockResolvedValue(undefined)) as never,
 	});
@@ -251,6 +258,38 @@ describe('registerIpcHandlers', () => {
 
 		expect(instanceApi.getTimeSaved).toHaveBeenCalled();
 		expect(result).toEqual(timeSaved);
+	});
+
+	it('thread:get returns the thread snapshot from the thread service', async () => {
+		const snapshot = { threadId: 't1', messages: [], nextEventId: 7 };
+		const threadService = {
+			getMessages: vi.fn().mockResolvedValue(snapshot),
+			listen: vi.fn(),
+			unlisten: vi.fn(),
+			reset: vi.fn(),
+		};
+		register({ threadService });
+
+		const result = await getRegisteredHandler('thread:get')(undefined, 't1', { refresh: true });
+
+		expect(threadService.getMessages).toHaveBeenCalledWith('t1', { refresh: true });
+		expect(result).toEqual(snapshot);
+	});
+
+	it('thread:listen and thread:unlisten delegate to the thread service', () => {
+		const threadService = {
+			getMessages: vi.fn(),
+			listen: vi.fn(),
+			unlisten: vi.fn(),
+			reset: vi.fn(),
+		};
+		register({ threadService });
+
+		getRegisteredHandler('thread:listen')(undefined, 't1', 7);
+		getRegisteredHandler('thread:unlisten')(undefined, 't1');
+
+		expect(threadService.listen).toHaveBeenCalledWith('t1', 7);
+		expect(threadService.unlisten).toHaveBeenCalledWith('t1');
 	});
 
 	it('settings:set persists capability toggles', async () => {

@@ -62,6 +62,10 @@ const DOT_CLASS: Record<AuthState, string> = {
 	padding: 14px var(--spacing--sm);
 	background: var(--da-bg);
 	border-bottom: 1px solid var(--da-border);
+	/* Design-system components resolve their color from --text-color, which defaults to the
+	   light theme's dark text; pin it to the assistant palette so the header reads white. */
+	--text-color: var(--da-text);
+	color: var(--da-text);
 }
 
 .brand {
