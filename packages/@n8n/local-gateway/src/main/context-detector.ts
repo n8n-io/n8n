@@ -22,6 +22,28 @@ export class ContextDetector extends EventEmitter {
 	/** Bundle ids that are *us*: the packaged appId, and Electron's default in dev. */
 	private static readonly SELF_BUNDLE_IDS = new Set(['io.n8n.gateway', 'com.github.Electron']);
 
+	/**
+	 * Background / menu-bar / system utilities that aren't meaningful "things the
+	 * user is looking at" — they pollute the picker (often by injecting a status
+	 * window at the top). Matched by bundle id, with a lowercased-name fallback
+	 * for apps whose id we can't rely on.
+	 */
+	private static readonly EXCLUDED_BUNDLE_IDS = new Set([
+		'com.apple.notificationcenterui', // Notification Center ("Mitteilungszentrale")
+		'com.apple.controlcenter',
+		'com.apple.systemuiserver',
+		'com.apple.dock',
+		'com.apple.Spotlight',
+		'com.apple.WindowManager',
+	]);
+	private static readonly EXCLUDED_APP_NAMES = new Set([
+		'wispr flow',
+		'notification center',
+		'mitteilungszentrale',
+		'control center',
+		'spotlight',
+	]);
+
 	/** Open windows the user can choose from, front-to-back (first = frontmost). */
 	private options: DetectedContext[] = [];
 
@@ -37,7 +59,7 @@ export class ContextDetector extends EventEmitter {
 	 */
 	async refresh(): Promise<DetectedContext[]> {
 		const detected = await detectOpenContexts();
-		this.options = detected.filter((context) => !this.isSelf(context));
+		this.options = detected.filter((context) => !this.isSelf(context) && !this.isExcluded(context));
 		logger.debug('Context options detected', {
 			count: this.options.length,
 			apps: this.options.map((context) => context.app),
@@ -61,5 +83,13 @@ export class ContextDetector extends EventEmitter {
 		if (detected.bundleId && ContextDetector.SELF_BUNDLE_IDS.has(detected.bundleId)) return true;
 		const ownName = app.getName().toLowerCase();
 		return !!detected.app && detected.app.toLowerCase() === ownName;
+	}
+
+	/** True for background/menu-bar/system apps that shouldn't be offered as context. */
+	private isExcluded(detected: DetectedContext): boolean {
+		if (detected.bundleId && ContextDetector.EXCLUDED_BUNDLE_IDS.has(detected.bundleId))
+			return true;
+		const name = detected.app?.toLowerCase();
+		return !!name && ContextDetector.EXCLUDED_APP_NAMES.has(name);
 	}
 }
