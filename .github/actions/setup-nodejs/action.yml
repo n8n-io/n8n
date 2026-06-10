@@ -95,7 +95,7 @@ runs:
     # docker-cluster, unit, lint, typecheck, ...) hit the cache instead of
     # the GH release CDN. Layered with retry below — cache reduces blast
     # radius across jobs, retry covers the first-job-per-key case where the
-    # CDN must be hit. Keep the version in sync with the install step below.
+    # CDN must be hit. Keep the version in sync with the download step below.
     - name: Restore Aikido SafeChain Binary
       id: cache-safe-chain
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
@@ -103,7 +103,12 @@ runs:
         path: ~/.safe-chain/bin
         key: safe-chain-1.5.7-${{ runner.os }}-${{ runner.arch }}
 
-    - name: Install Aikido SafeChain
+    # Download + install the SafeChain binary. This is the expensive,
+    # CDN-backed part and the only part worth gating on the cache. The install
+    # script also runs `setup-ci`, so on a cache miss this both downloads AND
+    # activates; the Activate step below then re-runs `setup-ci` idempotently.
+    - name: Download Aikido SafeChain
+      if: steps.cache-safe-chain.outputs.cache-hit != 'true'
       run: |
         VERSION="1.5.7"
         EXPECTED_SHA256="07ab512fd8795ce41b2275be369aced4c9a93cc7bca9b397951507891a955239"
@@ -112,11 +117,37 @@ runs:
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
         # Wrap the install in retry too — it internally fetches the
         # safe-chain binary from the GH release CDN, which has hit
-        # transient 404s. The install script no-ops the binary download
-        # when the cached binary is already present.
+        # transient 404s.
         node .github/scripts/retry.mjs --attempts 3 --delay 10 -- \
           sh install-safe-chain.sh --ci
         rm install-safe-chain.sh
+      shell: bash
+
+    # ALWAYS runs, even on a cache hit. `setup-ci` installs SafeChain's
+    # executable shims and exposes them to subsequent steps via $GITHUB_PATH.
+    # That PATH wiring is per-job runtime state — it is NOT captured by the
+    # binary cache above. On a cache hit the download step is skipped, so this
+    # is the only thing that puts SafeChain on PATH for the install/build steps;
+    # without it the package managers run unwrapped and protection is inert.
+    # Runs the cached binary directly to avoid a redundant CDN round-trip.
+    - name: Activate Aikido SafeChain
+      run: |
+        "$HOME/.safe-chain/bin/safe-chain" setup-ci
+      shell: bash
+
+    # Fail fast if activation did not take effect, mirroring the Node/pnpm
+    # verify guards above. $GITHUB_PATH changes apply to subsequent steps, so
+    # this separate step sees the shimmed PATH and asserts the package managers
+    # now resolve to SafeChain shims rather than the bare binaries.
+    - name: Verify SafeChain is active
+      run: |
+        for pm in npm pnpm; do
+          resolved="$(command -v "$pm" || true)"
+          case "$resolved" in
+            *safe-chain*) echo "ok: $pm -> $resolved" ;;
+            *) echo "::error::SafeChain inactive: '$pm' resolves to '${resolved:-<none>}', expected a SafeChain shim"; exit 1 ;;
+          esac
+        done
       shell: bash
 
     # Capture pnpm's combined stdout+stderr through `tee` so the ERR_PNPM_* code
