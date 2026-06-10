@@ -271,14 +271,19 @@ export async function streamRequest<T extends object>(
 			async function readStream() {
 				const { done, value } = await reader.read();
 				if (done) {
-					if (response.ok) {
-						onDone?.();
-					} else {
+					if (!response.ok) {
 						onErrorOnce?.(
 							new ResponseError(response.statusText, {
 								httpStatusCode: response.status,
 							}),
 						);
+					} else if (buffer.trim()) {
+						// The stream ended with leftover content that never parsed as JSON
+						// (e.g. a plain-text error body from an upstream service).
+						// Surface it instead of silently dropping it.
+						onErrorOnce?.(new Error(buffer.trim().slice(0, 256)));
+					} else {
+						onDone?.();
 					}
 					return;
 				}
