@@ -479,6 +479,8 @@ export class NextCloud implements INodeType {
 					{
 						name: 'Internal Link',
 						value: 200,
+						description:
+							'Generates an internal Nextcloud URL (not a public share). Uses the file/folder ID from a PROPFIND call. The output is { link: "..." }. Do not use with shareWith fields.',
 					},
 					{
 						name: 'Public Link',
@@ -1251,6 +1253,15 @@ export class NextCloud implements INodeType {
 							/\/remote\.php\/webdav\/?$/,
 							'',
 						);
+
+						if (webDavBase === credentials.webDavUrl) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'WebDAV URL must end with /remote.php/webdav for generating an internal link. Please check your Nextcloud credentials.',
+								{ itemIndex: i },
+							);
+						}
+
 						const internalLink = `${webDavBase}/f/${fileid}`;
 						const executionData = this.helpers.constructExecutionMetaData(
 							wrapData({ link: internalLink }),
