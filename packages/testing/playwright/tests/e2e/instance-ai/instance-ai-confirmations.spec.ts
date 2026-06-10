@@ -150,12 +150,13 @@ async function expectApprovedExecutionComplete({
 	if (projectName.includes('multi-main')) {
 		// Recorded multi-main runs replay the assistant's success response, but they do not
 		// always persist the workflow execution row that the single-main path polls below.
-		await expect(n8n.instanceAi.getAssistantMessageText(/built and verified/i)).toBeVisible({
-			timeout: 150_000,
-		});
-		await expect(
-			n8n.instanceAi.getAssistantMessageText(/confirmed it completes successfully/i),
-		).toBeVisible({ timeout: 150_000 });
+		// Phrasing follows the recorded LLM response; keep this in sync with the
+		// current recording's wording when refreshing expectations.
+		await expect(n8n.instanceAi.getAssistantMessageText(/built and ran successfully/i)).toBeVisible(
+			{
+				timeout: 150_000,
+			},
+		);
 		return;
 	}
 
