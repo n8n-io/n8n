@@ -278,10 +278,13 @@ export async function streamRequest<T extends object>(
 							}),
 						);
 					} else if (buffer.trim()) {
-						// The stream ended with leftover content that never parsed as JSON
-						// (e.g. a plain-text error body from an upstream service).
-						// Surface it instead of silently dropping it.
-						onErrorOnce?.(new Error(buffer.trim().slice(0, 256)));
+						// The stream ended with leftover content that never parsed as JSON.
+						// A JSON-like fragment means the stream was cut off mid-chunk;
+						// anything else is a plain-text error body from an upstream
+						// service — surface its content instead of silently dropping it.
+						const leftover = buffer.trim();
+						const message = /^[[{]/.test(leftover) ? 'Connection lost' : leftover.slice(0, 256);
+						onErrorOnce?.(new Error(message));
 					} else {
 						onDone?.();
 					}
