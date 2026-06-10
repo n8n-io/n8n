@@ -19,6 +19,14 @@ import { test, expect } from '../../../fixtures/base';
  * instance-global state, same as mcp-service.spec.ts.
  */
 
+// Both this spec and mcp-service.spec.ts toggle the instance-global MCP access
+// setting; in parallel workers against a shared instance, one file's
+// disabled-state test can break the other's OAuth flow mid-request. In
+// container runs this gives the OAuth spec its own worker/container. (Local
+// runs against a shared N8N_BASE_URL ignore this — run the two files
+// sequentially.)
+test.use({ capability: { env: { TEST_ISOLATION: 'mcp-oauth' } } });
+
 const CALLBACK_PATH = 'mcp-oauth-e2e-callback';
 
 test.describe(
