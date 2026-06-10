@@ -90,6 +90,31 @@ export class WorkflowApiHelper {
 	}
 
 	/**
+	 * Deactivate every workflow with the given name. Useful for workflows imported
+	 * with fixed (non-unique) webhook paths: an active leftover from an earlier
+	 * worker (e.g. on a Playwright retry) holds the path and makes re-activation
+	 * fail with "URL path is already taken". Deactivating releases the path.
+	 */
+	async deactivateWorkflowsByName(name: string): Promise<void> {
+		const response = await this.api.request.get('/rest/workflows', {
+			params: { filter: JSON.stringify({ name }) },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to list workflows: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		const workflows: Array<{ id: string; name: string; active: boolean }> = result.data ?? result;
+
+		for (const workflow of workflows) {
+			if (workflow.name === name && workflow.active) {
+				await this.setActive(String(workflow.id), false);
+			}
+		}
+	}
+
+	/**
 	 * Make workflow unique by updating name, IDs, and webhook paths if present.
 	 * This ensures no conflicts when importing workflows for testing.
 	 */
