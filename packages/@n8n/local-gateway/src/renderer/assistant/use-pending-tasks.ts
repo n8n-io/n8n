@@ -50,7 +50,7 @@ function failEntry(threadId: string, error?: string) {
 }
 
 function notifySaved() {
-	for (const callback of savedCallbacks) callback();
+	for (const notify of savedCallbacks) notify();
 }
 
 /**
@@ -84,7 +84,9 @@ async function poll(threadId: string, label: string, deadline: number) {
 	}
 	pollTimers.set(
 		threadId,
-		window.setTimeout(() => void poll(threadId, label, deadline), POLL_INTERVAL_MS),
+		window.setTimeout(() => {
+			void poll(threadId, label, deadline);
+		}, POLL_INTERVAL_MS),
 	);
 }
 
@@ -104,9 +106,9 @@ function dismiss(threadId: string) {
 }
 
 /** Subscribe to "a pending task was saved" events. Returns a disposer. */
-function onSaved(callback: () => void): () => void {
-	savedCallbacks.add(callback);
-	return () => savedCallbacks.delete(callback);
+function onSaved(listener: () => void): () => void {
+	savedCallbacks.add(listener);
+	return () => savedCallbacks.delete(listener);
 }
 
 export function usePendingTasks() {

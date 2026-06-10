@@ -1,5 +1,4 @@
 import * as tasksApi from './assistant/tasks-api';
-
 import type { AppSettings, DaemonStatus, LogLevel, StatusSnapshot } from '../shared/types';
 
 const STATUS_TEXT: Record<DaemonStatus, string> = {

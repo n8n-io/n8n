@@ -7,7 +7,6 @@ import type { OAuthFlow } from './oauth/oauth-flow';
 import type { AppSettings, SettingsStore } from './settings-store';
 import type { ThreadService } from './thread-service';
 import type {
-	AssistantRunResult,
 	AuthStatus,
 	CreateAssistantTaskResult,
 	DesktopAssistantHistoryParams,
@@ -130,21 +129,6 @@ export function registerIpcHandlers({
 				const message = error instanceof Error ? error.message : String(error);
 				logger.error('IPC assistant:createTask failed', { error: message });
 				return { ok: false, error: message };
-			}
-		},
-	);
-
-	ipcMain.handle(
-		'assistant:waitForRun',
-		async (_event, threadId: string, runId: string): Promise<AssistantRunResult> => {
-			logger.debug('IPC assistant:waitForRun', { threadId, runId });
-			try {
-				const { status, tookAction, outcome } = await instanceApi.waitForRunFinish(threadId, runId);
-				return { ok: status === 'success', status, tookAction, outcome };
-			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error);
-				logger.error('IPC assistant:waitForRun failed', { threadId, runId, error: message });
-				return { ok: false, status: 'error', tookAction: false, error: message };
 			}
 		},
 	);

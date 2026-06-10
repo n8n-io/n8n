@@ -30,7 +30,6 @@ export interface ConnectPayload {
 // reused verbatim, never redefined here.
 import type {
 	DesktopAssistantHistoryResponse,
-	DesktopAssistantTaskOutcome,
 	DesktopAssistantTasksResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
@@ -82,23 +81,6 @@ export interface CreateAssistantTaskResult {
 }
 
 /**
- * Final outcome of a one-shot assistant run. `timeout` means the app stopped
- * waiting; the run may still finish on the instance. `tookAction` is false when
- * the run ended without making any tool calls — the assistant declined the ask
- * (ambiguous, recurring, or out of scope) and the client should hand off to the
- * instance UI instead of claiming success. `outcome` is the agent's structured
- * self-report (task success, title, summary) when it filed one; prefer it over
- * the `tookAction` heuristic, and use `outcome.title` as the task label.
- */
-export interface AssistantRunResult {
-	ok: boolean;
-	status: 'success' | 'error' | 'canceled' | 'timeout';
-	tookAction: boolean;
-	outcome?: DesktopAssistantTaskOutcome;
-	error?: string;
-}
-
-/**
  * Result of asking the instance to promote a thread into a saved workflow.
  * The endpoint is idempotent — poll it until `status === 'done'`.
  */
@@ -128,7 +110,6 @@ export interface ElectronApi {
 	getTasks: () => Promise<DesktopAssistantTasksResponse>;
 	runTask: (workflowId: string) => Promise<RunTaskResult>;
 	createAssistantTask: (prompt: string, appHint?: string) => Promise<CreateAssistantTaskResult>;
-	waitForAssistantRun: (threadId: string, runId: string) => Promise<AssistantRunResult>;
 	promoteAssistantThread: (threadId: string, name?: string) => Promise<PromoteAssistantThreadResult>;
 	openWorkflow: (workflowId: string) => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;

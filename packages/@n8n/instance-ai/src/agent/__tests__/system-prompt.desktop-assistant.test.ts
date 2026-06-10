@@ -22,9 +22,9 @@
 
 import { mock } from 'vitest-mock-extended';
 
+import type { OrchestrationContext } from '../../types';
 import { getDesktopAssistantProfile } from '../desktop-assistant-profile';
 import { getSystemPrompt } from '../system-prompt';
-import type { OrchestrationContext } from '../../types';
 
 describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 	describe('default behaviour', () => {

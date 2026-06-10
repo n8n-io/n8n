@@ -7,7 +7,8 @@ import ContextPill from './ContextPill.vue';
 import MiniSpinner from './MiniSpinner.vue';
 
 import { ASSISTANT_CONTEXTS, suggestionChipsFor } from '../assistant/contexts';
-import { createAssistantTask, waitForAssistantRun } from '../assistant/tasks-api';
+import { watchAssistantRun } from '../assistant/run-watcher';
+import { createAssistantTask } from '../assistant/tasks-api';
 import { usePendingTasks } from '../assistant/use-pending-tasks';
 
 type ComposerState = 'idle' | 'thinking' | 'doing';
@@ -36,6 +37,9 @@ const emit = defineEmits<{ kept: [] }>();
 
 const text = ref('');
 const state = ref<ComposerState>('idle');
+// Latest tool-derived "doing" label (e.g. "browser click") — dynamic text from
+// the run's events, not a translation key; falls back to the Working pill copy.
+const progressLabel = ref<string | null>(null);
 const resultCard = ref<ResultCard | null>(null);
 const activeContextKey = ref(ASSISTANT_CONTEXTS[0].key);
 
@@ -67,6 +71,7 @@ async function submit(prompt?: string) {
 
 	text.value = '';
 	resultCard.value = null;
+	progressLabel.value = null;
 	state.value = 'thinking';
 
 	try {
@@ -84,7 +89,9 @@ async function submit(prompt?: string) {
 		// The run executes on the user's machine and can take minutes; the input
 		// stays disabled and the Doing pill stays up until it resolves.
 		state.value = 'doing';
-		const run = await waitForAssistantRun(created.threadId, created.runId);
+		const run = await watchAssistantRun(created.threadId, created.runId, {
+			onProgress: (label) => (progressLabel.value = label),
+		});
 
 		// Prefer the agent's structured outcome report over the tookAction heuristic.
 		if (run.outcome?.success) {
@@ -155,7 +162,7 @@ function dismissResult() {
 					<MiniSpinner aria-hidden="true" />
 					<span>{{
 						state === 'doing'
-							? i18n.baseText('desktopAssistant.composer.working')
+							? (progressLabel ?? i18n.baseText('desktopAssistant.composer.working'))
 							: i18n.baseText('desktopAssistant.composer.thinking')
 					}}</span>
 				</div>

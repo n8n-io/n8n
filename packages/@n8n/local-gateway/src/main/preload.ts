@@ -2,7 +2,6 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 import type {
 	AppSettings,
-	AssistantRunResult,
 	AuthStatus,
 	CreateAssistantTaskResult,
 	DesktopAssistantHistoryParams,
@@ -64,9 +63,6 @@ const electronApi: ElectronApi = {
 			prompt,
 			appHint,
 		) as Promise<CreateAssistantTaskResult>),
-
-	waitForAssistantRun: async (threadId: string, runId: string): Promise<AssistantRunResult> =>
-		await (ipcRenderer.invoke('assistant:waitForRun', threadId, runId) as Promise<AssistantRunResult>),
 
 	promoteAssistantThread: async (
 		threadId: string,

@@ -9,7 +9,6 @@
  */
 import type {
 	AppSettings,
-	AssistantRunResult,
 	AuthStatus,
 	CreateAssistantTaskResult,
 	DesktopAssistantHistoryParams,
@@ -93,17 +92,6 @@ export async function createAssistantTask(
 	appHint?: string,
 ): Promise<CreateAssistantTaskResult> {
 	return await window.electronAPI.createAssistantTask(prompt, appHint);
-}
-
-/**
- * Wait for a one-shot assistant run to finish. Resolves when the run reaches a
- * final state — this can take minutes, so callers should keep their UI busy.
- */
-export async function waitForAssistantRun(
-	threadId: string,
-	runId: string,
-): Promise<AssistantRunResult> {
-	return await window.electronAPI.waitForAssistantRun(threadId, runId);
 }
 
 /**
