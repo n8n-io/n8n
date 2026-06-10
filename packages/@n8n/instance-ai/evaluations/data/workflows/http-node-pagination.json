@@ -1,0 +1,25 @@
+{
+	"description": "#3: The builder should fetch all pages using the HTTP Request node built-in pagination, not a single request, a Code-node loop, or a hard-coded page count.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "On a manual trigger, fetch the full list of items from https://api.example.com/items and return the total count."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["behaviour", "http-request", "pagination"],
+	"triggerType": "manual",
+	"datasets": ["behaviour", "full"],
+	"buildExpectations": [
+		"The HTTP Request node fetches across all pages (e.g. via its built-in pagination), not just the first page.",
+		"The agent did NOT work around paging with a Code node loop, a single request, or a hard-coded number of requests."
+	],
+	"executionScenarios": [
+		{
+			"name": "two-pages",
+			"description": "Page 1 returns 2 items, the next page returns an empty array (end of data)",
+			"dataSetup": "GET https://api.example.com/items?page=1 returns { \"items\": [ { \"id\": 1, \"name\": \"Alpha\" }, { \"id\": 2, \"name\": \"Beta\" } ] }. GET https://api.example.com/items?page=2 (and any later page) returns { \"items\": [] }.",
+			"successCriteria": "The workflow executes without errors and fetches across pages until the empty page, collecting both page-1 items (Alpha and Beta). The final output reflects a total count of 2. It did not stop after a single request."
+		}
+	]
+}
