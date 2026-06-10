@@ -16,8 +16,8 @@ import { execFile } from 'node:child_process';
 
 import { logger } from '../../logger';
 
-/** The four context shapes the UI distinguishes; mirrors the renderer's `AssistantContextKind`. */
-export type DetectedContextKind = 'browser' | 'finder' | 'pdf' | 'other';
+/** The context shapes the UI distinguishes; mirrors the renderer's `AssistantContextKind`. */
+export type DetectedContextKind = 'browser' | 'finder' | 'pdf' | 'calendar' | 'email' | 'other';
 
 export interface DetectedContext {
 	/** Stable per-window id (from get-windows), so the picker can key/select. */
@@ -70,14 +70,33 @@ const URLLESS_BROWSER_BUNDLE_IDS = new Set([
 
 const PDF_BUNDLE_IDS = new Set(['com.apple.Preview', 'com.adobe.Reader', 'com.adobe.Acrobat.Pro']);
 
+// Common calendar apps. (Google Calendar etc. live in the browser → 'browser'.)
+const CALENDAR_BUNDLE_IDS = new Set([
+	'com.apple.iCal',
+	'com.flexibits.fantastical2.mac',
+	'com.busymac.busycal3',
+	'com.readdle.calendars-mac',
+]);
+
+// Common desktop email clients. (Outlook is mail-first; webmail lives in the browser.)
+const EMAIL_BUNDLE_IDS = new Set([
+	'com.apple.mail',
+	'com.microsoft.Outlook',
+	'com.readdle.smartemail-Mac', // Spark
+	'org.mozilla.thunderbird',
+	'com.airmailapp.airmail2',
+]);
+
 const FINDER_BUNDLE_ID = 'com.apple.finder';
 
-/** Map an app's bundle id / title to one of the four UI kinds. */
+/** Map an app's bundle id / title to one of the UI kinds. */
 export function deriveKind(info: WindowInfo): DetectedContextKind {
 	const bundleId = info.bundleId ?? '';
 	if (bundleId === FINDER_BUNDLE_ID) return 'finder';
 	if (BROWSER_BUNDLE_IDS.has(bundleId) || URLLESS_BROWSER_BUNDLE_IDS.has(bundleId))
 		return 'browser';
+	if (CALENDAR_BUNDLE_IDS.has(bundleId)) return 'calendar';
+	if (EMAIL_BUNDLE_IDS.has(bundleId)) return 'email';
 	if (PDF_BUNDLE_IDS.has(bundleId)) return 'pdf';
 	if (info.windowTitle?.toLowerCase().endsWith('.pdf')) return 'pdf';
 	return 'other';
@@ -233,7 +252,8 @@ function contextIdentity(context: DetectedContext): string {
 		case 'browser':
 			return `browser:${context.url ?? context.windowTitle ?? context.app ?? ''}`;
 		default:
-			return `other:${context.app ?? ''}`;
+			// calendar / email / other — app-level, one entry per app.
+			return `${context.kind}:${context.app ?? ''}`;
 	}
 }
 

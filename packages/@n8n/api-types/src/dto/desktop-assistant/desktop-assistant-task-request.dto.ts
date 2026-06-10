@@ -10,7 +10,7 @@ import { Z } from '../../zod-class';
  * `attachments` carries perceptual context (e.g. a screenshot).
  */
 const desktopAssistantContextSchema = z.object({
-	kind: z.enum(['browser', 'finder', 'pdf', 'other']).optional(),
+	kind: z.enum(['browser', 'finder', 'pdf', 'calendar', 'email', 'other']).optional(),
 	app: z.string().max(255).optional(),
 	windowTitle: z.string().max(500).optional(),
 	url: z.string().max(2048).optional(),

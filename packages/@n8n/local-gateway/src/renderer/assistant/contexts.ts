@@ -10,7 +10,7 @@ import type { IconName } from '@n8n/design-system';
 
 import type { DetectedContext } from '../../shared/types';
 
-export type AssistantContextKind = 'browser' | 'finder' | 'pdf' | 'other';
+export type AssistantContextKind = 'browser' | 'finder' | 'pdf' | 'calendar' | 'email' | 'other';
 
 export interface AssistantContext {
 	key: string;
@@ -50,6 +50,18 @@ const CHIPS_BY_KIND: Record<AssistantContextKind, SuggestionChip[]> = {
 		{ label: 'Extract the action items', icon: 'list-checks' },
 		{ label: 'Translate it', icon: 'languages' },
 	],
+	calendar: [
+		{ label: 'Summarise my day', icon: 'text' },
+		{ label: "What's next on my calendar", icon: 'calendar' },
+		{ label: 'Find a free slot', icon: 'search' },
+		{ label: 'Remind me before my next meeting', icon: 'bell' },
+	],
+	email: [
+		{ label: 'Summarise my inbox', icon: 'mail' },
+		{ label: 'Draft a reply', icon: 'pencil' },
+		{ label: 'Find important emails', icon: 'search' },
+		{ label: 'Catch me up', icon: 'list-checks' },
+	],
 	other: [
 		{ label: 'Set up a daily summary', icon: 'mail' },
 		{ label: 'Remind me about my day', icon: 'calendar' },
@@ -72,6 +84,8 @@ const ICON_BY_KIND: Record<AssistantContextKind, IconName> = {
 	browser: 'globe',
 	finder: 'folder',
 	pdf: 'file-text',
+	calendar: 'calendar',
+	email: 'mail',
 	other: 'monitor',
 };
 
