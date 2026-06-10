@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -23,6 +22,8 @@ import { WorkflowImporter } from '../entities/workflow/workflow-importer';
 import { toImportBlockedError } from './import-blocked.error';
 import { N8nPackageParser } from './n8n-package-parser';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
+import { PackageImportConfig } from '../n8n-packages.config';
+
 import { createBindings, serializeBindings } from '../n8n-packages.types';
 import type {
 	BlockingIssue,
@@ -32,8 +33,6 @@ import type {
 	PackageImportBindings,
 } from '../n8n-packages.types';
 
-const MEGABYTE_IN_BYTES = 1024 * 1024;
-
 interface ImportTarget {
 	projectId: string;
 	folderId: string | null;
@@ -41,20 +40,16 @@ interface ImportTarget {
 
 @Service()
 export class ImportPipeline {
-	private readonly maxUncompressedPackageBytes: number;
-
 	constructor(
 		private readonly packageParser: N8nPackageParser,
 		private readonly credentialImporter: CredentialImporter,
-		globalConfig: GlobalConfig,
+		private readonly packageImportConfig: PackageImportConfig,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly eventService: EventService,
 		private readonly workflowImporter: WorkflowImporter,
-	) {
-		this.maxUncompressedPackageBytes = globalConfig.endpoints.payloadSizeMax * MEGABYTE_IN_BYTES;
-	}
+	) {}
 
 	async run(request: ImportPackageRequest): Promise<ImportResult> {
 		const { target, project } = await this.resolveTarget(
@@ -63,7 +58,7 @@ export class ImportPipeline {
 			request.folderId,
 		);
 
-		const reader = new TarPackageReader(request.packageBuffer, this.maxUncompressedPackageBytes);
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
 		const workflowsForImport = await this.packageParser.getWorkflows(reader);
 

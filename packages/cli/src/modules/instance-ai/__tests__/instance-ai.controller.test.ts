@@ -1002,6 +1002,72 @@ describe('InstanceAiController', () => {
 
 			expect(gatewayService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
 		});
+
+		describe('connection cleanup', () => {
+			const unsubscribeRequest = jest.fn();
+			const unsubscribeDisconnect = jest.fn();
+
+			/** Open the SSE stream and return the handlers registered on res events. */
+			const openStream = async () => {
+				gatewayService.getUserIdForApiKey.mockReturnValue(USER_ID);
+				const gateway = mock<LocalGateway>({ isConnected: true });
+				gateway.onRequest.mockReturnValue(unsubscribeRequest);
+				gateway.onDisconnect.mockReturnValue(unsubscribeDisconnect);
+				gatewayService.getLocalGateway.mockReturnValue(gateway);
+
+				const res = makeFlushableRes();
+				await controller.gatewayEvents(makeGatewayReq('session-key'), res);
+
+				const handlerFor = (event: string) =>
+					(res.once as jest.Mock).mock.calls.find(([name]) => name === event)?.[1] as
+						| (() => void)
+						| undefined;
+				return { onClose: handlerFor('close'), onFinish: handlerFor('finish') };
+			};
+
+			it("should start the disconnect grace timer on res 'close'", async () => {
+				// Client-drop detection must hang off res 'close' — req 'close' tracks the
+				// request message (already complete for a GET) and res 'finish' only fires
+				// on server-initiated end, so neither fires when the daemon dies.
+				const { onClose } = await openStream();
+				expect(onClose).toBeDefined();
+
+				onClose!();
+
+				expect(gatewayService.startDisconnectTimer).toHaveBeenCalledWith(
+					USER_ID,
+					expect.any(Function),
+				);
+				expect(unsubscribeRequest).toHaveBeenCalledTimes(1);
+				expect(unsubscribeDisconnect).toHaveBeenCalledTimes(1);
+			});
+
+			it('should push disconnected state when the grace timer fires', async () => {
+				const { onClose } = await openStream();
+
+				onClose!();
+				const [, onTimerFired] = gatewayService.startDisconnectTimer.mock.calls[0];
+				onTimerFired();
+
+				expect(push.sendToUsers).toHaveBeenCalledWith(
+					{
+						type: 'instanceAiGatewayStateChanged',
+						data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+					},
+					[USER_ID],
+				);
+			});
+
+			it("should run cleanup only once when both 'close' and 'finish' fire", async () => {
+				const { onClose, onFinish } = await openStream();
+
+				onClose!();
+				onFinish!();
+
+				expect(gatewayService.startDisconnectTimer).toHaveBeenCalledTimes(1);
+				expect(unsubscribeRequest).toHaveBeenCalledTimes(1);
+			});
+		});
 	});
 
 	describe('gatewayResponse', () => {

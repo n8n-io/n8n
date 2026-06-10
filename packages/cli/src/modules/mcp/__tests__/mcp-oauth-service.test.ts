@@ -1,9 +1,12 @@
+import {
+	InvalidGrantError,
+	InvalidTargetError,
+} from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
-import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
@@ -603,7 +606,7 @@ describe('McpOAuthService', () => {
 
 			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
 			authorizationCodeService.markAuthorizationCodeAsUsed.mockImplementation(async () => {
-				throw new OAuthError('invalid_grant', 'Authorization code already used');
+				throw new InvalidGrantError('Authorization code already used');
 			});
 
 			await expect(
@@ -613,7 +616,7 @@ describe('McpOAuthService', () => {
 					'verifier-123',
 					'https://example.com/callback',
 				),
-			).rejects.toThrow('invalid_grant');
+			).rejects.toThrow(InvalidGrantError);
 		});
 	});
 
@@ -704,7 +707,7 @@ describe('McpOAuthService', () => {
 					['read'],
 					new URL('https://attacker.example.com/mcp-server/http'),
 				),
-			).rejects.toThrow('invalid_target');
+			).rejects.toThrow(InvalidTargetError);
 		});
 
 		it('should normalize a trailing-slash resource before passing it to token rotation', async () => {

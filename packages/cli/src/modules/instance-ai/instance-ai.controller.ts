@@ -714,7 +714,7 @@ export class InstanceAiController {
 				);
 			});
 		};
-		req.once('close', cleanup);
+		res.once('close', cleanup);
 		res.once('finish', cleanup);
 	}
 

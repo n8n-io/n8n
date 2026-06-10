@@ -1,9 +1,12 @@
 import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import {
+	InvalidGrantError,
+	InvalidTargetError,
+} from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type {
 	AuthorizationParams,
 	OAuthServerProvider,
 } from '@modelcontextprotocol/sdk/server/auth/provider';
-import { OAuthError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
 import type {
 	OAuthClientInformationFull,
@@ -242,7 +245,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		);
 
 		if (!authRecord) {
-			throw new OAuthError('invalid_grant', 'Invalid authorization code');
+			throw new InvalidGrantError('Invalid authorization code');
 		}
 
 		const resourceStr = resource?.toString();
@@ -398,13 +401,14 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 }
 
-// Per RFC 8707 §3.2 the error code MUST be 'invalid_target'. Don't change to 'invalid_resource':
-// it isn't in the registered OAuth error set and compliant MCP clients will fail the negotiation.
-class InvalidResourceIndicatorError extends OAuthError {
+// Per RFC 8707 §3.2 the error code MUST be 'invalid_target' (provided by InvalidTargetError's
+// static errorCode). Don't change to 'invalid_resource': it isn't in the registered OAuth error
+// set and compliant MCP clients will fail the negotiation.
+class InvalidResourceIndicatorError extends InvalidTargetError {
 	constructor(
 		readonly resource: string,
 		readonly expectedResource: string,
 	) {
-		super('invalid_target', 'Invalid resource indicator');
+		super('Invalid resource indicator');
 	}
 }
