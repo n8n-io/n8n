@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "hash": {
+            "type": "string"
+        },
+        "join_link": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
