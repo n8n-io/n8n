@@ -178,7 +178,48 @@ export class DesktopAssistantService {
 			};
 		});
 
-		return classifyWorkflowsForDesktopAssistant(inputs);
+		const response = classifyWorkflowsForDesktopAssistant(inputs);
+		this.attachNodeIcons(response);
+		return response;
+	}
+
+	/**
+	 * Resolve node-typed icons so the desktop client can render the real node icon
+	 * instead of a text fallback: file icons become a URL, font-awesome/built-in
+	 * icons become a name + palette color. Emoji icons and unresolvable nodes are
+	 * left untouched (the client falls back to the workflow name's initial).
+	 */
+	private attachNodeIcons(response: DesktopAssistantTasksResponse): void {
+		const cards = [...response.actionNeeded, ...response.upcoming, ...response.readyToRun];
+		for (const card of cards) {
+			if (card.icon.type !== 'node') continue;
+			Object.assign(card.icon, this.resolveNodeIcon(card.icon.nodeType));
+		}
+	}
+
+	/**
+	 * Resolve a node type's icon into the fields the desktop client renders,
+	 * mirroring the editor's `getNodeIconSource`:
+	 * - a file icon (`iconUrl`, themed) → a served URL (dark variant preferred);
+	 * - a `node:` ref → the full ref (the client's node-icon set is keyed by it);
+	 * - a `fa:`/`icon:` built-in icon → the bare name;
+	 * both `node:`/`fa:`/`icon:` carry the node's palette `iconColor`. Unknown nodes
+	 * (or anything else) → empty, and the client falls back to the name's initial.
+	 */
+	resolveNodeIcon(nodeType: string): { iconUrl?: string; iconName?: string; iconColor?: string } {
+		try {
+			const { icon, iconUrl, iconColor } = this.nodeTypes.getByNameAndVersion(nodeType).description;
+			const url = typeof iconUrl === 'string' ? iconUrl : (iconUrl?.dark ?? iconUrl?.light);
+			if (url) return { iconUrl: url };
+			if (typeof icon === 'string') {
+				const [kind, name] = icon.split(':');
+				if (kind === 'node') return { iconName: icon, iconColor };
+				if ((kind === 'fa' || kind === 'icon') && name) return { iconName: name, iconColor };
+			}
+			return {};
+		} catch {
+			return {};
+		}
 	}
 
 	private async fetchLastExecutionByWorkflowId(
