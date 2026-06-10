@@ -10,6 +10,16 @@ import { getFileAtRef, getGitRoot } from '../utils/git-operations.js';
 
 const isManifest = (file: string): boolean => /(^|\/)package\.json$/.test(file);
 
+/** Read the working-tree file, or '' on any failure (missing, unreadable, or a
+ *  TOCTOU delete between the existsSync check and the read). */
+function readWorkingTree(abs: string): string {
+	try {
+		return existsSync(abs) ? readFileSync(abs, 'utf8') : '';
+	} catch {
+		return '';
+	}
+}
+
 export function readManifestDiffs(
 	changedFiles: string[],
 	baseRef: string,
@@ -22,7 +32,7 @@ export function readManifestDiffs(
 		const abs = join(root, file);
 		out[file] = {
 			before: getFileAtRef(file, baseRef) ?? '',
-			after: existsSync(abs) ? readFileSync(abs, 'utf8') : '',
+			after: readWorkingTree(abs),
 		};
 	}
 	return out;

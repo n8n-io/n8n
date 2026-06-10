@@ -134,15 +134,17 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	}
 
 	// A dep change the walk couldn't scope stays broad (never declared uncovered):
-	// a lockfile bump, or a runtime manifest still present. A non-dep manifest
+	// a lockfile bump, or a runtime manifest still present. A package.json with no
+	// manifest metadata (e.g. local dev with no base ref) can't be classified, so
+	// it's treated conservatively as runtime → broad. A classified non-dep manifest
 	// change (version / scripts) falls through and is declared like source.
 	const lockfileRemains = impactful.includes('pnpm-lock.yaml');
-	const unscopedRuntimeManifest = impactful.some(
-		(f) =>
-			/(^|\/)package\.json$/.test(f) &&
-			input.manifests?.[f] &&
-			classifyManifestChange(input.manifests[f].before, input.manifests[f].after) === 'runtime',
-	);
+	const unscopedRuntimeManifest = impactful.some((f) => {
+		if (!/(^|\/)package\.json$/.test(f)) return false;
+		const manifest = input.manifests?.[f];
+		if (!manifest) return true;
+		return classifyManifestChange(manifest.before, manifest.after) === 'runtime';
+	});
 	if (lockfileRemains || unscopedRuntimeManifest) return broad(impactful);
 
 	// Source files: no covering spec → declared uncovered (surfaced, not run);

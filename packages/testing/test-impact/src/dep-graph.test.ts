@@ -95,6 +95,17 @@ describe('DependencyGraphStrategy', () => {
 		expect(r.specs).toEqual(['tests/e2e/a.spec.ts', 'tests/e2e/b.spec.ts']);
 	});
 
+	// A mix of an attributable dep and an unattributable one must go broad: scoping
+	// to just the attributable dep would silently drop the dep we can't attribute.
+	it('fails open to broad when any changed dep is unattributable', () => {
+		const r = new DependencyGraphStrategy(map, importers, ['axios', 'left-pad'], {
+			allSpecs: ['tests/e2e/a.spec.ts', 'tests/e2e/b.spec.ts'],
+		}).resolve();
+		expect(r.mode).toBe('broad');
+		expect(r.specs).toEqual(['tests/e2e/a.spec.ts', 'tests/e2e/b.spec.ts']);
+		expect(r.unmapped).toEqual(['left-pad']);
+	});
+
 	it('contributes nothing when there are no changed deps', () => {
 		const r = new DependencyGraphStrategy(map, importers, []).resolve();
 		expect(r).toEqual({ specs: [], unmapped: [], mode: 'scoped' });

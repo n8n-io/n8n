@@ -167,6 +167,21 @@ describe('selectTests — fail-open contract', () => {
 		expect(result.uncovered).toEqual(['packages/cli/package.json']);
 	});
 
+	// No manifest metadata (e.g. local dev with no base ref) → can't classify the
+	// package.json change → conservative broad, never silently declared uncovered.
+	it('package.json change with no manifest metadata → broad (cannot classify)', () => {
+		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
+		const mapPath = path.join(tempDir, 'map-nomanifest.json');
+		fs.writeFileSync(mapPath, JSON.stringify(map));
+		const result = selectTests({
+			changedFiles: ['packages/cli/package.json'],
+			mapFile: mapPath,
+			allSpecsFile: writeAllSpecs(ALL_SPECS.join('\n')),
+		});
+		expect(result.mode).toBe('broad');
+		expect(result.specs).toEqual([...ALL_SPECS].sort());
+	});
+
 	it('runtime-dep manifest change with no importers data → broad (cannot scope)', () => {
 		const map: ImpactMap = { 'packages/cli/src/x.ts': { '10': ['tests/e2e/a.spec.ts'] } };
 		const mapPath = path.join(tempDir, 'map-rt.json');

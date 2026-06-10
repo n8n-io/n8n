@@ -23,17 +23,23 @@ export class DependencyGraphStrategy implements SelectionStrategy {
 		if (this.changedDeps.length === 0) {
 			return { specs: [], unmapped: [], mode: 'scoped' };
 		}
-		const dirs = dependentDirs(this.changedDeps, this.importers);
-		if (dirs.length === 0) {
-			// No workspace package declares the changed dep → can't attribute → broad.
-			// `unmapped` carries the dep NAMES here (not file paths) purely for the
-			// broad-reason diagnostic; broad mode runs everything regardless.
+		// Any changed dep that no workspace package declares (purely transitive)
+		// can't be attributed → broad. A MIXED change must go broad too: scoping to
+		// just the attributable deps would silently drop the unattributable ones.
+		// `unmapped` carries the dep NAMES here (not file paths) purely for the
+		// broad-reason diagnostic; broad mode runs everything regardless.
+		const declared = new Set(Object.values(this.importers).flat());
+		const unattributable = this.changedDeps.filter((dep) => !declared.has(dep));
+		if (unattributable.length > 0) {
 			return {
 				specs: this.opts.allSpecs ?? [],
-				unmapped: this.changedDeps,
+				unmapped: unattributable,
 				mode: 'broad',
 			};
 		}
+		// Every changed dep is declared by at least one importer, so the walk
+		// always resolves to at least those dirs.
+		const dirs = dependentDirs(this.changedDeps, this.importers);
 		// Resolve each dependent package dir through the map. A package.json path
 		// has no own map entry, so sibling fallback scopes it to the specs covering
 		// that package's files.
