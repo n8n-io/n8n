@@ -192,7 +192,9 @@ test.describe(
 			);
 
 			await n8n.page.reload();
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(VISIBLE_NODES_AFTER_COLLAPSED_LOAD);
+			// The group was created expanded in this session and expansion state is
+			// persisted in localStorage, so its member nodes stay visible after reload.
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
 			await expect(n8n.canvas.getNodeGroupTitle(DEFAULT_GROUP_TITLE)).toBeVisible();
 		});

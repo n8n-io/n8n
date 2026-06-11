@@ -163,8 +163,8 @@ describe('useCanvasNodeGroupLayout', () => {
 			[
 				makeNode('a', 100, 200),
 				makeNode('b', 400, 200),
-				makeNode('c', 500, 330),
-				makeNode('d', 650, 330),
+				makeNode('c', 500, 380),
+				makeNode('d', 650, 380),
 			],
 			[group, lowerGroup],
 		);
@@ -183,8 +183,8 @@ describe('useCanvasNodeGroupLayout', () => {
 			[
 				makeNode('a', 100, 200),
 				makeNode('b', 400, 200),
-				makeNode('c', 100, 100),
-				makeNode('d', 400, 100),
+				makeNode('c', 100, 40),
+				makeNode('d', 400, 40),
 				makeNode('lower', 120, 260),
 			],
 			[group, upperGroup],
@@ -483,10 +483,10 @@ describe('useCanvasNodeGroupLayout', () => {
 			[
 				makeNode('a', 100, 200),
 				makeNode('b', 400, 200),
-				makeNode('c', 100, 320),
-				makeNode('d', 400, 320),
-				makeNode('e', 650, 320),
-				makeNode('rightOfLower', 760, 350),
+				makeNode('c', 100, 480),
+				makeNode('d', 400, 480),
+				makeNode('e', 650, 480),
+				makeNode('rightOfLower', 760, 510),
 			],
 			[upperGroup, lowerGroup],
 			new Set(['upper', 'lower']),

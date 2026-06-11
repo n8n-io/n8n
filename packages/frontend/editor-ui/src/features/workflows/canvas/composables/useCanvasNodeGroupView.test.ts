@@ -51,7 +51,7 @@ describe('useCanvasNodeGroupView', () => {
 
 		it('restores expanded groups from localStorage', () => {
 			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g1');
 
 			const { view: nextView } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 
@@ -298,7 +298,7 @@ describe('useCanvasNodeGroupView', () => {
 			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 			syncLayout(view);
 
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g1');
 
 			const offset = view.getVisualOffsetForNode('b');
 			expect(offset.x).toBeGreaterThan(0);
@@ -308,7 +308,7 @@ describe('useCanvasNodeGroupView', () => {
 		it('keeps a manually dropped node stable by settling it against active push sources', () => {
 			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 			syncLayout(view);
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g1');
 
 			expect(view.getVisualOffsetForNode('b').x).toBeGreaterThan(0);
 
@@ -320,9 +320,9 @@ describe('useCanvasNodeGroupView', () => {
 		it('recomputes offsets away on collapse', () => {
 			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 			syncLayout(view);
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g1');
 
-			view.setCollapsed('g1', true);
+			view.toggleCollapsed('g1');
 
 			expect(view.getVisualOffsetForNode('b')).toEqual({ x: 0, y: 0 });
 		});
@@ -330,7 +330,7 @@ describe('useCanvasNodeGroupView', () => {
 		it('keeps pushed nodes visually stable when they are grouped', () => {
 			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 			syncLayoutWithTwoPushedNodes(view);
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g1');
 			const offsetBeforeGrouping = view.getVisualOffsetForNode('b');
 			expect(offsetBeforeGrouping.x).toBeGreaterThan(0);
 
@@ -368,7 +368,7 @@ describe('useCanvasNodeGroupView', () => {
 				},
 			]);
 
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g1');
 			const lowerOffsetAfterUpperExpansion = view.getVisualOffsetForComponent('group:g2');
 			expect(lowerOffsetAfterUpperExpansion.y).toBeGreaterThan(0);
 
@@ -392,7 +392,7 @@ describe('useCanvasNodeGroupView', () => {
 					expandedRect: { x: 0, y: 80, width: 600, height: 240 },
 				},
 			]);
-			view.setCollapsed('g2', false);
+			view.toggleCollapsed('g2');
 
 			expect(view.getVisualOffsetForComponent('group:g2')).toEqual(lowerOffsetAfterUpperExpansion);
 			expect(view.getVisualOffsetForNode('b')).toEqual(lowerOffsetAfterUpperExpansion);
@@ -424,7 +424,7 @@ describe('useCanvasNodeGroupView', () => {
 					expandedRect: { x: 0, y: 100, width: 1000, height: 240 },
 				},
 			]);
-			view.setCollapsed('source', false);
+			view.toggleCollapsed('source');
 			const targetOffsetAfterSourceExpansion = view.getVisualOffsetForComponent('group:target');
 			expect(targetOffsetAfterSourceExpansion.x).toBeGreaterThan(0);
 
@@ -448,7 +448,7 @@ describe('useCanvasNodeGroupView', () => {
 					expandedRect: { x: 0, y: 100, width: 1000, height: 240 },
 				},
 			]);
-			view.setCollapsed('target', false);
+			view.toggleCollapsed('target');
 
 			expect(view.getVisualOffsetForComponent('group:target')).toEqual(
 				targetOffsetAfterSourceExpansion,
@@ -483,11 +483,11 @@ describe('useCanvasNodeGroupView', () => {
 				},
 			]);
 
-			view.setCollapsed('upper', false);
+			view.toggleCollapsed('upper');
 			const lowerOffsetAfterUpperExpansion = view.getVisualOffsetForComponent('group:lower');
 			expect(lowerOffsetAfterUpperExpansion.y).toBeGreaterThan(0);
 
-			view.setCollapsed('lower', false);
+			view.toggleCollapsed('lower');
 			view.syncLayoutComponents([
 				{
 					id: 'group:lower',
@@ -522,7 +522,7 @@ describe('useCanvasNodeGroupView', () => {
 			]);
 
 			syncStackedGroups(view);
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g1');
 
 			const moves = view.commitMovedPushSourceEffects(['g1'], (nodeId) =>
 				nodeId === 'b' ? [0, 80] : undefined,
@@ -552,7 +552,7 @@ describe('useCanvasNodeGroupView', () => {
 					rect: { x: 450, y: 10, width: 100, height: 100 },
 				},
 			]);
-			view.setCollapsed('source', false);
+			view.toggleCollapsed('source');
 			expect(view.getVisualOffsetForNode('target').x).toBeGreaterThan(0);
 
 			const moves = view.commitMovedPushSourceEffects(['source'], (nodeId) =>
@@ -563,8 +563,8 @@ describe('useCanvasNodeGroupView', () => {
 			expect(moves[0]?.id).toBe('target');
 			expect(view.getVisualOffsetForNode('target')).toEqual({ x: 0, y: 0 });
 
-			view.setCollapsed('source', true);
-			view.setCollapsed('source', false);
+			view.toggleCollapsed('source');
+			view.toggleCollapsed('source');
 
 			expect(view.getVisualOffsetForNode('target').x).toBeGreaterThan(0);
 		});
@@ -595,7 +595,7 @@ describe('useCanvasNodeGroupView', () => {
 					expandedRect: { x: 450, y: 10, width: 400, height: 40 },
 				},
 			]);
-			view.setCollapsed('source', false);
+			view.toggleCollapsed('source');
 
 			const moves = view.commitMovedPushSourceEffects(['source'], (nodeId) => {
 				if (nodeId === 'targetA') return [450, 10];
@@ -641,8 +641,8 @@ describe('useCanvasNodeGroupView', () => {
 					rect: { x: 650, y: 340, width: 100, height: 100 },
 				},
 			]);
-			view.setCollapsed('g2', false);
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g2');
+			view.toggleCollapsed('g1');
 
 			const targetOffset = view.getVisualOffsetForNode('target');
 			expect(targetOffset.x).toBeGreaterThan(0);
@@ -664,7 +664,7 @@ describe('useCanvasNodeGroupView', () => {
 			]);
 
 			syncStackedGroups(view);
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g1');
 			const lowerOffsetAfterFirstExpansion = view.getVisualOffsetForComponent('group:g2');
 			expect(lowerOffsetAfterFirstExpansion.y).toBeGreaterThan(0);
 
@@ -681,19 +681,19 @@ describe('useCanvasNodeGroupView', () => {
 			]);
 
 			syncStackedGroups(view);
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g1');
 			const lowerOffsetAfterFirstExpansion = view.getVisualOffsetForComponent('group:g2');
 			expect(lowerOffsetAfterFirstExpansion.y).toBeGreaterThan(0);
 
 			// Dropping the pushed group at visual y=1000 stores y minus the live offset.
 			const movedAwayY = 1000 - lowerOffsetAfterFirstExpansion.y;
 			syncStackedGroups(view, { upperExpanded: true, lowerY: movedAwayY });
-			view.setCollapsed('g1', true);
+			view.toggleCollapsed('g1');
 
 			expect(view.getVisualOffsetForComponent('group:g2')).toEqual({ x: 0, y: 0 });
 
 			syncStackedGroups(view, { lowerY: movedAwayY });
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g1');
 
 			expect(view.getVisualOffsetForComponent('group:g2')).toEqual({ x: 0, y: 0 });
 		});
@@ -705,17 +705,17 @@ describe('useCanvasNodeGroupView', () => {
 			]);
 
 			syncStackedGroups(view);
-			view.setCollapsed('g1', false);
+			view.toggleCollapsed('g1');
 			const lowerOffsetAfterFirstExpansion = view.getVisualOffsetForComponent('group:g2');
 			expect(lowerOffsetAfterFirstExpansion.y).toBeGreaterThan(0);
 
 			// Dropping the pushed group at visual y=1000 stores y minus the live offset.
 			const movedAwayY = 1000 - lowerOffsetAfterFirstExpansion.y;
 			syncStackedGroups(view, { upperExpanded: true, lowerY: movedAwayY });
-			view.setCollapsed('g1', true);
+			view.toggleCollapsed('g1');
 			syncStackedGroups(view, { lowerY: movedAwayY });
 
-			view.setCollapsed('g2', false);
+			view.toggleCollapsed('g2');
 			syncStackedGroups(view, { lowerExpanded: true, lowerY: movedAwayY });
 
 			expect(view.getVisualOffsetForComponent('group:g2')).toEqual({ x: 0, y: 0 });
