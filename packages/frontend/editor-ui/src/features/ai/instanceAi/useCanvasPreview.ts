@@ -4,6 +4,7 @@ import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
 	getLatestWorkflowSetupResult,
+	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 } from './canvasPreview.utils';
@@ -215,6 +216,37 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 			const targetId = latestSetupResult.value.workflowId;
 
 			// Only refresh if the setup targeted the currently active workflow tab
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
+			}
+		},
+	);
+
+	// --- Refresh preview when a `workflows` update / restore-version / setup completes ---
+	// The `workflows` tool's update / restore-version / setup actions mutate the
+	// workflow definition but surface under tool name 'workflows', so
+	// getLatestBuildResult doesn't detect them. Refresh the preview so the canvas
+	// shows the latest state.
+
+	const latestUpdateResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestWorkflowUpdateResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestUpdateResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestUpdateResult.value) return;
+
+			const targetId = latestUpdateResult.value.workflowId;
+
+			// Only refresh if the update targeted the currently active workflow tab
 			if (activeTabId.value === targetId) {
 				workflowRefreshKey.value++;
 			}

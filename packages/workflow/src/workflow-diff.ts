@@ -35,7 +35,7 @@ export type NodeDiff<T> = {
 	node: T;
 };
 
-export type WorkflowDiff<T> = Map<string, NodeDiff<T>>;
+export type WorkflowDiff<T> = Map<INode['id'], NodeDiff<T>>;
 
 export function compareNodes<T extends DiffableNode>(
 	base: T | undefined,

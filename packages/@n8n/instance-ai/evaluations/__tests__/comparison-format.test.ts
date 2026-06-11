@@ -87,6 +87,7 @@ function evaluation(
 					executionScenarioResults: [],
 				})),
 				buildSuccessCount,
+				buildExpectations: [],
 			};
 		}),
 	};

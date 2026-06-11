@@ -59,6 +59,13 @@ You can inspect the last few lines of the build log file to check for errors:
 tail -n 20 build.log
 ```
 
+If build outputs or the turbo cache are stale (e.g. after switching branches
+or worktrees) but dependencies haven't changed, use `pnpm reset` (lightweight
+by default) for a fast recovery: it cleans build outputs and force-rebuilds
+(keeping `node_modules` and untracked files). If that doesn't fix your issue,
+use `pnpm reset --full`, which also wipes untracked files and reinstalls
+dependencies.
+
 ### Testing
 - `pnpm test` - Run all tests
 - `pnpm test:affected` - Runs tests based on what has changed since the last

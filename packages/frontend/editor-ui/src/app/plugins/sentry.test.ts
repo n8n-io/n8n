@@ -38,6 +38,16 @@ describe('beforeSend', () => {
 		expect(beforeSend(event, hint)).toBeNull();
 	});
 
+	it.each([
+		'Failed to fetch dynamically imported module: https://example.com/assets/RunDataSearch-abc.js',
+		'error loading dynamically imported module: https://example.com/assets/RunDataSearch-abc.js',
+		'Importing a module script failed.',
+	])('should return null for stale-chunk preload TypeError: %s', (message) => {
+		const event = createErrorEvent();
+		const hint = { originalException: new TypeError(message) };
+		expect(beforeSend(event, hint)).toBeNull();
+	});
+
 	it('should return event when originalException does not match any ignoredErrors', () => {
 		const event = createErrorEvent();
 		const hint = { originalException: new Error('Some other error') };
