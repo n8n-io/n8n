@@ -8,6 +8,7 @@ export const MODULE_NAMES = [
 	'external-secrets',
 	'community-packages',
 	'data-table',
+	'oauth-server',
 	'mcp',
 	'provisioning',
 	'breaking-changes',

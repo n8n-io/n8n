@@ -14,12 +14,17 @@ import type {
 	CanvasNodeData,
 } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
+import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
+import {
+	buildCollapsedGroupByNodeId,
+	remapCollapsedGroupConnections,
+} from './useCanvasMapping.groups';
 import {
 	computeNodeDisplaySize,
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
-import type { IConnections, ITaskData } from 'n8n-workflow';
+import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { MarkerType } from '@vue-flow/core';
@@ -38,11 +43,15 @@ export function useCanvasMapping({
 	nodes,
 	connections,
 	renderData,
+	allGroups = ref([]),
+	nodeGroupView,
 	isExperimentalNdvActive = ref(false),
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	renderData: Ref<CanvasRenderData>;
+	allGroups?: Ref<IWorkflowGroup[]>;
+	nodeGroupView?: CanvasNodeGroupView;
 	isExperimentalNdvActive?: Ref<boolean>;
 }) {
 	const i18n = useI18n();
@@ -51,6 +60,12 @@ export function useCanvasMapping({
 		if (!tasks) return null;
 		return tasks.filter((task) => task.executionStatus !== 'canceled');
 	}
+
+	// Node id → its collapsed group, for nodes hidden by a collapsed group.
+	const collapsedGroupByNodeId = computed<Map<string, IWorkflowGroup>>(() => {
+		if (!nodeGroupView) return new Map();
+		return buildCollapsedGroupByNodeId(allGroups.value, (id) => nodeGroupView.isGroupCollapsed(id));
+	});
 
 	// Display size by node id. WorkflowCanvas uses this for group bounds so
 	// they wrap each node's actual rendered size. Sticky notes are omitted —
@@ -126,20 +141,21 @@ export function useCanvasMapping({
 				data,
 				...additionalProperties[node.id],
 				draggable: node.draggable,
+				hidden: collapsedGroupByNodeId.value.has(node.id) ? true : undefined,
 			};
 		});
 	});
 
 	const mappedConnections = computed<CanvasConnection[]>(() => {
-		return mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []).map(
-			(connection) => ({
-				...connection,
-				data: getConnectionData(connection),
-				type: 'canvas-edge',
-				label: getConnectionLabel(connection),
-				markerEnd: MarkerType.ArrowClosed,
-			}),
-		);
+		const raw = mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []);
+		const remapped = remapCollapsedGroupConnections(raw, collapsedGroupByNodeId.value);
+		return remapped.map((connection) => ({
+			...connection,
+			data: getConnectionData(connection),
+			type: 'canvas-edge',
+			label: getConnectionLabel(connection),
+			markerEnd: MarkerType.ArrowClosed,
+		}));
 	});
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {

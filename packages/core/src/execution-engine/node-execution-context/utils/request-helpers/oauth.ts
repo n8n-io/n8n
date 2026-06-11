@@ -141,6 +141,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Revalidating.`,
 	);
 
+	const refreshResource = credentials.oauthTokenData?.resource;
+	if (typeof refreshResource === 'string' && refreshResource.length > 0) {
+		tokenRefreshOptions.resource = refreshResource;
+	}
+
 	let newToken;
 	try {
 		if (credentials.grantType === 'clientCredentials') {
@@ -159,9 +164,20 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 	);
 
+	// Merge old and new token data so fields that the authorization server
+	// does not echo back on refresh (e.g. `resource`) are preserved from the
+	// original token response.
+	const newOAuthTokenData = { ...token.data, ...newToken.data };
+
+	// If the server doesn't echo the resource back, restore it from the
+	// previous token data to ensure it's not lost on refresh.
+	if (!newOAuthTokenData.resource && token.data.resource) {
+		newOAuthTokenData.resource = token.data.resource;
+	}
+
 	const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
 		additionalData,
-		newToken.data,
+		newOAuthTokenData,
 		credentials.jweEnabled === true,
 	);
 
