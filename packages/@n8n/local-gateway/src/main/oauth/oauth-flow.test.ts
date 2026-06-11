@@ -123,3 +123,38 @@ describe('OAuthFlow lastInstanceUrl', () => {
 		});
 	});
 });
+
+describe('OAuthFlow adoptSession', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('persists the session, remembers the URL, and emits signedIn', () => {
+		const store = makeStore();
+		const flow = makeFlow(store);
+		const emitted = vi.fn();
+		flow.on('authStatusChanged', emitted);
+
+		flow.adoptSession('http://127.0.0.1:5680/', { access_token: 'local-token', expires_in: 3600 });
+
+		expect(store.getSession()).toMatchObject({
+			instanceUrl: 'http://127.0.0.1:5680',
+			accessToken: 'local-token',
+		});
+		expect(store.getLastInstanceUrl()).toBe('http://127.0.0.1:5680');
+		expect(emitted).toHaveBeenCalledWith({
+			state: 'signedIn',
+			instanceUrl: 'http://127.0.0.1:5680',
+			lastInstanceUrl: 'http://127.0.0.1:5680',
+			error: null,
+		});
+	});
+
+	it('returns the adopted access token while it is fresh', async () => {
+		const flow = makeFlow(makeStore());
+
+		flow.adoptSession('http://127.0.0.1:5680', { access_token: 'local-token', expires_in: 3600 });
+
+		await expect(flow.getValidAccessToken()).resolves.toBe('local-token');
+	});
+});

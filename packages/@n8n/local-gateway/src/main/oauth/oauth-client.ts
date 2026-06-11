@@ -126,7 +126,7 @@ async function postToken(endpoint: string, fields: Record<string, string>): Prom
 }
 
 /** `fetch` with a hard timeout, normalizing network/timeout failures to `OAuthError`. */
-async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+export async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
 	try {
 		return await fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
 	} catch (error) {

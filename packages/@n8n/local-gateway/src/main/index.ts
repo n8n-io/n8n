@@ -6,6 +6,9 @@ import { ContextDetector } from './context-detector';
 import { DaemonController } from './daemon-controller';
 import { InstanceApi } from './instance-api';
 import { registerIpcHandlers } from './ipc-handlers';
+import { LocalInstanceManager } from './local-instance/local-instance-manager';
+import { LocalInstanceProcess } from './local-instance/local-instance-process';
+import { LocalInstanceStore } from './local-instance/local-instance-store';
 import { requestMacPermissions } from './mac-permissions';
 import {
 	showMainWindow,
@@ -58,6 +61,15 @@ if (!app.requestSingleInstanceLock()) {
 				openExternal,
 			});
 			const instanceApi = new InstanceApi(oauthFlow);
+			const localInstanceManager = new LocalInstanceManager({
+				instanceProcess: new LocalInstanceProcess(),
+				store: new LocalInstanceStore(),
+				oauthFlow,
+				userDataDir: app.getPath('userData'),
+			});
+			localInstanceManager.on('statusChanged', (status) => {
+				notifyMainWindow('localInstanceStatusChanged', status);
+			});
 			const threadService = new ThreadService({
 				oauthFlow,
 				instanceApi,
@@ -115,6 +127,7 @@ if (!app.requestSingleInstanceLock()) {
 				instanceApi,
 				threadService,
 				contextDetector,
+				localInstanceManager,
 				openExternal,
 			});
 
@@ -126,6 +139,11 @@ if (!app.requestSingleInstanceLock()) {
 				notifyMainWindow('authStatusChanged', status);
 				// Connect computer-use on sign-in; tear it down on sign-out.
 				syncGatewayConnection(status);
+				// Signing out of the embedded instance also leaves local mode: stop the
+				// child and don't auto-start it on the next launch.
+				if (status.state === 'signedOut' && localInstanceManager.isEnabled()) {
+					void localInstanceManager.disable().catch(() => {});
+				}
 				// Leaving the signed-in state invalidates thread streams and cached
 				// messages — another user must never see them.
 				if (status.state !== 'signedIn') threadService.reset();
@@ -169,26 +187,41 @@ if (!app.requestSingleInstanceLock()) {
 				},
 				() => {
 					logger.info('n8n Assistant quitting');
-					void controller
-						.disconnect()
-						.catch((error: unknown) => {
-							logger.error('Disconnect failed during quit', {
-								error: error instanceof Error ? error.message : String(error),
-							});
-						})
-						.finally(() => {
+					void Promise.allSettled([controller.disconnect(), localInstanceManager.stop()]).then(
+						(results) => {
+							for (const result of results) {
+								if (result.status === 'rejected') {
+									logger.error('Cleanup failed during quit', {
+										error: String(result.reason),
+									});
+								}
+							}
 							app.quit();
-						});
+						},
+					);
 				},
 			);
 
 			// Cold start: handle an OAuth redirect passed in argv (Windows/Linux deep link).
 			handleOAuthDeepLinkFromArgv(process.argv);
 
-			// Persisted session: reconnect the gateway on launch if already signed in.
-			syncGatewayConnection(oauthFlow.getStatus());
+			// Persisted local mode: bring the embedded instance up first, then connect the
+			// gateway — its token refresh needs the instance to be listening. Otherwise,
+			// reconnect immediately if a (remote) session is already signed in.
+			if (localInstanceManager.isEnabled()) {
+				void localInstanceManager.ensureRunningAndSignedIn().then(() => {
+					syncGatewayConnection(oauthFlow.getStatus());
+				});
+			} else {
+				syncGatewayConnection(oauthFlow.getStatus());
+			}
 
 			// The window opens only from the tray — nothing to auto-open on launch.
+
+			// Safety net for quits that bypass the tray (e.g. logout, updater): never orphan the child.
+			app.on('before-quit', () => {
+				void localInstanceManager.stop().catch(() => {});
+			});
 
 			// macOS — `open-url`: the OS hands the running app the `n8n://callback?...` OAuth redirect.
 			// Cold starts receive it in `process.argv` instead, handled above.

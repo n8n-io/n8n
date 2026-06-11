@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import type { ContextDetector } from './context-detector';
 import type { DaemonController } from './daemon-controller';
 import { InstanceApiError, type InstanceApi } from './instance-api';
+import type { LocalInstanceManager } from './local-instance/local-instance-manager';
 import { getMacPermissionStatus, openMacPermissionSettings } from './mac-permissions';
 import type { OAuthFlow } from './oauth/oauth-flow';
 import type { AppSettings, SettingsStore } from './settings-store';
@@ -24,6 +25,7 @@ import type {
 	DesktopAssistantTimeSaved,
 	DetectedContext,
 	InstanceAiRichMessagesResponse,
+	LocalInstanceStatus,
 	MacPermissionKind,
 	MacPermissionStatus,
 	RunTaskResult,
@@ -40,6 +42,7 @@ export interface IpcHandlerDeps {
 	instanceApi: InstanceApi;
 	threadService: ThreadService;
 	contextDetector: ContextDetector;
+	localInstanceManager: LocalInstanceManager;
 	/** Opens a URL in the user's default browser (e.g. shell.openExternal). */
 	openExternal: (url: string) => Promise<void>;
 }
@@ -109,6 +112,7 @@ export function registerIpcHandlers({
 	instanceApi,
 	threadService,
 	contextDetector,
+	localInstanceManager,
 	openExternal,
 }: IpcHandlerDeps): void {
 	ipcMain.handle(
@@ -124,6 +128,22 @@ export function registerIpcHandlers({
 			}
 		},
 	);
+
+	ipcMain.handle('local:signIn', async (): Promise<{ ok: boolean; error?: string }> => {
+		logger.debug('IPC local:signIn');
+		try {
+			await localInstanceManager.signIn();
+			return { ok: true };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return { ok: false, error: message };
+		}
+	});
+
+	ipcMain.handle('local:getStatus', (): LocalInstanceStatus => {
+		logger.debug('IPC local:getStatus');
+		return localInstanceManager.getStatus();
+	});
 
 	ipcMain.handle('oauth:getStatus', (): AuthStatus => {
 		logger.debug('IPC oauth:getStatus');

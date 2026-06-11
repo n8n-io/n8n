@@ -139,6 +139,23 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			})(model);
 		},
 	},
+	ollama: {
+		build: (creds, model, fetch) => {
+			const { createOpenAICompatible } =
+				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+			return createOpenAICompatible({
+				name: 'ollama',
+				baseURL: creds.baseURL ?? 'http://localhost:11434/v1',
+				// Ollama ignores the API key, but the SDK requires one
+				apiKey: creds.apiKey ?? 'ollama',
+				// Forward the JSON `response_format` schema — Ollama enforces it with
+				// constrained sampling; without this, structured generation relies on
+				// the prompt alone and small models drift off-schema.
+				supportsStructuredOutputs: true,
+				fetch,
+			})(model);
+		},
+	},
 	'azure-openai': {
 		build: (creds, model, fetch) => {
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');

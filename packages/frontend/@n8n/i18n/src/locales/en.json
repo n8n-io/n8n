@@ -49,6 +49,8 @@
 	"desktopAssistant.chat.retry": "Try again",
 	"desktopAssistant.chat.empty": "No messages yet",
 	"desktopAssistant.chat.sendFailed": "Couldn't send your message. Try again.",
+	"desktopAssistant.signIn.local.cta": "Use local instance",
+	"desktopAssistant.signIn.local.starting": "Starting local n8n… the first run can take a minute",
 	"desktopAssistant.search.ariaLabel": "Search",
 	"desktopAssistant.search.placeholder": "Search tasks…",
 	"desktopAssistant.search.clearAriaLabel": "Clear search",

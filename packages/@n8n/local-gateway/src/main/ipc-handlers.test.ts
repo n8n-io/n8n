@@ -57,6 +57,7 @@ function register(overrides: {
 	instanceApi?: unknown;
 	threadService?: unknown;
 	contextDetector?: unknown;
+	localInstanceManager?: unknown;
 	openExternal?: HandlerFn;
 }): void {
 	registerIpcHandlers({
@@ -89,6 +90,10 @@ function register(overrides: {
 			unlisten: vi.fn(),
 			reset: vi.fn(),
 		}) as never,
+		localInstanceManager: (overrides.localInstanceManager ?? {
+			signIn: vi.fn(),
+			getStatus: vi.fn(),
+		}) as never,
 		openExternal: (overrides.openExternal ?? vi.fn().mockResolvedValue(undefined)) as never,
 	});
 }
@@ -118,6 +123,33 @@ describe('registerIpcHandlers', () => {
 
 		expect(disconnectGateway).toHaveBeenCalled();
 		expect(result).toEqual({ ok: true });
+	});
+
+	it('runs the local-instance sign-in on local:signIn, mapping failures to { ok: false }', async () => {
+		const localInstanceManager = {
+			signIn: vi.fn().mockResolvedValue(undefined),
+			getStatus: vi.fn(),
+		};
+		register({ localInstanceManager });
+
+		await expect(getRegisteredHandler('local:signIn')()).resolves.toEqual({ ok: true });
+
+		localInstanceManager.signIn.mockRejectedValue(new Error('ollama is down'));
+		await expect(getRegisteredHandler('local:signIn')()).resolves.toEqual({
+			ok: false,
+			error: 'ollama is down',
+		});
+	});
+
+	it('returns the local-instance status from local:getStatus', () => {
+		const status = { state: 'running' as const, error: null };
+		const localInstanceManager = {
+			signIn: vi.fn(),
+			getStatus: vi.fn().mockReturnValue(status),
+		};
+		register({ localInstanceManager });
+
+		expect(getRegisteredHandler('local:getStatus')()).toEqual(status);
 	});
 
 	it('returns settings from settings:get', () => {

@@ -184,6 +184,22 @@ export interface ElectronApi {
 	getMacPermissions: () => Promise<MacPermissionStatus>;
 	/** Open the System Settings pane to grant a macOS permission. */
 	openMacPermissionSettings: (kind: MacPermissionKind) => Promise<void>;
+	/** Start the embedded local n8n instance and sign in headlessly; persists the choice. */
+	signInLocal: () => Promise<{ ok: boolean; error?: string }>;
+	getLocalInstanceStatus: () => Promise<LocalInstanceStatus>;
+	/** Subscribe to embedded-instance status changes. Returns a disposer to unsubscribe. */
+	onLocalInstanceStatusChanged: (
+		onChangeCallback: (status: LocalInstanceStatus) => void,
+	) => () => void;
+}
+
+export type LocalInstanceState = 'stopped' | 'starting' | 'running' | 'error';
+
+/** State of the embedded local n8n instance, surfaced on the sign-in view. */
+export interface LocalInstanceStatus {
+	state: LocalInstanceState;
+	/** Human-readable error, set when `state === 'error'`. */
+	error: string | null;
 }
 
 export type AuthState = 'signedOut' | 'authorizing' | 'signedIn' | 'error';

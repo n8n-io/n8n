@@ -22,6 +22,10 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	vercel: apiKeyCreds,
 	openrouter: apiKeyCreds,
 	nvidia: apiKeyCreds,
+	ollama: z.object({
+		baseURL: z.string().optional(),
+		apiKey: z.string().optional(),
+	}),
 
 	'azure-openai': z.object({
 		apiKey: z.string().optional(),

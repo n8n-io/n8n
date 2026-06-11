@@ -15,6 +15,7 @@ import type {
 	ElectronApi,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
+	LocalInstanceStatus,
 	MacPermissionKind,
 	MacPermissionStatus,
 	RunTaskResult,
@@ -147,6 +148,20 @@ const electronApi: ElectronApi = {
 
 	openMacPermissionSettings: async (kind: MacPermissionKind): Promise<void> => {
 		await ipcRenderer.invoke('permissions:openSettings', kind);
+	},
+
+	signInLocal: async (): Promise<{ ok: boolean; error?: string }> =>
+		await (ipcRenderer.invoke('local:signIn') as Promise<{ ok: boolean; error?: string }>),
+
+	getLocalInstanceStatus: async (): Promise<LocalInstanceStatus> =>
+		await (ipcRenderer.invoke('local:getStatus') as Promise<LocalInstanceStatus>),
+
+	onLocalInstanceStatusChanged: (
+		onChangeCallback: (status: LocalInstanceStatus) => void,
+	): (() => void) => {
+		const handler = (_event: unknown, status: LocalInstanceStatus) => onChangeCallback(status);
+		ipcRenderer.on('localInstanceStatusChanged', handler);
+		return () => ipcRenderer.removeListener('localInstanceStatusChanged', handler);
 	},
 };
 

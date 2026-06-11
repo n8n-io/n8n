@@ -56,12 +56,12 @@ export class TokenStore {
 /** Prefix marking a value as safeStorage-encrypted base64 (vs plaintext fallback). */
 const ENCRYPTED_PREFIX = 'enc:';
 
-function encrypt(value: string): string {
+export function encrypt(value: string): string {
 	if (!safeStorage.isEncryptionAvailable()) return value;
 	return ENCRYPTED_PREFIX + safeStorage.encryptString(value).toString('base64');
 }
 
-function decrypt(value: string): string {
+export function decrypt(value: string): string {
 	if (!value.startsWith(ENCRYPTED_PREFIX)) return value;
 	const buffer = Buffer.from(value.slice(ENCRYPTED_PREFIX.length), 'base64');
 	return safeStorage.decryptString(buffer);

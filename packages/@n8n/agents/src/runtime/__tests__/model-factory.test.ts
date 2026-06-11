@@ -143,15 +143,18 @@ vi.mock('@openrouter/ai-sdk-provider', () => ({
 }));
 
 vi.mock('@ai-sdk/openai-compatible', () => ({
-	createOpenAICompatible: (opts: ProviderOpts & { name: string }) => (model: string) => ({
-		provider: opts.name,
-		modelId: model,
-		apiKey: opts.apiKey,
-		baseURL: opts.baseURL,
-		headers: opts.headers,
-		fetch: opts.fetch,
-		specificationVersion: 'v3',
-	}),
+	createOpenAICompatible:
+		(opts: ProviderOpts & { name: string; supportsStructuredOutputs?: boolean }) =>
+		(model: string) => ({
+			provider: opts.name,
+			modelId: model,
+			apiKey: opts.apiKey,
+			baseURL: opts.baseURL,
+			headers: opts.headers,
+			fetch: opts.fetch,
+			supportsStructuredOutputs: opts.supportsStructuredOutputs,
+			specificationVersion: 'v3',
+		}),
 }));
 
 vi.mock('@ai-sdk/amazon-bedrock', () => ({
@@ -312,6 +315,28 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('nv-test');
 			expect(model.baseURL).toBe('https://integrate.api.nvidia.com/v1');
 		});
+
+		it('should create model for ollama', () => {
+			const model = createModel('ollama/gemma3') as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('ollama');
+			expect(model.modelId).toBe('gemma3');
+			expect(model.apiKey).toBe('ollama');
+			expect(model.baseURL).toBe('http://localhost:11434/v1');
+			// Structured generation depends on the response_format schema being forwarded.
+			expect(model.supportsStructuredOutputs).toBe(true);
+		});
+
+		it('should create model for ollama with custom baseURL and apiKey', () => {
+			const model = createModel({
+				id: 'ollama/llama3',
+				apiKey: 'custom-key',
+				baseURL: 'http://ollama.internal:11434/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('ollama');
+			expect(model.modelId).toBe('llama3');
+			expect(model.apiKey).toBe('custom-key');
+			expect(model.baseURL).toBe('http://ollama.internal:11434/v1');
+		});
 	});
 
 	describe('azure-openai', () => {
@@ -372,8 +397,10 @@ describe('createModel', () => {
 	});
 
 	describe('unsupported provider', () => {
-		it('should throw for ollama', () => {
-			expect(() => createModel('ollama/llama3')).toThrow(/Unsupported provider: "ollama"/);
+		it('should throw for an unknown provider', () => {
+			expect(() => createModel('unknown-provider/some-model')).toThrow(
+				/Unsupported provider: "unknown-provider"/,
+			);
 		});
 
 		it('should include supported providers in the error message', () => {

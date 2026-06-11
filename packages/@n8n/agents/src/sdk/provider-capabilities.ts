@@ -33,6 +33,7 @@ export const providerCapabilities: Record<
 	vercel: {},
 	openrouter: {},
 	nvidia: {},
+	ollama: {},
 	'azure-openai': {},
 	'aws-bedrock': {},
 };

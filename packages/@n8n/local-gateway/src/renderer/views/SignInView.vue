@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { N8nButton, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
-import { computed, ref, watch } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { CLOUD_SUFFIX, toSignInPrefill } from './sign-in-prefill';
-import type { AuthStatus } from '../../shared/types';
+import type { AuthStatus, LocalInstanceStatus } from '../../shared/types';
 
 const props = defineProps<{ status: AuthStatus }>();
+
+const i18n = useI18n();
 
 const useCustomUrl = ref(false);
 const slug = ref('');
@@ -54,6 +57,32 @@ async function signIn() {
 		// The browser flow continues out-of-band; `status` drives the UI from here.
 		submitting.value = false;
 	}
+}
+
+// Embedded local instance: status is pushed by the main process while it spawns
+// n8n and signs in headlessly; success lands as a regular `signedIn` auth status.
+const localStatus = ref<LocalInstanceStatus | null>(null);
+let unsubscribeLocalStatus: (() => void) | null = null;
+
+onMounted(() => {
+	unsubscribeLocalStatus = window.electronAPI.onLocalInstanceStatusChanged((status) => {
+		localStatus.value = status;
+	});
+	void window.electronAPI.getLocalInstanceStatus().then((status) => {
+		localStatus.value = status;
+	});
+});
+
+onBeforeUnmount(() => unsubscribeLocalStatus?.());
+
+const localStarting = computed(() => localStatus.value?.state === 'starting');
+const localError = computed(() =>
+	localStatus.value?.state === 'error' ? localStatus.value.error : null,
+);
+
+async function signInLocal() {
+	if (localStarting.value || loading.value) return;
+	await window.electronAPI.signInLocal();
 }
 </script>
 
@@ -104,6 +133,26 @@ async function signIn() {
 					{{ useCustomUrl ? 'Use n8n Cloud instead' : 'Self-hosting? Enter URL manually' }}
 				</N8nText>
 			</button>
+		</div>
+
+		<div :class="$style.localSection">
+			<N8nButton
+				type="secondary"
+				size="large"
+				:class="$style.submit"
+				:loading="localStarting"
+				:disabled="loading"
+				data-testid="signin-local"
+				@click="signInLocal"
+			>
+				{{ i18n.baseText('desktopAssistant.signIn.local.cta') }}
+			</N8nButton>
+			<N8nText v-if="localStarting" size="small" color="text-light">
+				{{ i18n.baseText('desktopAssistant.signIn.local.starting') }}
+			</N8nText>
+			<N8nText v-else-if="localError" :class="$style.error" color="danger" size="small">
+				{{ localError }}
+			</N8nText>
 		</div>
 	</main>
 </template>
@@ -170,5 +219,17 @@ async function signIn() {
 .linkButton:hover {
 	/* Brighten the label on hover by overriding the var N8nText's "text-light" reads. */
 	--text-color--subtler: var(--text-color);
+}
+
+.localSection {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--3xs);
+	width: 100%;
+	max-width: 360px;
+	margin-top: var(--spacing--lg);
+	padding-top: var(--spacing--lg);
+	border-top: var(--border);
 }
 </style>

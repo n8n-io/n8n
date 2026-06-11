@@ -153,6 +153,13 @@ export class OAuthFlow extends EventEmitter<OAuthFlowEvents> {
 		}
 	}
 
+	/** Adopt tokens acquired outside the browser flow (e.g. headless sign-in to the local instance). */
+	adoptSession(rawInstanceUrl: string, tokens: OAuthTokens): void {
+		const instanceUrl = normalizeBaseUrl(rawInstanceUrl);
+		this.persist(instanceUrl, tokens);
+		this.setStatus({ state: 'signedIn', instanceUrl, error: null });
+	}
+
 	signOut(): void {
 		// Drop any in-flight authorization too, so a late callback can't re-authenticate after logout.
 		this.pending = null;
