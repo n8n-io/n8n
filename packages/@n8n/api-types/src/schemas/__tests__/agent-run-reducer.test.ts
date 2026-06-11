@@ -8,7 +8,12 @@ import {
 	stateFromAgentTree,
 } from '../agent-run-reducer';
 import type { AgentRunState } from '../agent-run-reducer';
-import type { InstanceAiEvent } from '../instance-ai.schema';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiEvent,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+} from '../instance-ai.schema';
 
 // ---------------------------------------------------------------------------
 // Factory helpers
@@ -870,6 +875,66 @@ describe('agent-run-reducer', () => {
 				tree.timeline.some((e) => e.type === 'tool-call' && e.toolCallId === '__proto__'),
 			).toBe(false);
 			expectStateMapsNotPolluted(state!);
+		});
+
+		it('normalizes missing or non-array collections instead of throwing', () => {
+			// Simulates a truncated/malformed snapshot — run-sync frames and
+			// hydrated messages are not schema-validated.
+			const child = {
+				agentId: 'sub-1',
+				role: 'builder',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				// children / toolCalls / timeline missing entirely
+			} as unknown as InstanceAiAgentNode;
+			const tree = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: 'hi',
+				reasoning: '',
+				children: [child],
+				toolCalls: 'junk',
+				timeline: undefined,
+			} as unknown as InstanceAiAgentNode;
+
+			const state = stateFromAgentTree(tree);
+
+			expect(state).toBeDefined();
+			expect(tree.toolCalls).toEqual([]);
+			expect(tree.timeline).toEqual([]);
+			expect(child.children).toEqual([]);
+			expect(child.toolCalls).toEqual([]);
+			expect(child.timeline).toEqual([]);
+
+			// The repaired node is reducible: appendTimelineText reads timeline.at()
+			reduceEvent(state!, makeTextDelta('run-1', 'sub-1', 'live'));
+			expect(child.textContent).toBe('live');
+			expect(child.timeline).toEqual([{ type: 'text', content: 'live' }]);
+		});
+
+		it('drops junk entries inside snapshot collections', () => {
+			const tree = buildSnapshotTree();
+			tree.children.push(null as unknown as InstanceAiAgentNode);
+			tree.children.push({ role: 'no-id' } as unknown as InstanceAiAgentNode);
+			tree.toolCalls.push(null as unknown as InstanceAiToolCallState);
+			tree.timeline.push(null as unknown as InstanceAiTimelineEntry);
+
+			const state = stateFromAgentTree(tree);
+
+			expect(state).toBeDefined();
+			expect(tree.children).toHaveLength(1);
+			expect(tree.toolCalls).toHaveLength(0);
+			expect(tree.timeline.every((entry) => entry !== null)).toBe(true);
+			expect(findAgent(state!, 'undefined')).toBeUndefined();
+		});
+
+		it('returns undefined when the root agentId is missing', () => {
+			const tree = buildSnapshotTree();
+			Reflect.deleteProperty(tree, 'agentId');
+
+			expect(stateFromAgentTree(tree)).toBeUndefined();
 		});
 
 		it('drops unsafe ids on nested descendants, not just the root level', () => {

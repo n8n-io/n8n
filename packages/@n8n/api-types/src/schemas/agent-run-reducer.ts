@@ -362,16 +362,29 @@ export function toAgentTree(state: AgentRunState): InstanceAiAgentNode {
 }
 
 /**
+ * Adopted snapshots are not schema-validated (run-sync frames are plain
+ * `JSON.parse`, hydrated messages a cast REST response), so an id must be
+ * checked for presence and type before it is trusted as an object key.
+ * Note `isSafeObjectKey(undefined)` would return true — `Set.has` on a
+ * missing key is just false — so the string check is load-bearing.
+ */
+function isAdoptableId(id: unknown): id is string {
+	return typeof id === 'string' && isSafeObjectKey(id);
+}
+
+/**
  * Inverse of `toAgentTree`: index an existing snapshot tree (e.g. from session
  * restore or a `run-sync` frame) into an `AgentRunState`.
  *
  * The nodes are adopted, not copied — the returned state's `agentsById` points
  * at the given tree's own objects, so subsequent `reduceEvent` calls mutate the
- * tree the caller already holds. Entries with unsafe ids (prototype-pollution
- * hardening) are dropped in place.
+ * tree the caller already holds. Snapshots are not schema-validated: entries
+ * with unsafe or missing ids are dropped and missing/junk collections are
+ * normalized to empty arrays, in place — adoption never throws, and adopted
+ * nodes are always safe to reduce into and render.
  */
 export function stateFromAgentTree(tree: InstanceAiAgentNode): AgentRunState | undefined {
-	if (!isSafeObjectKey(tree.agentId)) return undefined;
+	if (!isAdoptableId(tree.agentId)) return undefined;
 
 	const state: AgentRunState = {
 		rootAgentId: tree.agentId,
@@ -389,18 +402,24 @@ function adoptNode(
 	node: InstanceAiAgentNode,
 	parentId: string | undefined,
 ): void {
-	if (!isSafeObjectKey(node.agentId)) return;
+	if (!isAdoptableId(node.agentId)) return;
 
 	state.agentsById[node.agentId] = node;
 	if (parentId && isSafeObjectKey(parentId)) state.parentByAgentId[node.agentId] = parentId;
 
-	node.children = node.children.filter((child) => isSafeObjectKey(child.agentId));
-	node.toolCalls = node.toolCalls.filter((toolCall) => isSafeObjectKey(toolCall.toolCallId));
-	node.timeline = node.timeline.filter((entry) => {
-		if (entry.type === 'child') return isSafeObjectKey(entry.agentId);
-		if (entry.type === 'tool-call') return isSafeObjectKey(entry.toolCallId);
-		return true;
-	});
+	node.children = Array.isArray(node.children)
+		? node.children.filter((child) => isAdoptableId(child?.agentId))
+		: [];
+	node.toolCalls = Array.isArray(node.toolCalls)
+		? node.toolCalls.filter((toolCall) => isAdoptableId(toolCall?.toolCallId))
+		: [];
+	node.timeline = Array.isArray(node.timeline)
+		? node.timeline.filter((entry) => {
+				if (entry?.type === 'child') return isAdoptableId(entry.agentId);
+				if (entry?.type === 'tool-call') return isAdoptableId(entry.toolCallId);
+				return Boolean(entry);
+			})
+		: [];
 	for (const tc of node.toolCalls) {
 		state.toolCallsById[tc.toolCallId] = tc;
 	}
