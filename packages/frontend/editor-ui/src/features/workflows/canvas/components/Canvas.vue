@@ -490,7 +490,6 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
  * Nodes
  */
 
-const hasNodeSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
 
 // Selected node ids, with each selected collapsed group expanded to its members
@@ -607,17 +606,13 @@ function onCanvasGroupUngroup(groupId: string) {
 	workflowDocumentStore.value.deleteGroup(groupId);
 }
 
+/**
+ * Delete both regular nodes and collapsed group members.
+ */
 function onDeleteSelection() {
-	// Regular workflow nodes go through the existing delete flow
-	if (hasNodeSelection.value) emit('delete:nodes', selectedNodeIds.value);
-
-	for (const node of selectedNodesAndGroups.value) {
-		if (!isCanvasGroupNode(node)) continue;
-		// Only collapsed group title bars are selectable, so any group node
-		// here represents the whole group as a single surface.
-		const data = node.data as CanvasGroupNodeData;
-		workflowDocumentStore.value.deleteGroup(data.group.id);
-	}
+	const ids = selectedNodeIdsWithGroupMembers.value;
+	// Removing the last group member also deletes the group via the document store
+	if (ids.length > 0) emit('delete:nodes', ids);
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
