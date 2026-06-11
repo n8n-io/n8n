@@ -5,6 +5,7 @@ import { useCanvasNodeGroupDrag } from './useCanvasNodeGroupDrag';
 import { CANVAS_NODE_GROUP_TYPE } from '../canvas.types';
 import {
 	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
@@ -199,7 +200,7 @@ describe('useCanvasNodeGroupDrag', () => {
 		]);
 	});
 
-	describe('multi-select drag (AC #11)', () => {
+	describe('multi-select drag', () => {
 		it('propagates Δ to the group nodes when the title bar is part of a multi-select drag', () => {
 			const { drag } = setup();
 			const groupNode = makeGroupGraphNode('group:g1', 0, 0);
@@ -234,6 +235,41 @@ describe('useCanvasNodeGroupDrag', () => {
 			expect(aMoves[0].position).toEqual({ x: 110, y: 210 });
 		});
 
+		it('moves both groups when dragging a multi-selection of two title bars', () => {
+			// Repro: VueFlow fires both selectionDragStart and nodeDragStart on
+			// multi-select — the per-node handler must not clobber the selection
+			// snapshots (otherwise the non-clicked group "bounces back" on stop).
+			const { drag } = setup();
+			const groupA = makeGroupGraphNode('group:g1', 0, 0);
+			const groupB = makeGroupGraphNode('group:g2', 0, 0);
+			const selEvent = makeSelectionEvent(groupA, groupB);
+
+			// Replay both events VueFlow emits for the clicked node.
+			drag.onSelectionDragStart(selEvent);
+			drag.onNodeDragStart({ ...selEvent, node: groupA });
+
+			// Move the selection by (10, 20).
+			groupA.position = { x: 10, y: 20 };
+			groupB.position = { x: 10, y: 20 };
+			drag.onSelectionDrag(selEvent);
+			drag.onNodeDrag({ ...selEvent, node: groupA });
+
+			expect(updateNodeMock).toHaveBeenCalledWith('a', { position: { x: 110, y: 220 } });
+			expect(updateNodeMock).toHaveBeenCalledWith('b', { position: { x: 310, y: 220 } });
+			expect(updateNodeMock).toHaveBeenCalledWith('c', { position: { x: 510, y: 520 } });
+			expect(updateNodeMock).toHaveBeenCalledWith('d', { position: { x: 710, y: 520 } });
+
+			const moves = drag.processSelectionDragStop(selEvent);
+			expect(moves).toEqual(
+				expect.arrayContaining([
+					{ id: 'a', position: { x: 110, y: 220 } },
+					{ id: 'b', position: { x: 310, y: 220 } },
+					{ id: 'c', position: { x: 510, y: 520 } },
+					{ id: 'd', position: { x: 710, y: 520 } },
+				]),
+			);
+		});
+
 		it('syncs the owning group title bar from live node positions when a group node is dragged', () => {
 			// Title bar must track the live cursor — store positions only
 			// catch up on drag-stop.
@@ -253,7 +289,7 @@ describe('useCanvasNodeGroupDrag', () => {
 				x: snapToGrid(120 - GROUP_PADDING_X),
 				y: snapToGrid(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
 			});
-			expect(patch.width).toBe(280 + 2 * GROUP_PADDING_X);
+			expect(patch.width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 			expect(patch.data.foo).toBe('bar'); // preserves other data fields
 			expect(patch.data.nodesRect).toEqual({ x: 120, y: 200, width: 280, height: 100 });
 		});

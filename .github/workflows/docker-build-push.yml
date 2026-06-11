@@ -137,7 +137,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: false # Disabled - BuildKit's syft SBOM under-resolves npm licenses; the sbom-attestation job attests an enriched, license-gated CycloneDX SBOM instead
+          sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
 
@@ -153,7 +153,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: false # Disabled - BuildKit's syft SBOM under-resolves npm licenses; the sbom-attestation job attests an enriched, license-gated CycloneDX SBOM instead
+          sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_tags }}
 
@@ -169,7 +169,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: false # Disabled - BuildKit's syft SBOM under-resolves npm licenses; the sbom-attestation job attests an enriched, license-gated CycloneDX SBOM instead
+          sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
 

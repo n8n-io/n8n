@@ -182,4 +182,36 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.buildError).toBe('build blew up');
 		expect(tc.workflowChecks).toEqual(checks);
 	});
+
+	it('preserves workflow JSON and build trace from LangSmith outputs', () => {
+		const cases = [withFile('airtable', [scenario('s1')])];
+		const workflowJson = {
+			id: 'wf-1',
+			name: 'Workflow',
+			active: false,
+			versionId: 'v1',
+			nodes: [],
+			connections: {},
+		};
+		const buildTrace = { finalText: 'done', toolCalls: [], agentActivities: [] };
+		const rows = [
+			row(
+				{ testCaseFile: 'airtable', scenarioName: 's1', _iteration: 0 },
+				{
+					buildSuccess: true,
+					passed: true,
+					score: 1,
+					reasoning: 'ok',
+					workflowJson,
+					buildTrace,
+				},
+			),
+		];
+
+		const result = reshapeLangSmithRuns(rows, cases, 1, new Map(), new Map(), undefined);
+
+		const tc = result[0][0];
+		expect(tc.workflowJson).toEqual(workflowJson);
+		expect(tc.buildTrace).toEqual(buildTrace);
+	});
 });
