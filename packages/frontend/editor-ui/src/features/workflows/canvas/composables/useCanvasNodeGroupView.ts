@@ -62,7 +62,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		persist();
 	}
 
-	function setExpanded(id: string, value: boolean, persistChange = true) {
+	function setExpanded(id: string, value: boolean) {
 		if (value) {
 			// Delete-then-add moves the id to the end so order tracks recency.
 			expandedIds.value.delete(id);
@@ -71,9 +71,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 			expandedIds.value.delete(id);
 		}
 
-		if (persistChange) {
-			persist();
-		}
+		persist();
 	}
 
 	const isGroupCollapsed = (id: string) => isGroupingEnabled() && !expandedIds.value.has(id);
@@ -85,14 +83,12 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	// Seed from groups already loaded (the SET event can fire before we subscribe).
 	restore(new Set(deps.getCurrentGroupIds()));
 
-	// SET restores persisted state;
-	// ADD expands the new group in-session without persisting;
-	// DELETE prunes the id from the persisted state.
+	// SET restores persisted state; ADD expands the new group; DELETE prunes it.
 	const subscription = deps.onNodeGroupsChange((event) => {
 		if (event.action === CHANGE_ACTION.SET) {
 			restore(new Set(event.payload.groups.map((group) => group.id)));
 		} else if (event.action === CHANGE_ACTION.ADD) {
-			setExpanded(event.payload.group.id, true, false);
+			setExpanded(event.payload.group.id, true);
 		} else if (event.action === CHANGE_ACTION.DELETE) {
 			setExpanded(event.payload.id, false);
 		}

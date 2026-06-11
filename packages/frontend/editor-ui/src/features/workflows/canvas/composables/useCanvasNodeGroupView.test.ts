@@ -155,34 +155,20 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.isGroupCollapsed(group.id)).toBe(false);
 		});
 
+		it('persists the auto-expanded state of a newly created group', () => {
+			const { nodeGroups } = setup();
+
+			const group = nodeGroups.createGroup(['a'], 'New');
+
+			expect(readStored()).toEqual([group.id]);
+		});
+
 		it('keeps existing groups collapsed when a new group is created', () => {
 			const { nodeGroups, view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 
 			nodeGroups.createGroup(['b'], 'New');
 
 			expect(view.isGroupCollapsed('g1')).toBe(true);
-		});
-
-		it('does not persist the auto-expanded state of a newly created group', () => {
-			const { nodeGroups, view } = setup();
-
-			const group = nodeGroups.createGroup(['a'], 'New');
-
-			// Expanded in-session, but creation alone must not write to localStorage.
-			expect(view.isGroupCollapsed(group.id)).toBe(false);
-			expect(readStored()).toEqual([]);
-		});
-
-		it('persists the auto-expanded group once the user deliberately toggles it', () => {
-			const { nodeGroups, view } = setup();
-			const group = nodeGroups.createGroup(['a'], 'New');
-			expect(readStored()).toEqual([]);
-
-			// Collapse then re-expand — now the deliberate action persists.
-			view.toggleCollapsed(group.id);
-			view.toggleCollapsed(group.id);
-
-			expect(readStored()).toEqual([group.id]);
 		});
 	});
 

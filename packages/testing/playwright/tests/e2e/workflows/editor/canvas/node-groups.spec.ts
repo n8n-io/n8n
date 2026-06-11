@@ -192,10 +192,11 @@ test.describe(
 			);
 
 			await n8n.page.reload();
-			// Creating a group does not persist its expand state, so it reloads collapsed.
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(VISIBLE_NODES_AFTER_COLLAPSED_LOAD);
+			// Creating a group persists its expand state, so it reloads expanded with all nodes visible.
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
 			await expect(n8n.canvas.getNodeGroupTitle(DEFAULT_GROUP_TITLE)).toBeVisible();
+			await expect(n8n.canvas.getNodeGroupFrame(DEFAULT_GROUP_TITLE)).toBeVisible();
 		});
 
 		test('blocks Convert to sub-workflow for selections that include a trigger', async ({
