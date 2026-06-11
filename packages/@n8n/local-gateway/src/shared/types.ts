@@ -51,6 +51,9 @@ export type {
 	DesktopAssistantHistoryEntry,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
+	DesktopAssistantRecommendationsRequest,
+	DesktopAssistantRecommendation,
+	DesktopAssistantRecommendationsResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
