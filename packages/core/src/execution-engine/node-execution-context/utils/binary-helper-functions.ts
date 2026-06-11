@@ -1,8 +1,8 @@
+import { binaryToString } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import chardet from 'chardet';
 import FileType from 'file-type';
 import { IncomingMessage } from 'http';
-import iconv from 'iconv-lite';
 import get from 'lodash/get';
 import { extension, lookup } from 'mime-types';
 import type { StringValue as TimeUnitValue } from 'ms';
@@ -31,17 +31,6 @@ import { URL } from 'url';
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 import type { BinaryData } from '@/binary-data/types';
 import { binaryToBuffer } from '@/binary-data/utils';
-
-import { parseIncomingMessage } from './parse-incoming-message';
-
-export async function binaryToString(body: Buffer | Readable, encoding?: string) {
-	if (!encoding && body instanceof IncomingMessage) {
-		parseIncomingMessage(body);
-		encoding = body.encoding;
-	}
-	const buffer = await binaryToBuffer(body);
-	return iconv.decode(buffer, encoding ?? 'utf-8');
-}
 
 function getBinaryPath(binaryDataId: string): string {
 	return Container.get(BinaryDataService).getPath(binaryDataId);

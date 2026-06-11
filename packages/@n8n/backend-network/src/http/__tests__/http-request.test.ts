@@ -1,4 +1,3 @@
-import type { SsrfBridge } from '@n8n/backend-network';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import FormData from 'form-data';
@@ -7,14 +6,17 @@ import type { IHttpRequestMethods, IHttpRequestOptions, IRequestOptions } from '
 import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
-// Imported for side effects: sets axios defaults and registers the vendor-header interceptor
-import '../axios-config';
+import type { SsrfBridge } from '../../ssrf';
+import { configureAxiosDefaults } from '../axios-config';
 import {
 	convertN8nRequestToAxios,
 	httpRequest,
 	invokeAxios,
 	removeEmptyBody,
 } from '../http-request';
+
+// Sets axios defaults and registers the vendor-header interceptor.
+configureAxiosDefaults();
 
 const TEST_CA_CERT = '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----';
 
@@ -141,6 +143,40 @@ describe('removeEmptyBody', () => {
 			expect(requestOptions.body).toEqual({});
 		},
 	);
+
+	describe('empty-body detection across body shapes (GET)', () => {
+		test.each([
+			['null', null],
+			['undefined', undefined],
+			['empty string', ''],
+			['empty array', []],
+			['empty buffer', Buffer.alloc(0)],
+			['empty object', {}],
+		])('treats %s as empty and removes it', (_label, body) => {
+			const requestOptions = {
+				method: 'GET',
+				body,
+			} as unknown as IHttpRequestOptions | IRequestOptions;
+			removeEmptyBody(requestOptions);
+			expect(requestOptions.body).toBeUndefined();
+		});
+
+		test.each([
+			['non-empty string', 'data'],
+			['non-empty array', [1]],
+			['non-empty buffer', Buffer.from('x')],
+			['non-empty object', { test: true }],
+			['zero', 0],
+			['false', false],
+		])('treats %s as non-empty and keeps it', (_label, body) => {
+			const requestOptions = {
+				method: 'GET',
+				body,
+			} as unknown as IHttpRequestOptions | IRequestOptions;
+			removeEmptyBody(requestOptions);
+			expect(requestOptions.body).toEqual(body);
+		});
+	});
 });
 
 describe('convertN8nRequestToAxios', () => {

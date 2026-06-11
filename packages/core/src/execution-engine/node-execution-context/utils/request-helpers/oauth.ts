@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
+import { removeEmptyBody } from '@n8n/backend-network';
 import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
@@ -31,8 +32,6 @@ import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
 import type { IResponseError } from '@/interfaces';
-
-import { removeEmptyBody } from './http-request';
 
 function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 	// Split and trim scopes; empty scope tokens are not RFC 6749-compliant and may be rejected by authorization servers

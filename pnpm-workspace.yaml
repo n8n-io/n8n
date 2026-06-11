@@ -79,6 +79,7 @@ catalog:
   '@types/lodash': 4.17.17
   '@types/mime-types': 3.0.1
   '@types/node': 24.10.1
+  '@types/proxy-from-env': ^1.0.4
   '@types/uuid': ^11.0.0
   '@types/xml2js': ^0.4.14
   '@stryker-mutator/core': 9.6.1
@@ -129,6 +130,8 @@ catalog:
   picocolors: 1.0.1
   playwright-core: 1.60.0
   posthog-node: 5.33.4
+  proxy-from-env: ^1.1.0
+  qs: 6.14.2
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   sass-embedded: ^1.98.0

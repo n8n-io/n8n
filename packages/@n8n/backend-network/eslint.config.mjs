@@ -9,6 +9,16 @@ export default defineConfig(
 		},
 	},
 	{
+		files: ['src/http/**/*.ts'],
+		rules: {
+			'no-prototype-builtins': 'warn',
+			'@typescript-eslint/naming-convention': 'warn',
+			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
+			'@typescript-eslint/no-unsafe-member-access': 'warn',
+			'@typescript-eslint/require-await': 'warn',
+		},
+	},
+	{
 		files: ['**/*.test.ts'],
 		rules: {
 			'n8n-local-rules/no-uncaught-json-parse': 'warn',

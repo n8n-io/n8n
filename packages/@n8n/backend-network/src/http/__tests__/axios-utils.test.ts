@@ -1,8 +1,6 @@
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import FormData from 'form-data';
 
-import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
-
 import {
 	buildTargetUrl,
 	createFormDataObject,
@@ -16,8 +14,9 @@ import {
 	setAxiosAgents,
 	tryParseUrl,
 } from '../axios-utils';
+import { createHttpProxyAgent, createHttpsProxyAgent } from '../http-proxy';
 
-vi.mock('@/http-proxy', () => ({
+vi.mock('../http-proxy', () => ({
 	createHttpProxyAgent: vi.fn((_proxy, _url, opts) => ({ type: 'http', ...opts })),
 	createHttpsProxyAgent: vi.fn((_proxy, _url, opts) => ({ type: 'https', ...opts })),
 }));

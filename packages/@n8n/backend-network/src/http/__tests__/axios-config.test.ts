@@ -3,7 +3,10 @@ import { Container } from '@n8n/di';
 import type { InternalAxiosRequestConfig } from 'axios';
 import axios, { AxiosHeaders } from 'axios';
 
-import '../axios-config';
+import { configureAxiosDefaults } from '../axios-config';
+
+// Registers the axios defaults and the vendor-header interceptor under test.
+configureAxiosDefaults();
 
 const getRequestInterceptor = () => {
 	const { handlers } = axios.interceptors.request as unknown as {
