@@ -2977,7 +2977,7 @@
 	"settings.mcp.workflows.table.column.name": "Name",
 	"settings.mcp.workflows.table.column.location": "Location",
 	"settings.mcp.workflows.table.column.description.emptyContent": "No description",
-	"settings.mcp.workflows.table.column.description.emptyTooltip": "Helps MCP clients understand when and how to use this workflow",
+	"settings.mcp.workflows.table.column.description.emptyTooltip": "The description helps MCP clients understand when and how to use this workflow",
 	"settings.mcp.workflows.table.column.description.editTooltip": "Click to edit",
 	"settings.mcp.workflows.table.column.description.viewFullTooltip": "Click to view full description",
 	"settings.mcp.workflows.table.empty.title": "No workflows enabled",
