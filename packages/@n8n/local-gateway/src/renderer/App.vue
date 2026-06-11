@@ -3,15 +3,20 @@ import { computed, onMounted, ref, watch } from 'vue';
 
 import AppHeader from './components/AppHeader.vue';
 import ChatPanel from './components/ChatPanel.vue';
+import PermissionPromptStack from './components/PermissionPromptStack.vue';
 import ComplexTaskView from './views/ComplexTaskView.vue';
 import HomeView from './views/HomeView.vue';
 import SettingsView from './views/SettingsView.vue';
 import SignInView from './views/SignInView.vue';
+import TaskDetailView from './views/TaskDetailView.vue';
 import TaskDraftView from './views/TaskDraftView.vue';
 import TaskSetupView from './views/TaskSetupView.vue';
 
 import { useAssistantScreen } from './assistant/use-assistant-screen';
 import { chatOverlay, closeChat } from './chat/chat-overlay';
+import { clearAllPrompts } from './permissions/permission-prompt-store';
+import { getThreadPromptWatcher } from './permissions/thread-prompt-watcher';
+import { usePermissionPrompts } from './permissions/use-permission-prompts';
 
 import type { AuthStatus } from '../shared/types';
 
@@ -22,6 +27,7 @@ const auth = ref<AuthStatus>({
 	error: null,
 });
 const { screen, goHome } = useAssistantScreen();
+const { prompts, respondingIds, failedIds, respondToPrompt } = usePermissionPrompts();
 
 // The setup and complex screens carry their own back-header, so the main
 // AppHeader is suppressed for them; home and draft keep it.
@@ -56,6 +62,9 @@ watch(
 			showSettings.value = false;
 			goHome();
 			closeChat();
+			// Another user must never see this user's pending prompts.
+			getThreadPromptWatcher().stopAllWatches();
+			clearAllPrompts();
 		}
 	},
 );
@@ -66,9 +75,6 @@ watch(
 		<AppHeader
 			v-if="showHeader"
 			:state="auth.state"
-			:chat-open="chatOverlay.isOpen"
-			:chat-title="chatOverlay.title"
-			@back="closeChat"
 			@open-settings="showSettings = !showSettings"
 		/>
 		<div :class="$style.content">
@@ -82,6 +88,12 @@ watch(
 					:required-connections="screen.requiredConnections"
 				/>
 				<ComplexTaskView v-else-if="screen.name === 'complex'" :plan="screen.plan" />
+				<TaskDetailView
+					v-else-if="screen.name === 'task-detail'"
+					:key="screen.card.workflowId"
+					:card="screen.card"
+					:variant="screen.variant"
+				/>
 				<HomeView v-else />
 			</template>
 			<SignInView v-else :status="auth" />
@@ -97,6 +109,19 @@ watch(
 					<ChatPanel />
 				</div>
 			</Transition>
+
+			<!-- Permission prompts float above the active composer, on any view. -->
+			<div
+				v-if="auth.state === 'signedIn' && prompts.length > 0"
+				:class="[$style.promptArea, chatOverlay.isOpen ? $style.aboveChat : $style.aboveHome]"
+			>
+				<PermissionPromptStack
+					:prompts="prompts"
+					:responding-ids="respondingIds"
+					:failed-ids="failedIds"
+					@respond="respondToPrompt"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -136,5 +161,23 @@ watch(
 .chatSlideFrom {
 	opacity: 0;
 	transform: translateY(100%);
+}
+
+/* Floats above whichever composer is active; z-above the chat overlay. */
+.promptArea {
+	position: absolute;
+	right: var(--spacing--xs);
+	left: var(--spacing--xs);
+	z-index: 10;
+}
+
+/* Clears the chat panel's single-row composer. */
+.aboveChat {
+	bottom: 68px;
+}
+
+/* Clears the home composer (input + context pills + suggestion chips). */
+.aboveHome {
+	bottom: 148px;
 }
 </style>

@@ -147,6 +147,11 @@ export function toggleMainWindow(
 	window.show();
 }
 
+/** Whether the window is currently on screen (it hides on blur — visible ≈ in front of the user). */
+export function isMainWindowVisible(): boolean {
+	return mainWindow !== null && !mainWindow.isDestroyed() && mainWindow.isVisible();
+}
+
 /** Send an IPC message to the renderer, if the window exists. */
 export function notifyMainWindow(channel: string, ...args: unknown[]): void {
 	if (mainWindow && !mainWindow.isDestroyed()) {

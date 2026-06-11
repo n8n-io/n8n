@@ -11,6 +11,7 @@ import {
 import * as config from '../../config';
 
 vi.mock('node:fs/promises');
+vi.mock('node:os', () => ({ homedir: vi.fn(() => '/base') }));
 
 const BASE = '/base';
 const enoent = (): Error => Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
@@ -56,6 +57,23 @@ describe('resolveSafePath', () => {
 	it('resolves "." to the base directory', async () => {
 		const result = await resolveSafePath(BASE, '.');
 		expect(result).toBe(BASE);
+	});
+
+	it('expands a leading ~ to the home directory', async () => {
+		// homedir is mocked to BASE, so ~/Desktop/joke.txt resolves inside it
+		const result = await resolveSafePath(BASE, '~/Desktop/joke.txt');
+		expect(result).toBe('/base/Desktop/joke.txt');
+	});
+
+	it('expands a bare ~ to the home directory', async () => {
+		const result = await resolveSafePath(BASE, '~');
+		expect(result).toBe(BASE);
+	});
+
+	it('throws when ~ expands outside the base directory', async () => {
+		const os = await import('node:os');
+		vi.mocked(os.homedir).mockReturnValue('/elsewhere');
+		await expect(resolveSafePath(BASE, '~/Desktop/joke.txt')).rejects.toThrow('escapes');
 	});
 
 	it('throws when path traversal escapes the base directory', async () => {

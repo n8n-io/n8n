@@ -163,6 +163,30 @@ describe('InstanceApi', () => {
 		});
 	});
 
+	describe('confirmRequest', () => {
+		it('posts the confirmation body to the encoded request id', async () => {
+			mockFetch.mockResolvedValue(jsonResponse({ data: { ok: true } }));
+
+			await new InstanceApi(makeOAuth()).confirmRequest('req/1', {
+				kind: 'approval',
+				approved: true,
+			});
+
+			const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n.example/rest/instance-ai/confirm/req%2F1');
+			expect(init.method).toBe('POST');
+			expect(init.body).toBe(JSON.stringify({ kind: 'approval', approved: true }));
+		});
+
+		it('surfaces the server status on failure (expired confirmation)', async () => {
+			mockFetch.mockResolvedValue(jsonResponse({ message: 'expired' }, { ok: false, status: 400 }));
+
+			await expect(
+				new InstanceApi(makeOAuth()).confirmRequest('req-1', { kind: 'approval', approved: true }),
+			).rejects.toMatchObject({ status: 400 });
+		});
+	});
+
 	describe('executionUrl', () => {
 		it('builds the execution url, or null when signed out', () => {
 			expect(new InstanceApi(makeOAuth()).executionUrl('wf-1', 'exec-1')).toBe(
@@ -234,6 +258,15 @@ describe('InstanceApi', () => {
 				'https://n.example/workflow/wf-1',
 			);
 			expect(new InstanceApi(makeOAuth({ instanceUrl: null })).workflowUrl('wf-1')).toBeNull();
+		});
+	});
+
+	describe('workflowSetupUrl', () => {
+		it('builds the editor url with the setup panel pre-opened, or null when signed out', () => {
+			expect(new InstanceApi(makeOAuth()).workflowSetupUrl('wf-1')).toBe(
+				'https://n.example/workflow/wf-1?action=openSetup',
+			);
+			expect(new InstanceApi(makeOAuth({ instanceUrl: null })).workflowSetupUrl('wf-1')).toBeNull();
 		});
 	});
 });

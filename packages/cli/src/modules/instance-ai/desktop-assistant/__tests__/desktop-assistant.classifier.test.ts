@@ -316,13 +316,27 @@ describe('classifyWorkflowsForDesktopAssistant — bucketing rules', () => {
 		expect(result.readyToRun).toHaveLength(1);
 	});
 
-	test('runsLocally: workflow with a computerUse.* node → true', () => {
+	test('runsLocally: workflow with a Computer Use node → true', () => {
 		const result = classifyWorkflowsForDesktopAssistant([
 			input({
 				workflowId: 'wf-1',
 				nodes: [
 					node({ type: MANUAL_TYPE }),
-					node({ type: 'n8n-nodes-base.computerUseClick', name: 'click' }),
+					node({ type: '@n8n/n8n-nodes-langchain.computerUse', name: 'click' }),
+				],
+				tags: [{ name: DESKTOP_ASSISTANT_TAG }],
+			}),
+		]);
+		expect(result.readyToRun[0].runsLocally).toBe(true);
+	});
+
+	test('runsLocally: workflow with a Computer Use agent tool → true', () => {
+		const result = classifyWorkflowsForDesktopAssistant([
+			input({
+				workflowId: 'wf-1',
+				nodes: [
+					node({ type: MANUAL_TYPE }),
+					node({ type: '@n8n/n8n-nodes-langchain.toolComputerUse', name: 'device' }),
 				],
 				tags: [{ name: DESKTOP_ASSISTANT_TAG }],
 			}),

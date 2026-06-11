@@ -14,5 +14,31 @@ export const DESKTOP_ASSISTANT_TAG = 'desktop-assistant';
 /** Thread metadata key set after a successful promote. */
 export const PROMOTED_WORKFLOW_ID_KEY = 'promotedWorkflowId';
 
+/**
+ * Thread metadata key recording the build run a promote kicked off. The
+ * desktop client polls `POST /promote-thread` while the build runs; this key
+ * lets the endpoint return the in-flight run instead of starting another.
+ */
+export const PROMOTE_RUN_ID_KEY = 'desktopAssistantPromoteRunId';
+
 /** Reverse pointer written on the workflow's meta JSON column. */
 export const PROMOTED_FROM_THREAD_ID_KEY = 'promotedFromThreadId';
+
+/** Thread metadata key recording which surface created the thread. */
+export const THREAD_SOURCE_METADATA_KEY = 'source';
+
+/**
+ * Metadata value marking a thread as desktop-assistant-originated. Threads
+ * carrying this source are hidden from the chat UI's thread list; everything
+ * else (promote, metadata reads/updates) treats them like any other thread.
+ */
+export const DESKTOP_ASSISTANT_THREAD_SOURCE = 'desktop-assistant';
+
+/** Node types that execute on the user's device via a Device Connection credential. */
+export const COMPUTER_USE_NODE_TYPES = new Set([
+	'@n8n/n8n-nodes-langchain.computerUse',
+	'@n8n/n8n-nodes-langchain.toolComputerUse',
+]);
+
+/** Credential type the Computer Use nodes require. */
+export const DEVICE_CONNECTION_CREDENTIAL_TYPE = 'deviceConnectionApi';

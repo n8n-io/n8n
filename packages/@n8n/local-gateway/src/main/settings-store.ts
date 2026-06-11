@@ -18,6 +18,7 @@ const DEFAULTS: AppSettings = {
 	mouseKeyboardEnabled: true,
 	browserEnabled: true,
 	logLevel: 'info',
+	permissionConfirmation: 'instance',
 };
 
 export class SettingsStore {
@@ -40,6 +41,7 @@ export class SettingsStore {
 			mouseKeyboardEnabled: this.store.get('mouseKeyboardEnabled'),
 			browserEnabled: this.store.get('browserEnabled'),
 			logLevel: this.store.get('logLevel'),
+			permissionConfirmation: this.store.get('permissionConfirmation'),
 		};
 	}
 
@@ -68,14 +70,17 @@ export class SettingsStore {
 			browser: {
 				defaultBrowser: 'chrome',
 			},
+			// Toggle-on means allow: the app's settings toggles are the user's
+			// explicit consent, and 'ask' would suspend fire-and-forget one-shot
+			// runs on a confirmation the desktop surface cannot answer.
 			permissions: {
 				filesystemRead: s.filesystemEnabled ? 'allow' : 'deny',
-				filesystemWrite: s.filesystemEnabled ? 'ask' : 'deny',
-				shell: s.shellEnabled ? 'ask' : 'deny',
-				computer: s.screenshotEnabled || s.mouseKeyboardEnabled ? 'ask' : 'deny',
-				browser: s.browserEnabled ? 'ask' : 'deny',
+				filesystemWrite: s.filesystemEnabled ? 'allow' : 'deny',
+				shell: s.shellEnabled ? 'allow' : 'deny',
+				computer: s.screenshotEnabled || s.mouseKeyboardEnabled ? 'allow' : 'deny',
+				browser: s.browserEnabled ? 'allow' : 'deny',
 			},
-			permissionConfirmation: 'instance',
+			permissionConfirmation: s.permissionConfirmation,
 		};
 	}
 

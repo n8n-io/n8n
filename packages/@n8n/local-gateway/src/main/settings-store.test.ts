@@ -81,9 +81,18 @@ describe('SettingsStore (Electron)', () => {
 		const config = store.toGatewayConfig();
 		expect(config.permissions.filesystemRead).toBe('deny');
 		expect(config.permissions.filesystemWrite).toBe('deny');
-		expect(config.permissions.shell).toBe('ask');
+		expect(config.permissions.shell).toBe('allow');
 		expect(config.permissions.computer).toBe('deny');
 		expect(config.permissions.browser).toBe('deny');
+	});
+
+	it('defaults permissionConfirmation to instance and forwards a persisted client mode', () => {
+		const store = new SettingsStore();
+		expect(store.toGatewayConfig().permissionConfirmation).toBe('instance');
+
+		store.set({ permissionConfirmation: 'client' });
+		expect(store.get().permissionConfirmation).toBe('client');
+		expect(store.toGatewayConfig().permissionConfirmation).toBe('client');
 	});
 
 	it('getStorePath joins Electron userData with settings file name', () => {

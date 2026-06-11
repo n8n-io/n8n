@@ -12,6 +12,8 @@ export interface AppSettings {
 	mouseKeyboardEnabled: boolean;
 	browserEnabled: boolean;
 	logLevel: LogLevel;
+	/** Where resource-access prompts are confirmed: in the n8n editor ('instance') or in this app ('client'). */
+	permissionConfirmation: 'instance' | 'client';
 }
 
 export interface StatusSnapshot {
@@ -29,12 +31,15 @@ export interface ConnectPayload {
 // without reaching across packages — the shapes live in @n8n/api-types and are
 // reused verbatim, never redefined here.
 import type {
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
-	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
+	InstanceAiConfirmRequest,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
@@ -43,6 +48,7 @@ import type {
 	ScreenshotAttachment,
 	WindowCaptureTarget,
 } from '@n8n/computer-use/context';
+import type { AffectedResource, ResourceDecision } from '@n8n/computer-use/tools/types';
 
 export type {
 	InstanceAiMessage,
@@ -52,14 +58,30 @@ export type {
 	DesktopAssistantTriggerSummary,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantHistoryEntry,
+	DesktopAssistantTaskOutcome,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendation,
 	DesktopAssistantRecommendationsResponse,
+	InstanceAiAgentNode,
+	InstanceAiConfirmRequest,
+	InstanceAiConfirmation,
+	InstanceAiConfirmationRequestPayload,
+	InstanceAiConfirmationSeverity,
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
+	DesktopAssistantDescriptionPart,
+	DesktopAssistantTaskDetailResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
+	InstanceAiToolCallState,
+	DomainAccessAction,
+	DomainAccessMeta,
+	WebSearchMeta,
+	InstanceGatewayResourceDecision,
 } from '@n8n/api-types';
+export type { AffectedResource, ResourceDecision } from '@n8n/computer-use/tools/types';
 
 // Type-only re-export: the detected-context shape comes from @n8n/computer-use,
 // but importing it `type`-only means no Node runtime dependency leaks into the
@@ -92,6 +114,50 @@ export interface DesktopAssistantTimeSaved {
 export interface RunTaskResult {
 	ok: boolean;
 	executionId?: string;
+	error?: string;
+}
+
+/**
+ * A resource-access prompt raised by computer-use's `client` permission mode,
+ * pending in the main process until the user decides. Pushed to the renderer
+ * for display; the decision travels back over `respondToPermissionPrompt`.
+ */
+export interface LocalPermissionPromptRequest {
+	id: string;
+	resource: AffectedResource;
+	options: ResourceDecision[];
+}
+
+/**
+ * Outcome of a thread-confirmation POST. A structured result instead of a
+ * rejection because IPC flattens errors — the renderer needs the HTTP status
+ * to tell a stale request (400/404 → drop the prompt) from a real failure.
+ */
+export interface ConfirmThreadResult {
+	ok: boolean;
+	status?: number;
+	error?: string;
+}
+
+/** Result of starting a one-shot assistant task run from the composer. */
+export interface CreateAssistantTaskResult {
+	ok: boolean;
+	threadId?: string;
+	runId?: string;
+	error?: string;
+}
+
+/**
+ * Result of asking the instance to promote a thread into a saved workflow.
+ * Idempotent: `building` while the build runs, `done` (with `workflowId`)
+ * once a promote has produced the workflow.
+ */
+export interface PromoteAssistantThreadResult {
+	ok: boolean;
+	status?: 'building' | 'done';
+	/** The build run to watch, set while `status === 'building'`. */
+	runId?: string;
+	workflowId?: string;
 	error?: string;
 }
 
@@ -131,7 +197,25 @@ export interface ElectronApi {
 	onStatusChanged: (onChangeCallback: (snapshot: StatusSnapshot) => void) => void;
 	getTasks: () => Promise<DesktopAssistantTasksResponse>;
 	runTask: (workflowId: string) => Promise<RunTaskResult>;
+	/** Start a one-shot assistant task run with the prompt + detected context. */
+	createAssistantTask: (body: DesktopAssistantTaskRequest) => Promise<CreateAssistantTaskResult>;
+	promoteAssistantThread: (
+		threadId: string,
+		name?: string,
+		icon?: string,
+	) => Promise<PromoteAssistantThreadResult>;
 	openWorkflow: (workflowId: string) => Promise<void>;
+	/** The task detail view's segmented description (LLM-generated, cached server-side). */
+	getTaskDetail: (workflowId: string) => Promise<DesktopAssistantTaskDetailResponse>;
+	/** Apply chip edits to the workflow via an Instance AI run; follow it over `onThreadEvent`. */
+	applyTaskEdits: (
+		workflowId: string,
+		body: DesktopAssistantApplyEditsRequest,
+	) => Promise<DesktopAssistantApplyEditsResponse>;
+	/** Archive the task's workflow (soft delete — it drops out of the task list). */
+	deleteTask: (workflowId: string) => Promise<{ ok: boolean; error?: string }>;
+	/** Open the task's workflow with the Set up panel pre-opened in the browser (Connect CTA). */
+	openWorkflowSetup: (workflowId: string) => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
 	openExecution: (workflowId: string, executionId: string) => Promise<void>;
 	getTimeSaved: () => Promise<DesktopAssistantTimeSaved>;
@@ -171,8 +255,6 @@ export interface ElectronApi {
 	 * full screen.
 	 */
 	captureScreenshot: (target?: WindowCaptureTarget) => Promise<ScreenshotAttachment>;
-	/** Fire a one-shot task with the prompt + detected context; returns thread/run ids. */
-	triggerTask: (body: DesktopAssistantTaskRequest) => Promise<DesktopAssistantTaskResponse>;
 	/**
 	 * Generate task suggestions for the empty state, grounded in the selected
 	 * context (optional) and the user's connected integrations.
@@ -184,6 +266,22 @@ export interface ElectronApi {
 	getMacPermissions: () => Promise<MacPermissionStatus>;
 	/** Open the System Settings pane to grant a macOS permission. */
 	openMacPermissionSettings: (kind: MacPermissionKind) => Promise<void>;
+	/** Local resource-access prompts still pending in the main process (renderer-reload resync). */
+	listPermissionPrompts: () => Promise<LocalPermissionPromptRequest[]>;
+	/** Answer a local resource-access prompt; `ok: false` when the prompt is unknown (already resolved). */
+	respondToPermissionPrompt: (id: string, decision: ResourceDecision) => Promise<{ ok: boolean }>;
+	/** Subscribe to local prompts raised by the main process. Returns a disposer. */
+	onPermissionPromptRequested: (
+		onRequestCallback: (prompt: LocalPermissionPromptRequest) => void,
+	) => () => void;
+	/** Subscribe to local prompts withdrawn by the main process (resolved or cleared). Returns a disposer. */
+	onPermissionPromptWithdrawn: (onWithdrawCallback: (id: string) => void) => () => void;
+	/** Resolve an instance-ai confirmation request; the suspended thread resumes on success. */
+	confirmThreadRequest: (
+		threadId: string,
+		requestId: string,
+		body: InstanceAiConfirmRequest,
+	) => Promise<ConfirmThreadResult>;
 	/** Start the embedded local n8n instance and sign in headlessly; persists the choice. */
 	signInLocal: () => Promise<{ ok: boolean; error?: string }>;
 	getLocalInstanceStatus: () => Promise<LocalInstanceStatus>;

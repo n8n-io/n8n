@@ -22,6 +22,7 @@ export const ORCHESTRATION_TOOL_IDS = {
 	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
+	REPORT_DESKTOP_TASK_OUTCOME: 'report-desktop-task-outcome',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {
@@ -49,6 +50,9 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	DOMAIN_TOOL_IDS.EVALS,
+	// Only present in desktop one-shot runs (via the desktop-assistant profile);
+	// keeps it out of deferred tool search there, no-op elsewhere.
+	ORCHESTRATION_TOOL_IDS.REPORT_DESKTOP_TASK_OUTCOME,
 	'web-search',
 	'fetch-url',
 ]);

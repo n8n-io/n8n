@@ -31,7 +31,8 @@
     "./logger": "./dist/logger.js",
     "./gateway-session": "./dist/gateway-session.js",
     "./settings-store": "./dist/settings-store.js",
-    "./context": "./dist/context.js"
+    "./context": "./dist/context.js",
+    "./tools/types": "./dist/tools/types.js"
   },
   "module": "src/cli.ts",
   "types": "dist/cli.d.ts",

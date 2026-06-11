@@ -1,112 +1,75 @@
 /**
  * Prompt-mode variants for the desktop assistant entry points.
  *
- * These tests pin the contract that the desktop assistant relies on:
- * - One-shot mode tells the orchestrator to run fire-and-forget (no follow-up
- *   questions, no conversational output, stop on ambiguity).
- * - Promote mode tells the orchestrator to build a workflow and pick a short
- *   descriptive name that starts with a representative emoji.
- *
- * The wording is intentionally not pinned exactly; we assert the protected
- * concepts survive copy edits but intent-shifting edits fail loudly. The
- * desktop assistant no longer subscribes to derived `gate-chosen` /
- * `workflow.created` / `handoff-to-editor` events — those references were
- * removed from the prompts when the abstraction layer was dropped.
+ * These tests deliberately avoid pinning prose — the prompt wording is free to
+ * evolve. What they do pin are the cross-system identifiers other code depends
+ * on (the outcome tool name the desktop client matches tool-call events
+ * against, the Computer Use node types and credential the promote build must
+ * emit) plus the structural facts: each mode has its section, modes don't
+ * bleed into each other, and the outcome tool is registered for one-shot runs
+ * only.
  */
 
+import { getDesktopAssistantProfile } from '../desktop-assistant-profile';
 import { getSystemPrompt } from '../system-prompt';
 
 describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
-	describe('default behaviour', () => {
-		it('omits the desktop-assistant section when no promptMode is set', () => {
-			const prompt = getSystemPrompt({});
-			expect(prompt).not.toMatch(/Desktop Assistant/i);
-		});
+	it('omits the desktop-assistant section when no promptMode is set', () => {
+		expect(getSystemPrompt({})).not.toMatch(/Desktop Assistant/i);
 	});
 
-	describe('promptMode: desktop-assistant-one-shot', () => {
+	it('one-shot mode references the outcome report tool the client listens for', () => {
 		const prompt = getSystemPrompt({ promptMode: 'desktop-assistant-one-shot' });
-
-		it('declares the one-shot section', () => {
-			expect(prompt).toMatch(/Desktop Assistant.+One-Shot/i);
-		});
-
-		it('forbids follow-up questions', () => {
-			expect(prompt).toMatch(/do not ask follow-up questions/i);
-		});
-
-		it('forbids conversational output and tells the model text is not shown to the user', () => {
-			expect(prompt).toMatch(/output tool calls only/i);
-			expect(prompt).toMatch(/does not read any text content/i);
-		});
-
-		it('enumerates specific forbidden conversational patterns', () => {
-			expect(prompt).toMatch(/greetings/i);
-			expect(prompt).toMatch(/narration/i);
-			expect(prompt).toMatch(/summaries/i);
-		});
-
-		it('instructs the orchestrator to stop without producing a result when ambiguous', () => {
-			expect(prompt).toMatch(/stop without producing a result/i);
-		});
-
-		it('does not reference dropped derived events', () => {
-			expect(prompt).not.toMatch(/gate-chosen/i);
-			expect(prompt).not.toMatch(/workflow\.created/i);
-			expect(prompt).not.toMatch(/handoff-to-editor/i);
-		});
-
-		it('instructs an emoji-prefixed workflow name on the recurring build path', () => {
-			expect(prompt).toMatch(/short descriptive label/i);
-			expect(prompt).toMatch(/starts with a single emoji/i);
-		});
+		expect(prompt).toMatch(/Desktop Assistant.+One-Shot/i);
+		expect(prompt).toContain('report-desktop-task-outcome');
 	});
 
-	describe('promptMode: desktop-assistant-promote', () => {
+	it('promote mode references the node types and credential the build must emit', () => {
 		const prompt = getSystemPrompt({ promptMode: 'desktop-assistant-promote' });
-
-		it('declares the promote section', () => {
-			expect(prompt).toMatch(/Desktop Assistant.+Promote/i);
-		});
-
-		it('instructs an emoji-prefixed workflow name', () => {
-			expect(prompt).toMatch(/short descriptive label/i);
-			expect(prompt).toMatch(/starts with a single emoji/i);
-		});
-
-		it('forbids follow-up questions', () => {
-			expect(prompt).toMatch(/do not ask follow-up questions/i);
-		});
-
-		it('references the workflow-builder skill', () => {
-			expect(prompt).toMatch(/workflow-builder/i);
-		});
-
-		it('instructs the orchestrator to stop without producing a workflow when ambiguous', () => {
-			expect(prompt).toMatch(/stop without producing a workflow/i);
-		});
-
-		it('forbids conversational output and tells the model text is not shown to the user', () => {
-			expect(prompt).toMatch(/output tool calls only/i);
-			expect(prompt).toMatch(/does not read any text content/i);
-		});
-
-		it('does not reference dropped derived events', () => {
-			expect(prompt).not.toMatch(/gate-chosen/i);
-			expect(prompt).not.toMatch(/workflow\.created/i);
-			expect(prompt).not.toMatch(/handoff-to-editor/i);
-		});
+		expect(prompt).toMatch(/Desktop Assistant.+Promote/i);
+		expect(prompt).toContain('@n8n/n8n-nodes-langchain.computerUse');
+		expect(prompt).toContain('@n8n/n8n-nodes-langchain.toolComputerUse');
+		expect(prompt).toContain('deviceConnectionApi');
 	});
 
-	describe('isolation between modes', () => {
-		it('promote mode does not include one-shot-only wording', () => {
-			const promotePrompt = getSystemPrompt({ promptMode: 'desktop-assistant-promote' });
-			expect(promotePrompt).not.toMatch(/One-Shot Task/i);
-		});
+	it('edit mode restricts the run to the listed changes', () => {
+		const prompt = getSystemPrompt({ promptMode: 'desktop-assistant-edit' });
+		expect(prompt).toMatch(/Desktop Assistant.+Edit Existing Workflow/i);
+		expect(prompt).toMatch(/apply ONLY the listed changes/i);
+		expect(prompt).toMatch(/stop without modifying the workflow/i);
+	});
 
-		it('one-shot mode does not include promote-only wording', () => {
-			const oneShotPrompt = getSystemPrompt({ promptMode: 'desktop-assistant-one-shot' });
-			expect(oneShotPrompt).not.toMatch(/Promote To Workflow/i);
-		});
+	it('modes do not bleed into each other', () => {
+		expect(getSystemPrompt({ promptMode: 'desktop-assistant-promote' })).not.toMatch(
+			/One-Shot Task/i,
+		);
+		expect(getSystemPrompt({ promptMode: 'desktop-assistant-one-shot' })).not.toMatch(
+			/Promote To Workflow/i,
+		);
+		const editPrompt = getSystemPrompt({ promptMode: 'desktop-assistant-edit' });
+		expect(editPrompt).not.toMatch(/One-Shot Task/i);
+		expect(editPrompt).not.toMatch(/Promote To Workflow/i);
+	});
+});
+
+describe('getDesktopAssistantProfile — extra tools', () => {
+	it('returns no prompt section and no tools without a promptMode', () => {
+		const profile = getDesktopAssistantProfile(undefined);
+		expect(profile.promptSection).toBe('');
+		expect(profile.extraTools).toHaveLength(0);
+	});
+
+	it('registers the outcome report tool for one-shot mode only', () => {
+		const oneShot = getDesktopAssistantProfile('desktop-assistant-one-shot');
+		expect(oneShot.extraTools.map((tool) => tool.name)).toEqual(['report-desktop-task-outcome']);
+
+		const promote = getDesktopAssistantProfile('desktop-assistant-promote');
+		expect(promote.extraTools).toHaveLength(0);
+	});
+
+	it('pins gateway tools out of deferred search for one-shot runs only', () => {
+		expect(getDesktopAssistantProfile('desktop-assistant-one-shot').preloadGatewayTools).toBe(true);
+		expect(getDesktopAssistantProfile('desktop-assistant-promote').preloadGatewayTools).toBe(false);
+		expect(getDesktopAssistantProfile(undefined).preloadGatewayTools).toBe(false);
 	});
 });

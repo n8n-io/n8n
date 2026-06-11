@@ -48,12 +48,13 @@ function makeService(
 	const emit = vi.fn();
 	const getThreadMessages = opts.getThreadMessages ?? vi.fn();
 	const sendChatMessage = vi.fn().mockResolvedValue({ runId: 'r1' });
+	const confirmRequest = vi.fn().mockResolvedValue(undefined);
 	const service = new ThreadService({
 		oauthFlow: opts.oauthFlow ?? makeOAuth(),
-		instanceApi: { getThreadMessages, sendChatMessage } as unknown as InstanceApi,
+		instanceApi: { getThreadMessages, sendChatMessage, confirmRequest } as unknown as InstanceApi,
 		emit,
 	});
-	return { service, emit, getThreadMessages, sendChatMessage };
+	return { service, emit, getThreadMessages, sendChatMessage, confirmRequest };
 }
 
 describe('ThreadService', () => {
@@ -143,6 +144,25 @@ describe('ThreadService', () => {
 			fakeSources[0].onmessage?.({ data: '{"foo":1}' });
 
 			expect(emit).not.toHaveBeenCalled();
+		});
+
+		it('logs tool errors', () => {
+			const { service } = makeService();
+			service.listen('t1');
+
+			const toolError = {
+				type: 'tool-error',
+				runId: 'r1',
+				agentId: 'a1',
+				payload: { toolCallId: 'c1', error: 'element not found' },
+			};
+			fakeSources[0].onmessage?.({ data: JSON.stringify(toolError) });
+
+			expect(logger.warn).toHaveBeenCalledWith('Tool error', {
+				runId: 'r1',
+				toolCallId: 'c1',
+				error: 'element not found',
+			});
 		});
 	});
 
@@ -284,6 +304,35 @@ describe('ThreadService', () => {
 			await service.getMessages('t1');
 
 			expect(getThreadMessages).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('confirm', () => {
+		const snapshot = { threadId: 't1', messages: [], nextEventId: 7 };
+		const body = { kind: 'approval', approved: true } as const;
+
+		it('delegates to the instance api and invalidates the stale snapshot', async () => {
+			const getThreadMessages = vi.fn().mockResolvedValue(snapshot);
+			const { service, confirmRequest } = makeService({ getThreadMessages });
+			await service.getMessages('t1');
+
+			await service.confirm('t1', 'req-1', body);
+			await service.getMessages('t1');
+
+			expect(confirmRequest).toHaveBeenCalledWith('req-1', body);
+			expect(getThreadMessages).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps the cached snapshot when the confirm fails', async () => {
+			const getThreadMessages = vi.fn().mockResolvedValue(snapshot);
+			const { service, confirmRequest } = makeService({ getThreadMessages });
+			confirmRequest.mockRejectedValueOnce(new Error('boom'));
+			await service.getMessages('t1');
+
+			await expect(service.confirm('t1', 'req-1', body)).rejects.toThrow('boom');
+			await service.getMessages('t1');
+
+			expect(getThreadMessages).toHaveBeenCalledTimes(1);
 		});
 	});
 

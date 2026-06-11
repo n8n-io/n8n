@@ -266,6 +266,7 @@ const {
 	startChat,
 	addNodesAndConnections,
 	fitView,
+	openSetupPanelIfEnabled,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
 
@@ -369,6 +370,8 @@ function initializeRoute() {
 			source: 'empty_state',
 		});
 		evaluationsWizardSidepanelStore.open(0);
+	} else if (route.query.action === 'openSetup') {
+		openSetupPanelIfEnabled();
 	}
 
 	// Handle debug mode event binding (data loading is handled by WorkflowLayout)

@@ -1,20 +1,38 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import ChatMessages from './ChatMessages.vue';
 import ComposerField from './ComposerField.vue';
 
-import { chatOverlay, setChatTitle } from '../chat/chat-overlay';
+import { useViewTitle } from '../app/view-title';
+import { chatOverlay, closeChat, setChatTitle } from '../chat/chat-overlay';
+import { hasBlockingPromptForThread } from '../permissions/permission-prompt-store';
 
 const i18n = useI18n();
+
+useViewTitle(() => chatOverlay.title ?? i18n.baseText('desktopAssistant.chat.title'), closeChat);
 
 const text = ref('');
 const messagesRef = ref<InstanceType<typeof ChatMessages> | null>(null);
 
+// A pending confirmation suspends the run server-side (posting would 409);
+// refuse input and say why via the placeholder.
+const suspended = computed(
+	() => chatOverlay.threadId !== null && hasBlockingPromptForThread(chatOverlay.threadId),
+);
+
+const placeholder = computed(() =>
+	i18n.baseText(
+		suspended.value
+			? 'desktopAssistant.permissions.suspendedPlaceholder'
+			: 'desktopAssistant.chat.placeholder',
+	),
+);
+
 async function submit() {
 	const value = text.value.trim();
-	if (!value || messagesRef.value?.busy) return;
+	if (!value || messagesRef.value?.busy || suspended.value) return;
 	text.value = '';
 	await messagesRef.value?.send(value);
 }
@@ -41,7 +59,7 @@ function onTitleChanged(title: string, isFallback?: boolean) {
 			<ComposerField
 				v-model="text"
 				:busy="messagesRef?.busy"
-				:placeholder="i18n.baseText('desktopAssistant.chat.placeholder')"
+				:placeholder="placeholder"
 				:input-aria-label="i18n.baseText('desktopAssistant.chat.inputAriaLabel')"
 				:send-aria-label="i18n.baseText('desktopAssistant.chat.send')"
 				@submit="submit"

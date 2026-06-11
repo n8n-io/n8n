@@ -1,4 +1,6 @@
+import { InstanceAiConfirmRequestDto } from '@n8n/api-types';
 import { configure, logger } from '@n8n/computer-use/logger';
+import { RESOURCE_DECISION_KEYS, type ResourceDecision } from '@n8n/computer-use/tools/types';
 import { ipcMain } from 'electron';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -11,23 +13,30 @@ import { InstanceApiError, type InstanceApi } from './instance-api';
 import type { LocalInstanceManager } from './local-instance/local-instance-manager';
 import { getMacPermissionStatus, openMacPermissionSettings } from './mac-permissions';
 import type { OAuthFlow } from './oauth/oauth-flow';
+import type { PermissionBroker } from './permission-broker';
 import type { AppSettings, SettingsStore } from './settings-store';
 import type { ThreadService } from './thread-service';
 import type {
 	AuthStatus,
+	ConfirmThreadResult,
+	CreateAssistantTaskResult,
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
-	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
 	DetectedContext,
 	InstanceAiRichMessagesResponse,
 	LocalInstanceStatus,
+	LocalPermissionPromptRequest,
 	MacPermissionKind,
 	MacPermissionStatus,
+	PromoteAssistantThreadResult,
 	RunTaskResult,
 	ScreenshotAttachment,
 	WindowCaptureTarget,
@@ -43,8 +52,21 @@ export interface IpcHandlerDeps {
 	threadService: ThreadService;
 	contextDetector: ContextDetector;
 	localInstanceManager: LocalInstanceManager;
+	permissionBroker: PermissionBroker;
+	/**
+	 * Re-establishes the gateway connection with the current settings (no-op when
+	 * signed out). Fire-and-forget — failures surface via daemon status events.
+	 */
+	reconnectGateway: () => void;
 	/** Opens a URL in the user's default browser (e.g. shell.openExternal). */
 	openExternal: (url: string) => Promise<void>;
+}
+
+/** Human-readable message for an error caught at the IPC boundary. */
+function ipcErrorMessage(error: unknown): string {
+	return error instanceof InstanceApiError || error instanceof Error
+		? error.message
+		: String(error);
 }
 
 /** Where forwarded attachments are written for inspection — next to the log file. */
@@ -113,6 +135,8 @@ export function registerIpcHandlers({
 	threadService,
 	contextDetector,
 	localInstanceManager,
+	permissionBroker,
+	reconnectGateway,
 	openExternal,
 }: IpcHandlerDeps): void {
 	ipcMain.handle(
@@ -171,7 +195,11 @@ export function registerIpcHandlers({
 					configure({ level: partial.logLevel });
 					logger.info('Log level updated', { level: partial.logLevel });
 				}
-				// Changing tool/capability toggles does not hot-reload an active connection; disconnect and connect again if needed.
+				// Everything except logLevel (applied in-process above) feeds the gateway
+				// config, which is only read at connect time — reconnect to apply it.
+				if (Object.keys(partial).some((key) => key !== 'logLevel')) {
+					reconnectGateway();
+				}
 				return { ok: true };
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
@@ -203,16 +231,98 @@ export function registerIpcHandlers({
 			const { executionId } = await instanceApi.runWorkflow(workflowId);
 			return { ok: true, executionId };
 		} catch (error) {
-			const message =
-				error instanceof InstanceApiError || error instanceof Error ? error.message : String(error);
+			const message = ipcErrorMessage(error);
 			logger.error('IPC tasks:run failed', { workflowId, error: message });
 			return { ok: false, error: message };
 		}
 	});
 
+	ipcMain.handle(
+		'assistant:createTask',
+		async (_event, body: DesktopAssistantTaskRequest): Promise<CreateAssistantTaskResult> => {
+			// `info` so it shows without enabling debug, and a summary rather than the
+			// raw body — screenshot attachments are multi-MB base64 we never want in logs.
+			logger.info('IPC assistant:createTask', summarizeTaskRequest(body));
+			try {
+				const { threadId, runId } = await instanceApi.triggerTask(body);
+				return { ok: true, threadId, runId };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.error('IPC assistant:createTask failed', { error: message });
+				return { ok: false, error: message };
+			}
+		},
+	);
+
+	ipcMain.handle(
+		'assistant:promote',
+		async (
+			_event,
+			threadId: string,
+			name?: string,
+			icon?: string,
+		): Promise<PromoteAssistantThreadResult> => {
+			logger.debug('IPC assistant:promote', { threadId });
+			try {
+				const result = await instanceApi.promoteThread(threadId, name, icon);
+				return {
+					ok: true,
+					status: result.status,
+					runId: result.status === 'building' ? result.runId : undefined,
+					workflowId: result.status === 'done' ? result.workflowId : undefined,
+				};
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.error('IPC assistant:promote failed', { threadId, error: message });
+				return { ok: false, error: message };
+			}
+		},
+	);
+
 	ipcMain.handle('tasks:openWorkflow', async (_event, workflowId: string): Promise<void> => {
 		logger.debug('IPC tasks:openWorkflow', { workflowId });
 		const url = instanceApi.workflowUrl(workflowId);
+		if (url) await openExternal(url);
+	});
+
+	ipcMain.handle(
+		'tasks:detail',
+		async (_event, workflowId: string): Promise<DesktopAssistantTaskDetailResponse> => {
+			logger.debug('IPC tasks:detail', { workflowId });
+			return await instanceApi.getTaskDetail(workflowId);
+		},
+	);
+
+	ipcMain.handle(
+		'tasks:applyEdits',
+		async (
+			_event,
+			workflowId: string,
+			body: DesktopAssistantApplyEditsRequest,
+		): Promise<DesktopAssistantApplyEditsResponse> => {
+			logger.debug('IPC tasks:applyEdits', { workflowId, changes: body.changes.length });
+			return await instanceApi.applyTaskEdits(workflowId, body);
+		},
+	);
+
+	ipcMain.handle(
+		'tasks:delete',
+		async (_event, workflowId: string): Promise<{ ok: boolean; error?: string }> => {
+			logger.debug('IPC tasks:delete', { workflowId });
+			try {
+				await instanceApi.archiveWorkflow(workflowId);
+				return { ok: true };
+			} catch (error) {
+				const message = ipcErrorMessage(error);
+				logger.error('IPC tasks:delete failed', { workflowId, error: message });
+				return { ok: false, error: message };
+			}
+		},
+	);
+
+	ipcMain.handle('tasks:openWorkflowSetup', async (_event, workflowId: string): Promise<void> => {
+		logger.debug('IPC tasks:openWorkflowSetup', { workflowId });
+		const url = instanceApi.workflowSetupUrl(workflowId);
 		if (url) await openExternal(url);
 	});
 
@@ -271,6 +381,48 @@ export function registerIpcHandlers({
 		threadService.unlisten(threadId);
 	});
 
+	ipcMain.handle(
+		'thread:confirm',
+		async (
+			_event,
+			threadId: string,
+			requestId: string,
+			body: unknown,
+		): Promise<ConfirmThreadResult> => {
+			logger.debug('IPC thread:confirm', { threadId, requestId });
+			const parsed = InstanceAiConfirmRequestDto.safeParse(body);
+			if (!parsed.success) {
+				return { ok: false, error: 'Invalid confirmation body' };
+			}
+			try {
+				await threadService.confirm(threadId, requestId, parsed.data);
+				return { ok: true };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.error('IPC thread:confirm failed', { threadId, requestId, error: message });
+				return {
+					ok: false,
+					status: error instanceof InstanceApiError ? error.status : undefined,
+					error: message,
+				};
+			}
+		},
+	);
+
+	ipcMain.handle('permissionPrompt:list', (): LocalPermissionPromptRequest[] => {
+		logger.debug('IPC permissionPrompt:list');
+		return permissionBroker.list();
+	});
+
+	ipcMain.handle(
+		'permissionPrompt:respond',
+		(_event, id: string, decision: ResourceDecision): { ok: boolean } => {
+			logger.debug('IPC permissionPrompt:respond', { id, decision });
+			if (!RESOURCE_DECISION_KEYS.includes(decision)) return { ok: false };
+			return { ok: permissionBroker.respond(id, decision) };
+		},
+	);
+
 	ipcMain.handle('context:list', (): DetectedContext[] => {
 		const options = contextDetector.getOptions();
 		logger.debug('IPC context:list', { count: options.length });
@@ -282,16 +434,6 @@ export function registerIpcHandlers({
 		async (_event, target?: WindowCaptureTarget): Promise<ScreenshotAttachment> => {
 			logger.debug('IPC context:captureScreenshot', { app: target?.app });
 			return await contextDetector.captureScreenshot(target);
-		},
-	);
-
-	ipcMain.handle(
-		'tasks:trigger',
-		async (_event, body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> => {
-			// `info` so it shows without enabling debug, and a summary rather than the
-			// raw body — screenshot attachments are multi-MB base64 we never want in logs.
-			logger.info('Triggering one-shot task', summarizeTaskRequest(body));
-			return await instanceApi.triggerTask(body);
 		},
 	);
 

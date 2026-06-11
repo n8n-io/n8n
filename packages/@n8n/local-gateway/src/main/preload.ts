@@ -3,21 +3,29 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
 	AppSettings,
 	AuthStatus,
+	ConfirmThreadResult,
+	CreateAssistantTaskResult,
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
-	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
 	DetectedContext,
 	ElectronApi,
+	InstanceAiConfirmRequest,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 	LocalInstanceStatus,
+	LocalPermissionPromptRequest,
 	MacPermissionKind,
 	MacPermissionStatus,
+	ResourceDecision,
+	PromoteAssistantThreadResult,
 	RunTaskResult,
 	ScreenshotAttachment,
 	StatusSnapshot,
@@ -65,8 +73,51 @@ const electronApi: ElectronApi = {
 	runTask: async (workflowId: string): Promise<RunTaskResult> =>
 		await (ipcRenderer.invoke('tasks:run', workflowId) as Promise<RunTaskResult>),
 
+	createAssistantTask: async (
+		body: DesktopAssistantTaskRequest,
+	): Promise<CreateAssistantTaskResult> =>
+		await (ipcRenderer.invoke('assistant:createTask', body) as Promise<CreateAssistantTaskResult>),
+
+	promoteAssistantThread: async (
+		threadId: string,
+		name?: string,
+		icon?: string,
+	): Promise<PromoteAssistantThreadResult> =>
+		await (ipcRenderer.invoke(
+			'assistant:promote',
+			threadId,
+			name,
+			icon,
+		) as Promise<PromoteAssistantThreadResult>),
+
 	openWorkflow: async (workflowId: string): Promise<void> => {
 		await ipcRenderer.invoke('tasks:openWorkflow', workflowId);
+	},
+
+	getTaskDetail: async (workflowId: string): Promise<DesktopAssistantTaskDetailResponse> =>
+		await (ipcRenderer.invoke(
+			'tasks:detail',
+			workflowId,
+		) as Promise<DesktopAssistantTaskDetailResponse>),
+
+	applyTaskEdits: async (
+		workflowId: string,
+		body: DesktopAssistantApplyEditsRequest,
+	): Promise<DesktopAssistantApplyEditsResponse> =>
+		await (ipcRenderer.invoke(
+			'tasks:applyEdits',
+			workflowId,
+			body,
+		) as Promise<DesktopAssistantApplyEditsResponse>),
+
+	deleteTask: async (workflowId: string): Promise<{ ok: boolean; error?: string }> =>
+		await (ipcRenderer.invoke('tasks:delete', workflowId) as Promise<{
+			ok: boolean;
+			error?: string;
+		}>),
+
+	openWorkflowSetup: async (workflowId: string): Promise<void> => {
+		await ipcRenderer.invoke('tasks:openWorkflowSetup', workflowId);
 	},
 
 	getHistory: async (
@@ -132,9 +183,6 @@ const electronApi: ElectronApi = {
 			target,
 		) as Promise<ScreenshotAttachment>),
 
-	triggerTask: async (body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> =>
-		await (ipcRenderer.invoke('tasks:trigger', body) as Promise<DesktopAssistantTaskResponse>),
-
 	getRecommendations: async (
 		body: DesktopAssistantRecommendationsRequest,
 	): Promise<DesktopAssistantRecommendationsResponse> =>
@@ -163,6 +211,44 @@ const electronApi: ElectronApi = {
 		ipcRenderer.on('localInstanceStatusChanged', handler);
 		return () => ipcRenderer.removeListener('localInstanceStatusChanged', handler);
 	},
+
+	listPermissionPrompts: async (): Promise<LocalPermissionPromptRequest[]> =>
+		await (ipcRenderer.invoke('permissionPrompt:list') as Promise<LocalPermissionPromptRequest[]>),
+
+	respondToPermissionPrompt: async (
+		id: string,
+		decision: ResourceDecision,
+	): Promise<{ ok: boolean }> =>
+		await (ipcRenderer.invoke('permissionPrompt:respond', id, decision) as Promise<{
+			ok: boolean;
+		}>),
+
+	onPermissionPromptRequested: (
+		onRequestCallback: (prompt: LocalPermissionPromptRequest) => void,
+	): (() => void) => {
+		const handler = (_event: unknown, prompt: LocalPermissionPromptRequest) =>
+			onRequestCallback(prompt);
+		ipcRenderer.on('permissionPromptRequested', handler);
+		return () => ipcRenderer.removeListener('permissionPromptRequested', handler);
+	},
+
+	onPermissionPromptWithdrawn: (onWithdrawCallback: (id: string) => void): (() => void) => {
+		const handler = (_event: unknown, id: string) => onWithdrawCallback(id);
+		ipcRenderer.on('permissionPromptWithdrawn', handler);
+		return () => ipcRenderer.removeListener('permissionPromptWithdrawn', handler);
+	},
+
+	confirmThreadRequest: async (
+		threadId: string,
+		requestId: string,
+		body: InstanceAiConfirmRequest,
+	): Promise<ConfirmThreadResult> =>
+		await (ipcRenderer.invoke(
+			'thread:confirm',
+			threadId,
+			requestId,
+			body,
+		) as Promise<ConfirmThreadResult>),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronApi);
