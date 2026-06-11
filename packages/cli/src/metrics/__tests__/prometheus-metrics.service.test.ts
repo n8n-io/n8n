@@ -14,6 +14,7 @@ import { PrometheusMetricsService } from '../prometheus/prometheus.service';
 import type { PrometheusPssMetricsService } from '../prometheus/pss-metrics.service';
 import type { PrometheusQueueMetricsService } from '../prometheus/queue-metrics.service';
 import type { PrometheusRouteMetricsService } from '../prometheus/route-metrics.service';
+import type { PrometheusSsrfMetricsService } from '../prometheus/ssrf-metrics.service';
 import type { PrometheusTokenExchangeMetricsService } from '../prometheus/token-exchange-metrics.service';
 import type { PrometheusVersionMetricsService } from '../prometheus/version-metrics.service';
 import type { PrometheusWorkflowExecutionDurationMetricsService } from '../prometheus/workflow-execution-duration-metrics.service';
@@ -38,6 +39,7 @@ describe('PrometheusMetricsService', () => {
 	let version: jest.Mocked<PrometheusVersionMetricsService>;
 	let defaultMetrics: jest.Mocked<PrometheusDefaultMetricsService>;
 	let tokenExchange: jest.Mocked<PrometheusTokenExchangeMetricsService>;
+	let ssrf: jest.Mocked<PrometheusSsrfMetricsService>;
 
 	let service: PrometheusMetricsService;
 
@@ -57,6 +59,7 @@ describe('PrometheusMetricsService', () => {
 			version,
 			defaultMetrics,
 			tokenExchange,
+			ssrf,
 		);
 
 	beforeEach(() => {
@@ -83,6 +86,7 @@ describe('PrometheusMetricsService', () => {
 		version = mock<PrometheusVersionMetricsService>({ enabled: true });
 		defaultMetrics = mock<PrometheusDefaultMetricsService>({ enabled: true });
 		tokenExchange = mock<PrometheusTokenExchangeMetricsService>({ enabled: true });
+		ssrf = mock<PrometheusSsrfMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -108,6 +112,7 @@ describe('PrometheusMetricsService', () => {
 			expect(version.init).toHaveBeenCalledWith(app);
 			expect(defaultMetrics.init).toHaveBeenCalledWith(app);
 			expect(tokenExchange.init).toHaveBeenCalledWith(app);
+			expect(ssrf.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {

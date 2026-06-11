@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import Canvas from './Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -12,17 +13,31 @@ import {
 } from '../canvas.types';
 import {
 	createCanvasConnection,
+	createCanvasGroupElement,
 	createCanvasNodeElement,
 } from '@/features/workflows/canvas/__tests__/utils';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
-import { SIMULATE_NODE_TYPE } from '@/app/constants';
+import { CANVAS_NODES_GROUPING_EXPERIMENT, SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { GROUP_PADDING_Y_BOTTOM, GROUP_PADDING_Y_TOP } from '../stores/canvasNodeGroups.constants';
+
+let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/stores/workflowDocument.store')>();
+	return {
+		...actual,
+		injectWorkflowDocumentStore: () => computed(() => workflowDocumentStore),
+	};
+});
 
 const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object
@@ -65,6 +80,7 @@ function createCanvasGroupNode({
 		data: {
 			group: { id: 'g1', name: 'Group 1', nodeIds: ['node-1'] },
 			nodesRect,
+			isCollapsed: false,
 		},
 	};
 }
@@ -73,6 +89,7 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {
 	const pinia = createPinia();
 	setActivePinia(pinia);
+	workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-test'));
 
 	renderComponent = createComponentRenderer(Canvas, {
 		pinia,
@@ -159,14 +176,14 @@ describe('Canvas', () => {
 		});
 	});
 
-	it('should exclude group title bars from select all', async () => {
+	it('should exclude expanded group title bars from select all', async () => {
 		const posthogStore = usePostHog();
 		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
 			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
 		);
 
 		const node = createCanvasNodeElement({ id: 'node-1' });
-		const groupNode = createCanvasGroupNode();
+		const groupNode = createCanvasGroupNode({ selectable: false });
 		const eventBus = createEventBus<CanvasEventBusEvents>();
 
 		const { container } = renderComponent({
@@ -182,6 +199,55 @@ describe('Canvas', () => {
 		eventBus.emit('nodes:selectAll');
 
 		await waitFor(() => expect(getSelectedNodes.value.map(({ id }) => id)).toEqual([node.id]));
+	});
+
+	it('should include collapsed group title bars in select all', async () => {
+		const posthogStore = usePostHog();
+		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const node = createCanvasNodeElement({ id: 'node-1' });
+		const groupNode = createCanvasGroupNode({ selectable: true });
+		const eventBus = createEventBus<CanvasEventBusEvents>();
+
+		const { container } = renderComponent({
+			props: {
+				nodes: [node, groupNode],
+				eventBus,
+			},
+		});
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+
+		const { getSelectedNodes } = useVueFlow(canvasId);
+		eventBus.emit('nodes:selectAll');
+
+		await waitFor(() =>
+			expect(getSelectedNodes.value.map(({ id }) => id).sort()).toEqual([groupNode.id, node.id]),
+		);
+	});
+
+	it('should expand a selected collapsed group to its members when copying', async () => {
+		vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
+			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+		);
+
+		const groupNode = createCanvasGroupElement({ id: 'g1', nodeIds: ['node-1', 'node-2'] });
+
+		const { container, emitted } = renderComponent({
+			props: { nodes: [groupNode] },
+		});
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+		const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+		addSelectedNodes(graphNodes.value);
+
+		await fireEvent.keyDown(document, { key: 'c', ctrlKey: true, metaKey: true });
+
+		// The group title bar isn't a real node, so copy must carry its members.
+		expect(emitted()['copy:nodes']).toEqual([[['node-1', 'node-2']]]);
 	});
 
 	it('should emit `update:nodes:position` event', async () => {
@@ -425,6 +491,37 @@ describe('Canvas', () => {
 			});
 
 			expect(queryByTestId('canvas-controls')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('delete / backspace on group title bar', () => {
+		beforeEach(() => {
+			vi.spyOn(usePostHog(), 'isFeatureEnabled').mockImplementation(
+				(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
+			);
+		});
+
+		it("deletes a collapsed group's member nodes when backspace is pressed with a group title bar selected", async () => {
+			const group = workflowDocumentStore.createGroup([], 'My Group');
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['a', 'b'],
+			});
+
+			const { container, emitted } = renderComponent({
+				props: { nodes: [groupNode] },
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
+			addSelectedNodes(graphNodes.value);
+
+			await fireEvent.keyDown(document, { key: 'Backspace' });
+			await fireEvent.keyUp(document, { key: 'Backspace' });
+
+			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b']]);
 		});
 	});
 });

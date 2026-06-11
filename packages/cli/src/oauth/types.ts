@@ -12,6 +12,7 @@ export type CsrfStateRequired = {
 export type CreateCsrfStateData = {
 	cid: string;
 	origin: 'static-credential' | 'dynamic-credential';
+	resource?: string;
 	/**
 	 * SHA-256 hash of the `n8n-oauth-binding` cookie value captured at flow
 	 * initiation. Verified at callback to ensure the same browser is completing

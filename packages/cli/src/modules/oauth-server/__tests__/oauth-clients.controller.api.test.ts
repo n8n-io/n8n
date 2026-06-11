@@ -9,7 +9,7 @@ import { setupTestServer } from '@test-integration/utils';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
-const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['mcp'] });
+const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-server', 'mcp'] });
 
 let owner: User;
 let member: User;

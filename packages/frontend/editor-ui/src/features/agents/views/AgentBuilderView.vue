@@ -157,7 +157,13 @@ const connectedTriggers = ref<string[]>([]);
 const tasksReloadKey = ref(0);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
-const isChatFullWidth = ref(false);
+function shouldAutoExpandInitialBuild(): boolean {
+	return Boolean(route.query.prompt) && route.query.expandBuildChat === 'true';
+}
+
+const shouldStartWithExpandedBuildChat = shouldAutoExpandInitialBuild();
+const isChatFullWidth = ref(shouldStartWithExpandedBuildChat);
+const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
@@ -671,6 +677,13 @@ async function onConfigUpdated() {
 	builderTelemetry.trackTasksChanged();
 }
 
+function onBuildDone() {
+	isBuildChatStreaming.value = false;
+	if (!shouldCollapseChatAfterInitialBuild.value) return;
+	isChatFullWidth.value = false;
+	shouldCollapseChatAfterInitialBuild.value = false;
+}
+
 const headerActions = computed(() =>
 	canDeleteAgent.value
 		? [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }]
@@ -796,7 +809,13 @@ async function initialize() {
 	// into the build chat.
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
-		void router.replace({ query: { ...route.query, prompt: undefined } });
+		if (shouldAutoExpandInitialBuild()) {
+			isChatFullWidth.value = true;
+			shouldCollapseChatAfterInitialBuild.value = true;
+		}
+		void router.replace({
+			query: { ...route.query, prompt: undefined, expandBuildChat: undefined },
+		});
 		startChat(prompt);
 	}
 
@@ -1226,6 +1245,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:can-edit-agent="canEditAgent"
 					:before-build-send="flushAutosave"
 					@config-updated="onConfigUpdated"
+					@build-done="onBuildDone"
 					@update:streaming="onBuildChatStreamingChange"
 					@update:tools="onQuickActionAddTool"
 					@update:mcp-servers="onQuickActionAddMcpServers"

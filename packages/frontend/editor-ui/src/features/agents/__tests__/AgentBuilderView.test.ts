@@ -250,7 +250,11 @@ vi.mock('@n8n/i18n', () => ({
 vi.setConfig({ testTimeout: 30_000 });
 
 /** Shared stubs used by both mount helpers. */
-async function renderView({ knowledgeBaseEnabled = false } = {}) {
+async function renderView({
+	knowledgeBaseEnabled = false,
+	waitForAsyncSetup = true,
+}: { knowledgeBaseEnabled?: boolean; waitForAsyncSetup?: boolean } = {}) {
+	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
 	setActivePinia(pinia);
 	const { useSettingsStore } = await import('@/app/stores/settings.store');
@@ -262,14 +266,13 @@ async function renderView({ knowledgeBaseEnabled = false } = {}) {
 			knowledgeBaseEnabled,
 		},
 	};
-	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const wrapper = mount(AgentBuilderView, {
 		global: {
 			plugins: [pinia],
 			stubs: commonStubs,
 		},
 	});
-	await flushPromises();
+	if (waitForAsyncSetup) await flushPromises();
 	return wrapper;
 }
 
@@ -708,6 +711,76 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 
 		expect(wrapper.find('[data-testid="agent-build-chat-full-width-toggle"]').exists()).toBe(true);
+	});
+
+	it('renders seeded initial builds from the URL as full-width before async initialization settles', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+
+		const wrapper = await renderView({ waitForAsyncSetup: false });
+
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+		expect(chatColumn.props('isFullWidth')).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+
+		await flushPromises();
+	});
+
+	it('auto-expands seeded initial builds from the URL and clears the query flag', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+
+		const wrapper = await renderView();
+
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+		expect(chatColumn.props('isFullWidth')).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: { prompt: undefined, expandBuildChat: undefined },
+		});
+	});
+
+	it('keeps an auto-expanded initial build open on config updates before build completion', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).vm.$emit('config-updated');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isFullWidth')).toBe(
+			true,
+		);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+	});
+
+	it('collapses an auto-expanded initial build when the build finishes with written config', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).vm.$emit('build-done');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isFullWidth')).toBe(
+			false,
+		);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
+	});
+
+	it('mounts the editor enabled when the initial build completion collapses the chat', async () => {
+		routeQuery.prompt = 'Build a recruiting agent';
+		routeQuery.expandBuildChat = 'true';
+		const wrapper = await renderView();
+		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
+
+		chatColumn.vm.$emit('update:streaming', true);
+		chatColumn.vm.$emit('build-done');
+		await flushPromises();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('isBuildChatStreaming'),
+		).toBe(false);
 	});
 
 	it('does not render the old Build/Test toggle inside the chat input footer', async () => {

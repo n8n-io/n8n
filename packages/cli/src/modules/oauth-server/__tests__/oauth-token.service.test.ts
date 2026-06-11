@@ -6,13 +6,13 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
 
 import type { AccessToken } from '../database/entities/oauth-access-token.entity';
 import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
-import { McpOAuthTokenService } from '../mcp-oauth-token.service';
+import { OAuthTokenService } from '../oauth-token.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
@@ -21,14 +21,23 @@ let logger: jest.Mocked<Logger>;
 let userRepository: jest.Mocked<UserRepository>;
 let accessTokenRepository: jest.Mocked<AccessTokenRepository>;
 let refreshTokenRepository: jest.Mocked<RefreshTokenRepository>;
-let urlService: jest.Mocked<UrlService>;
-let service: McpOAuthTokenService;
+let service: OAuthTokenService;
 let mockTransactionManager: any;
 
 const TEST_BASE_URL = 'https://n8n.example.com';
 const TEST_RESOURCE_URL = `${TEST_BASE_URL}/mcp-server/http`;
+const LEGACY_AUDIENCE = 'mcp-server-api';
 
-describe('McpOAuthTokenService', () => {
+const registry = new ProtectedResourceRegistry();
+registry.register({
+	id: 'instance-mcp',
+	getResourceUrl: () => TEST_RESOURCE_URL,
+	getAudiences: () => [TEST_RESOURCE_URL, LEGACY_AUDIENCE],
+	scopes: [],
+	isDefault: true,
+});
+
+describe('OAuthTokenService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
 		userRepository = mockInstance(UserRepository);
@@ -55,22 +64,18 @@ describe('McpOAuthTokenService', () => {
 		(refreshTokenRepository as any).manager = mockManager;
 		(refreshTokenRepository as any).target = 'RefreshToken';
 
-		urlService = mock<UrlService>();
-		urlService.getInstanceBaseUrl.mockReturnValue(TEST_BASE_URL);
-
-		service = new McpOAuthTokenService(
+		service = new OAuthTokenService(
 			logger,
 			jwtService,
 			userRepository,
 			accessTokenRepository,
 			refreshTokenRepository,
-			urlService,
+			registry,
 		);
 	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		urlService.getInstanceBaseUrl.mockReturnValue(TEST_BASE_URL);
 	});
 
 	describe('generateTokenPair', () => {
@@ -487,15 +492,90 @@ describe('McpOAuthTokenService', () => {
 		});
 	});
 
-	describe('getCanonicalResourceUrl', () => {
-		it('should preserve subpath in canonical resource URL', () => {
-			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n');
-			expect(service.getCanonicalResourceUrl()).toBe('https://example.com/n8n/mcp-server/http');
+	describe('multi-resource audience isolation', () => {
+		const RESOURCE_A_URL = `${TEST_BASE_URL}/mcp-server/http`;
+		const RESOURCE_B_URL = `${TEST_BASE_URL}/webhook/wf-1/mcp`;
+
+		let multiResourceService: OAuthTokenService;
+
+		beforeAll(() => {
+			const multiResourceRegistry = new ProtectedResourceRegistry();
+			multiResourceRegistry.register({
+				id: 'instance-mcp',
+				getResourceUrl: () => RESOURCE_A_URL,
+				getAudiences: () => [RESOURCE_A_URL, LEGACY_AUDIENCE],
+				scopes: [],
+				isDefault: true,
+			});
+			multiResourceRegistry.register({
+				id: 'workflow-trigger',
+				getResourceUrl: () => RESOURCE_B_URL,
+				getAudiences: () => [RESOURCE_B_URL],
+				scopes: [],
+			});
+
+			multiResourceService = new OAuthTokenService(
+				logger,
+				jwtService,
+				userRepository,
+				accessTokenRepository,
+				refreshTokenRepository,
+				multiResourceRegistry,
+			);
 		});
 
-		it('should strip trailing slash from base URL', () => {
-			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n/');
-			expect(service.getCanonicalResourceUrl()).toBe('https://example.com/n8n/mcp-server/http');
+		it('should reject a token whose aud belongs to another resource', async () => {
+			const tokenForResourceA = jwtService.sign({
+				sub: 'user-123',
+				aud: RESOURCE_A_URL,
+				client_id: 'client-456',
+			});
+
+			await expect(
+				multiResourceService.verifyAccessToken(tokenForResourceA, RESOURCE_B_URL),
+			).rejects.toThrow('JWT Verification Failed');
+		});
+
+		it('should not accept the legacy audience at a non-default resource', async () => {
+			const legacyToken = jwtService.sign({
+				sub: 'user-123',
+				aud: LEGACY_AUDIENCE,
+				client_id: 'client-456',
+			});
+
+			await expect(
+				multiResourceService.verifyAccessToken(legacyToken, RESOURCE_B_URL),
+			).rejects.toThrow('JWT Verification Failed');
+		});
+
+		it('should accept a token at its own resource', async () => {
+			const tokenForResourceB = jwtService.sign({
+				sub: 'user-123',
+				aud: RESOURCE_B_URL,
+				client_id: 'client-456',
+			});
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: tokenForResourceB, clientId: 'client-456', userId: 'user-123' }),
+			);
+
+			await expect(
+				multiResourceService.verifyAccessToken(tokenForResourceB, RESOURCE_B_URL),
+			).resolves.toMatchObject({ clientId: 'client-456' });
+		});
+
+		it('should still accept the legacy audience at the default (instance MCP) resource', async () => {
+			const legacyToken = jwtService.sign({
+				sub: 'user-123',
+				aud: LEGACY_AUDIENCE,
+				client_id: 'client-456',
+			});
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: legacyToken, clientId: 'client-456', userId: 'user-123' }),
+			);
+
+			await expect(
+				multiResourceService.verifyAccessToken(legacyToken, RESOURCE_A_URL),
+			).resolves.toMatchObject({ clientId: 'client-456' });
 		});
 	});
 });
