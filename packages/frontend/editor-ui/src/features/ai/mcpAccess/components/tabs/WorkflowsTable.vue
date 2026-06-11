@@ -321,6 +321,9 @@ const onConnectClick = () => {
 }
 
 .description-cell {
+	// Shrink to the text so the tooltip is anchored near it, not centered on the column
+	display: inline-block;
+	max-width: 100%;
 	color: var(--color--text);
 	padding: var(--spacing--2xs) 0;
 	cursor: pointer;
