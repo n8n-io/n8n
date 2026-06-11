@@ -83,36 +83,24 @@ function qualifyLcov(content, prefix) {
 	);
 }
 
-/** Stage files into a fresh temp dir with unique names, normalising SF: paths. */
-function stage(label, files) {
+/** Stage `{ file, transform }` entries into a fresh temp dir, applying each
+ *  transform to its file's SF: paths. One dir → one merge call. */
+function stage(label, entries) {
 	const dir = path.join('/tmp', `agg-${label}`);
 	rmSync(dir, { recursive: true, force: true });
 	mkdirSync(dir, { recursive: true });
-	files.forEach((f, i) => {
-		writeFileSync(path.join(dir, `${label}-${i}.lcov`), normalizeLcov(readFileSync(f, 'utf8')));
-	});
+	entries.forEach(({ file, transform }, i) =>
+		writeFileSync(path.join(dir, `${label}-${i}.lcov`), transform(readFileSync(file, 'utf8'))),
+	);
 	return dir;
 }
 
-/**
- * Stage the combined report: E2E shard lcovs (normalised) + unit lcovs
- * (package-qualified) into one dir so MCR unions all layers under one key set.
- */
-function stageReport(label, shardLcovs, unitLcovs, unitRoot) {
-	const dir = path.join('/tmp', `agg-${label}`);
-	rmSync(dir, { recursive: true, force: true });
-	mkdirSync(dir, { recursive: true });
-	shardLcovs.forEach((f, i) =>
-		writeFileSync(path.join(dir, `${label}-e2e-${i}.lcov`), normalizeLcov(readFileSync(f, 'utf8'))),
-	);
-	unitLcovs.forEach((f, i) =>
-		writeFileSync(
-			path.join(dir, `${label}-unit-${i}.lcov`),
-			qualifyLcov(readFileSync(f, 'utf8'), unitPrefix(f, unitRoot)),
-		),
-	);
-	return dir;
-}
+/** E2E lcovs keep their (already-qualified) paths; unit lcovs get package-qualified. */
+const normalizeEntry = (file) => ({ file, transform: normalizeLcov });
+const qualifyEntry = (file) => ({
+	file,
+	transform: (c) => qualifyLcov(c, unitPrefix(file, UNIT_SHARDS)),
+});
 
 function merge(inputsDir, outLcov, outMap) {
 	execFileSync(
@@ -144,8 +132,8 @@ console.log(
 	`Report: ${shardLcovs.length} E2E shard lcov(s), ${unitLcovs.length} unit/integration/frontend lcov(s)`,
 );
 if (shardLcovs.length || unitLcovs.length) {
-	const dir = stageReport('report', shardLcovs, unitLcovs, UNIT_SHARDS);
-	merge(dir, path.join(OUT, 'lcov.info'), '/tmp/agg-report-map.json');
+	const entries = [...shardLcovs.map(normalizeEntry), ...unitLcovs.map(qualifyEntry)];
+	merge(stage('report', entries), path.join(OUT, 'lcov.info'), '/tmp/agg-report-map.json');
 } else {
 	console.warn('  ⚠ no lcovs found — skipping report');
 }
@@ -159,7 +147,11 @@ const specLcovs = findFiles(
 );
 console.log(`Impact map: ${specLcovs.length} per-spec lcov(s)`);
 if (specLcovs.length) {
-	merge(stage('spec', specLcovs), '/tmp/agg-spec-fe.lcov', path.join(OUT, 'impact-map.json'));
+	merge(
+		stage('spec', specLcovs.map(normalizeEntry)),
+		'/tmp/agg-spec-fe.lcov',
+		path.join(OUT, 'impact-map.json'),
+	);
 } else {
 	console.warn('  ⚠ no per-spec lcovs found — impact map not built');
 }
