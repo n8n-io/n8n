@@ -13,7 +13,7 @@ import {
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import { ensureError } from 'n8n-workflow';
+import { ensureError, UnexpectedError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { computeTriggerDiff } from '@/workflows/trigger-diff';
@@ -193,7 +193,7 @@ export class WorkflowPublicationOutboxConsumer {
 		} catch (e) {
 			const error = ensureError(e);
 
-			await this.handleTriggerActivationFailure(error, workflowId, record.id);
+			this.handleTriggerActivationFailure(error, workflowId, record.id);
 			return;
 		}
 
@@ -255,22 +255,17 @@ export class WorkflowPublicationOutboxConsumer {
 		await this.activationErrorsService.deregister(record.workflowId);
 	}
 
-	/**
-	 * Handles failures during trigger activation by marking the workflow as inactive,
-	 * recording the error against the workflow, and marking the outbox record as
-	 * failed with the error message.
-	 */
-	private async handleTriggerActivationFailure(error: Error, workflowId: string, recordId: number) {
-		await this.workflowRepository.update(workflowId, {
-			active: false,
-			activeVersionId: null,
-		});
-		await this.activationErrorsService.register(workflowId, error.message);
-		await this.outboxRepository.markFailed(recordId, error.message);
-
-		this.errorReporter.error(error, {
-			shouldBeLogged: true,
-			extra: { workflowId, outboxId: recordId },
-		});
+	private handleTriggerActivationFailure(
+		error: Error,
+		workflowId: string,
+		recordId: number,
+	): never {
+		throw new UnexpectedError(
+			'Workflow publication trigger activation failure handling is not implemented yet',
+			{
+				cause: error,
+				extra: { workflowId, outboxId: recordId },
+			},
+		);
 	}
 }
