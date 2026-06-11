@@ -60,10 +60,11 @@ tail -n 20 build.log
 ```
 
 If build outputs or the turbo cache are stale (e.g. after switching branches
-or worktrees) but dependencies haven't changed, use `pnpm reset --light` for a
-fast recovery: it cleans build outputs and force-rebuilds (keeping
-`node_modules` and untracked files), rather than the full `pnpm reset` which
-also wipes untracked files and reinstalls dependencies.
+or worktrees) but dependencies haven't changed, use `pnpm reset` (lightweight
+by default) for a fast recovery: it cleans build outputs and force-rebuilds
+(keeping `node_modules` and untracked files). If that doesn't fix your issue,
+use `pnpm reset --full`, which also wipes untracked files and reinstalls
+dependencies.
 
 ### Testing
 - `pnpm test` - Run all tests
