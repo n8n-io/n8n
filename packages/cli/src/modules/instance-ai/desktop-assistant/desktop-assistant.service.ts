@@ -163,6 +163,15 @@ export class DesktopAssistantService {
 	 * and after a successful promote. */
 	private desktopAssistantTagId: string | null = null;
 
+	/**
+	 * Threads whose promote run has finished but whose outcome is still being
+	 * finalised (tag, meta, credential, `promotedWorkflowId`). The client's
+	 * confirming promote call races exactly this window: the run is no longer
+	 * active and the workflow id is not yet on the thread, so without this
+	 * marker `promoteThread` would fall through and start a duplicate build.
+	 */
+	private readonly finalizingPromoteThreadIds = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceAiService: InstanceAiService,
@@ -603,9 +612,14 @@ export class DesktopAssistantService {
 
 		// In-flight guard: the client re-sends this request to confirm completion
 		// after watching the build run (and a thread can be re-kept); while the
-		// recorded run is still active, return it instead of starting another.
+		// recorded run is still active — or finished but still being finalised —
+		// return it instead of starting another.
 		const inFlightRunId = await this.readPromoteRunId(user.id, body.threadId);
-		if (inFlightRunId && this.instanceAiService.getActiveRunId(body.threadId) === inFlightRunId) {
+		if (
+			inFlightRunId &&
+			(this.instanceAiService.getActiveRunId(body.threadId) === inFlightRunId ||
+				this.finalizingPromoteThreadIds.has(body.threadId))
+		) {
 			return { status: 'building', threadId: body.threadId, runId: inFlightRunId };
 		}
 
@@ -667,13 +681,20 @@ export class DesktopAssistantService {
 		const finalise = (workflowId: string) => {
 			handled = true;
 			unsubscribe();
-			this.finalizePromotedWorkflow(user, threadId, workflowId, icon).catch((error: unknown) => {
-				this.logger.warn('Failed to finalise promoted workflow', {
-					threadId,
-					workflowId,
-					error: error instanceof Error ? error.message : String(error),
+			this.finalizingPromoteThreadIds.add(threadId);
+			this.finalizePromotedWorkflow(user, threadId, workflowId, icon)
+				.catch((error: unknown) => {
+					this.logger.warn('Failed to finalise promoted workflow', {
+						threadId,
+						workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				})
+				.finally(() => {
+					// `promotedWorkflowId` is on the thread (or finalising failed and a
+					// rebuild is allowed) — confirming promote calls resolve from there.
+					this.finalizingPromoteThreadIds.delete(threadId);
 				});
-			});
 		};
 
 		const unsubscribe = this.eventBus.subscribe(threadId, (storedEvent: StoredEvent) => {
@@ -693,12 +714,17 @@ export class DesktopAssistantService {
 			if (ev.type !== 'run-finish') return;
 			if (ev.runId !== runId) return;
 
+			// Marked synchronously with the run-finish dispatch, so a confirming
+			// promote call can never observe "run gone, no workflow yet" and rebuild.
+			// `finalise` takes over the marker; the non-finalising exits release it.
+			this.finalizingPromoteThreadIds.add(threadId);
 			void this.memoryService
 				.getThreadMetadata(user.id, threadId)
 				.then((metadata) => {
 					if (handled) return;
 					const workflowId = extractWorkflowLoopBuildOutcome(metadata, runId);
 					if (!workflowId) {
+						this.finalizingPromoteThreadIds.delete(threadId);
 						this.logger.warn('Promote run finished without a successful build outcome', {
 							threadId,
 							runId,
@@ -708,6 +734,7 @@ export class DesktopAssistantService {
 					finalise(workflowId);
 				})
 				.catch((error: unknown) => {
+					this.finalizingPromoteThreadIds.delete(threadId);
 					this.logger.warn('Failed to read promote thread metadata at run-finish', {
 						threadId,
 						runId,

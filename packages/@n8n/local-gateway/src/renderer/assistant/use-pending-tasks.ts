@@ -1,13 +1,9 @@
 /*
- * Module-scoped store for tasks being promoted into saved workflows.
- *
- * Promotion is an instance-side build that takes a while, so each one gets a
- * pending entry here and the Tasks list shows a "setting up" card immediately.
- * Completion is observed on the thread event stream: the promote call returns
- * the build run's id, the store watches that run, and a follow-up idempotent
- * promote call confirms the workflow id once the run finishes. Subscribers are
- * notified on save so the list can refetch. No pinia — plain module-level
- * reactive state, matching `use-assistant-screen.ts`.
+ * Module-scoped store for tasks being promoted into saved workflows. Each
+ * promotion gets a pending entry so the Tasks list shows a "setting up" card
+ * while the instance-side build runs; subscribers are notified on save so the
+ * list can refetch. No pinia — plain module-level reactive state, matching
+ * `use-assistant-screen.ts`.
  */
 import { reactive, readonly } from 'vue';
 
@@ -20,14 +16,6 @@ export interface PendingTask {
 	/** Set when `status === 'failed'`; absent for timeouts (render a generic message). */
 	error?: string;
 }
-
-/**
- * The promote finalizer writes the workflow id to thread metadata shortly
- * AFTER the run-finish event we observe, so the confirming promote call can
- * race it. A few short retries absorb that gap.
- */
-const CONFIRM_ATTEMPTS = 3;
-const CONFIRM_RETRY_DELAY_MS = 2000;
 
 const entries = reactive<PendingTask[]>([]);
 const savedCallbacks = new Set<() => void>();
@@ -53,52 +41,37 @@ function notifySaved() {
 	for (const notify of savedCallbacks) notify();
 }
 
-async function delay(ms: number): Promise<void> {
-	await new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
 /**
- * Drive one promotion to completion: start the build, watch its run on the
- * thread event stream, then confirm the workflow id with a final idempotent
- * promote call. `label` doubles as the requested workflow name.
+ * Drive one promotion to completion. `promoteAssistantThread` is idempotent —
+ * `building` (with the run to watch) until the workflow exists, `done` after —
+ * so promote and watch in a loop until it settles.
  */
 async function runPromotion(threadId: string, label: string, icon?: string): Promise<void> {
-	const started = await window.electronAPI.promoteAssistantThread(threadId, label, icon);
-	if (!started.ok) {
-		failEntry(threadId, started.error);
-		return;
-	}
-	if (started.status === 'done') {
-		removeEntry(threadId);
-		notifySaved();
-		return;
-	}
-	if (!started.runId) {
-		// `building` without a run to watch shouldn't happen; fail rather than spin forever.
-		failEntry(threadId);
-		return;
-	}
-
-	const run = await watchAssistantRun(threadId, started.runId);
-	if (isDismissed(threadId)) return;
-	if (!run.ok) {
-		failEntry(threadId, run.error);
-		return;
-	}
-
-	// Confirm the saved workflow, retrying while the finalizer writes the thread metadata.
-	for (let attempt = 0; attempt < CONFIRM_ATTEMPTS; attempt++) {
-		const confirmed = await window.electronAPI.promoteAssistantThread(threadId, label, icon);
+	for (;;) {
+		const result = await window.electronAPI.promoteAssistantThread(threadId, label, icon);
 		if (isDismissed(threadId)) return;
-		if (confirmed.ok && confirmed.status === 'done') {
+		if (!result.ok) {
+			failEntry(threadId, result.error);
+			return;
+		}
+		if (result.status === 'done') {
 			removeEntry(threadId);
 			notifySaved();
 			return;
 		}
-		await delay(CONFIRM_RETRY_DELAY_MS);
+		if (!result.runId) {
+			// `building` without a run to watch shouldn't happen; fail rather than spin forever.
+			failEntry(threadId);
+			return;
+		}
+
+		const run = await watchAssistantRun(threadId, result.runId);
+		if (isDismissed(threadId)) return;
+		if (!run.ok) {
+			failEntry(threadId, run.error);
+			return;
+		}
 	}
-	// Run finished but no workflow materialised.
-	failEntry(threadId);
 }
 
 /**
