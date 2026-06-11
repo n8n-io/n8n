@@ -171,7 +171,7 @@ export function mapGroupsToVueFlowNodes({
 			draggable: !readOnly,
 			// Selectable only when the title bar represents
 			// the whole group as a single visual surface
-			selectable: !readOnly && collapsed,
+			selectable: collapsed,
 			connectable: false,
 			// Behind the group's nodes so the expanded frame doesn't overlap them.
 			zIndex: -1,

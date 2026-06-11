@@ -180,7 +180,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out[0].selectable).toBe(false);
 	});
 
-	it('marks the title bar not selectable when readOnly', () => {
+	it('keeps a collapsed title bar selectable but not draggable when readOnly', () => {
 		const getById = nodeStore(makeNode('a', 0, 0));
 		const out = mapGroupsToVueFlowNodes({
 			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['a'] }],
@@ -188,7 +188,8 @@ describe('mapGroupsToVueFlowNodes', () => {
 			isGroupCollapsed: () => true,
 			readOnly: true,
 		});
-		expect(out[0].selectable).toBe(false);
+		expect(out[0].selectable).toBe(true);
+		expect(out[0].draggable).toBe(false);
 	});
 
 	it('skips emitting a title bar for a group with zero existing nodes', () => {
