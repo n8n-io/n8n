@@ -67,9 +67,9 @@ function makeController({
 		);
 	}
 
-	// Default the knowledge-base module to enabled so file-endpoint tests pass;
+	// Default knowledge base to enabled so file-endpoint tests pass;
 	// the disabled-gating test overrides this on the returned mock.
-	agentsService.isKnowledgeBaseModuleEnabled.mockReturnValue(true);
+	agentsService.isKnowledgeBaseEnabled.mockReturnValue(true);
 
 	const controller = new AgentsController(
 		agentsService,
@@ -276,9 +276,9 @@ describe('AgentsController file uploads', () => {
 });
 
 describe('AgentsController knowledge base gating', () => {
-	it('returns not found for file endpoints when the knowledge-base module is disabled', async () => {
+	it('returns not found for file endpoints when the knowledge base is disabled', async () => {
 		const { controller, agentsService } = makeController();
-		agentsService.isKnowledgeBaseModuleEnabled.mockReturnValue(false);
+		agentsService.isKnowledgeBaseEnabled.mockReturnValue(false);
 
 		await expect(
 			controller.listFiles(
