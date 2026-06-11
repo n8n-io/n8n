@@ -76,5 +76,10 @@ fs.removeSync('node_modules');
 echo('⏬ Running pnpm install...');
 await $`pnpm install`;
 
-echo(`🏗️ Running pnpm build (--max-old-space-size=${mem})...`);
-await $({ env: buildEnv })`pnpm build`;
+echo(`🏗️ Running pnpm build (--max-ole-space-size=${mem})...`);
+const res = await $({ env: buildEnv })`pnpm build`;
+if (!res.ok) {
+	// Build failed on the initial full-repo build, most likely due to dart-sass being evicted.
+	// Re-trigger build, already built items are fast-tracked by turbo cache, and building continues
+	await $`pnpm build`;
+}
