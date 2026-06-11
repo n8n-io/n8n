@@ -34,13 +34,14 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => toast,
 }));
 
+// The modal is mounted globally, so it can be opened from views whose route has no
+// `workflowId` param (e.g. the AI artifact view). The whole suite runs under that
+// condition: the workflow id must always come from the document store, never the route.
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),
 	useRoute: () =>
 		reactive({
-			params: {
-				workflowId: '1',
-			},
+			params: {},
 			query: {},
 		}),
 	RouterLink: {
@@ -276,7 +277,7 @@ describe('WorkflowSettingsVue', () => {
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				expect.any(String),
+				'1',
 				expect.objectContaining({
 					settings: expect.objectContaining({
 						customTelemetryTags: [{ key: 'env', value: 'production' }],
@@ -324,60 +325,6 @@ describe('WorkflowSettingsVue', () => {
 			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-invalid'));
 
 			expect(getByRole('button', { name: 'Save' })).toBeDisabled();
-		});
-	});
-
-	// The modal is mounted globally, so it can be opened from views whose route has no
-	// `workflowId` param (e.g. the AI artifact view). Saving must target the document
-	// store's workflow, never the route param — these tests diverge the two ids to prove it.
-	describe('when the document store workflow differs from the route param', () => {
-		const DOCUMENT_WORKFLOW_ID = 'document-workflow-id';
-
-		beforeEach(() => {
-			const documentWorkflow = createTestWorkflow({
-				id: DOCUMENT_WORKFLOW_ID,
-				name: 'Document Workflow',
-				active: true,
-				scopes: ['workflow:update'],
-			});
-			workflowsListStore.workflowsById = { [DOCUMENT_WORKFLOW_ID]: documentWorkflow };
-			workflowsListStore.getWorkflowById.mockImplementation(() => documentWorkflow);
-			workflowsStore.setWorkflowId(DOCUMENT_WORKFLOW_ID);
-			workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(DOCUMENT_WORKFLOW_ID),
-			);
-			workflowDocumentStore.setName('Document Workflow');
-		});
-
-		it('should save settings using the document store workflow id, not the route param', async () => {
-			const { getByRole } = createComponent({ pinia });
-			await flushPromises();
-
-			await userEvent.click(getByRole('button', { name: 'Save' }));
-
-			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				DOCUMENT_WORKFLOW_ID,
-				expect.any(Object),
-			);
-		});
-
-		it('should save custom span attributes using the document store workflow id, not the route param', async () => {
-			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];
-			settingsStore.settings.enterprise.otelCustomSpanAttributes = true;
-			settingsStore.moduleSettings = { otel: { enabled: true } };
-			workflowDocumentStore.setChecksum('test-checksum');
-
-			const { getByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
-			await flushPromises();
-
-			await userEvent.click(getByTestId('workflow-settings-custom-telemetry-tags-save-immediate'));
-
-			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(DOCUMENT_WORKFLOW_ID, {
-				settings: {
-					customTelemetryTags: [{ key: 'env', value: 'production' }],
-				},
-				expectedChecksum: 'test-checksum',
-			});
 		});
 	});
 
