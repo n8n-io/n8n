@@ -2,6 +2,8 @@
 import { N8nIcon, N8nLogo } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+import { openChat } from '../chat/chat-overlay';
+
 import type { AuthState } from '../../shared/types';
 
 // The indicator mirrors OAuth state for now; it will reflect the gateway
@@ -16,6 +18,10 @@ defineProps<{
 const emit = defineEmits<{ openSettings: []; back: [] }>();
 
 const i18n = useI18n();
+
+// TEMPORARY: invisible button next to the brand opens the chat overlay for manual
+// testing until the composer flow calls openChat. Remove together with the button.
+const DEV_CHAT_THREAD_ID = '4d49ba31-32c9-4ccb-8606-626e9087b417';
 
 const STATUS_LABEL: Record<AuthState, string> = {
 	signedIn: 'Connected',
@@ -52,6 +58,14 @@ const DOT_CLASS: Record<AuthState, string> = {
 		<div v-else :class="$style.brand">
 			<N8nLogo size="small" :collapsed="true" />
 			<span :class="$style.brandLabel">Assistant</span>
+			<!-- TEMPORARY chat-overlay test trigger: button-sized, but no icon or border. -->
+			<button
+				type="button"
+				:class="$style.iconBtn"
+				aria-label="Open chat (dev)"
+				data-testid="header-dev-chat"
+				@click="openChat(DEV_CHAT_THREAD_ID)"
+			/>
 		</div>
 
 		<div :class="$style.actions">

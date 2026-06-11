@@ -7,12 +7,6 @@ import HistoryView from './HistoryView.vue';
 import TasksView from './TasksView.vue';
 import TaskComposer from '../components/TaskComposer.vue';
 
-import { openChat } from '../chat/chat-overlay';
-
-// TEMPORARY: manual test trigger for the chat overlay (wired to the otherwise
-// unused search button) until the composer flow calls openChat. Remove with it.
-const DEV_CHAT_THREAD_ID = '4d49ba31-32c9-4ccb-8606-626e9087b417';
-
 type Tab = 'tasks' | 'history';
 
 const i18n = useI18n();
@@ -95,13 +89,11 @@ onMounted(() => {
 					{{ i18n.baseText(tab.labelKey) }}
 				</button>
 			</div>
-			<!-- Search is part of the target layout but not wired up yet.
-			     TEMPORARY: clicking it opens the chat overlay for manual testing. -->
+			<!-- Search is part of the target layout but not wired up yet. -->
 			<button
 				type="button"
 				:class="$style.searchButton"
 				:aria-label="i18n.baseText('desktopAssistant.search.ariaLabel')"
-				@click="openChat(DEV_CHAT_THREAD_ID)"
 			>
 				<N8nIcon icon="search" :size="16" />
 			</button>
