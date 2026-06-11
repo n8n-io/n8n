@@ -33,14 +33,24 @@ import { WorkflowPublishedDataService } from '@/workflows/workflow-published-dat
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import type { IWorkflowDb } from '@n8n/db';
 
-export type TriggerFailureHandler = (
-	error: Error,
-	node: INode,
-	workflowData: IWorkflowDb,
-	mode: WorkflowExecuteMode,
-	activation: WorkflowActivateMode,
-) => void;
+export type TriggerFailureHandler = (opts: {
+	error: Error;
+	node: INode;
+	workflowData: IWorkflowDb;
+	mode: WorkflowExecuteMode;
+	activation: WorkflowActivateMode;
+}) => void;
 
+/**
+ * Builds the execution-context functions (`IGetExecuteTriggerFunctions` /
+ * `IGetExecutePollFunctions`) that n8n-core uses to wire up active and poll
+ * triggers. Owns the emit logic (dedup handling, donePromise resolution,
+ * `workflow-executed` event emission, static-data saves) and the
+ * `executeErrorWorkflow` wrapper. Path-specific failure behaviour (e.g.
+ * removing a trigger from the registry and queuing a reactivation) is
+ * injected via `onTriggerFailure` so this class stays agnostic of the
+ * caller's activation strategy.
+ */
 @Service()
 export class TriggerExecutionContextFactory {
 	constructor(
@@ -144,7 +154,7 @@ export class TriggerExecutionContextFactory {
 			};
 
 			const emitError = (error: Error): void => {
-				onTriggerFailure(error, node, workflowData, mode, activation);
+				onTriggerFailure({ error, node, workflowData, mode, activation });
 			};
 
 			const saveFailedExecution = (error: ExecutionError) => {

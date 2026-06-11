@@ -350,23 +350,29 @@ export class ActiveWorkflowManager {
 			mode,
 			activation,
 			resolveWorkflowData,
-			(error, node, wd, m, act) => {
+			({
+				error,
+				node,
+				workflowData: failedWorkflowData,
+				mode: failureMode,
+				activation: failureActivation,
+			}) => {
 				this.logger.info(
-					`The trigger node "${node.name}" of workflow "${wd.name}" failed with the error: "${error.message}". Will try to reactivate.`,
+					`The trigger node "${node.name}" of workflow "${failedWorkflowData.name}" failed with the error: "${error.message}". Will try to reactivate.`,
 					{
 						nodeName: node.name,
-						workflowId: wd.id,
-						workflowName: wd.name,
+						workflowId: failedWorkflowData.id,
+						workflowName: failedWorkflowData.name,
 					},
 				);
-				void this.activeWorkflowTriggers.remove(wd.id);
-				void this.activationErrorsService.register(wd.id, error.message);
+				void this.activeWorkflowTriggers.remove(failedWorkflowData.id);
+				void this.activationErrorsService.register(failedWorkflowData.id, error.message);
 				const activationError = new WorkflowActivationError(
 					`There was a problem with the trigger node "${node.name}", for that reason did the workflow had to be deactivated`,
 					{ cause: error, node },
 				);
-				this.executeErrorWorkflow(activationError, wd, m);
-				this.addQueuedWorkflowActivation(act, wd as WorkflowEntity);
+				this.executeErrorWorkflow(activationError, failedWorkflowData, failureMode);
+				this.addQueuedWorkflowActivation(failureActivation, failedWorkflowData as WorkflowEntity);
 			},
 		);
 	}
