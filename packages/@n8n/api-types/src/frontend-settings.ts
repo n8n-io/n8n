@@ -328,15 +328,6 @@ export type FrontendModuleSettings = {
 	otel?: {
 		/** Whether OpenTelemetry tracing is enabled on this instance. */
 		enabled: boolean;
-		exporterEndpoint: string;
-		exporterTracingPath: string;
-		exporterServiceName: string;
-		exporterHeaders: string;
-		tracesSampleRate: number;
-		startupConnectivityTimeoutMs: number;
-		includeNodeSpans: boolean;
-		injectOutbound: boolean;
-		productionExecutionsOnly: boolean;
 	};
 
 	/**

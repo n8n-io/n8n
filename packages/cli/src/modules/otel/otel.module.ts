@@ -22,7 +22,7 @@ export class OtelModule implements ModuleInterface {
 	async settings() {
 		const { OtelSettingsService } = await import('./otel-settings.service');
 		const config = Container.get(OtelSettingsService).currentSettings;
-		return config ? { ...config } : {};
+		return config ? { enabled: config.enabled } : {};
 	}
 
 	async context(): Promise<ModuleContext> {
