@@ -33,8 +33,10 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import {
+	COMPUTER_USE_NODE_TYPES,
 	DESKTOP_ASSISTANT_TAG,
 	DESKTOP_ASSISTANT_THREAD_SOURCE,
+	DEVICE_CONNECTION_CREDENTIAL_TYPE,
 	PROMOTE_RUN_ID_KEY,
 	PROMOTED_FROM_THREAD_ID_KEY,
 	PROMOTED_WORKFLOW_ID_KEY,
@@ -425,7 +427,7 @@ export class DesktopAssistantService {
 		// the exact run we just kicked off. `subscribe` is synchronous and
 		// `startRun` only registers the run; it doesn't dispatch any events on
 		// the bus before this line runs.
-		const cleanup = this.subscribeForBuildOutcome(user, body.threadId, runId);
+		const cleanup = this.subscribeForBuildOutcome(user, body.threadId, runId, body.icon);
 
 		// Hard-cap the listener so a stalled run does not leak a subscription.
 		setTimeout(cleanup, PROMOTE_FINALIZE_TIMEOUT_MS).unref();
@@ -451,12 +453,17 @@ export class DesktopAssistantService {
 	 * Whichever signal fires first wins; both go through the same `handled`
 	 * gate so we only finalise once.
 	 */
-	private subscribeForBuildOutcome(user: User, threadId: string, runId: string): () => void {
+	private subscribeForBuildOutcome(
+		user: User,
+		threadId: string,
+		runId: string,
+		icon?: string,
+	): () => void {
 		let handled = false;
 		const finalise = (workflowId: string) => {
 			handled = true;
 			unsubscribe();
-			this.finalizePromotedWorkflow(threadId, workflowId).catch((error: unknown) => {
+			this.finalizePromotedWorkflow(user, threadId, workflowId, icon).catch((error: unknown) => {
 				this.logger.warn('Failed to finalise promoted workflow', {
 					threadId,
 					workflowId,
@@ -507,12 +514,64 @@ export class DesktopAssistantService {
 		return unsubscribe;
 	}
 
-	private async finalizePromotedWorkflow(threadId: string, workflowId: string): Promise<void> {
+	private async finalizePromotedWorkflow(
+		user: User,
+		threadId: string,
+		workflowId: string,
+		icon?: string,
+	): Promise<void> {
 		await this.applyDesktopAssistantTag(workflowId);
-		await this.writeDesktopAssistantMeta(workflowId, threadId);
+		await this.writeDesktopAssistantMeta(workflowId, threadId, icon);
+		await this.applyDeviceCredential(user, workflowId);
 		await this.memoryService.updateThread(threadId, {
 			metadata: { [PROMOTED_WORKFLOW_ID_KEY]: workflowId },
 		});
+	}
+
+	/**
+	 * Fill the Device Connection credential on Computer Use nodes the build left
+	 * unset, so a freshly promoted task is runnable without a manual setup trip.
+	 * Deterministic post-processing: the model never handles credential ids, and
+	 * only credentials the promoting user can already read are applied (the
+	 * gateway auto-creates one per device on connect). With several candidates
+	 * the first is used — the ambiguity is logged rather than guessed at.
+	 */
+	private async applyDeviceCredential(user: User, workflowId: string): Promise<void> {
+		const credentials = await this.credentialsFinderService.findCredentialsForUser(user, [
+			'credential:read',
+		]);
+		const deviceCredentials = credentials.filter(
+			(credential) => credential.type === DEVICE_CONNECTION_CREDENTIAL_TYPE,
+		);
+		if (deviceCredentials.length === 0) return; // surfaces in the actionNeeded bucket instead
+		if (deviceCredentials.length > 1) {
+			this.logger.info('Multiple device credentials found; applying the first', {
+				workflowId,
+				count: deviceCredentials.length,
+			});
+		}
+		const credential = deviceCredentials[0];
+
+		const workflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			select: ['id', 'nodes'],
+		});
+		if (!workflow) return;
+
+		let changed = false;
+		const nodes = workflow.nodes.map((node) => {
+			if (!COMPUTER_USE_NODE_TYPES.has(node.type)) return node;
+			if (node.credentials?.[DEVICE_CONNECTION_CREDENTIAL_TYPE]) return node;
+			changed = true;
+			return {
+				...node,
+				credentials: {
+					...(node.credentials ?? {}),
+					[DEVICE_CONNECTION_CREDENTIAL_TYPE]: { id: credential.id, name: credential.name },
+				},
+			};
+		});
+		if (changed) await this.workflowRepository.update(workflowId, { nodes });
 	}
 
 	private async applyDesktopAssistantTag(workflowId: string): Promise<void> {
@@ -524,21 +583,38 @@ export class DesktopAssistantService {
 		await this.workflowTagMappingRepository.insert({ workflowId, tagId });
 	}
 
-	private async writeDesktopAssistantMeta(workflowId: string, threadId: string): Promise<void> {
+	/**
+	 * Write provenance + icon onto `meta.desktopAssistant`. The icon comes from
+	 * the one-shot outcome report (passed through the promote request); when the
+	 * build still produced an emoji-led name despite the prompt, the leading
+	 * emoji is moved out of the name and doubles as the icon fallback, so
+	 * workflow names stay plain text everywhere.
+	 */
+	private async writeDesktopAssistantMeta(
+		workflowId: string,
+		threadId: string,
+		icon?: string,
+	): Promise<void> {
 		const workflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },
-			select: ['id', 'meta'],
+			select: ['id', 'name', 'meta'],
 		});
 		if (!workflow) return;
 		const existing = readDesktopAssistantMeta(workflow.meta) ?? {};
+		const { emoji: nameEmoji, rest: cleanName } = splitLeadingEmoji(workflow.name ?? '');
+		const resolvedIcon = icon ?? existing.icon ?? nameEmoji;
 		const nextMeta = {
 			...(workflow.meta ?? {}),
 			desktopAssistant: {
 				...existing,
+				...(resolvedIcon ? { icon: resolvedIcon } : {}),
 				[PROMOTED_FROM_THREAD_ID_KEY]: threadId,
 			},
 		};
-		await this.workflowRepository.update(workflowId, { meta: nextMeta });
+		await this.workflowRepository.update(workflowId, {
+			meta: nextMeta,
+			...(nameEmoji && cleanName ? { name: cleanName } : {}),
+		});
 	}
 
 	private async getOrCreateDesktopAssistantTagId(): Promise<string> {

@@ -20,8 +20,8 @@ import { createReportDesktopTaskOutcomeTool } from '../tools/orchestration/repor
  * - `desktop-assistant-promote` — compilation of an already-executed
  *   desktop-assistant thread into a real, editable workflow that replays
  *   the task. Same fire-and-forget rules apply, plus the orchestrator picks
- *   a short descriptive workflow name that starts with a single
- *   representative emoji.
+ *   a short plain-text workflow name (the task icon is carried separately,
+ *   on the workflow's `meta.desktopAssistant.icon`).
  */
 export type DesktopAssistantPromptMode = 'desktop-assistant-one-shot' | 'desktop-assistant-promote';
 
@@ -30,6 +30,13 @@ export interface DesktopAssistantProfile {
 	promptSection: string;
 	/** Desktop-specific tools to add to the orchestrator's registry. */
 	extraTools: BuiltTool[];
+	/**
+	 * Keep the local gateway (device) tools out of deferred tool search for
+	 * this run. One-shot runs exist to drive device tools; hiding them behind
+	 * `search_tools` costs a round-trip and the model tends to guess tool names
+	 * blind first (a burst of tool errors at run start).
+	 */
+	preloadGatewayTools: boolean;
 }
 
 const ONE_SHOT_PROMPT_SECTION = `
@@ -52,7 +59,7 @@ This run is fire-and-forget from the n8n desktop assistant. **The user does not 
 ### Ending the run (required)
 
 - Every run MUST end by calling \`report-desktop-task-outcome\` exactly once, as the final tool call. Never call another tool after it, and never end a run without it.
-- After completing the task: call it with \`success: true\`, a short \`title\` (3–8 words, suitable as a workflow name), and a one-sentence \`summary\` of what was done.
+- After completing the task: call it with \`success: true\`, a short plain-text \`title\` (3–8 words, suitable as a workflow name, no emoji), a one-sentence \`summary\` of what was done, and an \`icon\` — a single emoji that captures the task.
 - When declining (ambiguous, recurring/scheduled, out of scope) or when the task failed: call it with \`success: false\`, a \`title\` and \`summary\`, and a user-readable \`failureReason\`. Stopping without producing a result still ends with this outcome report — it is how you stop.
 `;
 
@@ -76,7 +83,7 @@ This run is fire-and-forget from the n8n desktop assistant. **The user does not 
 - Deterministic → build: Manual Trigger → one \`@n8n/n8n-nodes-langchain.computerUse\` node per executed device tool call, in order. On each node set the \`tool\` resourceLocator (mode \`id\`) to the exact tool name that was called, set \`inputMode\` to \`json\`, and set \`jsonInput\` to the literal arguments that were used (taken from the tool calls visible in this thread).
 - Requires judgment → build: Manual Trigger → AI Agent node with a \`@n8n/n8n-nodes-langchain.toolComputerUse\` node attached as its tool, with the user's original task as the agent's prompt/system message. Use an existing LLM credential for the agent's model if one is available; otherwise leave it unset.
 - Both Computer Use node types require a \`deviceConnectionApi\` credential. One is auto-created (named after the user's device) when their device connects — reuse the user's existing Device Connection credential. If none exists, build anyway and leave the credential slot unset.
-- When you create the workflow, set its \`name\` to a short descriptive label (3–8 words) that starts with a single emoji representing the workflow's purpose. Examples: \`"🍌 Daily banana prices email"\`, \`"💬 Slack alerts for Stripe refunds"\`, \`"📅 Weekly backup of Notion"\`. If the user's prompt already provided a name, use that name and prepend a fitting emoji.
+- When you create the workflow, set its \`name\` to a short, plain-text descriptive label (3–8 words). Examples: \`"Daily banana prices email"\`, \`"Slack alerts for Stripe refunds"\`. No emoji — the task's icon is stored separately. If the user's prompt already provided a name, use it verbatim.
 - If the original intent is ambiguous or requires context you do not have, stop without producing a workflow. Do not produce a low-quality stub.
 `;
 
@@ -89,10 +96,11 @@ export function getDesktopAssistantProfile(
 			return {
 				promptSection: ONE_SHOT_PROMPT_SECTION,
 				extraTools: [createReportDesktopTaskOutcomeTool()],
+				preloadGatewayTools: true,
 			};
 		case 'desktop-assistant-promote':
-			return { promptSection: PROMOTE_PROMPT_SECTION, extraTools: [] };
+			return { promptSection: PROMOTE_PROMPT_SECTION, extraTools: [], preloadGatewayTools: false };
 		case undefined:
-			return { promptSection: '', extraTools: [] };
+			return { promptSection: '', extraTools: [], preloadGatewayTools: false };
 	}
 }

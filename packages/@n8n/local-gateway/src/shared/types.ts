@@ -155,7 +155,11 @@ export interface ElectronApi {
 	runTask: (workflowId: string) => Promise<RunTaskResult>;
 	/** Start a one-shot assistant task run with the prompt + detected context. */
 	createAssistantTask: (body: DesktopAssistantTaskRequest) => Promise<CreateAssistantTaskResult>;
-	promoteAssistantThread: (threadId: string, name?: string) => Promise<PromoteAssistantThreadResult>;
+	promoteAssistantThread: (
+		threadId: string,
+		name?: string,
+		icon?: string,
+	) => Promise<PromoteAssistantThreadResult>;
 	openWorkflow: (workflowId: string) => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
 	openExecution: (workflowId: string, executionId: string) => Promise<void>;

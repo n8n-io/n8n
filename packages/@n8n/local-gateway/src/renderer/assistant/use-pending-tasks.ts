@@ -65,8 +65,8 @@ async function delay(ms: number): Promise<void> {
  * thread event stream, then confirm the workflow id with a final idempotent
  * promote call. `label` doubles as the requested workflow name.
  */
-async function runPromotion(threadId: string, label: string): Promise<void> {
-	const started = await promoteAssistantThread(threadId, label);
+async function runPromotion(threadId: string, label: string, icon?: string): Promise<void> {
+	const started = await promoteAssistantThread(threadId, label, icon);
 	if (!started.ok) {
 		failEntry(threadId, started.error);
 		return;
@@ -93,7 +93,7 @@ async function runPromotion(threadId: string, label: string): Promise<void> {
 	// The run succeeded; confirm the saved workflow (retrying briefly while the
 	// finalizer writes the thread metadata).
 	for (let attempt = 0; attempt < CONFIRM_ATTEMPTS; attempt++) {
-		const confirmed = await promoteAssistantThread(threadId, label);
+		const confirmed = await promoteAssistantThread(threadId, label, icon);
 		if (isDismissed(threadId)) return;
 		if (confirmed.ok && confirmed.status === 'done') {
 			removeEntry(threadId);
@@ -110,10 +110,10 @@ async function runPromotion(threadId: string, label: string): Promise<void> {
  * Start promoting a thread into a saved workflow and track it as pending.
  * `label` is shown on the pending card and becomes the saved workflow's name.
  */
-function promote(threadId: string, label: string) {
+function promote(threadId: string, label: string, icon?: string) {
 	if (entries.some((entry) => entry.threadId === threadId)) return;
 	entries.push({ threadId, label, status: 'building' });
-	runPromotion(threadId, label).catch((error: unknown) => {
+	runPromotion(threadId, label, icon).catch((error: unknown) => {
 		failEntry(threadId, error instanceof Error ? error.message : undefined);
 	});
 }

@@ -210,10 +210,15 @@ export function registerIpcHandlers({
 
 	ipcMain.handle(
 		'assistant:promote',
-		async (_event, threadId: string, name?: string): Promise<PromoteAssistantThreadResult> => {
+		async (
+			_event,
+			threadId: string,
+			name?: string,
+			icon?: string,
+		): Promise<PromoteAssistantThreadResult> => {
 			logger.debug('IPC assistant:promote', { threadId });
 			try {
-				const result = await instanceApi.promoteThread(threadId, name);
+				const result = await instanceApi.promoteThread(threadId, name, icon);
 				return {
 					ok: true,
 					status: result.status,

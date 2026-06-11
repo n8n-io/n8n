@@ -185,8 +185,16 @@ export class InstanceApi {
 	 * once a previous promote already produced a workflow. `name`, when given, is
 	 * used as the saved workflow's name.
 	 */
-	async promoteThread(threadId: string, name?: string): Promise<DesktopAssistantPromoteResponse> {
-		const body: DesktopAssistantPromoteRequest = name ? { threadId, name } : { threadId };
+	async promoteThread(
+		threadId: string,
+		name?: string,
+		icon?: string,
+	): Promise<DesktopAssistantPromoteResponse> {
+		const body: DesktopAssistantPromoteRequest = {
+			threadId,
+			...(name ? { name } : {}),
+			...(icon ? { icon } : {}),
+		};
 		const response = await this.authedFetch('/desktop-assistant/promote-thread', {
 			method: 'POST',
 			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name

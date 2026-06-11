@@ -16,10 +16,16 @@ const inputSchema = sanitizeInputSchema(
 			.describe('Whether the task was completed. false when declining or when the task failed'),
 		title: z
 			.string()
-			.describe('Short human label for the task, 3-8 words, suitable as a workflow name'),
+			.describe(
+				'Short human label for the task, 3-8 words, suitable as a workflow name. Plain text — no emoji',
+			),
 		summary: z
 			.string()
 			.describe('One sentence describing what was done (or why nothing was done)'),
+		icon: z
+			.string()
+			.optional()
+			.describe('A single emoji that captures the task, e.g. "🍌". No text, just the emoji'),
 		failureReason: z
 			.string()
 			.optional()

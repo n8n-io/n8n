@@ -26,7 +26,7 @@ type ComposerState = 'idle' | 'thinking' | 'doing';
  * - `error`: the run errored, timed out, or was canceled.
  */
 type ResultCard =
-	| { kind: 'done'; threadId: string; label: string }
+	| { kind: 'done'; threadId: string; label: string; icon?: string }
 	| { kind: 'handoff'; message?: string }
 	| { kind: 'error'; message: string };
 
@@ -145,7 +145,12 @@ async function submit(prompt?: string) {
 
 		// Prefer the agent's structured outcome report over the tookAction heuristic.
 		if (run.outcome?.success) {
-			showResult({ kind: 'done', threadId: created.threadId, label: run.outcome.title });
+			showResult({
+				kind: 'done',
+				threadId: created.threadId,
+				label: run.outcome.title,
+				icon: run.outcome.icon,
+			});
 		} else if (run.outcome) {
 			showResult({ kind: 'handoff', message: run.outcome.failureReason });
 		} else if (run.status === 'success' && run.tookAction) {
@@ -180,9 +185,10 @@ function returnFocusToInput() {
 /** Keep the one-off: promote its thread into a saved task and show the Tasks list. */
 function keepTask() {
 	if (resultCard.value?.kind !== 'done') return;
-	const { threadId, label } = resultCard.value;
-	// The label is also the requested workflow name (the instance respects it).
-	pendingTasks.promote(threadId, label);
+	const { threadId, label, icon } = resultCard.value;
+	// The label is also the requested workflow name, and the icon (from the
+	// agent's outcome report) lands on the workflow's meta, not in its name.
+	pendingTasks.promote(threadId, label, icon);
 	resultCard.value = null;
 	returnFocusToInput();
 	emit('kept');

@@ -346,7 +346,13 @@ describe('DesktopAssistantService.promoteThread', () => {
 			name: DESKTOP_ASSISTANT_TAG,
 		} as never);
 		ctx.workflowTagMappingRepository.findOne.mockResolvedValue(null);
-		ctx.workflowRepository.findOne.mockResolvedValue({ id: 'wf-new', meta: {} } as never);
+		ctx.workflowRepository.findOne.mockResolvedValue({
+			id: 'wf-new',
+			name: 'Tidy my desktop',
+			meta: {},
+			nodes: [],
+		} as never);
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
 
 		let handler: ((e: StoredEvent) => void) | undefined;
 		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
@@ -443,7 +449,13 @@ describe('DesktopAssistantService.promoteThread', () => {
 			name: DESKTOP_ASSISTANT_TAG,
 		} as never);
 		ctx.workflowTagMappingRepository.findOne.mockResolvedValue(null);
-		ctx.workflowRepository.findOne.mockResolvedValue({ id: 'wf-loop', meta: {} } as never);
+		ctx.workflowRepository.findOne.mockResolvedValue({
+			id: 'wf-loop',
+			name: 'Tidy my desktop',
+			meta: {},
+			nodes: [],
+		} as never);
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
 
 		let handler: ((e: StoredEvent) => void) | undefined;
 		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
@@ -472,6 +484,90 @@ describe('DesktopAssistantService.promoteThread', () => {
 		});
 		expect(ctx.memoryService.updateThread).toHaveBeenCalledWith('t-1', {
 			metadata: { promotedWorkflowId: 'wf-loop' },
+		});
+	});
+
+	test('finalize stores the icon on meta, strips a leading name emoji, and fills the device credential', async () => {
+		const ctx = makeService();
+		ctx.memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		ctx.memoryService.getThreadMetadata
+			.mockResolvedValueOnce(undefined) // idempotency check
+			.mockResolvedValueOnce(undefined) // in-flight promote-run check
+			.mockResolvedValueOnce({
+				instanceAiWorkflowLoop: {
+					wi_xyz: {
+						lastBuildOutcome: { runId: 'run-promote', submitted: true, workflowId: 'wf-icon' },
+					},
+				},
+			});
+		ctx.memoryService.getThreadMessages.mockResolvedValue({
+			threadId: 't-1',
+			messages: [
+				{
+					id: 'm-1',
+					role: 'user',
+					content: 'rename files',
+					type: 'text',
+					createdAt: new Date().toISOString(),
+				},
+			],
+		});
+		ctx.runner.startPromoteBuild.mockReturnValue('run-promote');
+		ctx.tagRepository.findOne.mockResolvedValue({ id: 'tag-da' } as never);
+		ctx.workflowTagMappingRepository.findOne.mockResolvedValue(null);
+		// The build disobeyed the no-emoji rule; finalize moves it out of the name.
+		ctx.workflowRepository.findOne.mockResolvedValue({
+			id: 'wf-icon',
+			name: '🧹 Tidy my desktop',
+			meta: {},
+			nodes: [
+				{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+				{ name: 'Rename', type: '@n8n/n8n-nodes-langchain.computerUse' },
+			],
+		} as never);
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+			{ id: 'cred-dev', name: "Elias's MacBook", type: 'deviceConnectionApi' },
+		] as never);
+
+		let handler: ((e: StoredEvent) => void) | undefined;
+		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
+			handler = h;
+			return () => {};
+		});
+
+		await ctx.service.promoteThread(USER, { threadId: 't-1', icon: '🍌' });
+
+		handler!({
+			id: 9,
+			event: {
+				type: 'run-finish',
+				runId: 'run-promote',
+				agentId: 'orchestrator',
+				payload: { status: 'completed' },
+			},
+		} as unknown as StoredEvent);
+		for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve));
+
+		// Requested icon wins over the stray name emoji; the name comes out clean.
+		expect(ctx.workflowRepository.update).toHaveBeenCalledWith(
+			'wf-icon',
+			expect.objectContaining({
+				name: 'Tidy my desktop',
+				meta: expect.objectContaining({
+					desktopAssistant: expect.objectContaining({ icon: '🍌' }),
+				}),
+			}),
+		);
+		// The Computer Use node gets the user's device credential; the trigger is untouched.
+		expect(ctx.workflowRepository.update).toHaveBeenCalledWith('wf-icon', {
+			nodes: [
+				{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+				{
+					name: 'Rename',
+					type: '@n8n/n8n-nodes-langchain.computerUse',
+					credentials: { deviceConnectionApi: { id: 'cred-dev', name: "Elias's MacBook" } },
+				},
+			],
 		});
 	});
 

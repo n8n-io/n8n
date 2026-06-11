@@ -73,11 +73,13 @@ const electronApi: ElectronApi = {
 	promoteAssistantThread: async (
 		threadId: string,
 		name?: string,
+		icon?: string,
 	): Promise<PromoteAssistantThreadResult> =>
 		await (ipcRenderer.invoke(
 			'assistant:promote',
 			threadId,
 			name,
+			icon,
 		) as Promise<PromoteAssistantThreadResult>),
 
 	openWorkflow: async (workflowId: string): Promise<void> => {

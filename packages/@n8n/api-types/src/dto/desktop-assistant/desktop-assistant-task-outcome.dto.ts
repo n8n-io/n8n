@@ -9,10 +9,12 @@
  */
 export interface DesktopAssistantTaskOutcome {
 	success: boolean;
-	/** Short human label for the task (3–8 words), suitable as a workflow name. */
+	/** Short human label for the task (3–8 words), suitable as a workflow name. Plain text, no emoji. */
 	title: string;
 	/** One-sentence description of what was done (or why nothing was). */
 	summary: string;
+	/** Single emoji that captures the task; becomes the saved workflow's icon. */
+	icon?: string;
 	/** Present when `success` is false — a user-readable reason. */
 	failureReason?: string;
 }

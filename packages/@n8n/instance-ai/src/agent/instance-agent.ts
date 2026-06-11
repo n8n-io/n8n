@@ -25,7 +25,7 @@ import type { CreateInstanceAgentOptions, InstanceAiToolRegistry } from '../type
 
 function splitDeferredTools(
 	tools: InstanceAiToolRegistry,
-	options: { isCheckpointFollowUp?: boolean } = {},
+	options: { isCheckpointFollowUp?: boolean; extraAlwaysLoaded?: ReadonlySet<string> } = {},
 ) {
 	const coreTools = createToolRegistry();
 	const deferredTools = createToolRegistry();
@@ -33,6 +33,7 @@ function splitDeferredTools(
 	for (const [name, tool] of tools) {
 		if (
 			ALWAYS_LOADED_TOOL_NAMES.has(name) ||
+			options.extraAlwaysLoaded?.has(name) ||
 			(options.isCheckpointFollowUp && CHECKPOINT_FOLLOW_UP_TOOL_NAMES.has(name))
 		) {
 			coreTools.set(name, tool);
@@ -82,10 +83,11 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Desktop-assistant runs add profile-specific tools (e.g. the outcome report).
-	const desktopProfileTools = createToolRegistryFromTools(
-		getDesktopAssistantProfile(options.promptMode).extraTools,
-	);
+	// Desktop-assistant runs add profile-specific tools (e.g. the outcome report)
+	// and may pin tool groups out of deferred search; the profile module is the
+	// single owner of those decisions.
+	const desktopProfile = getDesktopAssistantProfile(options.promptMode);
+	const desktopProfileTools = createToolRegistryFromTools(desktopProfile.extraTools);
 
 	// Keep MCP tools from shadowing domain or orchestration tools during object composition.
 	const reservedToolNames = new Set([
@@ -139,6 +141,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		}) ?? allOrchestratorTools;
 	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools, {
 		isCheckpointFollowUp: orchestrationContext?.isCheckpointFollowUp,
+		extraAlwaysLoaded: desktopProfile.preloadGatewayTools
+			? new Set(safeLocalMcpTools.keys())
+			: undefined,
 	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;

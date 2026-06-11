@@ -56,4 +56,10 @@ describe('getDesktopAssistantProfile — extra tools', () => {
 		const promote = getDesktopAssistantProfile('desktop-assistant-promote');
 		expect(promote.extraTools).toHaveLength(0);
 	});
+
+	it('pins gateway tools out of deferred search for one-shot runs only', () => {
+		expect(getDesktopAssistantProfile('desktop-assistant-one-shot').preloadGatewayTools).toBe(true);
+		expect(getDesktopAssistantProfile('desktop-assistant-promote').preloadGatewayTools).toBe(false);
+		expect(getDesktopAssistantProfile(undefined).preloadGatewayTools).toBe(false);
+	});
 });

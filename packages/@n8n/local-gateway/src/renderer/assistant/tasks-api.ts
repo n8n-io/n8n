@@ -30,6 +30,7 @@ export async function createAssistantTask(
 export async function promoteAssistantThread(
 	threadId: string,
 	name?: string,
+	icon?: string,
 ): Promise<PromoteAssistantThreadResult> {
-	return await window.electronAPI.promoteAssistantThread(threadId, name);
+	return await window.electronAPI.promoteAssistantThread(threadId, name, icon);
 }

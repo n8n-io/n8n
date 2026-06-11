@@ -33,3 +33,12 @@ export const THREAD_SOURCE_METADATA_KEY = 'source';
  * else (promote, metadata reads/updates) treats them like any other thread.
  */
 export const DESKTOP_ASSISTANT_THREAD_SOURCE = 'desktop-assistant';
+
+/** Node types that execute on the user's device via a Device Connection credential. */
+export const COMPUTER_USE_NODE_TYPES = new Set([
+	'@n8n/n8n-nodes-langchain.computerUse',
+	'@n8n/n8n-nodes-langchain.toolComputerUse',
+]);
+
+/** Credential type the Computer Use nodes require. */
+export const DEVICE_CONNECTION_CREDENTIAL_TYPE = 'deviceConnectionApi';
