@@ -78,9 +78,13 @@ export class ApiKeysController {
 	@GlobalScope('apiKey:delete')
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
-		await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
+		const { isOwn } = await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
 
-		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
+		this.eventService.emit('public-api-key-deleted', {
+			user: req.user,
+			publicApi: false,
+			isOwn,
+		});
 
 		return { success: true };
 	}

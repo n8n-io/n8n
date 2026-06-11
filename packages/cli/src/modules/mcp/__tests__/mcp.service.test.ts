@@ -43,6 +43,7 @@ import { PostHogClient } from '@/posthog';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -95,6 +96,7 @@ describe('McpService', () => {
 			mockInstance(DataTableProxyService),
 			mockInstance(CollaborationService),
 			mockInstance(NodeResourceExplorerService),
+			mockInstance(TagService),
 			mockInstance(LicenseState),
 			mockInstance(PostHogClient),
 		);
@@ -138,6 +140,7 @@ describe('McpService', () => {
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
 				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
 			);
@@ -334,6 +337,7 @@ describe('McpService', () => {
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
 				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
 				mockInstance(LicenseState),
 				opts.postHogClient,
 			);
@@ -438,6 +442,7 @@ describe('McpService', () => {
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
 				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
 			);
@@ -483,6 +488,7 @@ describe('McpService', () => {
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
 				mockInstance(NodeResourceExplorerService),
+				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
 			);
@@ -552,6 +558,7 @@ describe('McpService', () => {
 					mockInstance(DataTableProxyService),
 					mockInstance(CollaborationService),
 					mockInstance(NodeResourceExplorerService),
+					mockInstance(TagService),
 					mockInstance(LicenseState),
 					postHogClient,
 				);
