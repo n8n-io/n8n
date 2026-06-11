@@ -5,7 +5,6 @@ import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type AskAiRequest } from '@/features/ai/assistant/assistant.types';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { format } from 'prettier';
 import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
@@ -187,6 +186,7 @@ export async function generateCodeForAiTransform(
 	workflowDocumentId: WorkflowDocumentId,
 	activeNode: INode | null,
 	ndvPushRef: string,
+	isAiCodeGenerationEnabled: boolean,
 	retries = 1,
 ) {
 	const schemas = getSchemas(workflowDocumentId, activeNode);
@@ -203,7 +203,7 @@ export async function generateCodeForAiTransform(
 	};
 
 	let value;
-	if (useSettingsStore().isAskAiEnabled) {
+	if (isAiCodeGenerationEnabled) {
 		const { restApiContext } = useRootStore();
 
 		let code = '';

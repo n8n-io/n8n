@@ -302,6 +302,7 @@ const workflowHandlers: WorkflowHandlers = {
 			Object.assign(updateData, req.body);
 
 			try {
+				// Credential tamper protection is enforced centrally in WorkflowService.update
 				const updatedWorkflow = await Container.get(WorkflowService).update(
 					req.user,
 					updateData,
