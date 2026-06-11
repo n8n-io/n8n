@@ -412,6 +412,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			createdAt, // must never change
 			startedAt, // must never change
 			customData,
+			jsonSizeBytes, // computed by ExecutionPersistence on write; never set from a caller here
 			...executionInformation
 		} = execution;
 
