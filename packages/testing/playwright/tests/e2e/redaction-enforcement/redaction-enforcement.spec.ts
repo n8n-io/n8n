@@ -8,12 +8,11 @@ test.use({
 	capability: {
 		env: {
 			TEST_ISOLATION: 'redaction-enforcement',
-			N8N_ENV_FEAT_REDACTION_ENFORCEMENT: 'true',
 		},
 	},
 });
 
-async function executeProductionWorkflow(
+async function runProductionExecution(
 	api: ApiHelpers,
 	settings?: Partial<IWorkflowBase['settings']>,
 ) {
@@ -27,10 +26,7 @@ async function executeProductionWorkflow(
 	return { executionId: summary.id, workflowId, workflow: createdWorkflow };
 }
 
-async function executeManualWorkflow(
-	api: ApiHelpers,
-	settings?: Partial<IWorkflowBase['settings']>,
-) {
+async function runManualExecution(api: ApiHelpers, settings?: Partial<IWorkflowBase['settings']>) {
 	const createdWorkflow = await api.workflows.createWorkflow(manualWorkflow(settings));
 	const result = await api.workflows.runManually(createdWorkflow.id, createdWorkflow.nodes[0].name);
 
@@ -119,7 +115,7 @@ test.describe(
 			});
 
 			test('redacts production executions', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await executeProductionWorkflow(api);
+				const { executionId, workflowId, workflow } = await runProductionExecution(api);
 
 				await n8n.navigate.toExecution(workflowId, executionId);
 				await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
@@ -129,7 +125,7 @@ test.describe(
 			});
 
 			test('leaves manual executions unredacted', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await executeManualWorkflow(api);
+				const { executionId, workflowId, workflow } = await runManualExecution(api);
 
 				await n8n.navigate.toExecution(workflowId, executionId);
 				await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
@@ -185,7 +181,7 @@ test.describe(
 			});
 
 			test('redacts production executions', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await executeProductionWorkflow(api);
+				const { executionId, workflowId, workflow } = await runProductionExecution(api);
 
 				await n8n.navigate.toExecution(workflowId, executionId);
 				await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
@@ -195,7 +191,7 @@ test.describe(
 			});
 
 			test('redacts manual executions', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await executeManualWorkflow(api);
+				const { executionId, workflowId, workflow } = await runManualExecution(api);
 
 				await n8n.navigate.toExecution(workflowId, executionId);
 				await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
@@ -207,7 +203,7 @@ test.describe(
 
 		test.describe('when floor is "off" and workflow redaction is "non-manual"', () => {
 			test('redacts production executions', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await executeProductionWorkflow(api, {
+				const { executionId, workflowId, workflow } = await runProductionExecution(api, {
 					redactionPolicy: 'non-manual',
 				});
 
@@ -219,7 +215,7 @@ test.describe(
 			});
 
 			test('leaves manual executions unredacted', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await executeManualWorkflow(api, {
+				const { executionId, workflowId, workflow } = await runManualExecution(api, {
 					redactionPolicy: 'non-manual',
 				});
 
@@ -238,7 +234,7 @@ test.describe(
 			api,
 			n8n,
 		}) => {
-			const { executionId, workflowId, workflow } = await executeProductionWorkflow(api);
+			const { executionId, workflowId, workflow } = await runProductionExecution(api);
 			await n8n.navigate.toExecution(workflowId, executionId);
 			await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
 			await expect(n8n.executions.outputPanel.getDataContainer()).not.toHaveText(
