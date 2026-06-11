@@ -13,7 +13,7 @@ import type {
 } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
+import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
@@ -31,6 +31,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const activationErrorsService = mock<ActivationErrorsService>();
+	const instanceSettings = mock<InstanceSettings>();
 
 	let consumer: WorkflowPublicationOutboxConsumer;
 
@@ -51,6 +52,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			workflowPublishedVersionRepository,
 			activeWorkflowManager,
 			activationErrorsService,
+			instanceSettings,
 		);
 	}
 
