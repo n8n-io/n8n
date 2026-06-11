@@ -143,17 +143,18 @@ function connect() {
 			>
 				<N8nIcon icon="arrow-left" :size="18" aria-hidden="true" />
 			</button>
-			<span :class="$style.tile" aria-hidden="true">
+			<!-- Emojis read as icons on their own; only node icons (arbitrary SVGs)
+			     need the tile's contrast backing. -->
+			<span v-if="nodeIcon" :class="$style.tile" aria-hidden="true">
 				<N8nNodeIcon
-					v-if="nodeIcon"
 					:type="nodeIcon.type"
 					:src="nodeIcon.src"
 					:name="nodeIcon.name"
 					:node-type-name="card.name"
 					:size="16"
 				/>
-				<template v-else>{{ emojiGlyph }}</template>
 			</span>
+			<span v-else :class="$style.emoji" aria-hidden="true">{{ emojiGlyph }}</span>
 			<h1 :class="$style.headerTitle">{{ card.name }}</h1>
 			<button
 				type="button"
@@ -167,8 +168,28 @@ function connect() {
 		</header>
 
 		<div :class="$style.content">
-			<div v-if="badge" :class="$style.meta">
-				<TaskStatusBadge :variant="badge.variant" :label="badge.label" />
+			<!-- Badge + run location render instantly from the card; the time-saved
+			     estimate arrives with the fetched detail. -->
+			<div :class="$style.meta">
+				<TaskStatusBadge v-if="badge" :variant="badge.variant" :label="badge.label" />
+				<span :class="$style.metaItem">
+					<N8nIcon :icon="card.runsLocally ? 'monitor' : 'cloud'" :size="12" aria-hidden="true" />
+					{{
+						i18n.baseText(
+							card.runsLocally
+								? 'desktopAssistant.taskDetail.runsOnMac'
+								: 'desktopAssistant.taskDetail.runsInCloud',
+						)
+					}}
+				</span>
+				<span v-if="detail?.timeSavedMin" :class="[$style.metaItem, $style.metaSaves]">
+					<N8nIcon icon="clock" :size="12" aria-hidden="true" />
+					{{
+						i18n.baseText('desktopAssistant.taskDetail.savesTime', {
+							interpolate: { minutes: detail.timeSavedMin },
+						})
+					}}
+				</span>
 			</div>
 
 			<div v-if="phase === 'loading'" :class="$style.state" role="status" aria-live="polite">
@@ -330,6 +351,12 @@ function connect() {
 	border-radius: var(--radius--xs);
 }
 
+.emoji {
+	flex-shrink: 0;
+	font-size: 15px;
+	line-height: 1;
+}
+
 .headerTitle {
 	flex: 1;
 	min-width: 0;
@@ -355,21 +382,35 @@ function connect() {
 .meta {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	margin-bottom: var(--spacing--sm);
 }
 
+.metaItem {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 12px;
+	color: var(--da-subtlest);
+}
+
+.metaSaves {
+	color: var(--da-green);
+}
+
+/* Prose sits a step dimmer than the params so the editable values carry the sentence. */
 .sentence {
 	margin: 0;
 	font-size: 20px;
 	font-weight: 300;
 	line-height: 1.65;
-	color: var(--da-text);
+	color: var(--da-subtler);
 }
 
 /* Read-mode emphasis of an editable value — the same words that become a chip in edit mode. */
 .paramValue {
 	font-weight: 600;
+	color: var(--da-text);
 }
 
 .state {

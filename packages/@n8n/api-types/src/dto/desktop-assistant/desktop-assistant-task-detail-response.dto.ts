@@ -37,4 +37,6 @@ export interface DesktopAssistantTaskDetailResponse {
 	parts: DesktopAssistantDescriptionPart[];
 	/** Credential types still missing for the workflow to run, in node order. */
 	connectionsNeeded: Array<{ credentialType: string; displayName: string }>;
+	/** The workflow's `timeSavedPerExecution` setting; absent when unset. */
+	timeSavedMin?: number;
 }

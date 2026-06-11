@@ -1445,6 +1445,20 @@ describe('DesktopAssistantService.getTaskDetail', () => {
 		expect(ctx.workflowRepository.update).not.toHaveBeenCalled();
 	});
 
+	test('includes the timeSavedPerExecution setting as timeSavedMin when set', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(
+			workflowWith({
+				settings: { timeSavedPerExecution: 12 },
+				meta: { desktopAssistant: { detail: { versionId: 'v1', parts: PARTS } } },
+			}),
+		);
+
+		const result = await ctx.service.getTaskDetail(USER, 'wf-1');
+
+		expect(result.timeSavedMin).toBe(12);
+	});
+
 	test('generates, normalizes, and caches the description on a stale cache', async () => {
 		const ctx = makeService();
 		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(

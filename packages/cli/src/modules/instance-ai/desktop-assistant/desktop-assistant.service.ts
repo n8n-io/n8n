@@ -466,10 +466,17 @@ export class DesktopAssistantService {
 				displayName: this.resolveCredentialDisplayName(credentialType),
 			}),
 		);
+		const timeSavedMin = workflow.settings?.timeSavedPerExecution;
 
 		const cachedParts = readCachedTaskDetail(workflow.meta, workflow.versionId);
 		if (cachedParts) {
-			return { workflowId, versionId: workflow.versionId, parts: cachedParts, connectionsNeeded };
+			return {
+				workflowId,
+				versionId: workflow.versionId,
+				parts: cachedParts,
+				connectionsNeeded,
+				timeSavedMin,
+			};
 		}
 
 		const credentials = await this.credentialsFinderService.findCredentialsForUser(user, [
@@ -500,7 +507,7 @@ export class DesktopAssistantService {
 		}
 
 		await this.writeTaskDetailCache(workflowId, workflow.versionId, parts);
-		return { workflowId, versionId: workflow.versionId, parts, connectionsNeeded };
+		return { workflowId, versionId: workflow.versionId, parts, connectionsNeeded, timeSavedMin };
 	}
 
 	private resolveCredentialDisplayName(credentialType: string): string {
