@@ -196,6 +196,11 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
 
+// Run idle-deferred work (e.g. node-graph telemetry payloads) synchronously
+vi.mock('@/app/utils/idleUtils', () => ({
+	runWhenIdle: (fn: () => void) => fn(),
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: vi.fn().mockImplementation((key) => key) },
 	useI18n: vi.fn().mockReturnValue({ baseText: vi.fn().mockImplementation((key) => key) }),
