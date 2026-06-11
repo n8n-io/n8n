@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/common.descriptions.ts
+  s_37e451fff42af7::t_c7db58c6525000 7-9
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/listSearch.ts
+  s_37e451fff42af7::t_e41b1d344d6683 105-116,118
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/methods/listSearch.test.ts
+  s_37e451fff42af7::t_593ab106273037 115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "b713cef4e32b4275ad49146c1ade2b7d244c520a",
+  "prompts": {},
+  "sessions": {
+    "s_37e451fff42af7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9285862-7af0-4e1d-89ba-8bd58c2f345d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
