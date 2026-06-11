@@ -153,6 +153,20 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 			const groupVueFlowId = createCanvasGroupNodeId(group.id);
 			if (!findNode(groupVueFlowId)) continue; // title bar not yet rendered
 
+			// Dragged-node overrides are visual positions; lift the unmoved members
+			// from store space to visual space too, so a pushed group's title bar
+			// doesn't jump to the un-pushed rect for the duration of the drag.
+			for (const nodeId of group.nodeIds) {
+				if (positionOverrides.has(nodeId)) continue;
+				const node = deps.getNodeById(nodeId);
+				if (!node) continue;
+				const offset = deps.getNodeVisualOffset?.(nodeId) ?? { x: 0, y: 0 };
+				positionOverrides.set(nodeId, {
+					x: node.position[0] + offset.x,
+					y: node.position[1] + offset.y,
+				});
+			}
+
 			const rect = computeNodesRectFromStore(
 				group.nodeIds,
 				deps.getNodeById,
