@@ -60,9 +60,7 @@ if (!full) {
 		await $`pnpm install`;
 	}
 
-	// TURBO_FORCE ignores the local artifact cache (node_modules/.cache/turbo),
-	// which `pnpm clean` does not remove, so a stale cache can't be served.
-	echo(`🏗️ Force-rebuilding (TURBO_FORCE, --max-old-space-size=${mem})...`);
+	echo(`🏗️ Rebuilding (--max-old-space-size=${mem})...`);
 	await buildWithSingleRetry();
 
 	if (failedOnce) {
