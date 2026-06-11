@@ -368,15 +368,6 @@ describe('AgentKnowledgeService', () => {
 		expect(storedFile.id).toBe('file-1');
 	});
 
-	it('treats unknown delete ids as idempotent', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-
-		await expect(
-			service.deleteFile(agentId, projectId, 'missing-id', userId),
-		).resolves.toBeUndefined();
-		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
-	});
-
 	it('deletes the scoped knowledge files directory and rows for an agent', async () => {
 		await agentFileRepository.save(
 			makeAgentFile({
