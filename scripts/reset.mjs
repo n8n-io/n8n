@@ -17,7 +17,7 @@ const light = argv.light || argv.l;
 // a build runs out of memory (e.g. the JS `sass` compiler). Default 8192.
 // Note: this only helps JS-heap OOMs — native `sass-embedded` compilation runs
 // in a separate Dart process that this limit does not bound; if that OOMs,
-// lower build concurrency or add system memory instead.
+// lower build concurrency or a better orchestration is needed.
 const mem = argv.mem ? Number(argv.mem) : 8192;
 if (!Number.isInteger(mem) || mem <= 0) {
 	echo('❌ --mem must be a positive integer (MB)');
