@@ -961,11 +961,27 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	/**
-	 * Opens a resource locator dropdown for a given parameter
+	 * The open dropdown for a resource locator parameter. Rendered inline (not
+	 * teleported), so it is scoped to the parameter's container and is only
+	 * present once the dropdown is actually open.
+	 * @param paramName - The parameter name for the resource locator
+	 */
+	getResourceLocatorDropdown(paramName: string) {
+		return this.getResourceLocator(paramName).locator('[data-state="open"][role="dialog"]');
+	}
+
+	/**
+	 * Opens a resource locator dropdown for a given parameter.
+	 *
+	 * Opening can race with transient popups (e.g. a focused expression editor)
+	 * intercepting the click, so the click is retried until the dropdown renders.
 	 * @param paramName - The parameter name for the resource locator
 	 */
 	async openResourceLocator(paramName: string): Promise<void> {
 		await this.getResourceLocator(paramName).waitFor({ state: 'visible' });
-		await this.getResourceLocatorInput(paramName).click();
+		await expect(async () => {
+			await this.getResourceLocatorInput(paramName).click({ timeout: 2000 });
+			await expect(this.getResourceLocatorDropdown(paramName)).toBeVisible({ timeout: 2000 });
+		}).toPass({ timeout: 15000 });
 	}
 }
