@@ -47,11 +47,6 @@ export class KafkaTrigger implements INodeType {
 			{
 				name: 'schemaRegistryApi',
 				required: false,
-				displayOptions: {
-					show: {
-						useSchemaRegistry: [true],
-					},
-				},
 			},
 		],
 		properties: [
