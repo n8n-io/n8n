@@ -12,7 +12,11 @@ import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import {
+	disposeWorkflowDocumentRenderDataStore,
+	useWorkflowDocumentRenderDataStore,
+	type WorkflowDocumentRenderDataStore,
+} from '@/app/stores/workflowDocumentRenderData.store';
 import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 
 export function mapConnections(connections: CanvasConnection[]) {
@@ -119,11 +123,16 @@ function createDiffRenderData(workflowRef: ComputedRef<IWorkflowDb | undefined>,
 		executionIssuesByNodeName: new Map(),
 	});
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
+	let renderDataStore: WorkflowDocumentRenderDataStore | null = null;
 
 	watchEffect(() => {
 		const wf = workflowRef.value;
 		if (!wf?.id) return;
 
+		// Dispose the render-data store before the document store it reads from
+		if (renderDataStore) {
+			disposeWorkflowDocumentRenderDataStore(renderDataStore);
+		}
 		if (workflowDocumentStore) {
 			disposeWorkflowDocumentStore(workflowDocumentStore);
 		}
@@ -133,10 +142,15 @@ function createDiffRenderData(workflowRef: ComputedRef<IWorkflowDb | undefined>,
 
 		workflowDocumentStore = useWorkflowDocumentStore(docId);
 		workflowDocumentStore.hydrate({ ...wf, versionId } as IWorkflowDb);
-		renderData.value = useWorkflowDocumentRenderData(docId);
+		renderDataStore = useWorkflowDocumentRenderDataStore(docId);
+		renderData.value = renderDataStore;
 	});
 
 	function dispose() {
+		if (renderDataStore) {
+			disposeWorkflowDocumentRenderDataStore(renderDataStore);
+			renderDataStore = null;
+		}
 		if (workflowDocumentStore) {
 			disposeWorkflowDocumentStore(workflowDocumentStore);
 			workflowDocumentStore = null;

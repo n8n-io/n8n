@@ -214,7 +214,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	// zero cost on node updates. The structuralComputed handles reactive
 	// re-evaluation (e.g. when workflowObject or node type changes) and
 	// isEqual gates downstream propagation. Exposed to canvas consumers via
-	// `useWorkflowDocumentRenderData(documentId)`.
+	// `useWorkflowDocumentRenderDataStore(documentId)`.
 	const nodeInputsByNodeId = shallowReactive(
 		new Map<string, ComputedRef<CanvasConnectionPort[]>>(),
 	);

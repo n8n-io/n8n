@@ -9,6 +9,7 @@ export const STORES = {
 	WORKFLOWS_V2: 'workflowsV2',
 	WORKFLOWS_EE: 'workflowsEE',
 	WORKFLOW_DOCUMENTS: 'workflowDocuments',
+	WORKFLOW_DOCUMENT_RENDER_DATA: 'workflowDocumentRenderData',
 	EXECUTION_DATA: 'executionData',
 	WORKFLOW_EXECUTION_STATES: 'workflowExecutionStates',
 	EXECUTIONS: 'executions',

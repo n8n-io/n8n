@@ -12,7 +12,7 @@ import { useCanvasMapping } from '../composables/useCanvasMapping';
 import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import { useWorkflowDocumentRenderDataStore } from '@/app/stores/workflowDocumentRenderData.store';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 
 defineOptions({
@@ -46,7 +46,7 @@ const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const renderData = computed(() =>
-	useWorkflowDocumentRenderData(workflowDocumentStore.value.documentId),
+	useWorkflowDocumentRenderDataStore(workflowDocumentStore.value.documentId),
 );
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);

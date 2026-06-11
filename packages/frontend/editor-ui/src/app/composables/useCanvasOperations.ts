@@ -69,6 +69,10 @@ import {
 	disposeWorkflowExecutionStateStore,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
+import {
+	disposeWorkflowDocumentRenderDataStore,
+	useWorkflowDocumentRenderDataStore,
+} from '@/app/stores/workflowDocumentRenderData.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
@@ -2459,6 +2463,13 @@ export function useCanvasOperations() {
 				void workflowsStore.removeTestWebhook(workflowId);
 			} catch (error) {}
 		}
+
+		// Dispose the render-data store before the execution-state store it reads
+		// from. Disposing it after would resurrect the just-disposed execution-state
+		// store (the render-data store setup resolves it by document id).
+		disposeWorkflowDocumentRenderDataStore(
+			useWorkflowDocumentRenderDataStore(createWorkflowDocumentId(workflowId)),
+		);
 
 		// Reset editable workflow execution state. This must run BEFORE resetWorkflow()
 		// — it targets the per-workflow execution-state store keyed on workflowId, and

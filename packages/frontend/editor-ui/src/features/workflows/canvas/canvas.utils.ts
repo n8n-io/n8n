@@ -21,13 +21,22 @@ import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
-import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import type { WorkflowDocumentRenderDataStore } from '@/app/stores/workflowDocumentRenderData.store';
 
 /**
  * Per-node canvas render data (input/output port maps) shape, as produced by
- * `useWorkflowDocumentRenderData` and consumed by canvas components.
+ * `useWorkflowDocumentRenderDataStore` and consumed by canvas components.
+ *
+ * Structural pick of the data fields (rather than the full store type) so
+ * consumers and test fixtures can satisfy it with plain objects.
  */
-export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>;
+export type CanvasRenderData = Pick<
+	WorkflowDocumentRenderDataStore,
+	| 'nodeInputsByNodeId'
+	| 'nodeOutputsByNodeId'
+	| 'pinnedDataByNodeName'
+	| 'executionIssuesByNodeName'
+>;
 
 /**
  * Display size for a node with `Default` render type — pulls port counts from

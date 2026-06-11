@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref, computed } from 'vue';
+import { setActivePinia, createPinia } from 'pinia';
 import { mapConnections, useWorkflowDiff } from './useWorkflowDiff';
 import type {
 	CanvasConnection,
@@ -171,6 +172,8 @@ describe('useWorkflowDiff', () => {
 		});
 
 		beforeEach(() => {
+			// The render-data store is a real documentId-keyed Pinia store
+			setActivePinia(createPinia());
 			vi.clearAllMocks();
 			mockUseCanvasMapping.mockReturnValue(createMockCanvasMappingReturn());
 		});

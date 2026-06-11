@@ -33,6 +33,10 @@ import {
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
+import {
+	useWorkflowDocumentRenderDataStore,
+	disposeWorkflowDocumentRenderDataStore,
+} from '@/app/stores/workflowDocumentRenderData.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
@@ -83,6 +87,10 @@ export function useWorkflowInitialization() {
 
 		if (workflowDocumentStore) {
 			disposeNDVStore(useNDVStore(workflowDocumentStore.documentId));
+			// Dispose the render-data store before the document store it reads from
+			disposeWorkflowDocumentRenderDataStore(
+				useWorkflowDocumentRenderDataStore(workflowDocumentStore.documentId),
+			);
 			disposeWorkflowDocumentStore(workflowDocumentStore);
 		}
 
