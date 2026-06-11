@@ -12,7 +12,7 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore, type NDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
@@ -32,13 +32,29 @@ import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store'
 const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
-const ndvStore = injectNDVStore();
+
+const workflowId = useWorkflowId();
+const currentWorkflowDocumentStore = shallowRef<WorkflowDocumentStore | null>(null);
+
+provide(WorkflowIdKey, workflowId);
+provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
+
+// App.vue provides WorkflowDocumentStoreKey, so it cannot inject it (and thus
+// cannot use injectNDVStore()). Derive the NDV store from the locally owned
+// document-store ref instead. It is null whenever no workflow document is
+// loaded (e.g. settings/credentials views).
+const ndvStore = computed<NDVStore | null>(() =>
+	currentWorkflowDocumentStore.value
+		? useNDVStore(currentWorkflowDocumentStore.value.documentId)
+		: null,
+);
+
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
-	useFloatingUiOffsets();
+	useFloatingUiOffsets(ndvStore);
 
 // Initialize undo/redo
-useHistoryHelper(route);
+useHistoryHelper(route, ndvStore);
 
 // Initialize workflow diff routing management
 useWorkflowDiffRouting();
@@ -52,13 +68,8 @@ const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
-const workflowId = useWorkflowId();
-const currentWorkflowDocumentStore = shallowRef<WorkflowDocumentStore | null>(null);
 
-provide(WorkflowIdKey, workflowId);
-provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
-
-useTelemetryContext({ ndv_source: computed(() => ndvStore.value.lastSetActiveNodeSource) });
+useTelemetryContext({ ndv_source: computed(() => ndvStore.value?.lastSetActiveNodeSource) });
 
 onMounted(async () => {
 	setAppZIndexes();

@@ -28,8 +28,8 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
@@ -83,8 +83,13 @@ const i18n = useI18n();
 const { confirm } = useMessage();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
-const ndvStore = injectNDVStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
+// This settings modal renders NDV parameter components (ParameterInputList) but
+// can open outside the workflow editor, where no workflow document is provided.
+// Re-provide the document store so those components resolve a scoped NDV store,
+// and derive this component's own NDV store from it (it cannot inject what it
+// provides).
+const workflowDocumentStore = provideWorkflowDocumentStore();
+const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 const uiStore = useUIStore();
 
 const unchanged = ref(!isNew);
