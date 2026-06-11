@@ -32,6 +32,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'config-updated': [];
+	'build-done': [];
 	'update:streaming': [streaming: boolean];
 	'update:tools': [tools: AgentJsonToolRef[]];
 	'update:mcp-servers': [mcpServers: AgentJsonMcpServerConfig[]];
@@ -91,6 +92,7 @@ const sharedInputDraft = ref('');
 				:can-edit-agent="canEditAgent"
 				:before-send="beforeBuildSend"
 				@config-updated="emit('config-updated')"
+				@build-done="emit('build-done')"
 				@update:streaming="emit('update:streaming', $event)"
 			>
 				<template v-if="canEditAgent" #above-input>

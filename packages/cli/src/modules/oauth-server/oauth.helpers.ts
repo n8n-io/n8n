@@ -1,7 +1,7 @@
 /**
  * Static utility functions for OAuth URL building
  */
-export class McpOAuthHelpers {
+export class OAuthHelpers {
 	/**
 	 * Build success redirect URL with authorization code
 	 * Used when user approves consent

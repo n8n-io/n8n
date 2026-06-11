@@ -6,6 +6,7 @@ import type {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import type {
+	Connection,
 	DefaultEdge,
 	Node,
 	NodeProps,
@@ -143,6 +144,7 @@ export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
 export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
+	isCollapsed: boolean;
 }
 
 export type CanvasGroupNode = Node<CanvasGroupNodeData>;
@@ -160,6 +162,8 @@ export interface CanvasConnectionData {
 	target: CanvasConnectionPort;
 	status?: 'success' | 'error' | 'pinned' | 'running';
 	maxConnections?: number;
+	// Real workflow endpoints behind this collapsed-group edge, one per merged connection.
+	canonicals?: Connection[];
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
