@@ -12,10 +12,7 @@ import type { TaskCardVariant } from '../assistant/use-assistant-screen';
 import { useAssistantScreen } from '../assistant/use-assistant-screen';
 import { useRecommendations } from '../assistant/use-recommendations';
 import { filterSections, hasAnyMatch } from '../assistant/use-task-search';
-import type {
-	DesktopAssistantTaskCard,
-	DesktopAssistantTasksResponse,
-} from '../../shared/types';
+import type { DesktopAssistantTaskCard, DesktopAssistantTasksResponse } from '../../shared/types';
 
 const i18n = useI18n();
 const pendingTasks = usePendingTasks();
@@ -154,7 +151,10 @@ onBeforeUnmount(() => {
 				<span :class="$style.pendingBody">
 					<span :class="$style.pendingTitle">{{ entry.label }}</span>
 					<span
-						:class="[$style.pendingSubtitle, { [$style.pendingSubtitleFailed]: entry.status === 'failed' }]"
+						:class="[
+							$style.pendingSubtitle,
+							{ [$style.pendingSubtitleFailed]: entry.status === 'failed' },
+						]"
 					>
 						{{
 							entry.status === 'building'
@@ -353,9 +353,13 @@ onBeforeUnmount(() => {
 	min-width: 0;
 }
 
+/* The DS reset sets body line-height to 1, which together with overflow:hidden
+   clips descenders ("g", "y"). --line-height--md (1.3) gives them room while
+   keeping the row shorter than the 34px tile, so card height is unchanged. */
 .pendingTitle {
 	font-size: 13px;
 	font-weight: 500;
+	line-height: var(--line-height--md);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -364,6 +368,7 @@ onBeforeUnmount(() => {
 .pendingSubtitle {
 	margin-top: var(--spacing--5xs);
 	font-size: 11px;
+	line-height: var(--line-height--md);
 	color: var(--da-subtler);
 	overflow: hidden;
 	text-overflow: ellipsis;
