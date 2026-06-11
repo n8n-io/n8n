@@ -80,15 +80,15 @@ function isTextPart(part: unknown): part is { type: 'text'; text: string } {
 	return candidate.type === 'text' && typeof candidate.text === 'string';
 }
 
-/** Compose the promote-thread message: asks the model to compile the task it
- *  already executed in this thread into a repeatable workflow, and nudges it
- *  to pick a short, emoji-led workflow name. */
+/** Compose the promote-thread message: asks the model to turn the executed
+ *  task into a repeatable workflow, leading with the replay-vs-fresh decision
+ *  so the recorded tool calls don't anchor it toward literal replay. Naming
+ *  rules (plain text, present tense, no emoji) live in the promote system
+ *  prompt. */
 export function composePromoteMessage(originalPrompt: string, name: string | undefined): string {
 	const trimmedName = name?.trim();
-	const naming = trimmedName
-		? `Use the name "${trimmedName}" (prepend a fitting emoji if it does not already start with one).`
-		: 'Pick a short descriptive name for it as part of the build, and start that name with a single emoji that captures what the workflow does.';
-	return `Compile the task you already executed in this thread into a repeatable workflow that mirrors what was actually done. ${naming} The original request:\n\n${originalPrompt}`;
+	const naming = trimmedName ? ` Name it "${trimmedName}".` : '';
+	return `Turn the task from this thread into a repeatable workflow. Decide first, from the original request below: must a future run reproduce the recorded results exactly, or generate content fresh? The recorded tool calls show what was done, not necessarily what should be replayed literally.${naming} The original request:\n\n${originalPrompt}`;
 }
 
 // ── Recommendations ──────────────────────────────────────────────────────────
