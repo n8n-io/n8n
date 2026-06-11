@@ -5,6 +5,8 @@ import type {
 	AuthStatus,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantRecommendationsRequest,
+	DesktopAssistantRecommendationsResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -128,6 +130,14 @@ const electronApi: ElectronApi = {
 
 	triggerTask: async (body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> =>
 		await (ipcRenderer.invoke('tasks:trigger', body) as Promise<DesktopAssistantTaskResponse>),
+
+	getRecommendations: async (
+		body: DesktopAssistantRecommendationsRequest,
+	): Promise<DesktopAssistantRecommendationsResponse> =>
+		await (ipcRenderer.invoke(
+			'recommendations:get',
+			body,
+		) as Promise<DesktopAssistantRecommendationsResponse>),
 
 	getMacPermissions: async (): Promise<MacPermissionStatus> =>
 		await (ipcRenderer.invoke('permissions:get') as Promise<MacPermissionStatus>),
