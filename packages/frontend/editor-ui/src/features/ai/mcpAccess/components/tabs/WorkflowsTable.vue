@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { WorkflowListItem, UserAction } from '@/Interface';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
@@ -15,11 +15,7 @@ import {
 } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
-import {
-	MCP_DESCRIPTION_TOOLTIP_MAX_LENGTH,
-	MCP_TOOLTIP_DELAY,
-} from '@/features/ai/mcpAccess/mcp.constants';
-import { truncate } from '@n8n/utils/string/truncate';
+import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 import router from '@/app/router';
 import { getResourcePermissions } from '@n8n/permissions';
 
@@ -111,11 +107,28 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 	},
 ]);
 
+const style = useCssModule();
+
+// Tracks per workflow whether the line-clamped description cell is overflowing,
+// measured on hover since clamping depends on the rendered layout
+const clampedDescriptions = ref<Record<string, boolean>>({});
+
+const onDescriptionCellEnter = (event: MouseEvent, workflow: WorkflowListItem) => {
+	if (!(event.currentTarget instanceof HTMLElement)) {
+		return;
+	}
+	const text = event.currentTarget.querySelector(`.${style['description-text']}`);
+	clampedDescriptions.value[workflow.id] =
+		text instanceof HTMLElement && text.scrollHeight > text.clientHeight;
+};
+
 const getDescriptionTooltip = (workflow: WorkflowListItem): string => {
 	if (!workflow.description) {
 		return i18n.baseText('settings.mcp.workflows.table.column.description.emptyTooltip');
 	}
-	return truncate(workflow.description, MCP_DESCRIPTION_TOOLTIP_MAX_LENGTH);
+	return clampedDescriptions.value[workflow.id]
+		? i18n.baseText('settings.mcp.workflows.table.column.description.viewFullTooltip')
+		: i18n.baseText('settings.mcp.workflows.table.column.description.editTooltip');
 };
 
 const getAvailableActions = (workflow: WorkflowListItem): Array<UserAction<WorkflowListItem>> => {
@@ -232,6 +245,7 @@ const onConnectClick = () => {
 							data-test-id="mcp-workflow-description-cell"
 							:class="$style['description-cell']"
 							@click="emit('updateDescription', item)"
+							@mouseenter="onDescriptionCellEnter($event, item)"
 						>
 							<N8nText
 								v-if="item.description"
@@ -333,9 +347,7 @@ const onConnectClick = () => {
 }
 
 .description-popper {
-	min-width: 300px;
 	max-width: 480px;
-	word-break: break-word;
 }
 
 .table-link {

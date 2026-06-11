@@ -237,10 +237,33 @@ describe('WorkflowsTable', () => {
 			);
 		});
 
-		it('should truncate long descriptions in the tooltip', async () => {
-			const longDescription = 'word '.repeat(200).trim();
+		it('should show "Click to view full" tooltip when description is clamped', async () => {
 			const workflow = createWorkflow({
-				description: longDescription,
+				description: 'word '.repeat(200).trim(),
+			});
+
+			const { getByTestId } = createComponent({
+				props: {
+					workflows: [workflow],
+					loading: false,
+				},
+			});
+
+			// Simulate the line clamp cutting off the rendered text
+			const descriptionText = getByTestId('mcp-workflow-description');
+			Object.defineProperty(descriptionText, 'scrollHeight', { value: 100, configurable: true });
+			Object.defineProperty(descriptionText, 'clientHeight', { value: 60, configurable: true });
+
+			await userEvent.hover(getByTestId('mcp-workflow-description-cell'));
+
+			await waitFor(() => {
+				expect(getTooltip()).toHaveTextContent('Click to view full');
+			});
+		});
+
+		it('should show "Click to edit" tooltip when description fits in the cell', async () => {
+			const workflow = createWorkflow({
+				description: 'Short description',
 			});
 
 			const { getByTestId } = createComponent({
@@ -253,9 +276,7 @@ describe('WorkflowsTable', () => {
 			await userEvent.hover(getByTestId('mcp-workflow-description-cell'));
 
 			await waitFor(() => {
-				const tooltipText = getTooltip().textContent ?? '';
-				expect(tooltipText).toHaveLength(503); // 500 chars + '...'
-				expect(tooltipText.endsWith('...')).toBe(true);
+				expect(getTooltip()).toHaveTextContent('Click to edit');
 			});
 		});
 
