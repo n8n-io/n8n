@@ -10,6 +10,7 @@ import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
+	type ListAgentsQueryDto,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
@@ -405,6 +406,13 @@ export class AgentsService {
 		return await this.agentRepository.findByProjectId(projectId);
 	}
 
+	async findByProjectIdPaginated(
+		projectId: string,
+		options: ListAgentsQueryDto,
+	): Promise<{ count: number; data: Agent[] }> {
+		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
+	}
+
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 	}
@@ -464,6 +472,15 @@ export class AgentsService {
 			where: { projectId: In(projectIds) },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	async findByUserPaginated(
+		userId: string,
+		options: ListAgentsQueryDto,
+	): Promise<{ count: number; data: Agent[] }> {
+		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
+		const projectIds = projectRelations.map((pr) => pr.projectId);
+		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
 	}
 
 	/**
