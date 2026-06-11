@@ -7,7 +7,7 @@ import RecommendationCard from '../components/RecommendationCard.vue';
 import TaskCard from '../components/TaskCard.vue';
 
 import { useRecommendations } from '../assistant/use-recommendations';
-import { filterSections } from '../assistant/use-task-search';
+import { filterSections, hasAnyMatch } from '../assistant/use-task-search';
 import type { DesktopAssistantTasksResponse } from '../../shared/types';
 
 const i18n = useI18n();
@@ -48,12 +48,7 @@ const sections = computed(() => ({
 /** Client-side filter over the loaded tasks; active only when the field has text. */
 const hasQuery = computed(() => props.query.trim().length > 0);
 const filteredSections = computed(() => filterSections(sections.value, props.query));
-const hasMatches = computed(
-	() =>
-		filteredSections.value.actionNeeded.length > 0 ||
-		filteredSections.value.upcoming.length > 0 ||
-		filteredSections.value.readyToRun.length > 0,
-);
+const hasMatches = computed(() => hasAnyMatch(filteredSections.value));
 
 const isEmpty = computed(
 	() =>

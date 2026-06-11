@@ -2,7 +2,7 @@
 // so the vitest globals are not ambiently typed here.
 import { describe, expect, it } from 'vitest';
 
-import { filterSections, matchesTask, useTaskSearch } from './use-task-search';
+import { filterSections, hasAnyMatch, matchesTask, useTaskSearch } from './use-task-search';
 import type { DesktopAssistantTaskCard, DesktopAssistantTasksResponse } from '../../shared/types';
 
 function card(overrides: Partial<DesktopAssistantTaskCard> = {}): DesktopAssistantTaskCard {
@@ -61,6 +61,18 @@ describe('filterSections', () => {
 		expect(result.actionNeeded).toHaveLength(1);
 		expect(result.upcoming).toHaveLength(1);
 		expect(result.readyToRun).toHaveLength(2);
+	});
+});
+
+describe('hasAnyMatch', () => {
+	const empty: DesktopAssistantTasksResponse = { actionNeeded: [], upcoming: [], readyToRun: [] };
+
+	it('is false when every bucket is empty', () => {
+		expect(hasAnyMatch(empty)).toBe(false);
+	});
+
+	it('is true when any bucket has a card', () => {
+		expect(hasAnyMatch({ ...empty, readyToRun: [card()] })).toBe(true);
 	});
 });
 

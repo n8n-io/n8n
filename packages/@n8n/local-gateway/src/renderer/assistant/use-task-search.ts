@@ -32,6 +32,15 @@ export function filterSections(
 	};
 }
 
+/** True when any bucket still has a card — drives the "no tasks match" state. */
+export function hasAnyMatch(sections: DesktopAssistantTasksResponse): boolean {
+	return (
+		sections.actionNeeded.length > 0 ||
+		sections.upcoming.length > 0 ||
+		sections.readyToRun.length > 0
+	);
+}
+
 export function useTaskSearch() {
 	const open = ref(false);
 	const query = ref('');
