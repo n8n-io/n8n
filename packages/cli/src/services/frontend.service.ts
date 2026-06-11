@@ -348,6 +348,7 @@ export class FrontendService {
 				customRoles: false,
 				personalSpacePolicy: false,
 				dataRedaction: false,
+				otelCustomSpanAttributes: false,
 			},
 			mfa: {
 				enabled: false,
@@ -506,6 +507,7 @@ export class FrontendService {
 			customRoles: this.licenseState.isCustomRolesLicensed(),
 			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
 			dataRedaction: this.licenseState.isDataRedactionLicensed(),
+			otelCustomSpanAttributes: this.licenseState.isOtelCustomSpanAttributesLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -721,7 +723,7 @@ export class FrontendService {
 				credential.name === 'oAuth2Api' ||
 				this.credentialTypes.getParentTypes(credential.name).includes('oAuth2Api');
 			if (isOAuth2Credential && credential.properties) {
-				const jwksUri = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}/.well-known/jwks.json`;
+				const jwksUri = this.urlService.getInstanceJwksUri();
 				credential.properties = credential.properties.map((property) =>
 					property.name === 'jwksUri' ? { ...property, default: jwksUri } : property,
 				);

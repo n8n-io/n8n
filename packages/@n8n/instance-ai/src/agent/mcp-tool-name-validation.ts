@@ -1,5 +1,8 @@
-import type { ToolsInput } from '@mastra/core/agent';
 import { isSafeObjectKey } from '@n8n/api-types';
+
+import type { InstanceAiToolRegistry } from '../types';
+
+type McpToolRegistry = InstanceAiToolRegistry;
 
 export class McpToolNameValidationError extends Error {
 	constructor(
@@ -50,15 +53,15 @@ export function createClaimedToolNames(names: Iterable<string>): Map<string, str
 }
 
 export function addSafeMcpTools(
-	target: ToolsInput,
-	sourceTools: ToolsInput,
+	target: McpToolRegistry,
+	sourceTools: McpToolRegistry,
 	options: {
 		source: string;
 		claimedToolNames: Map<string, string>;
 		warn?: (error: McpToolNameValidationError) => void;
 	},
 ): void {
-	for (const [name, tool] of Object.entries(sourceTools)) {
+	for (const [name, tool] of sourceTools) {
 		try {
 			const normalizedName = validateMcpToolName(name, options.source);
 			const claimedBy = options.claimedToolNames.get(normalizedName);
@@ -70,7 +73,7 @@ export function addSafeMcpTools(
 				);
 			}
 			options.claimedToolNames.set(normalizedName, name);
-			target[name] = tool;
+			target.set(name, tool);
 		} catch (error) {
 			if (error instanceof McpToolNameValidationError) {
 				options.warn?.(error);

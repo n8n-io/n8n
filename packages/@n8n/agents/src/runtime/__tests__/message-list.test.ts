@@ -115,9 +115,9 @@ describe('AgentMessageList — preserving DB timestamps', () => {
 // ---------------------------------------------------------------------------
 
 function systemContent(list: AgentMessageList): string {
-	const [system] = list.forLlm('Base instructions');
+	const { system } = list.forLlm('Base instructions');
 	expect(system.role).toBe('system');
-	return system.content as string;
+	return system.content;
 }
 
 describe('AgentMessageList — forLlm observation memory', () => {
@@ -125,11 +125,10 @@ describe('AgentMessageList — forLlm observation memory', () => {
 		const list = new AgentMessageList();
 		list.addInput([makeUserMsg('hello')]);
 
-		const messages = list.forLlm('Base instructions');
-		const prompt = messages[0].content as string;
+		const { system, messages } = list.forLlm('Base instructions');
 
-		expect(prompt).toContain('Base instructions');
-		expect(prompt).not.toContain('## Memory');
+		expect(system.content).toContain('Base instructions');
+		expect(system.content).not.toContain('## Memory');
 		expect(messages).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -143,19 +142,18 @@ describe('AgentMessageList — forLlm observation memory', () => {
 	it('injects the rendered observation log into the system prompt', () => {
 		const list = new AgentMessageList();
 		list.observationLogMemory = [
-			'## Memory',
-			'',
+			'<observations>',
 			'The following is your memory of this conversation.',
 			'',
-			'* 🔴 (14:30) User wants the SDK to stay unopinionated.',
+			'* CRITICAL (14:30) User wants the SDK to stay unopinionated.',
+			'</observations>',
 		].join('\n');
 
 		const prompt = systemContent(list);
 
 		expect(prompt).toContain('Base instructions');
-		expect(prompt).toContain('## Memory');
-		expect(prompt).toContain('* 🔴 (14:30) User wants the SDK to stay unopinionated.');
-		expect(prompt).not.toContain('Thread working memory');
+		expect(prompt).toContain('<observations>');
+		expect(prompt).toContain('* CRITICAL (14:30) User wants the SDK to stay unopinionated.');
 	});
 
 	it('keeps recent history messages in LLM context when observation memory is empty', () => {
@@ -163,7 +161,7 @@ describe('AgentMessageList — forLlm observation memory', () => {
 		list.addHistory([makeDbMsg('recent history', new Date('2024-01-01T00:00:00.000Z'))]);
 		list.addInput([makeUserMsg('new request')]);
 
-		const messages = list.forLlm('Base instructions');
+		const { messages } = list.forLlm('Base instructions');
 
 		expect(messages).toEqual(
 			expect.arrayContaining([

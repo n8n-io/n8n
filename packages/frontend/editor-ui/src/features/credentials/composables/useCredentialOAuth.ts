@@ -5,9 +5,12 @@ import { ref } from 'vue';
 import {
 	createResultError,
 	createResultOk,
+	NodeHelpers,
+	type CredentialInformation,
 	type GenericValue,
 	type ICredentialDataDecryptedObject,
 	type ICredentialType,
+	type INodeProperties,
 	type Result,
 } from 'n8n-workflow';
 
@@ -108,10 +111,43 @@ export function useCredentialOAuth() {
 		);
 	}
 
-	function getManuallyConfigurableProperties(credentialType: ICredentialType) {
-		return credentialType.properties.filter(
-			(prop) => prop.type !== 'hidden' && prop.type !== 'notice',
-		);
+	/**
+	 * Returns properties the user must fill in. Walks the extends chain so
+	 * inherited fields (e.g. `clientId`/`clientSecret` from `oAuth2Api`) are
+	 * considered, and applies `displayOptions` against the effective defaults
+	 * — matching the credential edit modal's `credentialProperties` /
+	 * `displayCredentialParameter` logic.
+	 */
+	function getManuallyConfigurableProperties(credentialType: ICredentialType): INodeProperties[] {
+		const mergedProperties = getMergedCredentialProperties(credentialType.name);
+		const defaults: ICredentialDataDecryptedObject = {};
+		for (const prop of mergedProperties) {
+			defaults[prop.name] = prop.default as CredentialInformation;
+		}
+
+		return mergedProperties.filter((prop) => {
+			if (prop.type === 'hidden' || prop.type === 'notice') return false;
+			return NodeHelpers.displayParameter(defaults, prop, null, null);
+		});
+	}
+
+	function getMergedCredentialProperties(
+		credentialTypeName: string,
+		visited = new Set<string>(),
+	): INodeProperties[] {
+		if (visited.has(credentialTypeName)) return [];
+		visited.add(credentialTypeName);
+
+		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
+		if (!credentialType) return [];
+		if (credentialType.extends === undefined) return credentialType.properties;
+
+		const merged: INodeProperties[] = [];
+		for (const parentName of credentialType.extends) {
+			NodeHelpers.mergeNodeProperties(merged, getMergedCredentialProperties(parentName, visited));
+		}
+		NodeHelpers.mergeNodeProperties(merged, credentialType.properties);
+		return merged;
 	}
 
 	function hasManualCredentialInputFields(credentialType: ICredentialType): boolean {

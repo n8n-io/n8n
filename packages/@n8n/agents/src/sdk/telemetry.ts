@@ -309,4 +309,13 @@ export class Telemetry {
 			await telemetry.provider.shutdown();
 		}
 	}
+
+	/** Best-effort provider flush. Telemetry export must not affect agent execution. */
+	static async forceFlush(telemetry: BuiltTelemetry | undefined): Promise<void> {
+		try {
+			await telemetry?.provider?.forceFlush();
+		} catch {
+			// Telemetry flush is best-effort — never block the response or mask the real error.
+		}
+	}
 }

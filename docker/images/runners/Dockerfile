@@ -30,12 +30,6 @@ RUN node -e "const pkg = require('./package.json'); \
 RUN rm -f node_modules/.modules.yaml && \
     pnpm add moment@2.30.1 --prod --no-lockfile
 
-# Rebuild isolated-vm for the container platform. Install build tools as
-# fallback in case prebuild-install cannot find a prebuilt binary.
-RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
-    npm rebuild isolated-vm && \
-    apk del .build-deps
-
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
 # Produces a relocatable venv tied to the python version used
@@ -88,7 +82,7 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 FROM alpine:3.22 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.5
+ARG LAUNCHER_VERSION=1.4.6
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \

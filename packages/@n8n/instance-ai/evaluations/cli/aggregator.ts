@@ -2,7 +2,7 @@ import type {
 	WorkflowTestCaseResult,
 	MultiRunEvaluation,
 	TestCaseAggregation,
-	ScenarioAggregation,
+	ExecutionScenarioAggregation,
 } from '../types';
 
 /**
@@ -65,14 +65,14 @@ export function aggregateResults(
 		const testCase = runs[0].testCase;
 		const buildSuccessCount = runs.filter((r) => r.workflowBuildSuccess).length;
 
-		const scenarioCount = testCase.scenarios.length;
-		const scenarios: ScenarioAggregation[] = [];
+		const scenarioCount = testCase.executionScenarios.length;
+		const executionScenarios: ExecutionScenarioAggregation[] = [];
 
 		for (let sIdx = 0; sIdx < scenarioCount; sIdx++) {
-			const scenario = testCase.scenarios[sIdx];
+			const scenario = testCase.executionScenarios[sIdx];
 			const scenarioRuns = runs.map(
 				(r) =>
-					r.scenarioResults[sIdx] ?? {
+					r.executionScenarioResults[sIdx] ?? {
 						scenario,
 						success: false,
 						score: 0,
@@ -82,7 +82,7 @@ export function aggregateResults(
 			const passCount = scenarioRuns.filter((sr) => sr.success).length;
 			const { passAtKValues, passHatKValues } = computePassMetrics(totalRuns, passCount);
 
-			scenarios.push({
+			executionScenarios.push({
 				scenario,
 				runs: scenarioRuns,
 				passCount,
@@ -92,7 +92,7 @@ export function aggregateResults(
 			});
 		}
 
-		testCases.push({ testCase, runs, buildSuccessCount, scenarios });
+		testCases.push({ testCase, runs, buildSuccessCount, executionScenarios });
 	}
 
 	return { totalRuns, testCases };

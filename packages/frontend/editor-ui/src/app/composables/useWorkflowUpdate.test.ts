@@ -58,14 +58,6 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: vi.fn().mockReturnValue({ value: mockDocumentStore }),
 }));
 
-// Mock useWorkflowState - using hoisted for proper initialization
-const mockWorkflowState = vi.hoisted(() => ({
-	touchParametersLastUpdatedAt: vi.fn(),
-}));
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(() => mockWorkflowState),
-}));
-
 // Mock useCanvasOperations - using hoisted for proper initialization
 const mockCanvasOperations = vi.hoisted(() => ({
 	deleteNode: vi.fn(),
@@ -78,8 +70,10 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: vi.fn(() => mockCanvasOperations),
 }));
 
-// Mock nodeTypesUtils
-vi.mock('@/app/utils/nodeTypesUtils', () => ({
+// Mock nodeTypesUtils — keep real exports (e.g. getNodeSubtitle, used by
+// useNodeHelpers) and override only the auth helpers under test.
+vi.mock('@/app/utils/nodeTypesUtils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/app/utils/nodeTypesUtils')>()),
 	getMainAuthField: vi.fn(),
 	getAuthTypeForNodeCredential: vi.fn(),
 }));

@@ -156,6 +156,16 @@ describe('WorkflowsView', () => {
 				expect(getByText('There are currently no workflows to view')).toBeInTheDocument();
 			});
 
+			it('does not repeat generic prompt in fallback empty state', async () => {
+				const projectsStore = mockedStore(useProjectsStore);
+				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
+
+				const { getAllByText } = renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(getAllByText('What do you want to build?')).toHaveLength(1);
+			});
+
 			it('for user with create scope', async () => {
 				const projectsStore = mockedStore(useProjectsStore);
 				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
@@ -497,20 +507,28 @@ describe('Folders', () => {
 		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
 	});
 
-	it('should show "Create folder" button when not in the overview or sharing pages', async () => {
+	it('should show folder actions menu when not in the overview or sharing pages', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProject = {
+			id: '1',
+			name: 'Project 1',
+			type: 'team',
+			scopes: ['folder:create'],
+		} as Project;
 
 		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
-		const { getByTestId } = renderComponent({
+		const { getByTestId, queryByTestId } = renderComponent({
 			pinia,
 		});
 		await waitAllPromises();
 
-		expect(getByTestId('add-folder-button')).toBeInTheDocument();
+		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
+		expect(getByTestId('folder-breadcrumbs-actions')).toBeInTheDocument();
 	});
 
-	it('should NOT show "Create folder" button when in overview subpage', async () => {
+	it('should NOT show standalone "Create folder" button when in overview subpage', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 
@@ -523,7 +541,7 @@ describe('Folders', () => {
 		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
 	});
 
-	it('should NOT show "Create folder" button when in shared subpage', async () => {
+	it('should NOT show standalone "Create folder" button when in shared subpage', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
 

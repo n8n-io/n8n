@@ -15,18 +15,17 @@ describe('instance ai prompt suggestions telemetry', () => {
 		const shownKeys = new Set<string>();
 		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry, shownKeys);
 
-		helper.trackSuggestionsShown({ threadId: 'thread-1', researchMode: true });
+		helper.trackSuggestionsShown({ threadId: 'thread-1' });
 		expect(track).toHaveBeenCalledTimes(1);
 		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestions shown', {
 			thread_id: 'thread-1',
 			suggestion_catalog_version: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
-			research_mode: true,
 		});
 
-		helper.trackSuggestionsShown({ threadId: 'thread-1', researchMode: true });
+		helper.trackSuggestionsShown({ threadId: 'thread-1' });
 		expect(track).toHaveBeenCalledTimes(1);
 
-		helper.trackSuggestionsShown({ threadId: 'thread-2', researchMode: false });
+		helper.trackSuggestionsShown({ threadId: 'thread-2' });
 		expect(track).toHaveBeenCalledTimes(2);
 
 		const shownPayload = track.mock.calls[0][1];
@@ -40,14 +39,12 @@ describe('instance ai prompt suggestions telemetry', () => {
 
 		helper.trackSuggestionsShown({
 			threadId: 'thread-v2',
-			researchMode: false,
 			suggestionCatalogVersion: 'v2',
 		});
 
 		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestions shown', {
 			thread_id: 'thread-v2',
 			suggestion_catalog_version: 'v2',
-			research_mode: false,
 		});
 	});
 
@@ -55,13 +52,11 @@ describe('instance ai prompt suggestions telemetry', () => {
 		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry, new Set<string>());
 
 		helper.trackSuggestionsShown({
-			researchMode: false,
 			suggestionCatalogVersion: 'v2',
 		});
 
 		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestions shown', {
 			suggestion_catalog_version: 'v2',
-			research_mode: false,
 		});
 	});
 
@@ -69,15 +64,13 @@ describe('instance ai prompt suggestions telemetry', () => {
 		const shownKeys = new Set<string>();
 		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry, shownKeys);
 
-		helper.trackSuggestionsShown({ threadId: 'thread-versioned', researchMode: false });
+		helper.trackSuggestionsShown({ threadId: 'thread-versioned' });
 		helper.trackSuggestionsShown({
 			threadId: 'thread-versioned',
-			researchMode: false,
 			suggestionCatalogVersion: 'v2',
 		});
 		helper.trackSuggestionsShown({
 			threadId: 'thread-versioned',
-			researchMode: false,
 			suggestionCatalogVersion: 'v2',
 		});
 
@@ -85,12 +78,10 @@ describe('instance ai prompt suggestions telemetry', () => {
 		expect(track.mock.calls[0][1]).toEqual({
 			thread_id: 'thread-versioned',
 			suggestion_catalog_version: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
-			research_mode: false,
 		});
 		expect(track.mock.calls[1][1]).toEqual({
 			thread_id: 'thread-versioned',
 			suggestion_catalog_version: 'v2',
-			research_mode: false,
 		});
 	});
 
@@ -98,11 +89,9 @@ describe('instance ai prompt suggestions telemetry', () => {
 		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry, new Set<string>());
 
 		helper.trackSuggestionsShown({
-			researchMode: false,
 			suggestionCatalogVersion: 'v2',
 		});
 		helper.trackSuggestionsShown({
-			researchMode: false,
 			suggestionCatalogVersion: 'v2',
 		});
 
@@ -114,7 +103,6 @@ describe('instance ai prompt suggestions telemetry', () => {
 
 		helper.trackQuickExamplesOpened({
 			threadId: 'thread-1',
-			researchMode: false,
 			suggestionId: 'quick-examples',
 			position: 2,
 		});
@@ -122,7 +110,6 @@ describe('instance ai prompt suggestions telemetry', () => {
 		expect(track).toHaveBeenCalledWith('Instance AI quick examples opened', {
 			thread_id: 'thread-1',
 			suggestion_catalog_version: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
-			research_mode: false,
 			suggestion_id: 'quick-examples',
 			position: 2,
 		});
@@ -140,7 +127,6 @@ describe('instance ai prompt suggestions telemetry', () => {
 
 		helper.trackSuggestionSelected({
 			threadId: 'thread-abc',
-			researchMode: true,
 			suggestionId: 'build-workflow',
 			suggestionKind: 'prompt',
 			position: 1,
@@ -149,7 +135,6 @@ describe('instance ai prompt suggestions telemetry', () => {
 		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestion selected', {
 			thread_id: 'thread-abc',
 			suggestion_catalog_version: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION,
-			research_mode: true,
 			suggestion_id: 'build-workflow',
 			suggestion_kind: 'prompt',
 			position: 1,
@@ -166,7 +151,6 @@ describe('instance ai prompt suggestions telemetry', () => {
 
 		helper.trackSuggestionSelected({
 			threadId: 'thread-v2',
-			researchMode: true,
 			suggestionCatalogVersion: 'v2',
 			suggestionId: 'plan-workflow',
 			suggestionKind: 'prompt',
@@ -176,7 +160,6 @@ describe('instance ai prompt suggestions telemetry', () => {
 		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestion selected', {
 			thread_id: 'thread-v2',
 			suggestion_catalog_version: 'v2',
-			research_mode: true,
 			suggestion_id: 'plan-workflow',
 			suggestion_kind: 'prompt',
 			position: 2,
@@ -187,7 +170,6 @@ describe('instance ai prompt suggestions telemetry', () => {
 		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry);
 
 		helper.trackSuggestionsCycled({
-			researchMode: true,
 			suggestionCatalogVersion: 'v2',
 			visibleSuggestionIds: [
 				'analyze-exit-interviews',
@@ -200,7 +182,6 @@ describe('instance ai prompt suggestions telemetry', () => {
 
 		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestions cycled', {
 			suggestion_catalog_version: 'v2',
-			research_mode: true,
 			visible_suggestion_ids: [
 				'analyze-exit-interviews',
 				'post-to-linkedin',
@@ -216,7 +197,6 @@ describe('instance ai prompt suggestions telemetry', () => {
 		const helper = createInstanceAiPromptSuggestionsTelemetry(telemetry);
 
 		helper.trackSuggestionSubmitted({
-			researchMode: false,
 			suggestionCatalogVersion: 'v2',
 			suggestionId: 'accounts-payable-agent',
 			suggestionKind: 'prompt',
@@ -226,7 +206,6 @@ describe('instance ai prompt suggestions telemetry', () => {
 
 		expect(track).toHaveBeenCalledWith('Instance AI prompt suggestion submitted', {
 			suggestion_catalog_version: 'v2',
-			research_mode: false,
 			suggestion_id: 'accounts-payable-agent',
 			suggestion_kind: 'prompt',
 			position: 1,

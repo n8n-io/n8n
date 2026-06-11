@@ -58,8 +58,9 @@ export class McpClientTool implements INodeType {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['output'],
-		version: [1, 1.1, 1.2],
-		description: 'Connect to a custom MCP server',
+		version: [1, 1.1, 1.2, 1.3],
+		defaultVersion: 1.3,
+		description: 'Connect tools from an MCP Server',
 		defaults: {
 			name: 'MCP Client',
 		},

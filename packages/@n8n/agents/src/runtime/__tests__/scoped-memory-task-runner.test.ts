@@ -2,7 +2,6 @@ import type {
 	BuiltObservationLogTaskLockStore,
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
-	ObservationLogScopeKind,
 } from '../../types/sdk/observation-log';
 import { ScopedMemoryTaskRunner } from '../scoped-memory-task-runner';
 
@@ -19,19 +18,17 @@ function lockStore(
 ): BuiltObservationLogTaskLockStore {
 	return {
 		acquireObservationLogTaskLock: acquire,
-		releaseObservationLogTaskLock: jest.fn().mockResolvedValue(undefined),
+		releaseObservationLogTaskLock: vi.fn().mockResolvedValue(undefined),
 	};
 }
 
 function lockHandle(
-	scopeKind: ObservationLogScopeKind,
-	scopeId: string,
+	observationScopeId: string,
 	taskKind: ObservationLogTaskKind,
 	holderId: string,
 ): ObservationLogTaskLockHandle {
 	return {
-		scopeKind,
-		scopeId,
+		observationScopeId,
 		taskKind,
 		holderId,
 		heldUntil: new Date(Date.now() + 30_000),
@@ -45,7 +42,7 @@ describe('ScopedMemoryTaskRunner', () => {
 		const events: string[] = [];
 
 		const observer = runner.schedule(
-			{ taskKind: 'observer', scopeKind: 'thread', scopeId: 'thread-1' },
+			{ taskKind: 'observer', observationScopeId: 'thread-1' },
 			async () => {
 				events.push('observer:start');
 				await first.promise;
@@ -53,7 +50,7 @@ describe('ScopedMemoryTaskRunner', () => {
 			},
 		);
 		const reflector = runner.schedule(
-			{ taskKind: 'reflector', scopeKind: 'thread', scopeId: 'thread-1' },
+			{ taskKind: 'reflector', observationScopeId: 'thread-1' },
 			async () => {
 				events.push('reflector:start');
 				await Promise.resolve();
@@ -74,14 +71,11 @@ describe('ScopedMemoryTaskRunner', () => {
 	});
 
 	it('skips a task when the store lock is already held', async () => {
-		const acquire = jest.fn().mockResolvedValue(null);
+		const acquire = vi.fn().mockResolvedValue(null);
 		const runner = new ScopedMemoryTaskRunner({ lockStore: lockStore(acquire) });
-		const task = jest.fn().mockResolvedValue(undefined);
+		const task = vi.fn().mockResolvedValue(undefined);
 
-		const handle = runner.schedule(
-			{ taskKind: 'observer', scopeKind: 'thread', scopeId: 'thread-1' },
-			task,
-		);
+		const handle = runner.schedule({ taskKind: 'observer', observationScopeId: 'thread-1' }, task);
 
 		await expect(handle.done).resolves.toMatchObject({
 			status: 'skipped',
@@ -99,7 +93,7 @@ describe('ScopedMemoryTaskRunner', () => {
 		});
 
 		const handle = runner.schedule(
-			{ taskKind: 'observer', scopeKind: 'thread', scopeId: 'thread-1' },
+			{ taskKind: 'observer', observationScopeId: 'thread-1' },
 			async () => {
 				await Promise.reject(error);
 			},
@@ -115,7 +109,7 @@ describe('ScopedMemoryTaskRunner', () => {
 		const runner = new ScopedMemoryTaskRunner({ maxCapturedErrors: -1 });
 
 		const handle = runner.schedule(
-			{ taskKind: 'observer', scopeKind: 'thread', scopeId: 'thread-1' },
+			{ taskKind: 'observer', observationScopeId: 'thread-1' },
 			async () => {
 				await Promise.reject(new Error('observer failed'));
 			},
@@ -129,7 +123,7 @@ describe('ScopedMemoryTaskRunner', () => {
 		const runner = new ScopedMemoryTaskRunner({ maxCapturedErrors: Number.NaN });
 
 		const handle = runner.schedule(
-			{ taskKind: 'observer', scopeKind: 'thread', scopeId: 'thread-1' },
+			{ taskKind: 'observer', observationScopeId: 'thread-1' },
 			async () => {
 				await Promise.reject(new Error('observer failed'));
 			},
@@ -141,17 +135,14 @@ describe('ScopedMemoryTaskRunner', () => {
 
 	it('captures onEvent failures without failing the task lifecycle', async () => {
 		const eventError = new Error('event sink failed');
-		const task = jest.fn(async () => await Promise.resolve('done'));
+		const task = vi.fn(async () => await Promise.resolve('done'));
 		const runner = new ScopedMemoryTaskRunner({
 			onEvent: () => {
 				throw eventError;
 			},
 		});
 
-		const handle = runner.schedule(
-			{ taskKind: 'reflector', scopeKind: 'thread', scopeId: 'thread-1' },
-			task,
-		);
+		const handle = runner.schedule({ taskKind: 'reflector', observationScopeId: 'thread-1' }, task);
 
 		await expect(handle.done).resolves.toMatchObject({ status: 'completed', value: 'done' });
 		expect(task).toHaveBeenCalled();
@@ -165,7 +156,7 @@ describe('ScopedMemoryTaskRunner', () => {
 		const runner = new ScopedMemoryTaskRunner();
 
 		const handle = runner.schedule(
-			{ taskKind: 'observer', scopeKind: 'thread', scopeId: 'thread-1' },
+			{ taskKind: 'observer', observationScopeId: 'thread-1' },
 			async () => await Promise.resolve('done'),
 		);
 
@@ -176,23 +167,24 @@ describe('ScopedMemoryTaskRunner', () => {
 	});
 
 	it('acquires and releases a store lock around the task', async () => {
-		const acquire = jest.fn<
-			ReturnType<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>,
-			Parameters<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>
+		const acquire = vi.fn<
+			(
+				...args: Parameters<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>
+			) => ReturnType<BuiltObservationLogTaskLockStore['acquireObservationLogTaskLock']>
 		>(
-			async (scopeKind, scopeId, taskKind, opts) =>
-				await Promise.resolve(lockHandle(scopeKind, scopeId, taskKind, opts.holderId)),
+			async (observationScopeId, taskKind, opts) =>
+				await Promise.resolve(lockHandle(observationScopeId, taskKind, opts.holderId)),
 		);
 		const store = lockStore(acquire);
 		const runner = new ScopedMemoryTaskRunner({ lockStore: store, lockTtlMs: 15_000 });
 
 		const handle = runner.schedule(
-			{ taskKind: 'reflector', scopeKind: 'resource', scopeId: 'user-1' },
+			{ taskKind: 'reflector', observationScopeId: 'user-1' },
 			async () => await Promise.resolve('done'),
 		);
 
 		await expect(handle.done).resolves.toMatchObject({ status: 'completed', value: 'done' });
-		expect(acquire).toHaveBeenCalledWith('resource', 'user-1', 'reflector', {
+		expect(acquire).toHaveBeenCalledWith('user-1', 'reflector', {
 			holderId: handle.id,
 			ttlMs: 15_000,
 		});

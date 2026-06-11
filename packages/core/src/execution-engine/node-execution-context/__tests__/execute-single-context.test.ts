@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -12,8 +11,10 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	WorkflowExpression,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes, type WorkflowExpression } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteSingleContext } from '../execute-single-context';
@@ -167,6 +168,7 @@ describe('ExecuteSingleContext', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials =
 				await executeSingleContext.getCredentials<ICredentialDataDecryptedObject>(
@@ -195,6 +197,29 @@ describe('ExecuteSingleContext', () => {
 				'last',
 				'params',
 			]);
+		});
+	});
+
+	describe('getRuntimeCredential', () => {
+		beforeEach(() => {
+			additionalData.getRuntimeCredential.mockReset();
+		});
+
+		it('forwards the alias to the additionalData callback and returns its value', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue('Bearer xyz');
+
+			const result = await executeSingleContext.getRuntimeCredential('api_key');
+
+			expect(result).toBe('Bearer xyz');
+			expect(additionalData.getRuntimeCredential).toHaveBeenCalledWith(runExecutionData, 'api_key');
+		});
+
+		it('returns undefined when the underlying callback yields undefined', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue(undefined);
+
+			const result = await executeSingleContext.getRuntimeCredential('missing');
+
+			expect(result).toBeUndefined();
 		});
 	});
 });

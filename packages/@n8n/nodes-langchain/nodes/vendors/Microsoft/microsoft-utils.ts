@@ -156,7 +156,7 @@ export function createMicrosoftAgentApplication(credentials: MicrosoftAgent365Cr
 		},
 	});
 
-	return agent;
+	return { agent, authConfig };
 }
 
 export async function getMicrosoftMcpTools(

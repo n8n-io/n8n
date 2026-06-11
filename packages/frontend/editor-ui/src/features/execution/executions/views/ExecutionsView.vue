@@ -11,24 +11,24 @@ import { useToast } from '@/app/composables/useToast';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useExecutionsStore } from '../executions.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { storeToRefs } from 'pinia';
 import { onBeforeMount, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const route = useRoute();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
-const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const insightsStore = useInsightsStore();
 const settingsStore = useSettingsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const isAgentsView = () => settingsStore.isModuleActive('agents') && route.query.view === 'agents';
 const overview = useProjectPages();
@@ -46,7 +46,7 @@ onBeforeMount(async () => {
 
 	void externalHooks.run('executionsList.openDialog');
 	telemetry.track('User opened Executions log', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 });
 

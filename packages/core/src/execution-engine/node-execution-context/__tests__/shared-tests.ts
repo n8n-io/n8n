@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import { captor, mock, type MockProxy } from 'jest-mock-extended';
 import type {
 	IRunExecutionData,
 	ContextType,
@@ -17,6 +16,7 @@ import type {
 	IExecutionContext,
 } from 'n8n-workflow';
 import { ApplicationError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { captor, mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 
@@ -117,16 +117,18 @@ export const describeCommonTests = (
 	});
 
 	describe('onExecutionCancellation', () => {
-		const handler = jest.fn();
-		context.onExecutionCancellation(handler);
+		it('registers the handler and triggers it when the signal aborts', () => {
+			const handler = vi.fn();
+			context.onExecutionCancellation(handler);
 
-		const fnCaptor = captor<() => void>();
-		expect(abortSignal.addEventListener).toHaveBeenCalledWith('abort', fnCaptor);
-		expect(handler).not.toHaveBeenCalled();
+			const fnCaptor = captor<() => void>();
+			expect(abortSignal.addEventListener).toHaveBeenCalledWith('abort', fnCaptor);
+			expect(handler).not.toHaveBeenCalled();
 
-		fnCaptor.value();
-		expect(abortSignal.removeEventListener).toHaveBeenCalledWith('abort', fnCaptor);
-		expect(handler).toHaveBeenCalled();
+			fnCaptor.value();
+			expect(abortSignal.removeEventListener).toHaveBeenCalledWith('abort', fnCaptor);
+			expect(handler).toHaveBeenCalled();
+		});
 	});
 
 	describe('continueOnFail', () => {
@@ -158,7 +160,7 @@ export const describeCommonTests = (
 		it('should return the context object', () => {
 			const contextType: ContextType = 'node';
 			const expectedContext = mock<IContextObject>();
-			const getContextSpy = jest.spyOn(NodeHelpers, 'getContext');
+			const getContextSpy = vi.spyOn(NodeHelpers, 'getContext');
 			getContextSpy.mockReturnValue(expectedContext);
 
 			expect(context.getContext(contextType)).toEqual(expectedContext);
@@ -231,7 +233,9 @@ export const describeCommonTests = (
 		it('should evaluate the expression correctly', () => {
 			const expression = '$json.test';
 			const expectedResult = 'data';
-			const resolveSimpleParameterValueSpy = jest.spyOn(
+			// Touch the lazy proxy property so vi.spyOn can find it.
+			void workflow.expression.resolveSimpleParameterValue;
+			const resolveSimpleParameterValueSpy = vi.spyOn(
 				workflow.expression,
 				'resolveSimpleParameterValue',
 			);

@@ -1,9 +1,13 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { EvaluationConfig, User } from '@n8n/db';
 import {
+	EvaluationCollectionRepository,
+	EvaluationConfigRepository,
+	TestCaseExecutionErrorCode,
 	TestCaseExecutionRepository,
 	TestRun,
+	TestRunErrorCode,
 	TestRunRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -55,6 +59,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee';
+import { WorkflowCompilerService } from './workflow-compiler.service';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -95,6 +100,9 @@ export class TestRunnerService {
 		private readonly concurrencyControlService: ConcurrencyControlService,
 		private readonly license: License,
 		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly evaluationCollectionRepository: EvaluationCollectionRepository,
+		private readonly evaluationConfigRepository: EvaluationConfigRepository,
+		private readonly workflowCompiler: WorkflowCompilerService,
 	) {}
 
 	/**
@@ -111,7 +119,7 @@ export class TestRunnerService {
 	private validateEvaluationTriggerNode(workflow: IWorkflowBase) {
 		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		if (!triggerNode) {
-			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
+			throw new TestRunError(TestRunErrorCode.EVALUATION_TRIGGER_NOT_FOUND);
 		}
 
 		const { parameters, credentials, name, typeVersion } = triggerNode;
@@ -129,11 +137,13 @@ export class TestRunnerService {
 					checkNodeParameterNotEmpty(parameters?.sheetName);
 
 		if (!isConfigured) {
-			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: name });
+			throw new TestRunError(TestRunErrorCode.EVALUATION_TRIGGER_NOT_CONFIGURED, {
+				node_name: name,
+			});
 		}
 
 		if (triggerNode?.disabled) {
-			throw new TestRunError('EVALUATION_TRIGGER_DISABLED');
+			throw new TestRunError(TestRunErrorCode.EVALUATION_TRIGGER_DISABLED);
 		}
 	}
 
@@ -154,7 +164,7 @@ export class TestRunnerService {
 	private validateSetMetricsNodes(workflow: IWorkflowBase) {
 		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
 		if (metricsNodes.length === 0) {
-			throw new TestRunError('SET_METRICS_NODE_NOT_FOUND');
+			throw new TestRunError(TestRunErrorCode.SET_METRICS_NODE_NOT_FOUND);
 		}
 
 		const unconfiguredMetricsNode = metricsNodes.find((node) => {
@@ -193,7 +203,7 @@ export class TestRunnerService {
 		});
 
 		if (unconfiguredMetricsNode) {
-			throw new TestRunError('SET_METRICS_NODE_NOT_CONFIGURED', {
+			throw new TestRunError(TestRunErrorCode.SET_METRICS_NODE_NOT_CONFIGURED, {
 				node_name: unconfiguredMetricsNode.name,
 			});
 		}
@@ -220,7 +230,7 @@ export class TestRunnerService {
 		);
 
 		if (unconfiguredSetOutputsNode) {
-			throw new TestRunError('SET_OUTPUTS_NODE_NOT_CONFIGURED', {
+			throw new TestRunError(TestRunErrorCode.SET_OUTPUTS_NODE_NOT_CONFIGURED, {
 				node_name: unconfiguredSetOutputsNode.name,
 			});
 		}
@@ -342,7 +352,7 @@ export class TestRunnerService {
 		const triggerNode = this.findEvaluationTriggerNode(workflow);
 
 		if (!triggerNode) {
-			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
+			throw new TestRunError(TestRunErrorCode.EVALUATION_TRIGGER_NOT_FOUND);
 		}
 
 		// Call custom operation to fetch the whole dataset
@@ -452,7 +462,7 @@ export class TestRunnerService {
 		const triggerOutputData = execution.data.resultData.runData[triggerNode.name]?.[0];
 
 		if (!triggerOutputData || triggerOutputData.error) {
-			throw new TestRunError('CANT_FETCH_TEST_CASES', {
+			throw new TestRunError(TestRunErrorCode.CANT_FETCH_TEST_CASES, {
 				message:
 					triggerOutputData?.error?.message ?? 'Evaluation trigger node did not produce any output',
 			});
@@ -461,7 +471,7 @@ export class TestRunnerService {
 		const triggerOutput = triggerOutputData.data?.[NodeConnectionTypes.Main]?.[0];
 
 		if (!triggerOutput || triggerOutput.length === 0) {
-			throw new TestRunError('TEST_CASES_NOT_FOUND');
+			throw new TestRunError(TestRunErrorCode.TEST_CASES_NOT_FOUND);
 		}
 
 		return triggerOutput;
@@ -544,19 +554,6 @@ export class TestRunnerService {
 		await finished;
 	}
 
-	/**
-	 * Creates the new test-run row, returns it together with a `finished`
-	 * promise that resolves once every case has been processed (or aborted).
-	 * The execution loop is detached so callers can return the new
-	 * `testRun.id` without waiting for the run to complete; tests that need
-	 * to observe completion await `finished` directly.
-	 *
-	 * `options` carries the eval-collections context (TRUST-72): when set,
-	 * the new run is pinned to a workflow version (loaded from
-	 * `WorkflowHistory` instead of the live workflow so future edits don't
-	 * disturb cross-run comparability) and tagged with its parent collection
-	 * + the `EvaluationConfig` snapshot captured at run-start.
-	 */
 	async startTestRun(
 		user: User,
 		workflowId: string,
@@ -566,6 +563,7 @@ export class TestRunnerService {
 			workflowVersionId?: string;
 			evaluationConfigId?: string;
 			evaluationConfigSnapshot?: IDataObject;
+			compileFromConfig?: boolean;
 		},
 	): Promise<{ testRun: TestRun; finished: Promise<void> }> {
 		const requestedConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
@@ -585,11 +583,6 @@ export class TestRunnerService {
 			},
 		);
 
-		// When pinned to a workflow version (collection runs), load nodes +
-		// connections from `WorkflowHistory` so the run executes against the
-		// snapshotted JSON, not whatever the live workflow looks like right
-		// now. The base workflow row still supplies `id`, `name`, `settings`
-		// — everything outside the canvas geometry.
 		const baseWorkflow = await this.workflowRepository.findById(workflowId);
 		assert(baseWorkflow, 'Workflow not found');
 
@@ -600,10 +593,7 @@ export class TestRunnerService {
 				options.workflowVersionId,
 			);
 			assert(history, `Workflow version ${options.workflowVersionId} not found`);
-			// `ExecutionPersistence` records `workflowData.versionId` on the
-			// execution row; keeping `baseWorkflow.versionId` here would tag
-			// historical-canvas executions with the *current* live version
-			// and break the comparability promise of the pinned run.
+			// Pin versionId so the execution row tags the snapshot, not live state.
 			workflow = {
 				...baseWorkflow,
 				versionId: history.versionId,
@@ -612,23 +602,60 @@ export class TestRunnerService {
 			} as typeof baseWorkflow;
 		}
 
-		// 0. Create new Test Run
+		// Look up config BEFORE creating the row so compile failures land as a
+		// recoverable error code on the row instead of HTTP 500.
+		let evaluationConfigSnapshot = options?.evaluationConfigSnapshot ?? null;
+		let configToCompile: EvaluationConfig | undefined;
+		let configLookupErrorCode: typeof TestRunErrorCode.EVALUATION_CONFIG_NOT_FOUND | undefined;
+		if (options?.compileFromConfig && options?.evaluationConfigId) {
+			const config = await this.evaluationConfigRepository.findByIdAndWorkflowId(
+				options.evaluationConfigId,
+				workflowId,
+			);
+			if (!config) {
+				configLookupErrorCode = TestRunErrorCode.EVALUATION_CONFIG_NOT_FOUND;
+			} else {
+				configToCompile = config;
+				evaluationConfigSnapshot = config as unknown as IDataObject;
+			}
+		}
+
 		const testRun = await this.testRunRepository.createTestRun(workflowId, {
 			collectionId: options?.collectionId ?? null,
 			workflowVersionId: options?.workflowVersionId ?? null,
 			evaluationConfigId: options?.evaluationConfigId ?? null,
-			evaluationConfigSnapshot: options?.evaluationConfigSnapshot ?? null,
+			evaluationConfigSnapshot,
 		});
 		assert(testRun, 'Unable to create a test run');
 
-		// Detach the long-running execution from the awaited setup so callers
-		// (the controller) can return the new `testRun.id` to the FE without
-		// waiting for cases to finish. `executeTestRun` runs synchronously
-		// until its first `await`, which guarantees `abortControllers` is
-		// populated before this method returns — `cancelTestRun(testRun.id)`
-		// called immediately after start will find the entry. Callers that
-		// need to observe completion (tests via `runTest`) await `finished`
-		// directly; the controller discards it.
+		if (configLookupErrorCode) {
+			await this.testRunRepository.markAsError(testRun.id, configLookupErrorCode, {
+				evaluationConfigId: options?.evaluationConfigId,
+			});
+			return { testRun, finished: Promise.resolve() };
+		}
+
+		if (configToCompile) {
+			// Compiler injects its own __eval_trigger — strip any user-added one.
+			const stripped = {
+				...workflow,
+				nodes: workflow.nodes.filter((n) => n.type !== EVALUATION_TRIGGER_NODE_TYPE),
+			} as typeof workflow;
+			try {
+				workflow = this.workflowCompiler.compile(stripped, configToCompile) as typeof workflow;
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				await this.testRunRepository.markAsError(testRun.id, TestRunErrorCode.COMPILATION_FAILED, {
+					evaluationConfigId: options?.evaluationConfigId,
+					reason: message,
+				});
+				return { testRun, finished: Promise.resolve() };
+			}
+		}
+
+		// Detached so the controller can return testRun.id before cases finish.
+		// executeTestRun is synchronous until its first await, so abortControllers
+		// is populated by the time we return — cancelTestRun(id) works immediately.
 		const finished = this.executeTestRun({
 			user,
 			workflowId,
@@ -930,7 +957,7 @@ export class TestRunnerService {
 										await this.testCaseExecutionRepository.update(seededCase.id, {
 											executionId: testCaseExecutionId,
 											status: 'error',
-											errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
+											errorCode: TestCaseExecutionErrorCode.FAILED_TO_EXECUTE_WORKFLOW,
 											metrics: {},
 											completedAt: new Date(),
 										});
@@ -957,7 +984,7 @@ export class TestRunnerService {
 											runAt,
 											completedAt,
 											status: 'error',
-											errorCode: 'NO_METRICS_COLLECTED',
+											errorCode: TestCaseExecutionErrorCode.NO_METRICS_COLLECTED,
 										});
 										telemetryMeta.errored_test_case_count++;
 										// Predefined metrics still merge — the case ran, just had no user metrics.
@@ -1014,7 +1041,7 @@ export class TestRunnerService {
 											runAt,
 											completedAt,
 											status: 'error',
-											errorCode: 'UNKNOWN_ERROR',
+											errorCode: TestCaseExecutionErrorCode.UNKNOWN_ERROR,
 										});
 										this.errorReporter.error(e);
 									}
@@ -1067,6 +1094,38 @@ export class TestRunnerService {
 
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 
+				// If this run belongs to an eval collection, a fresh
+				// `completed` status with new metrics can flip the
+				// winner / produce new regressions in the insights
+				// envelope. Bust any cached envelope so the next
+				// `EvalInsightsService.generateInsights` call regenerates
+				// against the up-to-date set. Cache busts happen here (not
+				// in the repository) because terminal-state setters live
+				// in this service; centralising the bust avoids spreading
+				// the dependency across every call site.
+				//
+				// Failure isolation: an exception from `updateInsightsCache`
+				// must NOT propagate. The run is already persisted as
+				// `completed` with its metrics; if the outer catch sees an
+				// error here it would re-mark the run as `error` and we'd
+				// lose a successful run. Worst case on cache-bust failure
+				// is a stale envelope on the next insights request, which
+				// the user can resolve with `forceRegenerate: true`.
+				if (testRun.collectionId) {
+					try {
+						await this.evaluationCollectionRepository.updateInsightsCache(
+							testRun.collectionId,
+							null,
+						);
+					} catch (cacheError) {
+						this.logger.warn('Failed to bust eval-collection insights cache', {
+							testRunId: testRun.id,
+							collectionId: testRun.collectionId,
+							error: cacheError instanceof Error ? cacheError.message : String(cacheError),
+						});
+					}
+				}
+
 				this.logger.debug('Test run finished', { workflowId, testRunId: testRun.id });
 			}
 		} catch (e) {
@@ -1091,7 +1150,7 @@ export class TestRunnerService {
 					telemetryMeta.error_message += `: ${String(e.extra.message)}`;
 				}
 			} else {
-				await this.testRunRepository.markAsError(testRun.id, 'UNKNOWN_ERROR');
+				await this.testRunRepository.markAsError(testRun.id, TestRunErrorCode.UNKNOWN_ERROR);
 				telemetryMeta.error_message = e instanceof Error ? e.message : 'UNKNOWN_ERROR';
 				throw e;
 			}

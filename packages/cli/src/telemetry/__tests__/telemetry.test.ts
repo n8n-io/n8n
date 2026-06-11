@@ -11,8 +11,7 @@ jest.unmock('@/telemetry');
 jest.mock('@/posthog');
 
 describe('Telemetry', () => {
-	let startPulseSpy: jest.SpyInstance;
-	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
+	let spyTrack: jest.SpyInstance;
 
 	const mockRudderStack = mock<RudderStack>();
 
@@ -26,9 +25,6 @@ describe('Telemetry', () => {
 	});
 
 	beforeAll(() => {
-		// @ts-expect-error Spying on private method
-		startPulseSpy = jest.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(() => {});
-
 		jest.useFakeTimers();
 		jest.setSystemTime(testDateTime);
 		globalConfig.deployment.type = 'n8n-testing';
@@ -37,12 +33,13 @@ describe('Telemetry', () => {
 	afterAll(async () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
-		startPulseSpy.mockRestore();
 		await telemetry.stopTracking();
 	});
 
 	beforeEach(async () => {
-		spyTrack.mockClear();
+		spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
+		// @ts-expect-error Spying on private method
+		jest.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(() => {});
 
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
@@ -117,6 +114,48 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].manual_error?.first).toEqual(execTime3);
 			expect(execBuffer['1'].prod_error?.count).toBe(2);
 			expect(execBuffer['1'].prod_error?.first).toEqual(execTime4);
+		});
+
+		test('should count Instance AI source buckets alongside existing mode buckets', async () => {
+			const payload: Parameters<Telemetry['trackWorkflowExecution']>[0] = {
+				workflow_id: '1',
+				is_manual: true,
+				success: true,
+				error_node_type: 'custom-nodes-base.node-type',
+				execution_source: 'user',
+			};
+
+			const userManualExecTime = fakeJestSystemTime('2022-01-01 12:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			payload.execution_source = 'instance_ai';
+			payload.mock_data_sources = 'trigger_input';
+
+			const instanceAiMockManualExecTime = fakeJestSystemTime('2022-01-01 13:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			payload.is_manual = false;
+			delete payload.mock_data_sources;
+
+			const instanceAiRealProdExecTime = fakeJestSystemTime('2022-01-01 14:00:00');
+			telemetry.trackWorkflowExecution(payload);
+
+			const execBuffer = telemetry.getCountsBuffer();
+
+			expect(execBuffer['1'].manual_success?.count).toBe(2);
+			expect(execBuffer['1'].manual_success?.first).toEqual(userManualExecTime);
+			expect(execBuffer['1'].prod_success?.count).toBe(1);
+			expect(execBuffer['1'].prod_success?.first).toEqual(instanceAiRealProdExecTime);
+
+			expect(execBuffer['1']).not.toHaveProperty('user_manual_success');
+			expect(execBuffer['1'].instance_ai_mock_manual_success?.count).toBe(1);
+			expect(execBuffer['1'].instance_ai_mock_manual_success?.first).toEqual(
+				instanceAiMockManualExecTime,
+			);
+			expect(execBuffer['1'].instance_ai_real_prod_success?.count).toBe(1);
+			expect(execBuffer['1'].instance_ai_real_prod_success?.first).toEqual(
+				instanceAiRealProdExecTime,
+			);
 		});
 
 		test('should fire "Workflow execution errored" event for failed executions', async () => {
@@ -358,11 +397,13 @@ describe('Telemetry', () => {
 			expect(spyTrack).toHaveBeenCalledTimes(0);
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({
 				'agent-1': {
+					agent_id: 'agent-1',
 					message_count: 1,
 					token_count: 15,
 					tool_call_count: 2,
 				},
 				'agent-2': {
+					agent_id: 'agent-2',
 					message_count: 1,
 					token_count: 0,
 					tool_call_count: 0,
@@ -384,6 +425,85 @@ describe('Telemetry', () => {
 				message_count: 1,
 				token_count: 15,
 				tool_call_count: 2,
+			});
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+
+		test('should allow a post-flush window with tokens but no fresh user turn', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 15 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+			spyTrack.mockClear();
+
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 20 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				message_count: 0,
+				token_count: 20,
+				tool_call_count: 0,
+			});
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
+		});
+
+		test('should aggregate agent execution counters by agent ID and user ID when present', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-2', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', tool_call_count: 2 });
+
+			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({
+				'agent-1:user-1': {
+					agent_id: 'agent-1',
+					user_id: 'user-1',
+					message_count: 1,
+					token_count: 15,
+					tool_call_count: 0,
+				},
+				'agent-1:user-2': {
+					agent_id: 'agent-1',
+					user_id: 'user-2',
+					message_count: 1,
+					token_count: 0,
+					tool_call_count: 0,
+				},
+				'agent-1': {
+					agent_id: 'agent-1',
+					message_count: 0,
+					token_count: 0,
+					tool_call_count: 2,
+				},
+			});
+		});
+
+		test('should flush attributed and unattributed agent execution counters separately', () => {
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', message_count: 1 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', user_id: 'user-1', token_count: 15 });
+			telemetry.trackAgentExecution({ agent_id: 'agent-1', token_count: 20 });
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentExecutionCounts();
+
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				user_id: 'user-1',
+				message_count: 1,
+				token_count: 15,
+				tool_call_count: 0,
+			});
+			expect(spyTrack).toHaveBeenCalledWith('Agent execution count', {
+				event_version: '1',
+				agent_id: 'agent-1',
+				message_count: 0,
+				token_count: 20,
+				tool_call_count: 0,
 			});
 			expect(telemetry.getAgentExecutionCountsBuffer()).toEqual({});
 		});

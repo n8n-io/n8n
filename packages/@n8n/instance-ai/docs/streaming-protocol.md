@@ -339,7 +339,7 @@ When a run errors:
 
 ```
 ← run-start       {runId: "r1", agentId: "a1", payload: {messageId: "m1"}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "plan", ...}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "create-tasks", ...}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {result: {goal: "Weather to Slack"}}}
 ← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "delegate", toolCallId: "tc2"}}
 ← agent-spawned   {runId: "r1", agentId: "a2", payload: {parentId: "a1", role: "workflow builder"}}
@@ -357,7 +357,7 @@ When a run errors:
 ← reasoning-delta {runId: "r1", agentId: "a3", payload: {text: "The HTTP node returned 401..."}}
 ← agent-completed {runId: "r1", agentId: "a3", payload: {result: "Missing API key header"}}
 ← tool-result     {runId: "r1", agentId: "a1", payload: {toolCallId: "tc5", result: "Missing API key"}}
-← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "plan", args: {action: "update"}}}
+← tool-call       {runId: "r1", agentId: "a1", payload: {toolName: "create-tasks", args: {planningContext: {source: "replan"}}}}
 ← ...loop continues...
 ← text-delta      {runId: "r1", agentId: "a1", payload: {text: "Done! I created a workflow..."}}
 ← run-finish      {runId: "r1", agentId: "a1", payload: {status: "completed"}}
@@ -434,7 +434,7 @@ The frontend renders events as a collapsible tree grouped by `agentId`:
 🤖 Orchestrator
 ├── 💭 "Let me check what credentials are available..."
 ├── 🔧 list-credentials → [slack-bot, weather-api]
-├── 📋 plan: build → execute → inspect
+├── 📋 create-tasks: build → execute → inspect
 │
 ├── 🤖 Sub-Agent A (workflow builder)
 │   ├── 🔧 list-nodes → [scheduleTrigger, httpRequest, slack]

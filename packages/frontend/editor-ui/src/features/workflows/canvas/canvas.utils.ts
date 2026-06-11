@@ -4,12 +4,13 @@ import type {
 	INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import type { Ref } from 'vue';
+import { computed, shallowReactive, type Ref } from 'vue';
 import type { INodeUi } from '@/Interface';
 import type {
 	BoundingBox,
 	CanvasConnection,
 	CanvasConnectionPort,
+	CanvasNodeDefaultRender,
 	CanvasNodeDefaultRenderLabelSize,
 } from './canvas.types';
 import { CanvasConnectionMode } from './canvas.types';
@@ -17,16 +18,46 @@ import type { Connection } from '@vue-flow/core';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
+import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
 import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 
 /**
  * Per-node canvas render data (input/output port maps) shape, as produced by
- * the workflow document store's render composable and consumed by canvas
- * components.
+ * `useWorkflowDocumentRenderData` and consumed by canvas components.
  */
-export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>['render'];
+export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>;
+
+/**
+ * Display size for a node with `Default` render type — pulls port counts from
+ * render data and forwards to `calculateNodeSize`. Single source of truth for
+ * "what size would this node render at?" outside of the actual VueFlow runtime.
+ */
+export function computeNodeDisplaySize(
+	nodeId: string,
+	renderOptions: CanvasNodeDefaultRender['options'],
+	renderData: CanvasRenderData,
+	isExperimentalNdvActive: boolean,
+): { width: number; height: number } {
+	const inputs = renderData.nodeInputsByNodeId.get(nodeId)?.value ?? [];
+	const outputs = renderData.nodeOutputsByNodeId.get(nodeId)?.value ?? [];
+
+	const mainInputCount = inputs.filter((p) => p.type === 'main').length || 1;
+	const mainOutputCount = outputs.filter((p) => p.type === 'main').length || 1;
+	const nonMainInputCount =
+		inputs.filter((p) => p.type !== 'main').length +
+		outputs.filter((p) => p.type !== 'main').length;
+
+	return calculateNodeSize(
+		renderOptions.configuration ?? false,
+		renderOptions.configurable ?? false,
+		mainInputCount,
+		mainOutputCount,
+		nonMainInputCount,
+		isExperimentalNdvActive,
+	);
+}
 
 /**
  * Injects the canvas render data from the component tree. Provided by an
@@ -34,6 +65,47 @@ export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>[
  */
 export function injectCanvasRenderData(): Ref<CanvasRenderData> {
 	return injectStrict(CanvasRenderDataKey);
+}
+
+/**
+ * Builds an empty `CanvasRenderData` object.
+ *
+ * `CanvasRenderData` is a wide projection façade — production code populates
+ * it via `useWorkflowDocumentRenderData(documentId)`. This helper exists for
+ * the two cases that can't go through that path:
+ * - placeholder values before the underlying workflow document is hydrated
+ *   (e.g. the workflow-diff side panels' initial render);
+ * - test fixtures that only care about a few fields.
+ *
+ * Centralizing it here keeps the ~20+ consumers off the hook when new by-id
+ * projections land — they update one default at a time, not 20 mock literals.
+ */
+export function createEmptyCanvasRenderData(
+	overrides: Partial<CanvasRenderData> = {},
+): CanvasRenderData {
+	return {
+		nodeInputsByNodeId: shallowReactive(new Map()),
+		nodeOutputsByNodeId: shallowReactive(new Map()),
+		pinnedDataByNodeName: {},
+		pinnedDataByNodeId: shallowReactive(new Map()),
+		nodeTypeDescriptionByNodeId: shallowReactive(new Map()),
+		isTriggerByNodeId: shallowReactive(new Map()),
+		subtitleByNodeId: shallowReactive(new Map()),
+		simulatedNodeTypeDescriptionByNodeId: shallowReactive(new Map()),
+		validationErrorsByNodeId: shallowReactive(new Map()),
+		executionIssuesByNodeName: shallowReactive(new Map()),
+		executionStatusByNodeId: shallowReactive(new Map()),
+		executionRunDataByNodeId: shallowReactive(new Map()),
+		executionRunDataOutputMapByNodeId: shallowReactive(new Map()),
+		executionWaitingByNodeId: shallowReactive(new Map()),
+		executionRunningByNodeId: shallowReactive(new Map()),
+		executionWaitingForNextByNodeId: shallowReactive(new Map()),
+		tooltipByNodeId: shallowReactive(new Map()),
+		hasIssuesByNodeId: shallowReactive(new Map()),
+		renderTypeByNodeId: shallowReactive(new Map()),
+		additionalPropertiesByNodeId: computed(() => ({})),
+		...overrides,
+	};
 }
 
 /**

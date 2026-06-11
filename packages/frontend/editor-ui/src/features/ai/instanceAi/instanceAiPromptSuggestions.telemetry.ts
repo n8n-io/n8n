@@ -7,7 +7,6 @@ export type TelemetryTracker = Pick<ReturnType<typeof useTelemetry>, 'track'>;
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 export type InstanceAiPromptSuggestionsShownContext = {
 	threadId?: string;
-	researchMode: boolean;
 	suggestionCatalogVersion?: string;
 };
 
@@ -17,7 +16,6 @@ export type InstanceAiQuickExampleOpenedContext = InstanceAiPromptSuggestionsSho
 };
 
 export type InstanceAiPromptSuggestionsCycledContext = {
-	researchMode: boolean;
 	suggestionCatalogVersion?: string;
 	visibleSuggestionIds: string[];
 	cycleCount: number;
@@ -37,7 +35,6 @@ export type InstanceAiPromptSuggestionSubmittedContext =
 type InstanceAiPromptSuggestionsBasePayload = {
 	thread_id?: string;
 	suggestion_catalog_version: string;
-	research_mode: boolean;
 };
 
 const shownImpressionKeys = new Set<string>();
@@ -50,7 +47,6 @@ const createBasePayload = (
 ): InstanceAiPromptSuggestionsBasePayload => {
 	const payload: InstanceAiPromptSuggestionsBasePayload = {
 		suggestion_catalog_version: resolveSuggestionCatalogVersion(context),
-		research_mode: context.researchMode,
 	};
 
 	if (context.threadId) {
@@ -87,7 +83,6 @@ export function createInstanceAiPromptSuggestionsTelemetry(
 		trackSuggestionsCycled(context: InstanceAiPromptSuggestionsCycledContext) {
 			telemetry.track('Instance AI prompt suggestions cycled', {
 				suggestion_catalog_version: resolveSuggestionCatalogVersion(context),
-				research_mode: context.researchMode,
 				visible_suggestion_ids: context.visibleSuggestionIds,
 				cycle_count: context.cycleCount,
 			});

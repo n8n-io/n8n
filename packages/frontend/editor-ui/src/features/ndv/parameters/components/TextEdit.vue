@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue';
+import { ref, watch, onMounted, nextTick, computed } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { storeToRefs } from 'pinia';
 
 import { ElDialog } from 'element-plus';
 import { N8nInput, N8nInputLabel } from '@n8n/design-system';
@@ -27,7 +26,7 @@ const tempValue = ref('');
 const ndvStore = injectNDVStore();
 const i18n = useI18n();
 
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 watch(
 	() => props.dialogVisible,

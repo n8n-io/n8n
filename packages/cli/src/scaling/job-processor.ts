@@ -35,6 +35,7 @@ import type PCancelable from 'p-cancelable';
 
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
@@ -62,6 +63,7 @@ export class JobProcessor {
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
@@ -75,7 +77,7 @@ export class JobProcessor {
 	async processJob(job: Job): Promise<JobResult> {
 		const { executionId, loadStaticData } = job.data;
 
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -402,7 +404,7 @@ export class JobProcessor {
 	}
 
 	private async fetchJobFinishedResult(executionId: string): Promise<JobFinishedProps> {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});

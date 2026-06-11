@@ -17,9 +17,9 @@ import {
 	tryParseUrl,
 } from '../axios-utils';
 
-jest.mock('@/http-proxy', () => ({
-	createHttpProxyAgent: jest.fn((_proxy, _url, opts) => ({ type: 'http', ...opts })),
-	createHttpsProxyAgent: jest.fn((_proxy, _url, opts) => ({ type: 'https', ...opts })),
+vi.mock('@/http-proxy', () => ({
+	createHttpProxyAgent: vi.fn((_proxy, _url, opts) => ({ type: 'http', ...opts })),
+	createHttpsProxyAgent: vi.fn((_proxy, _url, opts) => ({ type: 'https', ...opts })),
 }));
 
 describe('isIgnoreStatusErrorConfig', () => {
@@ -138,10 +138,10 @@ describe('getBeforeRedirectFn', () => {
 
 	test('should call ssrfBridge.validateRedirectSync when provided', () => {
 		const ssrfBridge = {
-			validateRedirectSync: jest.fn(),
-			createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
-			validateIp: jest.fn(),
-			validateUrl: jest.fn(),
+			validateRedirectSync: vi.fn(),
+			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+			validateIp: vi.fn(),
+			validateUrl: vi.fn(),
 		};
 
 		const beforeRedirect = getBeforeRedirectFn(
@@ -165,9 +165,8 @@ describe('getBeforeRedirectFn', () => {
 	});
 
 	test('should resolve proxy URL from proxyConfig and pass it to agent factories', () => {
-		const { createHttpProxyAgent, createHttpsProxyAgent } = jest.requireMock('@/http-proxy');
-		createHttpProxyAgent.mockClear();
-		createHttpsProxyAgent.mockClear();
+		vi.mocked(createHttpProxyAgent).mockClear();
+		vi.mocked(createHttpsProxyAgent).mockClear();
 
 		const beforeRedirect = getBeforeRedirectFn(
 			agentOptions,
@@ -448,7 +447,7 @@ describe('buildTargetUrl', () => {
 
 describe('setAxiosAgents', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should set httpAgent and httpsAgent on config', () => {
@@ -498,7 +497,7 @@ describe('setAxiosAgents', () => {
 
 	it('should inject secureLookup when no proxy is configured', () => {
 		const config: AxiosRequestConfig = { url: 'https://example.com' };
-		const secureLookup = jest.fn();
+		const secureLookup = vi.fn();
 
 		setAxiosAgents(config, {}, undefined, secureLookup as never);
 
@@ -509,7 +508,7 @@ describe('setAxiosAgents', () => {
 
 	it('should not inject secureLookup when proxy is configured', () => {
 		const config: AxiosRequestConfig = { url: 'https://example.com' };
-		const secureLookup = jest.fn();
+		const secureLookup = vi.fn();
 
 		setAxiosAgents(config, {}, 'http://proxy:8080', secureLookup as never);
 

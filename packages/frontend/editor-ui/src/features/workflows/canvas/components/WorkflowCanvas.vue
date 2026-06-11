@@ -6,11 +6,25 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import { computed, ref, useCssModule, useTemplateRef } from 'vue';
+import {
+	computed,
+	effectScope,
+	onScopeDispose,
+	ref,
+	shallowRef,
+	useCssModule,
+	useTemplateRef,
+	watch,
+	type EffectScope,
+} from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
+import { createEmptyCanvasRenderData, type CanvasRenderData } from '../canvas.utils';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
+import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 
 defineOptions({
 	inheritAttrs: false,
@@ -26,6 +40,7 @@ const props = withDefaults(
 		canExecute?: boolean;
 		executing?: boolean;
 		suppressInteraction?: boolean;
+		stripedBackground?: boolean;
 		initialViewport?: ViewportTransform | null;
 	}>(),
 	{
@@ -34,19 +49,37 @@ const props = withDefaults(
 		fallbackNodes: () => [],
 		showFallbackNodes: true,
 		suppressInteraction: false,
+		stripedBackground: true,
 	},
 );
 
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const renderData = computed(() => workflowDocumentStore.value.render);
+
+// `useWorkflowDocumentRenderData` is side-effectful (subscribes to the document
+// store and creates per-node effect scopes), so it must run once per document
+// id inside a scope we own — not inside a re-evaluating `computed`. We rebuild
+// it only when the document id actually changes, stopping the previous scope
+// (which runs the composable's teardown). The `watch` callback runs outside
+// reactive tracking, so the composable's internal reactive reads don't cause
+// re-invocation.
+const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
+let renderDataScope: EffectScope | undefined;
+watch(
+	() => workflowDocumentStore.value.documentId,
+	(documentId) => {
+		renderDataScope?.stop();
+		renderDataScope = effectScope(true);
+		renderDataScope.run(() => {
+			renderData.value = useWorkflowDocumentRenderData(documentId);
+		});
+	},
+	{ immediate: true },
+);
+onScopeDispose(() => renderDataScope?.stop());
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
-
-const workflowObject = computed(() =>
-	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
-);
 
 const nodes = computed(() => {
 	return props.showFallbackNodes
@@ -55,12 +88,36 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
-const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
+const readOnlyRef = computed(() => props.readOnly ?? false);
+const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
+
+const experimentalNdvStore = useExperimentalNdvStore();
+const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
+
+const {
+	nodes: mappedWorkflowNodes,
+	connections: mappedConnections,
+	nodeDisplaySizeById,
+} = useCanvasMapping({
 	nodes,
 	connections,
-	workflowObject,
 	renderData,
+	isExperimentalNdvActive,
 });
+
+const mappedGroupVueFlowNodes = computed(() =>
+	mapGroupsToVueFlowNodes({
+		allGroups: workflowDocumentStore.value.allGroups,
+		getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
+		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+		readOnly: readOnlyRef.value || suppressInteractionRef.value,
+	}),
+);
+
+const mappedNodes = computed(() => [
+	...mappedWorkflowNodes.value,
+	...mappedGroupVueFlowNodes.value,
+]);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {
@@ -155,11 +212,13 @@ defineExpose({
 				:nodes="executing ? mappedNodesThrottled : mappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:render-data="renderData"
+				:node-display-size-by-id="nodeDisplaySizeById"
 				:event-bus="eventBus"
 				:read-only="readOnly"
 				:can-execute="canExecute"
 				:executing="executing"
 				:suppress-interaction="suppressInteraction"
+				:striped-background="stripedBackground"
 				:initial-viewport="initialViewport"
 				v-bind="$attrs"
 			/>

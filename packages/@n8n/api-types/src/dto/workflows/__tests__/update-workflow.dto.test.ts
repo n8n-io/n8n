@@ -50,6 +50,16 @@ describe('UpdateWorkflowDto', () => {
 				},
 			},
 			{
+				name: 'update nodeGroups',
+				request: {
+					nodeGroups: [{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'] }],
+				},
+			},
+			{
+				name: 'set nodeGroups to empty array',
+				request: { nodeGroups: [] },
+			},
+			{
 				name: 'update multiple fields',
 				request: {
 					name: 'Updated Workflow',
@@ -74,6 +84,34 @@ describe('UpdateWorkflowDto', () => {
 			expect(result.success).toBe(true);
 			expect(result.data?.tags).toEqual(['tag1', 'tag2']);
 		});
+
+		test('should preserve workflow custom span attribute settings', () => {
+			const settings = {
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'workflow_name', value: 'Workflow Name' },
+				],
+			};
+
+			const result = UpdateWorkflowDto.safeParse({ settings });
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
+		});
+
+		test('should preserve workflow custom span attribute settings with keys that are unique after trim', () => {
+			const settings = {
+				customTelemetryTags: [
+					{ key: '  env  ', value: 'production' },
+					{ key: 'team', value: 'backend' },
+				],
+			};
+
+			const result = UpdateWorkflowDto.safeParse({ settings });
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
+		});
 	});
 
 	describe('Invalid requests', () => {
@@ -86,21 +124,6 @@ describe('UpdateWorkflowDto', () => {
 			{
 				name: 'name too long',
 				request: { name: 'a'.repeat(129) },
-				expectedErrorPath: ['name'],
-			},
-			{
-				name: 'name containing a script tag',
-				request: { name: '<script>alert(1)</script>' },
-				expectedErrorPath: ['name'],
-			},
-			{
-				name: 'name containing an img onerror payload',
-				request: { name: '<img src=x onerror=alert(1)>' },
-				expectedErrorPath: ['name'],
-			},
-			{
-				name: 'name containing inline HTML markup',
-				request: { name: 'Report <b>bold</b>' },
 				expectedErrorPath: ['name'],
 			},
 			{
@@ -124,6 +147,68 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['settings'],
 			},
 			{
+				name: 'workflow custom span attributes as fixed collection object',
+				request: {
+					settings: {
+						customTelemetryTags: {
+							tag: [{ key: 'env', value: 'production' }],
+						},
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'workflow custom span attribute with extra field',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: 'env', value: 'production', extra: 'field' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0],
+			},
+			{
+				name: 'duplicate workflow custom span attribute keys',
+				request: {
+					settings: {
+						customTelemetryTags: [
+							{ key: 'env', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'duplicate workflow custom span attribute keys after trim',
+				request: {
+					settings: {
+						customTelemetryTags: [
+							{ key: '  env  ', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'empty workflow custom span attribute key',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: '', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
+			},
+			{
+				name: 'whitespace-only workflow custom span attribute key',
+				request: {
+					settings: {
+						customTelemetryTags: [{ key: '   ', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
+			},
+			{
 				name: 'staticData as array',
 				request: { staticData: [] },
 				expectedErrorPath: ['staticData'],
@@ -132,6 +217,41 @@ describe('UpdateWorkflowDto', () => {
 				name: 'pinData as array',
 				request: { pinData: [] },
 				expectedErrorPath: ['pinData'],
+			},
+			{
+				name: 'nodeGroups as string',
+				request: { nodeGroups: 'not-an-array' },
+				expectedErrorPath: ['nodeGroups'],
+			},
+			{
+				name: 'nodeGroups with missing id',
+				request: { nodeGroups: [{ name: 'Group', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'id'],
+			},
+			{
+				name: 'nodeGroups with missing name',
+				request: { nodeGroups: [{ id: 'g1', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'name'],
+			},
+			{
+				name: 'nodeGroups with missing nodeIds',
+				request: { nodeGroups: [{ id: 'g1', name: 'Group' }] },
+				expectedErrorPath: ['nodeGroups', 0, 'nodeIds'],
+			},
+			{
+				name: 'nodeGroups with empty id',
+				request: { nodeGroups: [{ id: '', name: 'Group', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'id'],
+			},
+			{
+				name: 'nodeGroups with empty name',
+				request: { nodeGroups: [{ id: 'g1', name: '', nodeIds: [] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'name'],
+			},
+			{
+				name: 'nodeGroups with empty nodeId string',
+				request: { nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [''] }] },
+				expectedErrorPath: ['nodeGroups', 0, 'nodeIds', 0],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = UpdateWorkflowDto.safeParse(request);

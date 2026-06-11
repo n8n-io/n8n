@@ -2,6 +2,7 @@ import type {
 	ExecutionStatus,
 	IConnections,
 	INodeConnections,
+	IWorkflowGroup,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import type {
@@ -18,6 +19,7 @@ import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { CanvasLayoutSource } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/types/executionData';
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -110,12 +112,7 @@ export interface CanvasNodeData {
 		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
-		execution: string[];
 		validation: string[];
-		visible: boolean;
-	};
-	pinnedData: {
-		count: number;
 		visible: boolean;
 	};
 	execution: {
@@ -137,6 +134,26 @@ export interface CanvasNodeData {
 }
 
 export type CanvasNode = Node<CanvasNodeData>;
+
+export const CANVAS_NODE_GROUP_TYPE = 'canvas-node-group';
+export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
+export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
+export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
+
+export interface CanvasGroupNodeData {
+	group: IWorkflowGroup;
+	nodesRect: { x: number; y: number; width: number; height: number };
+}
+
+export type CanvasGroupNode = Node<CanvasGroupNodeData>;
+
+export type CanvasNodeOrGroup = CanvasNode | CanvasGroupNode;
+
+export function isCanvasGroupNode(node: CanvasNodeOrGroup): node is CanvasGroupNode;
+export function isCanvasGroupNode(node: { type?: string }): boolean;
+export function isCanvasGroupNode(node: { type?: string }): boolean {
+	return node.type === CANVAS_NODE_GROUP_TYPE;
+}
 
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
@@ -226,23 +243,6 @@ export type ConnectStartEvent = {
 } & OnConnectStartParams;
 
 export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };
-
-export type ExecutionOutputMapData = {
-	total: number;
-	iterations: number;
-	byTarget?: {
-		[targetNodeId: string]: {
-			total: number;
-			iterations: number;
-		};
-	};
-};
-
-export type ExecutionOutputMap = {
-	[connectionType: string]: {
-		[outputIndex: string]: ExecutionOutputMapData;
-	};
-};
 
 export type BoundingBox = {
 	x: number;

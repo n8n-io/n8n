@@ -1,5 +1,5 @@
 import type { IncomingMessage } from 'http';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	parseContentDisposition,

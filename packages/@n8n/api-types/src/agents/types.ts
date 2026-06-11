@@ -27,20 +27,14 @@ export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
 
 export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
 
-export const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT =
-	'Automated message: you were triggered on schedule.';
-
 export interface ChatIntegrationDescriptor {
 	type: string;
 	label: string;
 	icon: string;
 	credentialTypes: string[];
-}
-
-export interface AgentScheduleConfig {
-	active: boolean;
-	cronExpression: string;
-	wakeUpPrompt: string;
+	capabilities?: string[];
+	useIntegrationWhen?: string[];
+	useNodeToolWhen?: string[];
 }
 
 export interface AgentIntegrationStatusEntry {
@@ -52,6 +46,51 @@ export interface AgentIntegrationStatusEntry {
 export interface AgentIntegrationStatusResponse {
 	status: 'connected' | 'disconnected';
 	integrations: AgentIntegrationStatusEntry[];
+}
+
+export interface CreateSlackAgentAppResponse {
+	appId: string;
+	installUrl: string;
+}
+
+export interface SlackAgentAppManifest {
+	display_information: {
+		name: string;
+	};
+	features: {
+		app_home: {
+			home_tab_enabled: boolean;
+			messages_tab_enabled: boolean;
+			messages_tab_read_only_enabled: boolean;
+		};
+		bot_user: {
+			display_name: string;
+			always_online: boolean;
+		};
+	};
+	oauth_config: {
+		redirect_urls?: string[];
+		scopes: {
+			bot: string[];
+		};
+	};
+	settings: {
+		event_subscriptions: {
+			request_url: string;
+			bot_events: string[];
+		};
+		interactivity: {
+			is_enabled: boolean;
+			request_url: string;
+		};
+		org_deploy_enabled: boolean;
+		socket_mode_enabled: boolean;
+		token_rotation_enabled: boolean;
+	};
+}
+
+export interface SlackAgentAppManifestResponse {
+	manifest: SlackAgentAppManifest;
 }
 
 export interface AgentSkill {
@@ -66,14 +105,29 @@ export interface AgentSkillMutationResponse {
 	versionId: string | null;
 }
 
-export interface AgentPublishedVersionDto {
+export interface AgentVersionDto {
+	versionId: string;
 	schema: AgentJsonConfig | null;
 	skills: Record<string, AgentSkill> | null;
-	publishedFromVersionId: string;
-	model: string | null;
-	provider: string | null;
-	credentialId: string | null;
-	publishedById: string | null;
+	author: string;
+}
+
+export interface AgentFileDto {
+	id: string;
+	agentId: string;
+	fileName: string;
+	mimeType: string;
+	fileSizeBytes: number;
+	createdAt: string;
+}
+
+export interface AgentVersionListItemDto {
+	versionId: string;
+	agentId: string;
+	createdAt: string;
+	updatedAt: string;
+	author: string;
+	isActive: boolean;
 }
 
 export interface AgentPersistedMessageContentPart {
@@ -84,7 +138,12 @@ export interface AgentPersistedMessageContentPart {
 	input?: unknown;
 	state?: string;
 	output?: unknown;
+	canceled?: boolean;
 	error?: string;
+	/** Epoch ms when the tool handler started executing. */
+	startTime?: number;
+	/** Epoch ms when the tool handler settled. */
+	endTime?: number;
 }
 
 export interface AgentPersistedMessageDto {
@@ -93,7 +152,7 @@ export interface AgentPersistedMessageDto {
 	content: AgentPersistedMessageContentPart[];
 }
 
-export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-5' as const;
+export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-6' as const;
 
 export const agentBuilderModeSchema = z.enum(['default', 'custom']);
 export type AgentBuilderMode = z.infer<typeof agentBuilderModeSchema>;

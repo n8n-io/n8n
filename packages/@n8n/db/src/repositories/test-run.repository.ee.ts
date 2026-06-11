@@ -4,12 +4,8 @@ import { DataSource, In, Repository } from '@n8n/typeorm';
 import { UnexpectedError, type IDataObject } from 'n8n-workflow';
 
 import { TestRun } from '../entities';
-import type {
-	AggregatedTestRunMetrics,
-	TestRunErrorCode,
-	TestRunFinalResult,
-	ListQuery,
-} from '../entities/types-db';
+import { TestRunErrorCode } from '../entities/types-db';
+import type { AggregatedTestRunMetrics, TestRunFinalResult, ListQuery } from '../entities/types-db';
 import { getTestRunFinalResult } from '../utils/get-final-test-result';
 
 export type TestRunSummary = TestRun & {
@@ -74,7 +70,7 @@ export class TestRunRepository extends Repository<TestRun> {
 	async markAllIncompleteAsFailed() {
 		return await this.update(
 			{ status: In(['new', 'running']) },
-			{ status: 'error', errorCode: 'INTERRUPTED', completedAt: new Date() },
+			{ status: 'error', errorCode: TestRunErrorCode.INTERRUPTED, completedAt: new Date() },
 		);
 	}
 

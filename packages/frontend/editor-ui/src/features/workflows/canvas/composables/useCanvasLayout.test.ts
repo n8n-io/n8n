@@ -1,6 +1,9 @@
 import { useVueFlow, type GraphNode, type VueFlowStore } from '@vue-flow/core';
 import { computed, ref, shallowRef } from 'vue';
-import type { CanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
+import {
+	createEmptyCanvasRenderData,
+	type CanvasRenderData,
+} from '@/features/workflows/canvas/canvas.utils';
 import {
 	createCanvasGraphEdge,
 	createCanvasGraphNode,
@@ -43,10 +46,7 @@ describe('useCanvasLayout', () => {
 		const { layout } = useCanvasLayout(
 			'test-canvas-id',
 			computed(() => false),
-			shallowRef<CanvasRenderData>({
-				nodeInputsByNodeId: new Map(),
-				nodeOutputsByNodeId: new Map(),
-			}),
+			shallowRef<CanvasRenderData>(createEmptyCanvasRenderData()),
 		);
 
 		return { layout };

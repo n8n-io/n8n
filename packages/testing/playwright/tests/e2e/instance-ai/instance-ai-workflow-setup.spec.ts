@@ -4,7 +4,6 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-
 const { privateKey: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY } = generateKeyPairSync('rsa', {
 	modulusLength: 2048,
 	privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
@@ -465,6 +464,10 @@ test.describe(
 				testInfo.project.name.includes('multi-main'),
 				'Setup confirmation replay is not yet stable in multi-main mode',
 			);
+			test.fixme(
+				testInfo.project.name.includes('sqlite'),
+				'Setup confirmation proxy replay is flaky on sqlite:e2e and was gating community/fork PRs while internal PRs skipped on multi-main. Quarantined until the replay is stabilised (DEVP-366). Nightly coverage project still runs the suite.',
+			);
 		});
 
 		test.beforeEach(async ({ n8n }) => {
@@ -516,12 +519,12 @@ test.describe(
 					type: 'httpBasicAuth',
 					data: { user: 'initial-http-user', password: 'initial-http-password' },
 				});
-				await n8n.api.credentials.createCredential({
+				const sharedHttpCredential = await n8n.api.credentials.createCredential({
 					name: MIXED_SHARED_HTTP_CREDENTIAL_NAME,
 					type: 'httpBasicAuth',
 					data: { user: 'shared-http-user', password: 'shared-http-password' },
 				});
-				await n8n.api.credentials.createCredential({
+				const otherHttpCredential = await n8n.api.credentials.createCredential({
 					name: MIXED_OTHER_HTTP_CREDENTIAL_NAME,
 					type: 'httpBasicAuth',
 					data: { user: 'other-http-user', password: 'other-http-password' },
@@ -534,7 +537,7 @@ test.describe(
 						privateKey: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
 					},
 				});
-				await n8n.api.credentials.createCredential({
+				const googleCredential = await n8n.api.credentials.createCredential({
 					name: MIXED_GOOGLE_CREDENTIAL_NAME,
 					type: 'googleApi',
 					data: {
@@ -557,10 +560,10 @@ test.describe(
 				await expect(n8n.instanceAi.workflowSetup.getUsedByNodesHint()).toHaveText(
 					'Used by 2 nodes',
 				);
-				await n8n.instanceAi.workflowSetup.selectCredential(MIXED_SHARED_HTTP_CREDENTIAL_NAME);
-				await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-					MIXED_SHARED_HTTP_CREDENTIAL_NAME,
-				);
+				await n8n.instanceAi.workflowSetup.selectCredentialById(sharedHttpCredential.id);
+				await expect
+					.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
+					.toBe(MIXED_SHARED_HTTP_CREDENTIAL_NAME);
 				await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
 				await n8n.instanceAi.workflowSetup.getApplyButton().click();
@@ -568,19 +571,19 @@ test.describe(
 				await expect(n8n.instanceAi.workflowSetup.getUsedByNodesHint()).toHaveText(
 					'Used by 2 nodes',
 				);
-				await n8n.instanceAi.workflowSetup.selectCredential(MIXED_GOOGLE_CREDENTIAL_NAME);
-				await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-					MIXED_GOOGLE_CREDENTIAL_NAME,
-				);
+				await n8n.instanceAi.workflowSetup.selectCredentialById(googleCredential.id);
+				await expect
+					.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
+					.toBe(MIXED_GOOGLE_CREDENTIAL_NAME);
 				await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
 				await n8n.instanceAi.workflowSetup.getApplyButton().click();
 				await expect(n8n.instanceAi.workflowSetup.getStepText('3 of 3')).toBeVisible();
 				await expect(n8n.instanceAi.workflowSetup.getUsedByNodesHint()).toBeHidden();
-				await n8n.instanceAi.workflowSetup.selectCredential(MIXED_OTHER_HTTP_CREDENTIAL_NAME);
-				await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-					MIXED_OTHER_HTTP_CREDENTIAL_NAME,
-				);
+				await n8n.instanceAi.workflowSetup.selectCredentialById(otherHttpCredential.id);
+				await expect
+					.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
+					.toBe(MIXED_OTHER_HTTP_CREDENTIAL_NAME);
 
 				await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 				await n8n.instanceAi.workflowSetup.getApplyButton().click();
@@ -901,19 +904,19 @@ test.describe(
 		test('should persist a manually selected existing credential from the dropdown', async ({
 			n8n,
 		}) => {
-			// creds are sorted by name, in the dropdown
-			const firstCrdentialInList = await n8n.api.credentials.createCredential({
-				name: SELECT_EXISTING_TARGET_CREDENTIAL_NAME,
-				type: 'slackApi',
-				data: {
-					accessToken: 'xoxb-target-token-for-testing',
-				},
-			});
-			const secondCrdentialInList = await n8n.api.credentials.createCredential({
+			// Creds are sorted by name in the dropdown; auto-select picks the most recently updated.
+			const firstCredentialInList = await n8n.api.credentials.createCredential({
 				name: SELECT_EXISTING_INITIAL_CREDENTIAL_NAME,
 				type: 'slackApi',
 				data: {
 					accessToken: 'xoxb-initial-token-for-testing',
+				},
+			});
+			const secondCredentialInList = await n8n.api.credentials.createCredential({
+				name: SELECT_EXISTING_TARGET_CREDENTIAL_NAME,
+				type: 'slackApi',
+				data: {
+					accessToken: 'xoxb-target-token-for-testing',
 				},
 			});
 
@@ -926,15 +929,15 @@ test.describe(
 				`Set up the workflow named "${SELECT_EXISTING_WORKFLOW_NAME}".`,
 			);
 
-			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
-			await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-				firstCrdentialInList.name,
-			);
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 12_000 });
+			await expect
+				.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
+				.toBe(secondCredentialInList.name);
 
-			await n8n.instanceAi.workflowSetup.selectCredential(secondCrdentialInList.name);
-			await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-				secondCrdentialInList.name,
-			);
+			await n8n.instanceAi.workflowSetup.selectCredentialById(firstCredentialInList.id);
+			await expect
+				.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
+				.toBe(firstCredentialInList.name);
 			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
 			await n8n.instanceAi.workflowSetup.getApplyButton().click();
@@ -945,7 +948,7 @@ test.describe(
 				persisted,
 				'Slack Trigger',
 				'slackApi',
-				secondCrdentialInList.name,
+				firstCredentialInList.name,
 			);
 		});
 

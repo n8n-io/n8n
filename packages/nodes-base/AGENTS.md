@@ -94,6 +94,37 @@ Change parameter type to `'resourceLocator'`, define modes (list, id, url), add 
 - Use `NodeApiError` for API-related errors
 - Support `continueOnFail` option when appropriate
 
+### Security
+
+User input is untrusted. In nodes it arrives mainly through
+`this.getNodeParameter(...)` (and incoming `item.json`), and a workflow author
+controls these values.
+
+**Never use an untrusted value as a computed object key in an assignment.** A
+value such as `__proto__`, `constructor`, or `prototype` pollutes the prototype
+chain:
+
+```ts
+// UNSAFE — `table`/`key` come from this.getNodeParameter(...)
+if (acc[table] === undefined) acc[table] = {};
+acc[table][key] = value;
+```
+
+Route dynamic-key writes through the `n8n-workflow` helpers, or build the
+accumulator as a `Map` / `Object.create(null)`:
+
+```ts
+import { setSafeObjectProperty, isSafeObjectProperty } from 'n8n-workflow';
+
+if (isSafeObjectProperty(table) && acc[table] === undefined) {
+	setSafeObjectProperty(acc, table, {});
+}
+```
+
+This only applies to dynamic-key **writes** (grouping/aggregating rows by a
+user-chosen column is the common case). Reads like `const x = obj[key]` are
+safe. Reference usage: `nodes/Google/GSuiteAdmin/GSuiteAdmin.node.ts`.
+
 ### Code Organization
 - Separate operation/field descriptions into separate files
 - Create reusable API request helpers in GenericFunctions

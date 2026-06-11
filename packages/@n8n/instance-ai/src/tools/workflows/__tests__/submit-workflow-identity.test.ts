@@ -2,6 +2,7 @@ import { createRemediation } from '../../../workflow-loop/remediation';
 import type { WorkflowLoopState } from '../../../workflow-loop/workflow-loop-state';
 import {
 	createPreSaveBudgetTracker,
+	withDefaultWorkflowFilePath,
 	wrapSubmitExecuteWithIdentity,
 } from '../submit-workflow-identity';
 import type { SubmitWorkflowInput, SubmitWorkflowOutput } from '../submit-workflow.tool';
@@ -9,6 +10,7 @@ import type { SubmitWorkflowInput, SubmitWorkflowOutput } from '../submit-workfl
 const ROOT = '/home/daytona/workspace';
 const MAIN_PATH = `${ROOT}/src/workflow.ts`;
 const CHUNK_PATH = `${ROOT}/src/chunk.ts`;
+const TASK_MAIN_PATH = `${ROOT}/builder-work-items/wi-one/src/workflow.ts`;
 
 function resolvePath(rawFilePath: string | undefined): string {
 	if (!rawFilePath) return MAIN_PATH;
@@ -40,6 +42,24 @@ function makeUnderlying(opts: { idPrefix?: string; gate?: Promise<void> } = {}) 
 
 	return { execute, calls };
 }
+
+describe('withDefaultWorkflowFilePath', () => {
+	it('uses the task main workflow file when submit-workflow omits filePath', () => {
+		expect(withDefaultWorkflowFilePath({ name: 'Workflow' }, TASK_MAIN_PATH)).toEqual({
+			name: 'Workflow',
+			filePath: TASK_MAIN_PATH,
+		});
+	});
+
+	it('preserves explicit filePath values for chunks and follow-up submits', () => {
+		expect(
+			withDefaultWorkflowFilePath({ filePath: CHUNK_PATH, name: 'Chunk' }, TASK_MAIN_PATH),
+		).toEqual({
+			filePath: CHUNK_PATH,
+			name: 'Chunk',
+		});
+	});
+});
 
 describe('wrapSubmitExecuteWithIdentity', () => {
 	it('parallel submits for the same filePath produce one create and N-1 updates sharing the workflowId', async () => {
@@ -191,11 +211,11 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 	});
 
 	it('blocks submit when persisted remediation says editing must stop', async () => {
-		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+		const execute = vi.fn(async (): Promise<SubmitWorkflowOutput> => {
 			await Promise.resolve();
 			return { success: true, workflowId: 'wf_unused' };
 		});
-		const onGuardFired = jest.fn();
+		const onGuardFired = vi.fn();
 		const state: WorkflowLoopState = {
 			workItemId: 'wi_test',
 			threadId: 'thread_1',
@@ -240,8 +260,8 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 			reason: 'workflow_save_failed',
 			guidance: 'Stop editing.',
 		});
-		const execute = jest
-			.fn<Promise<SubmitWorkflowOutput>, [SubmitWorkflowInput]>()
+		const execute = vi
+			.fn<(...args: [SubmitWorkflowInput]) => Promise<SubmitWorkflowOutput>>()
 			.mockResolvedValueOnce({
 				success: false,
 				errors: ['Workflow save failed.'],
@@ -279,7 +299,7 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 			reason: 'workflow_save_failed',
 			guidance: 'Stop editing.',
 		});
-		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+		const execute = vi.fn(async (): Promise<SubmitWorkflowOutput> => {
 			await gate;
 			return {
 				success: false,
@@ -309,7 +329,7 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 	});
 
 	it('ignores terminal remediation from a previous run', async () => {
-		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+		const execute = vi.fn(async (): Promise<SubmitWorkflowOutput> => {
 			await Promise.resolve();
 			return { success: true, workflowId: 'wf_current' };
 		});
@@ -359,12 +379,12 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 			successfulSubmitSeen: true,
 			postSubmitRemediationSubmitsUsed: 2,
 		};
-		const getWorkflowLoopState = jest
-			.fn<Promise<WorkflowLoopState | undefined>, []>()
+		const getWorkflowLoopState = vi
+			.fn<(...args: []) => Promise<WorkflowLoopState | undefined>>()
 			.mockResolvedValueOnce(undefined)
 			.mockResolvedValueOnce(undefined)
 			.mockResolvedValueOnce(terminalState);
-		const execute = jest.fn(async (input: SubmitWorkflowInput): Promise<SubmitWorkflowOutput> => {
+		const execute = vi.fn(async (input: SubmitWorkflowInput): Promise<SubmitWorkflowOutput> => {
 			await gate;
 			return { success: true, workflowId: input.workflowId ?? 'wf_1' };
 		});

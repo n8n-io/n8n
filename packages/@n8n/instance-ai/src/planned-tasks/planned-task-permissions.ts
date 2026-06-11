@@ -8,22 +8,20 @@ import type { InstanceAiContext, PlannedTaskKind } from '../types';
  * Plan approval acts as authorization for the task-family's non-destructive tools,
  * so the sub-agent can execute without a second confirmation prompt.
  *
- * Destructive actions (delete-data-table), open-ended actions (fetch-url, read-file),
+ * Destructive actions, open-ended actions (fetch-url, read-file),
  * and credential deletion are intentionally excluded — they always require explicit approval.
  */
 export const PLANNED_TASK_PERMISSION_OVERRIDES: Partial<
 	Record<PlannedTaskKind, Partial<InstanceAiPermissions>>
 > = {
-	'manage-data-tables': {
-		createDataTable: 'always_allow',
-		mutateDataTableSchema: 'always_allow',
-		mutateDataTableRows: 'always_allow',
-	},
 	'build-workflow': {
 		createWorkflow: 'always_allow',
 		updateWorkflow: 'always_allow',
 		runWorkflow: 'always_allow',
 		publishWorkflow: 'always_allow',
+		createDataTable: 'always_allow',
+		mutateDataTableSchema: 'always_allow',
+		mutateDataTableRows: 'always_allow',
 	},
 	// Checkpoint tasks run inside an orchestrator follow-up run. Plan approval
 	// authorizes the verification step, so the orchestrator can call

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, ref, watch, type Component } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nTag } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
@@ -36,11 +36,12 @@ const props = withDefaults(
 		isStreaming?: boolean;
 		isSubmitting?: boolean;
 		isAwaitingConfirmation?: boolean;
+		isPlanEditMode?: boolean;
 		currentThreadId?: string;
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
-		researchMode: boolean;
 		suggestions?: readonly InstanceAiEmptyStateSuggestion[];
+		isWorkflowBuilderAvailable?: boolean;
 		// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 		suggestionsComponent?: Component;
 		suggestionCatalogVersion?: string;
@@ -50,16 +51,19 @@ const props = withDefaults(
 		isStreaming: false,
 		isSubmitting: false,
 		isAwaitingConfirmation: false,
+		isPlanEditMode: false,
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
+		isWorkflowBuilderAvailable: true,
 	},
 );
 
 const emit = defineEmits<{
 	submit: [message: string, attachments?: InstanceAiAttachment[]];
 	stop: [];
-	'toggle-research-mode': [];
+	'cancel-plan-edit': [];
+	'workflow-preview': [workflowFile: string | null];
 }>();
 
 const i18n = useI18n();
@@ -71,20 +75,34 @@ const previewPromptKey = ref<BaseTextKey | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
 
+function focus() {
+	chatInputRef.value?.focus();
+}
+
+function appendText(text: string) {
+	inputText.value += text;
+}
+
 defineExpose({
-	focus: () => chatInputRef.value?.focus(),
+	focus,
+	appendText,
 });
 
-const isBusy = computed(() => props.isStreaming || props.isSubmitting);
+const isBusy = computed(() =>
+	props.isPlanEditMode ? props.isSubmitting : props.isStreaming || props.isSubmitting,
+);
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
 const hasAttachments = computed(() => attachedFiles.value.length > 0);
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-const isGatedBySetup = computed(() => props.isAwaitingConfirmation);
+const isGatedBySetup = computed(
+	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
+);
 const canSubmit = computed(() => isComposerDirty.value && !isBusy.value && !isGatedBySetup.value);
 const canShowSuggestions = computed(
 	() =>
 		Boolean(props.suggestions?.length) &&
+		!props.isPlanEditMode &&
 		!isComposerDirty.value &&
 		!isBusy.value &&
 		!isGatedBySetup.value,
@@ -99,8 +117,14 @@ const resolvedSuggestionCatalogVersion = computed(
 const shouldTrackVisibleSuggestions = computed(() => canShowSuggestions.value);
 
 const placeholder = computed(() => {
+	if (!props.isWorkflowBuilderAvailable) {
+		return i18n.baseText('instanceAi.input.workflowBuilderUnavailablePlaceholder');
+	}
 	if (isGatedBySetup.value) {
 		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
+	}
+	if (props.isPlanEditMode) {
+		return i18n.baseText('instanceAi.input.planEditPlaceholder' as BaseTextKey);
 	}
 	if (previewPromptKey.value && isInputVisuallyEmpty.value) {
 		return i18n.baseText(previewPromptKey.value);
@@ -122,13 +146,13 @@ watch(
 		if (shouldTrackSuggestions) {
 			promptSuggestionsTelemetry.trackSuggestionsShown({
 				threadId: threadId || undefined,
-				researchMode: props.researchMode,
 				suggestionCatalogVersion,
 			});
 			return;
 		}
 
 		previewPromptKey.value = null;
+		emit('workflow-preview', null);
 	},
 	{ immediate: true },
 );
@@ -139,6 +163,16 @@ watch(inputText, (text) => {
 		selectedSuggestionDraft.value = null;
 	}
 });
+
+watch(
+	() => props.isPlanEditMode,
+	(isPlanEditMode, wasPlanEditMode) => {
+		if (isPlanEditMode || wasPlanEditMode) {
+			previewPromptKey.value = null;
+			resetDraftComposer();
+		}
+	},
+);
 
 function emitSubmittedMessage(message: string, attachments?: InstanceAiAttachment[]) {
 	previewPromptKey.value = null;
@@ -207,7 +241,6 @@ function handleFileRemove(file: File) {
 function getTelemetryContext() {
 	return {
 		threadId: props.currentThreadId || undefined,
-		researchMode: props.researchMode,
 		suggestionCatalogVersion: resolvedSuggestionCatalogVersion.value,
 	};
 }
@@ -252,7 +285,6 @@ function trackSuggestionSelected(payload: SuggestionSelectionPayload) {
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 function handleSuggestionsCycled(payload: SuggestionsCyclePayload) {
 	promptSuggestionsTelemetry.trackSuggestionsCycled({
-		researchMode: props.researchMode,
 		suggestionCatalogVersion: resolvedSuggestionCatalogVersion.value,
 		visibleSuggestionIds: payload.visibleSuggestionIds,
 		cycleCount: payload.cycleCount,
@@ -292,20 +324,51 @@ const resizable = computed(() => {
 		<ChatInputBase
 			ref="chatInputRef"
 			v-model="inputText"
+			:class="{ [$style.planEditInput]: props.isPlanEditMode, [$style.inputWrapper]: true }"
 			:placeholder="placeholder"
-			:is-streaming="props.isStreaming"
+			:is-streaming="props.isPlanEditMode ? false : props.isStreaming"
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup"
 			:autosize="resizable"
 			show-voice
-			show-attach
+			:show-attach="!props.isPlanEditMode"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
 			@files-selected="handleFilesSelected"
 		>
-			<template v-if="attachedFiles.length > 0" #attachments>
-				<div :class="$style.attachments">
+			<template #attachments>
+				<div
+					v-if="props.isPlanEditMode"
+					:class="$style.contextChip"
+					data-test-id="instance-ai-plan-edit-context"
+				>
+					<N8nTag
+						:text="i18n.baseText('instanceAi.planReview.askForEdits')"
+						:clickable="false"
+						size="lg"
+					>
+						<template #tag>
+							<span :class="$style.contextChipContent">
+								<N8nIcon icon="corner-down-right" size="small" />
+								<span :class="$style.contextChipText">{{
+									i18n.baseText('instanceAi.planReview.askForEdits')
+								}}</span>
+								<button
+									type="button"
+									:class="$style.contextChipClose"
+									:title="i18n.baseText('generic.close')"
+									:aria-label="i18n.baseText('generic.close')"
+									data-test-id="instance-ai-plan-edit-cancel"
+									@click.stop="emit('cancel-plan-edit')"
+								>
+									<N8nIcon icon="x" size="xsmall" />
+								</button>
+							</span>
+						</template>
+					</N8nTag>
+				</div>
+				<div v-else-if="attachedFiles.length > 0" :class="$style.attachments">
 					<AttachmentPreview
 						v-for="(file, index) in attachedFiles"
 						:key="index"
@@ -315,36 +378,13 @@ const resizable = computed(() => {
 					/>
 				</div>
 			</template>
-			<template #footer-start>
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.input.researchToggle.tooltip')"
-					placement="top"
-					:show-after="300"
-				>
-					<button
-						:class="[$style.researchToggle, { [$style.active]: props.researchMode }]"
-						data-test-id="instance-ai-research-toggle"
-						@click="emit('toggle-research-mode')"
-					>
-						<svg
-							:class="$style.researchIcon"
-							xmlns="http://www.w3.org/2000/svg"
-							viewBox="0 0 16 16"
-							fill="currentColor"
-						>
-							<path
-								d="M6.5 1a5.5 5.5 0 0 1 4.383 8.823l3.897 3.897a.75.75 0 0 1-1.06 1.06l-3.897-3.897A5.5 5.5 0 1 1 6.5 1Zm0 1.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"
-							/>
-						</svg>
-						{{ i18n.baseText('instanceAi.input.researchToggle') }}
-					</button>
-				</N8nTooltip>
-			</template>
 		</ChatInputBase>
+		<slot name="footer"></slot>
 		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
 			<component
 				:is="resolvedSuggestionsComponent"
 				v-if="canShowSuggestions && props.suggestions"
+				:class="$style.suggestions"
 				:suggestions="props.suggestions"
 				:disabled="isBusy || isGatedBySetup"
 				@preview-change="previewPromptKey = $event"
@@ -352,6 +392,7 @@ const resizable = computed(() => {
 				@cycle-suggestions="handleSuggestionsCycled"
 				@insert-suggestion="handleSuggestionInsert"
 				@submit-suggestion="handleSuggestionSubmit"
+				@workflow-preview="emit('workflow-preview', $event)"
 			/>
 		</Transition>
 	</div>
@@ -361,7 +402,17 @@ const resizable = computed(() => {
 .composer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	> * + * {
+		margin-top: var(--spacing--xs);
+	}
+}
+
+.inputWrapper {
+	z-index: 1;
+}
+
+.suggestions {
+	margin-top: var(--spacing--lg);
 }
 
 .attachments {
@@ -370,45 +421,39 @@ const resizable = computed(() => {
 	gap: var(--spacing--2xs);
 }
 
-.researchToggle {
+.contextChip {
+	align-self: flex-start;
+	max-width: 100%;
+}
+
+.contextChipContent {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background: transparent;
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	cursor: pointer;
-	transition:
-		background 0.15s,
-		color 0.15s,
-		border-color 0.15s;
-	user-select: none;
-
-	&:hover {
-		color: var(--color--text);
-		border-color: var(--color--foreground--shade-1);
-	}
-
-	&.active {
-		background: var(--color--primary);
-		color: var(--button--color--text--primary);
-		border-color: var(--color--primary);
-
-		&:hover {
-			background: var(--color--primary--shade-1);
-			border-color: var(--color--primary--shade-1);
-		}
-	}
+	line-height: var(--line-height--xs);
 }
 
-.researchIcon {
-	width: 14px;
-	height: 14px;
-	flex-shrink: 0;
+.contextChipText {
+	white-space: nowrap;
+}
+
+.contextChipClose {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: var(--spacing--xs);
+	height: var(--spacing--xs);
+	padding: 0;
+	color: inherit;
+	cursor: pointer;
+	background: none;
+	border: 0;
+	border-radius: var(--radius--3xs);
+}
+
+.planEditInput {
+	gap: var(--spacing--2xs);
 }
 
 :global(.suggestions-fade-enter-active) {

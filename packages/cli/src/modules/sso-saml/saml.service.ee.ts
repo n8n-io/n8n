@@ -11,7 +11,11 @@ import type express from 'express';
 import { Cipher, createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
-import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
+import type {
+	BindingContext,
+	ESamlHttpRequest,
+	PostBindingContext,
+} from 'samlify/types/src/entity';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -362,6 +366,7 @@ export class SamlService {
 	): Promise<{
 		authenticatedUser: User | undefined;
 		attributes: SamlUserAttributes;
+		rawAttributes: Record<string, unknown>;
 		onboardingRequired: boolean;
 	}> {
 		const { mapped: attributes, raw: rawAttributes } = await this.getAttributesFromLoginResponse(
@@ -392,6 +397,7 @@ export class SamlService {
 					return {
 						authenticatedUser: user,
 						attributes,
+						rawAttributes,
 						onboardingRequired: false,
 					};
 				} else {
@@ -402,6 +408,7 @@ export class SamlService {
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
+						rawAttributes,
 						onboardingRequired,
 					};
 				}
@@ -413,6 +420,7 @@ export class SamlService {
 					return {
 						authenticatedUser: newUser,
 						attributes,
+						rawAttributes,
 						onboardingRequired: !newUser.firstName || !newUser.lastName,
 					};
 				}
@@ -422,6 +430,7 @@ export class SamlService {
 		return {
 			authenticatedUser: undefined,
 			attributes,
+			rawAttributes,
 			onboardingRequired: false,
 		};
 	}
@@ -715,10 +724,14 @@ export class SamlService {
 			const idp = metadataOverride
 				? await this.createIdentityProviderFromMetadata(metadataOverride)
 				: this.getIdentityProviderInstance();
+			const samlRequest: ESamlHttpRequest = {
+				body: req.body,
+				query: req.query as Record<string, string | undefined>,
+			};
 			parsedSamlResponse = await this.getServiceProviderInstance().parseLoginResponse(
 				idp,
 				binding,
-				req,
+				samlRequest,
 			);
 		} catch (error) {
 			// throw error;

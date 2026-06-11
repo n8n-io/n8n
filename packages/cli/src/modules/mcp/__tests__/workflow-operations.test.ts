@@ -569,6 +569,101 @@ describe('applyOperations', () => {
 		});
 	});
 
+	describe('setNodeSettings', () => {
+		test('sets a single field without touching others', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'setNodeSettings', nodeName: 'A', settings: { onError: 'continueErrorOutput' } },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			const a = result.workflow.nodes.find((n) => n.name === 'A')!;
+			expect(a.onError).toBe('continueErrorOutput');
+			expect(a.retryOnFail).toBeUndefined();
+			expect(a.maxTries).toBeUndefined();
+			expect(a.waitBetweenTries).toBeUndefined();
+			expect(a.alwaysOutputData).toBeUndefined();
+			expect(a.executeOnce).toBeUndefined();
+		});
+
+		test('sets multiple fields in one op', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{
+					type: 'setNodeSettings',
+					nodeName: 'A',
+					settings: {
+						retryOnFail: true,
+						maxTries: 3,
+						waitBetweenTries: 1500,
+						alwaysOutputData: true,
+						executeOnce: true,
+					},
+				},
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			const a = result.workflow.nodes.find((n) => n.name === 'A')!;
+			expect(a.retryOnFail).toBe(true);
+			expect(a.maxTries).toBe(3);
+			expect(a.waitBetweenTries).toBe(1500);
+			expect(a.alwaysOutputData).toBe(true);
+			expect(a.executeOnce).toBe(true);
+		});
+
+		test('leaves omitted fields unchanged when the node already has settings', () => {
+			const wf = baseWorkflow();
+			wf.nodes[0].executeOnce = true;
+			wf.nodes[0].retryOnFail = true;
+			wf.nodes[0].maxTries = 4;
+			const result = applyOperations(wf, [
+				{ type: 'setNodeSettings', nodeName: 'A', settings: { onError: 'stopWorkflow' } },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			const a = result.workflow.nodes.find((n) => n.name === 'A')!;
+			expect(a.onError).toBe('stopWorkflow');
+			expect(a.executeOnce).toBe(true);
+			expect(a.retryOnFail).toBe(true);
+			expect(a.maxTries).toBe(4);
+		});
+
+		test('rejects when node does not exist', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'setNodeSettings', nodeName: 'Missing', settings: { retryOnFail: true } },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.opIndex).toBe(0);
+			expect(result.error).toContain("'Missing' not found");
+		});
+
+		test('schema rejects an empty settings object', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setNodeSettings',
+				nodeName: 'A',
+				settings: {},
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		test('schema rejects an unknown onError value', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setNodeSettings',
+				nodeName: 'A',
+				settings: { onError: 'bogus' },
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		test('schema rejects out-of-range maxTries', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setNodeSettings',
+				nodeName: 'A',
+				settings: { maxTries: 1 },
+			});
+			expect(parsed.success).toBe(false);
+		});
+	});
+
 	describe('setWorkflowMetadata', () => {
 		test('updates name and description', () => {
 			const result = applyOperations(baseWorkflow(), [

@@ -13,7 +13,7 @@ import type {
 	GraderResult,
 	RunManifest,
 	RunReport,
-	ScenarioResult,
+	ExecutionScenarioResult,
 } from './types';
 
 export function renderHtml(report: RunReport): string {
@@ -78,7 +78,7 @@ ${report.results.map(renderScenario).join('\n')}
 // Per-scenario card
 // ---------------------------------------------------------------------------
 
-function renderScenario(result: ScenarioResult): string {
+function renderScenario(result: ExecutionScenarioResult): string {
 	const failedGraders = result.graderResults.filter((g) => !g.pass);
 	const tagChips = (result.scenario.tags ?? [])
 		.map((t) => `<span class="chip">${escapeHtml(t)}</span>`)
@@ -164,7 +164,7 @@ function renderAllGraders(results: GraderResult[]): string {
   </div>`;
 }
 
-function renderToolCalls(r: ScenarioResult): string {
+function renderToolCalls(r: ExecutionScenarioResult): string {
 	if (r.toolCalls.length === 0) {
 		return '<div class="tools"><div class="section-label">Tool calls</div><div class="muted">none</div></div>';
 	}

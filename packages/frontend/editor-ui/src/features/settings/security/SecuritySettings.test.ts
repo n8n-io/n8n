@@ -1,7 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import type { FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import SecuritySettings from './SecuritySettings.vue';
@@ -11,17 +10,10 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 
 const getSecuritySettings = vi.fn();
 const updateSecuritySettings = vi.fn();
-const getRedactionEnforcement = vi.fn();
-const updateRedactionEnforcement = vi.fn();
 
 vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
 	getSecuritySettings: (...args: unknown[]) => getSecuritySettings(...args),
 	updateSecuritySettings: (...args: unknown[]) => updateSecuritySettings(...args),
-}));
-
-vi.mock('@n8n/rest-api-client/api/redaction-enforcement', () => ({
-	getRedactionEnforcement: (...args: unknown[]) => getRedactionEnforcement(...args),
-	updateRedactionEnforcement: (...args: unknown[]) => updateRedactionEnforcement(...args),
 }));
 
 const showToast = vi.fn();
@@ -54,27 +46,12 @@ describe('SecuritySettings', () => {
 		managedByEnv: false,
 	};
 
-	const defaultRedactionEnforcement = {
-		redactionEnforced: false,
-		redactionScope: 'non-manual' as const,
-	};
-
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
-
-	const enableRedactionEnforcementFlag = (enabled: boolean) => {
-		if (!settingsStore.settings) {
-			settingsStore.settings = {} as FrontendSettings;
-		}
-		settingsStore.settings.envFeatureFlags = enabled
-			? { N8N_ENV_FEAT_REDACTION_ENFORCEMENT: 'true' }
-			: {};
-	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		getSecuritySettings.mockResolvedValue(defaultSettings);
-		getRedactionEnforcement.mockResolvedValue(defaultRedactionEnforcement);
 
 		settingsStore = mockedStore(useSettingsStore);
 		usersStore = mockedStore(useUsersStore);
@@ -83,7 +60,6 @@ describe('SecuritySettings', () => {
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA] = true;
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy] = true;
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = true;
-		enableRedactionEnforcementFlag(false);
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
 	});
 
@@ -506,20 +482,7 @@ describe('SecuritySettings', () => {
 	});
 
 	describe('Data redaction section', () => {
-		it('should not render section when REDACTION_ENFORCEMENT flag is off', async () => {
-			enableRedactionEnforcementFlag(false);
-			const { queryByTestId, getByTestId } = renderView();
-
-			await waitFor(() => {
-				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
-			});
-
-			expect(queryByTestId('enable-redaction-enforcement')).not.toBeInTheDocument();
-			expect(queryByTestId('redaction-enforcement-summary')).not.toBeInTheDocument();
-		});
-
-		it('should render toggle and summary when flag is on', async () => {
-			enableRedactionEnforcementFlag(true);
+		it('should render toggle and summary', async () => {
 			const { getByTestId } = renderView();
 
 			await waitFor(() => {
@@ -531,7 +494,6 @@ describe('SecuritySettings', () => {
 		});
 
 		it('should not render scope dropdown when enforcement is off', async () => {
-			enableRedactionEnforcementFlag(true);
 			const { queryByTestId, getByTestId } = renderView();
 
 			await waitFor(() => {
@@ -542,10 +504,9 @@ describe('SecuritySettings', () => {
 		});
 
 		it('should render scope dropdown when enforcement is on', async () => {
-			enableRedactionEnforcementFlag(true);
-			getRedactionEnforcement.mockResolvedValue({
-				redactionEnforced: true,
-				redactionScope: 'non-manual',
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
 			});
 
 			const { getByTestId } = renderView();
@@ -559,11 +520,10 @@ describe('SecuritySettings', () => {
 			);
 		});
 
-		it('should call updateRedactionEnforcement with redactionEnforced=true on toggle', async () => {
-			enableRedactionEnforcementFlag(true);
-			updateRedactionEnforcement.mockResolvedValue(undefined);
+		it('should show enable dialog and POST floor=production when confirming', async () => {
+			updateSecuritySettings.mockResolvedValue(undefined);
 
-			const { getByTestId } = renderView();
+			const { getByTestId, getByRole } = renderView();
 
 			await waitFor(() => {
 				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
@@ -572,8 +532,17 @@ describe('SecuritySettings', () => {
 			await userEvent.click(getByTestId('enable-redaction-enforcement'));
 
 			await waitFor(() => {
-				expect(updateRedactionEnforcement).toHaveBeenCalledWith(expect.anything(), {
-					redactionEnforced: true,
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			expect(getByRole('dialog')).toHaveTextContent('manage data redaction permission');
+			expect(getByRole('dialog')).not.toHaveTextContent('Workflow editors');
+
+			await userEvent.click(getByRole('button', { name: 'Enable' }));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					redactionEnforcement: { floor: 'production' },
 				});
 			});
 			expect(showToast).toHaveBeenCalledWith(
@@ -583,11 +552,8 @@ describe('SecuritySettings', () => {
 			);
 		});
 
-		it('should show error toast when toggle update fails', async () => {
-			enableRedactionEnforcementFlag(true);
-			updateRedactionEnforcement.mockRejectedValue(new Error('boom'));
-
-			const { getByTestId } = renderView();
+		it('should not POST when cancelling enable dialog', async () => {
+			const { getByTestId, getByRole } = renderView();
 
 			await waitFor(() => {
 				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
@@ -596,12 +562,68 @@ describe('SecuritySettings', () => {
 			await userEvent.click(getByTestId('enable-redaction-enforcement'));
 
 			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Cancel' }));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+
+		it('should show disable dialog and POST floor=off when confirming', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+			updateSecuritySettings.mockResolvedValue(undefined);
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			expect(getByRole('dialog')).toHaveTextContent('manage data redaction permission');
+			expect(getByRole('dialog')).not.toHaveTextContent('Workflow editors');
+
+			await userEvent.click(getByRole('button', { name: 'Disable' }));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					redactionEnforcement: { floor: 'off' },
+				});
+			});
+		});
+
+		it('should show error toast when confirmed enable fails', async () => {
+			updateSecuritySettings.mockRejectedValue(new Error('boom'));
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Enable' }));
+
+			await waitFor(() => {
 				expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
 			});
 		});
 
 		it('should show upgrade badge when DataRedaction feature is not licensed', async () => {
-			enableRedactionEnforcementFlag(true);
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
 
 			const { getByTestId } = renderView();
@@ -613,25 +635,97 @@ describe('SecuritySettings', () => {
 			expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
 		});
 
-		it('should not render scope dropdown when unlicensed even if enforced=true', async () => {
-			enableRedactionEnforcementFlag(true);
+		it('should render disabled scope dropdown when unlicensed even if enforced=true', async () => {
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
-			getRedactionEnforcement.mockResolvedValue({
-				redactionEnforced: true,
-				redactionScope: 'non-manual',
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
 			});
 
-			const { getByTestId, queryByTestId } = renderView();
+			const { getByTestId } = renderView();
 
 			await waitFor(() => {
 				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
 			});
 
-			expect(queryByTestId('redaction-enforcement-scope-row')).not.toBeInTheDocument();
+			expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+		});
+
+		it('should render scope dropdown with Upgrade badge when unlicensed and not enforced', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+
+			const { getAllByText, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			// One badge on the toggle row, one on the scope row.
+			expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
+			// Summary reflects stored floor='off' while the disabled dropdown previews 'production'.
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+		});
+
+		it('should not call updateSecuritySettings when clicking disabled scope dropdown', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-select')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('redaction-enforcement-scope-select'));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+
+		it('should show stored scope value when unlicensed with floor=production (downgrade)', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+				'Production executions',
+			);
+		});
+
+		it('should show stored scope value when unlicensed with floor=all (downgrade)', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'all' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+				'Manual and production executions',
+			);
 		});
 
 		it('should disable toggle when managed by env', async () => {
-			enableRedactionEnforcementFlag(true);
 			getSecuritySettings.mockResolvedValue({
 				...defaultSettings,
 				managedByEnv: true,
@@ -646,11 +740,10 @@ describe('SecuritySettings', () => {
 			expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
 		});
 
-		it('should render correct affected-scope summary for each policy value', async () => {
-			enableRedactionEnforcementFlag(true);
-			getRedactionEnforcement.mockResolvedValue({
-				redactionEnforced: true,
-				redactionScope: 'all',
+		it('should render correct affected-scope summary for floor=all', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'all' },
 			});
 
 			const { getByTestId } = renderView();
@@ -659,6 +752,49 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
 					'Manual and production executions',
 				);
+			});
+		});
+
+		describe('when security settings endpoint is unlicensed (403)', () => {
+			beforeEach(() => {
+				settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+				// Reproduce the 403: useAsyncState keeps state === undefined.
+				getSecuritySettings.mockRejectedValue(new Error('Forbidden'));
+			});
+
+			it('should still render the data redaction section when the endpoint 403s', async () => {
+				const { getByTestId } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
+			});
+
+			it('should show the Upgrade badges and disabled scope dropdown when endpoint 403s', async () => {
+				const { getByTestId, getAllByText } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+				expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+				// One badge on the toggle row, one on the scope row.
+				expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
+				// Defaults to floor 'off' when state never resolves.
+				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+			});
+
+			it('should not show an error toast when the endpoint 403s', async () => {
+				const { getByTestId } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(showError).not.toHaveBeenCalled();
 			});
 		});
 	});

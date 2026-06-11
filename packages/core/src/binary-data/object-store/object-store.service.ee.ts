@@ -18,12 +18,12 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-import { PassThrough, Readable } from 'node:stream';
+import { PassThrough, Readable, pipeline } from 'node:stream';
 
 import { ObjectStoreConfig } from './object-store.config';
 import type { MetadataResponseHeaders } from './types';
 import type { BinaryData } from '../types';
-import { streamToBuffer } from '../utils';
+import { createFixedSizeChunker, streamToBuffer } from '../utils';
 
 @Service()
 export class ObjectStoreService {
@@ -126,10 +126,18 @@ export class ObjectStoreService {
 
 	/**
 	 * Download an object as a stream or buffer from the configured bucket.
+	 *
+	 * In `stream` mode, pass `chunkSize` to guarantee that the returned stream
+	 * emits chunks of exactly that many bytes (the final chunk may be smaller).
+	 * Without it, chunk boundaries follow whatever the underlying socket emits,
+	 * which can break consumers like S3 multipart upload that treat each emitted chunk as a fixed-size unit.
 	 */
-	async get(fileId: string, { mode }: { mode: 'buffer' }): Promise<Buffer>;
-	async get(fileId: string, { mode }: { mode: 'stream' }): Promise<Readable>;
-	async get(fileId: string, { mode }: { mode: 'stream' | 'buffer' }): Promise<Buffer | Readable> {
+	async get(fileId: string, opts: { mode: 'buffer' }): Promise<Buffer>;
+	async get(fileId: string, opts: { mode: 'stream'; chunkSize?: number }): Promise<Readable>;
+	async get(
+		fileId: string,
+		{ mode, chunkSize = 0 }: { mode: 'stream' | 'buffer'; chunkSize?: number },
+	): Promise<Buffer | Readable> {
 		this.logger.debug('Sending GET request to S3', { bucket: this.bucket, key: fileId });
 
 		const command = new GetObjectCommand({
@@ -171,6 +179,11 @@ export class ObjectStoreService {
 				body.on('error', (error) => wrapper.destroy(error));
 				body.pipe(wrapper);
 
+				if (chunkSize > 0) {
+					const rechunker = createFixedSizeChunker(chunkSize);
+					pipeline(wrapper, rechunker, () => {}); // Error/destroy propagation is handled via stream events on `rechunker`
+					return rechunker;
+				}
 				return wrapper;
 			}
 

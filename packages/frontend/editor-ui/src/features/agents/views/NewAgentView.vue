@@ -14,6 +14,7 @@ import { AGENT_BUILDER_VIEW } from '../constants';
 import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
+import { upsertProjectAgentsListCache } from '../composables/useProjectAgentsList';
 import AgentBuilderProgress from '../components/AgentBuilderProgress.vue';
 import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
 
@@ -198,6 +199,7 @@ async function createBlank() {
 			projectId.value,
 			i18n.baseText('agents.new.defaultName'),
 		);
+		upsertProjectAgentsListCache(projectId.value, agent);
 		telemetry.track('User created agent', {
 			agent_id: agent.id,
 			source: 'create_blank',
@@ -221,6 +223,7 @@ async function submitDescription() {
 			projectId.value,
 			i18n.baseText('agents.new.defaultName'),
 		);
+		upsertProjectAgentsListCache(projectId.value, agent);
 		telemetry.track('User created agent', {
 			agent_id: agent.id,
 			source: 'description_prompt',

@@ -38,7 +38,17 @@ defineSlots<{
 	max-width: 90%;
 	justify-content: flex-start;
 	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
 	position: relative;
+	padding-inline: 0;
+
+	--button--padding: 0;
+	--button--font-size: var(--font-size--sm);
+	--button--color--background-active: transparent;
+	--button--color--background-hover: transparent;
+	&:hover {
+		color: var(--color--text);
+	}
 
 	:global(.n8n-icon) {
 		flex-shrink: 0;

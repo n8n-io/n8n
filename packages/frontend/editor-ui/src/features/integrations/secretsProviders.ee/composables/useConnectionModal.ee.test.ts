@@ -206,69 +206,6 @@ describe('useConnectionModal', () => {
 		});
 	});
 
-	describe('infisical deprecation', () => {
-		beforeEach(() => {
-			mockModuleSettings['external-secrets'] = {
-				multipleConnections: true,
-				forProjects: true,
-				roleBasedAccess: false,
-			};
-		});
-		it('should not provide option to create new infisical connection if multipleConnections is enabled', () => {
-			const providerTypesWithInfisical = ref([
-				...mockProviderTypes,
-				{
-					type: 'infisical',
-					displayName: 'Infisical',
-					icon: 'infisical',
-					properties: [],
-				} as SecretProviderTypeResponse,
-			]);
-
-			const { providerTypeOptions } = useConnectionModal({
-				...defaultOptions,
-				providerTypes: providerTypesWithInfisical,
-			});
-
-			expect(providerTypeOptions.value.find((opt) => opt.value === 'infisical')).toBeUndefined();
-			expect(providerTypeOptions.value.length).toEqual(1);
-			expect(providerTypeOptions.value[0].value).toEqual('awsSecretsManager');
-		});
-
-		it('should still set selectedProviderType to infisical on existing infisical connection', async () => {
-			const providerTypesWithInfisical = ref([
-				...mockProviderTypes,
-				{
-					type: 'infisical',
-					displayName: 'Infisical',
-					icon: 'infisical',
-					properties: [],
-				} as SecretProviderTypeResponse,
-			]);
-
-			// Mock existing infisical connection
-			mockConnection.getConnection.mockResolvedValue({
-				id: 'infisical-id',
-				name: 'infisical-connection',
-				type: 'infisical',
-				state: 'connected',
-				settings: {},
-			});
-
-			const options = {
-				...defaultOptions,
-				providerTypes: providerTypesWithInfisical,
-				providerKey: ref('infisical-key'),
-			};
-
-			const { selectedProviderType, loadConnection } = useConnectionModal(options);
-
-			await loadConnection();
-
-			expect(selectedProviderType.value?.type).toBe('infisical');
-		});
-	});
-
 	describe('computed properties', () => {
 		it('should detect unsaved changes', async () => {
 			const options = { ...defaultOptions, providerKey: ref('testKey') };

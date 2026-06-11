@@ -165,6 +165,23 @@ describe('NodeSearchEngine', () => {
 			expect(results[0].name).toBe('n8n-nodes-base.httpRequest');
 		});
 
+		it('should find nodes by description fallback', () => {
+			const results = engine.searchByName('requests');
+			expect(results.map((r) => r.name)).toContain('n8n-nodes-base.httpRequest');
+		});
+
+		it('should return fresh cached result objects', () => {
+			const first = engine.searchByName('AI Agent');
+			const agentResult = first.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent');
+			expect(agentResult).toBeDefined();
+			agentResult!.displayName = 'Mutated Agent';
+
+			const second = engine.searchByName('AI Agent');
+			expect(second.find((r) => r.name === '@n8n/n8n-nodes-langchain.agent')?.displayName).toBe(
+				'AI Agent',
+			);
+		});
+
 		it('should respect the limit parameter', () => {
 			const results = engine.searchByName('n', 2);
 			expect(results.length).toBeLessThanOrEqual(2);

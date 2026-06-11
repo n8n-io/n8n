@@ -1,4 +1,4 @@
-// Mock the barrel import to avoid pulling in @mastra/core (ESM-only transitive deps)
+// Mock the barrel import so these adapter tests only exercise local formatting helpers.
 jest.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>
@@ -7,8 +7,18 @@ jest.mock('@n8n/instance-ai', () => ({
 		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 	},
+	builderTemplatesOptionsFromEnv: () => ({}),
+	BuilderTemplatesService: class {
+		async getBundle() {
+			return { files: [], indexTxt: '', version: null };
+		}
+		getVersion() {
+			return null;
+		}
+	},
 }));
 
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -46,7 +56,7 @@ import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee'
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
-import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import type { SsrfProtectionService } from 'n8n-core';
 import type { Telemetry } from '@/telemetry';
 
 jest.mock('@/permissions.ee/check-access');
@@ -111,7 +121,7 @@ const service = new InstanceAiAdapterService(
 	workflowRunner,
 	loadNodesAndCredentials,
 	nodeTypes,
-	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache' }),
+	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache', n8nFolder: '/tmp/test-cache' }),
 	dataTableService,
 	dataTableRepository,
 	dynamicNodeParametersService,
@@ -145,6 +155,7 @@ beforeEach(() => {
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchReadOnly: false,
 	} as never);
+	jest.spyOn(Container, 'get').mockReturnValue(executionPersistence);
 });
 
 // ---------------------------------------------------------------------------
@@ -426,6 +437,23 @@ describe('credentialService.list — scoping', () => {
 			includeGlobal: true,
 		});
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('scopes to the bound project and ignores caller-supplied workflowId/projectId', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Bound Project Cred', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.credentialService.list({ workflowId: 'wf-other', projectId: 'project-other' });
+
+		// A bound thread can only ever see its own project's usable credentials —
+		// the LLM cannot broaden the list by passing another workflow or project.
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledTimes(1);
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'bound-project',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
 	});
 });
 

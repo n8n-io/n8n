@@ -309,8 +309,11 @@ export interface NodeJSON {
 	notesInFlow?: boolean;
 	executeOnce?: boolean;
 	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	onError?: OnError;
+	extendsCredential?: string;
 }
 
 /**
@@ -432,8 +435,11 @@ export interface NodeConfig<TParams = IDataObject> {
 	notesInFlow?: boolean;
 	executeOnce?: boolean;
 	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	onError?: OnError;
+	extendsCredential?: string;
 	pinData?: IDataObject[];
 	/**
 	 * Declared output shape for data flow validation.
@@ -1017,6 +1023,20 @@ export interface WorkflowBuilder {
 	to<T>(switchCaseBuilder: SwitchCaseBuilder<T>): WorkflowBuilder;
 	/** Connect to multiple outputs (branching). Each array element connects to incrementing output index. Use null to skip an output. */
 	to(nodes: Array<NodeInstance<string, string, unknown> | NodeChain | null>): WorkflowBuilder;
+
+	/**
+	 * Wire the true output of the IF node the cursor is on (the node just added
+	 * via `.to()`/`.add()`). Chains with `.onFalse()`, e.g.
+	 * `.to(ifNode).onTrue(yes).onFalse(no)`. Throws if the current node is not an IF.
+	 */
+	onTrue(target: IfElseTarget): WorkflowBuilder;
+	/** Wire the false output of the IF node the cursor is on. See {@link onTrue}. */
+	onFalse(target: IfElseTarget): WorkflowBuilder;
+	/**
+	 * Wire a case output of the Switch node the cursor is on, e.g.
+	 * `.to(switchNode).onCase(0, a).onCase(1, b)`. Throws if the current node is not a Switch.
+	 */
+	onCase(index: number, target: SwitchCaseTarget): WorkflowBuilder;
 
 	settings(settings: WorkflowSettings): WorkflowBuilder;
 

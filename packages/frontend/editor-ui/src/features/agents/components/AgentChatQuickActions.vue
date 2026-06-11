@@ -9,11 +9,12 @@
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_ADD_TRIGGER_MODAL_KEY } from '../constants';
-import type { AgentJsonToolRef, AgentResource } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef, AgentResource } from '../types';
 import AgentChipButton from './AgentChipButton.vue';
 
 const props = defineProps<{
 	tools: AgentJsonToolRef[];
+	mcpServers?: AgentJsonMcpServerConfig[];
 	projectId: string;
 	agentId: string;
 	agentName: string;
@@ -23,9 +24,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:tools': [tools: AgentJsonToolRef[]];
+	'update:mcp-servers': [mcpServers: AgentJsonMcpServerConfig[]];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'agent-published': [agent: AgentResource];
+	'agent-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -36,9 +39,13 @@ function onAddTool() {
 		name: AGENT_TOOLS_MODAL_KEY,
 		data: {
 			tools: props.tools,
+			mcpServers: props.mcpServers ?? [],
 			projectId: props.projectId,
 			agentId: props.agentId,
-			onConfirm: (tools: AgentJsonToolRef[]) => emit('update:tools', tools),
+			onConfirm: (tools: AgentJsonToolRef[], mcpServers: AgentJsonMcpServerConfig[] = []) => {
+				emit('update:tools', tools);
+				emit('update:mcp-servers', mcpServers);
+			},
 		},
 	});
 }
@@ -57,6 +64,7 @@ function onAddTrigger() {
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
 				emit('trigger-added', payload),
 			onAgentPublished: (agent: AgentResource) => emit('agent-published', agent),
+			onAgentChanged: () => emit('agent-changed'),
 		},
 	});
 }

@@ -70,6 +70,7 @@ describe('McpOAuthTokenService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		urlService.getInstanceBaseUrl.mockReturnValue(TEST_BASE_URL);
 	});
 
 	describe('generateTokenPair', () => {
@@ -92,6 +93,17 @@ describe('McpOAuthTokenService', () => {
 
 			expect(refreshToken).toHaveLength(64); // 32 bytes hex = 64 characters
 			expect(refreshToken).toMatch(/^[a-f0-9]{64}$/);
+		});
+
+		it('should set aud to resource when resource is provided', () => {
+			const { accessToken } = service.generateTokenPair(
+				'user-123',
+				'client-456',
+				'https://n8n.example.com/mcp-server/http',
+			);
+
+			const decoded = jwtService.decode(accessToken);
+			expect(decoded.aud).toBe('https://n8n.example.com/mcp-server/http');
 		});
 
 		it('should generate different tokens on each call', () => {
@@ -167,6 +179,29 @@ describe('McpOAuthTokenService', () => {
 			expect(mockTransactionManager.insert).toHaveBeenCalledTimes(2);
 		});
 
+		it('should honor resource when rotating refresh token', async () => {
+			const refreshToken = 'old-refresh-token';
+			const clientId = 'client-123';
+			const refreshTokenRecord = mock<RefreshToken>({
+				token: refreshToken,
+				clientId,
+				userId: 'user-456',
+				expiresAt: Date.now() + 1000000,
+			});
+
+			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
+
+			const result = await service.validateAndRotateRefreshToken(
+				refreshToken,
+				clientId,
+				'https://n8n.example.com/mcp-server/http',
+			);
+
+			const decoded = jwtService.decode(result.access_token);
+			expect(decoded.aud).toBe('https://n8n.example.com/mcp-server/http');
+		});
+
 		it('should throw error when refresh token not found', async () => {
 			mockTransactionManager.findOne.mockResolvedValue(null);
 
@@ -235,6 +270,56 @@ describe('McpOAuthTokenService', () => {
 
 			await expect(service.verifyAccessToken(wrongAudienceToken)).rejects.toThrow(
 				'JWT Verification Failed',
+			);
+		});
+
+		it('should accept tokens with canonical audience when expected audience is provided', async () => {
+			const audience = 'https://n8n.example.com/mcp-server/http';
+			const canonicalAudienceToken = jwtService.sign({
+				sub: 'user-123',
+				aud: audience,
+				client_id: 'client-456',
+			});
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({
+					token: canonicalAudienceToken,
+					clientId: 'client-456',
+					userId: 'user-123',
+				}),
+			);
+
+			await expect(service.verifyAccessToken(canonicalAudienceToken, audience)).resolves.toEqual({
+				token: canonicalAudienceToken,
+				clientId: 'client-456',
+				scopes: [],
+				extra: {
+					userId: 'user-123',
+				},
+			});
+		});
+
+		it('should accept legacy audience when expected audience is provided', async () => {
+			const audience = 'https://n8n.example.com/mcp-server/http';
+			const legacyAudienceToken = jwtService.sign({
+				sub: 'user-123',
+				aud: 'mcp-server-api',
+				client_id: 'client-456',
+			});
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({
+					token: legacyAudienceToken,
+					clientId: 'client-456',
+					userId: 'user-123',
+				}),
+			);
+
+			await expect(service.verifyAccessToken(legacyAudienceToken, audience)).resolves.toMatchObject(
+				{
+					token: legacyAudienceToken,
+					clientId: 'client-456',
+				},
 			);
 		});
 
@@ -384,6 +469,33 @@ describe('McpOAuthTokenService', () => {
 			const result = await service.revokeRefreshToken('nonexistent-token', 'client-456');
 
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('getAllowedAudiences', () => {
+		it('should return canonical URL and legacy audience when expectedAudience is the canonical URL', () => {
+			const audiences = (service as any).getAllowedAudiences(
+				'https://n8n.example.com/mcp-server/http',
+			);
+			expect(audiences).toEqual(['https://n8n.example.com/mcp-server/http', 'mcp-server-api']);
+		});
+
+		it('should return only canonical URL and legacy audience when expectedAudience is undefined', () => {
+			const audiences = (service as any).getAllowedAudiences(undefined);
+			// Should still return the canonical resource URL (from getCanonicalResourceUrl) and legacy
+			expect(audiences).toEqual(['https://n8n.example.com/mcp-server/http', 'mcp-server-api']);
+		});
+	});
+
+	describe('getCanonicalResourceUrl', () => {
+		it('should preserve subpath in canonical resource URL', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n');
+			expect(service.getCanonicalResourceUrl()).toBe('https://example.com/n8n/mcp-server/http');
+		});
+
+		it('should strip trailing slash from base URL', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n/');
+			expect(service.getCanonicalResourceUrl()).toBe('https://example.com/n8n/mcp-server/http');
 		});
 	});
 });

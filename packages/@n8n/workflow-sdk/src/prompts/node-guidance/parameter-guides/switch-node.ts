@@ -16,7 +16,7 @@ The Switch node routes items to different outputs based on conditions. Uses the 
       {
         "conditions": {
           "options": {
-            "caseSensitive": true,
+            "caseSensitive": false,
             "leftValue": "",
             "typeValidation": "strict"
           },
@@ -41,10 +41,11 @@ The Switch node routes items to different outputs based on conditions. Uses the 
 \`\`\`
 
 #### Key Points:
-1. Each entry in rules.values[] creates ONE output
-2. Conditions use the same filter structure as IF node
-3. Multiple conditions per rule are combined with combinator ("and" or "or")
-4. Use renameOutput: true + outputKey to label outputs descriptively
+1. **Default \`caseSensitive: false\` for string comparisons.** Real-world inputs vary in casing (\`"high"\` vs \`"High"\` vs \`"HIGH"\`). Only set \`caseSensitive: true\` when the user has explicitly said case matters — if you're not sure, ask them before guessing.
+2. Each entry in rules.values[] creates ONE output
+3. Conditions use the same filter structure as IF node
+4. Multiple conditions per rule are combined with combinator ("and" or "or")
+5. Use renameOutput: true + outputKey to label outputs descriptively
 
 #### Numeric Operators
 - lt: Less than
@@ -68,6 +69,6 @@ Use two conditions with combinator: "and":
 
 **String-Based Routing** (status/type values):
 - Use type: "string" with operation: "equals"
-- Set caseSensitive: false in options for case-insensitive matching
+- Keep \`caseSensitive: false\` (the default above) unless the user explicitly asked for case-sensitive matching
 `,
 };

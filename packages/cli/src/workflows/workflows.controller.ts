@@ -56,11 +56,11 @@ import type { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { AuthService } from '@/auth/auth.service';
 import * as ResponseHelper from '@/response-helper';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import { SsrfBlockedIpError, SsrfProtectionService } from 'n8n-core';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 
@@ -68,6 +68,7 @@ import * as utils from '@/utils';
 export class WorkflowsController {
 	constructor(
 		private readonly logger: Logger,
+		private readonly authService: AuthService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly namingService: NamingService,
 		private readonly workflowRepository: WorkflowRepository,
@@ -302,7 +303,7 @@ export class WorkflowsController {
 
 		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'update');
 
-		let updateData = new WorkflowEntity();
+		const updateData = new WorkflowEntity();
 		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } = body;
 
 		// Validate timeSavedMode if present
@@ -318,15 +319,8 @@ export class WorkflowsController {
 		// triggerCount, versionCounter, isArchived, active, activeVersionId, etc. are never set from user input
 		Object.assign(updateData, rest);
 
+		// Credential tamper protection is enforced centrally in WorkflowService.update
 		const isSharingEnabled = this.license.isSharingEnabled();
-		if (isSharingEnabled) {
-			updateData = await this.enterpriseWorkflowService.preventTampering(
-				updateData,
-				workflowId,
-				req.user,
-			);
-		}
-
 		const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
 			tagIds: tags,
 			parentFolderId,
@@ -523,11 +517,14 @@ export class WorkflowsController {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found`);
 		}
 
+		const n8nAuthCookie = this.authService.getCookieToken(req);
+
 		const result = await this.workflowExecutionService.executeManually(
 			dbWorkflow,
 			req.body,
 			req.user,
 			req.headers['push-ref'],
+			n8nAuthCookie,
 		);
 
 		if ('executionId' in result) {

@@ -55,6 +55,7 @@ export const defaultSettings: FrontendSettings = {
 		customRoles: false,
 		personalSpacePolicy: false,
 		dataRedaction: false,
+		otelCustomSpanAttributes: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,

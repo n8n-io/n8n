@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import {
 	createWorkflowWithHistory,
 	testDb,
@@ -44,6 +45,7 @@ let workflowService: WorkflowService;
 let workflowPublishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 let workflowHistoryService: WorkflowHistoryService;
+const loggerMock = mock<Logger>();
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
 const nodeTypes = mockInstance(NodeTypes);
@@ -60,7 +62,7 @@ beforeAll(async () => {
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowHistoryService = Container.get(WorkflowHistoryService);
 	workflowService = new WorkflowService(
-		mock(),
+		loggerMock,
 		Container.get(SharedWorkflowRepository),
 		workflowRepository,
 		mock(),
@@ -92,6 +94,7 @@ beforeEach(() => {
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
+	workflowValidationService.validateCredentialNodeRestrictions.mockReturnValue({ isValid: true });
 	webhookServiceMock.findWebhookConflicts.mockReset();
 	webhookServiceMock.findWebhookConflicts.mockResolvedValue([]);
 });
@@ -610,6 +613,64 @@ describe('workflow_published_version table population', () => {
 			const count = await workflowPublishedVersionRepository.count();
 			expect(count).toBe(0);
 		});
+	});
+});
+
+describe('activateWorkflow trigger cleanup', () => {
+	test('should tear down triggers before the rollback and surface the original activation error', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// Capture state at the moment cleanup runs. The rollback must happen
+		// after remove(), so the workflow is still active here; that ordering is what
+		// lets clearWebhooks resolve the active version before it becomes null
+		let activeWhenRemoved: boolean | undefined;
+		activeWorkflowManager.remove.mockImplementationOnce(async () => {
+			activeWhenRemoved = (await workflowRepository.findById(workflow.id))?.active;
+		});
+		activeWorkflowManager.add.mockRejectedValueOnce(
+			new Error('activation failed mid registration'),
+		);
+
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+			'activation failed mid registration',
+		);
+
+		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWhenRemoved).toBe(true);
+		expect(loggerMock.warn).toHaveBeenCalledWith(
+			expect.stringContaining('Rolled back partial activation'),
+			{ workflowId: workflow.id },
+		);
+
+		const reloaded = await workflowRepository.findById(workflow.id);
+		expect(reloaded?.active).toBe(false);
+		expect(reloaded?.activeVersionId).toBeNull();
+	});
+
+	test('should rollback and surface the original error when cleanup itself fails', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		activeWorkflowManager.add.mockRejectedValueOnce(
+			new Error('activation failed mid registration'),
+		);
+		activeWorkflowManager.remove.mockRejectedValueOnce(new Error('cleanup blew up'));
+
+		// A failing cleanup is logged but must not hide the original error
+		// nor block the rollback
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+			'activation failed mid registration',
+		);
+
+		expect(loggerMock.error).toHaveBeenCalledWith(
+			expect.stringContaining('Failed to roll back partial activation'),
+			expect.objectContaining({ workflowId: workflow.id }),
+		);
+
+		const reloaded = await workflowRepository.findById(workflow.id);
+		expect(reloaded?.active).toBe(false);
+		expect(reloaded?.activeVersionId).toBeNull();
 	});
 });
 

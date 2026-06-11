@@ -17,6 +17,10 @@ export type { WorkflowTestCaseWithFile } from './data/workflows';
 export { seedCredentials, cleanupCredentials } from './credentials/seeder';
 export type { SeedResult } from './credentials/seeder';
 
+// -- MCP Registry --
+export { seedMcpRegistry } from './mcp-registry/seeder';
+export type { McpRegistrySeedResult } from './mcp-registry/seeder';
+
 // -- Runner (all-in-one) --
 export { runWorkflowTestCase, runWithConcurrency } from './harness/runner';
 
@@ -33,9 +37,9 @@ export { type EvalLogger, createLogger } from './harness/logger';
 // -- Types --
 export type {
 	WorkflowTestCase,
-	TestScenario,
+	ExecutionScenario,
 	WorkflowTestCaseResult,
-	ScenarioResult,
+	ExecutionScenarioResult,
 	ChecklistItem,
 	ChecklistResult,
 } from './types';

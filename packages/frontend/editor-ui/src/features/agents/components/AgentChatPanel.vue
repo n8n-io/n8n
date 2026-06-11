@@ -2,6 +2,7 @@
 import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { N8nButton, N8nCallout, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
@@ -75,6 +76,7 @@ const {
 	sendMessage,
 	stopGenerating,
 	resume,
+	cancelAndSteer,
 	dismissFatalError,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
@@ -109,8 +111,15 @@ const missingFields = computed(() => {
 	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
 
-const hasOpenInteractiveQuestion = computed(() =>
-	messages.value.some((message) => message.interactive && !message.interactive.resolvedAt),
+const openInteractive = computed(
+	() =>
+		messages.value.find((message) => message.interactive && !message.interactive.resolvedAt)
+			?.interactive,
+);
+const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
+const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
+const hasOpenInteractiveQuestion = computed(
+	() => hasOpenInteraction.value && !hasOpenApproval.value,
 );
 
 const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.canEditAgent);
@@ -118,9 +127,11 @@ const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.ca
 const chatPlaceholder = computed(() =>
 	isBuilderReadOnly.value
 		? locale.baseText('agents.builder.readonly.placeholder')
-		: hasOpenInteractiveQuestion.value
-			? locale.baseText('agents.chat.answerQuestionPlaceholder')
-			: locale.baseText('agents.chat.input.placeholder'),
+		: hasOpenApproval.value
+			? locale.baseText('agents.chat.approval.inputPlaceholder')
+			: hasOpenInteractiveQuestion.value
+				? locale.baseText('agents.chat.answerQuestionPlaceholder')
+				: locale.baseText('agents.chat.input.placeholder'),
 );
 
 function onOpenBuild() {
@@ -137,9 +148,17 @@ async function onSubmit() {
 		isStreaming.value ||
 		isPreparingToSend.value ||
 		isBuilderReadOnly.value ||
-		hasOpenInteractiveQuestion.value
+		hasOpenApproval.value
 	)
 		return;
+
+	// When there is an open interactive question, the user's message cancels
+	// the suspended tool and steers the agent in a new direction.
+	if (hasOpenInteractiveQuestion.value) {
+		inputText.value = '';
+		await cancelAndSteer(text);
+		return;
+	}
 
 	isPreparingToSend.value = true;
 	try {
@@ -171,7 +190,7 @@ async function onSubmit() {
 }
 
 function sendMessageFromOutside(message: string) {
-	if (hasOpenInteractiveQuestion.value) return;
+	if (hasOpenApproval.value) return;
 	inputText.value = message;
 	void onSubmit();
 }
@@ -286,7 +305,7 @@ onBeforeUnmount(() => {
 				:placeholder="chatPlaceholder"
 				:is-streaming="messagingState === 'receiving'"
 				:can-submit="
-					!hasOpenInteractiveQuestion &&
+					!hasOpenApproval &&
 					!isStreaming &&
 					!isPreparingToSend &&
 					!isBuilderReadOnly &&
@@ -294,7 +313,7 @@ onBeforeUnmount(() => {
 				"
 				:disabled="
 					isBuilderReadOnly ||
-					hasOpenInteractiveQuestion ||
+					hasOpenApproval ||
 					isPreparingToSend ||
 					(isStreaming && messagingState !== 'receiving')
 				"

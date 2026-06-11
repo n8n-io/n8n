@@ -4,10 +4,10 @@ import type { SqliteConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { In, LessThan, LessThanOrEqual, And, Not } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { BinaryDataService } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+import { mock } from 'vitest-mock-extended';
 
 import { ExecutionEntity } from '../../entities';
 import type { IExecutionResponse } from '../../entities/types-db';
@@ -29,7 +29,7 @@ describe('ExecutionRepository', () => {
 	const executionRepository = Container.get(ExecutionRepository);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('getExecutionsForPublicApi', () => {
@@ -392,44 +392,6 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
-	describe('stopDuringRun', () => {
-		test('should update execution with ManualExecutionCancelledError', async () => {
-			const mockExecution = {
-				id: '123',
-				data: {
-					resultData: {
-						runData: {},
-					},
-				},
-			} as unknown;
-
-			const updateSpy = jest.spyOn(executionRepository, 'updateExistingExecution');
-
-			const result = await executionRepository.stopDuringRun(mockExecution as IExecutionResponse);
-
-			// Verify updateExistingExecution was called with the execution
-			expect(updateSpy).toHaveBeenCalledWith(
-				'123',
-				expect.objectContaining({
-					status: 'canceled',
-					stoppedAt: expect.any(Date),
-					waitTill: null,
-					data: expect.objectContaining({
-						resultData: expect.objectContaining({
-							error: expect.objectContaining({
-								message: 'The execution was cancelled manually',
-							}),
-						}),
-					}),
-				}),
-			);
-
-			// Verify the execution was marked as canceled
-			expect(result.status).toBe('canceled');
-			expect(result.data.resultData.error?.message).toBe('The execution was cancelled manually');
-		});
-	});
-
 	describe('setRunning', () => {
 		beforeEach(() => {
 			entityManager.transaction.mockImplementation(async (fn: unknown) => {
@@ -511,8 +473,8 @@ describe('ExecutionRepository', () => {
 	describe('getWaitingExecutions', () => {
 		const mockDate = new Date('2023-12-28 12:34:56.789Z');
 
-		beforeAll(() => jest.useFakeTimers().setSystemTime(mockDate));
-		afterAll(() => jest.useRealTimers());
+		beforeAll(() => vi.useFakeTimers().setSystemTime(mockDate));
+		afterAll(() => vi.useRealTimers());
 
 		test.each(['sqlite', 'postgresdb'] as const)(
 			'on %s, should only return executions with status=waiting',
@@ -543,11 +505,11 @@ describe('ExecutionRepository', () => {
 			const workflowId = nanoid();
 			const binaryDataService = Container.get(BinaryDataService);
 
-			jest.spyOn(executionRepository, 'createQueryBuilder').mockReturnValue(
+			vi.spyOn(executionRepository, 'createQueryBuilder').mockReturnValue(
 				mock<SelectQueryBuilder<ExecutionEntity>>({
-					select: jest.fn().mockReturnThis(),
-					andWhere: jest.fn().mockReturnThis(),
-					getMany: jest.fn().mockResolvedValue([{ id: '1', workflowId }]),
+					select: vi.fn().mockReturnThis(),
+					andWhere: vi.fn().mockReturnThis(),
+					getMany: vi.fn().mockResolvedValue([{ id: '1', workflowId }]),
 				}),
 			);
 
@@ -578,7 +540,7 @@ describe('ExecutionRepository', () => {
 					status: 'success',
 				});
 
-				const txCallback = jest.fn();
+				const txCallback = vi.fn();
 				entityManager.transaction.mockImplementation(async (fn: unknown) => {
 					await (fn as (em: typeof entityManager) => Promise<unknown>)(entityManager);
 					txCallback();

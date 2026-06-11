@@ -6,6 +6,7 @@
 	"compilerOptions": {
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
+		"lib": ["es2023", "dom"],
 		"paths": {
 			"@/*": ["./src/*"],
 			"@test/*": ["./test/shared/*"],

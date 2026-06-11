@@ -28,11 +28,25 @@ const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
 	displayName: 'OAuth2 API',
 	properties: [
-		{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '', required: true },
+		{
+			displayName: 'Use Dynamic Client Registration',
+			name: 'useDynamicClientRegistration',
+			type: 'hidden',
+			default: false,
+		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'string',
+			displayOptions: { show: { useDynamicClientRegistration: [false] } },
+			default: '',
+			required: true,
+		},
 		{
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
+			displayOptions: { show: { useDynamicClientRegistration: [false] } },
 			default: '',
 			required: true,
 		},
@@ -264,7 +278,7 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.state.credentialTypes.slackOAuth2Api = {
 				...slackOAuth2Api,
-				__overwrittenProperties: ['clientId'],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
 			};
 
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
@@ -285,7 +299,7 @@ describe('useCredentialOAuth', () => {
 						required: true,
 					},
 				],
-				__overwrittenProperties: ['clientId'],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
 			};
 
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
@@ -344,6 +358,25 @@ describe('useCredentialOAuth', () => {
 
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
 			expect(canOAuthCredentialQuickConnect('mcpOAuth2Api')).toBe(true);
+		});
+
+		it('should not stack-overflow when the extends chain has a cycle', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.cyclicA = {
+				name: 'cyclicA',
+				extends: ['cyclicB'],
+				displayName: 'Cyclic A',
+				properties: [],
+			};
+			credentialsStore.state.credentialTypes.cyclicB = {
+				name: 'cyclicB',
+				extends: ['cyclicA', 'oAuth2Api'],
+				displayName: 'Cyclic B',
+				properties: [],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(() => canOAuthCredentialQuickConnect('cyclicA')).not.toThrow();
 		});
 	});
 

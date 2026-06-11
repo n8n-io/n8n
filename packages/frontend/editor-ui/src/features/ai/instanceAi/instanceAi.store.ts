@@ -26,7 +26,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// --- Instance-level state ---
 	const threads = ref<InstanceAiThreadSummary[]>([]);
 	const debugMode = ref(false);
-	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	// Credits are instance-level state (not per-thread). Re-fetched on mount via fetchCredits(),
 	// and updated in real-time via the 'updateInstanceAiCredits' push event.
 	// No reset needed on thread switch — login/logout reloads the page.
@@ -36,7 +35,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
 	const runtimeHooks = {
-		getResearchMode: () => researchMode.value,
 		onTitleUpdated: (threadId, title) => {
 			const thread = threads.value.find((t) => t.id === threadId);
 			if (thread) thread.title = title;
@@ -47,11 +45,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		},
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
-	function getOrCreateRuntime(threadId: string): ThreadRuntime {
+	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
 		const existingRuntime = runtimes.get(threadId);
 		if (existingRuntime) return existingRuntime;
 
-		const runtime = createThreadRuntime(threadId, runtimeHooks);
+		const runtime = createThreadRuntime(threadId, runtimeHooks, projectId);
 		runtimes.set(threadId, runtime);
 		return runtime;
 	}
@@ -166,10 +164,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function syncThread(threadId: string): Promise<void> {
+	async function syncThread(threadId: string, projectId: string): Promise<void> {
 		if (persistedThreadIds.has(threadId)) return;
 
-		const result = await ensureThread(rootStore.restApiContext, threadId);
+		const result = await ensureThread(rootStore.restApiContext, threadId, projectId);
 		persistedThreadIds.add(result.thread.id);
 
 		const existingThread = threads.value.find((thread) => thread.id === threadId);
@@ -238,16 +236,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	function toggleResearchMode(): void {
-		researchMode.value = !researchMode.value;
-		localStorage.setItem('instanceAi.researchMode', String(researchMode.value));
-	}
-
 	return {
 		// Instance-level state
 		threads,
 		debugMode,
-		researchMode,
 		creditsQuota,
 		creditsClaimed,
 
@@ -265,7 +257,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getThreadMetadata,
 		updateThreadMetadata,
 		loadThreads,
-		toggleResearchMode,
 		fetchCredits,
 		startCreditsPushListener,
 		stopCreditsPushListener,

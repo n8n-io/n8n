@@ -272,7 +272,7 @@ describe('TraceIndex', () => {
 	it('should scan forward for a matching tool when requested', () => {
 		const events: TraceEvent[] = [
 			makeToolCall(1, 'orchestrator', 'credentials'),
-			makeToolCall(2, 'orchestrator', 'build-workflow-with-agent'),
+			makeToolCall(2, 'orchestrator', 'build-workflow'),
 			makeToolCall(3, 'orchestrator', 'plan'),
 		];
 

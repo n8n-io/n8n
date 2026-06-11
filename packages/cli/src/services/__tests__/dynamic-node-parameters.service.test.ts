@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 import {
+	type ILoadOptions,
 	type INodeParameters,
 	type INodeType,
 	type IWorkflowExecuteAdditionalData,
@@ -13,6 +14,7 @@ import { DynamicNodeParametersService } from '../dynamic-node-parameters.service
 import { WorkflowLoaderService } from '../workflow-loader.service';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
@@ -204,6 +206,58 @@ describe('DynamicNodeParametersService', () => {
 
 			expect(acquireSpy).toHaveBeenCalledTimes(1);
 			expect(releaseSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('getOptionsViaLoadOptions', () => {
+		it('should throw BadRequestError when the node type has no requestDefaults.baseURL', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: {
+						name: 'TestNode',
+						properties: [],
+						requestDefaults: undefined,
+					},
+				}),
+			);
+
+			await expect(
+				service.getOptionsViaLoadOptions(
+					mock<ILoadOptions>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					{ name: 'TestNode', version: 1 },
+					mock<INodeParameters>(),
+				),
+			).rejects.toThrow(BadRequestError);
+		});
+	});
+
+	describe('getMethod', () => {
+		it('should throw BadRequestError when the requested method does not exist', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'TestNode',
+					displayName: 'Test',
+					group: [],
+					version: 1,
+					description: '',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: [],
+				},
+				methods: { loadOptions: { someOther: jest.fn() } },
+			} as unknown as INodeType);
+
+			await expect(
+				service.getOptionsViaMethodName(
+					'doesNotExist',
+					'',
+					mock<IWorkflowExecuteAdditionalData>(),
+					{ name: 'TestNode', version: 1 },
+					mock<INodeParameters>(),
+				),
+			).rejects.toThrow(BadRequestError);
 		});
 	});
 

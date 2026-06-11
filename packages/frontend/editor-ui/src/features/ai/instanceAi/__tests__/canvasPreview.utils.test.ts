@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import {
 	getLatestBuildResult,
-	getLatestExecutionId,
+	getLatestBuilderTarget,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getExecutionResultsByWorkflow,
@@ -185,124 +185,96 @@ describe('getLatestBuildResult', () => {
 	});
 });
 
-describe('getLatestExecutionId', () => {
-	test('returns undefined for node with no tool calls', () => {
-		expect(getLatestExecutionId(makeAgentNode())).toBeUndefined();
+describe('getLatestBuilderTarget', () => {
+	test('returns undefined for node with no children', () => {
+		expect(getLatestBuilderTarget(makeAgentNode())).toBeUndefined();
 	});
 
-	test('returns undefined for non-run tool calls', () => {
-		const node = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolName: 'build-workflow',
-					result: { success: true, workflowId: 'wf-1' },
-				}),
-			],
-		});
-		expect(getLatestExecutionId(node)).toBeUndefined();
-	});
-
-	test('returns undefined for loading run-workflow call', () => {
-		const node = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolName: 'executions',
-					args: { action: 'run' },
-					isLoading: true,
-				}),
-			],
-		});
-		expect(getLatestExecutionId(node)).toBeUndefined();
-	});
-
-	test('returns executionId and workflowId from completed run-workflow call', () => {
-		const node = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolName: 'executions',
-					args: { action: 'run', workflowId: 'wf-1' },
-					result: { executionId: 'exec-789', status: 'success' },
-				}),
-			],
-		});
-		expect(getLatestExecutionId(node)).toEqual({ executionId: 'exec-789', workflowId: 'wf-1' });
-	});
-
-	test('returns undefined when workflowId is missing from args', () => {
-		const node = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolName: 'executions',
-					args: { action: 'run' },
-					result: { executionId: 'exec-789' },
-				}),
-			],
-		});
-		expect(getLatestExecutionId(node)).toBeUndefined();
-	});
-
-	test('returns the latest result when multiple runs exist', () => {
-		const node = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-1',
-					toolName: 'executions',
-					args: { action: 'run', workflowId: 'wf-1' },
-					result: { executionId: 'exec-old' },
-				}),
-				makeToolCall({
-					toolCallId: 'tc-2',
-					toolName: 'executions',
-					args: { action: 'run', workflowId: 'wf-1' },
-					result: { executionId: 'exec-new' },
-				}),
-			],
-		});
-		expect(getLatestExecutionId(node)).toEqual({ executionId: 'exec-new', workflowId: 'wf-1' });
-	});
-
-	test('finds result in child agent nodes', () => {
-		const child = makeAgentNode({
-			agentId: 'builder-1',
-			toolCalls: [
-				makeToolCall({
-					toolName: 'executions',
-					args: { action: 'run', workflowId: 'wf-1' },
-					result: { executionId: 'exec-child' },
-				}),
-			],
-		});
-		const parent = makeAgentNode({ children: [child] });
-		expect(getLatestExecutionId(parent)).toEqual({ executionId: 'exec-child', workflowId: 'wf-1' });
-	});
-
-	test('prefers build-workflow result.workflowId over run-workflow args.workflowId', () => {
-		// Trace replay case: the cached LLM's run-workflow args carry the
-		// recording's stale workflowId, but build-workflow's result always
-		// reflects the workflow actually created in this run.
+	test('returns undefined when builder child has no targetResource id (create flow)', () => {
 		const builder = makeAgentNode({
-			agentId: 'builder-1',
-			toolCalls: [
-				makeToolCall({
-					toolName: 'build-workflow',
-					result: { success: true, workflowId: 'wf-real' },
-				}),
-			],
+			agentId: 'agent-builder-1',
+			role: 'workflow-builder',
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow' },
 		});
-		const node = makeAgentNode({
-			children: [builder],
-			toolCalls: [
-				makeToolCall({
-					toolName: 'executions',
-					args: { action: 'run', workflowId: 'wf-stale-from-recording' },
-					result: { executionId: 'exec-1', status: 'success' },
-				}),
-			],
+		const parent = makeAgentNode({ children: [builder] });
+		expect(getLatestBuilderTarget(parent)).toBeUndefined();
+	});
+
+	test('returns agentId and workflowId when builder is spawned with targetResource.id (edit flow)', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-1',
+			role: 'workflow-builder',
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-existing' },
 		});
-		expect(getLatestExecutionId(node)).toEqual({
-			executionId: 'exec-1',
-			workflowId: 'wf-real',
+		const parent = makeAgentNode({ children: [builder] });
+		expect(getLatestBuilderTarget(parent)).toEqual({
+			agentId: 'agent-builder-1',
+			workflowId: 'wf-existing',
 		});
+	});
+
+	test('detects builder by kind even when role differs', () => {
+		const builder = makeAgentNode({
+			agentId: 'agent-builder-2',
+			role: 'background-task',
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-1' },
+		});
+		const parent = makeAgentNode({ children: [builder] });
+		expect(getLatestBuilderTarget(parent)?.workflowId).toBe('wf-1');
+	});
+
+	test('ignores non-workflow targetResource types', () => {
+		const credSetup = makeAgentNode({
+			agentId: 'agent-cred-1',
+			role: 'credential-setup',
+			kind: 'delegate',
+			status: 'active',
+			targetResource: { type: 'credential', id: 'cred-1' },
+		});
+		const parent = makeAgentNode({ children: [credSetup] });
+		expect(getLatestBuilderTarget(parent)).toBeUndefined();
+	});
+
+	test('returns the latest builder when multiple are present', () => {
+		const builderA = makeAgentNode({
+			agentId: 'agent-builder-a',
+			role: 'workflow-builder',
+			kind: 'builder',
+			status: 'completed',
+			targetResource: { type: 'workflow', id: 'wf-a' },
+		});
+		const builderB = makeAgentNode({
+			agentId: 'agent-builder-b',
+			role: 'workflow-builder',
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-b' },
+		});
+		const parent = makeAgentNode({ children: [builderA, builderB] });
+		expect(getLatestBuilderTarget(parent)?.workflowId).toBe('wf-b');
+	});
+
+	test('walks nested children depth-first, newest last', () => {
+		const nestedBuilder = makeAgentNode({
+			agentId: 'agent-builder-nested',
+			role: 'workflow-builder',
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-nested' },
+		});
+		const intermediate = makeAgentNode({
+			agentId: 'agent-intermediate',
+			role: 'coordinator',
+			children: [nestedBuilder],
+		});
+		const parent = makeAgentNode({ children: [intermediate] });
+		expect(getLatestBuilderTarget(parent)?.workflowId).toBe('wf-nested');
 	});
 });
 
@@ -364,6 +336,40 @@ describe('getLatestDataTableResult', () => {
 			],
 		});
 		expect(getLatestDataTableResult(node)).toBeUndefined();
+	});
+
+	test('returns dataTableId from successful schema action', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-schema',
+					toolName: 'data-tables',
+					args: { action: 'schema', dataTableId: 'Table Name' },
+					result: { dataTableId: 'dt-schema', columns: [] },
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)).toEqual({
+			dataTableId: 'dt-schema',
+			toolCallId: 'tc-schema',
+		});
+	});
+
+	test('returns dataTableId from successful query action', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-query',
+					toolName: 'data-tables',
+					args: { action: 'query', dataTableId: 'dt-query' },
+					result: { dataTableId: 'dt-query', count: 1, data: [{ id: 1 }] },
+				}),
+			],
+		});
+		expect(getLatestDataTableResult(node)).toEqual({
+			dataTableId: 'dt-query',
+			toolCallId: 'tc-query',
+		});
 	});
 
 	test('returns dataTableId from successful insert-rows action', () => {

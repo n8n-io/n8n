@@ -8,8 +8,8 @@ import type {
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
 	ConnectStartEvent,
-	ExecutionOutputMapData,
 } from '@/features/workflows/canvas/canvas.types';
+import type { ExecutionOutputMapData } from '@/app/types/executionData';
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
@@ -29,8 +29,7 @@ export function createCanvasNodeData({
 	disabled = false,
 	connections = { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 	execution = { running: false },
-	issues = { execution: [], validation: [], visible: false },
-	pinnedData = { count: 0, visible: false },
+	issues = { validation: [], visible: false },
 	runData = { outputMap: {}, iterations: 0, visible: false },
 	render = {
 		type: CanvasNodeRenderType.Default,
@@ -45,7 +44,6 @@ export function createCanvasNodeData({
 		typeVersion,
 		execution,
 		issues,
-		pinnedData,
 		runData,
 		disabled,
 		connections,

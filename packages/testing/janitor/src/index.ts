@@ -45,12 +45,9 @@ export type {
 	PropertyFixData,
 	ClassFixData,
 	EditFixData,
-	FixAction,
-	FixResult,
 	RuleResult,
 	ReportSummary,
 	JanitorReport,
-	Rule,
 	RuleInfo,
 	FilePatterns,
 	FacadeConfig,
@@ -71,6 +68,7 @@ export type {
 export { SyntaxKind } from './types.js';
 
 export { RuleRunner } from './core/rule-runner.js';
+export type { RunnableRule, JanitorRunContext } from './core/rule-runner.js';
 export { FacadeResolver, extractTypeName, type FacadeMapping } from './core/facade-resolver.js';
 export {
 	createProject,
@@ -79,10 +77,9 @@ export {
 	getRelativePath,
 	type ProjectContext,
 } from './core/project-loader.js';
-export { toJSON, toConsole, printFixResults } from './core/reporter.js';
+export { toJSON, toConsole } from './core/reporter.js';
 
 export {
-	BaseRule,
 	BoundaryProtectionRule,
 	ScopeLockdownRule,
 	SelectorPurityRule,
@@ -201,7 +198,6 @@ export {
 } from './core/baseline.js';
 
 import { setConfig, type JanitorConfig } from './config.js';
-import { createProject } from './core/project-loader.js';
 import { RuleRunner } from './core/rule-runner.js';
 import { ApiPurityRule } from './rules/api-purity.rule.js';
 import { BoundaryProtectionRule } from './rules/boundary-protection.rule.js';
@@ -232,7 +228,6 @@ export function createDefaultRunner(): RuleRunner {
 
 export function runAnalysis(config: JanitorConfig, options?: RunOptions): JanitorReport {
 	setConfig(config);
-	const { project, root } = createProject(config.rootDir);
 	const runner = createDefaultRunner();
-	return runner.run(project, root, options);
+	return runner.run({ rootDir: config.rootDir }, options);
 }

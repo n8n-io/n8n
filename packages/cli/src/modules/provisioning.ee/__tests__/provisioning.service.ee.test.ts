@@ -983,6 +983,36 @@ describe('ProvisioningService', () => {
 			);
 		});
 
+		it('should emit a debug log summarising the resolution without leaking claim values', async () => {
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:member',
+					matchedRuleId: null,
+					expression: null,
+					isFallback: true,
+				},
+				projectRoles: new Map(),
+			});
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:member', roleType: 'global' }),
+			);
+
+			const context = {
+				$claims: { groups: ['admins'], email: 'test@example.com' },
+				$provider: 'oidc' as const,
+			};
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(logger.debug).toHaveBeenCalledWith('SSO role resolution complete', {
+				userId: 'user-1',
+				provider: 'oidc',
+				claimKeys: ['email', 'groups'],
+				matchedInstanceRuleId: null,
+				isFallback: true,
+				matchedProjectRuleIds: [],
+			});
+		});
+
 		it('should detect removed projects and role changes', async () => {
 			const existingProject = mock<Project>({
 				id: 'old-proj-1',

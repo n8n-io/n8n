@@ -1,12 +1,11 @@
-import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
+import { AiWorkflowBuilderService, createPassthroughSsrfGuard } from '@n8n/ai-workflow-builder';
 import type { ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
 import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
-import { InstanceSettings } from 'n8n-core';
 import * as path from 'path';
 import type {
 	INodeCredentials,
@@ -22,6 +21,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { InstanceSettings, SsrfProtectionService } from 'n8n-core';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { getBase } from '@/workflow-execute-additional-data';
@@ -49,6 +49,8 @@ export class WorkflowBuilderService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly sessionRepository: WorkflowBuilderSessionRepository,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		// Register a post-processor to update node types when they change.
 		// This ensures newly installed/updated/uninstalled community packages are recognized
@@ -148,6 +150,13 @@ export class WorkflowBuilderService {
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 
+		// web_fetch SSRF protection is gated on the global flag, consistent with the rest
+		// of n8n. When disabled, a passthrough guard is used (the domain-approval/HITL
+		// layer in the tool still applies).
+		const ssrfGuard = this.ssrfConfig.enabled
+			? this.ssrfProtectionService
+			: createPassthroughSsrfGuard();
+
 		this.service = new AiWorkflowBuilderService(
 			nodeTypeDescriptions,
 			this.sessionRepository,
@@ -160,6 +169,7 @@ export class WorkflowBuilderService {
 			onTelemetryEvent,
 			this.resolveBuiltinNodeDefinitionDirs(),
 			resourceLocatorCallbackFactory,
+			ssrfGuard,
 		);
 
 		return this.service;
@@ -187,9 +197,9 @@ export class WorkflowBuilderService {
 		yield* service.chat(payload, user, abortSignal);
 	}
 
-	async getSessions(workflowId: string | undefined, user: IUser) {
+	async getSessions(workflowId: string | undefined, user: IUser, isCodeBuilder?: boolean) {
 		const service = await this.getService();
-		const sessions = await service.getSessions(workflowId, user);
+		const sessions = await service.getSessions(workflowId, user, isCodeBuilder);
 		return sessions;
 	}
 

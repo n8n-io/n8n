@@ -15,6 +15,7 @@ const props = withDefaults(
 		agentName?: string;
 		projectId?: string;
 		agentId?: string;
+		setupSlackApp?: (appConfigurationToken: string) => Promise<boolean>;
 	}>(),
 	{
 		disabled: false,
@@ -23,6 +24,7 @@ const props = withDefaults(
 		agentName: '',
 		projectId: '',
 		agentId: '',
+		setupSlackApp: undefined,
 	},
 );
 
@@ -65,5 +67,11 @@ defineExpose({ currentSettings, validationError, isDirty });
 		:project-id="projectId"
 		:agent-id="agentId"
 		:connected="connected"
-	/>
+		:disabled="disabled"
+		:setup-slack-app="setupSlackApp"
+	>
+		<template #manualConfiguration>
+			<slot name="manualConfiguration" />
+		</template>
+	</AgentSlackSettingsForm>
 </template>
