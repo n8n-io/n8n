@@ -47,8 +47,8 @@ function stub(detail: DesktopAssistantTaskDetailResponse = DETAIL) {
 		return await Promise.resolve(next ?? detail);
 	});
 	const queueDetail = (next: DesktopAssistantTaskDetailResponse) => details.push(next);
-	const applyTaskEdits = vi.fn(async () =>
-		await Promise.resolve({ threadId: 'thread-1', runId: 'run-1' }),
+	const applyTaskEdits = vi.fn(
+		async () => await Promise.resolve({ threadId: 'thread-1', runId: 'run-1' }),
 	);
 	const api = { getTaskDetail, applyTaskEdits };
 	(globalThis as unknown as { window: { electronAPI: typeof api } }).window = {
