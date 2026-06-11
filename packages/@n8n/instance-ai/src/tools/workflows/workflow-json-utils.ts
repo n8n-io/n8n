@@ -53,3 +53,29 @@ export function getReferencedWorkflowIds(json: WorkflowJSON): string[] {
 
 	return referencedWorkflowIds;
 }
+
+/** Resource-locator parameter paths where `__rl.value` is an empty string. */
+export function findEmptyResourceLocatorFields(parameters: unknown, prefix = ''): string[] {
+	if (parameters === null || parameters === undefined) return [];
+
+	if (Array.isArray(parameters)) {
+		return parameters.flatMap((item, index) =>
+			findEmptyResourceLocatorFields(
+				item,
+				prefix ? `${prefix}[${String(index)}]` : `[${String(index)}]`,
+			),
+		);
+	}
+
+	if (!isRecord(parameters)) return [];
+
+	const obj = parameters;
+	if (obj.__rl === true && 'value' in obj && obj.value === '') {
+		return [prefix || 'value'];
+	}
+
+	return Object.entries(obj).flatMap(([key, value]) => {
+		const path = prefix ? `${prefix}.${key}` : key;
+		return findEmptyResourceLocatorFields(value, path);
+	});
+}

@@ -10,6 +10,7 @@ import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
 import {
+	findEmptyResourceLocatorFields,
 	getReferencedWorkflowIds,
 	isMockableTriggerNodeType,
 	isTriggerNodeType,
@@ -373,7 +374,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 	return new Tool('build-workflow')
 		.description(
-			'Build a workflow from TypeScript SDK code. Two modes:\n' +
+			'Primary workflow-builder tool — save TypeScript SDK code or apply targeted patches. Two modes:\n' +
 				'1. Full code: pass `code` to create/update a workflow from scratch.\n' +
 				'2. Patch mode: pass `patches` (+ optional `workflowId`) to apply str_replace fixes. ' +
 				'Patches apply to last submitted code, or auto-fetch from saved workflow if workflowId given.',
@@ -576,6 +577,25 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			const json = result.workflow;
+
+			const emptyResourceLocatorErrors: string[] = [];
+			for (const node of json.nodes ?? []) {
+				const emptyFields = findEmptyResourceLocatorFields(node.parameters);
+				for (const field of emptyFields) {
+					emptyResourceLocatorErrors.push(
+						`(${node.name ?? 'unnamed'}): Resource locator "${field}" has an empty value. Use placeholder('descriptive hint') in __rl.value instead of an empty string.`,
+					);
+				}
+			}
+			if (emptyResourceLocatorErrors.length > 0) {
+				const failure = {
+					success: false,
+					errors: withEscalation(emptyResourceLocatorErrors),
+				};
+				recordWorkflowCodeSnapshot(failure);
+				return failure;
+			}
+
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {

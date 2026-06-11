@@ -146,14 +146,14 @@ describe('syncDataset', () => {
 		expect(updated[0].id).toBe(existingId);
 	});
 
-	it('never calls deleteExamples, even when a previously-synced scenario is no longer in the filesystem', async () => {
+	it('deletes orphaned examples that are no longer in the filesystem scenarios', async () => {
 		const orphan = existingExample('orphan-uuid', 'gone-file', 'gone-scenario');
 		mockedLoad.mockReturnValue([scenarioFixture('foo', 'happy-path')]);
 		const { client, deleteExamples, createExamples } = buildClient([orphan]);
 
 		await syncDataset(client, 'ds', logger);
 
-		expect(deleteExamples).not.toHaveBeenCalled();
+		expect(deleteExamples).toHaveBeenCalledWith(['orphan-uuid']);
 		// The present scenario should still be created
 		expect(createExamples).toHaveBeenCalledTimes(1);
 	});

@@ -49,6 +49,17 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 	},
 	{
 		service: 'Openai',
+		endpoint: 'POST /v1/responses',
+		guidance:
+			'Responses API (`POST /v1/responses`) — `output` MUST be an ARRAY of output items, never a plain string. For text-only replies, return one `message` item:\n' +
+			'`{ "id": "resp_...", "object": "response", "status": "completed", "model": "<from request>", "output": [{ "id": "msg_...", "type": "message", "role": "assistant", "status": "completed", "content": [{ "type": "output_text", "text": "<assistant text from scenario hints>", "annotations": [] }] }], "usage": { "input_tokens": 0, "output_tokens": 0, "total_tokens": 0 } }`.\n' +
+			'For tool calls, use `type: "function_call"` items in `output` instead of `message`. Never put the assistant text directly in `output` as a string — n8n nodes call `response.output.filter(...)` and crash when `output` is not an array.',
+		rationale:
+			'The OpenAI vendor node (operation response) calls `response.output.filter(...)`. Mock LLMs often return `output` as a string; that crashes the node before downstream nodes run.',
+		addedAt: '2026-06-13',
+	},
+	{
+		service: 'Openai',
 		guidance:
 			'OpenAI endpoints commonly seen in workflows:\n' +
 			'  * `POST /v1/audio/transcriptions` and `POST /v1/audio/translations` → JSON `{ "text": "<plausible transcript>", ... }`. The request multipart body has been redacted (you will see `__redacted: "multipart"`); derive the transcript from scenario/node hints when present, otherwise return a short generic English sentence.\n' +
@@ -80,6 +91,15 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		rationale:
 			'The Gmail node consumes `responseData.messages` from the list call; a bare array yields zero items with no error. Observed as the residual mock_issue in eval run mock-robustness-fixes-n3 (daily-gmail-action-digest).',
 		addedAt: '2026-06-12',
+	},
+	{
+		service: 'Googleapis',
+		endpoint: 'GET /v4/spreadsheets/{spreadsheetId}',
+		guidance:
+			'Google Sheets spreadsheet metadata (`GET /v4/spreadsheets/{id}?fields=sheets.properties`) — each entry in `sheets` MUST include `properties.sheetId` as a **number** (e.g. `0` for the first tab) and `properties.title` as the tab name (e.g. `"Sheet1"`). The n8n Google Sheets node resolves list-mode `sheetName` by numeric `sheetId`, not by title string. Include at least one GRID sheet so append/read operations succeed.',
+		rationale:
+			'Workflow builds often save tab display names in list-mode sheetName while the node matches on sheetId. Mocks must expose numeric sheetId on the first tab so eval parameter normalization and sheet lookup both succeed.',
+		addedAt: '2026-06-14',
 	},
 	{
 		service: 'Slack',

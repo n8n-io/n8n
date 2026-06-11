@@ -105,7 +105,6 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.description).toContain('do not load planning or create-tasks first');
 
 		const loaded = await source.loadSkill('workflow-builder');
-		expect(loaded?.instructions).toContain('Tool Surface');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');

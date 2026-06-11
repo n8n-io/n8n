@@ -34,5 +34,14 @@ List mode structure with optional cached fields:
   "cachedResultName": "Display Name"
 }
 \`\`\`
+
+### Unresolved resources (placeholders)
+When \`nodes(action="explore-resources")\` returns no match, put \`placeholder('Select …')\` in the
+\`value\` field of the resource-locator object — never an empty string and never a top-level
+\`placeholder()\` on the parameter itself. Check the type definition for allowed modes on each
+parameter:
+\`\`\`ts
+channel: { mode: 'list', value: placeholder('Select channel'), cachedResultName: 'Support channel' }
+\`\`\`
 `,
 };

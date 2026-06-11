@@ -221,12 +221,22 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 				name: 'n8n-nodes-base.formTrigger',
 				note: 'ALWAYS store raw data to persistent storage',
 			},
-			{ name: 'n8n-nodes-base.form', note: 'Each node is one page/step' },
+			{
+				name: 'n8n-nodes-base.form',
+				note: 'Each node is one page/step; use for Form Ending / completion pages after processing',
+			},
 			{
 				name: 'n8n-nodes-base.dataTable',
 				note: 'PREFERRED for form data storage',
 			},
-			{ name: 'n8n-nodes-base.googleSheets' },
+			{
+				name: 'n8n-nodes-base.googleSheets',
+				note: 'When spreadsheet/document ID is unknown, use placeholder() in documentId __rl.value with cachedResultName from the user prompt — never an empty string. Setup collects the real ID later. For sheetName: list mode value must be the numeric tab id (0 for first tab); use mode name with the tab title when the user says Sheet1.',
+			},
+			{
+				name: '@n8n/n8n-nodes-langchain.openAi',
+				note: 'For confirmation/summary text: resource=text, operation=response. Downstream fields use $json.output[0].content[0].text (or a named-node reference), not $json.text.',
+			},
 			{ name: 'n8n-nodes-base.airtable' },
 		],
 	},
@@ -241,7 +251,7 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 			},
 			{
 				name: '@n8n/n8n-nodes-langchain.openAi',
-				note: 'Use for image/video generation. DALL-E, TTS, Sora video generation',
+				note: 'Text: resource=text, operation=response — read output via $json.output[0].content[0].text. Also DALL-E, TTS, Sora image/video generation.',
 			},
 			{
 				name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
