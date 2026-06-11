@@ -1364,7 +1364,16 @@ async function oAuthCredentialAuthorize() {
 	const oauthChannel = new BroadcastChannel('oauth-callback');
 	const trustedOrigins = getTrustedOAuthOrigins(rootStore.urlBaseEditor);
 	let oauthResultHandled = false;
-	let popupClosedPoll: ReturnType<typeof setInterval>;
+
+	// Fallback: if the popup is closed (or blocked) without ever delivering a
+	// callback message, no handler fires and the listeners below would leak —
+	// and stack up across attempts, so a later callback triggers duplicate side
+	// effects. Poll for the closed popup so the result is handled and cleaned up.
+	const popupClosedPoll = setInterval(() => {
+		if (!oauthPopup || oauthPopup.closed) {
+			handleOAuthResult(false);
+		}
+	}, 500);
 
 	const cleanupOAuthListeners = () => {
 		oauthChannel.removeEventListener('message', onChannelMessage);
@@ -1434,16 +1443,6 @@ async function oAuthCredentialAuthorize() {
 
 	oauthChannel.addEventListener('message', onChannelMessage);
 	window.addEventListener('message', onWindowMessage);
-
-	// Fallback: if the popup is closed (or blocked) without ever delivering a
-	// callback message, no handler fires and the listeners above would leak —
-	// and stack up across attempts, so a later callback triggers duplicate side
-	// effects. Poll for the closed popup so the result is handled and cleaned up.
-	popupClosedPoll = setInterval(() => {
-		if (!oauthPopup || oauthPopup.closed) {
-			handleOAuthResult(false);
-		}
-	}, 500);
 }
 
 async function onDisconnectMyConnection(): Promise<void> {
