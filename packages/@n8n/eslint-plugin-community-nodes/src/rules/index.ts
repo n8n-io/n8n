@@ -23,6 +23,7 @@ import { NoRuntimeDependenciesRule } from './no-runtime-dependencies.js';
 import { NoTemplatePlaceholdersRule } from './no-template-placeholders.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
+import { NodeFilenameAgainstConventionRule } from './node-filename-against-convention.js';
 import { NodeOperationErrorItemIndexRule } from './node-operation-error-itemindex.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OptionsSortedAlphabeticallyRule } from './options-sorted-alphabetically.js';
@@ -62,6 +63,7 @@ export const rules = {
 	'cred-class-name-suffix': CredClassNameSuffixRule,
 	'cred-class-oauth2-naming': CredClassOAuth2NamingRule,
 	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
+	'node-filename-against-convention': NodeFilenameAgainstConventionRule,
 	'node-operation-error-itemindex': NodeOperationErrorItemIndexRule,
 	'missing-paired-item': MissingPairedItemRule,
 	'no-builder-hint-leakage': NoBuilderHintLeakageRule,

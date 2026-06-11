@@ -1,4 +1,4 @@
-import { ref, reactive, computed, type Ref } from 'vue';
+import { ref, reactive, computed, nextTick, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -50,6 +50,7 @@ export interface UseAgentChatStreamParams {
 	onCodeUpdated?: () => void;
 	onCodeDelta?: (delta: string) => void;
 	onConfigUpdated?: () => void;
+	onBuildDone?: () => void;
 	onHistoryLoaded?: (count: number) => void;
 }
 
@@ -545,11 +546,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return undefined;
 	}
 
-	async function consumeStream(response: Response, session: StreamSession): Promise<void> {
-		if (!response.body) return;
+	async function consumeStream(response: Response, session: StreamSession): Promise<boolean> {
+		if (!response.body) return false;
 		const reader = response.body.getReader();
 		const decoder = new TextDecoder();
 		let buffer = '';
+
+		let doneSeen = false;
 
 		try {
 			readerLoop: while (true) {
@@ -569,21 +572,26 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						continue;
 					}
 					const result = handleEvent(event, session);
-					if (result?.done) break readerLoop;
+					if (result?.done) {
+						doneSeen = true;
+						break readerLoop;
+					}
 				}
 			}
 		} finally {
 			reader.releaseLock();
 		}
+
+		return doneSeen;
 	}
 
 	function finalizeStream(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (msg.status === CHAT_MESSAGE_STATUS.STREAMING) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 		}
-		if (params.endpoint.value === 'build' && session.builderMutated) {
-			params.onConfigUpdated?.();
-		}
+
+		if (params.endpoint.value !== 'build') return;
+		if (session.builderMutated) params.onConfigUpdated?.();
 	}
 
 	async function postAndConsume(
@@ -600,6 +608,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const controller = new AbortController();
 		abortController.value = controller;
 		let transportFailed = false;
+		let doneSeen = false;
 
 		try {
 			const browserId = localStorage.getItem('n8n-browserId') ?? '';
@@ -623,7 +632,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				return { ok: false };
 			}
 
-			await consumeStream(response, session);
+			doneSeen = await consumeStream(response, session);
 			finalizeStream(session);
 		} catch (e) {
 			if (e instanceof DOMException && e.name === 'AbortError') {
@@ -658,6 +667,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			messageQueue.value = messageQueue.value.slice(1);
 			if (next) void sendMessage(next.text);
 		}
+
+		if (params.endpoint.value === 'build' && doneSeen) {
+			await nextTick();
+			params.onBuildDone?.();
 
 		return { ok: !transportFailed && !session.errorEmitted };
 	}

@@ -1,8 +1,58 @@
+import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { interactiveResumeDataSchema } from '../agent-builder-interactive';
-import { Z } from '../zod-class';
 import { agentTaskSchema } from './agent-task.schema';
+import { paginationSchema } from '../dto/pagination/pagination.dto';
+import { Z } from '../zod-class';
+
+export const AGENTS_LIST_SORT_OPTIONS = [
+	'name:asc',
+	'name:desc',
+	'createdAt:asc',
+	'createdAt:desc',
+	'updatedAt:asc',
+	'updatedAt:desc',
+] as const;
+
+const agentListFilterSchema = z
+	.object({
+		query: z.string().trim().min(1).max(128).optional(),
+	})
+	.strict();
+
+const agentListFilterValidator = z
+	.string()
+	.optional()
+	.transform((val, ctx) => {
+		if (!val) return undefined;
+
+		try {
+			const result = agentListFilterSchema.safeParse(jsonParse(val));
+			if (!result.success) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Invalid filter fields',
+					path: ['filter'],
+				});
+				return z.NEVER;
+			}
+			return result.data;
+		} catch {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Invalid filter format',
+				path: ['filter'],
+			});
+			return z.NEVER;
+		}
+	});
+
+export class ListAgentsQueryDto extends Z.class({
+	...paginationSchema,
+	filter: agentListFilterValidator,
+	sortBy: z.enum(AGENTS_LIST_SORT_OPTIONS).optional(),
+}) {}
 
 export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),

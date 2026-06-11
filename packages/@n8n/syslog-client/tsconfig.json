@@ -4,8 +4,7 @@
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"strictPropertyInitialization": false,
-		"types": ["node", "vitest/globals"],
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"types": ["node", "vitest/globals"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],
 	"references": [{ "path": "../di/tsconfig.build.json" }]

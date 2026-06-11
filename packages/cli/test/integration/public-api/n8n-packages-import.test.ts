@@ -179,18 +179,15 @@ describe('POST /n8n-packages/import', () => {
 
 		expect(response.statusCode).toBe(409);
 		expect(response.body).toMatchObject({
-			code: 409,
-			message: expect.stringContaining('already exist in the target project'),
-			meta: {
-				code: 'WORKFLOW_CONFLICT',
-				conflicts: [
-					{
-						sourceWorkflowId: 'wf-http-source',
-						existingWorkflowId,
-						name: 'HTTP Imported',
-					},
-				],
-			},
+			message: expect.stringContaining('Import blocked'),
+			issues: [
+				{
+					type: 'workflow-conflict',
+					sourceWorkflowId: 'wf-http-source',
+					existingWorkflowId,
+					name: 'HTTP Imported',
+				},
+			],
 		});
 	});
 
@@ -214,9 +211,10 @@ describe('POST /n8n-packages/import', () => {
 
 		expect(response.statusCode).toBe(422);
 		expect(response.body).toMatchObject({
-			message: expect.stringContaining('credential reference'),
-			failures: [
+			message: expect.stringContaining('Import blocked'),
+			issues: [
 				expect.objectContaining({
+					type: 'credential-unresolved',
 					kind: 'not_found',
 					sourceId: 'non-existent-credential',
 				}),

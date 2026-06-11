@@ -1044,9 +1044,14 @@ export class AgentRuntime {
 				options?.executionCounter,
 			);
 
+			const { system, messages } = list.forLlm(
+				effectiveInstructions,
+				this.config.instructionProviderOptions,
+			);
 			const result = await generateText({
 				model: staticLoopContext.model,
-				messages: list.forLlm(effectiveInstructions, this.config.instructionProviderOptions),
+				system,
+				messages,
 				abortSignal: abortScope.signal,
 				...(hasTools ? { tools: aiTools } : {}),
 				...(staticLoopContext.providerOptions
@@ -1384,9 +1389,13 @@ export class AgentRuntime {
 				options?.persistence,
 				options?.executionCounter,
 			);
-			const messages = list.forLlm(effectiveInstructions, this.config.instructionProviderOptions);
+			const { system, messages } = list.forLlm(
+				effectiveInstructions,
+				this.config.instructionProviderOptions,
+			);
 			const result = streamText({
 				model: staticLoopContext.model,
+				system,
 				messages,
 				abortSignal: abortScope.signal,
 				...(hasTools ? { tools: aiTools } : {}),

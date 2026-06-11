@@ -90,6 +90,11 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 	}),
 }));
 
+const trackMock = vi.fn();
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
+}));
+
 const mockRouterPush = vi.fn();
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as Record<string, unknown>;
@@ -112,6 +117,7 @@ describe('EvaluationsWizardSidepanel', () => {
 		mocks.sliceInputs = { fieldNames: [], values: {}, hasExecution: true };
 		mockRouterPush.mockReset();
 		mockHydrate.mockReset();
+		trackMock.mockReset();
 		// Trigger Vue to re-read the shallowRef so watchers see the reset workflowId.
 		workflowDocumentRef.value = {
 			get workflowId() {
@@ -610,6 +616,79 @@ describe('EvaluationsWizardSidepanel', () => {
 		// A per-check result card and one expandable case row render from the run data.
 		expect(getByTestId('evaluations-wizard-sidepanel-result-card-correctness')).toBeInTheDocument();
 		expect(getByTestId('evaluations-wizard-sidepanel-case-1')).toBeInTheDocument();
+	});
+
+	it('tracks "User viewed evaluation results" once when a finished run renders on step 3', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		const evalStore = useEvaluationStore();
+		store.open(3);
+		store.selectedMetricKeys = ['correctness'];
+		evalStore.testRunsById = {
+			'run-1': {
+				id: 'run-1',
+				workflowId: 'workflow-id',
+				status: 'success',
+				metrics: { correctness: 0.9 },
+				createdAt: '',
+				updatedAt: '',
+				runAt: '',
+				completedAt: '',
+			},
+		};
+		evalStore.testCaseExecutionsById = {
+			'case-1': {
+				id: 'case-1',
+				testRunId: 'run-1',
+				executionId: null,
+				status: 'success',
+				createdAt: '',
+				updatedAt: '',
+				runAt: null,
+				runIndex: 0,
+				metrics: { correctness: 4 },
+				inputs: { expectedAnswer: 'hi' },
+				outputs: { output: 'hello' },
+			},
+		};
+
+		renderComponent();
+		await nextTick();
+
+		const resultsEvents = trackMock.mock.calls.filter(
+			([event]) => event === 'User viewed evaluation results',
+		);
+		expect(resultsEvents).toHaveLength(1);
+		expect(resultsEvents[0][1]).toEqual({
+			workflow_id: 'workflow-id',
+			run_id: 'run-1',
+			test_case_count: 1,
+			metric_count: 1,
+		});
+	});
+
+	it('does not track evaluation results while the run is still in progress on step 3', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		const evalStore = useEvaluationStore();
+		store.open(3);
+		store.selectedMetricKeys = ['correctness'];
+		evalStore.testRunsById = {
+			'run-1': {
+				id: 'run-1',
+				workflowId: 'workflow-id',
+				status: 'running',
+				createdAt: '',
+				updatedAt: '',
+				runAt: '',
+				completedAt: null,
+			},
+		};
+
+		renderComponent();
+		await nextTick();
+
+		expect(
+			trackMock.mock.calls.filter(([event]) => event === 'User viewed evaluation results'),
+		).toHaveLength(0);
 	});
 
 	it('shows "View Results" button on step 3 and closes the wizard on click', async () => {
