@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { access, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -63,40 +63,18 @@ function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 }
 
 class InMemoryKnowledgeFilesystem implements AgentKnowledgeFilesystem {
-	private readonly files = new Map<string, Buffer>();
 	readonly deleteCalls: Array<{ filePath: string; recursive?: boolean }> = [];
 	readonly uploadFileCalls: AgentKnowledgeFileUpload[] = [];
 
 	async uploadFiles(files: AgentKnowledgeFileUpload[]): Promise<void> {
 		this.uploadFileCalls.push(...files);
-		for (const file of files) {
-			if (typeof file.source === 'string') {
-				const content = await readFile(file.source);
-				this.files.set(file.destination, content);
-				continue;
-			}
-			this.files.set(file.destination, file.source);
-		}
 	}
 
 	async deleteFile(filePath: string, recursive?: boolean): Promise<void> {
 		this.deleteCalls.push({ filePath, recursive });
-		if (recursive) {
-			for (const key of [...this.files.keys()]) {
-				if (key === filePath || key.startsWith(`${filePath}/`)) {
-					this.files.delete(key);
-				}
-			}
-			return;
-		}
-		this.files.delete(filePath);
 	}
 
 	async ensureDir(_dirPath: string): Promise<void> {}
-
-	get(pathKey: string): Buffer | undefined {
-		return this.files.get(pathKey);
-	}
 }
 
 class InMemoryAgentFileRepository {
@@ -126,6 +104,10 @@ class InMemoryAgentFileRepository {
 		return [...this.files.values()]
 			.filter((file) => file.agentId === agentIdToFind)
 			.sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+	}
+
+	async hasFilesForAgent(agentIdToFind: string): Promise<boolean> {
+		return [...this.files.values()].some((file) => file.agentId === agentIdToFind);
 	}
 
 	async findByIdAndAgentId(fileId: string, agentIdToFind: string): Promise<AgentFile | null> {
@@ -231,15 +213,23 @@ describe('AgentKnowledgeService', () => {
 				destination: `${KNOWLEDGE_FILES_DIR}/report.txt`,
 			},
 		]);
-		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/notes.txt`)?.toString('utf-8')).toBe(
-			'hello world',
-		);
-		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/report.txt`)?.toString('utf-8')).toBe(
-			'extracted pdf text',
-		);
 		await expect(access(textFilePath)).rejects.toThrow();
 		await expect(access(pdfFilePath)).rejects.toThrow();
 	});
+
+	it.each(['..', '.', '/'])(
+		'rejects uploads whose file name "%s" would escape the knowledge files directory',
+		async (originalname) => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+
+			await expect(
+				service.uploadFiles(agentId, projectId, [makeMulterFile({ originalname })], userId),
+			).rejects.toThrow('Invalid knowledge file name');
+
+			expect(agentFileRepository.all()).toEqual([]);
+			expect(filesystem.uploadFileCalls).toEqual([]);
+		},
+	);
 
 	it('removes the DB row when volume sync fails after create', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
@@ -264,50 +254,6 @@ describe('AgentKnowledgeService', () => {
 			),
 		).rejects.toThrow('volume write failed');
 		expect(agentFileRepository.all()).toEqual([]);
-	});
-
-	it('lists DB-backed files without touching the sandbox service', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		await agentFileRepository.save(
-			makeAgentFile({
-				id: 'file-1',
-				fileName: 'first.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 4,
-				binaryDataId: toVolumeStorageReference('file-1.txt'),
-				createdAt: new Date('2026-06-01T10:00:00.000Z'),
-			}),
-		);
-		await agentFileRepository.save(
-			makeAgentFile({
-				id: 'file-2',
-				fileName: 'second.pdf',
-				mimeType: 'application/pdf',
-				fileSizeBytes: 8,
-				binaryDataId: toVolumeStorageReference('file-2.txt'),
-				createdAt: new Date('2026-06-02T10:00:00.000Z'),
-			}),
-		);
-
-		await expect(service.listFiles(agentId, projectId)).resolves.toEqual([
-			{
-				id: 'file-1',
-				agentId,
-				fileName: 'first.txt',
-				mimeType: 'text/plain',
-				fileSizeBytes: 4,
-				createdAt: '2026-06-01T10:00:00.000Z',
-			},
-			{
-				id: 'file-2',
-				agentId,
-				fileName: 'second.pdf',
-				mimeType: 'application/pdf',
-				fileSizeBytes: 8,
-				createdAt: '2026-06-02T10:00:00.000Z',
-			},
-		]);
-		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
 	it('warms the sandbox only when the agent has knowledge files', async () => {

@@ -19,6 +19,7 @@ import { KNOWLEDGE_FILES_DIR } from './agent-knowledge-storage';
 const COMMAND_TIMEOUT_SECONDS = 20;
 const SEARCH_OUTPUT_TRUNCATED_MARKER = '__N8N_SEARCH_OUTPUT_TRUNCATED__';
 const READ_OUTPUT_TRUNCATED_MARKER = '__N8N_READ_OUTPUT_TRUNCATED__';
+export const KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE = 3;
 
 export function buildSearchKnowledgeCommand(request: SearchKnowledgeRequest): string {
 	const matchLimit = (request.limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
@@ -146,8 +147,10 @@ export function parseGlobKnowledgeFilesOutput(
 	const seen = new Set<string>();
 
 	for (const line of output.split(/\r?\n/)) {
-		const filePath = normalizeRipgrepPath(line.trim());
-		if (!filePath || seen.has(filePath)) continue;
+		if (!line) continue;
+		// Do not trim: stored file names may legitimately start or end with spaces.
+		const filePath = normalizeRipgrepPath(line);
+		if (seen.has(filePath)) continue;
 
 		const file = filesByPath.get(filePath);
 		if (!file) continue;
@@ -308,5 +311,10 @@ function buildJsonMatchLimitedPipeline(
 }
 
 export function buildScopedKnowledgeShellCommand(command: string): string {
-	return `bash -o pipefail -c ${quoteShellArg(`cd ${KNOWLEDGE_FILES_DIR} && { ${command}; }`)}`;
+	const scopedCommand = [
+		`[ -d ${quoteShellArg(KNOWLEDGE_FILES_DIR)} ] || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
+		`cd ${quoteShellArg(KNOWLEDGE_FILES_DIR)} || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
+		`{ ${command}; }`,
+	].join('; ');
+	return `bash -o pipefail -c ${quoteShellArg(scopedCommand)}`;
 }

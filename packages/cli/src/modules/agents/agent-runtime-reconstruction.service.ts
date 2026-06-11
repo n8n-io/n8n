@@ -54,6 +54,7 @@ import {
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { resolveCredentialAwareModelConfig } from './json-config/model-config';
+import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
@@ -93,6 +94,7 @@ export class AgentRuntimeReconstructionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
+		private readonly agentFileRepository: AgentFileRepository,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRepository: WorkflowRepository,
@@ -349,7 +351,10 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createGetEnvironmentTool());
 
-		if (isAgentKnowledgeBaseEnabled(this.agentsConfig)) {
+		if (
+			isAgentKnowledgeBaseEnabled(this.agentsConfig) &&
+			(await this.agentFileRepository.hasFilesForAgent(agentId))
+		) {
 			const { createKnowledgeRetrievalTools } = await import(
 				'./tools/knowledge/search-knowledge.tool'
 			);

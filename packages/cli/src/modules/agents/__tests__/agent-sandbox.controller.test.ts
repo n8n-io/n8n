@@ -4,6 +4,8 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { Response } from 'express';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentSandboxController } from '../agent-sandbox.controller';
 import type { AgentsService } from '../agents.service';
@@ -47,9 +49,10 @@ describe('AgentSandboxController route access scopes', () => {
 describe('AgentSandboxController knowledge sandbox warmup', () => {
 	it('returns accepted and logs background warmup failures without surfacing them', async () => {
 		const { controller, agentKnowledgeService, logger, res } = makeController();
+		agentKnowledgeService.hasFilesForWarmup.mockResolvedValue(true);
 		agentKnowledgeService.warmSandbox.mockRejectedValue(new Error('daytona unavailable'));
 
-		const result = controller.warmKnowledgeSandbox(
+		const result = await controller.warmKnowledgeSandbox(
 			{ user: { id: 'user-1' } } as never,
 			res,
 			'project-1',
@@ -71,5 +74,22 @@ describe('AgentSandboxController knowledge sandbox warmup', () => {
 			agentId: 'agent-1',
 			error: 'daytona unavailable',
 		});
+	});
+
+	it('rejects before accepting when the knowledge base is disabled', async () => {
+		const { controller, agentsService, agentKnowledgeService, res } = makeController();
+		agentsService.isKnowledgeBaseEnabled.mockReturnValue(false);
+
+		await expect(
+			controller.warmKnowledgeSandbox(
+				{ user: { id: 'user-1' } } as never,
+				res,
+				'project-1',
+				'agent-1',
+			),
+		).rejects.toThrow(NotFoundError);
+		expect(res.status).not.toHaveBeenCalled();
+		expect(agentKnowledgeService.hasFilesForWarmup).not.toHaveBeenCalled();
+		expect(agentKnowledgeService.warmSandbox).not.toHaveBeenCalled();
 	});
 });

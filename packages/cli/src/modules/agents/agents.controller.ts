@@ -446,7 +446,14 @@ export class AgentsController {
 				throw new BadRequestError('No files uploaded');
 			}
 
-			return await this.agentKnowledgeService.uploadFiles(agentId, projectId, files, req.user.id);
+			const uploadedFiles = await this.agentKnowledgeService.uploadFiles(
+				agentId,
+				projectId,
+				files,
+				req.user.id,
+			);
+			this.agentsService.clearRuntimeCacheForAgent(agentId);
+			return uploadedFiles;
 		} catch (error) {
 			// Multer wrote temp files to disk before this handler ran. The success
 			// path hands them to AgentKnowledgeService (which cleans up its own temp
@@ -467,6 +474,7 @@ export class AgentsController {
 	) {
 		this.assertKnowledgeBaseEnabled();
 		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId, req.user.id);
+		this.agentsService.clearRuntimeCacheForAgent(agentId);
 		return { success: true };
 	}
 

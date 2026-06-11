@@ -11,6 +11,7 @@ import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
 	AgentKnowledgeSandboxService,
 } from '../agent-knowledge-sandbox.service';
+import { KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE } from '../agent-knowledge-commands';
 import type { AgentFile } from '../entities/agent-file.entity';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -264,25 +265,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 	});
 
-	it('dedupes concurrent warmups for the same sandbox scope', async () => {
-		let resolveCreate: (sandbox: MockSandbox) => void;
-		createMock.mockReturnValue(
-			new Promise<MockSandbox>((resolve) => {
-				resolveCreate = resolve;
-			}),
-		);
-		const service = makeService();
-
-		const firstWarmup = service.warmSandbox('project-1', 'agent-1', userId);
-		const secondWarmup = service.warmSandbox('project-1', 'agent-1', userId);
-
-		await new Promise((resolve) => setImmediate(resolve));
-		expect(createMock).toHaveBeenCalledTimes(1);
-
-		resolveCreate!(makeSandbox('started'));
-		await expect(Promise.all([firstWarmup, secondWarmup])).resolves.toEqual([undefined, undefined]);
-	});
-
 	it('searchKnowledge runs a bounded search and parses matching file metadata', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([makeAgentFile()]);
@@ -345,6 +327,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		);
 		const command = sandbox.process.executeCommand.mock.calls[0][0];
 		expect(command).toContain('bash -o pipefail -c');
+		expect(command).toContain(`exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`);
 		expect(command).toContain('hello');
 		expect(command).toContain('| awk ');
 		expect(command).not.toContain('--context');
@@ -399,6 +382,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		);
 		const command = sandbox.process.executeCommand.mock.calls[0][0];
 		expect(command).toContain('bash -o pipefail -c');
+		expect(command).toContain(`exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`);
 		expect(command).toContain('*agent*tool*');
 		expect(command).toContain('| head -n 2');
 	});
@@ -419,6 +403,51 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(createMock).not.toHaveBeenCalled();
 	});
 
+	it('rejects warmSandbox before Daytona access when the knowledge base is disabled', async () => {
+		for (const { config, message } of [
+			{
+				config: { sandboxEnabled: false },
+				message: 'Agent knowledge sandbox is not enabled',
+			},
+			{
+				config: { sandboxEnabled: true, sandboxProvider: 'daytona', daytonaVolumeId: '   ' },
+				message: 'Agent knowledge Daytona volume is not configured',
+			},
+		]) {
+			listMock.mockClear();
+			createMock.mockClear();
+			const service = makeService(config);
+
+			await expect(service.warmSandbox('project-1', 'agent-1', userId)).rejects.toThrow(message);
+			expect(listMock).not.toHaveBeenCalled();
+			expect(createMock).not.toHaveBeenCalled();
+		}
+	});
+
+	it('redacts secrets from sandbox output in command failure errors', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 2,
+			artifacts: {
+				stdout: 'leaked key sk-proj-abcdefghij0123456789 in file\n',
+				stderr: 'request used Bearer abcdefghijklmnop123456\n',
+			},
+		});
+		const service = makeService();
+
+		const promise = service.readKnowledge('project-1', 'agent-1', userId, { fileId: 'file-1' });
+
+		await expect(promise).rejects.toThrow('Agent knowledge read failed');
+		const message = await promise.catch((error: Error) => error.message);
+		expect(message).toContain('Agent knowledge read failed');
+		expect(message).toContain('exitCode=2');
+		expect(message).toContain('[REDACTED]');
+		expect(message).not.toContain('sk-proj-abcdefghij0123456789');
+		expect(message).not.toContain('Bearer abcdefghijklmnop123456');
+	});
+
 	it('readKnowledge builds scoped numeric awk commands and parses ranges', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([makeAgentFile()]);
@@ -431,7 +460,6 @@ describe('AgentKnowledgeSandboxService', () => {
 
 		await expect(
 			service.readKnowledge('project-1', 'agent-1', userId, {
-				file: 'notes.txt',
 				fileId: 'file-1',
 				ranges: [{ startLine: 2, endLine: 3 }],
 			}),

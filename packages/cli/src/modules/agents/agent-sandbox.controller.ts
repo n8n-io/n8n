@@ -3,6 +3,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentsService } from './agents.service';
 
@@ -16,18 +18,28 @@ export class AgentSandboxController {
 
 	@Post('/:agentId/sandbox/knowledge/warmup')
 	@ProjectScope('agent:execute')
-	warmKnowledgeSandbox(
+	async warmKnowledgeSandbox(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: Response,
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
-	): { accepted: true } {
+	): Promise<{ accepted: true }> {
+		this.assertKnowledgeBaseEnabled();
+		const hasFiles = await this.agentKnowledgeService.hasFilesForWarmup(agentId, projectId);
 		res.status(202);
-		setImmediate(() => {
-			void this.warmKnowledgeSandboxInBackground(projectId, agentId, req.user.id);
-		});
+		if (hasFiles) {
+			setImmediate(() => {
+				void this.warmKnowledgeSandboxInBackground(projectId, agentId, req.user.id);
+			});
+		}
 
 		return { accepted: true };
+	}
+
+	private assertKnowledgeBaseEnabled() {
+		if (!this.agentsService.isKnowledgeBaseEnabled()) {
+			throw new NotFoundError('Agent knowledge base is not enabled');
+		}
 	}
 
 	private async warmKnowledgeSandboxInBackground(

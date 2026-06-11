@@ -261,6 +261,10 @@ export class AgentsService {
 			});
 	}
 
+	clearRuntimeCacheForAgent(agentId: string): void {
+		this.clearRuntimes(agentId);
+	}
+
 	/**
 	 * Reconcile the local runtime cache when a peer main reports that an
 	 * agent's configuration changed. The originating main has already cleared

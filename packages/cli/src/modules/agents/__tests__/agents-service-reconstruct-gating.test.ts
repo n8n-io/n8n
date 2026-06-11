@@ -27,6 +27,7 @@ import type { AgentsToolsService } from '../agents-tools.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
+import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
@@ -63,6 +64,7 @@ function makeReconstructionService(
 	overrides: {
 		logger?: Logger;
 		agentsConfig?: Partial<AgentsConfig>;
+		agentFileRepository?: AgentFileRepository;
 		agentKnowledgeSandboxService?: AgentKnowledgeSandboxService;
 	} = {},
 ): AgentRuntimeReconstructionService {
@@ -71,6 +73,7 @@ function makeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
 		mock<AgentRepository>(),
+		overrides.agentFileRepository ?? mock<AgentFileRepository>(),
 		mock<WorkflowRunner>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
@@ -518,42 +521,49 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		const agentsToolsService = mock<AgentsToolsService>();
 		agentsToolsService.getRuntimeTools.mockReturnValue([] as BuiltTool[]);
 		const credentialProvider = mock<CredentialProvider>();
+		const agentFileRepository = mock<AgentFileRepository>();
 		const agentKnowledgeSandboxService = mock<AgentKnowledgeSandboxService>();
 		const service = makeReconstructionService(agentsToolsService, [], {
 			agentsConfig,
+			agentFileRepository,
 			agentKnowledgeSandboxService,
 		});
 		return {
 			service,
 			credentialProvider,
+			agentFileRepository,
 		};
 	}
 
 	it.each([
 		{
-			name: 'enabled Daytona volume',
+			name: 'enabled Daytona volume and uploaded files',
 			agentsConfig: {
 				sandboxEnabled: true,
 				sandboxProvider: 'daytona',
 				daytonaVolumeId: 'volume-1',
 			},
+			hasFiles: true,
 			injectsTools: true,
 		},
 		{
-			name: 'missing Daytona volume',
+			name: 'enabled Daytona volume without uploaded files',
 			agentsConfig: {
 				sandboxEnabled: true,
 				sandboxProvider: 'daytona',
-				daytonaVolumeId: '',
+				daytonaVolumeId: 'volume-1',
 			},
+			hasFiles: false,
 			injectsTools: false,
 		},
 	] satisfies Array<{
 		name: string;
 		agentsConfig: Partial<AgentsConfig>;
+		hasFiles: boolean;
 		injectsTools: boolean;
-	}>)('$name', async ({ agentsConfig, injectsTools }) => {
-		const { service, credentialProvider } = setup(agentsConfig);
+	}>)('$name', async ({ agentsConfig, hasFiles, injectsTools }) => {
+		const { service, credentialProvider, agentFileRepository } = setup(agentsConfig);
+		agentFileRepository.hasFilesForAgent.mockResolvedValue(hasFiles);
 
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
@@ -561,5 +571,6 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		for (const toolName of ['glob_knowledge_files', 'search_knowledge', 'read_knowledge']) {
 			expect(toolNames.includes(toolName)).toBe(injectsTools);
 		}
+		expect(agentFileRepository.hasFilesForAgent).toHaveBeenCalledWith('agent-1');
 	});
 });

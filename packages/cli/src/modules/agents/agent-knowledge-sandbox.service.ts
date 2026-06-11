@@ -1,3 +1,4 @@
+import { redactText } from '@n8n/agents';
 import { loadDaytona } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
@@ -18,6 +19,7 @@ import {
 	buildReadKnowledgeCommand,
 	buildScopedKnowledgeShellCommand,
 	buildSearchKnowledgeCommand,
+	KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE,
 	parseGlobKnowledgeFilesOutput,
 	parseReadKnowledgeOutput,
 	parseRipgrepOutput,
@@ -29,6 +31,7 @@ import {
 	fromVolumeStorageReference,
 	type AgentKnowledgeFilesystem,
 } from './agent-knowledge-storage';
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import {
 	assertValidKnowledgeFilePath,
 	DEFAULT_GLOB_FILES_LIMIT,
@@ -139,16 +142,32 @@ function truncateSandboxErrorDetail(value: string): string {
 	return `${value.slice(0, MAX_SANDBOX_ERROR_DETAIL_CHARS)}...[truncated]`;
 }
 
+/** Redact secrets before truncating so a match cut in half cannot leak. */
+function sanitizeSandboxErrorDetail(value: string): string {
+	return truncateSandboxErrorDetail(redactText(value).text.trimEnd());
+}
+
 function formatSandboxCommandFailure(
 	operation: 'glob' | 'read' | 'search',
 	result: AgentKnowledgeCommandResult,
 ): string {
-	const stderrText = result.stderr.trimEnd();
-	const stdoutText = result.stdout.trimEnd();
+	const stderrText = sanitizeSandboxErrorDetail(result.stderr);
+	const stdoutText = sanitizeSandboxErrorDetail(result.stdout);
 	const parts = [`Agent knowledge ${operation} failed`, `exitCode=${result.exitCode}`];
-	parts.push(stderrText ? `stderr=${truncateSandboxErrorDetail(stderrText)}` : 'stderr=<empty>');
-	parts.push(stdoutText ? `stdout=${truncateSandboxErrorDetail(stdoutText)}` : 'stdout=<empty>');
+	parts.push(stderrText ? `stderr=${stderrText}` : 'stderr=<empty>');
+	parts.push(stdoutText ? `stdout=${stdoutText}` : 'stdout=<empty>');
 	return parts.join('; ');
+}
+
+function assertKnowledgeFilesDirectoryAvailable(
+	operation: 'glob' | 'read' | 'search',
+	result: AgentKnowledgeCommandResult,
+): void {
+	if (result.exitCode !== KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE) return;
+
+	throw new OperationalError(
+		`Agent knowledge ${operation} failed because the uploaded knowledge files directory is unavailable in the sandbox`,
+	);
 }
 
 @Service()
@@ -204,6 +223,7 @@ export class AgentKnowledgeSandboxService {
 		});
 		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
 
+		assertKnowledgeFilesDirectoryAvailable('search', result);
 		if (result.exitCode === 1) {
 			return {
 				matches: [],
@@ -244,6 +264,7 @@ export class AgentKnowledgeSandboxService {
 		const command = buildGlobKnowledgeFilesCommand(validatedRequest);
 		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
 
+		assertKnowledgeFilesDirectoryAvailable('glob', result);
 		if (result.exitCode === 1) {
 			return {
 				files: [],
@@ -276,6 +297,7 @@ export class AgentKnowledgeSandboxService {
 		const command = buildReadKnowledgeCommand(file.file, validatedRequest);
 		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
 
+		assertKnowledgeFilesDirectoryAvailable('read', result);
 		if (result.exitCode !== 0) {
 			throw new OperationalError(formatSandboxCommandFailure('read', result));
 		}
@@ -350,26 +372,7 @@ export class AgentKnowledgeSandboxService {
 		request: ReadKnowledgeRequest,
 		references: AgentKnowledgeReferenceLookup,
 	): AgentKnowledgeFileReference {
-		if (request.file && request.fileId) {
-			const normalized = assertValidKnowledgeFilePath(request.file);
-			const fileByPath = references.byFile.get(normalized);
-			const fileById = references.byId.get(request.fileId);
-			if (!fileByPath || !fileById || fileByPath.fileId !== fileById.fileId) {
-				throw new BadRequestError('Knowledge file not found');
-			}
-			return fileByPath;
-		}
-
-		if (request.file) {
-			const normalized = assertValidKnowledgeFilePath(request.file);
-			const file = references.byFile.get(normalized);
-			if (!file) {
-				throw new BadRequestError('Knowledge file not found');
-			}
-			return file;
-		}
-
-		const file = references.byId.get(request.fileId ?? '');
+		const file = this.resolveOptionalFile(request, references);
 		if (!file) {
 			throw new BadRequestError('Knowledge file not found');
 		}
@@ -569,8 +572,7 @@ export class AgentKnowledgeSandboxService {
 	}
 
 	private assertKnowledgeConfiguration(projectId: string, agentId: string): void {
-		this.assertKnowledgeSandboxEnabled();
-		this.assertKnowledgeVolumeConfigured();
+		this.assertKnowledgeBaseEnabled();
 		this.assertValidPathSegments(projectId, agentId);
 	}
 
@@ -586,15 +588,19 @@ export class AgentKnowledgeSandboxService {
 		}
 	}
 
-	private assertKnowledgeSandboxEnabled(): void {
-		if (!this.agentsConfig.sandboxEnabled || this.agentsConfig.sandboxProvider !== 'daytona') {
-			throw new OperationalError('Agent knowledge sandbox is not enabled');
+	private assertKnowledgeBaseEnabled(): void {
+		if (isAgentKnowledgeBaseEnabled(this.agentsConfig)) {
+			return;
 		}
-	}
 
-	private assertKnowledgeVolumeConfigured(): void {
-		if (!this.agentsConfig.daytonaVolumeId.trim()) {
+		if (
+			this.agentsConfig.sandboxEnabled &&
+			this.agentsConfig.sandboxProvider === 'daytona' &&
+			!this.agentsConfig.daytonaVolumeId.trim()
+		) {
 			throw new OperationalError('Agent knowledge Daytona volume is not configured');
 		}
+
+		throw new OperationalError('Agent knowledge sandbox is not enabled');
 	}
 }

@@ -273,6 +273,62 @@ describe('AgentsController file uploads', () => {
 			),
 		).rejects.toThrow(BadRequestError);
 	});
+
+	it('clears the runtime cache after successful uploads', async () => {
+		const { controller, agentsService, agentKnowledgeService } = makeController();
+		const uploadedFiles = [
+			{
+				id: 'file-1',
+				agentId: 'agent-1',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 5,
+				createdAt: '2026-06-01T10:00:00.000Z',
+			},
+		];
+		agentKnowledgeService.uploadFiles.mockResolvedValue(uploadedFiles as never);
+
+		await expect(
+			controller.uploadFiles(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					files: [{ originalname: 'notes.txt' }],
+				} as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+			),
+		).resolves.toBe(uploadedFiles);
+		expect(agentKnowledgeService.uploadFiles).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			[{ originalname: 'notes.txt' }],
+			'user-1',
+		);
+		expect(agentsService.clearRuntimeCacheForAgent).toHaveBeenCalledWith('agent-1');
+	});
+
+	it('clears the runtime cache after successful file deletion', async () => {
+		const { controller, agentsService, agentKnowledgeService } = makeController();
+
+		await expect(
+			controller.deleteFile(
+				{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+				undefined as never,
+				'project-1',
+				'agent-1',
+				'file-1',
+			),
+		).resolves.toEqual({ success: true });
+		expect(agentKnowledgeService.deleteFile).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			'file-1',
+			'user-1',
+		);
+		expect(agentsService.clearRuntimeCacheForAgent).toHaveBeenCalledWith('agent-1');
+	});
 });
 
 describe('AgentsController knowledge base gating', () => {

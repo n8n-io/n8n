@@ -2,6 +2,8 @@ import type { AgentFileDto } from '@n8n/api-types';
 import path from 'node:path';
 import { OperationalError } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
 import type { AgentFile } from './entities/agent-file.entity';
 
 export const AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH = '/home/daytona/workspace/agent-knowledge';
@@ -61,7 +63,13 @@ export function assertKnowledgePathSegment(segment: string, label: string): void
 
 function sanitizeStorageFileName(originalName: string): string {
 	const basename = path.basename(originalName);
-	return Array.from(basename, sanitizePathCharacter).join('');
+	const sanitized = Array.from(basename, sanitizePathCharacter).join('');
+	// `path.basename` passes through `.`, `..`, and empty names, which would
+	// resolve outside the scoped knowledge files directory when joined.
+	if (!sanitized || sanitized === '.' || sanitized === '..') {
+		throw new BadRequestError(`Invalid knowledge file name "${originalName}"`);
+	}
+	return sanitized;
 }
 
 export function toVolumeStorageReference(storageFileName: string): string {
