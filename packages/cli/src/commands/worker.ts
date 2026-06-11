@@ -16,7 +16,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import type { ScalingService } from '@/scaling/scaling.service';
-import type { WorkerServerEndpointsConfig } from '@/scaling/worker-server';
+import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { JwtService } from '@/services/jwt.service';
 
@@ -175,8 +175,6 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.scalingService = Container.get(ScalingService);
 
 		await this.scalingService.setupQueue();
-
-		this.scalingService.setupWorker(this.concurrency);
 	}
 
 	async run() {
@@ -186,12 +184,19 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 			metrics: this.globalConfig.endpoints.metrics.enable,
 		};
 
+		let workerServer: WorkerServer | undefined;
 		if (Object.values(endpointsConfig).some((e) => e)) {
 			const { WorkerServer } = await import('@/scaling/worker-server');
-			const workerServer = Container.get(WorkerServer);
+			workerServer = Container.get(WorkerServer);
 			await workerServer.init(endpointsConfig);
-			workerServer.markAsReady();
 		}
+
+		// Register the job processor only after `init()` has fully completed,
+		// so that jobs cannot be pulled before all modules and their
+		// execution contexts are available.
+		this.scalingService.setupWorker(this.concurrency);
+
+		workerServer?.markAsReady();
 
 		this.logger.info('\nn8n worker is now ready');
 		this.logger.info(` * Version: ${N8N_VERSION}`);
