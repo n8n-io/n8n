@@ -254,7 +254,7 @@ describe('remove()', () => {
 			const dbWorkflow = await createActiveWorkflow();
 			jest
 				.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
-				.mockReturnValue([mock<IWebhookData>({ path: 'some-path' })]);
+				.mockReturnValue([mock<IWebhookData>({ node: 'Schedule Trigger', path: 'some-path' })]);
 
 			await activeWorkflowManager.init();
 			await activeWorkflowManager.remove(dbWorkflow.id);
