@@ -14,7 +14,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createDeferredPromise, sleep, UnexpectedError, Workflow } from 'n8n-workflow';
+import { createDeferredPromise, sleep, UnexpectedError } from 'n8n-workflow';
+import type { Workflow } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -225,7 +226,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 		describe('emitError', () => {
 			test('delegates to the injected onTriggerFailure callback', () => {
-				const onTriggerFailure = jest.fn<void, Parameters<TriggerFailureHandler>>();
+				const onTriggerFailure = jest.fn<() => void, Parameters<TriggerFailureHandler>>();
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 				const mode: WorkflowExecuteMode = 'trigger';
