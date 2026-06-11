@@ -106,6 +106,7 @@ describe('getMcpWorkflow', () => {
 
 			expect(findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, ['workflow:execute'], {
 				includeActiveVersion: undefined,
+				includeActiveVersionPublishHistory: false,
 			});
 		});
 
@@ -122,6 +123,7 @@ describe('getMcpWorkflow', () => {
 
 			expect(findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, ['workflow:publish'], {
 				includeActiveVersion: true,
+				includeActiveVersionPublishHistory: false,
 			});
 		});
 	});

@@ -56,6 +56,7 @@ export async function getMcpWorkflow(
 ): Promise<FoundWorkflow> {
 	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, scopes, {
 		includeActiveVersion: options?.includeActiveVersion,
+		includeActiveVersionPublishHistory: false,
 	});
 
 	if (!workflow) {
