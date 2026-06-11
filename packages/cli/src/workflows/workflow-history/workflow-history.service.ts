@@ -12,8 +12,6 @@ import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
 
@@ -264,13 +262,7 @@ export class WorkflowHistoryService {
 			'versionId' | 'workflowId' | 'createdAt' | 'updatedAt'
 		>,
 	) {
-		// Cast to TypeORM's update payload type to avoid a TS2589 (excessively
-		// deep instantiation) when tsc converts the deep WorkflowHistory partial
-		// at the call site — same workaround as WorkflowService.updateWorkflow.
-		await this.workflowHistoryRepository.update(
-			{ versionId, workflowId },
-			updateData as QueryDeepPartialEntity<WorkflowHistory>,
-		);
+		await this.workflowHistoryRepository.update({ versionId, workflowId }, updateData);
 	}
 
 	/**
