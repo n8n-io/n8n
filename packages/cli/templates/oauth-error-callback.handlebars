@@ -22,7 +22,7 @@
 				broadcastChannel.postMessage('error');
 				// Bridge to the opener for embed setups where the editor and the
 				// n8n backend live on different origins (BroadcastChannel is same-origin only).
-				try { window.opener?.postMessage('success', '*'); } catch (_) {}
+				try { window.opener?.postMessage('error', '*'); } catch (_) {}
 			})();
 		</script>
 	</body>

@@ -218,6 +218,7 @@ export function useCredentialOAuth() {
 				if (settled) return;
 				settled = true;
 				oauthChannel.close();
+				clearInterval(popupClosedPoll);
 				window.removeEventListener('message', onWindowMessage);
 				resolve(result);
 			}
@@ -257,6 +258,16 @@ export function useCredentialOAuth() {
 			});
 
 			window.addEventListener('message', onWindowMessage);
+
+			// Fallback: if the popup is closed without delivering a callback (e.g. the
+			// user closes it manually), no message ever arrives. Poll for the closed
+			// popup so the promise resolves and the listeners above are cleaned up
+			// instead of leaking and hanging indefinitely.
+			const popupClosedPoll = setInterval(() => {
+				if (popup.closed) {
+					settle(false);
+				}
+			}, 500);
 		});
 	}
 
