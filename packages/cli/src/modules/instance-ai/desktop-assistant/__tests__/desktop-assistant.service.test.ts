@@ -969,9 +969,7 @@ describe('DesktopAssistantService.getTaskDetail', () => {
 			parts: [{ kind: 'text', text: '' }],
 		} as never);
 
-		await expect(ctx.service.getTaskDetail(USER, 'wf-1')).rejects.toThrow(
-			'no usable description',
-		);
+		await expect(ctx.service.getTaskDetail(USER, 'wf-1')).rejects.toThrow('no usable description');
 		expect(ctx.workflowRepository.update).not.toHaveBeenCalled();
 	});
 
