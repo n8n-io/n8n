@@ -31,9 +31,11 @@ const TMP_DIR = resolve(PKG_ROOT, '.tmp-schema-docs');
 const TBLS_IMAGE =
 	'ghcr.io/k1low/tbls:v1.94.5@sha256:ae8a3bff6d4f8495d13a7982cd71fac3e8a3d1dd394888f2c44ef82216aa14e4';
 
+/** Thrown for expected, user-facing failures so `main`'s cleanup still runs. */
+class FailError extends Error {}
+
 function fail(msg) {
-	console.error(`error: ${msg}`);
-	process.exit(1);
+	throw new FailError(msg);
 }
 
 /** Turns a spawn failure into an actionable message for missing binaries. */
@@ -61,19 +63,19 @@ function parseArgs(argv) {
 
 /** Runs a command, inheriting stdio. Resolves with the exit code. */
 function run(cmd, cmdArgs, env) {
-	return new Promise((res) => {
+	return new Promise((res, rej) => {
 		const child = spawn(cmd, cmdArgs, { cwd: REPO_ROOT, env, stdio: 'inherit' });
-		child.on('error', (err) => fail(spawnErrorMessage(cmd, err)));
+		child.on('error', (err) => rej(new FailError(spawnErrorMessage(cmd, err))));
 		child.on('close', (code) => res(code ?? 1));
 	});
 }
 
 /** Runs a command, capturing stdout (used for `tbls diff`). */
 function capture(cmd, cmdArgs, env) {
-	return new Promise((res) => {
+	return new Promise((res, rej) => {
 		let stdout = '';
 		const child = spawn(cmd, cmdArgs, { cwd: REPO_ROOT, env });
-		child.on('error', (err) => fail(spawnErrorMessage(cmd, err)));
+		child.on('error', (err) => rej(new FailError(spawnErrorMessage(cmd, err))));
 		child.stdout.on('data', (d) => (stdout += d));
 		child.stderr.on('data', (d) => process.stderr.write(d));
 		child.on('close', (code) => res({ code: code ?? 1, stdout }));
@@ -233,4 +235,13 @@ async function main() {
 	}
 }
 
-await main();
+try {
+	await main();
+} catch (err) {
+	if (err instanceof FailError) {
+		console.error(`error: ${err.message}`);
+		process.exitCode = 1;
+	} else {
+		throw err;
+	}
+}
