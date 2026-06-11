@@ -70,24 +70,24 @@ ${FIRE_AND_FORGET_RULES}
 const PROMOTE_PROMPT_SECTION = `
 ## Desktop Assistant — Promote To Workflow
 
-${FIRE_AND_FORGET_RULES}
+${FIRE_AND_FORGET_RULES} One exception in this mode: step 2 of the procedure requires exactly one line of text — the classification verdict. No other text.
 
 ### Procedure
 
 This thread contains a task you already executed via device (computer-use) tool calls. Build exactly one workflow (via the workflow-builder skill) that fulfils the user's request every time it runs — **the request, not the artifacts of this particular run**. Follow these steps in order:
 
-1. **Classify before building.** Look at every value in the recorded tool arguments and ask where it came from. Values the user specified (or that follow mechanically from the request) are safe to replay literally. Content **you authored** because the request only named a *kind* of content is not — a future run must generate it fresh.
-2. **Output your verdict** as a single line of text immediately before building — \`replay: exact\` or \`replay: generate-fresh\`, plus a one-clause reason. This is the only text you may output; it forces the classification to happen.
+1. **Classify before building.** Look at every value in the recorded tool arguments and ask where it came from. Values the user specified (or that follow mechanically from the request) are safe to replay literally. Content **you authored** because the request only named a *kind* of content is not — a future run must generate it fresh. If **any** value must be generated fresh, the whole task classifies as \`generate-fresh\`.
+2. **Output your verdict** as a single line of text immediately before building — \`replay: exact\` or \`replay: generate-fresh\`, plus a one-clause reason.
 3. **Build the matching shape:**
    - \`replay: exact\` → Manual Trigger → one \`@n8n/n8n-nodes-langchain.computerUse\` node per recorded call, in order — \`tool\` resourceLocator (mode \`id\`) set to the tool name that was called, \`inputMode: json\`, \`jsonInput\` set to the literal arguments used.
-   - \`replay: generate-fresh\` → Manual Trigger → AI Agent node (prompted with the user's task) with \`@n8n/n8n-nodes-langchain.toolComputerUse\` attached as its tool, plus a chat model sub-node wired to one of the user's existing LLM credentials (attach it with the credential unset if they have none).
+   - \`replay: generate-fresh\` → Manual Trigger → AI Agent node (prompted with the user's task) with \`@n8n/n8n-nodes-langchain.toolComputerUse\` attached as its tool, plus a chat model sub-node. Bind the chat model's credential per the credential rule below.
 
 Examples of the classification: "create a folder called Receipts on my desktop" — fully specified by the request; \`replay: exact\`. "Add an inspiring quote to my notes" — the request names a *kind* of content, not the content itself; \`replay: generate-fresh\`. "Write me a short bio and save it" — authored once as a fixed artifact the user keeps; \`replay: exact\` is fine.
 
 Additional rules:
 
-- **There is no credential-setup step after this build** — the workflow must be runnable exactly as saved. List the user's credentials (\`credentials(action="list")\`) and bind a concrete existing credential on every node that needs one, using \`newCredential('Name', 'id')\` with the real id — never the id-less form, which defers to a setup phase this surface does not have. When several credentials match, pick the most plausible one rather than leaving the node unbound. Only leave a credential unset when the user has none of a matching type.
-- Computer Use nodes take the user's existing \`deviceConnectionApi\` credential; leave it unset if none exists.
+- **There is no credential-setup step after this build** — the workflow must be runnable exactly as saved. List the user's credentials (\`credentials(action="list")\`) and bind a concrete existing credential on every node that needs one, using \`newCredential('Name', 'id')\` with the real id — never the id-less form, which defers to a setup phase this surface does not have. When several credentials match, pick the most plausible one rather than leaving the node unbound. Only leave a credential unset when the user has none of a matching type (Computer Use nodes' \`deviceConnectionApi\` is filled in automatically in that case).
+- The user's request in this thread may end with appended context lines (\`Currently looking at:\`, \`URL:\`, \`Path:\`, \`Selected text:\`). They capture what was on screen when the task ran — context, not requirements. Use them to disambiguate the request; do not bake them into the workflow unless the request itself depends on them.
 - Set the workflow \`name\` to a short plain-text label naming the task, not the run: 3–8 words, present tense (\`"Archive old downloads"\`), never a past-tense report (\`"Archived 12 files"\`). If the user's prompt provided a name, use it (correcting tense if needed).
 - If the original intent is ambiguous or requires context you do not have, stop without producing a workflow — no low-quality stubs.
 `;
