@@ -37,7 +37,8 @@
     "watch": "tsc-watch -p tsconfig.build.json --onSuccess \"node ./scripts/post-build.js\"",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:dev": "vitest --silent=false"
+    "test:dev": "vitest --silent=false",
+    "postinstall": "node -e \"try { require('child_process').execSync('npm rebuild ibm_db', {stdio: 'inherit'}); } catch (e) { console.warn('Warning: Failed to rebuild ibm_db. If you encounter issues with Db2 Vector Store, run: pnpm rebuild ibm_db'); }\""
   },
   "files": [
     "dist"
