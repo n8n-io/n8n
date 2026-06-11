@@ -14,10 +14,13 @@ import type { AppSettings, SettingsStore } from './settings-store';
 import type { ThreadService } from './thread-service';
 import type {
 	AuthStatus,
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -42,6 +45,13 @@ export interface IpcHandlerDeps {
 	contextDetector: ContextDetector;
 	/** Opens a URL in the user's default browser (e.g. shell.openExternal). */
 	openExternal: (url: string) => Promise<void>;
+}
+
+/** Human-readable message for an error caught at the IPC boundary. */
+function ipcErrorMessage(error: unknown): string {
+	return error instanceof InstanceApiError || error instanceof Error
+		? error.message
+		: String(error);
 }
 
 /** Where forwarded attachments are written for inspection — next to the log file. */
@@ -183,8 +193,7 @@ export function registerIpcHandlers({
 			const { executionId } = await instanceApi.runWorkflow(workflowId);
 			return { ok: true, executionId };
 		} catch (error) {
-			const message =
-				error instanceof InstanceApiError || error instanceof Error ? error.message : String(error);
+			const message = ipcErrorMessage(error);
 			logger.error('IPC tasks:run failed', { workflowId, error: message });
 			return { ok: false, error: message };
 		}
@@ -193,6 +202,47 @@ export function registerIpcHandlers({
 	ipcMain.handle('tasks:openWorkflow', async (_event, workflowId: string): Promise<void> => {
 		logger.debug('IPC tasks:openWorkflow', { workflowId });
 		const url = instanceApi.workflowUrl(workflowId);
+		if (url) await openExternal(url);
+	});
+
+	ipcMain.handle(
+		'tasks:detail',
+		async (_event, workflowId: string): Promise<DesktopAssistantTaskDetailResponse> => {
+			logger.debug('IPC tasks:detail', { workflowId });
+			return await instanceApi.getTaskDetail(workflowId);
+		},
+	);
+
+	ipcMain.handle(
+		'tasks:applyEdits',
+		async (
+			_event,
+			workflowId: string,
+			body: DesktopAssistantApplyEditsRequest,
+		): Promise<DesktopAssistantApplyEditsResponse> => {
+			logger.debug('IPC tasks:applyEdits', { workflowId, changes: body.changes.length });
+			return await instanceApi.applyTaskEdits(workflowId, body);
+		},
+	);
+
+	ipcMain.handle(
+		'tasks:delete',
+		async (_event, workflowId: string): Promise<{ ok: boolean; error?: string }> => {
+			logger.debug('IPC tasks:delete', { workflowId });
+			try {
+				await instanceApi.archiveWorkflow(workflowId);
+				return { ok: true };
+			} catch (error) {
+				const message = ipcErrorMessage(error);
+				logger.error('IPC tasks:delete failed', { workflowId, error: message });
+				return { ok: false, error: message };
+			}
+		},
+	);
+
+	ipcMain.handle('tasks:openCredentials', async (): Promise<void> => {
+		logger.debug('IPC tasks:openCredentials');
+		const url = instanceApi.credentialsUrl();
 		if (url) await openExternal(url);
 	});
 

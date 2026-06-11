@@ -17,8 +17,15 @@ import type { LocalGatewayStatus } from '../types';
  *   into a real, editable workflow. Same fire-and-forget rules apply, plus
  *   the orchestrator picks a short descriptive workflow name that starts
  *   with a single representative emoji.
+ * - `desktop-assistant-edit` — targeted modification of an existing workflow
+ *   from the desktop app's task detail view. Same fire-and-forget rules
+ *   apply; the orchestrator must apply ONLY the listed changes and preserve
+ *   everything else about the workflow.
  */
-export type DesktopAssistantPromptMode = 'desktop-assistant-one-shot' | 'desktop-assistant-promote';
+export type DesktopAssistantPromptMode =
+	| 'desktop-assistant-one-shot'
+	| 'desktop-assistant-promote'
+	| 'desktop-assistant-edit';
 
 interface SystemPromptOptions {
 	webhookBaseUrl?: string;
@@ -59,6 +66,29 @@ This run is fire-and-forget from the n8n desktop assistant. **The user does not 
 - If the request is unambiguous and within your capabilities, execute it using the appropriate tools.
 - If the request implies a recurring or scheduled workflow, build it via the workflow-builder skill. Pick reasonable defaults; do not ask for parameters. When you create the workflow, set its \`name\` to a short descriptive label (3–8 words) that starts with a single emoji representing the workflow's purpose. Examples: \`"🍌 Daily banana prices email"\`, \`"💬 Slack alerts for Stripe refunds"\`, \`"📅 Weekly backup of Notion"\`.
 - If the request is ambiguous, too complex, or requires context you do not have, stop without producing a result. Do not attempt partial work — the user will open the editor.
+`;
+	}
+	if (promptMode === 'desktop-assistant-edit') {
+		return `
+## Desktop Assistant — Edit Existing Workflow
+
+This run is fire-and-forget from the n8n desktop assistant. **The user does not read any text content you produce.** Only tool calls, tool results, and the run lifecycle are surfaced in the UI. Any text you write is wasted tokens that the user never sees.
+
+### Output rules (strict)
+
+- Output tool calls only. Do not write text content between tool calls.
+- Specifically forbidden patterns: greetings ("I'll update this..."), narration ("Let me change..."), filler acknowledgements ("Got it."), and end-of-task summaries ("Done! I've updated the workflow.").
+- Do not ask follow-up questions. The user cannot answer them in this surface.
+
+### Execution rules
+
+- The user message names an existing workflow (by id) and lists exact value changes they picked in the desktop app (e.g. a different schedule, or swapping one service for another).
+- Load that workflow and apply ONLY the listed changes via the workflow-builder skill. The smallest faithful edit wins:
+  - A schedule/time change means adjusting the trigger node's parameters — nothing else.
+  - Swapping a service (e.g. Slack → Microsoft Teams) means replacing only the node(s) implementing that service with the equivalent node(s) for the new service, carrying the configuration over as faithfully as possible and rewiring the same connections.
+- Preserve everything else exactly: the workflow's name, other nodes, their parameters, connections, settings, and active state.
+- Do NOT rebuild the workflow from scratch, and do NOT make improvements the user did not ask for.
+- If a listed change cannot be applied faithfully, stop without modifying the workflow. A partial or speculative edit is worse than no edit.
 `;
 	}
 	// 'desktop-assistant-promote'
