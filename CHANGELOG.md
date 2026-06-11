@@ -1,3 +1,11 @@
+## [2.26.3](https://github.com/n8n-io/n8n/compare/n8n@2.26.2...n8n@2.26.3) (2026-06-11)
+
+
+### Bug Fixes
+
+* **editor:** Insert instance ai prompt suggestions instead of submit ([#32126](https://github.com/n8n-io/n8n/issues/32126)) ([b4242c8](https://github.com/n8n-io/n8n/commit/b4242c895343ece2b6497d05128c3a89b9ad8deb))
+
+
 ## [2.26.2](https://github.com/n8n-io/n8n/compare/n8n@2.26.1...n8n@2.26.2) (2026-06-10)
 
 
