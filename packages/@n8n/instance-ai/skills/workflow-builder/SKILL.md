@@ -272,7 +272,9 @@ When `nodes(action="explore-resources")` returns no results for a required
 resource:
 
 1. If the resource can be represented as a user choice, use
-   `placeholder('Select <resource>')` and let setup collect it after the build.
+   `placeholder('Select <resource>')` in the resource-locator `value` field (for
+   example `channel: { mode: 'list', value: placeholder('Select channel') }`)
+   and let setup collect it after the build.
 2. If the user explicitly asked you to create the resource and the node type
    definition has a safe create operation, build and verify that
    resource-creation workflow as part of the requested work.
@@ -389,12 +391,13 @@ column names.
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
   field.
-- For unresolved resource-locator fields (values shaped like `{ __rl: true,
-  mode, value }`, such as Slack channel selectors), use the resource-locator
-  object shape instead of a raw `placeholder()` string. If no credential exists
-  to resolve a real channel, prefer id mode with an empty value and a cached
-  result name, for example `{ __rl: true, mode: 'id', value: '',
-  cachedResultName: 'Select support channel to monitor' }`.
+- For unresolved resource-locator fields (values shaped like `{ __rl: true, mode, value }`),
+  keep the resource-locator object shape and put `placeholder('…')` in the
+  `value` property — never an empty string and never a top-level raw
+  `placeholder()` string. Check the type definition for allowed modes on each
+  parameter. Example:
+  `{ __rl: true, mode: 'list', value: placeholder('Select channel'), cachedResultName: 'Support channel' }`.
+  `{ __rl: true, mode: 'id', value: placeholder('Add channel id'), cachedResultName: 'Support channel' }`.
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
 - Whenever a node declares mock `output` for verification, include every field

@@ -49,6 +49,17 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 	},
 	{
 		service: 'Openai',
+		endpoint: 'POST /v1/responses',
+		guidance:
+			'Responses API (`POST /v1/responses`) — `output` MUST be an ARRAY of output items, never a plain string. For text-only replies, return one `message` item:\n' +
+			'`{ "id": "resp_...", "object": "response", "status": "completed", "model": "<from request>", "output": [{ "id": "msg_...", "type": "message", "role": "assistant", "status": "completed", "content": [{ "type": "output_text", "text": "<assistant text from scenario hints>", "annotations": [] }] }], "usage": { "input_tokens": 0, "output_tokens": 0, "total_tokens": 0 } }`.\n' +
+			'For tool calls, use `type: "function_call"` items in `output` instead of `message`. Never put the assistant text directly in `output` as a string — n8n nodes call `response.output.filter(...)` and crash when `output` is not an array.',
+		rationale:
+			'The OpenAI vendor node (operation response) calls `response.output.filter(...)`. Mock LLMs often return `output` as a string; that crashes the node before downstream nodes run.',
+		addedAt: '2026-06-13',
+	},
+	{
+		service: 'Openai',
 		guidance:
 			'OpenAI endpoints commonly seen in workflows:\n' +
 			'  * `POST /v1/audio/transcriptions` and `POST /v1/audio/translations` → JSON `{ "text": "<plausible transcript>", ... }`. The request multipart body has been redacted (you will see `__redacted: "multipart"`); derive the transcript from scenario/node hints when present, otherwise return a short generic English sentence.\n' +

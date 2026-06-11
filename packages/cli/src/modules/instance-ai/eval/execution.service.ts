@@ -478,7 +478,9 @@ export class EvalExecutionService {
 			if (pinDataNodeNames.includes(node.name)) continue;
 
 			if (node.parameters) {
-				node.parameters = scrubPlaceholderValues(node.parameters) as INodeParameters;
+				node.parameters = synthesizeEmptyResourceLocatorsInParameters(
+					scrubPlaceholderValues(node.parameters),
+				) as INodeParameters;
 			}
 
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -882,6 +884,25 @@ function scrubPlaceholderValues(value: unknown): unknown {
 	return value;
 }
 
+/** Walk parameters and fill empty resource-locator slots the SDK cleared during serialization. */
+function synthesizeEmptyResourceLocatorsInParameters(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.map(synthesizeEmptyResourceLocatorsInParameters);
+	}
+	if (value !== null && typeof value === 'object') {
+		const obj = value as Record<string, unknown>;
+		if ('__rl' in obj) {
+			return synthesizeMissingParamValue(obj);
+		}
+		const out: Record<string, unknown> = {};
+		for (const [key, child] of Object.entries(obj)) {
+			out[key] = synthesizeEmptyResourceLocatorsInParameters(child);
+		}
+		return out;
+	}
+	return value;
+}
+
 function synthesizeMissingParamValue(current: unknown): unknown {
 	if (
 		current !== null &&
@@ -895,10 +916,18 @@ function synthesizeMissingParamValue(current: unknown): unknown {
 		const hasValue =
 			(typeof rawValue === 'string' && rawValue.length > 0) ||
 			(typeof rawValue === 'number' && Number.isFinite(rawValue));
+
+		if (hasValue) {
+			return { ...rl, mode, value: rawValue };
+		}
+
+		// SDK serialization clears list-mode placeholder markers to "" while keeping
+		// cachedResultName — synthesize eval-safe IDs so mocked execution can proceed.
+		const synthesized = synthesizeMissingResourceLocatorValue(rl, mode);
 		return {
 			...rl,
-			mode,
-			value: hasValue ? rawValue : '__evalMockResource',
+			mode: synthesized.mode ?? mode,
+			value: synthesized.value,
 		};
 	}
 
@@ -906,6 +935,37 @@ function synthesizeMissingParamValue(current: unknown): unknown {
 	if (current === null || current === undefined) return '__evalMockValue';
 
 	return current;
+}
+
+/** Infer eval-safe resource-locator values when the saved workflow left list-mode slots empty. */
+function synthesizeMissingResourceLocatorValue(
+	rl: Record<string, unknown>,
+	mode: string,
+): { value: string | number; mode?: string } {
+	const cachedResultName = typeof rl.cachedResultName === 'string' ? rl.cachedResultName : '';
+	const nameLower = cachedResultName.toLowerCase();
+
+	if (mode === 'name') {
+		if (cachedResultName.length > 0) return { value: cachedResultName };
+		return { value: 'Sheet1' };
+	}
+
+	// Tab/sheet in list mode — gid 0 is the usual first tab.
+	if (
+		mode === 'list' &&
+		(nameLower.includes('sheet') ||
+			cachedResultName === 'Sheet1' ||
+			/^sheet\d*$/i.test(cachedResultName))
+	) {
+		return { value: '0' };
+	}
+
+	// Spreadsheet/document in list or id mode.
+	if (mode === 'list' || mode === 'id' || mode === 'url') {
+		return { value: 'eval-spreadsheet-id' };
+	}
+
+	return { value: 'eval-spreadsheet-id' };
 }
 
 function collectConfigIssueErrors(nodeResults: Record<string, InstanceAiEvalNodeResult>): string[] {

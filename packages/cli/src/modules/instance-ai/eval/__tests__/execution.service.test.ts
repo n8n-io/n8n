@@ -873,6 +873,52 @@ describe('EvalExecutionService', () => {
 				driveId: 'eval-drive-id',
 			});
 		});
+
+		it('synthesizes eval IDs for cleared list-mode resource locators with cachedResultName', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						{
+							id: 'node-2',
+							name: 'Sheets Node',
+							type: 'n8n-nodes-base.googleSheets',
+							typeVersion: 4.7,
+							position: [200, 0],
+							parameters: {
+								documentId: {
+									__rl: true,
+									mode: 'list',
+									value: '',
+									cachedResultName: 'SmartAssist Bookings',
+								},
+								sheetName: {
+									__rl: true,
+									mode: 'list',
+									value: '',
+									cachedResultName: 'Sheet1',
+								},
+							},
+						} as INode,
+					],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			const runArg = workflowRunner.run.mock.calls[0][0];
+			const sheetsNode = runArg.workflowData.nodes.find((node) => node.name === 'Sheets Node');
+
+			expect(sheetsNode?.parameters?.documentId).toMatchObject({
+				mode: 'list',
+				value: 'eval-spreadsheet-id',
+				cachedResultName: 'SmartAssist Bookings',
+			});
+			expect(sheetsNode?.parameters?.sheetName).toMatchObject({
+				mode: 'list',
+				value: '0',
+				cachedResultName: 'Sheet1',
+			});
+		});
 	});
 
 	// ── buildResult behavior ─────────────────────────────────────────

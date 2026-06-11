@@ -37,6 +37,24 @@ Storage Requirements:
 n8n forms attach the attribution "n8n workflow" to messages by default - you must disable this setting which will
 often be called "Append n8n Attribution" for the n8n form nodes, add this setting and set it to false.
 
+## Form Field Types (Critical)
+
+Form Trigger and Form nodes share the same \`fieldType\` enum. Valid values are:
+\`text\`, \`number\`, \`email\`, \`textarea\`, \`dropdown\`, \`date\`, \`file\`, \`html\`, \`hiddenField\`,
+\`radio\`, \`checkbox\`, and \`password\`.
+
+There is NO \`time\` field type. For appointment times or other time-of-day inputs, use
+\`fieldType: 'text'\` with a placeholder such as \`'e.g. 2:30 PM'\`. Use \`fieldType: 'date'\` only for
+calendar dates (YYYY-MM-DD), not times.
+
+Using an invalid \`fieldType\` (for example \`'time'\`) fails SDK validation and causes repeated build retries.
+
+## Form Completion (Form Trigger v2.2+)
+
+Form Trigger v2.2 and later do NOT support \`Respond to Webhook\` as the response mode. To show a thank-you or
+confirmation message after submission, add an \`n8n-nodes-base.form\` node with \`operation: 'completion'\`
+(Form Ending page type) at the end of the workflow — not a Respond to Webhook node.
+
 ## Multi-Step Forms
 
 Build multi-step forms by chaining multiple Form nodes together. Each Form node represents a page or step in your form
@@ -101,6 +119,13 @@ Pitfalls:
 - Every form workflow MUST include a storage node that actually writes data to a destination
 - Set and Merge nodes alone are NOT sufficient - they only transform data in memory
 - The storage node should be placed immediately after the form trigger (single-step) or after data aggregation (multi-step)
+- For Google Sheets: \`documentId\` resource locator modes are \`list\`, \`url\`, and \`id\` only (not \`name\`).
+  \`sheetName\` may use \`mode: 'name'\`.
+- When \`nodes(action="explore-resources")\` finds the spreadsheet, set \`documentId\` to
+  \`{ mode: 'list', value: '<spreadsheetId>', cachedResultName: '<display name>' }\`.
+- When no spreadsheet is found, put \`placeholder('Select spreadsheet')\` in
+  \`documentId.value\` — never an empty string and never \`mode: 'name'\` on \`documentId\`.
+  Example: \`documentId: { mode: 'list', value: placeholder('Select spreadsheet'), cachedResultName: 'My Spreadsheet' }\`.
 
 ### Code (n8n-nodes-base.code)
 
