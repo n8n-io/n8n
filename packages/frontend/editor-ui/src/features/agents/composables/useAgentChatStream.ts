@@ -671,6 +671,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (params.endpoint.value === 'build' && doneSeen) {
 			await nextTick();
 			params.onBuildDone?.();
+		}
 
 		return { ok: !transportFailed && !session.errorEmitted };
 	}
