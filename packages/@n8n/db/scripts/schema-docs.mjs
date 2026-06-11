@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @ts-check
 /**
- * Generates (or verifies) the database schema documentation under `docs/db/`.
+ * Generates (or verifies) the database schema documentation under `docs/generated/`.
  *
  * The schema is defined by the migrations, not the entities (entities run with
  * `synchronize: false`). So we bring an empty database to the fully-migrated
@@ -226,7 +226,7 @@ async function main() {
 		} else if (code !== 0) {
 			fail(`tbls doc failed (exit ${code})`);
 		} else {
-			console.log(`✓ generated ${dbType} schema docs in docs/db/${dbType}`);
+			console.log(`✓ generated ${dbType} schema docs in docs/generated/${dbType}-schema`);
 		}
 	} finally {
 		await provisioned.cleanup();

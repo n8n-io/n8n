@@ -133,7 +133,7 @@ jobs:
               packages/cli/**/__tests__/**
               packages/testing/containers/services/postgres.ts
               .github/workflows/test-db-reusable.yml
-              docs/db/**
+              docs/generated/**
               .tbls.sqlite.yml
               .tbls.postgres.yml
 
