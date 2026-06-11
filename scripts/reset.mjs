@@ -77,4 +77,4 @@ echo('⏬ Running pnpm install...');
 await $`pnpm install`;
 
 echo(`🏗️ Running pnpm build (--max-old-space-size=${mem})...`);
-await $({ env: buildEnv })`pnpm build ${buildArgs}`;
+await $({ env: buildEnv })`pnpm build`;
