@@ -71,6 +71,29 @@ describe('useAssistantContext', () => {
 		expect(ctx.detected.value.id).toBe('w2');
 	});
 
+	it('does not latch a failed detection — a later call retries', async () => {
+		const failing = {
+			getContextOptions: vi.fn(async () => {
+				await Promise.resolve();
+				throw new Error('permission denied');
+			}),
+			onContextChanged: vi.fn((onChange: ContextChangedCb) => {
+				void onChange;
+				return () => {};
+			}),
+		};
+		(globalThis as unknown as { window: { electronAPI: typeof failing } }).window = {
+			electronAPI: failing,
+		};
+		const ctx = useAssistantContext();
+		await expect(ctx.ensureDetection()).rejects.toThrow('permission denied');
+
+		// A subsequent attempt (now succeeding) re-runs detection rather than no-opping.
+		stubElectronApi([W1]);
+		await ctx.ensureDetection();
+		expect(ctx.detected.value.id).toBe('w1');
+	});
+
 	it('falls back to a synthetic "other" context when nothing is detected', async () => {
 		stubElectronApi([]);
 		const ctx = useAssistantContext();

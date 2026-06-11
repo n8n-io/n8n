@@ -20,8 +20,11 @@ const selectedKey = ref<string | null>(null);
 
 // Single detection subscription for the app session. Set up lazily on first use
 // and intentionally never torn down — the context should stay live across tab
-// switches (TaskComposer unmounts when the History tab is shown).
+// switches (TaskComposer unmounts when the History tab is shown). `initPromise`
+// dedupes concurrent first-callers; `initialized` only latches on success so a
+// failed detection can be retried.
 let initialized = false;
+let initPromise: Promise<void> | undefined;
 let dispose: (() => void) | undefined;
 
 const detected = computed<DetectedContext>(() => {
@@ -41,16 +44,30 @@ const contextOptions = computed<AssistantContext[]>(() =>
 const contextKey = computed(() => detected.value.id ?? detected.value.app ?? detected.value.kind);
 
 export function useAssistantContext() {
-	/** Load the initial options and subscribe to pushes. Idempotent across callers. */
+	/** Load the initial options and subscribe to pushes. Idempotent across callers;
+	 *  a failure is not latched, so a later caller can retry. */
 	async function ensureDetection(): Promise<void> {
 		if (initialized) return;
-		initialized = true;
-		optionsList.value = await window.electronAPI.getContextOptions();
-		dispose = window.electronAPI.onContextChanged((contexts) => {
-			optionsList.value = contexts;
-			// A fresh detection supersedes a stale manual pick.
-			selectedKey.value = null;
-		});
+		if (initPromise) {
+			await initPromise;
+			return;
+		}
+		initPromise = (async () => {
+			optionsList.value = await window.electronAPI.getContextOptions();
+			dispose = window.electronAPI.onContextChanged((contexts) => {
+				optionsList.value = contexts;
+				// A fresh detection supersedes a stale manual pick.
+				selectedKey.value = null;
+			});
+			initialized = true;
+		})();
+		try {
+			await initPromise;
+		} catch (error) {
+			// Allow a retry on the next call rather than latching a broken state.
+			initPromise = undefined;
+			throw error;
+		}
 	}
 
 	function selectContext(key: string | null): void {
@@ -76,4 +93,5 @@ export function __resetAssistantContextForTests(): void {
 	dispose?.();
 	dispose = undefined;
 	initialized = false;
+	initPromise = undefined;
 }

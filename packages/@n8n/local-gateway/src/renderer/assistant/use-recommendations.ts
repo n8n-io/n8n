@@ -97,7 +97,17 @@ export function useRecommendations() {
 		// Show the skeleton straight away, before detection/fetch resolves, so the
 		// empty state never flashes its "No tasks yet" fallback first.
 		loading.value = true;
-		await ensureDetection();
+		error.value = false;
+		try {
+			await ensureDetection();
+		} catch (e) {
+			// Detection failed — surface the empty-state fallback rather than a
+			// skeleton that never resolves.
+			console.error('Failed to detect context for recommendations', e);
+			error.value = true;
+			loading.value = false;
+			return;
+		}
 		schedule(contextKey.value, true);
 		// Sync flush so a context change schedules deterministically.
 		stopWatch = watch(contextKey, (key) => schedule(key, false), { flush: 'sync' });

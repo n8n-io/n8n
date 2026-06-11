@@ -1065,6 +1065,13 @@ export class InstanceAiService {
 			.instructions(opts.instructions)
 			.structuredOutput(opts.schema);
 		const result = await agent.generate(opts.input);
+		// `generate()` never throws — a model/transport failure surfaces here. Rethrow
+		// it with its cause attached so the failure is diagnosable (callers fall back).
+		if (result.finishReason === 'error' || result.error !== undefined) {
+			throw new OperationalError('Instance AI structured generation failed', {
+				cause: result.error,
+			});
+		}
 		if (result.structuredOutput === undefined || result.structuredOutput === null) {
 			throw new OperationalError('Structured generation returned no output');
 		}

@@ -114,6 +114,30 @@ describe('useRecommendations', () => {
 		expect(recs.loading.value).toBe(false);
 	});
 
+	it('falls back to error state when context detection fails', async () => {
+		const getRecommendations = vi.fn();
+		const api = {
+			getContextOptions: vi.fn(async () => {
+				await Promise.resolve();
+				throw new Error('no accessibility permission');
+			}),
+			onContextChanged: vi.fn(() => () => {}),
+			getRecommendations,
+		};
+		(globalThis as unknown as { window: { electronAPI: typeof api } }).window = {
+			electronAPI: api,
+		};
+
+		const recs = makeRecommendations();
+		await recs.start();
+		await vi.advanceTimersByTimeAsync(0);
+
+		// Detection failed → empty-state fallback, not a stuck skeleton.
+		expect(recs.loading.value).toBe(false);
+		expect(recs.error.value).toBe(true);
+		expect(getRecommendations).not.toHaveBeenCalled();
+	});
+
 	it('sets error and clears recommendations when generation fails', async () => {
 		const { getRecommendations } = stub([W1]);
 		getRecommendations.mockRejectedValueOnce(new Error('model unavailable'));
