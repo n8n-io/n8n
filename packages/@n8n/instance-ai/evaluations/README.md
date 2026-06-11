@@ -535,6 +535,8 @@ Test cases live in `evaluations/data/workflows/*.json`. Drop a file in, the CLI 
 }
 ```
 
+`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `buildExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional.
+
 **One JSON file = one LangSmith split.** Scenarios in the same file share a split; split names derive from the filename slug. Pick a slug you're happy to also use as a `--filter` target.
 
 **Prompt tips**
@@ -556,9 +558,19 @@ Test cases live in `evaluations/data/workflows/*.json`. Drop a file in, the CLI 
 - Edge cases — empty data, missing fields, single vs multiple items
 - Error scenarios only if the workflow is expected to handle them gracefully. Most agent-built workflows don't include error handling, so "the workflow crashes on invalid input" is a legitimate finding, not a test-case failure.
 
-### Adding a new credential type
+### Credentials
 
-`credentials/seeder.ts` seeds generic creds (HTTP Header, HTTP Basic) on every run, plus env-gated creds (GitHub, Gmail, Teams, Linear…) when the matching env var is set. If your scenario needs a credential type that isn't there, add it to the appropriate list in `seeder.ts` — env-gated if it requires a real token, generic if a placeholder is fine.
+By default a build sees **no credentials**: the harness pins every build thread's credential view to the case's declared set (empty unless declared), so concurrent cases — and whatever happens to live on the instance — can never leak into a build. Every node mocks during verification.
+
+A case that tests credential behaviour declares what should exist:
+
+```json
+"credentials": [{ "type": "slackApi" }, { "type": "slackApi" }]
+```
+
+Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
+
+Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
 
 ## Failure categories
 

@@ -174,6 +174,13 @@ export interface ConversationTurn {
 	text: string;
 }
 
+export interface TestCaseCredential {
+	/** n8n credential type name, e.g. `slackApi`. Must have a template in credentials/seeder.ts. */
+	type: string;
+	/** Display name; defaults to the template's name, auto-suffixed on duplicates. */
+	name?: string;
+}
+
 export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 	description?: string;
@@ -196,6 +203,12 @@ export interface WorkflowTestCase {
 	 *  per-case + headline pass rate alongside execution scenarios (baseline-regression folding
 	 *  tracked separately in TRUST-158). */
 	buildExpectations?: string[];
+	/**
+	 * Credentials visible to this case's build. Created for real before the build
+	 * and pinned as the thread's entire credential view — cases without this
+	 * field build with an empty view (everything mocks).
+	 */
+	credentials?: TestCaseCredential[];
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
