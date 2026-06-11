@@ -11,7 +11,6 @@ import MiniSpinner from './MiniSpinner.vue';
 import { suggestionChipsFor } from '../assistant/contexts';
 import { watchAssistantRun } from '../assistant/run-watcher';
 import { useAssistantContext } from '../assistant/use-assistant-context';
-import { useAssistantScreen } from '../assistant/use-assistant-screen';
 import { usePendingTasks } from '../assistant/use-pending-tasks';
 import { getThreadPromptWatcher } from '../permissions/thread-prompt-watcher';
 import type { DesktopAssistantTaskRequest } from '../../shared/types';
@@ -119,19 +118,6 @@ async function buildTaskContext(): Promise<DesktopAssistantTaskRequest['context'
 		} catch (error) {
 			console.error('Screenshot capture failed; sending the task without it', error);
 		}
-		// Inspection aid while the UI flow is stubbed: see exactly what context the
-		// composer forwards. Attachment data is omitted (it's multi-MB base64); the
-		// main process logs a fuller summary too.
-		console.info('[desktop-assistant] triggerTask', {
-			prompt,
-			context: { ...context, attachments: context.attachments?.length ?? 0 },
-		});
-		const { threadId, runId } = await window.electronAPI.triggerTask({ prompt, context });
-		// Watch the new thread app-wide so its permission prompts surface even
-		// though no chat view is open; auto-released when the run finishes.
-		getThreadPromptWatcher().trackTaskThread(threadId, runId);
-	} catch (error) {
-		console.error('triggerTask failed', error);
 	}
 	return context;
 }
@@ -156,6 +142,10 @@ async function submit(prompt?: string) {
 			});
 			return;
 		}
+
+		// Watch the new thread app-wide so its permission prompts surface even
+		// though no chat view is open; auto-released when the run finishes.
+		getThreadPromptWatcher().trackTaskThread(created.threadId, created.runId);
 
 		// The run executes on the user's machine and can take minutes; the input
 		// stays disabled and the Doing pill stays up until it resolves.
@@ -277,7 +267,7 @@ defineExpose({ submit });
 						<div :class="$style.resultActions">
 							<AssistantButton @click="dismissResult">
 								{{ i18n.baseText('desktopAssistant.composer.noThanks') }}
-							</button>
+							</AssistantButton>
 							<AssistantButton variant="solid" @click="keepTask">
 								{{ i18n.baseText('desktopAssistant.composer.saveAsReady') }}
 							</AssistantButton>

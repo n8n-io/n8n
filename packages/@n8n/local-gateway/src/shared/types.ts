@@ -136,6 +136,9 @@ export interface LocalPermissionPromptRequest {
 export interface ConfirmThreadResult {
 	ok: boolean;
 	status?: number;
+	error?: string;
+}
+
 /** Result of starting a one-shot assistant task run from the composer. */
 export interface CreateAssistantTaskResult {
 	ok: boolean;
