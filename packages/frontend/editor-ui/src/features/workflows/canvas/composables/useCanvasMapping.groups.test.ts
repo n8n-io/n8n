@@ -382,3 +382,137 @@ describe('remapCollapsedGroupConnections', () => {
 		}
 	});
 });
+
+describe('buildCollapsedGroupByNodeId', () => {
+	it('only indexes nodes inside collapsed groups', () => {
+		const g1: IWorkflowGroup = { id: 'g1', name: 'G1', nodeIds: ['a', 'b'] };
+		const g2: IWorkflowGroup = { id: 'g2', name: 'G2', nodeIds: ['c'] };
+		const map = buildCollapsedGroupByNodeId([g1, g2], (id) => id === 'g1');
+		expect(map.get('a')?.id).toBe('g1');
+		expect(map.get('b')?.id).toBe('g1');
+		expect(map.get('c')).toBeUndefined();
+	});
+});
+
+describe('remapCollapsedGroupConnections', () => {
+	function makeConnection(
+		source: string,
+		target: string,
+		opts: Partial<CanvasConnection> = {},
+	): CanvasConnection {
+		return {
+			id: `${source}->${target}`,
+			source,
+			target,
+			sourceHandle: 'outputs/main/0',
+			targetHandle: 'inputs/main/0',
+			data: {
+				source: { node: source, index: 0, type: 'main' as never },
+				target: { node: target, index: 0, type: 'main' as never },
+			},
+			...opts,
+		} as CanvasConnection;
+	}
+
+	const g1: IWorkflowGroup = { id: 'g1', name: 'G1', nodeIds: ['m1', 'm2'] };
+
+	it('drops connections entirely inside a collapsed group', () => {
+		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
+		const result = remapCollapsedGroupConnections([makeConnection('m1', 'm2')], collapsedMap);
+		expect(result).toHaveLength(0);
+	});
+
+	it('rewrites endpoints when one side is inside a collapsed group', () => {
+		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
+		const result = remapCollapsedGroupConnections(
+			[makeConnection('external', 'm1'), makeConnection('m2', 'external2')],
+			collapsedMap,
+		);
+		expect(result).toHaveLength(2);
+		const incoming = result.find((c) => c.source === 'external');
+		expect(incoming?.target).toBe('group:g1');
+		expect(incoming?.targetHandle).toBe('left');
+		const outgoing = result.find((c) => c.target === 'external2');
+		expect(outgoing?.source).toBe('group:g1');
+		expect(outgoing?.sourceHandle).toBe('right');
+	});
+
+	it('leaves external-only connections untouched', () => {
+		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
+		const result = remapCollapsedGroupConnections([makeConnection('a', 'b')], collapsedMap);
+		expect(result[0].source).toBe('a');
+		expect(result[0].target).toBe('b');
+	});
+
+	it('preserves data.source.type for non-main connections', () => {
+		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
+		const aiConnection = makeConnection('external', 'm1');
+		aiConnection.data = {
+			source: { node: 'external', index: 0, type: 'ai_tool' as never },
+			target: { node: 'm1', index: 0, type: 'ai_tool' as never },
+		};
+		const result = remapCollapsedGroupConnections([aiConnection], collapsedMap);
+		expect(result[0].data?.source.type).toBe('ai_tool');
+	});
+
+	it('stashes the canonical endpoints on data so mutations can resolve real workflow nodes', () => {
+		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
+		const result = remapCollapsedGroupConnections([makeConnection('external', 'm1')], collapsedMap);
+		expect(result[0].source).toBe('external');
+		expect(result[0].target).toBe('group:g1');
+		expect(result[0].data?.canonicals).toEqual([
+			{
+				source: 'external',
+				target: 'm1',
+				sourceHandle: 'outputs/main/0',
+				targetHandle: 'inputs/main/0',
+			},
+		]);
+	});
+
+	it('does not set canonicals on connections that were not remapped', () => {
+		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
+		const result = remapCollapsedGroupConnections([makeConnection('a', 'b')], collapsedMap);
+		expect(result[0].data?.canonicals).toBeUndefined();
+	});
+
+	it('merges edges remapping to the same endpoints into one, keeping every canonical', () => {
+		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
+		const result = remapCollapsedGroupConnections(
+			[makeConnection('m1', 'external'), makeConnection('m2', 'external')],
+			collapsedMap,
+		);
+		expect(result).toHaveLength(1);
+		expect(result[0].source).toBe('group:g1');
+		expect(result[0].data?.canonicals).toEqual([
+			{
+				source: 'm1',
+				target: 'external',
+				sourceHandle: 'outputs/main/0',
+				targetHandle: 'inputs/main/0',
+			},
+			{
+				source: 'm2',
+				target: 'external',
+				sourceHandle: 'outputs/main/0',
+				targetHandle: 'inputs/main/0',
+			},
+		]);
+	});
+
+	it('structural invariant: no connection references a collapsed member as endpoint', () => {
+		const collapsedMap = buildCollapsedGroupByNodeId([g1], () => true);
+		const result = remapCollapsedGroupConnections(
+			[
+				makeConnection('external', 'm1'),
+				makeConnection('m2', 'external2'),
+				makeConnection('m1', 'm2'),
+			],
+			collapsedMap,
+		);
+		for (const connection of result) {
+			expect(collapsedMap.has(connection.source)).toBe(false);
+			expect(collapsedMap.has(connection.target)).toBe(false);
+		}
+	});
+});
