@@ -875,9 +875,7 @@ export class ActiveWorkflowManager {
 				onTriggerFailure: (failure) => this.handleTriggerFailure(failure),
 			},
 			nodeIds ??
-				new Set(
-					[...workflow.getTriggerNodes(), ...workflow.getPollNodes()].map((node) => node.id),
-				),
+				new Set([...workflow.getTriggerNodes(), ...workflow.getPollNodes()].map((node) => node.id)),
 		);
 	}
 
