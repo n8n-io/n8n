@@ -33,6 +33,7 @@ export interface ConnectPayload {
 import type {
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
+	DesktopAssistantDescriptionPart,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
@@ -73,6 +74,7 @@ export type {
 	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantDescriptionPart,
 	DesktopAssistantTaskDetailResponse,
+	DesktopAssistantTaskPlan,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 	InstanceAiToolCallState,
@@ -148,6 +150,16 @@ export interface CreateAssistantTaskResult {
 }
 
 /**
+ * Extras the draft-flow promote carries: the user-configured plan parts that
+ * ground the build, and the minutes-saved estimate stored on the workflow.
+ * Threaded through to `POST /desktop-assistant/promote-thread` verbatim.
+ */
+export interface PromoteAssistantThreadOptions {
+	configuredParts?: DesktopAssistantDescriptionPart[];
+	estimatedMinutesSaved?: number;
+}
+
+/**
  * Result of asking the instance to promote a thread into a saved workflow.
  * Idempotent: `building` while the build runs, `done` (with `workflowId`)
  * once a promote has produced the workflow.
@@ -203,6 +215,7 @@ export interface ElectronApi {
 		threadId: string,
 		name?: string,
 		icon?: string,
+		options?: PromoteAssistantThreadOptions,
 	) => Promise<PromoteAssistantThreadResult>;
 	openWorkflow: (workflowId: string) => Promise<void>;
 	/** The task detail view's segmented description (LLM-generated, cached server-side). */

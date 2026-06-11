@@ -11,6 +11,7 @@ import MiniSpinner from './MiniSpinner.vue';
 import { suggestionChipsFor } from '../assistant/contexts';
 import { watchAssistantRun } from '../assistant/run-watcher';
 import { useAssistantContext } from '../assistant/use-assistant-context';
+import { useAssistantScreen } from '../assistant/use-assistant-screen';
 import { usePendingTasks } from '../assistant/use-pending-tasks';
 import { getThreadPromptWatcher } from '../permissions/thread-prompt-watcher';
 import type { DesktopAssistantTaskRequest } from '../../shared/types';
@@ -36,6 +37,7 @@ const MAX_LABEL_LENGTH = 60;
 
 const i18n = useI18n();
 const pendingTasks = usePendingTasks();
+const { goTo } = useAssistantScreen();
 
 const emit = defineEmits<{ kept: [] }>();
 
@@ -151,6 +153,13 @@ async function submit(prompt?: string) {
 		// stays disabled and the Doing pill stays up until it resolves.
 		state.value = 'doing';
 		const run = await watchAssistantRun(created.threadId, created.runId);
+
+		// The agent proposed a task plan instead of executing — hand the user over
+		// to the draft view to review and promote it (the finally block resets us).
+		if (run.plan) {
+			goTo({ name: 'draft', threadId: created.threadId, plan: run.plan });
+			return;
+		}
 
 		// Prefer the agent's structured outcome report over the tookAction heuristic.
 		if (run.outcome?.success) {

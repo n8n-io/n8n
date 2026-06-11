@@ -34,6 +34,7 @@ import type {
 	LocalPermissionPromptRequest,
 	MacPermissionKind,
 	MacPermissionStatus,
+	PromoteAssistantThreadOptions,
 	PromoteAssistantThreadResult,
 	RunTaskResult,
 	ScreenshotAttachment,
@@ -241,10 +242,11 @@ export function registerIpcHandlers({
 			threadId: string,
 			name?: string,
 			icon?: string,
+			options?: PromoteAssistantThreadOptions,
 		): Promise<PromoteAssistantThreadResult> => {
 			logger.debug('IPC assistant:promote', { threadId });
 			try {
-				const result = await instanceApi.promoteThread(threadId, name, icon);
+				const result = await instanceApi.promoteThread(threadId, name, icon, options);
 				return {
 					ok: true,
 					status: result.status,

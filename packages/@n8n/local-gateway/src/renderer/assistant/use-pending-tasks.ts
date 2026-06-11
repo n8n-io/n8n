@@ -8,6 +8,7 @@
 import { reactive, readonly } from 'vue';
 
 import { watchAssistantRun } from './run-watcher';
+import type { PromoteAssistantThreadOptions } from '../../shared/types';
 
 export interface PendingTask {
 	threadId: string;
@@ -46,9 +47,14 @@ function notifySaved() {
  * `building` (with the run to watch) until the workflow exists, `done` after —
  * so promote and watch in a loop until it settles.
  */
-async function runPromotion(threadId: string, label: string, icon?: string): Promise<void> {
+async function runPromotion(
+	threadId: string,
+	label: string,
+	icon?: string,
+	options?: PromoteAssistantThreadOptions,
+): Promise<void> {
 	for (;;) {
-		const result = await window.electronAPI.promoteAssistantThread(threadId, label, icon);
+		const result = await window.electronAPI.promoteAssistantThread(threadId, label, icon, options);
 		if (isDismissed(threadId)) return;
 		if (!result.ok) {
 			failEntry(threadId, result.error);
@@ -78,10 +84,15 @@ async function runPromotion(threadId: string, label: string, icon?: string): Pro
  * Start promoting a thread into a saved workflow and track it as pending.
  * `label` is shown on the pending card and becomes the saved workflow's name.
  */
-function promote(threadId: string, label: string, icon?: string) {
+function promote(
+	threadId: string,
+	label: string,
+	icon?: string,
+	options?: PromoteAssistantThreadOptions,
+) {
 	if (entries.some((entry) => entry.threadId === threadId)) return;
 	entries.push({ threadId, label, status: 'building' });
-	runPromotion(threadId, label, icon).catch((error: unknown) => {
+	runPromotion(threadId, label, icon, options).catch((error: unknown) => {
 		failEntry(threadId, error instanceof Error ? error.message : undefined);
 	});
 }

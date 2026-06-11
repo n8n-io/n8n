@@ -16,7 +16,11 @@ import type {
 } from '@n8n/api-types';
 import { logger } from '@n8n/computer-use/logger';
 
-import type { DesktopAssistantHistoryParams, DesktopAssistantTimeSaved } from '../shared/types';
+import type {
+	DesktopAssistantHistoryParams,
+	DesktopAssistantTimeSaved,
+	PromoteAssistantThreadOptions,
+} from '../shared/types';
 import type { OAuthFlow } from './oauth/oauth-flow';
 
 /** Day in ms, for the trailing time-saved ranges. */
@@ -243,11 +247,16 @@ export class InstanceApi {
 		threadId: string,
 		name?: string,
 		icon?: string,
+		options?: PromoteAssistantThreadOptions,
 	): Promise<DesktopAssistantPromoteResponse> {
 		const body: DesktopAssistantPromoteRequest = {
 			threadId,
 			...(name ? { name } : {}),
 			...(icon ? { icon } : {}),
+			...(options?.configuredParts ? { configuredParts: options.configuredParts } : {}),
+			...(options?.estimatedMinutesSaved
+				? { estimatedMinutesSaved: options.estimatedMinutesSaved }
+				: {}),
 		};
 		const response = await this.authedFetch('/desktop-assistant/promote-thread', {
 			method: 'POST',

@@ -23,8 +23,9 @@ import type {
 	LocalPermissionPromptRequest,
 	MacPermissionKind,
 	MacPermissionStatus,
-	ResourceDecision,
+	PromoteAssistantThreadOptions,
 	PromoteAssistantThreadResult,
+	ResourceDecision,
 	RunTaskResult,
 	ScreenshotAttachment,
 	StatusSnapshot,
@@ -81,12 +82,14 @@ const electronApi: ElectronApi = {
 		threadId: string,
 		name?: string,
 		icon?: string,
+		options?: PromoteAssistantThreadOptions,
 	): Promise<PromoteAssistantThreadResult> =>
 		await (ipcRenderer.invoke(
 			'assistant:promote',
 			threadId,
 			name,
 			icon,
+			options,
 		) as Promise<PromoteAssistantThreadResult>),
 
 	openWorkflow: async (workflowId: string): Promise<void> => {
