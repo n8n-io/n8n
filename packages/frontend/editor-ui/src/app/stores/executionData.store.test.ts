@@ -555,6 +555,169 @@ describe('executionData.store', () => {
 		});
 	});
 
+	describe('mutation commit channels', () => {
+		// Every in-place runData mutation must commit through three channels
+		// (timestamp bump, top-level identity replacement, change event) —
+		// see commitExecutionMutation in the store. Fake timers make Date.now()
+		// deterministic so a bump is distinguishable from a same-millisecond
+		// no-op.
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		type ExecutionDataStore = ReturnType<typeof useExecutionDataStore>;
+
+		function seedExecution(store: ExecutionDataStore) {
+			store.setExecution(
+				createTestExecution({
+					data: {
+						resultData: {
+							runData: {
+								NodeA: [{ executionIndex: 0, executionStatus: 'running', source: [] } as never],
+							},
+						},
+					} as never,
+				}),
+			);
+		}
+
+		function createNodeExecuteAfterDataPayload() {
+			return {
+				executionId: 'exec-1',
+				nodeName: 'NodeA',
+				data: {
+					executionStatus: 'success',
+					startTime: 1,
+					executionIndex: 0,
+					executionTime: 10,
+					source: [],
+					hints: [],
+				},
+				itemCountByConnectionType: {},
+			} as never;
+		}
+
+		const mutations: Array<{
+			name: string;
+			mutate: (store: ExecutionDataStore) => void;
+			action: 'update' | 'delete';
+			nodeName?: string;
+		}> = [
+			{
+				name: 'updateNodeExecutionStatus',
+				mutate: (store) => store.updateNodeExecutionStatus(createNodeExecuteAfterDataPayload()),
+				action: 'update',
+				nodeName: 'NodeA',
+			},
+			{
+				name: 'updateNodeExecutionRunData',
+				mutate: (store) => store.updateNodeExecutionRunData(createNodeExecuteAfterDataPayload()),
+				action: 'update',
+				nodeName: 'NodeA',
+			},
+			{
+				name: 'clearNodeExecutionData',
+				mutate: (store) => store.clearNodeExecutionData('NodeA'),
+				action: 'delete',
+				nodeName: 'NodeA',
+			},
+			{
+				name: 'renameExecutionDataNode',
+				mutate: (store) => store.renameExecutionDataNode('NodeA', 'NodeB'),
+				action: 'update',
+			},
+			{
+				name: 'markAsStopped',
+				mutate: (store) =>
+					store.markAsStopped({
+						status: 'canceled',
+						startedAt: new Date(0),
+						stoppedAt: new Date(1),
+					}),
+				action: 'update',
+			},
+		];
+
+		it.each(mutations)('$name bumps executionResultDataLastUpdate', ({ mutate }) => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			seedExecution(store);
+			const before = store.executionResultDataLastUpdate ?? 0;
+			vi.advanceTimersByTime(1);
+
+			mutate(store);
+
+			expect(store.executionResultDataLastUpdate).toBe(before + 1);
+		});
+
+		it.each(mutations)('$name replaces the top-level execution identity', ({ mutate }) => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			seedExecution(store);
+			const before = store.execution;
+
+			mutate(store);
+
+			expect(store.execution).not.toBeNull();
+			expect(store.execution).not.toBe(before);
+		});
+
+		it.each(mutations)('$name fires exactly one change event', ({ mutate, action, nodeName }) => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			seedExecution(store);
+			const spy = vi.fn();
+			store.onExecutionDataChange(spy);
+
+			mutate(store);
+
+			expect(spy).toHaveBeenCalledTimes(1);
+			expect(spy.mock.calls[0][0].action).toBe(action);
+			expect(spy.mock.calls[0][0].payload).toEqual({
+				executionId: 'exec-1',
+				...(nodeName ? { nodeName } : {}),
+			});
+		});
+
+		it('updateNodeExecutionRunData signals no channel when no matching executionIndex exists', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			seedExecution(store);
+			const beforeTimestamp = store.executionResultDataLastUpdate;
+			const beforeExecution = store.execution;
+			const spy = vi.fn();
+			store.onExecutionDataChange(spy);
+			vi.advanceTimersByTime(1);
+
+			store.updateNodeExecutionRunData({
+				executionId: 'exec-1',
+				nodeName: 'NodeA',
+				data: { executionIndex: 99, executionStatus: 'success', source: [] },
+				itemCountByConnectionType: {},
+			} as never);
+
+			expect(spy).not.toHaveBeenCalled();
+			expect(store.executionResultDataLastUpdate).toBe(beforeTimestamp);
+			expect(store.execution).toBe(beforeExecution);
+		});
+
+		it('updateNodeExecutionStatus signals no channel when execution data is missing', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			store.setExecution(createTestExecution({ data: undefined }));
+			const beforeTimestamp = store.executionResultDataLastUpdate;
+			const beforeExecution = store.execution;
+			const spy = vi.fn();
+			store.onExecutionDataChange(spy);
+			vi.advanceTimersByTime(1);
+
+			store.updateNodeExecutionStatus(createNodeExecuteAfterDataPayload());
+
+			expect(spy).not.toHaveBeenCalled();
+			expect(store.executionResultDataLastUpdate).toBe(beforeTimestamp);
+			expect(store.execution).toBe(beforeExecution);
+		});
+	});
+
 	describe('disposeExecutionDataStore', () => {
 		it('removes pinia state and recreate yields fresh state', () => {
 			const id = createExecutionDataId('exec-disposable');
