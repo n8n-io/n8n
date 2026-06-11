@@ -1,4 +1,4 @@
-import type { ProtectedResource, ProtectedResourceResolver } from '../protected-resource.registry';
+import type { ProtectedResource } from '../protected-resource.registry';
 import { ProtectedResourceRegistry } from '../protected-resource.registry';
 
 const resourceA: ProtectedResource = {
