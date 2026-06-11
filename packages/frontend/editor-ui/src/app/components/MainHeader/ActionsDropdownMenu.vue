@@ -35,6 +35,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
@@ -71,8 +72,17 @@ const workflowTelemetry = useTelemetry();
 const favoritesStore = useFavoritesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
+const editorContext = useEditorContext();
+
+// In the main app the layout header persists across routes, so route meta marks
+// the pages where the menu's workflow is shown. Editor hosts that are not on a
+// workflow route (e.g. the AI artifact preview) grant the menu directly via the
+// `workflowMenu` capability instead.
 const onWorkflowPage = computed(() => {
-	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
+	return (
+		editorContext.workflowMenu.value ||
+		!!(route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true))
+	);
 });
 
 const onExecutionsTab = computed(() => {

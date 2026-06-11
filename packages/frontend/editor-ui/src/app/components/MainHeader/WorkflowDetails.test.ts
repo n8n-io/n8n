@@ -25,7 +25,11 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { shallowRef, computed } from 'vue';
-import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	EditorEnabledFeaturesKey,
+	WorkflowDocumentStoreKey,
+	WorkflowIdKey,
+} from '@/app/constants/injectionKeys';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -315,6 +319,38 @@ describe('WorkflowDetails', () => {
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
+		});
+
+		it('should enable workflow actions when the host grants the workflowMenu capability', async () => {
+			// e.g. the AI artifact view: the editor is not on a workflow route (no
+			// workflow meta), so the host grants the menu via the editor context
+			// instead.
+			vi.mocked(useRoute)
+				.mockReset()
+				.mockReturnValue({
+					meta: {},
+					query: {},
+					params: {},
+				} as unknown as ReturnType<typeof useRoute>);
+
+			workflowDocumentStoreRef.value?.setScopes(['workflow:update', 'workflow:share']);
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultProps,
+					isArchived: false,
+				},
+				global: {
+					provide: {
+						[EditorEnabledFeaturesKey as symbol]: computed(() => ({ workflowMenu: true })),
+					},
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+
+			expect(getByTestId('workflow-menu-item-settings')).not.toHaveClass('disabled');
+			expect(getByTestId('workflow-menu-item-download')).not.toHaveClass('disabled');
+			expect(getByTestId('workflow-menu-item-duplicate')).not.toHaveClass('disabled');
 		});
 
 		it("should have disabled 'Archive' option on new workflow", async () => {
