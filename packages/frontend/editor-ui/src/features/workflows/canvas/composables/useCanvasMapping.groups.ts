@@ -53,14 +53,19 @@ function resolveNodeDimensions(
 }
 
 /**
- * Title bar position + width derived from the group's nodes-bounding rect.
- * Snaps the position to the canvas grid; if it didn't, VueFlow's
+ * Title bar layout (position + width) derived from the group's nodes-bounding
+ * rect. Snaps the position to the canvas grid; if it didn't, VueFlow's
  * `snap-to-grid` would shift the title bar on the first drag.
  *
- * Width is at least {@link GROUP_HEADER_WIDTH_COLLAPSED} so expanding a
- * tight cluster never shrinks the header below the collapsed chip size.
+ * A collapsed title bar is a fixed-size chip ({@link GROUP_HEADER_WIDTH_COLLAPSED}).
+ * An expanded one spans the member cluster (rect width + horizontal padding),
+ * floored at the collapsed width so a tight cluster never shrinks the header
+ * below the chip size.
  */
-export function titleBarFromNodesRect(nodesRect: NodesRect): {
+export function titleBarFromNodesRect(
+	nodesRect: NodesRect,
+	collapsed: boolean,
+): {
 	position: { x: number; y: number };
 	width: number;
 } {
@@ -71,7 +76,9 @@ export function titleBarFromNodesRect(nodesRect: NodesRect): {
 			x: snap(nodesRect.x - GROUP_PADDING_X),
 			y: snap(nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
 		},
-		width: Math.max(contentWidth, GROUP_HEADER_WIDTH_COLLAPSED),
+		width: collapsed
+			? GROUP_HEADER_WIDTH_COLLAPSED
+			: Math.max(contentWidth, GROUP_HEADER_WIDTH_COLLAPSED),
 	};
 }
 
@@ -154,12 +161,12 @@ export function mapGroupsToVueFlowNodes({
 			isCollapsed: collapsed,
 		};
 
-		const titleBar = titleBarFromNodesRect(nodesRect);
+		const titleBar = titleBarFromNodesRect(nodesRect, collapsed);
 		out.push({
 			id: `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`,
 			type: CANVAS_NODE_GROUP_TYPE,
 			position: titleBar.position,
-			width: collapsed ? GROUP_HEADER_WIDTH_COLLAPSED : titleBar.width,
+			width: titleBar.width,
 			height: GROUP_HEADER_HEIGHT,
 			draggable: !readOnly,
 			// Selectable only when the title bar represents

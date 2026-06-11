@@ -414,7 +414,7 @@ const keyMap = computed(() => {
 			run: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 		},
 		enter: emitWithLastSelectedNode((id) => onSetNodeActivated(id)),
-		ctrl_a: () => addSelectedNodes(selectableNodesAndGroups.value),
+		ctrl_a: onSelectAllNodes,
 		// Support both key and code for zooming in and out
 		'shift_+|+|=|shift_Equal|Equal': async () => await onZoomIn(),
 		'shift+_|-|_|shift_Minus|Minus': async () => await onZoomOut(),
@@ -490,7 +490,7 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
  * Nodes
  */
 
-const hasSelection = computed(() => selectedNodes.value.length > 0);
+const hasNodeSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
 
 // Selected node ids, with each selected collapsed group expanded to its members
@@ -609,7 +609,7 @@ function onCanvasGroupUngroup(groupId: string) {
 
 function onDeleteSelection() {
 	// Regular workflow nodes go through the existing delete flow
-	if (hasSelection.value) emit('delete:nodes', selectedNodeIds.value);
+	if (hasNodeSelection.value) emit('delete:nodes', selectedNodeIds.value);
 
 	for (const node of selectedNodesAndGroups.value) {
 		if (!isCanvasGroupNode(node)) continue;
@@ -661,6 +661,10 @@ function onSetNodeDeactivated(id: string) {
 
 function clearSelectedNodes() {
 	removeSelectedNodes(selectedNodesAndGroups.value);
+}
+
+function onSelectAllNodes() {
+	addSelectedNodes(selectableNodesAndGroups.value);
 }
 
 function onSelectNode() {
@@ -994,7 +998,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'delete':
 			return emit('delete:nodes', nodeIds);
 		case 'select_all':
-			return addSelectedNodes(selectableNodesAndGroups.value);
+			return onSelectAllNodes();
 		case 'deselect_all':
 			return clearSelectedNodes();
 		case 'duplicate':
@@ -1168,7 +1172,7 @@ onMounted(() => {
 	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.on('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.on('nodes:select', onSelectNodes);
-	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(selectableNodesAndGroups.value));
+	props.eventBus.on('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
 	document.addEventListener('visibilitychange', onVisibilityChange);
@@ -1179,6 +1183,7 @@ onUnmounted(() => {
 	props.eventBus.off('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.off('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.off('nodes:select', onSelectNodes);
+	props.eventBus.off('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);

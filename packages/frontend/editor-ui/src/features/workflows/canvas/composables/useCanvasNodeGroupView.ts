@@ -19,20 +19,16 @@ export const NodeGroupViewKey: InjectionKey<CanvasNodeGroupView> = Symbol('nodeG
 export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	const expandedIds = ref<Set<string>>(new Set());
 
-	function setExpanded(id: string, value: boolean) {
-		if (value) {
-			expandedIds.value.add(id);
-		} else {
-			expandedIds.value.delete(id);
-		}
-	}
-
 	const isGroupingEnabled = () => deps.isGroupingEnabled?.() ?? true;
 
 	const isGroupCollapsed = (id: string) => isGroupingEnabled() && !expandedIds.value.has(id);
 
 	function toggleCollapsed(id: string) {
-		setExpanded(id, isGroupCollapsed(id));
+		if (isGroupCollapsed(id)) {
+			expandedIds.value.add(id);
+		} else {
+			expandedIds.value.delete(id);
+		}
 	}
 
 	// Default collapse state per change action: SET (workflow load /
@@ -42,9 +38,9 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		if (event.action === CHANGE_ACTION.SET) {
 			expandedIds.value.clear();
 		} else if (event.action === CHANGE_ACTION.ADD) {
-			setExpanded(event.payload.group.id, true);
+			expandedIds.value.add(event.payload.group.id);
 		} else if (event.action === CHANGE_ACTION.DELETE) {
-			setExpanded(event.payload.id, false);
+			expandedIds.value.delete(event.payload.id);
 		}
 	});
 
