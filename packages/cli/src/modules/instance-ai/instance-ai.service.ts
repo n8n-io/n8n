@@ -1,3 +1,4 @@
+import { Agent } from '@n8n/agents';
 import type { Message, Workspace } from '@n8n/agents';
 import {
 	UNLIMITED_CREDITS,
@@ -98,6 +99,7 @@ import type { Scope } from '@n8n/permissions';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings, SsrfProtectionService } from 'n8n-core';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import type { z } from 'zod';
 import { nanoid } from 'nanoid';
 import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
@@ -1039,6 +1041,35 @@ export class InstanceAiService {
 		const httpProxyModel = await this.resolveHttpProxyModel(user);
 		if (httpProxyModel) return httpProxyModel;
 		return await this.settingsService.resolveModelConfig(user);
+	}
+
+	/**
+	 * One-shot, non-streaming structured generation.
+	 *
+	 * Builds a tool-less agent on the user's resolved (proxy-aware) model, runs a
+	 * single `generate` with a structured-output schema, and returns the parsed,
+	 * schema-validated object. This is the lightweight path for BFF generations
+	 * (e.g. desktop-assistant recommendations) that must NOT go through the
+	 * streaming `startRun` orchestrator — no event bus, no tools, no run state.
+	 *
+	 * The model comes from {@link resolveAgentModelConfig} so these generations use
+	 * the same working model and proxy transport as chat, never raw env keys.
+	 */
+	async generateStructured<T>(
+		user: User,
+		opts: { name: string; instructions: string; input: string; schema: z.ZodType<T> },
+	): Promise<T> {
+		const model = await this.resolveAgentModelConfig(user);
+		const agent = new Agent(opts.name)
+			.model(model)
+			.instructions(opts.instructions)
+			.structuredOutput(opts.schema);
+		const result = await agent.generate(opts.input);
+		if (result.structuredOutput === undefined || result.structuredOutput === null) {
+			throw new OperationalError('Structured generation returned no output');
+		}
+		// Re-validate against the schema so the return is typed as `T` without a cast.
+		return opts.schema.parse(result.structuredOutput);
 	}
 
 	/**
