@@ -709,6 +709,7 @@ type TerminalGuardOrderServiceInternals = {
 	liveness: { consumeRunTimeout: jest.Mock };
 	telemetry: { track: jest.Mock };
 	logger: { warn: jest.Mock; error: jest.Mock };
+	errorReporter: { error: jest.Mock };
 	instanceAiConfig: {
 		outputRedactionEnabled: boolean;
 		outputRedactionSecrets: boolean;
@@ -787,6 +788,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.liveness = { consumeRunTimeout: jest.fn(() => ({ timedOut: false })) };
 	service.telemetry = { track: jest.fn() };
 	service.logger = { warn: jest.fn(), error: jest.fn() };
+	service.errorReporter = { error: jest.fn() };
 	service.instanceAiConfig = {
 		outputRedactionEnabled: true,
 		outputRedactionSecrets: true,
