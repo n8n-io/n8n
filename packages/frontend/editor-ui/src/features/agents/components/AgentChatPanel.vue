@@ -43,6 +43,7 @@ const emit = defineEmits<{
 	codeUpdated: [];
 	codeDelta: [delta: string];
 	configUpdated: [];
+	buildDone: [];
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'continue-loaded': [count: number];
@@ -86,6 +87,7 @@ const {
 	onCodeUpdated: () => emit('codeUpdated'),
 	onCodeDelta: (d) => emit('codeDelta', d),
 	onConfigUpdated: () => emit('configUpdated'),
+	onBuildDone: () => emit('buildDone'),
 	onHistoryLoaded: (count) => {
 		if (props.continueSessionId) emit('continue-loaded', count);
 	},

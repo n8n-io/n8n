@@ -8,7 +8,7 @@ import { Config, Env } from '../decorators';
  * `N8N_AGENTS_MODULES`. The backend fails fast on unknown tokens so typos
  * surface at startup instead of silently disabling a feature.
  */
-export const AGENTS_MODULE_NAMES = ['node-tools-searcher', 'knowledge-base'] as const;
+export const AGENTS_MODULE_NAMES = ['node-tools-searcher'] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
 
@@ -38,13 +38,42 @@ export class AgentsConfig {
 	 * Currently known:
 	 * - `node-tools-searcher` — surfaces the "Built-in node tools" toggle in
 	 *   the agent editor.
-	 * - `knowledge-base` — enables the agent knowledge base: file upload/list/
-	 *   delete endpoints, the files panel in the editor, and the
-	 *   `search_knowledge` runtime tool.
 	 *
 	 * Gates the UI surface only — existing agents persisted with a given
 	 * capability turned on continue to run even if its token is removed here.
 	 */
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
+
+	/** Enable Daytona sandbox for agent knowledge base operations. */
+	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
+	sandboxEnabled: boolean = false;
+
+	/** Sandbox provider for agent knowledge base. Only `daytona` is supported. */
+	@Env('N8N_AGENTS_AI_SANDBOX_PROVIDER')
+	sandboxProvider: string = '';
+
+	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
+	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
+	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
+
+	/** Default command timeout in the sandbox (milliseconds). */
+	@Env('N8N_AGENTS_AI_SANDBOX_TIMEOUT')
+	sandboxTimeout: number = 5 * Time.minutes.toMilliseconds;
+
+	/** Prefix prepended to every Daytona sandbox name. */
+	@Env('N8N_AGENTS_AI_SANDBOX_NAME_PREFIX')
+	sandboxNamePrefix: string = '';
+
+	/** Daytona volume ID for the agent knowledge base. */
+	@Env('N8N_AGENTS_AI_SANDBOX_DAYTONA_VOLUME_ID')
+	daytonaVolumeId: string = '';
+
+	/** Daytona API URL (e.g. "https://app.daytona.io/api"). */
+	@Env('DAYTONA_API_URL')
+	daytonaApiUrl: string = '';
+
+	/** Daytona API key for authentication. */
+	@Env('DAYTONA_API_KEY')
+	daytonaApiKey: string = '';
 }

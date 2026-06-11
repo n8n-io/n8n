@@ -247,6 +247,17 @@ const renderComponent = createComponentRenderer(CredentialEdit, {
 	}),
 });
 
+const modalLoadingStub = {
+	props: ['loading'],
+	template: `
+		<div data-test-id="credential-edit-modal-stub" :data-loading="String(loading)">
+			<slot v-if="!loading" name="header" />
+			<slot v-if="!loading" name="content" />
+			<slot v-if="!loading" name="footer" />
+		</div>
+	`,
+};
+
 let broadcastMessageListener: ((event: MessageEvent) => void) | undefined;
 
 class BroadcastChannelMock {
@@ -498,11 +509,49 @@ describe('CredentialEdit', () => {
 
 			const { getByTestId } = renderComponent({
 				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				global: {
+					stubs: {
+						Modal: modalLoadingStub,
+					},
+				},
 			});
 
 			await waitFor(() => {
+				expect(getByTestId('credential-edit-modal-stub')).toHaveAttribute('data-loading', 'false');
 				expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
 			});
+		});
+
+		it('should stop loading when credential loading fails', async () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialData.mockRejectedValueOnce(new Error('Failed to load'));
+
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					activeId: 'missing-credential',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+				global: {
+					stubs: {
+						Modal: modalLoadingStub,
+					},
+				},
+			});
+
+			try {
+				await waitFor(() => {
+					expect(credentialsStore.getCredentialData).toHaveBeenCalled();
+					expect(getByTestId('credential-edit-modal-stub')).toHaveAttribute(
+						'data-loading',
+						'false',
+					);
+				});
+			} finally {
+				consoleErrorSpy.mockRestore();
+			}
 		});
 	});
 
@@ -710,6 +759,51 @@ describe('CredentialEdit', () => {
 
 			await retry(() => expect(queryByText('Custom Scopes')).toBeInTheDocument());
 			expect(queryByText('Enabled Scopes')).toBeInTheDocument();
+		});
+
+		it('should not block modal when external hooks throw', async () => {
+			window.n8nExternalHooks = {
+				credentialsEdit: {
+					credentialModalOpened: [
+						() => {
+							throw new Error('plugin error');
+						},
+					],
+				},
+			};
+
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			const { getByTestId } = renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				global: {
+					stubs: {
+						Modal: modalLoadingStub,
+					},
+				},
+			});
+
+			try {
+				// Wait for the modal to appear and loading to finish
+				await waitFor(() => {
+					expect(getByTestId('credential-edit-modal-stub')).toHaveAttribute(
+						'data-loading',
+						'false',
+					);
+					expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
+				});
+
+				// The hook error is logged asynchronously; wait for it
+				await waitFor(() => {
+					expect(consoleErrorSpy).toHaveBeenCalledWith(
+						'[CredentialEdit] External hooks execution failed',
+						expect.any(Error),
+					);
+				});
+			} finally {
+				consoleErrorSpy.mockRestore();
+				delete window.n8nExternalHooks;
+			}
 		});
 	});
 

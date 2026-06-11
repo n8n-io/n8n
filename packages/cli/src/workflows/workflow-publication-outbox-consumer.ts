@@ -12,7 +12,7 @@ import {
 } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -48,8 +48,15 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly triggerActivationService: WorkflowTriggerActivationService,
 		private readonly activationErrorsService: ActivationErrorsService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
+	}
+
+	init() {
+		if (this.instanceSettings.isLeader) {
+			this.startPolling();
+		}
 	}
 
 	@OnLeaderTakeover()
