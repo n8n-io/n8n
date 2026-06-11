@@ -647,6 +647,17 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 					workflowData.pinData[newName] = workflowData.pinData[oldName];
 					delete workflowData.pinData[oldName];
 				}
+
+				// The snapshot above was mutated in place, so its object reference is
+				// unchanged. Replace it so consumers that gate work on `workflowData`
+				// identity detect the rename — notably the logs panel, which only
+				// rebuilds its `Workflow` object (node names + connection topology)
+				// when this reference changes. Without this the rebuilt run-data
+				// (keyed by the new name) is matched against a stale topology (old
+				// name), dropping renamed sub-nodes from the tree.
+				if (execution.value) {
+					execution.value.workflowData = { ...workflowData };
+				}
 			}
 
 			// executedNode reference

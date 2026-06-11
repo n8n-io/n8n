@@ -407,6 +407,47 @@ describe('executionData.store', () => {
 			expect(workflowData?.pinData?.NewName).toBeDefined();
 			expect(workflowData?.pinData?.OldName).toBeUndefined();
 		});
+
+		it('replaces the workflowData reference so identity-gated consumers detect the rename', () => {
+			// The embedded workflowData snapshot is mutated in place, so consumers
+			// that only rebuild when its reference changes (e.g. the logs panel's
+			// Workflow object) would otherwise read stale topology against renamed
+			// run data. Renaming must hand back a fresh reference.
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			store.setExecution(
+				createTestExecution({
+					data: {
+						resultData: {
+							runData: {
+								OldName: [{ executionIndex: 0, executionStatus: 'success', source: [] } as never],
+							},
+						},
+					} as never,
+					workflowData: {
+						id: 'wf-1',
+						name: 'Test',
+						active: false,
+						activeVersionId: null,
+						isArchived: false,
+						createdAt: -1,
+						updatedAt: -1,
+						nodes: [{ name: 'OldName' } as never],
+						connections: {} as never,
+						settings: { executionOrder: 'v1' },
+						tags: [],
+						pinData: {},
+						versionId: '',
+					},
+				}),
+			);
+
+			const before = store.execution?.workflowData;
+
+			store.renameExecutionDataNode('OldName', 'NewName');
+
+			expect(store.execution?.workflowData).not.toBe(before);
+			expect(store.execution?.workflowData?.nodes.find((n) => n.name === 'NewName')).toBeDefined();
+		});
 	});
 
 	describe('addNodeExecutionStartedData', () => {
