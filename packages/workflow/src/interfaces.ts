@@ -2978,7 +2978,11 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
-	 * Preserve error on waiting on a sub-workflow to resume.
+	 * Error from a sub-workflow that finished with an error while its parent was
+	 * waiting for it. Written onto the parent's Execute Workflow stack entry by
+	 * `updateParentExecutionWithChildResults` (packages/cli) and consumed on resume
+	 * by `WorkflowExecute.runNode`, which fails the node with this error (honoring
+	 * its `onError` setting) instead of letting it pass its input through.
 	 */
 	resumeError?: ExecutionError;
 

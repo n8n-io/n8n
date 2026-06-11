@@ -157,6 +157,10 @@ describe('sub-workflow error propagation to parent after Wait resume', () => {
 		const subExecution = await waitForStatus({ workflowId: child.id }, 'waiting');
 
 		// Resume the waiting sub via the wait-tracker (same parent-resume path as the webhook).
+		// Deliberately a dynamic import: hoisting `@/wait-tracker` to a top-level import
+		// changes the module evaluation order and trips a circular import — WorkflowRunner
+		// is still undefined when DI constructs WorkflowExecutionService, and
+		// `executeManually` then fails with "Cannot read properties of undefined (reading 'run')".
 		const { WaitTracker } = await import('@/wait-tracker');
 		await Container.get(WaitTracker).startExecution(subExecution.id);
 
