@@ -36,28 +36,6 @@ function isThreadEvent(value: unknown): value is InstanceAiEvent {
 const EVENT_LOG_PAYLOAD_MAX = 300;
 
 /**
- * tool-error events only carry a toolCallId, so the name from the matching
- * tool-call is remembered here to log errors with the tool that failed.
- * Bounded in case a result/error event never arrives for a call.
- */
-const TRACKED_TOOL_CALLS_MAX = 200;
-const toolNamesByCallId = new Map<string, string>();
-
-function rememberToolName(toolCallId: string, toolName: string): void {
-	toolNamesByCallId.set(toolCallId, toolName);
-	if (toolNamesByCallId.size > TRACKED_TOOL_CALLS_MAX) {
-		const oldest = toolNamesByCallId.keys().next().value;
-		if (oldest !== undefined) toolNamesByCallId.delete(oldest);
-	}
-}
-
-function takeToolName(toolCallId: string): string | undefined {
-	const toolName = toolNamesByCallId.get(toolCallId);
-	toolNamesByCallId.delete(toolCallId);
-	return toolName;
-}
-
-/**
  * One log line per run-relevant thread event so a task run can be post-mortemed
  * from the main-process log. Deltas and other chatty event types are skipped.
  */
@@ -78,18 +56,14 @@ function logThreadEvent(threadId: string, event: InstanceAiEvent): void {
 			logger.info('Run started', { threadId, runId: event.runId });
 			return;
 		case 'tool-call':
-			rememberToolName(event.payload.toolCallId, event.payload.toolName);
 			logger.info(`Tool call: ${event.payload.toolName}`, {
 				runId: event.runId,
 				toolCallId: event.payload.toolCallId,
 				args: summarize(event.payload.args),
 			});
 			return;
-		case 'tool-result':
-			takeToolName(event.payload.toolCallId);
-			return;
 		case 'tool-error':
-			logger.warn(`Tool error: ${takeToolName(event.payload.toolCallId) ?? 'unknown tool'}`, {
+			logger.warn('Tool error', {
 				runId: event.runId,
 				toolCallId: event.payload.toolCallId,
 				error: summarize(event.payload.error),
