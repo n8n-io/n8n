@@ -45,6 +45,7 @@ const {
 	projectId,
 	warnMissingCredentials = false,
 	disabled = false,
+	horizontal = false,
 } = defineProps<{
 	selectedModel: AgentModelOption | null;
 	credentials: AgentCredentialsByProvider | null;
@@ -53,6 +54,7 @@ const {
 	projectId?: string;
 	warnMissingCredentials?: boolean;
 	disabled?: boolean;
+	horizontal?: boolean;
 }>();
 
 const emit = defineEmits<{
