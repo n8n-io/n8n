@@ -3,12 +3,15 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 import type { Response } from 'express';
+import { ensureError } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { UpdateAllowedRedirectUrisDto } from './dto/update-allowed-redirect-uris.dto';
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto';
 import { McpServerApiKeyService } from './mcp-api-key.service';
@@ -57,6 +60,30 @@ export class McpSettingsController {
 	@Post('/api-key/rotate')
 	async rotateApiKeyForMcpServer(req: AuthenticatedRequest) {
 		return await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
+	}
+
+	@GlobalScope('mcp:manage')
+	@Get('/oauth/allowed-redirect-uris')
+	async getAllowedRedirectUris() {
+		const uris = await this.mcpSettingsService.getAllowedRedirectUris();
+		return { uris };
+	}
+
+	@GlobalScope('mcp:manage')
+	@Patch('/oauth/allowed-redirect-uris')
+	async updateAllowedRedirectUris(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: UpdateAllowedRedirectUrisDto,
+	) {
+		try {
+			await this.mcpSettingsService.setAllowedRedirectUris(dto.uris);
+			return { success: true };
+		} catch (error) {
+			const errorForSure = ensureError(error);
+			this.logger.error('Failed to update allowed redirect URIs', { error: errorForSure });
+			throw new BadRequestError(errorForSure.message);
+		}
 	}
 
 	@Get('/workflows', { middlewares: listQueryMiddleware })

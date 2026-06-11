@@ -9,8 +9,6 @@ vi.mock('@n8n/rest-api-client/api/consent');
 
 const renderComponent = createComponentRenderer(OAuthConsentView);
 
-let locationHrefSpy: ReturnType<typeof vi.spyOn>;
-
 describe('OAuthConsentView', () => {
 	let consentStore: ReturnType<typeof mockedStore<typeof useConsentStore>>;
 
@@ -18,17 +16,18 @@ describe('OAuthConsentView', () => {
 		createTestingPinia({ stubActions: false });
 		consentStore = mockedStore(useConsentStore);
 
-		consentStore.consentDetails = {
+		const details = {
 			clientName: 'Test MCP Client',
 			clientId: 'test-client-id',
+			redirectUri: 'https://legitimate-client.com/callback',
 		};
+		consentStore.consentDetails = details;
+		consentStore.fetchConsentDetails.mockImplementation(async () => {
+			consentStore.consentDetails = details;
+			return details;
+		});
 		consentStore.isLoading = false;
 		consentStore.error = null;
-
-		locationHrefSpy = vi.spyOn(window, 'location', 'get').mockReturnValue({
-			...window.location,
-			href: '',
-		} as Location);
 
 		Object.defineProperty(window, 'location', {
 			writable: true,
@@ -36,14 +35,12 @@ describe('OAuthConsentView', () => {
 		});
 	});
 
-	afterEach(() => {
-		locationHrefSpy?.mockRestore();
-	});
-
-	it('should redirect to home page when deny is clicked', async () => {
+	it('should redirect back to client with error when deny is clicked', async () => {
+		const denyUrl =
+			'https://legitimate-client.com/callback?error=access_denied&error_description=User+denied&state=xyz';
 		consentStore.approveConsent.mockResolvedValue({
-			status: 'denied',
-			redirectUrl: 'https://malicious-site.com',
+			status: 'success',
+			redirectUrl: denyUrl,
 		});
 
 		const { getByTestId } = renderComponent();
@@ -54,18 +51,20 @@ describe('OAuthConsentView', () => {
 		await waitAllPromises();
 
 		expect(consentStore.approveConsent).toHaveBeenCalledWith(false);
-		expect(window.location.href).toBe(window.BASE_PATH ?? '/');
+		expect(window.location.href).toBe(denyUrl);
 	});
 
 	it('should redirect to client redirect URL when allow is clicked', async () => {
 		const redirectUrl = 'https://legitimate-client.com/callback?code=abc';
 		consentStore.approveConsent.mockResolvedValue({
-			status: 'approved',
+			status: 'success',
 			redirectUrl,
 		});
 
-		const { getByTestId } = renderComponent();
+		const { getByTestId, getByLabelText } = renderComponent();
 		await waitAllPromises();
+
+		await userEvent.click(getByLabelText('I recognize and trust this URL'));
 
 		const allowButton = getByTestId('consent-allow-button');
 		await userEvent.click(allowButton);
@@ -73,5 +72,17 @@ describe('OAuthConsentView', () => {
 
 		expect(consentStore.approveConsent).toHaveBeenCalledWith(true);
 		expect(window.location.href).toBe(redirectUrl);
+	});
+
+	it('should disable allow button until redirect URL is trusted', async () => {
+		const { getByTestId, getByLabelText } = renderComponent();
+		await waitAllPromises();
+
+		const allowButton = getByTestId('consent-allow-button');
+		expect(allowButton).toBeDisabled();
+
+		await userEvent.click(getByLabelText('I recognize and trust this URL'));
+
+		expect(allowButton).not.toBeDisabled();
 	});
 });

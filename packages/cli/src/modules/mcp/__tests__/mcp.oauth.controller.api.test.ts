@@ -130,7 +130,6 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.scopes_supported).toEqual(SUPPORTED_SCOPES);
-		expect(response.body.scopes_supported.length).toBeGreaterThan(0);
 	});
 
 	test('should be accessible without authentication', async () => {

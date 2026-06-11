@@ -29,6 +29,7 @@ export class McpOAuthConsentService {
 	async getConsentDetails(sessionToken: string): Promise<{
 		clientName: string;
 		clientId: string;
+		redirectUri: string;
 	} | null> {
 		try {
 			const sessionPayload = this.oauthSessionService.verifySession(sessionToken);
@@ -44,6 +45,7 @@ export class McpOAuthConsentService {
 			return {
 				clientName: client.name,
 				clientId: client.id,
+				redirectUri: sessionPayload.redirectUri,
 			};
 		} catch (error) {
 			this.logger.error('Error getting consent details', { error });

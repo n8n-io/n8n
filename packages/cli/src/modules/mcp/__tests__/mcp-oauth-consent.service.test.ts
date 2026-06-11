@@ -63,6 +63,7 @@ describe('McpOAuthConsentService', () => {
 			expect(result).toEqual({
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
 			});
 			expect(oauthSessionService.verifySession).toHaveBeenCalledWith(sessionToken);
 			expect(oauthClientRepository.findOne).toHaveBeenCalledWith({
@@ -123,6 +124,7 @@ describe('McpOAuthConsentService', () => {
 			expect(result).toEqual({
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
 			});
 		});
 	});

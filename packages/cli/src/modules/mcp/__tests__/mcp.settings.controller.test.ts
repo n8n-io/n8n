@@ -5,10 +5,12 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { UpdateAllowedRedirectUrisDto } from '../dto/update-allowed-redirect-uris.dto';
 import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 import { UpdateWorkflowsAvailabilityDto } from '../dto/update-workflows-availability.dto';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
@@ -364,6 +366,86 @@ describe('McpSettingsController', () => {
 				skippedCount: 0,
 				failedCount: 0,
 			});
+		});
+	});
+
+	describe('getAllowedRedirectUris', () => {
+		test('returns allowed redirect URIs', async () => {
+			const mockUris = ['https://example.com/callback', 'http://localhost:3000/callback'];
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(mockUris);
+
+			const result = await controller.getAllowedRedirectUris();
+
+			expect(mcpSettingsService.getAllowedRedirectUris).toHaveBeenCalled();
+			expect(result).toEqual({ uris: mockUris });
+		});
+
+		test('returns empty array when no URIs configured', async () => {
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue([]);
+
+			const result = await controller.getAllowedRedirectUris();
+
+			expect(result).toEqual({ uris: [] });
+		});
+	});
+
+	describe('updateAllowedRedirectUris', () => {
+		test('updates allowed redirect URIs successfully', async () => {
+			const uris = ['https://example.com/callback', 'http://localhost:3000/callback'];
+			const dto = new UpdateAllowedRedirectUrisDto({ uris });
+			mcpSettingsService.setAllowedRedirectUris.mockResolvedValue(undefined);
+
+			const result = await controller.updateAllowedRedirectUris(createReq({}), createRes(), dto);
+
+			expect(mcpSettingsService.setAllowedRedirectUris).toHaveBeenCalledWith(uris);
+			expect(result).toEqual({ success: true });
+		});
+
+		test('wraps validation errors as BadRequestError', async () => {
+			const uris = ['invalid-url'];
+			const dto = new UpdateAllowedRedirectUrisDto({ uris });
+			const validationError = new Error('Invalid URL format: invalid-url');
+			mcpSettingsService.setAllowedRedirectUris.mockRejectedValue(validationError);
+
+			await expect(
+				controller.updateAllowedRedirectUris(createReq({}), createRes(), dto),
+			).rejects.toThrow(BadRequestError);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to update allowed redirect URIs',
+				expect.objectContaining({
+					error: validationError,
+				}),
+			);
+		});
+
+		test('wraps database errors as BadRequestError', async () => {
+			const uris = ['https://example.com/callback'];
+			const dto = new UpdateAllowedRedirectUrisDto({ uris });
+			const dbError = new Error('Database connection failed');
+			mcpSettingsService.setAllowedRedirectUris.mockRejectedValue(dbError);
+
+			await expect(
+				controller.updateAllowedRedirectUris(createReq({}), createRes(), dto),
+			).rejects.toThrow(BadRequestError);
+			await expect(
+				controller.updateAllowedRedirectUris(createReq({}), createRes(), dto),
+			).rejects.toThrow('Database connection failed');
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to update allowed redirect URIs',
+				expect.objectContaining({
+					error: expect.objectContaining({ message: 'Database connection failed' }),
+				}),
+			);
+		});
+
+		test('accepts empty array', async () => {
+			const dto = new UpdateAllowedRedirectUrisDto({ uris: [] });
+			mcpSettingsService.setAllowedRedirectUris.mockResolvedValue(undefined);
+
+			const result = await controller.updateAllowedRedirectUris(createReq({}), createRes(), dto);
+
+			expect(mcpSettingsService.setAllowedRedirectUris).toHaveBeenCalledWith([]);
+			expect(result).toEqual({ success: true });
 		});
 	});
 

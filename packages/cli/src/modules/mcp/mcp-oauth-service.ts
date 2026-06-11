@@ -24,9 +24,17 @@ import { UserConsentRepository } from './database/repositories/oauth-user-consen
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from './mcp-oauth-token.service';
 import { McpClientLimitReachedError } from './mcp.errors';
+import { McpSettingsService } from './mcp.settings.service';
 import { OAuthSessionService } from './oauth-session.service';
 
-export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
+/**
+ * Reserved for future granular per-tool delegation. Today MCP OAuth tokens are
+ * user-delegations: a successful consent authorizes the client to act on
+ * behalf of the user with the user's full permission set, equivalent to a
+ * Personal API Key. Advertising scopes we don't enforce would misrepresent
+ * that contract, so this stays empty until per-tool enforcement ships.
+ */
+export const SUPPORTED_SCOPES: string[] = [];
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
@@ -48,6 +56,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		private readonly tokenService: McpOAuthTokenService,
 		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
 		private readonly userConsentRepository: UserConsentRepository,
+		private readonly mcpSettingsService: McpSettingsService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -69,7 +78,7 @@ export class McpOAuthService implements OAuthServerProvider {
 						client_secret_expires_at: client.clientSecretExpiresAt,
 					}),
 					response_types: ['code'],
-					scope: SUPPORTED_SCOPES.join(' '),
+					...(SUPPORTED_SCOPES.length > 0 && { scope: SUPPORTED_SCOPES.join(' ') }),
 					logo_uri: undefined,
 					tos_uri: undefined,
 				};
@@ -167,6 +176,19 @@ export class McpOAuthService implements OAuthServerProvider {
 		this.logger.debug('Starting OAuth authorization', { clientId: client.client_id });
 
 		try {
+			const allowedUris = await this.mcpSettingsService.getAllowedRedirectUris();
+			if (allowedUris.length > 0 && !allowedUris.includes(params.redirectUri)) {
+				this.logger.warn('Invalid redirect URI attempted', {
+					clientId: client.client_id,
+					attemptedUri: params.redirectUri,
+				});
+				res.status(400).json({
+					error: 'invalid_request',
+					error_description: 'Redirect URI not in allowed list',
+				});
+				return;
+			}
+
 			const resource = this.resolveAndValidateResourceIndicator(params.resource?.toString());
 
 			this.oauthSessionService.createSession(res, {
