@@ -2013,6 +2013,24 @@ export interface ExecuteAgentInfo {
 	outputSchema?: JSONSchema7;
 }
 
+/**
+ * Context about the calling workflow execution, passed to the agent runtime so
+ * it can expose a `fetch_workflow_context` tool to the agent. The
+ * `runExecutionData` is a live reference to the calling execution's run data —
+ * safe because nodes execute sequentially while the agent call awaits — and
+ * must be treated as read-only.
+ */
+export interface ExecuteAgentWorkflowContext {
+	workflowId?: string;
+	workflowName?: string;
+	/** Name of the node that invoked the agent (e.g. the MessageAnAgent node). */
+	callingNodeName: string;
+	/** Name and type of every node in the calling workflow. */
+	nodes: Array<{ name: string; type: string }>;
+	/** The calling execution's run data (read-only by convention). */
+	runExecutionData: IRunExecutionData;
+}
+
 export interface ExecuteAgentOptions {
 	node?: INode;
 	parentWorkflowId: string;
@@ -3270,6 +3288,7 @@ export interface IWorkflowExecuteAdditionalData {
 		additionalData: IWorkflowExecuteAdditionalData,
 		executionMode: WorkflowExecuteMode,
 		outputSchema?: JSONSchema7,
+		workflowContext?: ExecuteAgentWorkflowContext,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
