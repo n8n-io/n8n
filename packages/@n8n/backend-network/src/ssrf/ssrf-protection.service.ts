@@ -7,7 +7,7 @@ import type { LookupAddress, LookupOptions } from 'node:dns';
 import type { BlockList, LookupFunction } from 'node:net';
 import { isIP } from 'node:net';
 
-import { DnsResolver } from './dns-resolver';
+import { DnsResolver } from '../dns';
 import { HostnameMatcher } from './hostname-matcher';
 import { buildIpRangeList } from './ip-range-builder';
 import { SsrfBlockedIpError } from './ssrf-blocked-ip.error';

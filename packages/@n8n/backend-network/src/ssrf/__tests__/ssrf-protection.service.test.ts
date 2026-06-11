@@ -3,7 +3,7 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import type { LookupAddress } from 'node:dns';
 import { mock } from 'vitest-mock-extended';
 
-import type { DnsResolver } from '../dns-resolver';
+import type { DnsResolver } from '../../dns';
 import { SsrfBlockedIpError } from '../ssrf-blocked-ip.error';
 import { SsrfProtectionService } from '../ssrf-protection.service';
 
@@ -317,8 +317,8 @@ describe('SsrfProtectionService', () => {
 			const [error, address, family] = await new Promise<
 				[Error | null, string, number | undefined]
 			>((resolve) =>
-				lookup('example.com', { all: false }, (err, addr, fam) =>
-					resolve([err, addr as string, fam]),
+				lookup('example.com', { all: false }, (lookupError, addr, fam) =>
+					resolve([lookupError, addr as string, fam]),
 				),
 			);
 
@@ -355,8 +355,8 @@ describe('SsrfProtectionService', () => {
 			const lookup = service.createSecureLookup();
 
 			const [error, addresses] = await new Promise<[Error | null, LookupAddress[]]>((resolve) =>
-				lookup('multi.example.com', { all: true }, (err, addrs) =>
-					resolve([err, addrs as LookupAddress[]]),
+				lookup('multi.example.com', { all: true }, (lookupError, addrs) =>
+					resolve([lookupError, addrs as LookupAddress[]]),
 				),
 			);
 
@@ -377,8 +377,8 @@ describe('SsrfProtectionService', () => {
 			const [error, address, family] = await new Promise<
 				[Error | null, string, number | undefined]
 			>((resolve) =>
-				lookup('dualstack.example.com', { all: false, family: 6 }, (err, addr, fam) =>
-					resolve([err, addr as string, fam]),
+				lookup('dualstack.example.com', { all: false, family: 6 }, (lookupError, addr, fam) =>
+					resolve([lookupError, addr as string, fam]),
 				),
 			);
 
@@ -401,8 +401,8 @@ describe('SsrfProtectionService', () => {
 			const [error, address, family] = await new Promise<
 				[Error | null, string, number | undefined]
 			>((resolve) =>
-				lookup('ipv4-only.example.com', { all: false, family: 6 }, (err, addr, fam) =>
-					resolve([err, addr as string, fam]),
+				lookup('ipv4-only.example.com', { all: false, family: 6 }, (lookupError, addr, fam) =>
+					resolve([lookupError, addr as string, fam]),
 				),
 			);
 
@@ -430,8 +430,8 @@ describe('SsrfProtectionService', () => {
 			const lookup = service.createSecureLookup();
 
 			const [error, address] = await new Promise<[Error | null, string]>((resolve) =>
-				lookup('api.internal.n8n.io', { all: false }, (err, addr) =>
-					resolve([err, addr as string]),
+				lookup('api.internal.n8n.io', { all: false }, (lookupError, addr) =>
+					resolve([lookupError, addr as string]),
 				),
 			);
 
@@ -449,8 +449,8 @@ describe('SsrfProtectionService', () => {
 			const [error, address, family] = await new Promise<
 				[Error | null, string, number | undefined]
 			>((resolve) =>
-				lookup('failing.example.com', { all: false }, (err, addr, fam) =>
-					resolve([err, addr as string, fam]),
+				lookup('failing.example.com', { all: false }, (lookupError, addr, fam) =>
+					resolve([lookupError, addr as string, fam]),
 				),
 			);
 
@@ -469,8 +469,8 @@ describe('SsrfProtectionService', () => {
 			const [error, addresses, family] = await new Promise<
 				[Error | null, LookupAddress[], number | undefined]
 			>((resolve) =>
-				lookup('failing.example.com', { all: true }, (err, addrs, fam) =>
-					resolve([err, addrs as LookupAddress[], fam]),
+				lookup('failing.example.com', { all: true }, (lookupError, addrs, fam) =>
+					resolve([lookupError, addrs as LookupAddress[], fam]),
 				),
 			);
 
