@@ -212,8 +212,14 @@ watch(
 							<template #prefix>
 								<span v-if="otelStore.settings.enabled" :class="$style.greenDot" />
 							</template>
-							<N8nOption value="enabled" label="Enabled" />
-							<N8nOption value="disabled" label="Disabled" />
+							<N8nOption
+								value="enabled"
+								:label="i18n.baseText('settings.opentelemetry.enable.option.enabled')"
+							/>
+							<N8nOption
+								value="disabled"
+								:label="i18n.baseText('settings.opentelemetry.enable.option.disabled')"
+							/>
 						</N8nSelect>
 					</div>
 				</div>

@@ -2967,6 +2967,8 @@
 	"settings.opentelemetry.envVarTooltip": "Environment variable: {envVar}",
 	"settings.opentelemetry.enable.label": "Enable OpenTelemetry",
 	"settings.opentelemetry.enable.description": "When disabled, no traces leave this instance.",
+	"settings.opentelemetry.enable.option.enabled": "Enabled",
+	"settings.opentelemetry.enable.option.disabled": "Disabled",
 	"settings.opentelemetry.collectorConnection.title": "Collector connection",
 	"settings.opentelemetry.exporterEndpoint.label": "OTLP endpoint",
 	"settings.opentelemetry.exporterEndpoint.description": "The base URL of your OTLP collector (e.g. https://collector.example.com).",
