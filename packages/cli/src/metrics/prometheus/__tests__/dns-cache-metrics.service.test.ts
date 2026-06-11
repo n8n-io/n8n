@@ -140,7 +140,7 @@ describe('PrometheusDnsCacheMetricsService', () => {
 			const handler = getEventsHandler('hit');
 			expect(handler).toBeDefined();
 			handler!();
-			expect(mockCounterInc).toHaveBeenCalled();
+			expect(mockCounterInc).toHaveBeenCalledWith(1);
 		});
 
 		it('should register a listener for miss that increments the misses counter', () => {
@@ -149,7 +149,7 @@ describe('PrometheusDnsCacheMetricsService', () => {
 			const handler = getEventsHandler('miss');
 			expect(handler).toBeDefined();
 			handler!();
-			expect(mockCounterInc).toHaveBeenCalled();
+			expect(mockCounterInc).toHaveBeenCalledWith(1);
 		});
 
 		it('should register a listener for eviction that increments the evictions counter', () => {
@@ -158,7 +158,7 @@ describe('PrometheusDnsCacheMetricsService', () => {
 			const handler = getEventsHandler('eviction');
 			expect(handler).toBeDefined();
 			handler!();
-			expect(mockCounterInc).toHaveBeenCalled();
+			expect(mockCounterInc).toHaveBeenCalledWith(1);
 		});
 
 		it('should pass collect function that reads current cache size to the gauge', () => {
