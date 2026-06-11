@@ -22,17 +22,24 @@ export type NodeGroupLayoutAxis = 'x' | 'y';
 
 export type NodeGroupLayoutOffset = { x: number; y: number };
 
-export type NodeGroupLayoutComponentKind = 'node' | 'group';
-
-export interface NodeGroupLayoutComponent {
+interface NodeGroupLayoutComponentBase {
 	id: string;
-	kind: NodeGroupLayoutComponentKind;
 	nodeIds: string[];
-	groupId?: string;
 	rect: BoundingBox;
-	collapsedRect?: BoundingBox;
-	expandedRect?: BoundingBox;
 }
+
+export interface NodeLayoutComponent extends NodeGroupLayoutComponentBase {
+	kind: 'node';
+}
+
+export interface GroupLayoutComponent extends NodeGroupLayoutComponentBase {
+	kind: 'group';
+	groupId: string;
+	collapsedRect: BoundingBox;
+	expandedRect: BoundingBox;
+}
+
+export type NodeGroupLayoutComponent = NodeLayoutComponent | GroupLayoutComponent;
 
 export interface BuildNodeGroupLayoutComponentsInput {
 	allGroups: IWorkflowGroup[];
@@ -42,7 +49,7 @@ export interface BuildNodeGroupLayoutComponentsInput {
 	isGroupCollapsed: (id: string) => boolean;
 }
 
-export interface ComputeNodeGroupLayoutOffsetsInput {
+export interface ComputeNodeGroupLayoutPushesInput {
 	components: NodeGroupLayoutComponent[];
 	expandedGroupIds: Set<string>;
 	expandedGroupIdOrder?: string[];
@@ -50,7 +57,7 @@ export interface ComputeNodeGroupLayoutOffsetsInput {
 	spacing?: number;
 }
 
-export interface NodeGroupLayoutOffsetEntry {
+export interface NodeGroupLayoutPushEntry {
 	sourceGroupId: string;
 	componentId: string;
 	axis: NodeGroupLayoutAxis;
@@ -139,7 +146,7 @@ export function getOffsetForComponent(
 	return offsets.get(componentId) ?? { x: 0, y: 0 };
 }
 
-function offsetRect(rect: BoundingBox, offset: NodeGroupLayoutOffset): BoundingBox {
+function translateRect(rect: BoundingBox, offset: NodeGroupLayoutOffset): BoundingBox {
 	return {
 		...rect,
 		x: rect.x + offset.x,
@@ -171,23 +178,22 @@ function getComponentLaneOrigin(component: NodeGroupLayoutComponent, componentRe
 }
 
 function getPushTargetAnchorRect(component: NodeGroupLayoutComponent) {
-	if (component.kind === 'group' && component.expandedRect) {
-		return component.expandedRect;
-	}
-
-	return component.rect;
+	return component.kind === 'group' ? component.expandedRect : component.rect;
 }
 
 function getComponentPushLane(
 	component: NodeGroupLayoutComponent,
 	componentAnchorRect: BoundingBox,
 	componentCurrentRect: BoundingBox,
-	collapsedGroupRect: BoundingBox,
-	expandedGroupRect: BoundingBox,
-	horizontalPushDistance: number,
-	verticalPushDistance: number,
+	pushSource: PushSourceContext,
 	targetExpandedAfterSource = false,
 ): NodeGroupLayoutAxis | null {
+	const {
+		collapsedRect: collapsedGroupRect,
+		expandedRect: expandedGroupRect,
+		horizontalPushDistance,
+		verticalPushDistance,
+	} = pushSource;
 	const collapsedGroupRight = collapsedGroupRect.x + collapsedGroupRect.width;
 	const sourceContentRowBottom =
 		collapsedGroupRect.y + GROUP_HEADER_HEIGHT + GROUP_PADDING_Y_TOP + GROUP_HEADER_HEIGHT;
@@ -204,7 +210,6 @@ function getComponentPushLane(
 	const skipDownPush =
 		targetExpandedAfterSource &&
 		component.kind === 'group' &&
-		component.collapsedRect !== undefined &&
 		collapsedGroupRect.x + GROUP_PADDING_X >= componentAnchorRect.x + component.collapsedRect.width;
 	const componentIntersectsBottomExpansion =
 		componentAnchorRect.y + componentAnchorRect.height > collapsedGroupBottom;
@@ -277,7 +282,7 @@ function addComponentOffset(
 	offsets.set(componentId, offset);
 }
 
-export function aggregateNodeGroupLayoutOffsets(entries: NodeGroupLayoutOffsetEntry[]) {
+export function aggregateNodeGroupLayoutOffsets(entries: NodeGroupLayoutPushEntry[]) {
 	const offsets = new Map<string, NodeGroupLayoutOffset>();
 
 	for (const entry of entries) {
@@ -296,7 +301,7 @@ function isComponentIgnoredForSource(
 	return ignoredNodeIds ? component.nodeIds.some((nodeId) => ignoredNodeIds.has(nodeId)) : false;
 }
 
-function getExpandedGroupSources(
+function getOrderedPushSources(
 	components: NodeGroupLayoutComponent[],
 	expandedGroupIds: Set<string>,
 	expandedGroupIdOrder: string[] = [],
@@ -305,38 +310,27 @@ function getExpandedGroupSources(
 
 	return components
 		.filter(
-			(component) =>
-				component.kind === 'group' &&
-				component.groupId &&
-				expandedGroupIds.has(component.groupId) &&
-				component.collapsedRect &&
-				component.expandedRect,
+			(component): component is GroupLayoutComponent =>
+				component.kind === 'group' && expandedGroupIds.has(component.groupId),
 		)
 		.sort((a, b) => {
-			const aOrder = a.groupId ? groupOrderIndex.get(a.groupId) : undefined;
-			const bOrder = b.groupId ? groupOrderIndex.get(b.groupId) : undefined;
-			if (aOrder !== undefined || bOrder !== undefined) {
-				if (aOrder === undefined) return 1;
-				if (bOrder === undefined) return -1;
-				if (aOrder !== bOrder) return aOrder - bOrder;
-			}
+			const aOrder = groupOrderIndex.get(a.groupId) ?? Number.POSITIVE_INFINITY;
+			const bOrder = groupOrderIndex.get(b.groupId) ?? Number.POSITIVE_INFINITY;
+			if (aOrder !== bOrder) return aOrder - bOrder;
 
-			const aRect = a.collapsedRect ?? a.rect;
-			const bRect = b.collapsedRect ?? b.rect;
-			if (aRect.y !== bRect.y) return aRect.y - bRect.y;
-			if (aRect.x !== bRect.x) return aRect.x - bRect.x;
+			if (a.collapsedRect.y !== b.collapsedRect.y) return a.collapsedRect.y - b.collapsedRect.y;
+			if (a.collapsedRect.x !== b.collapsedRect.x) return a.collapsedRect.x - b.collapsedRect.x;
 			return a.id.localeCompare(b.id);
 		});
 }
 
 function didComponentPushSource(
-	entries: NodeGroupLayoutOffsetEntry[],
+	entries: NodeGroupLayoutPushEntry[],
 	component: NodeGroupLayoutComponent,
 	sourceComponentId: string,
 ) {
 	return (
 		component.kind === 'group' &&
-		component.groupId !== undefined &&
 		entries.some(
 			(entry) =>
 				entry.sourceGroupId === component.groupId && entry.componentId === sourceComponentId,
@@ -344,8 +338,8 @@ function didComponentPushSource(
 	);
 }
 
-interface SourceLayoutContext {
-	source: NodeGroupLayoutComponent;
+interface PushSourceContext {
+	source: GroupLayoutComponent;
 	sourceGroupId: string;
 	collapsedRect: BoundingBox;
 	expandedRect: BoundingBox;
@@ -360,8 +354,8 @@ interface SourcePushPlan {
 	requiredClearanceByLane: Map<NodeGroupLayoutAxis, number>;
 }
 
-interface ApplyOffsetInput {
-	entries: NodeGroupLayoutOffsetEntry[];
+interface CreateOffsetApplierInput {
+	entries: NodeGroupLayoutPushEntry[];
 	offsets: Map<string, NodeGroupLayoutOffset>;
 	componentsById: Map<string, NodeGroupLayoutComponent>;
 	sourceGroupId: string;
@@ -369,15 +363,13 @@ interface ApplyOffsetInput {
 	ignoredNodeIdsBySourceGroup?: Map<string, Set<string>>;
 }
 
-function getSourceLayoutContext(
-	source: NodeGroupLayoutComponent,
+function getPushSourceContext(
+	source: GroupLayoutComponent,
 	sourceOffset: NodeGroupLayoutOffset,
 	spacing: number,
-): SourceLayoutContext | undefined {
-	if (!source.groupId || !source.collapsedRect || !source.expandedRect) return undefined;
-
-	const collapsedRect = offsetRect(source.collapsedRect, sourceOffset);
-	const expandedRect = offsetRect(source.expandedRect, sourceOffset);
+): PushSourceContext {
+	const collapsedRect = translateRect(source.collapsedRect, sourceOffset);
+	const expandedRect = translateRect(source.expandedRect, sourceOffset);
 	return {
 		source,
 		sourceGroupId: source.groupId,
@@ -389,8 +381,8 @@ function getSourceLayoutContext(
 	};
 }
 
-function hasSourceEntry(
-	entries: NodeGroupLayoutOffsetEntry[],
+function sourceAlreadyPushedComponent(
+	entries: NodeGroupLayoutPushEntry[],
 	sourceGroupId: string,
 	componentId: string,
 	axis: NodeGroupLayoutAxis,
@@ -403,21 +395,22 @@ function hasSourceEntry(
 	);
 }
 
-function applyOffset({
+function createOffsetApplier({
 	entries,
 	offsets,
 	componentsById,
 	sourceGroupId,
 	sourceComponentId,
 	ignoredNodeIdsBySourceGroup,
-}: ApplyOffsetInput) {
-	function apply(
+}: CreateOffsetApplierInput) {
+	function applyPush(
 		componentId: string,
 		axis: NodeGroupLayoutAxis,
 		delta: number,
 		propagatedGroupIds = new Set<string>(),
 	) {
-		if (delta === 0 || hasSourceEntry(entries, sourceGroupId, componentId, axis)) return;
+		if (delta === 0 || sourceAlreadyPushedComponent(entries, sourceGroupId, componentId, axis))
+			return;
 
 		addComponentOffset(offsets, componentId, axis, delta);
 		entries.push({ sourceGroupId, componentId, axis, delta });
@@ -425,7 +418,7 @@ function applyOffset({
 		// A pushed group drags its own previously pushed targets ("followers")
 		// along so their relative arrangement survives the move.
 		const component = componentsById.get(componentId);
-		if (!component?.groupId || propagatedGroupIds.has(component.groupId)) return;
+		if (component?.kind !== 'group' || propagatedGroupIds.has(component.groupId)) return;
 
 		propagatedGroupIds.add(component.groupId);
 		const followerIds = new Set(
@@ -443,50 +436,46 @@ function applyOffset({
 				continue;
 			}
 
-			apply(followerId, axis, delta, propagatedGroupIds);
+			applyPush(followerId, axis, delta, propagatedGroupIds);
 		}
 	}
 
-	return apply;
+	return applyPush;
 }
 
 function findSourcePushPlan(
 	components: NodeGroupLayoutComponent[],
-	sourceLayout: SourceLayoutContext,
+	pushSource: PushSourceContext,
 	offsets: Map<string, NodeGroupLayoutOffset>,
-	entries: NodeGroupLayoutOffsetEntry[],
+	entries: NodeGroupLayoutPushEntry[],
 	expandedOrderIndex: Map<string, number>,
 	ignoredNodeIdsBySourceGroup?: Map<string, Set<string>>,
 ): SourcePushPlan {
 	const pushLaneByComponentId = new Map<string, NodeGroupLayoutAxis>();
 	const triggeredPushLanes = new Set<NodeGroupLayoutAxis>();
 	const requiredClearanceByLane = new Map<NodeGroupLayoutAxis, number>();
-	const sourceOrderIndex = expandedOrderIndex.get(sourceLayout.sourceGroupId);
+	const sourceOrderIndex = expandedOrderIndex.get(pushSource.sourceGroupId);
 
 	for (const component of components) {
-		if (component.id === sourceLayout.source.id) continue;
+		if (component.id === pushSource.source.id) continue;
 		// Don't let the current source push a component that already pushed it.
 		// When two expanded groups overlap, the first-processed one pushes the
 		// second; this stops the second from pushing the first back and giving an
 		// already-settled source a spurious offset. Confirmed load-bearing by the
 		// 'uses expanded group order to keep an older source pushing a newly
 		// expanded target' layout test — removing it fails that case.
-		if (didComponentPushSource(entries, component, sourceLayout.source.id)) continue;
+		if (didComponentPushSource(entries, component, pushSource.source.id)) continue;
 		if (
-			isComponentIgnoredForSource(
-				component,
-				sourceLayout.sourceGroupId,
-				ignoredNodeIdsBySourceGroup,
-			)
+			isComponentIgnoredForSource(component, pushSource.sourceGroupId, ignoredNodeIdsBySourceGroup)
 		) {
 			continue;
 		}
 
 		const targetOffset = getOffsetForComponent(offsets, component.id);
-		const targetAnchorRect = offsetRect(getPushTargetAnchorRect(component), targetOffset);
-		const targetCurrentRect = offsetRect(component.rect, targetOffset);
+		const targetAnchorRect = translateRect(getPushTargetAnchorRect(component), targetOffset);
+		const targetCurrentRect = translateRect(component.rect, targetOffset);
 		const targetOrderIndex =
-			component.groupId === undefined ? undefined : expandedOrderIndex.get(component.groupId);
+			component.kind === 'group' ? expandedOrderIndex.get(component.groupId) : undefined;
 		const targetExpandedAfterSource =
 			sourceOrderIndex !== undefined &&
 			targetOrderIndex !== undefined &&
@@ -495,16 +484,13 @@ function findSourcePushPlan(
 			component,
 			targetAnchorRect,
 			targetCurrentRect,
-			sourceLayout.collapsedRect,
-			sourceLayout.expandedRect,
-			sourceLayout.horizontalPushDistance,
-			sourceLayout.verticalPushDistance,
+			pushSource,
 			targetExpandedAfterSource,
 		);
 		if (!pushLane) continue;
 
 		pushLaneByComponentId.set(component.id, pushLane);
-		if (checkOverlap(targetAnchorRect, sourceLayout.expandedRect)) {
+		if (checkOverlap(targetAnchorRect, pushSource.expandedRect)) {
 			triggeredPushLanes.add(pushLane);
 			// The default lane distance (source width/height delta) preserves each
 			// target's clearance measured from its lane origin, but a group frame
@@ -513,8 +499,8 @@ function findSourcePushPlan(
 			// need to clear the source's expanded frame.
 			const clearanceDistance =
 				pushLane === 'x'
-					? sourceLayout.expandedRect.x + sourceLayout.expandedRect.width - targetAnchorRect.x
-					: sourceLayout.expandedRect.y + sourceLayout.expandedRect.height - targetAnchorRect.y;
+					? pushSource.expandedRect.x + pushSource.expandedRect.width - targetAnchorRect.x
+					: pushSource.expandedRect.y + pushSource.expandedRect.height - targetAnchorRect.y;
 			requiredClearanceByLane.set(
 				pushLane,
 				Math.max(requiredClearanceByLane.get(pushLane) ?? 0, clearanceDistance),
@@ -526,17 +512,15 @@ function findSourcePushPlan(
 }
 
 function applySourcePushPlan(
-	components: NodeGroupLayoutComponent[],
-	sourceLayout: SourceLayoutContext,
+	pushSource: PushSourceContext,
 	pushPlan: SourcePushPlan,
-	apply: ReturnType<typeof applyOffset>,
+	applyPush: ReturnType<typeof createOffsetApplier>,
 ) {
-	for (const component of components) {
-		const pushLane = pushPlan.pushLaneByComponentId.get(component.id);
-		if (!pushLane || !pushPlan.triggeredPushLanes.has(pushLane)) continue;
+	for (const [componentId, pushLane] of pushPlan.pushLaneByComponentId) {
+		if (!pushPlan.triggeredPushLanes.has(pushLane)) continue;
 
 		const basePushDistance =
-			pushLane === 'x' ? sourceLayout.horizontalPushDistance : sourceLayout.verticalPushDistance;
+			pushLane === 'x' ? pushSource.horizontalPushDistance : pushSource.verticalPushDistance;
 		// Only bump beyond the base distance when it would leave an overlapping
 		// frame: a base distance that already clears every frame is kept as-is so
 		// targets keep their established relative positions.
@@ -544,20 +528,20 @@ function applySourcePushPlan(
 		const pushDistance =
 			basePushDistance >= requiredClearance
 				? basePushDistance
-				: requiredClearance + sourceLayout.spacing;
-		apply(component.id, pushLane, pushDistance);
+				: requiredClearance + pushSource.spacing;
+		applyPush(componentId, pushLane, pushDistance);
 	}
 }
 
-export function computeNodeGroupLayoutOffsetEntries({
+export function computeNodeGroupLayoutPushes({
 	components,
 	expandedGroupIds,
 	expandedGroupIdOrder,
 	ignoredNodeIdsBySourceGroup,
 	spacing = GROUP_REPOSITION_SPACING,
-}: ComputeNodeGroupLayoutOffsetsInput): NodeGroupLayoutOffsetEntry[] {
-	const entries: NodeGroupLayoutOffsetEntry[] = [];
-	const sources = getExpandedGroupSources(components, expandedGroupIds, expandedGroupIdOrder);
+}: ComputeNodeGroupLayoutPushesInput): NodeGroupLayoutPushEntry[] {
+	const entries: NodeGroupLayoutPushEntry[] = [];
+	const sources = getOrderedPushSources(components, expandedGroupIds, expandedGroupIdOrder);
 	if (sources.length === 0) return entries;
 
 	const offsets = new Map<string, NodeGroupLayoutOffset>();
@@ -568,27 +552,26 @@ export function computeNodeGroupLayoutOffsetEntries({
 
 	for (const source of sources) {
 		const sourceOffset = getOffsetForComponent(offsets, source.id);
-		const sourceLayout = getSourceLayoutContext(source, sourceOffset, spacing);
-		if (!sourceLayout) continue;
+		const pushSource = getPushSourceContext(source, sourceOffset, spacing);
 
 		const pushPlan = findSourcePushPlan(
 			components,
-			sourceLayout,
+			pushSource,
 			offsets,
 			entries,
 			expandedOrderIndex,
 			ignoredNodeIdsBySourceGroup,
 		);
-		const apply = applyOffset({
+		const applyPush = createOffsetApplier({
 			entries,
 			offsets,
 			componentsById,
-			sourceGroupId: sourceLayout.sourceGroupId,
+			sourceGroupId: pushSource.sourceGroupId,
 			sourceComponentId: source.id,
 			ignoredNodeIdsBySourceGroup,
 		});
 
-		applySourcePushPlan(components, sourceLayout, pushPlan, apply);
+		applySourcePushPlan(pushSource, pushPlan, applyPush);
 	}
 
 	return entries;

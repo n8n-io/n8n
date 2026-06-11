@@ -4,7 +4,7 @@ import type { INodeUi } from '@/Interface';
 import {
 	aggregateNodeGroupLayoutOffsets,
 	buildNodeGroupLayoutComponents,
-	computeNodeGroupLayoutOffsetEntries,
+	computeNodeGroupLayoutPushes,
 } from './useCanvasNodeGroupLayout';
 import { createCanvasGroupNodeId as groupComponentId } from '@/features/workflows/canvas/canvas.types';
 
@@ -48,7 +48,7 @@ describe('useCanvasNodeGroupLayout', () => {
 		expandedGroupIdOrder?: string[],
 	) {
 		return aggregateNodeGroupLayoutOffsets(
-			computeNodeGroupLayoutOffsetEntries({
+			computeNodeGroupLayoutPushes({
 				components,
 				expandedGroupIds,
 				ignoredNodeIdsBySourceGroup,

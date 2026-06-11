@@ -5,7 +5,7 @@ import type { IWorkflowGroup } from 'n8n-workflow';
 import { LOCAL_STORAGE_CANVAS_EXPANDED_GROUP_IDS } from '@/app/constants/localStorage';
 import {
 	aggregateNodeGroupLayoutOffsets,
-	computeNodeGroupLayoutOffsetEntries,
+	computeNodeGroupLayoutPushes,
 	getOffsetForComponent,
 	mapNodeIdsToComponentIds,
 	type NodeGroupLayoutComponent,
@@ -85,15 +85,15 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 			),
 	);
 
-	const offsetEntries = computed(() =>
-		computeNodeGroupLayoutOffsetEntries({
+	const pushEntries = computed(() =>
+		computeNodeGroupLayoutPushes({
 			components: layoutComponents.value,
 			expandedGroupIds: pushSourceGroupIds.value,
 			expandedGroupIdOrder: expandedGroupIdOrder.value,
 			ignoredNodeIdsBySourceGroup: ignoredNodeIdsBySourceGroup.value,
 		}),
 	);
-	const componentOffsets = computed(() => aggregateNodeGroupLayoutOffsets(offsetEntries.value));
+	const componentOffsets = computed(() => aggregateNodeGroupLayoutOffsets(pushEntries.value));
 
 	function persistExpandedGroupIds() {
 		try {
@@ -177,7 +177,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	function getPushedNodeIdsFromSourceGroups(groupIds: string[]) {
 		const groupIdSet = new Set(groupIds);
 		const componentIds = new Set(
-			offsetEntries.value
+			pushEntries.value
 				.filter((entry) => groupIdSet.has(entry.sourceGroupId))
 				.map((entry) => entry.componentId),
 		);
@@ -207,7 +207,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	// in any push.
 	function getSettledPushOffsets(movedNodeIds: Set<string>) {
 		return aggregateNodeGroupLayoutOffsets(
-			computeNodeGroupLayoutOffsetEntries({
+			computeNodeGroupLayoutPushes({
 				components: layoutComponents.value,
 				expandedGroupIds: pushSourceGroupIds.value,
 				expandedGroupIdOrder: expandedGroupIdOrder.value,
