@@ -1993,6 +1993,7 @@ describe('AgentsService', () => {
 						name: 'Test Agent',
 						structuredOutput: jest.fn(),
 						tool: toolFn,
+						declaredTools: [],
 						stream: jest.fn().mockResolvedValue({
 							stream: {
 								getReader: () => ({

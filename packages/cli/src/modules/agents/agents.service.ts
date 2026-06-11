@@ -1376,8 +1376,22 @@ export class AgentsService {
 			}
 			// Same per-call isolation applies to extra tools (e.g. the
 			// workflow-context tool injected for MessageAnAgent invocations).
+			// Filter out any tool whose name is already declared on the agent to
+			// avoid a "Static tool name collision" error from the SDK at stream time.
 			if (extraTools?.length) {
-				reconstructed.tool(extraTools);
+				const declared = new Set(reconstructed.declaredTools.map((t) => t.name));
+				const safeTools = extraTools.filter((t) => {
+					if (declared.has(t.name)) {
+						this.logger.warn(
+							`[AgentsService] Skipping extra tool "${t.name}" — name already declared on agent`,
+						);
+						return false;
+					}
+					return true;
+				});
+				if (safeTools.length) {
+					reconstructed.tool(safeTools);
+				}
 			}
 			return { ok: true, agent: reconstructed as BuiltAgent };
 		} catch (e) {

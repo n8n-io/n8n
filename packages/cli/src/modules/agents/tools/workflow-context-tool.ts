@@ -9,13 +9,21 @@ const MAX_OUTPUT_CHARS = 50_000;
 const DESCRIPTION =
 	'Inspect the n8n workflow execution that invoked this agent. ' +
 	'Call without arguments to list the nodes that have executed so far. ' +
-	'Call with a nodeName to read the output data that node produced.';
+	'Call with a nodeName to read the output data that node produced. ' +
+	'Item counts and output data refer to the last run of each node.';
 
 /** Items of the last run's main output, flattened across output branches. */
 function lastRunMainItems(runs: ITaskData[]): INodeExecutionData[] {
 	const lastRun = runs[runs.length - 1];
 	const mainBranches = lastRun?.data?.main ?? [];
 	return mainBranches.flatMap((branch) => branch ?? []);
+}
+
+/** Item count of the last run's main output across branches, without materializing. */
+function lastRunMainItemCount(runs: ITaskData[]): number {
+	const lastRun = runs[runs.length - 1];
+	const mainBranches = lastRun?.data?.main ?? [];
+	return mainBranches.reduce((count, branch) => count + (branch?.length ?? 0), 0);
 }
 
 /** Strips binary payloads down to their key names — the agent only needs to know they exist. */
@@ -70,7 +78,7 @@ export function createWorkflowContextTool(context: ExecuteAgentWorkflowContext):
 							type: nodeTypesByName.get(name) ?? 'unknown',
 							status: runs[runs.length - 1]?.executionStatus ?? 'unknown',
 							runs: runs.length,
-							items: lastRunMainItems(runs).length,
+							items: lastRunMainItemCount(runs),
 						})),
 					};
 				}
@@ -85,13 +93,24 @@ export function createWorkflowContextTool(context: ExecuteAgentWorkflowContext):
 
 				const allItems = lastRunMainItems(runs);
 				const items: Array<Record<string, unknown>> = [];
+				let itemPreviewed = false;
 				let serializedSize = 0;
 				for (const item of allItems.slice(0, MAX_ITEMS)) {
 					const safe = toSafeItem(item);
-					serializedSize += JSON.stringify(safe).length;
-					// Always include the first item so the agent gets something,
-					// even when a single item exceeds the cap.
-					if (items.length > 0 && serializedSize > MAX_OUTPUT_CHARS) break;
+					const safeSize = JSON.stringify(safe).length;
+					if (serializedSize + safeSize > MAX_OUTPUT_CHARS) {
+						// Substitute a bounded preview when even the first item exceeds
+						// the cap, so the agent gets something without blowing the cap.
+						if (items.length === 0) {
+							items.push({
+								jsonPreview: JSON.stringify(item.json).slice(0, MAX_OUTPUT_CHARS),
+								itemTruncated: true,
+							});
+							itemPreviewed = true;
+						}
+						break;
+					}
+					serializedSize += safeSize;
 					items.push(safe);
 				}
 
@@ -101,7 +120,7 @@ export function createWorkflowContextTool(context: ExecuteAgentWorkflowContext):
 					runs: runs.length,
 					totalItems: allItems.length,
 					items,
-					truncated: items.length < allItems.length,
+					truncated: itemPreviewed || items.length < allItems.length,
 				};
 			})
 			.build()

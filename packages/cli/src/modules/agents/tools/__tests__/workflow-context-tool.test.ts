@@ -152,17 +152,19 @@ describe('createWorkflowContextTool', () => {
 		expect(result.truncated).toBe(true);
 	});
 
-	it('always includes the first item even when it alone exceeds the size cap', async () => {
+	it('substitutes a bounded preview when the first item alone exceeds the size cap', async () => {
 		const oversized = [{ blob: 'x'.repeat(60_000) }];
 		const tool = createWorkflowContextTool(makeContext({ Webhook: [makeTaskData(oversized)] }));
 
 		const result = (await tool.handler!({ nodeName: 'Webhook' }, makeCtx())) as {
-			items: unknown[];
+			items: Array<{ jsonPreview?: string; itemTruncated?: boolean }>;
 			truncated: boolean;
 		};
 
 		expect(result.items).toHaveLength(1);
-		expect(result.truncated).toBe(false);
+		expect(result.items[0].itemTruncated).toBe(true);
+		expect(result.items[0].jsonPreview).toHaveLength(50_000);
+		expect(result.truncated).toBe(true);
 	});
 
 	it('returns an error payload with available node names for an unknown node', async () => {
