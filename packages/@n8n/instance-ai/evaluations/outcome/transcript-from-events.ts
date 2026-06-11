@@ -337,12 +337,16 @@ function describeSetupCardResponse(response: InstanceAiConfirmRequest | undefine
 }
 
 function collectFilledParams(nodeParameters: unknown): string[] {
-	if (!isRecord(nodeParameters)) return [];
+	// Key-based pass first: mask values under secret-shaped names (apiKey, token, …)
+	// before they're rendered into the transcript/report.
+	const redacted = redactSecrets(nodeParameters);
+	if (!isRecord(redacted)) return [];
 	const filled: string[] = [];
-	for (const params of Object.values(nodeParameters)) {
+	for (const params of Object.values(redacted)) {
 		if (!isRecord(params)) continue;
 		for (const [name, value] of Object.entries(params)) {
-			filled.push(`${name}=${formatParamValue(value)}`);
+			// Content-based pass: scrub any token inlined in a non-secret-shaped value.
+			filled.push(redactSecretsInText(`${name}=${formatParamValue(value)}`));
 		}
 	}
 	return filled;

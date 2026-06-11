@@ -984,18 +984,21 @@ interface AggregateMetrics {
 	built: number;
 	/** Total scenarios across all test cases. */
 	scenariosTotal: number;
-	/** Mean pass@k across units (scenarios + evaluated expectations) at k = totalRuns (0..1). */
+	/** Mean pass@k across units (scenarios + evaluated expectations), each at its terminal k (0..1). */
 	passAtK: number;
-	/** Mean pass^k across units (scenarios + evaluated expectations) at k = totalRuns (0..1). */
+	/** Mean pass^k across units (scenarios + evaluated expectations), each at its terminal k (0..1). */
 	passHatK: number;
-	/** Index into each scenario's passAtK/passHatK array for k = totalRuns. */
-	kIndex: number;
 	/** Pass rate of each iteration formatted as e.g. "37% / 37% / 37%". */
 	passRatePerIter: string;
 }
 
+/** Terminal pass@k/pass^k for a unit = its last evaluated k (totalRuns for scenarios, evaluatedCount for expectations). */
+function terminalRate(arr: number[]): number {
+	return arr[arr.length - 1] ?? 0;
+}
+
 function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetrics {
-	const { totalRuns, testCases } = evaluation;
+	const { testCases } = evaluation;
 	// Units = scenarios + evaluated build-expectations — mirrors the per-card badge
 	// and the terminal per-case table so the headline rate can't disagree with them.
 	const units = testCases.flatMap((tc) => [
@@ -1004,18 +1007,16 @@ function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetri
 	]);
 	const total = units.length;
 	const scenariosTotal = testCases.reduce((n, tc) => n + tc.executionScenarios.length, 0);
-	const kIndex = Math.max(totalRuns - 1, 0);
 	const built = testCases.filter((tc) => tc.buildSuccessCount > 0).length;
 	const passAtK =
-		total > 0 ? units.reduce((sum, u) => sum + (u.passAtK[kIndex] ?? 0), 0) / total : 0;
+		total > 0 ? units.reduce((sum, u) => sum + terminalRate(u.passAtK), 0) / total : 0;
 	const passHatK =
-		total > 0 ? units.reduce((sum, u) => sum + (u.passHatK[kIndex] ?? 0), 0) / total : 0;
+		total > 0 ? units.reduce((sum, u) => sum + terminalRate(u.passHatK), 0) / total : 0;
 	return {
 		built,
 		scenariosTotal,
 		passAtK,
 		passHatK,
-		kIndex,
 		passRatePerIter: computePassRatePerIter(evaluation),
 	};
 }
@@ -1037,13 +1038,12 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 				total++;
 				if (sa.runs[i]?.success) passed++;
 			}
-			for (const ea of tc.buildExpectations) {
-				if (ea.evaluatedCount === 0) continue;
+			// Count each scored verdict in this iteration directly — skips incomplete
+			// (build-failed) verdicts and is robust to duplicate expectation strings.
+			for (const verdict of tc.runs[i]?.buildExpectationResults ?? []) {
+				if (verdict.incomplete) continue;
 				total++;
-				const verdict = tc.runs[i]?.buildExpectationResults?.find(
-					(e) => e.expectation === ea.expectation,
-				);
-				if (verdict?.pass && !verdict.incomplete) passed++;
+				if (verdict.pass) passed++;
 			}
 		}
 		rates.push(`${String(total > 0 ? Math.round((passed / total) * 100) : 0)}%`);
@@ -1115,16 +1115,16 @@ function writeEvalResults(
 				expectation: ea.expectation,
 				passCount: ea.passCount,
 				evaluatedCount: ea.evaluatedCount,
-				passAtK: ea.passAtK[metrics.kIndex] ?? 0,
-				passHatK: ea.passHatK[metrics.kIndex] ?? 0,
+				passAtK: terminalRate(ea.passAtK),
+				passHatK: terminalRate(ea.passHatK),
 			})),
 			threadIds: tc.runs.map((run) => run.threadId ?? null),
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,
 				totalRuns,
-				passAtK: sa.passAtK[metrics.kIndex] ?? 0,
-				passHatK: sa.passHatK[metrics.kIndex] ?? 0,
+				passAtK: terminalRate(sa.passAtK),
+				passHatK: terminalRate(sa.passHatK),
 				runs: sa.runs.map((sr, runIndex) => ({
 					workflowId: tc.runs[runIndex]?.workflowId ?? null,
 					passed: sr.success,

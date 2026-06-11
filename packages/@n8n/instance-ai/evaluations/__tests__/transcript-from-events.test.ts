@@ -226,6 +226,45 @@ describe('buildTranscriptFromEvents', () => {
 				skippedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
 			});
 		});
+
+		it('redacts secret values the proxy filled into a setup card', () => {
+			const turns = buildTranscriptFromEvents({
+				events: [
+					RUN_START,
+					evt('confirmation-request', {
+						payload: {
+							requestId: 'r1',
+							setupRequests: [{ node: { name: 'HTTP' }, editableParameters: [] }],
+						},
+					}),
+				],
+				proxyResponses: new Map([
+					[
+						'r1',
+						{
+							kind: 'setupWorkflowApply' as const,
+							nodeCredentials: {},
+							nodeParameters: {
+								HTTP: {
+									apiKey: 'sk-live-supersecret',
+									authorization: 'Bearer abc123token',
+									channel: '#general',
+								},
+							},
+						},
+					],
+				]),
+			});
+			const card = turns[0].steps.find((s) => s.kind === 'setup-card');
+			expect(card).toMatchObject({ kind: 'setup-card', outcome: 'filled' });
+			const filled = card?.kind === 'setup-card' ? (card.filled ?? []) : [];
+			// Secret-shaped key → value masked; benign param survives.
+			expect(filled).toContain('apiKey=[REDACTED]');
+			expect(filled).toContain('authorization=[REDACTED]');
+			expect(filled).toContain('channel=#general');
+			expect(filled.join(' ')).not.toContain('sk-live-supersecret');
+			expect(filled.join(' ')).not.toContain('abc123token');
+		});
 	});
 
 	describe('generic confirmation', () => {
