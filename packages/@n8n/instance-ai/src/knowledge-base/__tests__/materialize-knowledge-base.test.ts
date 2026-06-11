@@ -92,11 +92,6 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/trigger-input-data-shapes.md`,
 			),
 		).toContain('# Per-trigger `inputData` shape');
-		expect(
-			bundle.files.get(
-				`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-builder-guardrails.md`,
-			),
-		).toContain('# Workflow Builder Guardrails');
 
 		expect(
 			bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/workflow-sdk-language.md`),
@@ -117,10 +112,6 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 			expect.objectContaining({
 				id: 'trigger-input-data-shapes',
 				file: 'reference/trigger-input-data-shapes.md',
-			}),
-			expect.objectContaining({
-				id: 'workflow-builder-guardrails',
-				file: 'reference/workflow-builder-guardrails.md',
 			}),
 			expect.objectContaining({
 				id: 'workflow-sdk-language',

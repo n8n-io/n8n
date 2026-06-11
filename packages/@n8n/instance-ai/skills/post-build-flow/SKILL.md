@@ -87,7 +87,10 @@ workflow as a precondition for running it.
 5. Ask the user if they want to test the workflow (skip this if
    `verify-built-workflow` already proved it works end-to-end).
 6. Only call `workflows(action="publish")` when the user explicitly asks to
-   publish. Never publish automatically.
+   publish. Never publish automatically. A publish or setup request must not
+   remove, disable, or bypass requested action nodes; keep the workflow
+   structurally complete and route unresolved credentials or placeholder values
+   through setup.
 
 ## Credentials before build
 

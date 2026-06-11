@@ -114,11 +114,14 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
 		expect(loaded?.instructions).toContain('workflows(action="get-json", workflowId)');
-		expect(loaded?.instructions).toContain(
-			'knowledge-base/reference/workflow-builder-guardrails.md',
-		);
+		expect(loaded?.instructions).toContain('references/graph-guardrails.md');
+		expect(loaded?.instructions).toContain('references/intake-guardrails.md');
+		expect(loaded?.instructions).toContain('references/ai-output-guardrails.md');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain('Do not call `delegate`');
+
+		// Headroom below the 64KB load_skill output truncation limit.
+		expect(Buffer.byteLength(loaded?.instructions ?? '', 'utf8')).toBeLessThan(56 * 1024);
 	});
 
 	it('loads the bundled planning skill', async () => {
