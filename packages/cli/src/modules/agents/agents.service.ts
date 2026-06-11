@@ -2,6 +2,7 @@ import {
 	type Agent as RuntimeAgent,
 	AgentExecutionCounter,
 	BuiltAgent,
+	type BuiltTool,
 	CredentialProvider,
 	StreamChunk,
 	ToolDescriptor,
@@ -38,6 +39,7 @@ import {
 	OperationalError,
 	UserError,
 	type ExecuteAgentData,
+	type ExecuteAgentWorkflowContext,
 	type INodeParameters,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -52,6 +54,7 @@ import { Telemetry } from '@/telemetry';
 import { TtlMap } from '@/utils/ttl-map';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { createWorkflowContextTool } from './tools/workflow-context-tool';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
@@ -1352,6 +1355,7 @@ export class AgentsService {
 		credentialProvider: CredentialProvider,
 		userId: string,
 		outputSchema?: JSONSchema7,
+		extraTools?: BuiltTool[],
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -1369,6 +1373,11 @@ export class AgentsService {
 			// into concurrent chat / integration executions.
 			if (outputSchema) {
 				reconstructed.structuredOutput(outputSchema);
+			}
+			// Same per-call isolation applies to extra tools (e.g. the
+			// workflow-context tool injected for MessageAnAgent invocations).
+			if (extraTools?.length) {
+				reconstructed.tool(extraTools);
 			}
 			return { ok: true, agent: reconstructed as BuiltAgent };
 		} catch (e) {
@@ -1405,6 +1414,7 @@ export class AgentsService {
 		telemetryUserId?: string,
 		useDraftVersion?: boolean,
 		outputSchema?: JSONSchema7,
+		workflowContext?: ExecuteAgentWorkflowContext,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -1422,11 +1432,13 @@ export class AgentsService {
 			agentData = this.getPublishedAgent(agentEntity);
 		}
 
+		const extraTools = workflowContext ? [createWorkflowContextTool(workflowContext)] : undefined;
 		const compiled = await this.compileIsolated(
 			agentData,
 			credentialProvider,
 			userId,
 			outputSchema,
+			extraTools,
 		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);

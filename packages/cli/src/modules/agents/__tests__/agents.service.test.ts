@@ -2,6 +2,7 @@
 import type { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-types';
+import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
@@ -1961,6 +1962,88 @@ describe('AgentsService', () => {
 					outputSchema,
 				),
 			).rejects.toThrow('Agent execution failed: Model credential is invalid');
+		});
+
+		describe('workflow context tool', () => {
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				workflowId: 'wf-1',
+				workflowName: 'My workflow',
+				callingNodeName: 'Message an Agent',
+				nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }],
+				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+			};
+
+			const setupAgentWithToolSpy = () => {
+				const schema: AgentJsonConfig = {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+				};
+				const agent = makeAgent({
+					schema,
+					activeVersionId: versionId,
+					activeVersion: makeAgentHistory({ schema, publishedById: userId }),
+				});
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				Container.set(CredentialsService, mock<CredentialsService>());
+
+				const toolFn = jest.fn();
+				jest.spyOn(service as never, 'reconstructFromConfig').mockResolvedValue({
+					agent: {
+						name: 'Test Agent',
+						structuredOutput: jest.fn(),
+						tool: toolFn,
+						stream: jest.fn().mockResolvedValue({
+							stream: {
+								getReader: () => ({
+									read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+									releaseLock: jest.fn(),
+								}),
+							},
+						}),
+						close: jest.fn(),
+					},
+					toolRegistry: {},
+				} as never);
+				return toolFn;
+			};
+
+			it('injects the workflow context tool when workflowContext is provided', async () => {
+				const toolFn = setupAgentWithToolSpy();
+
+				await service.executeForWorkflow(
+					agentId,
+					'hello',
+					'execution-1',
+					'thread-1',
+					userId,
+					projectId,
+					undefined,
+					undefined,
+					undefined,
+					workflowContext,
+				);
+
+				expect(toolFn).toHaveBeenCalledTimes(1);
+				const [tools] = toolFn.mock.calls[0] as [Array<{ name: string }>];
+				expect(tools).toHaveLength(1);
+				expect(tools[0].name).toBe('fetch_workflow_context');
+			});
+
+			it('does not inject the workflow context tool without workflowContext', async () => {
+				const toolFn = setupAgentWithToolSpy();
+
+				await service.executeForWorkflow(
+					agentId,
+					'hello',
+					'execution-1',
+					'thread-1',
+					userId,
+					projectId,
+				);
+
+				expect(toolFn).not.toHaveBeenCalled();
+			});
 		});
 	});
 
