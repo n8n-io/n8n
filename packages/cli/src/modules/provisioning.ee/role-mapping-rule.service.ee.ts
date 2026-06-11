@@ -130,7 +130,8 @@ export class RoleMappingRuleService {
 			// Save the new rule at a temporary order beyond any currently-used slot,
 			// so the unique (type, order) constraint cannot fire on the initial insert
 			// unless another create for the same type uses the same snapshot concurrently.
-			const maxOrder = existingRules.length > 0 ? existingRules[existingRules.length - 1].order : -1;
+			const maxOrder =
+				existingRules.length > 0 ? existingRules[existingRules.length - 1].order : -1;
 			const tempOrder = Math.max(maxOrder, existingRules.length - 1) + 1;
 
 			const rule = new RoleMappingRule();
@@ -368,7 +369,9 @@ export class RoleMappingRuleService {
 function isUniqueOrderViolation(error: unknown) {
 	if (!(error instanceof QueryFailedError)) return false;
 
-	const driverError = error.driverError as { code?: string; message?: string; detail?: string } | undefined;
+	const driverError = error.driverError as
+		| { code?: string; message?: string; detail?: string }
+		| undefined;
 	const code = driverError?.code;
 	const message = `${error.message} ${driverError?.message ?? ''} ${driverError?.detail ?? ''}`;
 
