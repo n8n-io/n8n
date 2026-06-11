@@ -3616,6 +3616,7 @@ export interface ExecutionSummary {
 	workflowId: string;
 	workflowName?: string;
 	workflowVersionId?: string | null;
+	jsonSizeBytes?: number;
 	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;
