@@ -20,6 +20,7 @@ import type { NodeTypes } from '@/node-types';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { DESKTOP_ASSISTANT_TAG } from '../constants';
 import { DesktopAssistantService } from '../desktop-assistant.service';
@@ -32,6 +33,10 @@ function makeService() {
 	const instanceAiService = mock<InstanceAiService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const eventBus = mock<InProcessEventBus>();
+	// Default: subscribing returns a no-op unsubscribe so build-outcome listeners
+	// (promote, edit, one-shot) get a real cleanup fn. Tests that drive the bus
+	// override this with mockImplementation to capture the handler.
+	eventBus.subscribe.mockReturnValue(() => {});
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowSharingService = mock<WorkflowSharingService>();
@@ -46,6 +51,7 @@ function makeService() {
 	const projectService = mock<ProjectService>();
 	const nodeTypes = mock<NodeTypes>();
 	const credentialTypes = mock<CredentialTypes>();
+	const workflowService = mock<WorkflowService>();
 
 	const service = new DesktopAssistantService(
 		logger,
@@ -64,6 +70,7 @@ function makeService() {
 		projectService,
 		nodeTypes,
 		credentialTypes,
+		workflowService,
 	);
 
 	return {
@@ -84,6 +91,7 @@ function makeService() {
 		projectService,
 		nodeTypes,
 		credentialTypes,
+		workflowService,
 	};
 }
 
@@ -155,6 +163,146 @@ describe('DesktopAssistantService.triggerTask', () => {
 		expect(forwardedAttachments).toBe(attachments);
 		expect(message).toContain('Currently looking at: Finder — Downloads');
 		expect(message).toContain('Path: /Users/me/Downloads');
+	});
+});
+
+describe('DesktopAssistantService.triggerTask publishing', () => {
+	/**
+	 * Run a one-shot task and emit a legacy planned-task build outcome for the
+	 * given workflow, with `workflowRepository.findOne` returning `workflow` for
+	 * the activation guard's node lookup.
+	 */
+	async function triggerAndBuild(
+		ctx: ReturnType<typeof makeService>,
+		workflow: Record<string, unknown> | null,
+	) {
+		ctx.projectService.getPersonalProject.mockResolvedValue({ id: 'proj-1' } as never);
+		ctx.memoryService.ensureThread.mockResolvedValue({
+			thread: {
+				id: 't',
+				resourceId: USER.id,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			},
+			created: true,
+		});
+		ctx.instanceAiService.startRun.mockReturnValue('run-os');
+		ctx.workflowRepository.findOne.mockResolvedValue(workflow as never);
+
+		let handler: ((e: StoredEvent) => void) | undefined;
+		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
+			handler = h;
+			return () => {};
+		});
+
+		await ctx.service.triggerTask(USER, { prompt: 'every morning email me the news' });
+		expect(handler).toBeDefined();
+
+		handler!({
+			id: 7,
+			event: {
+				type: 'tasks-update',
+				runId: 'r-1',
+				agentId: 'orchestrator',
+				payload: {
+					tasks: {
+						tasks: [{ id: 'task-build', description: 'Build the workflow', status: 'done' }],
+					},
+					planItems: [
+						{
+							id: 'task-build',
+							title: 'Build the workflow',
+							kind: 'build-workflow',
+							spec: 'spec',
+							deps: [],
+							workflowId: 'wf-built',
+						},
+					],
+				},
+			},
+		} as unknown as StoredEvent);
+
+		for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve));
+	}
+
+	test('publishes a runnable workflow built by a one-shot task', async () => {
+		const ctx = makeService();
+		await triggerAndBuild(ctx, {
+			id: 'wf-built',
+			nodes: [
+				{
+					name: 'Schedule',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		});
+
+		expect(ctx.workflowService.activateWorkflow).toHaveBeenCalledWith(USER, 'wf-built', {
+			source: 'n8n-ai',
+		});
+	});
+
+	test('does NOT publish a one-shot workflow that is missing credentials', async () => {
+		const ctx = makeService();
+		ctx.nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { properties: [], credentials: [{ name: 'gmailOAuth2' }] },
+		} as never);
+		await triggerAndBuild(ctx, {
+			id: 'wf-built',
+			nodes: [
+				{
+					name: 'Gmail',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		});
+
+		expect(ctx.workflowService.activateWorkflow).not.toHaveBeenCalled();
+	});
+
+	test('does nothing when a one-shot task builds no workflow', async () => {
+		const ctx = makeService();
+		ctx.projectService.getPersonalProject.mockResolvedValue({ id: 'proj-1' } as never);
+		ctx.memoryService.ensureThread.mockResolvedValue({
+			thread: {
+				id: 't',
+				resourceId: USER.id,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			},
+			created: true,
+		});
+		ctx.instanceAiService.startRun.mockReturnValue('run-os');
+		// No build outcome persisted for the run.
+		ctx.memoryService.getThreadMetadata.mockResolvedValue(undefined);
+
+		let handler: ((e: StoredEvent) => void) | undefined;
+		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
+			handler = h;
+			return () => {};
+		});
+
+		await ctx.service.triggerTask(USER, { prompt: 'rename my desktop files' });
+
+		handler!({
+			id: 9,
+			event: {
+				type: 'run-finish',
+				runId: 'run-os',
+				agentId: 'orchestrator',
+				payload: { status: 'completed' },
+			},
+		} as unknown as StoredEvent);
+
+		for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve));
+
+		expect(ctx.workflowService.activateWorkflow).not.toHaveBeenCalled();
 	});
 });
 
@@ -760,6 +908,154 @@ describe('DesktopAssistantService.promoteThread', () => {
 			metadata: { desktopAssistantPromoteRunId: 'run-promote' },
 		});
 	});
+
+	/**
+	 * Drive a promote through to its post-build finalisation via the legacy
+	 * planned-task path, with `workflowRepository.findOne` returning `workflow`
+	 * for both the meta write and the activation guard's node lookup.
+	 */
+	async function promoteAndFinalise(
+		ctx: ReturnType<typeof makeService>,
+		workflow: Record<string, unknown>,
+	) {
+		ctx.memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		ctx.memoryService.getThreadMetadata.mockResolvedValue(undefined);
+		ctx.memoryService.getThreadMessages.mockResolvedValue({
+			threadId: 't-1',
+			messages: [
+				{
+					id: 'm-1',
+					role: 'user',
+					content: 'every morning email me the news',
+					type: 'text',
+					createdAt: new Date().toISOString(),
+				},
+			],
+		});
+		ctx.instanceAiService.startRun.mockReturnValue('run-promote');
+		ctx.tagRepository.findOne.mockResolvedValue(null);
+		ctx.tagRepository.create.mockReturnValue({ name: DESKTOP_ASSISTANT_TAG } as never);
+		ctx.tagRepository.save.mockResolvedValue({
+			id: 'tag-da',
+			name: DESKTOP_ASSISTANT_TAG,
+		} as never);
+		ctx.workflowTagMappingRepository.findOne.mockResolvedValue(null);
+		ctx.workflowRepository.findOne.mockResolvedValue(workflow as never);
+		// No device credential to fill; the finalise step's lookup must still resolve.
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+
+		let handler: ((e: StoredEvent) => void) | undefined;
+		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
+			handler = h;
+			return () => {};
+		});
+
+		await ctx.service.promoteThread(USER, { threadId: 't-1' });
+
+		handler!({
+			id: 7,
+			event: {
+				type: 'tasks-update',
+				runId: 'r-1',
+				agentId: 'orchestrator',
+				payload: {
+					tasks: {
+						tasks: [{ id: 'task-build', description: 'Build the workflow', status: 'done' }],
+					},
+					planItems: [
+						{
+							id: 'task-build',
+							title: 'Build the workflow',
+							kind: 'build-workflow',
+							spec: 'spec',
+							deps: [],
+							workflowId: 'wf-new',
+						},
+					],
+				},
+			},
+		} as unknown as StoredEvent);
+
+		// Drain the async finalise + activation chain.
+		for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve));
+	}
+
+	test('auto-publishes a runnable promoted workflow (all credentials connected)', async () => {
+		const ctx = makeService();
+		// Default nodeTypes mock yields no node requiring credential setup, so the
+		// workflow counts as runnable.
+		await promoteAndFinalise(ctx, {
+			id: 'wf-new',
+			meta: {},
+			nodes: [
+				{
+					name: 'Schedule',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		});
+
+		expect(ctx.workflowService.activateWorkflow).toHaveBeenCalledWith(USER, 'wf-new', {
+			source: 'n8n-ai',
+		});
+	});
+
+	test('does NOT auto-publish a promoted workflow that is missing credentials', async () => {
+		const ctx = makeService();
+		// A node with no credentials slot whose type declares a required credential
+		// => surfaces as "needs setup", so we leave it as a draft.
+		ctx.nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: { properties: [], credentials: [{ name: 'gmailOAuth2' }] },
+		} as never);
+		await promoteAndFinalise(ctx, {
+			id: 'wf-new',
+			meta: {},
+			nodes: [
+				{
+					name: 'Gmail',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		});
+
+		expect(ctx.workflowService.activateWorkflow).not.toHaveBeenCalled();
+		// Tagging + finalisation still happened.
+		expect(ctx.workflowTagMappingRepository.insert).toHaveBeenCalled();
+		expect(ctx.memoryService.updateThread).toHaveBeenCalled();
+	});
+
+	test('swallows an activation failure (e.g. manual-only workflow) and still finalises', async () => {
+		const ctx = makeService();
+		ctx.workflowService.activateWorkflow.mockRejectedValue(
+			new Error('has no node to start the workflow'),
+		);
+		await promoteAndFinalise(ctx, {
+			id: 'wf-new',
+			meta: {},
+			nodes: [
+				{
+					name: 'Manual',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+		});
+
+		expect(ctx.workflowService.activateWorkflow).toHaveBeenCalled();
+		// Failure is best-effort: the promote still finalised.
+		expect(ctx.workflowTagMappingRepository.insert).toHaveBeenCalled();
+		expect(ctx.memoryService.updateThread).toHaveBeenCalledWith('t-1', {
+			metadata: { promotedWorkflowId: 'wf-new' },
+		});
+	});
 });
 
 describe('DesktopAssistantService.getHistory', () => {
@@ -1332,5 +1628,90 @@ describe('DesktopAssistantService.applyTaskEdits', () => {
 		expect(options).toEqual({ promptMode: 'desktop-assistant-edit' });
 		expect(result).toMatchObject({ runId: 'run-9' });
 		expect(result.threadId).toBeDefined();
+	});
+
+	test('re-publishes the edited version when the workflow was already active', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(
+			workflowWith({ activeVersionId: 'v1' }),
+		);
+		ctx.projectService.getPersonalProject.mockResolvedValue({ id: 'proj-1' } as never);
+		ctx.instanceAiService.startRun.mockReturnValue('run-9');
+		// After the edit, the workflow's draft has advanced to v2.
+		ctx.workflowRepository.findOne.mockResolvedValue({ id: 'wf-1', versionId: 'v2' } as never);
+
+		let handler: ((e: StoredEvent) => void) | undefined;
+		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
+			handler = h;
+			return () => {};
+		});
+
+		const { threadId } = await ctx.service.applyTaskEdits(USER, 'wf-1', { changes: CHANGES });
+		expect(ctx.eventBus.subscribe).toHaveBeenCalledWith(threadId, expect.any(Function));
+		expect(handler).toBeDefined();
+
+		handler!({
+			id: 9,
+			event: {
+				type: 'run-finish',
+				runId: 'run-9',
+				agentId: 'orchestrator',
+				payload: { status: 'completed' },
+			},
+		} as unknown as StoredEvent);
+
+		for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve));
+
+		expect(ctx.workflowService.activateWorkflow).toHaveBeenCalledWith(USER, 'wf-1', {
+			versionId: 'v2',
+			source: 'n8n-ai',
+		});
+	});
+
+	test('does NOT subscribe or re-publish when the workflow was not active', async () => {
+		const ctx = makeService();
+		// No activeVersionId => inactive; its edit takes effect on the next run.
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(workflowWith());
+		ctx.projectService.getPersonalProject.mockResolvedValue({ id: 'proj-1' } as never);
+		ctx.instanceAiService.startRun.mockReturnValue('run-9');
+
+		await ctx.service.applyTaskEdits(USER, 'wf-1', { changes: CHANGES });
+
+		expect(ctx.eventBus.subscribe).not.toHaveBeenCalled();
+		expect(ctx.workflowService.activateWorkflow).not.toHaveBeenCalled();
+	});
+
+	test('swallows a re-publish failure on run-finish', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(
+			workflowWith({ activeVersionId: 'v1' }),
+		);
+		ctx.projectService.getPersonalProject.mockResolvedValue({ id: 'proj-1' } as never);
+		ctx.instanceAiService.startRun.mockReturnValue('run-9');
+		ctx.workflowRepository.findOne.mockResolvedValue({ id: 'wf-1', versionId: 'v2' } as never);
+		ctx.workflowService.activateWorkflow.mockRejectedValue(new Error('validation failed'));
+
+		let handler: ((e: StoredEvent) => void) | undefined;
+		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
+			handler = h;
+			return () => {};
+		});
+
+		await ctx.service.applyTaskEdits(USER, 'wf-1', { changes: CHANGES });
+
+		handler!({
+			id: 9,
+			event: {
+				type: 'run-finish',
+				runId: 'run-9',
+				agentId: 'orchestrator',
+				payload: { status: 'completed' },
+			},
+		} as unknown as StoredEvent);
+
+		for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve));
+
+		// Attempted, rejected, and swallowed — no unhandled rejection.
+		expect(ctx.workflowService.activateWorkflow).toHaveBeenCalled();
 	});
 });
