@@ -1,6 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
 describe('SettingsRepository', () => {
 	let settingsRepository: SettingsRepository;
@@ -16,6 +17,59 @@ describe('SettingsRepository', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	describe('findByKey()', () => {
+		it('should return null when key does not exist', async () => {
+			const result = await settingsRepository.findByKey('non.existent.key');
+
+			expect(result).toBeNull();
+		});
+
+		it('should return the setting when key exists', async () => {
+			await settingsRepository.save({
+				key: 'test.find.by.key',
+				value: 'found-value',
+				loadOnStartup: true,
+			});
+
+			const result = await settingsRepository.findByKey('test.find.by.key');
+
+			expect(result).toMatchObject({ key: 'test.find.by.key', value: 'found-value' });
+		});
+
+		it('should use the provided EntityManager instead of the default one', async () => {
+			await settingsRepository.save({
+				key: 'test.find.by.key.em',
+				value: 'em-value',
+				loadOnStartup: false,
+			});
+
+			const dataSource = Container.get(DataSource);
+			const em = dataSource.manager;
+
+			const result = await settingsRepository.findByKey('test.find.by.key.em', em);
+
+			expect(result).toMatchObject({ key: 'test.find.by.key.em', value: 'em-value' });
+		});
+
+		it('should work inside a transaction', async () => {
+			const dataSource = Container.get(DataSource);
+
+			await dataSource.manager.transaction(async (trx) => {
+				await trx.save(
+					settingsRepository.create({
+						key: 'test.trx.key',
+						value: 'trx-value',
+						loadOnStartup: false,
+					}),
+				);
+
+				// Should find the row using the same transaction
+				const result = await settingsRepository.findByKey('test.trx.key', trx);
+				expect(result).toMatchObject({ key: 'test.trx.key', value: 'trx-value' });
+			});
+		});
 	});
 
 	describe('findByKeys()', () => {

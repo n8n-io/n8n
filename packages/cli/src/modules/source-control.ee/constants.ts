@@ -7,10 +7,12 @@ export const SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER = 'credential_stubs';
 export const SOURCE_CONTROL_VARIABLES_EXPORT_FILE = 'variable_stubs.json';
 export const SOURCE_CONTROL_TAGS_EXPORT_FILE = 'tags.json';
 export const SOURCE_CONTROL_FOLDERS_EXPORT_FILE = 'folders.json';
+export const SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER = 'datatables';
 export const SOURCE_CONTROL_OWNERS_EXPORT_FILE = 'workflow_owners.json';
 export const SOURCE_CONTROL_SSH_FOLDER = 'ssh';
 export const SOURCE_CONTROL_SSH_KEY_NAME = 'key';
 export const SOURCE_CONTROL_DEFAULT_BRANCH = 'main';
+export const SOURCE_CONTROL_DEFAULT_BRANCH_COLOR = '#5296D6';
 export const SOURCE_CONTROL_ORIGIN = 'origin';
 export const SOURCE_CONTROL_README = `
 # n8n Source Control

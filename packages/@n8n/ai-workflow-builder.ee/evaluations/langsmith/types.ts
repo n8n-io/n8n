@@ -1,5 +1,6 @@
 import type { BaseMessage } from '@langchain/core/messages';
 
+import type { IntrospectionEvent } from '@/tools/introspect.tool';
 import { cleanContextTags } from '@/utils/stream-processor';
 
 import type { SimpleWorkflow } from '../../src/types/workflow';
@@ -13,6 +14,7 @@ export interface WorkflowOutput {
 export interface WorkflowStateValues {
 	messages: BaseMessage[];
 	workflowJSON: SimpleWorkflow;
+	introspectionEvents?: IntrospectionEvent[];
 	[key: string]: unknown;
 }
 

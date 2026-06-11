@@ -1,7 +1,21 @@
-import { ChatHubLLMProvider, AgentIconOrEmoji } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	AgentIconOrEmoji,
+	ChatHubAgentKnowledgeItem,
+} from '@n8n/api-types';
 import { User, CredentialsEntity, JsonColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
-import { INode } from 'n8n-workflow';
+import {
+	Column,
+	Entity,
+	ManyToOne,
+	ManyToMany,
+	JoinTable,
+	JoinColumn,
+	PrimaryGeneratedColumn,
+	type Relation,
+} from '@n8n/typeorm';
+
+import type { ChatHubTool } from './chat-hub-tool.entity';
 
 export interface IChatHubAgent {
 	id: string;
@@ -10,12 +24,13 @@ export interface IChatHubAgent {
 	name: string;
 	description: string | null;
 	icon: AgentIconOrEmoji | null;
+	suggestedPrompts: Array<{ text: string; icon?: AgentIconOrEmoji }>;
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;
 	provider: ChatHubLLMProvider;
 	model: string;
-	tools: INode[];
+	files: ChatHubAgentKnowledgeItem[];
 }
 
 @Entity({ name: 'chat_hub_agents' })
@@ -40,6 +55,12 @@ export class ChatHubAgent extends WithTimestamps {
 	 */
 	@JsonColumn({ nullable: true })
 	icon: AgentIconOrEmoji | null;
+
+	/**
+	 * Suggested prompts displayed on the chat greeting screen.
+	 */
+	@JsonColumn({ default: '[]' })
+	suggestedPrompts: Array<{ text: string; icon?: AgentIconOrEmoji }>;
 
 	/**
 	 * The system prompt for the chat agent.
@@ -86,8 +107,20 @@ export class ChatHubAgent extends WithTimestamps {
 	model: string;
 
 	/**
-	 * The tools available to the agent as JSON `INode` definitions.
+	 * The tools associated with this agent via `chat_hub_agent_tools` join table.
+	 */
+	@ManyToMany('ChatHubTool')
+	@JoinTable({
+		name: 'chat_hub_agent_tools',
+		joinColumn: { name: 'agentId', referencedColumnName: 'id' },
+		inverseJoinColumn: { name: 'toolId', referencedColumnName: 'id' },
+	})
+	tools?: Relation<ChatHubTool[]>;
+
+	/**
+	 * The files attached to the agent.
+	 * Can be active files with binary data or embedded PDFs (embeddings only).
 	 */
 	@JsonColumn({ default: '[]' })
-	tools: INode[];
+	files: ChatHubAgentKnowledgeItem[];
 }

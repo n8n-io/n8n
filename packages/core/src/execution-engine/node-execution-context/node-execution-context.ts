@@ -16,6 +16,7 @@ import type {
 	INodeOutputConfiguration,
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionCustomData,
 	NodeConnectionType,
 	NodeFeatures,
 	NodeInputConnections,
@@ -34,20 +35,16 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
-import {
-	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_NODE_TYPE,
-	WAITING_TOKEN_QUERY_PARAM,
-} from '@/constants';
+import { FULL_ACCESS_NODE_TYPES, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
+import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
+import { createExecutionCustomData } from './utils/custom-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
-import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -66,6 +63,19 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get logger() {
 		return Container.get(Logger);
+	}
+
+	@Memoized
+	get customData(): IWorkflowExecutionCustomData {
+		if (!this.runExecutionData) {
+			throw new ApplicationError(
+				'Cannot access customData: runExecutionData is not available in this context',
+			);
+		}
+		return createExecutionCustomData({
+			runExecutionData: this.runExecutionData,
+			mode: this.mode,
+		});
 	}
 
 	getExecutionContext() {
@@ -244,12 +254,16 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.instanceBaseUrl;
 	}
 
-	getInstanceId() {
-		return this.instanceSettings.instanceId;
+	async listAgents(): Promise<Array<{ id: string; name: string }>> {
+		if (!this.additionalData.listAgents || !this.additionalData.userId) {
+			return [];
+		}
+
+		return await this.additionalData.listAgents(this.additionalData.userId);
 	}
 
-	setSignatureValidationRequired() {
-		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
+	getInstanceId() {
+		return this.instanceSettings.instanceId;
 	}
 
 	getSignedResumeUrl(parameters: Record<string, string> = {}) {
@@ -265,11 +279,14 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			baseURL.searchParams.set(key, value);
 		}
 
+		// Sign the full URL (pathname + query params) using instance secret as HMAC key
+		// This ensures action parameters (like approved=true/false) cannot be tampered with
 		const urlForSigning = prepareUrlForSigning(baseURL);
-
-		const token = generateUrlSignature(urlForSigning, this.instanceSettings.hmacSignatureSecret);
-
-		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+		const signature = generateUrlSignature(
+			urlForSigning,
+			this.instanceSettings.hmacSignatureSecret,
+		);
+		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, signature);
 
 		return baseURL.toString();
 	}
@@ -282,6 +299,21 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.credentialsHelper.getCredentialsProperties(type);
 	}
 
+	/**
+	 * Throws if the credential type has opted into node-level restriction and this
+	 * node is not listed in its supportedNodes. Extracted to keep `_getCredentials`
+	 * below the cyclomatic-complexity lint threshold.
+	 */
+	private assertCredentialUsableByNode(type: string, nodeType: string): void {
+		if (!this.additionalData.credentialsHelper.isCredentialUsableByNode(type, nodeType)) {
+			throw new NodeOperationError(
+				this.node,
+				`Credential type "${type}" is restricted to specific nodes`,
+				{ level: 'warning' },
+			);
+		}
+	}
+
 	/** Returns the requested decrypted credentials if the node has access to them */
 	protected async _getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
@@ -290,16 +322,39 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		itemIndex?: number,
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
+
+		// Eval-mode bypass: only mock when the node is fully unconfigured, so
+		// nodes that probe multiple auth types still get production's throw.
+		// Delegates to the credentials helper with a null-id `INodeCredentialsDetails`;
+		// `EvalMockedCredentialsHelper` catches the resulting `CredentialNotFoundError`
+		// and schema-synthesizes (and applies the wire-server URL rewrite). Production
+		// helpers don't catch — but production never reaches this branch because
+		// `evalLlmMockHandler` is only set in eval mode.
+		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
+			const hasOtherCreds = !!node.credentials && Object.keys(node.credentials).length > 0;
+			if (!hasOtherCreds) {
+				return (await additionalData.credentialsHelper.getDecrypted(
+					additionalData,
+					{ id: null, name: type },
+					type,
+					mode,
+					executeData,
+				)) as T;
+			}
+		}
+
 		// Get the NodeType as it has the information if the credentials are required
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		// Hardcode for now for security reasons that only a single node can access
-		// all credentials
-		const fullAccess = [
-			HTTP_REQUEST_NODE_TYPE,
-			HTTP_REQUEST_TOOL_NODE_TYPE,
-			HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-		].includes(node.type);
+		// all credentials. Set is shared with save-time validators (see
+		// `FULL_ACCESS_NODE_TYPES` in `@/constants`) — add new entries there.
+		const fullAccess = FULL_ACCESS_NODE_TYPES.has(node.type);
+
+		// Strict opt-in restriction: credentials that set restrictToSupportedNodes
+		// are only usable by nodes listed in their supportedNodes — overriding the
+		// fullAccess bypass that HTTP Request and its tool variants enjoy.
+		this.assertCredentialUsableByNode(type, node.type);
 
 		let nodeCredentialDescription: INodeCredentialDescription | undefined;
 		if (!fullAccess) {
@@ -448,7 +503,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		const value = get(node.parameters, parameterName, fallbackValue);
 
 		if (value === undefined) {
-			throw new ApplicationError('Could not get parameter', { extra: { parameterName } });
+			throw new ApplicationError(`Could not get parameter "${parameterName}"`, {
+				extra: { parameterName },
+			});
 		}
 
 		if (options?.rawExpressions) {

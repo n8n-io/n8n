@@ -29,15 +29,17 @@ const $style = useCssModule();
 				<AssistantIcon theme="blank" />
 			</div>
 		</template>
-		{{ t('aiAssistant.builder.canvas.thinking') }}
-		<N8nButton
-			v-if="showStop"
-			:class="$style.stopButton"
-			:label="'Stop'"
-			type="secondary"
-			size="mini"
-			@click="emit('stop')"
-		/>
+		<div :class="$style.wrapper">
+			{{ t('aiAssistant.builder.canvas.thinking') }}
+			<N8nButton
+				v-if="showStop"
+				:class="$style.stopButton"
+				:label="'Stop'"
+				variant="ghost"
+				size="xsmall"
+				@click="emit('stop')"
+			/>
+		</div>
 	</N8nCanvasPill>
 </template>
 
@@ -53,7 +55,14 @@ const $style = useCssModule();
 	justify-content: center;
 }
 
+.wrapper {
+	display: flex;
+	align-items: center;
+}
+
 .stopButton {
 	margin-left: var(--spacing--xs);
+	margin-right: calc(var(--spacing--2xs) * -1);
+	color: var(--color--neutral-white);
 }
 </style>

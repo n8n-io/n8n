@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { N8nButton, N8nPromptInput, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nChatInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { WORKFLOW_SUGGESTIONS } from '../constants';
 import { VIEWS } from '@/app/constants/navigation';
@@ -29,7 +29,7 @@ const emit = defineEmits<{
 }>();
 
 const textInputValue = ref<string>('');
-const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
+const promptInputRef = ref<InstanceType<typeof N8nChatInput>>();
 const importFileRef = ref<HTMLInputElement | null>(null);
 
 const shuffledSuggestions = computed(() => {
@@ -115,13 +115,13 @@ function handleFileImport() {
 		/>
 		<p :class="$style.subtitle">{{ i18n.baseText('emptyStateBuilderPrompt.subtitle') }}</p>
 		<div :class="$style.promptInput">
-			<N8nPromptInput
+			<N8nChatInput
 				ref="promptInputRef"
 				v-model="textInputValue"
 				:placeholder="placeholder"
-				:min-lines="4"
+				:autosize="true"
 				:button-label="i18n.baseText('emptyStateBuilderPrompt.buildWorkflow')"
-				data-test-id="empty-state-builder-prompt-input"
+				data-test-id="empty-state-builder-chat-input"
 				autofocus
 				@submit="onSubmit"
 			/>
@@ -132,17 +132,17 @@ function handleFileImport() {
 					i18n.baseText('emptyStateBuilderPrompt.orStartWith')
 				}}</span>
 				<N8nTooltip :content="i18n.baseText('emptyStateBuilderPrompt.fromScratchTooltip')">
-					<N8nButton type="secondary" size="small" icon="play" @click="onFromScratch">
+					<N8nButton variant="subtle" size="small" icon="play" @click="onFromScratch">
 						{{ i18n.baseText('emptyStateBuilderPrompt.fromScratch') }}
 					</N8nButton>
 				</N8nTooltip>
 				<N8nTooltip :content="i18n.baseText('emptyStateBuilderPrompt.templateTooltip')">
-					<N8nButton type="secondary" size="small" icon="layout-template" @click="onTemplate">
+					<N8nButton variant="subtle" size="small" icon="layout-template" @click="onTemplate">
 						{{ i18n.baseText('emptyStateBuilderPrompt.template') }}
 					</N8nButton>
 				</N8nTooltip>
 				<N8nTooltip :content="i18n.baseText('emptyStateBuilderPrompt.importFromFileTooltip')">
-					<N8nButton type="secondary" size="small" icon="upload" @click="onImportFromFile">
+					<N8nButton variant="subtle" size="small" icon="upload" @click="onImportFromFile">
 						{{ i18n.baseText('emptyStateBuilderPrompt.importFromFile') }}
 					</N8nButton>
 				</N8nTooltip>

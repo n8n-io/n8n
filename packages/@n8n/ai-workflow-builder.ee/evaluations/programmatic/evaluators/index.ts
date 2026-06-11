@@ -2,6 +2,7 @@ export * from './agent-prompt';
 export * from './connections';
 export * from './credentials';
 export * from './from-ai';
+export * from './graph-validation';
 export * from './nodes';
 export * from './parameters';
 export * from './tools';

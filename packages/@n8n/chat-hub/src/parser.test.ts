@@ -132,6 +132,14 @@ describe(appendChunkToParsedMessageItems, () => {
 		expect(result).toEqual([{ type: 'text', content: 'hello world' }]);
 	});
 
+	it('should preserve whitespace-only chunks like newlines', () => {
+		let items: ChatMessageContentChunk[] = [];
+		items = appendChunkToParsedMessageItems(items, '## Hi');
+		items = appendChunkToParsedMessageItems(items, '\n\n');
+		items = appendChunkToParsedMessageItems(items, 'Thanks');
+		expect(items).toEqual([{ type: 'text', content: '## Hi\n\nThanks' }]);
+	});
+
 	describe('with-buttons JSON parsing', () => {
 		it('should parse valid with-buttons JSON', () => {
 			const json = JSON.stringify({
@@ -415,9 +423,10 @@ describe(appendChunkToParsedMessageItems, () => {
 </command:artifact-edit>`;
 
 		const result = appendChunkToParsedMessageItems([], content);
-		expect(result).toHaveLength(2);
+		expect(result).toHaveLength(3);
 		expect(result[0].type).toBe('artifact-create');
-		expect(result[1].type).toBe('artifact-edit');
+		expect(result[1]).toEqual({ type: 'text', content: '\n' });
+		expect(result[2].type).toBe('artifact-edit');
 	});
 
 	it('should handle streaming scenario with text before command', () => {

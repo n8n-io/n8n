@@ -1,5 +1,11 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -7,13 +13,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatXAiGrok implements INodeType {
 	description: INodeTypeDescription = {
@@ -116,6 +117,10 @@ export class LmChatXAiGrok implements INodeType {
 					},
 				},
 				default: 'grok-2-vision-1212',
+				builderHint: {
+					propertyHint:
+						'Default to the latest flagship Grok (grok-4.20-0309-reasoning, or grok-4.20-multi-agent-0309 for agent workloads). Avoid grok-4, grok-2, and grok-1 variants.',
+				},
 			},
 			{
 				displayName: 'Options',

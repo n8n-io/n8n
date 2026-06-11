@@ -23,13 +23,9 @@ export class MessageFormatter {
 	}
 
 	static formatError(error: Error): McpToolResult {
-		const errorDetails = [`${error.name}: ${error.message}`];
-		if (error.stack) {
-			errorDetails.push(error.stack);
-		}
 		return {
 			isError: true,
-			content: [{ type: 'text', text: errorDetails.join('\n') }],
+			content: [{ type: 'text', text: `${error.name}: ${error.message}` }],
 		};
 	}
 }

@@ -1,4 +1,4 @@
-import type { WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { MANUAL_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE, type INode } from 'n8n-workflow';
 
 const testNodes: INode[] = [
@@ -47,3 +47,21 @@ export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}): Workflo
 		...overrides,
 	} as WorkflowEntity;
 };
+
+export const createWorkflowHistoryVersion = (
+	overrides: Partial<WorkflowHistory> & Pick<WorkflowHistory, 'workflowId' | 'versionId' | 'nodes'>,
+): WorkflowHistory =>
+	({
+		versionId: overrides.versionId,
+		workflowId: overrides.workflowId,
+		nodes: overrides.nodes,
+		connections: overrides.connections ?? {},
+		authors: overrides.authors ?? '[]',
+		name: overrides.name ?? null,
+		description: overrides.description ?? null,
+		autosaved: overrides.autosaved ?? false,
+		workflow: overrides.workflow as WorkflowEntity,
+		workflowPublishHistory: overrides.workflowPublishHistory ?? [],
+		createdAt: overrides.createdAt ?? new Date('2024-01-01T00:00:00.000Z'),
+		updatedAt: overrides.updatedAt ?? new Date('2024-01-02T00:00:00.000Z'),
+	}) as WorkflowHistory;

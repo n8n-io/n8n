@@ -13,6 +13,7 @@ import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
 import {
+	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
@@ -34,10 +35,10 @@ import {
 	getDeletedResources,
 	getNonDeletedResources,
 } from './source-control-resource-helper';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
-import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
@@ -64,6 +65,7 @@ export class SourceControlService {
 		private sourceControlPreferencesService: SourceControlPreferencesService,
 		private sourceControlExportService: SourceControlExportService,
 		private sourceControlImportService: SourceControlImportService,
+		private sourceControlContextFactory: SourceControlContextFactory,
 		private sourceControlScopedService: SourceControlScopedService,
 		private readonly eventService: EventService,
 		private readonly sourceControlStatusService: SourceControlStatusService,
@@ -181,6 +183,8 @@ export class SourceControlService {
 				connected: false,
 				branchName: '',
 				repositoryUrl: '',
+				branchReadOnly: false,
+				branchColor: SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
 				connectionType: preferences.connectionType,
 			});
 			await this.sourceControlExportService.deleteRepositoryFolder();
@@ -303,7 +307,7 @@ export class SourceControlService {
 			throw new BadRequestError('Cannot push onto read-only branch.');
 		}
 
-		const context = new SourceControlContext(user);
+		const context = await this.sourceControlContextFactory.createContext(user);
 
 		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
@@ -363,7 +367,7 @@ export class SourceControlService {
 			we keep track of them in a single file unlike workflows and credentials
 		*/
 			filesToPush
-				.filter((f) => ['workflow', 'credential', 'project'].includes(f.type))
+				.filter((f) => ['workflow', 'credential', 'project', 'datatable'].includes(f.type))
 				.forEach((e) => {
 					if (e.status !== 'deleted') {
 						filesToBePushed.add(e.file);
@@ -408,6 +412,14 @@ export class SourceControlService {
 			if (variablesChanges) {
 				filesToBePushed.add(variablesChanges.file);
 				await this.sourceControlExportService.exportGlobalVariablesToWorkFolder();
+			}
+
+			const dataTableCandidates = filterByType(filesToPush, 'datatable');
+			if (dataTableCandidates.length > 0) {
+				await this.sourceControlExportService.exportDataTablesToWorkFolder(
+					dataTableCandidates,
+					context,
+				);
 			}
 
 			await this.gitService.stage(filesToBePushed, filesToBeDeleted);
@@ -487,6 +499,9 @@ export class SourceControlService {
 
 		// IMPORTANT: Make sure the projects and folders get processed first as the workflows depend on them
 		const projectsToBeImported = getNonDeletedResources(statusResult, 'project');
+		this.logger.debug(
+			`[Project Debug] Found ${projectsToBeImported.length} projects to import: ${JSON.stringify(projectsToBeImported.map((p) => ({ id: p.id, name: p.name })))}`,
+		);
 		await this.sourceControlImportService.importTeamProjectsFromWorkFolder(
 			projectsToBeImported,
 			user.id,
@@ -550,6 +565,16 @@ export class SourceControlService {
 		const variablesToBeDeleted = getDeletedResources(statusResult, 'variables');
 		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
 
+		const dataTableCandidates = getNonDeletedResources(statusResult, 'datatable');
+		if (dataTableCandidates.length > 0) {
+			await this.sourceControlImportService.importDataTablesFromWorkFolder(
+				dataTableCandidates,
+				user.id,
+			);
+		}
+		const dataTablesToBeDeleted = getDeletedResources(statusResult, 'datatable');
+		await this.sourceControlImportService.deleteDataTablesNotInWorkFolder(dataTablesToBeDeleted);
+
 		const foldersToBeDeleted = getDeletedResources(statusResult, 'folders');
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
 
@@ -594,7 +619,7 @@ export class SourceControlService {
 		commit?: string;
 	}): Promise<IWorkflowToImport> {
 		await this.sanityCheck();
-		const context = new SourceControlContext(user);
+		const context = await this.sourceControlContextFactory.createContext(user);
 		switch (type) {
 			case 'workflow': {
 				if (typeof id === 'undefined') {

@@ -12,4 +12,6 @@ export {
 	cleanStaleWorkflowContext,
 	applyCacheControlMarkers,
 	applySubgraphCacheMarkers,
+	stripAllCacheControlMarkers,
+	hasCacheControl,
 } from './helpers';

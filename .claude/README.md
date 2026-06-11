@@ -2,6 +2,10 @@
 
 This directory contains shared Claude Code configuration for the n8n team.
 
+All skills, agents, and commands live under the `n8n` plugin at
+`.claude/plugins/n8n/` for `n8n:` namespacing. See
+[plugin README](plugins/n8n/README.md) for full details.
+
 ## Setup
 
 ### Linear MCP Server
@@ -33,31 +37,10 @@ To auto-approve Linear MCP tools, add to your global settings:
 
 **Note:** For GitHub/git operations, we use `gh` CLI and `git` commands instead of GitHub MCP.
 
-## Available Commands
+## Plugin
 
-- `/n8n-triage PAY-XXX` - Analyze and triage a Linear issue
-- `/n8n-plan PAY-XXX` - Create implementation plan
+All skills, commands, and agents are auto-discovered from
+`.claude/plugins/n8n/`. They get the `n8n:` namespace prefix automatically
+(e.g. `n8n:create-pr`, `/n8n:plan`, `n8n:developer`).
 
-## Quick Reference
-
-- `/n8n-conventions` - Load detailed conventions guide (optional - agents already know n8n patterns)
-
-## Workflow
-
-**Recommended approach:**
-1. `/n8n-triage PAY-123` → Investigate root cause and severity (optional)
-2. `/n8n-plan PAY-123` → Create detailed implementation plan
-3. Review the plan in chat
-4. Say "implement it" or "go ahead" → I'll launch n8n-developer agent
-5. Implementation proceeds with full context from the plan
-
-## Agents
-
-- **n8n-developer** - Full-stack n8n development (frontend/backend/nodes)
-- **n8n-linear-issue-triager** - Issue investigation and analysis
-
-## Skills
-
-- **n8n-conventions** - Quick reference pointing to /AGENTS.md (optional - agents have embedded knowledge)
-  - Use `/n8n-conventions` when you need detailed patterns
-  - References root docs instead of duplicating (~95 lines)
+See [plugin README](plugins/n8n/README.md) for structure and design decisions.

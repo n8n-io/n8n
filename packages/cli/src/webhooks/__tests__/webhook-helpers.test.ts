@@ -2,7 +2,18 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type express from 'express';
 import { mock, type MockProxy } from 'jest-mock-extended';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	getHtmlSandboxCSP,
+	isWebhookHtmlSandboxingDisabled,
+} from 'n8n-core';
+
+jest.mock('n8n-core', () => ({
+	...jest.requireActual('n8n-core'),
+	isWebhookHtmlSandboxingDisabled: jest.fn(),
+	getHtmlSandboxCSP: jest.fn(),
+}));
 import type {
 	Workflow,
 	INode,
@@ -218,6 +229,9 @@ describe('setupResponseNodePromise', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 
+		jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(false);
+		jest.mocked(getHtmlSandboxCSP).mockReturnValue('sandbox allow-forms allow-scripts');
+
 		responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
 
 		res.header.mockReturnValue(res);
@@ -270,10 +284,35 @@ describe('setupResponseNodePromise', () => {
 		await new Promise(process.nextTick);
 
 		expect(binaryDataService.getAsStream).toHaveBeenCalledWith('binary-123');
-		expect(res.header).toHaveBeenCalledWith({ 'content-type': 'image/jpeg' });
+		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'image/jpeg']]));
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(mockStream.pipe).toHaveBeenCalledWith(res, { end: false });
 		expect(finished).toHaveBeenCalledWith(mockStream);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should not set sandbox CSP header on binary stream responses when sandboxing is disabled', async () => {
+		jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+		const mockStream = mock<Readable>();
+		binaryDataService.getAsStream.mockResolvedValue(mockStream);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-123' } },
+			headers: { 'content-type': 'text/html' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
 	});
 
 	test('should handle buffer response', async () => {
@@ -294,9 +333,32 @@ describe('setupResponseNodePromise', () => {
 		});
 		await new Promise(process.nextTick);
 
-		expect(res.header).toHaveBeenCalledWith({ 'content-type': 'text/plain' });
+		expect(res.setHeaders).toHaveBeenCalledWith(new Map([['content-type', 'text/plain']]));
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		expect(res.end).toHaveBeenCalledWith(buffer);
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
+	});
+
+	test('should not set sandbox CSP header on buffer responses when sandboxing is disabled', async () => {
+		jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValue(true);
+
+		setupResponseNodePromise(
+			responsePromise,
+			res,
+			responseCallback,
+			workflowStartNode,
+			executionId,
+			workflow,
+		);
+
+		responsePromise.resolve({
+			body: Buffer.from('<html></html>'),
+			headers: { 'content-type': 'text/html' },
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+
+		expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
 	});
 
 	test('should handle errors properly', async () => {
@@ -323,22 +385,25 @@ describe('setupResponseNodePromise', () => {
 });
 
 describe('handleHostedChatResponse', () => {
-	it('should send executionStarted: true and executionId when responseMode is hostedChat and didSendResponse is false', async () => {
+	it('should send executionStarted: true, executionId, and resumeToken when responseMode is hostedChat', async () => {
 		const res = {
 			send: jest.fn(),
 			end: jest.fn(),
 		} as unknown as express.Response;
-		const executionId = 'testExecutionId';
-		let didSendResponse = false;
 		const responseMode = 'hostedChat';
+		let didSendResponse = false;
+		const executionId = '123';
+		const resumeToken = 'a'.repeat(64);
 
-		(res.send as jest.Mock).mockImplementation((data) => {
-			expect(data).toEqual({ executionStarted: true, executionId });
-		});
+		const result = handleHostedChatResponse(
+			res,
+			responseMode,
+			didSendResponse,
+			executionId,
+			resumeToken,
+		);
 
-		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
-
-		expect(res.send).toHaveBeenCalled();
+		expect(res.send).toHaveBeenCalledWith({ executionStarted: true, executionId, resumeToken });
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(res.end).toHaveBeenCalled();
 		expect(result).toBe(true);
@@ -498,6 +563,54 @@ describe('prepareExecutionData', () => {
 
 		expect(pinData).toBeUndefined();
 		expect(runExecutionData.resultData.pinData).toBeUndefined();
+	});
+
+	test('should populate manualData.userId for manual executions when userId is provided', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			'user-abc',
+		);
+
+		expect(runExecutionData.manualData).toEqual({ userId: 'user-abc' });
+	});
+
+	test('should not populate manualData when userId is undefined', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'manual',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			undefined,
+		);
+
+		expect(runExecutionData.manualData).toBeUndefined();
+	});
+
+	test('should not populate manualData for non-manual execution modes', () => {
+		const { runExecutionData } = prepareExecutionData(
+			'webhook',
+			workflowStartNode,
+			webhookResultData,
+			undefined,
+			{},
+			undefined,
+			undefined,
+			workflowData,
+			'user-abc',
+		);
+
+		expect(runExecutionData.manualData).toBeUndefined();
 	});
 
 	describe('MICROSOFT_AGENT365_TRIGGER_NODE_TYPE merge condition', () => {

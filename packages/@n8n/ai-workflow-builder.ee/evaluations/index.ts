@@ -15,18 +15,20 @@
 export { runEvaluation } from './harness/runner';
 
 // Types
-export type {
-	Feedback,
-	EvaluationContext,
-	TestCaseContext,
-	GlobalRunContext,
-	Evaluator,
-	TestCase,
-	RunConfig,
-	ExampleResult,
-	RunSummary,
-	EvaluationLifecycle,
-	LangsmithOptions,
+export {
+	isGenerationResult,
+	type Feedback,
+	type EvaluationContext,
+	type TestCaseContext,
+	type GlobalRunContext,
+	type Evaluator,
+	type TestCase,
+	type RunConfig,
+	type ExampleResult,
+	type RunSummary,
+	type EvaluationLifecycle,
+	type LangsmithOptions,
+	type GenerationResult,
 } from './harness/harness-types';
 
 // Lifecycle
@@ -43,9 +45,20 @@ export {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
+	createResponderEvaluator,
+	createExecutionEvaluator,
+	createBinaryChecksEvaluator,
 	type PairwiseEvaluatorOptions,
 	type SimilarityEvaluatorOptions,
+	type BinaryChecksEvaluatorOptions,
+	type ResponderEvaluationContext,
 } from './evaluators';
+
+// Introspection lifecycle
+export {
+	createIntrospectionAnalysisLifecycle,
+	type IntrospectionAnalysisOptions,
+} from './lifecycles/introspection-analysis';
 
 // Output
 export {

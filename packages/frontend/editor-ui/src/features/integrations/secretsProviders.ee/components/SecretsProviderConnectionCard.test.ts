@@ -1,8 +1,11 @@
-import { screen } from '@testing-library/vue';
+import { screen, within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import SecretsProviderConnectionCard from './SecretsProviderConnectionCard.ee.vue';
 import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import { DateTime } from 'luxon';
+import { createTestingPinia } from '@pinia/testing';
+import { useRBACStore } from '@/app/stores/rbac.store';
 
 export const MOCK_PROVIDER_TYPES: SecretProviderTypeResponse[] = [
 	{
@@ -34,12 +37,17 @@ export const MOCK_PROVIDER_TYPES: SecretProviderTypeResponse[] = [
 const renderComponent = createComponentRenderer(SecretsProviderConnectionCard);
 
 describe('SecretsProviderConnectionCard', () => {
+	let pinia: ReturnType<typeof createTestingPinia>;
+
+	beforeEach(() => {
+		pinia = createTestingPinia({ stubActions: false });
+	});
 	const mockProvider: SecretProviderConnection = {
 		id: 'test-id-123',
 		name: 'aws-production',
 		type: 'awsSecretsManager',
-		state: 'connected',
 		isEnabled: true,
+		state: 'connected',
 		projects: [],
 		secretsCount: 5,
 		secrets: [
@@ -53,9 +61,15 @@ describe('SecretsProviderConnectionCard', () => {
 		},
 	};
 
+	const openActionsMenu = async () => {
+		const toggle = screen.getByTestId('secrets-provider-action-toggle');
+		await userEvent.click(within(toggle).getByRole('button'));
+	};
+
 	it('should render provider name in header', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -65,6 +79,7 @@ describe('SecretsProviderConnectionCard', () => {
 	it('should display provider display name', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -74,6 +89,7 @@ describe('SecretsProviderConnectionCard', () => {
 	it('should render provider image component', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -89,6 +105,7 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: providerWithNoSecrets, providerTypeInfo, canUpdate: true },
 		});
 
@@ -104,6 +121,7 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: providerWithOneSecret, providerTypeInfo, canUpdate: true },
 		});
 
@@ -113,6 +131,7 @@ describe('SecretsProviderConnectionCard', () => {
 	it('should display plural "secrets" for count greater than 1', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -127,6 +146,7 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: recentProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -142,6 +162,7 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: disconnectedProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -152,31 +173,183 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { queryByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
 		expect(queryByTestId('disconnected-badge')).not.toBeInTheDocument();
 	});
 
-	it('should show edit action when user has update permission', () => {
+	it('should show edit action when user has update permission', async () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
 		expect(getByTestId('secrets-provider-action-toggle')).toBeInTheDocument();
-		expect(screen.getByTestId('action-edit')).toBeInTheDocument();
+		await openActionsMenu();
+		expect(await screen.findByTestId('action-edit')).toBeInTheDocument();
 	});
 
 	it('should not show edit action when user lacks update permission', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: false },
 		});
 
 		expect(getByTestId('secrets-provider-action-toggle')).toBeInTheDocument();
 		expect(screen.queryAllByTestId('action-edit').length).toBe(0);
+	});
+
+	it('should show reload action when provider is connected and user has sync scope', async () => {
+		const rbacStore = useRBACStore();
+		rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		await openActionsMenu();
+		expect(await screen.findByTestId('action-reload')).toBeInTheDocument();
+	});
+
+	it('should not show reload action when user lacks sync scope', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
+	});
+
+	it('should not show reload action when provider is in error state', () => {
+		const rbacStore = useRBACStore();
+		rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+
+		const errorProvider: SecretProviderConnection = {
+			...mockProvider,
+			state: 'error',
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: errorProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
+	});
+
+	it('should hide sharing badge when provider is disabled', () => {
+		const disabledProvider: SecretProviderConnection = {
+			...mockProvider,
+			isEnabled: false,
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: disabledProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('secrets-provider-global-badge')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('secrets-provider-project-badge')).not.toBeInTheDocument();
+	});
+
+	it('should show sharing badge when provider is enabled', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		const globalBadge = screen.queryByTestId('secrets-provider-global-badge');
+		const projectBadge = screen.queryByTestId('secrets-provider-project-badge');
+		expect(globalBadge ?? projectBadge).toBeInTheDocument();
+	});
+
+	it('should show activate option in context menu when provider is disabled and user can update', async () => {
+		const disabledProvider: SecretProviderConnection = {
+			...mockProvider,
+			isEnabled: false,
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: disabledProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		await openActionsMenu();
+		expect(await screen.findByTestId('action-activate')).toBeInTheDocument();
+	});
+
+	it('should not show activate option in context menu when provider is already enabled', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('action-activate')).not.toBeInTheDocument();
+	});
+
+	it('should not show activate option in context menu when user lacks update permission', () => {
+		const disabledProvider: SecretProviderConnection = {
+			...mockProvider,
+			isEnabled: false,
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: disabledProvider, providerTypeInfo, canUpdate: false },
+		});
+
+		expect(screen.queryByTestId('action-activate')).not.toBeInTheDocument();
+	});
+
+	it('should show inactive badge text when provider is disabled', () => {
+		const disabledProvider: SecretProviderConnection = {
+			...mockProvider,
+			isEnabled: false,
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: disabledProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.getByTestId('disabled-badge')).toHaveTextContent('Inactive');
+	});
+
+	it('should not show reload action when provider is disabled', () => {
+		const rbacStore = useRBACStore();
+		rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+		const disabledProvider: SecretProviderConnection = {
+			...mockProvider,
+			state: 'connected',
+			isEnabled: false,
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: disabledProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
 	});
 });

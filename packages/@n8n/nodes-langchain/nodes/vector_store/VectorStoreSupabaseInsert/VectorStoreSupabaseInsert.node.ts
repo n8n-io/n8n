@@ -10,11 +10,10 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import type { N8nJsonLoader } from '@n8n/ai-utilities';
+import { processDocuments, type N8nJsonLoader } from '@n8n/ai-utilities';
 
-import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
-import { processDocuments } from '../shared/processDocuments';
 
 // This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseInsert implements INodeType {

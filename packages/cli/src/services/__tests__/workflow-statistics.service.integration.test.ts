@@ -178,15 +178,13 @@ describe('WorkflowStatisticsService', () => {
 		);
 
 		test.each<ExecutionStatus>(['canceled', 'new', 'running', 'unknown', 'waiting'])(
-			'should upsert `count`, but not `rootCount` for execution status %s',
+			'should not record statistics for non-terminal execution status %s',
 			async (status) => {
 				// ARRANGE
 				const runData: IRun = {
 					finished: true,
 					status,
 					data: createEmptyRunExecutionData(),
-					// use `trigger` to make sure it would upsert if it were not for the
-					// status used
 					mode: 'trigger',
 					startedAt: new Date(),
 					storedAt: 'db',
@@ -194,19 +192,10 @@ describe('WorkflowStatisticsService', () => {
 
 				// ACT
 				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
 
 				// ASSERT
 				const statistics = await workflowStatisticsRepository.find();
-				expect(statistics).toHaveLength(1);
-				expect(statistics[0]).toMatchObject({
-					count: 2,
-					rootCount: 0,
-					latestEvent: expect.any(Date),
-					name: 'production_error',
-					workflowId: workflow.id,
-					workflowName: workflow.name,
-				});
+				expect(statistics).toHaveLength(0);
 			},
 		);
 
@@ -430,6 +419,31 @@ describe('WorkflowStatisticsService', () => {
 				expect.any(Object),
 			);
 		});
+
+		test('does not emit instance-first-production-workflow-failed for waiting status (N8N-9680)', async () => {
+			// ARRANGE - simulates the bug scenario where a workflow enters wait state
+			const runData: IRun = {
+				finished: false,
+				status: 'waiting',
+				data: createEmptyRunExecutionData(),
+				mode: 'trigger',
+				startedAt: new Date(),
+				storedAt: 'db',
+			};
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+
+			// ACT
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+			// ASSERT
+			expect(emitSpy).not.toHaveBeenCalledWith(
+				'instance-first-production-workflow-failed',
+				expect.any(Object),
+			);
+			const statistics = await workflowStatisticsRepository.find();
+			expect(statistics).toHaveLength(0);
+		});
+
 		test('emits first-production-workflow-succeeded with null userId for team project', async () => {
 			// ARRANGE
 			const teamProject = await createTeamProject('Team Project');

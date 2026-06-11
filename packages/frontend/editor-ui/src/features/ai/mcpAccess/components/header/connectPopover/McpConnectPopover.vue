@@ -87,8 +87,8 @@ watch(
 		>
 			<template #trigger>
 				<N8nButton
+					variant="subtle"
 					data-test-id="mcp-connect-popover-trigger-button"
-					type="tertiary"
 					:disabled="disabled"
 				>
 					{{ i18n.baseText('settings.mcp.connectPopover.triggerLabel') }}

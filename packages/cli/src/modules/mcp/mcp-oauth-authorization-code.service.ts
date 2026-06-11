@@ -1,3 +1,4 @@
+import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
@@ -25,6 +26,7 @@ export class McpOAuthAuthorizationCodeService {
 		redirectUri: string,
 		codeChallenge: string,
 		state: string | null,
+		resource?: string,
 	): Promise<string> {
 		const code = randomBytes(32).toString('hex');
 
@@ -36,6 +38,7 @@ export class McpOAuthAuthorizationCodeService {
 			codeChallenge,
 			codeChallengeMethod: 'S256',
 			state,
+			resource: resource ?? null,
 			expiresAt: Date.now() + this.AUTHORIZATION_CODE_EXPIRY_MS,
 			used: false,
 		});
@@ -59,20 +62,49 @@ export class McpOAuthAuthorizationCodeService {
 		});
 
 		if (!authRecord) {
-			throw new Error('Invalid authorization code');
+			throw new InvalidGrantError('Invalid authorization code');
 		}
 
 		if (authRecord.expiresAt < Date.now()) {
 			await this.authorizationCodeRepository.remove(authRecord);
-			throw new Error('Authorization code expired');
+			throw new InvalidGrantError('Authorization code expired');
 		}
 
 		return authRecord;
 	}
 
 	/**
+	 * Finds a non-expired, unused authorization code for validation.
+	 *
+	 * @see markAuthorizationCodeAsUsed For consuming the code atomically once validated.
+	 */
+	async findAuthorizationCode(
+		code: string,
+		clientId: string,
+		redirectUri?: string,
+	): Promise<AuthorizationCode | null> {
+		const authCode = await this.authorizationCodeRepository.findOne({
+			where: {
+				code,
+				clientId,
+				used: false,
+			},
+		});
+
+		if (!authCode) return null;
+		if (authCode.expiresAt < Date.now()) {
+			await this.authorizationCodeRepository.remove(authCode);
+			return null;
+		}
+		if (redirectUri && authCode.redirectUri !== redirectUri) return null;
+
+		return authCode;
+	}
+
+	/**
 	 * Validate and consume authorization code
 	 * Returns the auth record if valid, throws if invalid/expired/used
+	 * @deprecated Use findAuthorizationCode + markAuthorizationCodeAsUsed instead
 	 */
 	async validateAndConsumeAuthorizationCode(
 		authorizationCode: string,
@@ -92,19 +124,34 @@ export class McpOAuthAuthorizationCodeService {
 
 		const numAffected = result.affected ?? 0;
 		if (numAffected < 1) {
-			throw new Error('Authorization code already used');
+			throw new InvalidGrantError('Authorization code already used');
 		}
 
 		authRecord.used = true;
 		return authRecord;
 	}
 
-	/**
-	 * Get PKCE code challenge for authorization code
-	 * Used by MCP SDK for PKCE verification
-	 */
+	// Single `UPDATE ... WHERE used = false` (no read-then-write) so that concurrent token
+	// exchanges with the same code can't both succeed — one wins, the other gets invalid_grant.
+	async markAuthorizationCodeAsUsed(authorizationCode: string): Promise<void> {
+		const result = await this.authorizationCodeRepository.update(
+			{ code: authorizationCode, used: false },
+			{ used: true },
+		);
+
+		const numAffected = result.affected ?? 0;
+		if (numAffected < 1) {
+			throw new InvalidGrantError('Authorization code already used');
+		}
+	}
+
+	// Routed through findAuthorizationCode (filters `used: false`) so a consumed code's PKCE
+	// challenge is never returned — preventing replay-probe oracles against used codes.
 	async getCodeChallenge(authorizationCode: string, clientId: string): Promise<string> {
-		const authRecord = await this.findAndValidateAuthorizationCode(authorizationCode, clientId);
+		const authRecord = await this.findAuthorizationCode(authorizationCode, clientId);
+		if (!authRecord) {
+			throw new InvalidGrantError('Invalid authorization code');
+		}
 		return authRecord.codeChallenge;
 	}
 }

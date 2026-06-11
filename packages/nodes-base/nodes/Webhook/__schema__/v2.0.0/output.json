@@ -1,0 +1,24 @@
+{
+	"type": "object",
+	"properties": {
+		"headers": {
+			"type": "object"
+		},
+		"params": {
+			"type": "object"
+		},
+		"query": {
+			"type": "object"
+		},
+		"body": {
+			"type": "object"
+		},
+		"webhookUrl": {
+			"type": "string"
+		},
+		"executionMode": {
+			"type": "string"
+		}
+	},
+	"version": 1
+}

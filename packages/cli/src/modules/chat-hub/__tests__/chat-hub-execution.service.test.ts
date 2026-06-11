@@ -2,11 +2,12 @@ import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import type { IRun } from 'n8n-workflow';
+import type { IRun, IRunExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
@@ -23,6 +24,7 @@ describe('ChatHubExecutionService', () => {
 	const executionService = mock<ExecutionService>();
 	const workflowExecutionService = mock<WorkflowExecutionService>();
 	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 	const executionManager = mock<ChatExecutionManager>();
 	const activeExecutions = mock<ActiveExecutions>();
 	const instanceSettings = mock<InstanceSettings>();
@@ -41,6 +43,7 @@ describe('ChatHubExecutionService', () => {
 			executionService,
 			workflowExecutionService,
 			executionRepository,
+			executionPersistence,
 			executionManager,
 			activeExecutions,
 			instanceSettings,
@@ -302,39 +305,33 @@ describe('ChatHubExecutionService', () => {
 	describe('extractErrorMessage', () => {
 		it('should return error description when present', () => {
 			const runData = {
-				data: {
-					resultData: {
-						error: {
-							description: 'Detailed error description',
-							message: 'Error message',
-						},
+				resultData: {
+					error: {
+						description: 'Detailed error description',
+						message: 'Error message',
 					},
 				},
-			} as unknown as IRun;
+			} as unknown as IRunExecutionData;
 
 			expect(service.extractErrorMessage(runData)).toBe('Detailed error description');
 		});
 
 		it('should return error message when description is absent', () => {
 			const runData = {
-				data: {
-					resultData: {
-						error: {
-							message: 'Error message only',
-						},
+				resultData: {
+					error: {
+						message: 'Error message only',
 					},
 				},
-			} as unknown as IRun;
+			} as unknown as IRunExecutionData;
 
 			expect(service.extractErrorMessage(runData)).toBe('Error message only');
 		});
 
 		it('should return undefined when no error exists', () => {
 			const runData = {
-				data: {
-					resultData: {},
-				},
-			} as unknown as IRun;
+				resultData: {},
+			} as unknown as IRunExecutionData;
 
 			expect(service.extractErrorMessage(runData)).toBeUndefined();
 		});

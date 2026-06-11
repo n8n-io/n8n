@@ -38,6 +38,9 @@ export class AuthorizationCode extends WithTimestamps {
 	@Column({ type: String, nullable: true })
 	state: string | null;
 
+	@Column({ type: 'varchar', nullable: true })
+	resource: string | null;
+
 	@Index()
 	@Column({ type: 'int' })
 	expiresAt: number;

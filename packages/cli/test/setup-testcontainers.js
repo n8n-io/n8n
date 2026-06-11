@@ -3,11 +3,13 @@
  * Uses createServiceStack from n8n-containers for unified service management.
  */
 const { createServiceStack } = require('n8n-containers');
+const { randomBytes } = require('crypto');
 
 module.exports = async () => {
+	const suffix = randomBytes(4).toString('hex');
 	const stack = await createServiceStack({
 		services: ['postgres'],
-		projectName: 'n8n-integration-test',
+		projectName: `n8n-integration-test-${suffix}`,
 	});
 
 	const pgResult = stack.serviceResults.postgres;
@@ -32,4 +34,18 @@ module.exports = async () => {
 	console.log(
 		`\n✓ Postgres ready at ${process.env.DB_POSTGRESDB_HOST}:${process.env.DB_POSTGRESDB_PORT}\n`,
 	);
+
+	// Build a template DB once, then each test file's testDb.init() clones it via
+	// CREATE DATABASE ... TEMPLATE instead of replaying the full migration history.
+	// Set N8N_TEST_DISABLE_TEMPLATE_DB=1 to opt out (e.g. when bisecting migration bugs).
+	if (process.env.N8N_TEST_DISABLE_TEMPLATE_DB !== '1') {
+		const templateName = `n8n_test_template_${suffix}`;
+		const tplStart = Date.now();
+		const { testDb } = require('@n8n/backend-test-utils');
+		await testDb.initTemplateDb(templateName);
+		process.env.N8N_TEST_TEMPLATE_DB = templateName;
+		console.log(
+			`✓ Template DB ${templateName} ready (${Date.now() - tplStart}ms) — workers will clone instead of migrate\n`,
+		);
+	}
 };

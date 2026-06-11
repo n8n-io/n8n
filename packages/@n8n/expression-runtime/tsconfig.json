@@ -1,0 +1,10 @@
+{
+	"extends": "../typescript-config/modern/tsconfig.json",
+	"compilerOptions": {
+		"rootDir": ".",
+		"noUncheckedIndexedAccess": false,
+		"types": ["node", "vitest/globals"]
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["node_modules", "dist"]
+}

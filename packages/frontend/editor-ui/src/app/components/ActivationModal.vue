@@ -5,7 +5,6 @@ import Modal from '@/app/components/Modal.vue';
 import { useStorage } from '@/app/composables/useStorage';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useI18n } from '@n8n/i18n';
@@ -18,11 +17,12 @@ import {
 } from '../constants';
 
 import { N8nButton, N8nCheckbox, N8nText } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '../stores/workflowDocument.store';
 
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const router = useRouter();
@@ -31,7 +31,9 @@ const i18n = useI18n();
 const modalTitle = computed(() => i18n.baseText('activationModal.workflowPublished'));
 
 const triggerContent = computed(() => {
-	const foundTriggers = getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes);
+	const foundTriggers = getActivatableTriggerNodes(
+		workflowDocumentStore.value.workflowTriggerNodes,
+	);
 	if (!foundTriggers.length) {
 		return '';
 	}
@@ -68,17 +70,19 @@ const triggerContent = computed(() => {
 
 const showExecutionsList = async () => {
 	const activeExecution = executionsStore.activeExecution;
-	const currentWorkflow = workflowsStore.workflowId;
+	const currentWorkflow = workflowDocumentStore.value.workflowId;
 
 	if (activeExecution) {
 		router
 			.push({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: currentWorkflow, executionId: activeExecution.id },
+				params: { workflowId: currentWorkflow, executionId: activeExecution.id },
 			})
 			.catch(() => {});
 	} else {
-		router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } }).catch(() => {});
+		router
+			.push({ name: VIEWS.EXECUTION_HOME, params: { workflowId: currentWorkflow } })
+			.catch(() => {});
 	}
 	uiStore.closeModal(WORKFLOW_ACTIVE_MODAL_KEY);
 };
@@ -132,10 +136,12 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 }
 
 .footer {
-	text-align: right;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
 
-	> * {
-		margin-left: var(--spacing--sm);
+	> button {
+		margin-left: auto;
 	}
 }
 </style>

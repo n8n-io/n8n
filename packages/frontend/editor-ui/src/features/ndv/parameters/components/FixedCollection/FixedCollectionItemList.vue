@@ -23,6 +23,7 @@ export type Props = {
 	getPickerPropertyValues: (property: INodePropertyCollection, index?: number) => INodeProperties[];
 	isOptionalValueAdded: (propertyName: string, valueName: string, index?: number) => boolean;
 	addOptionalFieldButtonText: string;
+	layout?: 'inline';
 };
 
 const props = defineProps<Props>();
@@ -97,6 +98,7 @@ const getIsOptionalValueAdded = (index: number) => (valueName: string) =>
 				:picker-property-values="getPickerPropertyValues(property, index)"
 				:add-optional-field-button-text="addOptionalFieldButtonText"
 				:is-optional-value-added="getIsOptionalValueAdded(index)"
+				:layout="layout"
 				@update:is-expanded="itemState.setExpandedState(property.name, index, $event)"
 				@value-changed="onValueChanged"
 				@delete="onDelete(index)"

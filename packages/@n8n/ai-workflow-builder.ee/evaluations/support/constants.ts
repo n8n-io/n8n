@@ -1,4 +1,13 @@
 // ============================================================================
+// Agent Types
+// ============================================================================
+
+export const AGENT_TYPES = {
+	CODE_BUILDER: 'code-builder',
+	MULTI_AGENT: 'multi-agent',
+} as const;
+
+// ============================================================================
 // Evaluation Type Identifiers
 // ============================================================================
 
@@ -31,7 +40,5 @@ export const DEFAULTS = {
 	/** Per-operation timeout (generation / evaluator) */
 	TIMEOUT_MS: 20 * 60 * 1000,
 	DATASET_NAME: 'notion-pairwise-workflows',
-	FEATURE_FLAGS: {
-		templateExamples: false,
-	},
+	FEATURE_FLAGS: {},
 } as const;

@@ -5,15 +5,14 @@
 	],
 	"compilerOptions": {
 		"lib": ["es2022"],
-		"rootDir": ".",
-		"baseUrl": "src",
 		"paths": {
-			"@/*": ["./*"],
-			"@test/*": ["../test/*"]
+			"@/*": ["./src/*"],
+			"@test/*": ["./test/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
+		"types": ["node", "vitest/globals"],
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},

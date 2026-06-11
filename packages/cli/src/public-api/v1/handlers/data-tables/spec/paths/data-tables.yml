@@ -42,7 +42,7 @@ post:
   tags:
     - DataTable
   summary: Create a new data table
-  description: Create a new data table in your workspace.
+  description: Create a new data table in your personal project or a team project you have access to.
   operationId: create-data-table
   requestBody:
     required: true
@@ -50,15 +50,28 @@ post:
       application/json:
         schema:
           $ref: '../schemas/createDataTableRequest.yml'
-        example:
-          name: 'customers'
-          columns:
-            - name: 'email'
-              type: 'string'
-            - name: 'status'
-              type: 'string'
-            - name: 'age'
-              type: 'number'
+        examples:
+          personalProject:
+            summary: Default (personal project)
+            value:
+              name: 'customers'
+              columns:
+                - name: 'email'
+                  type: 'string'
+                - name: 'status'
+                  type: 'string'
+                - name: 'age'
+                  type: 'number'
+          scopedProject:
+            summary: Explicit project
+            value:
+              name: 'customers'
+              projectId: 'a1b2c3d4'
+              columns:
+                - name: 'email'
+                  type: 'string'
+                - name: 'status'
+                  type: 'string'
   responses:
     '201':
       description: Data table created successfully
@@ -70,6 +83,8 @@ post:
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
     '409':
       $ref: '../../../../shared/spec/responses/conflict.yml'
   security:

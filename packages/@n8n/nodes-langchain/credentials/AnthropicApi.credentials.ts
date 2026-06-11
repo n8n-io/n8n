@@ -65,15 +65,10 @@ export class AnthropicApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.url}}',
-			url: '/v1/messages',
-			method: 'POST',
+			url: '/v1/models',
+			method: 'GET',
 			headers: {
 				'anthropic-version': '2023-06-01',
-			},
-			body: {
-				model: 'claude-3-haiku-20240307',
-				messages: [{ role: 'user', content: 'Hey' }],
-				max_tokens: 1,
 			},
 		},
 	};

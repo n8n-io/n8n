@@ -72,6 +72,7 @@ Complete reference for n8n's `.github/` folder.
 │  │  (cron)  │    │  ├─ docker-build-push (nightly)  │───▶│   Images   │   │
 │  └──────────┘    │  ├─ test-benchmark-nightly       │───▶│  Metrics   │   │
 │                  │  ├─ test-workflows-nightly       │    └────────────┘   │
+│                  │  ├─ test-e2e-vm-expressions      │                     │
 │                  │  └─ test-e2e-coverage-weekly     │                     │
 │                  └──────────────────────────────────┘                     │
 │                                                                            │
@@ -180,14 +181,26 @@ These only run if specific files changed:
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
 | `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-sync-api-docs.yml`    | master     |
+| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 
 ### On PR Review
 
-| Event                      | Workflow                    | Condition                    |
-|----------------------------|-----------------------------|------------------------------|
-| Review approved            | `test-visual-chromatic.yml` | + design files changed       |
-| Comment with `@claude`     | `util-claude.yml`           | mention in any comment       |
-| Any review                 | `util-notify-pr-status.yml` | not community-labeled        |
+| Event                      | Workflow                    | Condition                                            |
+|----------------------------|-----------------------------|------------------------------------------------------|
+| Review approved            | `test-visual-chromatic.yml` | + design files changed                               |
+| Comment with `@claude`     | `util-claude.yml`           | mention in any comment                               |
+| Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
+
+**Why Instance AI evals fire once per PR state-change, not per push:** the
+workflow eval is the most expensive job in PR CI (LLM-bound builds). Running it
+on every push made cost untenable; firing on every review approval cascaded
+through the dismiss-stale-on-push → re-approve loop, which also blew up.
+The current trigger fires once per `opened` / `reopened` / `ready_for_review`
+on a PR touching the eval surface, and runs the `pr` test-case dataset (~6
+high-reliability, capability-diverse cases) instead of the full ~14. To re-run
+after pushing a fix, use the workflow's manual dispatch button — also lets you
+override `tier` to `full` for broader coverage on a specific PR. The lighter
+`test-evals-discovery.yml` still runs on every push as part of `ci-pull-requests.yml`.
 
 ### On PR Close/Merge
 
@@ -200,7 +213,6 @@ These only run if specific files changed:
 
 | Command            | Workflow                     | Permissions         |
 |--------------------|------------------------------|---------------------|
-| `/build-unit-test` | `ci-manual-unit-tests.yml`   | admin/write/maintain|
 | `/test-workflows`  | `test-workflows-callable.yml`| admin/write/maintain|
 
 **Why:** Re-run tests without pushing commits. Useful for flaky test investigation.
@@ -242,8 +254,7 @@ CALLER                             REUSABLE WORKFLOW
 ci-pull-requests.yml
     ├──────────────────────────▶  test-unit-reusable.yml
     ├──────────────────────────▶  test-linting-reusable.yml
-    ├──────────────────────────▶  test-e2e-ci-reusable.yml
-    │                                 └──────────▶  test-e2e-reusable.yml
+    ├──────────────────────────▶  test-e2e-reusable.yml
     └──────────────────────────▶  sec-ci-reusable.yml
                                       └──────────▶  sec-poutine-reusable.yml
 
@@ -259,10 +270,10 @@ release-publish.yml
 test-workflows-nightly.yml
     └──────────────────────────▶  test-workflows-callable.yml
 
-PR Comment Dispatchers (triggered by /command in PR comments):
-build-unit-test-pr-comment.yml
-    └──────────────────────────▶  ci-manual-unit-tests.yml
+test-e2e-vm-expressions-nightly.yml
+    └──────────────────────────▶  test-e2e-reusable.yml
 
+PR Comment Dispatchers (triggered by /command in PR comments):
 test-workflows-pr-comment.yml
     └──────────────────────────▶  test-workflows-callable.yml
 ```
@@ -354,8 +365,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 20.x, 22.x, 24.3.x)
-│   └─ Coverage only on 22.x
+├─ unit-test (matrix: Node 22.x, 24.15.0, 26.x)
+│   └─ Coverage only on 24.15.0
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -374,6 +385,7 @@ Push to master/1.x
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-workflows-nightly.yml`      | Workflow tests           |
+| Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
@@ -394,7 +406,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '22.x'
+  node-version:        # default: '24.15.0'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```
@@ -419,10 +431,7 @@ Workflows with `workflow_call` trigger:
 | `test-unit-reusable.yml`           | `ref`, `nodeVersion`, `collectCoverage`       | Unit tests            |
 | `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
-| `test-e2e-ci-reusable.yml`         | `branch`                                      | E2E orchestrator      |
-| `test-e2e-docker-pull-reusable.yml`| `branch`, `n8n_version`                       | E2E with pulled image |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
-| `ci-check-eligibility-reusable.yml`| (internal)                                    | PR eligibility checks |
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled` | Docker build          |
 | `sec-ci-reusable.yml`              | `ref`                                         | Security orchestrator |
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
@@ -458,6 +467,15 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 
+### Slack Scripts
+
+See [Slack Notifications](#slack-notifications) for the calling pattern.
+
+| Script                          | Purpose                                                                       |
+|---------------------------------|-------------------------------------------------------------------------------|
+| `slack/notify.mjs`              | CLI + `sendSlackMessage` export. POSTs `chat.postMessage`, fails on `ok:false`. |
+| `slack/build-trivy-blocks.mjs`  | `--blocks trivy` — vulnerability digest                                       |
+
 ---
 
 ## Telemetry
@@ -490,7 +508,7 @@ Team ownership mappings in `CODEOWNERS`:
 | `ubuntu-latest`                     | 2    | Simple jobs, fork PR E2E    |
 | `blacksmith-2vcpu-ubuntu-2204`      | 2    | Standard builds, E2E shards |
 | `blacksmith-4vcpu-ubuntu-2204`      | 4    | Unit tests, typecheck, lint |
-| `blacksmith-8vcpu-ubuntu-2204`      | 8    | E2E coverage (weekly)       |
+| `blacksmith-8vcpu-ubuntu-2204`      | 8    | Heavy parallel workloads    |
 | `blacksmith-4vcpu-ubuntu-2204-arm`  | 4    | ARM64 Docker builds         |
 
 ### Selection Guidelines
@@ -503,7 +521,7 @@ Team ownership mappings in `CODEOWNERS`:
 
 **`blacksmith-4vcpu-ubuntu-2204`** - Unit tests (parallelized), linting (parallel file processing), typechecking (CPU-intensive), E2E test shards
 
-**`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads, full E2E coverage runs
+**`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads
 
 ### Runner Provider Toggle
 
@@ -559,7 +577,7 @@ Supply chain security ensures artifacts haven't been tampered with. We provide t
 
 - **Runs on:** stable/nightly/rc Docker builds
 - **Scans:** n8n image, runners image
-- **Output:** Slack `#notify-security-scan-outputs` (all), `#mission-security` (critical)
+- **Output:** Slack `#updates-security` when vulnerabilities are detected
 
 ### SBOM
 
@@ -599,10 +617,10 @@ npm audit signatures n8n@VERSION
 
 VEX documents which CVEs actually affect n8n vs false positives from scanners.
 
-- **File:** `vex.openvex.json` (repo root)
+- **File:** `security/vex.openvex.json`
 - **Format:** OpenVEX (broad scanner compatibility - Trivy, Docker Scout, etc.)
 - **Attached to:** GitHub Release, Docker image attestations
-- **Used by:** Trivy scans (via `.github/trivy.yaml`)
+- **Used by:** Trivy scans (via `security/trivy.yaml`)
 
 **VEX Status Types:**
 | Status | Meaning |
@@ -620,7 +638,7 @@ cosign verify-attestation --type openvex \
   ghcr.io/n8n-io/n8n:VERSION
 ```
 
-**Adding a CVE statement to vex.openvex.json:**
+**Adding a CVE statement to security/vex.openvex.json:**
 ```json
 {
   "statements": [
@@ -637,6 +655,44 @@ cosign verify-attestation --type openvex \
 
 ---
 
+## Slack Notifications
+
+All workflows post via `.github/scripts/slack/notify.mjs` — a direct `fetch` to `chat.postMessage` that exits non-zero on any Slack error. No third-party action; no silent swallowing.
+
+```yaml
+notify-on-failure:
+  runs-on: ubuntu-latest
+  needs: [build]
+  if: ${{ always() && contains(needs.*.result, 'failure') }}
+  steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        sparse-checkout: .github/scripts/slack
+        sparse-checkout-cone-mode: false
+    - name: Notify Slack
+      env:
+        SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+      run: |
+        node .github/scripts/slack/notify.mjs \
+          --channel '#alerts-build' \
+          --text 'Build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+```
+
+If notify is a step inside an existing checked-out job, skip the `checkout` and gate with step-level `if: failure()` instead.
+
+> `if: failure()` at the **step** level of a dedicated notify job is a no-op when a `needs:` dependency fails (the job is skipped before steps evaluate). Always gate the **job** with `if: ${{ always() && contains(needs.*.result, 'failure') }}`.
+
+**Rich payloads (Block Kit):** add `build-<name>-blocks.mjs` whose default export returns a blocks array, then pass `--blocks <name>` plus any workflow-specific args. Builders read repo / run context from `GITHUB_*` runner env vars. Kebab-case flags become camelCase keys for the builder (`--image-ref` → `imageRef`).
+
+| Token                        | Bot            | Channels                                                    |
+|------------------------------|----------------|-------------------------------------------------------------|
+| `QBOT_SLACK_TOKEN`           | QBot           | Default — engineering / build / security                    |
+| `RELEASE_HELPER_SLACK_TOKEN` | Release Helper | `#releases` (C036AELNMV0)                                   |
+
+Adding a new channel requires inviting the bot first; the first run otherwise fails loudly with `not_in_channel`. Private-repo workflows (`sec-publish-fix*.yml`) need `QBOT_SLACK_TOKEN` set in `n8n-io/n8n-private`; the scripts themselves are mirrored by `sec-sync-public-to-private.yml`.
+
+---
+
 ## Secrets
 
 ### By Category
@@ -644,7 +700,7 @@ cosign verify-attestation --type openvex \
 | Category            | Secrets                                                     |
 |---------------------|-------------------------------------------------------------|
 | Package Publishing  | `NPM_TOKEN`, `DOCKER_USERNAME`, `DOCKER_PASSWORD`           |
-| Notifications       | `SLACK_WEBHOOK_URL`, `QBOT_SLACK_TOKEN`                     |
+| Notifications       | `QBOT_SLACK_TOKEN`, `RELEASE_HELPER_SLACK_TOKEN`            |
 | Code Quality        | `CODECOV_TOKEN`, `CHROMATIC_PROJECT_TOKEN`, `CURRENTS_RECORD_KEY` |
 | Error Tracking      | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_*_PROJECT`       |
 | Cloud/CDN           | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`             |
@@ -664,7 +720,7 @@ cosign verify-attestation --type openvex \
 
 ### Redundancy Review
 
-Comment triggers (`/build-unit-test`, `/test-workflows`) are workarounds.
+Comment trigger (`/test-workflows`) is a workaround.
 
 Long-term: Main CI should be reliable enough to not need these.
 

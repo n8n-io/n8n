@@ -1,0 +1,490 @@
+// Shimmer - animated gradient for loading/skeleton states
+@mixin shimmer {
+	background: linear-gradient(
+		135deg,
+		var(--animation--shimmer--background, var(--background--surface)),
+		var(--animation--shimmer--foreground, var(--text-color--subtle)),
+		var(--animation--shimmer--background, var(--background--surface))
+	);
+	background-size: 200% 100%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	animation: shimmer var(--animation--shimmer--duration, var(--duration--slow)) infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+// Spin - continuous 360° rotation for loading indicators
+@mixin spin {
+	animation: spin var(--animation--spin--duration, var(--duration--base)) linear infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+// Skeleton pulse - opacity animation for skeleton loading states
+@mixin skeleton-pulse {
+	animation: skeleton-pulse var(--animation--skeleton-pulse--duration, var(--duration--slowest))
+		ease-in-out infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@mixin opacity-pulse {
+	animation: opacityPulse var(--animation--opacity-pulse--duration, var(--duration--slow))
+		var(--animation--opacity-pulse--easing, ease-in-out) infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@mixin popover-in {
+	animation: popoverIn var(--animation--popover-in--duration, var(--duration--snappy))
+		var(--animation--popover-in--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@mixin collapsible-slide-down {
+	animation: collapsibleSlideDown
+		var(--animation--collapsible-slide--duration, var(--duration--snappy))
+		var(--animation--collapsible-slide--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@mixin collapsible-slide-up {
+	animation: collapsibleSlideUp
+		var(--animation--collapsible-slide--duration, var(--duration--snappy))
+		var(--animation--collapsible-slide--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+// Fade in - simple opacity fade for entrance animations
+@mixin fade-in {
+	animation: fadeIn var(--animation--fade-in--duration, var(--duration--snappy))
+		var(--easing--ease-out);
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+// Keyframes
+
+@keyframes shimmer {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes skeleton-pulse {
+	0%,
+	100% {
+		opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+	}
+	50% {
+		opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+	}
+}
+
+@keyframes opacityPulse {
+	0%,
+	100% {
+		opacity: var(--animation--opacity-pulse--opacity-start, 1);
+	}
+	50% {
+		opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+	}
+}
+
+@keyframes popoverIn {
+	from {
+		opacity: 0;
+		transform: translate(
+				var(--animation--popover-in--translate-x, 0),
+				var(--animation--popover-in--translate-y, 0)
+			)
+			scale(var(--animation--popover-in--scale, 0.96));
+	}
+	to {
+		opacity: 1;
+		transform: translate(0, 0) scale(1);
+	}
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(var(--animation--fade-in--translate, 8px));
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes collapsibleSlideDown {
+	from {
+		height: 0;
+	}
+	to {
+		height: var(--reka-collapsible-content-height);
+	}
+}
+
+@keyframes collapsibleSlideUp {
+	from {
+		height: var(--reka-collapsible-content-height);
+	}
+	to {
+		height: 0;
+	}
+}
+
+// Pulse glow - expanding glow effect for loading states (used by N8nPulse)
+@mixin pulse-glow {
+	animation: pulseGlow var(--animation--pulse-glow--duration, 6s) infinite
+		var(--animation--pulse-glow--easing, cubic-bezier(0.33, 1, 0.68, 1));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@mixin pulse-glow-delayed {
+	animation: pulseGlowDelayed var(--animation--pulse-glow--duration, 6s) infinite
+		var(--animation--pulse-glow--easing, cubic-bezier(0.33, 1, 0.68, 1));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes pulseGlow {
+	0% {
+		box-shadow: 0 0 0 0
+			hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+	}
+	58.33% {
+		box-shadow: 0 0 0 60px
+			hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+	}
+	66.6% {
+		box-shadow: 0 0 0 66px transparent;
+	}
+	66.7% {
+		box-shadow: 0 0 0 0 transparent;
+	}
+}
+
+@keyframes pulseGlowDelayed {
+	0%,
+	16.66% {
+		box-shadow: 0 0 0 0
+			hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+	}
+	50% {
+		box-shadow: 0 0 0 60px
+			hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+	}
+	83.3% {
+		box-shadow: 0 0 0 66px transparent;
+	}
+	83.4% {
+		box-shadow: 0 0 0 0 transparent;
+	}
+}
+
+// Fade animation for simple opacity transitions
+@mixin fade {
+	animation: fade var(--animation--fade--duration, var(--duration--snappy));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fade {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+
+@mixin fade-in-up {
+	animation: fadeInUp var(--animation--fade-in-up--duration, var(--duration--snappy))
+		var(--animation--fade-in-up--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeInUp {
+	from {
+		opacity: 0;
+		transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@mixin fade-in-down {
+	animation: fadeInDown var(--animation--fade-in-down--duration, var(--duration--snappy))
+		var(--animation--fade-in-down--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeInDown {
+	from {
+		opacity: 0;
+		transform: translateY(
+			calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs)))
+		);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@mixin fade-in-left {
+	animation: fadeInLeft var(--animation--fade-in-left--duration, var(--duration--snappy))
+		var(--animation--fade-in-left--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeInLeft {
+	from {
+		opacity: 0;
+		transform: translateX(
+			calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs)))
+		);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@mixin fade-in-right {
+	animation: fadeInRight var(--animation--fade-in-right--duration, var(--duration--snappy))
+		var(--animation--fade-in-right--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeInRight {
+	from {
+		opacity: 0;
+		transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@mixin fade-out {
+	animation: fadeOut var(--animation--fade-out--duration, var(--duration--snappy))
+		var(--animation--fade-out--easing, var(--easing--ease-in));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeOut {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+
+@mixin fade-out-down {
+	animation: fadeOutDown var(--animation--fade-out-down--duration, var(--duration--snappy))
+		var(--animation--fade-out-down--easing, var(--easing--ease-in));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeOutDown {
+	from {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+	}
+}
+
+@mixin fade-out-up {
+	animation: fadeOutUp var(--animation--fade-out-up--duration, var(--duration--snappy))
+		var(--animation--fade-out-up--easing, var(--easing--ease-in));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeOutUp {
+	from {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
+	}
+}
+
+@mixin fade-out-left {
+	animation: fadeOutLeft var(--animation--fade-out-left--duration, var(--duration--snappy))
+		var(--animation--fade-out-left--easing, var(--easing--ease-in));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeOutLeft {
+	from {
+		opacity: 1;
+		transform: translateX(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateX(
+			calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs)))
+		);
+	}
+}
+
+@mixin fade-out-right {
+	animation: fadeOutRight var(--animation--fade-out-right--duration, var(--duration--snappy))
+		var(--animation--fade-out-right--easing, var(--easing--ease-in));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeOutRight {
+	from {
+		opacity: 1;
+		transform: translateX(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+	}
+}
+
+@mixin blink-background {
+	animation: blinkBackground var(--animation--blink-background--duration, var(--duration--slow))
+		step-end infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes blinkBackground {
+	from,
+	to {
+		background-color: var(--animation--blink-background--color-start, transparent);
+	}
+	50% {
+		background-color: var(
+			--animation--blink-background--color-end,
+			var(--color--foreground--shade-2)
+		);
+	}
+}
+
+@mixin typing-blink {
+	animation: typingBlink var(--animation--typing-blink--duration, 1.2s) infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes typingBlink {
+	0%,
+	80%,
+	100% {
+		opacity: var(--animation--typing-blink--opacity-start, 0.35);
+		transform: translateY(0);
+	}
+	40% {
+		opacity: var(--animation--typing-blink--opacity-end, 1);
+		transform: translateY(var(--animation--typing-blink--translate, -2px));
+	}
+}
+
+@mixin width-transition {
+	transition: width var(--animation--width-transition--duration, var(--duration--snappy))
+		var(--animation--width-transition--easing, var(--easing--ease-out));
+	will-change: width;
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+		will-change: auto;
+	}
+}
+
+@mixin height-transition {
+	transition: height var(--animation--height-transition--duration, var(--duration--snappy))
+		var(--animation--height-transition--easing, var(--easing--ease-out));
+	will-change: height;
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+		will-change: auto;
+	}
+}

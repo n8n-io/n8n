@@ -250,7 +250,7 @@ onMounted(async () => {
 				</N8nInfoTip>
 				<div>
 					<N8nButton
-						type="primary"
+						variant="solid"
 						icon="hard-drive-download"
 						float="right"
 						:label="i18n.baseText('mfa.setup.step2.button.download')"

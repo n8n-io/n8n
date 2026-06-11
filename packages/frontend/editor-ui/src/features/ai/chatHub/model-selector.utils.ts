@@ -9,6 +9,7 @@ import {
 } from '@n8n/api-types';
 import type { DropdownMenuItemProps, IconOrEmoji } from '@n8n/design-system';
 import type { I18nClass } from '@n8n/i18n';
+import type { AiModelSelectorMenuItemData } from '@/features/ai/modelSelector/types';
 import {
 	createFakeAgent,
 	isAllowedModel,
@@ -25,16 +26,18 @@ import {
 	providerDisplayNames,
 } from './constants';
 
-type MenuItem = DropdownMenuItemProps<
-	string,
-	{ provider: ChatHubProvider; parts?: string[]; fullName?: string; description?: string }
->;
+export type ChatModelSelectorMenuItemData = AiModelSelectorMenuItemData & {
+	provider: ChatHubProvider;
+};
+
+type MenuItem = DropdownMenuItemProps<string, ChatModelSelectorMenuItemData>;
 
 export interface BuildMenuItemsOptions {
 	includeCustomAgents: boolean;
 	isLoading: boolean;
 	i18n: I18nClass;
 	settings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>;
+	credentials: Partial<Record<ChatHubLLMProvider, string | null>> | null;
 }
 
 /**
@@ -217,8 +220,9 @@ function buildWorkflowAgentsMenuItem(
 function buildLlmProviderMenuItem(
 	provider: ChatHubLLMProvider,
 	{ models, error }: ChatModelsResponse[ChatHubLLMProvider],
-	{ settings, i18n, isLoading }: BuildMenuItemsOptions,
+	options: BuildMenuItemsOptions,
 ): MenuItem | null {
+	const { settings, i18n, isLoading, credentials } = options;
 	const providerSettings = settings[provider];
 
 	// Filter out disabled providers from the menu
@@ -282,7 +286,8 @@ function buildLlmProviderMenuItem(
 	const children = [
 		configureMenu,
 		...agentOptions,
-		...(agentOptions.length > 0 && providerSettings?.allowedModels.length === 0
+		...((agentOptions.length > 0 || !!credentials?.[provider]) &&
+		providerSettings?.allowedModels.length === 0
 			? [
 					{
 						id: `${provider}::add-model`,
@@ -392,6 +397,9 @@ export function buildModelSelectorMenuItems(
 	let dividerInserted = false;
 
 	for (const provider of sortedProviders) {
+		if (!agents[provider]) {
+			continue;
+		}
 		const item = buildLlmProviderMenuItem(provider, agents[provider], options);
 
 		if (item) {

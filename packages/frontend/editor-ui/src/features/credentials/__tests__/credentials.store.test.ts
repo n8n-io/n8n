@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 import type { ICredentialsResponse } from '../credentials.types';
 import * as credentialsApi from '../credentials.api';
+import { useCredentialsStore } from '../credentials.store';
 
 const mockRootStore = {
 	restApiContext: { baseUrl: 'http://localhost:5678', sessionId: 'test-session' },
@@ -41,7 +42,6 @@ describe('credentials.store', () => {
 
 	describe('fetchAllCredentials', () => {
 		it('should pass includeGlobal parameter to API when provided', async () => {
-			const { useCredentialsStore } = await import('../credentials.store');
 			const store = useCredentialsStore();
 
 			const mockCredentials: ICredentialsResponse[] = [
@@ -61,19 +61,23 @@ describe('credentials.store', () => {
 
 			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue(mockCredentials);
 
-			await store.fetchAllCredentials(undefined, true, false, true);
+			await store.fetchAllCredentials({
+				projectId: undefined,
+				includeScopes: true,
+				onlySharedWithMe: false,
+				includeGlobal: true,
+			});
 
-			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(
-				mockRootStore.restApiContext,
-				undefined,
-				true,
-				false,
-				true,
-			);
+			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(mockRootStore.restApiContext, {
+				filter: undefined,
+				includeScopes: true,
+				onlySharedWithMe: false,
+				includeGlobal: true,
+				externalSecretsStore: undefined,
+			});
 		});
 
 		it('should pass includeGlobal as true when not provided', async () => {
-			const { useCredentialsStore } = await import('../credentials.store');
 			const store = useCredentialsStore();
 
 			const mockCredentials: ICredentialsResponse[] = [
@@ -89,17 +93,16 @@ describe('credentials.store', () => {
 
 			await store.fetchAllCredentials();
 
-			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(
-				mockRootStore.restApiContext,
-				undefined,
-				true,
-				false,
-				true,
-			);
+			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(mockRootStore.restApiContext, {
+				filter: undefined,
+				includeScopes: true,
+				onlySharedWithMe: false,
+				includeGlobal: true,
+				externalSecretsStore: undefined,
+			});
 		});
 
 		it('should set credentials in store including global credentials', async () => {
-			const { useCredentialsStore } = await import('../credentials.store');
 			const store = useCredentialsStore();
 
 			const mockCredentials: ICredentialsResponse[] = [
@@ -119,7 +122,12 @@ describe('credentials.store', () => {
 
 			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue(mockCredentials);
 
-			await store.fetchAllCredentials(undefined, true, false, true);
+			await store.fetchAllCredentials({
+				projectId: undefined,
+				includeScopes: true,
+				onlySharedWithMe: false,
+				includeGlobal: true,
+			});
 
 			expect(store.allCredentials).toHaveLength(2);
 			expect(store.allCredentials.find((c) => c.id === 'cred-2')?.isGlobal).toBe(true);
@@ -128,7 +136,6 @@ describe('credentials.store', () => {
 
 	describe('createNewCredential', () => {
 		it('should pass isGlobal parameter to API when creating credential', async () => {
-			const { useCredentialsStore } = await import('../credentials.store');
 			const store = useCredentialsStore();
 
 			const mockCredential = mock<ICredentialsResponse>({
@@ -165,7 +172,6 @@ describe('credentials.store', () => {
 		});
 
 		it('should create non-global credential when isGlobal is false', async () => {
-			const { useCredentialsStore } = await import('../credentials.store');
 			const store = useCredentialsStore();
 
 			const mockCredential = mock<ICredentialsResponse>({
@@ -202,7 +208,6 @@ describe('credentials.store', () => {
 		});
 
 		it('should create credential without isGlobal when not provided', async () => {
-			const { useCredentialsStore } = await import('../credentials.store');
 			const store = useCredentialsStore();
 
 			const mockCredential = mock<ICredentialsResponse>({
@@ -239,9 +244,8 @@ describe('credentials.store', () => {
 
 	describe('setCredentialSharedWith', () => {
 		it('should pass isGlobal parameter when setting credential sharing', async () => {
-			const { useCredentialsStore } = await import('../credentials.store');
-			const credentialsEeApi = await import('../credentials.ee.api');
 			const store = useCredentialsStore();
+			const credentialsEeApi = await import('../credentials.ee.api');
 
 			// Initialize the store with a credential
 			store.state.credentials = {
@@ -282,9 +286,8 @@ describe('credentials.store', () => {
 		});
 
 		it('should update credential state with new sharing settings', async () => {
-			const { useCredentialsStore } = await import('../credentials.store');
-			const credentialsEeApi = await import('../credentials.ee.api');
 			const store = useCredentialsStore();
+			const credentialsEeApi = await import('../credentials.ee.api');
 
 			const initialCredential = mock<ICredentialsResponse>({
 				id: 'cred-1',
@@ -326,6 +329,40 @@ describe('credentials.store', () => {
 			});
 
 			expect(store.state.credentials['cred-1']?.sharedWithProjects).toEqual(newSharing);
+		});
+	});
+
+	describe('disconnectMyConnection', () => {
+		it('calls the API and flips connectedByMe to false locally', async () => {
+			const store = useCredentialsStore();
+			store.state.credentials = {
+				'cred-1': mock<ICredentialsResponse>({
+					id: 'cred-1',
+					name: 'My OAuth',
+					type: 'oAuth2Api',
+					isResolvable: true,
+					connectedByMe: true,
+				}),
+			};
+			vi.spyOn(credentialsApi, 'disconnectMyConnection').mockResolvedValue(undefined);
+
+			await store.disconnectMyConnection({ id: 'cred-1' });
+
+			expect(credentialsApi.disconnectMyConnection).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				'cred-1',
+			);
+			expect(store.state.credentials['cred-1']?.connectedByMe).toBe(false);
+		});
+
+		it('leaves state untouched when the credential is not in the store', async () => {
+			const store = useCredentialsStore();
+			store.state.credentials = {};
+			vi.spyOn(credentialsApi, 'disconnectMyConnection').mockResolvedValue(undefined);
+
+			await store.disconnectMyConnection({ id: 'missing' });
+
+			expect(store.state.credentials).toEqual({});
 		});
 	});
 });

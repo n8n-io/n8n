@@ -7,6 +7,7 @@ import * as getAll from './getAll.operation';
 import * as update from './update.operation';
 import * as upsert from './upsert.operation';
 import { handleErrorPostReceive, simplifyItemPostReceive } from '../../helpers/utils';
+import { ignoreHttpStatusErrorsConfig } from '../common.descriptions';
 
 export const description: INodeProperties[] = [
 	{
@@ -79,7 +80,7 @@ export const description: INodeProperties[] = [
 				description: 'Retrieve an item from a list',
 				routing: {
 					request: {
-						ignoreHttpStatusErrors: true,
+						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'GET',
 						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items/{{ $parameter["item"] }}',
 					},

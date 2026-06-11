@@ -5,6 +5,7 @@ import type {
 	SimplifiedNodeType,
 } from '@/Interface';
 import {
+	finalizeItems,
 	formatTriggerActionName,
 	filterAndSearchNodes,
 	groupItemsInSections,
@@ -33,6 +34,9 @@ import {
 	AI_CATEGORY_OTHER_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_CATEGORY_HUMAN_IN_THE_LOOP,
+	AI_CATEGORY_MCP_NODES,
+	AI_CATEGORY_ROOT_NODES,
+	AI_SUBCATEGORY,
 } from '@/app/constants';
 
 vi.mock('@/app/stores/settings.store', () => ({
@@ -112,6 +116,10 @@ describe('NodeCreator - utils', () => {
 	});
 
 	describe('filterAndSearchNodes', () => {
+		beforeEach(() => {
+			setActivePinia(createTestingPinia());
+		});
+
 		const mergedNodes: SimplifiedNodeType[] = [
 			{
 				displayName: 'Sample Node',
@@ -136,18 +144,139 @@ describe('NodeCreator - utils', () => {
 		];
 
 		test('should return only one node', () => {
-			const result = filterAndSearchNodes(mergedNodes, 'sample', false);
+			const result = filterAndSearchNodes(mergedNodes, 'sample');
 
 			expect(result.length).toEqual(1);
 			expect(result[0].key).toEqual('n8n-nodes-preview-test.SampleNode');
 		});
 
 		test('should return two nodes', () => {
-			const result = filterAndSearchNodes(mergedNodes, 'node', false);
+			const result = filterAndSearchNodes(mergedNodes, 'node');
 
 			expect(result.length).toEqual(2);
 			expect(result[1].key).toEqual('n8n-nodes-preview-test.SampleNode');
 			expect(result[0].key).toEqual('n8n-nodes-preview-test.OtherNode');
+		});
+
+		test('should return [] when in HITL subcategory', () => {
+			const result = filterAndSearchNodes(mergedNodes, 'node', { isHitlSubcategory: true });
+			expect(result).toEqual([]);
+		});
+
+		describe('AI subcategory pickers', () => {
+			const aiNodes: SimplifiedNodeType[] = [
+				{
+					displayName: 'Instagram Tool',
+					defaults: { name: 'Instagram' },
+					description: 'Instagram as tool',
+					name: '@mookielianhd/n8n-nodes-preview-instagram.instagramTool',
+					group: ['transform'],
+					outputs: ['ai_tool'],
+				},
+				{
+					displayName: 'Instagram',
+					defaults: { name: 'Instagram' },
+					description: 'Instagram node',
+					name: '@mookielianhd/n8n-nodes-preview-instagram.instagram',
+					group: ['transform'],
+					outputs: ['main'],
+				},
+				{
+					displayName: 'Other Tool',
+					defaults: { name: 'OtherTool' },
+					description: 'Other tool',
+					name: 'n8n-nodes-preview-other.otherTool',
+					group: ['transform'],
+					outputs: [{ type: 'ai_tool' }],
+				},
+				{
+					displayName: 'Acme Language Model',
+					defaults: { name: 'AcmeLM' },
+					description: 'Community language model',
+					name: 'n8n-nodes-preview-acme.acmeLanguageModel',
+					group: ['transform'],
+					outputs: ['ai_languageModel'],
+				},
+			];
+
+			test('in the Tools picker surfaces only AiTool-output community nodes', () => {
+				const result = filterAndSearchNodes(aiNodes, 'instagram', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_tool',
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0].key).toEqual('@mookielianhd/n8n-nodes-preview-instagram.instagramTool');
+			});
+
+			test('supports object-form outputs when matching the picker connection type', () => {
+				const result = filterAndSearchNodes(aiNodes, 'other', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_tool',
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0].key).toEqual('n8n-nodes-preview-other.otherTool');
+			});
+
+			test('in the Language Model picker surfaces only AiLanguageModel-output nodes', () => {
+				const result = filterAndSearchNodes(aiNodes, 'acme', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_languageModel',
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0].key).toEqual('n8n-nodes-preview-acme.acmeLanguageModel');
+			});
+
+			test('does not leak AiTool nodes into the Language Model picker', () => {
+				const result = filterAndSearchNodes(aiNodes, 'instagram', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_languageModel',
+				});
+
+				expect(result).toEqual([]);
+			});
+
+			test('returns [] when AI subcategory is active but the connection type is unknown', () => {
+				const result = filterAndSearchNodes(aiNodes, 'instagram', {
+					isAiSubcategory: true,
+				});
+
+				expect(result).toEqual([]);
+			});
+
+			test('returns [] when search is empty even in AI subcategory', () => {
+				const result = filterAndSearchNodes(aiNodes, '', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_tool',
+				});
+
+				expect(result).toEqual([]);
+			});
+
+			test('skips nodes with expression-string outputs without throwing', () => {
+				const nodesWithExpressionOutputs: SimplifiedNodeType[] = [
+					{
+						displayName: 'Dynamic Outputs Node',
+						defaults: { name: 'Dynamic' },
+						description: 'Node with dynamically computed outputs',
+						name: 'n8n-nodes-preview-dynamic.dynamic',
+						group: ['transform'],
+						// INodeTypeDescription.outputs can be an expression string, not an array
+						outputs:
+							'={{ $parameter["mode"] === "tool" ? ["ai_tool"] : ["main"] }}' as unknown as SimplifiedNodeType['outputs'],
+					},
+					...aiNodes,
+				];
+
+				const result = filterAndSearchNodes(nodesWithExpressionOutputs, 'dynamic', {
+					isAiSubcategory: true,
+					aiConnectionType: 'ai_tool',
+				});
+
+				expect(result).toEqual([]);
+			});
 		});
 	});
 	describe('prepareCommunityNodeDetailsViewStack', () => {
@@ -577,6 +706,35 @@ describe('NodeCreator - utils', () => {
 			expect(result.length).toBe(2);
 			expect(result[0].key).toBe('Node1');
 			expect(result[1].key).toBe('node1');
+		});
+	});
+
+	describe('finalizeItems - MCP registry tool isNew flag', () => {
+		const makeMcpNode = (subcategoriesAi: string[]) =>
+			mockNodeCreateElement(undefined, {
+				name: 'mcpRegistryNode',
+				codex: {
+					categories: ['AI'],
+					subcategories: { [AI_SUBCATEGORY]: subcategoriesAi },
+				},
+			});
+
+		it('should flag registry-generated MCP tools as new', () => {
+			const node = makeMcpNode([AI_CATEGORY_MCP_NODES]);
+			const [result] = finalizeItems([node]) as NodeCreateElement[];
+			expect(result.properties.isNew).toBe(true);
+		});
+
+		it('should not flag MCP nodes that are also Root Nodes (e.g. McpTrigger)', () => {
+			const node = makeMcpNode([AI_CATEGORY_ROOT_NODES, AI_CATEGORY_MCP_NODES]);
+			const [result] = finalizeItems([node]) as NodeCreateElement[];
+			expect(result.properties.isNew).toBeUndefined();
+		});
+
+		it('should not flag tools that are not in the MCP subcategory', () => {
+			const node = makeMcpNode(['Tools']);
+			const [result] = finalizeItems([node]) as NodeCreateElement[];
+			expect(result.properties.isNew).toBeUndefined();
 		});
 	});
 

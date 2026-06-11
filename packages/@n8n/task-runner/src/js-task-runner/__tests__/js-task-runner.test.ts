@@ -30,7 +30,7 @@ import {
 	wrapIntoJson,
 } from './test-data';
 
-jest.mock('ws');
+vi.mock('ws');
 
 const defaultConfig = new MainConfig();
 defaultConfig.jsRunnerConfig ??= {
@@ -78,12 +78,12 @@ describe('JsTaskRunner', () => {
 		taskData: DataRequestResponse;
 		runner?: JsTaskRunner;
 	}) => {
-		jest.spyOn(runner, 'requestData').mockResolvedValue(taskData);
+		vi.spyOn(runner, 'requestData').mockResolvedValue(taskData);
 		return await runner.executeTask(task, new AbortController().signal);
 	};
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	const executeForAllItems = async ({
@@ -151,13 +151,92 @@ describe('JsTaskRunner', () => {
 
 			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
 		});
+
+		it('should prevent bypass via Object.getOwnPropertyDescriptor', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const desc = Object.getOwnPropertyDescriptor(Buffer, 'allocUnsafe');
+					const fn = desc && desc.value;
+					const buf = fn(10);
+					return [{ json: { allZeros: buf.every(b => b === 0) } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+
+		it('should prevent bypass via Object.getOwnPropertyDescriptor for allocUnsafeSlow', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const desc = Object.getOwnPropertyDescriptor(Buffer, 'allocUnsafeSlow');
+					const fn = desc && desc.value;
+					const buf = fn(10);
+					return [{ json: { allZeros: buf.every(b => b === 0) } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+
+		it('should prevent bypass via Buffer.from([]).constructor.allocUnsafe', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const RealBuffer = Buffer.from([]).constructor;
+					const buf = RealBuffer.allocUnsafe(100);
+					return [{ json: { allZeros: buf.every(b => b === 0) } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+
+		it('should support Buffer.from and Buffer.concat', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const buf1 = Buffer.from('hello');
+					const buf2 = Buffer.from(' world');
+					const combined = Buffer.concat([buf1, buf2]);
+					return [{ json: { result: combined.toString() } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ result: 'hello world' })]);
+		});
+
+		it('should support Buffer.isBuffer', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const buf = Buffer.from('test');
+					return [{ json: { isBuf: Buffer.isBuffer(buf), notBuf: Buffer.isBuffer('str') } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ isBuf: true, notBuf: false })]);
+		});
+
+		it('should support instanceof Buffer', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const buf = Buffer.from('test');
+					return [{ json: { isInstance: buf instanceof Buffer } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ isInstance: true })]);
+		});
 	});
 
 	describe('console', () => {
 		test.each<[CodeExecutionMode]>([['runOnceForAllItems'], ['runOnceForEachItem']])(
 			'should make an rpc call for console log in %s mode',
 			async (nodeMode) => {
-				jest.spyOn(defaultTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
+				vi.spyOn(defaultTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
 				const task = newTaskParamsWithSettings({
 					code: "console.log('Hello', 'world!'); return {}",
 					nodeMode,
@@ -223,7 +302,7 @@ describe('JsTaskRunner', () => {
 		});
 
 		it('should log the context object as [[ExecutionContext]]', async () => {
-			const rpcCallSpy = jest.spyOn(defaultTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
+			const rpcCallSpy = vi.spyOn(defaultTaskRunner, 'makeRpcCall').mockResolvedValue(undefined);
 
 			const task = newTaskParamsWithSettings({
 				code: `
@@ -309,8 +388,8 @@ describe('JsTaskRunner', () => {
 					{
 						id: 'exec-id',
 						mode: 'test',
-						resumeFormUrl: 'http://formWaitingBaseUrl/exec-id',
-						resumeUrl: 'http://webhookWaitingBaseUrl/exec-id',
+						resumeFormUrl: 'http://formwaitingbaseurl/exec-id?signature=test-resume-token',
+						resumeUrl: 'http://webhookwaitingbaseurl/exec-id?signature=test-resume-token',
 						customData: {
 							get: expect.any(Function),
 							getAll: expect.any(Function),
@@ -698,7 +777,7 @@ describe('JsTaskRunner', () => {
 			for (const group of groups) {
 				it(`${group.method} for runOnceForAllItems`, async () => {
 					// Arrange
-					const rpcCallSpy = jest
+					const rpcCallSpy = vi
 						.spyOn(defaultTaskRunner, 'makeRpcCall')
 						.mockResolvedValue(undefined);
 
@@ -720,7 +799,7 @@ describe('JsTaskRunner', () => {
 
 				it(`${group.method} for runOnceForEachItem`, async () => {
 					// Arrange
-					const rpcCallSpy = jest
+					const rpcCallSpy = vi
 						.spyOn(defaultTaskRunner, 'makeRpcCall')
 						.mockResolvedValue(undefined);
 
@@ -1268,11 +1347,11 @@ describe('JsTaskRunner', () => {
 			};
 			runner.runningTasks.set(taskId, task);
 
-			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => {});
-			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
-			jest
-				.spyOn(runner, 'requestData')
-				.mockResolvedValue(newDataRequestResponse([wrapIntoJson({ a: 1 })]));
+			const sendSpy = vi.spyOn(runner.ws, 'send').mockImplementation(() => {});
+			vi.spyOn(runner, 'sendOffers').mockImplementation(() => {});
+			vi.spyOn(runner, 'requestData').mockResolvedValue(
+				newDataRequestResponse([wrapIntoJson({ a: 1 })]),
+			);
 
 			await runner.receivedSettings(taskId, taskSettings);
 
@@ -1295,22 +1374,22 @@ describe('JsTaskRunner', () => {
 
 	describe('idle timeout', () => {
 		beforeEach(() => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should set idle timer when instantiated', () => {
 			const idleTimeout = 5;
 			const runner = createRunnerWithOpts({}, { idleTimeout });
-			const emitSpy = jest.spyOn(runner, 'emit');
+			const emitSpy = vi.spyOn(runner, 'emit');
 
-			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			vi.advanceTimersByTime(idleTimeout * 1000 - 100);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 
-			jest.advanceTimersByTime(idleTimeout * 1000);
+			vi.advanceTimersByTime(idleTimeout * 1000);
 			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
@@ -1319,9 +1398,9 @@ describe('JsTaskRunner', () => {
 			const runner = createRunnerWithOpts({}, { idleTimeout });
 			const taskId = '123';
 			const offerId = 'offer123';
-			const emitSpy = jest.spyOn(runner, 'emit');
+			const emitSpy = vi.spyOn(runner, 'emit');
 
-			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			vi.advanceTimersByTime(idleTimeout * 1000 - 100);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 
 			runner.openOffers.set(offerId, {
@@ -1330,12 +1409,12 @@ describe('JsTaskRunner', () => {
 			});
 			runner.offerAccepted(offerId, taskId);
 
-			jest.advanceTimersByTime(200);
+			vi.advanceTimersByTime(200);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout'); // because timer was reset
 
 			runner.runningTasks.clear();
 
-			jest.advanceTimersByTime(idleTimeout * 1000);
+			vi.advanceTimersByTime(idleTimeout * 1000);
 			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
@@ -1343,28 +1422,28 @@ describe('JsTaskRunner', () => {
 			const idleTimeout = 5;
 			const runner = createRunnerWithOpts({}, { idleTimeout });
 			const taskId = '123';
-			const emitSpy = jest.spyOn(runner, 'emit');
-			jest.spyOn(runner, 'executeTask').mockResolvedValue({ result: [] });
+			const emitSpy = vi.spyOn(runner, 'emit');
+			vi.spyOn(runner, 'executeTask').mockResolvedValue({ result: [] });
 
 			runner.runningTasks.set(taskId, newTaskState(taskId));
 
-			jest.advanceTimersByTime(idleTimeout * 1000 - 100);
+			vi.advanceTimersByTime(idleTimeout * 1000 - 100);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 
 			await runner.receivedSettings(taskId, {});
 
-			jest.advanceTimersByTime(200);
+			vi.advanceTimersByTime(200);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout'); // because timer was reset
 
-			jest.advanceTimersByTime(idleTimeout * 1000);
+			vi.advanceTimersByTime(idleTimeout * 1000);
 			expect(emitSpy).toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
 		it('should never reach idle timeout if idle timeout is set to 0', () => {
 			const runner = createRunnerWithOpts({}, { idleTimeout: 0 });
-			const emitSpy = jest.spyOn(runner, 'emit');
+			const emitSpy = vi.spyOn(runner, 'emit');
 
-			jest.advanceTimersByTime(999999);
+			vi.advanceTimersByTime(999999);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 		});
 
@@ -1372,12 +1451,12 @@ describe('JsTaskRunner', () => {
 			const idleTimeout = 5;
 			const runner = createRunnerWithOpts({}, { idleTimeout });
 			const taskId = '123';
-			const emitSpy = jest.spyOn(runner, 'emit');
+			const emitSpy = vi.spyOn(runner, 'emit');
 			const task = newTaskState(taskId);
 
 			runner.runningTasks.set(taskId, task);
 
-			jest.advanceTimersByTime(idleTimeout * 1000);
+			vi.advanceTimersByTime(idleTimeout * 1000);
 			expect(emitSpy).not.toHaveBeenCalledWith('runner:reached-idle-timeout');
 			task.cleanup();
 		});
@@ -1474,6 +1553,39 @@ describe('JsTaskRunner', () => {
 			expect(Interval.fromISO('P1Y2M10DT2H30M').maliciousKey).toBeUndefined();
 			// @ts-expect-error Non-existing property
 			expect(Duration.fromObject({ hours: 1 }).maliciousKey).toBeUndefined();
+		});
+
+		test('should prevent overwriting Object.keys via module.constructor', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					module.constructor.keys = () => ['polluted'];
+					return [{ json: { keyCount: Object.keys({ a: 1, b: 2 }).length } }];
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ keyCount: 2 })]);
+		});
+
+		test('should keep module.constructor in the sandbox realm', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					return [{
+						json: {
+							isSandboxObject: module.constructor === Object,
+							isFrozen: Object.isFrozen(module.constructor),
+						},
+					}];
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([
+				wrapIntoJson({
+					isSandboxObject: true,
+					isFrozen: true,
+				}),
+			]);
 		});
 
 		it('should allow prototype mutation when `insecureMode` is true', async () => {
@@ -1652,11 +1764,11 @@ describe('JsTaskRunner', () => {
 			};
 			runner.runningTasks.set(taskId, task);
 
-			const sendSpy = jest.spyOn(runner.ws, 'send').mockImplementation(() => {});
-			jest.spyOn(runner, 'sendOffers').mockImplementation(() => {});
-			jest
-				.spyOn(runner, 'requestData')
-				.mockResolvedValue(newDataRequestResponse([wrapIntoJson({ a: 1 })]));
+			const sendSpy = vi.spyOn(runner.ws, 'send').mockImplementation(() => {});
+			vi.spyOn(runner, 'sendOffers').mockImplementation(() => {});
+			vi.spyOn(runner, 'requestData').mockResolvedValue(
+				newDataRequestResponse([wrapIntoJson({ a: 1 })]),
+			);
 
 			await runner.receivedSettings(taskId, taskSettings);
 
@@ -1705,7 +1817,7 @@ describe('JsTaskRunner', () => {
 			});
 
 			// runCode mode doesn't fetch data, so we can pass empty response
-			jest.spyOn(runner, 'requestData').mockResolvedValue(newDataRequestResponse([]));
+			vi.spyOn(runner, 'requestData').mockResolvedValue(newDataRequestResponse([]));
 
 			return await runner.executeTask(task, new AbortController().signal);
 		};
@@ -1846,7 +1958,7 @@ describe('JsTaskRunner', () => {
 
 		describe('console methods', () => {
 			it('should allow console.log without making RPC calls', async () => {
-				const rpcSpy = jest.spyOn(defaultTaskRunner, 'makeRpcCall');
+				const rpcSpy = vi.spyOn(defaultTaskRunner, 'makeRpcCall');
 
 				const outcome = await executeRunCode({
 					code: `

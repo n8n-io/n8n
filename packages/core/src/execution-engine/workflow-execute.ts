@@ -47,6 +47,7 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	ApplicationError,
+	BaseError,
 	sleep,
 	Node,
 	UnexpectedError,
@@ -65,7 +66,12 @@ import { assertExecutionDataExists } from '@/utils/assertions';
 
 import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
-import { ExecuteContext, PollContext, resolveSourceOverwrite } from './node-execution-context';
+import {
+	ExecuteContext,
+	getAdditionalKeys,
+	PollContext,
+	resolveSourceOverwrite,
+} from './node-execution-context';
 import {
 	DirectedGraph,
 	findStartNodes,
@@ -140,13 +146,17 @@ export class WorkflowExecute {
 		// If a destination node is given we only run the direct parent nodes and no others
 		let runNodeFilter: string[] | undefined;
 		if (destinationNode) {
-			runNodeFilter = workflow.getParentNodes(destinationNode.nodeName);
+			runNodeFilter = [
+				...workflow.getParentNodes(destinationNode.nodeName),
+				...workflow.getParentNodes(destinationNode.nodeName, 'ALL_NON_MAIN'),
+			];
 			if (destinationNode.mode === 'inclusive') {
 				runNodeFilter.push(destinationNode.nodeName);
 			}
 			if (additionalRunFilterNodes) {
 				runNodeFilter.push.apply(runNodeFilter, additionalRunFilterNodes);
 			}
+			runNodeFilter = Array.from(new Set(runNodeFilter));
 		}
 
 		// Initialize the data of the start nodes
@@ -177,6 +187,7 @@ export class WorkflowExecute {
 			resultData: {
 				pinData,
 			},
+			resumeToken: this.runExecutionData.resumeToken,
 		});
 
 		return this.processRunExecutionData(workflow);
@@ -291,6 +302,7 @@ export class WorkflowExecute {
 				waitingExecution,
 				waitingExecutionSource,
 			},
+			resumeToken: this.runExecutionData.resumeToken,
 		});
 
 		// Still passing the original workflow here, because the WorkflowDataProxy
@@ -1029,43 +1041,123 @@ export class WorkflowExecute {
 		);
 
 		let data: INodeExecutionData[][] | EngineRequest | null;
+		let executionSucceeded = false;
+		let closingError: Error | undefined;
 
-		if (customOperation) {
-			data = await customOperation.call(context);
-		} else if (nodeType.execute) {
-			data =
-				nodeType instanceof Node
-					? await nodeType.execute(context, subNodeExecutionResults)
-					: await nodeType.execute.call(context, subNodeExecutionResults);
-		} else {
-			throw new UnexpectedError(
-				"Can't execute node. There is no custom operation and the node has not execute function.",
-			);
+		try {
+			if (customOperation) {
+				data = await customOperation.call(context);
+			} else if (nodeType.execute) {
+				data =
+					nodeType instanceof Node
+						? await nodeType.execute(context, subNodeExecutionResults)
+						: await nodeType.execute.call(context, subNodeExecutionResults);
+			} else {
+				throw new UnexpectedError(
+					"Can't execute node. There is no custom operation and the node has not execute function.",
+				);
+			}
+			executionSucceeded = true;
+		} finally {
+			if (closeFunctions.length > 0) {
+				const closeFunctionsResults = await Promise.allSettled(
+					closeFunctions.map(async (fn) => await fn()),
+				);
+
+				// Only throw close function errors if the execution itself succeeded,
+				// to avoid masking the original execution error.
+				if (executionSucceeded) {
+					const closingErrors = closeFunctionsResults
+						.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+						.map((result) => result.reason);
+
+					if (closingErrors.length > 0) {
+						closingError =
+							closingErrors[0] instanceof Error
+								? closingErrors[0]
+								: new ApplicationError("Error on execution node's close function(s)", {
+										extra: { nodeName: node.name },
+										tags: { nodeType: node.type },
+										cause: closingErrors,
+									});
+					}
+				}
+			}
 		}
+
+		if (closingError) throw closingError;
 
 		if (isEngineRequest(data)) {
 			return data;
 		}
 
-		const closeFunctionsResults = await Promise.allSettled(
-			closeFunctions.map(async (fn) => await fn()),
-		);
+		return { data, hints: context.hints };
+	}
 
-		const closingErrors = closeFunctionsResults
-			.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			.map((result) => result.reason);
+	private buildCustomTelemetryTracing(
+		workflow: Workflow,
+		node: INode,
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		runExecutionData: IRunExecutionData,
+		runIndex: number,
+		connectionInputData: INodeExecutionData[],
+		executionData: IExecuteData,
+	): NonNullable<ITaskMetadata['tracing']> | undefined {
+		const tags = node.customTelemetryTags?.tag;
+		if (!tags?.length) return;
 
-		if (closingErrors.length > 0) {
-			if (closingErrors[0] instanceof Error) throw closingErrors[0];
-			throw new ApplicationError("Error on execution node's close function(s)", {
-				extra: { nodeName: node.name },
-				tags: { nodeType: node.type },
-				cause: closingErrors,
-			});
+		const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
+		const tracing: NonNullable<ITaskMetadata['tracing']> = {};
+
+		for (const { key, value } of tags) {
+			const trimmedKey = key?.trim();
+			if (!trimmedKey) continue;
+
+			try {
+				const evaluated = workflow.expression.getParameterValue(
+					value,
+					runExecutionData,
+					runIndex,
+					0,
+					node.name,
+					connectionInputData,
+					mode,
+					additionalKeys,
+					executionData,
+					false,
+					{},
+				);
+				if (evaluated === undefined || evaluated === null) continue;
+				if (
+					typeof evaluated !== 'string' &&
+					typeof evaluated !== 'number' &&
+					typeof evaluated !== 'boolean'
+				) {
+					Logger.warn(
+						'customTelemetryTags expression resolved to a non-primitive value; skipping',
+						{
+							nodeName: node.name,
+							tagKey: trimmedKey,
+						},
+					);
+					continue;
+				}
+				tracing[trimmedKey] = evaluated;
+			} catch (error) {
+				// failing to evaluate a tag expression is not a critical error and should not block the execution
+				Logger.warn('Failed to evaluate customTelemetryTags expression', {
+					nodeName: node.name,
+					tagKey: trimmedKey,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
 		}
 
-		return { data, hints: context.hints };
+		if (Object.keys(tracing).length === 0) return;
+
+		return tracing;
 	}
 
 	/**
@@ -1101,7 +1193,7 @@ export class WorkflowExecute {
 	): Promise<IRunNodeResponse> {
 		if (mode === 'manual') {
 			// In manual mode start the trigger
-			const triggerResponse = await Container.get(TriggersAndPollers).runTrigger(
+			const triggerResponse = await Container.get(TriggersAndPollers).runTriggerFunction(
 				workflow,
 				node,
 				NodeExecuteFunctions.getExecuteTriggerFunctions,
@@ -1214,6 +1306,24 @@ export class WorkflowExecute {
 
 		inputData = this.handleExecuteOnce(node, inputData);
 
+		const tracingFromTags = this.buildCustomTelemetryTracing(
+			workflow,
+			node,
+			additionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			executionData,
+		);
+
+		if (tracingFromTags !== undefined) {
+			executionData.metadata = {
+				...(executionData.metadata ?? {}),
+				tracing: { ...tracingFromTags, ...(executionData.metadata?.tracing ?? {}) },
+			};
+		}
+
 		if (nodeType.execute || customOperation) {
 			return await this.executeNode(
 				workflow,
@@ -1244,6 +1354,12 @@ export class WorkflowExecute {
 				mode,
 				inputData,
 				abortSignal,
+			);
+		}
+
+		if (nodeType.supplyData) {
+			throw new ApplicationError(
+				`The node "${node.type}" has a "supplyData" method but no "execute" method.`,
 			);
 		}
 
@@ -1320,7 +1436,7 @@ export class WorkflowExecute {
 			pinDataNodeNames,
 		});
 		if (workflowIssues !== null) {
-			throw new WorkflowHasIssuesError();
+			throw new WorkflowHasIssuesError(workflowIssues, workflow.nodes);
 		}
 	}
 
@@ -1428,6 +1544,8 @@ export class WorkflowExecute {
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				try {
+					await workflow.expression.acquireIsolate();
+
 					// Establish the execution context
 					await establishExecutionContext(
 						workflow,
@@ -1498,6 +1616,10 @@ export class WorkflowExecute {
 					executionData =
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
+
+					// Reset per-node dynamic credential flags before each node execution
+					this.additionalData.currentNodeUsedDynamicCredentials = false;
+					this.additionalData.currentNodeAttemptedDynamicCredentials = false;
 
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
@@ -1594,6 +1716,9 @@ export class WorkflowExecute {
 						await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
 					}
 					let maxTries = 1;
+					const isErrorValue = (v: unknown) => v !== undefined && v !== null && v !== false;
+					const checkFailure = (data: IRunNodeResponse | EngineRequest) =>
+						!isEngineRequest(data) && isErrorValue(data.data?.[0]?.[0]?.json?.error);
 					if (executionData.node.retryOnFail === true) {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
 						maxTries = Math.min(5, Math.max(2, executionData.node.maxTries || 3));
@@ -1663,9 +1788,7 @@ export class WorkflowExecute {
 									subNodeExecutionResults,
 								);
 
-								let nodeFailed =
-									!isEngineRequest(runNodeData) &&
-									runNodeData.data?.[0]?.[0]?.json?.error !== undefined;
+								let nodeFailed = checkFailure(runNodeData);
 
 								while (nodeFailed && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
@@ -1680,9 +1803,7 @@ export class WorkflowExecute {
 										this.abortController.signal,
 									);
 
-									nodeFailed =
-										!isEngineRequest(runNodeData) &&
-										runNodeData.data?.[0]?.[0]?.json?.error !== undefined;
+									nodeFailed = checkFailure(runNodeData);
 									tryIndex++;
 								}
 
@@ -1777,17 +1898,37 @@ export class WorkflowExecute {
 							if (error instanceof ApplicationError) {
 								// Report any unhandled errors that were wrapped in by one of our error classes
 								if (error.cause instanceof Error) toReport = error.cause;
-							} else {
-								// Report any unhandled and non-wrapped errors to Sentry
+							} else if (error instanceof BaseError) {
+								// BaseError subclasses specify shouldReport and level
+								// so always report and let beforeSend decide
 								toReport = error;
+							} else if (error instanceof Error) {
+								// Non-BaseError errors only report their class and call frames
+								// The full error is still stored in the execution resultData
+								// Stack frames are in the format `<name>: <message>\n<call frames>`
+								// they can span multiple lines, so we drop everything except call frame lines
+								const errorClass = error.name || 'Error';
+								const sanitized = new Error(errorClass);
+								sanitized.name = errorClass;
+								const frames = (error.stack ?? '')
+									.split('\n')
+									.filter((line) => /^\s+at\s/.test(line));
+								sanitized.stack = [errorClass, ...frames].join('\n');
+								toReport = sanitized;
 							}
 							if (toReport) {
+								const { executionId, instanceBaseUrl } = this.additionalData;
 								Container.get(ErrorReporter).error(toReport, {
 									extra: {
 										nodeName: executionNode.name,
 										nodeType: executionNode.type,
 										nodeVersion: executionNode.typeVersion,
 										workflowId: workflow.id,
+										executionId,
+										executionUrl:
+											instanceBaseUrl && executionId
+												? `${instanceBaseUrl}workflow/${workflow.id}/executions/${executionId}`
+												: undefined,
 									},
 								});
 							}
@@ -1815,7 +1956,24 @@ export class WorkflowExecute {
 						executionTime: Date.now() - taskStartedData.startTime,
 						metadata: executionData.metadata,
 						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
+						usedDynamicCredentials:
+							this.additionalData.currentNodeUsedDynamicCredentials || undefined,
+						attemptedDynamicCredentials:
+							this.additionalData.currentNodeAttemptedDynamicCredentials || undefined,
 					};
+
+					// Record the n8n user a dynamically-resolved private credential
+					// belongs to onto the execution context, so the redaction layer
+					// can grant that user access to their own data. The identity is
+					// execution-scoped, so this is the same value across nodes.
+					if (
+						this.additionalData.currentNodeUsedDynamicCredentials &&
+						this.additionalData.dynamicCredentialsResolvedUserId &&
+						this.runExecutionData.executionData?.runtimeData
+					) {
+						this.runExecutionData.executionData.runtimeData.executedByUserId =
+							this.additionalData.dynamicCredentialsResolvedUserId;
+					}
 
 					if (executionError !== undefined) {
 						taskData.error = executionError;
@@ -1835,14 +1993,29 @@ export class WorkflowExecute {
 							},
 						]);
 
+						// AI tools default to continue-on-fail so the agent receives the
+						// error as a tool response. Explicit `onError: 'stopWorkflow'`
+						// still wins.
+						const isAiToolExecution =
+							executionNode.rewireOutputLogTo === NodeConnectionTypes.AiTool;
+						const aiToolDefaultsToContinue =
+							isAiToolExecution && executionData.node.onError !== 'stopWorkflow';
+
 						if (
 							executionData.node.continueOnFail === true ||
 							['continueRegularOutput', 'continueErrorOutput'].includes(
 								executionData.node.onError || '',
-							)
+							) ||
+							aiToolDefaultsToContinue
 						) {
 							// Workflow should continue running even if node errors
-							if (Object.hasOwn(executionData.data, 'main') && executionData.data.main.length > 0) {
+							if (isAiToolExecution) {
+								// Surface the error on the ai_tool channel so the agent receives it
+								nodeSuccessData = [[{ json: { error: executionError.message } }]];
+							} else if (
+								Object.hasOwn(executionData.data, 'main') &&
+								executionData.data.main.length > 0
+							) {
 								// Simply get the input data of the node if it has any and pass it through
 								// to the next node
 								if (executionData.data.main[0] !== null) {
@@ -2293,6 +2466,13 @@ export class WorkflowExecute {
 					}
 
 					return fullRunData;
+				})
+				.finally(async () => {
+					try {
+						await workflow.expression.releaseIsolate();
+					} catch (error) {
+						Container.get(ErrorReporter).error(error);
+					}
 				});
 
 			return await returnPromise.then(resolve);

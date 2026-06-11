@@ -2,16 +2,15 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-	IHttpRequestOptions,
-	INodeExecutionData,
-	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { ApplicationError, deepCopy } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
-import type { IRequestBody } from './types';
 import { getAwsCredentials } from '../GenericFunctions';
+import type { IRequestBody } from './types';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -93,17 +92,4 @@ export async function awsApiRequestAllItems(
 	} while (responseData.LastEvaluatedKey !== undefined);
 
 	return returnData;
-}
-
-export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
-	// Prepare the data to insert and copy it to be returned
-	const newItem: IDataObject = {};
-	for (const property of properties) {
-		if (item.json[property] === undefined) {
-			newItem[property] = null;
-		} else {
-			newItem[property] = deepCopy(item.json[property]);
-		}
-	}
-	return newItem;
 }

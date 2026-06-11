@@ -36,8 +36,8 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		return await this.objectStoreService.get(fileId, { mode: 'buffer' });
 	}
 
-	async getAsStream(fileId: string) {
-		return await this.objectStoreService.get(fileId, { mode: 'stream' });
+	async getAsStream(fileId: string, chunkSize?: number) {
+		return await this.objectStoreService.get(fileId, { mode: 'stream', chunkSize });
 	}
 
 	async getMetadata(fileId: string): Promise<BinaryData.Metadata> {

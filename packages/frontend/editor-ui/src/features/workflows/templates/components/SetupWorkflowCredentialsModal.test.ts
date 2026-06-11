@@ -126,7 +126,9 @@ describe('SetupWorkflowCredentialsModal', () => {
 		});
 
 		expect(mockSetInitialCredentialSelection).toHaveBeenCalled();
-		expect(mockTelemetryTrack).toHaveBeenCalledWith('User opened cred setup', { source: 'canvas' });
+		expect(mockTelemetryTrack).toHaveBeenCalledWith('User opened cred setup', {
+			source: 'template',
+		});
 	});
 
 	it('tracks telemetry on unmount with completion status', () => {
@@ -149,6 +151,7 @@ describe('SetupWorkflowCredentialsModal', () => {
 			completed: true,
 			creds_filled: 2,
 			creds_needed: 2,
+			source: 'template',
 			workflow_id: 'test-workflow-id',
 		});
 	});
@@ -173,6 +176,7 @@ describe('SetupWorkflowCredentialsModal', () => {
 			completed: false,
 			creds_filled: 1,
 			creds_needed: 2,
+			source: 'template',
 			workflow_id: 'test-workflow-id',
 		});
 	});

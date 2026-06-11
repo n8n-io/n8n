@@ -2,7 +2,8 @@
 	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
 		"rootDir": ".",
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"types": ["node", "jest"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"]
 }

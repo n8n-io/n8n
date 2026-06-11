@@ -58,6 +58,10 @@ const router = createRouter({
 			component: { template: '<div></div>' },
 		},
 		{
+			path: '/:projectId/folders/:folderId',
+			component: { template: '<div></div>' },
+		},
+		{
 			path: '/workflow',
 			name: VIEWS.NEW_WORKFLOW,
 			component: { template: '<div></div>' },
@@ -121,7 +125,7 @@ describe('WorkflowsView', () => {
 		it('for non setup user', async () => {
 			const { getByText } = renderComponent({ pinia });
 			await waitAllPromises();
-			expect(getByText('👋 Welcome!')).toBeVisible();
+			expect(getByText('What do you want to build?')).toBeVisible();
 		});
 
 		it('for currentUser user', async () => {
@@ -131,7 +135,7 @@ describe('WorkflowsView', () => {
 			const { getByText } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByText('👋 Welcome, John!')).toBeVisible();
+			expect(getByText('What do you want to build, John')).toBeVisible();
 		});
 
 		describe('when onboardingExperiment -> False', () => {
@@ -152,13 +156,23 @@ describe('WorkflowsView', () => {
 				expect(getByText('There are currently no workflows to view')).toBeInTheDocument();
 			});
 
+			it('does not repeat generic prompt in fallback empty state', async () => {
+				const projectsStore = mockedStore(useProjectsStore);
+				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
+
+				const { getAllByText } = renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(getAllByText('What do you want to build?')).toHaveLength(1);
+			});
+
 			it('for user with create scope', async () => {
 				const projectsStore = mockedStore(useProjectsStore);
 				projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
 
-				const { getByText } = renderComponent({ pinia });
+				const { getByRole } = renderComponent({ pinia });
 				await waitAllPromises();
-				expect(getByText('Create your first workflow')).toBeInTheDocument();
+				expect(getByRole('heading', { name: 'What do you want to build?' })).toBeInTheDocument();
 			});
 		});
 	});
@@ -206,7 +220,7 @@ describe('WorkflowsView', () => {
 	});
 
 	describe('filters', () => {
-		it('should set tag filter based on query parameters', async () => {
+		it('should set tag filter based on query parameters and not filter by parent folder', async () => {
 			await router.replace({ query: { tags: 'test-tag' } });
 
 			const TEST_TAG = { id: 'test-tag', name: 'tag' };
@@ -229,8 +243,31 @@ describe('WorkflowsView', () => {
 				expect.objectContaining({
 					tags: [TEST_TAG.name],
 					isArchived: false,
+					parentFolderId: undefined,
 				}),
 				false, // No folders if tag filter is set
+				expect.any(Boolean),
+			);
+		});
+
+		it('should scope search to current folder when inside a folder', async () => {
+			await router.replace({ path: '/project-1/folders/folder-1', query: { search: 'test' } });
+
+			workflowsListStore.fetchWorkflowsPage.mockResolvedValue([]);
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.objectContaining({
+					query: 'test',
+					parentFolderId: 'folder-1',
+				}),
+				expect.any(Boolean),
 				expect.any(Boolean),
 			);
 		});
@@ -470,20 +507,28 @@ describe('Folders', () => {
 		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
 	});
 
-	it('should show "Create folder" button when not in the overview or sharing pages', async () => {
+	it('should show folder actions menu when not in the overview or sharing pages', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProject = {
+			id: '1',
+			name: 'Project 1',
+			type: 'team',
+			scopes: ['folder:create'],
+		} as Project;
 
 		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
-		const { getByTestId } = renderComponent({
+		const { getByTestId, queryByTestId } = renderComponent({
 			pinia,
 		});
 		await waitAllPromises();
 
-		expect(getByTestId('add-folder-button')).toBeInTheDocument();
+		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
+		expect(getByTestId('folder-breadcrumbs-actions')).toBeInTheDocument();
 	});
 
-	it('should NOT show "Create folder" button when in overview subpage', async () => {
+	it('should NOT show standalone "Create folder" button when in overview subpage', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 
@@ -496,7 +541,7 @@ describe('Folders', () => {
 		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
 	});
 
-	it('should NOT show "Create folder" button when in shared subpage', async () => {
+	it('should NOT show standalone "Create folder" button when in shared subpage', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
 

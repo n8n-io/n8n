@@ -33,7 +33,7 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 		return await em.delete(ChatHubSession, { id });
 	}
 
-	async getManyByUserId(userId: string, limit: number, cursor?: string) {
+	async getManyByUserId(userId: string, limit: number, cursor?: string, type?: string) {
 		const queryBuilder = this.createQueryBuilder('session')
 			.leftJoinAndSelect('session.agent', 'agent')
 			.leftJoinAndSelect('session.workflow', 'workflow')
@@ -41,6 +41,10 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 			.where('session.ownerId = :userId', { userId })
 			.orderBy('session.lastMessageAt', 'DESC')
 			.addOrderBy('session.id', 'ASC');
+
+		if (type) {
+			queryBuilder.andWhere('session.type = :type', { type });
+		}
 
 		if (cursor) {
 			const cursorSession = await this.findOne({

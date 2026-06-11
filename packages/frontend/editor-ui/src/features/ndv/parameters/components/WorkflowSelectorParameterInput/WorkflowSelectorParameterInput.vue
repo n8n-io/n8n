@@ -301,7 +301,7 @@ const onAddResourceClicked = async () => {
 		const newWorkflow = await workflowsStore.createNewWorkflow(workflow);
 		const { href } = router.resolve({
 			name: VIEWS.WORKFLOW,
-			params: { name: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
+			params: { workflowId: newWorkflow.id, nodeId: SAMPLE_SUBWORKFLOW_TRIGGER_ID },
 		});
 		workflowsResources.value.push(workflowDbToResourceMapper(newWorkflow));
 		emit('update:modelValue', {
@@ -374,13 +374,6 @@ const onAddResourceClicked = async () => {
 					[$style.multipleModes]: true,
 				}"
 			>
-				<div
-					:class="{
-						[$style.background]: true,
-						[$style.backgroundWithIssuesAndShowResourceLink]:
-							showOpenResourceLink && parameterIssues?.length,
-					}"
-				/>
 				<div :class="$style.modeSelector">
 					<N8nSelect
 						:model-value="selectedMode"

@@ -34,11 +34,15 @@ const connectionStatus = computed<ConnectionStatus>(() => {
 	}
 
 	// Priority 2: Check if push connection is lost
-	// Only show the connection lost error if the connection has been requested
-	// and the connection is not currently connected. This is to prevent the
-	// connection error from being shown e.g. when user navigates directly to
-	// the workflow executions list, which doesn't open the connection.
-	if (pushConnectionStore.isConnectionRequested && !pushConnectionStore.isConnected) {
+	// Only show the connection lost error if the connection has been requested,
+	// is not currently connected, and is not in the process of connecting.
+	// This prevents the error from showing during initial connection setup
+	// or when the user navigates to a page that doesn't open the connection.
+	if (
+		pushConnectionStore.isConnectionRequested &&
+		!pushConnectionStore.isConnected &&
+		!pushConnectionStore.isConnecting
+	) {
 		return {
 			hasError: true,
 			message: 'pushConnection.error.message',

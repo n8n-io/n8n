@@ -82,6 +82,42 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	async update(
+		workflowId: string,
+		versionId: string,
+		data: Partial<IWorkflowBase>,
+	): Promise<IWorkflowBase> {
+		const response = await this.api.request.patch(`/rest/workflows/${workflowId}`, {
+			data: {
+				...data,
+				versionId,
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to update workflow: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/** Triggers a manual workflow execution from a specific trigger node. */
+	async runManually(workflowId: string, triggerNodeName: string): Promise<{ executionId: string }> {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/run`, {
+			data: {
+				triggerToStartFrom: { name: triggerNodeName },
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to run workflow: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
 	async deactivate(workflowId: string) {
 		const response = await this.api.request.post(`/rest/workflows/${workflowId}/deactivate`);
 
@@ -121,6 +157,17 @@ export class WorkflowApiHelper {
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to get workflows: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	async getWorkflow(workflowId: string): Promise<IWorkflowBase> {
+		const response = await this.api.request.get(`/rest/workflows/${workflowId}`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get workflow: ${await response.text()}`);
 		}
 
 		const result = await response.json();

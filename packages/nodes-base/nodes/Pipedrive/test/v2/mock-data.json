@@ -1,0 +1,1914 @@
+{
+	"customFieldKeys": {
+		"deal": {
+			"test_string": "f5ed368466cf0477371c6ee076252f49a188848e",
+			"test_enum": "48233ee3e9d505bbcca8e7e05d9b8df4231021bc",
+			"test_multi": "febf5dbb0f1e95d60876abc4638483291b8ef18b"
+		},
+		"person": {
+			"test_number": "56ad1919c14a9089bf02fdca519f6394b0e5d5ab",
+			"test_enum": "48f483ac81a7b619c59322931ea839310e987725",
+			"test_multi": "7095cf9bf6bdeb457b12a76fdbb0fe06c0ad5151"
+		},
+		"organization": {
+			"test_string": "a033342fdeb029669a0652a64d1ab8150e48d627"
+		},
+		"product": {
+			"test_string": "82d101f4704841048e421cc72ddfef37122e8212"
+		},
+		"lead": {
+			"test_enum": "48f483ac81a7b619c59322931ea839310e987725",
+			"test_multi": "7095cf9bf6bdeb457b12a76fdbb0fe06c0ad5151"
+		}
+	},
+	"activity": {
+		"create": {
+			"request": {
+				"subject": "Call client",
+				"type": "call",
+				"done": false,
+				"deal_id": 8,
+				"participants": [
+					{
+						"person_id": 10,
+						"primary": true
+					}
+				],
+				"org_id": 7
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 10,
+					"subject": "Call client",
+					"type": "call",
+					"owner_id": 25455458,
+					"creator_user_id": 25455458,
+					"is_deleted": false,
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": "2026-04-01T22:03:27Z",
+					"deal_id": 8,
+					"lead_id": null,
+					"person_id": 10,
+					"org_id": 7,
+					"project_id": null,
+					"due_date": "2026-04-01",
+					"due_time": null,
+					"duration": null,
+					"done": false,
+					"busy": false,
+					"marked_as_done_time": null,
+					"location": null,
+					"participants": [
+						{
+							"person_id": 10,
+							"primary": true
+						}
+					],
+					"conference_meeting_client": null,
+					"conference_meeting_url": null,
+					"conference_meeting_id": null,
+					"public_description": null,
+					"priority": null,
+					"note": null
+				}
+			}
+		},
+		"get": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 10,
+					"subject": "Call client",
+					"type": "call",
+					"owner_id": 25455458,
+					"creator_user_id": 25455458,
+					"is_deleted": false,
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": "2026-04-01T22:03:27Z",
+					"deal_id": 8,
+					"lead_id": null,
+					"person_id": 10,
+					"org_id": 7,
+					"project_id": null,
+					"due_date": "2026-04-01",
+					"due_time": null,
+					"duration": null,
+					"done": false,
+					"busy": false,
+					"marked_as_done_time": null,
+					"location": null,
+					"participants": [
+						{
+							"person_id": 10,
+							"primary": true
+						}
+					],
+					"conference_meeting_client": null,
+					"conference_meeting_url": null,
+					"conference_meeting_id": null,
+					"public_description": null,
+					"priority": null,
+					"note": null
+				}
+			}
+		},
+		"getAll": {
+			"response": {
+				"success": true,
+				"data": [
+					{
+						"id": 1,
+						"subject": "[Sample] Final attempt",
+						"type": "call",
+						"owner_id": 25455458,
+						"creator_user_id": 25455458,
+						"is_deleted": false,
+						"add_time": "2026-04-01T19:00:38Z",
+						"update_time": "2026-04-01T19:00:38Z",
+						"deal_id": null,
+						"lead_id": null,
+						"person_id": 1,
+						"org_id": null,
+						"project_id": null,
+						"due_date": "2026-04-01",
+						"due_time": null,
+						"duration": null,
+						"done": false,
+						"busy": false,
+						"marked_as_done_time": null,
+						"location": null,
+						"participants": [
+							{
+								"person_id": 1,
+								"primary": true
+							}
+						],
+						"conference_meeting_client": null,
+						"conference_meeting_url": null,
+						"conference_meeting_id": null,
+						"public_description": "[sampledata]",
+						"priority": null,
+						"note": null
+					},
+					{
+						"id": 2,
+						"subject": "[Sample] Context call",
+						"type": "call",
+						"owner_id": 25455458,
+						"creator_user_id": 25455458,
+						"is_deleted": false,
+						"add_time": "2026-04-01T19:00:38Z",
+						"update_time": "2026-04-01T19:00:38Z",
+						"deal_id": 2,
+						"lead_id": null,
+						"person_id": 7,
+						"org_id": 3,
+						"project_id": null,
+						"due_date": "2026-04-01",
+						"due_time": null,
+						"duration": null,
+						"done": false,
+						"busy": false,
+						"marked_as_done_time": null,
+						"location": null,
+						"participants": [
+							{
+								"person_id": 7,
+								"primary": true
+							}
+						],
+						"conference_meeting_client": null,
+						"conference_meeting_url": null,
+						"conference_meeting_id": null,
+						"public_description": "[sampledata]",
+						"priority": null,
+						"note": null
+					}
+				],
+				"additional_data": {
+					"next_cursor": "eyJmaWVsZCI6ImlkIiwiZmllbGRWYWx1ZSI6Mywic29ydERpcmVjdGlvbiI6ImFzYyIsImlkIjozfQ"
+				}
+			}
+		},
+		"update": {
+			"request": {
+				"subject": "Updated call",
+				"done": true
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 10,
+					"subject": "Updated call",
+					"type": "call",
+					"owner_id": 25455458,
+					"creator_user_id": 25455458,
+					"is_deleted": false,
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": "2026-04-01T22:03:32Z",
+					"deal_id": 8,
+					"lead_id": null,
+					"person_id": 10,
+					"org_id": 7,
+					"project_id": null,
+					"due_date": "2026-04-01",
+					"due_time": null,
+					"duration": null,
+					"done": true,
+					"busy": false,
+					"marked_as_done_time": "2026-04-01T22:03:32Z",
+					"location": null,
+					"participants": [
+						{
+							"person_id": 10,
+							"primary": true
+						}
+					],
+					"conference_meeting_client": null,
+					"conference_meeting_url": null,
+					"conference_meeting_id": null,
+					"public_description": null,
+					"priority": null,
+					"note": null
+				}
+			}
+		},
+		"delete": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 10
+				}
+			}
+		}
+	},
+	"deal": {
+		"create": {
+			"request": {
+				"title": "Test Deal",
+				"org_id": 7,
+				"person_id": 10,
+				"value": 5000,
+				"currency": "USD",
+				"status": "open"
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 8,
+					"title": "Test Deal",
+					"creator_user_id": 25455458,
+					"value": 5000.0,
+					"person_id": 10,
+					"org_id": 7,
+					"stage_id": 6,
+					"currency": "USD",
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": null,
+					"status": "open",
+					"probability": null,
+					"lost_reason": null,
+					"visible_to": 3,
+					"close_time": null,
+					"pipeline_id": 2,
+					"won_time": null,
+					"lost_time": null,
+					"stage_change_time": null,
+					"local_won_date": null,
+					"local_lost_date": null,
+					"local_close_date": null,
+					"expected_close_date": null,
+					"custom_fields": {
+						"f5ed368466cf0477371c6ee076252f49a188848e": null,
+						"48233ee3e9d505bbcca8e7e05d9b8df4231021bc": null,
+						"febf5dbb0f1e95d60876abc4638483291b8ef18b": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"is_deleted": false,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"acv": null,
+					"arr": null,
+					"mrr": null,
+					"is_archived": false,
+					"archive_time": null
+				}
+			}
+		},
+		"get": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 8,
+					"title": "Test Deal",
+					"creator_user_id": 25455458,
+					"value": 199.98,
+					"person_id": 10,
+					"org_id": 7,
+					"stage_id": 6,
+					"currency": "USD",
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": "2026-04-01T22:03:28Z",
+					"status": "open",
+					"probability": null,
+					"lost_reason": null,
+					"visible_to": 3,
+					"close_time": null,
+					"pipeline_id": 2,
+					"won_time": null,
+					"lost_time": null,
+					"stage_change_time": null,
+					"local_won_date": null,
+					"local_lost_date": null,
+					"local_close_date": null,
+					"expected_close_date": null,
+					"custom_fields": {
+						"f5ed368466cf0477371c6ee076252f49a188848e": null,
+						"48233ee3e9d505bbcca8e7e05d9b8df4231021bc": null,
+						"febf5dbb0f1e95d60876abc4638483291b8ef18b": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"is_deleted": false,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"acv": 199.98,
+					"arr": 0.0,
+					"mrr": 0.0,
+					"is_archived": false,
+					"archive_time": null
+				}
+			}
+		},
+		"getAll": {
+			"response": {
+				"success": true,
+				"data": [
+					{
+						"id": 1,
+						"title": "[Sample] iTable",
+						"creator_user_id": 25455458,
+						"value": 7000.0,
+						"person_id": 6,
+						"org_id": 4,
+						"stage_id": 7,
+						"currency": "BGN",
+						"add_time": "2026-04-01T19:00:38Z",
+						"update_time": "2026-04-01T19:00:39Z",
+						"status": "open",
+						"probability": null,
+						"lost_reason": null,
+						"visible_to": 3,
+						"close_time": null,
+						"pipeline_id": 2,
+						"won_time": null,
+						"lost_time": null,
+						"stage_change_time": null,
+						"local_won_date": null,
+						"local_lost_date": null,
+						"local_close_date": null,
+						"expected_close_date": "2026-04-13",
+						"custom_fields": {
+							"f5ed368466cf0477371c6ee076252f49a188848e": null,
+							"48233ee3e9d505bbcca8e7e05d9b8df4231021bc": null,
+							"febf5dbb0f1e95d60876abc4638483291b8ef18b": null
+						},
+						"owner_id": 25455458,
+						"label_ids": [],
+						"is_deleted": false,
+						"origin": "API",
+						"origin_id": null,
+						"channel": null,
+						"channel_id": null,
+						"acv": null,
+						"arr": null,
+						"mrr": null,
+						"is_archived": false,
+						"archive_time": null
+					},
+					{
+						"id": 2,
+						"title": "[Sample] Tony Turner",
+						"creator_user_id": 25455458,
+						"value": 30000.0,
+						"person_id": 7,
+						"org_id": 3,
+						"stage_id": 6,
+						"currency": "BGN",
+						"add_time": "2026-04-01T19:00:38Z",
+						"update_time": "2026-04-01T19:00:39Z",
+						"status": "open",
+						"probability": null,
+						"lost_reason": null,
+						"visible_to": 3,
+						"close_time": null,
+						"pipeline_id": 2,
+						"won_time": null,
+						"lost_time": null,
+						"stage_change_time": null,
+						"local_won_date": null,
+						"local_lost_date": null,
+						"local_close_date": null,
+						"expected_close_date": "2026-04-04",
+						"custom_fields": {
+							"f5ed368466cf0477371c6ee076252f49a188848e": null,
+							"48233ee3e9d505bbcca8e7e05d9b8df4231021bc": null,
+							"febf5dbb0f1e95d60876abc4638483291b8ef18b": null
+						},
+						"owner_id": 25455458,
+						"label_ids": [],
+						"is_deleted": false,
+						"origin": "API",
+						"origin_id": null,
+						"channel": null,
+						"channel_id": null,
+						"acv": null,
+						"arr": null,
+						"mrr": null,
+						"is_archived": false,
+						"archive_time": null
+					}
+				],
+				"additional_data": {
+					"next_cursor": "eyJmaWVsZCI6ImlkIiwiZmllbGRWYWx1ZSI6Mywic29ydERpcmVjdGlvbiI6ImFzYyIsImlkIjozfQ"
+				}
+			}
+		},
+		"search": {
+			"response": {
+				"success": true,
+				"data": {
+					"items": [
+						{
+							"result_score": 1.28568,
+							"item": {
+								"id": 8,
+								"type": "deal",
+								"title": "Test Deal",
+								"value": 199.98,
+								"currency": "USD",
+								"status": "open",
+								"visible_to": 3,
+								"owner": {
+									"id": 25455458
+								},
+								"stage": {
+									"id": 6,
+									"name": "Qualified"
+								},
+								"pipeline": {
+									"id": 2
+								},
+								"person": {
+									"id": 10,
+									"name": "John Test"
+								},
+								"organization": {
+									"id": 7,
+									"name": "Test Org LLC",
+									"address": null
+								},
+								"custom_fields": [],
+								"notes": ["This is a test note"],
+								"is_archived": false
+							}
+						}
+					]
+				},
+				"additional_data": {
+					"pagination": {
+						"start": 0,
+						"limit": 100,
+						"more_items_in_collection": false
+					}
+				}
+			}
+		},
+		"update": {
+			"request": {
+				"title": "Updated Deal",
+				"value": 7500
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 10,
+					"title": "Updated Deal",
+					"creator_user_id": 25455458,
+					"value": 7500.0,
+					"person_id": null,
+					"org_id": 8,
+					"stage_id": 6,
+					"currency": "USD",
+					"add_time": "2026-04-01T22:04:20Z",
+					"update_time": "2026-04-01T22:04:20Z",
+					"status": "open",
+					"probability": null,
+					"lost_reason": null,
+					"visible_to": 3,
+					"close_time": null,
+					"pipeline_id": 2,
+					"won_time": null,
+					"lost_time": null,
+					"stage_change_time": null,
+					"local_won_date": null,
+					"local_lost_date": null,
+					"local_close_date": null,
+					"expected_close_date": null,
+					"custom_fields": {
+						"f5ed368466cf0477371c6ee076252f49a188848e": null,
+						"48233ee3e9d505bbcca8e7e05d9b8df4231021bc": null,
+						"febf5dbb0f1e95d60876abc4638483291b8ef18b": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"is_deleted": false,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"acv": null,
+					"arr": null,
+					"mrr": null,
+					"is_archived": false,
+					"archive_time": null
+				}
+			}
+		},
+		"duplicate": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 9,
+					"creator_user_id": 25455458,
+					"user_id": 25455458,
+					"person_id": 10,
+					"org_id": 7,
+					"stage_id": 6,
+					"title": "Test Deal (copy)",
+					"value": 499.95,
+					"acv": 499.95,
+					"mrr": 0,
+					"arr": 0,
+					"currency": "USD",
+					"add_time": "2026-04-01 22:03:33",
+					"update_time": null,
+					"stage_change_time": null,
+					"active": true,
+					"deleted": false,
+					"status": "open",
+					"probability": null,
+					"next_activity_date": null,
+					"next_activity_time": null,
+					"next_activity_id": null,
+					"last_activity_id": null,
+					"last_activity_date": null,
+					"lost_reason": null,
+					"visible_to": "3",
+					"close_time": null,
+					"pipeline_id": 2,
+					"won_time": null,
+					"first_won_time": null,
+					"lost_time": null,
+					"products_count": 5,
+					"files_count": 0,
+					"notes_count": 0,
+					"followers_count": 0,
+					"email_messages_count": 0,
+					"activities_count": 0,
+					"done_activities_count": 0,
+					"undone_activities_count": 0,
+					"participants_count": 0,
+					"expected_close_date": null,
+					"last_incoming_mail_time": null,
+					"last_outgoing_mail_time": null,
+					"label": null,
+					"local_won_date": null,
+					"local_lost_date": null,
+					"local_close_date": null,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"is_archived": false,
+					"archive_time": null,
+					"score": null,
+					"sequence_enrollment": null,
+					"source_lead_id": null,
+					"stage_order_nr": 1,
+					"person_name": "John Updated",
+					"org_name": "Updated Org LLC",
+					"next_activity_subject": null,
+					"next_activity_type": null,
+					"next_activity_duration": null,
+					"next_activity_note": null,
+					"formatted_value": "$499.95",
+					"weighted_value": 499.95,
+					"formatted_weighted_value": "$499.95",
+					"weighted_value_currency": "USD",
+					"rotten_time": null,
+					"acv_currency": "USD",
+					"mrr_currency": "USD",
+					"arr_currency": "USD",
+					"owner_name": "Kris",
+					"cc_email": "added-cauliflower+deal9@pipedrivemail.com",
+					"f5ed368466cf0477371c6ee076252f49a188848e": null,
+					"48233ee3e9d505bbcca8e7e05d9b8df4231021bc": null,
+					"febf5dbb0f1e95d60876abc4638483291b8ef18b": null,
+					"org_hidden": false,
+					"person_hidden": false
+				}
+			}
+		},
+		"delete": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 8
+				}
+			}
+		}
+	},
+	"dealProduct": {
+		"add": {
+			"request": {
+				"product_id": 3,
+				"item_price": 99.99,
+				"quantity": 2
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 2,
+					"sum": 199.98,
+					"tax": 0,
+					"deal_id": 8,
+					"name": "Test Widget",
+					"product_id": 3,
+					"product_variation_id": null,
+					"order_nr": 0,
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": "2026-04-01T22:03:27Z",
+					"comments": "",
+					"currency": "USD",
+					"discount": 0,
+					"quantity": 2,
+					"item_price": 99.99,
+					"tax_method": "inclusive",
+					"discount_type": "percentage",
+					"is_enabled": true,
+					"billing_frequency": "one-time",
+					"billing_frequency_cycles": null,
+					"billing_start_date": null
+				},
+				"additional_data": null
+			}
+		},
+		"getAll": {
+			"response": {
+				"success": true,
+				"data": [
+					{
+						"id": 2,
+						"sum": 199.98,
+						"tax": 0,
+						"deal_id": 8,
+						"name": "Test Widget",
+						"product_id": 3,
+						"product_variation_id": null,
+						"order_nr": 0,
+						"add_time": "2026-04-01T22:03:27Z",
+						"update_time": "2026-04-01T22:03:27Z",
+						"comments": "",
+						"currency": "USD",
+						"discount": 0,
+						"quantity": 2,
+						"item_price": 99.99,
+						"tax_method": "inclusive",
+						"discount_type": "percentage",
+						"is_enabled": true,
+						"billing_frequency": "one-time",
+						"billing_frequency_cycles": null,
+						"billing_start_date": null
+					}
+				],
+				"additional_data": {
+					"next_cursor": null
+				}
+			}
+		},
+		"update": {
+			"request": {
+				"quantity": 5
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 2,
+					"sum": 499.95,
+					"tax": 0,
+					"deal_id": 8,
+					"name": "Updated Widget",
+					"product_id": 3,
+					"product_variation_id": null,
+					"order_nr": 0,
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": "2026-04-01T22:03:32Z",
+					"comments": "",
+					"currency": "USD",
+					"discount": 0,
+					"quantity": 5,
+					"item_price": 99.99,
+					"tax_method": "inclusive",
+					"discount_type": "percentage",
+					"is_enabled": true,
+					"billing_frequency": "one-time",
+					"billing_frequency_cycles": null,
+					"billing_start_date": null
+				},
+				"additional_data": null
+			}
+		},
+		"delete": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 2
+				},
+				"additional_data": null
+			}
+		}
+	},
+	"organization": {
+		"create": {
+			"request": {
+				"name": "Test Org LLC"
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 7,
+					"name": "Test Org LLC",
+					"add_time": "2026-04-01T22:03:26Z",
+					"update_time": null,
+					"visible_to": 3,
+					"custom_fields": {
+						"a033342fdeb029669a0652a64d1ab8150e48d627": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"website": null,
+					"linkedin": null,
+					"industry": null,
+					"annual_revenue": null,
+					"employee_count": null,
+					"is_deleted": false,
+					"address": null
+				}
+			}
+		},
+		"get": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 7,
+					"name": "Test Org LLC",
+					"add_time": "2026-04-01T22:03:26Z",
+					"update_time": "2026-04-01T22:03:28Z",
+					"visible_to": 3,
+					"custom_fields": {
+						"a033342fdeb029669a0652a64d1ab8150e48d627": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"website": null,
+					"linkedin": null,
+					"industry": null,
+					"annual_revenue": null,
+					"employee_count": null,
+					"is_deleted": false,
+					"address": null
+				}
+			}
+		},
+		"getAll": {
+			"response": {
+				"success": true,
+				"data": [
+					{
+						"id": 1,
+						"name": "[Sample] Phyllis & Cie",
+						"add_time": "2026-04-01T19:00:37Z",
+						"update_time": "2026-04-01T19:00:39Z",
+						"visible_to": 3,
+						"custom_fields": {
+							"a033342fdeb029669a0652a64d1ab8150e48d627": null
+						},
+						"owner_id": 25455458,
+						"label_ids": [],
+						"website": null,
+						"linkedin": null,
+						"industry": null,
+						"annual_revenue": null,
+						"employee_count": null,
+						"is_deleted": false,
+						"address": null
+					},
+					{
+						"id": 2,
+						"name": "[Sample] Lorean",
+						"add_time": "2026-04-01T19:00:37Z",
+						"update_time": "2026-04-01T19:00:39Z",
+						"visible_to": 3,
+						"custom_fields": {
+							"a033342fdeb029669a0652a64d1ab8150e48d627": null
+						},
+						"owner_id": 25455458,
+						"label_ids": [],
+						"website": null,
+						"linkedin": null,
+						"industry": null,
+						"annual_revenue": null,
+						"employee_count": null,
+						"is_deleted": false,
+						"address": null
+					}
+				],
+				"additional_data": {
+					"next_cursor": "eyJmaWVsZCI6ImlkIiwiZmllbGRWYWx1ZSI6Mywic29ydERpcmVjdGlvbiI6ImFzYyIsImlkIjozfQ"
+				}
+			}
+		},
+		"search": {
+			"response": {
+				"success": true,
+				"data": {
+					"items": [
+						{
+							"result_score": 0.35513002,
+							"item": {
+								"id": 7,
+								"type": "organization",
+								"name": "Test Org LLC",
+								"address": null,
+								"visible_to": 3,
+								"owner": {
+									"id": 25455458
+								},
+								"custom_fields": [],
+								"notes": []
+							}
+						}
+					]
+				},
+				"additional_data": {
+					"pagination": {
+						"start": 0,
+						"limit": 100,
+						"more_items_in_collection": false
+					}
+				}
+			}
+		},
+		"update": {
+			"request": {
+				"name": "Updated Org LLC"
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 7,
+					"name": "Updated Org LLC",
+					"add_time": "2026-04-01T22:03:26Z",
+					"update_time": "2026-04-01T22:03:32Z",
+					"visible_to": 3,
+					"custom_fields": {
+						"a033342fdeb029669a0652a64d1ab8150e48d627": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"website": null,
+					"linkedin": null,
+					"industry": null,
+					"annual_revenue": null,
+					"employee_count": null,
+					"is_deleted": false,
+					"address": null
+				}
+			}
+		},
+		"delete": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 7
+				}
+			}
+		}
+	},
+	"person": {
+		"create": {
+			"request": {
+				"name": "John Test",
+				"emails": [
+					{
+						"value": "john@test.com",
+						"primary": true
+					}
+				],
+				"phones": [
+					{
+						"value": "555-0100",
+						"primary": true
+					}
+				],
+				"org_id": 7
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 10,
+					"name": "John Test",
+					"first_name": "John",
+					"last_name": "Test",
+					"add_time": "2026-04-01T22:03:26Z",
+					"update_time": null,
+					"visible_to": 3,
+					"custom_fields": {
+						"56ad1919c14a9089bf02fdca519f6394b0e5d5ab": null,
+						"48f483ac81a7b619c59322931ea839310e987725": null,
+						"7095cf9bf6bdeb457b12a76fdbb0fe06c0ad5151": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"org_id": 7,
+					"is_deleted": false,
+					"picture_id": null,
+					"phones": [
+						{
+							"label": "work",
+							"value": "555-0100",
+							"primary": true
+						}
+					],
+					"emails": [
+						{
+							"label": "work",
+							"value": "john@test.com",
+							"primary": true
+						}
+					]
+				}
+			}
+		},
+		"get": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 10,
+					"name": "John Test",
+					"first_name": "John",
+					"last_name": "Test",
+					"add_time": "2026-04-01T22:03:26Z",
+					"update_time": "2026-04-01T22:03:28Z",
+					"visible_to": 3,
+					"custom_fields": {
+						"56ad1919c14a9089bf02fdca519f6394b0e5d5ab": null,
+						"48f483ac81a7b619c59322931ea839310e987725": null,
+						"7095cf9bf6bdeb457b12a76fdbb0fe06c0ad5151": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"org_id": 7,
+					"is_deleted": false,
+					"picture_id": null,
+					"phones": [
+						{
+							"label": "work",
+							"value": "555-0100",
+							"primary": true
+						}
+					],
+					"emails": [
+						{
+							"label": "work",
+							"value": "john@test.com",
+							"primary": true
+						}
+					]
+				}
+			}
+		},
+		"getAll": {
+			"response": {
+				"success": true,
+				"data": [
+					{
+						"id": 1,
+						"name": "[Sample] Benjamin Leon",
+						"first_name": "[Sample] Benjamin",
+						"last_name": "Leon",
+						"add_time": "2026-04-01T19:00:37Z",
+						"update_time": "2026-04-01T19:00:38Z",
+						"visible_to": 3,
+						"custom_fields": {
+							"56ad1919c14a9089bf02fdca519f6394b0e5d5ab": null,
+							"48f483ac81a7b619c59322931ea839310e987725": null,
+							"7095cf9bf6bdeb457b12a76fdbb0fe06c0ad5151": null
+						},
+						"owner_id": 25455458,
+						"label_ids": [],
+						"org_id": null,
+						"is_deleted": false,
+						"picture_id": null,
+						"phones": [
+							{
+								"label": "",
+								"value": "785-202-7824",
+								"primary": true
+							}
+						],
+						"emails": [
+							{
+								"label": "work",
+								"value": "benjamin.leon@gmial.com",
+								"primary": true
+							}
+						]
+					},
+					{
+						"id": 2,
+						"name": "[Sample] Kanushi Barnes",
+						"first_name": "[Sample] Kanushi",
+						"last_name": "Barnes",
+						"add_time": "2026-04-01T19:00:37Z",
+						"update_time": "2026-04-01T19:00:39Z",
+						"visible_to": 3,
+						"custom_fields": {
+							"56ad1919c14a9089bf02fdca519f6394b0e5d5ab": null,
+							"48f483ac81a7b619c59322931ea839310e987725": null,
+							"7095cf9bf6bdeb457b12a76fdbb0fe06c0ad5151": null
+						},
+						"owner_id": 25455458,
+						"label_ids": [],
+						"org_id": null,
+						"is_deleted": false,
+						"picture_id": null,
+						"phones": [],
+						"emails": [
+							{
+								"label": "work",
+								"value": "kanushi.barnes@gmial.com",
+								"primary": true
+							}
+						]
+					}
+				],
+				"additional_data": {
+					"next_cursor": "eyJmaWVsZCI6ImlkIiwiZmllbGRWYWx1ZSI6Mywic29ydERpcmVjdGlvbiI6ImFzYyIsImlkIjozfQ"
+				}
+			}
+		},
+		"search": {
+			"response": {
+				"success": true,
+				"data": {
+					"items": [
+						{
+							"result_score": 0.489265,
+							"item": {
+								"id": 10,
+								"type": "person",
+								"name": "John Test",
+								"phones": ["555-0100"],
+								"emails": ["john@test.com"],
+								"primary_email": "john@test.com",
+								"visible_to": 3,
+								"owner": {
+									"id": 25455458
+								},
+								"organization": {
+									"id": 7,
+									"name": "Test Org LLC",
+									"address": null
+								},
+								"custom_fields": [],
+								"notes": [],
+								"update_time": "2026-04-01 22:03:28"
+							}
+						},
+						{
+							"result_score": 0.489265,
+							"item": {
+								"id": 9,
+								"type": "person",
+								"name": "John Updated",
+								"phones": ["555-0100"],
+								"emails": ["john@test.com"],
+								"primary_email": null,
+								"visible_to": 3,
+								"owner": {
+									"id": 25455458
+								},
+								"organization": null,
+								"custom_fields": [],
+								"notes": [],
+								"update_time": null
+							}
+						}
+					]
+				},
+				"additional_data": {
+					"pagination": {
+						"start": 0,
+						"limit": 100,
+						"more_items_in_collection": false
+					}
+				}
+			}
+		},
+		"update": {
+			"request": {
+				"name": "John Updated"
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 10,
+					"name": "John Updated",
+					"first_name": "John",
+					"last_name": "Updated",
+					"add_time": "2026-04-01T22:03:26Z",
+					"update_time": "2026-04-01T22:03:32Z",
+					"visible_to": 3,
+					"custom_fields": {
+						"56ad1919c14a9089bf02fdca519f6394b0e5d5ab": null,
+						"48f483ac81a7b619c59322931ea839310e987725": null,
+						"7095cf9bf6bdeb457b12a76fdbb0fe06c0ad5151": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"org_id": 7,
+					"is_deleted": false,
+					"picture_id": null,
+					"phones": [
+						{
+							"label": "work",
+							"value": "555-0100",
+							"primary": true
+						}
+					],
+					"emails": [
+						{
+							"label": "work",
+							"value": "john@test.com",
+							"primary": true
+						}
+					]
+				}
+			}
+		},
+		"delete": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 10
+				}
+			}
+		}
+	},
+	"product": {
+		"create": {
+			"request": {
+				"name": "Test Widget",
+				"code": "TW-001",
+				"unit": "piece",
+				"tax": 20
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 3,
+					"name": "Test Widget",
+					"tax": 20,
+					"add_time": "2026-04-01T22:03:26Z",
+					"update_time": "2026-04-01T22:03:26Z",
+					"description": "",
+					"code": "TW-001",
+					"unit": "piece",
+					"owner_id": 25455458,
+					"category": null,
+					"is_deleted": false,
+					"is_linkable": true,
+					"prices": [
+						{
+							"product_id": 3,
+							"price": 0,
+							"currency": "BGN",
+							"cost": 0,
+							"direct_cost": 0,
+							"notes": ""
+						}
+					],
+					"custom_fields": {
+						"82d101f4704841048e421cc72ddfef37122e8212": null
+					},
+					"visible_to": 3,
+					"billing_frequency": "one-time",
+					"billing_frequency_cycles": null
+				},
+				"additional_data": null
+			}
+		},
+		"get": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 3,
+					"name": "Test Widget",
+					"tax": 20,
+					"add_time": "2026-04-01T22:03:26Z",
+					"update_time": "2026-04-01T22:03:26Z",
+					"description": "",
+					"code": "TW-001",
+					"unit": "piece",
+					"owner_id": 25455458,
+					"category": null,
+					"is_deleted": false,
+					"is_linkable": true,
+					"prices": [
+						{
+							"product_id": 3,
+							"price": 0,
+							"currency": "BGN",
+							"cost": 0,
+							"direct_cost": 0,
+							"notes": ""
+						}
+					],
+					"custom_fields": {
+						"82d101f4704841048e421cc72ddfef37122e8212": null
+					},
+					"visible_to": 3,
+					"billing_frequency": "one-time",
+					"billing_frequency_cycles": null
+				},
+				"additional_data": null
+			}
+		},
+		"getAll": {
+			"response": {
+				"success": true,
+				"data": [
+					{
+						"id": 1,
+						"name": "test",
+						"tax": 0,
+						"add_time": "2026-04-01T20:18:12Z",
+						"update_time": "2026-04-01T20:18:12Z",
+						"description": "",
+						"code": "",
+						"unit": "",
+						"owner_id": 25455458,
+						"category": null,
+						"is_deleted": false,
+						"is_linkable": true,
+						"prices": [
+							{
+								"product_id": 1,
+								"price": 0,
+								"currency": "USD",
+								"cost": 0,
+								"direct_cost": 0,
+								"notes": ""
+							}
+						],
+						"custom_fields": {
+							"82d101f4704841048e421cc72ddfef37122e8212": null
+						},
+						"visible_to": 3,
+						"billing_frequency": "one-time",
+						"billing_frequency_cycles": null
+					},
+					{
+						"id": 3,
+						"name": "Test Widget",
+						"tax": 20,
+						"add_time": "2026-04-01T22:03:26Z",
+						"update_time": "2026-04-01T22:03:26Z",
+						"description": "",
+						"code": "TW-001",
+						"unit": "piece",
+						"owner_id": 25455458,
+						"category": null,
+						"is_deleted": false,
+						"is_linkable": true,
+						"prices": [
+							{
+								"product_id": 3,
+								"price": 0,
+								"currency": "BGN",
+								"cost": 0,
+								"direct_cost": 0,
+								"notes": ""
+							}
+						],
+						"custom_fields": {
+							"82d101f4704841048e421cc72ddfef37122e8212": null
+						},
+						"visible_to": 3,
+						"billing_frequency": "one-time",
+						"billing_frequency_cycles": null
+					}
+				],
+				"additional_data": {
+					"next_cursor": null
+				}
+			}
+		},
+		"search": {
+			"response": {
+				"success": true,
+				"data": {
+					"items": [
+						{
+							"result_score": 0.00136,
+							"item": {
+								"id": 3,
+								"type": "product",
+								"name": "Test Widget",
+								"code": "TW-001",
+								"tax": 20,
+								"visible_to": 3,
+								"owner": {
+									"id": 25455458
+								},
+								"custom_fields": []
+							}
+						}
+					]
+				},
+				"additional_data": {
+					"pagination": {
+						"start": 0,
+						"limit": 100,
+						"more_items_in_collection": false
+					}
+				}
+			}
+		},
+		"update": {
+			"request": {
+				"name": "Updated Widget"
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 3,
+					"name": "Updated Widget",
+					"tax": 20,
+					"add_time": "2026-04-01T22:03:26Z",
+					"update_time": "2026-04-01T22:03:32Z",
+					"description": "",
+					"code": "TW-001",
+					"unit": "piece",
+					"owner_id": 25455458,
+					"category": null,
+					"is_deleted": false,
+					"is_linkable": true,
+					"prices": [
+						{
+							"product_id": 3,
+							"price": 0,
+							"currency": "BGN",
+							"cost": 0,
+							"direct_cost": 0,
+							"notes": ""
+						}
+					],
+					"custom_fields": {
+						"82d101f4704841048e421cc72ddfef37122e8212": null
+					},
+					"visible_to": 3,
+					"billing_frequency": "one-time",
+					"billing_frequency_cycles": null
+				},
+				"additional_data": null
+			}
+		},
+		"delete": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 3
+				},
+				"additional_data": null
+			}
+		}
+	},
+	"lead": {
+		"create": {
+			"request": {
+				"title": "Promising Lead",
+				"organization_id": 7,
+				"person_id": 10
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": "9ce77a10-2e16-11f1-91c1-d76c55e1594b",
+					"title": "Promising Lead",
+					"owner_id": 25455458,
+					"creator_id": 25455458,
+					"label_ids": [],
+					"value": null,
+					"expected_close_date": null,
+					"person_id": 10,
+					"organization_id": 7,
+					"is_archived": false,
+					"archive_time": null,
+					"source_name": "API",
+					"source_deal_id": null,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"was_seen": false,
+					"next_activity_id": null,
+					"add_time": "2026-04-01T22:03:28.177Z",
+					"update_time": "2026-04-01T22:03:28.177Z",
+					"visible_to": "3",
+					"cc_email": "added-cauliflower+14712380+lead9aeonoweeh1wbg0z8godmoua3@pipedrivemail.com"
+				}
+			}
+		},
+		"get": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": "9ce77a10-2e16-11f1-91c1-d76c55e1594b",
+					"title": "Promising Lead",
+					"owner_id": 25455458,
+					"creator_id": 25455458,
+					"label_ids": [],
+					"value": null,
+					"expected_close_date": null,
+					"person_id": 10,
+					"organization_id": 7,
+					"is_archived": false,
+					"archive_time": null,
+					"source_name": "API",
+					"source_deal_id": null,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"was_seen": false,
+					"next_activity_id": null,
+					"add_time": "2026-04-01T22:03:28.177Z",
+					"update_time": "2026-04-01T22:03:28.177Z",
+					"visible_to": "3",
+					"cc_email": "added-cauliflower+14712380+lead9aeonoweeh1wbg0z8godmoua3@pipedrivemail.com"
+				}
+			}
+		},
+		"getAll": {
+			"response": {
+				"success": true,
+				"data": [
+					{
+						"id": "9ce77a10-2e16-11f1-91c1-d76c55e1594b",
+						"title": "Promising Lead",
+						"owner_id": 25455458,
+						"creator_id": 25455458,
+						"label_ids": [],
+						"value": null,
+						"expected_close_date": null,
+						"person_id": 10,
+						"organization_id": 7,
+						"is_archived": false,
+						"archive_time": null,
+						"source_name": "API",
+						"source_deal_id": null,
+						"origin": "API",
+						"origin_id": null,
+						"channel": null,
+						"channel_id": null,
+						"was_seen": false,
+						"next_activity_id": null,
+						"add_time": "2026-04-01T22:03:28.177Z",
+						"update_time": "2026-04-01T22:03:28.177Z",
+						"visible_to": "3",
+						"cc_email": "added-cauliflower+14712380+lead9aeonoweeh1wbg0z8godmoua3@pipedrivemail.com"
+					}
+				],
+				"additional_data": {
+					"pagination": {
+						"start": 0,
+						"limit": 2,
+						"more_items_in_collection": false
+					}
+				}
+			}
+		},
+		"update": {
+			"request": {
+				"title": "Updated Lead"
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": "9ce77a10-2e16-11f1-91c1-d76c55e1594b",
+					"title": "Updated Lead",
+					"owner_id": 25455458,
+					"creator_id": 25455458,
+					"label_ids": [],
+					"value": null,
+					"expected_close_date": null,
+					"person_id": 10,
+					"organization_id": 7,
+					"is_archived": false,
+					"archive_time": null,
+					"source_name": "API",
+					"source_deal_id": null,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"was_seen": false,
+					"next_activity_id": null,
+					"add_time": "2026-04-01T22:03:28.177Z",
+					"update_time": "2026-04-01T22:03:32.984Z",
+					"visible_to": "3",
+					"cc_email": "added-cauliflower+14712380+lead9aeonoweeh1wbg0z8godmoua3@pipedrivemail.com"
+				}
+			}
+		},
+		"delete": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": "9ce77a10-2e16-11f1-91c1-d76c55e1594b"
+				}
+			}
+		}
+	},
+	"note": {
+		"create": {
+			"request": {
+				"content": "This is a test note",
+				"deal_id": 8
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 8,
+					"user_id": 25455458,
+					"deal_id": 8,
+					"person_id": 10,
+					"org_id": 7,
+					"lead_id": null,
+					"project_id": null,
+					"task_id": null,
+					"content": "This is a test note",
+					"add_time": "2026-04-01 22:03:28",
+					"update_time": "2026-04-01 22:03:28",
+					"active_flag": true,
+					"pinned_to_deal_flag": false,
+					"pinned_to_person_flag": false,
+					"pinned_to_organization_flag": false,
+					"pinned_to_lead_flag": false,
+					"pinned_to_project_flag": false,
+					"pinned_to_task_flag": false,
+					"last_update_user_id": null,
+					"organization": {
+						"name": "Test Org LLC"
+					},
+					"person": {
+						"name": "John Test"
+					},
+					"deal": {
+						"title": "Test Deal"
+					},
+					"lead": null,
+					"user": {
+						"email": "kristiyan.nikolov@n8n.io",
+						"name": "Kris",
+						"icon_url": null,
+						"is_you": true
+					}
+				}
+			}
+		},
+		"get": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 8,
+					"user_id": 25455458,
+					"deal_id": 8,
+					"person_id": 10,
+					"org_id": 7,
+					"lead_id": null,
+					"project_id": null,
+					"task_id": null,
+					"content": "This is a test note",
+					"add_time": "2026-04-01 22:03:28",
+					"update_time": "2026-04-01 22:03:28",
+					"active_flag": true,
+					"pinned_to_deal_flag": false,
+					"pinned_to_person_flag": false,
+					"pinned_to_organization_flag": false,
+					"pinned_to_lead_flag": false,
+					"pinned_to_project_flag": false,
+					"pinned_to_task_flag": false,
+					"last_update_user_id": null,
+					"organization": {
+						"name": "Test Org LLC"
+					},
+					"person": {
+						"name": "John Test"
+					},
+					"deal": {
+						"title": "Test Deal"
+					},
+					"lead": null,
+					"user": {
+						"email": "kristiyan.nikolov@n8n.io",
+						"name": "Kris",
+						"icon_url": null,
+						"is_you": true
+					}
+				}
+			}
+		},
+		"getAll": {
+			"response": {
+				"success": true,
+				"data": [
+					{
+						"id": 1,
+						"user_id": 25455458,
+						"deal_id": 1,
+						"person_id": 6,
+						"org_id": 4,
+						"lead_id": null,
+						"project_id": null,
+						"task_id": null,
+						"content": "[Sample] Potential buyer. They're very interested in our solution but can't afford the price. Can we offer them a discount?",
+						"add_time": "2026-04-01 19:00:39",
+						"update_time": "2026-04-01 19:00:39",
+						"active_flag": true,
+						"pinned_to_deal_flag": false,
+						"pinned_to_person_flag": false,
+						"pinned_to_organization_flag": false,
+						"pinned_to_lead_flag": false,
+						"pinned_to_project_flag": false,
+						"pinned_to_task_flag": false,
+						"last_update_user_id": null,
+						"organization": {
+							"name": "[Sample] iTable"
+						},
+						"person": {
+							"name": "[Sample] Otto Miller"
+						},
+						"deal": {
+							"title": "[Sample] iTable"
+						},
+						"lead": null,
+						"user": {
+							"email": "kristiyan.nikolov@n8n.io",
+							"name": "Kris",
+							"icon_url": null,
+							"is_you": true
+						}
+					},
+					{
+						"id": 2,
+						"user_id": 25455458,
+						"deal_id": 6,
+						"person_id": 3,
+						"org_id": null,
+						"lead_id": null,
+						"project_id": null,
+						"task_id": null,
+						"content": "[Sample] We need to add specific services, such as maintenance and support for this customer and to prepare a detailed offer.",
+						"add_time": "2026-04-01 19:00:39",
+						"update_time": "2026-04-01 19:00:39",
+						"active_flag": true,
+						"pinned_to_deal_flag": false,
+						"pinned_to_person_flag": false,
+						"pinned_to_organization_flag": false,
+						"pinned_to_lead_flag": false,
+						"pinned_to_project_flag": false,
+						"pinned_to_task_flag": false,
+						"last_update_user_id": null,
+						"organization": null,
+						"person": {
+							"name": "[Sample] Githa Watson"
+						},
+						"deal": {
+							"title": "[Sample] Damone"
+						},
+						"lead": null,
+						"user": {
+							"email": "kristiyan.nikolov@n8n.io",
+							"name": "Kris",
+							"icon_url": null,
+							"is_you": true
+						}
+					}
+				],
+				"additional_data": {
+					"pagination": {
+						"start": 0,
+						"limit": 2,
+						"more_items_in_collection": true,
+						"next_start": 2
+					}
+				}
+			}
+		},
+		"update": {
+			"request": {
+				"content": "Updated test note"
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 8,
+					"user_id": 25455458,
+					"deal_id": 8,
+					"person_id": 10,
+					"org_id": 7,
+					"lead_id": null,
+					"project_id": null,
+					"task_id": null,
+					"content": "Updated test note",
+					"add_time": "2026-04-01 22:03:28",
+					"update_time": "2026-04-01 22:03:33",
+					"active_flag": true,
+					"pinned_to_deal_flag": false,
+					"pinned_to_person_flag": false,
+					"pinned_to_organization_flag": false,
+					"pinned_to_lead_flag": false,
+					"pinned_to_project_flag": false,
+					"pinned_to_task_flag": false,
+					"last_update_user_id": 25455458,
+					"organization": {
+						"name": "Updated Org LLC"
+					},
+					"person": {
+						"name": "John Updated"
+					},
+					"deal": {
+						"title": "Test Deal"
+					},
+					"lead": null,
+					"user": {
+						"email": "kristiyan.nikolov@n8n.io",
+						"name": "Kris",
+						"icon_url": null,
+						"is_you": true
+					}
+				}
+			}
+		},
+		"delete": {
+			"response": {
+				"success": true,
+				"data": true
+			}
+		}
+	},
+	"file": {
+		"create": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 2,
+					"user_id": 25455458,
+					"log_id": null,
+					"add_time": "2026-04-01 22:03:28",
+					"update_time": "2026-04-01 22:03:28",
+					"file_name": "3c553e3e-cb74-4a07-81d4-784a31fcc812.txt",
+					"file_size": 18,
+					"active_flag": true,
+					"inline_flag": false,
+					"remote_location": "s3",
+					"remote_id": "company/14712380/user/25455458/files/3c553e3e-cb74-4a07-81d4-784a31fcc812.txt",
+					"s3_bucket": null,
+					"url": "https://app.pipedrive.com/api/v1/files/2/download",
+					"name": "pipedrive-test-file.txt",
+					"description": null,
+					"deal_id": 8,
+					"lead_id": null,
+					"person_id": 10,
+					"org_id": 7,
+					"product_id": null,
+					"activity_id": null,
+					"deal_name": "Test Deal",
+					"lead_name": null,
+					"person_name": "John Test",
+					"org_name": "Test Org LLC",
+					"product_name": null,
+					"mail_message_id": null,
+					"mail_template_id": null,
+					"cid": null,
+					"file_type": "txt"
+				}
+			}
+		},
+		"get": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 2,
+					"user_id": 25455458,
+					"log_id": null,
+					"add_time": "2026-04-01 22:03:28",
+					"update_time": "2026-04-01 22:03:28",
+					"file_name": "3c553e3e-cb74-4a07-81d4-784a31fcc812.txt",
+					"file_size": 18,
+					"active_flag": true,
+					"inline_flag": false,
+					"remote_location": "s3",
+					"remote_id": "company/14712380/user/25455458/files/3c553e3e-cb74-4a07-81d4-784a31fcc812.txt",
+					"s3_bucket": null,
+					"url": "https://app.pipedrive.com/api/v1/files/2/download",
+					"name": "pipedrive-test-file.txt",
+					"description": null,
+					"deal_id": 8,
+					"lead_id": null,
+					"person_id": 10,
+					"org_id": 7,
+					"product_id": null,
+					"activity_id": null,
+					"deal_name": "Test Deal",
+					"lead_name": null,
+					"person_name": "John Test",
+					"org_name": "Test Org LLC",
+					"product_name": null,
+					"mail_message_id": null,
+					"mail_template_id": null,
+					"cid": null,
+					"file_type": "txt"
+				}
+			}
+		},
+		"update": {
+			"request": {
+				"name": "renamed-file.txt"
+			},
+			"response": {
+				"success": true,
+				"data": {
+					"id": 2,
+					"user_id": 25455458,
+					"log_id": null,
+					"add_time": "2026-04-01 22:03:28",
+					"update_time": "2026-04-01 22:03:33",
+					"file_name": "3c553e3e-cb74-4a07-81d4-784a31fcc812.txt",
+					"file_size": 18,
+					"active_flag": true,
+					"inline_flag": false,
+					"remote_location": "s3",
+					"remote_id": "company/14712380/user/25455458/files/3c553e3e-cb74-4a07-81d4-784a31fcc812.txt",
+					"s3_bucket": null,
+					"url": "https://app.pipedrive.com/api/v1/files/2/download",
+					"name": "renamed-file.txt",
+					"description": null,
+					"deal_id": 8,
+					"lead_id": null,
+					"person_id": 10,
+					"org_id": 7,
+					"product_id": null,
+					"activity_id": null,
+					"deal_name": "Test Deal",
+					"lead_name": null,
+					"person_name": "John Updated",
+					"org_name": "Updated Org LLC",
+					"product_name": null,
+					"mail_message_id": null,
+					"mail_template_id": null,
+					"cid": null,
+					"file_type": "txt"
+				}
+			}
+		},
+		"delete": {
+			"response": {
+				"success": true,
+				"data": {
+					"id": 2
+				}
+			}
+		}
+	}
+}

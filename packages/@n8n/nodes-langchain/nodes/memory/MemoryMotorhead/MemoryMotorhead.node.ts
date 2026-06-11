@@ -8,10 +8,14 @@ import {
 } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
-import { expressionSessionKeyProperty, sessionIdOption, sessionKeyProperty } from '../descriptions';
+import {
+	expressionSessionKeyProperty,
+	sessionIdOption,
+	sessionKeyProperty,
+	scopedSessionHint,
+} from '../descriptions';
 
 export class MemoryMotorhead implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,8 +23,9 @@ export class MemoryMotorhead implements INodeType {
 		name: 'memoryMotorhead',
 		icon: 'fa:file-export',
 		iconColor: 'black',
+		hidden: true,
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Use Motorhead Memory',
 		defaults: {
 			name: 'Motorhead',
@@ -52,6 +57,13 @@ export class MemoryMotorhead implements INodeType {
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
+			{
+				displayName:
+					'The Motorhead project is no longer maintained. This node is deprecated and will be removed in a future version.',
+				name: 'deprecationNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Session ID',
 				name: 'sessionId',
@@ -85,6 +97,7 @@ export class MemoryMotorhead implements INodeType {
 				},
 			},
 			expressionSessionKeyProperty(1.3),
+			scopedSessionHint(1.4),
 			sessionKeyProperty,
 		],
 	};

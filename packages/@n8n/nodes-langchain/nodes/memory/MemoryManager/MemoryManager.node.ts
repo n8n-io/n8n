@@ -74,7 +74,7 @@ export class MemoryManager implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Memory Manager',
 		name: 'memoryManager',
-		icon: 'fa:database',
+		icon: 'node:chat-memory-manager',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],
@@ -303,16 +303,15 @@ export class MemoryManager implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 		const items = this.getInputData();
 		const mode = this.getNodeParameter('mode', 0, 'load') as 'load' | 'insert' | 'delete';
-		const memory = (await this.getInputConnectionData(
-			NodeConnectionTypes.AiMemory,
-			0,
-		)) as BaseChatMemory;
-
-		const prepareOutput = prepareOutputSetup(this, nodeVersion, memory);
-
 		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
+			const memory = (await this.getInputConnectionData(
+				NodeConnectionTypes.AiMemory,
+				i,
+			)) as BaseChatMemory;
+
+			const prepareOutput = prepareOutputSetup(this, nodeVersion, memory);
 			const messages = await memory.chatHistory.getMessages();
 
 			if (mode === 'delete') {

@@ -2,8 +2,8 @@
  * Tests for default console lifecycle implementation.
  */
 
-import { mock } from 'jest-mock-extended';
 import type { Client } from 'langsmith/client';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
@@ -20,16 +20,16 @@ const mockLangsmithClient = () => mock<Client>();
 
 // Mock console methods
 const mockConsole = {
-	log: jest.fn(),
-	warn: jest.fn(),
-	error: jest.fn(),
+	log: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
 };
 
 // Store original console
 const originalConsole = { ...console };
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	console.log = mockConsole.log;
 	console.warn = mockConsole.warn;
 	console.error = mockConsole.error;
@@ -68,7 +68,7 @@ describe('Console Lifecycle', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
 				evaluators: [],
 				logger: createLogger(false),
 			};
@@ -88,8 +88,8 @@ describe('Console Lifecycle', () => {
 			const config: RunConfig = {
 				mode: 'langsmith',
 				dataset: 'my-dataset-name',
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
-				evaluators: [{ name: 'test-eval', evaluate: jest.fn() }],
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
+				evaluators: [{ name: 'test-eval', evaluate: vi.fn() }],
 				langsmithClient: mockLangsmithClient(),
 				langsmithOptions: {
 					experimentName: 'test-experiment',
@@ -114,8 +114,8 @@ describe('Console Lifecycle', () => {
 			const config: RunConfig = {
 				mode: 'langsmith',
 				dataset: 'my-dataset-name',
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
-				evaluators: [{ name: 'test-eval', evaluate: jest.fn() }],
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
+				evaluators: [{ name: 'test-eval', evaluate: vi.fn() }],
 				langsmithClient: mockLangsmithClient(),
 				langsmithOptions: {
 					experimentName: 'test-experiment',
@@ -128,7 +128,7 @@ describe('Console Lifecycle', () => {
 			lifecycle.onStart(config);
 			mockConsole.log.mockClear();
 
-			lifecycle.onEnd({
+			await lifecycle.onEnd({
 				totalExamples: 0,
 				passed: 0,
 				failed: 0,
@@ -538,7 +538,7 @@ describe('Console Lifecycle', () => {
 				totalDurationMs: 30000,
 			};
 
-			lifecycle.onEnd(summary);
+			await lifecycle.onEnd(summary);
 
 			expect(mockConsole.log).toHaveBeenCalled();
 			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
@@ -554,8 +554,8 @@ describe('Console Lifecycle', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [{ prompt: 'Test' }],
-				generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
-				evaluators: [{ name: 'programmatic', evaluate: jest.fn() }],
+				generateWorkflow: vi.fn().mockResolvedValue(createMockWorkflow()),
+				evaluators: [{ name: 'programmatic', evaluate: vi.fn() }],
 				logger: createLogger(false),
 			};
 
@@ -594,14 +594,14 @@ describe('Console Lifecycle', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [],
-				generateWorkflow: jest.fn(),
+				generateWorkflow: vi.fn(),
 				evaluators: [],
 				logger: createLogger(false),
 			};
 
 			lifecycle.onStart(config);
 			lifecycle.onExampleStart(1, 1, 'Test');
-			lifecycle.onEnd({
+			await lifecycle.onEnd({
 				totalExamples: 1,
 				passed: 1,
 				failed: 0,
@@ -619,8 +619,8 @@ describe('Console Lifecycle', () => {
 		it('should merge multiple lifecycles into one', async () => {
 			const { mergeLifecycles } = await import('../harness/lifecycle');
 
-			const hook1 = jest.fn();
-			const hook2 = jest.fn();
+			const hook1 = vi.fn();
+			const hook2 = vi.fn();
 
 			const lifecycle1: Partial<EvaluationLifecycle> = {
 				onStart: hook1,
@@ -635,7 +635,7 @@ describe('Console Lifecycle', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [],
-				generateWorkflow: jest.fn(),
+				generateWorkflow: vi.fn(),
 				evaluators: [],
 				logger: createLogger(false),
 			};
@@ -649,7 +649,7 @@ describe('Console Lifecycle', () => {
 		it('should handle undefined hooks gracefully', async () => {
 			const { mergeLifecycles } = await import('../harness/lifecycle');
 
-			const hook = jest.fn();
+			const hook = vi.fn();
 
 			const lifecycle1: Partial<EvaluationLifecycle> = {
 				onStart: hook,
@@ -664,7 +664,7 @@ describe('Console Lifecycle', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [],
-				generateWorkflow: jest.fn(),
+				generateWorkflow: vi.fn(),
 				evaluators: [],
 				logger: createLogger(false),
 			};
@@ -677,7 +677,7 @@ describe('Console Lifecycle', () => {
 		it('should handle undefined lifecycles in array', async () => {
 			const { mergeLifecycles } = await import('../harness/lifecycle');
 
-			const hook = jest.fn();
+			const hook = vi.fn();
 
 			const lifecycle1: Partial<EvaluationLifecycle> = {
 				onStart: hook,
@@ -688,7 +688,7 @@ describe('Console Lifecycle', () => {
 			const config: RunConfig = {
 				mode: 'local',
 				dataset: [],
-				generateWorkflow: jest.fn(),
+				generateWorkflow: vi.fn(),
 				evaluators: [],
 				logger: createLogger(false),
 			};
@@ -701,8 +701,8 @@ describe('Console Lifecycle', () => {
 		it('should merge onExampleStart hooks', async () => {
 			const { mergeLifecycles } = await import('../harness/lifecycle');
 
-			const hook1 = jest.fn();
-			const hook2 = jest.fn();
+			const hook1 = vi.fn();
+			const hook2 = vi.fn();
 
 			const lifecycle1: Partial<EvaluationLifecycle> = { onExampleStart: hook1 };
 			const lifecycle2: Partial<EvaluationLifecycle> = { onExampleStart: hook2 };
@@ -717,8 +717,8 @@ describe('Console Lifecycle', () => {
 		it('should merge onWorkflowGenerated hooks', async () => {
 			const { mergeLifecycles } = await import('../harness/lifecycle');
 
-			const hook1 = jest.fn();
-			const hook2 = jest.fn();
+			const hook1 = vi.fn();
+			const hook2 = vi.fn();
 
 			const lifecycle1: Partial<EvaluationLifecycle> = { onWorkflowGenerated: hook1 };
 			const lifecycle2: Partial<EvaluationLifecycle> = { onWorkflowGenerated: hook2 };
@@ -734,8 +734,8 @@ describe('Console Lifecycle', () => {
 		it('should merge onEvaluatorComplete hooks', async () => {
 			const { mergeLifecycles } = await import('../harness/lifecycle');
 
-			const hook1 = jest.fn();
-			const hook2 = jest.fn();
+			const hook1 = vi.fn();
+			const hook2 = vi.fn();
 
 			const lifecycle1: Partial<EvaluationLifecycle> = { onEvaluatorComplete: hook1 };
 			const lifecycle2: Partial<EvaluationLifecycle> = { onEvaluatorComplete: hook2 };
@@ -753,8 +753,8 @@ describe('Console Lifecycle', () => {
 		it('should merge onEvaluatorError hooks', async () => {
 			const { mergeLifecycles } = await import('../harness/lifecycle');
 
-			const hook1 = jest.fn();
-			const hook2 = jest.fn();
+			const hook1 = vi.fn();
+			const hook2 = vi.fn();
 
 			const lifecycle1: Partial<EvaluationLifecycle> = { onEvaluatorError: hook1 };
 			const lifecycle2: Partial<EvaluationLifecycle> = { onEvaluatorError: hook2 };
@@ -770,8 +770,8 @@ describe('Console Lifecycle', () => {
 		it('should merge onExampleComplete hooks', async () => {
 			const { mergeLifecycles } = await import('../harness/lifecycle');
 
-			const hook1 = jest.fn();
-			const hook2 = jest.fn();
+			const hook1 = vi.fn();
+			const hook2 = vi.fn();
 
 			const lifecycle1: Partial<EvaluationLifecycle> = { onExampleComplete: hook1 };
 			const lifecycle2: Partial<EvaluationLifecycle> = { onExampleComplete: hook2 };
@@ -794,8 +794,8 @@ describe('Console Lifecycle', () => {
 		it('should merge onEnd hooks', async () => {
 			const { mergeLifecycles } = await import('../harness/lifecycle');
 
-			const hook1 = jest.fn();
-			const hook2 = jest.fn();
+			const hook1 = vi.fn();
+			const hook2 = vi.fn();
 
 			const lifecycle1: Partial<EvaluationLifecycle> = { onEnd: hook1 };
 			const lifecycle2: Partial<EvaluationLifecycle> = { onEnd: hook2 };
@@ -809,10 +809,44 @@ describe('Console Lifecycle', () => {
 				averageScore: 0.85,
 				totalDurationMs: 5000,
 			};
-			merged.onEnd(summary);
+			await merged.onEnd(summary);
 
 			expect(hook1).toHaveBeenCalledWith(summary);
 			expect(hook2).toHaveBeenCalledWith(summary);
+		});
+
+		it('should properly await async onEnd hooks in mergeLifecycles', async () => {
+			const { mergeLifecycles } = await import('../harness/lifecycle');
+
+			const callOrder: string[] = [];
+
+			const asyncHook = vi.fn(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				callOrder.push('async');
+			});
+			const syncHook = vi.fn(() => {
+				callOrder.push('sync');
+			});
+
+			const lifecycle1: Partial<EvaluationLifecycle> = { onEnd: asyncHook };
+			const lifecycle2: Partial<EvaluationLifecycle> = { onEnd: syncHook };
+
+			const merged = mergeLifecycles(lifecycle1, lifecycle2);
+			const summary: RunSummary = {
+				totalExamples: 1,
+				passed: 1,
+				failed: 0,
+				errors: 0,
+				averageScore: 1,
+				totalDurationMs: 100,
+			};
+
+			await merged.onEnd(summary);
+
+			expect(asyncHook).toHaveBeenCalledWith(summary);
+			expect(syncHook).toHaveBeenCalledWith(summary);
+			// Async hook should complete before sync hook starts (sequential await)
+			expect(callOrder).toEqual(['async', 'sync']);
 		});
 	});
 });

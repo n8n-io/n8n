@@ -27,6 +27,9 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	/** Whether the connection has been requested */
 	const isConnectionRequested = ref(false);
 
+	/** Whether the connection is currently being established */
+	const isConnecting = ref(false);
+
 	const onMessageReceivedHandlers = ref<OnPushMessageHandler[]>([]);
 
 	const addEventListener = (handler: OnPushMessageHandler) => {
@@ -74,15 +77,17 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 			return;
 		}
 
-		onMessageReceivedHandlers.value.forEach((handler) => handler(parsedData));
+		onMessageReceivedHandlers.value.forEach((handler) => {
+			handler(parsedData);
+		});
 	}
 
-	const url = getConnectionUrl();
+	const url = computed(() => getConnectionUrl());
 
 	const client = computed(() =>
 		useWebSockets.value
-			? useWebSocketClient({ url, onMessage })
-			: useEventSourceClient({ url, onMessage }),
+			? useWebSocketClient({ url: url.value, onMessage })
+			: useEventSourceClient({ url: url.value, onMessage }),
 	);
 
 	function serializeAndSend(message: unknown) {
@@ -136,6 +141,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		}
 
 		isConnectionRequested.value = true;
+		isConnecting.value = true;
 		client.value.connect();
 	};
 
@@ -158,6 +164,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 				return;
 			}
 			isConnectionRequested.value = false;
+			isConnecting.value = false;
 			client.value.disconnect();
 			disconnectTimeout = null;
 		}, getDisconnectDebounceMs());
@@ -166,6 +173,10 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	watch(
 		() => client.value.isConnected.value,
 		(didConnect) => {
+			if (didConnect) {
+				isConnecting.value = false;
+			}
+
 			if (!didConnect) {
 				return;
 			}
@@ -189,6 +200,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	return {
 		isConnected,
+		isConnecting,
 		isConnectionRequested,
 		onMessageReceivedHandlers,
 		addEventListener,

@@ -6,14 +6,22 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import type { LangsmithExampleFilters } from '../harness/harness-types';
 import { DEFAULTS } from '../support/constants';
-import type { StageModels } from '../support/environment.js';
+import type { StageModels } from '../support/environment';
 
-export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
+export type EvaluationSuite =
+	| 'llm-judge'
+	| 'pairwise'
+	| 'programmatic'
+	| 'similarity'
+	| 'introspection'
+	| 'binary-checks';
 export type EvaluationBackend = 'local' | 'langsmith';
+export type AgentType = 'multi-agent' | 'code-builder';
 
 export interface EvaluationArgs {
 	suite: EvaluationSuite;
 	backend: EvaluationBackend;
+	agent: AgentType;
 
 	verbose: boolean;
 	repetitions: number;
@@ -44,6 +52,9 @@ export interface EvaluationArgs {
 	/** CSV file path for evaluation results */
 	outputCsv?: string;
 
+	/** Comma-separated list of binary check names to run */
+	checks?: string[];
+
 	// Model configuration
 	/** Default model for all stages */
 	model: ModelId;
@@ -62,23 +73,25 @@ export interface EvaluationArgs {
 }
 
 type CliValueKind = 'boolean' | 'string';
-type FlagGroup =
-	| 'input'
-	| 'eval'
-	| 'pairwise'
-	| 'langsmith'
-	| 'output'
-	| 'feature'
-	| 'model'
-	| 'advanced';
+type FlagGroup = 'input' | 'eval' | 'pairwise' | 'langsmith' | 'output' | 'model' | 'advanced';
 
 // Model ID validation schema
 const modelIdSchema = z.enum(AVAILABLE_MODELS as [ModelId, ...ModelId[]]);
 
 const cliSchema = z
 	.object({
-		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
+		suite: z
+			.enum([
+				'llm-judge',
+				'pairwise',
+				'programmatic',
+				'similarity',
+				'introspection',
+				'binary-checks',
+			])
+			.default('llm-judge'),
 		backend: z.enum(['local', 'langsmith']).default('local'),
+		agent: z.enum(['code-builder', 'multi-agent']).default('code-builder'),
 
 		verbose: z.boolean().default(false),
 		repetitions: z.coerce.number().int().positive().default(DEFAULTS.REPETITIONS),
@@ -102,8 +115,8 @@ const cliSchema = z
 
 		numJudges: z.coerce.number().int().positive().default(DEFAULTS.NUM_JUDGES),
 
+		checks: z.string().min(1).optional(),
 		langsmith: z.boolean().optional(),
-		templateExamples: z.boolean().default(false),
 		webhookUrl: z.string().url().optional(),
 		webhookSecret: z.string().min(16).optional(),
 
@@ -149,9 +162,21 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		key: 'suite',
 		kind: 'string',
 		group: 'eval',
-		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity)',
+		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity|introspection|binary-checks)',
+	},
+	'--checks': {
+		key: 'checks',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Comma-separated binary check names to run (binary-checks suite only)',
 	},
 	'--backend': { key: 'backend', kind: 'string', group: 'eval', desc: 'Backend (local|langsmith)' },
+	'--agent': {
+		key: 'agent',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Agent type (code-builder|multi-agent)',
+	},
 	'--max-examples': {
 		key: 'maxExamples',
 		kind: 'string',
@@ -245,14 +270,6 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		desc: 'Secret for HMAC-SHA256 signature (min 16 chars)',
 	},
 
-	// Feature flags
-	'--template-examples': {
-		key: 'templateExamples',
-		kind: 'boolean',
-		group: 'feature',
-		desc: 'Enable template examples phase',
-	},
-
 	// Model configuration
 	'--model': {
 		key: 'model',
@@ -328,7 +345,6 @@ const GROUP_TITLES: Record<FlagGroup, string> = {
 	pairwise: 'Pairwise Options',
 	langsmith: 'LangSmith Options',
 	output: 'Output',
-	feature: 'Feature Flags',
 	model: 'Model Configuration',
 	advanced: 'Advanced',
 };
@@ -347,7 +363,6 @@ function formatHelp(): string {
 		'pairwise',
 		'langsmith',
 		'output',
-		'feature',
 		'model',
 		'advanced',
 	];
@@ -435,16 +450,14 @@ function parseCli(argv: string[]): {
 	return { values, seenKeys };
 }
 
-function parseFeatureFlags(args: {
-	templateExamples: boolean;
-}): BuilderFeatureFlags | undefined {
-	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
-	const templateExamples = templateExamplesFromEnv || args.templateExamples;
+function parseFeatureFlags(args: { suite: EvaluationSuite }): BuilderFeatureFlags | undefined {
+	// Auto-enable introspection for introspection suite
+	const enableIntrospection = args.suite === 'introspection';
 
-	if (!templateExamples) return undefined;
+	if (!enableIntrospection) return undefined;
 
 	return {
-		templateExamples: templateExamples || undefined,
+		enableIntrospection: enableIntrospection || undefined,
 	};
 }
 
@@ -511,7 +524,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 	const parsed = cliSchema.parse(values);
 
 	const featureFlags = parseFeatureFlags({
-		templateExamples: parsed.templateExamples,
+		suite: parsed.suite,
 	});
 
 	const filters = parseFilters({
@@ -526,9 +539,14 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		);
 	}
 
+	if (parsed.checks && parsed.suite !== 'binary-checks') {
+		throw new Error('`--checks` is only supported for `--suite binary-checks`');
+	}
+
 	return {
 		suite: parsed.suite,
 		backend: parsed.backend,
+		agent: parsed.agent,
 		verbose: parsed.verbose,
 		repetitions: parsed.repetitions,
 		concurrency: parsed.concurrency,
@@ -548,6 +566,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		featureFlags,
 		webhookUrl: parsed.webhookUrl,
 		webhookSecret: parsed.webhookSecret,
+		checks: parsed.checks?.split(',').map((s) => s.trim()),
 		// Model configuration
 		model: parsed.model,
 		judgeModel: parsed.judgeModel,

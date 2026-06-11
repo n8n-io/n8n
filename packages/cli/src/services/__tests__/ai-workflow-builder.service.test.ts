@@ -1,20 +1,34 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
+import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { LazyPackageDirectoryLoader } from 'n8n-core';
+import type * as fs from 'node:fs';
+import type * as fsp from 'node:fs/promises';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import type { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { SsrfProtectionService } from 'n8n-core';
 import type { UrlService } from '@/services/url.service';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
+import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 
-jest.mock('@n8n/ai-workflow-builder');
+jest.mock('@n8n/ai-workflow-builder', () => ({
+	AiWorkflowBuilderService: jest.fn(),
+	// Plain function (not jest.fn) so the global `restoreMocks` doesn't wipe its
+	// implementation between tests; the disabled SSRF path relies on its return value.
+	createPassthroughSsrfGuard: () => ({
+		validateUrl: jest.fn(),
+		validateRedirectSync: jest.fn(),
+		createSecureLookup: jest.fn(),
+	}),
+}));
 jest.mock('@n8n_io/ai-assistant-sdk');
 
 const MockedAiWorkflowBuilderService = AiWorkflowBuilderService as jest.MockedClass<
@@ -34,6 +48,9 @@ describe('WorkflowBuilderService', () => {
 	let mockTelemetry: Telemetry;
 	let mockInstanceSettings: InstanceSettings;
 	let mockDynamicNodeParametersService: DynamicNodeParametersService;
+	let mockSessionRepository: WorkflowBuilderSessionRepository;
+	let mockSsrfProtectionConfig: SsrfProtectionConfig;
+	let mockSsrfProtectionService: SsrfProtectionService;
 	let mockUser: IUser;
 
 	beforeEach(() => {
@@ -55,11 +72,16 @@ describe('WorkflowBuilderService', () => {
 
 		mockLoadNodesAndCredentials = {
 			types: {
-				nodes: mockNodeTypeDescriptions,
+				nodes: [],
 				credentials: [],
 			},
+			// postProcessLoaders always releases types from memory
 			postProcessLoaders: jest.fn().mockResolvedValue(undefined),
-			releaseTypes: jest.fn(),
+			// collectTypes returns a snapshot copy for callers that need types
+			collectTypes: jest.fn().mockResolvedValue({
+				nodes: mockNodeTypeDescriptions,
+				credentials: [],
+			}),
 			addPostProcessor: jest.fn(),
 		} as unknown as LoadNodesAndCredentials;
 
@@ -71,6 +93,12 @@ describe('WorkflowBuilderService', () => {
 		mockTelemetry = mock<Telemetry>();
 		mockInstanceSettings = mock<InstanceSettings>();
 		mockDynamicNodeParametersService = mock<DynamicNodeParametersService>();
+		mockSessionRepository = mock<WorkflowBuilderSessionRepository>();
+		mockSsrfProtectionConfig = mock<SsrfProtectionConfig>();
+		// Deterministic default: SSRF protection disabled (passthrough guard). Individual
+		// gating tests override this.
+		mockSsrfProtectionConfig.enabled = false;
+		mockSsrfProtectionService = mock<SsrfProtectionService>();
 		mockUser = mock<IUser>();
 		mockUser.id = 'test-user-id';
 
@@ -95,6 +123,9 @@ describe('WorkflowBuilderService', () => {
 			mockTelemetry,
 			mockInstanceSettings,
 			mockDynamicNodeParametersService,
+			mockSessionRepository,
+			mockSsrfProtectionConfig,
+			mockSsrfProtectionService,
 		);
 	});
 
@@ -125,6 +156,7 @@ describe('WorkflowBuilderService', () => {
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledWith(
 				mockNodeTypeDescriptions,
+				mockSessionRepository,
 				undefined, // No client when baseUrl is not set
 				mockLogger,
 				'test-instance-id', // instanceId
@@ -132,7 +164,9 @@ describe('WorkflowBuilderService', () => {
 				expect.any(String), // n8nVersion
 				expect.any(Function), // onCreditsUpdated callback
 				expect.any(Function), // onTelemetryEvent callback
+				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
+				expect.anything(), // ssrfGuard (passthrough when SSRF protection disabled)
 			);
 
 			expect(result.value).toEqual({ messages: ['response'] });
@@ -168,6 +202,7 @@ describe('WorkflowBuilderService', () => {
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledWith(
 				mockNodeTypeDescriptions,
+				mockSessionRepository,
 				expect.any(AiAssistantClient),
 				mockLogger,
 				'test-instance-id', // instanceId
@@ -175,7 +210,9 @@ describe('WorkflowBuilderService', () => {
 				expect.any(String), // n8nVersion
 				expect.any(Function), // onCreditsUpdated callback
 				expect.any(Function), // onTelemetryEvent callback
+				expect.anything(), // nodeDefinitionDirs
 				expect.any(Function), // resourceLocatorCallbackFactory
+				expect.anything(), // ssrfGuard (passthrough when SSRF protection disabled)
 			);
 		});
 
@@ -257,7 +294,7 @@ describe('WorkflowBuilderService', () => {
 			const result = await service.getSessions('workflow-123', mockUser);
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledTimes(1);
-			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser);
+			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, undefined);
 			expect(result).toEqual(mockSessions);
 		});
 
@@ -270,8 +307,20 @@ describe('WorkflowBuilderService', () => {
 
 			const result = await service.getSessions(undefined, mockUser);
 
-			expect(mockAiService.getSessions).toHaveBeenCalledWith(undefined, mockUser);
+			expect(mockAiService.getSessions).toHaveBeenCalledWith(undefined, mockUser, undefined);
 			expect(result).toEqual(mockSessions);
+		});
+
+		it('should forward the isCodeBuilder flag to the inner service', async () => {
+			const mockSessions = { sessions: [] };
+
+			const mockAiService = mock<AiWorkflowBuilderService>();
+			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
+			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+			await service.getSessions('workflow-123', mockUser, true);
+
+			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, true);
 		});
 	});
 
@@ -296,7 +345,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const callback = args[6]; // onCreditsUpdated is the 7th parameter (after n8nVersion)
+				const callback = args[7]; // onCreditsUpdated is the 8th parameter (index 7, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
@@ -345,7 +394,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const callback = args[6]; // onCreditsUpdated is the 7th parameter (after n8nVersion)
+				const callback = args[7]; // onCreditsUpdated is the 8th parameter (index 7, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
@@ -406,7 +455,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (after n8nVersion)
+				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
@@ -453,7 +502,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (after n8nVersion)
+				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
@@ -498,7 +547,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (after n8nVersion)
+				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
@@ -640,10 +689,13 @@ describe('WorkflowBuilderService', () => {
 			} as INodeTypeDescription;
 
 			const updatedNodeTypes = [...mockNodeTypeDescriptions, newNodeType];
-			mockLoadNodesAndCredentials.types.nodes = updatedNodeTypes;
+			(mockLoadNodesAndCredentials.collectTypes as jest.Mock).mockResolvedValueOnce({
+				nodes: updatedNodeTypes,
+				credentials: [],
+			});
 
 			// Trigger refresh (simulating post-processor callback after community package install)
-			service.refreshNodeTypes();
+			await service.refreshNodeTypes();
 
 			// Verify updateNodeTypes was called on existing service with new node types
 			expect(mockAiService.updateNodeTypes).toHaveBeenCalledWith(updatedNodeTypes);
@@ -652,24 +704,12 @@ describe('WorkflowBuilderService', () => {
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledTimes(1);
 		});
 
-		it('should do nothing if service is not yet initialized', () => {
-			// Simulate new node types being available
-			const newNodeType = {
-				name: 'n8n-nodes-community.elevenLabs',
-				displayName: 'ElevenLabs',
-				description: 'ElevenLabs community node',
-				version: 1,
-				defaults: {},
-				inputs: [],
-				outputs: [],
-				properties: [],
-				group: ['transform'],
-			} as INodeTypeDescription;
-
-			mockLoadNodesAndCredentials.types.nodes = [...mockNodeTypeDescriptions, newNodeType];
-
+		it('should do nothing if service is not yet initialized', async () => {
 			// Trigger refresh before service is initialized - should not throw
-			expect(() => service.refreshNodeTypes()).not.toThrow();
+			await expect(service.refreshNodeTypes()).resolves.not.toThrow();
+
+			// collectTypes should not be called since service doesn't exist yet
+			expect(mockLoadNodesAndCredentials.collectTypes).not.toHaveBeenCalled();
 
 			// Verify no service was created
 			expect(MockedAiWorkflowBuilderService).not.toHaveBeenCalled();
@@ -719,5 +759,117 @@ describe('WorkflowBuilderService', () => {
 			expect(mockAiService.getBuilderInstanceCredits).toHaveBeenCalledTimes(2);
 			expect(result).toEqual(expectedCredits);
 		});
+	});
+});
+
+describe('WorkflowBuilderService - node type loading', () => {
+	const packageDir = '/test/nodes-base';
+
+	const nodeTypeDescription = {
+		name: 'httpRequest',
+		displayName: 'HTTP Request',
+		description: 'Makes an HTTP request',
+		version: 1,
+		defaults: { name: 'HTTP Request' },
+		inputs: ['main'],
+		outputs: ['main'],
+		properties: [],
+		group: ['output'],
+	};
+
+	beforeEach(() => {
+		MockedAiWorkflowBuilderService.mockClear();
+
+		// Mock node:fs so LazyPackageDirectoryLoader can "read" from disk
+		const fsModule = require('node:fs') as jest.Mocked<typeof fs>;
+		const fspModule = require('node:fs/promises') as jest.Mocked<typeof fsp>;
+
+		fsModule.realpathSync.mockReturnValue(packageDir);
+		fsModule.readFileSync.mockImplementation((filePath: unknown) => {
+			if (String(filePath).endsWith('package.json')) {
+				return JSON.stringify({
+					name: 'n8n-nodes-base',
+					version: '1.0.0',
+					n8n: { nodes: [], credentials: [] },
+				});
+			}
+			throw new Error(`Unexpected readFileSync: ${String(filePath)}`);
+		});
+
+		fspModule.readFile.mockImplementation(async (filePath: unknown) => {
+			const p = String(filePath);
+			if (p.endsWith('known/nodes.json')) {
+				return JSON.stringify({
+					httpRequest: {
+						className: 'HttpRequest',
+						sourcePath: 'dist/nodes/HttpRequest/HttpRequest.node.js',
+					},
+				});
+			}
+			if (p.endsWith('known/credentials.json')) return JSON.stringify({});
+			if (p.endsWith('types/nodes.json')) return JSON.stringify([nodeTypeDescription]);
+			if (p.endsWith('types/credentials.json')) return JSON.stringify([]);
+			throw new Error(`Unexpected readFile: ${p}`);
+		});
+	});
+
+	it('should load node types through real postProcessLoaders and pass them to AiWorkflowBuilderService', async () => {
+		// Real LoadNodesAndCredentials — not mocked
+		const loadNodesAndCredentials = new LoadNodesAndCredentials(
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+		);
+
+		// Real LazyPackageDirectoryLoader reading from the mocked filesystem
+		const loader = new LazyPackageDirectoryLoader(packageDir);
+		await loader.loadAll();
+		loadNodesAndCredentials.loaders[loader.packageName] = loader;
+
+		const mockAiService = mock<AiWorkflowBuilderService>();
+		(mockAiService.chat as jest.Mock).mockReturnValue(
+			(async function* () {
+				yield { messages: ['response'] };
+			})(),
+		);
+		MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+
+		const builderService = new WorkflowBuilderService(
+			loadNodesAndCredentials,
+			mock<License>({
+				loadCertStr: jest.fn().mockResolvedValue('cert'),
+				getConsumerId: jest.fn().mockReturnValue('consumer'),
+			}),
+			mock<GlobalConfig>({ aiAssistant: { baseUrl: '' } }),
+			mock(),
+			mock<UrlService>({ getInstanceBaseUrl: jest.fn().mockReturnValue('http://localhost') }),
+			mock(),
+			mock(),
+			mock<InstanceSettings>({ instanceId: 'test' }),
+			mock(),
+			mock(),
+			mock<SsrfProtectionConfig>(),
+			mock<SsrfProtectionService>(),
+		);
+
+		const mockUser = mock<IUser>();
+		mockUser.id = 'test-user';
+
+		const generator = builderService.chat(
+			{ id: '1', message: 'test', workflowContext: {} },
+			mockUser,
+		);
+		await generator.next();
+
+		// Verify AiWorkflowBuilderService received the node types from the real loading chain
+		const constructorCall = MockedAiWorkflowBuilderService.mock.calls[0];
+		const nodeTypes = constructorCall[0];
+
+		expect(nodeTypes).toHaveLength(1);
+		expect(nodeTypes[0].name).toBe('n8n-nodes-base.httpRequest');
+		expect(nodeTypes[0].displayName).toBe('HTTP Request');
 	});
 });

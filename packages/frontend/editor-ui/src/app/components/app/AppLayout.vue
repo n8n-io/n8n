@@ -14,6 +14,9 @@ const WorkflowLayout = defineAsyncComponent(
 const AuthLayout = defineAsyncComponent(async () => await import('@/app/layouts/AuthLayout.vue'));
 const DemoLayout = defineAsyncComponent(async () => await import('@/app/layouts/DemoLayout.vue'));
 const ChatLayout = defineAsyncComponent(async () => await import('@/app/layouts/ChatLayout.vue'));
+const InstanceAiLayout = defineAsyncComponent(
+	async () => await import('@/app/layouts/InstanceAiLayout.vue'),
+);
 
 const route = useRoute();
 const router = useRouter();
@@ -42,6 +45,7 @@ function onMounted(element: Element) {
 		<AuthLayout v-else-if="route.meta.layout === 'auth'" @mounted="onMounted" />
 		<DemoLayout v-else-if="route.meta.layout === 'demo'" @mounted="onMounted" />
 		<ChatLayout v-else-if="route.meta.layout === 'chat'" @mounted="onMounted" />
+		<InstanceAiLayout v-else-if="route.meta.layout === 'instanceAi'" @mounted="onMounted" />
 		<DefaultLayout v-else @mounted="onMounted" />
 	</Suspense>
 </template>

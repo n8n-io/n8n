@@ -1,6 +1,60 @@
-import { simplify, type IExpenseDocument } from '../GenericFunctions';
+import { mock } from 'jest-mock-extended';
+import type { ICredentialTestFunctions } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
+
+jest.mock('aws4', () => ({
+	sign: jest.fn(),
+}));
+
+import { sign } from 'aws4';
+import { simplify, validateCredentials, type IExpenseDocument } from '../GenericFunctions';
 
 describe('AWS Textract Generic Functions', () => {
+	const mockSign = sign as jest.MockedFunction<typeof sign>;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	describe('validateCredentials region validation', () => {
+		const buildContext = () => {
+			const helpers = { request: jest.fn() };
+			const context = mock<ICredentialTestFunctions>({
+				helpers: helpers as never,
+			});
+			return { context, helpers };
+		};
+
+		const baseCredentials = {
+			accessKeyId: 'AKIA-test',
+			secretAccessKey: 'secret-test',
+			temporaryCredentials: false,
+		};
+
+		it.each([
+			'@example.com#',
+			'us-fake-1',
+			'',
+			'us-east-1/foo',
+			'us-east-1#frag',
+			'us-east-1:8080',
+			' us-east-1 ',
+		])('rejects unsupported region value %s without signing or sending', async (region) => {
+			const { context, helpers } = buildContext();
+			const credentials = { ...baseCredentials, region };
+
+			await expect(validateCredentials.call(context, credentials, 'textract')).rejects.toThrow(
+				ApplicationError,
+			);
+			await expect(validateCredentials.call(context, credentials, 'textract')).rejects.toThrow(
+				'Unsupported AWS region',
+			);
+
+			expect(mockSign).not.toHaveBeenCalled();
+			expect(helpers.request).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('simplify function', () => {
 		it('should simplify expense document response correctly', () => {
 			const input = {

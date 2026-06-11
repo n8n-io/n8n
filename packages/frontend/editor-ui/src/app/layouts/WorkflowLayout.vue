@@ -1,26 +1,26 @@
 <script lang="ts" setup>
-import { provide, watch, onMounted, onBeforeUnmount } from 'vue';
+import { watch, onMounted, onBeforeUnmount } from 'vue';
 import BaseLayout from './BaseLayout.vue';
 import { useLayoutProps } from '@/app/composables/useLayoutProps';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
+import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
+import CanvasChatOverlay from '@/features/ai/chatHub/components/CanvasChatOverlay.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import AppHeader from '@/app/components/app/AppHeader.vue';
 import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import LoadingView from '@/app/views/LoadingView.vue';
-import {
-	WorkflowIdKey,
-	WorkflowStateKey,
-	WorkflowDocumentStoreKey,
-} from '@/app/constants/injectionKeys';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const { layoutProps } = useLayoutProps();
 const assistantStore = useAssistantStore();
-
-const workflowState = useWorkflowState();
-provide(WorkflowStateKey, workflowState);
+const chatHubPanelStore = useChatHubPanelStore();
+const pushConnectionStore = usePushConnectionStore();
+const settingsStore = useSettingsStore();
+const isCanvasOnly = settingsStore.isCanvasOnly;
 
 const {
 	isLoading,
@@ -31,12 +31,15 @@ const {
 	initializeWorkflow,
 	handleDebugModeRoute,
 	cleanup,
-} = useWorkflowInitialization(workflowState);
+} = useWorkflowInitialization();
 
-provide(WorkflowIdKey, workflowId);
-provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
+const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
+	currentWorkflowDocumentStore,
+});
 
 onMounted(async () => {
+	pushConnectionStore.pushConnect();
+	setupPostMessages();
 	await initializeData();
 	await initializeWorkflow();
 });
@@ -64,7 +67,11 @@ watch(
 	{ flush: 'post' },
 );
 
-onBeforeUnmount(() => cleanup());
+onBeforeUnmount(() => {
+	pushConnectionStore.pushDisconnect();
+	cleanupPostMessages();
+	cleanup();
+});
 </script>
 
 <template>
@@ -72,20 +79,17 @@ onBeforeUnmount(() => cleanup());
 		<template #header>
 			<AppHeader />
 		</template>
-		<template #sidebar>
+		<template v-if="!isCanvasOnly" #sidebar>
 			<AppSidebar />
 		</template>
 		<LoadingView v-if="isLoading" />
-		<RouterView v-else v-slot="{ Component }">
-			<KeepAlive include="NodeView" :max="1">
-				<component :is="Component" />
-			</KeepAlive>
-		</RouterView>
+		<RouterView v-else />
 		<template v-if="layoutProps.logs" #footer>
 			<LogsPanel />
 		</template>
-		<template #overlays>
+		<template v-if="!isCanvasOnly" #overlays>
 			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
+			<CanvasChatOverlay v-if="chatHubPanelStore.isFloatingChatEnabled" />
 		</template>
 	</BaseLayout>
 </template>

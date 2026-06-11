@@ -9,6 +9,7 @@ import {
 	WorkflowPublishHistoryRepository,
 	WorkflowDependencies,
 	WorkflowDependencyRepository,
+	WebhookRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
@@ -18,7 +19,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb {
-	const { active, isArchived, name, nodes, connections, versionId, settings } = attributes;
+	const { active, isArchived, name, nodes, connections, versionId, settings, nodeGroups } =
+		attributes;
 
 	const workflowEntity = Container.get(WorkflowRepository).create({
 		active: active ?? false,
@@ -35,6 +37,7 @@ export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb 
 			},
 		],
 		connections: connections ?? {},
+		nodeGroups: nodeGroups ?? [],
 		versionId: versionId ?? uuid(),
 		settings: settings ?? {},
 		...attributes,
@@ -281,15 +284,19 @@ export async function createWorkflowHistory(
 				: 'Test User'
 			: 'Test User';
 
-	await Container.get(WorkflowHistoryRepository).insert({
-		workflowId: workflow.id,
-		versionId: workflow.versionId,
-		nodes: workflow.nodes,
-		connections: workflow.connections,
-		authors,
-		autosaved: false,
-		...overrides,
-	});
+	const repo = Container.get(WorkflowHistoryRepository);
+	await repo.insert(
+		repo.create({
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			nodeGroups: workflow.nodeGroups ?? [],
+			authors,
+			autosaved: false,
+			...overrides,
+		}),
+	);
 
 	if (withPublishHistory) {
 		// We wait a millisecond as createdAt order is often relevant for the publishing history
@@ -339,4 +346,9 @@ export async function createActiveWorkflow(
 	workflow.activeVersionId = workflow.versionId;
 
 	return workflow;
+}
+
+export async function deleteWorkflowAndWebhooks(workflowId: string) {
+	await Container.get(WorkflowRepository).delete({ id: workflowId });
+	await Container.get(WebhookRepository).delete({ workflowId });
 }

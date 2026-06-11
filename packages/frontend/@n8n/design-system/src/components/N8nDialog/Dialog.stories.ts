@@ -13,11 +13,12 @@ import {
 } from '@n8n/design-system/components/N8nDialog';
 
 const meta = {
-	title: 'Components/Dialog',
+	title: 'Core/Dialog',
 	// Use N8nDialog as component; docgen may have issues with reka-ui imports but types must match
 	component: N8nDialog,
 	parameters: {
 		docs: {
+			description: { component: 'A modal container for focused tasks and decisions.' },
 			source: { type: 'dynamic' },
 		},
 	},

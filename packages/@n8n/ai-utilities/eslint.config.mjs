@@ -1,7 +1,7 @@
-import { defineConfig } from 'eslint/config';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
-export default defineConfig(nodeConfig, {
+export default defineConfig(nodeConfig, globalIgnores(['scripts/**']), {
 	rules: {
 		'@typescript-eslint/no-explicit-any': 'warn',
 		'@typescript-eslint/no-unsafe-assignment': 'warn',
@@ -11,5 +11,6 @@ export default defineConfig(nodeConfig, {
 		'no-case-declarations': 'warn',
 		'@typescript-eslint/require-await': 'warn',
 		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
+		'@typescript-eslint/naming-convention': 'warn',
 	},
 });

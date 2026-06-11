@@ -36,7 +36,7 @@ async function handleEditAgent(model: ChatHubConversationModel) {
 		const routeData = router.resolve({
 			name: VIEWS.WORKFLOW,
 			params: {
-				name: model.workflowId,
+				workflowId: model.workflowId,
 			},
 		});
 

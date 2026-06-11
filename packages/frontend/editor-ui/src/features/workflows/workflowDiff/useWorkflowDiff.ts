@@ -1,12 +1,32 @@
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
-import type { MaybeRefOrGetter, Ref, ComputedRef } from 'vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { toValue, computed, ref, watchEffect, shallowRef } from 'vue';
+import {
+	toValue,
+	computed,
+	ref,
+	watchEffect,
+	shallowRef,
+	onScopeDispose,
+	effectScope,
+	type MaybeRefOrGetter,
+	type Ref,
+	type ComputedRef,
+	type EffectScope,
+} from 'vue';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
-import type { Workflow, IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
+import type { IConnections, INodeTypeDescription, NodeDiff } from 'n8n-workflow';
 import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
+import {
+	createEmptyCanvasRenderData,
+	type CanvasRenderData,
+} from '@/features/workflows/canvas/canvas.utils';
 
 export function mapConnections(connections: CanvasConnection[]) {
 	return connections.reduce(
@@ -19,14 +39,10 @@ export function mapConnections(connections: CanvasConnection[]) {
 	);
 }
 
-function createWorkflowRefs(
-	workflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
-	createWorkflowObject: (nodes: INodeUi[], connections: IConnections) => Workflow,
-) {
+function createWorkflowRefs(workflow: MaybeRefOrGetter<IWorkflowDb | undefined>) {
 	const workflowRef = computed(() => toValue(workflow));
 	const workflowNodes = ref<INodeUi[]>([]);
 	const workflowConnections = ref<IConnections>({});
-	const workflowObjectRef = shallowRef<Workflow>(createWorkflowObject([], {}));
 
 	watchEffect(() => {
 		const workflowValue = workflowRef.value;
@@ -40,7 +56,6 @@ function createWorkflowRefs(
 				return node;
 			});
 
-			workflowObjectRef.value = createWorkflowObject(nodesWithIds, workflowValue.connections);
 			workflowNodes.value = nodesWithIds;
 			workflowConnections.value = workflowValue.connections;
 		}
@@ -50,7 +65,6 @@ function createWorkflowRefs(
 		workflowRef,
 		workflowNodes,
 		workflowConnections,
-		workflowObjectRef,
 	};
 }
 
@@ -58,14 +72,12 @@ function createWorkflowDiff(
 	workflowRef: ComputedRef<IWorkflowDb | undefined>,
 	workflowNodes: Ref<INodeUi[]>,
 	workflowConnections: Ref<IConnections>,
-	workflowObjectRef: Ref<Workflow>,
+	renderData: Ref<CanvasRenderData>,
 ) {
-	// Call useCanvasMapping at setup time, not inside computed
-	// This is required because useCanvasMapping uses inject() internally
 	const { nodes, connections } = useCanvasMapping({
 		nodes: workflowNodes,
 		connections: workflowConnections,
-		workflowObject: workflowObjectRef,
+		renderData,
 	});
 
 	const canvasData = computed(() => {
@@ -102,29 +114,95 @@ function createWorkflowDiff(
 	};
 }
 
+function createDiffRenderData(
+	workflowRef: ComputedRef<IWorkflowDb | undefined>,
+	workflowNodes: Ref<INodeUi[]>,
+	side: string,
+) {
+	const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
+	// `useWorkflowDocumentRenderData` is side-effectful; own its scope so it can
+	// be torn down when the diffed workflow changes or this side disposes.
+	let renderDataScope: EffectScope | undefined;
+
+	watchEffect(() => {
+		const wf = workflowRef.value;
+		if (!wf?.id) return;
+
+		if (workflowDocumentStore) {
+			disposeWorkflowDocumentStore(workflowDocumentStore);
+		}
+		renderDataScope?.stop();
+
+		const versionId = wf.versionId ?? `diff-${side}`;
+		const docId = createWorkflowDocumentId(wf.id, versionId);
+
+		workflowDocumentStore = useWorkflowDocumentStore(docId);
+		// Hydrate from the same normalized nodes that feed the canvas so the
+		// render-data maps are keyed by the same node IDs the canvas looks up.
+		// Shallow-copy the nodes so the document store owns/mutates its own node
+		// objects (e.g. position snapping) without leaking into `workflowNodes`.
+		workflowDocumentStore.hydrate({
+			...wf,
+			nodes: workflowNodes.value.map((node) => ({ ...node })),
+			versionId,
+		} as IWorkflowDb);
+		renderDataScope = effectScope(true);
+		renderDataScope.run(() => {
+			renderData.value = useWorkflowDocumentRenderData(docId);
+		});
+	});
+
+	function dispose() {
+		renderDataScope?.stop();
+		renderDataScope = undefined;
+		if (workflowDocumentStore) {
+			disposeWorkflowDocumentStore(workflowDocumentStore);
+			workflowDocumentStore = null;
+		}
+	}
+
+	return { renderData, dispose };
+}
+
 export const useWorkflowDiff = (
 	sourceWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 	targetWorkflow: MaybeRefOrGetter<IWorkflowDb | undefined>,
 ) => {
-	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const sourceRefs = createWorkflowRefs(sourceWorkflow, workflowsStore.createWorkflowObject);
-	const targetRefs = createWorkflowRefs(targetWorkflow, workflowsStore.createWorkflowObject);
+	const sourceRefs = createWorkflowRefs(sourceWorkflow);
+	const targetRefs = createWorkflowRefs(targetWorkflow);
+
+	const { renderData: sourceRenderData, dispose: disposeSource } = createDiffRenderData(
+		sourceRefs.workflowRef,
+		sourceRefs.workflowNodes,
+		'source',
+	);
+	const { renderData: targetRenderData, dispose: disposeTarget } = createDiffRenderData(
+		targetRefs.workflowRef,
+		targetRefs.workflowNodes,
+		'target',
+	);
 
 	const sourceDiff = createWorkflowDiff(
 		sourceRefs.workflowRef,
 		sourceRefs.workflowNodes,
 		sourceRefs.workflowConnections,
-		sourceRefs.workflowObjectRef,
+		sourceRenderData,
 	);
 
 	const targetDiff = createWorkflowDiff(
 		targetRefs.workflowRef,
 		targetRefs.workflowNodes,
 		targetRefs.workflowConnections,
-		targetRefs.workflowObjectRef,
+		targetRenderData,
 	);
+
+	onScopeDispose(() => {
+		disposeSource();
+		disposeTarget();
+	});
 
 	// Expose canvas data as source/target for backwards compatibility
 	const source = sourceDiff.canvasData;
@@ -209,6 +287,8 @@ export const useWorkflowDiff = (
 	return {
 		source,
 		target,
+		sourceRenderData,
+		targetRenderData,
 		nodesDiff,
 		connectionsDiff,
 	};

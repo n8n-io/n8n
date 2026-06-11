@@ -1,9 +1,7 @@
 {
 	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
-		"rootDir": ".",
 		"types": ["node"],
-		"baseUrl": ".",
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"

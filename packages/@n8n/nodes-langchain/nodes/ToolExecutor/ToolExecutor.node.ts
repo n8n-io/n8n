@@ -34,6 +34,11 @@ export class ToolExecutor implements INodeType {
 		hidden: true,
 		inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiTool],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_tool: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName: 'Query',

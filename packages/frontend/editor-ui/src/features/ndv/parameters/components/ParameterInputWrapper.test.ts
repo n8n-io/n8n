@@ -2,6 +2,8 @@ import { renderComponent } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { STORES } from '@n8n/stores';
+import { getNDVStoreId } from '@/features/ndv/shared/ndv.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
 import { createTestNodeProperties } from '@/__tests__/mocks';
@@ -15,7 +17,7 @@ describe('ParameterInputWrapper.vue', () => {
 		const { getByTestId } = renderComponent(ParameterInputWrapper, {
 			pinia: createTestingPinia({
 				initialState: {
-					[STORES.NDV]: {
+					[getNDVStoreId(createWorkflowDocumentId('default'))]: {
 						activeNodeName: 'testNode',
 						input: { nodeName: 'inputNode' },
 					},

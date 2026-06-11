@@ -1,9 +1,7 @@
 {
 	"extends": "@n8n/typescript-config/tsconfig.common.json",
 	"compilerOptions": {
-		"rootDir": ".",
-		"types": ["node", "jest"],
-		"baseUrl": "src",
+		"types": ["node", "vitest/globals"],
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts"],

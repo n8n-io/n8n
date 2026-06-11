@@ -31,4 +31,4 @@ echo('⏬ Running pnpm install...');
 await $`pnpm install`;
 
 echo('🏗️ Running pnpm build...');
-await $`pnpm build`;
+await $`pnpm build --concurrency=50%`;

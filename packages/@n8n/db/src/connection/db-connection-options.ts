@@ -100,8 +100,6 @@ export class DbConnectionOptions {
 			};
 		}
 
-		const { statementTimeoutMs } = postgresConfig;
-
 		return {
 			type: 'postgres',
 			...this.getCommonOptions(),
@@ -110,10 +108,22 @@ export class DbConnectionOptions {
 			poolSize: postgresConfig.poolSize,
 			migrations: postgresMigrations,
 			connectTimeoutMS: postgresConfig.connectionTimeoutMs,
+			statementTimeout: postgresConfig.statementTimeoutMs,
 			ssl,
 			extra: {
 				idleTimeoutMillis: postgresConfig.idleTimeoutMs,
-				...(statementTimeoutMs > 0 && { options: `-c statement_timeout=${statementTimeoutMs}` }),
+				keepAlive: postgresConfig.keepAlive,
+				keepAliveInitialDelayMillis: postgresConfig.keepAliveInitialDelayMs,
+				// pg-pool's `maxLifetimeSeconds` is the upstream knob; we accept ms in config for unit consistency.
+				// Clamp to >= 1s so values like 500ms don't silently round down to 0 (which disables it).
+				...(postgresConfig.maxConnectionLifetimeMs > 0
+					? {
+							maxLifetimeSeconds: Math.max(
+								1,
+								Math.round(postgresConfig.maxConnectionLifetimeMs / 1000),
+							),
+						}
+					: {}),
 			},
 		};
 	}

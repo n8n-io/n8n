@@ -20,7 +20,7 @@ describe('LogStreamingDestinationService', () => {
 	const eventBus = {
 		on: jest.fn(),
 		removeListener: jest.fn(),
-		confirmSent: jest.fn(),
+		confirmMessageDelivered: jest.fn(),
 	} as unknown as MessageEventBus;
 	const publisher = mock<Publisher>();
 

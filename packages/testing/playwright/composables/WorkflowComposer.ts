@@ -1,6 +1,4 @@
 import { expect } from '@playwright/test';
-import type { IWorkflowBase } from 'n8n-workflow';
-import { nanoid } from 'nanoid';
 
 import type { n8nPage } from '../pages/n8nPage';
 
@@ -58,56 +56,6 @@ export class WorkflowComposer {
 	}
 
 	/**
-	 * Creates a new workflow by importing a JSON file
-	 * @param fileName - The workflow JSON file name (e.g., 'test_pdf_workflow.json', will search in workflows folder)
-	 * @param name - Optional custom name. If not provided, generates a unique name
-	 * @returns The actual workflow name that was used
-	 */
-	async createWorkflowFromJsonFile(
-		fileName: string,
-		name?: string,
-	): Promise<{ workflowName: string }> {
-		const workflowName = name ?? `Imported Workflow ${nanoid(8)}`;
-		await this.n8n.goHome();
-		await this.n8n.workflows.addResource.workflow();
-		await this.n8n.canvas.importWorkflow(fileName, workflowName);
-		return { workflowName };
-	}
-
-	/**
-	 * Creates a new workflow by importing from a URL
-	 * @param url - The URL to import the workflow from
-	 * @returns Promise that resolves when the import is complete
-	 */
-	async importWorkflowFromURL(url: string): Promise<void> {
-		await this.n8n.workflows.addResource.workflow();
-		await this.n8n.canvas.clickWorkflowMenu();
-		await this.n8n.canvas.clickImportFromURL();
-		await this.n8n.canvas.fillImportURLInput(url);
-		await this.n8n.canvas.clickConfirmImportURL();
-	}
-
-	/**
-	 * Opens the import from URL dialog and then dismisses it by clicking outside
-	 */
-	async openAndDismissImportFromURLDialog(): Promise<void> {
-		await this.n8n.workflows.addResource.workflow();
-		await this.n8n.canvas.clickWorkflowMenu();
-		await this.n8n.canvas.clickImportFromURL();
-		await this.n8n.canvas.clickOutsideModal();
-	}
-
-	/**
-	 * Opens the import from URL dialog and then cancels it
-	 */
-	async openAndCancelImportFromURLDialog(): Promise<void> {
-		await this.n8n.workflows.addResource.workflow();
-		await this.n8n.canvas.clickWorkflowMenu();
-		await this.n8n.canvas.clickImportFromURL();
-		await this.n8n.canvas.clickCancelImportURL();
-	}
-
-	/**
 	 * Duplicates a workflow via the duplicate modal UI.
 	 * Verifies the form interaction completes without errors.
 	 * Note: This opens a new window/tab with the duplicated workflow but doesn't interact with it.
@@ -136,19 +84,6 @@ export class WorkflowComposer {
 		const saveButton = this.n8n.workflowSettingsModal.getDuplicateSaveButton();
 		await expect(saveButton).toBeVisible();
 		await saveButton.click();
-	}
-
-	/**
-	 * Get workflow by name via API
-	 * @param workflowName - Name of the workflow to find
-	 * @returns Workflow object with id, name, and other properties
-	 */
-	async getWorkflowByName(workflowName: string): Promise<IWorkflowBase> {
-		const response = await this.n8n.api.request.get('/rest/workflows', {
-			params: new URLSearchParams({ filter: JSON.stringify({ name: workflowName }) }),
-		});
-		const workflows = await response.json();
-		return workflows.data[0];
 	}
 
 	/**

@@ -6,9 +6,12 @@
             "properties": {
                 "approved": {
                     "type": "boolean"
+                },
+                "text": {
+                    "type": "string"
                 }
             }
         }
     },
-    "version": 1
+    "version": 2
 }

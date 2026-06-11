@@ -12,10 +12,6 @@ import type { Locator } from '@playwright/test';
 export class VariableModal {
 	constructor(private root: Locator) {}
 
-	getModal(): Locator {
-		return this.root;
-	}
-
 	getKeyInput(): Locator {
 		return this.root.getByTestId('variable-modal-key-input').getByRole('textbox');
 	}

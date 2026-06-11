@@ -4,7 +4,7 @@ import type { ApiKey } from '../../entities';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class AddApiKeysTable1724951148974 implements ReversibleMigration {
-	transaction = false as const;
+	withFKsDisabled = true as const;
 
 	async up({ queryRunner, tablePrefix, runQuery }: MigrationContext) {
 		const tableName = `${tablePrefix}user_api_keys`;

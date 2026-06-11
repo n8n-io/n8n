@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { Logger, TypedEmitter } from '@n8n/backend-common';
 import {
 	SettingsRepository,
 	StatisticsNames,
@@ -16,7 +16,6 @@ import type {
 
 import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
-import { TypedEmitter } from '@/typed-emitter';
 
 import { OwnershipService } from './ownership.service';
 
@@ -50,6 +49,9 @@ const isModeRootExecution = {
 
 	// n8n Chat hub messages
 	chat: false,
+
+	// Agent executions
+	agent: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
 type WorkflowStatisticsEvents = {
@@ -97,12 +99,12 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 	async workflowExecutionCompleted(workflowData: IWorkflowBase, runData: IRun): Promise<void> {
 		// Determine the name of the statistic
 		const isSuccess = runData.status === 'success';
+		const isError = runData.status === 'error' || runData.status === 'crashed';
 		const manualExecution = runData.mode === 'manual';
 		const chatExecution = runData.mode === 'chat';
 
 		if (chatExecution) {
-			// Chat workflows are short lived and deleted immediately after execution, so we skip statistics for them.
-			// They are also not counted towards execution limits.
+			// Chat workflows are short lived and not counted towards execution limits.
 			return;
 		}
 
@@ -110,12 +112,14 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const isRootExecution =
 			isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 
+		// Only record statistics for terminal statuses (success, error, crashed)
+		// Skip non-terminal statuses like waiting, running, new, etc.
 		if (isSuccess) {
-			if (manualExecution) name = StatisticsNames.manualSuccess;
-			else name = StatisticsNames.productionSuccess;
+			name = manualExecution ? StatisticsNames.manualSuccess : StatisticsNames.productionSuccess;
+		} else if (isError) {
+			name = manualExecution ? StatisticsNames.manualError : StatisticsNames.productionError;
 		} else {
-			if (manualExecution) name = StatisticsNames.manualError;
-			else name = StatisticsNames.productionError;
+			return;
 		}
 
 		// Get the workflow id

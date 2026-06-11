@@ -15,9 +15,12 @@ import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { VIEWS } from '@/app/constants';
 import { reactive, nextTick } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { defaultSettings } from '@/__tests__/defaults';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import merge from 'lodash-es/merge';
 
 // Mock vue-router
 const mockRoute = reactive({ name: VIEWS.WORKFLOW });
@@ -48,6 +51,13 @@ describe('chatPanel.store', () => {
 			createTestingPinia({
 				createSpy: vi.fn,
 				stubActions: false, // Don't stub actions so actual store logic runs
+			}),
+		);
+
+		const settingsStore = useSettingsStore();
+		settingsStore.setSettings(
+			merge({}, defaultSettings, {
+				aiAssistant: { enabled: true, setup: true },
 			}),
 		);
 
@@ -103,6 +113,7 @@ describe('chatPanel.store', () => {
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 
 			await chatPanelStore.open({ mode: 'builder' });
+			vi.runAllTimers();
 
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('builder');
@@ -317,7 +328,7 @@ describe('chatPanel.store', () => {
 
 			await chatPanelStore.openWithCredHelp(credType);
 
-			expect(assistantStore.initCredHelp).toHaveBeenCalledWith(credType);
+			expect(assistantStore.initCredHelp).toHaveBeenCalledWith('', credType);
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
 		});
@@ -343,7 +354,7 @@ describe('chatPanel.store', () => {
 
 			await chatPanelStore.openWithErrorHelper(errorContext);
 
-			expect(assistantStore.initErrorHelper).toHaveBeenCalledWith(errorContext);
+			expect(assistantStore.initErrorHelper).toHaveBeenCalledWith('', errorContext);
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
 		});
@@ -440,6 +451,7 @@ describe('chatPanel.store', () => {
 			// Open in builder mode to set grid width
 			mockRoute.name = BUILDER_ENABLED_VIEWS[0];
 			await chatPanelStore.open({ mode: 'builder' });
+			vi.runAllTimers();
 
 			// Simulate streaming and closing the panel (which resets grid width after timeout)
 			builderStore.streaming = true;
@@ -455,6 +467,7 @@ describe('chatPanel.store', () => {
 
 			// Auto-reopen should restore the grid width offset for the chat
 			expect(chatPanelStateStore.isOpen).toBe(true);
+			vi.runAllTimers();
 			expect(uiStore.appGridDimensions.width).toBe(window.innerWidth - DEFAULT_CHAT_WIDTH);
 		});
 

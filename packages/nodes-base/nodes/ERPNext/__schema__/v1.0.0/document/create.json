@@ -13,8 +13,17 @@
         "company": {
             "type": "string"
         },
+        "contact_email": {
+            "type": "string"
+        },
+        "contact_person": {
+            "type": "string"
+        },
         "conversion_rate": {
             "type": "integer"
+        },
+        "country": {
+            "type": "string"
         },
         "creation": {
             "type": "string"
@@ -45,6 +54,36 @@
                     "__unsaved": {
                         "type": "integer"
                     },
+                    "actual_qty": {
+                        "type": "integer"
+                    },
+                    "additional_cost": {
+                        "type": "integer"
+                    },
+                    "allow_alternative_item": {
+                        "type": "integer"
+                    },
+                    "allow_zero_valuation_rate": {
+                        "type": "integer"
+                    },
+                    "amount": {
+                        "type": "number"
+                    },
+                    "barcode": {
+                        "type": "string"
+                    },
+                    "basic_amount": {
+                        "type": "number"
+                    },
+                    "basic_rate": {
+                        "type": "number"
+                    },
+                    "conversion_factor": {
+                        "type": "integer"
+                    },
+                    "cost_center": {
+                        "type": "string"
+                    },
                     "creation": {
                         "type": "string"
                     },
@@ -57,8 +96,26 @@
                     "doctype": {
                         "type": "string"
                     },
+                    "expense_account": {
+                        "type": "string"
+                    },
+                    "has_item_scanned": {
+                        "type": "integer"
+                    },
                     "idx": {
                         "type": "integer"
+                    },
+                    "is_finished_item": {
+                        "type": "integer"
+                    },
+                    "is_scrap_item": {
+                        "type": "integer"
+                    },
+                    "item_code": {
+                        "type": "string"
+                    },
+                    "item_group": {
+                        "type": "string"
                     },
                     "item_name": {
                         "type": "string"
@@ -89,6 +146,36 @@
                     },
                     "rate": {
                         "type": "integer"
+                    },
+                    "retain_sample": {
+                        "type": "integer"
+                    },
+                    "sample_quantity": {
+                        "type": "integer"
+                    },
+                    "set_basic_rate_manually": {
+                        "type": "integer"
+                    },
+                    "stock_uom": {
+                        "type": "string"
+                    },
+                    "t_warehouse": {
+                        "type": "string"
+                    },
+                    "transfer_qty": {
+                        "type": "integer"
+                    },
+                    "transferred_qty": {
+                        "type": "integer"
+                    },
+                    "uom": {
+                        "type": "string"
+                    },
+                    "use_serial_batch_fields": {
+                        "type": "integer"
+                    },
+                    "valuation_rate": {
+                        "type": "number"
                     }
                 }
             }
@@ -142,5 +229,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

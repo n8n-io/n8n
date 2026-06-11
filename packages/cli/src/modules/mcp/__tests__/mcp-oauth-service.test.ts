@@ -1,5 +1,10 @@
+import {
+	InvalidGrantError,
+	InvalidTargetError,
+} from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
@@ -28,9 +33,9 @@ describe('McpOAuthService', () => {
 		tokenService = mockInstance(McpOAuthTokenService);
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
-
 		service = new McpOAuthService(
 			logger,
+			mockInstance(GlobalConfig),
 			oauthSessionService,
 			oauthClientRepository,
 			tokenService,
@@ -41,6 +46,7 @@ describe('McpOAuthService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		tokenService.getCanonicalResourceUrl.mockReturnValue('https://n8n.example.com/mcp-server/http');
 	});
 
 	describe('clientsStore', () => {
@@ -179,13 +185,9 @@ describe('McpOAuthService', () => {
 				const error = new Error('Database error');
 				oauthClientRepository.insert.mockRejectedValue(error);
 
-				const result = await service.clientsStore.registerClient!(clientInfo);
-
-				expect(logger.error).toHaveBeenCalledWith('Error registering OAuth client', {
-					error,
-					clientId: 'new-client-123',
-				});
-				expect(result).toEqual(clientInfo);
+				await expect(service.clientsStore.registerClient!(clientInfo)).rejects.toThrow(
+					'Database error',
+				);
 			});
 		});
 	});
@@ -208,6 +210,7 @@ describe('McpOAuthService', () => {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-123',
 				state: 'state-xyz',
+				resource: new URL('https://n8n.example.com/mcp-server/http'),
 			};
 
 			const res = mock<Response>();
@@ -219,6 +222,7 @@ describe('McpOAuthService', () => {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-123',
 				state: 'state-xyz',
+				resource: 'https://n8n.example.com/mcp-server/http',
 			});
 			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
 		});
@@ -250,7 +254,77 @@ describe('McpOAuthService', () => {
 				redirectUri: 'https://example.com/callback',
 				codeChallenge: 'challenge-123',
 				state: null,
+				resource: undefined,
 			});
+		});
+
+		it('should reject invalid resource indicators', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				resource: new URL('https://attacker.example.com/mcp-server/http'),
+			};
+
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			await service.authorize(client, params, res);
+
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+			expect(oauthSessionService.clearSession).toHaveBeenCalledWith(res);
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith({
+				error: 'invalid_target',
+				error_description: 'Invalid resource indicator',
+			});
+		});
+
+		it('should accept a trailing-slash resource and store the normalized URL', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				// trailing slash — semantically equivalent to the canonical URL
+				resource: new URL('https://n8n.example.com/mcp-server/http/'),
+			};
+
+			const res = mock<Response>();
+
+			await service.authorize(client, params, res);
+
+			// Should succeed and store the slash-stripped canonical form
+			expect(oauthSessionService.createSession).toHaveBeenCalledWith(res, {
+				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-123',
+				state: null,
+				resource: 'https://n8n.example.com/mcp-server/http',
+			});
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
 		});
 
 		it('should handle errors and clear session', async () => {
@@ -338,14 +412,16 @@ describe('McpOAuthService', () => {
 			const authRecord = {
 				userId: 'user-456',
 				clientId: 'client-123',
+				resource: 'https://n8n.example.com/mcp-server/http',
 			} as AuthorizationCode;
 
-			authorizationCodeService.validateAndConsumeAuthorizationCode.mockResolvedValue(authRecord);
+			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
 			});
 			tokenService.saveTokenPair.mockResolvedValue();
+			tokenService.getAccessTokenExpirySeconds.mockReturnValue(3600);
 
 			const result = await service.exchangeAuthorizationCode(
 				client,
@@ -354,12 +430,19 @@ describe('McpOAuthService', () => {
 				'https://example.com/callback',
 			);
 
-			expect(authorizationCodeService.validateAndConsumeAuthorizationCode).toHaveBeenCalledWith(
+			expect(authorizationCodeService.findAuthorizationCode).toHaveBeenCalledWith(
 				'auth-code-123',
 				'client-123',
 				'https://example.com/callback',
 			);
-			expect(tokenService.generateTokenPair).toHaveBeenCalledWith('user-456', 'client-123');
+			expect(authorizationCodeService.markAuthorizationCodeAsUsed).toHaveBeenCalledWith(
+				'auth-code-123',
+			);
+			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
+				'user-456',
+				'client-123',
+				'https://n8n.example.com/mcp-server/http',
+			);
 			expect(tokenService.saveTokenPair).toHaveBeenCalledWith(
 				'access-token-123',
 				'refresh-token-456',
@@ -390,9 +473,10 @@ describe('McpOAuthService', () => {
 			const authRecord = {
 				userId: 'user-456',
 				clientId: 'client-123',
+				resource: null,
 			} as AuthorizationCode;
 
-			authorizationCodeService.validateAndConsumeAuthorizationCode.mockResolvedValue(authRecord);
+			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
 			tokenService.generateTokenPair.mockReturnValue({
 				accessToken: 'access-token-123',
 				refreshToken: 'refresh-token-456',
@@ -400,11 +484,53 @@ describe('McpOAuthService', () => {
 
 			await service.exchangeAuthorizationCode(client, 'auth-code-123', 'verifier-123');
 
-			expect(authorizationCodeService.validateAndConsumeAuthorizationCode).toHaveBeenCalledWith(
+			expect(authorizationCodeService.findAuthorizationCode).toHaveBeenCalledWith(
 				'auth-code-123',
 				'client-123',
 				undefined,
 			);
+			expect(authorizationCodeService.markAuthorizationCodeAsUsed).toHaveBeenCalledWith(
+				'auth-code-123',
+			);
+			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
+				'user-456',
+				'client-123',
+				undefined,
+			);
+		});
+
+		it('should propagate OAuthError when markAuthorizationCodeAsUsed detects concurrent consumption', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const authRecord = {
+				userId: 'user-456',
+				clientId: 'client-123',
+				resource: 'https://n8n.example.com/mcp-server/http',
+			} as AuthorizationCode;
+
+			authorizationCodeService.findAuthorizationCode.mockResolvedValue(authRecord);
+			authorizationCodeService.markAuthorizationCodeAsUsed.mockImplementation(async () => {
+				throw new InvalidGrantError('Authorization code already used');
+			});
+
+			await expect(
+				service.exchangeAuthorizationCode(
+					client,
+					'auth-code-123',
+					'verifier-123',
+					'https://example.com/callback',
+				),
+			).rejects.toThrow(InvalidGrantError);
 		});
 	});
 
@@ -431,13 +557,106 @@ describe('McpOAuthService', () => {
 
 			tokenService.validateAndRotateRefreshToken.mockResolvedValue(newTokens);
 
-			const result = await service.exchangeRefreshToken(client, 'old-refresh-token', ['read']);
+			const result = await service.exchangeRefreshToken(
+				client,
+				'old-refresh-token',
+				['read'],
+				new URL('https://n8n.example.com/mcp-server/http'),
+			);
 
 			expect(tokenService.validateAndRotateRefreshToken).toHaveBeenCalledWith(
 				'old-refresh-token',
 				'client-123',
+				'https://n8n.example.com/mcp-server/http',
 			);
 			expect(result).toEqual(newTokens);
+		});
+
+		it('should keep legacy behavior when resource is omitted', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['refresh_token'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			tokenService.validateAndRotateRefreshToken.mockResolvedValue({
+				access_token: 'new-access-token',
+				token_type: 'Bearer',
+				expires_in: 3600,
+				refresh_token: 'new-refresh-token',
+			});
+
+			await service.exchangeRefreshToken(client, 'old-refresh-token', ['read']);
+
+			expect(tokenService.validateAndRotateRefreshToken).toHaveBeenCalledWith(
+				'old-refresh-token',
+				'client-123',
+				undefined,
+			);
+		});
+
+		it('should reject invalid resource indicators on refresh token exchange', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['refresh_token'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			await expect(
+				service.exchangeRefreshToken(
+					client,
+					'old-refresh-token',
+					['read'],
+					new URL('https://attacker.example.com/mcp-server/http'),
+				),
+			).rejects.toThrow(InvalidTargetError);
+		});
+
+		it('should normalize a trailing-slash resource before passing it to token rotation', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['refresh_token'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			tokenService.validateAndRotateRefreshToken.mockResolvedValue({
+				access_token: 'new-access-token',
+				token_type: 'Bearer',
+				expires_in: 3600,
+				refresh_token: 'new-refresh-token',
+			});
+
+			await service.exchangeRefreshToken(
+				client,
+				'old-refresh-token',
+				['read'],
+				// trailing slash — must be stripped before reaching token service
+				new URL('https://n8n.example.com/mcp-server/http/'),
+			);
+
+			expect(tokenService.validateAndRotateRefreshToken).toHaveBeenCalledWith(
+				'old-refresh-token',
+				'client-123',
+				'https://n8n.example.com/mcp-server/http', // slash stripped
+			);
 		});
 	});
 
@@ -456,6 +675,52 @@ describe('McpOAuthService', () => {
 
 			expect(tokenService.verifyAccessToken).toHaveBeenCalledWith('access-token-123');
 			expect(result).toEqual(authInfo);
+		});
+	});
+
+	describe('deleteClient', () => {
+		it('should delete client when user has consent', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOneBy.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+			} as any);
+			oauthClientRepository.delete.mockResolvedValue({} as any);
+
+			await service.deleteClient('client-123', 'user-456');
+
+			expect(oauthClientRepository.delete).toHaveBeenCalledWith({ id: 'client-123' });
+		});
+
+		it('should throw when client does not exist', async () => {
+			oauthClientRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.deleteClient('nonexistent', 'user-456')).rejects.toThrow(
+				'OAuth client with ID nonexistent not found',
+			);
+
+			expect(oauthClientRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('should throw when user has no consent for the client', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(service.deleteClient('client-123', 'other-user')).rejects.toThrow(
+				'OAuth client with ID client-123 not found',
+			);
+
+			expect(oauthClientRepository.delete).not.toHaveBeenCalled();
 		});
 	});
 
@@ -578,6 +843,17 @@ describe('McpOAuthService', () => {
 			expect(logger.debug).toHaveBeenCalledWith('Token revocation requested for unknown token', {
 				clientId: 'client-123',
 			});
+		});
+	});
+
+	describe('getCanonicalMcpResourceUrl', () => {
+		it('should delegate to the token service so all callers share one canonical URL', () => {
+			tokenService.getCanonicalResourceUrl.mockReturnValue(
+				'https://example.com/n8n/mcp-server/http',
+			);
+			const canonical = (service as any).getCanonicalMcpResourceUrl();
+			expect(canonical).toBe('https://example.com/n8n/mcp-server/http');
+			expect(tokenService.getCanonicalResourceUrl).toHaveBeenCalled();
 		});
 	});
 });

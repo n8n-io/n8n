@@ -49,9 +49,8 @@ function handleSelectMenuItem(selected: string) {
 	<div :class="$style.container">
 		<N8nTooltip v-if="!isOpen && showPopOutButton" :content="popOutButtonText">
 			<N8nIconButton
+				variant="ghost"
 				icon="pop-out"
-				type="tertiary"
-				text
 				size="small"
 				icon-size="medium"
 				:aria-label="popOutButtonText"
@@ -75,8 +74,7 @@ function handleSelectMenuItem(selected: string) {
 			:shortcut="{ keys: ['l'] }"
 		>
 			<N8nIconButton
-				type="tertiary"
-				text
+				variant="ghost"
 				size="small"
 				icon-size="medium"
 				:icon="isOpen ? 'chevron-down' : 'chevron-up'"
