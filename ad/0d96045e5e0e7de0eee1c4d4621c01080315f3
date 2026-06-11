@@ -1,0 +1,40 @@
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  ai_agent 2-8,963-965,983-985,999-1001
+  s_53cef6894d9656::t_2b8b76986b4ace 11,35,918-962,966-982,986-998,1002-1029
+  s_53cef6894d9656::t_de248979fb093b 1030-1031
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_53cef6894d9656::t_288f8b8e9952d0 211-212
+  ai_agent 16-23
+  s_53cef6894d9656::t_2b8b76986b4ace 26,55,175-210
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_53cef6894d9656::t_2b8b76986b4ace 22
+  ai_agent 70-72,221-223,797-799
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_53cef6894d9656::t_91d31c5437677f 95
+packages/cli/src/workflows/workflow.service.ts
+  s_53cef6894d9656::t_2b8b76986b4ace 461,465-470
+  ai_agent 462-464
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  ai_agent 43-45
+  s_53cef6894d9656::t_2b8b76986b4ace 17,32,42,64
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_53cef6894d9656::t_2b8b76986b4ace 19,34,55,146,150-153
+  ai_agent 147-149
+  s_53cef6894d9656::t_66d8286065fb69 154-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ad0d96045e5e0e7de0eee1c4d4621c01080315f3",
+  "prompts": {},
+  "sessions": {
+    "s_53cef6894d9656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80988671-9019-4d49-ace5-76c9b66cd316",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

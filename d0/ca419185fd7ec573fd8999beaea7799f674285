@@ -1,0 +1,9 @@
+packages/frontend/editor-ui/src/features/ndv/panel/components/__snapshots__/InputPanel.test.ts.snap
+  ai_agent 134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "d0ca419185fd7ec573fd8999beaea7799f674285",
+  "prompts": {}
+}

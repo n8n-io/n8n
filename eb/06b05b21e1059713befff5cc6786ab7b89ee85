@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.test.ts
+  s_f40a0dcab82208::t_5cb103c5da7209 1054-1056
+  s_f40a0dcab82208::t_7628a278ccdea5 1227,1230
+  s_f40a0dcab82208::t_fa645d882b7580 1210-1226,1228-1229,1231-1338
+  s_f40a0dcab82208::t_4de9ffe05405c3 1395-1397
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f40a0dcab82208::t_2c027b28e23223 3887
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.vue
+  s_f40a0dcab82208::t_5cadb96289d74f 2
+  s_f40a0dcab82208::t_a1a7ea52e791cd 277-288
+  s_f40a0dcab82208::t_81c3f54e1a2b37 1341-1345,1347,1350,1360-1362,1370-1371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "eb06b05b21e1059713befff5cc6786ab7b89ee85",
+  "prompts": {},
+  "sessions": {
+    "s_f40a0dcab82208": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d91658f8-18bd-4205-8e6a-19d13979e3f9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

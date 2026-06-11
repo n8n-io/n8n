@@ -1,0 +1,20 @@
+packages/cli/src/modules/n8n-packages/io/tar/tar-package-reader.ts
+  s_92390dd74eda27::t_ea8b7b6522b606 93,104,117-122,125,128,130,132,137-139,142-159,166,173,180,191
+  s_92390dd74eda27::t_b2f87e001d253b 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a9889059bc21eaea77dc575e27c8bada9b70a4ff",
+  "prompts": {},
+  "sessions": {
+    "s_92390dd74eda27": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e04677c9-8253-47dc-b644-72eea609ae15",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

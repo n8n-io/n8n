@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Jira/GenericFunctions.ts
+  e9c62ddc0091ef15 111-112
+packages/nodes-base/nodes/Jira/__test__/GenericFunctions.test.ts
+  e9c62ddc0091ef15 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "59c10367b313b3c7e4f413463b258f2dabc831a0",
+  "prompts": {
+    "e9c62ddc0091ef15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f497218f-8b82-4e65-be74-dffafa9e9dc5",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 699,
+      "total_deletions": 2,
+      "accepted_lines": 3840,
+      "overriden_lines": 1
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/workflow-runner.ts
+  s_c2908ceaab42e0::t_79eb285e5aa565 223
+packages/cli/src/modules/redaction/instance-redaction-enforcement.service.ts
+  s_c2908ceaab42e0::t_3aae62750d3ca8 27-33,35
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.integration.test.ts
+  s_c2908ceaab42e0::t_d0673cc91b296b 2,7,17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29b1ee9d88b3f06c8992bc3fce67e83608c71ac3",
+  "prompts": {},
+  "sessions": {
+    "s_c2908ceaab42e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7599c9ca-b513-4826-b77f-9b5637429270",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

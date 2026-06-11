@@ -1,0 +1,32 @@
+packages/cli/test/integration/modules/runtime-credentials.integration.test.ts
+  s_1527e6eded2a49::t_e34ea4330567a0 37
+  s_1527e6eded2a49::t_6176bb11796d27 288-299
+  s_1527e6eded2a49::t_9d91f593e8e777 20
+  s_1527e6eded2a49::t_e4df1966ea5cae 22-24
+  s_1527e6eded2a49::t_cfde831c532b1b 192-200
+  s_1527e6eded2a49::t_fba91ca386e13d 164-171
+  s_1527e6eded2a49::t_ab4c68fecfdbd1 242-243
+  s_1527e6eded2a49::t_2515ef8614d407 201-202
+  s_1527e6eded2a49::t_618ed235908bd0 17
+  s_1527e6eded2a49::t_e6f068309e4392 16
+packages/cli/test/integration/modules/runtime-credentials.disabled.integration.test.ts
+  s_1527e6eded2a49::t_f093cb7141ccf6 32
+  s_1527e6eded2a49::t_b5bab11a6bc2a6 1-12,14-31,33-228
+  s_1527e6eded2a49::t_f4cc0dba9661b8 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "e06525d426f2b0886e87797277aae705f0e9e429",
+  "prompts": {},
+  "sessions": {
+    "s_1527e6eded2a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "879ff5c9-1ccd-4965-b3b0-3774166d87f4",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
