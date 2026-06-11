@@ -6,10 +6,25 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { createChatThreadState, type ChatMessage, type ChatThreadState } from '../chat/chat-thread';
 import { getThreadClient, type ThreadListener } from '../services/thread-client';
 
-const props = defineProps<{ threadId: string }>();
+/**
+ * Embeddable chat transcript for one thread.
+ *
+ * `lastEventId` is the SSE replay cursor (exclusive) to listen from. Pass the event id
+ * captured when you started observing the thread (e.g. on composer submit) so a chat
+ * opened mid-run replays the run's events and shows the in-flight message from its
+ * first word — the snapshot excludes the active run, and without the replay the words
+ * streamed before opening would be missing. When omitted, listening starts where the
+ * snapshot ends.
+ */
+const props = defineProps<{ threadId: string; lastEventId?: number }>();
+
+/** `isFallback` marks a first-user-message stand-in — don't let it override a known title. */
+const emit = defineEmits<{ titleChanged: [title: string, isFallback?: boolean] }>();
 
 const i18n = useI18n();
 const client = getThreadClient();
+
+const TITLE_FALLBACK_MAX_LENGTH = 60;
 
 // The reducer mutates this reactive array in place, so deltas re-render as they stream.
 const messages = reactive<ChatMessage[]>([]);
@@ -36,10 +51,16 @@ async function load() {
 	try {
 		const snapshot = await client.get(props.threadId);
 		messages.splice(0, messages.length);
-		state = createChatThreadState(messages, snapshot.messages);
-		// The first live event has id `nextEventId`; the SSE cursor is exclusive.
+		state = createChatThreadState(messages, snapshot.messages, {
+			onTitle: (title) => emit('titleChanged', title),
+		});
+		// No server title yet — the first user message is the next best label.
+		const firstUserMessage = messages.find((message) => message.role === 'user');
+		if (firstUserMessage) emit('titleChanged', truncateTitle(firstUserMessage.content), true);
+		// The caller's replay cursor wins; otherwise start where the snapshot ends
+		// (its first live event has id `nextEventId`; the SSE cursor is exclusive).
 		client.listen(props.threadId, onThreadEvent, {
-			lastEventId: Math.max(0, snapshot.nextEventId - 1),
+			lastEventId: props.lastEventId ?? Math.max(0, snapshot.nextEventId - 1),
 		});
 	} catch (error) {
 		// Surface the cause in devtools — the inline state only shows a generic message.
@@ -50,6 +71,12 @@ async function load() {
 	}
 	// Only after `loading` flips does the list render — scrolling earlier hits nothing.
 	await scrollToBottom();
+}
+
+function truncateTitle(text: string): string {
+	const singleLine = text.replace(/\s+/g, ' ').trim();
+	if (singleLine.length <= TITLE_FALLBACK_MAX_LENGTH) return singleLine;
+	return `${singleLine.slice(0, TITLE_FALLBACK_MAX_LENGTH - 1)}…`;
 }
 
 /** Append the user's message optimistically and post it; the reply streams in via events. */

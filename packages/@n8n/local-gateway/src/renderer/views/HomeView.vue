@@ -3,26 +3,27 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { onMounted, ref } from 'vue';
 
-import ChatView from './ChatView.vue';
 import HistoryView from './HistoryView.vue';
 import TasksView from './TasksView.vue';
 import TaskComposer from '../components/TaskComposer.vue';
 
-type Tab = 'tasks' | 'history' | 'chat';
+import { openChat } from '../chat/chat-overlay';
+
+// TEMPORARY: manual test trigger for the chat overlay (wired to the otherwise
+// unused search button) until the composer flow calls openChat. Remove with it.
+const DEV_CHAT_THREAD_ID = '4d49ba31-32c9-4ccb-8606-626e9087b417';
+
+type Tab = 'tasks' | 'history';
 
 const i18n = useI18n();
 const activeTab = ref<Tab>('tasks');
 
 const TABS: Array<{
 	id: Tab;
-	labelKey:
-		| 'desktopAssistant.tabs.tasks'
-		| 'desktopAssistant.tabs.history'
-		| 'desktopAssistant.tabs.chat';
+	labelKey: 'desktopAssistant.tabs.tasks' | 'desktopAssistant.tabs.history';
 }> = [
 	{ id: 'tasks', labelKey: 'desktopAssistant.tabs.tasks' },
 	{ id: 'history', labelKey: 'desktopAssistant.tabs.history' },
-	{ id: 'chat', labelKey: 'desktopAssistant.tabs.chat' },
 ];
 
 // Refs to the tab buttons, so arrow keys can move focus along with selection
@@ -94,11 +95,13 @@ onMounted(() => {
 					{{ i18n.baseText(tab.labelKey) }}
 				</button>
 			</div>
-			<!-- Search is part of the target layout but not wired up yet. -->
+			<!-- Search is part of the target layout but not wired up yet.
+			     TEMPORARY: clicking it opens the chat overlay for manual testing. -->
 			<button
 				type="button"
 				:class="$style.searchButton"
 				:aria-label="i18n.baseText('desktopAssistant.search.ariaLabel')"
+				@click="openChat(DEV_CHAT_THREAD_ID)"
 			>
 				<N8nIcon icon="search" :size="16" />
 			</button>
@@ -106,13 +109,12 @@ onMounted(() => {
 
 		<div
 			id="da-tabpanel"
-			:class="[$style.content, { [$style.contentFixed]: activeTab === 'chat' }]"
+			:class="$style.content"
 			role="tabpanel"
 			:aria-labelledby="`da-tab-${activeTab}`"
 			tabindex="0"
 		>
 			<TasksView v-if="activeTab === 'tasks'" @executed="activeTab = 'history'" />
-			<ChatView v-else-if="activeTab === 'chat'" />
 			<HistoryView v-else />
 		</div>
 
@@ -207,12 +209,6 @@ onMounted(() => {
 	flex-direction: column;
 	min-height: 0;
 	overflow-y: auto;
-}
-
-/* The chat view scrolls its own message list; the panel itself must not scroll,
-   or the pinned composer would scroll away with it. */
-.contentFixed {
-	overflow-y: hidden;
 }
 
 .content:focus-visible {

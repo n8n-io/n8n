@@ -12,6 +12,11 @@ export interface ChatMessage {
 interface RunInfo {
 	messageId: string;
 	rootAgentId: string;
+	/**
+	 * The run's message is already complete in the snapshot — any of its events can
+	 * only be a replay (caller-supplied cursor) and must not mutate the message again.
+	 */
+	replayOnly?: boolean;
 }
 
 export interface ChatThreadState {
@@ -44,10 +49,16 @@ export function chatMessageFromSnapshot(message: InstanceAiMessage): ChatMessage
  * Tool calls, reasoning, and `run-sync` recovery are out of scope for v1. Snapshot
  * messages seed the run routing via `runIds` + `agentTree.agentId`; a run that is
  * already live when the snapshot omits its agent tree won't stream until it finishes.
+ *
+ * Replay safety: the listen cursor may predate the snapshot (a chat opened mid-run
+ * replays from where the caller started observing). Runs whose snapshot message is
+ * already complete are marked replay-only — their replayed events are ignored so the
+ * stored text isn't duplicated.
  */
 export function createChatThreadState(
 	messages: ChatMessage[],
 	snapshot: InstanceAiMessage[] = [],
+	options: { onTitle?: (title: string) => void } = {},
 ): ChatThreadState {
 	const runs = new Map<string, RunInfo>();
 	const messageIdByGroup = new Map<string, string>();
@@ -58,7 +69,7 @@ export function createChatThreadState(
 		const rootAgentId = message.agentTree?.agentId;
 		if (!rootAgentId) continue;
 		for (const runId of message.runIds ?? (message.runId ? [message.runId] : [])) {
-			runs.set(runId, { messageId: message.id, rootAgentId });
+			runs.set(runId, { messageId: message.id, rootAgentId, replayOnly: !message.isStreaming });
 		}
 	}
 
@@ -72,6 +83,8 @@ export function createChatThreadState(
 		apply(event: InstanceAiEvent) {
 			switch (event.type) {
 				case 'run-start': {
+					// Replayed start of a run whose message is already complete — leave it be.
+					if (runs.get(event.runId)?.replayOnly) break;
 					const groupId = event.payload.messageGroupId;
 					const existingId = groupId && messageIdByGroup.get(groupId);
 					let message = existingId ? findMessage(existingId) : undefined;
@@ -92,7 +105,7 @@ export function createChatThreadState(
 				}
 				case 'text-delta': {
 					const run = runs.get(event.runId);
-					if (!run || run.rootAgentId !== event.agentId) break;
+					if (!run || run.replayOnly || run.rootAgentId !== event.agentId) break;
 					const message = findMessage(run.messageId);
 					if (message) message.content += event.payload.text;
 					break;
@@ -101,6 +114,10 @@ export function createChatThreadState(
 					const run = runs.get(event.runId);
 					const message = run && findMessage(run.messageId);
 					if (message) message.isStreaming = false;
+					break;
+				}
+				case 'thread-title-updated': {
+					options.onTitle?.(event.payload.title);
 					break;
 				}
 				default:

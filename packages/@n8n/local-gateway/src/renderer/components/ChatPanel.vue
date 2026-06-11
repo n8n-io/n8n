@@ -2,12 +2,10 @@
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 
-import ChatMessages from '../components/ChatMessages.vue';
-import ComposerField from '../components/ComposerField.vue';
+import ChatMessages from './ChatMessages.vue';
+import ComposerField from './ComposerField.vue';
 
-// TODO(desktop-assistant): create and persist a real thread (personal project +
-// POST /instance-ai/threads) instead of this fixed development thread.
-const CHAT_THREAD_ID = '4d49ba31-32c9-4ccb-8606-626e9087b417';
+import { chatOverlay, setChatTitle } from '../chat/chat-overlay';
 
 const i18n = useI18n();
 
@@ -20,11 +18,20 @@ async function submit() {
 	text.value = '';
 	await messagesRef.value?.send(value);
 }
+
+function onTitleChanged(title: string, isFallback?: boolean) {
+	setChatTitle(title, { fallback: isFallback });
+}
 </script>
 
 <template>
-	<div :class="$style.view">
-		<ChatMessages ref="messagesRef" :thread-id="CHAT_THREAD_ID" />
+	<div v-if="chatOverlay.threadId" :class="$style.panel">
+		<ChatMessages
+			ref="messagesRef"
+			:thread-id="chatOverlay.threadId"
+			:last-event-id="chatOverlay.lastEventId"
+			@title-changed="onTitleChanged"
+		/>
 
 		<div :class="$style.composer">
 			<!-- Stays enabled while the agent works (disabling would steal focus); submit() simply refuses while busy. -->
@@ -41,11 +48,12 @@ async function submit() {
 </template>
 
 <style module>
-.view {
+.panel {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
 	min-height: 0;
+	background: var(--da-surface);
 }
 
 .composer {

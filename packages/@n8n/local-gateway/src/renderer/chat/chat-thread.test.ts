@@ -1,6 +1,6 @@
 // Explicit vitest imports: the renderer tsconfig deliberately has `types: []`,
 // so the vitest globals are not ambiently typed here.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createChatThreadState, type ChatMessage } from './chat-thread';
 import type { InstanceAiEvent, InstanceAiMessage } from '../../shared/types';
@@ -36,9 +36,12 @@ const runFinish = (runId: string) =>
 		payload: { status: 'completed' },
 	}) as InstanceAiEvent;
 
-function makeState(snapshot: InstanceAiMessage[] = []) {
+function makeState(
+	snapshot: InstanceAiMessage[] = [],
+	options: { onTitle?: (title: string) => void } = {},
+) {
 	const messages: ChatMessage[] = [];
-	const state = createChatThreadState(messages, snapshot);
+	const state = createChatThreadState(messages, snapshot, options);
 	return { messages, state };
 }
 
@@ -112,6 +115,40 @@ describe('createChatThreadState', () => {
 
 		expect(messages).toHaveLength(1);
 		expect(messages[0]).toMatchObject({ content: 'first second', isStreaming: true });
+	});
+
+	it('ignores replayed events of a run whose message is already complete in the snapshot', () => {
+		const snapshot = snapshotMessage({
+			id: 'a1',
+			content: 'done',
+			isStreaming: false,
+			runIds: ['r1'],
+			messageGroupId: 'g1',
+			agentTree: { agentId: 'root' } as InstanceAiMessage['agentTree'],
+		});
+		const { messages, state } = makeState([snapshot]);
+
+		// The caller's replay cursor predates this run — all of its events come again.
+		state.apply(runStart('r1', 'root', 'g1'));
+		state.apply(textDelta('r1', 'root', 'done'));
+		state.apply(runFinish('r1'));
+
+		expect(messages).toHaveLength(1);
+		expect(messages[0]).toMatchObject({ content: 'done', isStreaming: false });
+	});
+
+	it('reports the server-generated thread title', () => {
+		const onTitle = vi.fn();
+		const { state } = makeState([], { onTitle });
+
+		state.apply({
+			type: 'thread-title-updated',
+			runId: 'r1',
+			agentId: 'root',
+			payload: { title: 'Banana prices' },
+		} as InstanceAiEvent);
+
+		expect(onTitle).toHaveBeenCalledWith('Banana prices');
 	});
 
 	it('resumes streaming into a snapshot message that was mid-run', () => {
