@@ -34,7 +34,7 @@ watch(
 			<h2 :class="$style.title">Frontend</h2>
 			<div :class="$style.headerActions">
 				<button
-					v-if="messages.length > 0"
+					v-if="messages.length > 0 || error"
 					:class="$style.clearButton"
 					type="button"
 					data-testid="frontend-builder-clear"
