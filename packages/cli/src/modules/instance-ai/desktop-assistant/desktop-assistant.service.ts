@@ -190,14 +190,25 @@ export class DesktopAssistantService {
 			);
 		}
 
+		// Only desktop-assistant-tagged workflows are tasks: the assistant's list
+		// is its own creations, not the user's whole instance.
+		const taskWorkflows = workflows.filter((workflow) =>
+			(tagsByWorkflowId.get(workflow.id) ?? []).some((tag) => tag.name === DESKTOP_ASSISTANT_TAG),
+		);
+		if (taskWorkflows.length === 0) {
+			return { actionNeeded: [], upcoming: [], readyToRun: [] };
+		}
+
 		const credentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
 		const accessibleCredentialIds = new Set(credentials.map((c) => c.id));
 
-		const lastExecutionByWorkflowId = await this.fetchLastExecutionByWorkflowId(liveWorkflowIds);
+		const lastExecutionByWorkflowId = await this.fetchLastExecutionByWorkflowId(
+			taskWorkflows.map((wf) => wf.id),
+		);
 
-		const inputs: ClassifierInput[] = workflows.map((workflow) => {
+		const inputs: ClassifierInput[] = taskWorkflows.map((workflow) => {
 			// Icon priority: explicit `meta.desktopAssistant.icon` wins, then any
 			// leading emoji the orchestrator put on the workflow name (the
 			// `desktop-assistant-promote` prompt instructs picking one), then the
@@ -602,11 +613,16 @@ export class DesktopAssistantService {
 
 		// Skip executions of archived workflows. Archive is a user signal of
 		// "I'm done with this"; their runs should drop out of the history view.
+		// Mirrors the tasks list: only desktop-assistant-tagged workflows count,
+		// so History shows runs of the user's tasks, not the whole instance.
 		const liveRows = await this.workflowRepository.find({
 			where: { id: In(accessibleWorkflowIds), isArchived: false },
-			select: { id: true },
+			relations: { tags: true },
+			select: { id: true, tags: { name: true } },
 		});
-		const liveWorkflowIds = liveRows.map((row) => row.id);
+		const liveWorkflowIds = liveRows
+			.filter((row) => (row.tags ?? []).some((tag) => tag.name === DESKTOP_ASSISTANT_TAG))
+			.map((row) => row.id);
 		if (liveWorkflowIds.length === 0) return EMPTY_HISTORY;
 
 		const sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
