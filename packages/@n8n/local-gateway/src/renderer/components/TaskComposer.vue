@@ -1,20 +1,16 @@
 <script setup lang="ts">
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import ContextPill from './ContextPill.vue';
 import MiniSpinner from './MiniSpinner.vue';
 
-import {
-	assistantContextFromDetected,
-	suggestionChipsFor,
-	type AssistantContext,
-} from '../assistant/contexts';
+import { suggestionChipsFor } from '../assistant/contexts';
 import { formatMinutes } from '../assistant/format';
 import { buildFallbackPlan, planTask, type Plan } from '../assistant/planner';
+import { useAssistantContext } from '../assistant/use-assistant-context';
 import { useAssistantScreen } from '../assistant/use-assistant-screen';
-import type { DetectedContext } from '../../shared/types';
 
 type ComposerState = 'idle' | 'thinking' | 'doing';
 
@@ -29,23 +25,11 @@ const text = ref('');
 const state = ref<ComposerState>('idle');
 const doneCard = ref<DoneCard | null>(null);
 
-// The open windows the user can pick as context, detected locally and pushed
-// from the main process (first = frontmost). `selectedKey` is the user's pick;
-// `null` means "use the frontmost". `detected` is the chosen raw context we
-// forward to the backend; `activeContext`/`contextOptions` are its UI projection.
-const optionsList = ref<DetectedContext[]>([]);
-const selectedKey = ref<string | null>(null);
-
-const detected = computed<DetectedContext>(() => {
-	const list = optionsList.value;
-	return list.find((c) => (c.id ?? c.app) === selectedKey.value) ?? list[0] ?? { kind: 'other' };
-});
-const activeContext = computed(() => assistantContextFromDetected(detected.value));
-const contextOptions = computed<AssistantContext[]>(() =>
-	optionsList.value.length
-		? optionsList.value.map(assistantContextFromDetected)
-		: [activeContext.value],
-);
+// Context selection is shared app-wide (see use-assistant-context). `detected` is
+// the chosen raw context we forward to the backend; `activeContext`/`contextOptions`
+// are its UI projection; `selectContext` drives the pill.
+const { detected, activeContext, contextOptions, ensureDetection, selectContext } =
+	useAssistantContext();
 
 // Screenshot opt-in: off by default, auto-on when the context is just "the
 // screen" (kind 'other'), where pixels are the only signal. User can override.
@@ -66,16 +50,7 @@ const screenshotTooltip = computed(() =>
 	),
 );
 
-let disposeContext: (() => void) | undefined;
-onMounted(async () => {
-	optionsList.value = await window.electronAPI.getContextOptions();
-	disposeContext = window.electronAPI.onContextChanged((contexts) => {
-		optionsList.value = contexts;
-		// A fresh detection supersedes a stale manual pick.
-		selectedKey.value = null;
-	});
-});
-onBeforeUnmount(() => disposeContext?.());
+onMounted(ensureDetection);
 
 const inputRef = ref<HTMLInputElement | null>(null);
 const doneCardRef = ref<HTMLElement | null>(null);
@@ -287,7 +262,7 @@ function dismissDone() {
 			<ContextPill
 				:context="activeContext"
 				:options="contextOptions"
-				@select="selectedKey = $event"
+				@select="selectContext($event)"
 			/>
 			<N8nTooltip :content="screenshotTooltip" placement="top">
 				<button
