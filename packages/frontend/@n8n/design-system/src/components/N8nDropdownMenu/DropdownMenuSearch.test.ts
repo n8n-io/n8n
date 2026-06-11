@@ -70,10 +70,10 @@ describe('N8nDropdownMenuSearch', () => {
 			await userEvent.keyboard('{ArrowDown}');
 
 			await waitFor(() => {
-				const emits = wrapper.emitted('keydown');
+				const emits = wrapper.emitted('keydown') as Array<[KeyboardEvent]> | undefined;
 				expect(emits).toBeTruthy();
 				expect(emits?.[0]?.[0]).toBeInstanceOf(KeyboardEvent);
-				expect((emits?.[0]?.[0] as KeyboardEvent).key).toBe('ArrowDown');
+				expect(emits?.[0]?.[0].key).toBe('ArrowDown');
 			});
 		});
 
@@ -84,9 +84,10 @@ describe('N8nDropdownMenuSearch', () => {
 			await userEvent.type(input, 'a');
 
 			await waitFor(() => {
+				const keydownEmits = wrapper.emitted('keydown') as Array<[KeyboardEvent]> | undefined;
 				expect(input).toHaveValue('a');
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['a']);
-				expect((wrapper.emitted('keydown')?.[0]?.[0] as KeyboardEvent).key).toBe('a');
+				expect(keydownEmits?.[0]?.[0].key).toBe('a');
 			});
 		});
 	});

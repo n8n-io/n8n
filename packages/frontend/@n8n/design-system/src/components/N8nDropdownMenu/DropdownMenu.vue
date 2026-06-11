@@ -5,19 +5,20 @@ import {
 	DropdownMenuPortal,
 	DropdownMenuContent,
 } from 'reka-ui';
-import { computed, provide, ref, watch, useCssModule, nextTick, onBeforeUnmount } from 'vue';
+import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, watch } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import DropdownMenuItems from './DropdownMenuItems.vue';
-import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
+
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
 	DropdownMenuPortalTargetKey,
+	type DropdownMenuItemProps,
 	type DropdownMenuProps,
 	type DropdownMenuSlots,
-	type DropdownMenuItemProps,
 } from './DropdownMenu.types';
+import DropdownMenuItems from './DropdownMenuItems.vue';
+import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
 
 defineOptions({ inheritAttrs: false });
 

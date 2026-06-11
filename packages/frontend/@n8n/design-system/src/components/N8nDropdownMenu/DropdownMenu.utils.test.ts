@@ -1,6 +1,6 @@
-import { h, nextTick } from 'vue';
-import { fireEvent, render, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
+import { h } from 'vue';
 
 import type { DropdownMenuItemProps } from './DropdownMenu.types';
 import {
@@ -12,10 +12,7 @@ import {
 } from './DropdownMenu.utils';
 import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
 
-const createItems = (
-	count: number,
-	disabledIndices: number[] = [],
-): Array<DropdownMenuItemProps> => {
+const createItems = (count: number, disabledIndices: number[] = []): DropdownMenuItemProps[] => {
 	return Array.from({ length: count }, (_, i) => ({
 		id: `item-${i}`,
 		label: `Item ${i}`,
@@ -118,7 +115,7 @@ type SearchableSlotProps = {
 };
 
 const renderSearchableContent = (
-	items: Array<DropdownMenuItemProps>,
+	items: DropdownMenuItemProps[],
 	open = true,
 	pointerOpensSubmenus = false,
 ) => {
@@ -303,7 +300,7 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 		const wrapper = renderSearchableContent([
 			{ id: 'parent', label: 'Parent', children: createItems(1) },
 		]);
-		const input = wrapper.getByRole('textbox') as HTMLInputElement;
+		const input = wrapper.getByRole('textbox');
 
 		await userEvent.type(input, 'ab');
 		await userEvent.keyboard('{ArrowDown}');
@@ -328,7 +325,7 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 		const wrapper = renderSearchableContent([
 			{ id: 'parent', label: 'Parent', children: createItems(1) },
 		]);
-		const input = wrapper.getByRole('textbox') as HTMLInputElement;
+		const input = wrapper.getByRole('textbox');
 
 		await userEvent.type(input, 'ab');
 		await userEvent.keyboard('{ArrowDown}');

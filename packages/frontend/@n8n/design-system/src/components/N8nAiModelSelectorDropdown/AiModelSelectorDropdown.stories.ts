@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { computed } from 'vue';
 
-import { useDropdownSearch } from '../N8nDropdownMenu/composables/useDropdownSearch';
-import N8nAiModelSelectorDropdown from './AiModelSelectorDropdown.vue';
 import type {
 	AiModelSelectorMenuItem,
 	AiModelSelectorMenuItemData,
 } from './AiModelSelectorDropdown.types';
+import N8nAiModelSelectorDropdown from './AiModelSelectorDropdown.vue';
+import { useDropdownSearch } from '../N8nDropdownMenu/composables/useDropdownSearch';
 
 const items: AiModelSelectorMenuItem[] = [
 	{
