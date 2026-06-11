@@ -183,6 +183,20 @@ export class InstanceApi {
 		return await this.unwrap<InstanceAiRichMessagesResponse>(response);
 	}
 
+	/** `POST /rest/instance-ai/chat/:threadId` — send a user message; the reply streams over the thread's SSE events. */
+	async sendChatMessage(threadId: string, message: string): Promise<{ runId: string }> {
+		const response = await this.authedFetch(`/instance-ai/chat/${encodeURIComponent(threadId)}`, {
+			method: 'POST',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				message,
+				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+			}),
+		});
+		return await this.unwrap<{ runId: string }>(response);
+	}
+
 	/** Public editor URL for a workflow on the signed-in instance, or `null` when signed out. */
 	workflowUrl(workflowId: string): string | null {
 		const { instanceUrl } = this.oauthFlow.getStatus();

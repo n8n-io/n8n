@@ -45,6 +45,7 @@ import type {
 } from '@n8n/computer-use/context';
 
 export type {
+	InstanceAiMessage,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTaskCard,
 	DesktopAssistantTaskIcon,
@@ -144,6 +145,8 @@ export interface ElectronApi {
 		threadId: string,
 		options?: { refresh?: boolean },
 	) => Promise<InstanceAiRichMessagesResponse>;
+	/** Send a user message to the thread; the assistant's reply streams over `onThreadEvent`. */
+	postThreadMessage: (threadId: string, message: string) => Promise<{ runId: string }>;
 	/** Open the thread's SSE event stream in the main process (idempotent per thread). */
 	listenToThread: (threadId: string, lastEventId?: number) => Promise<void>;
 	/** Close the thread's SSE event stream. */
