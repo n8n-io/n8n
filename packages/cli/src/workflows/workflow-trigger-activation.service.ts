@@ -1,9 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	ActiveWorkflowTriggers,
@@ -32,18 +30,13 @@ import {
 	Workflow,
 	WorkflowActivationError,
 	UnexpectedError,
-	IsolateError,
 	createRunExecutionData,
 } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
-import {
-	TRIGGER_COUNT_EXCLUDED_NODES,
-	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
-	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
-} from '@/constants';
+import { TRIGGER_COUNT_EXCLUDED_NODES } from '@/constants';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
@@ -53,15 +46,11 @@ import { WebhookActivationService } from '@/webhooks/webhook-activation.service'
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { TriggerNode } from '@/workflows/trigger-diff';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
-
-interface QueuedTriggerNodeActivation {
-	lastTimeout: number;
-	timeout: NodeJS.Timeout;
-}
 
 /**
  * Activates and deactivates individual trigger nodes of a workflow version for
@@ -71,8 +60,6 @@ interface QueuedTriggerNodeActivation {
  */
 @Service()
 export class WorkflowTriggerActivationService {
-	private queuedTriggerNodeActivations: Record<string, QueuedTriggerNodeActivation> = {};
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -92,6 +79,11 @@ export class WorkflowTriggerActivationService {
 		private readonly webhookActivationService: WebhookActivationService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
+
+		strict(
+			this.workflowsConfig.useWorkflowPublicationService,
+			'WorkflowTriggerActivationService requires the workflow publication service to be enabled',
+		);
 	}
 
 	/**
@@ -128,11 +120,6 @@ export class WorkflowTriggerActivationService {
 		version: { nodes: INode[]; connections: IConnections },
 		nodeIds: Set<INode['id']>,
 	) {
-		strict(
-			this.workflowsConfig.useWorkflowPublicationService,
-			'WorkflowTriggerActivationService requires the workflow publication service to be enabled',
-		);
-
 		const { nodes, connections } = version;
 		dbWorkflow.nodes = nodes;
 		dbWorkflow.connections = connections;
@@ -476,8 +463,7 @@ export class WorkflowTriggerActivationService {
 				);
 				this.executeErrorWorkflow(activationError, workflowData, mode);
 
-				// Retry activation of only this trigger node.
-				this.addQueuedTriggerNodeActivation(workflowData as WorkflowEntity, node.id);
+				// TODO: CAT-3360: implement re-activation of the trigger
 			};
 
 			const saveFailedExecution = (error: ExecutionError) => {
@@ -580,74 +566,5 @@ export class WorkflowTriggerActivationService {
 			workflow.getPollNodes().length +
 			uniqueWebhooks.size
 		);
-	}
-
-	/**
-	 * Add a single trigger node to the activation retry queue. It keeps retrying
-	 * the node's activation with exponential backoff until it succeeds.
-	 */
-	private addQueuedTriggerNodeActivation(dbWorkflow: WorkflowEntity, nodeId: INode['id']) {
-		const key = `${dbWorkflow.id}:${nodeId}`;
-		const version = { nodes: dbWorkflow.nodes, connections: dbWorkflow.connections };
-
-		const retryFunction = async () => {
-			this.logger.info(
-				`Try to activate trigger node "${nodeId}" of workflow "${dbWorkflow.name}" (${dbWorkflow.id})`,
-				{ workflowId: dbWorkflow.id, nodeId },
-			);
-			try {
-				await this.addTriggerNodes(dbWorkflow, version, new Set([nodeId]));
-			} catch (error) {
-				this.errorReporter.error(error);
-				let lastTimeout = this.queuedTriggerNodeActivations[key].lastTimeout;
-				if (!(error instanceof IsolateError) && lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
-					lastTimeout = Math.min(lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
-				}
-
-				this.logger.info(
-					`Activation of trigger node "${nodeId}" of workflow "${dbWorkflow.name}" (${dbWorkflow.id}) did fail with error: "${
-						error.message as string
-					}" | retry in ${Math.floor(lastTimeout / 1000)} seconds`,
-					{ error, workflowId: dbWorkflow.id, nodeId },
-				);
-
-				this.queuedTriggerNodeActivations[key].lastTimeout = lastTimeout;
-				this.queuedTriggerNodeActivations[key].timeout = setTimeout(retryFunction, lastTimeout);
-				return;
-			}
-			this.removeQueuedTriggerNodeActivation(key);
-			this.logger.info(
-				`Activation of trigger node "${nodeId}" of workflow "${dbWorkflow.name}" (${dbWorkflow.id}) was successful!`,
-				{ workflowId: dbWorkflow.id, nodeId },
-			);
-		};
-
-		// Just to be sure that there is no chance that multiple run in parallel
-		this.removeQueuedTriggerNodeActivation(key);
-
-		this.queuedTriggerNodeActivations[key] = {
-			lastTimeout: WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
-			timeout: setTimeout(retryFunction, WORKFLOW_REACTIVATE_INITIAL_TIMEOUT),
-		};
-	}
-
-	/**
-	 * Remove a single trigger node from the activation retry queue.
-	 */
-	private removeQueuedTriggerNodeActivation(key: string) {
-		if (this.queuedTriggerNodeActivations[key]) {
-			clearTimeout(this.queuedTriggerNodeActivations[key].timeout);
-			delete this.queuedTriggerNodeActivations[key];
-		}
-	}
-
-	/**
-	 * Remove all trigger nodes from the activation retry queue.
-	 */
-	@OnShutdown()
-	removeAllQueuedTriggerNodeActivations() {
-		for (const key in this.queuedTriggerNodeActivations) {
-			this.removeQueuedTriggerNodeActivation(key);
-		}
 	}
 }

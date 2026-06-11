@@ -1,29 +1,22 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData, Workflow } from 'n8n-workflow';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
-import type { NodeTypes } from '@/node-types';
 import { WebhookActivationService } from '@/webhooks/webhook-activation.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 jest.mock('@/webhooks/webhook-helpers');
-jest.mock('@/workflow-execute-additional-data');
 
 describe('WebhookActivationService', () => {
 	const errorReporter = mock<ErrorReporter>();
-	const nodeTypes = mock<NodeTypes>();
 	const webhookService = mock<WebhookService>();
-	const workflowRepository = mock<WorkflowRepository>();
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
 
 	const getWorkflowWebhooks = WebhookHelpers.getWorkflowWebhooks as jest.Mock;
-	const getBase = WorkflowExecuteAdditionalData.getBase as jest.Mock;
 
 	let service: WebhookActivationService;
 
@@ -55,16 +48,13 @@ describe('WebhookActivationService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		getWorkflowWebhooks.mockReturnValue([]);
-		getBase.mockResolvedValue(additionalData);
 		webhookService.createWebhook.mockImplementation(
 			(data) => ({ webhookPath: data.webhookPath ?? '', node: data.node }) as never,
 		);
 		service = new WebhookActivationService(
 			mockLogger(),
 			errorReporter,
-			nodeTypes,
 			webhookService,
-			workflowRepository,
 			workflowStaticDataService,
 		);
 	});
@@ -118,16 +108,17 @@ describe('WebhookActivationService', () => {
 			expect(webhookService.createWebhookIfNotExists).toHaveBeenCalledTimes(1);
 		});
 
-		test('clears webhooks and throws WebhookPathTakenError on a QueryFailedError', async () => {
+		test('deregisters the nodeIds and throws WebhookPathTakenError on a QueryFailedError', async () => {
 			getWorkflowWebhooks.mockReturnValue([webhookData('A')]);
 			webhookService.storeWebhook.mockRejectedValueOnce(
 				Object.assign(new Error('duplicate'), { name: 'QueryFailedError' }),
 			);
-			const clearSpy = jest.spyOn(service, 'clearWebhooks').mockResolvedValue(undefined);
+			const workflow = mockWorkflow();
+			const deregisterSpy = jest.spyOn(service, 'deregisterWebhooks').mockResolvedValue(['A']);
 
 			await expect(
 				service.addWebhooks({
-					workflow: mockWorkflow(),
+					workflow,
 					additionalData,
 					mode: 'trigger',
 					activation: 'update',
@@ -135,39 +126,8 @@ describe('WebhookActivationService', () => {
 				}),
 			).rejects.toThrow(WebhookPathTakenError);
 
-			expect(clearSpy).toHaveBeenCalledWith('wf-1');
-		});
-	});
-
-	describe('clearWebhooks', () => {
-		test('throws when the workflow does not exist', async () => {
-			workflowRepository.findOne.mockResolvedValue(null);
-
-			await expect(service.clearWebhooks('wf-1')).rejects.toThrow('Could not find workflow');
-		});
-
-		test('throws when the workflow has no active version', async () => {
-			workflowRepository.findOne.mockResolvedValue(
-				mock<WorkflowEntity>({ activeVersion: undefined }),
-			);
-
-			await expect(service.clearWebhooks('wf-1')).rejects.toThrow(
-				'Active version not found for workflow',
-			);
-		});
-
-		test('deregisters webhooks and deletes the workflow webhook rows', async () => {
-			workflowRepository.findOne.mockResolvedValue({
-				id: 'wf-1',
-				name: 'My Workflow',
-				activeVersion: { nodes: [], connections: {} },
-			} as unknown as WorkflowEntity);
-			const deregisterSpy = jest.spyOn(service, 'deregisterWebhooks').mockResolvedValue([]);
-
-			await service.clearWebhooks('wf-1');
-
-			expect(deregisterSpy).toHaveBeenCalled();
-			expect(webhookService.deleteWorkflowWebhooks).toHaveBeenCalledWith('wf-1');
+			expect(deregisterSpy).toHaveBeenCalledWith(workflow, additionalData, new Set(['A-id']));
+			expect(webhookService.deleteWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', ['A']);
 		});
 	});
 

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Logger } from '@n8n/backend-common';
 import type { WebhookEntity } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type {
@@ -9,14 +8,12 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
-	WorkflowId,
 } from 'n8n-workflow';
-import { Workflow, WebhookPathTakenError, UnexpectedError } from 'n8n-workflow';
+import { Workflow, WebhookPathTakenError } from 'n8n-workflow';
+import assert from 'node:assert';
 
-import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 interface AddWebhooksOptions {
@@ -25,7 +22,7 @@ interface AddWebhooksOptions {
 	mode: WorkflowExecuteMode;
 	activation: WorkflowActivateMode;
 	/** Only the webhooks of these node ids are registered. */
-	nodeIds: Set<string>;
+	nodeIds: Set<INode['id']>;
 }
 
 /**
@@ -38,9 +35,7 @@ export class WebhookActivationService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
-		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
@@ -55,7 +50,12 @@ export class WebhookActivationService {
 			additionalData,
 			undefined,
 			true,
-		).filter((webhookData) => nodeIds.has(workflow.getNode(webhookData.node)?.id ?? ''));
+		).filter((webhookData) => {
+			const node = workflow.getNode(webhookData.node);
+			assert(node);
+
+			return nodeIds.has(node.id);
+		});
 
 		if (webhooks.length === 0) return false;
 
@@ -90,7 +90,8 @@ export class WebhookActivationService {
 				}
 
 				try {
-					await this.clearWebhooks(workflow.id);
+					const removedNodeNames = await this.deregisterWebhooks(workflow, additionalData, nodeIds);
+					await this.webhookService.deleteWorkflowWebhooksForNodes(workflow.id, removedNodeNames);
 				} catch (error1) {
 					this.errorReporter.error(error1);
 					this.logger.error(
@@ -144,50 +145,6 @@ export class WebhookActivationService {
 	}
 
 	/**
-	 * Remove all webhooks of a workflow from the database, and
-	 * deregister those webhooks from external services.
-	 */
-	async clearWebhooks(workflowId: WorkflowId) {
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			relations: { activeVersion: true },
-		});
-
-		if (workflowData === null) {
-			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
-		}
-
-		if (!workflowData.activeVersion) {
-			throw new UnexpectedError('Active version not found for workflow', {
-				extra: { workflowId },
-			});
-		}
-
-		const { nodes, connections } = workflowData.activeVersion;
-		const nodeIds = new Set(nodes.map((node) => node.id));
-
-		const workflow = new Workflow({
-			id: workflowId,
-			name: workflowData.name,
-			nodes,
-			connections,
-			active: true,
-			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
-		});
-
-		const additionalData = await WorkflowExecuteAdditionalData.getBase({
-			workflowId: workflow.id,
-			workflowSettings: workflowData.settings,
-		});
-
-		await this.deregisterWebhooks(workflow, additionalData, nodeIds);
-
-		await this.webhookService.deleteWorkflowWebhooks(workflowId);
-	}
-
-	/**
 	 * Deregisters the webhooks of the given nodes from external services and
 	 * persists any resulting static data. Returns the names of the nodes whose
 	 * webhooks were deregistered.
@@ -195,7 +152,7 @@ export class WebhookActivationService {
 	async deregisterWebhooks(
 		workflow: Workflow,
 		additionalData: IWorkflowExecuteAdditionalData,
-		nodeIds: Set<string>,
+		nodeIds: Set<INode['id']>,
 	) {
 		const removedNodeNames: string[] = [];
 
@@ -209,9 +166,13 @@ export class WebhookActivationService {
 			);
 
 			for (const webhookData of webhooks) {
-				if (!nodeIds.has(workflow.getNode(webhookData.node)?.id ?? '')) {
+				const node = workflow.getNode(webhookData.node);
+				assert(node);
+
+				if (!nodeIds.has(node.id)) {
 					continue;
 				}
+
 				await this.webhookService.deleteWebhook(workflow, webhookData, 'internal', 'update');
 				removedNodeNames.push(webhookData.node);
 			}
