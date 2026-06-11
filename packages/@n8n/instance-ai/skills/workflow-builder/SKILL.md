@@ -370,6 +370,11 @@ column names.
   (`expr()`). Full allowed/forbidden list:
   `knowledge-base/reference/workflow-sdk-language.md`.
 
+- Code nodes have NO network access at runtime: `fetch()`, `axios`,
+  `XMLHttpRequest`, and `require` of http modules all fail in the sandbox. Make
+  every HTTP/API call with the HTTP Request node and transform its output in a
+  Code node, even when the user asks to fetch inside a Code node.
+
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside

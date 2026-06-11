@@ -90,6 +90,11 @@ Code nodes run in a restricted runtime. Do not `require()` or `import`
 unavailable modules such as `luxon` or `openai`; use JavaScript `Date`, `Intl`,
 `$now`, `$today`, existing workflow data, or dedicated AI nodes.
 
+Code nodes have no network access. `fetch()`, `axios`, `XMLHttpRequest`, and
+`require` of http modules all fail at runtime, in JavaScript and Python alike.
+Make every HTTP/API call with the HTTP Request node and transform its output in
+the Code node, even when the user asks to fetch inside a Code node.
+
 Keep embedded Code node source parseable after saving. Avoid nested template
 literals, raw newlines inside quoted strings, and escape-heavy regex literals.
 Prefer arrays joined with a runtime separator such as

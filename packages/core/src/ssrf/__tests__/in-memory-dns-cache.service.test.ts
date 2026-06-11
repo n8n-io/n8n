@@ -123,4 +123,67 @@ describe('InMemoryDnsCache', () => {
 			expect(await cache.get('other.com')).toBeUndefined();
 		});
 	});
+
+	describe('size', () => {
+		it('should return 0 before the cache is initialised', () => {
+			const cache = new InMemoryDnsCache(createConfig());
+
+			expect(cache.size).toBe(0);
+		});
+
+		it('should reflect the number of entries after sets', async () => {
+			const cache = new InMemoryDnsCache(createConfig());
+
+			await cache.set('a.example.com', [addr('1.1.1.1')], 300);
+			await cache.set('b.example.com', [addr('2.2.2.2')], 300);
+
+			expect(cache.size).toBe(2);
+		});
+	});
+
+	describe('events', () => {
+		it('should emit hit when get returns a cached entry', async () => {
+			const cache = new InMemoryDnsCache(createConfig());
+			const hitSpy = vi.fn();
+			cache.events.on('hit', hitSpy);
+
+			await cache.set('example.com', [addr('1.1.1.1')], 300);
+			await cache.get('example.com');
+
+			expect(hitSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should emit miss when get returns undefined', async () => {
+			const cache = new InMemoryDnsCache(createConfig());
+			const missSpy = vi.fn();
+			cache.events.on('miss', missSpy);
+
+			await cache.get('unknown.example.com');
+
+			expect(missSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should emit eviction with post-eviction size when an entry is evicted due to LRU capacity pressure', async () => {
+			// Each entry (~37 bytes) — maxSize=40 fits only one entry
+			const cache = new InMemoryDnsCache(createConfig({ dnsCacheMaxSize: 40 }));
+			const evictionSpy = vi.fn();
+			cache.events.on('eviction', evictionSpy);
+
+			await cache.set('first.example.com', [addr('1.1.1.1')], 300);
+			await cache.set('second.example.com', [addr('2.2.2.2')], 300);
+
+			expect(evictionSpy).toHaveBeenCalledTimes(1);
+			expect(evictionSpy).toHaveBeenCalledWith({ size: 1 });
+		});
+
+		it('should not emit eviction when no entry is evicted', async () => {
+			const cache = new InMemoryDnsCache(createConfig());
+			const evictionSpy = vi.fn();
+			cache.events.on('eviction', evictionSpy);
+
+			await cache.set('example.com', [addr('1.1.1.1')], 300);
+
+			expect(evictionSpy).not.toHaveBeenCalled();
+		});
+	});
 });
