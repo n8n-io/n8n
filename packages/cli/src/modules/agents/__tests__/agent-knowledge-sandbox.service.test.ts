@@ -301,7 +301,25 @@ describe('AgentKnowledgeSandboxService', () => {
 		sandbox.process.executeCommand.mockResolvedValue({
 			exitCode: 0,
 			artifacts: {
-				stdout: './notes.txt\t1\tfirst\n./notes.txt\t2\tsecond\n',
+				stdout:
+					[
+						JSON.stringify({
+							type: 'match',
+							data: {
+								path: { text: './notes.txt' },
+								lines: { text: 'first\u0000line\n' },
+								line_number: 1,
+							},
+						}),
+						JSON.stringify({
+							type: 'match',
+							data: {
+								path: { text: './notes.txt' },
+								lines: { text: 'second\n' },
+								line_number: 2,
+							},
+						}),
+					].join('\n') + '\n',
 				stderr: '',
 			},
 		});
@@ -319,7 +337,7 @@ describe('AgentKnowledgeSandboxService', () => {
 					fileId: 'file-1',
 					displayName: 'notes.txt',
 					lineNumber: 1,
-					text: 'first',
+					text: 'first\u0000line',
 					textTruncated: false,
 				},
 			],
@@ -330,7 +348,7 @@ describe('AgentKnowledgeSandboxService', () => {
 
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
 			expect.stringContaining(
-				'timeout 20 rg --fixed-strings --line-number --with-filename --color=never --hidden --max-columns 501 --max-columns-preview --field-match-separator',
+				'timeout 20 rg --fixed-strings --json --line-number --with-filename --color=never --hidden --text',
 			),
 			undefined,
 			undefined,
@@ -339,9 +357,34 @@ describe('AgentKnowledgeSandboxService', () => {
 		const command = sandbox.process.executeCommand.mock.calls[0][0];
 		expect(command).toContain('bash -o pipefail -c');
 		expect(command).toContain('hello');
-		expect(command).toContain('| head -n 2');
+		expect(command).toContain('| awk ');
 		expect(command).not.toContain('--context');
-		expect(command).not.toContain('--json');
+		expect(command).not.toContain('--field-match-separator');
+	});
+
+	it('searchKnowledge marks capped JSON output as truncated', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: {
+				stdout: '__N8N_SEARCH_OUTPUT_TRUNCATED__\n',
+				stderr: '',
+			},
+		});
+		const service = makeService();
+
+		await expect(
+			service.searchKnowledge('project-1', 'agent-1', userId, {
+				query: 'hello',
+			}),
+		).resolves.toEqual({
+			matches: [],
+			limit: 20,
+			hasMore: false,
+			truncated: true,
+		});
 	});
 
 	it('globKnowledgeFiles runs a sandbox file-name glob and returns matching metadata', async () => {

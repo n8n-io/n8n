@@ -25,33 +25,56 @@ const broadExtensionGlobPattern = /^(?:\*\*\/)?\*\.[A-Za-z0-9][A-Za-z0-9.-]*$/;
 
 export const searchKnowledgeInputSchema = z
 	.object({
-		query: queryTermSchema,
+		query: queryTermSchema.describe(
+			'Exact text to search for in uploaded knowledge file contents. Use title words, unique phrases, headings, error messages, symbols, or route names. This is not semantic search; do not ask a broad question here.',
+		),
 		file: filePathSchema
 			.optional()
 			.describe(
-				'Optional uploaded knowledge file path to search within. Use only a file value returned by a knowledge tool; do not guess paths.',
+				'Optional. Omit for global search across all uploaded knowledge files. Only set this to an exact `file` value copied from a previous knowledge tool result. Never guess paths or use placeholders like /dev/null, none, x, :, unknown, or a paper title.',
 			),
 		fileId: fileIdSchema
 			.optional()
 			.describe(
-				'Optional uploaded knowledge file ID to search within. Use only a fileId returned by a knowledge tool; do not guess IDs.',
+				'Optional. Omit for global search across all uploaded knowledge files. Only set this to an exact `fileId` copied from a previous knowledge tool result. Never invent IDs or use placeholders like none, x, :, unknown, or a guessed filename.',
 			),
 		mode: searchModeSchema
 			.optional()
 			.describe(
-				'Search mode. Defaults to literal fixed-string search; use regex for exact content patterns.',
+				'Optional search mode. Defaults to literal fixed-string search, which is best for normal words, titles, and phrases. Use regex only for one deliberate exact pattern.',
 			),
-		limit: z.number().int().min(1).max(MAX_SEARCH_TEXT_LIMIT).optional(),
-		caseSensitive: z.boolean().optional(),
+		limit: z
+			.number()
+			.int()
+			.min(1)
+			.max(MAX_SEARCH_TEXT_LIMIT)
+			.optional()
+			.describe(
+				'Optional maximum number of matching lines to return. Use a small value such as 5-20, then narrow the query if results have hasMore or truncated.',
+			),
+		caseSensitive: z
+			.boolean()
+			.optional()
+			.describe(
+				'Optional. Defaults to false for case-insensitive search. Set true only when capitalization is part of the exact evidence you need.',
+			),
 	})
 	.strict();
 
 export const globKnowledgeFilesInputSchema = z
 	.object({
 		pattern: globPatternSchema.describe(
-			'Glob pattern matched against uploaded knowledge file names on the sandbox filesystem, e.g. *knowledge*, *agent*tool*, or *sandbox*.',
+			'Specific filename glob matched against uploaded knowledge file names, not file contents. Use when the user gives title or filename clues, e.g. *query*configuration* or *semantic*competition*. Do not use catch-all, extension-only, absolute, or placeholder patterns.',
 		),
-		limit: z.number().int().min(1).max(MAX_GLOB_FILES_LIMIT).optional(),
+		limit: z
+			.number()
+			.int()
+			.min(1)
+			.max(MAX_GLOB_FILES_LIMIT)
+			.optional()
+			.describe(
+				'Optional maximum number of candidate files to return. Use a small value such as 5-20 and make the pattern more specific if hasMore is true.',
+			),
 	})
 	.strict()
 	.superRefine((input, ctx) => {
@@ -82,21 +105,40 @@ export const readKnowledgeInputSchema = z
 	.object({
 		file: filePathSchema
 			.optional()
-			.describe('Uploaded knowledge file path returned by a knowledge tool; do not guess paths.'),
+			.describe(
+				'Uploaded knowledge file path to read. Use only an exact `file` value copied from a previous knowledge tool result. Required unless `fileId` is provided; never guess paths or use placeholders.',
+			),
 		fileId: fileIdSchema
 			.optional()
-			.describe('Uploaded knowledge file ID returned by a knowledge tool; do not guess IDs.'),
+			.describe(
+				'Uploaded knowledge file ID to read. Use only an exact `fileId` copied from a previous knowledge tool result. Required unless `file` is provided; never invent IDs or use placeholders.',
+			),
 		ranges: z
 			.array(
 				z
 					.object({
-						startLine: z.number().int().min(1),
-						endLine: z.number().int().min(1),
+						startLine: z
+							.number()
+							.int()
+							.min(1)
+							.describe(
+								'First 1-based line number to read, usually near a search_knowledge match. Keep ranges narrow enough for citation-ready evidence.',
+							),
+						endLine: z
+							.number()
+							.int()
+							.min(1)
+							.describe(
+								'Last 1-based line number to read. Must be greater than or equal to startLine. Prefer short ranges around the evidence.',
+							),
 					})
 					.strict(),
 			)
 			.min(1)
-			.optional(),
+			.optional()
+			.describe(
+				'Optional line ranges to read from the selected file. Prefer bounded ranges from search_knowledge matches; omit only when full-file context is genuinely needed.',
+			),
 	})
 	.strict()
 	.superRefine((input, ctx) => {

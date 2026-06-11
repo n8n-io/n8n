@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 import {
 	DEFAULT_GLOB_FILES_LIMIT,
 	DEFAULT_SEARCH_TEXT_LIMIT,
@@ -15,25 +17,27 @@ import {
 import { KNOWLEDGE_FILES_DIR } from './agent-knowledge-storage';
 
 const COMMAND_TIMEOUT_SECONDS = 20;
+const SEARCH_OUTPUT_TRUNCATED_MARKER = '__N8N_SEARCH_OUTPUT_TRUNCATED__';
 const READ_OUTPUT_TRUNCATED_MARKER = '__N8N_READ_OUTPUT_TRUNCATED__';
 
 export function buildSearchKnowledgeCommand(request: SearchKnowledgeRequest): string {
 	const matchLimit = (request.limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
+	const outputLimit = Math.max(
+		MAX_OPERATION_OUTPUT_CHARS,
+		matchLimit * (MAX_SEARCH_LINE_CHARS + 1_500),
+	);
 	const target = request.file ? `./${request.file}` : '.';
 	const rgCommand = [
 		'timeout',
 		String(COMMAND_TIMEOUT_SECONDS),
 		'rg',
 		...(request.mode === 'regex' ? [] : ['--fixed-strings']),
+		'--json',
 		'--line-number',
 		'--with-filename',
 		'--color=never',
 		'--hidden',
-		'--max-columns',
-		String(MAX_SEARCH_LINE_CHARS + 1),
-		'--max-columns-preview',
-		'--field-match-separator',
-		quoteShellArg('\t'),
+		'--text',
 		...(request.caseSensitive === true ? [] : ['--ignore-case']),
 		'-e',
 		quoteShellArg(request.query),
@@ -41,7 +45,7 @@ export function buildSearchKnowledgeCommand(request: SearchKnowledgeRequest): st
 		quoteShellArg(target),
 	];
 
-	return buildHeadLimitedPipeline(rgCommand.join(' '), matchLimit);
+	return buildJsonMatchLimitedPipeline(rgCommand.join(' '), matchLimit, outputLimit);
 }
 
 export function buildGlobKnowledgeFilesCommand(request: GlobKnowledgeFilesRequest): string {
@@ -90,12 +94,17 @@ export function parseRipgrepOutput(
 
 	for (const line of output.split(/\r?\n/)) {
 		if (!line) continue;
+		if (line === SEARCH_OUTPUT_TRUNCATED_MARKER) {
+			incomplete = true;
+			break;
+		}
 
-		const parsedLine = parseRipgrepMatchLine(line);
-		if (!parsedLine) {
+		const parsedLine = parseRipgrepJsonMatchLine(line);
+		if (parsedLine === undefined) {
 			incomplete = true;
 			continue;
 		}
+		if (parsedLine === null) continue;
 
 		const file = filesByPath.get(normalizeRipgrepPath(parsedLine.filePath));
 		if (!file) {
@@ -190,45 +199,44 @@ export function parseReadKnowledgeOutput(
 	return { ranges, truncated: truncatedOutput };
 }
 
-function parseRipgrepMatchLine(
+function parseRipgrepJsonMatchLine(
 	line: string,
-): { filePath: string; lineNumber: number; text: string } | undefined {
-	const tabParts = line.split('\t');
-	if (tabParts.length >= 3) {
-		const [filePath, lineNumberText, ...textParts] = tabParts;
-		const lineNumber = Number(lineNumberText);
-		if (Number.isInteger(lineNumber)) {
-			return { filePath, lineNumber, text: textParts.join('\t') };
-		}
+): { filePath: string; lineNumber: number; text: string } | null | undefined {
+	let event: unknown;
+	try {
+		event = JSON.parse(line);
+	} catch {
+		return undefined;
 	}
 
-	const firstMatchSeparator = line.indexOf('\t');
-	if (firstMatchSeparator === -1) {
-		return parseColonSeparatedRipgrepMatchLine(line);
+	if (!isRecord(event)) return undefined;
+	if (event.type !== 'match') return null;
+	if (!isRecord(event.data)) return undefined;
+
+	const filePath = decodeRipgrepJsonData(event.data.path);
+	const text = decodeRipgrepJsonData(event.data.lines);
+	const lineNumber = event.data.line_number;
+	if (
+		filePath === undefined ||
+		text === undefined ||
+		typeof lineNumber !== 'number' ||
+		!Number.isInteger(lineNumber)
+	) {
+		return undefined;
 	}
-
-	const location = line.slice(0, firstMatchSeparator);
-	const text = line.slice(firstMatchSeparator + 1);
-	const lineSeparator = location.lastIndexOf(':');
-	if (lineSeparator === -1) return undefined;
-
-	const lineNumber = Number(location.slice(lineSeparator + 1));
-	if (!Number.isInteger(lineNumber)) return undefined;
-
-	return { filePath: location.slice(0, lineSeparator), lineNumber, text };
-}
-
-function parseColonSeparatedRipgrepMatchLine(
-	line: string,
-): { filePath: string; lineNumber: number; text: string } | undefined {
-	const match = /^(.*):(\d+):(.*)$/.exec(line);
-	if (!match) return undefined;
-
-	const [, filePath, lineNumberText, text] = match;
-	const lineNumber = Number(lineNumberText);
-	if (!Number.isInteger(lineNumber)) return undefined;
 
 	return { filePath, lineNumber, text };
+}
+
+function decodeRipgrepJsonData(value: unknown): string | undefined {
+	if (!isRecord(value)) return undefined;
+	if (typeof value.text === 'string') return value.text;
+	if (typeof value.bytes === 'string') return Buffer.from(value.bytes, 'base64').toString('utf8');
+	return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
 }
 
 function normalizeRipgrepPath(filePath: string): string {
@@ -256,6 +264,33 @@ function buildHeadLimitedPipeline(command: string, lineLimit: number): string {
 		// treating that expected SIGPIPE as a successful bounded result.
 		'set +o pipefail',
 		`${command} | head -n ${lineLimit}`,
+		'command_status="$' + '{PIPESTATUS[0]}"',
+		'if [ "$command_status" = 141 ]; then command_status=0; fi',
+		'exit "$command_status"',
+	].join('; ');
+}
+
+function buildJsonMatchLimitedPipeline(
+	command: string,
+	matchLimit: number,
+	outputLimit: number,
+): string {
+	const script = [
+		'BEGIN { matches = 0; total = 0 }',
+		'function emit(line) {',
+		`line_length = length(line) + 1; if (total + line_length > ${outputLimit}) { print "${SEARCH_OUTPUT_TRUNCATED_MARKER}"; exit 0; }`,
+		'print line; total += line_length;',
+		'}',
+		'{ emit($0) }',
+		`/"type":"match"/ { matches += 1; if (matches >= ${matchLimit}) exit 0 }`,
+	].join(' ');
+
+	return [
+		// The outer shell uses pipefail, but awk intentionally closes the pipe
+		// once the extra match is captured. Preserve real rg errors while
+		// treating that expected SIGPIPE as a successful bounded result.
+		'set +o pipefail',
+		`${command} | awk ${quoteShellArg(script)}`,
 		'command_status="$' + '{PIPESTATUS[0]}"',
 		'if [ "$command_status" = 141 ]; then command_status=0; fi',
 		'exit "$command_status"',
