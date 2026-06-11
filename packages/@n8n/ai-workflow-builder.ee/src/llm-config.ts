@@ -263,3 +263,87 @@ export const AVAILABLE_MODELS: readonly ModelId[] = [
  * Default model used when no model is specified.
  */
 export const DEFAULT_MODEL: ModelId = 'claude-sonnet-4.5';
+
+// ============================================================================
+// Provider-agnostic builder model
+// ============================================================================
+
+/**
+ * Providers the workflow builder can run on when the user supplies their own key
+ * (in-app). Anthropic is native; OpenAI and Google (Gemini) reuse the OpenAI
+ * client — Gemini via its OpenAI-compatible endpoint.
+ */
+export type BuilderProvider = 'anthropic' | 'openai' | 'google';
+
+export interface BuilderModelConfig {
+	provider: BuilderProvider;
+	apiKey: string;
+	/** Optional model name; a sensible per-provider default is used otherwise. */
+	model?: string;
+	/** Optional custom base URL (e.g. an OpenAI-compatible gateway or Azure). */
+	baseUrl?: string;
+	headers?: Record<string, string>;
+}
+
+/** Gemini exposes an OpenAI-compatible API, so we reuse ChatOpenAI for it. */
+const GOOGLE_OPENAI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/';
+
+const DEFAULT_BUILDER_MODELS: Record<BuilderProvider, string> = {
+	anthropic: 'claude-sonnet-4-5-20250929',
+	openai: 'gpt-5.2-2025-12-11',
+	google: 'gemini-2.5-pro',
+};
+
+/**
+ * Build the chat model the workflow builder runs on for a user-selected provider.
+ *
+ * Note on prompt caching: the shared prompts embed Anthropic `cache_control`
+ * markers in message content blocks. The OpenAI message converter only reads the
+ * block's `text` and drops unknown keys, so those markers are harmlessly ignored
+ * for OpenAI and Gemini — the same prompts work across all three providers.
+ */
+export async function createBuilderModel(config: BuilderModelConfig): Promise<BaseChatModel> {
+	const model = config.model ?? DEFAULT_BUILDER_MODELS[config.provider];
+
+	if (config.provider === 'anthropic') {
+		const { ChatAnthropic } = await import('@langchain/anthropic');
+		const chat = new ChatAnthropic({
+			model,
+			apiKey: config.apiKey,
+			temperature: 0,
+			maxTokens: MAX_OUTPUT_TOKENS,
+			anthropicApiUrl: config.baseUrl,
+			clientOptions: {
+				defaultHeaders: {
+					...config.headers,
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					'anthropic-beta': 'prompt-caching-2024-07-31',
+				},
+				fetchOptions: {
+					dispatcher: getProxyAgent(config.baseUrl),
+				},
+			},
+		});
+		// Anthropic models reject temperature and topP being set together.
+		delete chat.topP;
+		return chat;
+	}
+
+	const { ChatOpenAI } = await import('@langchain/openai');
+	const baseURL =
+		config.baseUrl ?? (config.provider === 'google' ? GOOGLE_OPENAI_BASE_URL : undefined);
+
+	return new ChatOpenAI({
+		model,
+		apiKey: config.apiKey,
+		temperature: 0,
+		maxTokens: -1,
+		configuration: {
+			baseURL,
+			defaultHeaders: config.headers,
+			fetchOptions: {
+				dispatcher: getProxyAgent(baseURL ?? 'https://api.openai.com/v1'),
+			},
+		},
+	});
+}

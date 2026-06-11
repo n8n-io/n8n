@@ -1,4 +1,5 @@
 import { ChatAnthropic } from '@langchain/anthropic';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
@@ -13,7 +14,7 @@ import { z } from 'zod';
 
 import { AssistantHandler } from '@/assistant';
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45 } from '@/llm-config';
+import { anthropicClaudeSonnet45, createBuilderModel, type BuilderModelConfig } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { SsrfGuard } from '@/tools/utils/ssrf-guard';
 import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
@@ -102,13 +103,21 @@ export class AiWorkflowBuilderService {
 	private async setupModels(
 		user: IUser,
 		userMessageId: string,
+		modelOverride?: BuilderModelConfig,
 	): Promise<{
-		anthropicClaude: ChatAnthropic;
+		model: BaseChatModel;
 		tracingClient?: TracingClient;
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		authHeaders?: { Authorization: string };
 	}> {
 		try {
+			// User-selected provider + key (entered in-app) takes precedence over the
+			// proxy/env Anthropic path. Lets the builder run on OpenAI / Gemini / Anthropic.
+			if (modelOverride) {
+				const model = await createBuilderModel(modelOverride);
+				return { model };
+			}
+
 			// If client is provided, use it for API proxy
 			if (this.client) {
 				const authHeaders = await this.getApiProxyAuthHeaders(user, userMessageId);
@@ -135,14 +144,14 @@ export class AiWorkflowBuilderService {
 					},
 				});
 
-				return { tracingClient, anthropicClaude, authHeaders };
+				return { tracingClient, model: anthropicClaude, authHeaders };
 			}
 
 			// If base URL is not set, use environment variables
 			const envConfig = { apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '' };
 			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel(envConfig);
 
-			return { anthropicClaude };
+			return { model: anthropicClaude };
 		} catch (error) {
 			const errorMessage = error instanceof Error ? `: ${error.message}` : '';
 			const llmError = new LLMServiceError(`Failed to connect to LLM Provider${errorMessage}`, {
@@ -193,10 +202,16 @@ export class AiWorkflowBuilderService {
 		});
 	}
 
-	private async getAgent(user: IUser, userMessageId: string, featureFlags?: BuilderFeatureFlags) {
-		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
+	private async getAgent(
+		user: IUser,
+		userMessageId: string,
+		featureFlags?: BuilderFeatureFlags,
+		modelOverride?: BuilderModelConfig,
+	) {
+		const { model, tracingClient, authHeaders } = await this.setupModels(
 			user,
 			userMessageId,
+			modelOverride,
 		);
 
 		// Create resource locator callback scoped to this user if factory is provided
@@ -210,12 +225,12 @@ export class AiWorkflowBuilderService {
 			parsedNodeTypes: this.nodeTypes,
 			// Use the same model for all stages
 			stageLLMs: {
-				supervisor: anthropicClaude,
-				responder: anthropicClaude,
-				discovery: anthropicClaude,
-				builder: anthropicClaude,
-				parameterUpdater: anthropicClaude,
-				planner: anthropicClaude,
+				supervisor: model,
+				responder: model,
+				discovery: model,
+				builder: model,
+				parameterUpdater: model,
+				planner: model,
 			},
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),
@@ -264,8 +279,13 @@ export class AiWorkflowBuilderService {
 		}
 	}
 
-	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
-		const { agent } = await this.getAgent(user, payload.id, payload.featureFlags);
+	async *chat(
+		payload: ChatPayload,
+		user: IUser,
+		abortSignal?: AbortSignal,
+		modelOverride?: BuilderModelConfig,
+	) {
+		const { agent } = await this.getAgent(user, payload.id, payload.featureFlags, modelOverride);
 		const userId = user?.id?.toString();
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);

@@ -126,6 +126,9 @@ describe('WorkflowBuilderService', () => {
 			mockSessionRepository,
 			mockSsrfProtectionConfig,
 			mockSsrfProtectionService,
+			mock(),
+			mock(),
+			mock(),
 		);
 	});
 
@@ -271,6 +274,7 @@ describe('WorkflowBuilderService', () => {
 				mockPayload,
 				mockUser,
 				abortController.signal,
+				undefined,
 			);
 		});
 	});
@@ -853,6 +857,9 @@ describe('WorkflowBuilderService - node type loading', () => {
 			mock(),
 			mock<SsrfProtectionConfig>(),
 			mock<SsrfProtectionService>(),
+			mock(),
+			mock(),
+			mock(),
 		);
 
 		const mockUser = mock<IUser>();
