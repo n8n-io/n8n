@@ -38,6 +38,7 @@ const i18n = useI18n();
 const searchTerm = ref('');
 const expandedGroups = ref(new Set<string>());
 const treeExpanded = ref(true);
+const userPickedCustom = ref(false);
 
 const mode = ref<ApiKeyScopeSelectionMode>(
 	inferSelectionMode(props.modelValue, props.availableScopes),
@@ -50,29 +51,33 @@ watch(
 	() => [props.modelValue, props.availableScopes],
 	() => {
 		const inferred = inferSelectionMode(props.modelValue, props.availableScopes);
-		if (mode.value === 'custom' && inferred !== 'custom') return;
+		if (userPickedCustom.value && inferred !== 'custom') return;
 		mode.value = inferred;
 	},
 );
+
+const isSearching = computed(() => searchTerm.value.trim() !== '');
 
 const selectedSet = computed(() => new Set(props.modelValue));
 
 const groups = computed(() => groupScopes(props.availableScopes));
 
-const filteredGroups = computed(() => {
-	const term = searchTerm.value.trim().toLowerCase();
+const filteredGroups = computed<Array<{ group: ApiKeyScopeGroup; visibleScopes: ApiKeyScope[] }>>(
+	() => {
+		const term = searchTerm.value.trim().toLowerCase();
 
-	if (!term) {
-		return groups.value;
-	}
+		if (!term) {
+			return groups.value.map((group) => ({ group, visibleScopes: group.scopes }));
+		}
 
-	return groups.value
-		.map((group) => ({
-			...group,
-			scopes: group.scopes.filter((scope) => scope.toLowerCase().includes(term)),
-		}))
-		.filter((group) => group.scopes.length > 0);
-});
+		return groups.value
+			.map((group) => ({
+				group,
+				visibleScopes: group.scopes.filter((scope) => scope.toLowerCase().includes(term)),
+			}))
+			.filter((entry) => entry.visibleScopes.length > 0);
+	},
+);
 
 function getGroupLabel(group: ApiKeyScopeGroup): string {
 	if (group.isFallback) {
@@ -92,6 +97,8 @@ function emitScopes(scopes: ApiKeyScope[]) {
 }
 
 function onModeChange(newMode: string | number | boolean | undefined) {
+	userPickedCustom.value = newMode === 'custom';
+
 	if (newMode === 'all') {
 		emitScopes([...props.availableScopes]);
 	} else if (newMode === 'readOnly') {
@@ -100,7 +107,7 @@ function onModeChange(newMode: string | number | boolean | undefined) {
 }
 
 function isGroupExpanded(group: ApiKeyScopeGroup): boolean {
-	return searchTerm.value.trim() !== '' || expandedGroups.value.has(group.key);
+	return isSearching.value || expandedGroups.value.has(group.key);
 }
 
 function toggleGroupExpanded(group: ApiKeyScopeGroup) {
@@ -199,9 +206,10 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 				</N8nInput>
 
 				<div :class="$style.groups">
-					<div v-for="group in filteredGroups" :key="group.key">
+					<div v-for="{ group, visibleScopes } in filteredGroups" :key="group.key">
 						<div :class="$style.groupHeader">
 							<N8nIconButton
+								v-if="!isSearching"
 								:icon="isGroupExpanded(group) ? 'chevron-down' : 'chevron-right'"
 								variant="ghost"
 								size="small"
@@ -218,7 +226,7 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 							/>
 						</div>
 						<div v-if="isGroupExpanded(group)" :class="$style.scopeList">
-							<div v-for="scope in group.scopes" :key="scope" :class="$style.scopeRow">
+							<div v-for="scope in visibleScopes" :key="scope" :class="$style.scopeRow">
 								<N8nCheckbox
 									:model-value="selectedSet.has(scope)"
 									:label="scope"

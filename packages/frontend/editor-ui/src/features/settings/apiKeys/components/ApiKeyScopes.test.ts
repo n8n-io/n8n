@@ -177,20 +177,70 @@ describe('ApiKeyScopes', () => {
 		expect(getByTestId('scopes-count')).toBeInTheDocument();
 	});
 
-	it('keeps Custom selected when a parent-driven selection happens to match Read only', async () => {
+	it('keeps Custom selected when the user explicitly picks it even if selection matches Read only', async () => {
+		// Start in "All" so clicking Custom is a real transition that fires
+		// ElRadioGroup's @change handler (and not a re-click no-op).
 		const { getByTestId, rerender } = renderComponent({
-			props: { modelValue: ['workflow:read'] as ApiKeyScope[], availableScopes },
+			props: { modelValue: availableScopes, availableScopes },
 		});
 
 		await userEvent.click(getRadioInput(getByTestId('scopes-mode-custom')));
 		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
 
 		// Parent pushes a selection that happens to equal the read-only set.
-		// The radio must NOT silently flip away from Custom.
+		// The radio must NOT silently flip away from Custom because the user
+		// explicitly picked it.
 		await rerender({ modelValue: readOnlyScopes, availableScopes });
 
 		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
 		expect(getRadioInput(getByTestId('scopes-mode-read-only'))).not.toBeChecked();
+	});
+
+	it('recovers from an initial Custom inference once props hydrate to match All', async () => {
+		// Modal mounts with empty arrays (store still loading). Both modelValue
+		// and availableScopes are []; inferSelectionMode returns 'custom'.
+		const { getByTestId, rerender } = renderComponent({
+			props: { modelValue: [] as ApiKeyScope[], availableScopes: [] as ApiKeyScope[] },
+		});
+
+		expect(getRadioInput(getByTestId('scopes-mode-custom'))).toBeChecked();
+
+		// Store hydrates: parent fills availableScopes and pre-selects everything.
+		// User never picked Custom, so the radio must flip to All.
+		await rerender({ modelValue: availableScopes, availableScopes });
+
+		expect(getRadioInput(getByTestId('scopes-mode-all'))).toBeChecked();
+		expect(getRadioInput(getByTestId('scopes-mode-custom'))).not.toBeChecked();
+	});
+
+	it('toggling a group while searching only affects scopes in that group, not the visible subset', async () => {
+		// Workflow group has 4 scopes total; search narrows to 2 of them.
+		const { getByTestId, emitted } = renderComponent({
+			props: { modelValue: [] as ApiKeyScope[], availableScopes },
+		});
+
+		await userEvent.type(getByTestId('scopes-search'), 'workflow:re');
+
+		// Group label is the original group, indeterminate state and toggling
+		// must operate on the full group (4 scopes), not just the 2 visible.
+		await userEvent.click(getByTestId('scope-group-workflowsAndExecutions'));
+
+		// All 4 workflow-group scopes are selected, not just the visible 2.
+		expect(emitted('update:modelValue').at(-1)).toEqual([
+			['workflow:create', 'workflow:read', 'workflow:list', 'execution:read'],
+		]);
+	});
+
+	it('hides per-group chevrons while searching to avoid silent expand-state mutations', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { modelValue: [] as ApiKeyScope[], availableScopes },
+		});
+
+		expect(getByTestId('scope-group-toggle-workflowsAndExecutions')).toBeInTheDocument();
+
+		await userEvent.type(getByTestId('scopes-search'), 'user');
+
+		expect(queryByTestId('scope-group-toggle-members')).not.toBeInTheDocument();
 	});
 
 	it('moves the radio to Custom when selection drifts away from a preset', async () => {

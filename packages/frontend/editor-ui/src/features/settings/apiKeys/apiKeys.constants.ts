@@ -1,6 +1,10 @@
+import type { API_KEY_RESOURCES } from '@n8n/permissions';
+
 export const API_KEY_CREATE_OR_EDIT_MODAL_KEY = 'createOrEditApiKey';
 
-export const API_KEY_SCOPE_GROUPS: Array<{ key: string; resources: string[] }> = [
+type ApiKeyResource = keyof typeof API_KEY_RESOURCES;
+
+export const API_KEY_SCOPE_GROUPS: Array<{ key: string; resources: ApiKeyResource[] }> = [
 	{
 		key: 'workflowsAndExecutions',
 		resources: ['workflow', 'execution', 'workflowTags', 'executionTags'],
