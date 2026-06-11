@@ -28,6 +28,7 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist/**/*",
+    "knowledge-base/**/*",
     "skills/**/*"
   ],
   "exports": {
