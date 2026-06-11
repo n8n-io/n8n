@@ -928,7 +928,7 @@ function renderDocument(
 <title>Pairwise Eval Comparison — ${escapeHtml(labels.ee)} vs ${escapeHtml(labels.ia)}</title>
 <script defer src="https://cdn.jsdelivr.net/npm/@webcomponents/webcomponentsjs@2.0.0/webcomponents-loader.js"></script>
 <script defer src="https://www.unpkg.com/lit@2.0.0-rc.2/polyfill-support.js"></script>
-<script type="module" src="https://cdn.jsdelivr.net/npm/@n8n_io/n8n-demo-component/n8n-demo.bundled.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@n8n_io/n8n-demo-component@1.0.20/n8n-demo.bundled.js"></script>
 <style>
   :root {
     font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
