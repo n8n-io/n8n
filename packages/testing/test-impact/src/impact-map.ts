@@ -278,6 +278,10 @@ export interface ResolveResult {
 	/** Unmapped files resolved to their nearest covered ancestor directory's specs
 	 *  (sibling fallback). Scoped, not broad. */
 	viaSibling?: string[];
+	/** Changed files with no covering spec, under `onUncovered: 'declare'`: the
+	 *  change has no E2E that verifies it. NOT run (running unrelated specs would
+	 *  be theater) — surfaced as a coverage gap; unit + the sanity spec are the net. */
+	uncovered?: string[];
 	mode: 'scoped' | 'broad';
 }
 
@@ -333,20 +337,35 @@ function buildDirIndex(map: ImpactMap): Map<string, Set<string>> {
  * specs). Only a file with NO covered ancestor at all still forces broad.
  * Deliberate trade: a new file is assumed exercised by the specs that exercise
  * its directory — a sound superset in practice, far cheaper than the whole suite.
+ *
+ * UNCOVERED (`opts.onUncovered`): what to do with a file that has no direct map
+ * entry (and no sibling ancestor). `'broad'` (default) forces the whole suite —
+ * the original fail-open. `'declare'` instead records it in `uncovered` and
+ * selects nothing for it: if no spec exercises the change, running unrelated
+ * specs verifies nothing (theater) and only slows the loop. The change is still
+ * covered by its unit tests + the always-on sanity spec; the gap is surfaced.
+ * Reserve `'broad'` for genuine fail-open (an unusable map) — the caller decides.
  */
 export function resolveImpact(
 	changed: ChangedFile[],
 	map: ImpactMap,
-	opts: { allSpecs?: string[]; siblingFallback?: boolean } = {},
+	opts: { allSpecs?: string[]; siblingFallback?: boolean; onUncovered?: 'broad' | 'declare' } = {},
 ): ResolveResult {
 	const specs = new Set<string>();
 	const unmapped: string[] = [];
 	const viaSibling: string[] = [];
-	const dirIndex = opts.siblingFallback ? buildDirIndex(map) : undefined;
+	const uncovered: string[] = [];
+	const declare = opts.onUncovered === 'declare';
+	const dirIndex = opts.siblingFallback && !declare ? buildDirIndex(map) : undefined;
 
 	for (const { file, lines } of changed) {
 		const fileMap = map[file];
 		if (!fileMap) {
+			if (declare) {
+				// No spec covers this change → don't run theater; surface the gap.
+				uncovered.push(file);
+				continue;
+			}
 			if (dirIndex) {
 				let resolved: Set<string> | undefined;
 				for (let dir = parentDir(file); dir !== '' && !resolved; dir = parentDir(dir)) {
@@ -396,6 +415,7 @@ export function resolveImpact(
 		specs: [...specs].sort(),
 		unmapped,
 		...(viaSibling.length ? { viaSibling } : {}),
+		...(uncovered.length ? { uncovered } : {}),
 		mode,
 	};
 }
