@@ -1,0 +1,103 @@
+packages/cli/src/modules/instance-ai/__tests__/output-redaction-config.test.ts
+  s_ffd4ed59d15b86::t_977e6faebe5d74 10,20,24,31,33,35,47-59
+  s_ffd4ed59d15b86::t_d250533a246748 30
+  s_ffd4ed59d15b86::t_797122a7dbdb51 1-8,11-19,21-22,25-28,36-37,44-46,60-61
+  s_ffd4ed59d15b86::t_303574ff054b46 38-39,42-43
+  s_ffd4ed59d15b86::t_83a2737d13af24 9,23,32,40-41
+packages/@n8n/instance-ai/src/stream/__tests__/output-redaction.test.ts
+  s_ffd4ed59d15b86::t_046ac14a8c2c05 102
+  s_ffd4ed59d15b86::t_40260199e79167 1,11-18
+  s_ffd4ed59d15b86::t_446a8b8f4511f4 42-43,51-58
+  s_ffd4ed59d15b86::t_18032401f1c559 130-156
+packages/@n8n/instance-ai/src/types.ts
+  s_ffd4ed59d15b86::t_48b46d720b2d0d 7
+  s_ffd4ed59d15b86::t_6864bb037baf63 1216-1217
+packages/@n8n/agents/src/sdk/guardrails/streaming-redactor.ts
+  s_ffd4ed59d15b86::t_8027d0505663c8 2
+  s_ffd4ed59d15b86::t_9d2ecc78f91c82 61-67
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_ffd4ed59d15b86::t_8a2831f64d1de5 3098
+  s_ffd4ed59d15b86::t_6b3b2346945dda 101
+  s_ffd4ed59d15b86::t_f830b88b813c71 4231
+  s_ffd4ed59d15b86::t_30be94e74d17e3 5237
+packages/@n8n/instance-ai/docs/configuration.md
+  s_ffd4ed59d15b86::t_b88d8583799b6a 94-104,106-109,113
+  s_ffd4ed59d15b86::t_ea3ca02f37dcc6 205-206
+  s_ffd4ed59d15b86::t_9bb3856451d817 110-112
+  s_ffd4ed59d15b86::t_148590cac44622 105
+  s_ffd4ed59d15b86::t_3d1bc033f93f1b 203-204
+  h_2f80f0e06f710c 207
+packages/@n8n/agents/src/sdk/guardrails/index.ts
+  s_ffd4ed59d15b86::t_40872c3b741c71 9
+packages/@n8n/instance-ai/src/tools/orchestration/delegate.tool.ts
+  s_ffd4ed59d15b86::t_7b7fd693fa8bb9 357
+packages/@n8n/agents/src/sdk/__tests__/guardrails.test.ts
+  s_ffd4ed59d15b86::t_3c917ff24f783a 78,88,92
+  s_ffd4ed59d15b86::t_40f4413fd891fd 77
+  s_ffd4ed59d15b86::t_1fb9fbd5e50956 131-140
+  s_ffd4ed59d15b86::t_f75c8572882db8 43-47
+packages/cli/src/modules/instance-ai/output-redaction-config.ts
+  s_ffd4ed59d15b86::t_14185d9030d3c0 1-3,5,19
+  s_ffd4ed59d15b86::t_a46bf2e99e6894 6-18,20-21,29
+  s_ffd4ed59d15b86::t_f21d53254ddd1d 22-28
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_ffd4ed59d15b86::t_4c241a96dde6d1 201
+  s_ffd4ed59d15b86::t_cef006e9db76b3 34-35
+  s_ffd4ed59d15b86::t_046c096f4b20ca 1
+packages/@n8n/instance-ai/src/runtime/stream-runner.ts
+  s_ffd4ed59d15b86::t_55733a4d1e5642 1
+  s_ffd4ed59d15b86::t_aa2ba888fc6597 28-29
+  s_ffd4ed59d15b86::t_cce40784abd2a2 81
+packages/@n8n/agents/src/index.ts
+  s_ffd4ed59d15b86::t_91d2bb770dd98c 115
+  s_ffd4ed59d15b86::t_9514d0f3652c0e 8
+packages/@n8n/agents/src/sdk/guardrails/redactor.ts
+  s_ffd4ed59d15b86::t_59e86c290648f2 62-91
+packages/@n8n/agents/src/types/sdk/guardrail.ts
+  s_ffd4ed59d15b86::t_765dae06f55049 3
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_ffd4ed59d15b86::t_1b27d3a1f9a8f3 114-122,124
+  s_ffd4ed59d15b86::t_2b2252cc142fef 123,125
+  s_ffd4ed59d15b86::t_2e1e02e0a521f2 126-129
+packages/@n8n/instance-ai/src/stream/consume-with-hitl.ts
+  s_ffd4ed59d15b86::t_5115298e2d5d99 129-130
+  s_ffd4ed59d15b86::t_ac7946373ed5c5 95
+  s_ffd4ed59d15b86::t_16d54ae5428369 1
+  s_ffd4ed59d15b86::t_72f7627ae5b4e6 37-38
+  s_ffd4ed59d15b86::t_39645b9354966e 177
+packages/@n8n/agents/src/sdk/guardrails/patterns.ts
+  s_ffd4ed59d15b86::t_5e79dbd4182938 74-75,78
+  s_ffd4ed59d15b86::t_9b034293a9e781 76
+  s_ffd4ed59d15b86::t_f26ebe7d646ce9 87-96
+  s_ffd4ed59d15b86::t_3ba742fb50f98d 77
+packages/@n8n/instance-ai/src/tools/orchestration/eval-setup-agent.tool.ts
+  s_ffd4ed59d15b86::t_141034fbaa9831 190
+packages/@n8n/instance-ai/src/stream/output-redaction.ts
+  s_ffd4ed59d15b86::t_61bfff662c8472 61-62,72,84,98
+  s_ffd4ed59d15b86::t_3e8f7141a607ee 14-15,22
+  s_ffd4ed59d15b86::t_12cd07fa8c99b0 16-18
+  s_ffd4ed59d15b86::t_2ba8aec5ece209 30-34
+  s_ffd4ed59d15b86::t_b61908630c4063 74-77
+  s_ffd4ed59d15b86::t_cc5f24b81be5d5 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "01374e5dd018e0ee656c6c1a7dea3b43ede08aa9",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ffd4ed59d15b86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c215eb8-b991-4482-bce5-c59a224c6d2d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

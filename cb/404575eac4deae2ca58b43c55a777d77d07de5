@@ -1,0 +1,60 @@
+packages/@n8n/instance-ai/src/stream/__tests__/output-redaction.test.ts
+  s_ffd4ed59d15b86::t_ca1e2518b28bec 19
+  s_ffd4ed59d15b86::t_67001930b5669a 86,88
+  s_ffd4ed59d15b86::t_d0cae3fff72567 1-17,20-25,28-36,41-46,48,65-74,76-77,79-85,89-100,102-108,110-113
+  s_ffd4ed59d15b86::t_9a704d15e3a430 18,26-27,37-40,47,49-64,78
+  s_ffd4ed59d15b86::t_13a97015293c9f 101
+  s_ffd4ed59d15b86::t_cb65a677c89ba1 109
+packages/@n8n/instance-ai/src/runtime/resumable-stream-executor.ts
+  s_ffd4ed59d15b86::t_d920fcc4a12c36 256
+  s_ffd4ed59d15b86::t_0b74405dafe058 194-199
+  s_ffd4ed59d15b86::t_5792bf02006277 7
+  s_ffd4ed59d15b86::t_169597237141e9 303-307
+  h_2f80f0e06f710c 262,267
+  s_ffd4ed59d15b86::t_5d748d1ea8f9cb 263-266,268
+packages/@n8n/instance-ai/src/stream/output-redaction.ts
+  s_ffd4ed59d15b86::t_8b54d7e39a58a9 1-29,31,38-39,41,52-53,55,57,59-63,66-67,96,122-123,125-128,130-134,137-155
+  s_ffd4ed59d15b86::t_af277004cd594c 30,32-37,40,42-51,54,56,58,64-65,68-76,78-95,97-121,124,129,135-136
+packages/@n8n/agents/src/sdk/guardrails/patterns.ts
+  s_ffd4ed59d15b86::t_43fac4a8effe95 1-96
+packages/@n8n/agents/src/sdk/__tests__/guardrails.test.ts
+  s_ffd4ed59d15b86::t_b07a407bca5f9f 1,3
+  s_ffd4ed59d15b86::t_fd83a043f7e2d9 2,4-140,142,149-150
+  s_ffd4ed59d15b86::t_3d8edb1547646e 141,143-148
+packages/@n8n/agents/src/sdk/guardrails/streaming-redactor.ts
+  s_ffd4ed59d15b86::t_4f6afe727d74be 1-4,18,20-78
+  s_ffd4ed59d15b86::t_f61df509fc47b9 5-17,19
+packages/@n8n/agents/src/sdk/guardrails/index.ts
+  s_ffd4ed59d15b86::t_fb08588293b01e 1-7
+  s_ffd4ed59d15b86::t_c39b0ae24f86b6 8-10
+packages/@n8n/agents/src/sdk/guardrails/redactor.ts
+  s_ffd4ed59d15b86::t_720123cf62cdb3 1-2,4-60
+  s_ffd4ed59d15b86::t_df965b4ccdfe78 61-109
+  s_ffd4ed59d15b86::t_b07a407bca5f9f 3
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_ffd4ed59d15b86::t_7bbed71d343c83 15,18
+packages/@n8n/agents/src/index.ts
+  s_ffd4ed59d15b86::t_414935f83adcc6 106-107,109-117,119-121
+  s_ffd4ed59d15b86::t_b7a2ee5ca1cc90 108,118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb404575eac4deae2ca58b43c55a777d77d07de5",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ffd4ed59d15b86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c215eb8-b991-4482-bce5-c59a224c6d2d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
