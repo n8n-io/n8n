@@ -1100,6 +1100,7 @@ describe('ExecutionPersistence', () => {
 				id: executionId,
 				workflowId,
 				storedAt,
+				jsonSizeBytes: 4096,
 				metadata: [{ key: 'k', value: 'v' }],
 				annotation: undefined,
 				status: 'success',
@@ -1146,6 +1147,7 @@ describe('ExecutionPersistence', () => {
 				workflowId,
 				data: bundle.data,
 				workflowData: bundle.workflowData,
+				jsonSizeBytes: 4096,
 				workflowVersionId: 'v-1',
 				customData: { k: 'v' },
 			});
@@ -1268,6 +1270,7 @@ describe('ExecutionPersistence', () => {
 				id,
 				workflowId: wf,
 				storedAt,
+				jsonSizeBytes: 4096,
 				metadata: [],
 				annotation: undefined,
 				status: 'success',
