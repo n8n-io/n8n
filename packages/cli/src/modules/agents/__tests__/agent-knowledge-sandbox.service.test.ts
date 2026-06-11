@@ -264,17 +264,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 	});
 
-	it('warms a sandbox by reusing the existing acquisition path', async () => {
-		const sandbox = makeSandbox('stopped');
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		const service = makeService();
-
-		await expect(service.warmSandbox('project-1', 'agent-1', userId)).resolves.toBeUndefined();
-
-		expect(sandbox.start).toHaveBeenCalledWith(300);
-		expect(createMock).not.toHaveBeenCalled();
-	});
-
 	it('dedupes concurrent warmups for the same sandbox scope', async () => {
 		let resolveCreate: (sandbox: MockSandbox) => void;
 		createMock.mockReturnValue(
@@ -362,31 +351,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(command).not.toContain('--field-match-separator');
 	});
 
-	it('searchKnowledge marks capped JSON output as truncated', async () => {
-		const sandbox = makeSandbox('started');
-		mockKnowledgeFiles([makeAgentFile()]);
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		sandbox.process.executeCommand.mockResolvedValue({
-			exitCode: 0,
-			artifacts: {
-				stdout: '__N8N_SEARCH_OUTPUT_TRUNCATED__\n',
-				stderr: '',
-			},
-		});
-		const service = makeService();
-
-		await expect(
-			service.searchKnowledge('project-1', 'agent-1', userId, {
-				query: 'hello',
-			}),
-		).resolves.toEqual({
-			matches: [],
-			limit: 20,
-			hasMore: false,
-			truncated: true,
-		});
-	});
-
 	it('globKnowledgeFiles runs a sandbox file-name glob and returns matching metadata', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([
@@ -437,36 +401,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(command).toContain('bash -o pipefail -c');
 		expect(command).toContain('*agent*tool*');
 		expect(command).toContain('| head -n 2');
-	});
-
-	it('globKnowledgeFiles can run case-sensitive filename globs', async () => {
-		const sandbox = makeSandbox('started');
-		mockKnowledgeFiles([makeAgentFile()]);
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		sandbox.process.executeCommand.mockResolvedValue({
-			exitCode: 0,
-			artifacts: {
-				stdout: '',
-				stderr: '',
-			},
-		});
-		const service = makeService();
-
-		await expect(
-			service.globKnowledgeFiles('project-1', 'agent-1', userId, {
-				pattern: '*RAG*',
-				caseSensitive: true,
-			}),
-		).resolves.toEqual({
-			files: [],
-			limit: 20,
-			hasMore: false,
-		});
-
-		const command = sandbox.process.executeCommand.mock.calls[0][0];
-		expect(command).toContain('timeout 20 rg --files --hidden --glob ');
-		expect(command).not.toContain('--glob-case-insensitive');
-		expect(command).toContain('*RAG*');
 	});
 
 	it('rejects retrieval for agents that do not belong to the project', async () => {

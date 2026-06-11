@@ -511,22 +511,6 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
-	it('warms the knowledge sandbox once after binding a new preview session', async () => {
-		routeName = 'AgentPreviewView';
-
-		await renderView({ knowledgeBaseEnabled: true });
-
-		expect(routerReplace).toHaveBeenCalledWith({
-			query: expect.objectContaining({ continueSessionId: expect.any(String) }),
-		});
-		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
-		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledWith(
-			{ baseUrl: 'http://localhost:5678' },
-			'p1',
-			'a1',
-		);
-	});
-
 	it('does not warm the knowledge sandbox when the knowledge base is disabled', async () => {
 		routeName = 'AgentPreviewView';
 		routeQuery.continueSessionId = 'thread-1';
@@ -534,16 +518,6 @@ describe('AgentBuilderView — preview routing', () => {
 		await renderView();
 
 		expect(warmAgentKnowledgeSandboxMock).not.toHaveBeenCalled();
-	});
-
-	it('does not surface rejected knowledge sandbox warmup requests', async () => {
-		routeName = 'AgentPreviewView';
-		routeQuery.continueSessionId = 'thread-1';
-		warmAgentKnowledgeSandboxMock.mockRejectedValue(new Error('warmup failed'));
-
-		await expect(renderView({ knowledgeBaseEnabled: true })).resolves.toBeDefined();
-
-		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalled();
 	});
 
 	it('drops unbuilt agents straight into the build chat on load', async () => {

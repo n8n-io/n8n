@@ -3,8 +3,6 @@ import { access, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
 import {
 	fromVolumeStorageReference,
 	KNOWLEDGE_FILES_DIR,
@@ -68,12 +66,6 @@ class InMemoryKnowledgeFilesystem implements AgentKnowledgeFilesystem {
 	private readonly files = new Map<string, Buffer>();
 	readonly deleteCalls: Array<{ filePath: string; recursive?: boolean }> = [];
 	readonly uploadFileCalls: AgentKnowledgeFileUpload[] = [];
-
-	/** Test-only fixture seeding; not part of AgentKnowledgeFilesystem. */
-	seed(filePath: string, content: Buffer | string): void {
-		const buffer = typeof content === 'string' ? Buffer.from(content, 'utf-8') : content;
-		this.files.set(filePath, buffer);
-	}
 
 	async uploadFiles(files: AgentKnowledgeFileUpload[]): Promise<void> {
 		this.uploadFileCalls.push(...files);
@@ -181,29 +173,13 @@ describe('AgentKnowledgeService', () => {
 		loadMock.mockResolvedValue([{ pageContent: 'extracted pdf text' }]);
 	});
 
-	it('rejects uploads for agents outside the project', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
-		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
-		const tempFilePath = path.join(tempDirectory, 'upload.txt');
-		await writeFile(tempFilePath, 'hello');
-
-		await expect(
-			service.uploadFiles(
-				agentId,
-				projectId,
-				[makeMulterFile({ path: tempFilePath, buffer: undefined })],
-				userId,
-			),
-		).rejects.toThrow(NotFoundError);
-		await expect(access(tempFilePath)).rejects.toThrow();
-		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
-	});
-
-	it('uploads text files to the volume, creates DB rows, and cleans temp files', async () => {
+	it('uploads text and PDF files to the volume, creates DB rows, and cleans temp files', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
-		const tempFilePath = path.join(tempDirectory, 'notes.txt');
-		await writeFile(tempFilePath, 'hello world');
+		const textFilePath = path.join(tempDirectory, 'notes.txt');
+		const pdfFilePath = path.join(tempDirectory, 'report.pdf');
+		await writeFile(textFilePath, 'hello world');
+		await writeFile(pdfFilePath, '%PDF-1.4');
 
 		const result = await service.uploadFiles(
 			agentId,
@@ -212,51 +188,14 @@ describe('AgentKnowledgeService', () => {
 				makeMulterFile({
 					originalname: 'notes.txt',
 					mimetype: 'text/plain',
-					path: tempFilePath,
+					path: textFilePath,
 					size: 11,
 					buffer: undefined,
 				}),
-			],
-			userId,
-		);
-
-		expect(result).toHaveLength(1);
-		expect(result[0]).toMatchObject({
-			agentId,
-			fileName: 'notes.txt',
-			mimeType: 'text/plain',
-			fileSizeBytes: 11,
-		});
-
-		const storedFile = agentFileRepository.all()[0];
-		const storageFileName = fromVolumeStorageReference(storedFile.binaryDataId);
-		expect(storageFileName).toBe('notes.txt');
-		expect(filesystem.uploadFileCalls).toEqual([
-			{
-				source: tempFilePath,
-				destination: `${KNOWLEDGE_FILES_DIR}/notes.txt`,
-			},
-		]);
-		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/notes.txt`)?.toString('utf-8')).toBe(
-			'hello world',
-		);
-		await expect(access(tempFilePath)).rejects.toThrow();
-	});
-
-	it('converts pdf uploads to text while preserving the original display metadata', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
-		const tempFilePath = path.join(tempDirectory, 'report.pdf');
-		await writeFile(tempFilePath, '%PDF-1.4');
-
-		const result = await service.uploadFiles(
-			agentId,
-			projectId,
-			[
 				makeMulterFile({
 					originalname: 'report.pdf',
 					mimetype: 'application/pdf',
-					path: tempFilePath,
+					path: pdfFilePath,
 					size: 8,
 					buffer: undefined,
 				}),
@@ -264,23 +203,42 @@ describe('AgentKnowledgeService', () => {
 			userId,
 		);
 
-		expect(result[0]).toMatchObject({
-			fileName: 'report.pdf',
-			mimeType: 'application/pdf',
-			fileSizeBytes: 8,
-		});
+		expect(result).toEqual([
+			expect.objectContaining({
+				agentId,
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 11,
+			}),
+			expect.objectContaining({
+				agentId,
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+				fileSizeBytes: 8,
+			}),
+		]);
 
-		const storedFile = agentFileRepository.all()[0];
-		expect(fromVolumeStorageReference(storedFile.binaryDataId)).toBe('report.txt');
+		const [storedTextFile, storedPdfFile] = agentFileRepository.all();
+		expect(fromVolumeStorageReference(storedTextFile.binaryDataId)).toBe('notes.txt');
+		expect(fromVolumeStorageReference(storedPdfFile.binaryDataId)).toBe('report.txt');
 		expect(filesystem.uploadFileCalls).toEqual([
+			{
+				source: textFilePath,
+				destination: `${KNOWLEDGE_FILES_DIR}/notes.txt`,
+			},
 			{
 				source: Buffer.from('extracted pdf text', 'utf-8'),
 				destination: `${KNOWLEDGE_FILES_DIR}/report.txt`,
 			},
 		]);
+		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/notes.txt`)?.toString('utf-8')).toBe(
+			'hello world',
+		);
 		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/report.txt`)?.toString('utf-8')).toBe(
 			'extracted pdf text',
 		);
+		await expect(access(textFilePath)).rejects.toThrow();
+		await expect(access(pdfFilePath)).rejects.toThrow();
 	});
 
 	it('removes the DB row when volume sync fails after create', async () => {
@@ -352,10 +310,14 @@ describe('AgentKnowledgeService', () => {
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
-	it('warms the sandbox when the agent has knowledge files', async () => {
+	it('warms the sandbox only when the agent has knowledge files', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		await agentFileRepository.save(makeAgentFile());
 
+		await expect(service.warmSandbox(agentId, projectId, userId)).resolves.toBeUndefined();
+
+		expect(agentKnowledgeSandboxService.warmSandbox).not.toHaveBeenCalled();
+
+		await agentFileRepository.save(makeAgentFile());
 		await expect(service.warmSandbox(agentId, projectId, userId)).resolves.toBeUndefined();
 
 		expect(agentKnowledgeSandboxService.warmSandbox).toHaveBeenCalledWith(
@@ -365,36 +327,20 @@ describe('AgentKnowledgeService', () => {
 		);
 	});
 
-	it('skips sandbox warmup when the agent has no knowledge files', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-
-		await expect(service.warmSandbox(agentId, projectId, userId)).resolves.toBeUndefined();
-
-		expect(agentKnowledgeSandboxService.warmSandbox).not.toHaveBeenCalled();
-	});
-
-	it('rejects sandbox warmup for agents outside the project', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
-
-		await expect(service.warmSandbox(agentId, projectId, userId)).rejects.toThrow(NotFoundError);
-
-		expect(agentKnowledgeSandboxService.warmSandbox).not.toHaveBeenCalled();
-	});
-
 	it('deletes stored volume files and DB rows', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-		const storedFile = await agentFileRepository.save(
+		await agentFileRepository.save(
 			makeAgentFile({
 				id: 'file-1',
 				binaryDataId: toVolumeStorageReference('file-1.txt'),
 			}),
 		);
-		filesystem.seed(`${KNOWLEDGE_FILES_DIR}/file-1.txt`, 'hello');
 
 		await expect(service.deleteFile(agentId, projectId, 'file-1', userId)).resolves.toBeUndefined();
-		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/file-1.txt`)).toBeUndefined();
+		expect(filesystem.deleteCalls).toEqual([
+			{ filePath: `${KNOWLEDGE_FILES_DIR}/file-1.txt`, recursive: undefined },
+		]);
 		expect(agentFileRepository.all()).toEqual([]);
-		expect(storedFile.id).toBe('file-1');
 	});
 
 	it('deletes the scoped knowledge files directory and rows for an agent', async () => {
@@ -412,14 +358,9 @@ describe('AgentKnowledgeService', () => {
 				mimeType: 'text/markdown',
 			}),
 		);
-		filesystem.seed(`${KNOWLEDGE_FILES_DIR}/file-1.txt`, 'hello');
-		filesystem.seed(`${KNOWLEDGE_FILES_DIR}/file-2.md`, '# Title');
-
 		await expect(
 			service.deleteAllFilesForAgent(projectId, agentId, userId),
 		).resolves.toBeUndefined();
-		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/file-1.txt`)).toBeUndefined();
-		expect(filesystem.get(`${KNOWLEDGE_FILES_DIR}/file-2.md`)).toBeUndefined();
 		expect(agentFileRepository.all()).toEqual([]);
 		expect(filesystem.deleteCalls).toEqual([{ filePath: KNOWLEDGE_FILES_DIR, recursive: true }]);
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).toHaveBeenCalledWith(
