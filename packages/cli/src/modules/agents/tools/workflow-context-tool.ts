@@ -75,7 +75,7 @@ export function createWorkflowContextTool(context: ExecuteAgentWorkflowContext):
 					};
 				}
 
-				const runs = runData[nodeName];
+				const runs = Object.hasOwn(runData, nodeName) ? runData[nodeName] : undefined;
 				if (!runs?.length) {
 					return {
 						error: `No execution data found for node '${nodeName}'.`,

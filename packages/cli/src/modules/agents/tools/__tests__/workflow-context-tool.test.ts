@@ -57,7 +57,7 @@ describe('createWorkflowContextTool', () => {
 			}),
 		);
 
-		const result = await tool.handler!({}, makeCtx() as never);
+		const result = await tool.handler!({}, makeCtx());
 
 		expect(result).toEqual({
 			workflow: { id: 'wf-1', name: 'Order processing' },
@@ -88,7 +88,7 @@ describe('createWorkflowContextTool', () => {
 			}),
 		);
 
-		const result = await tool.handler!({ nodeName: 'Webhook' }, makeCtx() as never);
+		const result = await tool.handler!({ nodeName: 'Webhook' }, makeCtx());
 
 		expect(result).toEqual({
 			nodeName: 'Webhook',
@@ -101,20 +101,21 @@ describe('createWorkflowContextTool', () => {
 	});
 
 	it('replaces binary data with key-name stubs', async () => {
-		const taskData = makeTaskData([]);
-		taskData.data = {
-			main: [
-				[
-					{
-						json: { fileName: 'report.pdf' },
-						binary: { data: { data: 'AAAA', mimeType: 'application/pdf' } },
-					},
+		const taskData = makeTaskData([], {
+			data: {
+				main: [
+					[
+						{
+							json: { fileName: 'report.pdf' },
+							binary: { data: { data: 'AAAA', mimeType: 'application/pdf' } },
+						},
+					],
 				],
-			],
-		};
+			},
+		});
 		const tool = createWorkflowContextTool(makeContext({ Webhook: [taskData] }));
 
-		const result = (await tool.handler!({ nodeName: 'Webhook' }, makeCtx() as never)) as {
+		const result = (await tool.handler!({ nodeName: 'Webhook' }, makeCtx())) as {
 			items: Array<Record<string, unknown>>;
 		};
 
@@ -125,7 +126,7 @@ describe('createWorkflowContextTool', () => {
 		const manyItems = Array.from({ length: 35 }, (_, i) => ({ index: i }));
 		const tool = createWorkflowContextTool(makeContext({ Webhook: [makeTaskData(manyItems)] }));
 
-		const result = (await tool.handler!({ nodeName: 'Webhook' }, makeCtx() as never)) as {
+		const result = (await tool.handler!({ nodeName: 'Webhook' }, makeCtx())) as {
 			items: unknown[];
 			totalItems: number;
 			truncated: boolean;
@@ -142,7 +143,7 @@ describe('createWorkflowContextTool', () => {
 		const bigItems = [{ blob: 'x'.repeat(30_000) }, { blob: 'y'.repeat(30_000) }];
 		const tool = createWorkflowContextTool(makeContext({ Webhook: [makeTaskData(bigItems)] }));
 
-		const result = (await tool.handler!({ nodeName: 'Webhook' }, makeCtx() as never)) as {
+		const result = (await tool.handler!({ nodeName: 'Webhook' }, makeCtx())) as {
 			items: unknown[];
 			truncated: boolean;
 		};
@@ -151,13 +152,37 @@ describe('createWorkflowContextTool', () => {
 		expect(result.truncated).toBe(true);
 	});
 
+	it('always includes the first item even when it alone exceeds the size cap', async () => {
+		const oversized = [{ blob: 'x'.repeat(60_000) }];
+		const tool = createWorkflowContextTool(makeContext({ Webhook: [makeTaskData(oversized)] }));
+
+		const result = (await tool.handler!({ nodeName: 'Webhook' }, makeCtx())) as {
+			items: unknown[];
+			truncated: boolean;
+		};
+
+		expect(result.items).toHaveLength(1);
+		expect(result.truncated).toBe(false);
+	});
+
 	it('returns an error payload with available node names for an unknown node', async () => {
 		const tool = createWorkflowContextTool(makeContext({ Webhook: [makeTaskData([{ a: 1 }])] }));
 
-		const result = await tool.handler!({ nodeName: 'Nope' }, makeCtx() as never);
+		const result = await tool.handler!({ nodeName: 'Nope' }, makeCtx());
 
 		expect(result).toEqual({
 			error: "No execution data found for node 'Nope'.",
+			availableNodes: ['Webhook'],
+		});
+	});
+
+	it('treats prototype-chain keys as unknown nodes', async () => {
+		const tool = createWorkflowContextTool(makeContext({ Webhook: [makeTaskData([{ a: 1 }])] }));
+
+		const result = await tool.handler!({ nodeName: 'constructor' }, makeCtx());
+
+		expect(result).toEqual({
+			error: "No execution data found for node 'constructor'.",
 			availableNodes: ['Webhook'],
 		});
 	});
