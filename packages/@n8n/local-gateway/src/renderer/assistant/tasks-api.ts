@@ -6,17 +6,20 @@
  * Note: migrating the rest of the renderer's `window.electronAPI` calls into
  * this module is deferred to a follow-up.
  */
-import type { CreateAssistantTaskResult, PromoteAssistantThreadResult } from '../../shared/types';
+import type {
+	CreateAssistantTaskResult,
+	DesktopAssistantTaskRequest,
+	PromoteAssistantThreadResult,
+} from '../../shared/types';
 
 /**
- * Start a one-shot assistant run for a free-text prompt. `appHint` is a short
- * "what the user is looking at" string (e.g. the active context's label).
+ * Start a one-shot assistant run for a free-text prompt plus the detected
+ * context (structured pointer fields and an optional screenshot attachment).
  */
 export async function createAssistantTask(
-	prompt: string,
-	appHint?: string,
+	body: DesktopAssistantTaskRequest,
 ): Promise<CreateAssistantTaskResult> {
-	return await window.electronAPI.createAssistantTask(prompt, appHint);
+	return await window.electronAPI.createAssistantTask(body);
 }
 
 /**

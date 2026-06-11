@@ -1,9 +1,11 @@
 import {
 	DesktopAssistantHistoryQueryDto,
 	DesktopAssistantPromoteRequestDto,
+	DesktopAssistantRecommendationsRequestDto,
 	DesktopAssistantTaskRequestDto,
 	type DesktopAssistantHistoryResponse,
 	type DesktopAssistantPromoteResponse,
+	type DesktopAssistantRecommendationsResponse,
 	type DesktopAssistantTaskResponse,
 	type DesktopAssistantTasksResponse,
 } from '@n8n/api-types';
@@ -53,6 +55,17 @@ export class DesktopAssistantController {
 	): Promise<DesktopAssistantTaskResponse> {
 		this.requireEnabled();
 		return await this.desktopAssistantService.triggerTask(req.user, body);
+	}
+
+	@Post('/recommendations')
+	@GlobalScope('instanceAi:message')
+	async getRecommendations(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: DesktopAssistantRecommendationsRequestDto,
+	): Promise<DesktopAssistantRecommendationsResponse> {
+		this.requireEnabled();
+		return await this.desktopAssistantService.getRecommendations(req.user, body);
 	}
 
 	@Post('/promote-thread')

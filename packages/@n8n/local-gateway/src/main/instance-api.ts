@@ -2,6 +2,8 @@ import type {
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantPromoteRequest,
 	DesktopAssistantPromoteResponse,
+	DesktopAssistantRecommendationsRequest,
+	DesktopAssistantRecommendationsResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -113,6 +115,39 @@ export class InstanceApi {
 	}
 
 	/**
+	 * `POST /rest/desktop-assistant/task` — fire a one-shot task with the prompt
+	 * and the locally-detected context (structured pointer fields + optional
+	 * screenshot attachment). Returns the thread/run pair; the renderer follows
+	 * the run on the thread event stream (see `renderer/assistant/run-watcher.ts`).
+	 */
+	async triggerTask(body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> {
+		const response = await this.authedFetch('/desktop-assistant/task', {
+			method: 'POST',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body),
+		});
+		return await this.unwrap<DesktopAssistantTaskResponse>(response);
+	}
+
+	/**
+	 * `POST /rest/desktop-assistant/recommendations` — generate task suggestions
+	 * for the empty state from the optional selected context and the user's
+	 * connected integrations.
+	 */
+	async getRecommendations(
+		body: DesktopAssistantRecommendationsRequest,
+	): Promise<DesktopAssistantRecommendationsResponse> {
+		const response = await this.authedFetch('/desktop-assistant/recommendations', {
+			method: 'POST',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body),
+		});
+		return await this.unwrap<DesktopAssistantRecommendationsResponse>(response);
+	}
+
+	/**
 	 * `POST /rest/workflows/:id/run` — kick off a manual run of a saved task.
 	 *
 	 * The manual-run endpoint needs to know which trigger to start from; an empty
@@ -141,24 +176,6 @@ export class InstanceApi {
 			nodes.find((node) => /trigger$/i.test(node.type)) ??
 			nodes.find((node) => /webhook/i.test(node.type));
 		return trigger?.name;
-	}
-
-	/**
-	 * `POST /rest/desktop-assistant/task` — start a one-shot assistant run from a
-	 * natural-language prompt. Returns the thread/run pair; the renderer follows
-	 * the run on the thread event stream (see `renderer/assistant/run-watcher.ts`).
-	 */
-	async createAssistantTask(prompt: string, appHint?: string): Promise<DesktopAssistantTaskResponse> {
-		const body: DesktopAssistantTaskRequest = appHint
-			? { prompt, context: { appHint } }
-			: { prompt };
-		const response = await this.authedFetch('/desktop-assistant/task', {
-			method: 'POST',
-			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify(body),
-		});
-		return await this.unwrap<DesktopAssistantTaskResponse>(response);
 	}
 
 	/**

@@ -2,6 +2,8 @@ import type {
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantPromoteRequest,
 	DesktopAssistantPromoteResponse,
+	DesktopAssistantRecommendationsRequest,
+	DesktopAssistantRecommendationsResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -20,6 +22,7 @@ import type { StoredEvent } from '@n8n/instance-ai';
 import { In } from '@n8n/typeorm';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -43,9 +46,11 @@ import {
 	clampLimit,
 	composeOneShotMessage,
 	composePromoteMessage,
+	composeRecommendationsInput,
 	extractBuiltWorkflowId,
 	extractWorkflowLoopBuildOutcome,
 	readDesktopAssistantMeta,
+	RECOMMENDATIONS_INSTRUCTIONS,
 	splitLeadingEmoji,
 	summarizeExecutionError,
 } from './desktop-assistant.helpers';
@@ -53,6 +58,7 @@ import { computeNodesRequiringCredentialSetup } from './node-credential-requirem
 
 import { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
+import { InstanceAiService } from '../instance-ai.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -74,6 +80,33 @@ const EMPTY_HISTORY = Object.freeze({
 	estimated: false,
 	count: 0,
 } satisfies DesktopAssistantHistoryResponse);
+
+/** Upper bound on how many task recommendations we'll ever return. */
+const MAX_RECOMMENDATIONS = 5;
+
+/** Cap on the distinct integration types fed to the model as grounding, so a
+ * user with hundreds of credentials doesn't bloat the prompt. */
+const MAX_RECOMMENDATION_INTEGRATIONS = 30;
+
+const recommendationItemSchema = z.object({
+	title: z.string(),
+	prompt: z.string(),
+	icon: z.string(),
+});
+
+/** Structured-output schema for the recommendations generation, bounded to the
+ * requested count (1..MAX_RECOMMENDATIONS). */
+function buildRecommendationsSchema(limit: number) {
+	return z.object({
+		recommendations: z.array(recommendationItemSchema).min(1).max(limit),
+	});
+}
+
+/** Clamp a requested count into 1..MAX_RECOMMENDATIONS, defaulting to the max. */
+function clampRecommendationsLimit(limit: number | undefined): number {
+	if (!limit) return MAX_RECOMMENDATIONS;
+	return Math.min(Math.max(1, Math.floor(limit)), MAX_RECOMMENDATIONS);
+}
 
 /**
  * BFF for the n8n personal-automation desktop assistant.
@@ -99,6 +132,8 @@ export class DesktopAssistantService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly runner: DesktopAssistantRunner,
+		/** Thread runs go through the runner; this is only for `generateStructured` (recommendations). */
+		private readonly instanceAiService: InstanceAiService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly workflowRepository: WorkflowRepository,
@@ -281,8 +316,49 @@ export class DesktopAssistantService {
 		});
 
 		const composedMessage = composeOneShotMessage(body);
-		const runId = this.runner.startOneShotTask(user, threadId, composedMessage);
+		const runId = this.runner.startOneShotTask(
+			user,
+			threadId,
+			composedMessage,
+			body.context?.attachments,
+		);
 		return { threadId, runId };
+	}
+
+	// ── recommendations ──────────────────────────────────────────────────────
+
+	/**
+	 * Generate a few one-shot task suggestions for the desktop assistant's empty
+	 * state, grounded in what the user is looking at (optional context) and the
+	 * integrations they already have connected.
+	 *
+	 * Uses a synchronous structured-output Instance AI call — NOT the streaming
+	 * `startRun` orchestrator — so the client gets a plain JSON list it can render
+	 * as cards. Only integration *types* are sent to the model as grounding; no
+	 * credential secrets ever leave this service.
+	 */
+	async getRecommendations(
+		user: User,
+		body: DesktopAssistantRecommendationsRequest,
+	): Promise<DesktopAssistantRecommendationsResponse> {
+		const credentials = await this.credentialsFinderService.findCredentialsForUser(user, [
+			'credential:read',
+		]);
+		const connectedIntegrations = [...new Set(credentials.map((c) => c.type))]
+			.filter((type): type is string => typeof type === 'string' && type.length > 0)
+			.slice(0, MAX_RECOMMENDATION_INTEGRATIONS);
+
+		const limit = clampRecommendationsLimit(body.limit);
+		const input = composeRecommendationsInput(body.context, connectedIntegrations, limit);
+
+		const { recommendations } = await this.instanceAiService.generateStructured(user, {
+			name: 'desktop-assistant-recommendations',
+			instructions: RECOMMENDATIONS_INSTRUCTIONS,
+			input,
+			schema: buildRecommendationsSchema(limit),
+		});
+
+		return { recommendations: recommendations.slice(0, limit) };
 	}
 
 	// ── promote thread ──────────────────────────────────────────────────────

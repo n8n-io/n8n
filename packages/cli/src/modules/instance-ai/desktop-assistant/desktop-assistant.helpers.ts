@@ -3,7 +3,10 @@
  * touches DI or the database — these are deterministic functions over
  * request payloads, workflow JSON, and stored event-bus state.
  */
-import type { DesktopAssistantTaskRequest } from '@n8n/api-types';
+import type {
+	DesktopAssistantRecommendationsRequest,
+	DesktopAssistantTaskRequest,
+} from '@n8n/api-types';
 import type { StoredEvent } from '@n8n/instance-ai';
 import type { ExecutionError, IRunExecutionData } from 'n8n-workflow';
 
@@ -11,16 +14,48 @@ import type { PROMOTED_FROM_THREAD_ID_KEY } from './constants';
 
 // ── Message composition ─────────────────────────────────────────────────────
 
-/** Compose the one-shot task message that gets handed to Instance AI. */
+/** Compose the one-shot task message that gets handed to Instance AI.
+ *
+ *  The structured context the desktop app detects locally is rendered into the
+ *  prompt as plain text so the orchestrator can act on it. `path` is surfaced
+ *  as an explicit absolute path so the filesystem tools can target it (e.g.
+ *  "clean up the current folder" resolves to the detected directory); for the
+ *  PoC the gateway's base directory is the user home, broad enough to contain
+ *  the detected folder. Attachments (e.g. a screenshot) are NOT rendered here —
+ *  they ride the `attachments` channel into the run (see the service). */
 export function composeOneShotMessage(body: DesktopAssistantTaskRequest): string {
+	const context = body.context;
 	const lines: string[] = [body.prompt.trim()];
-	if (body.context?.appHint) {
-		lines.push('', `Currently looking at: ${body.context.appHint}`);
+
+	const looking = describeActiveContext(context);
+	if (looking) {
+		lines.push('', `Currently looking at: ${looking}`);
 	}
-	if (body.context?.selectedText) {
-		lines.push('', 'Selected text:', '```', body.context.selectedText, '```');
+	if (context?.url) {
+		lines.push(`URL: ${context.url}`);
+	}
+	if (context?.path) {
+		lines.push(`Path: ${context.path}`);
+	}
+	if (context?.selectedText) {
+		lines.push('', 'Selected text:', '```', context.selectedText, '```');
 	}
 	return lines.join('\n');
+}
+
+/** Build the single "Currently looking at" phrase from the structured context,
+ *  preferring the explicit `appHint` when the app supplied one, otherwise
+ *  composing it from `app` and `windowTitle`. Returns `undefined` when there is
+ *  nothing meaningful to say. */
+export function describeActiveContext(
+	context: DesktopAssistantTaskRequest['context'],
+): string | undefined {
+	if (!context) return undefined;
+	if (context.appHint) return context.appHint;
+	const app = context.app?.trim();
+	const title = context.windowTitle?.trim();
+	if (app && title) return `${app} — ${title}`;
+	return app ?? title ?? undefined;
 }
 
 /** Compose the promote-thread message: asks the model to compile the task it
@@ -32,6 +67,55 @@ export function composePromoteMessage(originalPrompt: string, name: string | und
 		? `Use the name "${trimmedName}" (prepend a fitting emoji if it does not already start with one).`
 		: 'Pick a short descriptive name for it as part of the build, and start that name with a single emoji that captures what the workflow does.';
 	return `Compile the task you already executed in this thread into a repeatable workflow that mirrors what was actually done. ${naming} The original request:\n\n${originalPrompt}`;
+}
+
+// ── Recommendations ──────────────────────────────────────────────────────────
+
+/** System instructions for the recommendations generation. Static — the
+ *  per-request grounding (context + connected integrations) rides in the input. */
+export const RECOMMENDATIONS_INSTRUCTIONS = [
+	'You suggest short, immediately-actionable automation tasks for a desktop AI',
+	"assistant that can act on the user's computer and connected apps.",
+	'',
+	'Given what the user is currently looking at and the integrations they have',
+	'already connected, propose distinct task ideas the assistant could run in one',
+	'shot. Return the number of suggestions requested below (fewer only if you',
+	'genuinely cannot suggest that many relevant ones).',
+	'',
+	'Rules:',
+	'- Each task must be something the assistant can start right away from a single instruction.',
+	'- Ground tasks in the provided context and connected integrations when present;',
+	'  otherwise suggest broadly useful starter tasks.',
+	'- Favour variety; avoid near-duplicate suggestions.',
+	'- "title" is a short label (max ~6 words).',
+	'- "prompt" is the first-person instruction the assistant will execute.',
+	'- "icon" is a single emoji that fits the task.',
+].join('\n');
+
+/** Render the per-request grounding for the recommendations call: what the user
+ *  is looking at plus the integrations they already have connected (types only —
+ *  never secret values). Falls back to a generic instruction when nothing is known. */
+export function composeRecommendationsInput(
+	context: DesktopAssistantRecommendationsRequest['context'],
+	connectedIntegrations: string[],
+	limit: number,
+): string {
+	const lines: string[] = [`Suggest ${limit} distinct recommendations.`, ''];
+
+	const looking = describeActiveContext(context);
+	if (looking) lines.push(`Currently looking at: ${looking}`);
+	if (context?.kind) lines.push(`Context type: ${context.kind}`);
+	if (context?.url) lines.push(`URL: ${context.url}`);
+	if (context?.path) lines.push(`Path: ${context.path}`);
+
+	if (connectedIntegrations.length > 0) {
+		lines.push(`Connected integrations: ${connectedIntegrations.join(', ')}`);
+	}
+
+	if (lines.length === 2) {
+		lines.push('No specific context. Suggest generally useful starter automations.');
+	}
+	return lines.join('\n');
 }
 
 // ── Display helpers ─────────────────────────────────────────────────────────

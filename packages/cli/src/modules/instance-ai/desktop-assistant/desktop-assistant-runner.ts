@@ -1,3 +1,4 @@
+import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DesktopAssistantPromptMode } from '@n8n/instance-ai';
@@ -17,8 +18,13 @@ export class DesktopAssistantRunner {
 	constructor(private readonly instanceAiService: InstanceAiService) {}
 
 	/** Kick off a one-shot "do it now" task run on a (fresh) desktop thread. */
-	startOneShotTask(user: User, threadId: string, message: string): string {
-		return this.startRun(user, threadId, message, 'desktop-assistant-one-shot');
+	startOneShotTask(
+		user: User,
+		threadId: string,
+		message: string,
+		attachments?: InstanceAiAttachment[],
+	): string {
+		return this.startRun(user, threadId, message, 'desktop-assistant-one-shot', attachments);
 	}
 
 	/** Kick off a promote run that compiles an executed task into a workflow. */
@@ -31,12 +37,13 @@ export class DesktopAssistantRunner {
 		threadId: string,
 		message: string,
 		promptMode: DesktopAssistantPromptMode,
+		attachments?: InstanceAiAttachment[],
 	): string {
 		return this.instanceAiService.startRun(
 			user,
 			threadId,
 			message,
-			undefined,
+			attachments,
 			undefined,
 			undefined,
 			{ promptMode },

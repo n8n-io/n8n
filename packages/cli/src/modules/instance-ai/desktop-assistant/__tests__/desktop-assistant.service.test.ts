@@ -25,10 +25,12 @@ import type { DesktopAssistantRunner } from '../desktop-assistant-runner';
 import { DesktopAssistantService } from '../desktop-assistant.service';
 import type { InProcessEventBus } from '../../event-bus/in-process-event-bus';
 import type { InstanceAiMemoryService } from '../../instance-ai-memory.service';
+import type { InstanceAiService } from '../../instance-ai.service';
 
 function makeService() {
 	const logger = mock<Logger>();
 	const runner = mock<DesktopAssistantRunner>();
+	const instanceAiService = mock<InstanceAiService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const eventBus = mock<InProcessEventBus>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -48,6 +50,7 @@ function makeService() {
 	const service = new DesktopAssistantService(
 		logger,
 		runner,
+		instanceAiService,
 		memoryService,
 		eventBus,
 		workflowRepository,
@@ -67,6 +70,7 @@ function makeService() {
 		service,
 		logger,
 		runner,
+		instanceAiService,
 		memoryService,
 		eventBus,
 		workflowRepository,
@@ -119,6 +123,145 @@ describe('DesktopAssistantService.triggerTask', () => {
 		expect(message).toContain('rename desktop files');
 		expect(result).toMatchObject({ runId: 'run-123' });
 		expect(result.threadId).toBeDefined();
+	});
+
+	test('forwards context attachments and structured context into the run', async () => {
+		const ctx = makeService();
+		ctx.projectService.getPersonalProject.mockResolvedValue({ id: 'proj-1' } as never);
+		ctx.memoryService.ensureThread.mockResolvedValue({
+			thread: {
+				id: 't',
+				resourceId: USER.id,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			},
+			created: true,
+		});
+		ctx.runner.startOneShotTask.mockReturnValue('run-456');
+
+		const attachments = [{ data: 'abc', mimeType: 'image/jpeg', fileName: 'screen.jpg' }];
+		await ctx.service.triggerTask(USER, {
+			prompt: 'clean up the current folder',
+			context: {
+				kind: 'finder',
+				app: 'Finder',
+				windowTitle: 'Downloads',
+				path: '/Users/me/Downloads',
+				attachments,
+			},
+		});
+
+		const [, , message, forwardedAttachments] = ctx.runner.startOneShotTask.mock.calls[0];
+		expect(forwardedAttachments).toBe(attachments);
+		expect(message).toContain('Currently looking at: Finder — Downloads');
+		expect(message).toContain('Path: /Users/me/Downloads');
+	});
+});
+
+describe('DesktopAssistantService.getRecommendations', () => {
+	const RECS = {
+		recommendations: [
+			{ title: 'Summarise this page', prompt: 'Summarise the page I am looking at', icon: '📄' },
+			{ title: 'Save for later', prompt: 'Save this page to my reading list', icon: '⭐️' },
+		],
+	};
+
+	test('grounds the generation in the local context', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+		ctx.instanceAiService.generateStructured.mockResolvedValue(RECS);
+
+		await ctx.service.getRecommendations(USER, {
+			context: {
+				kind: 'browser',
+				app: 'Google Chrome',
+				windowTitle: 'Dashboard',
+				url: 'https://x.test',
+			},
+		});
+
+		const [calledUser, opts] = ctx.instanceAiService.generateStructured.mock.calls[0];
+		expect(calledUser).toBe(USER);
+		expect(opts.input).toContain('Currently looking at: Google Chrome — Dashboard');
+		expect(opts.input).toContain('URL: https://x.test');
+		expect(opts.schema).toBeDefined();
+	});
+
+	test('grounds the generation in the connected integration types only (no secrets)', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+			{ type: 'slackApi', name: 'My Slack', data: 'ENCRYPTED-SECRET' },
+			{ type: 'notionApi', name: 'My Notion', data: 'ENCRYPTED-SECRET' },
+			{ type: 'slackApi', name: 'Other Slack', data: 'ENCRYPTED-SECRET' },
+		] as never);
+		ctx.instanceAiService.generateStructured.mockResolvedValue(RECS);
+
+		await ctx.service.getRecommendations(USER, {});
+
+		const [, opts] = ctx.instanceAiService.generateStructured.mock.calls[0];
+		// Distinct types are surfaced...
+		expect(opts.input).toContain('Connected integrations: slackApi, notionApi');
+		// ...but never credential names or secret data.
+		expect(opts.input).not.toContain('My Slack');
+		expect(opts.input).not.toContain('ENCRYPTED-SECRET');
+	});
+
+	test('still generates generic recommendations with no context and no credentials', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+		ctx.instanceAiService.generateStructured.mockResolvedValue(RECS);
+
+		const result = await ctx.service.getRecommendations(USER, {});
+
+		const [, opts] = ctx.instanceAiService.generateStructured.mock.calls[0];
+		expect(opts.input).toContain('No specific context');
+		expect(result.recommendations).toHaveLength(2);
+		expect(result.recommendations[0]).toEqual({
+			title: 'Summarise this page',
+			prompt: 'Summarise the page I am looking at',
+			icon: '📄',
+		});
+	});
+
+	test('clamps to at most five recommendations', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+		ctx.instanceAiService.generateStructured.mockResolvedValue({
+			recommendations: Array.from({ length: 7 }, (_, i) => ({
+				title: `t${i}`,
+				prompt: `p${i}`,
+				icon: '✨',
+			})),
+		});
+
+		const result = await ctx.service.getRecommendations(USER, {});
+		expect(result.recommendations).toHaveLength(5);
+	});
+
+	test('honours a requested limit', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+		ctx.instanceAiService.generateStructured.mockResolvedValue({
+			recommendations: Array.from({ length: 5 }, (_, i) => ({
+				title: `t${i}`,
+				prompt: `p${i}`,
+				icon: '✨',
+			})),
+		});
+
+		const result = await ctx.service.getRecommendations(USER, { limit: 3 });
+
+		const [, opts] = ctx.instanceAiService.generateStructured.mock.calls[0];
+		expect(opts.input).toContain('Suggest 3 distinct recommendations');
+		expect(result.recommendations).toHaveLength(3);
+	});
+
+	test('propagates a generation failure so the client can fall back', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+		ctx.instanceAiService.generateStructured.mockRejectedValue(new Error('model unavailable'));
+
+		await expect(ctx.service.getRecommendations(USER, {})).rejects.toThrow('model unavailable');
 	});
 });
 

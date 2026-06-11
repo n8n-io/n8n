@@ -40,6 +40,10 @@ describe('DesktopAssistantController', () => {
 				scope: 'instanceAi:message',
 				globalOnly: true,
 			});
+			expect(scopeOf('getRecommendations')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
 			expect(scopeOf('getHistory')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
 	});
@@ -59,6 +63,12 @@ describe('DesktopAssistantController', () => {
 
 		test('promoteThread throws ForbiddenError', async () => {
 			await expect(controller.promoteThread(req, null, { threadId: 't-1' })).rejects.toBeInstanceOf(
+				ForbiddenError,
+			);
+		});
+
+		test('getRecommendations throws ForbiddenError', async () => {
+			await expect(controller.getRecommendations(req, null, {})).rejects.toBeInstanceOf(
 				ForbiddenError,
 			);
 		});
@@ -99,6 +109,16 @@ describe('DesktopAssistantController', () => {
 			const result = await controller.promoteThread(req, null, { threadId: 't-1' });
 			expect(service.promoteThread).toHaveBeenCalledWith(user, { threadId: 't-1' });
 			expect(result).toEqual({ status: 'building', threadId: 't-1', runId: 'r-1' });
+		});
+
+		test('getRecommendations forwards the body to the service', async () => {
+			service.getRecommendations.mockResolvedValue({
+				recommendations: [{ title: 'Do a thing', prompt: 'Do a thing', icon: '✨' }],
+			});
+			const body = { context: { kind: 'browser' as const } };
+			const result = await controller.getRecommendations(req, null, body);
+			expect(service.getRecommendations).toHaveBeenCalledWith(user, body);
+			expect(result.recommendations).toHaveLength(1);
 		});
 
 		test('getHistory forwards the validated cursor query to the service', async () => {

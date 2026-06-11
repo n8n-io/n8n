@@ -1,19 +1,39 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import MiniSpinner from '../components/MiniSpinner.vue';
+import RecommendationCard from '../components/RecommendationCard.vue';
 import TaskCard from '../components/TaskCard.vue';
 
 import { usePendingTasks } from '../assistant/use-pending-tasks';
-
+import { useRecommendations } from '../assistant/use-recommendations';
 import type { DesktopAssistantTasksResponse } from '../../shared/types';
 
 const i18n = useI18n();
 const pendingTasks = usePendingTasks();
 
-const emit = defineEmits<{ executed: [] }>();
+const emit = defineEmits<{ executed: []; 'run-prompt': [prompt: string] }>();
+
+// Recommendations: shown as the empty-state content when there are no tasks, and
+// as a smaller section below the list when there are. Regenerated as the
+// selected context changes (see use-recommendations).
+const {
+	recommendations,
+	loading: recsLoading,
+	start: startRecommendations,
+	stop: stopRecommendations,
+} = useRecommendations();
+
+/** How many suggestions to show: more when it's the whole empty state, fewer
+ *  when it's a secondary section under an existing task list. */
+const RECOMMENDED_COUNT_EMPTY = 5;
+const RECOMMENDED_COUNT_WITH_TASKS = 3;
+
+// True once we have recommendations to show or are generating them. When empty
+// and this is false (error/no results) we fall back to the "No tasks yet" text.
+const showRecommendations = computed(() => recsLoading.value || recommendations.value.length > 0);
 
 const tasks = ref<DesktopAssistantTasksResponse | null>(null);
 const loading = ref(true);
@@ -35,6 +55,11 @@ const isEmpty = computed(
 		!sections.value.actionNeeded.length &&
 		!sections.value.upcoming.length &&
 		!sections.value.readyToRun.length,
+);
+
+/** Suggestion count for the current layout — set once the task list is loaded. */
+const recommendedCount = computed(() =>
+	isEmpty.value ? RECOMMENDED_COUNT_EMPTY : RECOMMENDED_COUNT_WITH_TASKS,
 );
 
 async function load() {
@@ -67,16 +92,24 @@ async function runTask(workflowId: string) {
 	await load();
 }
 
+/** A recommendation card was clicked — fire it through the composer's one-shot path. */
+function runRecommendation(prompt: string) {
+	emit('run-prompt', prompt);
+}
+
 // When a pending promotion completes, the saved workflow becomes a real task —
 // refetch so it appears in its bucket as the pending card disappears.
 let unsubscribeSaved: (() => void) | undefined;
 
-onMounted(() => {
-	void load();
+onMounted(async () => {
 	unsubscribeSaved = pendingTasks.onSaved(() => void load());
+	await load();
+	// Generate recommendations whether the list is empty or not; the count differs
+	// (see recommendedCount). Skipped only if the task load itself failed.
+	if (!error.value) void startRecommendations(recommendedCount.value);
 });
-
-onUnmounted(() => {
+onBeforeUnmount(() => {
+	stopRecommendations();
 	unsubscribeSaved?.();
 });
 </script>
@@ -141,12 +174,6 @@ onUnmounted(() => {
 			}}</N8nButton>
 		</div>
 
-		<div v-else-if="isEmpty" :class="$style.state">
-			<N8nText color="text-light" size="small">{{
-				i18n.baseText('desktopAssistant.tasks.empty')
-			}}</N8nText>
-		</div>
-
 		<template v-else-if="tasks">
 			<section v-if="sections.actionNeeded.length" :class="$style.section">
 				<TaskCard
@@ -186,6 +213,46 @@ onUnmounted(() => {
 					@run="runTask"
 				/>
 			</section>
+
+			<!-- Recommendations: the whole content when the list is empty, or a
+				 smaller section below the tasks when there are some. -->
+			<section v-if="showRecommendations" :class="[$style.section, $style.recommendations]">
+				<N8nText :class="$style.sectionTitle">{{
+					i18n.baseText('desktopAssistant.sections.recommended')
+				}}</N8nText>
+
+				<template v-if="recsLoading">
+					<div
+						v-for="n in recommendedCount"
+						:key="n"
+						:class="$style.skeletonCard"
+						role="status"
+						aria-live="polite"
+						:aria-label="i18n.baseText('desktopAssistant.tasks.loading')"
+					>
+						<span :class="$style.skeletonTile" aria-hidden="true" />
+						<span :class="$style.skeletonBody" aria-hidden="true">
+							<span :class="$style.skeletonLine" />
+							<span :class="[$style.skeletonLine, $style.skeletonLineShort]" />
+						</span>
+					</div>
+				</template>
+
+				<RecommendationCard
+					v-for="(rec, index) in recommendations"
+					v-else
+					:key="index"
+					:recommendation="rec"
+					@run="runRecommendation"
+				/>
+			</section>
+
+			<!-- Only when the list is genuinely empty and no suggestions are available. -->
+			<div v-else-if="isEmpty" :class="$style.state">
+				<N8nText color="text-light" size="small">{{
+					i18n.baseText('desktopAssistant.tasks.empty')
+				}}</N8nText>
+			</div>
 		</template>
 	</div>
 </template>
@@ -200,6 +267,12 @@ onUnmounted(() => {
 .section {
 	display: flex;
 	flex-direction: column;
+}
+
+/* Suggestion cards are dashed/standalone (unlike the flush real-task rows), so
+   give them a little breathing room between rows. */
+.recommendations {
+	gap: var(--spacing--2xs);
 }
 
 /* Scoped under `.section` so font-size/weight win over N8nText's own size/weight
@@ -309,5 +382,56 @@ onUnmounted(() => {
 	justify-content: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xl) var(--spacing--md);
+}
+
+/* Skeleton placeholder while recommendations generate — same footprint as a
+   RecommendationCard so the list doesn't jump when real cards arrive. */
+.skeletonCard {
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	width: 100%;
+	padding: 10px var(--spacing--2xs);
+	border: 1px dashed var(--da-border);
+	border-radius: var(--radius--xs);
+	animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+.skeletonTile {
+	flex-shrink: 0;
+	width: 34px;
+	height: 34px;
+	border-radius: var(--radius--xs);
+	background: var(--da-surface-2);
+}
+
+.skeletonBody {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.skeletonLine {
+	width: 70%;
+	height: 9px;
+	border-radius: var(--radius--full);
+	background: var(--da-surface-2);
+}
+
+.skeletonLineShort {
+	width: 45%;
+}
+
+@keyframes skeletonPulse {
+	0%,
+	100% {
+		opacity: 0.45;
+	}
+
+	50% {
+		opacity: 0.7;
+	}
 }
 </style>

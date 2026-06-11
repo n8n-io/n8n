@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { desktopAssistantContextSchema } from './desktop-assistant-context.schema';
 import { Z } from '../../zod-class';
 
 /**
@@ -10,12 +11,7 @@ import { Z } from '../../zod-class';
  */
 export class DesktopAssistantTaskRequestDto extends Z.class({
 	prompt: z.string().trim().min(1).max(8000),
-	context: z
-		.object({
-			selectedText: z.string().max(8000).optional(),
-			appHint: z.string().max(255).optional(),
-		})
-		.optional(),
+	context: desktopAssistantContextSchema.optional(),
 }) {}
 
 export type DesktopAssistantTaskRequest = z.infer<typeof DesktopAssistantTaskRequestDto.schema>;

@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import ContextPill from './ContextPill.vue';
 import MiniSpinner from './MiniSpinner.vue';
 
-import { ASSISTANT_CONTEXTS, suggestionChipsFor } from '../assistant/contexts';
+import { suggestionChipsFor } from '../assistant/contexts';
 import { watchAssistantRun } from '../assistant/run-watcher';
 import { createAssistantTask } from '../assistant/tasks-api';
+import { useAssistantContext } from '../assistant/use-assistant-context';
 import { usePendingTasks } from '../assistant/use-pending-tasks';
+import type { DesktopAssistantTaskRequest } from '../../shared/types';
 
 type ComposerState = 'idle' | 'thinking' | 'doing';
 
@@ -41,18 +43,42 @@ const state = ref<ComposerState>('idle');
 // the run's events, not a translation key; falls back to the Working pill copy.
 const progressLabel = ref<string | null>(null);
 const resultCard = ref<ResultCard | null>(null);
-const activeContextKey = ref(ASSISTANT_CONTEXTS[0].key);
+
+// Context selection is shared app-wide (see use-assistant-context). `detected` is
+// the chosen raw context we forward to the backend; `activeContext`/`contextOptions`
+// are its UI projection; `selectContext` drives the pill.
+const { detected, activeContext, contextOptions, ensureDetection, selectContext } =
+	useAssistantContext();
+
+// Screenshot opt-in: off by default, auto-on when the context is just "the
+// screen" (kind 'other'), where pixels are the only signal. User can override.
+const screenshotEnabled = ref(false);
+watch(
+	() => activeContext.value.kind,
+	(kind) => {
+		screenshotEnabled.value = kind === 'other';
+	},
+	{ immediate: true },
+);
+
+const screenshotTooltip = computed(() =>
+	i18n.baseText(
+		screenshotEnabled.value
+			? 'desktopAssistant.composer.screenshotOnTooltip'
+			: 'desktopAssistant.composer.screenshotOffTooltip',
+	),
+);
+
+onMounted(ensureDetection);
 
 const inputRef = ref<HTMLInputElement | null>(null);
 const resultCardRef = ref<HTMLElement | null>(null);
 
 const busy = computed(() => state.value === 'thinking' || state.value === 'doing');
 
-const activeContext = computed(
-	() => ASSISTANT_CONTEXTS.find((c) => c.key === activeContextKey.value) ?? ASSISTANT_CONTEXTS[0],
+const chips = computed(() =>
+	suggestionChipsFor(activeContext.value.kind, activeContext.value.fileType),
 );
-
-const chips = computed(() => suggestionChipsFor(activeContext.value.kind));
 
 function truncateLabel(value: string): string {
 	return value.length > MAX_LABEL_LENGTH ? `${value.slice(0, MAX_LABEL_LENGTH - 1)}…` : value;
@@ -65,6 +91,38 @@ function showResult(card: ResultCard) {
 	void nextTick(() => resultCardRef.value?.focus());
 }
 
+/**
+ * The detected context (and an optional screenshot of the selected window) the
+ * one-shot request carries. A failed capture degrades to context-without-pixels
+ * rather than blocking the task.
+ */
+async function buildTaskContext(): Promise<DesktopAssistantTaskRequest['context']> {
+	const ctx = detected.value;
+	const context: NonNullable<DesktopAssistantTaskRequest['context']> = {
+		kind: ctx.kind,
+		fileType: ctx.fileType,
+		app: ctx.app,
+		windowTitle: ctx.windowTitle,
+		url: ctx.url,
+		path: ctx.path,
+	};
+	if (screenshotEnabled.value) {
+		try {
+			// Capture just the selected window (so our own window isn't in the shot);
+			// falls back to full screen in the main process when it can't be matched.
+			const shot = await window.electronAPI.captureScreenshot({
+				windowId: ctx.id,
+				app: ctx.app,
+				title: ctx.windowTitle,
+			});
+			context.attachments = [shot];
+		} catch (error) {
+			console.error('Screenshot capture failed; sending the task without it', error);
+		}
+	}
+	return context;
+}
+
 async function submit(prompt?: string) {
 	const value = (prompt ?? text.value).trim();
 	if (!value || busy.value) return;
@@ -75,9 +133,7 @@ async function submit(prompt?: string) {
 	state.value = 'thinking';
 
 	try {
-		// `appHint` is a short "what the user is looking at" string — the active
-		// context's label (e.g. "Downloads folder") is exactly that.
-		const created = await createAssistantTask(value, activeContext.value.label);
+		const created = await createAssistantTask({ prompt: value, context: await buildTaskContext() });
 		if (!created.ok || !created.threadId || !created.runId) {
 			showResult({
 				kind: 'error',
@@ -142,6 +198,10 @@ function dismissResult() {
 	resultCard.value = null;
 	returnFocusToInput();
 }
+
+// Exposed so sibling surfaces (e.g. an empty-state recommendation card) can fire
+// a prompt through the same path as typing or clicking a suggestion chip.
+defineExpose({ submit });
 </script>
 
 <template>
@@ -295,9 +355,20 @@ function dismissResult() {
 		<div :class="$style.pillRow">
 			<ContextPill
 				:context="activeContext"
-				:options="ASSISTANT_CONTEXTS"
-				@select="activeContextKey = $event"
+				:options="contextOptions"
+				@select="selectContext($event)"
 			/>
+			<N8nTooltip :content="screenshotTooltip" placement="top">
+				<button
+					type="button"
+					:class="[$style.screenshotToggle, { [$style.screenshotOn]: screenshotEnabled }]"
+					:aria-pressed="screenshotEnabled"
+					:aria-label="i18n.baseText('desktopAssistant.composer.attachScreenshot')"
+					@click="screenshotEnabled = !screenshotEnabled"
+				>
+					<N8nIcon icon="image" :size="13" aria-hidden="true" />
+				</button>
+			</N8nTooltip>
 		</div>
 
 		<div :class="$style.chipRowWrapper">
@@ -566,7 +637,43 @@ function dismissResult() {
 }
 
 .pillRow {
+	display: flex;
+	gap: var(--spacing--3xs);
+	align-items: center;
 	margin-top: 10px;
+}
+
+.screenshotToggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	color: var(--da-subtler);
+	cursor: pointer;
+	background: var(--da-surface-2);
+	border: 1px solid var(--da-border);
+	border-radius: var(--radius--full);
+	transition:
+		background 0.12s,
+		border-color 0.12s,
+		color 0.12s;
+}
+
+.screenshotToggle:hover {
+	color: var(--da-text);
+	border-color: var(--da-subtler);
+}
+
+.screenshotToggle:focus-visible {
+	outline: var(--da-focus-ring);
+	outline-offset: var(--da-focus-ring-offset);
+}
+
+.screenshotOn {
+	color: var(--da-purple);
+	background: rgba(167, 139, 250, 0.1);
+	border-color: rgba(167, 139, 250, 0.35);
 }
 
 .chipRowWrapper {
