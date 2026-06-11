@@ -26,6 +26,7 @@ jest.mock('../eval/execution.service', () => ({
 
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequest,
@@ -57,6 +58,7 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
@@ -98,12 +100,15 @@ describe('InstanceAiController', () => {
 	const credentialsService = mock<CredentialsService>();
 	const projectService = mock<ProjectService>();
 
+	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
 		memoryService,
 		settingsService,
 		mock<EvalExecutionService>(),
+		evalCredentialAllowlists,
 		eventBus,
 		moduleRegistry,
 		push,
@@ -480,6 +485,48 @@ describe('InstanceAiController', () => {
 
 			await expect(
 				controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'up' }),
+			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('executeWithLlmMock', () => {
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('executeWithLlmMock')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
+		});
+	});
+
+	describe('setThreadCredentialAllowlist', () => {
+		const payload = { threadId: THREAD_ID, credentialIds: ['cred-1', 'cred-2'] };
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('setThreadCredentialAllowlist')).toEqual({
+				scope: 'instanceAi:eval',
+				globalOnly: true,
+			});
+		});
+
+		it('should pin the allowlist for an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			const result = await controller.setThreadCredentialAllowlist(
+				req,
+				res,
+				payload as InstanceAiEvalCredentialAllowlistRequest,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(evalCredentialAllowlists.get(THREAD_ID)).toEqual(['cred-1', 'cred-2']);
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.setThreadCredentialAllowlist(
+					req,
+					res,
+					payload as InstanceAiEvalCredentialAllowlistRequest,
+				),
 			).rejects.toThrow(NotFoundError);
 		});
 	});
