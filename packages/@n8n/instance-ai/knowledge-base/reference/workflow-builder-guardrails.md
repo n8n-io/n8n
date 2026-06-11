@@ -42,6 +42,13 @@ upserting, or posting, check the actual item shape. Preserve itemized flow or
 split arrays into one item per record; do not collapse to no work because
 `$input.first().json` is a single object.
 
+A top-level array response (for example Binance klines, list endpoints, search
+results) is split by the HTTP Request node into one item per element, so
+`$input.first().json` is a single element, not the whole array. In a Code node
+that must process every row, read `$input.all().map(i => i.json)` (or iterate
+the items) instead of mapping over `$input.first().json`, which would only see
+the first record and produce null/empty downstream values.
+
 For one digest, ranking, summary, count, or report, aggregate first and send one
 final item. For one action per source record, keep the stream itemized. Use
 `executeOnce: true` only for shared-context reads, report construction,
