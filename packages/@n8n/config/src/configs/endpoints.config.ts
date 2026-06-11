@@ -83,6 +83,10 @@ export class PrometheusMetricsConfig {
 	/** Whether to include metrics for execution data reads and writes. */
 	@Env('N8N_METRICS_INCLUDE_EXECUTION_DATA_METRICS')
 	includeExecutionDataMetrics: boolean = false;
+
+	/** Whether to include metrics for SSRF protection checks. */
+	@Env('N8N_METRICS_INCLUDE_SSRF_METRICS')
+	includeSsrfMetrics: boolean = false;
 }
 
 @Config

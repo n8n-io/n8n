@@ -45,6 +45,27 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		expect(claimedAgain).toBeNull();
 	});
 
+	it('enqueues within a provided transaction and is visible once it commits', async () => {
+		await repository.manager.transaction(async (trx) => {
+			await repository.enqueue('wf-1', 'v-1', trx);
+		});
+
+		const claimed = await repository.claimNextPendingRecord();
+		expect(claimed?.workflowId).toBe('wf-1');
+		expect(claimed?.publishedVersionId).toBe('v-1');
+	});
+
+	it('discards the enqueued record when the surrounding transaction rolls back', async () => {
+		await expect(
+			repository.manager.transaction(async (trx) => {
+				await repository.enqueue('wf-1', 'v-1', trx);
+				throw new Error('rollback');
+			}),
+		).rejects.toThrow('rollback');
+
+		expect(await repository.claimNextPendingRecord()).toBeNull();
+	});
+
 	it('claims pending records in FIFO order', async () => {
 		await repository.enqueue('wf-1', 'v-1');
 		await repository.enqueue('wf-2', 'v-1');
