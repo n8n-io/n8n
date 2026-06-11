@@ -20,9 +20,13 @@ export const NodeGroupViewKey: InjectionKey<CanvasNodeGroupView> = Symbol('nodeG
 type ExpandedGroupStore = Record<string, string[]>;
 
 function readStore(): ExpandedGroupStore {
-	const raw = localStorage.getItem(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED) ?? '';
-	const parsed = jsonParse<unknown>(raw, { fallbackValue: {} });
-	return isStringArrayRecord(parsed) ? parsed : {};
+	try {
+		const raw = localStorage.getItem(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED) ?? '';
+		const parsed = jsonParse<unknown>(raw, { fallbackValue: {} });
+		return isStringArrayRecord(parsed) ? parsed : {};
+	} catch {
+		return {};
+	}
 }
 
 function writeStore(store: ExpandedGroupStore) {
