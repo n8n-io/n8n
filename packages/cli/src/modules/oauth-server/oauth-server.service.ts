@@ -21,12 +21,11 @@ import type { Response } from 'express';
 import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
-import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
-import { McpOAuthTokenService } from './mcp-oauth-token.service';
-import { McpClientLimitReachedError } from './mcp.errors';
+import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
 import { OAuthSessionService } from './oauth-session.service';
-
-export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
+import { OAuthTokenService } from './oauth-token.service';
+import { OAuthClientLimitReachedError } from './oauth.errors';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
@@ -35,19 +34,20 @@ const MAX_REDIRECT_URIS = 10;
 const MAX_REDIRECT_URI_LENGTH = 2048;
 
 /**
- * OAuth 2.1 server implementation for MCP
+ * OAuth 2.1 server implementation shared by all registered protected resources.
  * Implements MCP SDK OAuthServerProvider interface for client registration, authorization, and token management
  */
 @Service()
-export class McpOAuthService implements OAuthServerProvider {
+export class OAuthServerService implements OAuthServerProvider {
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly oauthSessionService: OAuthSessionService,
 		private readonly oauthClientRepository: OAuthClientRepository,
-		private readonly tokenService: McpOAuthTokenService,
-		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
+		private readonly tokenService: OAuthTokenService,
+		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
 		private readonly userConsentRepository: UserConsentRepository,
+		private readonly resourceRegistry: ProtectedResourceRegistry,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -69,7 +69,7 @@ export class McpOAuthService implements OAuthServerProvider {
 						client_secret_expires_at: client.clientSecretExpiresAt,
 					}),
 					response_types: ['code'],
-					scope: SUPPORTED_SCOPES.join(' '),
+					scope: this.resourceRegistry.getAllScopes().join(' '),
 					logo_uri: undefined,
 					tos_uri: undefined,
 				};
@@ -116,7 +116,7 @@ export class McpOAuthService implements OAuthServerProvider {
 	 * Check count after insert to avoid race condition between count() and insert().
 	 * If over limit, rolls back by deleting the just-inserted client.
 	 *
-	 * Throws `McpClientLimitReachedError` (a `ServerError` subclass), which the
+	 * Throws `OAuthClientLimitReachedError` (a `ServerError` subclass), which the
 	 * MCP SDK's register handler will surface as a 500 with our descriptive body
 	 * — matching the response shape of the pre-check guard at the route layer.
 	 */
@@ -126,10 +126,10 @@ export class McpOAuthService implements OAuthServerProvider {
 		if (clientCount > limit) {
 			await this.oauthClientRepository.delete({ id: clientId });
 			this.logger.warn(
-				'MCP OAuth client registration rejected: instance limit reached (post-insert rollback)',
+				'OAuth client registration rejected: instance limit reached (post-insert rollback)',
 				{ limit, clientCount },
 			);
-			throw new McpClientLimitReachedError(limit);
+			throw new OAuthClientLimitReachedError(limit);
 		}
 	}
 
@@ -230,7 +230,8 @@ export class McpOAuthService implements OAuthServerProvider {
 		const tokenResource = this.resolveAndValidateResourceIndicator(resourceStr);
 
 		// RFC 8707: if both the token request and the auth code specify a resource, they must match
-		// (token substitution defense). Otherwise either supplies the other, falling back to canonical.
+		// (token substitution defense). Otherwise either supplies the other, falling back to the
+		// registry's default resource.
 		let finalResource: string | undefined;
 		const codeResource = authRecord.resource ?? undefined;
 
@@ -267,7 +268,7 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 
 	// `resource` (when present) is normalized and validated before rotation; if omitted,
-	// the token service falls back to the canonical resource URL. `_scopes` is part of
+	// the token service falls back to the default protected resource. `_scopes` is part of
 	// the SDK contract but unused — OAuth 2.1 refresh tokens reuse the original grant's scopes.
 	async exchangeRefreshToken(
 		client: OAuthClientInformationFull,
@@ -287,21 +288,22 @@ export class McpOAuthService implements OAuthServerProvider {
 		return await this.tokenService.verifyAccessToken(token);
 	}
 
-	private getCanonicalMcpResourceUrl(): string {
-		return this.tokenService.getCanonicalResourceUrl();
-	}
-
-	// Exact-match required by RFC 8707 §2.1. Prefix/wildcard matching would open the door
-	// to malicious-host or path-traversal indicators like ".../mcp-server/http/../admin".
+	// Exact-match against a registered resource, as required by RFC 8707 §2.1.
+	// Prefix/wildcard matching would open the door to malicious-host or
+	// path-traversal indicators like ".../mcp-server/http/../admin".
 	private resolveAndValidateResourceIndicator(resource: string | undefined): string | undefined {
 		if (resource === undefined) {
 			return undefined;
 		}
 
-		const canonicalResource = this.getCanonicalMcpResourceUrl();
 		const normalizedResource = resource.replace(/\/$/, '');
-		if (normalizedResource !== canonicalResource) {
-			throw new InvalidResourceIndicatorError(resource, canonicalResource);
+		const match = this.resourceRegistry.getByResourceUrl(normalizedResource);
+		if (!match) {
+			const knownResources = this.resourceRegistry
+				.getAll()
+				.map((registered) => registered.getResourceUrl())
+				.join(', ');
+			throw new InvalidResourceIndicatorError(resource, knownResources);
 		}
 
 		return normalizedResource;
