@@ -213,12 +213,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(DeprecationService).warn();
 
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
-		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			const { WorkflowPublicationOutboxConsumer } = await import(
-				'@/workflows/workflow-publication-outbox-consumer'
-			);
-			Container.get(WorkflowPublicationOutboxConsumer).init();
-		}
 
 		const isMultiMainEnabled =
 			this.globalConfig.executions.mode === 'queue' && this.globalConfig.multiMainSetup.enabled;
@@ -236,6 +230,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.instanceSettings.markAsLeader();
 		} else {
 			await this.initOrchestration();
+		}
+
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const { WorkflowPublicationOutboxConsumer } = await import(
+				'@/workflows/workflow-publication-outbox-consumer'
+			);
+			Container.get(WorkflowPublicationOutboxConsumer).init();
 		}
 
 		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
