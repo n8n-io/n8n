@@ -31,18 +31,19 @@ const {
 
 const backRef = ref<HTMLButtonElement | null>(null);
 
-// Escape mirrors the back action so keyboard users can always retreat; the
-// chip pickers swallow their own Escape, so this only fires on "plain" ones.
-function onKeydown(event: KeyboardEvent) {
-	if (event.key === 'Escape' && !event.defaultPrevented) goHome();
+// Escape mirrors the back action so keyboard users can always retreat. Bound
+// to the view root (not window): an open chip dropdown is teleported to the
+// body, so its Escape (reka-ui closes it without preventDefault) never
+// bubbles through here and can't discard the user's pending edits.
+function onEscape(event: KeyboardEvent) {
+	if (event.defaultPrevented) return;
+	goHome();
 }
 
 onMounted(() => {
 	backRef.value?.focus();
-	window.addEventListener('keydown', onKeydown);
 	void load();
 });
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
 /** Emoji icons render their glyph; node icons render via `N8nNodeIcon`, mirroring TaskCard. */
 const emojiGlyph = computed(() => (props.card.icon.type === 'emoji' ? props.card.icon.value : ''));
@@ -86,12 +87,21 @@ const connectLabel = computed(() => {
 const actionError = ref<string | null>(null);
 const runState = ref<'idle' | 'running' | 'started'>('idle');
 
+/** How long "Run started" lingers in the footer before fading back to idle. */
+const RUN_STARTED_RESET_MS = 4_000;
+let runStartedTimer: ReturnType<typeof setTimeout> | undefined;
+onBeforeUnmount(() => clearTimeout(runStartedTimer));
+
 async function runNow() {
 	actionError.value = null;
 	runState.value = 'running';
 	const result = await window.electronAPI.runTask(props.card.workflowId);
 	if (result.ok) {
 		runState.value = 'started';
+		clearTimeout(runStartedTimer);
+		runStartedTimer = setTimeout(() => {
+			if (runState.value === 'started') runState.value = 'idle';
+		}, RUN_STARTED_RESET_MS);
 		return;
 	}
 	runState.value = 'idle';
@@ -122,7 +132,7 @@ function connect() {
 </script>
 
 <template>
-	<div :class="$style.view">
+	<div :class="$style.view" @keydown.esc="onEscape">
 		<header :class="$style.header">
 			<button
 				ref="backRef"

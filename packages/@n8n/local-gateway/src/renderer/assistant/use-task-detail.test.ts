@@ -25,12 +25,28 @@ const TEXT_ONLY_DETAIL: DesktopAssistantTaskDetailResponse = {
 	connectionsNeeded: [],
 };
 
-function runFinish(runId: string): InstanceAiEvent {
-	return { type: 'run-finish', runId, agentId: 'root', payload: {} } as InstanceAiEvent;
+/** The DETAIL after a successful edit run: new version, the edited value baked in. */
+const EDITED_DETAIL: DesktopAssistantTaskDetailResponse = {
+	...DETAIL,
+	versionId: 'v2',
+	parts: DETAIL.parts.map((part) =>
+		part.kind === 'param' && part.id === 'p1' ? { ...part, value: 'weekdays at 9am' } : part,
+	),
+};
+
+function runFinish(runId: string, status = 'completed'): InstanceAiEvent {
+	return { type: 'run-finish', runId, agentId: 'root', payload: { status } } as InstanceAiEvent;
 }
 
 function stub(detail: DesktopAssistantTaskDetailResponse = DETAIL) {
-	const getTaskDetail = vi.fn(async () => await Promise.resolve(detail));
+	// Fetches consume queued details in order (e.g. the post-edit one); the
+	// last entry repeats for any further fetches.
+	const details = [detail];
+	const getTaskDetail = vi.fn(async () => {
+		const next = details.length > 1 ? details.shift() : details[0];
+		return await Promise.resolve(next ?? detail);
+	});
+	const queueDetail = (next: DesktopAssistantTaskDetailResponse) => details.push(next);
 	const applyTaskEdits = vi.fn(async () =>
 		await Promise.resolve({ threadId: 'thread-1', runId: 'run-1' }),
 	);
@@ -52,7 +68,7 @@ function stub(detail: DesktopAssistantTaskDetailResponse = DETAIL) {
 	const emit = (event: InstanceAiEvent) => {
 		for (const listener of [...listeners]) listener(event);
 	};
-	return { getTaskDetail, applyTaskEdits, threadFollower, emit };
+	return { getTaskDetail, queueDetail, applyTaskEdits, threadFollower, emit };
 }
 
 describe('useTaskDetail', () => {
@@ -124,7 +140,8 @@ describe('useTaskDetail', () => {
 	});
 
 	it('applies changes, waits for run-finish, and refetches the detail', async () => {
-		const { getTaskDetail, applyTaskEdits, threadFollower, emit } = stub();
+		const { getTaskDetail, queueDetail, applyTaskEdits, threadFollower, emit } = stub();
+		queueDetail(EDITED_DETAIL);
 		const taskDetail = useTaskDetail('wf-1', { threadFollower });
 		await taskDetail.load();
 		taskDetail.startEditing();
@@ -148,13 +165,15 @@ describe('useTaskDetail', () => {
 		await finishPromise;
 
 		expect(getTaskDetail).toHaveBeenCalledTimes(2);
+		expect(taskDetail.detail.value).toEqual(EDITED_DETAIL);
 		expect(taskDetail.editing.value).toBe(false);
 		expect(taskDetail.phase.value).toBe('ready');
 		expect(threadFollower.unlisten).toHaveBeenCalled();
 	});
 
 	it('gives up waiting after the timeout and still refetches', async () => {
-		const { getTaskDetail, threadFollower } = stub();
+		const { getTaskDetail, queueDetail, threadFollower } = stub();
+		queueDetail(EDITED_DETAIL);
 		const taskDetail = useTaskDetail('wf-1', { threadFollower, editRunTimeoutMs: 5_000 });
 		await taskDetail.load();
 		taskDetail.startEditing();
@@ -165,11 +184,56 @@ describe('useTaskDetail', () => {
 		await finishPromise;
 
 		expect(getTaskDetail).toHaveBeenCalledTimes(2);
+		expect(taskDetail.editing.value).toBe(false);
 		expect(taskDetail.phase.value).toBe('ready');
 	});
 
-	it('keeps edit mode and flags the failure when applying edits rejects', async () => {
-		const { applyTaskEdits, threadFollower } = stub();
+	it('keeps edit mode and flags the failure when the run finishes with an error', async () => {
+		const { getTaskDetail, threadFollower, emit } = stub();
+		const taskDetail = useTaskDetail('wf-1', { threadFollower });
+		await taskDetail.load();
+		taskDetail.startEditing();
+		taskDetail.setParamValue('p1', 'weekdays at 9am');
+
+		const finishPromise = taskDetail.finishEditing();
+		await vi.advanceTimersByTimeAsync(0);
+		emit(runFinish('run-1', 'error'));
+		await finishPromise;
+
+		// The workflow is unchanged — no refetch, picks intact, failure surfaced.
+		expect(getTaskDetail).toHaveBeenCalledTimes(1);
+		expect(taskDetail.updateFailed.value).toBe(true);
+		expect(taskDetail.editing.value).toBe(true);
+		expect(taskDetail.phase.value).toBe('ready');
+		expect(taskDetail.changes.value).toEqual([
+			{ paramId: 'p1', from: 'weekday at 6am', to: 'weekdays at 9am' },
+		]);
+	});
+
+	it('flags the failure when the run completes without changing the workflow', async () => {
+		// No queued detail: the refetch returns the same versionId.
+		const { getTaskDetail, threadFollower, emit } = stub();
+		const taskDetail = useTaskDetail('wf-1', { threadFollower });
+		await taskDetail.load();
+		taskDetail.startEditing();
+		taskDetail.setParamValue('p1', 'weekdays at 9am');
+
+		const finishPromise = taskDetail.finishEditing();
+		await vi.advanceTimersByTimeAsync(0);
+		emit(runFinish('run-1'));
+		await finishPromise;
+
+		expect(getTaskDetail).toHaveBeenCalledTimes(2);
+		expect(taskDetail.updateFailed.value).toBe(true);
+		expect(taskDetail.editing.value).toBe(true);
+		// The pick is restored onto the reloaded (identical) description.
+		expect(taskDetail.changes.value).toEqual([
+			{ paramId: 'p1', from: 'weekday at 6am', to: 'weekdays at 9am' },
+		]);
+	});
+
+	it('refetches, restores picks, and flags the failure when applying edits rejects', async () => {
+		const { getTaskDetail, applyTaskEdits, threadFollower } = stub();
 		applyTaskEdits.mockRejectedValueOnce(new Error('offline'));
 		const taskDetail = useTaskDetail('wf-1', { threadFollower });
 		await taskDetail.load();
@@ -178,10 +242,12 @@ describe('useTaskDetail', () => {
 
 		await taskDetail.finishEditing();
 
+		// Reloaded (so a stale-description rejection self-heals)…
+		expect(getTaskDetail).toHaveBeenCalledTimes(2);
 		expect(taskDetail.updateFailed.value).toBe(true);
 		expect(taskDetail.editing.value).toBe(true);
 		expect(taskDetail.phase.value).toBe('ready');
-		// The user's pick survives so they can retry.
+		// …with the user's pick restored so they can retry.
 		expect(taskDetail.changes.value).toEqual([
 			{ paramId: 'p1', from: 'weekday at 6am', to: 'weekdays at 9am' },
 		]);

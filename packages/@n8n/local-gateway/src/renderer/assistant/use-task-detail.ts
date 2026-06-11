@@ -97,46 +97,81 @@ export function useTaskDetail(workflowId: string, options: UseTaskDetailOptions 
 		pickerValues.value = { ...pickerValues.value, [paramId]: value };
 	}
 
+	type RunOutcome = 'completed' | 'failed' | 'timeout';
+
 	/** Wait for the edit run to finish, resolving on timeout so the view never hangs. */
-	async function waitForRunFinish(threadId: string, runId: string): Promise<void> {
+	async function waitForRunFinish(threadId: string, runId: string): Promise<RunOutcome> {
 		const follower = options.threadFollower ?? getThreadClient();
-		await new Promise<void>((resolve) => {
-			const finish = () => {
+		return await new Promise<RunOutcome>((resolve) => {
+			const finish = (outcome: RunOutcome) => {
 				clearTimeout(timer);
 				follower.unlisten(threadId, listener);
-				resolve();
+				resolve(outcome);
 			};
 			const listener = (event: InstanceAiEvent) => {
-				if (event.type === 'run-finish' && event.runId === runId) finish();
+				if (event.type !== 'run-finish' || event.runId !== runId) return;
+				finish(event.payload.status === 'completed' ? 'completed' : 'failed');
 			};
-			const timer = setTimeout(finish, timeoutMs);
+			const timer = setTimeout(() => finish('timeout'), timeoutMs);
 			follower.listen(threadId, listener);
 		});
+	}
+
+	/** Re-apply the user's picks onto the (re)loaded detail, where they still fit
+	 *  — i.e. the param still exists with the same generated value. */
+	function restorePicks(requested: DesktopAssistantApplyEditsRequest['changes']) {
+		for (const change of requested) {
+			const stillApplies = detail.value?.parts.some(
+				(part) => part.kind === 'param' && part.id === change.paramId && part.value === change.from,
+			);
+			if (stillApplies) setParamValue(change.paramId, change.to);
+		}
 	}
 
 	/**
 	 * Done pressed: with no changes just leave edit mode; with changes, send them
 	 * and follow the run, then refetch so the view reflects the updated workflow.
+	 * Every non-success path keeps the user in edit mode with their picks intact
+	 * and `updateFailed` raised, so the edit is never silently dropped.
 	 */
 	async function finishEditing() {
 		if (changes.value.length === 0) {
 			editing.value = false;
 			return;
 		}
+		const requested = changes.value;
+		const previousVersionId = detail.value?.versionId;
 		phase.value = 'updating';
 		updateFailed.value = false;
 		try {
 			const { threadId, runId } = await window.electronAPI.applyTaskEdits(workflowId, {
-				changes: changes.value,
+				changes: requested,
 			});
-			await waitForRunFinish(threadId, runId);
-			editing.value = false;
+			const outcome = await waitForRunFinish(threadId, runId);
+			if (outcome === 'failed') {
+				// The run errored or was cancelled — the workflow is unchanged.
+				updateFailed.value = true;
+				phase.value = 'ready';
+				return;
+			}
 			await load();
+			if (detail.value && detail.value.versionId === previousVersionId) {
+				// The run finished without touching the workflow (e.g. it judged the
+				// change inapplicable). Surface that instead of silently showing the
+				// old values.
+				restorePicks(requested);
+				updateFailed.value = true;
+				return;
+			}
+			editing.value = false;
 		} catch (error) {
 			console.error('Failed to apply task edits', workflowId, error);
-			// Stay in edit mode with the user's picks intact so they can retry.
+			// Refetch so a stale-description rejection self-heals (the reload swaps
+			// in the current description), then restore the picks that still apply
+			// so the user can retry.
+			await load();
+			restorePicks(requested);
 			updateFailed.value = true;
-			phase.value = 'ready';
 		}
 	}
 

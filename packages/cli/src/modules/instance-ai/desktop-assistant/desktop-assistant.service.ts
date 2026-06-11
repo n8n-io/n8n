@@ -24,7 +24,8 @@ import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import type { ExecutionStatus, WorkflowFEMeta } from 'n8n-workflow';
+import type { ExecutionStatus } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -440,8 +441,14 @@ export class DesktopAssistantService {
 			schema: taskDescriptionSchema,
 		});
 		const parts = normalizeDescriptionParts(rawParts);
+		if (parts.length === 0) {
+			// All parts were empty/whitespace — caching this would render a blank
+			// sentence and brick apply-edits for the version; treat as a failed
+			// generation so the client shows its error + retry state.
+			throw new OperationalError('Task description generation returned no usable description');
+		}
 
-		await this.writeTaskDetailCache(workflowId, workflow.meta, workflow.versionId, parts);
+		await this.writeTaskDetailCache(workflowId, workflow.versionId, parts);
 		return { workflowId, versionId: workflow.versionId, parts, connectionsNeeded };
 	}
 
@@ -453,17 +460,23 @@ export class DesktopAssistantService {
 		}
 	}
 
-	/** Merge the generated description into the workflow's meta. `currentMeta` is
-	 *  the meta of the workflow row the caller already loaded — no re-read needed. */
+	/** Merge the generated description into the workflow's meta. Re-reads the
+	 *  row's meta right before writing: the caller's copy predates a seconds-long
+	 *  LLM call, and writing it back would clobber anything (editor saves, other
+	 *  meta writers) that landed in between. */
 	private async writeTaskDetailCache(
 		workflowId: string,
-		currentMeta: WorkflowFEMeta | undefined,
 		versionId: string,
 		parts: DesktopAssistantDescriptionPart[],
 	): Promise<void> {
-		const existing = readDesktopAssistantMeta(currentMeta) ?? {};
+		const workflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			select: ['id', 'meta'],
+		});
+		if (!workflow) return;
+		const existing = readDesktopAssistantMeta(workflow.meta) ?? {};
 		const nextMeta = {
-			...(currentMeta ?? {}),
+			...(workflow.meta ?? {}),
 			desktopAssistant: {
 				...existing,
 				detail: { versionId, parts },
@@ -501,6 +514,23 @@ export class DesktopAssistantService {
 			throw new BadRequestError(
 				'No current task description for this workflow — reload the task detail and retry',
 			);
+		}
+
+		// Every change must reference a param of the displayed description with its
+		// current value. This keeps the endpoint a chip-edit applier rather than a
+		// free-text instruction channel, and rejects edits against a stale view.
+		const paramsById = new Map(
+			parts.flatMap((part) => (part.kind === 'param' ? [[part.id, part] as const] : [])),
+		);
+		const seenParamIds = new Set<string>();
+		for (const change of body.changes) {
+			const param = paramsById.get(change.paramId);
+			if (!param || param.value !== change.from || seenParamIds.has(change.paramId)) {
+				throw new BadRequestError(
+					'Edits do not match the current task description — reload the task detail and retry',
+				);
+			}
+			seenParamIds.add(change.paramId);
 		}
 
 		const threadId = randomUUID();

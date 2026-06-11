@@ -918,10 +918,11 @@ describe('DesktopAssistantService.getTaskDetail', () => {
 		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			workflowWith({
 				versionId: 'v2',
-				meta: {
-					desktopAssistant: { icon: '📰', detail: { versionId: 'v1', parts: PARTS } },
-				},
+				meta: { desktopAssistant: { detail: { versionId: 'v1', parts: PARTS } } },
 			}),
+		);
+		ctx.workflowRepository.findOne.mockResolvedValue(
+			workflowWith({ meta: { desktopAssistant: { icon: '📰' } } }),
 		);
 		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([
 			{ id: 'c1', type: 'slackApi' },
@@ -948,8 +949,8 @@ describe('DesktopAssistantService.getTaskDetail', () => {
 		expect(opts.input).toContain('Workflow name: Morning news brief');
 		expect(opts.input).toContain('Connected integrations: slackApi');
 
-		// Cache write merges into the already-loaded meta blob — no re-read.
-		expect(ctx.workflowRepository.findOne).not.toHaveBeenCalled();
+		// Cache write merges into a freshly-read meta blob (the loaded copy
+		// predates the LLM call and may be stale by now).
 		const [updatedId, patch] = ctx.workflowRepository.update.mock.calls[0];
 		expect(updatedId).toBe('wf-1');
 		expect(patch.meta).toEqual({
@@ -958,6 +959,20 @@ describe('DesktopAssistantService.getTaskDetail', () => {
 				detail: { versionId: 'v2', parts: result.parts },
 			},
 		});
+	});
+
+	test('treats an all-empty generation as a failure instead of caching it', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(workflowWith());
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+		ctx.instanceAiService.generateStructured.mockResolvedValue({
+			parts: [{ kind: 'text', text: '' }],
+		} as never);
+
+		await expect(ctx.service.getTaskDetail(USER, 'wf-1')).rejects.toThrow(
+			'no usable description',
+		);
+		expect(ctx.workflowRepository.update).not.toHaveBeenCalled();
 	});
 
 	test('resolves missing credentials into connectionsNeeded with display names', async () => {
@@ -1079,6 +1094,25 @@ describe('DesktopAssistantService.applyTaskEdits', () => {
 		await expect(
 			ctx.service.applyTaskEdits(USER, 'wf-1', { changes: CHANGES }),
 		).rejects.toBeInstanceOf(BadRequestError);
+		expect(ctx.instanceAiService.startRun).not.toHaveBeenCalled();
+	});
+
+	test.each([
+		['an unknown paramId', [{ paramId: 'p9', from: 'weekday at 6am', to: 'weekdays at 9am' }]],
+		['a stale from value', [{ paramId: 'p1', from: 'weekday at 7am', to: 'weekdays at 9am' }]],
+		[
+			'duplicate paramIds',
+			[
+				{ paramId: 'p1', from: 'weekday at 6am', to: 'weekdays at 9am' },
+				{ paramId: 'p1', from: 'weekday at 6am', to: 'morning' },
+			],
+		],
+	])('rejects changes with %s', async (_label, changes) => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(workflowWith());
+		await expect(ctx.service.applyTaskEdits(USER, 'wf-1', { changes })).rejects.toBeInstanceOf(
+			BadRequestError,
+		);
 		expect(ctx.instanceAiService.startRun).not.toHaveBeenCalled();
 	});
 
