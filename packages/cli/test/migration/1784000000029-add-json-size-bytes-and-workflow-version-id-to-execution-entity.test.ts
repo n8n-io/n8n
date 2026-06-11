@@ -73,12 +73,26 @@ describe('AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity Migration', () =
 		}
 	}
 
+	function expectNotNullDefaultZero(
+		col: SqliteColumnInfo | PgColumnInfo | undefined,
+		context: TestMigrationContext,
+	) {
+		expect(col).toBeDefined();
+		if (context.isSqlite) {
+			expect((col as SqliteColumnInfo).notnull).toBe(1);
+			expect((col as SqliteColumnInfo).dflt_value).toContain('0');
+		} else {
+			expect((col as PgColumnInfo).is_nullable).toBe('NO');
+			expect((col as PgColumnInfo).column_default).toContain('0');
+		}
+	}
+
 	describe('up', () => {
-		it('should add jsonSizeBytes and workflowVersionId as nullable columns', async () => {
+		it('should add jsonSizeBytes as NOT NULL default 0 and workflowVersionId as nullable', async () => {
 			await runSingleMigration(MIGRATION_NAME);
 			const context = createTestMigrationContext(dataSource);
 
-			expectNullable(await getColumnMeta(context, 'jsonSizeBytes'), context);
+			expectNotNullDefaultZero(await getColumnMeta(context, 'jsonSizeBytes'), context);
 			expectNullable(await getColumnMeta(context, 'workflowVersionId'), context);
 
 			await context.queryRunner.release();

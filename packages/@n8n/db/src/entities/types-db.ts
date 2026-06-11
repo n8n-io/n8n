@@ -67,7 +67,7 @@ export interface IExecutionBase {
 	 */
 	tracingContext?: { traceparent: string; tracestate?: string } | null;
 	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
-	jsonSizeBytes?: number | null; // see `ExecutionEntity.jsonSizeBytes`
+	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
 	workflowVersionId?: string | null; // see `ExecutionEntity.workflowVersionId`
 }
 

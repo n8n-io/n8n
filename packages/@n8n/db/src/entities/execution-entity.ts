@@ -102,10 +102,10 @@ export class ExecutionEntity {
 	/**
 	 * Size in bytes of the serialized execution data bundle (run data, workflow
 	 * snapshot, version id) as last persisted; excludes binary data, stored
-	 * separately. `null` means not yet calculated, distinct from a genuine `0`.
+	 * separately. `0` means not yet calculated — a real bundle is always larger.
 	 */
-	@Column({ type: 'bigint', nullable: true, transformer: bigintStringToNumber })
-	jsonSizeBytes: number | null;
+	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
+	jsonSizeBytes: number;
 
 	/**
 	 * Version id of the workflow this execution ran, denormalized from the data
