@@ -236,10 +236,12 @@ const onConnectClick = () => {
 					</div>
 				</template>
 				<template #[`item.description`]="{ item }">
+					<!-- as-child anchors the tooltip to the cell content itself, keeping it
+						above the cell instead of positioning against an inline wrapper span -->
 					<N8nTooltip
 						:content="getDescriptionTooltip(item)"
 						:show-after="MCP_TOOLTIP_DELAY"
-						:popper-class="$style['description-popper']"
+						as-child
 					>
 						<div
 							data-test-id="mcp-workflow-description-cell"
@@ -347,10 +349,6 @@ const onConnectClick = () => {
 .empty-description {
 	display: flex;
 	align-items: center;
-}
-
-.description-popper {
-	max-width: 480px;
 }
 
 .table-link {
