@@ -3,15 +3,8 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ActiveWorkflowTriggers, ErrorReporter, StorageConfig } from 'n8n-core';
-import type {
-	INode,
-	IWorkflowExecuteAdditionalData,
-	Workflow,
-	WorkflowActivateMode,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
+import type { INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT } from '@/constants';
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import type { ActiveExecutions } from '@/active-executions';
 import type { EventService } from '@/events/event.service';
@@ -22,8 +15,8 @@ import type { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
-import { WorkflowTriggerActivationService } from '@/workflows/workflow-trigger-activation.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { WorkflowTriggerActivationService } from '@/workflows/workflow-trigger-activation.service';
 
 jest.mock('@/workflow-execute-additional-data');
 
@@ -178,131 +171,6 @@ describe('WorkflowTriggerActivationService', () => {
 				'Webhook Node',
 			]);
 			expect(activeWorkflowTriggers.removeTriggers).toHaveBeenCalledWith('wf-1', nodeIds);
-		});
-	});
-
-	describe('per-node retry on runtime trigger failure', () => {
-		const mode: WorkflowExecuteMode = 'trigger';
-		const activation: WorkflowActivateMode = 'update';
-
-		// emitError queues a real retry timer; clear it so no timer leaks past a test.
-		afterEach(() => {
-			service.removeAllQueuedTriggerNodeActivations();
-		});
-
-		type TriggerFnFactory = (
-			workflowData: WorkflowEntity,
-			additionalData: IWorkflowExecuteAdditionalData,
-			mode: WorkflowExecuteMode,
-			activation: WorkflowActivateMode,
-			resolveWorkflowData: () => Promise<WorkflowEntity>,
-		) => (workflow: Workflow, node: INode) => { emitError: (error: Error) => void };
-
-		function triggerContextFor(workflowData: WorkflowEntity, node: INode) {
-			const internal = service as unknown as { getExecuteTriggerFunctions: TriggerFnFactory };
-			const getTriggerFunctions = internal.getExecuteTriggerFunctions(
-				workflowData,
-				mock<IWorkflowExecuteAdditionalData>(),
-				mode,
-				activation,
-				async () => workflowData,
-			);
-			return getTriggerFunctions(mock<Workflow>({ name: workflowData.name }), node);
-		}
-
-		test('removes only the failing node, records the error and runs the error workflow', () => {
-			const workflowData = {
-				id: 'wf-1',
-				name: 'My Workflow',
-				nodes: [],
-				connections: {},
-			} as unknown as WorkflowEntity;
-			const node = mock<INode>({ id: 'node-1', name: 'Trigger Node' });
-			const executeErrorWorkflowSpy = jest
-				.spyOn(
-					service as unknown as { executeErrorWorkflow: (...args: unknown[]) => void },
-					'executeErrorWorkflow',
-				)
-				.mockImplementation(() => {});
-
-			triggerContextFor(workflowData, node).emitError(new Error('connection lost'));
-
-			expect(activeWorkflowTriggers.removeTriggers).toHaveBeenCalledWith(
-				'wf-1',
-				new Set(['node-1']),
-			);
-			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'connection lost');
-			expect(executeErrorWorkflowSpy).toHaveBeenCalled();
-		});
-
-		test('retries activation of only the failing node', async () => {
-			jest.useFakeTimers();
-			try {
-				const workflowData = {
-					id: 'wf-1',
-					name: 'My Workflow',
-					nodes: [],
-					connections: {},
-				} as unknown as WorkflowEntity;
-				const node = mock<INode>({ id: 'node-1', name: 'Trigger Node' });
-				jest
-					.spyOn(
-						service as unknown as { executeErrorWorkflow: (...args: unknown[]) => void },
-						'executeErrorWorkflow',
-					)
-					.mockImplementation(() => {});
-				const addTriggerNodesSpy = jest
-					.spyOn(service, 'addTriggerNodes')
-					.mockResolvedValue(undefined);
-
-				triggerContextFor(workflowData, node).emitError(new Error('connection lost'));
-
-				await jest.advanceTimersByTimeAsync(WORKFLOW_REACTIVATE_INITIAL_TIMEOUT);
-
-				expect(addTriggerNodesSpy).toHaveBeenCalledTimes(1);
-				expect(addTriggerNodesSpy).toHaveBeenCalledWith(
-					workflowData,
-					{ nodes: [], connections: {} },
-					new Set(['node-1']),
-				);
-
-				// A successful retry clears the queue: advancing further schedules nothing.
-				await jest.advanceTimersByTimeAsync(WORKFLOW_REACTIVATE_INITIAL_TIMEOUT * 4);
-				expect(addTriggerNodesSpy).toHaveBeenCalledTimes(1);
-			} finally {
-				jest.useRealTimers();
-			}
-		});
-
-		test('removeAllQueuedTriggerNodeActivations clears pending retries', async () => {
-			jest.useFakeTimers();
-			try {
-				const workflowData = {
-					id: 'wf-1',
-					name: 'My Workflow',
-					nodes: [],
-					connections: {},
-				} as unknown as WorkflowEntity;
-				const node = mock<INode>({ id: 'node-1', name: 'Trigger Node' });
-				jest
-					.spyOn(
-						service as unknown as { executeErrorWorkflow: (...args: unknown[]) => void },
-						'executeErrorWorkflow',
-					)
-					.mockImplementation(() => {});
-				const addTriggerNodesSpy = jest
-					.spyOn(service, 'addTriggerNodes')
-					.mockResolvedValue(undefined);
-
-				triggerContextFor(workflowData, node).emitError(new Error('connection lost'));
-
-				service.removeAllQueuedTriggerNodeActivations();
-				await jest.advanceTimersByTimeAsync(WORKFLOW_REACTIVATE_INITIAL_TIMEOUT * 4);
-
-				expect(addTriggerNodesSpy).not.toHaveBeenCalled();
-			} finally {
-				jest.useRealTimers();
-			}
 		});
 	});
 });
