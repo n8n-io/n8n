@@ -193,7 +193,9 @@ export class E2eTest implements INodeType {
 
 				return {
 					results,
-					paginationToken: offset + pageSize,
+					// Must be a string: the resourceLocatorResults endpoint validates
+					// paginationToken as z.string() and rejects numeric tokens
+					paginationToken: String(offset + pageSize),
 				};
 			},
 		},
