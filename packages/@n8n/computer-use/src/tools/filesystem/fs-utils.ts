@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { TextDecoder } from 'node:util';
 
@@ -198,12 +199,24 @@ interface ResolvedSafePath {
  * Returns the logical absolute path (without resolving symlinks), so the
  * caller never needs to know that a symlink is involved.
  */
+/**
+ * Expand a leading `~` to the user's home directory. Models routinely emit
+ * `~/...` paths; without this, `path.resolve` keeps the tilde as a literal
+ * directory name and files silently land in `<base>/~/...`. The expanded path
+ * is still subject to the escapes-base check below.
+ */
+function expandTilde(inputPath: string): string {
+	if (inputPath === '~') return os.homedir();
+	if (inputPath.startsWith('~/')) return path.join(os.homedir(), inputPath.slice(2));
+	return inputPath;
+}
+
 async function resolveSafePathDetails(
 	basePath: string,
 	relativePath: string,
 ): Promise<ResolvedSafePath> {
 	const realBase = await fs.realpath(basePath);
-	const absolute = path.resolve(basePath, relativePath);
+	const absolute = path.resolve(basePath, expandTilde(relativePath));
 
 	// Walk from the filesystem root, resolving each component in turn.
 	const root = path.parse(absolute).root;
