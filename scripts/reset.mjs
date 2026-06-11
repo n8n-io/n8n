@@ -26,7 +26,7 @@ if (!Number.isInteger(mem) || mem <= 0) {
 const nodeOptions = process.env.NODE_OPTIONS
 	? `${process.env.NODE_OPTIONS} --max-old-space-size=${mem}`
 	: `--max-old-space-size=${mem}`;
-const buildEnv = { ...process.env, TURBO_FORCE: 'true', NODE_OPTIONS: nodeOptions };
+const buildEnv = { ...process.env, NODE_OPTIONS: nodeOptions };
 
 async function buildWithSingleRetry() {
 	const res = await $({ env: buildEnv })`pnpm build`.nothrow();
