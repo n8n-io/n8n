@@ -107,7 +107,7 @@ onBeforeUnmount(stopRecommendations);
 		</div>
 
 		<template v-else-if="isEmpty">
-			<section v-if="showRecommendations" :class="$style.section">
+			<section v-if="showRecommendations" :class="[$style.section, $style.recommendations]">
 				<N8nText :class="$style.sectionTitle">{{
 					i18n.baseText('desktopAssistant.sections.recommended')
 				}}</N8nText>
@@ -198,6 +198,12 @@ onBeforeUnmount(stopRecommendations);
 .section {
 	display: flex;
 	flex-direction: column;
+}
+
+/* Suggestion cards are dashed/standalone (unlike the flush real-task rows), so
+   give them a little breathing room between rows. */
+.recommendations {
+	gap: var(--spacing--2xs);
 }
 
 /* Scoped under `.section` so font-size/weight win over N8nText's own size/weight
