@@ -4,8 +4,7 @@
 		"types": ["node", "vitest/globals"],
 		"paths": {
 			"@/*": ["./src/*"]
-		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		}
 	},
 	"include": ["src/**/*.ts"]
 }
