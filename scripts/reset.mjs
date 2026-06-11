@@ -27,6 +27,15 @@ const nodeOptions = process.env.NODE_OPTIONS
 	: `--max-old-space-size=${mem}`;
 const buildEnv = { ...process.env, TURBO_FORCE: 'true', NODE_OPTIONS: nodeOptions };
 
+async function buildWithSingleRetry() {
+	const res = await $({ env: buildEnv })`pnpm build`;
+	if (!res.ok) {
+		// Build failed on the initial full-repo build, most likely due to dart-sass being evicted.
+		// Re-trigger build, already built items are fast-tracked by turbo cache, and building continues
+		await $`pnpm build`;
+	}
+}
+
 if (light) {
 	const runInstall = argv.install !== false;
 
@@ -45,11 +54,10 @@ if (light) {
 	// TURBO_FORCE ignores the local artifact cache (node_modules/.cache/turbo),
 	// which `pnpm clean` does not remove, so a stale cache can't be served.
 	echo(`🏗️ Force-rebuilding (TURBO_FORCE, --max-old-space-size=${mem})...`);
-	await $({ env: buildEnv })`pnpm build`;
+	await buildWithSingleRetry();
 
 	process.exit(0);
 }
-
 const excludePatterns = ['/.vscode/', '/.idea/', '.env', '/.claude/'];
 const excludeFlags = excludePatterns.map((exclude) => ['-e', exclude]).flat();
 
@@ -77,9 +85,4 @@ echo('⏬ Running pnpm install...');
 await $`pnpm install`;
 
 echo(`🏗️ Running pnpm build (--max-ole-space-size=${mem})...`);
-const res = await $({ env: buildEnv })`pnpm build`;
-if (!res.ok) {
-	// Build failed on the initial full-repo build, most likely due to dart-sass being evicted.
-	// Re-trigger build, already built items are fast-tracked by turbo cache, and building continues
-	await $`pnpm build`;
-}
+await buildWithSingleRetry();
