@@ -407,4 +407,67 @@ describe('ExecuteContext', () => {
 			expect(result).toBeUndefined();
 		});
 	});
+
+	describe('executeAgent', () => {
+		const webhookNode: INode = {
+			id: 'webhook-node-id',
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const agentWorkflow = mock<Workflow>({
+			id: 'wf-id',
+			name: 'My workflow',
+			expression,
+			nodeTypes,
+		});
+		agentWorkflow.nodes = { [node.name]: node, [webhookNode.name]: webhookNode } as never;
+		const agentAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+			rootExecutionMode: undefined,
+		});
+
+		const agentExecuteContext = new ExecuteContext(
+			agentWorkflow,
+			node,
+			agentAdditionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executeData,
+			[closeFn],
+			abortSignal,
+		);
+
+		it('passes the workflow context to additionalData.executeAgent', async () => {
+			agentAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			await agentExecuteContext.executeAgent({ agentId: 'agent-1' }, 'hello', 'exec-1', 0);
+
+			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'hello',
+				'exec-1',
+				'exec-1-0',
+				agentAdditionalData,
+				'manual',
+				undefined,
+				{
+					workflowId: 'wf-id',
+					workflowName: 'My workflow',
+					callingNodeName: node.name,
+					nodes: [
+						{ name: node.name, type: node.type },
+						{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
+					],
+					runExecutionData,
+				},
+			);
+		});
+	});
 });

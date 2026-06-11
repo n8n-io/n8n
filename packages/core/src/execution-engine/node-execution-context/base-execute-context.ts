@@ -177,6 +177,13 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.additionalData,
 			this.additionalData.rootExecutionMode ?? this.getMode(),
 			agentInfo.outputSchema,
+			{
+				workflowId: this.workflow.id,
+				workflowName: this.workflow.name,
+				callingNodeName: this.node.name,
+				nodes: Object.values(this.workflow.nodes).map(({ name, type }) => ({ name, type })),
+				runExecutionData: this.runExecutionData,
+			},
 		);
 	}
 
