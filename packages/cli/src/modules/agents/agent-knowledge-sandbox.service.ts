@@ -611,14 +611,22 @@ function getKnowledgeFileMatchBucket(
 	file: AgentKnowledgeFileReference,
 	patternTokens: string[],
 	caseSensitive: boolean,
-): 0 | 1 | 2 {
+): 0 | 1 | 2 | 3 {
 	const fileNames = [file.file, file.displayName];
+	if (
+		fileNames.some((fileName) =>
+			hasExactTokenMatch(tokenizeKnowledgeFileName(fileName, caseSensitive), patternTokens),
+		)
+	) {
+		return 0;
+	}
+
 	if (
 		fileNames.some((fileName) =>
 			containsTokenSequence(tokenizeKnowledgeFileName(fileName, caseSensitive), patternTokens),
 		)
 	) {
-		return 0;
+		return 1;
 	}
 
 	const compactPattern = patternTokens.join('');
@@ -628,10 +636,10 @@ function getKnowledgeFileMatchBucket(
 			compactKnowledgeFileName(fileName, caseSensitive).includes(compactPattern),
 		)
 	) {
-		return 1;
+		return 2;
 	}
 
-	return 2;
+	return 3;
 }
 
 function tokenizeKnowledgeFilePattern(pattern: string, caseSensitive: boolean): string[] {
@@ -650,6 +658,14 @@ function tokenizeKnowledgeFileName(fileName: string, caseSensitive: boolean): st
 
 function compactKnowledgeFileName(fileName: string, caseSensitive: boolean): string {
 	return tokenizeKnowledgeFileName(fileName, caseSensitive).join('');
+}
+
+function hasExactTokenMatch(fileTokens: string[], patternTokens: string[]): boolean {
+	return (
+		patternTokens.length > 0 &&
+		fileTokens.length === patternTokens.length &&
+		fileTokens.every((fileToken, index) => fileToken === patternTokens[index])
+	);
 }
 
 function containsTokenSequence(fileTokens: string[], patternTokens: string[]): boolean {

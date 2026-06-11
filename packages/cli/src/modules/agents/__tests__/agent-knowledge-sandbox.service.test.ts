@@ -241,6 +241,35 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 	});
 
+	it('globKnowledgeFiles returns exact filename matches before paginated token matches', async () => {
+		mockKnowledgeFiles([
+			makeAgentFile({
+				id: 'file-1',
+				storageFileName: 'agent-knowledge-notes.txt',
+				fileName: 'agent-knowledge-notes.pdf',
+			}),
+			makeAgentFile({
+				id: 'file-2',
+				storageFileName: 'agent-knowledge.txt',
+				fileName: 'agent-knowledge.pdf',
+			}),
+		]);
+		const service = makeService();
+
+		await expect(
+			service.globKnowledgeFiles('project-1', 'agent-1', userId, {
+				pattern: '*agent*knowledge*',
+				limit: 1,
+			}),
+		).resolves.toMatchObject({
+			files: [
+				{ file: 'agent-knowledge.txt', fileId: 'file-2', displayName: 'agent-knowledge.pdf' },
+			],
+			limit: 1,
+			hasMore: true,
+		});
+	});
+
 	it('rejects retrieval for agents that do not belong to the project', async () => {
 		agentRepository.existsBy.mockResolvedValue(false);
 		mockKnowledgeFiles([makeAgentFile()]);
