@@ -1,6 +1,7 @@
 // Resets the repository by deleting all untracked files except for few exceptions.
 import { $, argv, echo, fs } from 'zx';
 
+let failedOnce = false;
 $.verbose = true;
 process.env.FORCE_COLOR = '1';
 
@@ -28,11 +29,13 @@ const nodeOptions = process.env.NODE_OPTIONS
 const buildEnv = { ...process.env, TURBO_FORCE: 'true', NODE_OPTIONS: nodeOptions };
 
 async function buildWithSingleRetry() {
-	const res = await $({ env: buildEnv })`pnpm build`;
-	if (!res.ok) {
+	const res = await $({ env: buildEnv })`pnpm build`.nothrow();
+	if (res.exitCode !== 0) {
+		failedOnce = true;
 		// Build failed on the initial full-repo build, most likely due to dart-sass being evicted.
 		// Re-trigger build, already built items are fast-tracked by turbo cache, and building continues
-		await $`pnpm build`;
+		console.log("! Build failed, most likely due to memory pressure. Retrying build");
+		await $({ env: buildEnv })`pnpm build`;
 	}
 }
 
@@ -56,6 +59,9 @@ if (light) {
 	echo(`🏗️ Force-rebuilding (TURBO_FORCE, --max-old-space-size=${mem})...`);
 	await buildWithSingleRetry();
 
+	if (failedOnce) {
+		console.log("🟢 The build script failed once, but was able to recover successfully.")
+	}
 	process.exit(0);
 }
 const excludePatterns = ['/.vscode/', '/.idea/', '.env', '/.claude/'];
@@ -84,5 +90,10 @@ fs.removeSync('node_modules');
 echo('⏬ Running pnpm install...');
 await $`pnpm install`;
 
-echo(`🏗️ Running pnpm build (--max-ole-space-size=${mem})...`);
+echo(`🏗️ Running pnpm build (--max-old-space-size=${mem})...`);
 await buildWithSingleRetry();
+
+console.log("✅ pnpm reset done!")
+if (failedOnce) {
+	console.log("🟢 The build script failed once, but was able to recover successfully.")
+}
