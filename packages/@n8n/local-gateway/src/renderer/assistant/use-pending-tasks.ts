@@ -1,15 +1,13 @@
 /*
  * Module-scoped store for tasks being promoted into saved workflows.
  *
- * When the user keeps a one-off run, the thread is promoted on the instance —
- * a build that takes a while. Each promotion gets a pending entry here so the
- * Tasks list can show a "setting up" card immediately. Completion is observed
- * in realtime: the promote call returns the build run's id, the store watches
- * that run on the thread event stream (same channel the composer uses), and a
- * single follow-up promote call — idempotent — confirms the workflow id once
- * the run finishes. No polling. Subscribers are notified on save so the list
- * can refetch. No pinia — plain module-level reactive state, matching
- * `use-assistant-screen.ts`.
+ * Promotion is an instance-side build that takes a while, so each one gets a
+ * pending entry here and the Tasks list shows a "setting up" card immediately.
+ * Completion is observed on the thread event stream: the promote call returns
+ * the build run's id, the store watches that run, and a follow-up idempotent
+ * promote call confirms the workflow id once the run finishes. Subscribers are
+ * notified on save so the list can refetch. No pinia — plain module-level
+ * reactive state, matching `use-assistant-screen.ts`.
  */
 import { reactive, readonly } from 'vue';
 
@@ -76,8 +74,7 @@ async function runPromotion(threadId: string, label: string, icon?: string): Pro
 		return;
 	}
 	if (!started.runId) {
-		// `building` without a run to watch shouldn't happen; surface it rather
-		// than silently spinning forever.
+		// `building` without a run to watch shouldn't happen; fail rather than spin forever.
 		failEntry(threadId);
 		return;
 	}
@@ -89,8 +86,7 @@ async function runPromotion(threadId: string, label: string, icon?: string): Pro
 		return;
 	}
 
-	// The run succeeded; confirm the saved workflow (retrying briefly while the
-	// finalizer writes the thread metadata).
+	// Confirm the saved workflow, retrying while the finalizer writes the thread metadata.
 	for (let attempt = 0; attempt < CONFIRM_ATTEMPTS; attempt++) {
 		const confirmed = await window.electronAPI.promoteAssistantThread(threadId, label, icon);
 		if (isDismissed(threadId)) return;
@@ -101,7 +97,7 @@ async function runPromotion(threadId: string, label: string, icon?: string): Pro
 		}
 		await delay(CONFIRM_RETRY_DELAY_MS);
 	}
-	// Run finished but no workflow materialised — the build produced nothing.
+	// Run finished but no workflow materialised.
 	failEntry(threadId);
 }
 
@@ -117,7 +113,6 @@ function promote(threadId: string, label: string, icon?: string) {
 	});
 }
 
-/** Drop a (typically failed) entry from the list. */
 function dismiss(threadId: string) {
 	removeEntry(threadId);
 }

@@ -83,9 +83,8 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Desktop-assistant runs add profile-specific tools (e.g. the outcome report)
-	// and may pin tool groups out of deferred search; the profile module is the
-	// single owner of those decisions.
+	// The desktop-assistant profile is the single owner of which extra tools a run
+	// gets (e.g. the outcome report) and which tool groups are pinned out of deferred search.
 	const desktopProfile = getDesktopAssistantProfile(options.promptMode);
 	const desktopProfileTools = createToolRegistryFromTools(desktopProfile.extraTools);
 

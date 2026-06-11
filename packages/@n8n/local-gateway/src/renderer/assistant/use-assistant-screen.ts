@@ -12,16 +12,14 @@ import type { DesktopAssistantTaskCard } from '../../shared/types';
 export type PlanPart = string | { value: string; options?: string[] };
 
 /**
- * A drafted automation plan, as shown on the draft/complex screens. The stub
- * planner that produced these is gone — the composer now hands one-off tasks
- * straight to the instance — but the screens (and their payload shape) remain
- * for the upcoming guided-build flow.
+ * A drafted automation plan, as shown on the draft/complex screens. Nothing
+ * produces these today; the screens (and this payload shape) are kept for the
+ * upcoming guided-build flow.
  */
 export interface Plan {
 	title: string;
 	/** Emoji glyph, defaults to ✨. */
 	icon: string;
-	/** Sentence segments — strings render verbatim, objects render as pickers. */
 	parts: PlanPart[];
 	/** `parts` joined into a single string. */
 	summary: string;

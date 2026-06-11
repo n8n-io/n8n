@@ -50,9 +50,8 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	DOMAIN_TOOL_IDS.EVALS,
-	// Only present in desktop one-shot runs (added via the desktop-assistant
-	// profile); this entry keeps it out of deferred tool search there and is a
-	// no-op for every other run.
+	// Only present in desktop one-shot runs (via the desktop-assistant profile);
+	// keeps it out of deferred tool search there, no-op elsewhere.
 	ORCHESTRATION_TOOL_IDS.REPORT_DESKTOP_TASK_OUTCOME,
 	'web-search',
 	'fetch-url',

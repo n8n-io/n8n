@@ -83,10 +83,9 @@ export class InstanceAiMemoryService {
 			page,
 			orderBy: { field: 'updatedAt', direction: 'DESC' },
 		});
-		// Desktop-assistant-originated threads are backing state for the desktop
-		// app, not conversations the user started in the chat UI — hide them from
-		// the thread list. Filtered in memory after the fetch; `total`/`hasMore`
-		// may slightly overcount, which is acceptable for the chat UI's paging.
+		// Desktop-assistant threads are backing state for the desktop app, not chat
+		// conversations — hide them. Filtered post-fetch, so `total`/`hasMore` may
+		// slightly overcount; acceptable for the chat UI's paging.
 		const visibleThreads = result.threads.filter(
 			(t) => t.metadata?.[THREAD_SOURCE_METADATA_KEY] !== DESKTOP_ASSISTANT_THREAD_SOURCE,
 		);

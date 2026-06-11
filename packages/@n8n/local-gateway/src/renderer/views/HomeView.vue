@@ -170,7 +170,7 @@ onMounted(() => {
 			<HistoryView v-else />
 		</div>
 
-<!-- The composer is pinned below the scrollable list, only on the Tasks tab.
+		<!-- The composer is pinned below the scrollable list, only on the Tasks tab.
 		     "Keep this" lands the user on the Tasks list, where the pending entry shows. -->
 		<TaskComposer v-if="activeTab === 'tasks'" ref="composer" @kept="activeTab = 'tasks'" />
 	</main>

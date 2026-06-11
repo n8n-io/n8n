@@ -4,8 +4,8 @@
  * (a run can finish cleanly having declined to act); `title` doubles as the
  * suggested name when the task is promoted to a workflow.
  *
- * Clients receive the outcome via the `report-desktop-task-outcome` tool-call
- * event on the thread event stream; it is also persisted in thread metadata.
+ * Clients read the outcome from the `report-desktop-task-outcome` tool-call
+ * event on the thread event stream; nothing is persisted server-side.
  */
 export interface DesktopAssistantTaskOutcome {
 	success: boolean;

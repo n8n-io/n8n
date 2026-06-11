@@ -112,9 +112,8 @@ export interface CreateAssistantTaskResult {
 
 /**
  * Result of asking the instance to promote a thread into a saved workflow.
- * Idempotent: while the build runs it returns `building` with the same
- * `runId` (watch it on the thread event stream); once built it returns
- * `done` with the `workflowId`.
+ * Idempotent: `building` while the build runs, `done` (with `workflowId`)
+ * once a promote has produced the workflow.
  */
 export interface PromoteAssistantThreadResult {
 	ok: boolean;

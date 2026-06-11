@@ -64,7 +64,6 @@ export function describeActiveContext(
  * Flatten stored message content into plain text. String content passes
  * through; multi-part content keeps only `{ type: 'text' }` parts (an
  * attachment part would otherwise leak megabytes of base64 into a prompt).
- * Returns `''` when there is no text to extract.
  */
 export function extractTextContent(content: unknown): string {
 	if (typeof content === 'string') return content;
@@ -82,11 +81,9 @@ function isTextPart(part: unknown): part is { type: 'text'; text: string } {
 	return candidate.type === 'text' && typeof candidate.text === 'string';
 }
 
-/** Compose the promote-thread message: asks the model to turn the executed
- *  task into a repeatable workflow, leading with the replay-vs-fresh decision
- *  so the recorded tool calls don't anchor it toward literal replay. Naming
- *  rules (plain text, present tense, no emoji) live in the promote system
- *  prompt. */
+/** Leads with the replay-vs-fresh decision so the recorded tool calls don't
+ *  anchor the model toward literal replay. Naming rules (plain text, no emoji)
+ *  live in the promote system prompt. */
 export function composePromoteMessage(originalPrompt: string, name: string | undefined): string {
 	const trimmedName = name?.trim();
 	const naming = trimmedName ? ` Name it "${trimmedName}".` : '';

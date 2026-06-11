@@ -235,9 +235,8 @@ export class InstanceApi {
 	/**
 	 * `POST /rest/desktop-assistant/promote-thread` — materialise an assistant
 	 * thread into a saved, editable workflow. Idempotent: returns `building` (with
-	 * the build run to wait on) the first time, and `done` (with the workflow id)
-	 * once a previous promote already produced a workflow. `name`, when given, is
-	 * used as the saved workflow's name.
+	 * the build run to wait on) until the build completes, then `done` with the
+	 * workflow id.
 	 */
 	async promoteThread(
 		threadId: string,

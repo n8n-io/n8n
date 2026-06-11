@@ -189,8 +189,7 @@ function returnFocusToInput() {
 function keepTask() {
 	if (resultCard.value?.kind !== 'done') return;
 	const { threadId, label, icon } = resultCard.value;
-	// The label is also the requested workflow name, and the icon (from the
-	// agent's outcome report) lands on the workflow's meta, not in its name.
+	// The icon (from the agent's outcome report) lands on the workflow's meta, not in its name.
 	pendingTasks.promote(threadId, label, icon);
 	resultCard.value = null;
 	returnFocusToInput();
@@ -270,7 +269,7 @@ defineExpose({ submit });
 					</div>
 				</div>
 
-				<!-- Handoff card: the run finished but the task wasn't done — this needs the instance UI -->
+				<!-- Handoff card -->
 				<div
 					v-if="resultCard?.kind === 'handoff'"
 					ref="resultCardRef"

@@ -1,8 +1,7 @@
 /*
- * Watches a one-shot assistant run over the thread event stream and interprets
- * the raw `InstanceAiEvent`s into a final `AssistantRunResult`. The
- * ThreadService stream is the app's only realtime channel; run interpretation
- * lives here in the renderer, on top of the thread client.
+ * Interprets a one-shot assistant run's raw `InstanceAiEvent`s into a final
+ * `AssistantRunResult`. The ThreadService event stream is the app's only
+ * realtime channel.
  */
 import type { DesktopAssistantTaskOutcome, InstanceAiEvent } from '../../shared/types';
 import { getThreadClient } from '../services/thread-client';
@@ -81,7 +80,8 @@ export async function watchAssistantRun(
 				const { status, reason } = event.payload;
 				finish({
 					ok: status === 'completed',
-					status: status === 'completed' ? 'success' : status === 'cancelled' ? 'canceled' : 'error',
+					status:
+						status === 'completed' ? 'success' : status === 'cancelled' ? 'canceled' : 'error',
 					tookAction,
 					outcome,
 					error: reason,

@@ -57,7 +57,6 @@ const hasQuery = computed(() => props.query.trim().length > 0);
 const filteredSections = computed(() => filterSections(sections.value, props.query));
 const hasMatches = computed(() => hasAnyMatch(filteredSections.value));
 
-// Pending (being-set-up) entries count as content, so they suppress the empty state.
 const isEmpty = computed(
 	() =>
 		tasks.value !== null &&
@@ -111,8 +110,8 @@ function runRecommendation(prompt: string) {
 	emit('run-prompt', prompt);
 }
 
-// When a pending promotion completes, the saved workflow becomes a real task —
-// refetch so it appears in its bucket as the pending card disappears.
+// When a promotion completes the saved workflow becomes a real task; refetch
+// so it replaces the pending card.
 let unsubscribeSaved: (() => void) | undefined;
 
 onMounted(async () => {

@@ -181,6 +181,18 @@ interface ResolvedSafePath {
 }
 
 /**
+ * Expand a leading `~` to the user's home directory. Models routinely emit
+ * `~/...` paths; without this, `path.resolve` keeps the tilde as a literal
+ * directory name and files silently land in `<base>/~/...`. The expanded path
+ * is still subject to the escapes-base check below.
+ */
+function expandTilde(inputPath: string): string {
+	if (inputPath === '~') return os.homedir();
+	if (inputPath.startsWith('~/')) return path.join(os.homedir(), inputPath.slice(2));
+	return inputPath;
+}
+
+/**
  * Resolve a path safely within the base directory.
  *
  * Walks each component of the path individually using `fs.realpath` so that
@@ -199,18 +211,6 @@ interface ResolvedSafePath {
  * Returns the logical absolute path (without resolving symlinks), so the
  * caller never needs to know that a symlink is involved.
  */
-/**
- * Expand a leading `~` to the user's home directory. Models routinely emit
- * `~/...` paths; without this, `path.resolve` keeps the tilde as a literal
- * directory name and files silently land in `<base>/~/...`. The expanded path
- * is still subject to the escapes-base check below.
- */
-function expandTilde(inputPath: string): string {
-	if (inputPath === '~') return os.homedir();
-	if (inputPath.startsWith('~/')) return path.join(os.homedir(), inputPath.slice(2));
-	return inputPath;
-}
-
 async function resolveSafePathDetails(
 	basePath: string,
 	relativePath: string,

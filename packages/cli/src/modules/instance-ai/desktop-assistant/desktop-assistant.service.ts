@@ -221,8 +221,7 @@ export class DesktopAssistantService {
 			);
 		}
 
-		// Only desktop-assistant-tagged workflows are tasks: the assistant's list
-		// is its own creations, not the user's whole instance.
+		// Tasks are the assistant's own creations, not the user's whole instance.
 		const taskWorkflows = workflows.filter((workflow) =>
 			(tagsByWorkflowId.get(workflow.id) ?? []).some((tag) => tag.name === DESKTOP_ASSISTANT_TAG),
 		);
@@ -602,8 +601,9 @@ export class DesktopAssistantService {
 			// through and rebuild.
 		}
 
-		// In-flight guard: the desktop client polls this endpoint while the build
-		// runs; without this, every poll tick would start another build run.
+		// In-flight guard: the client re-sends this request to confirm completion
+		// after watching the build run (and a thread can be re-kept); while the
+		// recorded run is still active, return it instead of starting another.
 		const inFlightRunId = await this.readPromoteRunId(user.id, body.threadId);
 		if (inFlightRunId && this.instanceAiService.getActiveRunId(body.threadId) === inFlightRunId) {
 			return { status: 'building', threadId: body.threadId, runId: inFlightRunId };
@@ -736,9 +736,7 @@ export class DesktopAssistantService {
 	 * Fill the Device Connection credential on Computer Use nodes the build left
 	 * unset, so a freshly promoted task is runnable without a manual setup trip.
 	 * Deterministic post-processing: the model never handles credential ids, and
-	 * only credentials the promoting user can already read are applied (the
-	 * gateway auto-creates one per device on connect). With several candidates
-	 * the first is used — the ambiguity is logged rather than guessed at.
+	 * only credentials the promoting user can already read are applied.
 	 */
 	private async applyDeviceCredential(user: User, workflowId: string): Promise<void> {
 		const credentials = await this.credentialsFinderService.findCredentialsForUser(user, [
@@ -788,11 +786,9 @@ export class DesktopAssistantService {
 	}
 
 	/**
-	 * Write provenance + icon onto `meta.desktopAssistant`. The icon comes from
-	 * the one-shot outcome report (passed through the promote request); when the
-	 * build still produced an emoji-led name despite the prompt, the leading
-	 * emoji is moved out of the name and doubles as the icon fallback, so
-	 * workflow names stay plain text everywhere.
+	 * Write provenance + icon onto `meta.desktopAssistant`. If the build produced
+	 * an emoji-led name despite the prompt, the leading emoji is moved out of the
+	 * name and doubles as the icon fallback, so workflow names stay plain text.
 	 */
 	private async writeDesktopAssistantMeta(
 		workflowId: string,
@@ -860,8 +856,7 @@ export class DesktopAssistantService {
 		if (!firstUser) {
 			throw new BadRequestError(`Thread ${threadId} has no user message to promote`);
 		}
-		// Multi-part content (e.g. text + image attachments): keep only the text
-		// parts. Stringifying the rest would embed base64 attachment payloads
+		// Keep only text parts: stringified attachments would embed base64 payloads
 		// into the build prompt and blow the model's context window.
 		const text = extractTextContent(firstUser.content);
 		if (!text) {
@@ -893,8 +888,7 @@ export class DesktopAssistantService {
 
 		// Skip executions of archived workflows. Archive is a user signal of
 		// "I'm done with this"; their runs should drop out of the history view.
-		// Mirrors the tasks list: only desktop-assistant-tagged workflows count,
-		// so History shows runs of the user's tasks, not the whole instance.
+		// Mirrors the tasks list: only desktop-assistant-tagged workflows count.
 		const liveRows = await this.workflowRepository.find({
 			where: { id: In(accessibleWorkflowIds), isArchived: false },
 			relations: { tags: true },

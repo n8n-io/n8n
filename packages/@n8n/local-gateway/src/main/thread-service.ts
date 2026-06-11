@@ -58,16 +58,16 @@ function takeToolName(toolCallId: string): string | undefined {
 }
 
 /**
- * One concise log line per run-relevant thread event, so a task run can be
- * followed (and post-mortemed) straight from the app's main-process log: which
- * tools ran with which args, what errored, and how the run ended. Deltas and
- * other chatty event types are skipped.
+ * One log line per run-relevant thread event so a task run can be post-mortemed
+ * from the main-process log. Deltas and other chatty event types are skipped.
  */
 function logThreadEvent(threadId: string, event: InstanceAiEvent): void {
 	const summarize = (value: unknown): string => {
 		try {
 			const text = typeof value === 'string' ? value : (JSON.stringify(value) ?? '');
-			return text.length > EVENT_LOG_PAYLOAD_MAX ? `${text.slice(0, EVENT_LOG_PAYLOAD_MAX)}…` : text;
+			return text.length > EVENT_LOG_PAYLOAD_MAX
+				? `${text.slice(0, EVENT_LOG_PAYLOAD_MAX)}…`
+				: text;
 		} catch {
 			return '[unserializable]';
 		}
@@ -99,7 +99,11 @@ function logThreadEvent(threadId: string, event: InstanceAiEvent): void {
 			logger.warn('Run error event', { runId: event.runId, payload: summarize(event.payload) });
 			return;
 		case 'run-finish':
-			logger.info('Run finished', { threadId, runId: event.runId, payload: summarize(event.payload) });
+			logger.info('Run finished', {
+				threadId,
+				runId: event.runId,
+				payload: summarize(event.payload),
+			});
 			return;
 		default:
 			return;
