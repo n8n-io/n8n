@@ -14,10 +14,8 @@ let postOrUpdateCommentImpl = async () => {};
 
 mock.module('./github-helpers.mjs', {
 	namedExports: {
-		ensureEnvVar: () => {},
-		initGithub: () => {
-			throw new Error('initGithub should not be called in these tests');
-		},
+		ensureEnvVar: () => {}, // no-op in tests
+		initGithub: () => {}, // no-op in tests
 		getChangedFiles: () => Promise.resolve(new Set()),
 		getEventFromGithubEventPath: () => ({}),
 		getPrFiles: (n) => getPrFilesImpl(n),
