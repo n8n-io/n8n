@@ -81,7 +81,7 @@ describe('SettingsStore (Electron)', () => {
 		const config = store.toGatewayConfig();
 		expect(config.permissions.filesystemRead).toBe('deny');
 		expect(config.permissions.filesystemWrite).toBe('deny');
-		expect(config.permissions.shell).toBe('ask');
+		expect(config.permissions.shell).toBe('allow');
 		expect(config.permissions.computer).toBe('deny');
 		expect(config.permissions.browser).toBe('deny');
 	});

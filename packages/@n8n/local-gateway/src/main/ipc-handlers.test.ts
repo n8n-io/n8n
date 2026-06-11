@@ -354,8 +354,7 @@ describe('registerIpcHandlers', () => {
 		expect(result).toEqual(attachment);
 	});
 
-	it('tasks:trigger forwards the body to the instance api', async () => {
-		const response = { threadId: 't-1', runId: 'r-1' };
+	it('assistant:createTask forwards the body to the instance api', async () => {
 		const instanceApi = {
 			getTasks: vi.fn(),
 			runWorkflow: vi.fn(),
@@ -363,15 +362,15 @@ describe('registerIpcHandlers', () => {
 			getHistory: vi.fn(),
 			executionUrl: vi.fn(),
 			getTimeSaved: vi.fn(),
-			triggerTask: vi.fn().mockResolvedValue(response),
+			triggerTask: vi.fn().mockResolvedValue({ threadId: 't-1', runId: 'r-1' }),
 		};
 		register({ instanceApi });
 
 		const body = { prompt: 'clean up the folder', context: { kind: 'finder' as const } };
-		const result = await getRegisteredHandler('tasks:trigger')(undefined, body);
+		const result = await getRegisteredHandler('assistant:createTask')(undefined, body);
 
 		expect(instanceApi.triggerTask).toHaveBeenCalledWith(body);
-		expect(result).toEqual(response);
+		expect(result).toEqual({ ok: true, threadId: 't-1', runId: 'r-1' });
 	});
 
 	it('permissions:get returns the mac permission status', async () => {
