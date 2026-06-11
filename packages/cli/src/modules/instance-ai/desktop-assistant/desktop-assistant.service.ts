@@ -24,7 +24,7 @@ import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import type { ExecutionStatus } from 'n8n-workflow';
+import type { ExecutionStatus, WorkflowFEMeta } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -441,7 +441,7 @@ export class DesktopAssistantService {
 		});
 		const parts = normalizeDescriptionParts(rawParts);
 
-		await this.writeTaskDetailCache(workflowId, workflow.versionId, parts);
+		await this.writeTaskDetailCache(workflowId, workflow.meta, workflow.versionId, parts);
 		return { workflowId, versionId: workflow.versionId, parts, connectionsNeeded };
 	}
 
@@ -453,19 +453,17 @@ export class DesktopAssistantService {
 		}
 	}
 
+	/** Merge the generated description into the workflow's meta. `currentMeta` is
+	 *  the meta of the workflow row the caller already loaded — no re-read needed. */
 	private async writeTaskDetailCache(
 		workflowId: string,
+		currentMeta: WorkflowFEMeta | undefined,
 		versionId: string,
 		parts: DesktopAssistantDescriptionPart[],
 	): Promise<void> {
-		const workflow = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			select: ['id', 'meta'],
-		});
-		if (!workflow) return;
-		const existing = readDesktopAssistantMeta(workflow.meta) ?? {};
+		const existing = readDesktopAssistantMeta(currentMeta) ?? {};
 		const nextMeta = {
-			...(workflow.meta ?? {}),
+			...(currentMeta ?? {}),
 			desktopAssistant: {
 				...existing,
 				detail: { versionId, parts },

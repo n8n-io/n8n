@@ -47,6 +47,13 @@ export interface IpcHandlerDeps {
 	openExternal: (url: string) => Promise<void>;
 }
 
+/** Human-readable message for an error caught at the IPC boundary. */
+function ipcErrorMessage(error: unknown): string {
+	return error instanceof InstanceApiError || error instanceof Error
+		? error.message
+		: String(error);
+}
+
 /** Where forwarded attachments are written for inspection — next to the log file. */
 const ATTACHMENT_INSPECT_DIR = join(homedir(), '.n8n-local-gateway', 'attachments');
 
@@ -186,8 +193,7 @@ export function registerIpcHandlers({
 			const { executionId } = await instanceApi.runWorkflow(workflowId);
 			return { ok: true, executionId };
 		} catch (error) {
-			const message =
-				error instanceof InstanceApiError || error instanceof Error ? error.message : String(error);
+			const message = ipcErrorMessage(error);
 			logger.error('IPC tasks:run failed', { workflowId, error: message });
 			return { ok: false, error: message };
 		}
@@ -227,10 +233,7 @@ export function registerIpcHandlers({
 				await instanceApi.archiveWorkflow(workflowId);
 				return { ok: true };
 			} catch (error) {
-				const message =
-					error instanceof InstanceApiError || error instanceof Error
-						? error.message
-						: String(error);
+				const message = ipcErrorMessage(error);
 				logger.error('IPC tasks:delete failed', { workflowId, error: message });
 				return { ok: false, error: message };
 			}

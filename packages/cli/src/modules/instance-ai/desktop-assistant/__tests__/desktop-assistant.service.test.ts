@@ -918,11 +918,10 @@ describe('DesktopAssistantService.getTaskDetail', () => {
 		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			workflowWith({
 				versionId: 'v2',
-				meta: { desktopAssistant: { detail: { versionId: 'v1', parts: PARTS } } },
+				meta: {
+					desktopAssistant: { icon: '📰', detail: { versionId: 'v1', parts: PARTS } },
+				},
 			}),
-		);
-		ctx.workflowRepository.findOne.mockResolvedValue(
-			workflowWith({ meta: { desktopAssistant: { icon: '📰' } } }),
 		);
 		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([
 			{ id: 'c1', type: 'slackApi' },
@@ -949,7 +948,8 @@ describe('DesktopAssistantService.getTaskDetail', () => {
 		expect(opts.input).toContain('Workflow name: Morning news brief');
 		expect(opts.input).toContain('Connected integrations: slackApi');
 
-		// Cache write merges into the existing desktopAssistant meta blob.
+		// Cache write merges into the already-loaded meta blob — no re-read.
+		expect(ctx.workflowRepository.findOne).not.toHaveBeenCalled();
 		const [updatedId, patch] = ctx.workflowRepository.update.mock.calls[0];
 		expect(updatedId).toBe('wf-1');
 		expect(patch.meta).toEqual({
