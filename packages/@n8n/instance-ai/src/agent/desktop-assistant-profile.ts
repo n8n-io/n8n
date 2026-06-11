@@ -22,8 +22,15 @@ import { createReportDesktopTaskOutcomeTool } from '../tools/orchestration/repor
  *   the task. Same fire-and-forget rules apply, plus the orchestrator picks
  *   a short plain-text workflow name (the task icon is carried separately,
  *   on the workflow's `meta.desktopAssistant.icon`).
+ * - `desktop-assistant-edit` — targeted modification of an existing workflow
+ *   from the desktop app's task detail view. Same fire-and-forget rules
+ *   apply; the orchestrator must apply ONLY the listed changes and preserve
+ *   everything else about the workflow.
  */
-export type DesktopAssistantPromptMode = 'desktop-assistant-one-shot' | 'desktop-assistant-promote';
+export type DesktopAssistantPromptMode =
+	| 'desktop-assistant-one-shot'
+	| 'desktop-assistant-promote'
+	| 'desktop-assistant-edit';
 
 export interface DesktopAssistantProfile {
 	/** Section prepended to the system prompt. Empty for regular chat runs. */
@@ -40,7 +47,8 @@ export interface DesktopAssistantProfile {
 }
 
 /** Shared preamble: both desktop modes run headless, so text output is waste. */
-const FIRE_AND_FORGET_RULES = `This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, progress commentary, or summaries, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.`;
+const FIRE_AND_FORGET_RULES =
+	"This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, progress commentary, or summaries, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.";
 
 const ONE_SHOT_PROMPT_SECTION = `
 ## Desktop Assistant — One-Shot Task
@@ -84,6 +92,22 @@ Additional rules:
 - If the original intent is ambiguous or requires context you do not have, stop without producing a workflow — no low-quality stubs.
 `;
 
+const EDIT_PROMPT_SECTION = `
+## Desktop Assistant — Edit Existing Workflow
+
+${FIRE_AND_FORGET_RULES}
+
+### Execution
+
+- The user message names an existing workflow (by id) and lists exact value changes they picked in the desktop app (e.g. a different schedule, or swapping one service for another).
+- Load that workflow and apply ONLY the listed changes via the workflow-builder skill. The smallest faithful edit wins:
+  - A schedule/time change means adjusting the trigger node's parameters — nothing else.
+  - Swapping a service (e.g. Slack → Microsoft Teams) means replacing only the node(s) implementing that service with the equivalent node(s) for the new service, carrying the configuration over as faithfully as possible and rewiring the same connections.
+- Preserve everything else exactly: the workflow's name, other nodes, their parameters, connections, settings, and active state.
+- Do NOT rebuild the workflow from scratch, and do NOT make improvements the user did not ask for.
+- If a listed change cannot be applied faithfully, stop without modifying the workflow. A partial or speculative edit is worse than no edit.
+`;
+
 /** Resolve the desktop-assistant profile for a run. */
 export function getDesktopAssistantProfile(
 	promptMode: DesktopAssistantPromptMode | undefined,
@@ -97,6 +121,8 @@ export function getDesktopAssistantProfile(
 			};
 		case 'desktop-assistant-promote':
 			return { promptSection: PROMOTE_PROMPT_SECTION, extraTools: [], preloadGatewayTools: false };
+		case 'desktop-assistant-edit':
+			return { promptSection: EDIT_PROMPT_SECTION, extraTools: [], preloadGatewayTools: false };
 		case undefined:
 			return { promptSection: '', extraTools: [], preloadGatewayTools: false };
 	}

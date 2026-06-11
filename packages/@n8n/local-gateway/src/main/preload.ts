@@ -4,10 +4,13 @@ import type {
 	AppSettings,
 	AuthStatus,
 	CreateAssistantTaskResult,
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
@@ -86,6 +89,32 @@ const electronApi: ElectronApi = {
 		await ipcRenderer.invoke('tasks:openWorkflow', workflowId);
 	},
 
+	getTaskDetail: async (workflowId: string): Promise<DesktopAssistantTaskDetailResponse> =>
+		await (ipcRenderer.invoke(
+			'tasks:detail',
+			workflowId,
+		) as Promise<DesktopAssistantTaskDetailResponse>),
+
+	applyTaskEdits: async (
+		workflowId: string,
+		body: DesktopAssistantApplyEditsRequest,
+	): Promise<DesktopAssistantApplyEditsResponse> =>
+		await (ipcRenderer.invoke(
+			'tasks:applyEdits',
+			workflowId,
+			body,
+		) as Promise<DesktopAssistantApplyEditsResponse>),
+
+	deleteTask: async (workflowId: string): Promise<{ ok: boolean; error?: string }> =>
+		await (ipcRenderer.invoke('tasks:delete', workflowId) as Promise<{
+			ok: boolean;
+			error?: string;
+		}>),
+
+	openCredentials: async (): Promise<void> => {
+		await ipcRenderer.invoke('tasks:openCredentials');
+	},
+
 	getHistory: async (
 		params?: DesktopAssistantHistoryParams,
 	): Promise<DesktopAssistantHistoryResponse> =>
@@ -113,6 +142,9 @@ const electronApi: ElectronApi = {
 			threadId,
 			options,
 		) as Promise<InstanceAiRichMessagesResponse>),
+
+	postThreadMessage: async (threadId: string, message: string): Promise<{ runId: string }> =>
+		await (ipcRenderer.invoke('thread:post', threadId, message) as Promise<{ runId: string }>),
 
 	listenToThread: async (threadId: string, lastEventId?: number): Promise<void> => {
 		await ipcRenderer.invoke('thread:listen', threadId, lastEventId);

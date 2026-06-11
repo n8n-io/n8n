@@ -144,6 +144,25 @@ describe('InstanceApi', () => {
 		});
 	});
 
+	describe('sendChatMessage', () => {
+		it('posts the message with the local time zone and unwraps the data envelope', async () => {
+			mockFetch.mockResolvedValue(jsonResponse({ data: { runId: 'r1' } }));
+
+			const result = await new InstanceApi(makeOAuth()).sendChatMessage('t/1', 'hi there');
+
+			const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n.example/rest/instance-ai/chat/t%2F1');
+			expect(init.method).toBe('POST');
+			expect(init.body).toBe(
+				JSON.stringify({
+					message: 'hi there',
+					timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				}),
+			);
+			expect(result).toEqual({ runId: 'r1' });
+		});
+	});
+
 	describe('executionUrl', () => {
 		it('builds the execution url, or null when signed out', () => {
 			expect(new InstanceApi(makeOAuth()).executionUrl('wf-1', 'exec-1')).toBe(

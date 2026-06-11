@@ -25,15 +25,15 @@ import type {
 import { NodeHelpers } from 'n8n-workflow';
 
 /**
- * Walk a workflow's nodes and return the names of those that have no
- * `credentials` field populated but whose type description declares a
- * required credential matching the node's current parameters.
+ * Single pass over a workflow's nodes yielding, per node that has no
+ * `credentials` field populated, the credential types its description requires
+ * for the node's current parameters. Nodes with nothing missing are omitted.
  */
-export function computeNodesRequiringCredentialSetup(
+function collectMissingCredentials(
 	nodes: INode[],
 	nodeTypes: INodeTypes,
-): Set<string> {
-	const result = new Set<string>();
+): Array<{ nodeName: string; credentialTypes: string[] }> {
+	const result: Array<{ nodeName: string; credentialTypes: string[] }> = [];
 	for (const node of nodes) {
 		if (node.disabled) continue;
 		// If any credential slot already exists, the classifier's slot-based
@@ -52,12 +52,38 @@ export function computeNodesRequiringCredentialSetup(
 		const resolvedParameters = resolveParametersWithDefaults(node, description);
 		const nodeWithDefaults: INode = { ...node, parameters: resolvedParameters };
 
-		const hasRequired = description.credentials.some((credentialDesc) =>
-			nodeRequiresCredential(credentialDesc, nodeWithDefaults, description),
-		);
-		if (hasRequired) result.add(node.name);
+		const credentialTypes = description.credentials
+			.filter((credentialDesc) =>
+				nodeRequiresCredential(credentialDesc, nodeWithDefaults, description),
+			)
+			.map((credentialDesc) => credentialDesc.name);
+		if (credentialTypes.length > 0) result.push({ nodeName: node.name, credentialTypes });
 	}
 	return result;
+}
+
+/**
+ * Walk a workflow's nodes and return the names of those that have no
+ * `credentials` field populated but whose type description declares a
+ * required credential matching the node's current parameters.
+ */
+export function computeNodesRequiringCredentialSetup(
+	nodes: INode[],
+	nodeTypes: INodeTypes,
+): Set<string> {
+	return new Set(collectMissingCredentials(nodes, nodeTypes).map((entry) => entry.nodeName));
+}
+
+/**
+ * Like `computeNodesRequiringCredentialSetup`, but returns the *credential
+ * type names* still missing, de-duplicated, in node order. Used by the task
+ * detail view's "Connect <service>" CTA.
+ */
+export function computeMissingCredentialTypes(nodes: INode[], nodeTypes: INodeTypes): string[] {
+	const types = collectMissingCredentials(nodes, nodeTypes).flatMap(
+		(entry) => entry.credentialTypes,
+	);
+	return [...new Set(types)];
 }
 
 function tryGetNodeDescription(

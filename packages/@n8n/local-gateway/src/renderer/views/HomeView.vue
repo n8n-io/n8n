@@ -1,16 +1,38 @@
 <script setup lang="ts">
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nInput } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import HistoryView from './HistoryView.vue';
 import TasksView from './TasksView.vue';
 import TaskComposer from '../components/TaskComposer.vue';
 
+import { useTaskSearch } from '../assistant/use-task-search';
+
 type Tab = 'tasks' | 'history';
 
 const i18n = useI18n();
 const activeTab = ref<Tab>('tasks');
+
+// Search is tasks-scoped: the field only shows on the Tasks tab, and the query
+// is passed down to TasksView for client-side filtering.
+const search = useTaskSearch();
+const searchVisible = computed(() => search.open.value && activeTab.value === 'tasks');
+
+/** Search lives in the shared tab bar but only filters Tasks. From History,
+ *  clicking it jumps to Tasks and opens the field; from Tasks it toggles. */
+function onSearchIconClick() {
+	if (activeTab.value === 'history') {
+		selectTab('tasks');
+		search.openSearch();
+		return;
+	}
+	search.toggle();
+}
+
+function onSearchKeydown(event: KeyboardEvent) {
+	if (event.key === 'Escape') search.closeSearch();
+}
 
 // The composer owns the prompt → backend flow; a clicked recommendation routes
 // its prompt through it so the feedback (thinking → doing → done) is identical
@@ -97,14 +119,39 @@ onMounted(() => {
 					{{ i18n.baseText(tab.labelKey) }}
 				</button>
 			</div>
-			<!-- Search is part of the target layout but not wired up yet. -->
 			<button
 				type="button"
-				:class="$style.searchButton"
+				:class="[$style.searchButton, { [$style.searchButtonActive]: searchVisible }]"
 				:aria-label="i18n.baseText('desktopAssistant.search.ariaLabel')"
+				:aria-expanded="searchVisible"
+				@click="onSearchIconClick"
 			>
 				<N8nIcon icon="search" :size="16" />
 			</button>
+		</div>
+
+		<div v-if="searchVisible" :class="$style.searchRow">
+			<N8nInput
+				v-model="search.query.value"
+				size="small"
+				autofocus
+				:placeholder="i18n.baseText('desktopAssistant.search.placeholder')"
+				@keydown="onSearchKeydown"
+			>
+				<template #prefix>
+					<N8nIcon icon="search" :size="14" />
+				</template>
+				<template #suffix>
+					<button
+						type="button"
+						:class="$style.clearButton"
+						:aria-label="i18n.baseText('desktopAssistant.search.clearAriaLabel')"
+						@click="search.closeSearch()"
+					>
+						<N8nIcon icon="x" :size="14" />
+					</button>
+				</template>
+			</N8nInput>
 		</div>
 
 		<div
@@ -116,6 +163,7 @@ onMounted(() => {
 		>
 			<TasksView
 				v-if="activeTab === 'tasks'"
+				:query="searchVisible ? search.query.value : ''"
 				@executed="activeTab = 'history'"
 				@run-prompt="runPrompt"
 			/>
@@ -172,6 +220,36 @@ onMounted(() => {
 }
 
 .searchButton:focus-visible {
+	outline: var(--da-focus-ring);
+	outline-offset: var(--da-focus-ring-offset);
+}
+
+.searchButtonActive {
+	background: var(--da-surface-2);
+	color: var(--da-text);
+}
+
+.searchRow {
+	padding: var(--spacing--4xs) var(--spacing--sm) var(--spacing--2xs);
+}
+
+.clearButton {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: var(--da-subtler);
+	cursor: pointer;
+	transition: color 0.12s;
+}
+
+.clearButton:hover {
+	color: var(--da-text);
+}
+
+.clearButton:focus-visible {
 	outline: var(--da-focus-ring);
 	outline-offset: var(--da-focus-ring-offset);
 }

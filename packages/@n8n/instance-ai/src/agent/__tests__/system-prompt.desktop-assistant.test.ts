@@ -32,6 +32,13 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 		expect(prompt).toContain('deviceConnectionApi');
 	});
 
+	it('edit mode restricts the run to the listed changes', () => {
+		const prompt = getSystemPrompt({ promptMode: 'desktop-assistant-edit' });
+		expect(prompt).toMatch(/Desktop Assistant.+Edit Existing Workflow/i);
+		expect(prompt).toMatch(/apply ONLY the listed changes/i);
+		expect(prompt).toMatch(/stop without modifying the workflow/i);
+	});
+
 	it('modes do not bleed into each other', () => {
 		expect(getSystemPrompt({ promptMode: 'desktop-assistant-promote' })).not.toMatch(
 			/One-Shot Task/i,
@@ -39,6 +46,9 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 		expect(getSystemPrompt({ promptMode: 'desktop-assistant-one-shot' })).not.toMatch(
 			/Promote To Workflow/i,
 		);
+		const editPrompt = getSystemPrompt({ promptMode: 'desktop-assistant-edit' });
+		expect(editPrompt).not.toMatch(/One-Shot Task/i);
+		expect(editPrompt).not.toMatch(/Promote To Workflow/i);
 	});
 });
 

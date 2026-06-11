@@ -1,16 +1,19 @@
 import {
+	DesktopAssistantApplyEditsRequestDto,
 	DesktopAssistantHistoryQueryDto,
 	DesktopAssistantPromoteRequestDto,
 	DesktopAssistantRecommendationsRequestDto,
 	DesktopAssistantTaskRequestDto,
+	type DesktopAssistantApplyEditsResponse,
 	type DesktopAssistantHistoryResponse,
 	type DesktopAssistantPromoteResponse,
 	type DesktopAssistantRecommendationsResponse,
+	type DesktopAssistantTaskDetailResponse,
 	type DesktopAssistantTaskResponse,
 	type DesktopAssistantTasksResponse,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, GlobalScope, Post, Query, RestController } from '@n8n/decorators';
+import { Body, Get, GlobalScope, Param, Post, Query, RestController } from '@n8n/decorators';
 
 import { DesktopAssistantService } from './desktop-assistant.service';
 
@@ -55,6 +58,29 @@ export class DesktopAssistantController {
 	): Promise<DesktopAssistantTaskResponse> {
 		this.requireEnabled();
 		return await this.desktopAssistantService.triggerTask(req.user, body);
+	}
+
+	@Get('/tasks/:workflowId/detail')
+	@GlobalScope('instanceAi:message')
+	async getTaskDetail(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+	): Promise<DesktopAssistantTaskDetailResponse> {
+		this.requireEnabled();
+		return await this.desktopAssistantService.getTaskDetail(req.user, workflowId);
+	}
+
+	@Post('/tasks/:workflowId/edits')
+	@GlobalScope('instanceAi:message')
+	async applyTaskEdits(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Body body: DesktopAssistantApplyEditsRequestDto,
+	): Promise<DesktopAssistantApplyEditsResponse> {
+		this.requireEnabled();
+		return await this.desktopAssistantService.applyTaskEdits(req.user, workflowId, body);
 	}
 
 	@Post('/recommendations')

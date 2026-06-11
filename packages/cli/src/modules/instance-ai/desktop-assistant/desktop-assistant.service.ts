@@ -1,9 +1,13 @@
 import type {
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
+	DesktopAssistantDescriptionPart,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantPromoteRequest,
 	DesktopAssistantPromoteResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -21,9 +25,11 @@ import type { StoredEvent } from '@n8n/instance-ai';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import type { ExecutionStatus } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
@@ -47,18 +53,26 @@ import { classifyWorkflowsForDesktopAssistant } from './desktop-assistant.classi
 import type { ClassifierInput } from './desktop-assistant.classifier';
 import {
 	clampLimit,
+	composeApplyEditsMessage,
 	composeOneShotMessage,
 	composePromoteMessage,
 	composeRecommendationsInput,
+	composeTaskDescriptionInput,
 	extractBuiltWorkflowId,
 	extractTextContent,
 	extractWorkflowLoopBuildOutcome,
+	normalizeDescriptionParts,
+	readCachedTaskDetail,
 	readDesktopAssistantMeta,
 	RECOMMENDATIONS_INSTRUCTIONS,
 	splitLeadingEmoji,
 	summarizeExecutionError,
+	TASK_DESCRIPTION_INSTRUCTIONS,
 } from './desktop-assistant.helpers';
-import { computeNodesRequiringCredentialSetup } from './node-credential-requirements';
+import {
+	computeMissingCredentialTypes,
+	computeNodesRequiringCredentialSetup,
+} from './node-credential-requirements';
 
 import { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
@@ -112,6 +126,23 @@ function clampRecommendationsLimit(limit: number | undefined): number {
 	return Math.min(Math.max(1, Math.floor(limit)), MAX_RECOMMENDATIONS);
 }
 
+/** Structured-output schema for the task-description generation. Kept loose
+ *  (no per-kind required fields) so the model can't fail validation on shape
+ *  nuances; `normalizeDescriptionParts` tightens the result. */
+const taskDescriptionSchema = z.object({
+	parts: z
+		.array(
+			z.object({
+				kind: z.enum(['text', 'param']),
+				text: z.string().optional(),
+				value: z.string().optional(),
+				options: z.array(z.string()).optional(),
+			}),
+		)
+		.min(1)
+		.max(40),
+});
+
 /**
  * BFF for the n8n personal-automation desktop assistant.
  *
@@ -151,6 +182,7 @@ export class DesktopAssistantService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly projectService: ProjectService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	// ── tasks list ───────────────────────────────────────────────────────────
@@ -374,6 +406,168 @@ export class DesktopAssistantService {
 		});
 
 		return { recommendations: recommendations.slice(0, limit) };
+	}
+
+	// ── task detail ──────────────────────────────────────────────────────────
+
+	/**
+	 * Build the task detail view's payload: a natural-language description of the
+	 * workflow, segmented into static text and editable params, plus the
+	 * credential types still missing for it to run.
+	 *
+	 * The description is LLM-generated (structured output, like recommendations)
+	 * and cached in `workflow_entity.meta.desktopAssistant.detail`, keyed by the
+	 * workflow's `versionId` — edits through the editor or the apply-edits run
+	 * bump the version and naturally invalidate the cache. Meta-only writes (the
+	 * cache itself) do not touch `versionId`, so caching never self-invalidates.
+	 */
+	async getTaskDetail(user: User, workflowId: string): Promise<DesktopAssistantTaskDetailResponse> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+		if (!workflow || workflow.isArchived) {
+			throw new NotFoundError(`Workflow ${workflowId} not found`);
+		}
+
+		const connectionsNeeded = computeMissingCredentialTypes(workflow.nodes, this.nodeTypes).map(
+			(credentialType) => ({
+				credentialType,
+				displayName: this.resolveCredentialDisplayName(credentialType),
+			}),
+		);
+
+		const cachedParts = readCachedTaskDetail(workflow.meta, workflow.versionId);
+		if (cachedParts) {
+			return { workflowId, versionId: workflow.versionId, parts: cachedParts, connectionsNeeded };
+		}
+
+		const credentials = await this.credentialsFinderService.findCredentialsForUser(user, [
+			'credential:read',
+		]);
+		const connectedIntegrations = [...new Set(credentials.map((c) => c.type))]
+			.filter((type): type is string => typeof type === 'string' && type.length > 0)
+			.slice(0, MAX_RECOMMENDATION_INTEGRATIONS);
+
+		const { rest: displayName } = splitLeadingEmoji(workflow.name);
+		const { parts: rawParts } = await this.instanceAiService.generateStructured(user, {
+			name: 'desktop-assistant-task-description',
+			instructions: TASK_DESCRIPTION_INSTRUCTIONS,
+			input: composeTaskDescriptionInput(
+				displayName || workflow.name,
+				workflow.nodes,
+				workflow.connections,
+				connectedIntegrations,
+			),
+			schema: taskDescriptionSchema,
+		});
+		const parts = normalizeDescriptionParts(rawParts);
+		if (parts.length === 0) {
+			// All parts were empty/whitespace — caching this would render a blank
+			// sentence and brick apply-edits for the version; treat as a failed
+			// generation so the client shows its error + retry state.
+			throw new OperationalError('Task description generation returned no usable description');
+		}
+
+		await this.writeTaskDetailCache(workflowId, workflow.versionId, parts);
+		return { workflowId, versionId: workflow.versionId, parts, connectionsNeeded };
+	}
+
+	private resolveCredentialDisplayName(credentialType: string): string {
+		try {
+			return this.credentialTypes.getByName(credentialType).displayName;
+		} catch {
+			return credentialType;
+		}
+	}
+
+	/** Merge the generated description into the workflow's meta. Re-reads the
+	 *  row's meta right before writing: the caller's copy predates a seconds-long
+	 *  LLM call, and writing it back would clobber anything (editor saves, other
+	 *  meta writers) that landed in between. */
+	private async writeTaskDetailCache(
+		workflowId: string,
+		versionId: string,
+		parts: DesktopAssistantDescriptionPart[],
+	): Promise<void> {
+		const workflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			select: ['id', 'meta'],
+		});
+		if (!workflow) return;
+		const existing = readDesktopAssistantMeta(workflow.meta) ?? {};
+		const nextMeta = {
+			...(workflow.meta ?? {}),
+			desktopAssistant: {
+				...existing,
+				detail: { versionId, parts },
+			},
+		};
+		await this.workflowRepository.update(workflowId, { meta: nextMeta });
+	}
+
+	// ── apply edits ──────────────────────────────────────────────────────────
+
+	/**
+	 * Apply the user's chip edits from the task detail view to the real workflow:
+	 * kick off an Instance AI run in the `desktop-assistant-edit` prompt mode,
+	 * grounded on the displayed description sentence and the exact from→to value
+	 * changes. The client follows the run via the thread's SSE stream and
+	 * refetches the detail when it finishes (the builder's update bumps the
+	 * workflow's `versionId`, invalidating the cached description).
+	 */
+	async applyTaskEdits(
+		user: User,
+		workflowId: string,
+		body: DesktopAssistantApplyEditsRequest,
+	): Promise<DesktopAssistantApplyEditsResponse> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:update',
+		]);
+		if (!workflow || workflow.isArchived) {
+			throw new NotFoundError(`Workflow ${workflowId} not found`);
+		}
+
+		// Ground the instruction on the description the user was actually looking
+		// at; without it the from→to pairs lose their sentence context.
+		const parts = readCachedTaskDetail(workflow.meta, workflow.versionId);
+		if (!parts) {
+			throw new BadRequestError(
+				'No current task description for this workflow — reload the task detail and retry',
+			);
+		}
+
+		// Every change must reference a param of the displayed description with its
+		// current value. This keeps the endpoint a chip-edit applier rather than a
+		// free-text instruction channel, and rejects edits against a stale view.
+		const paramsById = new Map(
+			parts.flatMap((part) => (part.kind === 'param' ? [[part.id, part] as const] : [])),
+		);
+		const seenParamIds = new Set<string>();
+		for (const change of body.changes) {
+			const param = paramsById.get(change.paramId);
+			if (!param || param.value !== change.from || seenParamIds.has(change.paramId)) {
+				throw new BadRequestError(
+					'Edits do not match the current task description — reload the task detail and retry',
+				);
+			}
+			seenParamIds.add(change.paramId);
+		}
+
+		const threadId = randomUUID();
+		const projectId = await this.resolvePersonalProjectId(user);
+		await this.memoryService.ensureThread(user.id, threadId, projectId);
+
+		const message = composeApplyEditsMessage(workflowId, workflow.name, parts, body.changes);
+		const runId = this.instanceAiService.startRun(
+			user,
+			threadId,
+			message,
+			undefined,
+			undefined,
+			undefined,
+			{ promptMode: 'desktop-assistant-edit' },
+		);
+		return { threadId, runId };
 	}
 
 	// ── promote thread ──────────────────────────────────────────────────────
