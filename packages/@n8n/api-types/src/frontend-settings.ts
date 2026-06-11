@@ -66,6 +66,7 @@ export interface IEnterpriseSettings {
 	customRoles: boolean;
 	personalSpacePolicy: boolean;
 	dataRedaction: boolean;
+	otelCustomSpanAttributes: boolean;
 }
 
 export interface FrontendSettings {
@@ -295,6 +296,9 @@ export type FrontendModuleSettings = {
 		localGatewayDisabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
+		sandboxEnabled: boolean;
+		workflowBuilderAvailable: boolean;
+		sandboxUnavailableReason: string | null;
 	};
 
 	/**

@@ -36,8 +36,10 @@ import type {
 } from '../types';
 
 interface FormatOptions {
-	/** Optional commit SHA to include in the heading. Truncated to 8 chars. */
+	/** Optional commit SHA for the terminal heading. Truncated to 8 chars. */
 	commitSha?: string;
+	/** GitHub Actions run URL; when set, the comment leads with a re-run link. */
+	runUrl?: string;
 	/** Maps each test-case reference to its file slug. When provided, the
 	 *  per-scenario failure breakdown looks up failed runs by
 	 *  `${fileSlug}/${scenarioName}` — deterministic across collisions like
@@ -58,7 +60,9 @@ export function formatComparisonMarkdown(
 	const lines: string[] = [];
 	const comparison = outcome?.kind === 'ok' ? outcome.result : undefined;
 
-	lines.push(formatHeading(options.commitSha));
+	lines.push(formatHeading());
+	lines.push('');
+	lines.push(renderRerunCallout(options.runUrl));
 	lines.push('');
 	lines.push(formatTopAlert(outcome));
 	lines.push('');
@@ -142,39 +146,75 @@ export function formatComparisonMarkdown(
 	return lines.join('\n');
 }
 
+// Evals fire on PR open/ready, not on push — lead with a one-click re-run prompt.
+function renderRerunCallout(runUrl?: string): string {
+	const cta = runUrl
+		? `[▶ Re-run this eval](${runUrl}) (then **Re-run jobs**)`
+		: 'Re-run it from the **Checks** tab (**Re-run jobs**)';
+	return [
+		'> [!IMPORTANT]',
+		`> **This eval does not re-run on new commits** — ${cta} when you're ready to merge.`,
+	].join('\n');
+}
+
 function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
 	const aggregate = aggregateWorkflowChecks(evaluation);
 	if (!aggregate) return [];
+
+	const names = Object.keys(aggregate.perCheck).sort();
+	const rowByName: Record<string, { dimension: string; row: string; failed: boolean }> = {};
+	let failingChecks = 0;
+	for (const name of names) {
+		const entry = aggregate.perCheck[name];
+		const scored = entry.passes + entry.fails;
+		const rate = scored > 0 ? `${String(Math.round((entry.passes / scored) * 100))}%` : '—';
+		if (entry.fails > 0) failingChecks++;
+		rowByName[name] = {
+			dimension: entry.dimension,
+			failed: entry.fails > 0,
+			row: `| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${rate} |`,
+		};
+	}
+
+	const header = [
+		'| Dimension | Check | Kind | Pass | Fail | N/A | Pass rate |',
+		'|---|---|---|---|---|---|---|',
+	];
+	const rowsWhere = (keep: (name: string) => boolean): string[] => {
+		const byDimension: Record<string, string[]> = {};
+		for (const name of names) {
+			if (keep(name)) (byDimension[rowByName[name].dimension] ??= []).push(rowByName[name].row);
+		}
+		return CHECK_DIMENSIONS.flatMap((dim) => byDimension[dim] ?? []);
+	};
 
 	const lines: string[] = [
 		'#### Workflow checks',
 		'',
 		`_Scored over ${String(aggregate.scoredBuilds)} successful build(s). N/A = check did not apply to that workflow._`,
 		'',
-		'| Dimension | Check | Kind | Pass | Fail | N/A | Pass rate |',
-		'|---|---|---|---|---|---|---|',
 	];
 
-	const byDimension: Record<string, string[]> = {};
-	for (const name of Object.keys(aggregate.perCheck).sort()) {
-		const entry = aggregate.perCheck[name];
-		const scored = entry.passes + entry.fails;
-		const rate = scored > 0 ? `${String(Math.round((entry.passes / scored) * 100))}%` : '—';
-		(byDimension[entry.dimension] ??= []).push(
-			`| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${rate} |`,
-		);
-	}
+	// Failing checks render inline (the only rows that usually carry signal); the
+	// full, mostly-100% table collapses into <details> so an all-green run is a
+	// one-line summary instead of a ~30-row wall.
+	const failingRows = rowsWhere((name) => rowByName[name].failed);
+	if (failingRows.length > 0) lines.push(...header, ...failingRows, '');
 
-	for (const dim of CHECK_DIMENSIONS) {
-		if (byDimension[dim]) lines.push(...byDimension[dim]);
-	}
-	lines.push('');
+	lines.push(
+		`<details><summary>All workflow checks (${String(failingChecks)} failing of ${String(names.length)} checks)</summary>`,
+		'',
+		...header,
+		...rowsWhere(() => true),
+		'',
+		'</details>',
+		'',
+	);
 	return lines;
 }
 
-function formatHeading(commitSha?: string): string {
-	const sha = commitSha ? ` — \`${commitSha.slice(0, 8)}\`` : '';
-	return `### Instance AI Workflow Eval${sha}`;
+function formatHeading(): string {
+	return '### Instance AI Workflow Eval';
 }
 
 function formatTopAlert(outcome?: ComparisonOutcome): string {
@@ -212,7 +252,7 @@ function formatTopAlert(outcome?: ComparisonOutcome): string {
 
 	const aggDelta = comparison.aggregate.delta * 100;
 	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
-	const passRateText = `pass rate ${aggDeltaText} vs master`;
+	const passRateText = `pass rate ${aggDeltaText} vs baseline`;
 
 	// Two-line summary: regression-tier counts on top, positives/neutrals on the
 	// bottom. The pass-rate delta tails whichever line matches its sign so the
@@ -757,7 +797,7 @@ function formatTerminalVerdictLine(outcome?: ComparisonOutcome): string {
 
 	const aggDelta = comparison.aggregate.delta * 100;
 	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
-	const passRateText = `pass rate ${aggDeltaText} vs master`;
+	const passRateText = `pass rate ${aggDeltaText} vs baseline`;
 
 	const concernsParts = [
 		`${hard} regression${hard === 1 ? '' : 's'}`,

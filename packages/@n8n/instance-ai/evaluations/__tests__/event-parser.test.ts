@@ -527,14 +527,14 @@ describe('buildConversationMetrics', () => {
 		expect(result.perTurn[0].replanAfterErrorCount).toBe(1);
 	});
 
-	it('counts replan_after_error when a tool-error is followed by a plan-typed tool-call', () => {
+	it('counts replan_after_error when a tool-error is followed by create-tasks', () => {
 		const events: CapturedEvent[] = [
 			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
 			{ timestamp: 2, type: 'tool-error', data: { type: 'tool-error' } },
 			{
 				timestamp: 3,
 				type: 'tool-call',
-				data: { type: 'tool-call', payload: { toolName: 'plan' } },
+				data: { type: 'tool-call', payload: { toolName: 'create-tasks' } },
 			},
 			{ timestamp: 4, type: 'run-finish', data: { type: 'run-finish' } },
 		];

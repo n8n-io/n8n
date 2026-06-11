@@ -21,6 +21,7 @@ type InputTestProps = {
 	currentThreadId: string;
 	amendContext: { agentId: string; role: string } | null;
 	contextualSuggestion: string | null;
+	isWorkflowBuilderAvailable: boolean;
 	suggestions?: typeof suggestions;
 	suggestionsComponent?: Component;
 	suggestionCatalogVersion?: string;
@@ -35,6 +36,7 @@ const defaultProps = (): InputTestProps => ({
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
+	isWorkflowBuilderAvailable: true,
 });
 
 function inputProps(overrides: Partial<InputTestProps> = {}): InputTestProps {
@@ -213,6 +215,20 @@ describe('InstanceAiInput', () => {
 			'placeholder',
 			'Tell me what to build or ask me a question',
 		);
+	});
+
+	it('disables the composer when the workflow builder is unavailable', () => {
+		const { getByRole, getByTestId, queryByTestId } = renderComponent({
+			props: {
+				isWorkflowBuilderAvailable: false,
+				suggestions,
+			},
+		});
+
+		expect(getByRole('textbox')).toBeDisabled();
+		expect(getByRole('textbox')).toHaveAttribute('placeholder', 'Workflow builder unavailable');
+		expect(getByTestId('instance-ai-send-button')).toBeDisabled();
+		expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
 	});
 
 	it('shows a ghost prompt in the placeholder when hovering a prompt suggestion', async () => {

@@ -6,7 +6,7 @@ import type {
 	NodeExecuteBeforeContext,
 	NodeExecuteAfterContext,
 } from '@n8n/decorators';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { ICustomTelemetryTag, IWorkflowBase } from 'n8n-workflow';
 
@@ -43,6 +43,7 @@ export class OtelLifecycleHandler {
 		private readonly config: OtelConfig,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	private isPublishedWorkflow(workflow: IWorkflowBase): boolean {
@@ -77,7 +78,7 @@ export class OtelLifecycleHandler {
 			project: project
 				? {
 						id: project.id,
-						customAttributes: buildProjectCustomAttributes(project.customTelemetryTags),
+						customAttributes: this.buildProjectCustomAttributes(project.customTelemetryTags),
 					}
 				: undefined,
 			workflow: {
@@ -117,7 +118,7 @@ export class OtelLifecycleHandler {
 			project: project
 				? {
 						id: project.id,
-						customAttributes: buildProjectCustomAttributes(project.customTelemetryTags),
+						customAttributes: this.buildProjectCustomAttributes(project.customTelemetryTags),
 					}
 				: undefined,
 			workflow: {
@@ -166,20 +167,18 @@ export class OtelLifecycleHandler {
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);
 		if (!node) return;
 
-		const customAttributes = ctx.taskData.metadata?.tracing
-			? Object.fromEntries(
-					Object.entries(ctx.taskData.metadata.tracing).map(([key, value]) => [key, String(value)]),
-				)
-			: undefined;
-
 		this.tracer.endNode({
 			executionId: ctx.executionId,
 			node,
 			inputItemCount: countInputItems(ctx),
 			outputItemCount: countOutputItems(ctx.taskData.data),
 			error: ctx.taskData.error ?? undefined,
-			customAttributes,
+			customAttributes: this.buildNodeCustomAttributes(ctx),
 		});
+	}
+
+	private areCustomSpanAttributesLicensed(): boolean {
+		return this.licenseState.isOtelCustomSpanAttributesLicensed();
 	}
 
 	private buildWorkflowCustomAttributes(
@@ -187,6 +186,7 @@ export class OtelLifecycleHandler {
 	): CustomAttributes | undefined {
 		const tags = getCustomTelemetryTags(ctx.workflow.settings?.customTelemetryTags);
 		if (!tags?.length) return;
+		if (!this.areCustomSpanAttributesLicensed()) return;
 
 		const customAttributes: CustomAttributes = {};
 
@@ -201,17 +201,28 @@ export class OtelLifecycleHandler {
 
 		return customAttributes;
 	}
-}
 
-function buildProjectCustomAttributes(
-	tags: Array<{ key: string; value: string }>,
-): Record<string, string> | undefined {
-	if (!tags?.length) return undefined;
-	const attrs: Record<string, string> = {};
-	for (const { key, value } of tags) {
-		attrs[key] = value;
+	private buildProjectCustomAttributes(
+		tags: Array<{ key: string; value: string }> | undefined,
+	): Record<string, string> | undefined {
+		if (!this.areCustomSpanAttributesLicensed()) return undefined;
+		if (!tags?.length) return undefined;
+
+		const attrs: Record<string, string> = {};
+		for (const { key, value } of tags) {
+			attrs[key] = value;
+		}
+		return attrs;
 	}
-	return attrs;
+
+	private buildNodeCustomAttributes(ctx: NodeExecuteAfterContext): CustomAttributes | undefined {
+		if (!ctx.taskData.metadata?.tracing) return undefined;
+		if (!this.areCustomSpanAttributesLicensed()) return undefined;
+
+		return Object.fromEntries(
+			Object.entries(ctx.taskData.metadata.tracing).map(([key, value]) => [key, String(value)]),
+		);
+	}
 }
 
 export function countOutputItems(data: NodeExecuteAfterContext['taskData']['data']): number {

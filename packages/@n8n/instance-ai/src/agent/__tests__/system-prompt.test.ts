@@ -83,200 +83,86 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
-	describe('replan branch — must take action', () => {
-		it('requires the orchestrator to take action rather than just acknowledge', () => {
+	describe('routing index', () => {
+		it('allows multiple skill loads per turn instead of a single best-match load', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toMatch(/You MUST take action in this same turn/);
-			expect(prompt).toContain('awaiting_replan');
-			expect(prompt).toMatch(/Do NOT reply with an acknowledgement or status update alone/);
-			expect(prompt).toContain('the thread will silently stall');
+			expect(prompt).not.toMatch(/load_skill.*once/i);
+			expect(prompt).toContain('more than one skill');
 		});
 
-		it('lists both single-task (direct tool) and multi-task (create-tasks) routes', () => {
+		it('routes workflow builds through the workflow-builder skill', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toMatch(/handle a single simple task directly/);
-			expect(prompt).toMatch(/call `create-tasks` for multiple dependent tasks/);
-		});
-	});
-
-	describe('When to Plan — what-am-I-touching axis', () => {
-		it('routes new and multi-workflow work through plan', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('## When to Plan');
-			expect(prompt).toMatch(/New workflow \(no `workflowId`\) or multi-workflow build/);
-			expect(prompt).toContain('call `plan` immediately');
-			expect(prompt).toContain('Do not load the `workflow-builder` skill');
-			expect(prompt).toContain('workflow tasks include any data table names');
-			expect(prompt).toContain('The planner sub-agent discovers credentials and data tables');
-			expect(prompt).not.toContain('discovers credentials, data tables, and best practices');
+			expect(prompt).toContain("Match the user's request against skill descriptions");
+			expect(prompt).toContain('**Single workflow build or edit**');
+			expect(prompt).toContain('`workflow-builder`');
+			expect(prompt).toContain('`build-workflow`');
+			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
+			expect(prompt).toContain('`planning`');
+			expect(prompt).toContain('planningContext.source: "planning-skill"');
+			expect(prompt).toContain('multiple durable artifacts');
+			expect(prompt).toContain('shared data-table schema/migration');
+			expect(prompt).not.toContain('build-workflow-with-agent');
 		});
 
-		it('routes standalone data-table work through direct tools and the skill', () => {
+		it('routes standalone data-table work through the data-table-manager skill', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toMatch(/Standalone data-table work/);
-			expect(prompt).toContain('`data-table-manager` skill');
-			expect(prompt).toContain('Natural requests like "what data tables do I have?"');
-			expect(prompt).toContain('Do not call `plan`, `create-tasks`, or `delegate`');
+			expect(prompt).toContain('`data-table-manager`');
+			expect(prompt).toContain('what data tables do I have?');
+			expect(prompt).toContain(
+				'never call `data-tables` or `parse-file` without loading `data-table-manager` first',
+			);
+			expect(prompt).toContain('Do not call `create-tasks` or `delegate`');
 		});
 
-		it('loads the data-table skill before planning workflows that use tables', () => {
+		it('loads data-table-manager before workflow-builder when tables are involved', () => {
 			const prompt = getSystemPrompt({});
 
+			expect(prompt).toContain('workflows that create or write to Data Tables');
 			expect(prompt).toContain(
-				'If the workflow will create, read, update, seed, import, or store records in n8n Data Tables, load the `data-table-manager` skill before `plan`',
+				'`data-table-manager` when tables are involved, then `workflow-builder`',
 			);
 		});
 
-		it('routes existing-workflow edits through the workflow-builder skill', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toMatch(/Any edit to an existing workflow that runs the builder/);
-			expect(prompt).toContain('load the `workflow-builder` skill');
-			expect(prompt).toContain('call `build-workflow` directly');
-			expect(prompt).toContain('existing `workflowId`');
-			expect(prompt).toContain('approval before saving');
-		});
-
-		it('routes non-build ops through direct tools', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toMatch(/Non-build ops on an existing workflow/);
-			expect(prompt).toContain('The builder does not run.');
-		});
-
-		it('routes replan follow-ups as routing, not re-planning', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toMatch(/Replan follow-up/);
-			expect(prompt).toMatch(/route, don't re-plan/);
-		});
-	});
-
-	describe('post-build verify for direct workflow builds', () => {
-		it('uses verificationReadiness as the post-build routing signal', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('Post-build flow');
-			expect(prompt).toContain('verify-built-workflow');
-			expect(prompt).toContain('`verificationReadiness`');
-			expect(prompt).toContain('`setupRequirement`');
-			expect(prompt).toContain('verificationReadiness.status === "ready"');
-			expect(prompt).toContain('verificationReadiness.status === "needs_setup"');
-			expect(prompt).toContain('verificationReadiness.status === "not_verifiable"');
-			expect(prompt).toContain('setupRequirement.status === "required"');
-			expect(prompt).toContain('`triggerNodes`');
-			expect(prompt).not.toContain('outcome.usesWorkflowPinDataForVerification');
-			expect(prompt).not.toContain('outcome.verificationPinData');
-		});
-
-		it('grounds workflow setup in the inline assistant card', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('inline setup card in the AI Assistant panel');
-			expect(prompt).toContain(
-				'Do not tell the user to open the editor, use the canvas, or click a Setup button',
-			);
-			expect(prompt).not.toMatch(/setup wizard/i);
-		});
-
-		it('makes post-build credential setup the default path', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('Do not ask whether to build now and set up credentials later');
-			expect(prompt).toContain('building first and routing setup after verification');
-		});
-
-		it('reads workflowId/workItemId from build-workflow output', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('read `workflowId`, `workItemId`, `triggerNodes`');
-			expect(prompt).toContain('`verificationReadiness`');
-			expect(prompt).toContain('`setupRequirement`');
-		});
-
-		it('reuses deterministic already-verified readiness instead of re-running verify', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('verificationReadiness.status === "already_verified"');
-			expect(prompt).toContain('do **not** call `verify-built-workflow` again');
-		});
-
-		it('leaves publish dependency ordering to the workflows tool', () => {
+		it('loads data-table-manager before planning when shared tables are involved', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain(
-				'Only call `workflows(action="publish")` when the user explicitly asks',
-			);
-			expect(prompt).not.toContain('outcome.supportingWorkflowIds');
-		});
-	});
-
-	describe('checkpoint branch — in-turn patch rule + retry carve-out', () => {
-		it('allows checkpoints to reuse successful structured verification evidence', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('Always require structured verification evidence');
-			expect(prompt).toContain('never trust builder prose');
-			expect(prompt).toContain('without re-running verification');
-			expect(prompt).not.toContain('Always run your own verification');
-		});
-
-		it('routes verified checkpoint workflows with setup needs through workflow setup before completion', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('workflows(action="setup")');
-			expect(prompt).toContain('outcome.setupRequirement.status === "required"');
-			expect(prompt).toContain('before `complete-checkpoint`');
-			expect(prompt).toContain('deferred: true');
-			expect(prompt).toContain(
-				'Do not call `credentials(action="setup")` or `apply-workflow-credentials`',
+				'`data-table-manager` first when shared tables are involved → `planning`',
 			);
 		});
 
-		it('does not treat checkpoint verification as a user-requested run', () => {
+		it('does not plan just for verification', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('explicitly asked to run or execute the workflow');
-			expect(prompt).toContain('checkpoint verification does not satisfy a user-requested run');
-			expect(prompt).toContain('executions(action="run")');
+			expect(prompt).toContain('Do not create a plan just for verification');
 		});
 
-		it('tells the orchestrator it may patch during a checkpoint and re-verify in place', () => {
+		it('points post-build and follow-up work at dedicated skills', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('patch in place');
-			expect(prompt).toContain('call `build-workflow` directly during this checkpoint turn');
-			expect(prompt).toContain('re-verify');
-			expect(prompt).toContain('complete-checkpoint');
+			expect(prompt).toContain('`post-build-flow`');
+			expect(prompt).toContain('`planned-task-runtime`');
+			expect(prompt).toContain('`debugging-executions`');
 		});
 
-		it('keeps in-checkpoint patch attempts bounded', () => {
+		it('keeps replan stall prevention in the core follow-up triggers', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toMatch(/Keep the patch count small/);
-			expect(prompt).toMatch(/within two rounds/);
-		});
-	});
-
-	describe('multi-credential disambiguation guidance', () => {
-		it('instructs the orchestrator to ask once when a service has more than one credential of the same type', () => {
-			const prompt = getSystemPrompt({});
-
-			expect(prompt).toContain('Ask once when a service has multiple credentials of the same type');
-			expect(prompt).toContain('more than one entry of the type');
-			expect(prompt).toContain('single-select');
-			expect(prompt).toContain('With a single candidate, auto-apply and do not ask');
+			expect(prompt).toContain('<planned-task-follow-up type="replan">');
+			expect(prompt).toContain('you MUST take action in this turn');
+			expect(prompt).toContain('the thread will silently stall');
 		});
 
-		it('instructs the orchestrator to ask which auth type to use when a service supports more than one', () => {
+		it('routes browser credential setup through the Computer Use skill', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain('Ask which auth type to use when a service supports more than one');
-			expect(prompt).toContain('List OAuth2 first');
+			expect(prompt).toContain('needsBrowserSetup=true');
+			expect(prompt).toContain('credential-setup-with-computer-use');
+			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly \(not `delegate`\)/);
 		});
 	});
 
@@ -298,6 +184,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('knowledge-base/index.json');
 			expect(prompt).toContain('knowledge-base/best-practices/index.json');
 			expect(prompt).toContain('knowledge-base/templates/index.json');
+			expect(prompt).toContain('knowledge-base/reference/index.json');
 			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');
 			expect(prompt).toContain('Consult the knowledge base before planning or building');
@@ -335,9 +222,6 @@ describe('getSystemPrompt', () => {
 		});
 
 		it('directs the agent to the Open chat button when Chat Trigger is private', () => {
-			// Regression: agent was sharing the public webhook URL for private chat
-			// triggers, then offering to flip `public: true` for testing instead of
-			// pointing the user at the workflow's built-in Open chat button.
 			const prompt = getSystemPrompt({ webhookBaseUrl, formBaseUrl });
 
 			expect(prompt).toContain('**Open chat** button on the workflow canvas');

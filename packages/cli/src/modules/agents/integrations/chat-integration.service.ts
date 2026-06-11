@@ -23,7 +23,7 @@ import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
 } from './agent-chat-integration';
-import { ComponentMapper } from './component-mapper';
+import { ComponentMapper, type ShortenCallback } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { buildIntegrationConnectionId } from './integration-tools';
 import type { Agent } from '../entities/agent.entity';
@@ -438,6 +438,15 @@ export class ChatIntegrationService {
 			if (k.startsWith(`${agentId}:`)) return conn.chat;
 		}
 		return undefined;
+	}
+
+	getShortenCallback(
+		agentId: string,
+		integration: { type: string; credentialId: string },
+	): ShortenCallback | undefined {
+		return this.connections
+			.get(this.connectionKey(agentId, integration.type, integration.credentialId))
+			?.bridge.getShortenCallback();
 	}
 
 	/**

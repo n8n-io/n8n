@@ -84,8 +84,7 @@
 		"install-browsers": {
 			"cache": true,
 			"inputs": [".playwright-version"],
-			"outputs": [".playwright-browsers/**"],
-			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
+			"outputs": [".playwright-browsers/**"]
 		},
 		"test:container:standard": {
 			"env": ["E2E_TESTS"],

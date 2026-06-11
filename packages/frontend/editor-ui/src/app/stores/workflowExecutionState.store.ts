@@ -4,9 +4,13 @@ import { computed, inject, readonly, ref, type ComputedRef } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type { ExecutionSummary, IRunExecutionData } from 'n8n-workflow';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type {
+	IExecutionResponse,
+	IExecutionsStopData,
+} from '@/features/execution/executions/executions.types';
 import { WorkflowExecutionStateStoreKey } from '@/app/constants/injectionKeys';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
+import { useExecutingNode } from '@/app/composables/useExecutingNode';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	createExecutionDataId,
@@ -14,6 +18,8 @@ import {
 	useExecutionDataStore,
 } from './executionData.store';
 import { useWorkflowDocumentStore, type WorkflowDocumentId } from './workflowDocument.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 
@@ -96,6 +102,14 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 * the slot-only collection would otherwise miss.
 		 */
 		const trackedExecutionIds = ref<Set<string>>(new Set());
+
+		/**
+		 * Queue of currently-executing node names driving per-node loading
+		 * spinners. Owned by the per-document store so spinner state stays
+		 * isolated per workflow document. Read purely via Vue reactivity; it is
+		 * intentionally not wired into the change-event mechanism below.
+		 */
+		const executingNode = useExecutingNode();
 
 		const onWorkflowExecutionStateChange = createEventHook<WorkflowExecutionStateChangeEvent>();
 
@@ -342,6 +356,34 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			fireChange(CHANGE_ACTION.UPDATE, 'pendingExecution');
 		}
 
+		/**
+		 * Applies a fetched/started execution result to this document's session state:
+		 * clears it when null, stages it as the pending scaffold while in progress, or
+		 * tracks it as a displayed execution once it has a backend id.
+		 */
+		function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
+			if (workflowResultData === null) {
+				setPendingExecution(null);
+				clearDisplayedExecution();
+			} else if (workflowResultData.id === IN_PROGRESS_EXECUTION_ID) {
+				setPendingExecution(workflowResultData);
+				setActiveExecutionId(null);
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+					workflowResultData,
+				);
+			} else {
+				trackExecutionId(workflowResultData.id);
+				useExecutionDataStore(createExecutionDataId(workflowResultData.id)).setExecution(
+					workflowResultData,
+				);
+				if (typeof activeExecutionId.value !== 'string') {
+					setPendingExecution(null);
+					setActiveExecutionId(undefined);
+					setDisplayedExecutionId(workflowResultData.id);
+				}
+			}
+		}
+
 		function clearActiveNodeExecutionData(nodeName: string) {
 			if (typeof activeExecutionId.value !== 'string') return;
 			useExecutionDataStore(createExecutionDataId(activeExecutionId.value)).clearNodeExecutionData(
@@ -478,43 +520,6 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			if (touched) fireChange(CHANGE_ACTION.UPDATE, 'state');
 		}
 
-		/**
-		 * Orchestrates `setExecution` across the pending / IN_PROGRESS / id-keyed
-		 * stores. Three branches:
-		 *  - `null`                       -> clears pending + displayed (full reset path)
-		 *  - id === IN_PROGRESS sentinel  -> stages a pending scaffold and points
-		 *                                    activeExecutionId at it (`null`),
-		 *                                    also writes the IN_PROGRESS data store
-		 *  - real id                      -> writes the id-keyed data store and
-		 *                                    promotes displayedExecutionId so reads
-		 *                                    see the new execution before the
-		 *                                    activeExecutionId transition lands
-		 */
-		function setActiveExecution(execution: IExecutionResponse | null) {
-			if (execution === null) {
-				setPendingExecution(null);
-				clearDisplayedExecution();
-				return;
-			}
-			if (execution.id === IN_PROGRESS_EXECUTION_ID) {
-				setPendingExecution(execution);
-				setActiveExecutionId(null);
-				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
-					execution,
-				);
-				return;
-			}
-			trackExecutionId(execution.id);
-			useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
-			// When activeExecutionId isn't yet pointing at this execution,
-			// clear pending state and set displayedExecutionId so reads see it.
-			if (typeof activeExecutionId.value !== 'string') {
-				setPendingExecution(null);
-				setActiveExecutionId(undefined);
-				setDisplayedExecutionId(execution.id);
-			}
-		}
-
 		function setActiveExecutionRunData(runData: IRunExecutionData) {
 			const executionId = getResolvedActiveExecutionId();
 			if (!executionId) return;
@@ -587,7 +592,53 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			selectedTriggerNodeName.value = undefined;
 			currentWorkflowExecutions.value = [];
 			lastSuccessfulExecutionId.value = null;
+			executingNode.clearNodeExecutionQueue();
 			fireChange(CHANGE_ACTION.DELETE, 'state');
+		}
+
+		/**
+		 * Resets this document's execution session after a stop: clears the active
+		 * execution id / executing-node queue / webhook-wait, restores the IDLE
+		 * document title, and marks the relevant executionData store as stopped
+		 * (active id → IN_PROGRESS scaffold → displayed-id fallback for the
+		 * stop-race-with-finished case).
+		 */
+		function markExecutionAsStopped(stopData?: IExecutionsStopData) {
+			const activeId = activeExecutionId.value;
+
+			setActiveExecutionId(undefined);
+			executingNode.clearNodeExecutionQueue();
+			setExecutionWaitingForWebhook(false);
+
+			useDocumentTitle().setDocumentTitle(useWorkflowDocumentStore(documentId).name, 'IDLE');
+
+			if (typeof activeId === 'string') {
+				const executionDataStore = useExecutionDataStore(createExecutionDataId(activeId));
+				executionDataStore.clearExecutionStartedData();
+				executionDataStore.markAsStopped(stopData);
+			} else if (activeId === null) {
+				// Pending scaffold: filter the IN_PROGRESS placeholder data and
+				// mirror status onto the pendingExecution ref so the UI sees the canceled state.
+				const executionDataStore = useExecutionDataStore(
+					createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+				);
+				executionDataStore.clearExecutionStartedData();
+				executionDataStore.markAsStopped(stopData);
+				if (stopData) {
+					applyStopDataToPendingExecution(stopData);
+				}
+			} else {
+				// activeExecutionId === undefined: fall back to displayedExecutionId for the
+				// stop-race-with-finished case where active was just cleared.
+				const displayedId = displayedExecutionId.value;
+				if (typeof displayedId === 'string') {
+					const executionDataStore = useExecutionDataStore(createExecutionDataId(displayedId));
+					executionDataStore.clearExecutionStartedData();
+					executionDataStore.markAsStopped(stopData);
+				}
+			}
+
+			clearPopupWindowState();
 		}
 
 		return {
@@ -605,6 +656,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			selectedTriggerNodeName: readonly(selectedTriggerNodeName),
 			currentWorkflowExecutions: readonly(currentWorkflowExecutions),
 			lastSuccessfulExecutionId: readonly(lastSuccessfulExecutionId),
+			executingNode,
 			activeExecution,
 			activeExecutionRunData,
 			activeExecutionExecutedNode,
@@ -621,6 +673,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			// Write API
 			trackExecutionId,
 			setActiveExecutionId,
+			setWorkflowExecutionData,
 			setDisplayedExecutionId,
 			setPendingExecution,
 			setPendingExecutionRunData,
@@ -642,12 +695,12 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			appendChatMessage,
 			setSelectedTriggerNodeName,
 			renameExecutionStateNode,
-			setActiveExecution,
 			setActiveExecutionRunData,
 			clearActiveExecutionStartedData,
 			addActiveNodeExecutionStartedData,
 			renameActiveExecutionNode,
 			resetExecutionState,
+			markExecutionAsStopped,
 			// Events
 			onWorkflowExecutionStateChange: onWorkflowExecutionStateChange.on,
 		};

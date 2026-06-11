@@ -18,6 +18,7 @@ jest.mock('@/utils/compression.util');
 
 jest.mock('@n8n/backend-common', () => ({
 	safeJoinPath: jest.fn(),
+	TypedEmitter: class {},
 }));
 
 // Mock @n8n/db

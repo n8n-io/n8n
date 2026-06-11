@@ -383,10 +383,10 @@ describe('BackgroundTaskManager', () => {
 		});
 
 		it('does not collapse two distinct plannedTaskIds that target the same workflowId', () => {
-			// A planner may emit two work items for the same workflow — e.g., initial
-			// build (planned-A) followed by a patch (planned-B). They are distinct
-			// planned tasks and must both run; collapsing them on workflowId would
-			// skip work the user approved.
+			// A plan may include two work items for the same workflow — e.g.,
+			// initial build (planned-A) followed by a patch (planned-B). They are
+			// distinct planned tasks and must both run; collapsing them on
+			// workflowId would skip work the user approved.
 			const first = manager.spawn(
 				makeSpawnOptions({
 					taskId: 'task-A',
@@ -663,6 +663,7 @@ describe('BackgroundTaskManager', () => {
 			const cancelled = manager.cancelAll();
 
 			expect(cancelled).toHaveLength(2);
+			expect(cancelled.every((t) => t.status === 'cancelled')).toBe(true);
 			expect(manager.getRunningTasks('thread-1')).toHaveLength(0);
 			expect(manager.getRunningTasks('thread-2')).toHaveLength(0);
 		});

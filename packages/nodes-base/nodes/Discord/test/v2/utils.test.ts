@@ -68,6 +68,10 @@ describe('Test Discord > prepareOptions', () => {
 });
 
 describe('Test Discord > prepareEmbeds', () => {
+	const executeFunction = {
+		getNode: () => node,
+	} as unknown as IExecuteFunctions;
+
 	it('should return return empty object removing empty strings', () => {
 		const embeds = [
 			{
@@ -77,11 +81,56 @@ describe('Test Discord > prepareEmbeds', () => {
 			},
 		];
 
-		const executeFunction = {};
-
-		const result = prepareEmbeds.call(executeFunction as unknown as IExecuteFunctions, embeds);
+		const result = prepareEmbeds.call(executeFunction, embeds);
 
 		expect(result).toEqual(embeds);
+	});
+
+	it('should normalize string author from JSON embed to { name }', () => {
+		const embeds = [
+			{
+				inputMethod: 'json',
+				json: JSON.stringify({
+					title: 'T',
+					author: 'Plain',
+				}),
+			},
+		];
+
+		const result = prepareEmbeds.call(executeFunction, embeds);
+
+		expect(result).toEqual([
+			{
+				title: 'T',
+				author: { name: 'Plain' },
+			},
+		]);
+	});
+
+	it('should preserve object author from JSON embed (icon_url, url)', () => {
+		const author = {
+			name: 'N',
+			icon_url: 'https://example.com/x.png',
+			url: 'https://example.com',
+		};
+		const embeds = [
+			{
+				inputMethod: 'json',
+				json: JSON.stringify({
+					title: 'T',
+					author,
+				}),
+			},
+		];
+
+		const result = prepareEmbeds.call(executeFunction, embeds);
+
+		expect(result).toEqual([
+			{
+				title: 'T',
+				author,
+			},
+		]);
 	});
 });
 

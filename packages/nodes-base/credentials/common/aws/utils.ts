@@ -7,6 +7,7 @@ import {
 	type IDataObject,
 	type IHttpRequestOptions,
 	type IRequestOptions,
+	UserError,
 } from 'n8n-workflow';
 import { parseString } from 'xml2js';
 import type { Request } from 'aws4';
@@ -19,6 +20,8 @@ import {
 	type AwsSecurityHeaders,
 } from './types';
 import { sign } from 'aws4';
+import { getProxyForUrl } from 'proxy-from-env';
+import { ProxyAgent } from 'undici';
 
 import { getSystemCredentials } from './system-credentials-utils';
 
@@ -291,6 +294,17 @@ export async function assumeRole(
 	sessionToken: string;
 }> {
 	assertSupportedAwsRegion(region);
+
+	if (!credentials.roleArn || credentials.roleArn.trim() === '') {
+		throw new UserError('Role ARN is required when assuming a role.');
+	}
+	if (!credentials.externalId || credentials.externalId.trim() === '') {
+		throw new UserError('External ID is required when assuming a role.');
+	}
+	if (!credentials.roleSessionName || credentials.roleSessionName.trim() === '') {
+		throw new UserError('Role Session Name is required when assuming a role.');
+	}
+
 	let stsCallCredentials: { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
 
 	const useSystemCredentialsForRole = credentials.useSystemCredentialsForRole ?? false;
@@ -365,11 +379,15 @@ export async function assumeRole(
 		throw new ApplicationError('Failed to sign STS request');
 	}
 
-	const response = await fetch(stsEndpoint, {
+	const proxyUrl = getProxyForUrl(stsEndpoint);
+	const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
+	const requestInit: RequestInit & { dispatcher?: unknown } = {
 		method: 'POST',
 		headers: signOpts.headers as Record<string, string>,
 		body: bodyContent,
-	});
+		...(dispatcher ? { dispatcher } : {}),
+	};
+	const response = await fetch(stsEndpoint, requestInit);
 
 	if (!response.ok) {
 		const errorText = await response.text();

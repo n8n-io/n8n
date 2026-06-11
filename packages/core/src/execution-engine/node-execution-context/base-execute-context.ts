@@ -176,6 +176,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			threadId,
 			this.additionalData,
 			this.additionalData.rootExecutionMode ?? this.getMode(),
+			agentInfo.outputSchema,
 		);
 	}
 

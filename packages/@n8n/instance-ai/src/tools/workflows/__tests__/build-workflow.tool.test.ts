@@ -1,7 +1,6 @@
-import { UserError } from 'n8n-workflow';
-
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
+import { parseAndValidate, partitionWarnings } from '../../../workflow-builder';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createBuildWorkflowTool } from '../build-workflow.tool';
 import { resolveCredentials } from '../resolve-credentials';
@@ -43,31 +42,17 @@ vi.mock('../submit-workflow.tool', () => ({
 }));
 
 describe('createBuildWorkflowTool', () => {
-	const originalBuildViaPlanGuard = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
-	const restoreBuildViaPlanGuard = () => {
-		if (originalBuildViaPlanGuard === undefined) {
-			delete process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
-		} else {
-			process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = originalBuildViaPlanGuard;
-		}
-	};
-
 	beforeEach(() => {
 		vi.clearAllMocks();
-		restoreBuildViaPlanGuard();
 	});
 
-	afterEach(() => {
-		restoreBuildViaPlanGuard();
-	});
-
-	it('rejects new workflow builds outside a planned or post-plan follow-up', async () => {
+	it('allows direct new single-workflow builds outside a planned follow-up', async () => {
 		const context = {
 			userId: 'user-1',
 			runId: 'run-1',
 			workflowService: {
-				createFromWorkflowJSON: vi.fn(),
-				clearAiTemporary: vi.fn(),
+				createFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
 			},
 			credentialService: {},
 			nodeService: {},
@@ -78,53 +63,231 @@ describe('createBuildWorkflowTool', () => {
 		} as unknown as InstanceAiContext;
 
 		const tool = createBuildWorkflowTool(context);
-		const result = await executeTool(tool, { code: 'workflow code' });
+		const result = await executeTool(tool, {
+			code: 'workflow code',
+			name: 'Daily Mlada Boleslav Weather to Slack',
+		});
 
 		expect(result).toMatchObject({
-			success: false,
-			errors: [
-				'New workflow builds must be planned first: call `plan` so the user can approve the build plan before saving.',
-			],
+			success: true,
+			workflowId: 'wf-1',
 		});
-		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
-	});
-
-	it('aborts after repeated new workflow build plan-guard rejections', async () => {
-		const warn = vi.fn();
-		const context = {
-			userId: 'user-1',
-			runId: 'run-1',
-			workflowService: {
-				createFromWorkflowJSON: vi.fn(),
-				clearAiTemporary: vi.fn(),
-			},
-			credentialService: {},
-			nodeService: {},
-			dataTableService: {},
-			executionService: {},
-			permissions: { createWorkflow: 'always_allow' },
-			logger: { warn },
-		} as unknown as InstanceAiContext;
-
-		const tool = createBuildWorkflowTool(context);
-
-		await expect(executeTool(tool, { code: 'workflow code' })).resolves.toMatchObject({
-			success: false,
-		});
-		await expect(executeTool(tool, { code: 'workflow code' })).resolves.toMatchObject({
-			success: false,
-		});
-		await expect(executeTool(tool, { code: 'workflow code' })).rejects.toBeInstanceOf(UserError);
-
-		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
-		expect(warn).toHaveBeenCalledWith(
-			'build-workflow plan-guard rejection limit reached — aborting run',
-			expect.objectContaining({ rejectionCount: 3 }),
+		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'Daily Mlada Boleslav Weather to Slack' }),
+			{ markAsAiTemporary: true },
 		);
 	});
 
-	it('honors the build-via-plan guard escape hatch', async () => {
-		process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = 'false';
+	it('escalates when the same build failure repeats for one work item', async () => {
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const throwJoinError = () => {
+			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
+		};
+		vi.mocked(parseAndValidate)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError);
+
+		const tool = createBuildWorkflowTool(context);
+
+		const first = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'a.join()',
+			workItemId: 'wi-1',
+		});
+		expect(first.success).toBe(false);
+		expect((first.errors ?? []).join('\n')).not.toContain('You already tried this');
+
+		const second = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'a.join()',
+			workItemId: 'wi-1',
+		});
+		expect(second.success).toBe(false);
+		expect((second.errors ?? []).join('\n')).toContain('You already tried this');
+		expect((second.errors ?? []).join('\n')).toContain('workflow-sdk-language.md');
+	});
+
+	it('keeps repeated validation-error escalation generic', async () => {
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+		const validationResult = {
+			workflow: { name: 'Generated workflow', nodes: [], connections: {} },
+			warnings: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+		};
+		const partitionedWarnings = {
+			errors: [{ code: 'UNKNOWN_CONFIG_KEY', message: 'Unknown config key "recipient"' }],
+			informational: [],
+		};
+		vi.mocked(parseAndValidate)
+			.mockReturnValueOnce(validationResult)
+			.mockReturnValueOnce(validationResult);
+		vi.mocked(partitionWarnings)
+			.mockReturnValueOnce(partitionedWarnings)
+			.mockReturnValueOnce(partitionedWarnings);
+
+		const tool = createBuildWorkflowTool(context);
+
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'workflow code',
+			workItemId: 'wi-1',
+		});
+		const second = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'workflow code',
+			workItemId: 'wi-1',
+		});
+		const errorText = (second.errors ?? []).join('\n');
+		expect(errorText).toContain('You already tried this');
+		expect(errorText).not.toContain('workflow-sdk-language.md');
+		expect(errorText).not.toContain('Code node');
+	});
+
+	it('uses workflowBuildContext work item as the repeat-failure key', async () => {
+		const workflowBuildContext = {
+			threadId: 'thread-1',
+			runId: 'run-1',
+			taskId: 'task-1',
+			workItemId: 'wi-1',
+		};
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			workflowBuildContext,
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const throwJoinError = () => {
+			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
+		};
+		vi.mocked(parseAndValidate)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError);
+
+		const tool = createBuildWorkflowTool(context);
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, { code: 'a.join()' });
+		workflowBuildContext.workItemId = 'wi-2';
+		const firstForSecondWorkItem = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{
+				code: 'a.join()',
+			},
+		);
+		const repeatForSecondWorkItem = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{
+				code: 'a.join()',
+			},
+		);
+
+		expect((firstForSecondWorkItem.errors ?? []).join('\n')).not.toContain(
+			'You already tried this',
+		);
+		expect((repeatForSecondWorkItem.errors ?? []).join('\n')).toContain('You already tried this');
+	});
+
+	it('does not share repeat-failure history between main and supporting workflows', async () => {
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			workflowBuildContext: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workItemId: 'wi-main',
+			},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const throwJoinError = () => {
+			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
+		};
+		vi.mocked(parseAndValidate)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError);
+
+		const tool = createBuildWorkflowTool(context);
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, { code: 'a.join()' });
+		const firstSupportingAttempt = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{
+				code: 'a.join()',
+				isSupportingWorkflow: true,
+				name: 'Support workflow',
+			},
+		);
+		const repeatSupportingAttempt = await executeTool<{ success: boolean; errors?: string[] }>(
+			tool,
+			{
+				code: 'a.join()',
+				isSupportingWorkflow: true,
+				name: 'Support workflow',
+			},
+		);
+
+		expect((firstSupportingAttempt.errors ?? []).join('\n')).not.toContain(
+			'You already tried this',
+		);
+		expect((repeatSupportingAttempt.errors ?? []).join('\n')).toContain('You already tried this');
+	});
+
+	it('uses workflowBuildContext task id as the fallback repeat-failure key', async () => {
+		const workflowBuildContext = {
+			threadId: 'thread-1',
+			runId: 'run-1',
+			taskId: 'task-1',
+		};
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			workflowBuildContext,
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const throwJoinError = () => {
+			throw new Error("Failed to parse workflow code: Method 'join' is not an allowed SDK method.");
+		};
+		vi.mocked(parseAndValidate)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError)
+			.mockImplementationOnce(throwJoinError);
+
+		const tool = createBuildWorkflowTool(context);
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, { code: 'a.join()' });
+		workflowBuildContext.taskId = 'task-2';
+		const firstForSecondTask = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'a.join()',
+		});
+		const repeatForSecondTask = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'a.join()',
+		});
+
+		expect((firstForSecondTask.errors ?? []).join('\n')).not.toContain('You already tried this');
+		expect((repeatForSecondTask.errors ?? []).join('\n')).toContain('You already tried this');
+	});
+
+	it('allows direct new workflow builds without a name parameter when code provides one', async () => {
 		const context = {
 			userId: 'user-1',
 			runId: 'run-1',
@@ -231,6 +394,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(reportBuildOutcome).toHaveBeenCalledWith(
 			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
 				workItemId: 'wi-1',
+				owner: { type: 'direct' },
 				workflowId: 'wf-1',
 				submitted: true,
 			}),
@@ -348,10 +512,100 @@ describe('createBuildWorkflowTool', () => {
 		const reportedOutcome = reportBuildOutcome.mock.calls[0]?.[0];
 		expect(reportedOutcome).toMatchObject({
 			workItemId: supportingWorkItemId,
+			owner: { type: 'direct' },
 			workflowId: 'wf-support',
 			submitted: true,
 		});
 		expect(reportedOutcome?.taskId).toEqual(expect.stringMatching(/^task-1:supporting-/));
+		expect(reportedOutcome?.plannedTaskId).toBeUndefined();
+	});
+
+	it('finalizes the planned task when the task deliverable is a supporting workflow', async () => {
+		const reportBuildOutcome = vi.fn<
+			(outcome: WorkflowBuildOutcome) => Promise<{ type: 'verify'; workflowId: string }>
+		>(async () => await Promise.resolve({ type: 'verify', workflowId: 'wf-support' }));
+		const markSucceeded = vi.fn<
+			(
+				threadId: string,
+				taskId: string,
+				update: { result?: string; outcome?: WorkflowBuildOutcome },
+			) => Promise<null>
+		>(async () => await Promise.resolve(null));
+		const onBuildOutcome = vi.fn();
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				createFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-support' })),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			workflowBuildContext: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workItemId: 'wi-main',
+				isSupportingWorkflowTask: true,
+				plannedTaskService: {
+					markSucceeded,
+				},
+				workflowTaskService: {
+					reportBuildOutcome,
+				},
+				onBuildOutcome,
+			},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool(tool, {
+			code: 'workflow code',
+			isSupportingWorkflow: true,
+		});
+
+		expect(result).toMatchObject({
+			success: true,
+			workflowId: 'wf-support',
+			workItemId: 'wi-main',
+			isSupportingWorkflow: true,
+		});
+		expect(context.workflowService.clearAiTemporary).toHaveBeenCalledWith('wf-support');
+		expect(onBuildOutcome).toHaveBeenCalledWith(
+			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
+				workItemId: 'wi-main',
+				taskId: 'task-1',
+				owner: { type: 'planned', taskId: 'task-1' },
+				plannedTaskId: 'task-1',
+				workflowId: 'wf-support',
+				submitted: true,
+			}),
+		);
+		expect(reportBuildOutcome).toHaveBeenCalledWith(
+			expect.objectContaining<Partial<WorkflowBuildOutcome>>({
+				workItemId: 'wi-main',
+				taskId: 'task-1',
+				owner: { type: 'planned', taskId: 'task-1' },
+				plannedTaskId: 'task-1',
+				workflowId: 'wf-support',
+				submitted: true,
+			}),
+		);
+		expect(markSucceeded).toHaveBeenCalledWith('thread-1', 'task-1', expect.any(Object));
+		const succeededUpdate = markSucceeded.mock.calls[0]?.[2];
+		expect(succeededUpdate?.result).toBe(
+			'Created supporting workflow "Generated workflow" (wf-support).',
+		);
+		expect(succeededUpdate?.outcome).toMatchObject({
+			workItemId: 'wi-main',
+			taskId: 'task-1',
+			owner: { type: 'planned', taskId: 'task-1' },
+			plannedTaskId: 'task-1',
+			workflowId: 'wf-support',
+		});
 	});
 
 	it('reports a workflow-loop outcome when saving succeeds', async () => {
@@ -416,6 +670,8 @@ describe('createBuildWorkflowTool', () => {
 				workItemId: 'wi-1',
 				runId: 'run-1',
 				taskId: 'task-1',
+				owner: { type: 'planned', taskId: 'task-1' },
+				plannedTaskId: 'task-1',
 				workflowId: 'wf-1',
 				submitted: true,
 				verificationReadiness: { status: 'ready' },
@@ -425,7 +681,12 @@ describe('createBuildWorkflowTool', () => {
 		expect(markSucceeded).toHaveBeenCalledWith('thread-1', 'task-1', expect.any(Object));
 		const succeededUpdate = markSucceeded.mock.calls[0]?.[2];
 		expect(succeededUpdate?.result).toBe('Created workflow "Generated workflow" (wf-1).');
-		expect(succeededUpdate?.outcome).toMatchObject({ workItemId: 'wi-1', workflowId: 'wf-1' });
+		expect(succeededUpdate?.outcome).toMatchObject({
+			workItemId: 'wi-1',
+			owner: { type: 'planned', taskId: 'task-1' },
+			plannedTaskId: 'task-1',
+			workflowId: 'wf-1',
+		});
 	});
 
 	it('keeps the build successful when main workflow promotion fails', async () => {

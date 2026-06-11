@@ -60,15 +60,12 @@ export class McpConnection {
 
 	private config: McpServerConfig;
 
-	private readonly shouldRequireToolApproval: boolean;
-
 	private connectionPromise: Promise<void> | undefined = undefined;
 	private disconnectPromise: Promise<void> | undefined = undefined;
 	private closed = false;
 
-	constructor(config: McpServerConfig, requireToolApproval = false) {
+	constructor(config: McpServerConfig) {
 		this.config = config;
-		this.shouldRequireToolApproval = requireToolApproval;
 	}
 
 	async connect(): Promise<void> {
@@ -140,13 +137,10 @@ export class McpConnection {
 	 * Returns true when a resolved tool should be wrapped with an approval gate.
 	 *
 	 * A tool needs approval when either:
-	 * - the global `shouldRequireToolApproval` flag (set via Agent.requireToolApproval()) is true, OR
 	 * - `config.requireApproval` is `true` (all tools on this server), OR
 	 * - `config.requireApproval` is a string array that includes the tool's original (un-prefixed) name.
 	 */
 	private needsApproval(tool: BuiltTool): boolean {
-		if (this.shouldRequireToolApproval) return true;
-
 		const { requireApproval } = this.config;
 		if (requireApproval === true) return true;
 

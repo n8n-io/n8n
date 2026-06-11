@@ -2,28 +2,32 @@ import { Container } from '@n8n/di';
 
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { loadChatSdk } from './esm-loader';
-import type { CardElement } from 'chat';
+import type { ButtonStyle, CardElement } from 'chat';
+
+type ComponentText = string | { text?: string; [key: string]: unknown };
 
 /**
  * Component type from agent SDK suspend/toMessage payloads.
  */
 export interface SuspendComponent {
 	type: string;
-	text?: string;
+	text?: ComponentText;
 	label?: string;
 	value?: string;
-	style?: string;
+	style?: ButtonStyle | string;
 	url?: string;
 	altText?: string;
 	placeholder?: string;
 	/** Accessory button on a section */
-	button?: { label: string; value: string; style?: string };
+	button?: { label?: string; text?: ComponentText; value: string; style?: ButtonStyle | string };
 	/** Options for select / radio_select components */
 	options?: Array<{ label: string; value: string; description?: string }>;
 	/** Fields for fields component */
 	fields?: Array<{ label: string; value: string }>;
-	/** Elements array for context blocks */
-	elements?: Array<{ type: string; text?: string; url?: string; altText?: string }>;
+	/** Alias agents commonly use for fields component entries */
+	items?: Array<{ label: string; value: string }>;
+	/** Elements array for context components */
+	elements?: Array<{ type: string; text?: ComponentText; url?: string; altText?: string }>;
 	/** Allow additional properties from the payload */
 	id?: string;
 	[key: string]: unknown;
@@ -37,14 +41,13 @@ interface SuspendPayload {
 
 /**
  * JSON Schema shape passed to {@link ComponentMapper.toCard} when the suspend
- * payload comes from a rich-interaction-style tool (rich_interaction itself,
- * the integration action tool's interactive cards, or display-only cards).
+ * payload comes from an integration action's interactive card.
  *
  * `wrapValueForSchema` inspects the top-level properties to pick the wrapping
  * convention — a schema with `{ type, value }` produces `{ type: 'button',
  * value: rawValue }` on click.
  */
-export const RICH_INTERACTION_RESUME_JSON_SCHEMA = {
+export const INTERACTIVE_CARD_RESUME_JSON_SCHEMA = {
 	type: 'object',
 	properties: {
 		type: { type: 'string' },
@@ -54,6 +57,11 @@ export const RICH_INTERACTION_RESUME_JSON_SCHEMA = {
 } as const;
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
+
+export type ShortenCallback = (
+	actionId: string,
+	value: string,
+) => Promise<{ id: string; value: string }>;
 
 /** Shared state threaded through per-component render helpers. */
 interface ComponentRenderContext {
@@ -89,7 +97,7 @@ export class ComponentMapper {
 		runId: string,
 		toolCallId: string,
 		resumeSchema?: unknown,
-		shortenCallback?: (actionId: string, value: string) => Promise<{ id: string; value: string }>,
+		shortenCallback?: ShortenCallback,
 		platform?: string,
 	): Promise<CardElement> {
 		const sdk = await loadChatSdk();
@@ -117,7 +125,7 @@ export class ComponentMapper {
 			return sdk.Button({
 				id,
 				label,
-				style: style === 'danger' ? 'danger' : 'primary',
+				...(isButtonStyle(style) ? { style } : {}),
 				value,
 			});
 		};
@@ -150,7 +158,11 @@ export class ComponentMapper {
 		switch (component.type) {
 			case 'button':
 				buttons.push(
-					await makeButton(component.label ?? 'Action', component.value ?? '', component.style),
+					await makeButton(
+						component.label ?? componentTextToString(component.text) ?? 'Action',
+						component.value ?? '',
+						component.style,
+					),
 				);
 				return;
 			case 'section':
@@ -186,16 +198,20 @@ export class ComponentMapper {
 		children,
 		makeButton,
 	}: ComponentRenderContext): Promise<void> {
-		if (component.text) {
-			children.push(sdk.Section([sdk.CardText(component.text)] as never));
+		const text = componentTextToString(component.text);
+		if (text) {
+			children.push(sdk.Section([sdk.CardText(text)] as never));
 		}
-		// Section accessory buttons must be in a separate Actions block.
-		// Chat SDK's cardToBlockKit silently drops Button children
-		// inside Section — only Actions blocks render buttons.
+		// Chat SDK adapters render interactive controls from Actions containers,
+		// so section accessory buttons are emitted as adjacent actions.
 		if (component.button) {
 			children.push(
 				sdk.Actions([
-					await makeButton(component.button.label, component.button.value, component.button.style),
+					await makeButton(
+						component.button.label ?? componentTextToString(component.button.text) ?? 'Action',
+						component.button.value,
+						component.button.style,
+					),
 				] as never),
 			);
 		}
@@ -211,18 +227,21 @@ export class ComponentMapper {
 	}
 
 	private appendContext({ component, sdk, children }: ComponentRenderContext): void {
-		// Context blocks contain an elements array with text/image items
+		// Context components can contain an elements array with text/image items.
 		if (component.elements && Array.isArray(component.elements)) {
 			for (const el of component.elements) {
-				if (el.type === 'text' && el.text) {
-					children.push(sdk.CardText(el.text));
+				const text = componentTextToString(el.text);
+				if (el.type === 'text' && text) {
+					children.push(sdk.CardText(text));
 				} else if (el.type === 'image' && el.url) {
 					children.push(sdk.Image({ url: el.url, alt: el.altText ?? '' }));
 				}
 			}
-		} else if (component.text) {
+		} else {
+			const text = componentTextToString(component.text);
+			if (!text) return;
 			// Fallback: plain text context
-			children.push(sdk.CardText(component.text));
+			children.push(sdk.CardText(text));
 		}
 	}
 
@@ -264,9 +283,10 @@ export class ComponentMapper {
 	}
 
 	private appendFields({ component, sdk, children }: ComponentRenderContext): void {
-		const fieldElements = (component.fields ?? []).map((f) =>
-			sdk.Field({ label: f.label, value: f.value }),
-		);
+		const fields = component.fields ?? component.items ?? [];
+		if (fields.length === 0) return;
+
+		const fieldElements = fields.map((f) => sdk.Field({ label: f.label, value: f.value }));
 		children.push(sdk.Fields(fieldElements as never));
 	}
 
@@ -310,7 +330,7 @@ export class ComponentMapper {
 			return { approved: rawValue === 'true' };
 		}
 
-		// Rich interaction resume schema: { type, value }
+		// Interactive card resume schema: { type, value }
 		if ('type' in props && 'value' in props) {
 			return { type: 'button', value: rawValue };
 		}
@@ -354,7 +374,10 @@ export class ComponentMapper {
 	private appendMarkdownChild(c: SuspendComponent, sdk: ChatSdk, children: unknown[]): void {
 		switch (c.type) {
 			case 'section':
-				if (c.text) children.push(sdk.Section([sdk.CardText(c.text)] as never));
+				{
+					const text = componentTextToString(c.text);
+					if (text) children.push(sdk.Section([sdk.CardText(text)] as never));
+				}
 				return;
 			case 'divider':
 				children.push(sdk.Divider());
@@ -366,7 +389,10 @@ export class ComponentMapper {
 				this.appendMarkdownContext(c, sdk, children);
 				return;
 			default:
-				if (c.text) children.push(sdk.CardText(c.text));
+				{
+					const text = componentTextToString(c.text);
+					if (text) children.push(sdk.CardText(text));
+				}
 				return;
 		}
 	}
@@ -374,14 +400,29 @@ export class ComponentMapper {
 	private appendMarkdownContext(c: SuspendComponent, sdk: ChatSdk, children: unknown[]): void {
 		if (c.elements) {
 			for (const el of c.elements) {
-				if (el.type === 'text' && el.text) {
-					children.push(sdk.CardText(el.text));
+				const text = componentTextToString(el.text);
+				if (el.type === 'text' && text) {
+					children.push(sdk.CardText(text));
 				} else if (el.type === 'image' && el.url) {
 					children.push(sdk.Image({ url: el.url, alt: el.altText ?? '' }));
 				}
 			}
-		} else if (c.text) {
-			children.push(sdk.CardText(c.text));
+		} else {
+			const text = componentTextToString(c.text);
+			if (text) children.push(sdk.CardText(text));
 		}
 	}
+}
+
+function componentTextToString(text: unknown): string | undefined {
+	if (typeof text === 'string') return text;
+	if (text && typeof text === 'object' && 'text' in text) {
+		const value = (text as { text?: unknown }).text;
+		if (typeof value === 'string') return value;
+	}
+	return undefined;
+}
+
+function isButtonStyle(style: unknown): style is ButtonStyle {
+	return style === 'primary' || style === 'danger' || style === 'default';
 }

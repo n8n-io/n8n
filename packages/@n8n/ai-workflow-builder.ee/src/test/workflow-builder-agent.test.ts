@@ -128,8 +128,6 @@ describe('WorkflowBuilderAgent', () => {
 			mockPayload = {
 				id: '12345',
 				message: 'Create a workflow',
-				// Test for plan mode as it's the only case when legacy multi-agent implementation is still in use
-				featureFlags: { planMode: true },
 				mode: 'plan',
 				workflowContext: {
 					currentWorkflow: { id: 'workflow-123' },
@@ -160,7 +158,6 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '12345',
 				message: validMessage,
-				featureFlags: { planMode: true },
 				mode: 'plan',
 			};
 
@@ -360,11 +357,10 @@ describe('WorkflowBuilderAgent', () => {
 			);
 		});
 
-		it('should route to multi-agent for initial plan request when planMode enabled', async () => {
+		it('should route to multi-agent for initial plan request', async () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Create a weather alert workflow',
-				featureFlags: { planMode: true },
 				mode: 'plan',
 			};
 
@@ -390,7 +386,6 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Create a weather alert workflow',
-				featureFlags: { planMode: true },
 				resumeData: { action: 'approve' },
 				resumeInterrupt: mockPlanInterrupt,
 			};
@@ -416,7 +411,6 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Create a weather alert workflow',
-				featureFlags: { planMode: true },
 				resumeData: { action: 'modify', feedback: 'Add error handling' },
 				resumeInterrupt: mockPlanInterrupt,
 			};
@@ -442,7 +436,6 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '123',
 				message: 'Create a weather alert workflow',
-				featureFlags: { planMode: true },
 				resumeData: { action: 'reject' },
 				resumeInterrupt: mockPlanInterrupt,
 			};

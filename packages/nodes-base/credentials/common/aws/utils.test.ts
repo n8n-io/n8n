@@ -44,6 +44,7 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: true,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
 				roleSessionName: 'test-session',
 			};
 
@@ -120,6 +121,7 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: true,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
 				roleSessionName: 'test-session',
 			};
 
@@ -196,6 +198,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: true,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 			};
 
 			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(null);
@@ -265,6 +269,7 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
 				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
@@ -320,6 +325,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -360,6 +367,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
@@ -375,6 +384,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: '   ',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -391,6 +402,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 			};
 
@@ -406,6 +419,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: '   ',
 			};
@@ -422,6 +437,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: '  sts-access-key  ',
 				stsSecretAccessKey: '  sts-secret-key  ',
 				stsSessionToken: '  sts-session-token  ',
@@ -465,6 +482,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws-cn:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -504,6 +523,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -545,6 +566,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -565,6 +588,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -590,6 +615,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -614,6 +641,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -645,6 +674,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -716,6 +747,8 @@ describe('assumeRole', () => {
 				region: 'us-east-1',
 				customEndpoints: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};

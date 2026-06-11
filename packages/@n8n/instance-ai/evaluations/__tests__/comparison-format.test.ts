@@ -181,13 +181,14 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/#### Improvements/);
 	});
 
-	it('embeds commit SHA in heading when provided', () => {
+	it('omits commit SHA from the PR-comment heading even when provided', () => {
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
 		const base = bucket('master', [s('a', 'happy', 8, 10)]);
 		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)), {
 			commitSha: 'abc1234567890def',
 		});
-		expect(md).toMatch(/### Instance AI Workflow Eval — `abc12345`/);
+		expect(md).toContain('### Instance AI Workflow Eval');
+		expect(md).not.toContain('abc12345');
 	});
 
 	it('renders the Workflow checks table when at least one run has outcomes', () => {

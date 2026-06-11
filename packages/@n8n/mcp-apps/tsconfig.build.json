@@ -9,6 +9,6 @@
 		"outDir": "dist",
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
-	"include": ["src/server/**/*.ts", "src/apps-manifest.ts"],
+	"include": ["src/server/**/*.ts", "src/apps-manifest.ts", "src/telemetry-contract.ts"],
 	"exclude": ["src/**/*.test.ts"]
 }

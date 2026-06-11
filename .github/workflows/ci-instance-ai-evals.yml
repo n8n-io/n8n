@@ -1,17 +1,37 @@
 name: 'CI: Instance AI Evals'
 
-# Auto-trigger disabled — run manually via workflow_dispatch.
+# Auto-runs on PR open/reopen/ready (non-draft, path-filtered). Pushes don't
+# re-trigger (no `synchronize`); use workflow_dispatch for manual runs.
 on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+    paths:
+      - 'packages/@n8n/instance-ai/src/**'
+      - 'packages/@n8n/instance-ai/evaluations/**'
+      - 'packages/cli/src/modules/instance-ai/**'
+      - 'packages/core/src/execution-engine/eval-mock-helpers.ts'
   workflow_dispatch:
     inputs:
       branch:
         description: 'GitHub branch to test'
         required: false
         default: 'master'
+      tier:
+        description: 'Test-case dataset to run (e.g. `pr`, `full`)'
+        required: false
+        default: 'full'
       sandbox-provider:
         description: 'Sandbox provider (n8n-sandbox or daytona)'
         required: false
         default: 'n8n-sandbox'
+      iterations:
+        description: 'Iterations per test case (use 10 for a baseline)'
+        required: false
+        default: '3'
+      experiment-name:
+        description: 'LangSmith experiment name (set to instance-ai-baseline to refresh the baseline)'
+        required: false
+        default: ''
 
 concurrency:
   group: instance-ai-evals-${{ github.ref }}
@@ -20,9 +40,16 @@ concurrency:
 jobs:
   run-evals:
     name: Instance AI Workflow Evals
-    if: github.repository == 'n8n-io/n8n'
+    # Skip drafts; allow workflow_dispatch (no pull_request payload).
+    if: >-
+      github.repository == 'n8n-io/n8n' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     uses: ./.github/workflows/test-evals-instance-ai.yml
     with:
-      branch: ${{ inputs.branch }}
-      sandbox-provider: ${{ inputs.sandbox-provider }}
+      branch: ${{ inputs.branch || github.head_ref || github.ref_name }}
+      # PR events default to `pr`; dispatch defaults to `full`.
+      tier: ${{ inputs.tier || 'pr' }}
+      sandbox-provider: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
+      iterations: ${{ inputs.iterations }}
+      experiment-name: ${{ inputs.experiment-name }}
     secrets: inherit

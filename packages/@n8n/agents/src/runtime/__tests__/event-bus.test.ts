@@ -48,4 +48,30 @@ describe('AgentEventBus', () => {
 			expect(bus.isAborted).toBe(false);
 		});
 	});
+
+	describe('createAbortScope', () => {
+		it('should abort active run scopes when the bus aborts', () => {
+			const bus = new AgentEventBus();
+			const first = bus.createAbortScope();
+			const second = bus.createAbortScope();
+
+			bus.abort();
+
+			expect(first.isAborted).toBe(true);
+			expect(second.isAborted).toBe(true);
+		});
+
+		it('should remove external abort listeners when a scope is disposed', () => {
+			const bus = new AgentEventBus();
+			const external = new AbortController();
+			const removeListener = vi.spyOn(external.signal, 'removeEventListener');
+
+			const scope = bus.createAbortScope(external.signal);
+			scope.dispose();
+			external.abort();
+
+			expect(removeListener).toHaveBeenCalledTimes(1);
+			expect(scope.isAborted).toBe(false);
+		});
+	});
 });

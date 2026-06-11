@@ -11,7 +11,6 @@ import { loadBaseline, filterNewViolations } from './baseline.js';
 import { extractDiffs } from './extract-diffs.js';
 import { ImpactAnalyzer } from './impact-analyzer.js';
 import { MethodUsageAnalyzer, type MethodUsageIndex } from './method-usage-analyzer.js';
-import { createProject } from './project-loader.js';
 import { RuleRunner } from './rule-runner.js';
 import { ApiPurityRule } from '../rules/api-purity.rule.js';
 import { BoundaryProtectionRule } from '../rules/boundary-protection.rule.js';
@@ -366,7 +365,6 @@ export class TcrExecutor {
 
 	private runRules(changedFiles: string[]): number {
 		const runner = this.createRuleRunner();
-		const { project } = createProject(this.root);
 
 		const tsFiles = changedFiles
 			.filter((f) => f.endsWith('.ts'))
@@ -374,7 +372,7 @@ export class TcrExecutor {
 
 		if (tsFiles.length === 0) return 0;
 
-		const report = runner.run(project, this.root, { files: tsFiles });
+		const report = runner.run({ rootDir: this.root }, { files: tsFiles });
 		return this.countNewViolations(report);
 	}
 

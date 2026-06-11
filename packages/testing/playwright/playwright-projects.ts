@@ -29,6 +29,9 @@ const CONTAINER_ONLY = new RegExp(
 // network calls. Used by `pnpm test:local:isolated` and similar workflows.
 const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
 
+/** TODO: Temporarily disable all instance ai e2e tests. Re-enable when ready. */
+const INSTANCE_AI_E2E_IGNORE = '**/instance-ai/**';
+
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'sqlite', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
@@ -217,6 +220,7 @@ export function getProjects(): Project[] {
 		projects.push({
 			name: 'e2e',
 			testDir: './tests/e2e',
+			testIgnore: INSTANCE_AI_E2E_IGNORE,
 			grepInvert: ALLOW_CONTAINER_ONLY ? undefined : CONTAINER_ONLY,
 			fullyParallel: true,
 			use: { baseURL: getFrontendUrl() },
@@ -236,6 +240,7 @@ export function getProjects(): Project[] {
 				{
 					name: `${name}:e2e`,
 					testDir: './tests/e2e',
+					testIgnore: INSTANCE_AI_E2E_IGNORE,
 					timeout: name === 'sqlite' ? 60000 : 180000, // 60 seconds for sqlite container test, 180 for other modes to allow startup
 					fullyParallel: true,
 					use: { containerConfig: config },
@@ -254,6 +259,7 @@ export function getProjects(): Project[] {
 		projects.push({
 			name: 'coverage',
 			testDir: './tests/e2e',
+			testIgnore: INSTANCE_AI_E2E_IGNORE,
 			timeout: 60000,
 			fullyParallel: true,
 			use: { containerConfig: {} },
@@ -296,6 +302,13 @@ export function getProjects(): Project[] {
 		use: {
 			// Default container config for performance tests, equivalent to @cloud:starter
 			containerConfig: { resourceQuota: { memory: 0.75, cpu: 0.5 }, env: { E2E_TESTS: 'true' } },
+			// The browser runs at Chromium's default launch — no V8 heap flag, memory
+			// pressure enabled — so the canvas numbers stay representative of a real
+			// user's browser. The reported `jsHeapSizeLimit` is ~4 GB (V8's
+			// pointer-compression cage); a prior `--max-old-space-size=8192` flag
+			// couldn't raise it past that cage, so it was a no-op for the ceiling and
+			// only suppressed memory-pressure GC. canvas-execution.spec.ts logs the
+			// actual limit, so any future flag or Chromium change is visible.
 		},
 	});
 

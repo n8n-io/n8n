@@ -2,6 +2,7 @@ import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agen
 import { z } from 'zod';
 
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { ButtonStyle } from 'chat';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
 export type IntegrationMessageTarget =
@@ -148,43 +149,114 @@ export const DEFAULT_INTEGRATION_ACTIONS: IntegrationAction[] = [
 	'send_channel_message',
 ];
 
-const fieldPairSchema = z.object({
-	label: z.string(),
-	value: z.string(),
-});
+const fieldPairSchema = z
+	.object({
+		label: z.string(),
+		value: z.string(),
+	})
+	.strict();
 
-const selectOptionSchema = z.object({
-	label: z.string(),
-	value: z.string(),
-	description: z.string().optional(),
-});
+const selectOptionSchema = z
+	.object({
+		label: z.string(),
+		value: z.string(),
+		description: z.string().optional(),
+	})
+	.strict();
 
-const richComponentSchema = z.object({
-	type: z.string(),
-	text: z.string().optional(),
-	label: z.string().optional(),
-	value: z.string().optional(),
-	style: z.enum(['primary', 'danger']).optional(),
-	url: z.string().optional(),
-	alt: z.string().optional(),
-	altText: z.string().optional(),
-	id: z.string().optional(),
-	placeholder: z.string().optional(),
-	options: z.array(selectOptionSchema).optional(),
-	fields: z.array(fieldPairSchema).optional(),
-});
+const buttonStyles = ['primary', 'danger', 'default'] as const satisfies readonly [
+	ButtonStyle,
+	...ButtonStyle[],
+];
+const buttonStyleSchema = z.enum(buttonStyles);
 
-const messageSchema = z.object({
-	text: z.string().optional(),
-	richInteraction: z
+const cardButtonSchema = z
+	.object({
+		label: z.string().optional(),
+		text: z.string().optional(),
+		value: z.string(),
+		style: buttonStyleSchema.optional(),
+	})
+	.strict();
+
+const cardComponentSchema = z.union([
+	z
 		.object({
-			awaitResponse: z.boolean().optional(),
-			title: z.string().optional(),
-			message: z.string().optional(),
-			components: z.array(richComponentSchema).min(1),
+			type: z.literal('section'),
+			text: z.string(),
+			button: cardButtonSchema.optional(),
 		})
-		.optional(),
-});
+		.strict(),
+	z
+		.object({
+			type: z.literal('fields'),
+			fields: z.array(fieldPairSchema).min(1).optional(),
+			items: z.array(fieldPairSchema).min(1).optional(),
+		})
+		.strict()
+		.refine((component) => component.fields !== undefined || component.items !== undefined, {
+			message: 'Provide fields or items.',
+		}),
+	z
+		.object({
+			type: z.literal('image'),
+			url: z.string(),
+			alt: z.string().optional(),
+			altText: z.string().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal('divider'),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal('button'),
+			label: z.string().optional(),
+			text: z.string().optional(),
+			value: z.string(),
+			style: buttonStyleSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal('select'),
+			id: z.string().optional(),
+			label: z.string().optional(),
+			placeholder: z.string().optional(),
+			options: z.array(selectOptionSchema).min(1),
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal('radio_select'),
+			id: z.string().optional(),
+			label: z.string().optional(),
+			placeholder: z.string().optional(),
+			options: z.array(selectOptionSchema).min(1),
+		})
+		.strict(),
+]);
+
+const messageSchema = z
+	.object({
+		text: z.string().optional().describe('Plain-text fallback or summary for the message.'),
+		card: z
+			.object({
+				awaitResponse: z.boolean().optional(),
+				title: z.string().optional(),
+				message: z.string().optional(),
+				components: z.array(cardComponentSchema).min(1),
+			})
+			.strict()
+			.describe(
+				'Generic card payload rendered by the integration. Use generic components only, not platform-native message payloads.',
+			)
+			.optional(),
+	})
+	.strict()
+	.describe('Generic message payload. Use message.text plus optional message.card only.');
 
 const noInputSchema = z.object({}).strict();
 
@@ -925,10 +997,90 @@ function buildActionToolDescription(descriptor: IntegrationToolConnectionDescrip
 		`Available actions: ${descriptor.actions.join(', ')}.`,
 		'Action inputs:',
 		...descriptor.actions.map((action) => `- ${ACTION_DESCRIPTIONS[action]}`),
-		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include rich interactions that wait for a user response.`,
+		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include cards that wait for a user response.`,
 		'respond uses the latest message context for this integration connection.',
-		'Messages may include richInteraction components. Interactive components suspend the agent until the user responds.',
+		'Use message.card for cards, images, key-value summaries, and feedback requests. Include components such as section, fields, image, divider, button, select, or radio_select.',
+		'For fields components, use { type: "fields", fields: [{ label: "Account", value: "Acme" }] }. The key items is also accepted as a fields alias.',
+		'For button components, use { type: "button", label: "Approve", value: "approve" }. If label is omitted, text is used as the button label.',
+		'For radio-style choices, use { type: "radio_select", label: "Next step", options: [{ label: "Approve", value: "approve" }] }.',
+		'Use only the generic shape: message.text plus optional message.card. Do not provide platform-native component payloads, formatted text objects, or attachments; rendering is handled internally.',
+		...buildGenericCardGuidance(),
+		'Interactive message.card components (button, select, or radio_select) send the message first, then suspend this action until the user responds.',
+		'Display-only message.card components without buttons/selects render the card and let the agent continue immediately.',
 	].join('\n\n');
+}
+
+function buildGenericCardGuidance(): string[] {
+	return [
+		'Generic card examples:',
+		[
+			'Radio choice card:',
+			'```json',
+			JSON.stringify(
+				{
+					action: 'respond',
+					input: {
+						message: {
+							text: 'Acme Executive Briefing — Next Steps',
+							card: {
+								title: 'Acme Corporation — Executive Briefing Next Steps',
+								components: [
+									{
+										type: 'section',
+										text: '30X Expansion Briefing ($3.75M) — Internal owner: Paul G | Briefing contact: Mike D\n\nWhat should happen next?',
+									},
+									{ type: 'divider' },
+									{
+										type: 'radio_select',
+										id: 'next_step_selection',
+										label: 'Next step',
+										options: [
+											{
+												label: 'Schedule exec briefing prep call with Paul G',
+												value: 'schedule_prep_call',
+											},
+											{
+												label: 'Draft briefing agenda doc for Mike D',
+												value: 'draft_briefing_doc',
+											},
+										],
+									},
+								],
+							},
+						},
+					},
+				},
+				null,
+				2,
+			),
+			'```',
+		].join('\n'),
+		[
+			'Button card:',
+			'```json',
+			JSON.stringify(
+				{
+					action: 'respond',
+					input: {
+						message: {
+							text: 'Approve or revise the briefing draft',
+							card: {
+								components: [
+									{ type: 'section', text: 'Review the briefing draft.' },
+									{ type: 'button', label: 'Approve', value: 'approve', style: 'primary' },
+									{ type: 'button', label: 'Revise', value: 'revise', style: 'default' },
+								],
+							},
+						},
+					},
+				},
+				null,
+				2,
+			),
+			'```',
+		].join('\n'),
+		'Never send message.blocks, components of type actions, elements arrays, action_id, radio_buttons, or formatted text objects such as { type: "plain_text", text: "..." } or { type: "mrkdwn", text: "..." }.',
+	];
 }
 
 function toSingleContextOperation(input: RawContextToolInput): RawContextToolOperation {
@@ -1142,8 +1294,8 @@ async function executeActionToolOperation(params: {
 		allowSuspend,
 	} = params;
 	const persistence = ctx.persistence;
-	const actionInput = operation.input;
-	const message = parseMessage(actionInput.message);
+	const message = parseMessage(operation.input.message);
+	const actionInput = message === undefined ? operation.input : { ...operation.input, message };
 	const awaitsResponse = shouldAwaitResponse(message);
 
 	if (awaitsResponse && !allowSuspend) {
@@ -1152,7 +1304,7 @@ async function executeActionToolOperation(params: {
 			error: {
 				code: INTEGRATION_ERROR_CODES.ACTION_FAILED,
 				message:
-					'Batch actions cannot include rich interactions that wait for a user response. Send that action separately.',
+					'Batch actions cannot include cards that wait for a user response. Send that action separately.',
 			},
 		};
 	}
@@ -1238,12 +1390,22 @@ function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined
 }
 
 function shouldAwaitResponse(message: z.infer<typeof messageSchema> | undefined): boolean {
-	const richInteraction = message?.richInteraction;
-	if (!richInteraction) return false;
-	if (richInteraction.awaitResponse === true) return true;
-	return richInteraction.components.some((component) =>
-		['button', 'select', 'radio_select'].includes(component.type),
-	);
+	const card = message?.card;
+	if (card?.awaitResponse === true) return true;
+	return card?.components.some(isInteractiveCardComponent) ?? false;
+}
+
+function isInteractiveCardComponent(component: z.infer<typeof cardComponentSchema>): boolean {
+	switch (component.type) {
+		case 'button':
+		case 'select':
+		case 'radio_select':
+			return true;
+		case 'section':
+			return component.button !== undefined;
+		default:
+			return false;
+	}
 }
 
 function withPreviousSubject(

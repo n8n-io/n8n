@@ -32,7 +32,12 @@ import type {
 	WorkflowSettings,
 	WorkflowSettingsBinaryMode,
 } from 'n8n-workflow';
-import { BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
+import {
+	BINARY_MODE_COMBINED,
+	BINARY_MODE_SEPARATE,
+	channelsToPolicy,
+	policyToChannels,
+} from 'n8n-workflow';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -57,7 +62,6 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -75,8 +79,9 @@ const { trackMcpAccessEnabledForWorkflow } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
-const { isEnabled: isRedactionEnforcementFlagEnabled } = useRedactionEnforcementFeatureFlag();
 const instanceRedactionFloor = ref<RedactionFloor>('off');
+// Stored redaction policy captured on open, before the floor-coercion watch can mutate it. (ENT-35)
+const originalRedactionPolicy = ref<WorkflowSettings.RedactionPolicy | undefined>(undefined);
 const canListCredentialResolvers = hasPermission(['rbac'], {
 	rbac: { scope: 'credentialResolver:list' },
 });
@@ -247,14 +252,10 @@ const isDataRedactionLicensed = computed(
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
 const isProductionRedactionLockedByFloor = computed(
-	() =>
-		isRedactionEnforcementFlagEnabled.value &&
-		(instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all'),
+	() => instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all',
 );
 
-const isManualRedactionLockedByFloor = computed(
-	() => isRedactionEnforcementFlagEnabled.value && instanceRedactionFloor.value === 'all',
-);
+const isManualRedactionLockedByFloor = computed(() => instanceRedactionFloor.value === 'all');
 
 type RedactionLockReason = 'floor' | 'permission' | null;
 
@@ -712,6 +713,34 @@ const saveSettings = async () => {
 	}
 	delete data.settings.maxExecutionTimeout;
 
+	// `credentialResolverId` is `undefined` in-memory when the n8n system resolver is
+	// selected. The backend merges settings for partial updates, so an absent key keeps
+	// the previously-saved id. Send an explicit empty string so the merge clears it
+	// (the backend drops the falsy value before persisting).
+	if (isCredentialResolverEnabled.value && !data.settings.credentialResolverId) {
+		data.settings.credentialResolverId = '';
+	}
+
+	// Floor-locked redaction channels are display-only: the coercion watch forces the locked
+	// select(s) to "redact" for clarity, but that must never be persisted as the workflow's own
+	// choice. Rebuild the saved policy from the stored value for floor-locked channels and the
+	// current selection for editable ones. (ENT-35)
+	if (isRedactionSettingVisible.value) {
+		const original = policyToChannels(originalRedactionPolicy.value ?? 'none');
+		const production = isProductionRedactionLockedByFloor.value
+			? original.production
+			: redactProductionData.value === 'redact';
+		const manual = isManualRedactionLockedByFloor.value
+			? original.manual
+			: redactManualData.value === 'redact';
+		// Preserve the original value verbatim (including `undefined`) when nothing the user could
+		// edit changed, so we never send a below-floor *change* the backend rejects under enforcement.
+		const unchanged = production === original.production && manual === original.manual;
+		data.settings.redactionPolicy = unchanged
+			? originalRedactionPolicy.value
+			: channelsToPolicy({ production, manual });
+	}
+
 	isLoading.value = true;
 	data.versionId = workflowDocumentStore.value.versionId;
 	data.expectedChecksum = workflowDocumentStore.value.checksum;
@@ -903,10 +932,17 @@ onMounted(async () => {
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
 	workflowSettings.value = workflowSettingsData;
+	// Capture the stored redaction policy before the floor-coercion watch can mutate it,
+	// so save can preserve the user's own value for floor-locked channels. (ENT-35)
+	originalRedactionPolicy.value = workflowSettingsData.redactionPolicy;
 
 	// Fetch the instance redaction floor AFTER workflowSettings has been assigned, so
 	// the floor-coercion watch sees the loaded settings (not the initial empty object).
-	if (isRedactionEnforcementFlagEnabled.value) {
+	// The FE gates this fetch on the `DataRedaction` license, while the endpoint itself is
+	// gated by `feat:personalSpacePolicy` + `securitySettings:manage`. A license mismatch
+	// (one licensed, the other not) is intentionally absorbed by the try/catch fail-open
+	// below: the floor stays `'off'` and no enforcement is applied client-side.
+	if (isDataRedactionLicensed.value) {
 		try {
 			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
 			instanceRedactionFloor.value = response.redactionEnforcement?.floor ?? 'off';
@@ -1708,7 +1744,7 @@ onBeforeUnmount(() => {
 					</ElCol>
 				</ElRow>
 				<WorkflowCustomTelemetryTags
-					v-if="settingsStore.isOtelEnabled"
+					v-if="settingsStore.isOtelCustomSpanAttributesEnabled"
 					v-model="workflowSettings.customTelemetryTags"
 					:is-read-only="isWorkflowSettingsReadOnly"
 					:save-tags="saveCustomTelemetryTags"

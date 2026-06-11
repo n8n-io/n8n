@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { Logger, TypedEmitter } from '@n8n/backend-common';
 import {
 	SettingsRepository,
 	StatisticsNames,
@@ -16,7 +16,6 @@ import type {
 
 import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
-import { TypedEmitter } from '@/typed-emitter';
 
 import { OwnershipService } from './ownership.service';
 

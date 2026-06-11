@@ -9,6 +9,7 @@ import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
+import { sanitizeSkillsUsed } from './skills-used';
 import {
 	applyOperations,
 	partialUpdateOperationSchema,
@@ -29,6 +30,110 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
+
+const operationTypeSchema = z.enum([
+	'updateNodeParameters',
+	'setNodeParameter',
+	'addNode',
+	'removeNode',
+	'renameNode',
+	'addConnection',
+	'removeConnection',
+	'setNodeCredential',
+	'setNodePosition',
+	'setNodeDisabled',
+	'setNodeSettings',
+	'setWorkflowMetadata',
+]);
+
+const positionInputSchema = z.array(z.number()).length(2).describe('Canvas [x, y].');
+
+const credentialsInputSchema = z.record(
+	z.string(),
+	z.object({ id: z.string().optional(), name: z.string() }),
+);
+
+const nodeInputSchema = z.object({
+	name: z.string().describe('Unique node name.'),
+	type: z.string().describe('Node type, e.g. "n8n-nodes-base.set".'),
+	typeVersion: z.number(),
+	parameters: z.record(z.string(), z.unknown()).optional(),
+	position: positionInputSchema.optional(),
+	credentials: credentialsInputSchema.optional(),
+	disabled: z.boolean().optional(),
+	notes: z.string().optional(),
+	id: z.string().optional(),
+});
+
+const nodeSettingsInputSchema = z.object({
+	onError: z
+		.enum(['stopWorkflow', 'continueRegularOutput', 'continueErrorOutput'])
+		.optional()
+		.describe('Error behavior.'),
+	retryOnFail: z.boolean().optional(),
+	maxTries: z.number().int().min(2).max(5).optional(),
+	waitBetweenTries: z.number().int().min(0).max(5000).optional(),
+	alwaysOutputData: z.boolean().optional(),
+	executeOnce: z.boolean().optional(),
+});
+
+const operationInputSchema = z
+	.object({
+		type: operationTypeSchema.describe('Operation type.'),
+		nodeName: z.string().optional().describe('For node-targeted ops.'),
+		node: nodeInputSchema.optional().describe('For addNode.'),
+		parameters: z.record(z.string(), z.unknown()).optional().describe('For updateNodeParameters.'),
+		replace: z.boolean().optional().describe('For updateNodeParameters; default false.'),
+		path: z.string().min(2).optional().describe('For setNodeParameter; JSON Pointer path.'),
+		value: z.unknown().optional().describe('For setNodeParameter.'),
+		oldName: z.string().optional().describe('For renameNode.'),
+		newName: z.string().optional().describe('For renameNode.'),
+		source: z.string().optional().describe('For connection ops.'),
+		target: z.string().optional().describe('For connection ops.'),
+		sourceIndex: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.describe('For connection ops; default 0.'),
+		targetIndex: z
+			.number()
+			.int()
+			.nonnegative()
+			.optional()
+			.describe('For connection ops; default 0.'),
+		connectionType: z.string().optional().describe('For connection ops; default "main".'),
+		credentialKey: z.string().optional().describe('For setNodeCredential.'),
+		credentialId: z.string().optional().describe('For setNodeCredential.'),
+		credentialName: z.string().optional().describe('For setNodeCredential.'),
+		position: positionInputSchema.optional().describe('For setNodePosition.'),
+		disabled: z.boolean().optional().describe('For setNodeDisabled.'),
+		settings: nodeSettingsInputSchema.optional().describe('For setNodeSettings.'),
+		name: z.string().max(128).optional().describe('Only used for setWorkflowMetadata.'),
+		description: z.string().max(255).optional().describe('Only used for setWorkflowMetadata.'),
+	})
+	.describe('Workflow update operation. Provide fields matching type.');
+
+type OperationInput = { type: z.infer<typeof operationTypeSchema>; [key: string]: unknown };
+
+const strictOperationsSchema = z.array(partialUpdateOperationSchema);
+
+function parseStrictOperations(operations: OperationInput[]): PartialUpdateOperation[] {
+	const parsed = strictOperationsSchema.safeParse(operations);
+	if (parsed.success) return parsed.data;
+
+	const details = parsed.error.issues
+		.map(({ path, message }) => {
+			const [index, ...rest] = path;
+			if (typeof index === 'number') {
+				return `operation ${index}${rest.length ? `.${rest.join('.')}` : ''}: ${message}`;
+			}
+			return `${path.length ? path.join('.') : 'operations'}: ${message}`;
+		})
+		.join('; ');
+
+	throw new Error(`Invalid operations: ${details}`);
+}
 
 // Renames are followed so the key matches the node's name in the post-apply
 // workflow.
@@ -58,16 +163,20 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 	return touched;
 }
 
-const inputSchema = {
+const inputSchema: z.ZodRawShape = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
+	skillsUsed: z
+		.array(z.string())
+		.optional()
+		.describe('n8n skill IDs used for this update; normalized server-side.'),
 	operations: z
-		.array(partialUpdateOperationSchema)
+		.array(operationInputSchema)
 		.min(1)
 		.max(MAX_OPERATIONS_PER_CALL)
 		.describe(
-			`Ordered list of operations to apply (max ${MAX_OPERATIONS_PER_CALL}). Operations are applied atomically: if any operation fails (e.g. node not found, duplicate name), the whole batch is rejected and no changes are saved.`,
+			`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
 		),
-} satisfies z.ZodRawShape;
+};
 
 const outputSchema = {
 	workflowId: z.string(),
@@ -123,7 +232,7 @@ export const createUpdateWorkflowTool = (
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
 		description:
-			'Apply a small list of operations to an existing workflow (see the operations input schema for the supported op types). The whole batch is atomic: if any op fails the workflow is left unchanged.',
+			'Atomically update an existing workflow with operation objects. Pass skillsUsed if n8n skills were used.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -136,22 +245,27 @@ export const createUpdateWorkflowTool = (
 	},
 	handler: async ({
 		workflowId,
+		skillsUsed,
 		operations,
 	}: {
 		workflowId: string;
-		operations: PartialUpdateOperation[];
+		skillsUsed?: string[];
+		operations: OperationInput[];
 	}) => {
+		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 			parameters: {
 				workflowId,
+				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				opCount: operations.length,
 				opTypes: operations.map((op) => op.type),
 			},
 		};
 
 		try {
+			const strictOperations = parseStrictOperations(operations);
 			const existingWorkflow = await getMcpWorkflow(
 				workflowId,
 				user,
@@ -161,14 +275,14 @@ export const createUpdateWorkflowTool = (
 
 			await collaborationService.ensureWorkflowEditable(existingWorkflow.id);
 
-			const result = applyOperations(toWorkflowSlice(existingWorkflow), operations);
+			const result = applyOperations(toWorkflowSlice(existingWorkflow), strictOperations);
 
 			if (!result.success) {
 				throw new Error(result.error);
 			}
 
 			const credentialCheck = await validateCredentialReferences(
-				operations,
+				strictOperations,
 				existingWorkflow,
 				user,
 				credentialsService,
@@ -194,7 +308,7 @@ export const createUpdateWorkflowTool = (
 
 			const dataTableCheck = await validateDataTableReferencesForUpdate(
 				result.workflow.nodes,
-				collectTouchedNodes(operations),
+				collectTouchedNodes(strictOperations),
 				workflowProjectId,
 				dataTableOps,
 			);
@@ -273,7 +387,7 @@ export const createUpdateWorkflowTool = (
 				name: updatedWorkflow.name,
 				nodeCount: updatedWorkflow.nodes.length,
 				url: workflowUrl,
-				appliedOperations: operations.length,
+				appliedOperations: strictOperations.length,
 				autoAssignedCredentials: credentialAssignments,
 				validationWarnings,
 				note: skippedHttpNodes.length

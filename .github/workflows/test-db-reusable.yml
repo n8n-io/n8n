@@ -26,6 +26,10 @@ jobs:
             migration-cmd: pnpm test:sqlite:migrations
             collectCoverage: 'false'
           - name: Postgres 16
+            # 4vcpu is enough since persistent-worker + template-DB make PG16
+            # complete in ~480s, which is now close to the SQLite leg (~360s)
+            # — the matrix wall is bounded by the slower leg, so the larger
+            # 8vcpu runner buys headroom we can't cash in anywhere.
             runner: blacksmith-4vcpu-ubuntu-2204
             test-cmd: pnpm test:postgres:integration:tc
             migration-cmd: pnpm test:postgres:migrations:tc
@@ -50,6 +54,7 @@ jobs:
         run: ${{ matrix.test-cmd }}
 
       - name: Run Migration Tests
+        if: matrix.migration-cmd != ''
         working-directory: packages/cli
         run: ${{ matrix.migration-cmd }}
 

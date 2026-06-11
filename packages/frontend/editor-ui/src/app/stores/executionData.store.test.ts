@@ -647,6 +647,20 @@ describe('executionData.store', () => {
 			expect(store.executionIssuesByNodeName.get('NodeA')?.value).toEqual([]);
 		});
 
+		it('still surfaces the error when the latest task failed after an earlier success', async () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+
+			setExecutionWithRunData(store, {
+				NodeA: [
+					{ executionStatus: 'success' },
+					{ executionStatus: 'error', error: { message: 'wrong password' } },
+				],
+			});
+			await flushPromises();
+
+			expect(store.executionIssuesByNodeName.get('NodeA')?.value).toEqual(['wrong password']);
+		});
+
 		it('returns [] when a node has tasks but no errors', async () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
 

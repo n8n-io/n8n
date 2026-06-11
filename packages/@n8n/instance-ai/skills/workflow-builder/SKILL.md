@@ -1,10 +1,11 @@
 ---
 name: workflow-builder
 description: >-
-  Builds and edits n8n workflows with the workflow SDK. Use for new planned
-  workflow builds, existing-workflow edits, verification repairs,
-  credential-aware node configuration, and setup routing. This is the former
-  workflow-builder agent guidance, now loaded as a skill by the orchestrator.
+  Default path for all single-workflow work: new one-off workflows, existing-
+  workflow edits, verification repairs, and workflow-local data tables. Use
+  build-workflow directly — do not load planning or create-tasks first. Load
+  planning only when multiple coordinated workflows or shared cross-task data
+  tables require a dependency-aware task graph.
 recommended_tools:
   - build-workflow
   - workflows
@@ -21,15 +22,17 @@ You are an expert n8n workflow builder. You generate complete, valid
 TypeScript code using `@n8n/workflow-sdk`.
 
 This skill runs inside the orchestrator. It does not introduce a separate
-builder agent, sub-agent handoff, sandbox workspace, or separate tool allowlist.
+builder agent, delegated handoff, sandbox workspace, or separate tool allowlist.
 Use the orchestrator tools already available in the current turn. If a relevant
 orchestrator or MCP tool is available through tool search, use it when it helps
 complete the build.
 
-For normal new-workflow requests, call `plan` first so the user can approve the
-build plan. Use this skill to create new workflows only during an approved
-`<planned-task-follow-up type="build-workflow">` turn. If this skill was loaded
-for a normal new-workflow request, stop discovery and call `plan` immediately.
+For all clear single-workflow requests — including new and one-off workflows —
+build directly with `build-workflow`. Do not load `planning` or call
+`create-tasks` first. Only load `planning` when the orchestrator routing rules
+require coordinated multi-artifact work. Use this skill during an approved
+`<planned-task-follow-up type="build-workflow">` turn, or for direct
+single-workflow builds and edits.
 
 Do not call `delegate` to build, patch, fix, verify, or update workflows. The
 builder work happens here with the workflow-builder guidance and the
@@ -130,6 +133,19 @@ tokens, Slack channel IDs, Telegram chat IDs, or sample recipient lists. After
 the build, `workflows(action="setup")` opens an inline setup card in the AI
 Assistant panel so the user can fill placeholder values.
 
+Do not replace concrete user-provided or discoverable values with placeholders.
+If the prompt gives a real URL, channel name, table name, label, folder,
+database, or other literal selector, preserve that value and only use a
+placeholder for the unknown part.
+
+## Knowledge Base Guardrails
+
+For workflows with multiple external systems, multiple requested effects,
+digests or reports, non-trivial branching, or Code nodes, read
+`knowledge-base/reference/workflow-builder-guardrails.md` before writing code.
+Use it as the build checklist for source preservation, fan-out/fan-in,
+effect-specific gating, list itemization, and Code-node safety.
+
 ## Mandatory Process
 
 1. Research. If the workflow fits a known category, call
@@ -154,6 +170,9 @@ Assistant panel so the user can fill placeholder values.
    mandatory for calendars, spreadsheets, channels, folders, databases, models,
    and any other list-backed parameter when a credential is available.
 6. Build complete TypeScript SDK code and call `build-workflow`.
+   For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
+   pass `isSupportingWorkflow: true`; that saved supporting workflow is the
+   task's final deliverable.
 7. Trace wiring before declaring done. For IF, Switch, Merge, AI-agent, loop, or
    multi-workflow wiring, trace each branch from source to target. Confirm IF
    outputs use `.onTrue()` and `.onFalse()`, Switch outputs use zero-based
@@ -181,6 +200,16 @@ Use the current turn's higher-priority instructions to decide who verifies:
   report once with `complete-checkpoint`.
 - Planned build follow-ups that explicitly say to stop after save: stop after a
   successful `build-workflow`. The checkpoint task owns verification.
+
+Build/save success is not workflow-quality evidence. When this turn is
+responsible for verification or repair, inspect the persisted workflow with
+`workflows(action="get-json", workflowId)` after saving or before reporting a
+verdict. Judge the saved graph against the user's requested outcome and the
+current build/checkpoint goal, not a hidden service-specific or topology
+checklist.
+If the saved workflow is only a draft, misses the intended outcome, or has weak
+evidence, patch the same workflow with `build-workflow`, then inspect and verify
+again.
 
 When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
@@ -332,10 +361,19 @@ column names.
 
 ## SDK Code Rules
 
+- SDK builder code is a restricted subset of TypeScript that builds a static
+  graph; it is not a Code node and does not run. Only SDK builder methods chain
+  on SDK objects. Native array/string methods (`.join()`, `.map()`), loops, arrow
+  functions, `new`, and globals like `Math`, `Date`, and `Object` are
+  unavailable. Build strings with template literals or explicit lines; do runtime
+  joining, aggregation, or transforms in a Code node or an n8n expression
+  (`expr()`). Full allowed/forbidden list:
+  `knowledge-base/reference/workflow-sdk-language.md`.
+
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside
-  `{{ }}`.
+  `{{ }}`. `$json` is only the current item from the immediate predecessor.
 - Do not use TypeScript-only syntax that the workflow parser cannot interpret,
   such as `as const`.
 - Use string values directly for discriminator fields like `resource` and
@@ -346,8 +384,18 @@ column names.
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
   field.
+- For unresolved resource-locator fields (values shaped like `{ __rl: true,
+  mode, value }`, such as Slack channel selectors), use the resource-locator
+  object shape instead of a raw `placeholder()` string. If no credential exists
+  to resolve a real channel, prefer id mode with an empty value and a cached
+  result name, for example `{ __rl: true, mode: 'id', value: '',
+  cachedResultName: 'Select support channel to monitor' }`.
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
+- Whenever a node declares mock `output` for verification, include every field
+  later referenced by `$json` expressions, including optional trigger fields
+  used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
+  `channel`). Missing optional fields make expression-path validation fail.
 
 Use this import shape unless the task needs fewer symbols:
 
@@ -392,8 +440,10 @@ Follow these rules strictly when generating workflows:
    alive, and do not add an IF gate before a loop only to check whether items
    exist.
 3. Use `executeOnce: true` for a node that receives many items but should run
-   once, such as a summary notification, report generation, or API call that
-   does not vary per input item.
+   once, such as a summary notification, report generation, shared-context
+   fetch, or API call that does not vary per input item. Duplicate
+   notifications or repeated shared-context fetches usually mean this is
+   missing.
 4. Pick the right control-flow primitive:
    - Per-item loop with side effects: `splitInBatches` with `batchSize: 1`,
      feeding the per-item work and looping back via `nextBatch`.
@@ -402,6 +452,9 @@ Follow these rules strictly when generating workflows:
      and `.onFalse()`.
    - Many mutually exclusive paths keyed off a value: Switch with
      `.onCase(index, target)`.
+   - A Filter or IF only selects items; it does not perform the requested side
+     effect. If the user asks to archive, update, delete, send, or create only
+     matching items, wire the corresponding action node on the matching path.
 5. Input and output indices are zero-based. `.input(0)` and `.output(0)` are the
    first input and output. `.input(1)` is the second input, not the first.
 
@@ -428,13 +481,17 @@ Follow these rules strictly when generating workflows:
   clarification or use placeholders. Do not guess.
 - Pay attention to `@builderHint` annotations in search results and type
   definitions. They contain node-specific configuration rules and examples.
+- Gmail archive: the message resource has no `archive` operation. To archive a
+  Gmail message, remove the `INBOX` label with `operation: 'removeLabels'` and
+  `labelIds: ['INBOX']`; do not add an invented `ARCHIVE` label.
 
 ## Expression Reference
 
 Available variables inside `expr('{{ ... }}')`:
 
-- `$json`: current item's JSON data from the immediate predecessor node.
-- `$('NodeName').item.json`: access another node's output by name.
+- `$json`: current item's JSON data from the immediate predecessor node only.
+- `$('NodeName').item.json`: access another node's output item paired with the
+  current item.
 - `$input.first()`, `$input.all()`, and `$input.item`.
 - `$binary`: binary data from the current item.
 - `$now` and `$today`: Luxon date/time helpers.
@@ -451,11 +508,18 @@ expr('{{ $("Source").all().map(i => ({ option: i.json.name })) }}')
 
 When `$json` is unsafe, reference the source node explicitly. This matters for
 AI Agent subnodes, fan-in nodes after IF/Switch/Merge, and values that come from
-further upstream:
+further upstream or from before a node that replaces item JSON:
 
 ```ts
 sessionKey: nodeJson(telegramTrigger, 'message.chat.id')
+eventId: nodeJson(extractEventId, 'eventId')
 ```
+
+Use `$('NodeName').item.json.field` or `nodeJson(sourceNode, 'field')` for
+per-item upstream values. Do not use `.first()` or `$input.first()` for
+per-item data in a multi-item workflow; it always reads item 0 and makes every
+downstream item reuse the first value. Use `.first()` only for a true global
+first item, such as a single configuration row.
 
 ## SDK Patterns Reference
 

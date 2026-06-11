@@ -88,7 +88,8 @@ function filterHitlToolProperties(
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
-		default: '=The agent wants to call {{ $tool.name }}',
+		default:
+			'=The agent wants to run this tool: {{ $tool.name }}\n\nInput:\n{{ $tool.parameters }}',
 		required: true,
 		typeOptions: { rows: 3 },
 		description:

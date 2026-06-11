@@ -18,6 +18,8 @@ import { hasStartNode } from './has-start-node';
 import { hasTrigger } from './has-trigger';
 import { httpGenericAuthTypeMatchesPrompt } from './http-generic-auth-type-matches-prompt';
 import { inboundTriggerAuthDefaults } from './inbound-trigger-auth-defaults';
+import { itemFlowIndependentSourceExecuteOnce } from './item-flow-independent-source-execute-once';
+import { itemFlowPairedItemReferences } from './item-flow-paired-item-references';
 import { memoryProperlyConnected } from './memory-properly-connected';
 import { memorySessionKeyExpression } from './memory-session-key-expression';
 import { noDisabledNodes } from './no-disabled-nodes';
@@ -50,6 +52,8 @@ export const CONNECTION_TOPOLOGY_CHECKS: BinaryCheck[] = [
 
 export const PARAMETER_CORRECTNESS_CHECKS: BinaryCheck[] = [
 	expressionsReferenceExistingNodes,
+	itemFlowPairedItemReferences,
+	itemFlowIndependentSourceExecuteOnce,
 	validFieldReferences,
 	validNodeConfig,
 	noEmptySetNodes,
