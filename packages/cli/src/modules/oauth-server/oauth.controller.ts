@@ -57,12 +57,6 @@ const authorizeRouter = authorizationHandler({ provider: oauthServerService }) a
 const tokenRouter = tokenHandler({ provider: oauthServerService }) as Router;
 const revokeRouter = revocationHandler({ provider: oauthServerService }) as Router;
 
-// The shared OAuth server is available on `main` regardless of the instance
-// MCP feature toggle (`mcpAccessEnabled`): protecting a resource with n8n OAuth
-// must not depend on the instance MCP server being exposed. Each protected
-// resource enforces its own availability at its own gate — the instance MCP
-// server, for example, rejects requests to `/mcp-server/http` when MCP access
-// is disabled.
 const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterMetadata[] => [
 	{
 		path: `${basePath}/register`,
