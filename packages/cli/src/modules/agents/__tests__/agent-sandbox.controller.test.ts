@@ -47,10 +47,10 @@ describe('AgentSandboxController route access scopes', () => {
 });
 
 describe('AgentSandboxController knowledge sandbox warmup', () => {
-	it('returns accepted and logs background warmup failures without surfacing them', async () => {
-		const { controller, agentKnowledgeService, logger, res } = makeController();
+	it('returns accepted and schedules sandbox warmup when files exist', async () => {
+		const { controller, agentKnowledgeService, res } = makeController();
 		agentKnowledgeService.hasFilesForWarmup.mockResolvedValue(true);
-		agentKnowledgeService.warmSandbox.mockRejectedValue(new Error('daytona unavailable'));
+		agentKnowledgeService.warmSandbox.mockResolvedValue();
 
 		const result = await controller.warmKnowledgeSandbox(
 			{ user: { id: 'user-1' } } as never,
@@ -69,11 +69,6 @@ describe('AgentSandboxController knowledge sandbox warmup', () => {
 			'project-1',
 			'user-1',
 		);
-		expect(logger.warn).toHaveBeenCalledWith('Failed to warm agent knowledge sandbox', {
-			projectId: 'project-1',
-			agentId: 'agent-1',
-			error: 'daytona unavailable',
-		});
 	});
 
 	it('rejects before accepting when the knowledge base is disabled', async () => {

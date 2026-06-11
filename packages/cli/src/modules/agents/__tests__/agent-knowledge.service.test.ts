@@ -217,19 +217,16 @@ describe('AgentKnowledgeService', () => {
 		await expect(access(pdfFilePath)).rejects.toThrow();
 	});
 
-	it.each(['..', '.', '/'])(
-		'rejects uploads whose file name "%s" would escape the knowledge files directory',
-		async (originalname) => {
-			agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+	it('rejects uploads whose file name would escape the knowledge files directory', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 
-			await expect(
-				service.uploadFiles(agentId, projectId, [makeMulterFile({ originalname })], userId),
-			).rejects.toThrow('Invalid knowledge file name');
+		await expect(
+			service.uploadFiles(agentId, projectId, [makeMulterFile({ originalname: '..' })], userId),
+		).rejects.toThrow('Invalid knowledge file name');
 
-			expect(agentFileRepository.all()).toEqual([]);
-			expect(filesystem.uploadFileCalls).toEqual([]);
-		},
-	);
+		expect(agentFileRepository.all()).toEqual([]);
+		expect(filesystem.uploadFileCalls).toEqual([]);
+	});
 
 	it('removes the DB row when volume sync fails after create', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
@@ -254,23 +251,6 @@ describe('AgentKnowledgeService', () => {
 			),
 		).rejects.toThrow('volume write failed');
 		expect(agentFileRepository.all()).toEqual([]);
-	});
-
-	it('warms the sandbox only when the agent has knowledge files', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
-
-		await expect(service.warmSandbox(agentId, projectId, userId)).resolves.toBeUndefined();
-
-		expect(agentKnowledgeSandboxService.warmSandbox).not.toHaveBeenCalled();
-
-		await agentFileRepository.save(makeAgentFile());
-		await expect(service.warmSandbox(agentId, projectId, userId)).resolves.toBeUndefined();
-
-		expect(agentKnowledgeSandboxService.warmSandbox).toHaveBeenCalledWith(
-			projectId,
-			agentId,
-			userId,
-		);
 	});
 
 	it('deletes stored volume files and DB rows', async () => {

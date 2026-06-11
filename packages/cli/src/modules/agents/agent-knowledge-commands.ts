@@ -1,14 +1,12 @@
 import { Buffer } from 'node:buffer';
 
 import {
-	DEFAULT_GLOB_FILES_LIMIT,
 	DEFAULT_SEARCH_TEXT_LIMIT,
 	MAX_OPERATION_OUTPUT_CHARS,
 	MAX_READ_LINE_CHARS,
 	MAX_SEARCH_LINE_CHARS,
 	truncateKnowledgeText,
 	type AgentKnowledgeFileReference,
-	type GlobKnowledgeFilesRequest,
 	type ReadKnowledgeRangeResult,
 	type ReadKnowledgeRequest,
 	type SearchKnowledgeMatch,
@@ -47,24 +45,6 @@ export function buildSearchKnowledgeCommand(request: SearchKnowledgeRequest): st
 	];
 
 	return buildJsonMatchLimitedPipeline(rgCommand.join(' '), matchLimit, outputLimit);
-}
-
-export function buildGlobKnowledgeFilesCommand(request: GlobKnowledgeFilesRequest): string {
-	const fileLimit = (request.limit ?? DEFAULT_GLOB_FILES_LIMIT) + 1;
-	const rgCommand = [
-		'timeout',
-		String(COMMAND_TIMEOUT_SECONDS),
-		'rg',
-		'--files',
-		'--hidden',
-		...(request.caseSensitive === true ? [] : ['--glob-case-insensitive']),
-		'--glob',
-		quoteShellArg(request.pattern),
-		'--',
-		quoteShellArg('.'),
-	];
-
-	return buildHeadLimitedPipeline(rgCommand.join(' '), fileLimit);
 }
 
 export function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRequest): string {
@@ -137,29 +117,6 @@ export function parseRipgrepOutput(
 	}
 
 	return { matches, incomplete };
-}
-
-export function parseGlobKnowledgeFilesOutput(
-	output: string,
-	filesByPath: Map<string, AgentKnowledgeFileReference>,
-): AgentKnowledgeFileReference[] {
-	const matches: AgentKnowledgeFileReference[] = [];
-	const seen = new Set<string>();
-
-	for (const line of output.split(/\r?\n/)) {
-		if (!line) continue;
-		// Do not trim: stored file names may legitimately start or end with spaces.
-		const filePath = normalizeRipgrepPath(line);
-		if (seen.has(filePath)) continue;
-
-		const file = filesByPath.get(filePath);
-		if (!file) continue;
-
-		matches.push(file);
-		seen.add(filePath);
-	}
-
-	return matches;
 }
 
 export function parseReadKnowledgeOutput(
@@ -268,19 +225,6 @@ function stripTrailingNewline(text: string): string {
 
 function quoteShellArg(value: string): string {
 	return `'${value.replaceAll("'", "'\\''")}'`;
-}
-
-function buildHeadLimitedPipeline(command: string, lineLimit: number): string {
-	return [
-		// The outer shell uses pipefail, but head intentionally closes the pipe
-		// once the extra limit row is captured. Preserve real rg errors while
-		// treating that expected SIGPIPE as a successful bounded result.
-		'set +o pipefail',
-		`${command} | head -n ${lineLimit}`,
-		'command_status="$' + '{PIPESTATUS[0]}"',
-		'if [ "$command_status" = 141 ]; then command_status=0; fi',
-		'exit "$command_status"',
-	].join('; ');
 }
 
 function buildJsonMatchLimitedPipeline(

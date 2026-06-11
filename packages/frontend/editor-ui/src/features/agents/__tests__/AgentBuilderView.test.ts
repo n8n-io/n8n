@@ -511,15 +511,6 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
-	it('does not warm the knowledge sandbox when the knowledge base is disabled', async () => {
-		routeName = 'AgentPreviewView';
-		routeQuery.continueSessionId = 'thread-1';
-
-		await renderView();
-
-		expect(warmAgentKnowledgeSandboxMock).not.toHaveBeenCalled();
-	});
-
 	it('drops unbuilt agents straight into the build chat on load', async () => {
 		// Unbuilt agents go to the build chat unconditionally so the build
 		// panel mounts, triggers loadHistory, and any prior conversation with

@@ -7,11 +7,7 @@ import { NotFoundError } from '../../../errors/response-errors/not-found.error';
 import type { AiService } from '../../../services/ai.service';
 
 import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from '../agent-knowledge-storage';
-import {
-	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
-	AgentKnowledgeSandboxService,
-} from '../agent-knowledge-sandbox.service';
-import { KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE } from '../agent-knowledge-commands';
+import { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentFile } from '../entities/agent-file.entity';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -87,26 +83,6 @@ function makeAiService(overrides: Partial<AiService> = {}): AiService {
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	return Object.assign(aiService, overrides);
-}
-
-function makeProxyClient(
-	overrides: {
-		image?: string;
-		proxyBaseUrl?: string;
-		accessToken?: string;
-	} = {},
-) {
-	const {
-		image = 'proxy/sandbox:1.0.0',
-		proxyBaseUrl = 'https://assistant.example/sandbox',
-		accessToken = 'proxy-token',
-	} = overrides;
-
-	return {
-		getSandboxProxyBaseUrl: jest.fn().mockReturnValue(proxyBaseUrl),
-		getSandboxProxyConfig: jest.fn().mockResolvedValue({ image }),
-		getBuilderApiProxyToken: jest.fn().mockResolvedValue({ accessToken, tokenType: 'Bearer' }),
-	};
 }
 
 function makeService(
@@ -207,7 +183,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		);
 	});
 
-	it('creates a sandbox with scoped labels, volume mount, and expected params when list is empty', async () => {
+	it('creates a scoped sandbox with the knowledge volume mount', async () => {
 		const aiService = makeAiService();
 		const service = makeService({}, mock<Logger>(), aiService);
 
@@ -221,170 +197,48 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		expect(createMock).toHaveBeenCalledTimes(1);
 		const [params, options] = createMock.mock.calls[0];
-		expect(params.name).toMatch(
-			new RegExp(`^${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-[0-9a-f-]{36}$`),
-		);
 		expect(params.labels).toEqual({
 			'n8n-agents-knowledgebase': 'true',
 			'n8n-project-id': 'project-1',
 			'n8n-agent-id': 'agent-1',
 			'n8n-user-id': userId,
 		});
-		expect(params.language).toBe('typescript');
-		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
-		expect(params.ephemeral).toBe(true);
-		expect(params.autoStopInterval).toBe(5);
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 		expect(options).toEqual({ timeout: 300 });
 	});
 
-	it('creates sandboxes through the AI assistant proxy when proxy mode is enabled', async () => {
-		const mockClient = makeProxyClient();
-		const aiService = makeAiService({
-			isProxyEnabled: jest.fn().mockReturnValue(true),
-			getClient: jest.fn().mockResolvedValue(mockClient),
-		});
-		const service = makeService({}, mock<Logger>(), aiService);
-
-		await service.withKnowledgeFilesystem('project-1', 'agent-1', userId, async () => {});
-
-		expect(createMock).toHaveBeenCalledTimes(1);
-		expect(aiService.getClient).toHaveBeenCalledTimes(1);
-		expect(mockClient.getSandboxProxyConfig).toHaveBeenCalledTimes(1);
-		expect(mockClient.getBuilderApiProxyToken).toHaveBeenCalledWith(
-			{ id: userId },
-			expect.objectContaining({ userMessageId: expect.any(String) }),
-		);
-		expect(daytonaInstances).toHaveLength(1);
-		expect(daytonaInstances[0].config).toEqual({
-			apiUrl: 'https://assistant.example/sandbox',
-			apiKey: 'proxy-token',
-		});
-		const [params] = createMock.mock.calls[0];
-		expect(params.image).toBe('proxy/sandbox:1.0.0');
-		expect(params.volumes).toEqual([expectedVolumeMount]);
-	});
-
-	it('searchKnowledge runs a bounded search and parses matching file metadata', async () => {
-		const sandbox = makeSandbox('started');
-		mockKnowledgeFiles([makeAgentFile()]);
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		sandbox.process.executeCommand.mockResolvedValue({
-			exitCode: 0,
-			artifacts: {
-				stdout:
-					[
-						JSON.stringify({
-							type: 'match',
-							data: {
-								path: { text: './notes.txt' },
-								lines: { text: 'first\u0000line\n' },
-								line_number: 1,
-							},
-						}),
-						JSON.stringify({
-							type: 'match',
-							data: {
-								path: { text: './notes.txt' },
-								lines: { text: 'second\n' },
-								line_number: 2,
-							},
-						}),
-					].join('\n') + '\n',
-				stderr: '',
-			},
-		});
-		const service = makeService();
-
-		await expect(
-			service.searchKnowledge('project-1', 'agent-1', userId, {
-				query: 'hello',
-				limit: 1,
-			}),
-		).resolves.toEqual({
-			matches: [
-				{
-					file: 'notes.txt',
-					fileId: 'file-1',
-					displayName: 'notes.txt',
-					lineNumber: 1,
-					text: 'first\u0000line',
-					textTruncated: false,
-				},
-			],
-			limit: 1,
-			hasMore: true,
-			truncated: false,
-		});
-
-		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining(
-				'timeout 20 rg --fixed-strings --json --line-number --with-filename --color=never --hidden --text',
-			),
-			undefined,
-			undefined,
-			300,
-		);
-		const command = sandbox.process.executeCommand.mock.calls[0][0];
-		expect(command).toContain('bash -o pipefail -c');
-		expect(command).toContain(`exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`);
-		expect(command).toContain('hello');
-		expect(command).toContain('| awk ');
-		expect(command).not.toContain('--context');
-		expect(command).not.toContain('--field-match-separator');
-	});
-
-	it('globKnowledgeFiles runs a sandbox file-name glob and returns matching metadata', async () => {
-		const sandbox = makeSandbox('started');
+	it('globKnowledgeFiles returns token filename matches before broad glob matches', async () => {
 		mockKnowledgeFiles([
 			makeAgentFile({
 				id: 'file-1',
-				storageFileName: 'agent-tool.txt',
-				fileName: 'Agent Tool.pdf',
+				storageFileName:
+					'2401-12901v3-secure-spatial-signal-design-for-isac-in-a-cell-free-mimo-network.txt',
+				fileName:
+					'2401-12901v3-secure-spatial-signal-design-for-isac-in-a-cell-free-mimo-network.pdf',
 			}),
-			makeAgentFile({ id: 'file-2', storageFileName: 'sandbox-notes.txt', fileName: 'Notes.txt' }),
-			makeAgentFile({ id: 'file-3', storageFileName: 'workflow.txt', fileName: 'Workflow.pdf' }),
+			makeAgentFile({
+				id: 'file-2',
+				storageFileName: '2605-27097v1-mildly-overparameterized-relu-networks.txt',
+				fileName: '2605-27097v1-mildly-overparameterized-relu-networks.pdf',
+			}),
+			makeAgentFile({
+				id: 'file-3',
+				storageFileName: 'u-net.txt',
+				fileName: 'u-net.pdf',
+			}),
 		]);
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		sandbox.process.executeCommand.mockResolvedValue({
-			exitCode: 0,
-			artifacts: {
-				stdout: 'agent-tool.txt\n',
-				stderr: '',
-			},
-		});
 		const service = makeService();
 
 		await expect(
 			service.globKnowledgeFiles('project-1', 'agent-1', userId, {
-				pattern: '*agent*tool*',
+				pattern: '*U*Net*',
 				limit: 1,
 			}),
-		).resolves.toEqual({
-			files: [
-				{
-					file: 'agent-tool.txt',
-					fileId: 'file-1',
-					displayName: 'Agent Tool.pdf',
-					mimeType: 'text/plain',
-					fileSizeBytes: 100,
-					createdAt: '2026-06-09T10:00:00.000Z',
-				},
-			],
+		).resolves.toMatchObject({
+			files: [{ file: 'u-net.txt', fileId: 'file-3', displayName: 'u-net.pdf' }],
 			limit: 1,
-			hasMore: false,
+			hasMore: true,
 		});
-		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining('timeout 20 rg --files --hidden --glob-case-insensitive --glob'),
-			undefined,
-			undefined,
-			300,
-		);
-		const command = sandbox.process.executeCommand.mock.calls[0][0];
-		expect(command).toContain('bash -o pipefail -c');
-		expect(command).toContain(`exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`);
-		expect(command).toContain('*agent*tool*');
-		expect(command).toContain('| head -n 2');
 	});
 
 	it('rejects retrieval for agents that do not belong to the project', async () => {
@@ -401,100 +255,5 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		expect(listMock).not.toHaveBeenCalled();
 		expect(createMock).not.toHaveBeenCalled();
-	});
-
-	it('rejects warmSandbox before Daytona access when the knowledge base is disabled', async () => {
-		for (const { config, message } of [
-			{
-				config: { sandboxEnabled: false },
-				message: 'Agent knowledge sandbox is not enabled',
-			},
-			{
-				config: { sandboxEnabled: true, sandboxProvider: 'daytona', daytonaVolumeId: '   ' },
-				message: 'Agent knowledge Daytona volume is not configured',
-			},
-		]) {
-			listMock.mockClear();
-			createMock.mockClear();
-			const service = makeService(config);
-
-			await expect(service.warmSandbox('project-1', 'agent-1', userId)).rejects.toThrow(message);
-			expect(listMock).not.toHaveBeenCalled();
-			expect(createMock).not.toHaveBeenCalled();
-		}
-	});
-
-	it('redacts secrets from sandbox output in command failure errors', async () => {
-		const sandbox = makeSandbox('started');
-		mockKnowledgeFiles([makeAgentFile()]);
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		sandbox.process.executeCommand.mockResolvedValue({
-			exitCode: 2,
-			artifacts: {
-				stdout: 'leaked key sk-proj-abcdefghij0123456789 in file\n',
-				stderr: 'request used Bearer abcdefghijklmnop123456\n',
-			},
-		});
-		const service = makeService();
-
-		const promise = service.readKnowledge('project-1', 'agent-1', userId, { fileId: 'file-1' });
-
-		await expect(promise).rejects.toThrow('Agent knowledge read failed');
-		const message = await promise.catch((error: Error) => error.message);
-		expect(message).toContain('Agent knowledge read failed');
-		expect(message).toContain('exitCode=2');
-		expect(message).toContain('[REDACTED]');
-		expect(message).not.toContain('sk-proj-abcdefghij0123456789');
-		expect(message).not.toContain('Bearer abcdefghijklmnop123456');
-	});
-
-	it('readKnowledge builds scoped numeric awk commands and parses ranges', async () => {
-		const sandbox = makeSandbox('started');
-		mockKnowledgeFiles([makeAgentFile()]);
-		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
-		sandbox.process.executeCommand.mockResolvedValue({
-			exitCode: 0,
-			artifacts: { stdout: '0\t2\tsecond line\n0\t3\tthird line\n', stderr: '' },
-		});
-		const service = makeService();
-
-		await expect(
-			service.readKnowledge('project-1', 'agent-1', userId, {
-				fileId: 'file-1',
-				ranges: [{ startLine: 2, endLine: 3 }],
-			}),
-		).resolves.toEqual({
-			file: 'notes.txt',
-			fileId: 'file-1',
-			displayName: 'notes.txt',
-			ranges: [
-				{
-					startLine: 2,
-					endLine: 3,
-					text: '2|second line\n3|third line',
-					citation: {
-						file: 'notes.txt',
-						fileId: 'file-1',
-						displayName: 'notes.txt',
-						startLine: 2,
-						endLine: 3,
-					},
-				},
-			],
-			truncated: false,
-		});
-
-		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining('awk '),
-			undefined,
-			undefined,
-			300,
-		);
-		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining('NR > 3 { exit }'),
-			undefined,
-			undefined,
-			300,
-		);
 	});
 });

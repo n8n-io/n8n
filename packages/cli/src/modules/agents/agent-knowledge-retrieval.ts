@@ -128,7 +128,7 @@ export const readKnowledgeInputSchema = z
 							.int()
 							.min(1)
 							.describe(
-								'First 1-based line number to read, usually near a search_knowledge match. Keep ranges narrow enough for citation-ready evidence.',
+								'First 1-based line number to read, usually near a search_text match. Keep ranges narrow enough for citation-ready evidence.',
 							),
 						endLine: z
 							.number()
@@ -143,7 +143,7 @@ export const readKnowledgeInputSchema = z
 			.min(1)
 			.optional()
 			.describe(
-				'Optional line ranges to read from the selected file. Prefer bounded ranges from search_knowledge matches; omit only when full-file context is genuinely needed.',
+				'Optional line ranges to read from the selected file. Prefer bounded ranges from search_text matches; omit only when full-file context is genuinely needed.',
 			),
 	})
 	.strict()

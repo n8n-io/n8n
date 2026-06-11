@@ -499,7 +499,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 	});
 });
 
-describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — search_knowledge gating', () => {
+describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — knowledge tool gating', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		builtAgent.hasCheckpointStorage.mockReturnValue(true);
@@ -568,7 +568,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — searc
 		await service.reconstructFromAgentEntity(makeAgentEntity(), credentialProvider, 'user-1');
 
 		const toolNames = getInjectedToolNames();
-		for (const toolName of ['glob_knowledge_files', 'search_knowledge', 'read_knowledge']) {
+		for (const toolName of ['find_file', 'search_text', 'read_file']) {
 			expect(toolNames.includes(toolName)).toBe(injectsTools);
 		}
 		expect(agentFileRepository.hasFilesForAgent).toHaveBeenCalledWith('agent-1');

@@ -15,12 +15,10 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AiService } from '@/services/ai.service';
 
 import {
-	buildGlobKnowledgeFilesCommand,
 	buildReadKnowledgeCommand,
 	buildScopedKnowledgeShellCommand,
 	buildSearchKnowledgeCommand,
 	KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE,
-	parseGlobKnowledgeFilesOutput,
 	parseReadKnowledgeOutput,
 	parseRipgrepOutput,
 } from './agent-knowledge-commands';
@@ -250,7 +248,7 @@ export class AgentKnowledgeSandboxService {
 	async globKnowledgeFiles(
 		projectId: string,
 		agentId: string,
-		userId: string,
+		_userId: string,
 		request: GlobKnowledgeFilesRequest,
 	): Promise<GlobKnowledgeFilesResult> {
 		const validatedRequest = parseGlobKnowledgeFilesRequest(request);
@@ -261,22 +259,7 @@ export class AgentKnowledgeSandboxService {
 			return { files: [], limit, hasMore: false };
 		}
 
-		const command = buildGlobKnowledgeFilesCommand(validatedRequest);
-		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
-
-		assertKnowledgeFilesDirectoryAvailable('glob', result);
-		if (result.exitCode === 1) {
-			return {
-				files: [],
-				limit,
-				hasMore: false,
-			};
-		}
-		if (result.exitCode !== 0) {
-			throw new OperationalError(formatSandboxCommandFailure('glob', result));
-		}
-
-		const matches = parseGlobKnowledgeFilesOutput(result.stdout, references.byFile);
+		const matches = matchKnowledgeFilesByGlob(references.files, validatedRequest);
 
 		return {
 			files: matches.slice(0, limit),
@@ -603,4 +586,104 @@ export class AgentKnowledgeSandboxService {
 
 		throw new OperationalError('Agent knowledge sandbox is not enabled');
 	}
+}
+
+function matchKnowledgeFilesByGlob(
+	files: AgentKnowledgeFileReference[],
+	request: GlobKnowledgeFilesRequest,
+): AgentKnowledgeFileReference[] {
+	const caseSensitive = request.caseSensitive === true;
+	const regex = globPatternToRegExp(request.pattern, caseSensitive);
+	const patternTokens = tokenizeKnowledgeFilePattern(request.pattern, caseSensitive);
+	return files
+		.map((file, index) => ({ file, index }))
+		.filter(({ file }) => regex.test(file.file) || regex.test(file.displayName))
+		.map(({ file, index }) => ({
+			file,
+			index,
+			bucket: getKnowledgeFileMatchBucket(file, patternTokens, caseSensitive),
+		}))
+		.sort((left, right) => left.bucket - right.bucket || left.index - right.index)
+		.map(({ file }) => file);
+}
+
+function getKnowledgeFileMatchBucket(
+	file: AgentKnowledgeFileReference,
+	patternTokens: string[],
+	caseSensitive: boolean,
+): 0 | 1 | 2 {
+	const fileNames = [file.file, file.displayName];
+	if (
+		fileNames.some((fileName) =>
+			containsTokenSequence(tokenizeKnowledgeFileName(fileName, caseSensitive), patternTokens),
+		)
+	) {
+		return 0;
+	}
+
+	const compactPattern = patternTokens.join('');
+	if (
+		compactPattern &&
+		fileNames.some((fileName) =>
+			compactKnowledgeFileName(fileName, caseSensitive).includes(compactPattern),
+		)
+	) {
+		return 1;
+	}
+
+	return 2;
+}
+
+function tokenizeKnowledgeFilePattern(pattern: string, caseSensitive: boolean): string[] {
+	return tokenizeKnowledgeFileName(pattern.replace(/[*?]/g, ' '), caseSensitive);
+}
+
+function tokenizeKnowledgeFileName(fileName: string, caseSensitive: boolean): string[] {
+	const normalized = caseSensitive ? fileName : fileName.toLowerCase();
+	const baseName =
+		normalized
+			.split(/[\\/]/)
+			.at(-1)
+			?.replace(/\.[^.]*$/, '') ?? normalized;
+	return baseName.split(/[^a-z0-9]+/i).filter(Boolean);
+}
+
+function compactKnowledgeFileName(fileName: string, caseSensitive: boolean): string {
+	return tokenizeKnowledgeFileName(fileName, caseSensitive).join('');
+}
+
+function containsTokenSequence(fileTokens: string[], patternTokens: string[]): boolean {
+	if (patternTokens.length === 0) return false;
+
+	let patternIndex = 0;
+	for (const fileToken of fileTokens) {
+		if (fileToken === patternTokens[patternIndex]) {
+			patternIndex++;
+			if (patternIndex === patternTokens.length) return true;
+		}
+	}
+	return false;
+}
+
+function globPatternToRegExp(pattern: string, caseSensitive: boolean): RegExp {
+	let source = '^';
+
+	for (const character of pattern) {
+		if (character === '*') {
+			source += '.*';
+			continue;
+		}
+		if (character === '?') {
+			source += '.';
+			continue;
+		}
+		source += escapeRegExp(character);
+	}
+
+	source += '$';
+	return new RegExp(source, caseSensitive ? undefined : 'i');
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
 }

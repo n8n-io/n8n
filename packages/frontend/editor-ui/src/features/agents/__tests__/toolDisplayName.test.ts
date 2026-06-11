@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-	GLOB_KNOWLEDGE_FILES_TOOL_NAME_KEY,
-	READ_KNOWLEDGE_TOOL_NAME_KEY,
-	SEARCH_KNOWLEDGE_TOOL_NAME_KEY,
+	FIND_FILE_TOOL_NAME_KEY,
+	READ_FILE_TOOL_NAME_KEY,
+	SEARCH_TEXT_TOOL_NAME_KEY,
 	WEB_SEARCH_TOOL_NAME_KEY,
 	formatToolNameForDisplay,
 	getToolNameTranslationKey,
@@ -37,11 +37,9 @@ describe('formatToolNameForDisplay', () => {
 	});
 
 	it('returns i18n keys for built-in knowledge retrieval tool names', () => {
-		expect(getToolNameTranslationKey('glob_knowledge_files')).toBe(
-			GLOB_KNOWLEDGE_FILES_TOOL_NAME_KEY,
-		);
-		expect(getToolNameTranslationKey('search_knowledge')).toBe(SEARCH_KNOWLEDGE_TOOL_NAME_KEY);
-		expect(getToolNameTranslationKey('read_knowledge')).toBe(READ_KNOWLEDGE_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('find_file')).toBe(FIND_FILE_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('search_text')).toBe(SEARCH_TEXT_TOOL_NAME_KEY);
+		expect(getToolNameTranslationKey('read_file')).toBe(READ_FILE_TOOL_NAME_KEY);
 	});
 
 	it('returns an empty string for missing or blank names', () => {

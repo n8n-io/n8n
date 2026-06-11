@@ -274,7 +274,7 @@ describe('AgentsController file uploads', () => {
 		).rejects.toThrow(BadRequestError);
 	});
 
-	it('clears the runtime cache after successful uploads', async () => {
+	it('clears the runtime cache after file changes', async () => {
 		const { controller, agentsService, agentKnowledgeService } = makeController();
 		const uploadedFiles = [
 			{
@@ -307,10 +307,6 @@ describe('AgentsController file uploads', () => {
 			'user-1',
 		);
 		expect(agentsService.clearRuntimeCacheForAgent).toHaveBeenCalledWith('agent-1');
-	});
-
-	it('clears the runtime cache after successful file deletion', async () => {
-		const { controller, agentsService, agentKnowledgeService } = makeController();
 
 		await expect(
 			controller.deleteFile(
@@ -327,7 +323,8 @@ describe('AgentsController file uploads', () => {
 			'file-1',
 			'user-1',
 		);
-		expect(agentsService.clearRuntimeCacheForAgent).toHaveBeenCalledWith('agent-1');
+		expect(agentsService.clearRuntimeCacheForAgent).toHaveBeenCalledTimes(2);
+		expect(agentsService.clearRuntimeCacheForAgent).toHaveBeenNthCalledWith(2, 'agent-1');
 	});
 });
 
