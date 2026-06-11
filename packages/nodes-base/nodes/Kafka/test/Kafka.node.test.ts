@@ -3,7 +3,7 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock } from 'jest-mock-extended';
 import type { Producer } from 'kafkajs';
 import { Kafka as apacheKafka } from 'kafkajs';
-import type { WorkflowTestData } from 'n8n-workflow';
+import type { OnError, WorkflowTestData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 jest.mock('kafkajs');
@@ -12,7 +12,7 @@ jest.mock('@kafkajs/confluent-schema-registry');
 const errorWorkflow = (
 	eventName: string,
 	message = '{"foo":"bar"}',
-	onError?: string,
+	onError?: OnError,
 ): WorkflowTestData['input']['workflowData'] => ({
 	nodes: [
 		{
