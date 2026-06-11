@@ -236,7 +236,11 @@ export const sandbox: Service<SandboxResult> = {
 
 	env(result: SandboxResult, external?: boolean): Record<string, string> {
 		if (external) {
-			const host = result.container.getHost();
+			// `getHost()` returns `localhost`, which Node resolves to `::1` first —
+			// and the Docker port proxy only serves the mapping on IPv4 (macOS), so
+			// a locally-run n8n gets ECONNREFUSED. Pin the v4 loopback instead.
+			const rawHost = result.container.getHost();
+			const host = rawHost === 'localhost' ? '127.0.0.1' : rawHost;
 			const port = result.container.getMappedPort(API_HTTP_PORT);
 			return {
 				N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'n8n-sandbox',

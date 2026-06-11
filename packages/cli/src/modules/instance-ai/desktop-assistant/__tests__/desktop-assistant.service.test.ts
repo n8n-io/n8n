@@ -122,10 +122,13 @@ describe('DesktopAssistantService.triggerTask', () => {
 		const result = await ctx.service.triggerTask(USER, { prompt: 'rename desktop files' });
 
 		expect(ctx.memoryService.ensureThread).toHaveBeenCalledTimes(1);
-		const [calledUser, , message, , , , options] = ctx.instanceAiService.startRun.mock.calls[0];
+		// The thread is marked as desktop-originated at creation so the chat UI
+		// can hide it from its thread list.
+		const [, , , threadMetadata] = ctx.memoryService.ensureThread.mock.calls[0];
+		expect(threadMetadata).toEqual({ source: 'desktop-assistant' });
+		const [calledUser, , message] = ctx.instanceAiService.startRun.mock.calls[0];
 		expect(calledUser).toBe(USER);
 		expect(message).toContain('rename desktop files');
-		expect(options).toEqual({ promptMode: 'desktop-assistant-one-shot' });
 		expect(result).toMatchObject({ runId: 'run-123' });
 		expect(result.threadId).toBeDefined();
 	});
@@ -461,11 +464,43 @@ describe('DesktopAssistantService.promoteThread', () => {
 
 		expect(ctx.eventBus.subscribe).toHaveBeenCalledWith('t-1', expect.any(Function));
 		expect(ctx.instanceAiService.startRun).toHaveBeenCalled();
-		const [, , message, , , , options] = ctx.instanceAiService.startRun.mock.calls[0];
+		const [, , message] = ctx.instanceAiService.startRun.mock.calls[0];
 		expect(message).toContain('Banana');
 		expect(message).toContain('rename desktop files');
-		expect(options).toEqual({ promptMode: 'desktop-assistant-promote' });
 		expect(result).toEqual({ status: 'building', threadId: 't-1', runId: 'run-promote' });
+	});
+
+	test('subscribes to the bus before recording the run id, and still returns building when the record write fails', async () => {
+		const ctx = makeService();
+		ctx.memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		ctx.memoryService.getThreadMetadata.mockResolvedValue(undefined);
+		ctx.memoryService.getThreadMessages.mockResolvedValue({
+			threadId: 't-1',
+			messages: [
+				{
+					id: 'm-1',
+					role: 'user',
+					content: 'rename files',
+					type: 'text',
+					createdAt: new Date().toISOString(),
+				},
+			],
+		});
+		ctx.instanceAiService.startRun.mockReturnValue('run-promote');
+		ctx.memoryService.updateThread.mockImplementation(async () => {
+			// The finalisation listener must already be attached when this write
+			// happens — otherwise a failure here orphans the build run.
+			expect(ctx.eventBus.subscribe).toHaveBeenCalledWith('t-1', expect.any(Function));
+			throw new Error('db unavailable');
+		});
+
+		const result = await ctx.service.promoteThread(USER, { threadId: 't-1' });
+
+		expect(result).toEqual({ status: 'building', threadId: 't-1', runId: 'run-promote' });
+		expect(ctx.logger.warn).toHaveBeenCalledWith(
+			'Failed to record promote run id on thread',
+			expect.objectContaining({ threadId: 't-1', runId: 'run-promote' }),
+		);
 	});
 
 	test('on a tasks-update with a completed build-workflow planned task, the post-build hook tags the workflow and writes meta', async () => {
@@ -492,7 +527,13 @@ describe('DesktopAssistantService.promoteThread', () => {
 			name: DESKTOP_ASSISTANT_TAG,
 		} as never);
 		ctx.workflowTagMappingRepository.findOne.mockResolvedValue(null);
-		ctx.workflowRepository.findOne.mockResolvedValue({ id: 'wf-new', meta: {} } as never);
+		ctx.workflowRepository.findOne.mockResolvedValue({
+			id: 'wf-new',
+			name: 'Tidy my desktop',
+			meta: {},
+			nodes: [],
+		} as never);
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
 
 		let handler: ((e: StoredEvent) => void) | undefined;
 		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
@@ -555,6 +596,7 @@ describe('DesktopAssistantService.promoteThread', () => {
 		ctx.memoryService.checkThreadOwnership.mockResolvedValue('owned');
 		ctx.memoryService.getThreadMetadata
 			.mockResolvedValueOnce(undefined) // initial idempotency check
+			.mockResolvedValueOnce(undefined) // in-flight promote-run check
 			.mockResolvedValueOnce({
 				// metadata read after run-finish — workflow-loop persisted outcome
 				instanceAiWorkflowLoop: {
@@ -588,7 +630,13 @@ describe('DesktopAssistantService.promoteThread', () => {
 			name: DESKTOP_ASSISTANT_TAG,
 		} as never);
 		ctx.workflowTagMappingRepository.findOne.mockResolvedValue(null);
-		ctx.workflowRepository.findOne.mockResolvedValue({ id: 'wf-loop', meta: {} } as never);
+		ctx.workflowRepository.findOne.mockResolvedValue({
+			id: 'wf-loop',
+			name: 'Tidy my desktop',
+			meta: {},
+			nodes: [],
+		} as never);
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
 
 		let handler: ((e: StoredEvent) => void) | undefined;
 		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
@@ -618,6 +666,178 @@ describe('DesktopAssistantService.promoteThread', () => {
 		expect(ctx.memoryService.updateThread).toHaveBeenCalledWith('t-1', {
 			metadata: { promotedWorkflowId: 'wf-loop' },
 		});
+	});
+
+	test('finalize stores the icon on meta, strips a leading name emoji, and fills the device credential', async () => {
+		const ctx = makeService();
+		ctx.memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		ctx.memoryService.getThreadMetadata
+			.mockResolvedValueOnce(undefined) // idempotency check
+			.mockResolvedValueOnce(undefined) // in-flight promote-run check
+			.mockResolvedValueOnce({
+				instanceAiWorkflowLoop: {
+					wi_xyz: {
+						lastBuildOutcome: { runId: 'run-promote', submitted: true, workflowId: 'wf-icon' },
+					},
+				},
+			});
+		ctx.memoryService.getThreadMessages.mockResolvedValue({
+			threadId: 't-1',
+			messages: [
+				{
+					id: 'm-1',
+					role: 'user',
+					content: 'rename files',
+					type: 'text',
+					createdAt: new Date().toISOString(),
+				},
+			],
+		});
+		ctx.instanceAiService.startRun.mockReturnValue('run-promote');
+		ctx.tagRepository.findOne.mockResolvedValue({ id: 'tag-da' } as never);
+		ctx.workflowTagMappingRepository.findOne.mockResolvedValue(null);
+		// The build disobeyed the no-emoji rule; finalize moves it out of the name.
+		ctx.workflowRepository.findOne.mockResolvedValue({
+			id: 'wf-icon',
+			name: '🧹 Tidy my desktop',
+			meta: {},
+			nodes: [
+				{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+				{ name: 'Rename', type: '@n8n/n8n-nodes-langchain.computerUse' },
+			],
+		} as never);
+		ctx.instanceAiService.findOwnDeviceCredential.mockResolvedValue({
+			id: 'cred-dev',
+			name: "Elias's MacBook",
+			type: 'deviceConnectionApi',
+		} as never);
+
+		let handler: ((e: StoredEvent) => void) | undefined;
+		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
+			handler = h;
+			return () => {};
+		});
+
+		await ctx.service.promoteThread(USER, { threadId: 't-1', icon: '🍌' });
+
+		handler!({
+			id: 9,
+			event: {
+				type: 'run-finish',
+				runId: 'run-promote',
+				agentId: 'orchestrator',
+				payload: { status: 'completed' },
+			},
+		} as unknown as StoredEvent);
+		for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve));
+
+		// Requested icon wins over the stray name emoji; the name comes out clean.
+		expect(ctx.workflowRepository.update).toHaveBeenCalledWith(
+			'wf-icon',
+			expect.objectContaining({
+				name: 'Tidy my desktop',
+				meta: expect.objectContaining({
+					desktopAssistant: expect.objectContaining({ icon: '🍌' }),
+				}),
+			}),
+		);
+		// The Computer Use node gets the user's device credential; the trigger is untouched.
+		expect(ctx.workflowRepository.update).toHaveBeenCalledWith('wf-icon', {
+			nodes: [
+				{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+				{
+					name: 'Rename',
+					type: '@n8n/n8n-nodes-langchain.computerUse',
+					credentials: { deviceConnectionApi: { id: 'cred-dev', name: "Elias's MacBook" } },
+				},
+			],
+		});
+	});
+
+	test('confirming call mid-finalisation returns building instead of starting a second build', async () => {
+		const ctx = makeService();
+		ctx.memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		ctx.memoryService.getThreadMetadata
+			.mockResolvedValueOnce(undefined) // kickoff: idempotency check
+			.mockResolvedValueOnce(undefined) // kickoff: in-flight promote-run check
+			.mockResolvedValueOnce({
+				// outcome read at run-finish
+				instanceAiWorkflowLoop: {
+					wi_xyz: {
+						lastBuildOutcome: { runId: 'run-promote', submitted: true, workflowId: 'wf-race' },
+					},
+				},
+			})
+			.mockResolvedValueOnce({ desktopAssistantPromoteRunId: 'run-promote' }) // confirm: idempotency check
+			.mockResolvedValueOnce({ desktopAssistantPromoteRunId: 'run-promote' }) // confirm: in-flight check
+			.mockResolvedValueOnce({
+				// post-finalise confirm: idempotency check
+				desktopAssistantPromoteRunId: 'run-promote',
+				promotedWorkflowId: 'wf-race',
+			});
+		ctx.memoryService.getThreadMessages.mockResolvedValue({
+			threadId: 't-1',
+			messages: [
+				{
+					id: 'm-1',
+					role: 'user',
+					content: 'rename files',
+					type: 'text',
+					createdAt: new Date().toISOString(),
+				},
+			],
+		});
+		ctx.instanceAiService.startRun.mockReturnValue('run-promote');
+		ctx.tagRepository.findOne.mockResolvedValue({ id: 'tag-da' } as never);
+		ctx.workflowTagMappingRepository.findOne.mockResolvedValue(null);
+		ctx.workflowRepository.findOne.mockResolvedValue({
+			id: 'wf-race',
+			name: 'Tidy my desktop',
+			meta: {},
+			nodes: [],
+		} as never);
+		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-race']);
+		// Hold finalisation open at its device-credential step so the confirming
+		// call lands in the "run finished, promotedWorkflowId not yet written" gap.
+		let releaseFinalize!: () => void;
+		ctx.instanceAiService.findOwnDeviceCredential.mockReturnValue(
+			new Promise((resolve) => {
+				releaseFinalize = () => resolve(null);
+			}) as never,
+		);
+
+		let handler: ((e: StoredEvent) => void) | undefined;
+		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
+			handler = h;
+			return () => {};
+		});
+
+		const started = await ctx.service.promoteThread(USER, { threadId: 't-1' });
+		expect(started).toEqual({ status: 'building', threadId: 't-1', runId: 'run-promote' });
+
+		// The build run finishes; finalisation begins and blocks on the gate.
+		// getActiveRunId already reports no active run (the mock returns undefined).
+		handler!({
+			id: 9,
+			event: {
+				type: 'run-finish',
+				runId: 'run-promote',
+				agentId: 'orchestrator',
+				payload: { status: 'completed' },
+			},
+		} as unknown as StoredEvent);
+		for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve));
+
+		const confirmed = await ctx.service.promoteThread(USER, { threadId: 't-1' });
+		expect(confirmed).toEqual({ status: 'building', threadId: 't-1', runId: 'run-promote' });
+		expect(ctx.instanceAiService.startRun).toHaveBeenCalledTimes(1);
+
+		// Once finalisation completes, the next confirming call resolves to done.
+		releaseFinalize();
+		for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve));
+		const done = await ctx.service.promoteThread(USER, { threadId: 't-1' });
+		expect(done).toEqual({ status: 'done', threadId: 't-1', workflowId: 'wf-race' });
+		expect(ctx.instanceAiService.startRun).toHaveBeenCalledTimes(1);
 	});
 
 	test('run-finish for an UNRELATED runId does not fire the hook', async () => {
@@ -716,7 +936,12 @@ describe('DesktopAssistantService.promoteThread', () => {
 
 		expect(ctx.workflowTagMappingRepository.insert).not.toHaveBeenCalled();
 		expect(ctx.workflowRepository.update).not.toHaveBeenCalled();
-		expect(ctx.memoryService.updateThread).not.toHaveBeenCalled();
+		// The only thread update is the promote-run bookkeeping written at kickoff,
+		// never the post-build `promotedWorkflowId`.
+		expect(ctx.memoryService.updateThread).toHaveBeenCalledTimes(1);
+		expect(ctx.memoryService.updateThread).toHaveBeenCalledWith('t-1', {
+			metadata: { desktopAssistantPromoteRunId: 'run-promote' },
+		});
 	});
 
 	/**
@@ -751,6 +976,8 @@ describe('DesktopAssistantService.promoteThread', () => {
 		} as never);
 		ctx.workflowTagMappingRepository.findOne.mockResolvedValue(null);
 		ctx.workflowRepository.findOne.mockResolvedValue(workflow as never);
+		// No device credential to fill; the finalise step's lookup must still resolve.
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
 
 		let handler: ((e: StoredEvent) => void) | undefined;
 		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
@@ -877,12 +1104,12 @@ describe('DesktopAssistantService.getHistory', () => {
 		expect(ctx.executionService.findRangeWithCount).not.toHaveBeenCalled();
 	});
 
-	test('passes ALL accessible (non-archived) workflow ids to the executions service', async () => {
+	test('passes the accessible tagged (non-archived) workflow ids to the executions service', async () => {
 		const ctx = makeService();
 		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1', 'wf-2']);
 		ctx.workflowRepository.find.mockResolvedValue([
-			{ id: 'wf-1' } as never,
-			{ id: 'wf-2' } as never,
+			{ id: 'wf-1', tags: [{ name: 'desktop-assistant' }] } as never,
+			{ id: 'wf-2', tags: [{ name: 'desktop-assistant' }] } as never,
 		]);
 		ctx.executionService.buildSharingOptions.mockResolvedValue({});
 		ctx.executionService.findRangeWithCount.mockResolvedValue({
@@ -906,7 +1133,9 @@ describe('DesktopAssistantService.getHistory', () => {
 		const ctx = makeService();
 		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1', 'wf-archived']);
 		// repository.find with isArchived: false only returns the live one
-		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.workflowRepository.find.mockResolvedValue([
+			{ id: 'wf-1', tags: [{ name: 'desktop-assistant' }] } as never,
+		]);
 		ctx.executionService.buildSharingOptions.mockResolvedValue({});
 		ctx.executionService.findRangeWithCount.mockResolvedValue({
 			results: [],
@@ -937,10 +1166,13 @@ describe('DesktopAssistantService.getHistory', () => {
 		expect(ctx.executionService.findRangeWithCount).not.toHaveBeenCalled();
 	});
 
-	test('does NOT filter on the desktop-assistant tag (history covers all workflows)', async () => {
+	test('filters out workflows without the desktop-assistant tag', async () => {
 		const ctx = makeService();
-		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-untagged']);
-		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-untagged' } as never]);
+		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-untagged', 'wf-task']);
+		ctx.workflowRepository.find.mockResolvedValue([
+			{ id: 'wf-untagged', tags: [] } as never,
+			{ id: 'wf-task', tags: [{ name: 'desktop-assistant' }] } as never,
+		]);
 		ctx.executionService.buildSharingOptions.mockResolvedValue({});
 		ctx.executionService.findRangeWithCount.mockResolvedValue({
 			results: [],
@@ -950,18 +1182,18 @@ describe('DesktopAssistantService.getHistory', () => {
 
 		await ctx.service.getHistory(USER, {});
 
-		// Pin that we don't go anywhere near the tag tables.
-		expect(ctx.tagRepository.findOne).not.toHaveBeenCalled();
-		expect(ctx.workflowTagMappingRepository.find).not.toHaveBeenCalled();
+		// History mirrors the task list: only the assistant's own workflows count.
 		expect(ctx.executionService.findRangeWithCount).toHaveBeenCalledWith(
-			expect.objectContaining({ workflowId: ['wf-untagged'] }),
+			expect.objectContaining({ workflowId: ['wf-task'] }),
 		);
 	});
 
 	test('projects executions to the narrow client shape and strips the name emoji', async () => {
 		const ctx = makeService();
 		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
-		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.workflowRepository.find.mockResolvedValue([
+			{ id: 'wf-1', tags: [{ name: 'desktop-assistant' }] } as never,
+		]);
 		ctx.executionService.buildSharingOptions.mockResolvedValue({});
 		ctx.executionService.findRangeWithCount.mockResolvedValue({
 			results: [
@@ -1018,7 +1250,9 @@ describe('DesktopAssistantService.getHistory', () => {
 		// The range query (`toSummary`) hands back ISO strings, not Date objects.
 		const ctx = makeService();
 		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
-		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.workflowRepository.find.mockResolvedValue([
+			{ id: 'wf-1', tags: [{ name: 'desktop-assistant' }] } as never,
+		]);
 		ctx.executionService.buildSharingOptions.mockResolvedValue({});
 		ctx.executionService.findRangeWithCount.mockResolvedValue({
 			results: [
@@ -1047,7 +1281,9 @@ describe('DesktopAssistantService.getHistory', () => {
 	test('attaches a derived error one-liner to failed rows only', async () => {
 		const ctx = makeService();
 		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
-		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.workflowRepository.find.mockResolvedValue([
+			{ id: 'wf-1', tags: [{ name: 'desktop-assistant' }] } as never,
+		]);
 		ctx.executionService.buildSharingOptions.mockResolvedValue({});
 		ctx.executionService.findRangeWithCount.mockResolvedValue({
 			results: [
@@ -1084,7 +1320,9 @@ describe('DesktopAssistantService.getHistory', () => {
 	test('does not load execution data when the page has no failed rows', async () => {
 		const ctx = makeService();
 		ctx.workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
-		ctx.workflowRepository.find.mockResolvedValue([{ id: 'wf-1' } as never]);
+		ctx.workflowRepository.find.mockResolvedValue([
+			{ id: 'wf-1', tags: [{ name: 'desktop-assistant' }] } as never,
+		]);
 		ctx.executionService.buildSharingOptions.mockResolvedValue({});
 		ctx.executionService.findRangeWithCount.mockResolvedValue({
 			results: [

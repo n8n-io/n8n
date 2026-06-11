@@ -36,7 +36,6 @@ import type {
 	DesktopAssistantRecommendationsResponse,
 	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
-	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
@@ -55,6 +54,7 @@ export type {
 	DesktopAssistantTriggerSummary,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantHistoryEntry,
+	DesktopAssistantTaskOutcome,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantRecommendationsRequest,
@@ -102,6 +102,28 @@ export interface RunTaskResult {
 	error?: string;
 }
 
+/** Result of starting a one-shot assistant task run from the composer. */
+export interface CreateAssistantTaskResult {
+	ok: boolean;
+	threadId?: string;
+	runId?: string;
+	error?: string;
+}
+
+/**
+ * Result of asking the instance to promote a thread into a saved workflow.
+ * Idempotent: `building` while the build runs, `done` (with `workflowId`)
+ * once a promote has produced the workflow.
+ */
+export interface PromoteAssistantThreadResult {
+	ok: boolean;
+	status?: 'building' | 'done';
+	/** The build run to watch, set while `status === 'building'`. */
+	runId?: string;
+	workflowId?: string;
+	error?: string;
+}
+
 /** Grant state of a single macOS permission; `unknown` covers not-determined / non-macOS. */
 export type MacPermissionState = 'granted' | 'denied' | 'unknown';
 
@@ -138,6 +160,13 @@ export interface ElectronApi {
 	onStatusChanged: (onChangeCallback: (snapshot: StatusSnapshot) => void) => void;
 	getTasks: () => Promise<DesktopAssistantTasksResponse>;
 	runTask: (workflowId: string) => Promise<RunTaskResult>;
+	/** Start a one-shot assistant task run with the prompt + detected context. */
+	createAssistantTask: (body: DesktopAssistantTaskRequest) => Promise<CreateAssistantTaskResult>;
+	promoteAssistantThread: (
+		threadId: string,
+		name?: string,
+		icon?: string,
+	) => Promise<PromoteAssistantThreadResult>;
 	openWorkflow: (workflowId: string) => Promise<void>;
 	/** The task detail view's segmented description (LLM-generated, cached server-side). */
 	getTaskDetail: (workflowId: string) => Promise<DesktopAssistantTaskDetailResponse>;
@@ -189,8 +218,6 @@ export interface ElectronApi {
 	 * full screen.
 	 */
 	captureScreenshot: (target?: WindowCaptureTarget) => Promise<ScreenshotAttachment>;
-	/** Fire a one-shot task with the prompt + detected context; returns thread/run ids. */
-	triggerTask: (body: DesktopAssistantTaskRequest) => Promise<DesktopAssistantTaskResponse>;
 	/**
 	 * Generate task suggestions for the empty state, grounded in the selected
 	 * context (optional) and the user's connected integrations.

@@ -2,6 +2,8 @@ import type {
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantPromoteRequest,
+	DesktopAssistantPromoteResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
 	DesktopAssistantTaskDetailResponse,
@@ -122,7 +124,8 @@ export class InstanceApi {
 	/**
 	 * `POST /rest/desktop-assistant/task` — fire a one-shot task with the prompt
 	 * and the locally-detected context (structured pointer fields + optional
-	 * screenshot attachment). Returns the thread/run ids for SSE subscription.
+	 * screenshot attachment). Returns the thread/run pair; the renderer follows
+	 * the run on the thread event stream (see `renderer/assistant/run-watcher.ts`).
 	 */
 	async triggerTask(body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> {
 		const response = await this.authedFetch('/desktop-assistant/task', {
@@ -227,6 +230,31 @@ export class InstanceApi {
 			nodes.find((node) => /trigger$/i.test(node.type)) ??
 			nodes.find((node) => /webhook/i.test(node.type));
 		return trigger?.name;
+	}
+
+	/**
+	 * `POST /rest/desktop-assistant/promote-thread` — materialise an assistant
+	 * thread into a saved, editable workflow. Idempotent: returns `building` (with
+	 * the build run to wait on) until the build completes, then `done` with the
+	 * workflow id.
+	 */
+	async promoteThread(
+		threadId: string,
+		name?: string,
+		icon?: string,
+	): Promise<DesktopAssistantPromoteResponse> {
+		const body: DesktopAssistantPromoteRequest = {
+			threadId,
+			...(name ? { name } : {}),
+			...(icon ? { icon } : {}),
+		};
+		const response = await this.authedFetch('/desktop-assistant/promote-thread', {
+			method: 'POST',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body),
+		});
+		return await this.unwrap<DesktopAssistantPromoteResponse>(response);
 	}
 
 	/** `GET /rest/instance-ai/threads/:threadId/messages` — the thread's stored messages plus the `nextEventId` SSE cursor. */

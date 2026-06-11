@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
 	AppSettings,
 	AuthStatus,
+	CreateAssistantTaskResult,
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
@@ -11,7 +12,6 @@ import type {
 	DesktopAssistantRecommendationsResponse,
 	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
-	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
 	DetectedContext,
@@ -20,6 +20,7 @@ import type {
 	InstanceAiRichMessagesResponse,
 	MacPermissionKind,
 	MacPermissionStatus,
+	PromoteAssistantThreadResult,
 	RunTaskResult,
 	ScreenshotAttachment,
 	StatusSnapshot,
@@ -66,6 +67,23 @@ const electronApi: ElectronApi = {
 
 	runTask: async (workflowId: string): Promise<RunTaskResult> =>
 		await (ipcRenderer.invoke('tasks:run', workflowId) as Promise<RunTaskResult>),
+
+	createAssistantTask: async (
+		body: DesktopAssistantTaskRequest,
+	): Promise<CreateAssistantTaskResult> =>
+		await (ipcRenderer.invoke('assistant:createTask', body) as Promise<CreateAssistantTaskResult>),
+
+	promoteAssistantThread: async (
+		threadId: string,
+		name?: string,
+		icon?: string,
+	): Promise<PromoteAssistantThreadResult> =>
+		await (ipcRenderer.invoke(
+			'assistant:promote',
+			threadId,
+			name,
+			icon,
+		) as Promise<PromoteAssistantThreadResult>),
 
 	openWorkflow: async (workflowId: string): Promise<void> => {
 		await ipcRenderer.invoke('tasks:openWorkflow', workflowId);
@@ -159,9 +177,6 @@ const electronApi: ElectronApi = {
 			'context:captureScreenshot',
 			target,
 		) as Promise<ScreenshotAttachment>),
-
-	triggerTask: async (body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> =>
-		await (ipcRenderer.invoke('tasks:trigger', body) as Promise<DesktopAssistantTaskResponse>),
 
 	getRecommendations: async (
 		body: DesktopAssistantRecommendationsRequest,

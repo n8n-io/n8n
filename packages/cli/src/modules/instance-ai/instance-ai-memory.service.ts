@@ -16,6 +16,10 @@ import {
 	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
 
+import {
+	DESKTOP_ASSISTANT_THREAD_SOURCE,
+	THREAD_SOURCE_METADATA_KEY,
+} from './desktop-assistant/constants';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -79,8 +83,14 @@ export class InstanceAiMemoryService {
 			page,
 			orderBy: { field: 'updatedAt', direction: 'DESC' },
 		});
+		// Desktop-assistant threads are backing state for the desktop app, not chat
+		// conversations — hide them. Filtered post-fetch, so `total`/`hasMore` may
+		// slightly overcount; acceptable for the chat UI's paging.
+		const visibleThreads = result.threads.filter(
+			(t) => t.metadata?.[THREAD_SOURCE_METADATA_KEY] !== DESKTOP_ASSISTANT_THREAD_SOURCE,
+		);
 		return {
-			threads: result.threads.map((t) => this.toThreadInfo(t)),
+			threads: visibleThreads.map((t) => this.toThreadInfo(t)),
 			total: result.total,
 			page: result.page,
 			hasMore: result.hasMore,
@@ -91,6 +101,8 @@ export class InstanceAiMemoryService {
 		userId: string,
 		threadId: string,
 		projectId: string,
+		/** Initial metadata for a newly created thread; ignored when the thread already exists. */
+		metadata?: Record<string, unknown>,
 	): Promise<InstanceAiEnsureThreadResponse> {
 		const existing = await this.agentMemory.getThread(threadId);
 		if (existing) {
@@ -109,6 +121,7 @@ export class InstanceAiMemoryService {
 				id: threadId,
 				resourceId: userId,
 				title: '',
+				metadata,
 			},
 			projectId,
 		);

@@ -3,8 +3,7 @@ import { N8nIcon, N8nLogo } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
-import type { Plan } from '../assistant/planner';
-import { useAssistantScreen } from '../assistant/use-assistant-screen';
+import { useAssistantScreen, type Plan } from '../assistant/use-assistant-screen';
 
 const props = defineProps<{ plan: Plan }>();
 

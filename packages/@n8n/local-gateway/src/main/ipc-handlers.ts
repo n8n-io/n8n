@@ -14,6 +14,7 @@ import type { AppSettings, SettingsStore } from './settings-store';
 import type { ThreadService } from './thread-service';
 import type {
 	AuthStatus,
+	CreateAssistantTaskResult,
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
@@ -22,13 +23,13 @@ import type {
 	DesktopAssistantRecommendationsResponse,
 	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
-	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
 	DetectedContext,
 	InstanceAiRichMessagesResponse,
 	MacPermissionKind,
 	MacPermissionStatus,
+	PromoteAssistantThreadResult,
 	RunTaskResult,
 	ScreenshotAttachment,
 	WindowCaptureTarget,
@@ -199,6 +200,48 @@ export function registerIpcHandlers({
 		}
 	});
 
+	ipcMain.handle(
+		'assistant:createTask',
+		async (_event, body: DesktopAssistantTaskRequest): Promise<CreateAssistantTaskResult> => {
+			// `info` so it shows without enabling debug, and a summary rather than the
+			// raw body — screenshot attachments are multi-MB base64 we never want in logs.
+			logger.info('IPC assistant:createTask', summarizeTaskRequest(body));
+			try {
+				const { threadId, runId } = await instanceApi.triggerTask(body);
+				return { ok: true, threadId, runId };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.error('IPC assistant:createTask failed', { error: message });
+				return { ok: false, error: message };
+			}
+		},
+	);
+
+	ipcMain.handle(
+		'assistant:promote',
+		async (
+			_event,
+			threadId: string,
+			name?: string,
+			icon?: string,
+		): Promise<PromoteAssistantThreadResult> => {
+			logger.debug('IPC assistant:promote', { threadId });
+			try {
+				const result = await instanceApi.promoteThread(threadId, name, icon);
+				return {
+					ok: true,
+					status: result.status,
+					runId: result.status === 'building' ? result.runId : undefined,
+					workflowId: result.status === 'done' ? result.workflowId : undefined,
+				};
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.error('IPC assistant:promote failed', { threadId, error: message });
+				return { ok: false, error: message };
+			}
+		},
+	);
+
 	ipcMain.handle('tasks:openWorkflow', async (_event, workflowId: string): Promise<void> => {
 		logger.debug('IPC tasks:openWorkflow', { workflowId });
 		const url = instanceApi.workflowUrl(workflowId);
@@ -312,16 +355,6 @@ export function registerIpcHandlers({
 		async (_event, target?: WindowCaptureTarget): Promise<ScreenshotAttachment> => {
 			logger.debug('IPC context:captureScreenshot', { app: target?.app });
 			return await contextDetector.captureScreenshot(target);
-		},
-	);
-
-	ipcMain.handle(
-		'tasks:trigger',
-		async (_event, body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> => {
-			// `info` so it shows without enabling debug, and a summary rather than the
-			// raw body — screenshot attachments are multi-MB base64 we never want in logs.
-			logger.info('Triggering one-shot task', summarizeTaskRequest(body));
-			return await instanceApi.triggerTask(body);
 		},
 	);
 

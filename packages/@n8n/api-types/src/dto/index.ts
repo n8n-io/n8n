@@ -55,6 +55,7 @@ export {
 	type DesktopAssistantHistoryEntry,
 	type DesktopAssistantHistoryResponse,
 } from './desktop-assistant/desktop-assistant-history-response.dto';
+export type { DesktopAssistantTaskOutcome } from './desktop-assistant/desktop-assistant-task-outcome.dto';
 export {
 	DesktopAssistantRecommendationsRequestDto,
 	type DesktopAssistantRecommendationsRequest,

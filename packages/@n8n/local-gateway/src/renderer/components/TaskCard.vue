@@ -220,10 +220,13 @@ function open() {
 	min-width: 0;
 }
 
-/* Prototype: font-size 13px, font-weight 500 (not bold/700) */
+/* Prototype: font-size 13px, font-weight 500 (not bold/700).
+   --line-height--md (not the reset's 1) so overflow:hidden doesn't clip
+   descenders, while the row stays shorter than the 34px tile. */
 .title {
 	font-size: 13px;
 	font-weight: 500;
+	line-height: var(--line-height--md);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -237,6 +240,7 @@ function open() {
 	gap: 5px;
 	min-width: 0;
 	font-size: 11px;
+	line-height: var(--line-height--md);
 	margin-top: var(--spacing--5xs);
 	color: var(--da-subtler);
 }

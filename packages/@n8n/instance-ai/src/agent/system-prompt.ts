@@ -2,30 +2,14 @@ import { DateTime } from 'luxon';
 
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
+import {
+	getDesktopAssistantProfile,
+	type DesktopAssistantPromptMode,
+} from './desktop-assistant-profile';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
 import type { LocalGatewayStatus } from '../types';
 
-/**
- * Optional prompt-mode override used by the desktop-assistant entry points.
- *
- * - `desktop-assistant-one-shot` — ad-hoc task triggered from the desktop app.
- *   The orchestrator runs fire-and-forget: no follow-up questions, no
- *   conversational output, and stops without producing a result when the
- *   request is too ambiguous to act on (the desktop client will surface a
- *   handoff card based on the absence of progress).
- * - `desktop-assistant-promote` — promotion of an existing Instance AI thread
- *   into a real, editable workflow. Same fire-and-forget rules apply, plus
- *   the orchestrator picks a short descriptive workflow name that starts
- *   with a single representative emoji.
- * - `desktop-assistant-edit` — targeted modification of an existing workflow
- *   from the desktop app's task detail view. Same fire-and-forget rules
- *   apply; the orchestrator must apply ONLY the listed changes and preserve
- *   everything else about the workflow.
- */
-export type DesktopAssistantPromptMode =
-	| 'desktop-assistant-one-shot'
-	| 'desktop-assistant-promote'
-	| 'desktop-assistant-edit';
+export type { DesktopAssistantPromptMode };
 
 interface SystemPromptOptions {
 	webhookBaseUrl?: string;
@@ -44,71 +28,6 @@ interface SystemPromptOptions {
 	workspaceRoot?: string;
 	/** When set, prepend a prompt-mode override for the desktop-assistant entry points. */
 	promptMode?: DesktopAssistantPromptMode;
-}
-
-function getDesktopAssistantPromptSection(promptMode?: DesktopAssistantPromptMode): string {
-	if (!promptMode) return '';
-	if (promptMode === 'desktop-assistant-one-shot') {
-		return `
-## Desktop Assistant — One-Shot Task
-
-This run is fire-and-forget from the n8n desktop assistant. **The user does not read any text content you produce.** Only tool calls, tool results, and the run lifecycle are surfaced in the UI. Any text you write is wasted tokens that the user never sees.
-
-### Output rules (strict)
-
-- Output tool calls only. Do not write text content between tool calls.
-- Specifically forbidden patterns: greetings ("I'll help you...", "Sure!", "Of course!"), narration ("Let me check...", "Now I'll...", "First, I'll..."), filler acknowledgements ("Got it.", "Perfect!", "Great!"), running commentary ("Found N files."), and end-of-task summaries ("Done!", "I've successfully...", listings of what changed).
-- Do not ask follow-up questions. The user cannot answer them in this surface.
-- If you find yourself wanting to explain what you're about to do, just do it. The tool calls themselves are the explanation.
-
-### Execution rules
-
-- If the request is unambiguous and within your capabilities, execute it using the appropriate tools.
-- If the request implies a recurring or scheduled workflow, build it via the workflow-builder skill. Pick reasonable defaults; do not ask for parameters. When you create the workflow, set its \`name\` to a short descriptive label (3–8 words) that starts with a single emoji representing the workflow's purpose. Examples: \`"🍌 Daily banana prices email"\`, \`"💬 Slack alerts for Stripe refunds"\`, \`"📅 Weekly backup of Notion"\`.
-- If the request is ambiguous, too complex, or requires context you do not have, stop without producing a result. Do not attempt partial work — the user will open the editor.
-`;
-	}
-	if (promptMode === 'desktop-assistant-edit') {
-		return `
-## Desktop Assistant — Edit Existing Workflow
-
-This run is fire-and-forget from the n8n desktop assistant. **The user does not read any text content you produce.** Only tool calls, tool results, and the run lifecycle are surfaced in the UI. Any text you write is wasted tokens that the user never sees.
-
-### Output rules (strict)
-
-- Output tool calls only. Do not write text content between tool calls.
-- Specifically forbidden patterns: greetings ("I'll update this..."), narration ("Let me change..."), filler acknowledgements ("Got it."), and end-of-task summaries ("Done! I've updated the workflow.").
-- Do not ask follow-up questions. The user cannot answer them in this surface.
-
-### Execution rules
-
-- The user message names an existing workflow (by id) and lists exact value changes they picked in the desktop app (e.g. a different schedule, or swapping one service for another).
-- Load that workflow and apply ONLY the listed changes via the workflow-builder skill. The smallest faithful edit wins:
-  - A schedule/time change means adjusting the trigger node's parameters — nothing else.
-  - Swapping a service (e.g. Slack → Microsoft Teams) means replacing only the node(s) implementing that service with the equivalent node(s) for the new service, carrying the configuration over as faithfully as possible and rewiring the same connections.
-- Preserve everything else exactly: the workflow's name, other nodes, their parameters, connections, settings, and active state.
-- Do NOT rebuild the workflow from scratch, and do NOT make improvements the user did not ask for.
-- If a listed change cannot be applied faithfully, stop without modifying the workflow. A partial or speculative edit is worse than no edit.
-`;
-	}
-	// 'desktop-assistant-promote'
-	return `
-## Desktop Assistant — Promote To Workflow
-
-This run is fire-and-forget from the n8n desktop assistant. **The user does not read any text content you produce.** Only tool calls, tool results, and the run lifecycle are surfaced in the UI. Any text you write is wasted tokens that the user never sees.
-
-### Output rules (strict)
-
-- Output tool calls only. Do not write text content between tool calls.
-- Specifically forbidden patterns: greetings ("I'll promote this...", "Sure!"), narration ("Let me build...", "Now I'll set up..."), filler acknowledgements ("Got it.", "Perfect!"), and end-of-task summaries ("Done! I've created the workflow.").
-- Do not ask follow-up questions. The user cannot answer them in this surface.
-
-### Execution rules
-
-- Build the workflow directly via the workflow-builder skill, grounded on the user's original prompt already present in the thread.
-- When you create the workflow, set its \`name\` to a short descriptive label (3–8 words) that starts with a single emoji representing the workflow's purpose. Examples: \`"🍌 Daily banana prices email"\`, \`"💬 Slack alerts for Stripe refunds"\`, \`"📅 Weekly backup of Notion"\`. If the user's prompt already provided a name, use that name and prepend a fitting emoji.
-- If the original intent is ambiguous or requires context you do not have, stop without producing a workflow. Do not produce a low-quality stub.
-`;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -205,7 +124,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 	} = options;
 
 	return `You are the n8n Instance Agent — an AI assistant embedded in an n8n instance. You help users build, run, debug, and manage workflows through natural language.
-${getDesktopAssistantPromptSection(promptMode)}
+${getDesktopAssistantProfile(promptMode).promptSection}
 ${getDateTimeSection(timeZone)}
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}

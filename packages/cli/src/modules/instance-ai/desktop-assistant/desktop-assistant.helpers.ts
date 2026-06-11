@@ -60,14 +60,34 @@ export function describeActiveContext(
 	return app ?? title ?? undefined;
 }
 
-/** Compose the promote-thread message: grounds the build on the original
- *  prompt and nudges the model to pick a short, emoji-led workflow name. */
+/**
+ * Flatten stored message content into plain text. String content passes
+ * through; multi-part content keeps only `{ type: 'text' }` parts (an
+ * attachment part would otherwise leak megabytes of base64 into a prompt).
+ */
+export function extractTextContent(content: unknown): string {
+	if (typeof content === 'string') return content;
+	if (!Array.isArray(content)) return '';
+	return content
+		.filter(isTextPart)
+		.map((part) => part.text)
+		.join('\n')
+		.trim();
+}
+
+function isTextPart(part: unknown): part is { type: 'text'; text: string } {
+	if (typeof part !== 'object' || part === null) return false;
+	const candidate = part as { type?: unknown; text?: unknown };
+	return candidate.type === 'text' && typeof candidate.text === 'string';
+}
+
+/** Leads with the replay-vs-fresh decision so the recorded tool calls don't
+ *  anchor the model toward literal replay. Naming rules (plain text, no emoji)
+ *  live in the promote system prompt. */
 export function composePromoteMessage(originalPrompt: string, name: string | undefined): string {
 	const trimmedName = name?.trim();
-	const intro = trimmedName
-		? `Promote this idea into a real workflow. Use the name "${trimmedName}" (prepend a fitting emoji if it does not already start with one):`
-		: 'Promote this idea into a real workflow. Pick a short descriptive name for it as part of the build, and start that name with a single emoji that captures what the workflow does:';
-	return `${intro}\n\n${originalPrompt}`;
+	const naming = trimmedName ? ` Name it "${trimmedName}".` : '';
+	return `Turn the task from this thread into a repeatable workflow. Decide first, from the original request below: must a future run reproduce the recorded results exactly, or generate content fresh? The recorded tool calls show what was done, not necessarily what should be replayed literally.${naming} The original request:\n\n${originalPrompt}`;
 }
 
 // ── Recommendations ──────────────────────────────────────────────────────────

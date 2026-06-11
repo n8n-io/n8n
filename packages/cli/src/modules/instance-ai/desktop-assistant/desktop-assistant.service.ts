@@ -40,9 +40,14 @@ import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
+	COMPUTER_USE_NODE_TYPES,
 	DESKTOP_ASSISTANT_TAG,
+	DESKTOP_ASSISTANT_THREAD_SOURCE,
+	DEVICE_CONNECTION_CREDENTIAL_TYPE,
+	PROMOTE_RUN_ID_KEY,
 	PROMOTED_FROM_THREAD_ID_KEY,
 	PROMOTED_WORKFLOW_ID_KEY,
+	THREAD_SOURCE_METADATA_KEY,
 } from './constants';
 import { classifyWorkflowsForDesktopAssistant } from './desktop-assistant.classifier';
 import type { ClassifierInput } from './desktop-assistant.classifier';
@@ -54,6 +59,7 @@ import {
 	composeRecommendationsInput,
 	composeTaskDescriptionInput,
 	extractBuiltWorkflowId,
+	extractTextContent,
 	extractWorkflowLoopBuildOutcome,
 	normalizeDescriptionParts,
 	readCachedTaskDetail,
@@ -160,6 +166,16 @@ export class DesktopAssistantService {
 	 * and after a successful promote. */
 	private desktopAssistantTagId: string | null = null;
 
+	/**
+	 * Build runs that have finished but whose outcome is still being settled
+	 * (outcome read + the `onWorkflowBuilt` follow-up: tag, meta, credential,
+	 * `promotedWorkflowId`, activation). The client's confirming promote call
+	 * races exactly this window: the run is no longer active and the workflow id
+	 * is not yet on the thread, so without this marker `promoteThread` would
+	 * fall through and start a duplicate build.
+	 */
+	private readonly finalizingBuildRunIds = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceAiService: InstanceAiService,
@@ -219,20 +235,29 @@ export class DesktopAssistantService {
 			);
 		}
 
+		// Tasks are the assistant's own creations, not the user's whole instance.
+		const taskWorkflows = workflows.filter((workflow) =>
+			(tagsByWorkflowId.get(workflow.id) ?? []).some((tag) => tag.name === DESKTOP_ASSISTANT_TAG),
+		);
+		if (taskWorkflows.length === 0) {
+			return { actionNeeded: [], upcoming: [], readyToRun: [] };
+		}
+
 		const credentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
 		const accessibleCredentialIds = new Set(credentials.map((c) => c.id));
 
-		const lastExecutionByWorkflowId = await this.fetchLastExecutionByWorkflowId(liveWorkflowIds);
+		const lastExecutionByWorkflowId = await this.fetchLastExecutionByWorkflowId(
+			taskWorkflows.map((wf) => wf.id),
+		);
 
-		const inputs: ClassifierInput[] = workflows.map((workflow) => {
+		const inputs: ClassifierInput[] = taskWorkflows.map((workflow) => {
 			// Icon priority: explicit `meta.desktopAssistant.icon` wins, then any
 			// leading emoji the orchestrator put on the workflow name (the
-			// `desktop-assistant-promote` and recurring one-shot prompts both
-			// instruct picking one), then the classifier falls back to a node-type
-			// icon. The display name strips the leading emoji so the desktop card
-			// shows it once, in the icon slot.
+			// `desktop-assistant-promote` prompt instructs picking one), then the
+			// classifier falls back to a node-type icon. The display name strips
+			// the leading emoji so the desktop card shows it once, in the icon slot.
 			const metaIcon = readDesktopAssistantMeta(workflow.meta)?.icon;
 			const { emoji: nameEmoji, rest: displayName } = splitLeadingEmoji(workflow.name);
 			const lastExec = lastExecutionByWorkflowId.get(workflow.id);
@@ -341,7 +366,11 @@ export class DesktopAssistantService {
 		// redundant validation needed here.
 		const threadId = randomUUID();
 		const projectId = await this.resolvePersonalProjectId(user);
-		await this.memoryService.ensureThread(user.id, threadId, projectId);
+		// Mark the thread as desktop-originated at creation so the chat UI's
+		// thread list can filter it out.
+		await this.memoryService.ensureThread(user.id, threadId, projectId, {
+			[THREAD_SOURCE_METADATA_KEY]: DESKTOP_ASSISTANT_THREAD_SOURCE,
+		});
 
 		const composedMessage = composeOneShotMessage(body);
 		const runId = this.instanceAiService.startRun(
@@ -662,6 +691,19 @@ export class DesktopAssistantService {
 			// through and rebuild.
 		}
 
+		// In-flight guard: the client re-sends this request to confirm completion
+		// after watching the build run (and a thread can be re-kept); while the
+		// recorded run is still active — or finished but still being finalised —
+		// return it instead of starting another.
+		const inFlightRunId = await this.readPromoteRunId(user.id, body.threadId);
+		if (
+			inFlightRunId &&
+			(this.instanceAiService.getActiveRunId(body.threadId) === inFlightRunId ||
+				this.finalizingBuildRunIds.has(inFlightRunId))
+		) {
+			return { status: 'building', threadId: body.threadId, runId: inFlightRunId };
+		}
+
 		const originalPrompt = await this.recoverOriginalPrompt(body.threadId);
 		const buildPrompt = composePromoteMessage(originalPrompt, body.name);
 
@@ -672,25 +714,51 @@ export class DesktopAssistantService {
 			undefined,
 			undefined,
 			undefined,
-			{ promptMode: 'desktop-assistant-promote' },
+			{
+				promptMode: 'desktop-assistant-promote',
+			},
 		);
-
 		// Subscribe AFTER we have the runId so the listener can scope itself to
-		// the exact run we just kicked off. `subscribe` is synchronous and
+		// the exact run we just kicked off, and BEFORE the first await so the
+		// run can't finish (or anything below fail) without a listener in place
+		// to finalise the built workflow. `subscribe` is synchronous and
 		// `startRun` only registers the run; it doesn't dispatch any events on
 		// the bus before this line runs.
-		const cleanup = this.subscribeForBuildOutcome(user, body.threadId, runId, (workflowId) => {
-			this.finalizePromotedWorkflow(user, body.threadId, workflowId).catch((error: unknown) => {
-				this.logger.warn('Failed to finalise promoted workflow', {
-					threadId: body.threadId,
-					workflowId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			});
-		});
+		const cleanup = this.subscribeForBuildOutcome(
+			user,
+			body.threadId,
+			runId,
+			async (workflowId) => {
+				try {
+					await this.finalizePromotedWorkflow(user, body.threadId, workflowId, body.icon);
+				} catch (error) {
+					this.logger.warn('Failed to finalise promoted workflow', {
+						threadId: body.threadId,
+						workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			},
+		);
 
 		// Hard-cap the listener so a stalled run does not leak a subscription.
 		setTimeout(cleanup, BUILD_FINALIZE_TIMEOUT_MS).unref();
+
+		// Record the run for the confirming call's in-flight guard. Best-effort:
+		// the run is already underway and subscribed for finalisation, so failing
+		// the request here would only push the client into a retry that starts a
+		// duplicate build.
+		try {
+			await this.memoryService.updateThread(body.threadId, {
+				metadata: { [PROMOTE_RUN_ID_KEY]: runId },
+			});
+		} catch (error) {
+			this.logger.warn('Failed to record promote run id on thread', {
+				threadId: body.threadId,
+				runId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 
 		return { status: 'building', threadId: body.threadId, runId };
 	}
@@ -720,13 +788,29 @@ export class DesktopAssistantService {
 		user: User,
 		threadId: string,
 		runId: string,
-		onWorkflowBuilt: (workflowId: string) => void,
+		onWorkflowBuilt: (workflowId: string) => void | Promise<void>,
 	): () => void {
 		let handled = false;
 		const finalise = (workflowId: string) => {
 			handled = true;
 			unsubscribe();
-			onWorkflowBuilt(workflowId);
+			// Hold the run in `finalizingBuildRunIds` until the callback's follow-up
+			// work settles: once it has, the outcome (e.g. `promotedWorkflowId`) is on
+			// the thread — or the follow-up failed and a rebuild is allowed.
+			this.finalizingBuildRunIds.add(runId);
+			Promise.resolve()
+				.then(async () => await onWorkflowBuilt(workflowId))
+				.catch((error: unknown) => {
+					// Call sites own their error handling; this is a safety net.
+					this.logger.warn('Build outcome callback failed', {
+						threadId,
+						workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				})
+				.finally(() => {
+					this.finalizingBuildRunIds.delete(runId);
+				});
 		};
 
 		const unsubscribe = this.eventBus.subscribe(threadId, (storedEvent: StoredEvent) => {
@@ -746,6 +830,10 @@ export class DesktopAssistantService {
 			if (ev.type !== 'run-finish') return;
 			if (ev.runId !== runId) return;
 
+			// Marked synchronously with the run-finish dispatch, so a confirming
+			// promote call can never observe "run gone, no workflow yet" and rebuild.
+			// `finalise` takes over the marker; the non-finalising exits release it.
+			this.finalizingBuildRunIds.add(runId);
 			void this.memoryService
 				.getThreadMetadata(user.id, threadId)
 				.then((metadata) => {
@@ -756,12 +844,14 @@ export class DesktopAssistantService {
 						// run is over, so stop listening rather than wait out the timeout.
 						handled = true;
 						unsubscribe();
+						this.finalizingBuildRunIds.delete(runId);
 						this.logger.debug('Build run finished without a workflow', { threadId, runId });
 						return;
 					}
 					finalise(workflowId);
 				})
 				.catch((error: unknown) => {
+					this.finalizingBuildRunIds.delete(runId);
 					this.logger.warn('Failed to read build thread metadata at run-finish', {
 						threadId,
 						runId,
@@ -776,9 +866,11 @@ export class DesktopAssistantService {
 		user: User,
 		threadId: string,
 		workflowId: string,
+		icon?: string,
 	): Promise<void> {
 		await this.applyDesktopAssistantTag(workflowId);
-		await this.writeDesktopAssistantMeta(workflowId, threadId);
+		await this.writeDesktopAssistantMeta(workflowId, threadId, icon);
+		await this.applyDeviceCredential(user, workflowId);
 		await this.memoryService.updateThread(threadId, {
 			metadata: { [PROMOTED_WORKFLOW_ID_KEY]: workflowId },
 		});
@@ -815,6 +907,38 @@ export class DesktopAssistantService {
 		}
 	}
 
+	/**
+	 * Fill the Device Connection credential on Computer Use nodes the build left
+	 * unset, so a freshly promoted task is runnable without a manual setup trip.
+	 * Deterministic post-processing: the model never handles credential ids, and
+	 * only the promoting user's own device credential is ever applied.
+	 */
+	private async applyDeviceCredential(user: User, workflowId: string): Promise<void> {
+		const credential = await this.instanceAiService.findOwnDeviceCredential(user);
+		if (!credential) return; // surfaces in the actionNeeded bucket instead
+
+		const workflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			select: ['id', 'nodes'],
+		});
+		if (!workflow) return;
+
+		let changed = false;
+		const nodes = workflow.nodes.map((node) => {
+			if (!COMPUTER_USE_NODE_TYPES.has(node.type)) return node;
+			if (node.credentials?.[DEVICE_CONNECTION_CREDENTIAL_TYPE]) return node;
+			changed = true;
+			return {
+				...node,
+				credentials: {
+					...(node.credentials ?? {}),
+					[DEVICE_CONNECTION_CREDENTIAL_TYPE]: { id: credential.id, name: credential.name },
+				},
+			};
+		});
+		if (changed) await this.workflowRepository.update(workflowId, { nodes });
+	}
+
 	private async applyDesktopAssistantTag(workflowId: string): Promise<void> {
 		const tagId = await this.getOrCreateDesktopAssistantTagId();
 		const existing = await this.workflowTagMappingRepository.findOne({
@@ -824,21 +948,36 @@ export class DesktopAssistantService {
 		await this.workflowTagMappingRepository.insert({ workflowId, tagId });
 	}
 
-	private async writeDesktopAssistantMeta(workflowId: string, threadId: string): Promise<void> {
+	/**
+	 * Write provenance + icon onto `meta.desktopAssistant`. If the build produced
+	 * an emoji-led name despite the prompt, the leading emoji is moved out of the
+	 * name and doubles as the icon fallback, so workflow names stay plain text.
+	 */
+	private async writeDesktopAssistantMeta(
+		workflowId: string,
+		threadId: string,
+		icon?: string,
+	): Promise<void> {
 		const workflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },
-			select: ['id', 'meta'],
+			select: ['id', 'name', 'meta'],
 		});
 		if (!workflow) return;
 		const existing = readDesktopAssistantMeta(workflow.meta) ?? {};
+		const { emoji: nameEmoji, rest: cleanName } = splitLeadingEmoji(workflow.name ?? '');
+		const resolvedIcon = icon ?? existing.icon ?? nameEmoji;
 		const nextMeta = {
 			...(workflow.meta ?? {}),
 			desktopAssistant: {
 				...existing,
+				...(resolvedIcon ? { icon: resolvedIcon } : {}),
 				[PROMOTED_FROM_THREAD_ID_KEY]: threadId,
 			},
 		};
-		await this.workflowRepository.update(workflowId, { meta: nextMeta });
+		await this.workflowRepository.update(workflowId, {
+			meta: nextMeta,
+			...(nameEmoji && cleanName ? { name: cleanName } : {}),
+		});
 	}
 
 	private async getOrCreateDesktopAssistantTagId(): Promise<string> {
@@ -865,6 +1004,12 @@ export class DesktopAssistantService {
 		return typeof v === 'string' ? v : undefined;
 	}
 
+	private async readPromoteRunId(userId: string, threadId: string): Promise<string | undefined> {
+		const metadata = await this.memoryService.getThreadMetadata(userId, threadId);
+		const v = metadata?.[PROMOTE_RUN_ID_KEY];
+		return typeof v === 'string' ? v : undefined;
+	}
+
 	private async recoverOriginalPrompt(threadId: string): Promise<string> {
 		const messages = await this.memoryService.getThreadMessages('', threadId, {
 			limit: 50,
@@ -874,9 +1019,13 @@ export class DesktopAssistantService {
 		if (!firstUser) {
 			throw new BadRequestError(`Thread ${threadId} has no user message to promote`);
 		}
-		if (typeof firstUser.content === 'string') return firstUser.content;
-		// Best-effort: flatten content parts into a single string for the build prompt.
-		return JSON.stringify(firstUser.content);
+		// Keep only text parts: stringified attachments would embed base64 payloads
+		// into the build prompt and blow the model's context window.
+		const text = extractTextContent(firstUser.content);
+		if (!text) {
+			throw new BadRequestError(`Thread ${threadId} has no text prompt to promote`);
+		}
+		return text;
 	}
 
 	private async resolvePersonalProjectId(user: User): Promise<string> {
@@ -902,11 +1051,15 @@ export class DesktopAssistantService {
 
 		// Skip executions of archived workflows. Archive is a user signal of
 		// "I'm done with this"; their runs should drop out of the history view.
+		// Mirrors the tasks list: only desktop-assistant-tagged workflows count.
 		const liveRows = await this.workflowRepository.find({
 			where: { id: In(accessibleWorkflowIds), isArchived: false },
-			select: { id: true },
+			relations: { tags: true },
+			select: { id: true, tags: { name: true } },
 		});
-		const liveWorkflowIds = liveRows.map((row) => row.id);
+		const liveWorkflowIds = liveRows
+			.filter((row) => (row.tags ?? []).some((tag) => tag.name === DESKTOP_ASSISTANT_TAG))
+			.map((row) => row.id);
 		if (liveWorkflowIds.length === 0) return EMPTY_HISTORY;
 
 		const sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
