@@ -237,6 +237,9 @@ test.describe(
 			const { executionId, workflowId, workflow } = await runProductionExecution(api);
 			await n8n.navigate.toExecution(workflowId, executionId);
 			await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
+			await expect(n8n.executions.outputPanel.getDataContainer()).toHaveText(
+				/executionMode[\s\S]*production/i,
+			);
 			await expect(n8n.executions.outputPanel.getDataContainer()).not.toHaveText(
 				/Output data redacted/,
 			);
@@ -244,6 +247,9 @@ test.describe(
 			await api.securitySettings.setRedactionFloor('all');
 			await n8n.navigate.toExecution(workflowId, executionId);
 			await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
+			await expect(n8n.executions.outputPanel.getDataContainer()).toHaveText(
+				/executionMode[\s\S]*production/i,
+			);
 			await expect(n8n.executions.outputPanel.getDataContainer()).not.toHaveText(
 				/Output data redacted/,
 			);

@@ -108,7 +108,7 @@ export class NavigationHelper {
 	/**
 	 * Navigate to a specific execution within a workflow
 	 * URLs:
-	 * - Existing workflow: /workflow/{workflowId}/execution/{executionId}
+	 * - Existing workflow: /workflow/{workflowId}/executions/{executionId}
 	 */
 	async toExecution(workflowId: string, executionId: string): Promise<void> {
 		const url = `/workflow/${workflowId}/executions/${executionId}`;
