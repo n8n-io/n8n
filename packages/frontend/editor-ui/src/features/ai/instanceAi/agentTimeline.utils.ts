@@ -44,6 +44,20 @@ export function isVisibleTimelineEntry(
 	return child !== undefined && !isActiveBuilderAgent(child);
 }
 
+/**
+ * True while `entry` is the timeline entry still receiving stream deltas.
+ * The reducer only ever appends to an agent's LAST timeline entry, so any
+ * entry before the tail is settled — even while the agent itself is still
+ * active (e.g. text written before a tool call or an HITL pause). Used to
+ * scope the markdown decoration deferral to the one actively-growing block.
+ */
+export function isStreamingTimelineEntry(
+	agentNode: InstanceAiAgentNode,
+	entry: InstanceAiTimelineEntry,
+): boolean {
+	return agentNode.status === 'active' && entry === agentNode.timeline.at(-1);
+}
+
 export interface ArtifactInfo {
 	type: 'workflow' | 'data-table';
 	resourceId: string;

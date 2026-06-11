@@ -145,4 +145,38 @@ describe('InstanceAiMarkdown', () => {
 		expect(result).toContain('[the My Workflow docs](https://example.com)');
 		expect(result).not.toContain('n8n-resource://');
 	});
+
+	describe('streaming deferral', () => {
+		const registry = () => makeRegistry([{ type: 'workflow', id: 'wf-1', name: 'My Workflow' }]);
+		const content = 'Check out My Workflow please';
+
+		it('should render raw content without decoration while streaming', () => {
+			thread.resourceNameIndex = registry();
+			const { getByTestId } = renderComponent({ props: { content, streaming: true } });
+
+			expect(getByTestId('markdown-output').textContent).toBe(content);
+		});
+
+		it('should apply decoration when the block settles (streaming flips false)', async () => {
+			thread.resourceNameIndex = registry();
+			const { getByTestId, rerender } = renderComponent({ props: { content, streaming: true } });
+
+			expect(getByTestId('markdown-output').textContent).not.toContain('n8n-resource://');
+
+			await rerender({ content, streaming: false });
+
+			expect(getByTestId('markdown-output').textContent).toContain(
+				'[My Workflow](n8n-resource://workflow/wf-1)',
+			);
+		});
+
+		it('should decorate immediately when streaming is not set (history-loaded messages)', () => {
+			thread.resourceNameIndex = registry();
+			const { getByTestId } = renderComponent({ props: { content } });
+
+			expect(getByTestId('markdown-output').textContent).toContain(
+				'[My Workflow](n8n-resource://workflow/wf-1)',
+			);
+		});
+	});
 });

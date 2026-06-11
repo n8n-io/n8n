@@ -1,6 +1,10 @@
 import { describe, test, expect } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
-import { extractArtifacts, isVisibleTimelineEntry } from '../agentTimeline.utils';
+import {
+	extractArtifacts,
+	isStreamingTimelineEntry,
+	isVisibleTimelineEntry,
+} from '../agentTimeline.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
 	return {
@@ -342,5 +346,40 @@ describe('isVisibleTimelineEntry', () => {
 		expect(isVisibleTimelineEntry(entry, {}, { 'sub-1': completedBuilder })).toBe(true);
 		expect(isVisibleTimelineEntry(entry, {}, { 'sub-1': activeBuilder })).toBe(false);
 		expect(isVisibleTimelineEntry(entry, {}, {})).toBe(false);
+	});
+});
+
+describe('isStreamingTimelineEntry', () => {
+	test('only the tail entry of an active agent is streaming', () => {
+		const settled = { type: 'text' as const, content: 'settled before the tool call' };
+		const toolCall = { type: 'tool-call' as const, toolCallId: 'tc-1' };
+		const tail = { type: 'text' as const, content: 'still receiving deltas' };
+		const node = makeAgentNode({ status: 'active', timeline: [settled, toolCall, tail] });
+
+		expect(isStreamingTimelineEntry(node, tail)).toBe(true);
+		expect(isStreamingTimelineEntry(node, settled)).toBe(false);
+	});
+
+	test('text settles once a tool call follows it, even while the agent stays active (HITL pause)', () => {
+		const text = { type: 'text' as const, content: 'please review the plan' };
+		const pendingTool = { type: 'tool-call' as const, toolCallId: 'tc-plan' };
+		const node = makeAgentNode({ status: 'active', timeline: [text, pendingTool] });
+
+		expect(isStreamingTimelineEntry(node, text)).toBe(false);
+	});
+
+	test('nothing streams on a settled agent', () => {
+		const tail = { type: 'text' as const, content: 'final answer' };
+		for (const status of ['completed', 'error', 'cancelled'] as const) {
+			const node = makeAgentNode({ status, timeline: [tail] });
+			expect(isStreamingTimelineEntry(node, tail)).toBe(false);
+		}
+	});
+
+	test('an equal-by-value entry from another timeline does not stream (identity check)', () => {
+		const tail = { type: 'text' as const, content: 'hello' };
+		const node = makeAgentNode({ status: 'active', timeline: [tail] });
+
+		expect(isStreamingTimelineEntry(node, { ...tail })).toBe(false);
 	});
 });

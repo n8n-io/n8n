@@ -10,6 +10,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import {
 	extractArtifacts,
+	isStreamingTimelineEntry,
 	isVisibleTimelineEntry,
 	HIDDEN_TOOLS,
 	type ArtifactInfo,
@@ -266,7 +267,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 			>
 				<InstanceAiMarkdown
 					:content="entry.content"
-					:streaming="props.agentNode.status === 'active'"
+					:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 				/>
 			</N8nText>
 

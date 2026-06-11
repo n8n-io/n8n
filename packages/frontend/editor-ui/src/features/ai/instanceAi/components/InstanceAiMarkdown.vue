@@ -7,9 +7,11 @@ const props = defineProps<{
 	content: string;
 	/**
 	 * True while the source text is still streaming in. While streaming we skip
-	 * the resource-name decoration and the post-render DOM link enhancement —
-	 * both are O(content × resources) and re-run on every token — and apply them
-	 * once the block settles. Markdown formatting still renders live.
+	 * the resource-name decoration — O(content × resources), re-run on every
+	 * token — and apply it once the block settles. Markdown formatting still
+	 * renders live, and the post-render DOM link walk keeps running so links
+	 * the AI writes directly (e.g. `[name](/workflow/abc)`) stay safe to click
+	 * mid-stream (target="_blank" instead of same-tab SPA navigation).
 	 */
 	streaming?: boolean;
 }>();
@@ -355,9 +357,10 @@ function cleanupLinkHandlers(): void {
 
 onMounted(enhanceResourceLinks);
 onUpdated(() => {
-	// While streaming the content has no decorated resource links yet, so the
-	// DOM walk is pure overhead — defer it to the settled render.
-	if (props.streaming) return;
+	// Runs while streaming too: decorated n8n-resource:// links can't exist yet
+	// (decoration is deferred), but AI-authored internal-route links can, and
+	// this walk is their only target="_blank" — without it a mid-stream click
+	// navigates the SPA tab away from the live chat. O(anchors), cheap.
 	cleanupLinkHandlers();
 	enhanceResourceLinks();
 });
