@@ -18,6 +18,12 @@ const emit = defineEmits<{ submit: [] }>();
 
 const inputRef = ref<HTMLInputElement | null>(null);
 
+/** Enter that confirms an IME composition (CJK input) must not submit the message. */
+function onEnter(event: KeyboardEvent) {
+	if (event.isComposing) return;
+	emit('submit');
+}
+
 defineExpose({ focus: () => inputRef.value?.focus() });
 </script>
 
@@ -30,7 +36,7 @@ defineExpose({ focus: () => inputRef.value?.focus() });
 			:disabled="disabled"
 			:aria-label="inputAriaLabel"
 			:placeholder="placeholder"
-			@keydown.enter="emit('submit')"
+			@keydown.enter="onEnter"
 		/>
 		<button
 			type="button"

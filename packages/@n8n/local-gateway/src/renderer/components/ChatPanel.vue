@@ -26,7 +26,10 @@ function onTitleChanged(title: string, isFallback?: boolean) {
 
 <template>
 	<div v-if="chatOverlay.threadId" :class="$style.panel">
+		<!-- Keyed by thread: switching threads remounts the transcript (fresh load +
+		     listener lifecycle) without touching the panel or its slide-up transition. -->
 		<ChatMessages
+			:key="chatOverlay.threadId"
 			ref="messagesRef"
 			:thread-id="chatOverlay.threadId"
 			:last-event-id="chatOverlay.lastEventId"
