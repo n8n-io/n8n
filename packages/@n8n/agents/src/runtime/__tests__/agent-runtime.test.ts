@@ -4831,3 +4831,203 @@ describe('AgentRuntime.resume() with createCancellation() — manual handling (h
 		expect(callCtx.resumeData).toBeUndefined();
 	});
 });
+
+// ---------------------------------------------------------------------------
+// toModelOutput error resilience — processToolCall must never re-throw
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — toModelOutput error resilience', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	function makeTransformErrorTool(name = 'transform_tool'): BuiltTool {
+		return {
+			name,
+			description: 'A tool whose toModelOutput always throws',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async () => await Promise.resolve({ raw: 'data' }),
+			toModelOutput: () => {
+				throw new Error('toModelOutput failed');
+			},
+		};
+	}
+
+	function makeSuspendingTransformErrorTool(name = 'suspend_tool'): BuiltTool {
+		return {
+			name,
+			description: 'A suspending tool whose toModelOutput throws on the resumed call',
+			inputSchema: z.object({ value: z.string().optional() }),
+			suspendSchema: z.object({ reason: z.string() }),
+			resumeSchema: z.object({ approved: z.boolean() }),
+			handler: async (_input, ctx) => {
+				const suspendCtx = ctx as InterruptibleToolContext;
+				if (!suspendCtx.resumeData) {
+					return await suspendCtx.suspend({ reason: 'needs approval' });
+				}
+				return { done: true };
+			},
+			toModelOutput: () => {
+				throw new Error('toModelOutput failed on resume');
+			},
+		};
+	}
+
+	it('generate(): toModelOutput throwing is treated as a tool error — loop continues', async () => {
+		const tool = makeTransformErrorTool();
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'transform_tool', args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('I see the tool errored'));
+
+		const result = await runtime.generate('run the tool');
+
+		// The agent loop must not crash — it continues and the LLM finishes
+		expect(result.finishReason).toBe('stop');
+		// Two LLM calls: tool-call turn + follow-up after error
+		expect(generateText).toHaveBeenCalledTimes(2);
+	});
+
+	it('stream(): toModelOutput throwing surfaces as isError tool-result — loop continues', async () => {
+		const tool = makeTransformErrorTool();
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'transform_tool',
+									args: {},
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'transform_tool', input: {} }]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('I see the tool errored'));
+
+		const { stream } = await runtime.stream('run the tool');
+		const chunks = await collectChunks(stream);
+
+		const finishChunk = chunks.find((c) => c.type === 'finish') as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+		expect(finishChunk?.finishReason).toBe('stop');
+
+		const toolResultChunk = chunks.find(
+			(c) => c.type === 'tool-result' && c.toolCallId === 'tc-1',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+		expect(toolResultChunk?.isError).toBe(true);
+	});
+
+	it('generate() resume: toModelOutput throwing in resumed tool call is captured — loop continues', async () => {
+		const tool = makeSuspendingTransformErrorTool();
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Handled the resume error'));
+
+		// First call: tool suspends
+		const firstResult = await runtime.generate('run the tool');
+		expect(firstResult.finishReason).toBe('tool-calls');
+		expect(firstResult.pendingSuspend).toHaveLength(1);
+
+		const { runId, toolCallId } = firstResult.pendingSuspend![0];
+
+		// Resume: tool returns a result but toModelOutput throws
+		// Bug: without fix this propagates out of iteratePendingToolCallsConcurrent and
+		// causes generate() to return with finishReason 'error' instead of 'stop'.
+		const resumeResult = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{
+				runId,
+				toolCallId,
+			},
+		);
+
+		expect(resumeResult.finishReason).toBe('stop');
+		// Two LLM calls: initial + after resume error
+		expect(generateText).toHaveBeenCalledTimes(2);
+	});
+
+	it('stream() resume: toModelOutput throwing in resumed tool call does not close the stream with error', async () => {
+		const tool = makeSuspendingTransformErrorTool();
+		const { runtime } = createRuntimeWithTools([tool], 1);
+
+		// First stream: agent calls the tool and suspends
+		streamText.mockReturnValueOnce({
+			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'tc-1',
+								toolName: 'suspend_tool',
+								args: {},
+							},
+						],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'suspend_tool', input: {} }]),
+		});
+
+		const firstResult = await runtime.stream('run the tool');
+		const firstChunks = await collectChunks(firstResult.stream);
+
+		const suspendChunk = firstChunks.find((c) => c.type === 'tool-call-suspended') as
+			| (StreamChunk & { type: 'tool-call-suspended' })
+			| undefined;
+		expect(suspendChunk).toBeDefined();
+
+		// Resume: toModelOutput throws
+		// Bug: without fix this closes the stream with finishReason 'error' via closeStreamWithError.
+		streamText.mockReturnValueOnce(makeStreamSuccess('Handled the resume error'));
+
+		const resumed = await runtime.resume(
+			'stream',
+			{ approved: true },
+			{
+				runId: suspendChunk!.runId,
+				toolCallId: suspendChunk!.toolCallId,
+			},
+		);
+		const resumedChunks = await collectChunks(resumed.stream);
+
+		const finishChunk = resumedChunks.find((c) => c.type === 'finish') as
+			| (StreamChunk & { type: 'finish' })
+			| undefined;
+		expect(finishChunk).toBeDefined();
+		// Must NOT be 'error' — the tool error should be contained, not kill the stream
+		expect(finishChunk!.finishReason).not.toBe('error');
+
+		// The resumed stream should contain a tool-result with isError: true
+		const toolResultChunk = resumedChunks.find(
+			(c) => c.type === 'tool-result' && c.toolCallId === 'tc-1',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+		expect(toolResultChunk).toBeDefined();
+		expect(toolResultChunk!.isError).toBe(true);
+	});
+});

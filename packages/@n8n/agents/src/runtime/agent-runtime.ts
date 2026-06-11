@@ -2079,20 +2079,26 @@ export class AgentRuntime {
 		const pending: Record<string, PendingToolCall> = {};
 
 		// 1. Execute the resumed tool
-		const processResult = await this.processToolCall(
-			resumedEntry.toolCallId,
-			resumedToolName,
-			resumedEntry.input,
-			toolMap,
-			list,
-			runId,
-			persistence,
-			pendingResume.resumeData,
-			resolvedTelemetry,
-			executionCounter,
-			abortSignal,
-			false,
-		);
+		let processResult: ToolCallOutcome;
+		try {
+			processResult = await this.processToolCall(
+				resumedEntry.toolCallId,
+				resumedToolName,
+				resumedEntry.input,
+				toolMap,
+				list,
+				runId,
+				persistence,
+				pendingResume.resumeData,
+				resolvedTelemetry,
+				executionCounter,
+				abortSignal,
+				false,
+			);
+		} catch (error) {
+			processResult = { outcome: 'error', error };
+			list.setToolCallError(resumedEntry.toolCallId, error);
+		}
 
 		if (processResult.outcome === 'suspended') {
 			pending[resumedId] = {
@@ -2375,6 +2381,16 @@ export class AgentRuntime {
 			};
 		}
 
+		// Apply toModelOutput transform before emitting the success event.
+		// If the transform throws, treat it as a tool error so processToolCall
+		// never re-throws (preserving the "never re-throws" contract).
+		let modelResult: unknown;
+		try {
+			modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
+		} catch (error) {
+			return makeToolError(error);
+		}
+
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId,
@@ -2382,10 +2398,6 @@ export class AgentRuntime {
 			result: toolResult,
 			isError: false,
 		});
-
-		// Apply toModelOutput transform: the raw result goes to history/events,
-		// but the transformed version is what the LLM sees as the tool result.
-		const modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
 
 		list.setToolCallResult(toolCallId, toJsonValue(modelResult));
 
