@@ -77,8 +77,9 @@ export const RECOMMENDATIONS_INSTRUCTIONS = [
 	"assistant that can act on the user's computer and connected apps.",
 	'',
 	'Given what the user is currently looking at and the integrations they have',
-	'already connected, propose around five distinct task ideas the assistant could',
-	'run in one shot (fewer only if you genuinely cannot suggest five relevant ones).',
+	'already connected, propose distinct task ideas the assistant could run in one',
+	'shot. Return the number of suggestions requested below (fewer only if you',
+	'genuinely cannot suggest that many relevant ones).',
 	'',
 	'Rules:',
 	'- Each task must be something the assistant can start right away from a single instruction.',
@@ -96,8 +97,9 @@ export const RECOMMENDATIONS_INSTRUCTIONS = [
 export function composeRecommendationsInput(
 	context: DesktopAssistantRecommendationsRequest['context'],
 	connectedIntegrations: string[],
+	limit: number,
 ): string {
-	const lines: string[] = [];
+	const lines: string[] = [`Suggest ${limit} distinct recommendations.`, ''];
 
 	const looking = describeActiveContext(context);
 	if (looking) lines.push(`Currently looking at: ${looking}`);
@@ -109,7 +111,7 @@ export function composeRecommendationsInput(
 		lines.push(`Connected integrations: ${connectedIntegrations.join(', ')}`);
 	}
 
-	if (lines.length === 0) {
+	if (lines.length === 2) {
 		lines.push('No specific context. Suggest generally useful starter automations.');
 	}
 	return lines.join('\n');

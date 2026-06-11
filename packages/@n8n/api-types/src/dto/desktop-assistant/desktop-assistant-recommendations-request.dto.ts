@@ -11,6 +11,8 @@ import { Z } from '../../zod-class';
  */
 export class DesktopAssistantRecommendationsRequestDto extends Z.class({
 	context: desktopAssistantContextSchema.optional(),
+	/** How many suggestions to return. Bounded server-side; defaults to the max. */
+	limit: z.number().int().min(1).max(5).optional(),
 }) {}
 
 export type DesktopAssistantRecommendationsRequest = z.infer<

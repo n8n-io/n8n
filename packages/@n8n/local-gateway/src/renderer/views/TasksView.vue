@@ -13,8 +13,9 @@ const i18n = useI18n();
 
 const emit = defineEmits<{ executed: []; 'run-prompt': [prompt: string] }>();
 
-// Empty-state recommendations: only generated once we know the task list is
-// empty, regenerated as the selected context changes (see use-recommendations).
+// Recommendations: shown as the empty-state content when there are no tasks, and
+// as a smaller section below the list when there are. Regenerated as the
+// selected context changes (see use-recommendations).
 const {
 	recommendations,
 	loading: recsLoading,
@@ -22,9 +23,13 @@ const {
 	stop: stopRecommendations,
 } = useRecommendations();
 
-// True once we should show recommendations instead of the bare empty text:
-// either they're being generated or we have some to show. On error/empty we
-// fall back to the plain "No tasks yet" text.
+/** How many suggestions to show: more when it's the whole empty state, fewer
+ *  when it's a secondary section under an existing task list. */
+const RECOMMENDED_COUNT_EMPTY = 5;
+const RECOMMENDED_COUNT_WITH_TASKS = 3;
+
+// True once we have recommendations to show or are generating them. When empty
+// and this is false (error/no results) we fall back to the "No tasks yet" text.
 const showRecommendations = computed(() => recsLoading.value || recommendations.value.length > 0);
 
 const tasks = ref<DesktopAssistantTasksResponse | null>(null);
@@ -43,6 +48,11 @@ const isEmpty = computed(
 		!sections.value.actionNeeded.length &&
 		!sections.value.upcoming.length &&
 		!sections.value.readyToRun.length,
+);
+
+/** Suggestion count for the current layout — set once the task list is loaded. */
+const recommendedCount = computed(() =>
+	isEmpty.value ? RECOMMENDED_COUNT_EMPTY : RECOMMENDED_COUNT_WITH_TASKS,
 );
 
 async function load() {
@@ -82,8 +92,9 @@ function runRecommendation(prompt: string) {
 
 onMounted(async () => {
 	await load();
-	// Only spend an AI call on recommendations when the list is actually empty.
-	if (isEmpty.value) void startRecommendations();
+	// Generate recommendations whether the list is empty or not; the count differs
+	// (see recommendedCount). Skipped only if the task load itself failed.
+	if (!error.value) void startRecommendations(recommendedCount.value);
 });
 onBeforeUnmount(stopRecommendations);
 </script>
@@ -105,45 +116,6 @@ onBeforeUnmount(stopRecommendations);
 				i18n.baseText('desktopAssistant.tasks.retry')
 			}}</N8nButton>
 		</div>
-
-		<template v-else-if="isEmpty">
-			<section v-if="showRecommendations" :class="[$style.section, $style.recommendations]">
-				<N8nText :class="$style.sectionTitle">{{
-					i18n.baseText('desktopAssistant.sections.recommended')
-				}}</N8nText>
-
-				<template v-if="recsLoading">
-					<div
-						v-for="n in 5"
-						:key="n"
-						:class="$style.skeletonCard"
-						role="status"
-						aria-live="polite"
-						:aria-label="i18n.baseText('desktopAssistant.tasks.loading')"
-					>
-						<span :class="$style.skeletonTile" aria-hidden="true" />
-						<span :class="$style.skeletonBody" aria-hidden="true">
-							<span :class="$style.skeletonLine" />
-							<span :class="[$style.skeletonLine, $style.skeletonLineShort]" />
-						</span>
-					</div>
-				</template>
-
-				<RecommendationCard
-					v-for="(rec, index) in recommendations"
-					v-else
-					:key="index"
-					:recommendation="rec"
-					@run="runRecommendation"
-				/>
-			</section>
-
-			<div v-else :class="$style.state">
-				<N8nText color="text-light" size="small">{{
-					i18n.baseText('desktopAssistant.tasks.empty')
-				}}</N8nText>
-			</div>
-		</template>
 
 		<template v-else-if="tasks">
 			<section v-if="sections.actionNeeded.length" :class="$style.section">
@@ -184,6 +156,46 @@ onBeforeUnmount(stopRecommendations);
 					@run="runTask"
 				/>
 			</section>
+
+			<!-- Recommendations: the whole content when the list is empty, or a
+				 smaller section below the tasks when there are some. -->
+			<section v-if="showRecommendations" :class="[$style.section, $style.recommendations]">
+				<N8nText :class="$style.sectionTitle">{{
+					i18n.baseText('desktopAssistant.sections.recommended')
+				}}</N8nText>
+
+				<template v-if="recsLoading">
+					<div
+						v-for="n in recommendedCount"
+						:key="n"
+						:class="$style.skeletonCard"
+						role="status"
+						aria-live="polite"
+						:aria-label="i18n.baseText('desktopAssistant.tasks.loading')"
+					>
+						<span :class="$style.skeletonTile" aria-hidden="true" />
+						<span :class="$style.skeletonBody" aria-hidden="true">
+							<span :class="$style.skeletonLine" />
+							<span :class="[$style.skeletonLine, $style.skeletonLineShort]" />
+						</span>
+					</div>
+				</template>
+
+				<RecommendationCard
+					v-for="(rec, index) in recommendations"
+					v-else
+					:key="index"
+					:recommendation="rec"
+					@run="runRecommendation"
+				/>
+			</section>
+
+			<!-- Only when the list is genuinely empty and no suggestions are available. -->
+			<div v-else-if="isEmpty" :class="$style.state">
+				<N8nText color="text-light" size="small">{{
+					i18n.baseText('desktopAssistant.tasks.empty')
+				}}</N8nText>
+			</div>
 		</template>
 	</div>
 </template>

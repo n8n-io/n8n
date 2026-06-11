@@ -42,6 +42,14 @@ export function useRecommendations() {
 	// request for a superseded context overwriting fresher state.
 	let activeKey: string | undefined;
 	let stopWatch: (() => void) | undefined;
+	// How many suggestions to request; set by start(). undefined → backend default.
+	let limit: number | undefined;
+
+	/** Cache key folds in the limit so the empty (5) and below-tasks (3) variants
+	 *  don't collide on the same context. */
+	function cacheKey(contextId: string): string {
+		return `${contextId}:${limit ?? 'default'}`;
+	}
 
 	async function fetchFor(key: string): Promise<void> {
 		activeKey = key;
@@ -59,6 +67,7 @@ export function useRecommendations() {
 		try {
 			const response = await window.electronAPI.getRecommendations({
 				context: toRequestContext(detected.value),
+				limit,
 			});
 			if (activeKey !== key) return;
 			cache.set(key, response.recommendations);
@@ -92,8 +101,13 @@ export function useRecommendations() {
 		}, RECOMMENDATIONS_DEBOUNCE_MS);
 	}
 
-	/** Begin detection + fetch for the current context, then track changes. */
-	async function start(): Promise<void> {
+	/**
+	 * Begin detection + fetch for the current context, then track changes.
+	 * `count` is how many suggestions to request (empty state shows more than the
+	 * below-tasks variant); omitted → backend default.
+	 */
+	async function start(count?: number): Promise<void> {
+		limit = count;
 		// Show the skeleton straight away, before detection/fetch resolves, so the
 		// empty state never flashes its "No tasks yet" fallback first.
 		loading.value = true;
@@ -108,9 +122,9 @@ export function useRecommendations() {
 			loading.value = false;
 			return;
 		}
-		schedule(contextKey.value, true);
+		schedule(cacheKey(contextKey.value), true);
 		// Sync flush so a context change schedules deterministically.
-		stopWatch = watch(contextKey, (key) => schedule(key, false), { flush: 'sync' });
+		stopWatch = watch(contextKey, (id) => schedule(cacheKey(id), false), { flush: 'sync' });
 	}
 
 	function stop(): void {

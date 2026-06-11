@@ -14,7 +14,7 @@ const W3: DetectedContext = { id: 'w3', kind: 'browser', app: 'AppW3' };
 
 function stub(options: DetectedContext[]) {
 	let listener: ContextChangedCb | undefined;
-	const getRecommendations = vi.fn(async (body: { context?: { app?: string } }) => {
+	const getRecommendations = vi.fn(async (body: { context?: { app?: string }; limit?: number }) => {
 		await Promise.resolve();
 		// Echo the app back so each context yields a distinguishable recommendation.
 		return { recommendations: [{ title: body.context?.app ?? 'none', prompt: 'p', icon: '✨' }] };
@@ -62,6 +62,15 @@ describe('useRecommendations', () => {
 		expect(recs.recommendations.value[0].title).toBe('AppW1');
 		expect(recs.loading.value).toBe(false);
 		expect(recs.error.value).toBe(false);
+	});
+
+	it('forwards the requested limit to the backend', async () => {
+		const { getRecommendations } = stub([W1]);
+		const recs = makeRecommendations();
+		await recs.start(3);
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(getRecommendations.mock.calls[0][0].limit).toBe(3);
 	});
 
 	it('debounces regeneration so rapid context switches fan in to one request', async () => {

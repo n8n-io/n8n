@@ -231,6 +231,24 @@ describe('DesktopAssistantService.getRecommendations', () => {
 		expect(result.recommendations).toHaveLength(5);
 	});
 
+	test('honours a requested limit', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+		ctx.instanceAiService.generateStructured.mockResolvedValue({
+			recommendations: Array.from({ length: 5 }, (_, i) => ({
+				title: `t${i}`,
+				prompt: `p${i}`,
+				icon: '✨',
+			})),
+		});
+
+		const result = await ctx.service.getRecommendations(USER, { limit: 3 });
+
+		const [, opts] = ctx.instanceAiService.generateStructured.mock.calls[0];
+		expect(opts.input).toContain('Suggest 3 distinct recommendations');
+		expect(result.recommendations).toHaveLength(3);
+	});
+
 	test('propagates a generation failure so the client can fall back', async () => {
 		const ctx = makeService();
 		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);

@@ -78,27 +78,32 @@ const EMPTY_HISTORY = Object.freeze({
 	count: 0,
 } satisfies DesktopAssistantHistoryResponse);
 
-/** How many task recommendations to surface in the empty state. */
+/** Upper bound on how many task recommendations we'll ever return. */
 const MAX_RECOMMENDATIONS = 5;
 
 /** Cap on the distinct integration types fed to the model as grounding, so a
  * user with hundreds of credentials doesn't bloat the prompt. */
 const MAX_RECOMMENDATION_INTEGRATIONS = 30;
 
-/** Structured-output schema for the recommendations generation. The model is
- * asked for 1–3 task ideas; we clamp to `MAX_RECOMMENDATIONS` on the way out. */
-const recommendationsSchema = z.object({
-	recommendations: z
-		.array(
-			z.object({
-				title: z.string(),
-				prompt: z.string(),
-				icon: z.string(),
-			}),
-		)
-		.min(1)
-		.max(MAX_RECOMMENDATIONS),
+const recommendationItemSchema = z.object({
+	title: z.string(),
+	prompt: z.string(),
+	icon: z.string(),
 });
+
+/** Structured-output schema for the recommendations generation, bounded to the
+ * requested count (1..MAX_RECOMMENDATIONS). */
+function buildRecommendationsSchema(limit: number) {
+	return z.object({
+		recommendations: z.array(recommendationItemSchema).min(1).max(limit),
+	});
+}
+
+/** Clamp a requested count into 1..MAX_RECOMMENDATIONS, defaulting to the max. */
+function clampRecommendationsLimit(limit: number | undefined): number {
+	if (!limit) return MAX_RECOMMENDATIONS;
+	return Math.min(Math.max(1, Math.floor(limit)), MAX_RECOMMENDATIONS);
+}
 
 /**
  * BFF for the n8n personal-automation desktop assistant.
@@ -338,16 +343,17 @@ export class DesktopAssistantService {
 			.filter((type): type is string => typeof type === 'string' && type.length > 0)
 			.slice(0, MAX_RECOMMENDATION_INTEGRATIONS);
 
-		const input = composeRecommendationsInput(body.context, connectedIntegrations);
+		const limit = clampRecommendationsLimit(body.limit);
+		const input = composeRecommendationsInput(body.context, connectedIntegrations, limit);
 
 		const { recommendations } = await this.instanceAiService.generateStructured(user, {
 			name: 'desktop-assistant-recommendations',
 			instructions: RECOMMENDATIONS_INSTRUCTIONS,
 			input,
-			schema: recommendationsSchema,
+			schema: buildRecommendationsSchema(limit),
 		});
 
-		return { recommendations: recommendations.slice(0, MAX_RECOMMENDATIONS) };
+		return { recommendations: recommendations.slice(0, limit) };
 	}
 
 	// ── promote thread ──────────────────────────────────────────────────────
