@@ -4,12 +4,10 @@ import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { CacheService } from '@/services/cache/cache.service';
-
-import { isRedactionEnforcementEnabled } from './redaction-enforcement.feature-flag';
 
 const KEY = 'redaction.enforcement';
 
@@ -24,12 +22,11 @@ export class InstanceRedactionEnforcementService {
 	) {}
 
 	/**
-	 * Resolves the instance redaction floor. Returns `'off'` when enforcement is
-	 * disabled or no value is stored. The floor is stored as the enum directly,
-	 * so no translation is needed.
+	 * Resolves the instance redaction floor. Returns `'off'` when no value is
+	 * stored. The floor is stored as the enum directly, so no translation is
+	 * needed.
 	 */
 	async get(): Promise<RedactionFloor> {
-		if (!isRedactionEnforcementEnabled()) return REDACTION_FLOOR_DEFAULT;
 		return await this.load();
 	}
 
@@ -43,10 +40,6 @@ export class InstanceRedactionEnforcementService {
 	}
 
 	async set(next: RedactionFloor): Promise<void> {
-		if (!isRedactionEnforcementEnabled()) {
-			throw new OperationalError('Redaction enforcement is not enabled on this instance');
-		}
-
 		const result = redactionFloorSchema.safeParse(next);
 		if (!result.success) {
 			this.logger.warn('Invalid redaction enforcement settings payload', {
