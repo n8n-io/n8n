@@ -50,10 +50,20 @@ export function buildSearchKnowledgeCommand(request: SearchKnowledgeRequest): st
 
 export function buildGlobKnowledgeFilesCommand(request: GlobKnowledgeFilesRequest): string {
 	const fileLimit = (request.limit ?? DEFAULT_GLOB_FILES_LIMIT) + 1;
-	const rgCommand = `timeout ${COMMAND_TIMEOUT_SECONDS} rg --files --hidden --glob ${quoteShellArg(request.pattern)} -- ${quoteShellArg(
-		'.',
-	)}`;
-	return buildHeadLimitedPipeline(rgCommand, fileLimit);
+	const rgCommand = [
+		'timeout',
+		String(COMMAND_TIMEOUT_SECONDS),
+		'rg',
+		'--files',
+		'--hidden',
+		...(request.caseSensitive === true ? [] : ['--glob-case-insensitive']),
+		'--glob',
+		quoteShellArg(request.pattern),
+		'--',
+		quoteShellArg('.'),
+	];
+
+	return buildHeadLimitedPipeline(rgCommand.join(' '), fileLimit);
 }
 
 export function buildReadKnowledgeCommand(file: string, request: ReadKnowledgeRequest): string {

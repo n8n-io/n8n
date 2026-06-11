@@ -428,7 +428,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			hasMore: false,
 		});
 		expect(sandbox.process.executeCommand).toHaveBeenCalledWith(
-			expect.stringContaining('timeout 20 rg --files --hidden --glob'),
+			expect.stringContaining('timeout 20 rg --files --hidden --glob-case-insensitive --glob'),
 			undefined,
 			undefined,
 			300,
@@ -437,6 +437,36 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(command).toContain('bash -o pipefail -c');
 		expect(command).toContain('*agent*tool*');
 		expect(command).toContain('| head -n 2');
+	});
+
+	it('globKnowledgeFiles can run case-sensitive filename globs', async () => {
+		const sandbox = makeSandbox('started');
+		mockKnowledgeFiles([makeAgentFile()]);
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		sandbox.process.executeCommand.mockResolvedValue({
+			exitCode: 0,
+			artifacts: {
+				stdout: '',
+				stderr: '',
+			},
+		});
+		const service = makeService();
+
+		await expect(
+			service.globKnowledgeFiles('project-1', 'agent-1', userId, {
+				pattern: '*RAG*',
+				caseSensitive: true,
+			}),
+		).resolves.toEqual({
+			files: [],
+			limit: 20,
+			hasMore: false,
+		});
+
+		const command = sandbox.process.executeCommand.mock.calls[0][0];
+		expect(command).toContain('timeout 20 rg --files --hidden --glob ');
+		expect(command).not.toContain('--glob-case-insensitive');
+		expect(command).toContain('*RAG*');
 	});
 
 	it('rejects retrieval for agents that do not belong to the project', async () => {

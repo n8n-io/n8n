@@ -64,7 +64,7 @@ export const searchKnowledgeInputSchema = z
 export const globKnowledgeFilesInputSchema = z
 	.object({
 		pattern: globPatternSchema.describe(
-			'Specific filename glob matched against uploaded knowledge file names, not file contents. Use when the user gives title or filename clues, e.g. *query*configuration* or *semantic*competition*. Do not use catch-all, extension-only, absolute, or placeholder patterns.',
+			'Specific filename glob matched against uploaded knowledge file names, not file contents. Filename matching is case-insensitive by default. Use when the user gives title or filename clues, e.g. *query*configuration* or *semantic*competition*. Do not use catch-all, extension-only, absolute, or placeholder patterns.',
 		),
 		limit: z
 			.number()
@@ -74,6 +74,12 @@ export const globKnowledgeFilesInputSchema = z
 			.optional()
 			.describe(
 				'Optional maximum number of candidate files to return. Use a small value such as 5-20 and make the pattern more specific if hasMore is true.',
+			),
+		caseSensitive: z
+			.boolean()
+			.optional()
+			.describe(
+				'Optional. Defaults to false for case-insensitive filename matching. Set true only when filename capitalization is part of the exact evidence you need.',
 			),
 	})
 	.strict()
