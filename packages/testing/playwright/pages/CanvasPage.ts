@@ -549,10 +549,24 @@ export class CanvasPage extends BasePage {
 
 	// Actions
 
-	async waitForBlankCanvasReady(): Promise<void> {
+	/**
+	 * Wait for the workflow canvas to finish loading and become interactive.
+	 *
+	 * While the editor loads, `LoadingView` renders a full-screen overlay
+	 * (`node-view-loader`) on top of the canvas. The canvas controls (e.g.
+	 * zoom-to-fit) are already in the DOM and report as stable, but the overlay
+	 * intercepts pointer events, so clicking before it clears hangs until the
+	 * action times out. Always wait for the canvas to be ready before
+	 * interacting with it after a navigation.
+	 */
+	async waitForCanvasReady(): Promise<void> {
 		await expect(this.canvasPane()).toBeVisible();
 		await expect(this.getNodeViewLoader()).toBeHidden();
 		await expect(this.getLoadingMask()).toBeHidden();
+	}
+
+	async waitForBlankCanvasReady(): Promise<void> {
+		await this.waitForCanvasReady();
 		await expect(this.getChoicePrompt()).toBeVisible();
 	}
 
