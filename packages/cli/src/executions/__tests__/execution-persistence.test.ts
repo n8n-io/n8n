@@ -377,6 +377,7 @@ describe('ExecutionPersistence', () => {
 				id: executionId,
 				workflowId,
 				storedAt,
+				workflowVersionId: 'v-entity',
 			} as unknown as Awaited<ReturnType<ExecutionRepository['findOne']>>);
 		};
 
@@ -476,7 +477,7 @@ describe('ExecutionPersistence', () => {
 				expect(result).toBe(true);
 				expect(executionRepository.findOne).toHaveBeenCalledWith({
 					where: { id: executionId },
-					select: ['id', 'workflowId', 'storedAt'],
+					select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
 				});
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
@@ -494,13 +495,42 @@ describe('ExecutionPersistence', () => {
 							connections: workflowData.connections,
 							settings: workflowData.settings,
 						},
-						workflowVersionId: 'version-abc',
+						// sourced from the entity row, not the incoming workflowData.versionId
+						workflowVersionId: 'v-entity',
 					}),
 					mockTx,
 				);
 				expect(dbStore.read).not.toHaveBeenCalled();
 				expect(dbStore.write).not.toHaveBeenCalled();
 				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('takes the fast path on full overwrite even when the entity has no version id', async () => {
+				const executionPersistence = createPersistenceService('db');
+				// pre-migration row: workflowVersionId was never backfilled, so it's null on the entity
+				executionRepository.findOne.mockResolvedValue({
+					id: executionId,
+					workflowId,
+					storedAt: 'db',
+					workflowVersionId: null,
+				} as unknown as Awaited<ReturnType<ExecutionRepository['findOne']>>);
+				dbStore.overwrite.mockResolvedValue(256);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+				});
+
+				// db overwrite never writes the version-id column, so a null entity value can't clobber it
+				expect(dbStore.overwrite).toHaveBeenCalledWith(
+					{ workflowId, executionId },
+					expect.objectContaining({ workflowVersionId: null }),
+					mockTx,
+				);
+				expect(dbStore.read).not.toHaveBeenCalled();
 			});
 
 			it('should propagate MissingExecutionDataError when the store reports the data row is gone', async () => {
@@ -538,6 +568,7 @@ describe('ExecutionPersistence', () => {
 				expect(dbStore.write).toHaveBeenCalledWith(
 					{ workflowId, executionId },
 					expect.objectContaining({
+						// partial update reads & preserves both workflowData and version id from the bundle
 						workflowData: existingBundle.workflowData,
 						workflowVersionId: existingBundle.workflowVersionId,
 					}),
@@ -607,17 +638,16 @@ describe('ExecutionPersistence', () => {
 				expect(result).toBe(false);
 				expect(executionRepository.findOne).toHaveBeenCalledWith({
 					where: { id: executionId, status: 'waiting' },
-					select: ['id', 'workflowId', 'storedAt'],
+					select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
 				});
 				expect(executionRepository.manager.transaction).not.toHaveBeenCalled();
 			});
 		});
 
 		describe('data updates on fs-mode executions', () => {
-			it('should update entity in a transaction and write a fresh bundle to fs', async () => {
+			it('should overwrite a fresh bundle on fs without reading the existing one', async () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
-				fsStore.read.mockResolvedValue(existingBundle);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -636,6 +666,8 @@ describe('ExecutionPersistence', () => {
 					{ id: executionId },
 					{ status: 'success' },
 				);
+				// full overwrite goes through the fast path for fs too (a write is a full replace),
+				// skipping the read
 				expect(fsStore.write).toHaveBeenCalledWith(
 					{ workflowId, executionId },
 					expect.objectContaining({
@@ -647,8 +679,39 @@ describe('ExecutionPersistence', () => {
 							connections: workflowData.connections,
 							settings: workflowData.settings,
 						},
-						workflowVersionId: 'v-original',
+						// from the entity row, not the incoming workflowData.versionId
+						workflowVersionId: 'v-entity',
 					}),
+					mockTx,
+				);
+				expect(fsStore.read).not.toHaveBeenCalled();
+			});
+
+			it('falls back to read-merge on full overwrite when the entity has no version id, preserving the bundle value', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				// pre-migration row: workflowVersionId was never backfilled, so it's null on the entity
+				executionRepository.findOne.mockResolvedValue({
+					id: executionId,
+					workflowId,
+					storedAt: 'fs',
+					workflowVersionId: null,
+				} as unknown as Awaited<ReturnType<ExecutionRepository['findOne']>>);
+				fsStore.read.mockResolvedValue(existingBundle); // bundle still holds the real version id
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+				});
+
+				// must read the bundle (read-merge) to recover the real version id, rather than take the
+				// no-read fast path and clobber it with the entity's null
+				expect(fsStore.read).toHaveBeenCalled();
+				expect(fsStore.write).toHaveBeenCalledWith(
+					{ workflowId, executionId },
+					expect.objectContaining({ workflowVersionId: existingBundle.workflowVersionId }),
 					mockTx,
 				);
 			});
@@ -666,6 +729,7 @@ describe('ExecutionPersistence', () => {
 				expect(fsStore.write).toHaveBeenCalledWith(
 					{ workflowId, executionId },
 					expect.objectContaining({
+						// partial update reads & preserves both workflowData and version id from the bundle
 						workflowData: existingBundle.workflowData,
 						workflowVersionId: existingBundle.workflowVersionId,
 					}),

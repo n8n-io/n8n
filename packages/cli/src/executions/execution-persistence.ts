@@ -125,7 +125,7 @@ export class ExecutionPersistence {
 
 		const entity = await this.executionRepository.findOne({
 			where: this.buildEntityWhereCondition(executionId, conditions),
-			select: ['id', 'workflowId', 'storedAt'],
+			select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
 		});
 
 		if (!entity) return false;
@@ -133,7 +133,14 @@ export class ExecutionPersistence {
 		const ref = { workflowId: entity.workflowId, executionId };
 		const store = this.getStoreFor(entity.storedAt);
 
-		return await this.applyDataUpdate(ref, store, entity.storedAt, execution, conditions);
+		return await this.applyDataUpdate(
+			ref,
+			store,
+			entity.storedAt,
+			entity.workflowVersionId,
+			execution,
+			conditions,
+		);
 	}
 
 	/**
@@ -447,6 +454,7 @@ export class ExecutionPersistence {
 		ref: ExecutionRef,
 		store: ExecutionDataStore,
 		mode: ExecutionDataStorageLocation,
+		workflowVersionId: string | null,
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
@@ -473,21 +481,30 @@ export class ExecutionPersistence {
 				if (!matchingRow) return false;
 			}
 
-			if (data !== undefined && workflowData !== undefined && store === this.dbStore) {
-				// Both data and snapshot are overwritten, so skip reading the existing bundle.
-				// `workflowVersionId` is immutable, so the caller's snapshot already carries it.
+			// Skip the read on a full overwrite. Safe only with a known version id, except for the DB
+			// store: its overwrite leaves that column untouched, whereas others would clobber it with null.
+			if (
+				data !== undefined &&
+				workflowData !== undefined &&
+				(workflowVersionId !== null || store === this.dbStore)
+			) {
 				const jsonSizeBytes = await this.trackWrite(mode, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(data),
 						workflowData: this.toWorkflowSnapshot(workflowData),
-						workflowVersionId: workflowData.versionId ?? null,
+						workflowVersionId,
 					};
-					return await this.dbStore.overwrite(ref, bundle, tx);
+
+					return store === this.dbStore
+						? await this.dbStore.overwrite(ref, bundle, tx)
+						: await store.write(ref, bundle, tx);
 				});
 				await tx.update(ExecutionEntity, { id: ref.executionId }, { jsonSizeBytes });
 				return true;
 			}
 
+			// Read the existing bundle to merge the field the caller didn't supply (or to recover the
+			// version id when the entity row doesn't have it).
 			const existing = await this.trackRead(mode, async () => await store.read(ref, tx));
 			if (!existing) throw new MissingExecutionDataError(ref);
 

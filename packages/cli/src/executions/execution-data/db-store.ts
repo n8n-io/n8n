@@ -31,7 +31,7 @@ export class DbStore implements ExecutionDataStore {
 
 	/**
 	 * Overwrite an existing bundle's data and workflow snapshot in place, returning its byte size.
-	 * Unlike {@link write} (an upsert), the row must already exist — a missing row means the
+	 * Unlike {@link write} (an upsert), the row must already exist - a missing row means the
 	 * execution's data was lost, which we surface rather than silently recreate.
 	 */
 	async overwrite(
