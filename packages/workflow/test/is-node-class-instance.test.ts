@@ -1,8 +1,4 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeTypeDescription,
-} from '../src/interfaces';
+import type { INodeTypeDescription } from '../src/interfaces';
 import { Node, isNodeClassInstance } from '../src/interfaces';
 
 /**
@@ -14,9 +10,6 @@ const description = {} as INodeTypeDescription;
 
 class RealNode extends Node {
 	description = description;
-	override async execute(_context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return [];
-	}
 }
 
 describe('isNodeClassInstance', () => {
@@ -29,24 +22,23 @@ describe('isNodeClassInstance', () => {
 	});
 
 	it('returns true for a Node subclass from a duplicated n8n-workflow copy', () => {
+		// A second copy brands its own prototype with the same global symbol. Model that: an object
+		// whose prototype carries the tag but which is NOT instanceof this copy's Node.
 		const duplicatedProto = {};
 		Object.defineProperty(duplicatedProto, Symbol.for('n8n.workflow.NodeClass'), { value: true });
-		const nodeFromOtherCopy = Object.create(duplicatedProto);
+		const nodeFromOtherCopy = Object.create(duplicatedProto) as object;
 
 		expect(nodeFromOtherCopy instanceof Node).toBe(false);
 		expect(isNodeClassInstance(nodeFromOtherCopy)).toBe(true);
 	});
 
 	it('returns false for a legacy object-literal node', () => {
-		expect(isNodeClassInstance({ description, execute: async () => [] })).toBe(false);
+		expect(isNodeClassInstance({ description })).toBe(false);
 	});
 
 	it('returns false for a legacy class node that does not extend Node', () => {
 		class LegacyNode {
 			description = description;
-			async execute() {
-				return [];
-			}
 		}
 		expect(isNodeClassInstance(new LegacyNode())).toBe(false);
 	});
