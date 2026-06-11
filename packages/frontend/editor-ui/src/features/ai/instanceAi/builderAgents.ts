@@ -51,6 +51,26 @@ export function messageHasVisibleContent(message: InstanceAiMessage): boolean {
 }
 
 /**
+ * Identity-stable getter over the visible-message list, for use inside a
+ * `computed`. The filter reads per-message content, so it re-evaluates on
+ * every streamed token — but its RESULT only changes when a message appears,
+ * disappears, or flips visibility. Returning the previous array in the
+ * unchanged case cuts reactive propagation at the computed, so the message
+ * list does not re-render (and re-diff every message's vnodes) per token.
+ */
+export function createVisibleMessagesGetter(
+	messages: () => InstanceAiMessage[],
+): () => InstanceAiMessage[] {
+	let prev: InstanceAiMessage[] = [];
+	return () => {
+		const next = messages().filter(messageHasVisibleContent);
+		if (next.length === prev.length && next.every((msg, i) => msg === prev[i])) return prev;
+		prev = next;
+		return next;
+	};
+}
+
+/**
  * Walks every message's agent tree and returns active builder sub-agents in
  * the order they appear. Used to render running builders in a dedicated bottom
  * section of the conversation; completed builders stay in their natural slot.
