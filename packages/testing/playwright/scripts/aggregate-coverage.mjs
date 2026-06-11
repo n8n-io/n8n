@@ -71,7 +71,10 @@ function unitPrefix(file, root) {
 	const segs = path.relative(root, file).split(path.sep);
 	segs.shift(); // drop the per-artifact dir (unit-coverage / frontend-coverage / …)
 	const cov = segs.indexOf('coverage');
-	const pkg = segs.slice(0, cov >= 0 ? cov : segs.length - 1).join('/');
+	const pkg = cov > 0 ? segs.slice(0, cov).join('/') : '';
+	// No package segment means the artifact layout isn't <artifact>/<pkg>/coverage/…
+	// — warn loudly rather than qualify with a garbled prefix or silently collide.
+	if (!pkg) console.warn(`  ⚠ can't derive package from ${file} — SF paths left unqualified`);
 	return pkg ? `packages/${pkg}/` : '';
 }
 
