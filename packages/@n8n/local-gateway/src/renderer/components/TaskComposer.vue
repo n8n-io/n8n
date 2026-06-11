@@ -39,9 +39,6 @@ const emit = defineEmits<{ kept: [] }>();
 
 const text = ref('');
 const state = ref<ComposerState>('idle');
-// Latest tool-derived "doing" label (e.g. "browser click") — dynamic text from
-// the run's events, not a translation key; falls back to the Working pill copy.
-const progressLabel = ref<string | null>(null);
 const resultCard = ref<ResultCard | null>(null);
 
 // Context selection is shared app-wide (see use-assistant-context). `detected` is
@@ -129,7 +126,6 @@ async function submit(prompt?: string) {
 
 	text.value = '';
 	resultCard.value = null;
-	progressLabel.value = null;
 	state.value = 'thinking';
 
 	try {
@@ -145,9 +141,7 @@ async function submit(prompt?: string) {
 		// The run executes on the user's machine and can take minutes; the input
 		// stays disabled and the Doing pill stays up until it resolves.
 		state.value = 'doing';
-		const run = await watchAssistantRun(created.threadId, created.runId, {
-			onProgress: (label) => (progressLabel.value = label),
-		});
+		const run = await watchAssistantRun(created.threadId, created.runId);
 
 		// Prefer the agent's structured outcome report over the tookAction heuristic.
 		if (run.outcome?.success) {
@@ -222,7 +216,7 @@ defineExpose({ submit });
 					<MiniSpinner aria-hidden="true" />
 					<span>{{
 						state === 'doing'
-							? (progressLabel ?? i18n.baseText('desktopAssistant.composer.working'))
+							? i18n.baseText('desktopAssistant.composer.working')
 							: i18n.baseText('desktopAssistant.composer.thinking')
 					}}</span>
 				</div>

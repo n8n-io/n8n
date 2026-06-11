@@ -40,26 +40,15 @@ function parseOutcome(args: Record<string, unknown>): DesktopAssistantTaskOutcom
 	return { success, title, summary, failureReason };
 }
 
-/** "mcp__playwright__browser_click" → "browser click" — a rough progress label, not a translation. */
-function humanizeToolLabel(toolName: string): string {
-	const name = toolName.split('__').pop() ?? toolName;
-	return name
-		.replace(/^mcp[-_]/i, '')
-		.replace(/[-_]+/g, ' ')
-		.trim();
-}
-
 /**
  * Follow a single assistant run on the thread's event stream until it finishes,
  * and report how it ended. Subscribes without a `lastEventId` so the server
  * replays the whole thread — that closes the race between the run starting and
- * us subscribing. `onProgress` fires with a humanized tool label on every tool
- * call the agent makes (except its final outcome report).
+ * us subscribing.
  */
 export async function watchAssistantRun(
 	threadId: string,
 	runId: string,
-	options?: { onProgress?: (label: string) => void },
 ): Promise<AssistantRunResult> {
 	const client = getThreadClient();
 
@@ -82,7 +71,6 @@ export async function watchAssistantRun(
 					outcome = parseOutcome(event.payload.args) ?? outcome;
 				} else {
 					tookAction = true;
-					options?.onProgress?.(humanizeToolLabel(event.payload.toolName));
 				}
 				return;
 			}
