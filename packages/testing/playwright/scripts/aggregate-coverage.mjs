@@ -10,10 +10,11 @@
  *   node aggregate-coverage.mjs --shards=<dir> --out=<dir> [--unit-shards=<dir>]
  *
  * --unit-shards: directory of downloaded unit + integration + frontend lcov
- *   artifacts. Jest and vitest write absolute SF: paths in CI
- *   (/home/runner/work/n8n/n8n/packages/cli/src/foo.ts); they are normalised
- *   to repo-root-relative before merging with the E2E lcovs so MCR sees the
- *   same key across all three suites.
+ *   artifacts, nested per-artifact as `<artifact>/<pkg>/coverage/lcov.info`.
+ *   Jest and vitest write package-RELATIVE SF paths (`src/foo.ts`); we qualify
+ *   them to repo-root-relative `packages/<pkg>/src/...` (pkg derived from the
+ *   artifact dir) so they MERGE with the already-qualified E2E lcovs instead of
+ *   colliding under bare `src/...` keys (every package has a `src/index.ts`).
  */
 
 import { execFileSync } from 'node:child_process';
@@ -53,14 +54,32 @@ function findFiles(dir, predicate, acc = []) {
 }
 
 /**
- * Rewrite absolute SF: paths to repo-root-relative. Jest and vitest write
- * absolute paths in CI; E2E lcovs are already repo-root-relative so the
- * regex is a no-op for them. Merging everything through the same transform
- * means MCR sees identical keys across all three suites.
+ * Rewrite absolute SF: paths to repo-root-relative. E2E lcovs are already
+ * repo-root-relative (or absolute under REPO_ROOT), so this is a no-op / strip.
  */
 function normalizeLcov(content) {
 	return content.replace(/^SF:(.+)$/gm, (line, p) =>
 		p.startsWith(REPO_ROOT) ? `SF:${p.slice(REPO_ROOT.length)}` : line,
+	);
+}
+
+/**
+ * Derive a `packages/<pkg>/` prefix from a unit lcov's path under the artifacts
+ * root, where artifacts nest as `<artifact>/<pkg>/coverage/lcov.info`.
+ */
+function unitPrefix(file, root) {
+	const segs = path.relative(root, file).split(path.sep);
+	segs.shift(); // drop the per-artifact dir (unit-coverage / frontend-coverage / …)
+	const cov = segs.indexOf('coverage');
+	const pkg = segs.slice(0, cov >= 0 ? cov : segs.length - 1).join('/');
+	return pkg ? `packages/${pkg}/` : '';
+}
+
+/** Qualify package-relative SF paths (`src/…`) to `packages/<pkg>/src/…`. */
+function qualifyLcov(content, prefix) {
+	if (!prefix) return content;
+	return content.replace(/^SF:(.+)$/gm, (line, p) =>
+		p.startsWith('packages/') || p.startsWith('/') ? line : `SF:${prefix}${p}`,
 	);
 }
 
@@ -72,6 +91,26 @@ function stage(label, files) {
 	files.forEach((f, i) => {
 		writeFileSync(path.join(dir, `${label}-${i}.lcov`), normalizeLcov(readFileSync(f, 'utf8')));
 	});
+	return dir;
+}
+
+/**
+ * Stage the combined report: E2E shard lcovs (normalised) + unit lcovs
+ * (package-qualified) into one dir so MCR unions all layers under one key set.
+ */
+function stageReport(label, shardLcovs, unitLcovs, unitRoot) {
+	const dir = path.join('/tmp', `agg-${label}`);
+	rmSync(dir, { recursive: true, force: true });
+	mkdirSync(dir, { recursive: true });
+	shardLcovs.forEach((f, i) =>
+		writeFileSync(path.join(dir, `${label}-e2e-${i}.lcov`), normalizeLcov(readFileSync(f, 'utf8'))),
+	);
+	unitLcovs.forEach((f, i) =>
+		writeFileSync(
+			path.join(dir, `${label}-unit-${i}.lcov`),
+			qualifyLcov(readFileSync(f, 'utf8'), unitPrefix(f, unitRoot)),
+		),
+	);
 	return dir;
 }
 
@@ -91,9 +130,12 @@ function merge(inputsDir, outLcov, outMap) {
 
 mkdirSync(OUT, { recursive: true });
 
-const shardLcovs = findFiles(SHARDS, (name) => name === 'lcov.info');
-const unitLcovs = UNIT_SHARDS ? findFiles(UNIT_SHARDS, (name) => name === 'lcov.info') : [];
-const allReportLcovs = [...shardLcovs, ...unitLcovs];
+// node_modules holds bundled-dependency lcovs (e.g. cli/node_modules/n8n-core);
+// they'd double-count and mis-qualify, so keep only first-party package lcovs.
+const firstParty = (name, p) =>
+	name === 'lcov.info' && !p.includes(`${path.sep}node_modules${path.sep}`);
+const shardLcovs = findFiles(SHARDS, firstParty);
+const unitLcovs = UNIT_SHARDS ? findFiles(UNIT_SHARDS, firstParty) : [];
 
 // 1. Combined report → lcov.info (all layers: E2E + unit + integration + frontend).
 //    Uploaded to Codecov as a single `nightly-full` flag — one authoritative number
@@ -101,8 +143,9 @@ const allReportLcovs = [...shardLcovs, ...unitLcovs];
 console.log(
 	`Report: ${shardLcovs.length} E2E shard lcov(s), ${unitLcovs.length} unit/integration/frontend lcov(s)`,
 );
-if (allReportLcovs.length) {
-	merge(stage('report', allReportLcovs), path.join(OUT, 'lcov.info'), '/tmp/agg-report-map.json');
+if (shardLcovs.length || unitLcovs.length) {
+	const dir = stageReport('report', shardLcovs, unitLcovs, UNIT_SHARDS);
+	merge(dir, path.join(OUT, 'lcov.info'), '/tmp/agg-report-map.json');
 } else {
 	console.warn('  ⚠ no lcovs found — skipping report');
 }
