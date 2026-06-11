@@ -3,17 +3,18 @@
 	lang="ts"
 	generic="TData extends AiModelSelectorMenuItemData = AiModelSelectorMenuItemData"
 >
-import { computed, getCurrentInstance, useCssModule, useTemplateRef } from 'vue';
-import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
-import N8nIcon from '../N8nIcon';
-import N8nText from '../N8nText';
-import N8nTooltip from '../N8nTooltip';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
+import { Primitive } from 'reka-ui';
+import { computed, getCurrentInstance, useCssModule, useTemplateRef } from 'vue';
+
 import type {
 	AiModelSelectorMenuItem,
 	AiModelSelectorMenuItemData,
 } from './AiModelSelectorDropdown.types';
-import { Primitive } from 'reka-ui';
+import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
+import N8nIcon from '../N8nIcon';
+import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 
 const {
 	items,

@@ -2,6 +2,7 @@
 import { useDebounceFn } from '@vueuse/core';
 import { computed, nextTick, ref, watch } from 'vue';
 
+import type { DropdownMenuItemProps, DropdownMenuSlots } from './DropdownMenu.types';
 import {
 	getItemDomId as getSearchableItemDomId,
 	getNextValidIndex,
@@ -10,7 +11,6 @@ import {
 	isInputCursorAtStart,
 	scrollHighlightedItemIntoView,
 } from './DropdownMenu.utils';
-import type { DropdownMenuItemProps, DropdownMenuSlots } from './DropdownMenu.types';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 
 defineOptions({ name: 'N8nDropdownMenuSearchableContent' });

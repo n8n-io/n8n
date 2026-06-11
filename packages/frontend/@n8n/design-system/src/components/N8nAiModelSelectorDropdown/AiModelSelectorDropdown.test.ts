@@ -1,8 +1,9 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
+import { vi } from 'vitest';
 
-import N8nAiModelSelectorDropdown from './AiModelSelectorDropdown.vue';
 import type { AiModelSelectorMenuItem } from './AiModelSelectorDropdown.types';
+import N8nAiModelSelectorDropdown from './AiModelSelectorDropdown.vue';
 
 const baseItems: AiModelSelectorMenuItem[] = [
 	{
@@ -83,7 +84,10 @@ describe('N8nAiModelSelectorDropdown', () => {
 
 	it('emits select and search events', async () => {
 		const { getByTestId, getByText, emitted } = render(N8nAiModelSelectorDropdown, {
-			props: defaultProps,
+			props: {
+				...defaultProps,
+				onSearch: vi.fn(),
+			},
 		});
 
 		await userEvent.click(getByTestId('ai-model-selector'));

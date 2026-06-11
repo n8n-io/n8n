@@ -27,9 +27,35 @@ vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: () => ({ credential: { create: true } }),
 }));
 
-vi.mock('@n8n/design-system', () => ({
-	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
-}));
+vi.mock('@n8n/design-system', async () => {
+	const { computed, ref } = await import('vue');
+
+	return {
+		N8nAiModelSelectorDropdown: {
+			name: 'AiModelSelectorDropdown',
+			props: [
+				'items',
+				'selectedLabel',
+				'selectedCredentialName',
+				'credentialsMissing',
+				'credentialsMissingLabel',
+				'noMatchLabel',
+				'horizontal',
+				'disabled',
+				'dataTestId',
+				'credentialDataTestId',
+				'maxSelectedNameChars',
+			],
+			template: '<div data-testid="ai-model-selector-dropdown" />',
+		},
+		N8nIcon: { template: '<span />', props: ['icon', 'size'] },
+		useDropdownSearch: () => ({
+			search: ref(''),
+			filteredItems: computed(() => []),
+			handleSearch: vi.fn(),
+		}),
+	};
+});
 
 vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 	default: { template: '<span />', props: ['credentialTypeName', 'size'] },
