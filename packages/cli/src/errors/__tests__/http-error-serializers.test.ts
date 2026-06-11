@@ -1,3 +1,5 @@
+import { UnexpectedError, UserError } from 'n8n-workflow';
+
 import { classifyHttpError } from '@/errors/http-error-classifier';
 import {
 	serializeInternalRestError,
@@ -6,7 +8,6 @@ import {
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
-import { UnexpectedError, UserError } from 'n8n-workflow';
 
 describe('http-error-serializers', () => {
 	it('serializePublicApiError: minimal message for ResponseError', () => {
