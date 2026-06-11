@@ -262,7 +262,15 @@ export function getProjects(): Project[] {
 			testIgnore: INSTANCE_AI_E2E_IGNORE,
 			timeout: 60000,
 			fullyParallel: true,
-			use: { containerConfig: {} },
+			use: {
+				containerConfig: {},
+				// Capture only on failure (global default is `on`). The shard artifact
+				// is downloaded and aggregated each run, so keep it to coverage data
+				// plus failure diagnostics, not full traces/videos for every test.
+				trace: 'retain-on-failure',
+				video: 'retain-on-failure',
+				screenshot: 'only-on-failure',
+			},
 		});
 
 		projects.push({

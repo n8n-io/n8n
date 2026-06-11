@@ -794,4 +794,80 @@ describe('applyOperations', () => {
 			expect(result.success).toBe(false);
 		});
 	});
+
+	describe('addTags / removeTags', () => {
+		test('addTags adds names to the existing set without duplicating', () => {
+			const wf = { ...baseWorkflow(), tagNames: ['production'] };
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'addTags', names: ['critical', 'production'] },
+			];
+			const result = applyOperations(wf, ops);
+			if (!result.success) throw new Error('expected success');
+			expect(result.tagNames?.sort()).toEqual(['critical', 'production']);
+			expect(result.workflow.tagNames?.sort()).toEqual(['critical', 'production']);
+		});
+
+		test('removeTags removes only the matching names', () => {
+			const wf = { ...baseWorkflow(), tagNames: ['production', 'critical', 'wip'] };
+			const ops: PartialUpdateOperation[] = [{ type: 'removeTags', names: ['wip', 'missing'] }];
+			const result = applyOperations(wf, ops);
+			if (!result.success) throw new Error('expected success');
+			expect(result.tagNames?.sort()).toEqual(['critical', 'production']);
+		});
+
+		test('sequential ops apply in order (add then remove yields empty)', () => {
+			const wf = { ...baseWorkflow(), tagNames: [] };
+			const ops: PartialUpdateOperation[] = [
+				{ type: 'addTags', names: ['a', 'b'] },
+				{ type: 'removeTags', names: ['a'] },
+				{ type: 'addTags', names: ['c'] },
+			];
+			const result = applyOperations(wf, ops);
+			if (!result.success) throw new Error('expected success');
+			expect(result.tagNames?.sort()).toEqual(['b', 'c']);
+		});
+
+		test('returns undefined tagNames when batch has no tag operations', () => {
+			const wf = { ...baseWorkflow(), tagNames: ['production'] };
+			const ops: PartialUpdateOperation[] = [{ type: 'setWorkflowMetadata', name: 'renamed' }];
+			const result = applyOperations(wf, ops);
+			if (!result.success) throw new Error('expected success');
+			expect(result.tagNames).toBeUndefined();
+		});
+
+		test('fails when tag operations are present but existing tags were not loaded', () => {
+			const wf = baseWorkflow();
+			const ops: PartialUpdateOperation[] = [{ type: 'addTags', names: ['production'] }];
+			const result = applyOperations(wf, ops);
+			expect(result.success).toBe(false);
+		});
+
+		test('does not mutate input tagNames on success', () => {
+			const wf = { ...baseWorkflow(), tagNames: ['production'] };
+			const before = [...wf.tagNames];
+			applyOperations(wf, [{ type: 'addTags', names: ['critical'] }]);
+			expect(wf.tagNames).toEqual(before);
+		});
+
+		test('schema rejects empty names array', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({ type: 'addTags', names: [] });
+			expect(parsed.success).toBe(false);
+		});
+
+		test('schema rejects empty string names', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({ type: 'removeTags', names: [''] });
+			expect(parsed.success).toBe(false);
+		});
+
+		test('schema trims whitespace from names', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'addTags',
+				names: ['  spaced  '],
+			});
+			expect(parsed.success).toBe(true);
+			if (parsed.success && parsed.data.type === 'addTags') {
+				expect(parsed.data.names).toEqual(['spaced']);
+			}
+		});
+	});
 });

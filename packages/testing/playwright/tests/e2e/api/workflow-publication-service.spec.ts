@@ -5,6 +5,9 @@ test.use({
 		env: {
 			TEST_ISOLATION: 'workflow-publication-service',
 			N8N_USE_WORKFLOW_PUBLICATION_SERVICE: 'true',
+			// Activation is applied asynchronously by the publication outbox
+			// consumer, so poll frequently to keep the test fast.
+			N8N_WORKFLOW_PUBLICATION_OUTBOX_POLL_INTERVAL_MS: '250',
 		},
 	},
 });
