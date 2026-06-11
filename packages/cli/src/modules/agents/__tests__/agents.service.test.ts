@@ -220,6 +220,25 @@ describe('AgentsService', () => {
 		Container.reset();
 	});
 
+	describe('isKnowledgeBaseEnabled', () => {
+		it('only enables the knowledge base for Daytona sandbox config', () => {
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+
+			agentsConfig.sandboxEnabled = true;
+			agentsConfig.sandboxProvider = 'n8n-sandbox';
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+
+			agentsConfig.sandboxProvider = 'daytona';
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+
+			agentsConfig.daytonaVolumeId = 'volume-1';
+			expect(service.isKnowledgeBaseEnabled()).toBe(true);
+
+			agentsConfig.sandboxEnabled = false;
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+		});
+	});
+
 	describe('validateConfig', () => {
 		it('rejects inputSchema on node tool configs', async () => {
 			const result = await service.validateConfig({

@@ -12,7 +12,15 @@ import { DateTime } from 'luxon';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { ApiKey, ApiKeyOwner } from '@n8n/api-types';
+
+vi.mock('@/app/composables/useTelemetry', () => {
+	const track = vi.fn();
+	return {
+		useTelemetry: () => ({ track }),
+	};
+});
 
 setActivePinia(createTestingPinia());
 
@@ -246,6 +254,112 @@ describe('SettingsApiView', () => {
 			await fireEvent.click(screen.getByText('All'));
 
 			expect(apiKeysStore.setOwnership).toHaveBeenCalledWith('all');
+		});
+
+		it('tracks "User viewed all API keys" when the admin opens the All tab', async () => {
+			settingsStore.isPublicApiEnabled = true;
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 2;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+
+			renderComponent(SettingsApiView);
+
+			const { track } = useTelemetry();
+
+			await fireEvent.click(screen.getByText('All'));
+
+			expect(track).toHaveBeenCalledWith('User viewed all API keys');
+		});
+
+		it('does not track "User viewed all API keys" when switching back to Mine', async () => {
+			settingsStore.isPublicApiEnabled = true;
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'admin-own', owner: ownerFixture })];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 2;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+
+			renderComponent(SettingsApiView);
+
+			const { track } = useTelemetry();
+
+			await fireEvent.click(screen.getByText('Mine'));
+
+			expect(track).not.toHaveBeenCalledWith('User viewed all API keys');
+		});
+	});
+
+	describe('telemetry', () => {
+		beforeEach(() => {
+			settingsStore.isPublicApiEnabled = true;
+		});
+
+		it('tracks "User clicked view API key scopes" with is_own=true for the current user’s key', async () => {
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'mine', owner: ownerFixture })];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 1;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+
+			renderComponent(SettingsApiView);
+
+			const { track } = useTelemetry();
+
+			await fireEvent.click(screen.getByTestId('api-key-scopes-cell'));
+
+			expect(track).toHaveBeenCalledWith('User clicked view API key scopes', { is_own: true });
+		});
+
+		it('tracks "User clicked view API key scopes" with is_own=false for another user’s key', async () => {
+			apiKeysStore.apiKeys = [
+				makeKey({
+					id: '1',
+					label: 'theirs',
+					owner: { ...ownerFixture, id: 'someone-else' },
+				}),
+			];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 1;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+
+			renderComponent(SettingsApiView);
+
+			const { track } = useTelemetry();
+
+			await fireEvent.click(screen.getByTestId('api-key-scopes-cell'));
+
+			expect(track).toHaveBeenCalledWith('User clicked view API key scopes', { is_own: false });
+		});
+
+		it('tracks "User clicked delete API key button" with is_own derived from the revoked key', async () => {
+			apiKeysStore.apiKeys = [
+				makeKey({
+					id: '1',
+					label: 'theirs',
+					owner: { ...ownerFixture, id: 'someone-else' },
+				}),
+			];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 1;
+			apiKeysStore.totalMineCount = apiKeysStore.mineCount;
+			apiKeysStore.totalAllCount = apiKeysStore.allCount || 1;
+
+			renderComponent(SettingsApiView);
+
+			const { track } = useTelemetry();
+
+			await fireEvent.click(screen.getByTestId('api-key-revoke-action'));
+			// The alert dialog renders via a portal — there are now two buttons labelled
+			// "Revoke" in the document: the row action (index 0) and the modal action.
+			const revokeButtons = await screen.findAllByRole('button', { name: 'Revoke' });
+			await fireEvent.click(revokeButtons[revokeButtons.length - 1]);
+
+			expect(track).toHaveBeenCalledWith('User clicked delete API key button', {
+				is_own: false,
+			});
 		});
 	});
 });
