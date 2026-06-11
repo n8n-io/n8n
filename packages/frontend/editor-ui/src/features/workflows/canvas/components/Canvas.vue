@@ -396,7 +396,7 @@ const {
 	canGroup: canGroupSelection,
 	canUngroup: canUngroupSelection,
 	groupSelection,
-	ungroupSelection,
+	selectedGroupIds,
 } = useCanvasNodeGroupActions(selectedNodes, {
 	readOnly: () => props.readOnly || props.suppressInteraction,
 });
@@ -476,7 +476,11 @@ const keyMap = computed(() => {
 		fullKeymap.ctrl_shift_g = {
 			disabled: () => !canUngroupSelection.value,
 			run: () => {
-				ungroupSelection();
+				// Through the same path as the title-bar button so push effects
+				// are committed before each group is removed.
+				for (const groupId of selectedGroupIds.value) {
+					onCanvasGroupUngroup(groupId);
+				}
 			},
 		};
 	}
@@ -628,6 +632,13 @@ function onCanvasGroupNameUpdate(groupId: string, name: string) {
 }
 
 function onCanvasGroupUngroup(groupId: string) {
+	// Ungrouping a collapsed group makes its hidden members reappear, so expand
+	// it first: the expansion pushes overlapping nodes aside, and the commit
+	// below persists that displacement (the group is gone after, so the push
+	// can't stay live).
+	if (injectedNodeGroupView?.isGroupCollapsed(groupId)) {
+		injectedNodeGroupView.toggleCollapsed(groupId);
+	}
 	// Removing the group also removes its push, so commit anything it was
 	// pushing first — same principle as a newly created group not pushing.
 	commitPushedPositionsForSourceGroups([groupId]);

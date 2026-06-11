@@ -583,6 +583,28 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.getVisualOffsetForNode('b')).toEqual({ x: 0, y: 0 });
 		});
 
+		it('persists the expansion push when a collapsed group is ungrouped (expand → commit → delete)', () => {
+			// Ungrouping a collapsed group makes its hidden members reappear, which
+			// can overlap nodes placed over their footprint. The ungroup recipe
+			// expands the group first so the push algorithm displaces overlapping
+			// components, commits that displacement, then deletes the group.
+			const { nodeGroups, view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
+			syncLayout(view);
+
+			view.toggleCollapsed('g1');
+			const offset = view.getVisualOffsetForNode('b');
+			expect(offset.x).toBeGreaterThan(0);
+
+			const moves = view.commitMovedPushSourceEffects(['g1'], (nodeId) =>
+				nodeId === 'b' ? [450, 10] : undefined,
+			);
+			nodeGroups.deleteGroup('g1');
+
+			expect(moves).toEqual([{ id: 'b', position: { x: 450 + offset.x, y: 10 + offset.y } }]);
+			// Nothing stays live: the persisted position is the final one.
+			expect(view.getVisualOffsetForNode('b')).toEqual({ x: 0, y: 0 });
+		});
+
 		it('stops using a manually moved expanded group as a push source until re-expanded', () => {
 			const { view } = setup([{ id: 'source', name: 'Source', nodeIds: ['sourceNode'] }]);
 
