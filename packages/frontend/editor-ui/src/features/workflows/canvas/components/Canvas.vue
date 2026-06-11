@@ -24,7 +24,11 @@ import type {
 	CanvasNodeOrGroup,
 	ConnectStartEvent,
 } from '../canvas.types';
-import { CanvasNodeRenderType, isCanvasGroupNode } from '../canvas.types';
+import {
+	CANVAS_NODE_GROUP_ID_PREFIX,
+	CanvasNodeRenderType,
+	isCanvasGroupNode,
+} from '../canvas.types';
 import { isOutsideSelected } from '@/app/utils/htmlUtils';
 import {
 	getMousePosition,
@@ -410,7 +414,7 @@ const keyMap = computed(() => {
 			run: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
 		},
 		enter: emitWithLastSelectedNode((id) => onSetNodeActivated(id)),
-		ctrl_a: () => addSelectedNodes(selectableNodesAndGroups.value),
+		ctrl_a: onSelectAllNodes,
 		// Support both key and code for zooming in and out
 		'shift_+|+|=|shift_Equal|Equal': async () => await onZoomIn(),
 		'shift+_|-|_|shift_Minus|Minus': async () => await onZoomOut(),
@@ -486,7 +490,6 @@ useKeybindings(keyMap, { disabled: disableKeyBindings });
  * Nodes
  */
 
-const hasSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
 
 // Selected node ids, with each selected collapsed group expanded to its members
@@ -610,6 +613,14 @@ function onSelectionDrag(event: NodeDragEvent) {
 
 function onCanvasGroupToggle(groupId: string) {
 	injectedNodeGroupView?.toggleCollapsed(groupId);
+
+	// Expanding makes the title bar non-selectable, so drop any selection lingering on it.
+	if (injectedNodeGroupView && !injectedNodeGroupView.isGroupCollapsed(groupId)) {
+		const groupNode = findNode(`${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`);
+		if (groupNode) {
+			removeSelectedNodes([groupNode]);
+		}
+	}
 }
 
 function onCanvasGroupNameUpdate(groupId: string, name: string) {
@@ -623,17 +634,13 @@ function onCanvasGroupUngroup(groupId: string) {
 	workflowDocumentStore.value.deleteGroup(groupId);
 }
 
+/**
+ * Delete both regular nodes and collapsed group members.
+ */
 function onDeleteSelection() {
-	// Regular workflow nodes go through the existing delete flow
-	if (hasSelection.value) emit('delete:nodes', selectedNodeIds.value);
-
-	for (const node of selectedNodesAndGroups.value) {
-		if (!isCanvasGroupNode(node)) continue;
-		// Only collapsed group title bars are selectable, so any group node
-		// here represents the whole group as a single surface.
-		const data = node.data as CanvasGroupNodeData;
-		workflowDocumentStore.value.deleteGroup(data.group.id);
-	}
+	const ids = selectedNodeIdsWithGroupMembers.value;
+	// Removing the last group member also deletes the group via the document store
+	if (ids.length > 0) emit('delete:nodes', ids);
 }
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
@@ -677,6 +684,10 @@ function onSetNodeDeactivated(id: string) {
 
 function clearSelectedNodes() {
 	removeSelectedNodes(selectedNodesAndGroups.value);
+}
+
+function onSelectAllNodes() {
+	addSelectedNodes(selectableNodesAndGroups.value);
 }
 
 function onSelectNode() {
@@ -1010,7 +1021,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 		case 'delete':
 			return emit('delete:nodes', nodeIds);
 		case 'select_all':
-			return addSelectedNodes(selectableNodesAndGroups.value);
+			return onSelectAllNodes();
 		case 'deselect_all':
 			return clearSelectedNodes();
 		case 'duplicate':
@@ -1184,7 +1195,7 @@ onMounted(() => {
 	props.eventBus.on('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.on('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.on('nodes:select', onSelectNodes);
-	props.eventBus.on('nodes:selectAll', () => addSelectedNodes(selectableNodesAndGroups.value));
+	props.eventBus.on('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.on('tidyUp', onTidyUp);
 	window.addEventListener('blur', onWindowBlur);
 	document.addEventListener('visibilitychange', onVisibilityChange);
@@ -1195,6 +1206,7 @@ onUnmounted(() => {
 	props.eventBus.off('fitView:onNodesInit', onRequestFitViewOnInit);
 	props.eventBus.off('setConnections:onNodesInit', onRequestSetConnectionsOnInit);
 	props.eventBus.off('nodes:select', onSelectNodes);
+	props.eventBus.off('nodes:selectAll', onSelectAllNodes);
 	props.eventBus.off('tidyUp', onTidyUp);
 	window.removeEventListener('blur', onWindowBlur);
 	document.removeEventListener('visibilitychange', onVisibilityChange);

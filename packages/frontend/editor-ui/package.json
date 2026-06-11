@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "2.25.0",
+  "version": "2.26.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "type": "module",
@@ -154,5 +154,6 @@
     "vitest-mock-extended": "catalog:",
     "vue-tsc": "catalog:frontend",
     "z-vue-scan": "^0.0.35"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

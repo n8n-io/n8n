@@ -39,10 +39,6 @@ export function formatExampleCategorizations(): string {
 		.join('\n');
 }
 
-export interface DiscoveryPromptOptions {
-	includeExamples: boolean;
-}
-
 const ROLE = `You are a Discovery Agent for n8n AI Workflow Builder.
 Identify relevant n8n nodes and their connection-changing parameters for the user's request.
 When the request is underspecified, ask clarifying questions to ensure the right workflow gets built.`;
@@ -55,13 +51,6 @@ const PROCESS_WITH_QUESTIONS = `1. Search for nodes matching the user's request 
 2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
 3. Assess: do you have enough information to build exactly what the user wants, or would you need to make assumptions about their intent? If assumptions are needed, ask clarifying questions using submit_questions (see clarifying_questions section)
 4. Call submit_discovery_results with your nodesFound array`;
-
-const PROCESS_WITH_EXAMPLES_AND_QUESTIONS = `1. Search for nodes matching the user's request using search_nodes tool
-2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
-3. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
-4. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
-5. Assess: do you have enough information to build exactly what the user wants, or would you need to make assumptions about their intent? If assumptions are needed, ask clarifying questions using submit_questions (see clarifying_questions section)
-6. Call submit_discovery_results with your nodesFound array`;
 
 const AI_NODE_SELECTION = `AI node selection guidance:
 
@@ -355,9 +344,8 @@ Guidelines:
 - Baseline flow control nodes (Aggregate, IF, Switch, Split Out, Merge, Set) are automatically included—no need to search for them
 - Prioritize native nodes in your searches because they provide better UX and visual debugging than Code node alternatives`;
 
-function generateToolCallRequirement(options: DiscoveryPromptOptions): string {
+function generateToolCallRequirement(): string {
 	const toolExamples = ['search_nodes', 'submit_questions'];
-	if (options.includeExamples) toolExamples.push('get_documentation', 'get_workflow_examples');
 
 	return `<output_requirement>
 Use tools when needed (e.g. ${toolExamples.join(', ')}).
@@ -367,36 +355,28 @@ Do not output the results as text or XML.
 </output_requirement>`;
 }
 
-function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
+function generateAvailableToolsList(): string {
 	const tools = [
 		'- search_nodes: Find n8n nodes by keyword (returns name, version, inputs, outputs)',
 		'- submit_questions: Ask clarifying questions when critical details are missing',
 	];
-	if (options.includeExamples) {
-		tools.push(
-			'- get_documentation: Retrieve best practices for workflow techniques to improve quality',
-		);
-		tools.push(
-			'- get_workflow_examples: Find real community workflows as reference for structuring integrations',
-		);
-	}
 	tools.push('- web_fetch: Fetch content from a URL the user provided (requires approval)');
 	tools.push('- submit_discovery_results: Submit final results');
 	return tools.join('\n');
 }
 
-function selectProcessSection(options: DiscoveryPromptOptions): string {
-	return options.includeExamples ? PROCESS_WITH_EXAMPLES_AND_QUESTIONS : PROCESS_WITH_QUESTIONS;
+function selectProcessSection(): string {
+	return PROCESS_WITH_QUESTIONS;
 }
 
-export function buildDiscoveryPrompt(options: DiscoveryPromptOptions): string {
-	const availableTools = generateAvailableToolsList(options);
+export function buildDiscoveryPrompt(): string {
+	const availableTools = generateAvailableToolsList();
 
 	return prompt()
 		.section('role', ROLE)
 		.section('available_tools', availableTools)
-		.section('process', selectProcessSection(options))
-		.section('tool_call_requirement', generateToolCallRequirement(options))
+		.section('process', selectProcessSection())
+		.section('tool_call_requirement', generateToolCallRequirement())
 		.section('clarifying_questions', CLARIFYING_QUESTIONS)
 		.section('n8n_execution_model', N8N_EXECUTION_MODEL)
 		.section('baseline_flow_control', BASELINE_FLOW_CONTROL)

@@ -501,29 +501,13 @@ describe('Canvas', () => {
 			);
 		});
 
-		it('deletes the group container when backspace is pressed with a group title bar selected', async () => {
+		it("deletes a collapsed group's member nodes when backspace is pressed with a group title bar selected", async () => {
 			const group = workflowDocumentStore.createGroup([], 'My Group');
-			const groupNode = createCanvasGroupElement({ id: group.id, name: group.name });
-			const deleteGroupSpy = vi.spyOn(workflowDocumentStore, 'deleteGroup');
-
-			const { container } = renderComponent({
-				props: { nodes: [groupNode] },
+			const groupNode = createCanvasGroupElement({
+				id: group.id,
+				name: group.name,
+				nodeIds: ['a', 'b'],
 			});
-
-			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
-
-			const { addSelectedNodes, nodes: graphNodes } = useVueFlow({ id: canvasId });
-			addSelectedNodes(graphNodes.value);
-
-			await fireEvent.keyDown(document, { key: 'Backspace' });
-			await fireEvent.keyUp(document, { key: 'Backspace' });
-
-			expect(deleteGroupSpy).toHaveBeenCalledWith(group.id);
-		});
-
-		it('does not emit delete:nodes when only a group title bar is selected', async () => {
-			const group = workflowDocumentStore.createGroup([], 'My Group');
-			const groupNode = createCanvasGroupElement({ id: group.id, name: group.name });
 
 			const { container, emitted } = renderComponent({
 				props: { nodes: [groupNode] },
@@ -537,7 +521,7 @@ describe('Canvas', () => {
 			await fireEvent.keyDown(document, { key: 'Backspace' });
 			await fireEvent.keyUp(document, { key: 'Backspace' });
 
-			expect(emitted()['delete:nodes']).toBeUndefined();
+			expect(emitted()['delete:nodes']?.[0]).toEqual([['a', 'b']]);
 		});
 	});
 });

@@ -54,14 +54,19 @@ function resolveNodeDimensions(
 }
 
 /**
- * Title bar position + width derived from the group's nodes-bounding rect.
- * Snaps the position to the canvas grid; if it didn't, VueFlow's
+ * Title bar layout (position + width) derived from the group's nodes-bounding
+ * rect. Snaps the position to the canvas grid; if it didn't, VueFlow's
  * `snap-to-grid` would shift the title bar on the first drag.
  *
- * Width is at least {@link GROUP_HEADER_WIDTH_COLLAPSED} so expanding a
- * tight cluster never shrinks the header below the collapsed chip size.
+ * A collapsed title bar is a fixed-size chip ({@link GROUP_HEADER_WIDTH_COLLAPSED}).
+ * An expanded one spans the member cluster (rect width + horizontal padding),
+ * floored at the collapsed width so a tight cluster never shrinks the header
+ * below the chip size.
  */
-export function titleBarFromNodesRect(nodesRect: NodesRect): {
+export function titleBarFromNodesRect(
+	nodesRect: NodesRect,
+	collapsed: boolean,
+): {
 	position: { x: number; y: number };
 	width: number;
 } {
@@ -72,7 +77,9 @@ export function titleBarFromNodesRect(nodesRect: NodesRect): {
 			x: snap(nodesRect.x - GROUP_PADDING_X),
 			y: snap(nodesRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
 		},
-		width: Math.max(contentWidth, GROUP_HEADER_WIDTH_COLLAPSED),
+		width: collapsed
+			? GROUP_HEADER_WIDTH_COLLAPSED
+			: Math.max(contentWidth, GROUP_HEADER_WIDTH_COLLAPSED),
 	};
 }
 
@@ -158,7 +165,7 @@ export function mapGroupsToVueFlowNodes({
 		};
 
 		const id = createCanvasGroupNodeId(group.id);
-		const titleBar = titleBarFromNodesRect(nodesRect);
+		const titleBar = titleBarFromNodesRect(nodesRect, collapsed);
 		const offset = getGroupVisualOffset?.(id) ?? { x: 0, y: 0 };
 		out.push({
 			id,
@@ -167,12 +174,12 @@ export function mapGroupsToVueFlowNodes({
 				x: titleBar.position.x + offset.x,
 				y: titleBar.position.y + offset.y,
 			},
-			width: collapsed ? GROUP_HEADER_WIDTH_COLLAPSED : titleBar.width,
+			width: titleBar.width,
 			height: GROUP_HEADER_HEIGHT,
 			draggable: !readOnly,
 			// Selectable only when the title bar represents
 			// the whole group as a single visual surface
-			selectable: !readOnly && collapsed,
+			selectable: collapsed,
 			connectable: false,
 			// Behind the group's nodes so the expanded frame doesn't overlap them.
 			zIndex: -1,

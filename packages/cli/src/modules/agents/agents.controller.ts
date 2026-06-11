@@ -399,9 +399,9 @@ export class AgentsController {
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
-	/** Knowledge base endpoints are gated behind the `knowledge-base` agents module. */
+	/** Knowledge base endpoints are gated behind Daytona sandbox env vars. */
 	private assertKnowledgeBaseEnabled() {
-		if (!this.agentsService.isKnowledgeBaseModuleEnabled()) {
+		if (!this.agentsService.isKnowledgeBaseEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}

@@ -108,7 +108,6 @@ export interface ExpressionValue {
 }
 
 export interface BuilderFeatureFlags {
-	templateExamples?: boolean;
 	/** Enable pin data generation in code builder (default: true). */
 	pinData?: boolean;
 	/** Enable introspection tool for diagnostic data collection. Disabled by default. */

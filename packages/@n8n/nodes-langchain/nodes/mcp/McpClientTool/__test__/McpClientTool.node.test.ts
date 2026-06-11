@@ -21,10 +21,13 @@ import type { MockedFunction } from 'vitest';
 
 vi.mock('@modelcontextprotocol/sdk/client/sse.js');
 vi.mock('@modelcontextprotocol/sdk/client/index.js');
-vi.mock('@n8n/ai-utilities', async () => ({
-	...(await vi.importActual('@n8n/ai-utilities')),
-	proxyFetch: vi.fn(),
-}));
+vi.mock('@n8n/ai-utilities', async () => {
+	const actual = await vi.importActual('@n8n/ai-utilities');
+	return {
+		...(actual as Record<string, unknown>),
+		proxyFetch: vi.fn(),
+	};
+});
 
 const mockedProxyFetch = proxyFetch as MockedFunction<typeof proxyFetch>;
 

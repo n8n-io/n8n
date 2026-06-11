@@ -55,6 +55,8 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
+		allCredentials: [],
+		getCredentialsByType: () => [],
 		fetchAllCredentials: fetchAllCredentialsMock,
 		fetchAllCredentialsForWorkflow: fetchAllCredentialsForWorkflowMock,
 		fetchCredentialTypes: fetchCredentialTypesMock,
@@ -99,6 +101,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgent: vi.fn(),
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
+	getModelCatalog: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -370,6 +373,12 @@ const commonStubs = {
 		template: '<div data-testid="stub-agent-skills-list-panel" />',
 		props: ['skills', 'disabled'],
 		emits: ['open-skill', 'add-skill', 'remove-skill'],
+	},
+	AgentSubAgentsPanel: {
+		name: 'AgentSubAgentsPanel',
+		template: '<div data-testid="stub-agent-sub-agents-panel" />',
+		props: ['config', 'disabled', 'projectId', 'agentId'],
+		emits: ['update:config'],
 	},
 	AgentSkillViewer: {
 		name: 'AgentSkillViewer',

@@ -54,6 +54,7 @@ import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './17670185160
 import { LimitWorkflowVersionTriggerToContent1784000000003 } from './1784000000003-LimitWorkflowVersionTriggerToContent';
 import { CreateAgentHistoryTable1784000000011 } from './1784000000011-CreateAgentHistoryTable';
 import { AddScopeColumnToOAuthTables1784000000026 } from './1784000000026-AddScopeColumnToOAuthTables';
+import { AddProjectIdToInstanceAiThread1784000000028 } from './1784000000028-AddProjectIdToInstanceAiThread';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -395,6 +396,7 @@ const sqliteMigrations: Migration[] = [
 	MigrateRedactionEnforcementToFloor1784000000025,
 	AddScopeColumnToOAuthTables1784000000026,
 	CreateWorkflowPublicationOutboxTable1784000000027,
+	AddProjectIdToInstanceAiThread1784000000028,
 ];
 
 export { sqliteMigrations };

@@ -4,7 +4,7 @@ import type {
 	INodeTypeDescription,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import type { Ref } from 'vue';
+import { computed, shallowReactive, type Ref } from 'vue';
 import type { INodeUi } from '@/Interface';
 import type {
 	BoundingBox,
@@ -66,6 +66,47 @@ export function computeNodeDisplaySize(
  */
 export function injectCanvasRenderData(): Ref<CanvasRenderData> {
 	return injectStrict(CanvasRenderDataKey);
+}
+
+/**
+ * Builds an empty `CanvasRenderData` object.
+ *
+ * `CanvasRenderData` is a wide projection façade — production code populates
+ * it via `useWorkflowDocumentRenderData(documentId)`. This helper exists for
+ * the two cases that can't go through that path:
+ * - placeholder values before the underlying workflow document is hydrated
+ *   (e.g. the workflow-diff side panels' initial render);
+ * - test fixtures that only care about a few fields.
+ *
+ * Centralizing it here keeps the ~20+ consumers off the hook when new by-id
+ * projections land — they update one default at a time, not 20 mock literals.
+ */
+export function createEmptyCanvasRenderData(
+	overrides: Partial<CanvasRenderData> = {},
+): CanvasRenderData {
+	return {
+		nodeInputsByNodeId: shallowReactive(new Map()),
+		nodeOutputsByNodeId: shallowReactive(new Map()),
+		pinnedDataByNodeName: {},
+		pinnedDataByNodeId: shallowReactive(new Map()),
+		nodeTypeDescriptionByNodeId: shallowReactive(new Map()),
+		isTriggerByNodeId: shallowReactive(new Map()),
+		subtitleByNodeId: shallowReactive(new Map()),
+		simulatedNodeTypeDescriptionByNodeId: shallowReactive(new Map()),
+		validationErrorsByNodeId: shallowReactive(new Map()),
+		executionIssuesByNodeName: shallowReactive(new Map()),
+		executionStatusByNodeId: shallowReactive(new Map()),
+		executionRunDataByNodeId: shallowReactive(new Map()),
+		executionRunDataOutputMapByNodeId: shallowReactive(new Map()),
+		executionWaitingByNodeId: shallowReactive(new Map()),
+		executionRunningByNodeId: shallowReactive(new Map()),
+		executionWaitingForNextByNodeId: shallowReactive(new Map()),
+		tooltipByNodeId: shallowReactive(new Map()),
+		hasIssuesByNodeId: shallowReactive(new Map()),
+		renderTypeByNodeId: shallowReactive(new Map()),
+		additionalPropertiesByNodeId: computed(() => ({})),
+		...overrides,
+	};
 }
 
 /**
@@ -219,7 +260,8 @@ export function createCanvasConnectionId(connection: Connection) {
  * Resolve a rendered canvas connection back to real workflow node endpoints.
  * Collapsed-group remapping rewrites `source` / `target` for display only,
  * while storing the canonical workflow ids and handles on `data.canonicals`.
- * A merged edge represents several workflow connections; this returns the first.
+ * A merged edge represents several workflow connections - this returns the first,
+ * as we only allow groups with single input/output connections.
  */
 export function resolveCanonicalConnection(
 	connection: Connection & { data?: CanvasConnectionData },

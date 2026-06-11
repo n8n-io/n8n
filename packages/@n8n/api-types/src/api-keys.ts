@@ -27,9 +27,21 @@ export type ApiKey = {
 
 export type ApiKeyWithRawValue = ApiKey & { rawApiKey: string };
 
+export type ApiKeyOwnership = 'mine' | 'all';
+
 export type ApiKeyList = {
 	items: ApiKey[];
-	count: number;
+	/**
+	 * Per-ownership totals after the label filter is applied.
+	 * `counts[ownership]` drives pagination of the returned page.
+	 */
+	counts: { mine: number; all: number };
+	/**
+	 * Per-ownership totals ignoring the label filter, so callers can render
+	 * tab badges and empty-state CTAs against the true population. Equals
+	 * `counts` when no label filter was passed.
+	 */
+	totals: { mine: number; all: number };
 };
 
 export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

@@ -13,7 +13,7 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import {
-	ActiveWorkflows,
+	ActiveWorkflowTriggers,
 	ErrorReporter,
 	InstanceSettings,
 	PollContext,
@@ -24,6 +24,7 @@ import {
 } from 'n8n-core';
 import type {
 	ExecutionError,
+	IConnections,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	INode,
@@ -84,7 +85,7 @@ export class ActiveWorkflowManager {
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly activeWorkflows: ActiveWorkflows,
+		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly externalHooks: ExternalHooks,
 		private readonly nodeTypes: NodeTypes,
@@ -129,7 +130,7 @@ export class ActiveWorkflowManager {
 		let activeWorkflowIds: string[] = [];
 		this.logger.debug('Call to remove all active workflows received (removeAll)');
 
-		activeWorkflowIds.push(...this.activeWorkflows.allActiveWorkflows());
+		activeWorkflowIds.push(...this.activeWorkflowTriggers.allActiveWorkflows());
 
 		const activeWorkflows = await this.activeWorkflowsService.getAllActiveIdsInStorage();
 		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows];
@@ -148,7 +149,7 @@ export class ActiveWorkflowManager {
 	 * Returns the ids of the currently active workflows from memory.
 	 */
 	allActiveInMemory() {
-		return this.activeWorkflows.allActiveWorkflows();
+		return this.activeWorkflowTriggers.allActiveWorkflows();
 	}
 
 	/**
@@ -159,9 +160,16 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
+		nodeIds?: Set<string>,
 	) {
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
+		let webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 		let path = '';
+
+		if (nodeIds) {
+			webhooks = webhooks.filter((webhookData) =>
+				nodeIds.has(workflow.getNode(webhookData.node)?.id ?? ''),
+			);
+		}
 
 		if (webhooks.length === 0) return false;
 
@@ -191,7 +199,10 @@ export class ActiveWorkflowManager {
 			}
 
 			try {
-				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
+				// `storeWebhook` registers the webhook atomically on the
+				// (webhookPath, method) primary key and rejects a path already owned
+				// by another workflow. The `catch` below still cleans up any webhooks
+				// already registered for this workflow if a later step fails.
 				await this.webhookService.storeWebhook(webhook);
 				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
 			} catch (error) {
@@ -273,12 +284,28 @@ export class ActiveWorkflowManager {
 			settings: workflowData.settings,
 		});
 
-		const mode = 'internal';
-
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
 			workflowSettings: workflowData.settings,
 		});
+
+		await this.deregisterWebhooks(workflow, additionalData);
+
+		await this.webhookService.deleteWorkflowWebhooks(workflowId);
+	}
+
+	/**
+	 * Deregisters a workflow's webhooks from external services and persists any
+	 * resulting static data. When `nodeIds` is given, only the webhooks of those
+	 * nodes are deregistered. Returns the names of the nodes whose webhooks were
+	 * deregistered.
+	 */
+	private async deregisterWebhooks(
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeIds?: Set<string>,
+	) {
+		const removedNodeNames: string[] = [];
 
 		await workflow.expression.acquireIsolate();
 		try {
@@ -290,7 +317,11 @@ export class ActiveWorkflowManager {
 			);
 
 			for (const webhookData of webhooks) {
-				await this.webhookService.deleteWebhook(workflow, webhookData, mode, 'update');
+				if (nodeIds && !nodeIds.has(workflow.getNode(webhookData.node)?.id ?? '')) {
+					continue;
+				}
+				await this.webhookService.deleteWebhook(workflow, webhookData, 'internal', 'update');
+				removedNodeNames.push(webhookData.node);
 			}
 		} finally {
 			await workflow.expression.releaseIsolate();
@@ -298,7 +329,7 @@ export class ActiveWorkflowManager {
 
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
-		await this.webhookService.deleteWorkflowWebhooks(workflowId);
+		return removedNodeNames;
 	}
 
 	/**
@@ -460,7 +491,7 @@ export class ActiveWorkflowManager {
 
 				// Remove the workflow as "active"
 
-				void this.activeWorkflows.remove(workflowData.id);
+				void this.activeWorkflowTriggers.remove(workflowData.id);
 
 				void this.activationErrorsService.register(workflowData.id, error.message);
 
@@ -661,7 +692,7 @@ export class ActiveWorkflowManager {
 	@OnShutdown()
 	async removeAllNonWebhookTriggerWorkflows() {
 		this.removeAllQueuedWorkflowActivations();
-		await this.activeWorkflows.removeAllNonWebhookTriggerWorkflows();
+		await this.activeWorkflowTriggers.removeAllNonWebhookTriggerWorkflows();
 	}
 
 	/**
@@ -678,7 +709,7 @@ export class ActiveWorkflowManager {
 	 * and so qualify as webhook triggers, e.g. Stripe Trigger.
 	 *
 	 * Active triggers, poll triggers, and schedule triggers are registered as
-	 * active in memory at `ActiveWorkflows`, but webhook triggers are registered
+	 * active in memory at `ActiveWorkflowTriggers`, but webhook triggers are registered
 	 * by being entered in the `webhook_entity` table, since webhooks do not
 	 * require continuous execution.
 	 *
@@ -833,6 +864,162 @@ export class ActiveWorkflowManager {
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
 		return added;
+	}
+
+	/**
+	 * Returns the enabled trigger-like nodes (active, poll, schedule and webhook
+	 * triggers) of a workflow version. Disabled nodes are excluded, so the result
+	 * is the set of nodes that actually drive trigger registration. Used to
+	 * compute the trigger-level diff during publication.
+	 */
+	getEnabledTriggerNodes(version: { nodes: INode[]; connections: IConnections } | null): INode[] {
+		if (!version) return [];
+
+		const workflow = new Workflow({
+			id: 'trigger-diff',
+			name: 'trigger-diff',
+			nodes: version.nodes,
+			connections: version.connections,
+			active: false,
+			nodeTypes: this.nodeTypes,
+		});
+
+		return workflow.queryNodes(
+			(nodeType) => !!nodeType.trigger || !!nodeType.poll || !!nodeType.webhook,
+		);
+	}
+
+	/**
+	 * Registers only the given trigger nodes (webhook and non-webhook) of the
+	 * given workflow version, leaving any other already-active triggers
+	 * untouched. The "add" side of a publication trigger diff; runs on the leader
+	 * after the published version has been advanced.
+	 */
+	async addTriggerNodes(
+		dbWorkflow: WorkflowEntity,
+		version: { nodes: INode[]; connections: IConnections },
+		nodeIds: Set<INode['id']>,
+	) {
+		const { nodes, connections } = version;
+		dbWorkflow.nodes = nodes;
+		dbWorkflow.connections = connections;
+
+		const workflow = new Workflow({
+			id: dbWorkflow.id,
+			name: dbWorkflow.name,
+			nodes,
+			connections,
+			active: true,
+			nodeTypes: this.nodeTypes,
+			staticData: dbWorkflow.staticData,
+			settings: dbWorkflow.settings,
+		});
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+			workflowSettings: dbWorkflow.settings,
+		});
+
+		let triggerCount = 0;
+		await workflow.expression.acquireIsolate();
+		try {
+			if (this.shouldAddWebhooks('update')) {
+				await this.addWebhooks(workflow, additionalData, 'trigger', 'update', nodeIds);
+			}
+
+			if (this.shouldAddNonWebhookTriggers()) {
+				const resolveWorkflowData = this.workflowsConfig.useWorkflowPublicationService
+					? async () => await this.loadPublishedWorkflowData(dbWorkflow)
+					: async () => dbWorkflow as IWorkflowBase;
+
+				await this.addNonWebhookTriggers(dbWorkflow, workflow, {
+					activationMode: 'update',
+					executionMode: 'trigger',
+					additionalData,
+					resolveWorkflowData,
+					nodeIds,
+				});
+			}
+
+			triggerCount = this.countTriggers(workflow, additionalData);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
+
+		await Promise.all([
+			this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount),
+			this.workflowStaticDataService.saveStaticData(workflow),
+		]);
+	}
+
+	/**
+	 * Recomputes the persisted trigger count for a workflow version without
+	 * registering any triggers. Used when publication only removes triggers.
+	 */
+	async updateWorkflowTriggerCount(
+		dbWorkflow: WorkflowEntity,
+		version: { nodes: INode[]; connections: IConnections },
+	) {
+		const workflow = new Workflow({
+			id: dbWorkflow.id,
+			name: dbWorkflow.name,
+			nodes: version.nodes,
+			connections: version.connections,
+			active: true,
+			nodeTypes: this.nodeTypes,
+			staticData: dbWorkflow.staticData,
+			settings: dbWorkflow.settings,
+		});
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+			workflowSettings: dbWorkflow.settings,
+		});
+
+		let triggerCount = 0;
+		await workflow.expression.acquireIsolate();
+		try {
+			triggerCount = this.countTriggers(workflow, additionalData);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
+
+		await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
+	}
+
+	/**
+	 * Deregisters only the given trigger nodes (webhook and non-webhook) of the
+	 * given workflow version, leaving the rest active. The "remove" side of a
+	 * publication trigger diff; the caller passes the currently published version
+	 * so the right webhooks are deregistered.
+	 */
+	async removeTriggerNodes(
+		dbWorkflow: WorkflowEntity,
+		version: { nodes: INode[]; connections: IConnections },
+		nodeIds: Set<INode['id']>,
+	) {
+		if (nodeIds.size === 0) return;
+
+		const workflow = new Workflow({
+			id: dbWorkflow.id,
+			name: dbWorkflow.name,
+			nodes: version.nodes,
+			connections: version.connections,
+			active: true,
+			nodeTypes: this.nodeTypes,
+			staticData: dbWorkflow.staticData,
+			settings: dbWorkflow.settings,
+		});
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+			workflowSettings: dbWorkflow.settings,
+		});
+
+		const removedNodeNames = await this.deregisterWebhooks(workflow, additionalData, nodeIds);
+		await this.webhookService.deleteWorkflowWebhooksForNodes(dbWorkflow.id, removedNodeNames);
+
+		await this.activeWorkflowTriggers.removeTriggers(dbWorkflow.id, nodeIds);
 	}
 
 	@OnPubSubEvent('display-workflow-activation', { instanceType: 'main' })
@@ -1105,9 +1292,9 @@ export class ActiveWorkflowManager {
 	 * Stop running active, poll, and schedule triggers for a workflow.
 	 */
 	async removeNonWebhookTriggers(workflowId: WorkflowId) {
-		if (!this.activeWorkflows.isActive(workflowId)) return;
-
-		const wasRemoved = await this.activeWorkflows.remove(workflowId);
+		// `activeWorkflowTriggers.remove` is idempotent and always deregisters the workflow's
+		// crons, to ensure they stop running on a deactivated workflow
+		const wasRemoved = await this.activeWorkflowTriggers.remove(workflowId);
 
 		if (wasRemoved) {
 			this.logger.debug(`Removed non-webhook triggers for workflow "${workflowId}"`, {
@@ -1127,11 +1314,13 @@ export class ActiveWorkflowManager {
 			executionMode,
 			additionalData,
 			resolveWorkflowData,
+			nodeIds,
 		}: {
 			activationMode: WorkflowActivateMode;
 			executionMode: WorkflowExecuteMode;
 			additionalData: IWorkflowExecuteAdditionalData;
 			resolveWorkflowData: () => Promise<IWorkflowBase>;
+			nodeIds?: Set<string>;
 		},
 	) {
 		const getTriggerFunctions = this.getExecuteTriggerFunctions(
@@ -1150,13 +1339,21 @@ export class ActiveWorkflowManager {
 			resolveWorkflowData,
 		);
 
-		if (workflow.getTriggerNodes().length === 0 && workflow.getPollNodes().length === 0) {
+		const triggerAndPollNodeIds = [...workflow.getTriggerNodes(), ...workflow.getPollNodes()].map(
+			(node) => node.id,
+		);
+		const nodeIdsToAdd = nodeIds
+			? triggerAndPollNodeIds.filter((id) => nodeIds.has(id))
+			: triggerAndPollNodeIds;
+
+		if (nodeIdsToAdd.length === 0) {
 			return false;
 		}
 
-		await this.activeWorkflows.add(
+		await this.activeWorkflowTriggers.addTriggers(
 			workflow.id,
 			workflow,
+			nodeIdsToAdd,
 			additionalData,
 			executionMode,
 			activationMode,
