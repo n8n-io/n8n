@@ -1,0 +1,14 @@
+packages/@n8n/personal-automation/spec/oauth-e2e.md
+  h_44f8d1c0f2f8c4 22,56,66,128,203,206,335,358
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "d2922ea1265e368e956922f2c7a7168960a856ba",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
