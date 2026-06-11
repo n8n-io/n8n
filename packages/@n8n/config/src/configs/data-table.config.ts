@@ -6,9 +6,9 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class DataTableConfig {
-	/** Maximum total size in bytes allowed for data tables. Default: 50 MiB. */
+	/** Maximum total size in bytes allowed for data tables. Default: 200 MiB. */
 	@Env('N8N_DATA_TABLES_MAX_SIZE_BYTES')
-	maxSize: number = 50 * 1024 * 1024;
+	maxSize: number = 200 * 1024 * 1024;
 
 	/**
 	 * Size in bytes at which to warn that a data table is nearing capacity.

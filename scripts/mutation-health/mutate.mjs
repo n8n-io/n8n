@@ -26,9 +26,12 @@
  *
  * Exit codes:
  *   0  — mutation score ≥ threshold
- *   1  — score < threshold (AI loop should iterate)
+ *   1  — score < threshold (AI loop should iterate). Also used when Stryker
+ *        reports "No tests were executed" — the file has no covering tests,
+ *        so we synthesise a score-0 red summary rather than hard-failing the
+ *        job. The ledger then records the gap and the picker advances.
  *   2  — usage / config error
- *   3  — Stryker run failed
+ *   3  — Stryker run failed for any other reason (instrumentation crash etc.)
  */
 
 import { spawn } from 'node:child_process';
@@ -131,17 +134,80 @@ process.stderr.write(
 	`Running Stryker on ${packageDir}/${target} (config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
 );
 
-await new Promise((resolve) => {
+// Capture Stryker's combined output while still forwarding it to the parent
+// stdio (so CI logs look unchanged). We need the buffer to detect the
+// "No tests were executed" dry-run case below.
+const strykerOutputChunks = [];
+const strykerExitCode = await new Promise((resolve) => {
 	const child = spawn(process.execPath, [strykerBin, 'run', configPath, '--mutate', target], {
 		cwd: pkgRoot,
-		stdio: 'inherit',
+		stdio: ['inherit', 'pipe', 'pipe'],
 	});
-	child.on('exit', (code) => {
-		if (code !== 0) die(3, `Stryker exited with code ${code}`);
-		resolve();
+	child.stdout.on('data', (chunk) => {
+		strykerOutputChunks.push(chunk);
+		process.stdout.write(chunk);
 	});
+	child.stderr.on('data', (chunk) => {
+		strykerOutputChunks.push(chunk);
+		process.stderr.write(chunk);
+	});
+	child.on('exit', (code) => resolve(code ?? 1));
 	child.on('error', (err) => die(3, `Stryker failed to start: ${err.message}`));
 });
+const strykerOutput = Buffer.concat(strykerOutputChunks).toString('utf8');
+
+// "No tests were executed" is Stryker's dry-run verdict when nothing in the
+// test suite covers the picked source file. That's the most informative
+// mutation result there is — effectively 0%, every mutant no-coverage — so we
+// record it as a score-0 red ledger row instead of hard-failing the job. The
+// picker can then advance to the next file the following night. See DEVP-414.
+const noTestsExecuted =
+	/no tests were executed/i.test(strykerOutput) && !existsSync(rawJsonPath);
+
+if (strykerExitCode !== 0 && !noTestsExecuted) {
+	die(3, `Stryker exited with code ${strykerExitCode}`);
+}
+
+if (noTestsExecuted) {
+	// Best-effort mutant count from the instrument phase log line, e.g.
+	//   INFO Instrumenter Instrumented 1 source file(s) with 47 mutant(s)
+	// Falls back to 0 if Stryker never got that far.
+	const mutantMatch = strykerOutput.match(
+		/Instrumented\s+\d+\s+source file\(s\)\s+with\s+(\d+)\s+mutant/i,
+	);
+	const noCoverage = mutantMatch ? Number(mutantMatch[1]) : 0;
+	const counts = {
+		killed: 0,
+		survived: 0,
+		noCoverage,
+		timeout: 0,
+		compileError: 0,
+		runtimeError: 0,
+		ignored: 0,
+	};
+	const summary = {
+		generatedAt: new Date().toISOString(),
+		threshold: THRESHOLD,
+		target,
+		overall: { score: 0, counts, thresholdMet: false },
+		files: [
+			{
+				file: target,
+				score: 0,
+				thresholdMet: false,
+				counts,
+				survivors: [],
+			},
+		],
+	};
+	await writeFile(summaryJsonPath, JSON.stringify(summary, null, 2));
+	process.stderr.write(
+		`\n=== Mutation summary ===\n` +
+			`✗ ${target}  0.00%  (no covering tests — recorded as score-0 red)\n` +
+			`Summary written: ${summaryJsonPath}\n`,
+	);
+	process.exit(1);
+}
 
 if (!existsSync(rawJsonPath)) {
 	die(3, `Stryker did not produce ${rawJsonPath}`);
