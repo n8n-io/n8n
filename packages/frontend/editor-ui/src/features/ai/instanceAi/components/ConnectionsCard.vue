@@ -27,7 +27,7 @@ const connections = computed(() => store.connections);
 const isVisible = computed(
 	() =>
 		!store.isLocalGatewayDisabledByAdmin &&
-		(store.gatewayStatusLoaded || store.isLocalGatewayDisabled),
+		(store.gatewayStatusLoaded || store.browserStatusLoaded || store.isLocalGatewayDisabled),
 );
 
 const ICON_MAP: Record<ConnectionType, IconName> = {
@@ -56,7 +56,9 @@ const hasAddableConnection = computed(() => addItems.value.length > 0);
 const addConnectionLabel = computed(() => i18n.baseText('instanceAi.connections.add.label'));
 
 function getRowActions(type: ConnectionType, status: ConnectionStatus): RowAction[] {
-	if (type === 'browser-use') return ['settings'];
+	if (type === 'browser-use') {
+		return status === 'connected' ? ['disconnect'] : ['connect'];
+	}
 	if (status === 'connected') return ['settings', 'disconnect', 'remove'];
 	return ['connect', 'remove'];
 }
@@ -83,6 +85,8 @@ async function openModal(type: ConnectionType) {
 async function handleDisconnect(type: ConnectionType) {
 	if (type === 'computer-use') {
 		await store.disconnectComputerUse();
+	} else if (type === 'browser-use') {
+		await store.disconnectBrowserUse();
 	}
 }
 

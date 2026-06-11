@@ -72,8 +72,10 @@ onMounted(() => {
 		.then(async () => await settingsStore.ensurePreferencesLoaded())
 		.catch(() => {})
 		.then(() => {
-			if (settingsStore.isLocalGatewayDisabled) return;
+			if (settingsStore.isLocalGatewayDisabledByAdmin) return;
 			settingsStore.startGatewayPushListener();
+			void settingsStore.fetchBrowserStatus();
+			if (settingsStore.isLocalGatewayDisabled) return;
 			void settingsStore.fetchGatewayStatus();
 		});
 });
@@ -83,10 +85,13 @@ watch(
 	() => settingsStore.isLocalGatewayDisabled,
 	(disabled) => {
 		if (disabled) {
-			settingsStore.stopGatewayPushListener();
+			if (settingsStore.isLocalGatewayDisabledByAdmin) {
+				settingsStore.stopGatewayPushListener();
+			}
 		} else {
 			settingsStore.startGatewayPushListener();
 			void settingsStore.fetchGatewayStatus();
+			void settingsStore.fetchBrowserStatus();
 		}
 	},
 );

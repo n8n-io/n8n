@@ -101,17 +101,15 @@ Browser tools are not enabled in the user's Computer Use configuration. If the u
 			case 'disconnected':
 				promptParts.push(
 					`Computer Use is not connected. Do NOT attempt to use Computer Use tools — they are not available. You can provide these instructions to establish a connection:
-1. open the right sidebar
-2. click on the "..." button next to "Computer Use"
-3. click on "Connect" and follow the instructions in the dialog`,
+- For browser automation only (no other software needed): open the right sidebar, click the "..." button next to "Browser Use", click "Connect", and follow the dialog to install the n8n Browser Use Chrome extension and connect it.
+- For filesystem/shell/other capabilities: open the right sidebar, click the "..." button next to "Computer Use", click "Connect", and follow the instructions in the dialog.`,
 				);
 				break;
 			case 'disabled':
 				promptParts.push(
 					`Computer Use is not connected and not set-up. Do NOT attempt to use Computer Use tools — they are not available. You can provide these instructions to establish a connection:
-1. open the right sidebar
-2. click on "Setup computer use"
-3. follow the instructions in the dialog`,
+- For browser automation only (no other software needed): open the right sidebar, click the "..." button next to "Browser Use", click "Connect", and follow the dialog to install the n8n Browser Use Chrome extension and connect it.
+- For filesystem/shell/other capabilities: open the right sidebar, click on "Setup computer use", and follow the instructions in the dialog.`,
 				);
 				break;
 			default:

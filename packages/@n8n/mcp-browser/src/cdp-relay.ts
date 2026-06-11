@@ -12,6 +12,7 @@ import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import http from 'node:http';
 import type net from 'node:net';
+import type { Duplex } from 'node:stream';
 import { WebSocketServer, WebSocket } from 'ws';
 
 import { getExtensionInstallInstructions } from './browser-discovery';
@@ -54,6 +55,24 @@ function isRestrictedTarget(targetInfo: { type?: string; url?: string }): boolea
 export interface CDPRelayServerOptions {
 	/** Timeout in ms waiting for extension to connect. Default 30_000 */
 	connectionTimeoutMs?: number;
+	/**
+	 * Run without an internal HTTP server. Connections must be fed in through
+	 * `handleUpgrade()` by an external HTTP server owner (remote relay mode).
+	 */
+	noServer?: boolean;
+	/** Port advertised in endpoint URLs when `noServer` is set. */
+	port?: number;
+	/**
+	 * Public WebSocket base URL (e.g. `wss://example.com:5681`) used to build
+	 * the extension endpoint in remote relay mode. Defaults to localhost.
+	 */
+	publicWsBaseUrl?: string;
+	/**
+	 * When set, extension WebSocket connections must carry a `token` query
+	 * parameter that passes this validator. Invalid/missing tokens are
+	 * rejected with close code 4003.
+	 */
+	validateAuthToken?: (token: string | null) => boolean;
 }
 
 export interface WaitForExtensionOptions {
@@ -62,10 +81,13 @@ export interface WaitForExtensionOptions {
 }
 
 export class CDPRelayServer {
-	private readonly httpServer: http.Server;
+	private readonly httpServer?: http.Server;
 	private readonly wss: WebSocketServer;
 	private readonly cdpPath: string;
 	private readonly extensionPath: string;
+	private boundPort?: number;
+	private readonly publicWsBaseUrl?: string;
+	private readonly validateAuthToken?: (token: string | null) => boolean;
 
 	private playwrightWs: WebSocket | null = null;
 	private extensionConn: ExtensionConnection | null = null;
@@ -89,6 +111,9 @@ export class CDPRelayServer {
 	/** Called when the extension disconnects with a typed reason. */
 	onExtensionDisconnect?: (reason: ConnectionLostReason) => void;
 
+	/** Called when the extension (re)connects. */
+	onExtensionConnect?: () => void;
+
 	private readonly connectionTimeoutMs: number;
 
 	/** Grace period allowing the extension to reconnect before tearing down Playwright. */
@@ -100,6 +125,9 @@ export class CDPRelayServer {
 
 	constructor(options?: CDPRelayServerOptions) {
 		this.connectionTimeoutMs = options?.connectionTimeoutMs ?? 30_000;
+		this.publicWsBaseUrl = options?.publicWsBaseUrl;
+		this.validateAuthToken = options?.validateAuthToken;
+		this.boundPort = options?.port;
 
 		const uuid = randomUUID();
 		this.cdpPath = `/cdp/${uuid}`;
@@ -111,35 +139,68 @@ export class CDPRelayServer {
 		});
 		this.extensionConnectedPromise.catch(() => {});
 
-		this.httpServer = http.createServer((_req, res) => {
-			res.writeHead(404);
-			res.end();
-		});
-
-		this.wss = new WebSocketServer({ server: this.httpServer });
+		if (options?.noServer) {
+			this.wss = new WebSocketServer({ noServer: true });
+		} else {
+			this.httpServer = http.createServer((_req, res) => {
+				res.writeHead(404);
+				res.end();
+			});
+			this.wss = new WebSocketServer({ server: this.httpServer });
+		}
 		this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
 	}
 
 	/** Start listening on a random available port. Returns the bound port. */
 	async listen(): Promise<number> {
+		const server = this.httpServer;
+		if (!server) {
+			throw new Error('CDPRelayServer was created with noServer — cannot listen');
+		}
+
 		return await new Promise((resolve, reject) => {
-			this.httpServer.listen(0, '127.0.0.1', () => {
-				const addr = this.httpServer.address() as net.AddressInfo;
+			server.listen(0, '127.0.0.1', () => {
+				const addr = server.address() as net.AddressInfo;
 				log.debug('listening on port', addr.port);
+				this.boundPort = addr.port;
 				resolve(addr.port);
 			});
-			this.httpServer.on('error', reject);
+			server.on('error', reject);
 		});
 	}
 
+	/** Whether this relay owns the given WebSocket upgrade path. */
+	matchesPath(pathname: string): boolean {
+		return pathname === this.cdpPath || pathname === this.extensionPath;
+	}
+
+	/**
+	 * Feed a WebSocket upgrade from an external HTTP server into this relay
+	 * (only valid when created with `noServer`).
+	 */
+	handleUpgrade(req: http.IncomingMessage, socket: Duplex, head: Buffer): void {
+		this.wss.handleUpgrade(req, socket, head, (ws) => this.onConnection(ws, req));
+	}
+
+	private resolvePort(port?: number): number {
+		const resolved = port ?? this.boundPort;
+		if (resolved === undefined) {
+			throw new Error('Relay port is unknown - call listen() or pass a port');
+		}
+
+		return resolved;
+	}
+
 	/** The WebSocket URL Playwright should connectOverCDP to. */
-	cdpEndpoint(port: number): string {
-		return `ws://127.0.0.1:${port}${this.cdpPath}`;
+	cdpEndpoint(port?: number): string {
+		return `ws://127.0.0.1:${this.resolvePort(port)}${this.cdpPath}`;
 	}
 
 	/** The WebSocket URL the extension should connect to. */
-	extensionEndpoint(port: number): string {
-		return `ws://127.0.0.1:${port}${this.extensionPath}`;
+	extensionEndpoint(port?: number, token?: string): string {
+		const base = this.publicWsBaseUrl ?? `ws://127.0.0.1:${this.resolvePort(port)}`;
+		const tokenSuffix = token ? `?token=${encodeURIComponent(token)}` : '';
+		return `${base}${this.extensionPath}${tokenSuffix}`;
 	}
 
 	/** Wait for the extension to connect. Rejects after timeout with phase-specific guidance.
@@ -190,7 +251,7 @@ export class CDPRelayServer {
 		this.closePlaywrightConnection('Server stopped');
 		this.closeExtensionConnection('Server stopped');
 		this.wss.close();
-		this.httpServer.close();
+		this.httpServer?.close();
 	}
 
 	// =========================================================================
@@ -295,6 +356,11 @@ export class CDPRelayServer {
 		if (url.pathname === this.cdpPath) {
 			this.handlePlaywrightConnection(ws);
 		} else if (url.pathname === this.extensionPath) {
+			if (this.validateAuthToken && !this.validateAuthToken(url.searchParams.get('token'))) {
+				log.debug('rejected extension connection: invalid auth token');
+				ws.close(4003, 'Invalid auth token');
+				return;
+			}
 			this.handleExtensionConnection(ws);
 		} else {
 			log.debug('rejected connection to unknown path:', url.pathname);
@@ -698,6 +764,7 @@ export class CDPRelayServer {
 		}
 
 		this.extensionConnectedResolve?.();
+		this.onExtensionConnect?.();
 	}
 
 	/** Wire up event handlers for the current extension connection. */

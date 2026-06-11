@@ -6,6 +6,12 @@
 	"description": "Let n8n AI set up credentials, fill out forms, and automate anything in your browser",
 	"permissions": ["debugger", "activeTab", "tabs", "storage", "webNavigation"],
 	"host_permissions": ["<all_urls>"],
+	"web_accessible_resources": [
+		{
+			"resources": ["connect.html"],
+			"matches": ["<all_urls>"]
+		}
+	],
 	"background": {
 		"service_worker": "background.mjs",
 		"type": "module"
