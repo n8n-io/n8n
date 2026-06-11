@@ -69,6 +69,9 @@ export const useDataTableColumns = ({
 				!isOversizedValue(params.data?.[col.name]),
 			resizable: true,
 			lockPinned: true,
+			// Dragging a column triggers a server-side move, so block it in
+			// read-only mode.
+			suppressMovable: readOnly.value,
 			headerComponent: ColumnHeader,
 			headerComponentParams: {
 				onDelete: onDeleteColumn,

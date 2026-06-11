@@ -415,6 +415,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'name',
 				getColDef: () => ({ cellDataType: 'text' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -444,6 +445,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'age',
 				getColDef: () => ({ cellDataType: 'number' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -473,6 +475,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'age',
 				getColDef: () => ({ cellDataType: 'number' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -502,6 +505,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'createdAt',
 				getColDef: () => ({ cellDataType: 'date' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -531,6 +535,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'createdAt',
 				getColDef: () => ({ cellDataType: 'date' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -560,6 +565,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'active',
 				getColDef: () => ({ cellDataType: 'boolean' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -589,6 +595,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'active',
 				getColDef: () => ({ cellDataType: 'boolean' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -618,6 +625,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'active',
 				getColDef: () => ({ cellDataType: 'boolean' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -667,6 +675,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'name',
 				getColDef: () => ({ cellDataType: 'text' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			const mockRow = {
@@ -696,6 +705,7 @@ describe('useAgGrid', () => {
 			const mockColumn = {
 				getColId: () => 'name',
 				getColDef: () => ({ cellDataType: 'text' }),
+				isCellEditable: () => true,
 			} as unknown as Column;
 
 			mockGridApi.getFocusedCell = vi.fn(() => ({
