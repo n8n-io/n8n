@@ -30,6 +30,8 @@ export interface ConnectPayload {
 // reused verbatim, never redefined here.
 import type {
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantRecommendationsRequest,
+	DesktopAssistantRecommendationsResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -51,6 +53,9 @@ export type {
 	DesktopAssistantHistoryEntry,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
+	DesktopAssistantRecommendationsRequest,
+	DesktopAssistantRecommendation,
+	DesktopAssistantRecommendationsResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
@@ -165,6 +170,13 @@ export interface ElectronApi {
 	captureScreenshot: (target?: WindowCaptureTarget) => Promise<ScreenshotAttachment>;
 	/** Fire a one-shot task with the prompt + detected context; returns thread/run ids. */
 	triggerTask: (body: DesktopAssistantTaskRequest) => Promise<DesktopAssistantTaskResponse>;
+	/**
+	 * Generate task suggestions for the empty state, grounded in the selected
+	 * context (optional) and the user's connected integrations.
+	 */
+	getRecommendations: (
+		body: DesktopAssistantRecommendationsRequest,
+	) => Promise<DesktopAssistantRecommendationsResponse>;
 	/** Current grant state of the macOS permissions context detection relies on. */
 	getMacPermissions: () => Promise<MacPermissionStatus>;
 	/** Open the System Settings pane to grant a macOS permission. */

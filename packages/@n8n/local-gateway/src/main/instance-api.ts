@@ -1,5 +1,7 @@
 import type {
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantRecommendationsRequest,
+	DesktopAssistantRecommendationsResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -123,6 +125,23 @@ export class InstanceApi {
 			body: JSON.stringify(body),
 		});
 		return await this.unwrap<DesktopAssistantTaskResponse>(response);
+	}
+
+	/**
+	 * `POST /rest/desktop-assistant/recommendations` — generate task suggestions
+	 * for the empty state from the optional selected context and the user's
+	 * connected integrations.
+	 */
+	async getRecommendations(
+		body: DesktopAssistantRecommendationsRequest,
+	): Promise<DesktopAssistantRecommendationsResponse> {
+		const response = await this.authedFetch('/desktop-assistant/recommendations', {
+			method: 'POST',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body),
+		});
+		return await this.unwrap<DesktopAssistantRecommendationsResponse>(response);
 	}
 
 	/**

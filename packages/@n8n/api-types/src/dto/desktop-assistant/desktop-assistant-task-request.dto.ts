@@ -1,26 +1,7 @@
 import { z } from 'zod';
 
-import { instanceAiAttachmentSchema } from '../../schemas/instance-ai.schema';
+import { desktopAssistantContextSchema } from './desktop-assistant-context.schema';
 import { Z } from '../../zod-class';
-
-/**
- * What the user is "looking at" when the task is triggered, detected locally
- * by the desktop app. `kind` drives UI affordances; the structured pointer
- * fields (`url`, `path`) let the orchestrator target the real resource, while
- * `attachments` carries perceptual context (e.g. a screenshot).
- */
-const desktopAssistantContextSchema = z.object({
-	kind: z.enum(['browser', 'finder', 'file', 'calendar', 'email', 'other']).optional(),
-	/** For `kind: 'file'` — the readable category derived from the file extension. */
-	fileType: z.enum(['pdf', 'image', 'markdown', 'text']).optional(),
-	app: z.string().max(255).optional(),
-	windowTitle: z.string().max(500).optional(),
-	url: z.string().max(2048).optional(),
-	path: z.string().max(1024).optional(),
-	selectedText: z.string().max(8000).optional(),
-	appHint: z.string().max(255).optional(),
-	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
-});
 
 /**
  * Request body for `POST /desktop-assistant/task` — the one-shot trigger

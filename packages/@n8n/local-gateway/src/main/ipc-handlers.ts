@@ -16,6 +16,8 @@ import type {
 	AuthStatus,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
+	DesktopAssistantRecommendationsRequest,
+	DesktopAssistantRecommendationsResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -262,6 +264,17 @@ export function registerIpcHandlers({
 			// raw body — screenshot attachments are multi-MB base64 we never want in logs.
 			logger.info('Triggering one-shot task', summarizeTaskRequest(body));
 			return await instanceApi.triggerTask(body);
+		},
+	);
+
+	ipcMain.handle(
+		'recommendations:get',
+		async (
+			_event,
+			body: DesktopAssistantRecommendationsRequest,
+		): Promise<DesktopAssistantRecommendationsResponse> => {
+			logger.debug('IPC recommendations:get', { kind: body.context?.kind });
+			return await instanceApi.getRecommendations(body);
 		},
 	);
 
