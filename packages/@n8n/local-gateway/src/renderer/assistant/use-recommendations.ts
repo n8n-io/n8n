@@ -9,6 +9,7 @@
  */
 import { ref, watch } from 'vue';
 
+import { getRecommendations } from './tasks-api';
 import { useAssistantContext } from './use-assistant-context';
 import type { DesktopAssistantRecommendation, DetectedContext } from '../../shared/types';
 
@@ -65,7 +66,7 @@ export function useRecommendations() {
 		loading.value = true;
 		error.value = false;
 		try {
-			const response = await window.electronAPI.getRecommendations({
+			const response = await getRecommendations({
 				context: toRequestContext(detected.value),
 				limit,
 			});

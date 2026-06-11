@@ -8,7 +8,7 @@ import MiniSpinner from './MiniSpinner.vue';
 
 import { suggestionChipsFor } from '../assistant/contexts';
 import { watchAssistantRun } from '../assistant/run-watcher';
-import { createAssistantTask } from '../assistant/tasks-api';
+import { captureScreenshot, createAssistantTask } from '../assistant/tasks-api';
 import { useAssistantContext } from '../assistant/use-assistant-context';
 import { usePendingTasks } from '../assistant/use-pending-tasks';
 import type { DesktopAssistantTaskRequest } from '../../shared/types';
@@ -107,7 +107,7 @@ async function buildTaskContext(): Promise<DesktopAssistantTaskRequest['context'
 		try {
 			// Capture just the selected window (so our own window isn't in the shot);
 			// falls back to full screen in the main process when it can't be matched.
-			const shot = await window.electronAPI.captureScreenshot({
+			const shot = await captureScreenshot({
 				windowId: ctx.id,
 				app: ctx.app,
 				title: ctx.windowTitle,

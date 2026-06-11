@@ -11,6 +11,7 @@
 import { computed, ref } from 'vue';
 
 import { assistantContextFromDetected, type AssistantContext } from './contexts';
+import { getContextOptions, onContextChanged } from './tasks-api';
 import type { DetectedContext } from '../../shared/types';
 
 // The open windows the user can pick as context (first = frontmost). `selectedKey`
@@ -53,8 +54,8 @@ export function useAssistantContext() {
 			return;
 		}
 		initPromise = (async () => {
-			optionsList.value = await window.electronAPI.getContextOptions();
-			dispose = window.electronAPI.onContextChanged((contexts) => {
+			optionsList.value = await getContextOptions();
+			dispose = onContextChanged((contexts) => {
 				optionsList.value = contexts;
 				// A fresh detection supersedes a stale manual pick.
 				selectedKey.value = null;

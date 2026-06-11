@@ -7,6 +7,7 @@ import MiniSpinner from '../components/MiniSpinner.vue';
 import RecommendationCard from '../components/RecommendationCard.vue';
 import TaskCard from '../components/TaskCard.vue';
 
+import * as tasksApi from '../assistant/tasks-api';
 import { usePendingTasks } from '../assistant/use-pending-tasks';
 import { useRecommendations } from '../assistant/use-recommendations';
 import type { DesktopAssistantTasksResponse } from '../../shared/types';
@@ -66,7 +67,7 @@ async function load() {
 	loading.value = true;
 	error.value = false;
 	try {
-		tasks.value = await window.electronAPI.getTasks();
+		tasks.value = await tasksApi.getTasks();
 	} catch (e) {
 		// Surface the cause in devtools — the inline state only shows a generic message.
 		console.error('Failed to load desktop-assistant tasks', e);
@@ -77,11 +78,11 @@ async function load() {
 }
 
 function openWorkflow(workflowId: string) {
-	void window.electronAPI.openWorkflow(workflowId);
+	void tasksApi.openWorkflow(workflowId);
 }
 
 async function runTask(workflowId: string) {
-	const result = await window.electronAPI.runTask(workflowId);
+	const result = await tasksApi.runTask(workflowId);
 	if (result.ok) {
 		// Hand off to the History tab so the user watches the run progress (spinner
 		// → done/failed). Reloading the task list here is moot since we're leaving.
@@ -137,7 +138,10 @@ onBeforeUnmount(() => {
 				<span :class="$style.pendingBody">
 					<span :class="$style.pendingTitle">{{ entry.label }}</span>
 					<span
-						:class="[$style.pendingSubtitle, { [$style.pendingSubtitleFailed]: entry.status === 'failed' }]"
+						:class="[
+							$style.pendingSubtitle,
+							{ [$style.pendingSubtitleFailed]: entry.status === 'failed' },
+						]"
 					>
 						{{
 							entry.status === 'building'

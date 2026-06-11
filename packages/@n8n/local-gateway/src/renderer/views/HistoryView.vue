@@ -6,6 +6,8 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import HistoryRow from '../components/HistoryRow.vue';
 import TimeSavedPanel from '../components/TimeSavedPanel.vue';
 
+import * as tasksApi from '../assistant/tasks-api';
+
 import type { DesktopAssistantHistoryEntry, DesktopAssistantTimeSaved } from '../../shared/types';
 
 /** Refresh cadence while the History tab is open; a running execution flips to its final state. */
@@ -43,7 +45,7 @@ async function load() {
 	error.value = false;
 	try {
 		const limit = Math.min(MAX_PAGE_SIZE, Math.max(PAGE_SIZE, entries.value.length));
-		const response = await window.electronAPI.getHistory({ limit });
+		const response = await tasksApi.getHistory({ limit });
 		entries.value = response.results;
 		count.value = response.count;
 		now.value = Date.now();
@@ -63,7 +65,7 @@ async function loadMore() {
 	if (!oldest || loadingMore.value) return;
 	loadingMore.value = true;
 	try {
-		const response = await window.electronAPI.getHistory({ lastId: oldest.id, limit: PAGE_SIZE });
+		const response = await tasksApi.getHistory({ lastId: oldest.id, limit: PAGE_SIZE });
 		entries.value = entries.value.concat(response.results);
 		count.value = response.count;
 		now.value = Date.now();
@@ -77,14 +79,14 @@ async function loadMore() {
 /** Time saved moves slowly, so it's fetched on mount/refocus — not on every poll tick. */
 async function loadTimeSaved() {
 	try {
-		timeSaved.value = await window.electronAPI.getTimeSaved();
+		timeSaved.value = await tasksApi.getTimeSaved();
 	} catch (e) {
 		console.error('Failed to load desktop-assistant time saved', e);
 	}
 }
 
 function openExecution(workflowId: string, executionId: string) {
-	void window.electronAPI.openExecution(workflowId, executionId);
+	void tasksApi.openExecution(workflowId, executionId);
 }
 
 /**
@@ -104,7 +106,7 @@ onMounted(() => {
 	void load();
 	void loadTimeSaved();
 	pollTimer = setInterval(refreshIfActive, POLL_INTERVAL_MS);
-	unsubscribeActive = window.electronAPI.onWindowActiveChanged((active) => {
+	unsubscribeActive = tasksApi.onWindowActiveChanged((active) => {
 		windowActive.value = active;
 		// Refresh immediately on return rather than waiting for the next tick.
 		if (active) {

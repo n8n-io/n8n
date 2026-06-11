@@ -3,6 +3,12 @@ import { N8nButton, N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/des
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 import type { AuthStatus, MacPermissionKind, MacPermissionStatus } from '../../shared/types';
+import {
+	getMacPermissions,
+	onWindowActiveChanged,
+	openMacPermissionSettings,
+	signOut as apiSignOut,
+} from '../assistant/tasks-api';
 
 defineProps<{ status: AuthStatus }>();
 
@@ -15,7 +21,7 @@ async function signOut() {
 	signingOut.value = true;
 	try {
 		// The resulting signedOut status arrives via onAuthStatusChanged and swaps the view.
-		await window.electronAPI.signOut();
+		await apiSignOut();
 	} finally {
 		signingOut.value = false;
 	}
@@ -50,11 +56,11 @@ const permissionRows: Array<{ kind: MacPermissionKind; label: string; descriptio
 ];
 
 async function refreshPermissions() {
-	permissions.value = await window.electronAPI.getMacPermissions();
+	permissions.value = await getMacPermissions();
 }
 
 async function openPermission(kind: MacPermissionKind) {
-	await window.electronAPI.openMacPermissionSettings(kind);
+	await openMacPermissionSettings(kind);
 }
 
 let disposeActive: (() => void) | undefined;
@@ -62,7 +68,7 @@ onMounted(async () => {
 	await refreshPermissions();
 	// Re-check when the window regains focus, so returning from System Settings
 	// flips the status live.
-	disposeActive = window.electronAPI.onWindowActiveChanged((active) => {
+	disposeActive = onWindowActiveChanged((active) => {
 		if (active) void refreshPermissions();
 	});
 });
