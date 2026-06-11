@@ -10,6 +10,7 @@ import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
+	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
 	AgentModelSchema,
@@ -68,6 +69,7 @@ import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { getProviderPrefix } from './json-config/model-id';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
@@ -295,12 +297,11 @@ export class AgentsService {
 	}
 
 	/**
-	 * Whether the agent knowledge base sub-feature is enabled via
-	 * `N8N_AGENTS_MODULES`. Gates the file endpoints and the `search_knowledge`
-	 * runtime tool. Public so the controller can guard its file endpoints.
+	 * Whether the agent knowledge base is enabled via Daytona sandbox env vars.
+	 * Gates the file endpoints. Public so the controller can guard its file endpoints.
 	 */
-	isKnowledgeBaseModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('knowledge-base');
+	isKnowledgeBaseEnabled(): boolean {
+		return this.agentsConfig.sandboxEnabled && this.agentsConfig.sandboxProvider === 'daytona';
 	}
 
 	/**
@@ -747,11 +748,8 @@ export class AgentsService {
 			return false;
 		}
 
-		// Best-effort, non-transactional cleanup: deleteAllFilesForAgent removes
-		// binary blobs from the filesystem/object store, which a DB transaction
-		// can't roll back. The agent_files rows are removed via the agentId FK's
-		// ON DELETE CASCADE when the agent is removed below, so a failure here
-		// only risks orphaned blobs (logged) and must not block agent deletion.
+		// Best-effort cleanup of knowledge files from Daytona volume storage.
+		// Failure here must not block agent deletion.
 		try {
 			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId);
 		} catch (error) {
@@ -1057,6 +1055,23 @@ export class AgentsService {
 					// surfaces list/permission failures with the concrete error.
 				}
 			}
+		}
+
+		try {
+			const modelsByDifficulty = config.subAgents?.modelsByDifficulty;
+			if (modelsByDifficulty) {
+				for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
+					await this.validateMemoryWorkerModel(
+						modelsByDifficulty[difficulty],
+						`subAgents.modelsByDifficulty.${difficulty}`,
+						findCredential,
+						missing,
+					);
+				}
+			}
+		} catch {
+			// Same behavior as other credential checks: runtime reconstruction surfaces
+			// permission/listing failures with the concrete error.
 		}
 
 		missing.push(
@@ -1526,6 +1541,10 @@ export class AgentsService {
 	async validateConfig(
 		raw: unknown,
 	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }> {
+		if (hasNodeToolInputSchema(raw)) {
+			return { valid: false, error: 'Node tool configs must not include inputSchema.' };
+		}
+
 		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(raw));
 		if (!parsed.success) {
 			return { valid: false, error: parsed.error.message };
@@ -1592,24 +1611,20 @@ export class AgentsService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
-		await this.validateSubAgentRefs(result.config, entity);
-		this.validateConfigRefs(result.config, entity);
-
 		// Task refs resolve against task definition bodies (a separate table), so
-		// validate them here where the DB is reachable. Orphan bodies are pruned
+		// load them here where the DB is reachable. Orphan bodies are pruned
 		// after the save below. `tasksProvided` also gates the schema overlay.
 		const tasksProvided = result.config.tasks !== undefined;
 		const existingTaskIds = tasksProvided
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
-		if (tasksProvided) {
-			const existingTaskIdSet = new Set(existingTaskIds);
-			for (const ref of result.config.tasks ?? []) {
-				if (!existingTaskIdSet.has(ref.id)) {
-					throw new UserError(`Invalid agent config: Missing task body: ${ref.id}`);
-				}
-			}
-		}
+
+		const resolvedSubAgents = await this.removeMissingConfigRefs(
+			result.config,
+			entity,
+			new Set(existingTaskIds),
+		);
+		this.validateSubAgentRefs(resolvedSubAgents, entity);
 
 		// All optional fields on `AgentJsonConfigSchema` are treated as
 		// "preserve when omitted, replace when provided." A missing key on the
@@ -1661,7 +1676,6 @@ export class AgentsService {
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 		};
-		nextSchema.subAgents = normalizeSubAgentsConfig(nextSchema.subAgents);
 
 		entity.schema = nextSchema;
 		entity.name = result.config.name;
@@ -1947,20 +1961,40 @@ export class AgentsService {
 		return errors.length > 0 ? errors.join('\n') : null;
 	}
 
-	private validateConfigRefs(config: AgentJsonConfig, entity: Agent) {
-		const missingSkillIds = this.agentSkillsService.getMissingSkillIds(config, entity.skills ?? {});
-		if (missingSkillIds.length > 0) {
-			throw new UserError(
-				`Invalid agent config: Missing skill bodies: ${missingSkillIds.join(', ')}`,
-			);
+	private async removeMissingConfigRefs(
+		config: AgentJsonConfig,
+		entity: Agent,
+		existingTaskIds: ReadonlySet<string>,
+	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
+		if (config.skills !== undefined) {
+			const skills = entity.skills ?? {};
+			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
 		}
 
-		const missingToolIds = this.getMissingCustomToolIds(config, entity.tools ?? {});
-		if (missingToolIds.length > 0) {
-			throw new UserError(
-				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
-			);
+		if (config.tools !== undefined) {
+			const tools = entity.tools ?? {};
+			config.tools = config.tools.filter((ref) => ref.type !== 'custom' || Boolean(tools[ref.id]));
 		}
+
+		if (config.tasks !== undefined) {
+			config.tasks = config.tasks.filter((ref) => existingTaskIds.has(ref.id));
+		}
+
+		if (config.subAgents?.agents !== undefined) {
+			const resolvedSubAgents = await this.fetchUniqueSubAgents(
+				config.subAgents.agents,
+				entity.projectId,
+			);
+			const existingSubAgentIds = new Set(
+				resolvedSubAgents.filter(({ agent }) => agent !== null).map(({ agentId }) => agentId),
+			);
+			config.subAgents.agents = config.subAgents.agents.filter(({ agentId }) =>
+				existingSubAgentIds.has(agentId),
+			);
+			return resolvedSubAgents;
+		}
+
+		return [];
 	}
 
 	/**
@@ -1986,16 +2020,14 @@ export class AgentsService {
 		return resolved;
 	}
 
-	private async validateSubAgentRefs(config: AgentJsonConfig, entity: Agent) {
-		const refs = config.subAgents?.agents ?? [];
-		if (refs.length === 0) return;
-
-		for (const { agentId, agent } of await this.fetchUniqueSubAgents(refs, entity.projectId)) {
+	private validateSubAgentRefs(
+		resolvedSubAgents: Array<{ agentId: string; agent: Agent | null }>,
+		entity: Agent,
+	) {
+		for (const { agentId, agent } of resolvedSubAgents) {
+			if (!agent) continue;
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
-			}
-			if (!agent) {
-				throw new UserError(`Invalid agent config: Subagent "${agentId}" was not found`);
 			}
 			if (!agent.activeVersionId) {
 				throw new UserError(`Invalid agent config: Subagent "${agentId}" must be published`);
@@ -2141,15 +2173,12 @@ export class AgentsService {
 	}
 }
 
-function getProviderPrefix(modelId: string): string {
-	const slashIdx = modelId.indexOf('/');
-	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function normalizeSubAgentsConfig(
-	subAgents: AgentJsonConfig['subAgents'],
-): AgentJsonConfig['subAgents'] {
-	if (!subAgents) return undefined;
-	const agents = subAgents.agents ?? [];
-	return { agents };
+function hasNodeToolInputSchema(raw: unknown): boolean {
+	if (!isRecord(raw) || !Array.isArray(raw.tools)) return false;
+
+	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
 }

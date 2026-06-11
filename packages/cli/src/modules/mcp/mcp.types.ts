@@ -69,13 +69,15 @@ export type JSONRPCRequest = {
 	jsonrpc?: string;
 	method?: string;
 	params?: {
-		clientInfo?: {
-			name?: string;
-			version?: string;
-		};
+		clientInfo?: McpClientInfo;
 		[key: string]: unknown;
 	};
 	id?: string | number | null;
+};
+
+export type McpClientInfo = {
+	name?: string;
+	version?: string;
 };
 
 export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';

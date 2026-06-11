@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import { LicenseState, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import {
@@ -93,6 +93,7 @@ describe('McpService', () => {
 			mockInstance(ExecutionService),
 			mockInstance(DataTableProxyService),
 			mockInstance(CollaborationService),
+			mockInstance(LicenseState),
 			mockInstance(PostHogClient),
 		);
 	});
@@ -134,6 +135,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
 			);
 
@@ -328,6 +330,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(LicenseState),
 				opts.postHogClient,
 			);
 
@@ -430,6 +433,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
 			);
 
@@ -473,6 +477,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
 			);
 
@@ -540,6 +545,7 @@ describe('McpService', () => {
 					mockInstance(ExecutionService),
 					mockInstance(DataTableProxyService),
 					mockInstance(CollaborationService),
+					mockInstance(LicenseState),
 					postHogClient,
 				);
 			};
@@ -658,7 +664,7 @@ describe('McpService', () => {
 				const telemetry = mockInstance(Telemetry);
 
 				const service = buildService({ telemetry });
-				await service.getServer(user, true);
+				await service.getServer(user, true, { name: 'Claude Desktop', version: '1.2.3' });
 
 				const [, appOptions] = (registerWorkflowPreviewApp as jest.Mock).mock.calls[0] as [
 					unknown,
@@ -668,6 +674,8 @@ describe('McpService', () => {
 
 				expect(telemetry.track).toHaveBeenCalledWith(MCP_PREVIEW_RENDER_REQUESTED_EVENT, {
 					user_id: 'user-1',
+					client_name: 'Claude Desktop',
+					client_version: '1.2.3',
 				});
 			});
 

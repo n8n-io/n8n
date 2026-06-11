@@ -1,3 +1,4 @@
+import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
 import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth';
 import { Logger } from '@n8n/backend-common';
@@ -117,8 +118,10 @@ export class McpOAuthTokenService {
 				},
 			});
 
+			// InvalidGrantError so the SDK token handler responds 400 invalid_grant (RFC 6749 §5.2)
+			// instead of 500 server_error, letting clients fall back to re-authorization.
 			if (!refreshTokenRecord) {
-				throw new Error('Invalid refresh token');
+				throw new InvalidGrantError('Invalid refresh token');
 			}
 
 			const result = await trx.delete(RefreshToken, {
@@ -129,7 +132,7 @@ export class McpOAuthTokenService {
 
 			const numAffected = result.affected ?? 0;
 			if (numAffected < 1) {
-				throw new Error('Invalid refresh token');
+				throw new InvalidGrantError('Invalid refresh token');
 			}
 
 			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(

@@ -20,6 +20,7 @@ const {
 	noMatchLabel,
 	horizontal = false,
 	text = false,
+	disabled = false,
 	dataTestId,
 	credentialDataTestId,
 	maxSelectedNameChars,
@@ -32,6 +33,7 @@ const {
 	noMatchLabel: string;
 	horizontal?: boolean;
 	text?: boolean;
+	disabled?: boolean;
 	dataTestId: string;
 	credentialDataTestId: string;
 	maxSelectedNameChars: number;
@@ -56,12 +58,20 @@ const extraPopperClass = computed(() =>
 );
 
 function handleSearch(query: string) {
+	if (disabled) return;
 	searchQuery.value = query;
 	emit('search', query);
 }
 
+function handleSelect(id: string) {
+	if (disabled) return;
+	emit('select', id);
+}
+
 defineExpose({
-	open: () => dropdownRef.value?.open(),
+	open: () => {
+		if (!disabled) dropdownRef.value?.open();
+	},
 });
 </script>
 
@@ -75,13 +85,14 @@ defineExpose({
 		searchable
 		:empty-text="searchQuery ? noMatchLabel : undefined"
 		@search="handleSearch"
-		@select="emit('select', $event)"
+		@select="handleSelect"
 	>
 		<template #trigger>
 			<N8nButton
 				:variant="text ? 'ghost' : 'outline'"
 				:class="[$style.dropdownButton, horizontal && $style.dropdownButtonHorizontal]"
 				:text="text"
+				:disabled="disabled"
 				size="large"
 				:data-test-id="dataTestId"
 			>
