@@ -285,6 +285,25 @@ export class Telegram implements INodeType {
 						action: 'Send a text message',
 					},
 					{
+						name: 'Send Message Draft',
+						value: 'sendMessageDraft',
+						description: 'Stream a partial message preview while it is being generated',
+						action: 'Send a message draft',
+					},
+					{
+						name: 'Send Rich Message',
+						value: 'sendRichMessage',
+						description:
+							'Send a richly formatted message with headings, lists, tables, media and more',
+						action: 'Send a rich message',
+					},
+					{
+						name: 'Send Rich Message Draft',
+						value: 'sendRichMessageDraft',
+						description: 'Stream a partial rich message preview while it is being generated',
+						action: 'Send a rich message draft',
+					},
+					{
 						name: 'Send and Wait for Response',
 						value: SEND_AND_WAIT_OPERATION,
 						description: 'Send a message and wait for response',
@@ -344,8 +363,11 @@ export class Telegram implements INodeType {
 							'sendDocument',
 							'sendLocation',
 							'sendMessage',
+							'sendMessageDraft',
 							'sendMediaGroup',
 							'sendPhoto',
+							'sendRichMessage',
+							'sendRichMessageDraft',
 							'sendSticker',
 							'sendVideo',
 							'unpinChatMessage',
@@ -1787,6 +1809,211 @@ export class Telegram implements INodeType {
 					},
 				],
 			},
+
+			// ----------------------------------
+			//   message:sendMessageDraft/sendRichMessageDraft
+			// ----------------------------------
+			{
+				displayName: 'Draft ID',
+				name: 'draftId',
+				type: 'number',
+				default: 0,
+				displayOptions: {
+					show: {
+						operation: ['sendMessageDraft', 'sendRichMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				required: true,
+				description:
+					'Unique identifier of the message draft; must be non-zero. Updates streamed with the same draft ID are animated.',
+			},
+
+			// ----------------------------------
+			//         message:sendMessageDraft
+			// ----------------------------------
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				typeOptions: {
+					rows: 5,
+				},
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['sendMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				description:
+					'Text of the message, 0-4096 characters. Leave empty to show a “Thinking…” placeholder.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['sendMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Message Thread ID',
+						name: 'message_thread_id',
+						type: 'number',
+						default: 0,
+						description: 'The unique identifier of the forum topic',
+					},
+					{
+						displayName: 'Parse Mode',
+						name: 'parse_mode',
+						type: 'options',
+						options: [
+							{
+								name: 'Markdown (Legacy)',
+								value: 'Markdown',
+							},
+							{
+								name: 'MarkdownV2',
+								value: 'MarkdownV2',
+							},
+							{
+								name: 'HTML',
+								value: 'HTML',
+							},
+						],
+						default: 'HTML',
+						description: 'How to parse the text',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//   message:sendRichMessage/sendRichMessageDraft
+			// ----------------------------------
+			{
+				displayName: 'Format',
+				name: 'richFormat',
+				type: 'options',
+				options: [
+					{
+						name: 'Markdown',
+						value: 'markdown',
+					},
+					{
+						name: 'HTML',
+						value: 'html',
+					},
+				],
+				default: 'markdown',
+				displayOptions: {
+					show: {
+						operation: ['sendRichMessage', 'sendRichMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				description: 'Which formatting syntax the rich message content uses',
+			},
+			{
+				displayName: 'Rich Message',
+				name: 'richMessageText',
+				type: 'string',
+				typeOptions: {
+					rows: 6,
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['sendRichMessage', 'sendRichMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				description:
+					'Content of the rich message, written in the selected Markdown or HTML syntax. Supports headings, lists, tables, block quotes, media, collapsible blocks and more.',
+				hint: 'Limits: up to 32768 characters, 500 blocks and 50 media attachments',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['sendRichMessage', 'sendRichMessageDraft'],
+						resource: ['message'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Disable Notification',
+						name: 'disable_notification',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								'/operation': ['sendRichMessage'],
+							},
+						},
+						description:
+							'Whether to send the message silently. Users will receive a notification with no sound.',
+					},
+					{
+						displayName: 'Message Effect ID',
+						name: 'message_effect_id',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								'/operation': ['sendRichMessage'],
+							},
+						},
+						description:
+							'Unique identifier of the message effect to be added to the message; for private chats only',
+					},
+					{
+						displayName: 'Message Thread ID',
+						name: 'message_thread_id',
+						type: 'number',
+						default: 0,
+						description: 'The unique identifier of the forum topic',
+					},
+					{
+						displayName: 'Protect Content',
+						name: 'protect_content',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								'/operation': ['sendRichMessage'],
+							},
+						},
+						description:
+							'Whether to protect the contents of the sent message from forwarding and saving',
+					},
+					{
+						displayName: 'Right-to-Left',
+						name: 'is_rtl',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the rich message must be shown right-to-left',
+					},
+					{
+						displayName: 'Skip Entity Detection',
+						name: 'skip_entity_detection',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to skip automatic detection of entities such as URLs, emails, mentions, hashtags and phone numbers',
+					},
+				],
+			},
 			...getSendAndWaitProperties(
 				[
 					{
@@ -2131,6 +2358,55 @@ export class Telegram implements INodeType {
 
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
+					} else if (operation === 'sendMessageDraft') {
+						// ----------------------------------
+						//        message:sendMessageDraft
+						// ----------------------------------
+
+						endpoint = 'sendMessageDraft';
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.draft_id = this.getNodeParameter('draftId', i) as number;
+						body.text = this.getNodeParameter('text', i, '') as string;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						Object.assign(body, additionalFields);
+					} else if (operation === 'sendRichMessage' || operation === 'sendRichMessageDraft') {
+						// ----------------------------------------------
+						//   message:sendRichMessage/sendRichMessageDraft
+						// ----------------------------------------------
+
+						endpoint = operation;
+
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+
+						if (operation === 'sendRichMessageDraft') {
+							body.draft_id = this.getNodeParameter('draftId', i) as number;
+						}
+
+						const format = this.getNodeParameter('richFormat', i) as string;
+						const content = this.getNodeParameter('richMessageText', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						// InputRichMessage requires exactly one of `html` or `markdown`
+						const richMessage: IDataObject = {};
+						if (format === 'html') {
+							richMessage.html = content;
+						} else {
+							richMessage.markdown = content;
+						}
+
+						if (additionalFields.is_rtl !== undefined) {
+							richMessage.is_rtl = additionalFields.is_rtl;
+							delete additionalFields.is_rtl;
+						}
+						if (additionalFields.skip_entity_detection !== undefined) {
+							richMessage.skip_entity_detection = additionalFields.skip_entity_detection;
+							delete additionalFields.skip_entity_detection;
+						}
+
+						body.rich_message = richMessage;
+						Object.assign(body, additionalFields);
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
