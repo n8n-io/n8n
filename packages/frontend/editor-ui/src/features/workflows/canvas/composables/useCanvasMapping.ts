@@ -641,12 +641,13 @@ export function useCanvasMapping({
 				},
 				render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
 			};
+			const offset = nodeGroupView?.getVisualOffsetForNode(node.id) ?? { x: 0, y: 0 };
 
 			return {
 				id: node.id,
 				label: node.name,
 				type: 'canvas-node',
-				position: { x: node.position[0], y: node.position[1] },
+				position: { x: node.position[0] + offset.x, y: node.position[1] + offset.y },
 				data,
 				...additionalNodePropertiesById.value[node.id],
 				draggable: node.draggable,

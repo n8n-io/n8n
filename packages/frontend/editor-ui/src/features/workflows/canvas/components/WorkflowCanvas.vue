@@ -6,11 +6,12 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { ViewportTransform } from '@vue-flow/core';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import { computed, provide, ref, useCssModule, useTemplateRef } from 'vue';
+import { computed, provide, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
+import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
@@ -71,6 +72,7 @@ const isCanvasNodeGroupingEnabled = computed(() =>
 );
 
 const nodeGroupView = useCanvasNodeGroupView({
+	allGroups: computed(() => workflowDocumentStore.value.allGroups),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	isGroupingEnabled: () => isCanvasNodeGroupingEnabled.value,
 });
@@ -93,11 +95,29 @@ const {
 	isExperimentalNdvActive,
 });
 
+const layoutComponents = computed(() =>
+	// Without groups there can be no pushes — skip building per-node components.
+	workflowDocumentStore.value.allGroups.length === 0
+		? []
+		: buildNodeGroupLayoutComponents({
+				allGroups: workflowDocumentStore.value.allGroups,
+				nodes: nodes.value,
+				getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
+				getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+				isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+			}),
+);
+
+watch(layoutComponents, (components) => nodeGroupView.syncLayoutComponents(components), {
+	immediate: true,
+});
+
 const mappedGroupVueFlowNodes = computed(() =>
 	mapGroupsToVueFlowNodes({
 		allGroups: workflowDocumentStore.value.allGroups,
 		getNodeById: (id) => workflowDocumentStore.value.getNodeById(id),
 		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
+		getGroupVisualOffset: (id) => nodeGroupView.getVisualOffsetForComponent(id),
 		isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
 		readOnly: readOnlyRef.value || suppressInteractionRef.value,
 	}),
