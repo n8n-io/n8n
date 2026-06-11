@@ -361,6 +361,22 @@ export async function getSchemaRegistryOptions(
 }
 
 /**
+ * Constructs a Schema Registry client from the resolved connection options.
+ * Shared by the Kafka producer node and the Kafka Trigger; each caller layers
+ * its own behavior on top (the producer resolves a schema id, the trigger
+ * applies the warn-and-continue policy).
+ * @param ctx - The execution context (node or trigger)
+ * @param fallbackUrl - The `schemaRegistryUrl` node parameter, used when no credential is selected
+ */
+export async function createSchemaRegistry(
+	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'>,
+	fallbackUrl: string,
+): Promise<SchemaRegistry> {
+	const options = await getSchemaRegistryOptions(ctx, fallbackUrl);
+	return new SchemaRegistry(options);
+}
+
+/**
  * Initializes Confluent Schema Registry if enabled in node parameters
  * @param ctx - The trigger function context
  * @returns Schema registry instance or undefined if not configured
@@ -371,8 +387,7 @@ export async function setSchemaRegistry(ctx: ITriggerFunctions) {
 	if (useSchemaRegistry) {
 		try {
 			const schemaRegistryUrl = ctx.getNodeParameter('schemaRegistryUrl', 0) as string;
-			const options = await getSchemaRegistryOptions(ctx, schemaRegistryUrl);
-			return new SchemaRegistry(options);
+			return await createSchemaRegistry(ctx, schemaRegistryUrl);
 		} catch (error) {
 			// Credential/config misconfiguration must fail loudly at activation
 			if (error instanceof NodeOperationError) {

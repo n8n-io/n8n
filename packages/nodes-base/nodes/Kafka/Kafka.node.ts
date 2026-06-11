@@ -1,4 +1,4 @@
-import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
+import type { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
 import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
 import type {
@@ -15,7 +15,7 @@ import type {
 import { ApplicationError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { generatePairedItemData } from '../../utils/utilities';
-import { getSchemaRegistryOptions } from './utils';
+import { createSchemaRegistry } from './utils';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -324,13 +324,12 @@ export class Kafka implements INodeType {
 			let schemaRegistry: { registry: SchemaRegistry; schemaId: number } | undefined;
 
 			if (useSchemaRegistry) {
-				const registryOptions = await getSchemaRegistryOptions(
+				const registry = await createSchemaRegistry(
 					this,
 					this.getNodeParameter('schemaRegistryUrl', 0) as string,
 				);
 
 				try {
-					const registry = new SchemaRegistry(registryOptions);
 					const eventName = this.getNodeParameter('eventName', 0) as string;
 					const schemaId = await registry.getLatestSchemaId(eventName);
 					schemaRegistry = { registry, schemaId };
