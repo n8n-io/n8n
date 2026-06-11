@@ -66,7 +66,9 @@ const hasSearchListener = computed(() => Boolean(instance?.vnode.props?.onSearch
 const extraPopperClass = computed(() => $style.component);
 
 const searchListenerAttrs = computed(() =>
-	hasSearchListener.value && !disabled ? { onSearch: (query: string) => emit('search', query) } : {},
+	hasSearchListener.value && !disabled
+		? { onSearch: (query: string) => emit('search', query) }
+		: {},
 );
 
 function handleSelect(id: string) {
