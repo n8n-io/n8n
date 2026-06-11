@@ -4,11 +4,13 @@
  * request payloads, workflow JSON, and stored event-bus state.
  */
 import type {
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantDescriptionPart,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantTaskRequest,
 } from '@n8n/api-types';
 import type { StoredEvent } from '@n8n/instance-ai';
-import type { ExecutionError, IRunExecutionData } from 'n8n-workflow';
+import type { ExecutionError, IConnections, INode, IRunExecutionData } from 'n8n-workflow';
 
 import type { PROMOTED_FROM_THREAD_ID_KEY } from './constants';
 
@@ -117,6 +119,145 @@ export function composeRecommendationsInput(
 	return lines.join('\n');
 }
 
+// ── Task detail description ─────────────────────────────────────────────────
+
+/** System instructions for generating the task detail view's segmented
+ *  description. Static — the workflow JSON and connected integrations ride in
+ *  the input. The output schema (text/param parts) is enforced separately via
+ *  structured output. */
+export const TASK_DESCRIPTION_INSTRUCTIONS = [
+	'You describe an n8n workflow as one short natural-language sentence (two at',
+	"most) for a desktop assistant's task detail view, segmented into parts:",
+	'- "text" parts: static prose.',
+	'- "param" parts: a concrete value the user may want to tweak.',
+	'',
+	'Rules:',
+	'- The concatenated parts must read as one fluent sentence. Put all spacing',
+	'  and punctuation in the text parts; param values carry no surrounding spaces.',
+	'- Address the user\'s intent, not the mechanics ("Send me a short news brief',
+	'  every weekday morning.", "When a file is added to Google Drive, copy it to',
+	'  Dropbox."). Never mention nodes, triggers, or n8n internals.',
+	'- Mark as params ONLY clearly tweakable concrete values: a schedule',
+	'  ("weekday at 6am"), a service (Gmail, Slack), a folder, a grouping',
+	'  criterion. At most 4 params; prefer fewer.',
+	'- For each param, provide 2-3 realistic alternatives in "options" (do not',
+	'  repeat the current value). For service params, prefer alternatives from the',
+	'  connected integrations listed in the input when they make sense, but you',
+	'  may include one popular not-yet-connected service as well.',
+	'- Each alternative must be something the workflow could plausibly be changed',
+	'  to with a small edit. Keep param values short (1-4 words).',
+	'- If the workflow is too complex to render faithfully as one short sentence,',
+	'  return text-only parts summarizing what it does and no params at all.',
+].join('\n');
+
+/** Cap on the serialized workflow JSON fed to the description generation, so a
+ *  giant workflow doesn't blow up the prompt. Truncation is acceptable: the
+ *  instructions tell the model to fall back to a coarse text-only summary. */
+const MAX_DESCRIPTION_WORKFLOW_JSON = 20_000;
+
+/** Render the grounding input for the task-description call: workflow name,
+ *  pruned workflow JSON (node names/types/parameters + connections — no ids,
+ *  positions, or credentials), and the user's connected integration types. */
+export function composeTaskDescriptionInput(
+	workflowName: string,
+	nodes: INode[],
+	connections: IConnections,
+	connectedIntegrations: string[],
+): string {
+	const prunedNodes = nodes.map((node) => ({
+		name: node.name,
+		type: node.type,
+		disabled: node.disabled || undefined,
+		parameters: node.parameters,
+	}));
+	let workflowJson = JSON.stringify({ nodes: prunedNodes, connections });
+	if (workflowJson.length > MAX_DESCRIPTION_WORKFLOW_JSON) {
+		workflowJson = `${workflowJson.slice(0, MAX_DESCRIPTION_WORKFLOW_JSON)}… (truncated)`;
+	}
+
+	const lines = [`Workflow name: ${workflowName}`, '', 'Workflow JSON:', workflowJson];
+	if (connectedIntegrations.length > 0) {
+		lines.push('', `Connected integrations: ${connectedIntegrations.join(', ')}`);
+	}
+	return lines.join('\n');
+}
+
+/** Loosely-shaped part as the model returns it; normalization tightens it into
+ *  the API shape. */
+export interface RawDescriptionPart {
+	kind: 'text' | 'param';
+	text?: string;
+	value?: string;
+	options?: string[];
+}
+
+/** Caps mirroring the description instructions; enforced again here so a
+ *  misbehaving generation can't bloat the stored cache. */
+const MAX_DESCRIPTION_PARAMS = 4;
+const MAX_PARAM_OPTIONS = 4;
+
+/**
+ * Tighten the model's parts into the API shape: drop empty/malformed parts,
+ * merge adjacent text parts, de-duplicate options (and the current value out
+ * of them), cap param/option counts, and assign stable per-description param
+ * ids (`p1`, `p2`, …) used by the apply-edits request to reference a chip.
+ */
+export function normalizeDescriptionParts(
+	rawParts: RawDescriptionPart[],
+): DesktopAssistantDescriptionPart[] {
+	const parts: DesktopAssistantDescriptionPart[] = [];
+	let paramCount = 0;
+	for (const raw of rawParts) {
+		if (raw.kind === 'param' && raw.value?.trim() && paramCount < MAX_DESCRIPTION_PARAMS) {
+			const value = raw.value.trim();
+			const options = [...new Set((raw.options ?? []).map((o) => o.trim()))]
+				.filter((o) => o.length > 0 && o !== value)
+				.slice(0, MAX_PARAM_OPTIONS);
+			paramCount += 1;
+			parts.push({ kind: 'param', id: `p${paramCount}`, value, options });
+			continue;
+		}
+		// Anything else degrades to text (a param without a value, params past the
+		// cap) so the sentence still reads fully.
+		const text = raw.kind === 'text' ? raw.text : (raw.value ?? raw.text);
+		if (!text) continue;
+		const previous = parts.at(-1);
+		if (previous?.kind === 'text') previous.text += text;
+		else parts.push({ kind: 'text', text });
+	}
+	return parts;
+}
+
+/** Render the description parts back into the plain sentence, used to ground
+ *  the apply-edits instruction. */
+export function renderDescriptionSentence(parts: DesktopAssistantDescriptionPart[]): string {
+	return parts.map((part) => (part.kind === 'text' ? part.text : part.value)).join('');
+}
+
+/** Compose the apply-edits message handed to Instance AI: the workflow to
+ *  modify, the sentence the user was looking at, and the exact value changes
+ *  they picked. The `desktop-assistant-edit` prompt mode supplies the strict
+ *  behavioural rules (change only what's listed, no text output). */
+export function composeApplyEditsMessage(
+	workflowId: string,
+	workflowName: string,
+	parts: DesktopAssistantDescriptionPart[],
+	changes: DesktopAssistantApplyEditsRequest['changes'],
+): string {
+	const lines = [
+		`Apply the following changes to the existing workflow "${workflowName}" (id: ${workflowId}).`,
+		'',
+		'The workflow is currently described to the user as:',
+		`"${renderDescriptionSentence(parts)}"`,
+		'',
+		'Changes:',
+	];
+	for (const change of changes) {
+		lines.push(`- Change "${change.from}" to "${change.to}".`);
+	}
+	return lines.join('\n');
+}
+
 // ── Display helpers ─────────────────────────────────────────────────────────
 
 /**
@@ -207,6 +348,11 @@ function toOneLine(text: string): string {
 export interface StoredDesktopAssistantMeta {
 	icon?: string;
 	[PROMOTED_FROM_THREAD_ID_KEY]?: string;
+	/** Cached detail-view description, valid while `versionId` matches the workflow. */
+	detail?: {
+		versionId: string;
+		parts: DesktopAssistantDescriptionPart[];
+	};
 }
 
 /** Read the optional `meta.desktopAssistant` blob written to `workflow_entity.meta`
@@ -217,6 +363,28 @@ export function readDesktopAssistantMeta(meta: unknown): StoredDesktopAssistantM
 	const candidate = (meta as { desktopAssistant?: unknown }).desktopAssistant;
 	if (!candidate || typeof candidate !== 'object') return undefined;
 	return candidate as StoredDesktopAssistantMeta;
+}
+
+/** Return the cached detail-view description parts when they were generated
+ *  from the workflow version given, `undefined` otherwise (stale or absent).
+ *  Defensive about shape: the meta blob is plain JSON anyone could write. */
+export function readCachedTaskDetail(
+	meta: unknown,
+	versionId: string,
+): DesktopAssistantDescriptionPart[] | undefined {
+	const detail = readDesktopAssistantMeta(meta)?.detail;
+	if (!detail || typeof detail !== 'object') return undefined;
+	if (detail.versionId !== versionId) return undefined;
+	if (!Array.isArray(detail.parts) || detail.parts.length === 0) return undefined;
+	const valid = detail.parts.every(
+		(part) =>
+			(part?.kind === 'text' && typeof part.text === 'string') ||
+			(part?.kind === 'param' &&
+				typeof part.id === 'string' &&
+				typeof part.value === 'string' &&
+				Array.isArray(part.options)),
+	);
+	return valid ? detail.parts : undefined;
 }
 
 // ── Build-outcome extraction (two orchestrator paths) ────────────────────────

@@ -12,6 +12,7 @@ import { mock } from 'jest-mock-extended';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionService } from '@/executions/execution.service';
@@ -44,6 +45,7 @@ function makeService() {
 	executionPersistence.findMultipleExecutions.mockResolvedValue([]);
 	const projectService = mock<ProjectService>();
 	const nodeTypes = mock<NodeTypes>();
+	const credentialTypes = mock<CredentialTypes>();
 
 	const service = new DesktopAssistantService(
 		logger,
@@ -61,6 +63,7 @@ function makeService() {
 		executionPersistence,
 		projectService,
 		nodeTypes,
+		credentialTypes,
 	);
 
 	return {
@@ -80,6 +83,7 @@ function makeService() {
 		executionPersistence,
 		projectService,
 		nodeTypes,
+		credentialTypes,
 	};
 }
 
@@ -857,5 +861,243 @@ describe('DesktopAssistantService.resolveNodeIcon', () => {
 			throw new Error('Unrecognized node type');
 		});
 		expect(ctx.service.resolveNodeIcon('does-not-exist')).toEqual({});
+	});
+});
+
+describe('DesktopAssistantService.getTaskDetail', () => {
+	const PARTS = [
+		{ kind: 'text', text: 'Send me a news brief every ' },
+		{ kind: 'param', id: 'p1', value: 'weekday morning', options: ['morning', 'weekday at 7am'] },
+		{ kind: 'text', text: '.' },
+	];
+
+	function workflowWith(overrides: Record<string, unknown> = {}) {
+		return {
+			id: 'wf-1',
+			name: '📰 Morning news brief',
+			isArchived: false,
+			versionId: 'v1',
+			nodes: [],
+			connections: {},
+			meta: undefined,
+			...overrides,
+		} as never;
+	}
+
+	test('throws NotFoundError when the workflow is missing or archived', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+		await expect(ctx.service.getTaskDetail(USER, 'wf-x')).rejects.toBeInstanceOf(NotFoundError);
+
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(
+			workflowWith({ isArchived: true }),
+		);
+		await expect(ctx.service.getTaskDetail(USER, 'wf-1')).rejects.toBeInstanceOf(NotFoundError);
+	});
+
+	test('returns the cached description without an LLM call when versionId matches', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(
+			workflowWith({ meta: { desktopAssistant: { detail: { versionId: 'v1', parts: PARTS } } } }),
+		);
+
+		const result = await ctx.service.getTaskDetail(USER, 'wf-1');
+
+		expect(result).toEqual({
+			workflowId: 'wf-1',
+			versionId: 'v1',
+			parts: PARTS,
+			connectionsNeeded: [],
+		});
+		expect(ctx.instanceAiService.generateStructured).not.toHaveBeenCalled();
+		expect(ctx.workflowRepository.update).not.toHaveBeenCalled();
+	});
+
+	test('generates, normalizes, and caches the description on a stale cache', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(
+			workflowWith({
+				versionId: 'v2',
+				meta: { desktopAssistant: { detail: { versionId: 'v1', parts: PARTS } } },
+			}),
+		);
+		ctx.workflowRepository.findOne.mockResolvedValue(
+			workflowWith({ meta: { desktopAssistant: { icon: '📰' } } }),
+		);
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+			{ id: 'c1', type: 'slackApi' },
+		] as never);
+		ctx.instanceAiService.generateStructured.mockResolvedValue({
+			parts: [
+				{ kind: 'text', text: 'Every ' },
+				{ kind: 'param', value: 'weekday at 6am', options: ['weekday at 6am', 'weekdays at 9am'] },
+				{ kind: 'text', text: ', send me a digest.' },
+			],
+		} as never);
+
+		const result = await ctx.service.getTaskDetail(USER, 'wf-1');
+
+		expect(result.versionId).toBe('v2');
+		expect(result.parts).toEqual([
+			{ kind: 'text', text: 'Every ' },
+			{ kind: 'param', id: 'p1', value: 'weekday at 6am', options: ['weekdays at 9am'] },
+			{ kind: 'text', text: ', send me a digest.' },
+		]);
+
+		// Grounding includes the emoji-stripped name and connected integrations.
+		const [, opts] = ctx.instanceAiService.generateStructured.mock.calls[0];
+		expect(opts.input).toContain('Workflow name: Morning news brief');
+		expect(opts.input).toContain('Connected integrations: slackApi');
+
+		// Cache write merges into the existing desktopAssistant meta blob.
+		const [updatedId, patch] = ctx.workflowRepository.update.mock.calls[0];
+		expect(updatedId).toBe('wf-1');
+		expect(patch.meta).toEqual({
+			desktopAssistant: {
+				icon: '📰',
+				detail: { versionId: 'v2', parts: result.parts },
+			},
+		});
+	});
+
+	test('resolves missing credentials into connectionsNeeded with display names', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(
+			workflowWith({
+				nodes: [
+					{
+						name: 'Gmail',
+						type: 'n8n-nodes-base.gmail',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				meta: {
+					desktopAssistant: {
+						detail: { versionId: 'v1', parts: PARTS },
+					},
+				},
+			}),
+		);
+		ctx.nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: {
+				properties: [],
+				credentials: [{ name: 'gmailOAuth2' }],
+			},
+		} as never);
+		ctx.credentialTypes.getByName.mockReturnValue({ displayName: 'Gmail OAuth2 API' } as never);
+
+		const result = await ctx.service.getTaskDetail(USER, 'wf-1');
+
+		expect(result.connectionsNeeded).toEqual([
+			{ credentialType: 'gmailOAuth2', displayName: 'Gmail OAuth2 API' },
+		]);
+	});
+
+	test('falls back to the credential type name when no display name is resolvable', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(
+			workflowWith({
+				nodes: [
+					{
+						name: 'Gmail',
+						type: 'n8n-nodes-base.gmail',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				meta: { desktopAssistant: { detail: { versionId: 'v1', parts: PARTS } } },
+			}),
+		);
+		ctx.nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: {
+				properties: [],
+				credentials: [{ name: 'gmailOAuth2' }],
+			},
+		} as never);
+		ctx.credentialTypes.getByName.mockImplementation(() => {
+			throw new Error('Unrecognized credential type');
+		});
+
+		const result = await ctx.service.getTaskDetail(USER, 'wf-1');
+
+		expect(result.connectionsNeeded).toEqual([
+			{ credentialType: 'gmailOAuth2', displayName: 'gmailOAuth2' },
+		]);
+	});
+});
+
+describe('DesktopAssistantService.applyTaskEdits', () => {
+	const PARTS = [
+		{ kind: 'text', text: 'Every ' },
+		{ kind: 'param', id: 'p1', value: 'weekday at 6am', options: ['weekdays at 9am'] },
+		{ kind: 'text', text: ', send me a digest.' },
+	];
+	const CHANGES = [{ paramId: 'p1', from: 'weekday at 6am', to: 'weekdays at 9am' }];
+
+	function workflowWith(overrides: Record<string, unknown> = {}) {
+		return {
+			id: 'wf-1',
+			name: '📰 Morning news brief',
+			isArchived: false,
+			versionId: 'v1',
+			nodes: [],
+			connections: {},
+			meta: { desktopAssistant: { detail: { versionId: 'v1', parts: PARTS } } },
+			...overrides,
+		} as never;
+	}
+
+	test('throws NotFoundError when the workflow is missing', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+		await expect(
+			ctx.service.applyTaskEdits(USER, 'wf-x', { changes: CHANGES }),
+		).rejects.toBeInstanceOf(NotFoundError);
+	});
+
+	test('requires workflow:update scope on the lookup', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(workflowWith());
+		ctx.projectService.getPersonalProject.mockResolvedValue({ id: 'proj-1' } as never);
+		ctx.instanceAiService.startRun.mockReturnValue('run-1');
+
+		await ctx.service.applyTaskEdits(USER, 'wf-1', { changes: CHANGES });
+
+		expect(ctx.workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', USER, [
+			'workflow:update',
+		]);
+	});
+
+	test('rejects when there is no current cached description to ground the edit', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(
+			workflowWith({ versionId: 'v2' }),
+		);
+		await expect(
+			ctx.service.applyTaskEdits(USER, 'wf-1', { changes: CHANGES }),
+		).rejects.toBeInstanceOf(BadRequestError);
+		expect(ctx.instanceAiService.startRun).not.toHaveBeenCalled();
+	});
+
+	test('starts a run in the edit prompt mode with the grounded change list', async () => {
+		const ctx = makeService();
+		ctx.workflowFinderService.findWorkflowForUser.mockResolvedValue(workflowWith());
+		ctx.projectService.getPersonalProject.mockResolvedValue({ id: 'proj-1' } as never);
+		ctx.instanceAiService.startRun.mockReturnValue('run-9');
+
+		const result = await ctx.service.applyTaskEdits(USER, 'wf-1', { changes: CHANGES });
+
+		expect(ctx.memoryService.ensureThread).toHaveBeenCalledTimes(1);
+		const [calledUser, , message, , , , options] = ctx.instanceAiService.startRun.mock.calls[0];
+		expect(calledUser).toBe(USER);
+		expect(message).toContain('id: wf-1');
+		expect(message).toContain('Every weekday at 6am, send me a digest.');
+		expect(message).toContain('Change "weekday at 6am" to "weekdays at 9am".');
+		expect(options).toEqual({ promptMode: 'desktop-assistant-edit' });
+		expect(result).toMatchObject({ runId: 'run-9' });
+		expect(result.threadId).toBeDefined();
 	});
 });

@@ -60,6 +60,31 @@ export function computeNodesRequiringCredentialSetup(
 	return result;
 }
 
+/**
+ * Like `computeNodesRequiringCredentialSetup`, but returns the *credential
+ * type names* still missing, de-duplicated, in node order. Used by the task
+ * detail view's "Connect <service>" CTA.
+ */
+export function computeMissingCredentialTypes(nodes: INode[], nodeTypes: INodeTypes): string[] {
+	const nodesMissingSetup = computeNodesRequiringCredentialSetup(nodes, nodeTypes);
+	const types: string[] = [];
+	const seen = new Set<string>();
+	for (const node of nodes) {
+		if (!nodesMissingSetup.has(node.name)) continue;
+		const description = tryGetNodeDescription(node, nodeTypes);
+		if (!description?.credentials) continue;
+		const resolvedParameters = resolveParametersWithDefaults(node, description);
+		const nodeWithDefaults: INode = { ...node, parameters: resolvedParameters };
+		for (const credentialDesc of description.credentials) {
+			if (!nodeRequiresCredential(credentialDesc, nodeWithDefaults, description)) continue;
+			if (seen.has(credentialDesc.name)) continue;
+			seen.add(credentialDesc.name);
+			types.push(credentialDesc.name);
+		}
+	}
+	return types;
+}
+
 function tryGetNodeDescription(
 	node: INode,
 	nodeTypes: INodeTypes,

@@ -45,6 +45,8 @@ describe('DesktopAssistantController', () => {
 				globalOnly: true,
 			});
 			expect(scopeOf('getHistory')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+			expect(scopeOf('getTaskDetail')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+			expect(scopeOf('applyTaskEdits')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
 	});
 
@@ -75,6 +77,20 @@ describe('DesktopAssistantController', () => {
 
 		test('getHistory throws ForbiddenError', async () => {
 			await expect(controller.getHistory(req, null, {})).rejects.toBeInstanceOf(ForbiddenError);
+		});
+
+		test('getTaskDetail throws ForbiddenError', async () => {
+			await expect(controller.getTaskDetail(req, null, 'wf-1')).rejects.toBeInstanceOf(
+				ForbiddenError,
+			);
+		});
+
+		test('applyTaskEdits throws ForbiddenError', async () => {
+			await expect(
+				controller.applyTaskEdits(req, null, 'wf-1', {
+					changes: [{ paramId: 'p1', from: 'a', to: 'b' }],
+				}),
+			).rejects.toBeInstanceOf(ForbiddenError);
 		});
 	});
 
@@ -119,6 +135,26 @@ describe('DesktopAssistantController', () => {
 			const result = await controller.getRecommendations(req, null, body);
 			expect(service.getRecommendations).toHaveBeenCalledWith(user, body);
 			expect(result.recommendations).toHaveLength(1);
+		});
+
+		test('getTaskDetail forwards the workflow id to the service', async () => {
+			service.getTaskDetail.mockResolvedValue({
+				workflowId: 'wf-1',
+				versionId: 'v1',
+				parts: [{ kind: 'text', text: 'Send me a brief.' }],
+				connectionsNeeded: [],
+			});
+			const result = await controller.getTaskDetail(req, null, 'wf-1');
+			expect(service.getTaskDetail).toHaveBeenCalledWith(user, 'wf-1');
+			expect(result.workflowId).toBe('wf-1');
+		});
+
+		test('applyTaskEdits forwards the workflow id and body to the service', async () => {
+			service.applyTaskEdits.mockResolvedValue({ threadId: 't-1', runId: 'r-1' });
+			const body = { changes: [{ paramId: 'p1', from: 'a', to: 'b' }] };
+			const result = await controller.applyTaskEdits(req, null, 'wf-1', body);
+			expect(service.applyTaskEdits).toHaveBeenCalledWith(user, 'wf-1', body);
+			expect(result).toEqual({ threadId: 't-1', runId: 'r-1' });
 		});
 
 		test('getHistory forwards the validated cursor query to the service', async () => {

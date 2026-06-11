@@ -98,6 +98,37 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 		});
 	});
 
+	describe('promptMode: desktop-assistant-edit', () => {
+		const prompt = getSystemPrompt({ promptMode: 'desktop-assistant-edit' });
+
+		it('declares the edit section', () => {
+			expect(prompt).toMatch(/Desktop Assistant.+Edit Existing Workflow/i);
+		});
+
+		it('restricts the run to the listed changes and forbids rebuilds', () => {
+			expect(prompt).toMatch(/apply ONLY the listed changes/i);
+			expect(prompt).toMatch(/do not rebuild the workflow/i);
+		});
+
+		it('requires preserving everything not listed', () => {
+			expect(prompt).toMatch(/preserve everything else/i);
+		});
+
+		it('instructs the orchestrator to stop without modifying when a change cannot be applied', () => {
+			expect(prompt).toMatch(/stop without modifying the workflow/i);
+		});
+
+		it('forbids follow-up questions and conversational output', () => {
+			expect(prompt).toMatch(/do not ask follow-up questions/i);
+			expect(prompt).toMatch(/output tool calls only/i);
+			expect(prompt).toMatch(/does not read any text content/i);
+		});
+
+		it('references the workflow-builder skill', () => {
+			expect(prompt).toMatch(/workflow-builder/i);
+		});
+	});
+
 	describe('isolation between modes', () => {
 		it('promote mode does not include one-shot-only wording', () => {
 			const promotePrompt = getSystemPrompt({ promptMode: 'desktop-assistant-promote' });
@@ -107,6 +138,12 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 		it('one-shot mode does not include promote-only wording', () => {
 			const oneShotPrompt = getSystemPrompt({ promptMode: 'desktop-assistant-one-shot' });
 			expect(oneShotPrompt).not.toMatch(/Promote To Workflow/i);
+		});
+
+		it('edit mode does not include one-shot or promote wording', () => {
+			const editPrompt = getSystemPrompt({ promptMode: 'desktop-assistant-edit' });
+			expect(editPrompt).not.toMatch(/One-Shot Task/i);
+			expect(editPrompt).not.toMatch(/Promote To Workflow/i);
 		});
 	});
 });
