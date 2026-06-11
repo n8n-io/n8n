@@ -2,8 +2,8 @@
  * Shared event reducer for Instance AI agent runs.
  *
  * Used by both the frontend (live SSE updates) and the backend (snapshot building).
- * All state is plain objects/arrays — no Map/Set — so it's serializable, Pinia-safe,
- * and easy to inspect in tests.
+ * All state is plain objects/arrays — no Map/Set — so it's Pinia-safe and easy
+ * to inspect in tests.
  *
  * The state is node-centric: `agentsById` holds the actual `InstanceAiAgentNode`
  * objects, each embedding its own `toolCalls`, `timeline`, and `children`. The
@@ -13,7 +13,10 @@
  * data without any synchronization layer.
  *
  * Nodes never reference their parent (parent links live in `parentByAgentId`
- * as plain ids), so the structure stays acyclic and JSON-serializable.
+ * as plain ids), so the tree stays acyclic and `toAgentTree(state)` is
+ * JSON-serializable. Don't JSON round-trip the state itself: `agentsById`
+ * aliases the tree nodes, so stringify duplicates every shared subtree and
+ * parse yields a state whose index and tree no longer share objects.
  */
 
 import { getRenderHint, isSafeObjectKey } from './instance-ai.schema';
@@ -123,11 +126,13 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const rootId = event.agentId;
 			if (!isSafeObjectKey(rootId)) break;
 			const root = state.agentsById[state.rootAgentId];
+			// Optional-chain the node fields too: adopted run-sync trees are parsed
+			// without schema validation, so a malformed node must not throw here.
 			const hasExistingAgents =
 				Object.keys(state.agentsById).length > 1 ||
-				(root?.textContent.length ?? 0) > 0 ||
-				(root?.children.length ?? 0) > 0 ||
-				(root?.toolCalls.length ?? 0) > 0;
+				(root?.textContent?.length ?? 0) > 0 ||
+				(root?.children?.length ?? 0) > 0 ||
+				(root?.toolCalls?.length ?? 0) > 0;
 
 			if (hasExistingAgents) {
 				// Follow-up run in a merged group: preserve existing agent tree,

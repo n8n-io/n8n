@@ -856,6 +856,7 @@ describe('agent-run-reducer', () => {
 				isLoading: false,
 			});
 			tree.timeline.push({ type: 'child', agentId: '__proto__' });
+			tree.timeline.push({ type: 'tool-call', toolCallId: '__proto__' });
 
 			const state = stateFromAgentTree(tree);
 
@@ -863,6 +864,43 @@ describe('agent-run-reducer', () => {
 			expect(tree.children).toHaveLength(1);
 			expect(tree.toolCalls).toHaveLength(0);
 			expect(tree.timeline.some((e) => e.type === 'child' && e.agentId === '__proto__')).toBe(
+				false,
+			);
+			expect(
+				tree.timeline.some((e) => e.type === 'tool-call' && e.toolCallId === '__proto__'),
+			).toBe(false);
+			expectStateMapsNotPolluted(state!);
+		});
+
+		it('drops unsafe ids on nested descendants, not just the root level', () => {
+			const tree = buildSnapshotTree();
+			const child = tree.children[0];
+			child.children.push({
+				agentId: '__proto__',
+				role: 'evil',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			});
+			child.toolCalls.push({
+				toolCallId: 'constructor',
+				toolName: 'evil',
+				args: {},
+				isLoading: true,
+			});
+			child.timeline.push({ type: 'child', agentId: '__proto__' });
+
+			const state = stateFromAgentTree(tree);
+
+			expect(findAgent(state!, '__proto__')).toBeUndefined();
+			// Plain-object lookup would hit Object.prototype.constructor — assert own keys.
+			expect(Object.prototype.hasOwnProperty.call(state!.toolCallsById, 'constructor')).toBe(false);
+			expect(child.children).toHaveLength(0);
+			expect(child.toolCalls.some((tc) => tc.toolCallId === 'constructor')).toBe(false);
+			expect(child.timeline.some((e) => e.type === 'child' && e.agentId === '__proto__')).toBe(
 				false,
 			);
 			expectStateMapsNotPolluted(state!);
