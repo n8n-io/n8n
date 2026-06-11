@@ -18,6 +18,7 @@ const DEFAULTS: AppSettings = {
 	mouseKeyboardEnabled: true,
 	browserEnabled: true,
 	logLevel: 'info',
+	permissionConfirmation: 'instance',
 };
 
 export class SettingsStore {
@@ -40,6 +41,7 @@ export class SettingsStore {
 			mouseKeyboardEnabled: this.store.get('mouseKeyboardEnabled'),
 			browserEnabled: this.store.get('browserEnabled'),
 			logLevel: this.store.get('logLevel'),
+			permissionConfirmation: this.store.get('permissionConfirmation'),
 		};
 	}
 
@@ -78,7 +80,7 @@ export class SettingsStore {
 				computer: s.screenshotEnabled || s.mouseKeyboardEnabled ? 'allow' : 'deny',
 				browser: s.browserEnabled ? 'allow' : 'deny',
 			},
-			permissionConfirmation: 'instance',
+			permissionConfirmation: s.permissionConfirmation,
 		};
 	}
 

@@ -1,4 +1,6 @@
+import { InstanceAiConfirmRequestDto } from '@n8n/api-types';
 import { configure, logger } from '@n8n/computer-use/logger';
+import { RESOURCE_DECISION_KEYS, type ResourceDecision } from '@n8n/computer-use/tools/types';
 import { ipcMain } from 'electron';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -10,10 +12,12 @@ import type { DaemonController } from './daemon-controller';
 import { InstanceApiError, type InstanceApi } from './instance-api';
 import { getMacPermissionStatus, openMacPermissionSettings } from './mac-permissions';
 import type { OAuthFlow } from './oauth/oauth-flow';
+import type { PermissionBroker } from './permission-broker';
 import type { AppSettings, SettingsStore } from './settings-store';
 import type { ThreadService } from './thread-service';
 import type {
 	AuthStatus,
+	ConfirmThreadResult,
 	CreateAssistantTaskResult,
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
@@ -27,6 +31,7 @@ import type {
 	DesktopAssistantTimeSaved,
 	DetectedContext,
 	InstanceAiRichMessagesResponse,
+	LocalPermissionPromptRequest,
 	MacPermissionKind,
 	MacPermissionStatus,
 	PromoteAssistantThreadResult,
@@ -44,6 +49,12 @@ export interface IpcHandlerDeps {
 	instanceApi: InstanceApi;
 	threadService: ThreadService;
 	contextDetector: ContextDetector;
+	permissionBroker: PermissionBroker;
+	/**
+	 * Re-establishes the gateway connection with the current settings (no-op when
+	 * signed out). Fire-and-forget — failures surface via daemon status events.
+	 */
+	reconnectGateway: () => void;
 	/** Opens a URL in the user's default browser (e.g. shell.openExternal). */
 	openExternal: (url: string) => Promise<void>;
 }
@@ -120,6 +131,8 @@ export function registerIpcHandlers({
 	instanceApi,
 	threadService,
 	contextDetector,
+	permissionBroker,
+	reconnectGateway,
 	openExternal,
 }: IpcHandlerDeps): void {
 	ipcMain.handle(
@@ -162,7 +175,11 @@ export function registerIpcHandlers({
 					configure({ level: partial.logLevel });
 					logger.info('Log level updated', { level: partial.logLevel });
 				}
-				// Changing tool/capability toggles does not hot-reload an active connection; disconnect and connect again if needed.
+				// Everything except logLevel (applied in-process above) feeds the gateway
+				// config, which is only read at connect time — reconnect to apply it.
+				if (Object.keys(partial).some((key) => key !== 'logLevel')) {
+					reconnectGateway();
+				}
 				return { ok: true };
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
@@ -343,6 +360,48 @@ export function registerIpcHandlers({
 		logger.debug('IPC thread:unlisten', { threadId });
 		threadService.unlisten(threadId);
 	});
+
+	ipcMain.handle(
+		'thread:confirm',
+		async (
+			_event,
+			threadId: string,
+			requestId: string,
+			body: unknown,
+		): Promise<ConfirmThreadResult> => {
+			logger.debug('IPC thread:confirm', { threadId, requestId });
+			const parsed = InstanceAiConfirmRequestDto.safeParse(body);
+			if (!parsed.success) {
+				return { ok: false, error: 'Invalid confirmation body' };
+			}
+			try {
+				await threadService.confirm(threadId, requestId, parsed.data);
+				return { ok: true };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.error('IPC thread:confirm failed', { threadId, requestId, error: message });
+				return {
+					ok: false,
+					status: error instanceof InstanceApiError ? error.status : undefined,
+					error: message,
+				};
+			}
+		},
+	);
+
+	ipcMain.handle('permissionPrompt:list', (): LocalPermissionPromptRequest[] => {
+		logger.debug('IPC permissionPrompt:list');
+		return permissionBroker.list();
+	});
+
+	ipcMain.handle(
+		'permissionPrompt:respond',
+		(_event, id: string, decision: ResourceDecision): { ok: boolean } => {
+			logger.debug('IPC permissionPrompt:respond', { id, decision });
+			if (!RESOURCE_DECISION_KEYS.includes(decision)) return { ok: false };
+			return { ok: permissionBroker.respond(id, decision) };
+		},
+	);
 
 	ipcMain.handle('context:list', (): DetectedContext[] => {
 		const options = contextDetector.getOptions();

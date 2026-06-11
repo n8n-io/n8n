@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
 	AppSettings,
 	AuthStatus,
+	ConfirmThreadResult,
 	CreateAssistantTaskResult,
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
@@ -16,10 +17,13 @@ import type {
 	DesktopAssistantTimeSaved,
 	DetectedContext,
 	ElectronApi,
+	InstanceAiConfirmRequest,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
+	LocalPermissionPromptRequest,
 	MacPermissionKind,
 	MacPermissionStatus,
+	ResourceDecision,
 	PromoteAssistantThreadResult,
 	RunTaskResult,
 	ScreenshotAttachment,
@@ -192,6 +196,44 @@ const electronApi: ElectronApi = {
 	openMacPermissionSettings: async (kind: MacPermissionKind): Promise<void> => {
 		await ipcRenderer.invoke('permissions:openSettings', kind);
 	},
+
+	listPermissionPrompts: async (): Promise<LocalPermissionPromptRequest[]> =>
+		await (ipcRenderer.invoke('permissionPrompt:list') as Promise<LocalPermissionPromptRequest[]>),
+
+	respondToPermissionPrompt: async (
+		id: string,
+		decision: ResourceDecision,
+	): Promise<{ ok: boolean }> =>
+		await (ipcRenderer.invoke('permissionPrompt:respond', id, decision) as Promise<{
+			ok: boolean;
+		}>),
+
+	onPermissionPromptRequested: (
+		onRequestCallback: (prompt: LocalPermissionPromptRequest) => void,
+	): (() => void) => {
+		const handler = (_event: unknown, prompt: LocalPermissionPromptRequest) =>
+			onRequestCallback(prompt);
+		ipcRenderer.on('permissionPromptRequested', handler);
+		return () => ipcRenderer.removeListener('permissionPromptRequested', handler);
+	},
+
+	onPermissionPromptWithdrawn: (onWithdrawCallback: (id: string) => void): (() => void) => {
+		const handler = (_event: unknown, id: string) => onWithdrawCallback(id);
+		ipcRenderer.on('permissionPromptWithdrawn', handler);
+		return () => ipcRenderer.removeListener('permissionPromptWithdrawn', handler);
+	},
+
+	confirmThreadRequest: async (
+		threadId: string,
+		requestId: string,
+		body: InstanceAiConfirmRequest,
+	): Promise<ConfirmThreadResult> =>
+		await (ipcRenderer.invoke(
+			'thread:confirm',
+			threadId,
+			requestId,
+			body,
+		) as Promise<ConfirmThreadResult>),
 };
 
 contextBridge.exposeInMainWorld('electronAPI', electronApi);
