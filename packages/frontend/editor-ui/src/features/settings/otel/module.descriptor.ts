@@ -15,7 +15,12 @@ export const OtelModule: FrontendModuleDescription = {
 			component: SettingsOpenTelemetryView,
 			meta: {
 				layout: 'settings',
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated', 'rbac', 'custom'],
+				middlewareOptions: {
+					rbac: {
+						scope: 'otel:manage',
+					},
+				},
 				telemetry: {
 					pageCategory: 'settings',
 				},
