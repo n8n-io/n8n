@@ -3,7 +3,6 @@ import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
 	CreateExecutionPayload,
-	EntityManager,
 	ExecutionDataStorageLocation,
 	ExecutionDeletionCriteria,
 	FindManyOptions,
@@ -88,7 +87,7 @@ export class ExecutionPersistence {
 				const ref = { workflowId: id, executionId };
 				const store = this.getStoreFor(storedAt);
 
-				const sizeBytes = await this.trackWrite(storedAt, async () => {
+				const jsonSizeBytes = await this.trackWrite(storedAt, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(rawData),
 						workflowData: workflowSnapshot,
@@ -96,7 +95,7 @@ export class ExecutionPersistence {
 					};
 					return await store.write(ref, bundle, tx);
 				});
-				await this.persistSizeBytes(tx, executionId, sizeBytes);
+				await tx.update(ExecutionEntity, { id: executionId }, { jsonSizeBytes });
 
 				return executionId;
 			});
@@ -477,7 +476,7 @@ export class ExecutionPersistence {
 			if (data !== undefined && workflowData !== undefined && store === this.dbStore) {
 				// Both data and snapshot are overwritten, so skip reading the existing bundle.
 				// `workflowVersionId` is immutable, so the caller's snapshot already carries it.
-				const sizeBytes = await this.trackWrite(mode, async () => {
+				const jsonSizeBytes = await this.trackWrite(mode, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(data),
 						workflowData: this.toWorkflowSnapshot(workflowData),
@@ -485,14 +484,14 @@ export class ExecutionPersistence {
 					};
 					return await this.dbStore.overwrite(ref, bundle, tx);
 				});
-				await this.persistSizeBytes(tx, ref.executionId, sizeBytes);
+				await tx.update(ExecutionEntity, { id: ref.executionId }, { jsonSizeBytes });
 				return true;
 			}
 
 			const existing = await this.trackRead(mode, async () => await store.read(ref, tx));
 			if (!existing) throw new MissingExecutionDataError(ref);
 
-			const sizeBytes = await this.trackWrite(mode, async () => {
+			const jsonSizeBytes = await this.trackWrite(mode, async () => {
 				const bundle: ExecutionDataPayload = {
 					data: data !== undefined ? stringify(data) : existing.data,
 					workflowData: workflowData
@@ -503,17 +502,10 @@ export class ExecutionPersistence {
 
 				return await store.write(ref, bundle, tx);
 			});
-			await this.persistSizeBytes(tx, ref.executionId, sizeBytes);
+			await tx.update(ExecutionEntity, { id: ref.executionId }, { jsonSizeBytes });
 
 			return true;
 		});
-	}
-
-	/**
-	 * Record the bundle's byte size on the execution row, once the guarded write has matched it.
-	 */
-	private async persistSizeBytes(tx: EntityManager, executionId: string, sizeBytes: number) {
-		await tx.update(ExecutionEntity, { id: executionId }, { sizeBytes });
 	}
 
 	/**
@@ -528,8 +520,8 @@ export class ExecutionPersistence {
 	 * - **Immutable after creation**: `workflowVersionId`, `createdAt`,
 	 *   `startedAt` — set once at insert time and never overwritten.
 	 * - **Not persisted on the entity**: `customData` — handled separately.
-	 * - **Computed locally**: `sizeBytes` — derived from the persisted bundle by
-	 *   {@link applyDataUpdate}, never trusted from the caller.
+	 * - **Computed locally**: `jsonSizeBytes` — derived from the persisted bundle by
+	 *   the data store, never trusted from the caller.
 	 */
 	private pickUpdatableEntityColumns(
 		execution: Partial<IExecutionResponse>,
@@ -543,7 +535,7 @@ export class ExecutionPersistence {
 			createdAt: _createdAt,
 			startedAt: _startedAt,
 			customData: _customData,
-			sizeBytes: _sizeBytes,
+			jsonSizeBytes: _jsonSizeBytes,
 			...updatableColumns
 		} = execution;
 		return updatableColumns;
@@ -599,17 +591,17 @@ export class ExecutionPersistence {
 	): Promise<number> {
 		const start = Date.now();
 		let success = false;
-		let sizeBytes = 0;
+		let jsonSizeBytes = 0;
 		try {
-			sizeBytes = await op();
+			jsonSizeBytes = await op();
 			success = true;
-			return sizeBytes;
+			return jsonSizeBytes;
 		} finally {
 			this.eventService.emit('execution-data-write', {
 				mode,
 				durationMs: Date.now() - start,
 				success,
-				sizeBytes,
+				jsonSizeBytes,
 			});
 		}
 	}

@@ -132,11 +132,11 @@ describe('ExecutionPersistence', () => {
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: 'exec-1' },
-					{ sizeBytes: 4321 },
+					{ jsonSizeBytes: 4321 },
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
-					expect.objectContaining({ sizeBytes: 4321 }),
+					expect.objectContaining({ jsonSizeBytes: 4321 }),
 				);
 			});
 
@@ -717,7 +717,7 @@ describe('ExecutionPersistence', () => {
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ sizeBytes: 512 },
+					{ jsonSizeBytes: 512 },
 				);
 			});
 
@@ -926,7 +926,7 @@ describe('ExecutionPersistence', () => {
 			});
 		});
 
-		describe('sizeBytes tracking', () => {
+		describe('jsonSizeBytes tracking', () => {
 			it('persists the size the store reports on the read-merge path and emits it', async () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
@@ -941,11 +941,11 @@ describe('ExecutionPersistence', () => {
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ sizeBytes: 2048 },
+					{ jsonSizeBytes: 2048 },
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
-					expect.objectContaining({ sizeBytes: 2048 }),
+					expect.objectContaining({ jsonSizeBytes: 2048 }),
 				);
 			});
 
@@ -966,15 +966,15 @@ describe('ExecutionPersistence', () => {
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ sizeBytes: 1536 },
+					{ jsonSizeBytes: 1536 },
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'execution-data-write',
-					expect.objectContaining({ sizeBytes: 1536 }),
+					expect.objectContaining({ jsonSizeBytes: 1536 }),
 				);
 			});
 
-			it('records the reported size and ignores a caller-supplied sizeBytes', async () => {
+			it('records the reported size and ignores a caller-supplied jsonSizeBytes', async () => {
 				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
 				dbStore.overwrite.mockResolvedValue(1536);
@@ -985,22 +985,22 @@ describe('ExecutionPersistence', () => {
 				await executionPersistence.updateExistingExecution(executionId, {
 					data: runData,
 					workflowData,
-					sizeBytes: 999_999,
+					jsonSizeBytes: 999_999,
 				});
 
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
-					{ sizeBytes: 1536 },
+					{ jsonSizeBytes: 1536 },
 				);
 				expect(mockTx.update).not.toHaveBeenCalledWith(
 					ExecutionEntity,
 					expect.anything(),
-					expect.objectContaining({ sizeBytes: 999_999 }),
+					expect.objectContaining({ jsonSizeBytes: 999_999 }),
 				);
 			});
 
-			it('does not touch sizeBytes on a metadata-only update', async () => {
+			it('does not touch jsonSizeBytes on a metadata-only update', async () => {
 				const executionPersistence = createPersistenceService('db');
 				executionRepository.update.mockResolvedValue({ affected: 1, generatedMaps: [], raw: {} });
 
@@ -1008,7 +1008,7 @@ describe('ExecutionPersistence', () => {
 
 				expect(executionRepository.update).toHaveBeenCalledWith(
 					{ id: executionId },
-					expect.not.objectContaining({ sizeBytes: expect.anything() }),
+					expect.not.objectContaining({ jsonSizeBytes: expect.anything() }),
 				);
 			});
 		});

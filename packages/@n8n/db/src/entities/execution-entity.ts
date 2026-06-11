@@ -100,11 +100,12 @@ export class ExecutionEntity {
 	deduplicationKey: string | null;
 
 	/**
-	 * Size in bytes of the serialized execution data bundle as last persisted.
-	 * `null` means not yet calculated, distinct from a genuine `0`.
+	 * Size in bytes of the serialized execution data bundle (run data, workflow
+	 * snapshot, version id) as last persisted; excludes binary data, stored
+	 * separately. `null` means not yet calculated, distinct from a genuine `0`.
 	 */
 	@Column({ type: 'bigint', nullable: true, transformer: bigintStringToNumber })
-	sizeBytes: number | null;
+	jsonSizeBytes: number | null;
 
 	/**
 	 * Version id of the workflow this execution ran, denormalized from the data

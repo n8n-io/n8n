@@ -21,6 +21,7 @@ export type ExecutionDataEventMap = {
 		mode: ExecutionDataStorageLocation;
 		durationMs: number;
 		success: boolean;
-		sizeBytes: number;
+		/** Logical byte size of the JSON bundle written; excludes binary data. */
+		jsonSizeBytes: number;
 	};
 };
