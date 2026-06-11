@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { desktopAssistantDescriptionPartSchema } from './desktop-assistant-task-detail-response.dto';
 import { Z } from '../../zod-class';
 
 /**
@@ -12,6 +13,29 @@ export class DesktopAssistantPromoteRequestDto extends Z.class({
 	name: z.string().trim().min(1).max(128).optional(),
 	/** Single emoji shown as the saved task's icon (stored on workflow meta, not in the name). */
 	icon: z.string().trim().min(1).max(16).optional(),
+	/**
+	 * Final segmented description as the user configured it in the draft view
+	 * ("Set it up" on a proposed task plan). Self-contained: param parts carry
+	 * the user's final values, so the server never reads the plan from thread
+	 * metadata. Grounds the build and seeds the new workflow's detail cache.
+	 * Absent for the classic executed-thread promote. Ignored on idempotent
+	 * re-promotes: the first promote's parts ground the build.
+	 */
+	configuredParts: z
+		.array(desktopAssistantDescriptionPartSchema)
+		.min(1)
+		.max(60)
+		.optional()
+		.refine(
+			(parts) => {
+				if (!parts) return true;
+				const ids = parts.filter((part) => part.kind === 'param').map((part) => part.id);
+				return new Set(ids).size === ids.length;
+			},
+			{ message: 'param part ids must be unique' },
+		),
+	/** The plan's minutes-saved estimate; stored as the workflow's `timeSavedPerExecution` setting. */
+	estimatedMinutesSaved: z.number().positive().max(100_000).optional(),
 }) {}
 
 export type DesktopAssistantPromoteRequest = z.infer<
