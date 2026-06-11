@@ -16,12 +16,12 @@ const HTTP_CODE_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
 	{ pattern: /\burllib\./, label: 'urllib' },
 	{
 		pattern:
-			/(?:^|\n)\s*import\s+requests\b|\brequests\.(?:get|post|put|patch|delete|head|request)\s*\(/,
+			/(?:^|\n)\s*(?:import\s+requests\b|from\s+requests(?:\.\w+)*\s+import\b)|\brequests\.(?:get|post|put|patch|delete|head|request)\s*\(/,
 		label: 'requests',
 	},
-	{ pattern: /\bhttpx\s*[.(]/, label: 'httpx' },
-	{ pattern: /\bhttp\.client\b/, label: 'http.client' },
-	{ pattern: /\baiohttp\./, label: 'aiohttp' },
+	{ pattern: /\bhttpx\s*[.(]|(?:^|\n)\s*from\s+httpx(?:\.\w+)*\s+import\b/, label: 'httpx' },
+	{ pattern: /\bhttp\.client\b|(?:^|\n)\s*from\s+http\.client\s+import\b/, label: 'http.client' },
+	{ pattern: /\baiohttp\.|(?:^|\n)\s*from\s+aiohttp(?:\.\w+)*\s+import\b/, label: 'aiohttp' },
 ];
 
 function isCodeNode(node: WorkflowNodeResponse): boolean {
@@ -29,10 +29,9 @@ function isCodeNode(node: WorkflowNodeResponse): boolean {
 }
 
 function getCodeText(node: WorkflowNodeResponse): string {
-	const { jsCode, pythonCode } = node.parameters ?? {};
-	return [jsCode, pythonCode]
-		.filter((value): value is string => typeof value === 'string')
-		.join('\n');
+	const { jsCode, pythonCode, language } = node.parameters ?? {};
+	const activeCode = language === 'python' || language === 'pythonNative' ? pythonCode : jsCode;
+	return typeof activeCode === 'string' ? activeCode : '';
 }
 
 export const codeNodeNoHttpRequests: BinaryCheck = {

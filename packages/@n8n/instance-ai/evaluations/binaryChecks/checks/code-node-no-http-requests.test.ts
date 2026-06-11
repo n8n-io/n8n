@@ -87,6 +87,31 @@ describe('codeNodeNoHttpRequests', () => {
 		expect(result.comment).toContain('requests');
 	});
 
+	it('fails when a Python Code node uses a from-import of an HTTP library', async () => {
+		const workflow = workflowWithCodeNode({
+			language: 'pythonNative',
+			pythonCode:
+				"from requests import get\nres = get('https://api.example.com')\nreturn res.json()",
+		});
+
+		const result = await codeNodeNoHttpRequests.run(workflow, { prompt: 'Call an API' });
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('requests');
+	});
+
+	it('ignores code of the inactive language', async () => {
+		const workflow = workflowWithCodeNode({
+			language: 'python',
+			jsCode: "const res = await fetch('https://api.example.com');\nreturn await res.json();",
+			pythonCode: 'return [item.json for item in _input.all()]',
+		});
+
+		const result = await codeNodeNoHttpRequests.run(workflow, { prompt: 'Process data' });
+
+		expect(result).toEqual({ pass: true });
+	});
+
 	it('passes when Code nodes only transform data', async () => {
 		const workflow = workflowWithCodeNode({
 			mode: 'runOnceForAllItems',
