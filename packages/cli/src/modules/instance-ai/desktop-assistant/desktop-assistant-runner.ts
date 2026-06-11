@@ -32,6 +32,11 @@ export class DesktopAssistantRunner {
 		return this.startRun(user, threadId, message, 'desktop-assistant-promote');
 	}
 
+	/** Whether `runId` is still the thread's active run (dedupes promote polling). */
+	isRunActive(threadId: string, runId: string): boolean {
+		return this.instanceAiService.getActiveRunId(threadId) === runId;
+	}
+
 	private startRun(
 		user: User,
 		threadId: string,

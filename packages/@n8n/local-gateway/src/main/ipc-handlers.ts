@@ -217,6 +217,7 @@ export function registerIpcHandlers({
 				return {
 					ok: true,
 					status: result.status,
+					runId: result.status === 'building' ? result.runId : undefined,
 					workflowId: result.status === 'done' ? result.workflowId : undefined,
 				};
 			} catch (error) {

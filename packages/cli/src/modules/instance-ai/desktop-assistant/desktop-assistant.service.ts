@@ -35,6 +35,7 @@ import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import {
 	DESKTOP_ASSISTANT_TAG,
 	DESKTOP_ASSISTANT_THREAD_SOURCE,
+	PROMOTE_RUN_ID_KEY,
 	PROMOTED_FROM_THREAD_ID_KEY,
 	PROMOTED_WORKFLOW_ID_KEY,
 	THREAD_SOURCE_METADATA_KEY,
@@ -48,6 +49,7 @@ import {
 	composePromoteMessage,
 	composeRecommendationsInput,
 	extractBuiltWorkflowId,
+	extractTextContent,
 	extractWorkflowLoopBuildOutcome,
 	readDesktopAssistantMeta,
 	RECOMMENDATIONS_INSTRUCTIONS,
@@ -393,10 +395,20 @@ export class DesktopAssistantService {
 			// through and rebuild.
 		}
 
+		// In-flight guard: the desktop client polls this endpoint while the build
+		// runs; without this, every poll tick would start another build run.
+		const inFlightRunId = await this.readPromoteRunId(user.id, body.threadId);
+		if (inFlightRunId && this.runner.isRunActive(body.threadId, inFlightRunId)) {
+			return { status: 'building', threadId: body.threadId, runId: inFlightRunId };
+		}
+
 		const originalPrompt = await this.recoverOriginalPrompt(body.threadId);
 		const buildPrompt = composePromoteMessage(originalPrompt, body.name);
 
 		const runId = this.runner.startPromoteBuild(user, body.threadId, buildPrompt);
+		await this.memoryService.updateThread(body.threadId, {
+			metadata: { [PROMOTE_RUN_ID_KEY]: runId },
+		});
 
 		// Subscribe AFTER we have the runId so the listener can scope itself to
 		// the exact run we just kicked off. `subscribe` is synchronous and
@@ -542,6 +554,12 @@ export class DesktopAssistantService {
 		return typeof v === 'string' ? v : undefined;
 	}
 
+	private async readPromoteRunId(userId: string, threadId: string): Promise<string | undefined> {
+		const metadata = await this.memoryService.getThreadMetadata(userId, threadId);
+		const v = metadata?.[PROMOTE_RUN_ID_KEY];
+		return typeof v === 'string' ? v : undefined;
+	}
+
 	private async recoverOriginalPrompt(threadId: string): Promise<string> {
 		const messages = await this.memoryService.getThreadMessages('', threadId, {
 			limit: 50,
@@ -551,9 +569,14 @@ export class DesktopAssistantService {
 		if (!firstUser) {
 			throw new BadRequestError(`Thread ${threadId} has no user message to promote`);
 		}
-		if (typeof firstUser.content === 'string') return firstUser.content;
-		// Best-effort: flatten content parts into a single string for the build prompt.
-		return JSON.stringify(firstUser.content);
+		// Multi-part content (e.g. text + image attachments): keep only the text
+		// parts. Stringifying the rest would embed base64 attachment payloads
+		// into the build prompt and blow the model's context window.
+		const text = extractTextContent(firstUser.content);
+		if (!text) {
+			throw new BadRequestError(`Thread ${threadId} has no text prompt to promote`);
+		}
+		return text;
 	}
 
 	private async resolvePersonalProjectId(user: User): Promise<string> {

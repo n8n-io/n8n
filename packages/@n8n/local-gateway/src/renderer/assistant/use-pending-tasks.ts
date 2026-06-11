@@ -3,13 +3,17 @@
  *
  * When the user keeps a one-off run, the thread is promoted on the instance —
  * a build that takes a while. Each promotion gets a pending entry here so the
- * Tasks list can show a "setting up" card immediately; the store polls the
- * idempotent promote endpoint until the workflow is saved, then drops the
- * entry and notifies subscribers (so the list can refetch). No pinia — plain
- * module-level reactive state, matching `use-assistant-screen.ts`.
+ * Tasks list can show a "setting up" card immediately. Completion is observed
+ * in realtime: the promote call returns the build run's id, the store watches
+ * that run on the thread event stream (same channel the composer uses), and a
+ * single follow-up promote call — idempotent — confirms the workflow id once
+ * the run finishes. No polling. Subscribers are notified on save so the list
+ * can refetch. No pinia — plain module-level reactive state, matching
+ * `use-assistant-screen.ts`.
  */
 import { reactive, readonly } from 'vue';
 
+import { watchAssistantRun } from './run-watcher';
 import { promoteAssistantThread } from './tasks-api';
 
 export interface PendingTask {
@@ -20,28 +24,23 @@ export interface PendingTask {
 	error?: string;
 }
 
-const POLL_INTERVAL_MS = 4000;
-/** Stop polling after this long; the build is then surfaced as failed. */
-const PROMOTE_TIMEOUT_MS = 5 * 60 * 1000;
+/**
+ * The promote finalizer writes the workflow id to thread metadata shortly
+ * AFTER the run-finish event we observe, so the confirming promote call can
+ * race it. A few short retries absorb that gap.
+ */
+const CONFIRM_ATTEMPTS = 3;
+const CONFIRM_RETRY_DELAY_MS = 2000;
 
 const entries = reactive<PendingTask[]>([]);
 const savedCallbacks = new Set<() => void>();
-const pollTimers = new Map<string, number>();
-
-function clearPollTimer(threadId: string) {
-	const timer = pollTimers.get(threadId);
-	if (timer !== undefined) window.clearTimeout(timer);
-	pollTimers.delete(threadId);
-}
 
 function removeEntry(threadId: string) {
-	clearPollTimer(threadId);
 	const index = entries.findIndex((entry) => entry.threadId === threadId);
 	if (index !== -1) entries.splice(index, 1);
 }
 
 function failEntry(threadId: string, error?: string) {
-	clearPollTimer(threadId);
 	const entry = entries.find((e) => e.threadId === threadId);
 	if (entry) {
 		entry.status = 'failed';
@@ -49,45 +48,62 @@ function failEntry(threadId: string, error?: string) {
 	}
 }
 
+function isDismissed(threadId: string): boolean {
+	return !entries.some((entry) => entry.threadId === threadId && entry.status === 'building');
+}
+
 function notifySaved() {
 	for (const notify of savedCallbacks) notify();
 }
 
-/**
- * One poll tick: check the promote status, then finish, fail, or re-arm.
- * `label` doubles as the requested workflow name; the endpoint is idempotent,
- * so passing it on every tick is harmless and keeps the tick uniform.
- */
-async function poll(threadId: string, label: string, deadline: number) {
-	// The entry may have been dismissed while a request was in flight.
-	if (!entries.some((entry) => entry.threadId === threadId && entry.status === 'building')) return;
+async function delay(ms: number): Promise<void> {
+	await new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
-	try {
-		const result = await promoteAssistantThread(threadId, label);
-		if (!result.ok) {
-			failEntry(threadId, result.error);
-			return;
-		}
-		if (result.status === 'done') {
+/**
+ * Drive one promotion to completion: start the build, watch its run on the
+ * thread event stream, then confirm the workflow id with a final idempotent
+ * promote call. `label` doubles as the requested workflow name.
+ */
+async function runPromotion(threadId: string, label: string): Promise<void> {
+	const started = await promoteAssistantThread(threadId, label);
+	if (!started.ok) {
+		failEntry(threadId, started.error);
+		return;
+	}
+	if (started.status === 'done') {
+		removeEntry(threadId);
+		notifySaved();
+		return;
+	}
+	if (!started.runId) {
+		// `building` without a run to watch shouldn't happen; surface it rather
+		// than silently spinning forever.
+		failEntry(threadId);
+		return;
+	}
+
+	const run = await watchAssistantRun(threadId, started.runId);
+	if (isDismissed(threadId)) return;
+	if (!run.ok) {
+		failEntry(threadId, run.error);
+		return;
+	}
+
+	// The run succeeded; confirm the saved workflow (retrying briefly while the
+	// finalizer writes the thread metadata).
+	for (let attempt = 0; attempt < CONFIRM_ATTEMPTS; attempt++) {
+		const confirmed = await promoteAssistantThread(threadId, label);
+		if (isDismissed(threadId)) return;
+		if (confirmed.ok && confirmed.status === 'done') {
 			removeEntry(threadId);
 			notifySaved();
 			return;
 		}
-	} catch (error) {
-		failEntry(threadId, error instanceof Error ? error.message : undefined);
-		return;
+		await delay(CONFIRM_RETRY_DELAY_MS);
 	}
-
-	if (Date.now() >= deadline) {
-		failEntry(threadId);
-		return;
-	}
-	pollTimers.set(
-		threadId,
-		window.setTimeout(() => {
-			void poll(threadId, label, deadline);
-		}, POLL_INTERVAL_MS),
-	);
+	// Run finished but no workflow materialised — the build produced nothing.
+	failEntry(threadId);
 }
 
 /**
@@ -97,7 +113,9 @@ async function poll(threadId: string, label: string, deadline: number) {
 function promote(threadId: string, label: string) {
 	if (entries.some((entry) => entry.threadId === threadId)) return;
 	entries.push({ threadId, label, status: 'building' });
-	void poll(threadId, label, Date.now() + PROMOTE_TIMEOUT_MS);
+	runPromotion(threadId, label).catch((error: unknown) => {
+		failEntry(threadId, error instanceof Error ? error.message : undefined);
+	});
 }
 
 /** Drop a (typically failed) entry from the list. */

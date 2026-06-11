@@ -409,6 +409,7 @@ describe('DesktopAssistantService.promoteThread', () => {
 		ctx.memoryService.checkThreadOwnership.mockResolvedValue('owned');
 		ctx.memoryService.getThreadMetadata
 			.mockResolvedValueOnce(undefined) // initial idempotency check
+			.mockResolvedValueOnce(undefined) // in-flight promote-run check
 			.mockResolvedValueOnce({
 				// metadata read after run-finish — workflow-loop persisted outcome
 				instanceAiWorkflowLoop: {
@@ -570,7 +571,12 @@ describe('DesktopAssistantService.promoteThread', () => {
 
 		expect(ctx.workflowTagMappingRepository.insert).not.toHaveBeenCalled();
 		expect(ctx.workflowRepository.update).not.toHaveBeenCalled();
-		expect(ctx.memoryService.updateThread).not.toHaveBeenCalled();
+		// The only thread update is the promote-run bookkeeping written at kickoff,
+		// never the post-build `promotedWorkflowId`.
+		expect(ctx.memoryService.updateThread).toHaveBeenCalledTimes(1);
+		expect(ctx.memoryService.updateThread).toHaveBeenCalledWith('t-1', {
+			metadata: { desktopAssistantPromoteRunId: 'run-promote' },
+		});
 	});
 });
 

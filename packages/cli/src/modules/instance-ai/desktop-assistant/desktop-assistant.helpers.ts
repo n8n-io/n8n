@@ -58,6 +58,28 @@ export function describeActiveContext(
 	return app ?? title ?? undefined;
 }
 
+/**
+ * Flatten stored message content into plain text. String content passes
+ * through; multi-part content keeps only `{ type: 'text' }` parts (an
+ * attachment part would otherwise leak megabytes of base64 into a prompt).
+ * Returns `''` when there is no text to extract.
+ */
+export function extractTextContent(content: unknown): string {
+	if (typeof content === 'string') return content;
+	if (!Array.isArray(content)) return '';
+	return content
+		.filter(isTextPart)
+		.map((part) => part.text)
+		.join('\n')
+		.trim();
+}
+
+function isTextPart(part: unknown): part is { type: 'text'; text: string } {
+	if (typeof part !== 'object' || part === null) return false;
+	const candidate = part as { type?: unknown; text?: unknown };
+	return candidate.type === 'text' && typeof candidate.text === 'string';
+}
+
 /** Compose the promote-thread message: asks the model to compile the task it
  *  already executed in this thread into a repeatable workflow, and nudges it
  *  to pick a short, emoji-led workflow name. */
