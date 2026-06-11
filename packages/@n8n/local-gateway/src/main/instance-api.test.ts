@@ -163,6 +163,30 @@ describe('InstanceApi', () => {
 		});
 	});
 
+	describe('confirmRequest', () => {
+		it('posts the confirmation body to the encoded request id', async () => {
+			mockFetch.mockResolvedValue(jsonResponse({ data: { ok: true } }));
+
+			await new InstanceApi(makeOAuth()).confirmRequest('req/1', {
+				kind: 'approval',
+				approved: true,
+			});
+
+			const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n.example/rest/instance-ai/confirm/req%2F1');
+			expect(init.method).toBe('POST');
+			expect(init.body).toBe(JSON.stringify({ kind: 'approval', approved: true }));
+		});
+
+		it('surfaces the server status on failure (expired confirmation)', async () => {
+			mockFetch.mockResolvedValue(jsonResponse({ message: 'expired' }, { ok: false, status: 400 }));
+
+			await expect(
+				new InstanceApi(makeOAuth()).confirmRequest('req-1', { kind: 'approval', approved: true }),
+			).rejects.toMatchObject({ status: 400 });
+		});
+	});
+
 	describe('executionUrl', () => {
 		it('builds the execution url, or null when signed out', () => {
 			expect(new InstanceApi(makeOAuth()).executionUrl('wf-1', 'exec-1')).toBe(

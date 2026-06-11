@@ -35,6 +35,7 @@ vi.mock('./mac-permissions', () => ({
 
 import { logger } from '@n8n/computer-use/logger';
 
+import { InstanceApiError } from './instance-api';
 import { registerIpcHandlers } from './ipc-handlers';
 import { getMacPermissionStatus, openMacPermissionSettings } from './mac-permissions';
 
@@ -57,6 +58,8 @@ function register(overrides: {
 	instanceApi?: unknown;
 	threadService?: unknown;
 	contextDetector?: unknown;
+	permissionBroker?: unknown;
+	reconnectGateway?: () => void;
 	openExternal?: HandlerFn;
 }): void {
 	registerIpcHandlers({
@@ -89,6 +92,11 @@ function register(overrides: {
 			unlisten: vi.fn(),
 			reset: vi.fn(),
 		}) as never,
+		permissionBroker: (overrides.permissionBroker ?? {
+			list: vi.fn().mockReturnValue([]),
+			respond: vi.fn().mockReturnValue(true),
+		}) as never,
+		reconnectGateway: overrides.reconnectGateway ?? vi.fn(),
 		openExternal: (overrides.openExternal ?? vi.fn().mockResolvedValue(undefined)) as never,
 	});
 }
@@ -197,14 +205,17 @@ describe('registerIpcHandlers', () => {
 			toGatewayConfig: vi.fn(),
 		};
 		const disconnectGateway = vi.fn();
+		const reconnectGateway = vi.fn();
 
-		register({ controller, settingsStore, disconnectGateway });
+		register({ controller, settingsStore, disconnectGateway, reconnectGateway });
 		const settingsSetHandler = getRegisteredHandler('settings:set');
 
 		const result = await settingsSetHandler(undefined, { logLevel: 'debug' });
 
 		expect(mockConfigure).toHaveBeenCalledWith({ level: 'debug' });
 		expect(disconnectGateway).not.toHaveBeenCalled();
+		// logLevel is applied in-process — no reconnect needed.
+		expect(reconnectGateway).not.toHaveBeenCalled();
 		expect(result).toEqual({ ok: true });
 	});
 
@@ -396,7 +407,80 @@ describe('registerIpcHandlers', () => {
 		expect(mockOpenMacPermissionSettings).toHaveBeenCalledWith('screenRecording');
 	});
 
-	it('settings:set persists capability toggles', async () => {
+	it('thread:confirm validates the body and delegates to the thread service', async () => {
+		const threadService = {
+			getMessages: vi.fn(),
+			postMessage: vi.fn(),
+			listen: vi.fn(),
+			unlisten: vi.fn(),
+			reset: vi.fn(),
+			confirm: vi.fn().mockResolvedValue(undefined),
+		};
+		register({ threadService });
+
+		const body = { kind: 'resourceDecision', resourceDecision: 'allowOnce' };
+		const result = await getRegisteredHandler('thread:confirm')(undefined, 't1', 'req-1', body);
+
+		expect(threadService.confirm).toHaveBeenCalledWith('t1', 'req-1', body);
+		expect(result).toEqual({ ok: true });
+	});
+
+	it('thread:confirm rejects an invalid body without calling the service', async () => {
+		const threadService = { confirm: vi.fn() };
+		register({ threadService });
+
+		const result = await getRegisteredHandler('thread:confirm')(undefined, 't1', 'req-1', {
+			kind: 'resourceDecision',
+			resourceDecision: 'alwaysAllow', // daemon-only decision, not accepted from the UI
+		});
+
+		expect(threadService.confirm).not.toHaveBeenCalled();
+		expect(result).toEqual({ ok: false, error: 'Invalid confirmation body' });
+	});
+
+	it('thread:confirm maps an InstanceApiError to a structured failure with status', async () => {
+		const threadService = {
+			confirm: vi.fn().mockRejectedValue(new InstanceApiError('expired', 400)),
+		};
+		register({ threadService });
+
+		const result = await getRegisteredHandler('thread:confirm')(undefined, 't1', 'req-1', {
+			kind: 'approval',
+			approved: true,
+		});
+
+		expect(result).toEqual({ ok: false, status: 400, error: 'expired' });
+	});
+
+	it('permissionPrompt:list returns the pending prompts from the broker', () => {
+		const prompts = [{ id: 'p1' }];
+		const permissionBroker = { list: vi.fn().mockReturnValue(prompts), respond: vi.fn() };
+		register({ permissionBroker });
+
+		expect(getRegisteredHandler('permissionPrompt:list')()).toEqual(prompts);
+	});
+
+	it('permissionPrompt:respond delegates valid decisions to the broker', () => {
+		const permissionBroker = { list: vi.fn(), respond: vi.fn().mockReturnValue(true) };
+		register({ permissionBroker });
+
+		const result = getRegisteredHandler('permissionPrompt:respond')(undefined, 'p1', 'allowOnce');
+
+		expect(permissionBroker.respond).toHaveBeenCalledWith('p1', 'allowOnce');
+		expect(result).toEqual({ ok: true });
+	});
+
+	it('permissionPrompt:respond rejects unknown decisions without calling the broker', () => {
+		const permissionBroker = { list: vi.fn(), respond: vi.fn() };
+		register({ permissionBroker });
+
+		const result = getRegisteredHandler('permissionPrompt:respond')(undefined, 'p1', 'nuke-it');
+
+		expect(permissionBroker.respond).not.toHaveBeenCalled();
+		expect(result).toEqual({ ok: false });
+	});
+
+	it('settings:set persists gateway-relevant settings and reconnects to apply them', async () => {
 		const controller = {
 			disconnect: vi.fn(),
 			getSnapshot: vi.fn(),
@@ -406,13 +490,15 @@ describe('registerIpcHandlers', () => {
 			set: vi.fn(),
 			toGatewayConfig: vi.fn(),
 		};
-		register({ controller, settingsStore });
+		const reconnectGateway = vi.fn();
+		register({ controller, settingsStore, reconnectGateway });
 
 		const result = await getRegisteredHandler('settings:set')(undefined, {
-			filesystemEnabled: false,
+			permissionConfirmation: 'client',
 		});
 
-		expect(settingsStore.set).toHaveBeenCalledWith({ filesystemEnabled: false });
+		expect(settingsStore.set).toHaveBeenCalledWith({ permissionConfirmation: 'client' });
+		expect(reconnectGateway).toHaveBeenCalledTimes(1);
 		expect(result).toEqual({ ok: true });
 	});
 });

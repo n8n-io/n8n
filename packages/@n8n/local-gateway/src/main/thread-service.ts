@@ -1,4 +1,8 @@
-import type { InstanceAiEvent, InstanceAiRichMessagesResponse } from '@n8n/api-types';
+import type {
+	InstanceAiConfirmRequest,
+	InstanceAiEvent,
+	InstanceAiRichMessagesResponse,
+} from '@n8n/api-types';
 import { logger } from '@n8n/computer-use/logger';
 import { EventSource } from 'eventsource';
 
@@ -88,6 +92,19 @@ export class ThreadService {
 		const result = await this.deps.instanceApi.sendChatMessage(threadId, message);
 		this.cache.delete(threadId);
 		return result;
+	}
+
+	/**
+	 * Resolve a pending confirmation on the thread; the suspended run resumes. Drops
+	 * the cached snapshot — its embedded `confirmationStatus` is stale after a confirm.
+	 */
+	async confirm(
+		threadId: string,
+		requestId: string,
+		body: InstanceAiConfirmRequest,
+	): Promise<void> {
+		await this.deps.instanceApi.confirmRequest(requestId, body);
+		this.cache.delete(threadId);
 	}
 
 	/**

@@ -7,6 +7,7 @@ const mockSessionFlush = vi.fn();
 type GatewayClientOptions = {
 	url: string;
 	getAuthToken: () => Promise<string>;
+	confirmResourceAccess?: (resource: unknown) => unknown;
 	onPersistentFailure?: () => void;
 	onDisconnected?: () => void;
 };
@@ -75,6 +76,11 @@ const BASE_CONFIG: GatewayConfig = {
 /** Stand-in for the OAuth token provider the app wires into `connect`. */
 const authToken = async () => await Promise.resolve('gw_token');
 
+/** Stand-in for the permission broker the app wires into the controller. */
+const confirmResourceAccess = vi.fn(() => 'denyOnce' as const);
+
+const createController = () => new DaemonController({ confirmResourceAccess });
+
 /** Fire-and-forget `void closeCurrentConnection()` chains multiple async steps; flush past microtasks */
 async function settleNextTurn(): Promise<void> {
 	await new Promise<void>((resolve) => setImmediate(resolve));
@@ -82,7 +88,7 @@ async function settleNextTurn(): Promise<void> {
 
 describe('DaemonController', () => {
 	it('starts disconnected with no session', () => {
-		const controller = new DaemonController();
+		const controller = createController();
 		expect(controller.getSnapshot()).toEqual({
 			status: 'disconnected',
 			connectedUrl: null,
@@ -110,7 +116,7 @@ describe('DaemonController', () => {
 	});
 
 	it('connects and updates snapshot state', async () => {
-		const controller = new DaemonController();
+		const controller = createController();
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', authToken);
 
 		const snapshot = controller.getSnapshot();
@@ -120,7 +126,7 @@ describe('DaemonController', () => {
 	});
 
 	it('forwards the auth-token provider to the gateway client', async () => {
-		const controller = new DaemonController();
+		const controller = createController();
 		const getAuthToken = async () => await Promise.resolve('bearer-token');
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', getAuthToken);
 
@@ -128,14 +134,21 @@ describe('DaemonController', () => {
 		await expect(gateway.lastOptions?.getAuthToken?.()).resolves.toBe('bearer-token');
 	});
 
+	it('forwards the injected confirmResourceAccess to the gateway client', async () => {
+		const controller = createController();
+		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', authToken);
+
+		expect(gateway.lastOptions?.confirmResourceAccess).toBe(confirmResourceAccess);
+	});
+
 	it('normalizes trailing slash on URL', async () => {
-		const controller = new DaemonController();
+		const controller = createController();
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud/', authToken);
 		expect(controller.getSnapshot().connectedUrl).toBe('https://example.n8n.cloud');
 	});
 
 	it('sets error state when connect fails', async () => {
-		const controller = new DaemonController();
+		const controller = createController();
 		mockStart.mockRejectedValueOnce(new Error('connect failed'));
 
 		await expect(
@@ -149,7 +162,7 @@ describe('DaemonController', () => {
 	});
 
 	it('formats non-Error rejection for lastError', async () => {
-		const controller = new DaemonController();
+		const controller = createController();
 		mockStart.mockRejectedValueOnce('string failure');
 
 		await expect(
@@ -159,7 +172,7 @@ describe('DaemonController', () => {
 	});
 
 	it('disconnects and clears connected state', async () => {
-		const controller = new DaemonController();
+		const controller = createController();
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', authToken);
 		await controller.disconnect();
 
@@ -171,7 +184,7 @@ describe('DaemonController', () => {
 	});
 
 	it('calls stop on previous client when connecting again', async () => {
-		const controller = new DaemonController();
+		const controller = createController();
 		await controller.connect(BASE_CONFIG, 'https://a.example', authToken);
 		await controller.connect(BASE_CONFIG, 'https://b.example', authToken);
 		expect(mockStop).toHaveBeenCalled();
@@ -179,7 +192,7 @@ describe('DaemonController', () => {
 	});
 
 	it('sets error state when gateway signals persistent auth failure', async () => {
-		const controller = new DaemonController();
+		const controller = createController();
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', authToken);
 		gateway.lastOptions?.onPersistentFailure?.();
 
@@ -193,7 +206,7 @@ describe('DaemonController', () => {
 	});
 
 	it('sets disconnected state when gateway signals disconnect', async () => {
-		const controller = new DaemonController();
+		const controller = createController();
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', authToken);
 		gateway.lastOptions?.onDisconnected?.();
 

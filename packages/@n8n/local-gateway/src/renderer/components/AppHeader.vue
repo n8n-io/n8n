@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nIcon, N8nLogo } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
 
+import { activeViewTitle } from '../app/view-title';
 import { openChat } from '../chat/chat-overlay';
 
 import type { AuthState } from '../../shared/types';
@@ -10,14 +10,9 @@ import type { AuthState } from '../../shared/types';
 // connection once that is wired up.
 defineProps<{
 	state: AuthState;
-	/** Chat overlay open — the brand is replaced by a back button + the thread title. */
-	chatOpen?: boolean;
-	chatTitle?: string | null;
 }>();
 
-const emit = defineEmits<{ openSettings: []; back: [] }>();
-
-const i18n = useI18n();
+const emit = defineEmits<{ openSettings: [] }>();
 
 // TEMPORARY: invisible button next to the brand opens the chat overlay for manual
 // testing until the composer flow calls openChat. Remove together with the button.
@@ -41,19 +36,18 @@ const DOT_CLASS: Record<AuthState, string> = {
 
 <template>
 	<header :class="$style.header">
-		<div v-if="chatOpen" :class="$style.brand">
+		<!-- A titled view is open — the brand becomes a back button + the view's title. -->
+		<div v-if="activeViewTitle" :class="$style.brand">
 			<button
 				type="button"
 				:class="$style.iconBtn"
-				:aria-label="i18n.baseText('desktopAssistant.chat.back')"
-				data-testid="header-chat-back"
-				@click="emit('back')"
+				aria-label="Back"
+				data-testid="header-back"
+				@click="activeViewTitle.onBack?.()"
 			>
 				<N8nIcon icon="arrow-left" :size="16" aria-hidden="true" />
 			</button>
-			<span :class="[$style.brandLabel, $style.chatTitle]">
-				{{ chatTitle || i18n.baseText('desktopAssistant.chat.title') }}
-			</span>
+			<span :class="[$style.brandLabel, $style.viewTitle]">{{ activeViewTitle.title }}</span>
 		</div>
 		<div v-else :class="$style.brand">
 			<N8nLogo size="small" :collapsed="true" />
@@ -121,7 +115,7 @@ const DOT_CLASS: Record<AuthState, string> = {
 	color: var(--da-text);
 }
 
-.chatTitle {
+.viewTitle {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

@@ -6,6 +6,7 @@ import type {
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	InsightsSummary,
+	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
 import { logger } from '@n8n/computer-use/logger';
@@ -195,6 +196,20 @@ export class InstanceApi {
 			}),
 		});
 		return await this.unwrap<{ runId: string }>(response);
+	}
+
+	/** `POST /rest/instance-ai/confirm/:requestId` — resolve a pending confirmation; the suspended run resumes. */
+	async confirmRequest(requestId: string, body: InstanceAiConfirmRequest): Promise<void> {
+		const response = await this.authedFetch(
+			`/instance-ai/confirm/${encodeURIComponent(requestId)}`,
+			{
+				method: 'POST',
+				// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(body),
+			},
+		);
+		await this.unwrap<{ ok: boolean }>(response);
 	}
 
 	/** Public editor URL for a workflow on the signed-in instance, or `null` when signed out. */

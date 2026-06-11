@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { N8nButton, N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
+
+import { useViewTitle } from '../app/view-title';
 
 import type { AuthStatus, MacPermissionKind, MacPermissionStatus } from '../../shared/types';
 
 defineProps<{ status: AuthStatus }>();
 
 const emit = defineEmits<{ close: [] }>();
+
+useViewTitle('Settings', () => emit('close'));
 
 const signingOut = ref(false);
 
@@ -19,6 +23,15 @@ async function signOut() {
 	} finally {
 		signingOut.value = false;
 	}
+}
+
+// ── Permission confirmation mode ────────────────────────────────────────────
+// Where computer-use resource-access prompts are answered: in the n8n editor
+// ('instance', the default) or in this app ('client').
+const permissionConfirmation = ref<'instance' | 'client'>('instance');
+
+async function savePermissionConfirmation() {
+	await window.electronAPI.setSettings({ permissionConfirmation: permissionConfirmation.value });
 }
 
 // ── macOS permissions ───────────────────────────────────────────────────────
@@ -59,6 +72,8 @@ async function openPermission(kind: MacPermissionKind) {
 
 let disposeActive: (() => void) | undefined;
 onMounted(async () => {
+	const settings = await window.electronAPI.getSettings();
+	permissionConfirmation.value = settings.permissionConfirmation;
 	await refreshPermissions();
 	// Re-check when the window regains focus, so returning from System Settings
 	// flips the status live.
@@ -70,19 +85,7 @@ onBeforeUnmount(() => disposeActive?.());
 </script>
 
 <template>
-	<main :class="$style.container">
-		<div :class="$style.titleRow">
-			<N8nIconButton
-				icon="arrow-left"
-				variant="ghost"
-				size="small"
-				aria-label="Back"
-				data-testid="settings-back"
-				@click="emit('close')"
-			/>
-			<N8nHeading tag="h1" size="large" bold>Settings</N8nHeading>
-		</div>
-
+	<main :class="$style.container" aria-label="Settings">
 		<section :class="$style.section" aria-labelledby="settings-account-heading">
 			<N8nHeading id="settings-account-heading" tag="h2" size="small" bold>Account</N8nHeading>
 			<div :class="$style.row">
@@ -101,6 +104,33 @@ onBeforeUnmount(() => disposeActive?.());
 					Sign out
 				</N8nButton>
 			</div>
+		</section>
+
+		<section :class="$style.section" aria-labelledby="settings-assistant-heading">
+			<N8nHeading id="settings-assistant-heading" tag="h2" size="small" bold>
+				AI Assistant
+			</N8nHeading>
+			<div :class="$style.row" data-testid="settings-permission-confirmation">
+				<div :class="$style.rowText">
+					<N8nText>Permission prompts</N8nText>
+					<N8nText size="small" color="text-light">
+						Where resource-access requests are approved
+					</N8nText>
+				</div>
+				<select
+					v-model="permissionConfirmation"
+					:class="$style.select"
+					aria-label="Permission prompt location"
+					data-testid="settings-permission-confirmation-select"
+					@change="savePermissionConfirmation"
+				>
+					<option value="instance">n8n editor (instance)</option>
+					<option value="client">This app (client)</option>
+				</select>
+			</div>
+			<N8nText size="small" color="text-light">
+				Changing this reconnects the assistant; session-scoped grants are reset.
+			</N8nText>
 		</section>
 
 		<section
@@ -150,12 +180,14 @@ onBeforeUnmount(() => disposeActive?.());
 	flex-direction: column;
 	gap: var(--spacing--lg);
 	padding: var(--spacing--md) var(--spacing--md) var(--spacing--xl);
-}
+	/* N8nText/N8nHeading color with design-system tokens that default to the
+	   light theme (dark on dark here); pin them to the assistant palette. */
+	--text-color: var(--da-text);
+	--text-color--subtle: var(--da-subtler);
+	--text-color--subtler: var(--da-subtler);
+	--text-color--disabled: var(--da-subtlest);
 
-.titleRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+	color: var(--da-text);
 }
 
 .section {
@@ -184,6 +216,23 @@ onBeforeUnmount(() => disposeActive?.());
 	display: flex;
 	flex-shrink: 0;
 	align-items: center;
+}
+
+.select {
+	flex-shrink: 0;
+	padding: 6px 10px;
+	font: inherit;
+	font-size: 12px;
+	color: var(--da-text);
+	cursor: pointer;
+	background: var(--da-surface-2);
+	border: 1px solid var(--da-border);
+	border-radius: var(--da-radius-sm);
+}
+
+.select:focus-visible {
+	outline: var(--da-focus-ring);
+	outline-offset: var(--da-focus-ring-offset);
 }
 
 .granted {

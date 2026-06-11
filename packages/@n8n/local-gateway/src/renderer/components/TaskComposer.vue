@@ -3,6 +3,7 @@ import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
+import AssistantButton from './AssistantButton.vue';
 import ComposerField from './ComposerField.vue';
 import ContextPill from './ContextPill.vue';
 import MiniSpinner from './MiniSpinner.vue';
@@ -12,6 +13,7 @@ import { formatMinutes } from '../assistant/format';
 import { buildFallbackPlan, planTask, type Plan } from '../assistant/planner';
 import { useAssistantContext } from '../assistant/use-assistant-context';
 import { useAssistantScreen } from '../assistant/use-assistant-screen';
+import { getThreadPromptWatcher } from '../permissions/thread-prompt-watcher';
 
 type ComposerState = 'idle' | 'thinking' | 'doing';
 
@@ -96,7 +98,10 @@ async function dispatchToBackend(prompt: string) {
 			prompt,
 			context: { ...context, attachments: context.attachments?.length ?? 0 },
 		});
-		await window.electronAPI.triggerTask({ prompt, context });
+		const { threadId, runId } = await window.electronAPI.triggerTask({ prompt, context });
+		// Watch the new thread app-wide so its permission prompts surface even
+		// though no chat view is open; auto-released when the run finishes.
+		getThreadPromptWatcher().trackTaskThread(threadId, runId);
 	} catch (error) {
 		console.error('triggerTask failed', error);
 	}
@@ -228,12 +233,12 @@ defineExpose({ submit });
 							{{ i18n.baseText('desktopAssistant.composer.keepPrompt') }}
 						</div>
 						<div :class="$style.doneActions">
-							<button type="button" :class="[$style.btn, $style.btnSubtle]" @click="dismissDone">
+							<AssistantButton @click="dismissDone">
 								{{ i18n.baseText('desktopAssistant.composer.noThanks') }}
-							</button>
-							<button type="button" :class="[$style.btn, $style.btnSolid]" @click="saveAsReady">
+							</AssistantButton>
+							<AssistantButton variant="solid" @click="saveAsReady">
 								{{ i18n.baseText('desktopAssistant.composer.saveAsReady') }}
-							</button>
+							</AssistantButton>
 						</div>
 					</div>
 				</div>
@@ -512,46 +517,5 @@ defineExpose({ submit });
 	width: var(--spacing--xl);
 	pointer-events: none;
 	background: linear-gradient(to right, rgba(33, 33, 33, 0), var(--da-bg));
-}
-
-/* Done-card buttons reuse the reference button variants. */
-.btn {
-	padding: 9px 14px;
-	font: inherit;
-	font-size: 13px;
-	font-weight: 600;
-	white-space: nowrap;
-	cursor: pointer;
-	border-radius: var(--da-radius-sm);
-}
-
-.btn:focus-visible {
-	outline: var(--da-focus-ring);
-	outline-offset: var(--da-focus-ring-offset);
-}
-
-.btnSolid {
-	color: #fff;
-	background: var(--da-accent);
-	border: none;
-}
-
-.btnSolid:hover {
-	background: var(--da-accent-press);
-}
-
-.btnSolid:active {
-	transform: scale(0.98);
-}
-
-.btnSubtle {
-	color: var(--da-text);
-	background: var(--da-surface-2);
-	border: 1px solid var(--da-border);
-}
-
-.btnSubtle:hover {
-	background: var(--da-surface);
-	border-color: var(--da-border-strong);
 }
 </style>

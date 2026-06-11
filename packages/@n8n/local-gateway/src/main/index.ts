@@ -12,10 +12,13 @@ import {
 	toggleMainWindow,
 	notifyMainWindow,
 	onMainWindowReset,
+	isMainWindowVisible,
 } from './main-window';
+import { createPromptNotifier } from './notifications';
 import { parseOAuthCallback } from './oauth/oauth-callback';
 import { OAuthFlow } from './oauth/oauth-flow';
 import { TokenStore } from './oauth/token-store';
+import { PermissionBroker } from './permission-broker';
 import { SettingsStore } from './settings-store';
 import { ThreadService } from './thread-service';
 import { createTray } from './tray';
@@ -49,7 +52,27 @@ if (!app.requestSingleInstanceLock()) {
 			configure({ level: settingsStore.get().logLevel });
 			logger.info('n8n Assistant starting');
 
-			const controller = new DaemonController();
+			const preloadPath = path.join(__dirname, 'preload.js');
+			const rendererPath = path.join(__dirname, '..', 'renderer', 'index.html');
+
+			const promptNotifier = createPromptNotifier({
+				isWindowVisible: isMainWindowVisible,
+				showWindow: () => showMainWindow(preloadPath, rendererPath),
+			});
+			const permissionBroker = new PermissionBroker({
+				pushRequested: (prompt) => notifyMainWindow('permissionPromptRequested', prompt),
+				pushWithdrawn: (id) => notifyMainWindow('permissionPromptWithdrawn', id),
+				onPrompt: (prompt) => promptNotifier.notifyLocalPrompt(prompt),
+			});
+
+			const controller = new DaemonController({
+				confirmResourceAccess: async (resource) => await permissionBroker.request(resource),
+			});
+			// The gateway connection going away orphans any pending resource-access
+			// prompts (their tool calls are gone) — deny and withdraw them.
+			controller.on('statusChanged', (snapshot) => {
+				if (snapshot.status !== 'connected') permissionBroker.clear();
+			});
 			const openExternal = async (url: string) => {
 				await shell.openExternal(url);
 			};
@@ -61,7 +84,12 @@ if (!app.requestSingleInstanceLock()) {
 			const threadService = new ThreadService({
 				oauthFlow,
 				instanceApi,
-				emit: (threadId, event) => notifyMainWindow('threadEvent', threadId, event),
+				emit: (threadId, event) => {
+					notifyMainWindow('threadEvent', threadId, event);
+					if (event.type === 'confirmation-request') {
+						promptNotifier.notifyConfirmationRequest(event.payload);
+					}
+				},
 			});
 			// The renderer owns the listener refcounts; when it goes away (window closed,
 			// reload) those are lost, so drop the SSE connections it asked for.
@@ -73,9 +101,6 @@ if (!app.requestSingleInstanceLock()) {
 			contextDetector.on('contextChanged', (context) => {
 				notifyMainWindow('contextChanged', context);
 			});
-
-			const preloadPath = path.join(__dirname, 'preload.js');
-			const rendererPath = path.join(__dirname, '..', 'renderer', 'index.html');
 
 			async function disconnectGateway(): Promise<void> {
 				await controller.disconnect();
@@ -115,6 +140,10 @@ if (!app.requestSingleInstanceLock()) {
 				instanceApi,
 				threadService,
 				contextDetector,
+				permissionBroker,
+				// Settings changes re-apply seamlessly: connect() replaces any current
+				// connection, authenticated with a fresh OAuth token.
+				reconnectGateway: () => syncGatewayConnection(oauthFlow.getStatus()),
 				openExternal,
 			});
 

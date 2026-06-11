@@ -12,6 +12,8 @@ export interface AppSettings {
 	mouseKeyboardEnabled: boolean;
 	browserEnabled: boolean;
 	logLevel: LogLevel;
+	/** Where resource-access prompts are confirmed: in the n8n editor ('instance') or in this app ('client'). */
+	permissionConfirmation: 'instance' | 'client';
 }
 
 export interface StatusSnapshot {
@@ -35,6 +37,7 @@ import type {
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
+	InstanceAiConfirmRequest,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
@@ -43,6 +46,7 @@ import type {
 	ScreenshotAttachment,
 	WindowCaptureTarget,
 } from '@n8n/computer-use/context';
+import type { AffectedResource, ResourceDecision } from '@n8n/computer-use/tools/types';
 
 export type {
 	InstanceAiMessage,
@@ -57,9 +61,20 @@ export type {
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendation,
 	DesktopAssistantRecommendationsResponse,
+	InstanceAiAgentNode,
+	InstanceAiConfirmRequest,
+	InstanceAiConfirmation,
+	InstanceAiConfirmationRequestPayload,
+	InstanceAiConfirmationSeverity,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
+	InstanceAiToolCallState,
+	DomainAccessAction,
+	DomainAccessMeta,
+	WebSearchMeta,
+	InstanceGatewayResourceDecision,
 } from '@n8n/api-types';
+export type { AffectedResource, ResourceDecision } from '@n8n/computer-use/tools/types';
 
 // Type-only re-export: the detected-context shape comes from @n8n/computer-use,
 // but importing it `type`-only means no Node runtime dependency leaks into the
@@ -92,6 +107,28 @@ export interface DesktopAssistantTimeSaved {
 export interface RunTaskResult {
 	ok: boolean;
 	executionId?: string;
+	error?: string;
+}
+
+/**
+ * A resource-access prompt raised by computer-use's `client` permission mode,
+ * pending in the main process until the user decides. Pushed to the renderer
+ * for display; the decision travels back over `respondToPermissionPrompt`.
+ */
+export interface LocalPermissionPromptRequest {
+	id: string;
+	resource: AffectedResource;
+	options: ResourceDecision[];
+}
+
+/**
+ * Outcome of a thread-confirmation POST. A structured result instead of a
+ * rejection because IPC flattens errors — the renderer needs the HTTP status
+ * to tell a stale request (400/404 → drop the prompt) from a real failure.
+ */
+export interface ConfirmThreadResult {
+	ok: boolean;
+	status?: number;
 	error?: string;
 }
 
@@ -184,6 +221,22 @@ export interface ElectronApi {
 	getMacPermissions: () => Promise<MacPermissionStatus>;
 	/** Open the System Settings pane to grant a macOS permission. */
 	openMacPermissionSettings: (kind: MacPermissionKind) => Promise<void>;
+	/** Local resource-access prompts still pending in the main process (renderer-reload resync). */
+	listPermissionPrompts: () => Promise<LocalPermissionPromptRequest[]>;
+	/** Answer a local resource-access prompt; `ok: false` when the prompt is unknown (already resolved). */
+	respondToPermissionPrompt: (id: string, decision: ResourceDecision) => Promise<{ ok: boolean }>;
+	/** Subscribe to local prompts raised by the main process. Returns a disposer. */
+	onPermissionPromptRequested: (
+		onRequestCallback: (prompt: LocalPermissionPromptRequest) => void,
+	) => () => void;
+	/** Subscribe to local prompts withdrawn by the main process (resolved or cleared). Returns a disposer. */
+	onPermissionPromptWithdrawn: (onWithdrawCallback: (id: string) => void) => () => void;
+	/** Resolve an instance-ai confirmation request; the suspended thread resumes on success. */
+	confirmThreadRequest: (
+		threadId: string,
+		requestId: string,
+		body: InstanceAiConfirmRequest,
+	) => Promise<ConfirmThreadResult>;
 }
 
 export type AuthState = 'signedOut' | 'authorizing' | 'signedIn' | 'error';

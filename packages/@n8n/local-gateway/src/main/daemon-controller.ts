@@ -3,6 +3,7 @@ import { GatewayClient } from '@n8n/computer-use/gateway-client';
 import { GatewaySession } from '@n8n/computer-use/gateway-session';
 import { logger } from '@n8n/computer-use/logger';
 import { SettingsStore } from '@n8n/computer-use/settings-store';
+import type { ConfirmResourceAccess } from '@n8n/computer-use/tools/types';
 import { EventEmitter } from 'node:events';
 
 import type { DaemonStatus, StatusSnapshot } from '../shared/types';
@@ -13,6 +14,11 @@ export interface DaemonControllerEvents {
 	statusChanged: [snapshot: StatusSnapshot];
 }
 
+export interface DaemonControllerDeps {
+	/** Answers `client`-mode resource-access prompts (only consulted when `permissionConfirmation: 'client'`). */
+	confirmResourceAccess: ConfirmResourceAccess;
+}
+
 export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 	private client: GatewayClient | null = null;
 	private session: GatewaySession | null = null;
@@ -20,6 +26,10 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 	private _status: DaemonStatus = 'disconnected';
 	private _connectedUrl: string | null = null;
 	private _lastError: string | null = null;
+
+	constructor(private readonly deps: DaemonControllerDeps) {
+		super();
+	}
 
 	getSnapshot(): StatusSnapshot {
 		return {
@@ -88,7 +98,7 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 			getAuthToken,
 			config,
 			session,
-			confirmResourceAccess: () => 'denyOnce',
+			confirmResourceAccess: this.deps.confirmResourceAccess,
 			onPersistentFailure: () => {
 				this.afterGatewayPersistentFailure();
 			},
