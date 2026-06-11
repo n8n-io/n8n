@@ -17,6 +17,7 @@ import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import type { CapturedEvent } from '../types';
+import { USER_TURN_EVENT } from '../types';
 import { getEventPayload, tryInfrastructureResponse } from '../utils/confirmation-payload';
 import { getNestedRecord } from '../utils/safe-extract';
 
@@ -28,6 +29,25 @@ export const SSE_SETTLE_DELAY_MS = 200;
 export const POLL_INTERVAL_MS = 500;
 export const BACKGROUND_TASK_POLL_INTERVAL_MS = 2_000;
 export const MAX_CONFIRMATION_RETRIES = 5;
+
+/**
+ * Inject a marker into the captured event stream at each user-message send so
+ * the transcript can group all of a message's runs — including agent *resumes*,
+ * which each emit their own `run-start` — under the one message that triggered
+ * them. Without this, runs are aligned to messages positionally and a single
+ * message that spans a resume shifts every later message by one turn.
+ *
+ * Pushed synchronously just before `sendMessage`; `waitForAllActivity` has already
+ * drained the prior run (incl. the `SSE_SETTLE_DELAY_MS` settle), so the marker
+ * reliably precedes the next run's events rather than racing a straggler.
+ */
+export function recordUserTurn(events: CapturedEvent[], text: string): void {
+	events.push({
+		timestamp: Date.now(),
+		type: USER_TURN_EVENT,
+		data: { type: USER_TURN_EVENT, payload: { text } },
+	});
+}
 
 // ---------------------------------------------------------------------------
 // SSE connection
@@ -217,6 +237,7 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 		config.logger.verbose(
 			`[multi-turn] Sending follow-up: ${decision.message.slice(0, 80)}${decision.message.length > 80 ? '...' : ''}`,
 		);
+		recordUserTurn(config.events, decision.message);
 		try {
 			await config.client.sendMessage(config.threadId, decision.message);
 		} catch (error: unknown) {
@@ -285,12 +306,6 @@ export function buildAutoApprovePayload(event: CapturedEvent): InstanceAiConfirm
 	}
 
 	return { kind: 'approval', approved: true };
-}
-
-function isResourceDecision(
-	value: string | undefined,
-): value is 'denyOnce' | 'allowOnce' | 'allowForSession' {
-	return value === 'denyOnce' || value === 'allowOnce' || value === 'allowForSession';
 }
 
 // ---------------------------------------------------------------------------
