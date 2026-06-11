@@ -32,6 +32,49 @@ function isThreadEvent(value: unknown): value is InstanceAiEvent {
 	);
 }
 
+/** Cap logged payload summaries so a write_file body or screenshot never floods the log. */
+const EVENT_LOG_PAYLOAD_MAX = 300;
+
+/**
+ * One concise log line per run-relevant thread event, so a task run can be
+ * followed (and post-mortemed) straight from the app's main-process log: which
+ * tools ran with which args, what errored, and how the run ended. Deltas and
+ * other chatty event types are skipped.
+ */
+function logThreadEvent(threadId: string, event: InstanceAiEvent): void {
+	const summarize = (value: unknown): string => {
+		try {
+			const text = JSON.stringify(value) ?? '';
+			return text.length > EVENT_LOG_PAYLOAD_MAX ? `${text.slice(0, EVENT_LOG_PAYLOAD_MAX)}…` : text;
+		} catch {
+			return '[unserializable]';
+		}
+	};
+
+	switch (event.type) {
+		case 'run-start':
+			logger.info('Run started', { threadId, runId: event.runId });
+			return;
+		case 'tool-call':
+			logger.info(`Tool call: ${event.payload.toolName}`, {
+				runId: event.runId,
+				args: summarize(event.payload.args),
+			});
+			return;
+		case 'tool-error':
+			logger.warn('Tool error', { runId: event.runId, error: summarize(event.payload) });
+			return;
+		case 'error':
+			logger.warn('Run error event', { runId: event.runId, payload: summarize(event.payload) });
+			return;
+		case 'run-finish':
+			logger.info('Run finished', { threadId, runId: event.runId, payload: summarize(event.payload) });
+			return;
+		default:
+			return;
+	}
+}
+
 /**
  * The thread (chat) domain service of the desktop app. Lives in the main process so the
  * OAuth access token never reaches the renderer and so SSE connections and the message
@@ -160,6 +203,7 @@ export class ThreadService {
 				logger.warn('Thread events: dropping event without a type', { threadId });
 				return;
 			}
+			logThreadEvent(threadId, parsed);
 			this.deps.emit(threadId, parsed);
 		};
 
