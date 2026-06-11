@@ -19,6 +19,7 @@ import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { CanvasLayoutSource } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/types/executionData';
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -242,23 +243,6 @@ export type ConnectStartEvent = {
 } & OnConnectStartParams;
 
 export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };
-
-export type ExecutionOutputMapData = {
-	total: number;
-	iterations: number;
-	byTarget?: {
-		[targetNodeId: string]: {
-			total: number;
-			iterations: number;
-		};
-	};
-};
-
-export type ExecutionOutputMap = {
-	[connectionType: string]: {
-		[outputIndex: string]: ExecutionOutputMapData;
-	};
-};
 
 export type BoundingBox = {
 	x: number;
