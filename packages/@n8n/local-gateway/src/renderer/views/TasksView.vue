@@ -114,7 +114,7 @@ onBeforeUnmount(stopRecommendations);
 
 				<template v-if="recsLoading">
 					<div
-						v-for="n in 3"
+						v-for="n in 5"
 						:key="n"
 						:class="$style.skeletonCard"
 						role="status"

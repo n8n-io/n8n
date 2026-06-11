@@ -216,11 +216,11 @@ describe('DesktopAssistantService.getRecommendations', () => {
 		});
 	});
 
-	test('clamps to at most three recommendations', async () => {
+	test('clamps to at most five recommendations', async () => {
 		const ctx = makeService();
 		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
 		ctx.instanceAiService.generateStructured.mockResolvedValue({
-			recommendations: Array.from({ length: 5 }, (_, i) => ({
+			recommendations: Array.from({ length: 7 }, (_, i) => ({
 				title: `t${i}`,
 				prompt: `p${i}`,
 				icon: '✨',
@@ -228,7 +228,7 @@ describe('DesktopAssistantService.getRecommendations', () => {
 		});
 
 		const result = await ctx.service.getRecommendations(USER, {});
-		expect(result.recommendations).toHaveLength(3);
+		expect(result.recommendations).toHaveLength(5);
 	});
 
 	test('propagates a generation failure so the client can fall back', async () => {

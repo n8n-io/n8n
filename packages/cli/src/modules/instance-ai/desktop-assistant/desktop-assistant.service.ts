@@ -79,7 +79,7 @@ const EMPTY_HISTORY = Object.freeze({
 } satisfies DesktopAssistantHistoryResponse);
 
 /** How many task recommendations to surface in the empty state. */
-const MAX_RECOMMENDATIONS = 3;
+const MAX_RECOMMENDATIONS = 5;
 
 /** Cap on the distinct integration types fed to the model as grounding, so a
  * user with hundreds of credentials doesn't bloat the prompt. */
