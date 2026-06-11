@@ -1817,7 +1817,7 @@ export class Telegram implements INodeType {
 				displayName: 'Draft ID',
 				name: 'draftId',
 				type: 'number',
-				default: 0,
+				default: 1,
 				displayOptions: {
 					show: {
 						operation: ['sendMessageDraft', 'sendRichMessageDraft'],
@@ -2365,8 +2365,15 @@ export class Telegram implements INodeType {
 
 						endpoint = 'sendMessageDraft';
 
+						const draftId = this.getNodeParameter('draftId', i) as number;
+						if (!draftId) {
+							throw new NodeOperationError(this.getNode(), 'Draft ID must be non-zero', {
+								itemIndex: i,
+							});
+						}
+
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.draft_id = this.getNodeParameter('draftId', i) as number;
+						body.draft_id = draftId;
 						body.text = this.getNodeParameter('text', i, '') as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -2381,7 +2388,13 @@ export class Telegram implements INodeType {
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 
 						if (operation === 'sendRichMessageDraft') {
-							body.draft_id = this.getNodeParameter('draftId', i) as number;
+							const draftId = this.getNodeParameter('draftId', i) as number;
+							if (!draftId) {
+								throw new NodeOperationError(this.getNode(), 'Draft ID must be non-zero', {
+									itemIndex: i,
+								});
+							}
+							body.draft_id = draftId;
 						}
 
 						const format = this.getNodeParameter('richFormat', i) as string;

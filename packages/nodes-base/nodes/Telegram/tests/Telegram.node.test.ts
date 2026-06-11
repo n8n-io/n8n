@@ -824,6 +824,35 @@ describe('Telegram node', () => {
 				{},
 			);
 		});
+
+		it('should throw when the draft ID is zero', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendMessageDraft';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123456789';
+					case 'draftId':
+						return 0;
+					case 'text':
+						return 'hello';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.continueOnFail.mockReturnValue(false);
+
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
+				'Draft ID must be non-zero',
+			);
+			expect(apiRequestSpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('message:sendRichMessage', () => {
