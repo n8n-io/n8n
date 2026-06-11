@@ -145,6 +145,25 @@ describe('ThreadService', () => {
 
 			expect(emit).not.toHaveBeenCalled();
 		});
+
+		it('logs tool errors', () => {
+			const { service } = makeService();
+			service.listen('t1');
+
+			const toolError = {
+				type: 'tool-error',
+				runId: 'r1',
+				agentId: 'a1',
+				payload: { toolCallId: 'c1', error: 'element not found' },
+			};
+			fakeSources[0].onmessage?.({ data: JSON.stringify(toolError) });
+
+			expect(logger.warn).toHaveBeenCalledWith('Tool error', {
+				runId: 'r1',
+				toolCallId: 'c1',
+				error: 'element not found',
+			});
+		});
 	});
 
 	describe('reconnect', () => {

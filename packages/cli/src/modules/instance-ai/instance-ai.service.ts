@@ -2053,6 +2053,11 @@ export class InstanceAiService {
 		};
 	}
 
+	async findOwnDeviceCredential(user: User): Promise<CredentialsEntity | null> {
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+		return await this.findDeviceCredentialForUser(user, personalProject.id);
+	}
+
 	private async findDeviceCredentialForUser(
 		user: User,
 		projectId: string,

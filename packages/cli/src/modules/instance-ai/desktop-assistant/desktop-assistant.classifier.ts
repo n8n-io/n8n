@@ -36,7 +36,11 @@ export interface ClassifierInput {
 }
 
 /** Node-type prefixes that count as "runs locally" via computer-use. */
-const LOCAL_NODE_TYPE_PREFIXES = ['n8n-nodes-base.computerUse', 'n8n-nodes-base.localFileTrigger'];
+const LOCAL_NODE_TYPE_PREFIXES = [
+	'@n8n/n8n-nodes-langchain.computerUse',
+	'@n8n/n8n-nodes-langchain.toolComputerUse',
+	'n8n-nodes-base.localFileTrigger',
+];
 
 const SCHEDULE_TRIGGER_TYPE = 'n8n-nodes-base.scheduleTrigger';
 const MANUAL_TRIGGER_TYPE = 'n8n-nodes-base.manualTrigger';

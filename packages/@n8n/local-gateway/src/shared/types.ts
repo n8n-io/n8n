@@ -31,11 +31,13 @@ export interface ConnectPayload {
 // without reaching across packages — the shapes live in @n8n/api-types and are
 // reused verbatim, never redefined here.
 import type {
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
-	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	InstanceAiConfirmRequest,
 	InstanceAiEvent,
@@ -56,6 +58,7 @@ export type {
 	DesktopAssistantTriggerSummary,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantHistoryEntry,
+	DesktopAssistantTaskOutcome,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantRecommendationsRequest,
@@ -66,6 +69,10 @@ export type {
 	InstanceAiConfirmation,
 	InstanceAiConfirmationRequestPayload,
 	InstanceAiConfirmationSeverity,
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
+	DesktopAssistantDescriptionPart,
+	DesktopAssistantTaskDetailResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 	InstanceAiToolCallState,
@@ -129,6 +136,25 @@ export interface LocalPermissionPromptRequest {
 export interface ConfirmThreadResult {
 	ok: boolean;
 	status?: number;
+/** Result of starting a one-shot assistant task run from the composer. */
+export interface CreateAssistantTaskResult {
+	ok: boolean;
+	threadId?: string;
+	runId?: string;
+	error?: string;
+}
+
+/**
+ * Result of asking the instance to promote a thread into a saved workflow.
+ * Idempotent: `building` while the build runs, `done` (with `workflowId`)
+ * once a promote has produced the workflow.
+ */
+export interface PromoteAssistantThreadResult {
+	ok: boolean;
+	status?: 'building' | 'done';
+	/** The build run to watch, set while `status === 'building'`. */
+	runId?: string;
+	workflowId?: string;
 	error?: string;
 }
 
@@ -168,7 +194,25 @@ export interface ElectronApi {
 	onStatusChanged: (onChangeCallback: (snapshot: StatusSnapshot) => void) => void;
 	getTasks: () => Promise<DesktopAssistantTasksResponse>;
 	runTask: (workflowId: string) => Promise<RunTaskResult>;
+	/** Start a one-shot assistant task run with the prompt + detected context. */
+	createAssistantTask: (body: DesktopAssistantTaskRequest) => Promise<CreateAssistantTaskResult>;
+	promoteAssistantThread: (
+		threadId: string,
+		name?: string,
+		icon?: string,
+	) => Promise<PromoteAssistantThreadResult>;
 	openWorkflow: (workflowId: string) => Promise<void>;
+	/** The task detail view's segmented description (LLM-generated, cached server-side). */
+	getTaskDetail: (workflowId: string) => Promise<DesktopAssistantTaskDetailResponse>;
+	/** Apply chip edits to the workflow via an Instance AI run; follow it over `onThreadEvent`. */
+	applyTaskEdits: (
+		workflowId: string,
+		body: DesktopAssistantApplyEditsRequest,
+	) => Promise<DesktopAssistantApplyEditsResponse>;
+	/** Archive the task's workflow (soft delete — it drops out of the task list). */
+	deleteTask: (workflowId: string) => Promise<{ ok: boolean; error?: string }>;
+	/** Open the task's workflow with the Set up panel pre-opened in the browser (Connect CTA). */
+	openWorkflowSetup: (workflowId: string) => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
 	openExecution: (workflowId: string, executionId: string) => Promise<void>;
 	getTimeSaved: () => Promise<DesktopAssistantTimeSaved>;
@@ -208,8 +252,6 @@ export interface ElectronApi {
 	 * full screen.
 	 */
 	captureScreenshot: (target?: WindowCaptureTarget) => Promise<ScreenshotAttachment>;
-	/** Fire a one-shot task with the prompt + detected context; returns thread/run ids. */
-	triggerTask: (body: DesktopAssistantTaskRequest) => Promise<DesktopAssistantTaskResponse>;
 	/**
 	 * Generate task suggestions for the empty state, grounded in the selected
 	 * context (optional) and the user's connected integrations.

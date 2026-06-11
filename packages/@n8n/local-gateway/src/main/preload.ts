@@ -4,12 +4,15 @@ import type {
 	AppSettings,
 	AuthStatus,
 	ConfirmThreadResult,
+	CreateAssistantTaskResult,
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
-	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTimeSaved,
 	DetectedContext,
@@ -21,6 +24,7 @@ import type {
 	MacPermissionKind,
 	MacPermissionStatus,
 	ResourceDecision,
+	PromoteAssistantThreadResult,
 	RunTaskResult,
 	ScreenshotAttachment,
 	StatusSnapshot,
@@ -68,8 +72,51 @@ const electronApi: ElectronApi = {
 	runTask: async (workflowId: string): Promise<RunTaskResult> =>
 		await (ipcRenderer.invoke('tasks:run', workflowId) as Promise<RunTaskResult>),
 
+	createAssistantTask: async (
+		body: DesktopAssistantTaskRequest,
+	): Promise<CreateAssistantTaskResult> =>
+		await (ipcRenderer.invoke('assistant:createTask', body) as Promise<CreateAssistantTaskResult>),
+
+	promoteAssistantThread: async (
+		threadId: string,
+		name?: string,
+		icon?: string,
+	): Promise<PromoteAssistantThreadResult> =>
+		await (ipcRenderer.invoke(
+			'assistant:promote',
+			threadId,
+			name,
+			icon,
+		) as Promise<PromoteAssistantThreadResult>),
+
 	openWorkflow: async (workflowId: string): Promise<void> => {
 		await ipcRenderer.invoke('tasks:openWorkflow', workflowId);
+	},
+
+	getTaskDetail: async (workflowId: string): Promise<DesktopAssistantTaskDetailResponse> =>
+		await (ipcRenderer.invoke(
+			'tasks:detail',
+			workflowId,
+		) as Promise<DesktopAssistantTaskDetailResponse>),
+
+	applyTaskEdits: async (
+		workflowId: string,
+		body: DesktopAssistantApplyEditsRequest,
+	): Promise<DesktopAssistantApplyEditsResponse> =>
+		await (ipcRenderer.invoke(
+			'tasks:applyEdits',
+			workflowId,
+			body,
+		) as Promise<DesktopAssistantApplyEditsResponse>),
+
+	deleteTask: async (workflowId: string): Promise<{ ok: boolean; error?: string }> =>
+		await (ipcRenderer.invoke('tasks:delete', workflowId) as Promise<{
+			ok: boolean;
+			error?: string;
+		}>),
+
+	openWorkflowSetup: async (workflowId: string): Promise<void> => {
+		await ipcRenderer.invoke('tasks:openWorkflowSetup', workflowId);
 	},
 
 	getHistory: async (
@@ -134,9 +181,6 @@ const electronApi: ElectronApi = {
 			'context:captureScreenshot',
 			target,
 		) as Promise<ScreenshotAttachment>),
-
-	triggerTask: async (body: DesktopAssistantTaskRequest): Promise<DesktopAssistantTaskResponse> =>
-		await (ipcRenderer.invoke('tasks:trigger', body) as Promise<DesktopAssistantTaskResponse>),
 
 	getRecommendations: async (
 		body: DesktopAssistantRecommendationsRequest,

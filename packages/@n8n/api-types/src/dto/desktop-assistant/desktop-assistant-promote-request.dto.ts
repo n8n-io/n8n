@@ -10,6 +10,8 @@ import { Z } from '../../zod-class';
 export class DesktopAssistantPromoteRequestDto extends Z.class({
 	threadId: z.string().trim().min(1),
 	name: z.string().trim().min(1).max(128).optional(),
+	/** Single emoji shown as the saved task's icon (stored on workflow meta, not in the name). */
+	icon: z.string().trim().min(1).max(16).optional(),
 }) {}
 
 export type DesktopAssistantPromoteRequest = z.infer<

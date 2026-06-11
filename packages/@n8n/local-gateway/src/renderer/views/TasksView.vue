@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { N8nButton, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
+import MiniSpinner from '../components/MiniSpinner.vue';
 import RecommendationCard from '../components/RecommendationCard.vue';
 import TaskCard from '../components/TaskCard.vue';
 
+import { usePendingTasks } from '../assistant/use-pending-tasks';
+import type { TaskCardVariant } from '../assistant/use-assistant-screen';
+import { useAssistantScreen } from '../assistant/use-assistant-screen';
 import { useRecommendations } from '../assistant/use-recommendations';
 import { filterSections, hasAnyMatch } from '../assistant/use-task-search';
-import type { DesktopAssistantTasksResponse } from '../../shared/types';
+import type { DesktopAssistantTaskCard, DesktopAssistantTasksResponse } from '../../shared/types';
 
 const i18n = useI18n();
+const pendingTasks = usePendingTasks();
 
 const props = withDefaults(defineProps<{ query?: string }>(), { query: '' });
 
@@ -45,6 +50,8 @@ const sections = computed(() => ({
 	readyToRun: tasks.value?.readyToRun ?? [],
 }));
 
+const hasPending = computed(() => pendingTasks.entries.length > 0);
+
 /** Client-side filter over the loaded tasks; active only when the field has text. */
 const hasQuery = computed(() => props.query.trim().length > 0);
 const filteredSections = computed(() => filterSections(sections.value, props.query));
@@ -53,6 +60,7 @@ const hasMatches = computed(() => hasAnyMatch(filteredSections.value));
 const isEmpty = computed(
 	() =>
 		tasks.value !== null &&
+		!hasPending.value &&
 		!sections.value.actionNeeded.length &&
 		!sections.value.upcoming.length &&
 		!sections.value.readyToRun.length,
@@ -77,8 +85,12 @@ async function load() {
 	}
 }
 
-function openWorkflow(workflowId: string) {
-	void window.electronAPI.openWorkflow(workflowId);
+const { goTo } = useAssistantScreen();
+
+/** Clicking a card opens the in-app detail view (the browser handoff lives
+ *  there, behind "View in n8n"). */
+function openDetail(card: DesktopAssistantTaskCard, variant: TaskCardVariant) {
+	goTo({ name: 'task-detail', card, variant });
 }
 
 async function runTask(workflowId: string) {
@@ -98,17 +110,70 @@ function runRecommendation(prompt: string) {
 	emit('run-prompt', prompt);
 }
 
+// When a promotion completes the saved workflow becomes a real task; refetch
+// so it replaces the pending card.
+let unsubscribeSaved: (() => void) | undefined;
+
 onMounted(async () => {
+	unsubscribeSaved = pendingTasks.onSaved(() => void load());
 	await load();
 	// Generate recommendations whether the list is empty or not; the count differs
 	// (see recommendedCount). Skipped only if the task load itself failed.
 	if (!error.value) void startRecommendations(recommendedCount.value);
 });
-onBeforeUnmount(stopRecommendations);
+onBeforeUnmount(() => {
+	stopRecommendations();
+	unsubscribeSaved?.();
+});
 </script>
 
 <template>
 	<div :class="$style.view">
+		<!-- Tasks being promoted into saved workflows; live so status flips announce. -->
+		<section v-if="hasPending" :class="$style.section" aria-live="polite">
+			<div
+				v-for="entry in pendingTasks.entries"
+				:key="entry.threadId"
+				:class="$style.pendingCard"
+				data-testid="pending-task-card"
+			>
+				<span
+					:class="[
+						$style.pendingTile,
+						entry.status === 'failed' ? $style.pendingTileFailed : $style.pendingTileBuilding,
+					]"
+					aria-hidden="true"
+				>
+					<MiniSpinner v-if="entry.status === 'building'" />
+					<N8nIcon v-else icon="triangle-alert" :size="15" />
+				</span>
+				<span :class="$style.pendingBody">
+					<span :class="$style.pendingTitle">{{ entry.label }}</span>
+					<span
+						:class="[
+							$style.pendingSubtitle,
+							{ [$style.pendingSubtitleFailed]: entry.status === 'failed' },
+						]"
+					>
+						{{
+							entry.status === 'building'
+								? i18n.baseText('desktopAssistant.tasks.settingUp')
+								: (entry.error ?? i18n.baseText('desktopAssistant.tasks.setupFailed'))
+						}}
+					</span>
+				</span>
+				<button
+					v-if="entry.status === 'failed'"
+					type="button"
+					:class="$style.pendingDismiss"
+					:aria-label="i18n.baseText('desktopAssistant.tasks.dismiss')"
+					@click="pendingTasks.dismiss(entry.threadId)"
+				>
+					<N8nIcon icon="x" :size="14" aria-hidden="true" />
+				</button>
+			</div>
+		</section>
+
 		<div v-if="loading" :class="$style.state" role="status" aria-live="polite">
 			<N8nSpinner aria-hidden="true" />
 			<N8nText color="text-light" size="small">{{
@@ -132,7 +197,7 @@ onBeforeUnmount(stopRecommendations);
 					:key="card.workflowId"
 					:card="card"
 					variant="actionNeeded"
-					@open="openWorkflow"
+					@open="openDetail(card, 'actionNeeded')"
 					@run="runTask"
 				/>
 			</section>
@@ -146,7 +211,7 @@ onBeforeUnmount(stopRecommendations);
 					:key="card.workflowId"
 					:card="card"
 					variant="upcoming"
-					@open="openWorkflow"
+					@open="openDetail(card, 'upcoming')"
 					@run="runTask"
 				/>
 			</section>
@@ -160,7 +225,7 @@ onBeforeUnmount(stopRecommendations);
 					:key="card.workflowId"
 					:card="card"
 					variant="readyToRun"
-					@open="openWorkflow"
+					@open="openDetail(card, 'readyToRun')"
 					@run="runTask"
 				/>
 			</section>
@@ -246,6 +311,100 @@ onBeforeUnmount(stopRecommendations);
 	text-transform: uppercase;
 	letter-spacing: 0.8px;
 	color: var(--da-subtlest);
+}
+
+/* Pending card mirrors TaskCard's row layout, but isn't interactive. */
+.pendingCard {
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	width: 100%;
+	padding: 10px var(--spacing--2xs);
+	color: var(--da-text);
+	border-radius: var(--radius--xs);
+}
+
+.pendingTile {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 34px;
+	height: 34px;
+	border-radius: var(--radius--xs);
+	border: 1px solid var(--da-border);
+}
+
+.pendingTileBuilding {
+	background: rgba(122, 162, 255, 0.14);
+	color: var(--da-blue);
+}
+
+.pendingTileFailed {
+	background: rgba(255, 107, 107, 0.14);
+	color: var(--da-red);
+}
+
+.pendingBody {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+}
+
+/* The DS reset sets body line-height to 1, which together with overflow:hidden
+   clips descenders ("g", "y"). --line-height--md (1.3) gives them room while
+   keeping the row shorter than the 34px tile, so card height is unchanged. */
+.pendingTitle {
+	font-size: 13px;
+	font-weight: 500;
+	line-height: var(--line-height--md);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pendingSubtitle {
+	margin-top: var(--spacing--5xs);
+	font-size: 11px;
+	line-height: var(--line-height--md);
+	color: var(--da-subtler);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pendingSubtitleFailed {
+	color: var(--da-red);
+}
+
+.pendingDismiss {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	color: var(--da-subtler);
+	cursor: pointer;
+	background: none;
+	border: none;
+	border-radius: 7px;
+	transition:
+		background 0.12s,
+		color 0.12s;
+}
+
+.pendingDismiss:hover {
+	color: var(--da-text);
+	background: var(--da-surface-2);
+}
+
+.pendingDismiss:focus-visible {
+	color: var(--da-text);
+	background: var(--da-surface-2);
+	outline: var(--da-focus-ring);
+	outline-offset: var(--da-focus-ring-offset);
 }
 
 .state {
