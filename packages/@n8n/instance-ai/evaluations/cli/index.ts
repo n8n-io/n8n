@@ -187,13 +187,15 @@ async function main(): Promise<void> {
 			slugByTestCase = langsmithRun.slugByTestCase;
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			evaluation = await runDirectLoop({
+			const directRun = await runDirectLoop({
 				args,
 				lanes,
 				logger,
 				prebuiltManifest,
 				prebuiltWorkflowIdsToDelete,
 			});
+			evaluation = directRun.evaluation;
+			slugByTestCase = directRun.slugByTestCase;
 		}
 
 		const totalDuration = Date.now() - startTime;
@@ -285,6 +287,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			workflowId: string;
 			scenario: ExecutionScenario;
 			workflowJsons: BuildResult['workflowJsons'];
+			buildTrace?: BuildResult['buildTrace'];
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	}
 
@@ -322,6 +325,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					workflowId: string;
 					scenario: ExecutionScenario;
 					workflowJsons: BuildResult['workflowJsons'];
+					buildTrace?: BuildResult['buildTrace'];
 				}) =>
 					await executeScenario(
 						lane.client,
@@ -330,6 +334,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						execArgs.workflowJsons,
 						logger,
 						args.timeoutMs,
+						undefined,
+						execArgs.buildTrace,
 						args.pinAiRoots,
 					),
 				{
@@ -470,6 +476,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				nodeCount: 0,
 				threadId: build.threadId,
 				workflowChecks: build.workflowChecks,
+				buildTrace: build.buildTrace,
 			};
 		}
 
@@ -483,6 +490,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					workflowId: build.workflowId,
 					scenario,
 					workflowJsons: build.workflowJsons,
+					buildTrace: build.buildTrace,
 				});
 				break;
 			} catch (error: unknown) {
@@ -523,6 +531,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					nodeCount,
 					threadId: build.threadId,
 					workflowChecks: build.workflowChecks,
+					workflowJson: build.workflowJsons[0],
+					buildTrace: build.buildTrace,
 				};
 			}
 		}
@@ -548,6 +558,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			nodeCount,
 			threadId: build.threadId,
 			workflowChecks: build.workflowChecks,
+			workflowJson: build.workflowJsons[0],
+			buildTrace: build.buildTrace,
 		};
 	};
 
@@ -846,13 +858,19 @@ async function writePerRunPassMetrics(config: {
 // Direct mode: simple loop, no LangSmith dependency
 // ---------------------------------------------------------------------------
 
-async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
+async function runDirectLoop(config: RunConfig): Promise<{
+	evaluation: MultiRunEvaluation;
+	slugByTestCase: Map<WorkflowTestCase, string>;
+}> {
 	const { args, lanes, logger, prebuiltManifest, prebuiltWorkflowIdsToDelete } = config;
 
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
+	const slugByTestCase = new Map<WorkflowTestCase, string>(
+		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
+	);
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases found in evaluations/data/workflows/');
-		return { totalRuns: 0, testCases: [] };
+		return { evaluation: { totalRuns: 0, testCases: [] }, slugByTestCase };
 	}
 
 	const totalScenarios = testCasesWithFiles.reduce(
@@ -922,7 +940,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 		}),
 	);
 
-	return aggregateResults(allRunResults, args.iterations);
+	return { evaluation: aggregateResults(allRunResults, args.iterations), slugByTestCase };
 }
 
 // ---------------------------------------------------------------------------
@@ -1062,6 +1080,7 @@ function writeEvalResults(
 		comparisonError: outcome?.kind === 'fetch_failed' ? outcome.error : undefined,
 		testCases: testCases.map((tc) => ({
 			name: tc.testCase.conversation[0].text.slice(0, 70),
+			testCaseFile: slugByTestCase?.get(tc.testCase),
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
 			workflowChecksPerRun: tc.runs.map((run) =>
@@ -1074,7 +1093,8 @@ function writeEvalResults(
 				totalRuns,
 				passAtK: sa.passAtK[metrics.kIndex] ?? 0,
 				passHatK: sa.passHatK[metrics.kIndex] ?? 0,
-				runs: sa.runs.map((sr) => ({
+				runs: sa.runs.map((sr, runIndex) => ({
+					workflowId: tc.runs[runIndex]?.workflowId ?? null,
 					passed: sr.success,
 					score: sr.score,
 					reasoning: sr.reasoning,
