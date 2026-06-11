@@ -5,7 +5,6 @@ import { mock } from 'jest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { N8N_ENV_FEAT_REDACTION_ENFORCEMENT } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import type { SecuritySettingsService } from '@/services/security-settings.service';
 
 import { SecuritySettingsController } from '../security-settings.controller';
@@ -29,19 +28,8 @@ describe('SecuritySettingsController', () => {
 		user: { id: 'user-1', email: 'admin@n8n.io', firstName: 'Admin', lastName: 'User' },
 	});
 
-	const flagBefore = process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT];
-
 	beforeEach(() => {
 		jest.clearAllMocks();
-		process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT] = 'true';
-	});
-
-	afterAll(() => {
-		if (flagBefore === undefined) {
-			delete process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT];
-		} else {
-			process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT] = flagBefore;
-		}
 	});
 
 	const redactionPolicyEvents = () =>
@@ -116,14 +104,18 @@ describe('SecuritySettingsController', () => {
 			expect(redactionPolicyEvents()).toHaveLength(0);
 		});
 
-		it('ignores redaction settings when the feature flag is disabled', async () => {
-			process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT] = 'false';
+		it('does not persist or emit when the redaction floor is unchanged', async () => {
+			instanceRedactionEnforcementService.get.mockResolvedValue('all');
 
-			await controller.updateSecuritySettings(req, mock(), dto('all'));
+			const result = await controller.updateSecuritySettings(req, mock(), dto('all'));
 
-			expect(instanceRedactionEnforcementService.get).not.toHaveBeenCalled();
 			expect(instanceRedactionEnforcementService.set).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'redaction-enforcement-updated',
+				expect.anything(),
+			);
 			expect(redactionPolicyEvents()).toHaveLength(0);
+			expect(result.redactionEnforcement).toEqual({ floor: 'all' });
 		});
 	});
 });

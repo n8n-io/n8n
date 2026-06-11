@@ -31,6 +31,18 @@ Object.defineProperty(window, 'open', {
 	writable: true,
 });
 
+vi.mock('@/app/composables/useEditorContext', async () => {
+	const { computed } = await import('vue');
+	return {
+		useEditorContext: () => ({
+			aiAssistant: computed(() => true),
+			aiBuilder: computed(() => true),
+			askAi: computed(() => true),
+			readOnly: computed(() => false),
+		}),
+	};
+});
+
 let mockChatPanelStore: ReturnType<typeof mockedStore<typeof useChatPanelStore>>;
 let mockNodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let mockNDVStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
@@ -127,7 +139,7 @@ describe('NodeErrorView.vue', () => {
 			hidden: true,
 		}));
 
-		mockChatPanelStore.canShowAiButtonOnCanvas = true;
+		mockChatPanelStore.isEditableCanvasView = true;
 
 		const { queryByTestId } = renderComponent({
 			props: {
@@ -186,7 +198,7 @@ describe('NodeErrorView.vue', () => {
 	});
 
 	it('does not renders open node button when the error is in sub node', () => {
-		mockChatPanelStore.canShowAiButtonOnCanvas = true;
+		mockChatPanelStore.isEditableCanvasView = true;
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				error,
