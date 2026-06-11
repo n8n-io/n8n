@@ -2,6 +2,8 @@ import {
 	checkOverlap,
 	createCanvasConnectionHandleString,
 	createCanvasConnectionId,
+	executionStatusClasses,
+	executionStatusToFlags,
 	insertSpacersBetweenEndpoints,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
@@ -22,6 +24,81 @@ import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),
 }));
+
+describe('executionStatusToFlags', () => {
+	it('maps each status to its single active flag', () => {
+		expect(executionStatusToFlags('success')).toEqual({
+			success: true,
+			error: false,
+			running: false,
+			waiting: false,
+		});
+		expect(executionStatusToFlags('error')).toEqual({
+			success: false,
+			error: true,
+			running: false,
+			waiting: false,
+		});
+		expect(executionStatusToFlags('running')).toEqual({
+			success: false,
+			error: false,
+			running: true,
+			waiting: false,
+		});
+		expect(executionStatusToFlags('waiting')).toEqual({
+			success: false,
+			error: false,
+			running: false,
+			waiting: true,
+		});
+	});
+
+	it('maps crashed to the error flag', () => {
+		expect(executionStatusToFlags('crashed')).toMatchObject({ error: true });
+	});
+
+	it('returns all-false flags for idle/unhandled statuses', () => {
+		const allFalse = { success: false, error: false, running: false, waiting: false };
+		expect(executionStatusToFlags(undefined)).toEqual(allFalse);
+		expect(executionStatusToFlags('new')).toEqual(allFalse);
+		expect(executionStatusToFlags('canceled')).toEqual(allFalse);
+		expect(executionStatusToFlags('unknown')).toEqual(allFalse);
+	});
+});
+
+describe('executionStatusClasses', () => {
+	const styles = {
+		success: 'success_hash',
+		error: 'error_hash',
+		running: 'running_hash',
+		waiting: 'waiting_hash',
+	};
+
+	it('keys the result by the provided style module names', () => {
+		expect(
+			executionStatusClasses(
+				{ success: true, error: false, running: false, waiting: false },
+				styles,
+			),
+		).toEqual({
+			success_hash: true,
+			error_hash: false,
+			running_hash: false,
+			waiting_hash: false,
+		});
+	});
+
+	it('reflects every flag independently', () => {
+		expect(
+			executionStatusClasses({ success: true, error: true, running: true, waiting: true }, styles),
+		).toEqual({
+			success_hash: true,
+			error_hash: true,
+			running_hash: true,
+			waiting_hash: true,
+		});
+	});
+});
 
 describe('mapLegacyConnectionsToCanvasConnections', () => {
 	it('should map legacy connections to canvas connections', () => {

@@ -16,6 +16,7 @@ import {
 	CANVAS_NODE_GROUP_ID_PREFIX,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
+import { executionStatusClasses, executionStatusToFlags } from '../../../canvas.utils';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 
@@ -54,8 +55,8 @@ const isAutofocusReady = computed(
 	() => !props.dimensions || (props.dimensions.width > 0 && props.dimensions.height > 0),
 );
 const isCollapsed = computed(() => props.data.isCollapsed);
-const executionStatus = computed(() => props.data.executionStatus);
 const maxNodeIterations = computed(() => props.data.maxNodeIterations);
+const statusFlags = computed(() => executionStatusToFlags(props.data.executionStatus));
 
 const frameStyle = computed(() => ({
 	top: `${HEADER_HEIGHT}px`,
@@ -149,11 +150,8 @@ function onWrapperPointerDown(event: PointerEvent) {
 			{
 				[$style.collapsed]: isCollapsed,
 				[$style.selected]: selected,
-				[$style.success]: executionStatus === 'success',
-				[$style.error]: executionStatus === 'error' || executionStatus === 'crashed',
-				[$style.running]: executionStatus === 'running',
-				[$style.waiting]: executionStatus === 'waiting',
 			},
+			executionStatusClasses(statusFlags, $style),
 		]"
 		:style="{
 			width: '100%',
@@ -236,14 +234,14 @@ function onWrapperPointerDown(event: PointerEvent) {
 					</N8nTooltip>
 				</div>
 				<div
-					v-if="executionStatus === 'success'"
+					v-if="statusFlags.success"
 					:class="$style.statusIcons"
 					data-test-id="canvas-node-group-status-success"
 				>
 					<CanvasNodeStatusMark status="success" :iterations="maxNodeIterations" />
 				</div>
 				<div
-					v-else-if="executionStatus === 'error' || executionStatus === 'crashed'"
+					v-else-if="statusFlags.error"
 					:class="$style.statusIcons"
 					data-test-id="canvas-node-group-status-error"
 				>

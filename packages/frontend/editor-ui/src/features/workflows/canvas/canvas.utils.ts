@@ -1,4 +1,5 @@
 import type {
+	ExecutionStatus,
 	IConnection,
 	IConnections,
 	INodeTypeDescription,
@@ -29,6 +30,39 @@ import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocumen
  * `useWorkflowDocumentRenderData` and consumed by canvas components.
  */
 export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>;
+
+/** The four execution-status visuals shared by single nodes and collapsed groups. */
+export interface CanvasExecutionStatusFlags {
+	success: boolean;
+	error: boolean;
+	running: boolean;
+	waiting: boolean;
+}
+
+/** Map status flags to CSS-module classes */
+export function executionStatusClasses(
+	flags: CanvasExecutionStatusFlags,
+	styles: Record<string, string>,
+): Record<string, boolean> {
+	return {
+		[styles.success]: flags.success,
+		[styles.error]: flags.error,
+		[styles.running]: flags.running,
+		[styles.waiting]: flags.waiting,
+	};
+}
+
+/** Reduce an aggregated `ExecutionStatus` to status flags */
+export function executionStatusToFlags(
+	status: ExecutionStatus | undefined,
+): CanvasExecutionStatusFlags {
+	return {
+		success: status === 'success',
+		error: status === 'error' || status === 'crashed',
+		running: status === 'running',
+		waiting: status === 'waiting',
+	};
+}
 
 /**
  * Display size for a node with `Default` render type — pulls port counts from
