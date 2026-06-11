@@ -1868,6 +1868,7 @@ describe('WorkflowExecute', () => {
 		// The sub-workflow error is carried onto the stack entry as `metadata.resumeError`.
 		const SUB_ERROR = 'Sub-workflow error';
 		const SUB_NODE = 'Execute Sub-workflow';
+		const SUB_EXECUTION = { executionId: 'child-execution-id', workflowId: 'child-workflow-id' };
 
 		// Plain object (not a mock) so `description.outputs` stays a real array for
 		// NodeHelpers.getNodeOutputs (used when routing the error output). The node must
@@ -1921,7 +1922,10 @@ describe('WorkflowExecute', () => {
 							node: subNode,
 							data: { main: [[{ json: { in: 1 } }]] },
 							source: null,
-							metadata: { resumeError: { name: 'NodeOperationError', message: SUB_ERROR } },
+							metadata: {
+								resumeError: { name: 'NodeOperationError', message: SUB_ERROR },
+								subExecution: SUB_EXECUTION,
+							},
 						} as unknown as IExecuteData,
 					],
 					metadata: {},
@@ -1960,7 +1964,7 @@ describe('WorkflowExecute', () => {
 			expect(result.status).toBe('error');
 			expect(result.data.resultData.error?.message).toBe(SUB_ERROR);
 			// The error already happened in sub-workflow, so the node must run
-			// exactly once; retryOnFail must not rexexecute it.
+			// exactly once; retryOnFail must not re-execute it.
 			expect(runNodeCalls).toBe(1);
 		});
 
@@ -1983,7 +1987,12 @@ describe('WorkflowExecute', () => {
 
 				expect(result.status).toBe('success');
 				expect(result.data.resultData.error).toBeUndefined();
-				expect(lastRun(result).data?.main?.[0]?.[0]?.json?.error).toBe(SUB_ERROR);
+				const errorItem = lastRun(result).data?.main?.[0]?.[0];
+				expect(errorItem?.json?.error).toBe(SUB_ERROR);
+				// The error item must keep item lineage (one entry per input item) and
+				// link to the failed child execution, like a live node failure would.
+				expect(errorItem?.pairedItem).toEqual([{ item: 0 }]);
+				expect(errorItem?.metadata).toEqual({ subExecution: SUB_EXECUTION });
 			},
 		);
 	});

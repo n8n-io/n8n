@@ -8,6 +8,7 @@ import type {
 	ITaskData,
 	IWorkflowBase,
 	IWorkflowSettings,
+	RelatedExecution,
 } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -708,26 +709,36 @@ describe('updateParentExecutionWithChildResults', () => {
 			},
 		}) as unknown as IRun;
 
+	type StackEntry = {
+		data?: unknown;
+		metadata?: { resumeError?: ExecutionError; subExecution?: RelatedExecution };
+	};
+
 	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
-	async function resumeWith(child: IRun) {
+	async function resumeWith(child: IRun, childExecution?: RelatedExecution) {
 		const executionPersistence = mockInstance(ExecutionPersistence);
 		executionPersistence.findSingleExecution.mockResolvedValue(waitingParent());
 
-		await updateParentExecutionWithChildResults(PARENT_ID, child);
+		await updateParentExecutionWithChildResults(PARENT_ID, child, childExecution);
 
 		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
 		const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
-		return (payload as IExecutionResponse).data.executionData!.nodeExecutionStack[0] as unknown as {
-			data?: unknown;
-			metadata?: { resumeError?: ExecutionError };
-		};
+		return (payload as IExecutionResponse).data.executionData!
+			.nodeExecutionStack[0] as unknown as StackEntry;
 	}
 
-	it('carries the child error onto the parent node so resume can fail it', async () => {
+	it('carries the child error and execution reference onto the parent node so resume can fail it', async () => {
 		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
-		const entry = await resumeWith(childRun('error', 'Stop and Error', { error }, error));
+		const entry = await resumeWith(childRun('error', 'Stop and Error', { error }, error), {
+			executionId: 'child-execution-id',
+			workflowId: 'child-workflow-id',
+		});
 
 		expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+		expect(entry.metadata?.subExecution).toEqual({
+			executionId: 'child-execution-id',
+			workflowId: 'child-workflow-id',
+		});
 	});
 
 	it('copies the last node output for a successful child and sets no resume error', async () => {

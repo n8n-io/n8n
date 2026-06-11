@@ -1299,14 +1299,29 @@ export class WorkflowExecute {
 		let inputData = executionData.data;
 
 		if (executionData.metadata?.resumeError) {
-			const { resumeError } = executionData.metadata;
-			// Route the resumed sub-workflow error like a live node failure would be
-			// (see the onError handling in `processRunExecutionData`).
-			if (!this.continuesOnError(node)) {
-				this.rethrowNodeError(resumeError);
+			const { resumeError, subExecution } = executionData.metadata;
+
+			if (this.continuesOnError(node)) {
+				// Mirror the node's own live whole-node-failure item shape: pair the error
+				// item with every input item (the sub-workflow ran for all of them), and
+				// link the failed child execution so the UI can navigate to it.
+				const pairedItem = (inputData.main?.[0] ?? []).map((_, item) => ({ item }));
+				return {
+					data: [
+						[
+							{
+								json: { error: resumeError.message },
+								pairedItem,
+								...(subExecution && { metadata: { subExecution } }),
+							},
+						],
+					],
+				};
 			}
 
-			return { data: [[{ json: { error: resumeError.message } }]] };
+			// Route the resumed sub-workflow error like a live node failure would be
+			// (see the onError handling in `processRunExecutionData`).
+			this.rethrowNodeError(resumeError);
 		}
 
 		if (node.disabled === true) {
@@ -1431,8 +1446,12 @@ export class WorkflowExecute {
 			);
 
 			const executionStackEntry = this.runExecutionData.executionData.nodeExecutionStack[0];
-			// If the node has `resumeError`, keep enabled to ensure it goes through
-			// normal error handling instead of passing its input through
+			// Error reporting itself does not depend on this: `runNode` checks
+			// `metadata.resumeError` before `node.disabled`, so the entry carrying the
+			// error fails either way. This guard only matters when ANOTHER stack entry
+			// shares this node object (legacy `executionOrder: 'v0'` with multiple wires
+			// into the node): keeping the node enabled lets those later entries execute
+			// normally instead of passing their input through in disabled mode.
 			if (!executionStackEntry.metadata?.resumeError) {
 				executionStackEntry.node.disabled = true;
 			}
