@@ -718,12 +718,10 @@ export class DesktopAssistantService {
 				promptMode: 'desktop-assistant-promote',
 			},
 		);
-		await this.memoryService.updateThread(body.threadId, {
-			metadata: { [PROMOTE_RUN_ID_KEY]: runId },
-		});
-
 		// Subscribe AFTER we have the runId so the listener can scope itself to
-		// the exact run we just kicked off. `subscribe` is synchronous and
+		// the exact run we just kicked off, and BEFORE the first await so the
+		// run can't finish (or anything below fail) without a listener in place
+		// to finalise the built workflow. `subscribe` is synchronous and
 		// `startRun` only registers the run; it doesn't dispatch any events on
 		// the bus before this line runs.
 		const cleanup = this.subscribeForBuildOutcome(
@@ -745,6 +743,22 @@ export class DesktopAssistantService {
 
 		// Hard-cap the listener so a stalled run does not leak a subscription.
 		setTimeout(cleanup, BUILD_FINALIZE_TIMEOUT_MS).unref();
+
+		// Record the run for the confirming call's in-flight guard. Best-effort:
+		// the run is already underway and subscribed for finalisation, so failing
+		// the request here would only push the client into a retry that starts a
+		// duplicate build.
+		try {
+			await this.memoryService.updateThread(body.threadId, {
+				metadata: { [PROMOTE_RUN_ID_KEY]: runId },
+			});
+		} catch (error) {
+			this.logger.warn('Failed to record promote run id on thread', {
+				threadId: body.threadId,
+				runId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 
 		return { status: 'building', threadId: body.threadId, runId };
 	}
@@ -897,23 +911,11 @@ export class DesktopAssistantService {
 	 * Fill the Device Connection credential on Computer Use nodes the build left
 	 * unset, so a freshly promoted task is runnable without a manual setup trip.
 	 * Deterministic post-processing: the model never handles credential ids, and
-	 * only credentials the promoting user can already read are applied.
+	 * only the promoting user's own device credential is ever applied.
 	 */
 	private async applyDeviceCredential(user: User, workflowId: string): Promise<void> {
-		const credentials = await this.credentialsFinderService.findCredentialsForUser(user, [
-			'credential:read',
-		]);
-		const deviceCredentials = credentials.filter(
-			(credential) => credential.type === DEVICE_CONNECTION_CREDENTIAL_TYPE,
-		);
-		if (deviceCredentials.length === 0) return; // surfaces in the actionNeeded bucket instead
-		if (deviceCredentials.length > 1) {
-			this.logger.info('Multiple device credentials found; applying the first', {
-				workflowId,
-				count: deviceCredentials.length,
-			});
-		}
-		const credential = deviceCredentials[0];
+		const credential = await this.instanceAiService.findOwnDeviceCredential(user);
+		if (!credential) return; // surfaces in the actionNeeded bucket instead
 
 		const workflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },

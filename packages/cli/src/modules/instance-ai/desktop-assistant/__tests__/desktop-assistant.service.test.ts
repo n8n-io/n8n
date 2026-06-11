@@ -470,6 +470,39 @@ describe('DesktopAssistantService.promoteThread', () => {
 		expect(result).toEqual({ status: 'building', threadId: 't-1', runId: 'run-promote' });
 	});
 
+	test('subscribes to the bus before recording the run id, and still returns building when the record write fails', async () => {
+		const ctx = makeService();
+		ctx.memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		ctx.memoryService.getThreadMetadata.mockResolvedValue(undefined);
+		ctx.memoryService.getThreadMessages.mockResolvedValue({
+			threadId: 't-1',
+			messages: [
+				{
+					id: 'm-1',
+					role: 'user',
+					content: 'rename files',
+					type: 'text',
+					createdAt: new Date().toISOString(),
+				},
+			],
+		});
+		ctx.instanceAiService.startRun.mockReturnValue('run-promote');
+		ctx.memoryService.updateThread.mockImplementation(async () => {
+			// The finalisation listener must already be attached when this write
+			// happens — otherwise a failure here orphans the build run.
+			expect(ctx.eventBus.subscribe).toHaveBeenCalledWith('t-1', expect.any(Function));
+			throw new Error('db unavailable');
+		});
+
+		const result = await ctx.service.promoteThread(USER, { threadId: 't-1' });
+
+		expect(result).toEqual({ status: 'building', threadId: 't-1', runId: 'run-promote' });
+		expect(ctx.logger.warn).toHaveBeenCalledWith(
+			'Failed to record promote run id on thread',
+			expect.objectContaining({ threadId: 't-1', runId: 'run-promote' }),
+		);
+	});
+
 	test('on a tasks-update with a completed build-workflow planned task, the post-build hook tags the workflow and writes meta', async () => {
 		const ctx = makeService();
 		ctx.memoryService.checkThreadOwnership.mockResolvedValue('owned');
@@ -673,9 +706,11 @@ describe('DesktopAssistantService.promoteThread', () => {
 				{ name: 'Rename', type: '@n8n/n8n-nodes-langchain.computerUse' },
 			],
 		} as never);
-		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([
-			{ id: 'cred-dev', name: "Elias's MacBook", type: 'deviceConnectionApi' },
-		] as never);
+		ctx.instanceAiService.findOwnDeviceCredential.mockResolvedValue({
+			id: 'cred-dev',
+			name: "Elias's MacBook",
+			type: 'deviceConnectionApi',
+		} as never);
 
 		let handler: ((e: StoredEvent) => void) | undefined;
 		ctx.eventBus.subscribe.mockImplementation((_threadId, h) => {
@@ -765,9 +800,9 @@ describe('DesktopAssistantService.promoteThread', () => {
 		// Hold finalisation open at its device-credential step so the confirming
 		// call lands in the "run finished, promotedWorkflowId not yet written" gap.
 		let releaseFinalize!: () => void;
-		ctx.credentialsFinderService.findCredentialsForUser.mockReturnValue(
+		ctx.instanceAiService.findOwnDeviceCredential.mockReturnValue(
 			new Promise((resolve) => {
-				releaseFinalize = () => resolve([]);
+				releaseFinalize = () => resolve(null);
 			}) as never,
 		);
 
