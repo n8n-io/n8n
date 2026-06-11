@@ -16,9 +16,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
  * `executionSuccessToasts` / `executionErrorToasts` are direct flags too — each
  * `true` (the default) shows that class of execution result toast; an explicit
  * `false` from the host suppresses it.
- * `workflowMenu` is a direct grant — `true` only when a host explicitly makes
- * the workflow actions menu apply; consumers otherwise fall back to their own
- * gating.
  */
 export function useEditorContext() {
 	const settings = useSettingsStore();
@@ -52,6 +49,5 @@ export function useEditorContext() {
 			() => enabledFeatures?.value?.executionSuccessToasts !== false,
 		),
 		executionErrorToasts: computed(() => enabledFeatures?.value?.executionErrorToasts !== false),
-		workflowMenu: computed(() => enabledFeatures?.value?.workflowMenu === true),
 	};
 }

@@ -203,8 +203,6 @@ const isAgentEditingThisWorkflow = computed(() => {
 // in the thread UI, so the canvas would only duplicate them. NodeView derives
 // its read-only state from these via useEditorContext(); usePushConnection
 // reads the toast flags to gate execution result notifications.
-// `workflowMenu` grants the workflow actions menu: this editor is not on a
-// workflow route, so the menu's route-based gating would disable every item.
 const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	aiAssistant: false,
 	aiBuilder: false,
@@ -212,7 +210,6 @@ const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	readOnly: isAgentEditingThisWorkflow.value,
 	executionSuccessToasts: false,
 	executionErrorToasts: false,
-	workflowMenu: true,
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
 </script>

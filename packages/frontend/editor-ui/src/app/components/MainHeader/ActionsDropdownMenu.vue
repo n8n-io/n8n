@@ -35,7 +35,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
-import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
@@ -71,19 +70,6 @@ const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
 const favoritesStore = useFavoritesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-
-const editorContext = useEditorContext();
-
-// In the main app the layout header persists across routes, so route meta marks
-// the pages where the menu's workflow is shown. Editor hosts that are not on a
-// workflow route (e.g. the AI artifact preview) grant the menu directly via the
-// `workflowMenu` capability instead.
-const onWorkflowPage = computed(() => {
-	return (
-		editorContext.workflowMenu.value ||
-		!!(route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true))
-	);
-});
 
 const onExecutionsTab = computed(() => {
 	return [
@@ -130,7 +116,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.download'),
-			disabled: !onWorkflowPage.value,
 		},
 	];
 
@@ -138,7 +123,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.SHARE,
 			label: locale.baseText('workflowDetails.share'),
-			disabled: !onWorkflowPage.value,
 		});
 	}
 
@@ -158,7 +142,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
-			disabled: !onWorkflowPage.value || props.workflowPermissions.update !== true,
+			disabled: props.workflowPermissions.update !== true,
 		});
 	}
 
@@ -167,7 +151,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		label: favoritesStore.isFavorite(props.id, 'workflow')
 			? locale.baseText('favorites.remove')
 			: locale.baseText('favorites.add'),
-		disabled: !onWorkflowPage.value || props.isNewWorkflow,
+		disabled: props.isNewWorkflow,
 	});
 
 	if (
@@ -180,24 +164,24 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
-			disabled: !onWorkflowPage.value || !props.id,
+			disabled: !props.id,
 		});
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
 			label: locale.baseText('menuActions.editDescription'),
-			disabled: !onWorkflowPage.value || !props.id,
+			disabled: !props.id,
 		});
 
 		actions.push(
 			{
 				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
 				label: locale.baseText('menuActions.importFromUrl'),
-				disabled: !onWorkflowPage.value || onExecutionsTab.value,
+				disabled: onExecutionsTab.value,
 			},
 			{
 				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
 				label: locale.baseText('menuActions.importFromFile'),
-				disabled: !onWorkflowPage.value || onExecutionsTab.value,
+				disabled: onExecutionsTab.value,
 			},
 		);
 	}
@@ -208,7 +192,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			label: locale.baseText('menuActions.push'),
 			disabled:
 				!sourceControlStore.isEnterpriseSourceControlEnabled ||
-				!onWorkflowPage.value ||
 				onExecutionsTab.value ||
 				sourceControlStore.preferences.branchReadOnly,
 		});
@@ -217,7 +200,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	actions.push({
 		id: WORKFLOW_MENU_ACTIONS.SETTINGS,
 		label: locale.baseText('generic.settings'),
-		disabled: !onWorkflowPage.value || props.isNewWorkflow,
+		disabled: props.isNewWorkflow,
 	});
 
 	if (
@@ -230,12 +213,12 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
 				label: locale.baseText('menuActions.unarchive'),
-				disabled: !onWorkflowPage.value || props.isNewWorkflow,
+				disabled: props.isNewWorkflow,
 			});
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.DELETE,
 				label: locale.baseText('menuActions.delete'),
-				disabled: !onWorkflowPage.value || props.isNewWorkflow,
+				disabled: props.isNewWorkflow,
 				customClass: $style.deleteItem,
 				divided: true,
 			});
@@ -243,7 +226,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.ARCHIVE,
 				label: locale.baseText('menuActions.archive'),
-				disabled: !onWorkflowPage.value || props.isNewWorkflow,
+				disabled: props.isNewWorkflow,
 				customClass: $style.deleteItem,
 				divided: true,
 			});

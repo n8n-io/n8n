@@ -25,11 +25,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { shallowRef, computed } from 'vue';
-import {
-	EditorEnabledFeaturesKey,
-	WorkflowDocumentStoreKey,
-	WorkflowIdKey,
-} from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -321,10 +317,10 @@ describe('WorkflowDetails', () => {
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
 		});
 
-		it('should enable workflow actions when the host grants the workflowMenu capability', async () => {
-			// e.g. the AI artifact view: the editor is not on a workflow route (no
-			// workflow meta), so the host grants the menu via the editor context
-			// instead.
+		it('should keep workflow actions enabled when the route has no workflow meta', async () => {
+			// The menu only ever renders alongside an open workflow (workflow-layout
+			// routes and host-embedded editors like the AI artifact view, which has
+			// no workflow route at all) — its items must not depend on route meta.
 			vi.mocked(useRoute)
 				.mockReset()
 				.mockReturnValue({
@@ -338,11 +334,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...defaultProps,
 					isArchived: false,
-				},
-				global: {
-					provide: {
-						[EditorEnabledFeaturesKey as symbol]: computed(() => ({ workflowMenu: true })),
-					},
 				},
 			});
 

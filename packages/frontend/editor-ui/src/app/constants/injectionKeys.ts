@@ -49,16 +49,12 @@ export type EditorFeature = 'aiAssistant' | 'aiBuilder' | 'askAi';
  * (mirrors the old iframe `suppressNotifications` / `allowErrorNotifications`
  * knobs, but scoped per editor instead of via the shared UI store). Hosts that
  * surface results in their own UI — e.g. the Instance AI preview — set them.
- * `workflowMenu` is a direct grant: `true` makes the workflow actions menu
- * (download, rename, settings, archive, …) apply regardless of the editor's
- * own route-based gating; omitted falls back to that gating.
  * Provided by editor hosts that supersede capabilities.
  */
 export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
 	readOnly?: boolean;
 	executionSuccessToasts?: boolean;
 	executionErrorToasts?: boolean;
-	workflowMenu?: boolean;
 };
 export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
 	Symbol('EditorEnabledFeatures');
