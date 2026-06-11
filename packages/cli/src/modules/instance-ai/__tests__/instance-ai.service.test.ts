@@ -709,8 +709,6 @@ type TerminalGuardOrderServiceInternals = {
 	liveness: { consumeRunTimeout: jest.Mock };
 	telemetry: { track: jest.Mock };
 	logger: { warn: jest.Mock; error: jest.Mock };
-<<<<<<< HEAD
-=======
 	errorReporter: { error: jest.Mock };
 	instanceAiConfig: {
 		outputRedactionEnabled: boolean;
@@ -718,7 +716,6 @@ type TerminalGuardOrderServiceInternals = {
 		outputRedactionPii: string;
 		outputRedactionPlaceholder: string;
 	};
->>>>>>> b64f34c5 (fix(core): Ship Instance AI knowledge-base files and report run errors (no-changelog) (#32129))
 	traceContextsByRunId: Map<string, { threadId: string; messageGroupId?: string }>;
 	threadPushRef: Map<string, string>;
 	finalizeRunTracing: jest.Mock;
@@ -791,8 +788,6 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.liveness = { consumeRunTimeout: jest.fn(() => ({ timedOut: false })) };
 	service.telemetry = { track: jest.fn() };
 	service.logger = { warn: jest.fn(), error: jest.fn() };
-<<<<<<< HEAD
-=======
 	service.errorReporter = { error: jest.fn() };
 	service.instanceAiConfig = {
 		outputRedactionEnabled: true,
@@ -800,7 +795,6 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		outputRedactionPii: 'credit-card',
 		outputRedactionPlaceholder: '[REDACTED]',
 	};
->>>>>>> b64f34c5 (fix(core): Ship Instance AI knowledge-base files and report run errors (no-changelog) (#32129))
 	service.traceContextsByRunId = new Map([
 		['run-1', { threadId: 'thread-a', messageGroupId: 'group-1' }],
 	]);
