@@ -4,7 +4,13 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { UserRepository } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { GatewayHttpRewriter } from 'n8n-core';
+import type {
+	ICredentialDataDecryptedObject,
+	IHttpRequestOptions,
+	INode,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types';
 
@@ -121,15 +127,120 @@ export class AiGatewayService {
 			throw new UserError('Failed to obtain a valid AI Gateway token.');
 		}
 
-		const gatewayUrl = this.buildGatewayUrl(baseUrl, providerConfig.gatewayPath, {
-			executionId,
-			workflowId,
-		});
-
-		return {
+		const credential: ICredentialDataDecryptedObject = {
 			[providerConfig.apiKeyField]: jwt,
-			[providerConfig.urlField]: gatewayUrl,
 		};
+
+		// Community nodes that hard-code their base URL have no `urlField`; they are
+		// redirected at the HTTP layer instead (see `buildHttpRewriter`).
+		if (providerConfig.urlField) {
+			credential[providerConfig.urlField] = this.buildGatewayUrl(
+				baseUrl,
+				providerConfig.gatewayPath,
+				{ executionId, workflowId },
+			);
+		}
+
+		return credential;
+	}
+
+	/**
+	 * Builds the HTTP-layer rewriter installed on `additionalData` for executions.
+	 * Reroutes outbound requests from gateway-managed nodes whose target host is a
+	 * managed provider host (per gateway config `providerConfig[type].hosts`) through
+	 * the gateway, injecting a `Bearer` token. This covers nodes that hard-code their
+	 * base URL and so cannot be redirected via a credential `urlField` override.
+	 *
+	 * The returned closure reads `userId`/`workflowId`/`projectId`/`executionId` from
+	 * the captured `additionalData` at request time (they are populated by then).
+	 */
+	buildHttpRewriter(additionalData: IWorkflowExecuteAdditionalData): GatewayHttpRewriter {
+		return async (requestOptions: IHttpRequestOptions, node: INode) => {
+			const managedTypes = this.getManagedCredentialTypes(node);
+			if (managedTypes.length === 0) return undefined;
+
+			const targetUrl = this.resolveRequestUrl(requestOptions);
+			if (!targetUrl) return undefined;
+
+			// Match on hostname (port- and case-insensitive) against the configured hosts.
+			let hostname: string;
+			try {
+				hostname = new URL(targetUrl).hostname;
+			} catch {
+				return undefined;
+			}
+
+			const config = await this.getGatewayConfig();
+			const gatewayPath = managedTypes
+				.map((type) => config.providerConfig[type]?.hosts?.[hostname])
+				.find((path): path is string => Boolean(path));
+			if (!gatewayPath) return undefined;
+
+			// From here the request is destined for a managed host: fail closed. If the
+			// gateway/token is unavailable we throw rather than pass through, so a managed
+			// node never silently leaks traffic (and its real key) to the real provider.
+			const baseUrl = this.requireBaseUrl();
+			const { userId, workflowId, projectId, executionId } = additionalData;
+			const resolvedUserId = await this.resolveUserId({ userId, workflowId, projectId });
+			if (!resolvedUserId) {
+				throw new UserError('Failed to resolve user for AI Gateway attribution.');
+			}
+			const jwt = await this.getOrFetchToken(resolvedUserId);
+			if (!jwt) {
+				throw new UserError('Failed to obtain a valid AI Gateway token.');
+			}
+
+			return {
+				...requestOptions,
+				baseURL: undefined,
+				url: this.buildProxyUrl(baseUrl, gatewayPath, targetUrl, { executionId, workflowId }),
+				headers: {
+					...requestOptions.headers,
+					Authorization: `Bearer ${jwt}`,
+				},
+			};
+		};
+	}
+
+	private getManagedCredentialTypes(node: INode): string[] {
+		const credentials = node.credentials;
+		if (!credentials) return [];
+		return Object.entries(credentials)
+			.filter(([, details]) => details?.__aiGatewayManaged)
+			.map(([type]) => type);
+	}
+
+	private resolveRequestUrl(requestOptions: IHttpRequestOptions): string | undefined {
+		const { url, baseURL } = requestOptions;
+		if (baseURL) {
+			try {
+				return new URL(url ?? '', baseURL).toString();
+			} catch {
+				return undefined;
+			}
+		}
+		return url || undefined;
+	}
+
+	/**
+	 * Builds the gateway proxy URL for a hard-coded-URL node by mapping the request's
+	 * host to its gateway path segment (from `providerConfig[type].hosts`) and
+	 * appending the original request path and query. Reuses `buildGatewayUrl` so the
+	 * exec-attribution prefix is constructed identically to the credential path.
+	 *
+	 * Example: host `api.stagehand.browserbase.com` → `/v1/gateway/browserbaseStagehand`,
+	 *   request `…/v1/sessions/start`
+	 *   → `<base>/v1/gateway/browserbaseStagehand/v1/sessions/start`
+	 *   → with context: `<base>/v1/gateway/exec/<execId>/<wfId>/browserbaseStagehand/v1/sessions/start`
+	 */
+	private buildProxyUrl(
+		baseUrl: string,
+		gatewayPath: string,
+		targetUrl: string,
+		context: { executionId?: string; workflowId?: string },
+	): string {
+		const parsed = new URL(targetUrl);
+		return `${this.buildGatewayUrl(baseUrl, gatewayPath, context)}${parsed.pathname}${parsed.search}`;
 	}
 
 	/**
@@ -215,9 +326,23 @@ export class AiGatewayService {
 				return `${baseUrl}${gatewayPath}`;
 			}
 			const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
-			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${encodeURIComponent(context.workflowId)}${providerSuffix}`;
+			return `${baseUrl}${this.withExecPrefix(AiGatewayService.GATEWAY_PATH_PREFIX, context)}${providerSuffix}`;
 		}
 		return `${baseUrl}${gatewayPath}`;
+	}
+
+	/**
+	 * Appends an `/exec/:executionId/:workflowId` segment to a gateway path prefix when
+	 * both IDs are present. The gateway's URL-rewriting middleware strips this segment
+	 * before proxying upstream; it exists purely so the gateway can record both IDs in
+	 * usage metadata. Returns the prefix unchanged when either ID is missing.
+	 */
+	private withExecPrefix(
+		prefix: string,
+		context: { executionId?: string; workflowId?: string },
+	): string {
+		if (!context.executionId || !context.workflowId) return prefix;
+		return `${prefix}/exec/${encodeURIComponent(context.executionId)}/${encodeURIComponent(context.workflowId)}`;
 	}
 
 	private requireBaseUrl(): string {

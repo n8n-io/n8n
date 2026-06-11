@@ -76,6 +76,10 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			if (additionalData.gatewayHttpRewriter) {
+				const rewritten = await additionalData.gatewayHttpRewriter(requestOptions, node);
+				if (rewritten) requestOptions = rewritten;
+			}
 			if (additionalData.otel?.injectTraceHeaders) {
 				requestOptions.headers ??= {};
 				additionalData.otel.injectTraceHeaders(
@@ -149,6 +153,25 @@ export const getRequestHelperFunctions = (
 					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			if (additionalData.gatewayHttpRewriter) {
+				const rewritten = await additionalData.gatewayHttpRewriter(
+					normalizeLegacyRequest(uriOrObject, options),
+					node,
+				);
+				if (rewritten?.url) {
+					if (typeof uriOrObject === 'string') {
+						uriOrObject = rewritten.url;
+						options = { ...options, headers: rewritten.headers };
+					} else {
+						uriOrObject = {
+							...uriOrObject,
+							uri: rewritten.url,
+							url: rewritten.url,
+							headers: rewritten.headers,
+						};
+					}
+				}
 			}
 			if (additionalData.otel?.injectTraceHeaders) {
 				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
