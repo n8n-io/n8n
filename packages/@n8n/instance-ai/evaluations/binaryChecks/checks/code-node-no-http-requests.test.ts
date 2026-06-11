@@ -100,6 +100,19 @@ describe('codeNodeNoHttpRequests', () => {
 		expect(result.comment).toContain('requests');
 	});
 
+	it('fails when a Python Code node imports urllib via from-import', async () => {
+		const workflow = workflowWithCodeNode({
+			language: 'python',
+			pythonCode:
+				"from urllib.request import urlopen\nres = urlopen('https://api.example.com')\nreturn res.read()",
+		});
+
+		const result = await codeNodeNoHttpRequests.run(workflow, { prompt: 'Call an API' });
+
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('urllib');
+	});
+
 	it('ignores code of the inactive language', async () => {
 		const workflow = workflowWithCodeNode({
 			language: 'python',

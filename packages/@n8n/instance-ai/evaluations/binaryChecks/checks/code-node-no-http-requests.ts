@@ -13,7 +13,11 @@ const HTTP_CODE_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
 			/require\s*\(\s*['"`](?:node:)?(?:https?|node-fetch|axios|got|undici|superagent|request)['"`]\s*\)/,
 		label: 'require of an HTTP module',
 	},
-	{ pattern: /\burllib\./, label: 'urllib' },
+	{
+		pattern:
+			/\burllib\.|(?:^|\n)\s*(?:import\s+urllib(?:\.\w+)*\b|from\s+urllib(?:\.\w+)*\s+import\b)/,
+		label: 'urllib',
+	},
 	{
 		pattern:
 			/(?:^|\n)\s*(?:import\s+requests\b|from\s+requests(?:\.\w+)*\s+import\b)|\brequests\.(?:get|post|put|patch|delete|head|request)\s*\(/,
