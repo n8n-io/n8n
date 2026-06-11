@@ -196,6 +196,21 @@ describe('useCanvasNodeGroupLayout', () => {
 		expect(offsets.has(groupComponentId('g2'))).toBe(false);
 	});
 
+	it('does not move a collapsed chip stacked closely above the expanding group', () => {
+		// The chip sits fully above the source chip, separated by less than the
+		// group top padding. Expansion grows down and right, so the chip above
+		// must stay put instead of jumping below the expanded frame.
+		const upperChip: IWorkflowGroup = { id: 'g4', name: 'G4', nodeIds: ['c'] };
+		const components = build(
+			[makeNode('a', 100, 400), makeNode('b', 400, 400), makeNode('c', 100, 280)],
+			[group, upperChip],
+		);
+
+		const offsets = computeOffsets(components);
+
+		expect(offsets.has(groupComponentId('g4'))).toBe(false);
+	});
+
 	it('moves an above-band collapsed group with the band when its expanded footprint dips into it', () => {
 		// The chip sits above the expansion band and right of the frame — only
 		// its expanded footprint (which grows downward) reaches into the band.

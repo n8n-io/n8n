@@ -199,7 +199,7 @@ function getComponentPushLane(
 		collapsedGroupRect.y + GROUP_HEADER_HEIGHT + GROUP_PADDING_Y_TOP + GROUP_HEADER_HEIGHT;
 	const collapsedGroupBottom = collapsedGroupRect.y + collapsedGroupRect.height;
 	const laneOrigin = getComponentLaneOrigin(component, componentAnchorRect);
-	const componentStartsAtOrBelowSourceTop = laneOrigin.y >= collapsedGroupRect.y;
+	const componentStartsAtOrBelowSourceTop = componentAnchorRect.y >= collapsedGroupRect.y;
 	const componentStartsBelowSourceRow = laneOrigin.y >= sourceContentRowBottom;
 	const componentStartsRightOfCollapsedGroup = laneOrigin.x >= collapsedGroupRight;
 	// A group target expanded AFTER this source whose chip column sits fully
@@ -458,12 +458,6 @@ function findSourcePushPlan(
 
 	for (const component of components) {
 		if (component.id === pushSource.source.id) continue;
-		// Don't let the current source push a component that already pushed it.
-		// When two expanded groups overlap, the first-processed one pushes the
-		// second; this stops the second from pushing the first back and giving an
-		// already-settled source a spurious offset. Confirmed load-bearing by the
-		// 'uses expanded group order to keep an older source pushing a newly
-		// expanded target' layout test — removing it fails that case.
 		if (didComponentPushSource(entries, component, pushSource.source.id)) continue;
 		if (
 			isComponentIgnoredForSource(component, pushSource.sourceGroupId, ignoredNodeIdsBySourceGroup)
