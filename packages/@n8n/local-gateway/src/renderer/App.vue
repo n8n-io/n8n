@@ -7,6 +7,7 @@ import ComplexTaskView from './views/ComplexTaskView.vue';
 import HomeView from './views/HomeView.vue';
 import SettingsView from './views/SettingsView.vue';
 import SignInView from './views/SignInView.vue';
+import TaskDetailView from './views/TaskDetailView.vue';
 import TaskDraftView from './views/TaskDraftView.vue';
 import TaskSetupView from './views/TaskSetupView.vue';
 
@@ -82,6 +83,12 @@ watch(
 					:required-connections="screen.requiredConnections"
 				/>
 				<ComplexTaskView v-else-if="screen.name === 'complex'" :plan="screen.plan" />
+				<TaskDetailView
+					v-else-if="screen.name === 'task-detail'"
+					:key="screen.card.workflowId"
+					:card="screen.card"
+					:variant="screen.variant"
+				/>
 				<HomeView v-else />
 			</template>
 			<SignInView v-else :status="auth" />

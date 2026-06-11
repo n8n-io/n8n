@@ -6,9 +6,14 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import RecommendationCard from '../components/RecommendationCard.vue';
 import TaskCard from '../components/TaskCard.vue';
 
+import type { TaskCardVariant } from '../assistant/use-assistant-screen';
+import { useAssistantScreen } from '../assistant/use-assistant-screen';
 import { useRecommendations } from '../assistant/use-recommendations';
 import { filterSections, hasAnyMatch } from '../assistant/use-task-search';
-import type { DesktopAssistantTasksResponse } from '../../shared/types';
+import type {
+	DesktopAssistantTaskCard,
+	DesktopAssistantTasksResponse,
+} from '../../shared/types';
 
 const i18n = useI18n();
 
@@ -77,8 +82,12 @@ async function load() {
 	}
 }
 
-function openWorkflow(workflowId: string) {
-	void window.electronAPI.openWorkflow(workflowId);
+const { goTo } = useAssistantScreen();
+
+/** Clicking a card opens the in-app detail view (the browser handoff lives
+ *  there, behind "View in n8n"). */
+function openDetail(card: DesktopAssistantTaskCard, variant: TaskCardVariant) {
+	goTo({ name: 'task-detail', card, variant });
 }
 
 async function runTask(workflowId: string) {
@@ -132,7 +141,7 @@ onBeforeUnmount(stopRecommendations);
 					:key="card.workflowId"
 					:card="card"
 					variant="actionNeeded"
-					@open="openWorkflow"
+					@open="openDetail(card, 'actionNeeded')"
 					@run="runTask"
 				/>
 			</section>
@@ -146,7 +155,7 @@ onBeforeUnmount(stopRecommendations);
 					:key="card.workflowId"
 					:card="card"
 					variant="upcoming"
-					@open="openWorkflow"
+					@open="openDetail(card, 'upcoming')"
 					@run="runTask"
 				/>
 			</section>
@@ -160,7 +169,7 @@ onBeforeUnmount(stopRecommendations);
 					:key="card.workflowId"
 					:card="card"
 					variant="readyToRun"
-					@open="openWorkflow"
+					@open="openDetail(card, 'readyToRun')"
 					@run="runTask"
 				/>
 			</section>
