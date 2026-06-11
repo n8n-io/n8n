@@ -4,8 +4,9 @@ import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
+import type { SsrfBridge } from '@n8n/backend-network';
 import { PollContext, returnJsonArray } from 'n8n-core';
-import type { InstanceSettings, ExecutionLifecycleHooks, SsrfBridge } from 'n8n-core';
+import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
 import {
 	createDeferredPromise,

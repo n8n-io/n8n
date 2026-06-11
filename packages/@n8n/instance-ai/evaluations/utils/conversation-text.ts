@@ -110,6 +110,24 @@ function describeInteraction(interaction: ToolInteraction): string | null {
 			const body = parts.length > 0 ? parts.join('; ') : 'nothing to apply';
 			return `Setup wizard: ${body}${interaction.reason ? ` — ${interaction.reason}` : ''}`;
 		}
+		case 'setup-card': {
+			if (interaction.requests.length === 0) return null;
+			const asks = interaction.requests.map((r) => {
+				const needs: string[] = [];
+				if (r.credentialType) needs.push(`${r.credentialType} credential`);
+				if (r.params && r.params.length > 0) needs.push(`params: ${r.params.join(', ')}`);
+				return `${r.nodeName}${needs.length > 0 ? ` (${needs.join('; ')})` : ''}`;
+			});
+			const outcome =
+				interaction.outcome === 'filled'
+					? `filled${interaction.filled && interaction.filled.length > 0 ? ` (${interaction.filled.join(', ')})` : ''} by user`
+					: interaction.outcome === 'skipped'
+						? 'skipped by user'
+						: interaction.outcome === 'declined'
+							? 'dismissed by user'
+							: 'no response';
+			return `Asked user via setup card: ${asks.join('; ')} — ${outcome}`;
+		}
 		case 'confirmation': {
 			const decision =
 				typeof interaction.approved === 'boolean'

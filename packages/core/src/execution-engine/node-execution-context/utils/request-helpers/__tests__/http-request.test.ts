@@ -1,3 +1,4 @@
+import type { SsrfBridge } from '@n8n/backend-network';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import FormData from 'form-data';
@@ -5,8 +6,6 @@ import type { Agent as HttpsAgent } from 'https';
 import type { IHttpRequestMethods, IHttpRequestOptions, IRequestOptions } from 'n8n-workflow';
 import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
-
-import type { SsrfBridge } from '@/ssrf';
 
 // Imported for side effects: sets axios defaults and registers the vendor-header interceptor
 import '../axios-config';

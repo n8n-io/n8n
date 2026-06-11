@@ -24,6 +24,7 @@ import type {
 	IRun,
 	IRunData,
 	IRunExecutionData,
+	ITaskData,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
@@ -1858,6 +1859,142 @@ describe('WorkflowExecute', () => {
 			expect(result.finished).not.toBe(true);
 			expect(result.data.resultData.error?.message).toBe('boom');
 		});
+	});
+
+	describe('resuming Execute Workflow node after sub-workflow error', () => {
+		// With Execute Workflow nodes, if the sub errors after it resumes
+		// the resume must fail the node via the node's normal onError
+		// handling instead of resuming as a success with input passthrough.
+		// The sub-workflow error is carried onto the stack entry as `metadata.resumeError`.
+		const SUB_ERROR = 'Sub-workflow error';
+		const SUB_NODE = 'Execute Sub-workflow';
+		const SUB_EXECUTION = { executionId: 'child-execution-id', workflowId: 'child-workflow-id' };
+
+		// Plain object (not a mock) so `description.outputs` stays a real array for
+		// NodeHelpers.getNodeOutputs (used when routing the error output). The node must
+		// NOT run on resume — returning passthrough data is the very bug the fix prevents.
+		const nodeType = (name: string) =>
+			({
+				description: {
+					name,
+					displayName: name,
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				execute: async () => [[{ json: { ran: true } }]],
+			}) as unknown as INodeType;
+
+		async function runResumedSubError(
+			nodeOverrides: Partial<INode> = {},
+		): Promise<{ result: IRun; runNodeCalls: number }> {
+			const subNode: INode = {
+				...createNodeData({ name: SUB_NODE, type: 'sub' }),
+				...nodeOverrides,
+			};
+			const afterNode = createNodeData({ name: 'After', type: 'after' });
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockImplementation((type) => nodeType(type));
+
+			const workflow = new DirectedGraph()
+				.addNodes(subNode, afterNode)
+				.addConnections({ from: subNode, to: afterNode })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				'manual',
+			);
+
+			const runNodeSpy = vi.spyOn(
+				workflowExecute as unknown as { runNode: WorkflowExecute['runNode'] },
+				'runNode',
+			);
+
+			const runExecutionData = createRunExecutionData({
+				resultData: { runData: { [SUB_NODE]: [mock<ITaskData>()] }, lastNodeExecuted: SUB_NODE },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: subNode,
+							data: { main: [[{ json: { in: 1 } }]] },
+							source: null,
+							metadata: {
+								resumeError: { name: 'NodeOperationError', message: SUB_ERROR },
+								subExecution: SUB_EXECUTION,
+							},
+						} as unknown as IExecuteData,
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// Mark as a resumed waiting execution so `handleWaitingState` runs.
+			runExecutionData.waitTill = new Date('3000-01-01T00:00:00.000Z');
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			const result = await workflowExecute.processRunExecutionData(workflow);
+			return { result, runNodeCalls: runNodeSpy.mock.calls.length };
+		}
+
+		const lastRun = (result: IRun) => result.data.resultData.runData[SUB_NODE].at(-1)!;
+
+		it('should halt the parent execution when onError = stopWorkflow', async () => {
+			const { result } = await runResumedSubError({ onError: 'stopWorkflow' });
+
+			expect(result.status).toBe('error');
+			expect(result.data.resultData.error?.message).toBe(SUB_ERROR);
+			expect(lastRun(result).executionStatus).toBe('error');
+		});
+
+		it('should not re-run the sub-workflow when the node has retryOnFail', async () => {
+			const { result, runNodeCalls } = await runResumedSubError({
+				onError: 'stopWorkflow',
+				retryOnFail: true,
+				maxTries: 2,
+				waitBetweenTries: 0,
+			});
+
+			expect(result.status).toBe('error');
+			expect(result.data.resultData.error?.message).toBe(SUB_ERROR);
+			// The error already happened in sub-workflow, so the node must run
+			// exactly once; retryOnFail must not re-execute it.
+			expect(runNodeCalls).toBe(1);
+		});
+
+		it('should route the error to the error output onError = continueErrorOutput', async () => {
+			const { result } = await runResumedSubError({ onError: 'continueErrorOutput' });
+
+			expect(result.status).toBe('success');
+			expect(result.data.resultData.error).toBeUndefined();
+			expect(lastRun(result).data?.main?.[0] ?? []).toEqual([]);
+			// Error gets added to `json.error` with no other node output
+			expect(lastRun(result).data?.main?.[1]?.[0]?.json?.error).toBe(SUB_ERROR);
+		});
+
+		// `continueRegularOutput` and `continueOnFail` both continue the
+		// workflow with an error item in `json.error`.
+		it.each([{ onError: 'continueRegularOutput' as const }, { continueOnFail: true }])(
+			'should emit an error item in `json.error` and continues with %o',
+			async (nodeOverrides) => {
+				const { result } = await runResumedSubError(nodeOverrides);
+
+				expect(result.status).toBe('success');
+				expect(result.data.resultData.error).toBeUndefined();
+				const errorItem = lastRun(result).data?.main?.[0]?.[0];
+				expect(errorItem?.json?.error).toBe(SUB_ERROR);
+				// The error item must keep item lineage (one entry per input item) and
+				// link to the failed child execution, like a live node failure would.
+				expect(errorItem?.pairedItem).toEqual([{ item: 0 }]);
+				expect(errorItem?.metadata).toEqual({ subExecution: SUB_EXECUTION });
+			},
+		);
 	});
 
 	describe('prepareWaitingToExecution', () => {

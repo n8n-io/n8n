@@ -11,6 +11,7 @@ import type {
 	ExecutionBaseError,
 	ExecutionStatus,
 	ExecutionStorageLocation,
+	ExecutionError,
 	GenericValue,
 	IConnection,
 	IDataObject,
@@ -968,9 +969,31 @@ export class WorkflowExecute {
 		return [];
 	}
 
+	/** Whether the node is configured to continue when it errors. */
+	private continuesOnError(node: INode): boolean {
+		return (
+			node.continueOnFail === true ||
+			['continueRegularOutput', 'continueErrorOutput'].includes(node.onError ?? '')
+		);
+	}
+
 	/**
-	 * Handles re-throwing errors from previous node execution attempts
+	 * Rethrows an already-failed node's error so it logs and displays correctly.
+	 * Structured node errors are thrown as-is; anything else (e.g. a DB-deserialized
+	 * error that is no longer a real `Error`) is wrapped so its stack and
+	 * `instanceof Error` behave like a normally-thrown node failure.
 	 */
+	private rethrowNodeError(error: ExecutionError): never {
+		if (error.name === 'NodeOperationError' || error.name === 'NodeApiError') {
+			throw error;
+		}
+
+		const wrapped = new Error(error.message);
+		wrapped.stack = error.stack;
+		throw wrapped;
+	}
+
+	/** Handles re-throwing errors from previous node execution attempts */
 	private rethrowLastNodeError(runExecutionData: IRunExecutionData, node: INode): void {
 		if (
 			runExecutionData.resultData.lastNodeExecuted === node.name &&
@@ -979,16 +1002,7 @@ export class WorkflowExecute {
 			// The node did already fail. So throw an error here that it displays and logs it correctly.
 			// Does get used by webhook and trigger nodes in case they throw an error that it is possible
 			// to log the error and display in Editor-UI.
-			if (
-				runExecutionData.resultData.error.name === 'NodeOperationError' ||
-				runExecutionData.resultData.error.name === 'NodeApiError'
-			) {
-				throw runExecutionData.resultData.error;
-			}
-
-			const error = new Error(runExecutionData.resultData.error.message);
-			error.stack = runExecutionData.resultData.error.stack;
-			throw error;
+			this.rethrowNodeError(runExecutionData.resultData.error);
 		}
 	}
 
@@ -1284,6 +1298,32 @@ export class WorkflowExecute {
 		const { node } = executionData;
 		let inputData = executionData.data;
 
+		if (executionData.metadata?.resumeError) {
+			const { resumeError, subExecution } = executionData.metadata;
+
+			if (this.continuesOnError(node)) {
+				// Mirror the node's own live whole-node-failure item shape: pair the error
+				// item with every input item (the sub-workflow ran for all of them), and
+				// link the failed child execution so the UI can navigate to it.
+				const pairedItem = (inputData.main?.[0] ?? []).map((_, item) => ({ item }));
+				return {
+					data: [
+						[
+							{
+								json: { error: resumeError.message },
+								pairedItem,
+								...(subExecution && { metadata: { subExecution } }),
+							},
+						],
+					],
+				};
+			}
+
+			// Route the resumed sub-workflow error like a live node failure would be
+			// (see the onError handling in `processRunExecutionData`).
+			this.rethrowNodeError(resumeError);
+		}
+
 		if (node.disabled === true) {
 			return this.handleDisabledNode(inputData);
 		}
@@ -1406,7 +1446,15 @@ export class WorkflowExecute {
 			);
 
 			const executionStackEntry = this.runExecutionData.executionData.nodeExecutionStack[0];
-			executionStackEntry.node.disabled = true;
+			// Error reporting itself does not depend on this: `runNode` checks
+			// `metadata.resumeError` before `node.disabled`, so the entry carrying the
+			// error fails either way. This guard only matters when ANOTHER stack entry
+			// shares this node object (legacy `executionOrder: 'v0'` with multiple wires
+			// into the node): keeping the node enabled lets those later entries execute
+			// normally instead of passing their input through in disabled mode.
+			if (!executionStackEntry.metadata?.resumeError) {
+				executionStackEntry.node.disabled = true;
+			}
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
 
@@ -1617,8 +1665,9 @@ export class WorkflowExecute {
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
 
-					// Reset per-node dynamic credential flag before each node execution
+					// Reset per-node dynamic credential flags before each node execution
 					this.additionalData.currentNodeUsedDynamicCredentials = false;
+					this.additionalData.currentNodeAttemptedDynamicCredentials = false;
 
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
@@ -1718,13 +1767,17 @@ export class WorkflowExecute {
 					const isErrorValue = (v: unknown) => v !== undefined && v !== null && v !== false;
 					const checkFailure = (data: IRunNodeResponse | EngineRequest) =>
 						!isEngineRequest(data) && isErrorValue(data.data?.[0]?.[0]?.json?.error);
-					if (executionData.node.retryOnFail === true) {
+					// A node resuming with a sub-workflow error has already failed in the sub-workflow;
+					// there is nothing to re-run, so don't apply retryOnFail (it would just re-throw the
+					// same error after pointless waits without re-executing anything).
+					const isResumedError = executionData.metadata?.resumeError !== undefined;
+					if (executionData.node.retryOnFail === true && !isResumedError) {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
 						maxTries = Math.min(5, Math.max(2, executionData.node.maxTries || 3));
 					}
 
 					let waitBetweenTries = 0;
-					if (executionData.node.retryOnFail === true) {
+					if (executionData.node.retryOnFail === true && !isResumedError) {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
 						waitBetweenTries = Math.min(
 							5000,
@@ -1957,6 +2010,8 @@ export class WorkflowExecute {
 						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
 						usedDynamicCredentials:
 							this.additionalData.currentNodeUsedDynamicCredentials || undefined,
+						attemptedDynamicCredentials:
+							this.additionalData.currentNodeAttemptedDynamicCredentials || undefined,
 					};
 
 					// Record the n8n user a dynamically-resolved private credential
@@ -1998,13 +2053,7 @@ export class WorkflowExecute {
 						const aiToolDefaultsToContinue =
 							isAiToolExecution && executionData.node.onError !== 'stopWorkflow';
 
-						if (
-							executionData.node.continueOnFail === true ||
-							['continueRegularOutput', 'continueErrorOutput'].includes(
-								executionData.node.onError || '',
-							) ||
-							aiToolDefaultsToContinue
-						) {
+						if (this.continuesOnError(executionData.node) || aiToolDefaultsToContinue) {
 							// Workflow should continue running even if node errors
 							if (isAiToolExecution) {
 								// Surface the error on the ai_tool channel so the agent receives it
