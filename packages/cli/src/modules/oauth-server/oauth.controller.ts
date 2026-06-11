@@ -192,10 +192,10 @@ export class OAuthController {
 		usesTemplates: true,
 		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
 	})
-	protectedResourceMetadata(_req: Request, res: Response) {
+	async protectedResourceMetadata(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
 
-		const resource = this.resourceRegistry.getByResourcePath('/mcp-server/http');
+		const resource = await this.resourceRegistry.getByResourcePath('/mcp-server/http');
 		if (!resource) {
 			throw new NotFoundError('Unknown protected resource');
 		}
