@@ -91,6 +91,7 @@ const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
+const warmAgentKnowledgeSandboxMock = vi.fn();
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -102,6 +103,10 @@ vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
+	listAgentFiles: vi.fn().mockResolvedValue([]),
+	uploadAgentFiles: vi.fn(),
+	deleteAgentFile: vi.fn(),
+	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -245,10 +250,19 @@ vi.mock('@n8n/i18n', () => ({
 vi.setConfig({ testTimeout: 30_000 });
 
 /** Shared stubs used by both mount helpers. */
-async function renderView() {
-	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
+async function renderView({ knowledgeBaseEnabled = false } = {}) {
 	const pinia = createPinia();
 	setActivePinia(pinia);
+	const { useSettingsStore } = await import('@/app/stores/settings.store');
+	const settingsStore = useSettingsStore();
+	settingsStore.settings = { activeModules: knowledgeBaseEnabled ? ['agents'] : [] } as never;
+	settingsStore.moduleSettings = {
+		agents: {
+			modules: [],
+			knowledgeBaseEnabled,
+		},
+	};
+	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const wrapper = mount(AgentBuilderView, {
 		global: {
 			plugins: [pinia],
@@ -427,6 +441,8 @@ describe('AgentBuilderView — preview routing', () => {
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		warmAgentKnowledgeSandboxMock.mockReset();
+		warmAgentKnowledgeSandboxMock.mockResolvedValue({ accepted: true });
 		fetchConfigMock.mockClear();
 	});
 
@@ -480,6 +496,54 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+	});
+
+	it('warms the knowledge sandbox in the background on the preview route', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+
+		await renderView({ knowledgeBaseEnabled: true });
+
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
+	});
+
+	it('warms the knowledge sandbox once after binding a new preview session', async () => {
+		routeName = 'AgentPreviewView';
+
+		await renderView({ knowledgeBaseEnabled: true });
+
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: expect.objectContaining({ continueSessionId: expect.any(String) }),
+		});
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
+	});
+
+	it('does not warm the knowledge sandbox when the knowledge base is disabled', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+
+		await renderView();
+
+		expect(warmAgentKnowledgeSandboxMock).not.toHaveBeenCalled();
+	});
+
+	it('does not surface rejected knowledge sandbox warmup requests', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+		warmAgentKnowledgeSandboxMock.mockRejectedValue(new Error('warmup failed'));
+
+		await expect(renderView({ knowledgeBaseEnabled: true })).resolves.toBeDefined();
+
+		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalled();
 	});
 
 	it('drops unbuilt agents straight into the build chat on load', async () => {
@@ -645,6 +709,8 @@ describe('AgentBuilderView — three-column shell', () => {
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+		warmAgentKnowledgeSandboxMock.mockReset();
+		warmAgentKnowledgeSandboxMock.mockResolvedValue({ accepted: true });
 		fetchConfigMock.mockClear();
 	});
 

@@ -178,6 +178,11 @@ export class AgentKnowledgeSandboxService {
 		return await operation(filesystem);
 	}
 
+	async warmSandbox(projectId: string, agentId: string, userId: string): Promise<void> {
+		this.assertKnowledgeConfiguration(projectId, agentId);
+		await this.acquireSandbox(projectId, agentId, userId);
+	}
+
 	async searchKnowledge(
 		projectId: string,
 		agentId: string,

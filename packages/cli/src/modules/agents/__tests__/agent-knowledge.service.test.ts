@@ -352,6 +352,35 @@ describe('AgentKnowledgeService', () => {
 		expect(agentKnowledgeSandboxService.withKnowledgeFilesystem).not.toHaveBeenCalled();
 	});
 
+	it('warms the sandbox when the agent has knowledge files', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		await agentFileRepository.save(makeAgentFile());
+
+		await expect(service.warmSandbox(agentId, projectId, userId)).resolves.toBeUndefined();
+
+		expect(agentKnowledgeSandboxService.warmSandbox).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+			userId,
+		);
+	});
+
+	it('skips sandbox warmup when the agent has no knowledge files', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+
+		await expect(service.warmSandbox(agentId, projectId, userId)).resolves.toBeUndefined();
+
+		expect(agentKnowledgeSandboxService.warmSandbox).not.toHaveBeenCalled();
+	});
+
+	it('rejects sandbox warmup for agents outside the project', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+		await expect(service.warmSandbox(agentId, projectId, userId)).rejects.toThrow(NotFoundError);
+
+		expect(agentKnowledgeSandboxService.warmSandbox).not.toHaveBeenCalled();
+	});
+
 	it('deletes stored volume files and DB rows', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		const storedFile = await agentFileRepository.save(

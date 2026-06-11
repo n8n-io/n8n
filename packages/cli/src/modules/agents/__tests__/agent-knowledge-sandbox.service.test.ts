@@ -264,6 +264,36 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 	});
 
+	it('warms a sandbox by reusing the existing acquisition path', async () => {
+		const sandbox = makeSandbox('stopped');
+		listMock.mockResolvedValue({ items: [sandbox], totalPages: 1 });
+		const service = makeService();
+
+		await expect(service.warmSandbox('project-1', 'agent-1', userId)).resolves.toBeUndefined();
+
+		expect(sandbox.start).toHaveBeenCalledWith(300);
+		expect(createMock).not.toHaveBeenCalled();
+	});
+
+	it('dedupes concurrent warmups for the same sandbox scope', async () => {
+		let resolveCreate: (sandbox: MockSandbox) => void;
+		createMock.mockReturnValue(
+			new Promise<MockSandbox>((resolve) => {
+				resolveCreate = resolve;
+			}),
+		);
+		const service = makeService();
+
+		const firstWarmup = service.warmSandbox('project-1', 'agent-1', userId);
+		const secondWarmup = service.warmSandbox('project-1', 'agent-1', userId);
+
+		await new Promise((resolve) => setImmediate(resolve));
+		expect(createMock).toHaveBeenCalledTimes(1);
+
+		resolveCreate!(makeSandbox('started'));
+		await expect(Promise.all([firstWarmup, secondWarmup])).resolves.toEqual([undefined, undefined]);
+	});
+
 	it('searchKnowledge runs a bounded search and parses matching file metadata', async () => {
 		const sandbox = makeSandbox('started');
 		mockKnowledgeFiles([makeAgentFile()]);
@@ -306,7 +336,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			undefined,
 			300,
 		);
-		const command = sandbox.process.executeCommand.mock.calls[0][0] as string;
+		const command = sandbox.process.executeCommand.mock.calls[0][0];
 		expect(command).toContain('bash -o pipefail -c');
 		expect(command).toContain('hello');
 		expect(command).toContain('| head -n 2');
@@ -360,7 +390,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			undefined,
 			300,
 		);
-		const command = sandbox.process.executeCommand.mock.calls[0][0] as string;
+		const command = sandbox.process.executeCommand.mock.calls[0][0];
 		expect(command).toContain('bash -o pipefail -c');
 		expect(command).toContain('*agent*tool*');
 		expect(command).toContain('| head -n 2');

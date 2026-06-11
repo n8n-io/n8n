@@ -256,7 +256,7 @@ function buildHeadLimitedPipeline(command: string, lineLimit: number): string {
 		// treating that expected SIGPIPE as a successful bounded result.
 		'set +o pipefail',
 		`${command} | head -n ${lineLimit}`,
-		'command_status="${PIPESTATUS[0]}"',
+		'command_status="$' + '{PIPESTATUS[0]}"',
 		'if [ "$command_status" = 141 ]; then command_status=0; fi',
 		'exit "$command_status"',
 	].join('; ');
