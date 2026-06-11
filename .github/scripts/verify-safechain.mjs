@@ -18,6 +18,7 @@
  * Exits 0 only when every package manager reports OK; 1 otherwise.
  */
 import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 const PACKAGE_MANAGERS = ['npm', 'pnpm'];
 
@@ -60,6 +61,7 @@ export function verifySafeChain(spawnFn = spawnSync) {
 }
 
 // only run when executed directly, not when imported by tests
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+	console.log("Verifying SafeChain");
 	process.exit(verifySafeChain() ? 0 : 1);
 }
