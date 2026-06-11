@@ -11,6 +11,22 @@ process.env.FORCE_COLOR = '1';
 // dependency reconcile step.
 const light = argv.light || argv.l;
 
+// `--mem <MB>` raises the V8 old-space cap for each build process via
+// NODE_OPTIONS, which turbo passes through to the per-package builds. Bump it if
+// a build runs out of memory (e.g. the JS `sass` compiler). Default 8192.
+// Note: this only helps JS-heap OOMs — native `sass-embedded` compilation runs
+// in a separate Dart process that this limit does not bound; if that OOMs,
+// lower build concurrency or add system memory instead.
+const mem = argv.mem ? Number(argv.mem) : 8192;
+if (!Number.isInteger(mem) || mem <= 0) {
+	echo('❌ --mem must be a positive integer (MB)');
+	process.exit(1);
+}
+const nodeOptions = process.env.NODE_OPTIONS
+	? `${process.env.NODE_OPTIONS} --max-old-space-size=${mem}`
+	: `--max-old-space-size=${mem}`;
+const buildEnv = { ...process.env, TURBO_FORCE: 'true', NODE_OPTIONS: nodeOptions };
+
 if (light) {
 	const runInstall = argv.install !== false;
 
@@ -28,8 +44,8 @@ if (light) {
 
 	// TURBO_FORCE ignores the local artifact cache (node_modules/.cache/turbo),
 	// which `pnpm clean` does not remove, so a stale cache can't be served.
-	echo('🏗️ Force-rebuilding (TURBO_FORCE)...');
-	await $({ env: { ...process.env, TURBO_FORCE: 'true' } })`pnpm build --concurrency=50%`;
+	echo(`🏗️ Force-rebuilding (TURBO_FORCE, --max-old-space-size=${mem})...`);
+	await $({ env: buildEnv })`pnpm build`;
 
 	process.exit(0);
 }
@@ -60,5 +76,5 @@ fs.removeSync('node_modules');
 echo('⏬ Running pnpm install...');
 await $`pnpm install`;
 
-echo('🏗️ Running pnpm build...');
-await $`pnpm build --concurrency=50%`;
+echo(`🏗️ Running pnpm build (--max-old-space-size=${mem})...`);
+await $({ env: buildEnv })`pnpm build ${buildArgs}`;
