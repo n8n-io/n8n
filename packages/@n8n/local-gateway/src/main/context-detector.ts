@@ -36,6 +36,12 @@ export class ContextDetector extends EventEmitter {
 		'com.apple.dock',
 		'com.apple.Spotlight',
 		'com.apple.WindowManager',
+		// macOS screenshot UI — its floating preview thumbnail ("Bildschirmfoto")
+		// is a high-level overlay that get-windows reports as frontmost, so it
+		// otherwise lands at the top of the picker. Matched by bundle id only: a
+		// screenshot *file* opened in Preview is a real window we want to keep, and
+		// its window title (e.g. "Screenshot 2026-…") must not be filtered.
+		'com.apple.screencaptureui',
 	]);
 	private static readonly EXCLUDED_APP_NAMES = new Set([
 		'wispr flow',
