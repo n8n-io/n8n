@@ -46,7 +46,7 @@ const DEFAULT_SETUP = {
 			name: 'If',
 			type: 'n8n-nodes-base.if',
 			typeVersion: 2,
-			position: [1120, 380] as const,
+			position: [1120, 380] as [number, number],
 			credentials: {},
 			disabled: false,
 		},
