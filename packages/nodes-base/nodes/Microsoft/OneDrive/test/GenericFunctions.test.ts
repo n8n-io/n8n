@@ -1,16 +1,17 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { microsoftApiRequest, getPath } from '../GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
 
 describe('Microsoft OneDrive GenericFunctions', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockRequestOAuth2: jest.Mock;
+	let mockRequestOAuth2: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		mockRequestOAuth2 = jest.fn();
+		mockRequestOAuth2 = vi.fn();
 		mockExecuteFunctions.helpers.requestOAuth2 = mockRequestOAuth2;
 
 		mockNode = {
@@ -25,11 +26,11 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		mockExecuteFunctions.getWorkflow.mockReturnValue({
 			id: 'test-workflow-id',
 		} as any);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('microsoftApiRequest', () => {

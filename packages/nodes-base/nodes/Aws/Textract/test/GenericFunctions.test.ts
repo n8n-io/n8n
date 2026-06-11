@@ -1,24 +1,24 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ICredentialTestFunctions } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 
-jest.mock('aws4', () => ({
-	sign: jest.fn(),
+vi.mock('aws4', () => ({
+	sign: vi.fn(),
 }));
 
 import { sign } from 'aws4';
 import { simplify, validateCredentials, type IExpenseDocument } from '../GenericFunctions';
 
 describe('AWS Textract Generic Functions', () => {
-	const mockSign = sign as jest.MockedFunction<typeof sign>;
+	const mockSign = vi.mocked(sign);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('validateCredentials region validation', () => {
 		const buildContext = () => {
-			const helpers = { request: jest.fn() };
+			const helpers = { request: vi.fn() };
 			const context = mock<ICredentialTestFunctions>({
 				helpers: helpers as never,
 			});

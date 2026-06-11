@@ -241,25 +241,31 @@ describe('Test getBindParameters ', () => {
 
 describe('Test configureQueryRunner', () => {
 	it('should append out-bind execution data one item at a time without spread push', async () => {
-		const pushSpy = jest.spyOn(Array.prototype, 'push');
+		// Manually patch Array.prototype.push instead of vi.spyOn — vitest records spy calls
+		// via array push internally, so spying on push itself recurses infinitely. Record via
+		// index assignment to avoid that.
+		const originalPush = Array.prototype.push;
+		const pushCalls: unknown[][] = [];
+		Array.prototype.push = function (...args: unknown[]) {
+			pushCalls[pushCalls.length] = args;
+			return originalPush.apply(this, args);
+		};
 		const outBinds = [
 			[[1], ['Alice']],
 			[[2], ['Bob']],
 			[[3], ['Charlie']],
 		];
-		const executeMany = jest.fn().mockResolvedValue({ outBinds });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const executeMany = vi.fn().mockResolvedValue({ outBinds });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { executeMany, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
 		const expectedEntries: INodeExecutionData[] = [];
-		const constructExecutionMetaData = jest
-			.fn()
-			.mockImplementation((data: INodeExecutionData[]) => {
-				const item = data[0];
-				if (item) expectedEntries[expectedEntries.length] = item;
-				return item ? [item, item, item] : [];
-			});
+		const constructExecutionMetaData = vi.fn().mockImplementation((data: INodeExecutionData[]) => {
+			const item = data[0];
+			if (item) expectedEntries[expectedEntries.length] = item;
+			return item ? [item, item, item] : [];
+		});
 		const context = {
 			helpers: {
 				constructExecutionMetaData,
@@ -286,11 +292,11 @@ describe('Test configureQueryRunner', () => {
 					stmtBatching: 'single',
 				},
 			);
-			executionDataPushCalls = pushSpy.mock.calls.filter(
+			executionDataPushCalls = pushCalls.filter(
 				([entry]) => entry && expectedEntries.includes(entry as INodeExecutionData),
 			);
 		} finally {
-			pushSpy.mockRestore();
+			Array.prototype.push = originalPush;
 		}
 
 		expect(result).toHaveLength(9);
@@ -304,15 +310,15 @@ describe('Test configureQueryRunner', () => {
 	});
 
 	it('should return select execution data from the concat path', async () => {
-		const concatSpy = jest.spyOn(Array.prototype, 'concat');
+		const concatSpy = vi.spyOn(Array.prototype, 'concat');
 		const rows = [{ COL1: 1 }, { COL1: 2 }, { COL1: 3 }];
 		const executionData = rows.map((row) => ({ json: row }));
-		const execute = jest.fn().mockResolvedValue({ rows });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const execute = vi.fn().mockResolvedValue({ rows });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { execute, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest.fn().mockImplementation(() => executionData);
+		const constructExecutionMetaData = vi.fn().mockImplementation(() => executionData);
 		const context = {
 			helpers: {
 				constructExecutionMetaData,
@@ -355,12 +361,12 @@ describe.skip('configureQueryRunner stack overflow regression', () => {
 	it('should handle large out bind datasets without stack overflow', async () => {
 		const chunkSize = 250_000;
 		const outBinds = [[[42]]];
-		const executeMany = jest.fn().mockResolvedValue({ outBinds });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const executeMany = vi.fn().mockResolvedValue({ outBinds });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { executeMany, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest
+		const constructExecutionMetaData = vi
 			.fn()
 			.mockImplementation((data: INodeExecutionData[]) =>
 				Array.from({ length: chunkSize }, () => data[0]),
@@ -397,12 +403,12 @@ describe.skip('configureQueryRunner stack overflow regression', () => {
 	it('should handle large select result sets without stack overflow', async () => {
 		const chunkSize = 250_000;
 		const rows = Array.from({ length: chunkSize }, (_, index) => ({ COL1: index }));
-		const execute = jest.fn().mockResolvedValue({ rows });
-		const close = jest.fn().mockResolvedValue(undefined);
+		const execute = vi.fn().mockResolvedValue({ rows });
+		const close = vi.fn().mockResolvedValue(undefined);
 		const connection = { execute, close };
-		const getConnection = jest.fn().mockResolvedValue(connection);
+		const getConnection = vi.fn().mockResolvedValue(connection);
 		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
-		const constructExecutionMetaData = jest
+		const constructExecutionMetaData = vi
 			.fn()
 			.mockImplementation((data: INodeExecutionData[]) => data);
 		const context = {
