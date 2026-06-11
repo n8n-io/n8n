@@ -350,19 +350,23 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(triggerActivationService.addTriggerNodes).not.toHaveBeenCalled();
 		});
 
-		test('rolls back and marks failed when adding triggers throws', async () => {
+		test('propagates the failure without rolling back when adding triggers throws', async () => {
 			setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
 			triggerActivationService.addTriggerNodes.mockRejectedValue(new Error('registration failed'));
 
-			await consumer.processRecord(makeRecord());
+			// Failure handling (rollback/retry) is deferred to CAT-3360, so the error
+			// currently propagates to the caller instead of being recovered.
+			await expect(consumer.processRecord(makeRecord())).rejects.toThrow(
+				'Workflow publication trigger activation failure handling is not implemented yet',
+			);
 
+			// The published version is advanced before the add is attempted.
 			expect(outboxRepository.manager.upsert).toHaveBeenCalled();
-			expect(workflowRepository.update).toHaveBeenCalledWith('wf-1', {
-				active: false,
-				activeVersionId: null,
-			});
-			expect(activationErrorsService.register).toHaveBeenCalledWith('wf-1', 'registration failed');
-			expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'registration failed');
+			// No rollback/finalization happens yet.
+			expect(workflowRepository.update).not.toHaveBeenCalled();
+			expect(activationErrorsService.register).not.toHaveBeenCalled();
+			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+			expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
 		});
 
 		test('treats a first publication (no published-version mapping yet) as all-added', async () => {

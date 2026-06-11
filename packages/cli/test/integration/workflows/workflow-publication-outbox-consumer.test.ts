@@ -4,6 +4,7 @@ import {
 	setActiveVersion,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowPublicationOutboxRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
@@ -59,6 +60,9 @@ beforeAll(async () => {
 	await utils.initNodeTypes(nodes);
 
 	Container.get(InstanceSettings).markAsLeader();
+	// The outbox consumer flow (and the trigger activation service it depends on)
+	// only runs when the publication service is enabled.
+	Container.get(WorkflowsConfig).useWorkflowPublicationService = true;
 
 	consumer = Container.get(WorkflowPublicationOutboxConsumer);
 	activeWorkflowManager = Container.get(ActiveWorkflowManager);
