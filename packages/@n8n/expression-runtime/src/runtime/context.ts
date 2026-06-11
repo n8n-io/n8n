@@ -27,7 +27,8 @@ const SafeURIError = createSafeErrorSubclass(URIError);
  * the bridge dispatches on. Single source of truth for the synthetic proxy's
  * `get`/`has` traps and the `sendNodeMethod` envelope builder. Adding a new
  * `getNode*` schema to `BridgeMessage` lets you wire a new method here in
- * one place; `satisfies` catches typos in the discriminator string.
+ * one place; `satisfies` catches typos in the discriminator string and the
+ * completeness assertions below catch omissions.
  */
 const NODE_RPC_TYPES = {
 	first: 'getNodeFirst',
@@ -46,6 +47,41 @@ const INPUT_RPC_TYPES = {
 	all: 'getInputAll',
 } as const satisfies Record<string, BridgeMessage['type']>;
 type InputRpcType = (typeof INPUT_RPC_TYPES)[keyof typeof INPUT_RPC_TYPES];
+
+/**
+ * Completeness assertions for the registries above.
+ *
+ * `satisfies` on the maps catches typos in the discriminator strings but not
+ * omissions: a new `getNode*` / `getInput*` schema added to `BridgeMessage`
+ * without a registry entry would compile fine and silently fall through to
+ * the lazy-proxy delegation path. These assertions close that gap — when a
+ * discriminator is missing from a registry's values, the corresponding
+ * `AllRouted` type resolves to `never` and the `true` assignment fails to
+ * compile, pointing here.
+ *
+ * The paired-item cluster (`getNodePairedItem` / `getNodeItemMatching` /
+ * `getNodeItem`) is exempt: those three have divergent call signatures
+ * (`.item` is a getter, the other two are methods taking an item index), so
+ * they are wired as dedicated trap branches inside `target.$` rather than
+ * through the registry.
+ */
+type PairedItemRpcType = Extract<
+	BridgeMessage['type'],
+	'getNodePairedItem' | 'getNodeItemMatching' | 'getNodeItem'
+>;
+type AllRouted<All extends string, Routed extends string> = [Exclude<All, Routed>] extends [never]
+	? true
+	: never;
+const allNodeRpcsRouted: AllRouted<
+	Exclude<Extract<BridgeMessage['type'], `getNode${string}`>, PairedItemRpcType>,
+	NodeRpcType
+> = true;
+void allNodeRpcsRouted;
+const allInputRpcsRouted: AllRouted<
+	Extract<BridgeMessage['type'], `getInput${string}`>,
+	InputRpcType
+> = true;
+void allInputRpcsRouted;
 
 // ============================================================================
 // Build Context Function
