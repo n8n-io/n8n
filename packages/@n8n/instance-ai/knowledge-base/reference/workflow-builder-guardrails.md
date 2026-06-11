@@ -49,6 +49,14 @@ that must process every row, read `$input.all().map(i => i.json)` (or iterate
 the items) instead of mapping over `$input.first().json`, which would only see
 the first record and produce null/empty downstream values.
 
+When a downstream node must reason over the whole collection at once — a single
+AI Agent analysing a series, an indicator/metric computed across all rows, a
+summary, or a structured-output parser expecting one object — first aggregate
+the split items into a single item with a Code node (`return [{ json: { rows:
+$input.all().map(i => i.json) } }]`) and feed that one item in. A single-shot
+Agent or output parser wired directly to N split items runs once per row and
+produces malformed or unparseable output.
+
 For one digest, ranking, summary, count, or report, aggregate first and send one
 final item. For one action per source record, keep the stream itemized. Use
 `executeOnce: true` only for shared-context reads, report construction,
