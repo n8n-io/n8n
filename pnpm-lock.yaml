@@ -2599,8 +2599,8 @@ importers:
         specifier: 9.0.5
         version: 9.0.5
       ibm_db:
-        specifier: ^3.2.4
-        version: 3.3.5
+        specifier: ^4.0.1
+        version: 4.0.1
       ignore:
         specifier: ^5.2.0
         version: 5.3.2
@@ -15177,8 +15177,8 @@ packages:
     resolution: {integrity: sha512-YhtS+7hGNO61h/4jNShHxbbuJ1TnDqiFKQzfEaqePnonOvv8NnxWxOk92FlKKCCzZNOT34Gnd7WCLVJTntwEFQ==}
     engines: {node: '>=18'}
 
-  ibm_db@3.3.5:
-    resolution: {integrity: sha512-u1tFDySl51Egqsx1KOsCHkaOcLS+J1AhmehyMAT4HWFUCFBYRi1aZIJv5qn89Dt4BwBMmHrGkdBcQWdAwEoK2Q==}
+  ibm_db@4.0.1:
+    resolution: {integrity: sha512-0fO1fyaDm3jqaydObwKZw1aUNh6SbfHKxtrSfadWHoFsrnmBhQfp1oMFm6cWJSRNjE9pHyQw7zUNteuLRObwSg==}
     engines: {node: '>=6.0'}
 
   iconv-corefoundation@1.1.7:
@@ -17252,9 +17252,6 @@ packages:
   nan@2.20.0:
     resolution: {integrity: sha512-bk3gXBZDGILuuo/6sKtr0DQmSThYHLtNCdSdXk9YkxD/jK6X2vmCyyXBBxyqZ4XcnzTyYEAThfX3DCEnLf6igw==}
 
-  nan@2.27.0:
-    resolution: {integrity: sha512-hC+0LidcL3XE4rp1C4H54KujgXKzbfyTngZTwBByQxsOxCEKZT0MPQ4hOKUH2jU1OYstqdDH4onyHPDzcV0XdQ==}
-
   nanoclone@0.2.1:
     resolution: {integrity: sha512-wynEP02LmIbLpcYw8uBKpcfF6dmg2vcpKqxeH5UcoKEYdExslsdUA4ugFauuaeYdTB76ez6gJW8XAZ6CgkXYxA==}
 
@@ -17339,6 +17336,9 @@ packages:
   node-addon-api@7.1.0:
     resolution: {integrity: sha512-mNcltoe1R8o7STTegSOHdnJNN7s5EUvhoS7ShnTHDyOSd+8H+UdWODq6qSv67PjC8Zc5JRT8+oLAMCr0SIXw7g==}
     engines: {node: ^16 || ^18 || >= 20}
+
+  node-addon-api@7.1.1:
+    resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
 
   node-addon-api@8.3.0:
     resolution: {integrity: sha512-8VOpLHFrOQlAH+qA0ZzuGRlALRA6/LVh8QJldbrC4DY0hXoMP0l4Acq8TzFC018HztWiRqyCEj2aTWY2UvnJUg==}
@@ -18554,14 +18554,6 @@ packages:
 
   python-struct@1.1.3:
     resolution: {integrity: sha512-UsI/mNvk25jRpGKYI38Nfbv84z48oiIWwG67DLVvjRhy8B/0aIK+5Ju5WOHgw/o9rnEmbAS00v4rgKFQeC332Q==}
-
-  q@1.5.1:
-    resolution: {integrity: sha512-kV/CThkXo6xyFEZUugw/+pIOywXcDbFYgSct5cT3gqlbkBE1SJdwy6UQoZvodiWF/ckQLZyDE/Bu1M6gVu5lVw==}
-    engines: {node: '>=0.6.0', teleport: '>=0.2.0'}
-    deprecated: |-
-      You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
-
-      (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   q@2.0.3:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
@@ -33662,7 +33654,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  ibm_db@3.3.5:
+  ibm_db@4.0.1:
     dependencies:
       adm-zip: 0.5.16
       axios: 1.16.1(debug@4.4.3)
@@ -33670,8 +33662,7 @@ snapshots:
       bindings: 1.5.0
       fs-extra: 11.3.5
       lodash: 4.18.1
-      nan: 2.27.0
-      q: 1.5.1
+      node-addon-api: 7.1.1
       targz: 1.0.1
     transitivePeerDependencies:
       - debug
@@ -36296,8 +36287,6 @@ snapshots:
   nan@2.20.0:
     optional: true
 
-  nan@2.27.0: {}
-
   nanoclone@0.2.1: {}
 
   nanoid@3.3.11: {}
@@ -36368,6 +36357,8 @@ snapshots:
     optional: true
 
   node-addon-api@7.1.0: {}
+
+  node-addon-api@7.1.1: {}
 
   node-addon-api@8.3.0: {}
 
@@ -37737,8 +37728,6 @@ snapshots:
   python-struct@1.1.3:
     dependencies:
       long: 4.0.0
-
-  q@1.5.1: {}
 
   q@2.0.3:
     dependencies:
