@@ -749,4 +749,42 @@ describe('updateParentExecutionWithChildResults', () => {
 		expect(entry.data).toEqual({ main: [[{ json: { out: 2 } }]] });
 		expect(entry.metadata?.resumeError).toBeUndefined();
 	});
+
+	// In "run once for each item" mode multiple children update the same waiting
+	// parent. Contract: if any child errored before the parent resumed, the parent
+	// node fails — a later successful sibling must not mask the error.
+	it.each(['error-then-success', 'success-then-error'] as const)(
+		'preserves the child error on the parent when children complete in order %s',
+		async (order) => {
+			// In-memory persistence: deep-clone on read so the second call can only see
+			// the first call's write through the persisted blob, not via object aliasing
+			// (the helper mutates the stack entry it read in place).
+			let stored = waitingParent();
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockImplementation(async () =>
+				structuredClone(stored),
+			);
+			executionPersistence.updateExistingExecution.mockImplementation(async (_id, patch) => {
+				stored = { ...stored, ...patch } as IExecutionResponse;
+				return true;
+			});
+
+			const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+			const errorChild = childRun('error', 'Stop and Error', { error }, error);
+			const successChild = childRun('success', 'Done', {
+				data: { main: [[{ json: { out: 2 } }]] },
+			});
+			const children =
+				order === 'error-then-success' ? [errorChild, successChild] : [successChild, errorChild];
+
+			for (const child of children) {
+				await updateParentExecutionWithChildResults(PARENT_ID, child);
+			}
+
+			const entry = stored.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
+			expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+			expect(entry.data).toEqual({ main: [[{ json: { out: 2 } }]] });
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(2);
+		},
+	);
 });
