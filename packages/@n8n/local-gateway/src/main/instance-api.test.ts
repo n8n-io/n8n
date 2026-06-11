@@ -236,4 +236,13 @@ describe('InstanceApi', () => {
 			expect(new InstanceApi(makeOAuth({ instanceUrl: null })).workflowUrl('wf-1')).toBeNull();
 		});
 	});
+
+	describe('workflowSetupUrl', () => {
+		it('builds the editor url with the setup panel pre-opened, or null when signed out', () => {
+			expect(new InstanceApi(makeOAuth()).workflowSetupUrl('wf-1')).toBe(
+				'https://n.example/workflow/wf-1?action=openSetup',
+			);
+			expect(new InstanceApi(makeOAuth({ instanceUrl: null })).workflowSetupUrl('wf-1')).toBeNull();
+		});
+	});
 });

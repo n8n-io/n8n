@@ -148,8 +148,8 @@ export interface ElectronApi {
 	) => Promise<DesktopAssistantApplyEditsResponse>;
 	/** Archive the task's workflow (soft delete — it drops out of the task list). */
 	deleteTask: (workflowId: string) => Promise<{ ok: boolean; error?: string }>;
-	/** Open the instance's credentials page in the browser (Connect CTA). */
-	openCredentials: () => Promise<void>;
+	/** Open the task's workflow with the Set up panel pre-opened in the browser (Connect CTA). */
+	openWorkflowSetup: (workflowId: string) => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
 	openExecution: (workflowId: string, executionId: string) => Promise<void>;
 	getTimeSaved: () => Promise<DesktopAssistantTimeSaved>;

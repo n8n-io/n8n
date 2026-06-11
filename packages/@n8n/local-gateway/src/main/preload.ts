@@ -93,8 +93,8 @@ const electronApi: ElectronApi = {
 			error?: string;
 		}>),
 
-	openCredentials: async (): Promise<void> => {
-		await ipcRenderer.invoke('tasks:openCredentials');
+	openWorkflowSetup: async (workflowId: string): Promise<void> => {
+		await ipcRenderer.invoke('tasks:openWorkflowSetup', workflowId);
 	},
 
 	getHistory: async (
