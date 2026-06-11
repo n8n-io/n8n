@@ -111,7 +111,7 @@ const connectDisabled = computed(
 			</N8nButton>
 			<N8nButton
 				v-if="showConnectButton"
-				variant="solid"
+				variant="outline"
 				:disabled="connectDisabled"
 				:loading="loading || publishing"
 				size="large"
@@ -140,6 +140,7 @@ const connectDisabled = computed(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	width: 100%;
 }
 
 .label {

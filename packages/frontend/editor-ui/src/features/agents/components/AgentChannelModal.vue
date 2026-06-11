@@ -13,7 +13,7 @@ import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
-import type { AgentIntegrationSettings } from '@n8n/api-types';
+import type { AgentIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -216,7 +216,7 @@ async function saveChannelConfig() {
 	closeModal();
 }
 
-async function fetchCredentials() {
+async function fetchCredentials(integrations: ChatIntegrationDescriptor[] = catalog.value ?? []) {
 	credentialsLoading.value = true;
 	try {
 		credentialsStore.setCredentials([]);
@@ -224,7 +224,7 @@ async function fetchCredentials() {
 			projectId: props.projectId,
 		});
 
-		for (const integration of catalog.value ?? []) {
+		for (const integration of integrations) {
 			credentialsByType.value[integration.type] = allCredentials
 				.filter((credential) => integration.credentialTypes.includes(credential.type))
 				.map((credential) => ({
@@ -235,7 +235,7 @@ async function fetchCredentials() {
 				}));
 		}
 	} catch {
-		for (const integration of catalog.value ?? []) {
+		for (const integration of integrations) {
 			credentialsByType.value[integration.type] = [];
 		}
 	} finally {
@@ -370,9 +370,15 @@ async function disconnectSlackApp() {
 async function loadChannelState() {
 	const integrations = await ensureLoaded(props.projectId).catch(() => catalog.value ?? []);
 	await Promise.all([
-		fetchStatus((integrations ?? []).map((integration) => integration.type)),
-		fetchCredentials(),
+		fetchStatus(integrations.map((integration) => integration.type)),
+		fetchCredentials(integrations),
 	]);
+
+	for (const [channelType, credentialId] of Object.entries(connectedCredentials.value)) {
+		if (!selectedCredentials.value[channelType]) {
+			selectedCredentials.value[channelType] = credentialId;
+		}
+	}
 }
 
 const credentialModalOpen = computed(
@@ -403,6 +409,7 @@ watch(
 			currentView.value = props.view;
 		}
 	},
+	{ immediate: true },
 );
 </script>
 
@@ -540,11 +547,24 @@ watch(
 				<div v-else-if="isEditMode" :key="`edit-${currentView}`" :class="$style.editView">
 					<AgentChannelSlackSetup
 						v-if="currentIntegration?.type === 'slack'"
+						ref="channelSetupRef"
+						v-model="selectedCredentials.slack"
 						mode="edit"
 						:connected="isConnected('slack')"
 						:is-published="isPublished"
 						:disabled="isLoading('slack')"
 						:disconnect-slack-app="disconnectSlackApp"
+						:integration="currentIntegration"
+						:credentials="credentialsByType.slack ?? []"
+						:credential-permissions="credentialPermissions"
+						:connected-credential-id="connectedCredentials.slack ?? ''"
+						:credentials-loading="credentialsLoading"
+						:loading="isLoading('slack')"
+						:error-message="hasError('slack') ? errorMessages.slack : ''"
+						:error-is-conflict="errorIsConflict.slack"
+						@create="createCredential"
+						@edit="editCredential"
+						@connect="saveChannelConfig"
 					/>
 					<AgentChannelLinearSetup
 						v-else-if="currentIntegration?.type === 'linear'"

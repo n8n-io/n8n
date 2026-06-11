@@ -33,6 +33,7 @@ const props = withDefaults(
 		integration?: ChatIntegrationDescriptor;
 		credentials?: AgentCredentialOption[];
 		credentialPermissions?: PermissionsRecord['credential'];
+		connectedCredentialId?: string;
 		credentialsLoading?: boolean;
 		loading?: boolean;
 		errorMessage?: string;
@@ -50,6 +51,7 @@ const props = withDefaults(
 		integration: undefined,
 		credentials: () => [],
 		credentialPermissions: undefined,
+		connectedCredentialId: '',
 		credentialsLoading: false,
 		loading: false,
 		errorMessage: '',
@@ -114,6 +116,10 @@ const appConfigurationTokenVisibilityLabel = computed(() =>
 			? 'agents.channels.slack.setup.copyAccessToken.hideToken'
 			: 'agents.channels.slack.setup.copyAccessToken.showToken',
 	),
+);
+
+const showEditConnectButton = computed(
+	() => credentialId.value.length > 0 && credentialId.value !== props.connectedCredentialId,
 );
 
 function isInvalidSlackTokenError(error: unknown) {
@@ -195,6 +201,25 @@ defineExpose({ credentialId, validationError: null });
 <template>
 	<div :class="$style.slackSetup">
 		<div v-if="mode === 'edit'" :class="$style.editTokenContainer">
+			<AgentIntegrationCredentialConnection
+				v-if="integration && credentialPermissions"
+				v-model="credentialId"
+				:integration-type="integration.type"
+				:integration-label="integration.label"
+				:credentials="credentials"
+				:credential-permissions="credentialPermissions"
+				:credentials-loading="credentialsLoading"
+				:disabled="disabled || loading"
+				:connected="false"
+				:show-connect-button="showEditConnectButton"
+				:show-disconnect-button="false"
+				:loading="loading"
+				:error-message="errorMessage"
+				:error-is-conflict="errorIsConflict"
+				@create="emit('create')"
+				@edit="emit('edit')"
+				@connect="emit('connect')"
+			/>
 			<N8nButton
 				variant="destructive"
 				size="medium"
@@ -392,7 +417,6 @@ defineExpose({ credentialId, validationError: null });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	overflow: hidden;
 }
 
 .stepContent {
@@ -421,6 +445,7 @@ defineExpose({ credentialId, validationError: null });
 .tokenInputContainer,
 .editTokenContainer {
 	display: flex;
+	width: 100%;
 	flex-direction: column;
 	width: 100%;
 }
