@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/helpers/utils.ts
+  s_37e451fff42af7::t_620d9bcf16e80d 10-20
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/listSearch.ts
+  s_37e451fff42af7::t_2f163998190143 8,16,21-25,41,50-58
+  s_37e451fff42af7::t_6a335a312722c7 79-111
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/getAll.operation.ts
+  s_37e451fff42af7::t_58f55bbd29f474 11-12,15
+  s_37e451fff42af7::t_3d615d100979af 76-77
+  s_37e451fff42af7::t_5aaa8958e3e7ac 88,97
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/methods/listSearch.test.ts
+  s_37e451fff42af7::t_a228db1bb4d792 1-44,46-61,63-95
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/common.descriptions.ts
+  s_37e451fff42af7::t_db15587b359de9 8-10
+  s_37e451fff42af7::t_3d662c380949ac 3-7,11-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "5943909f5cc486a09380ab6f87f3bc4bcc19ab32",
+  "prompts": {},
+  "sessions": {
+    "s_37e451fff42af7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9285862-7af0-4e1d-89ba-8bd58c2f345d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
