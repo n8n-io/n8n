@@ -238,12 +238,14 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 			// components whose push is still triggered stay live.
 			const settledOffsets = getSettledPushOffsets(movedNodeIds);
 			for (const component of layoutComponents.value) {
-				if (component.nodeIds.some((nodeId) => movedNodeIds.has(nodeId))) continue;
 				const offset = getOffsetForComponent(componentOffsets.value, component.id);
 				if (offset.x === 0 && offset.y === 0) continue;
 				const settledOffset = getOffsetForComponent(settledOffsets, component.id);
 				if (settledOffset.x === offset.x && settledOffset.y === offset.y) continue;
 				for (const nodeId of component.nodeIds) {
+					// Moved nodes already carry their final visual position in `events`;
+					// baking them from the not-yet-updated store would revert the drag.
+					if (movedNodeIds.has(nodeId)) continue;
 					const position = getNodePositionById(nodeId);
 					if (!position) continue;
 					bakedMoves.push({

@@ -317,6 +317,57 @@ describe('useCanvasNodeGroupView', () => {
 			expect(view.getVisualOffsetForNode('b')).toEqual({ x: 0, y: 0 });
 		});
 
+		it('bakes the unmoved members of a pushed group when one member is manually moved', () => {
+			const { view } = setup([
+				{ id: 'g1', name: 'Upper', nodeIds: ['a'] },
+				{ id: 'g2', name: 'Lower', nodeIds: ['b', 'c'] },
+			]);
+
+			view.syncLayoutComponents([
+				{
+					id: 'group:g1',
+					kind: 'group',
+					groupId: 'g1',
+					nodeIds: ['a'],
+					rect: { x: 0, y: 0, width: 400, height: 40 },
+					collapsedRect: { x: 0, y: 0, width: 400, height: 40 },
+					expandedRect: { x: 0, y: 0, width: 600, height: 240 },
+				},
+				{
+					id: 'group:g2',
+					kind: 'group',
+					groupId: 'g2',
+					nodeIds: ['b', 'c'],
+					rect: { x: 0, y: 80, width: 400, height: 40 },
+					collapsedRect: { x: 0, y: 80, width: 400, height: 40 },
+					expandedRect: { x: 0, y: 80, width: 600, height: 240 },
+				},
+			]);
+			view.toggleCollapsed('g1');
+			view.toggleCollapsed('g2');
+
+			const offset = view.getVisualOffsetForComponent('group:g2');
+			expect(offset.y).toBeGreaterThan(0);
+
+			const events = view.settleManualNodePositions(
+				[{ id: 'b', position: { x: 50, y: 500 } }],
+				(nodeId) => {
+					if (nodeId === 'b') return [0, 120];
+					if (nodeId === 'c') return [150, 120];
+					return undefined;
+				},
+			);
+
+			// The moved node keeps its drop position; its unmoved sibling is baked
+			// at its current visual position instead of snapping back un-pushed.
+			expect(events).toEqual([
+				{ id: 'b', position: { x: 50, y: 500 } },
+				{ id: 'c', position: { x: 150 + offset.x, y: 120 + offset.y } },
+			]);
+			expect(view.getVisualOffsetForNode('b')).toEqual({ x: 0, y: 0 });
+			expect(view.getVisualOffsetForNode('c')).toEqual({ x: 0, y: 0 });
+		});
+
 		it('recomputes offsets away on collapse', () => {
 			const { view } = setup([{ id: 'g1', name: 'A', nodeIds: ['a'] }]);
 			syncLayout(view);
