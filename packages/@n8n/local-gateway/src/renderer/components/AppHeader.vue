@@ -1,13 +1,27 @@
 <script setup lang="ts">
 import { N8nIcon, N8nLogo } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+
+import { openChat } from '../chat/chat-overlay';
 
 import type { AuthState } from '../../shared/types';
 
 // The indicator mirrors OAuth state for now; it will reflect the gateway
 // connection once that is wired up.
-defineProps<{ state: AuthState }>();
+defineProps<{
+	state: AuthState;
+	/** Chat overlay open — the brand is replaced by a back button + the thread title. */
+	chatOpen?: boolean;
+	chatTitle?: string | null;
+}>();
 
-const emit = defineEmits<{ openSettings: [] }>();
+const emit = defineEmits<{ openSettings: []; back: [] }>();
+
+const i18n = useI18n();
+
+// TEMPORARY: invisible button next to the brand opens the chat overlay for manual
+// testing until the composer flow calls openChat. Remove together with the button.
+const DEV_CHAT_THREAD_ID = '4d49ba31-32c9-4ccb-8606-626e9087b417';
 
 const STATUS_LABEL: Record<AuthState, string> = {
 	signedIn: 'Connected',
@@ -27,9 +41,31 @@ const DOT_CLASS: Record<AuthState, string> = {
 
 <template>
 	<header :class="$style.header">
-		<div :class="$style.brand">
+		<div v-if="chatOpen" :class="$style.brand">
+			<button
+				type="button"
+				:class="$style.iconBtn"
+				:aria-label="i18n.baseText('desktopAssistant.chat.back')"
+				data-testid="header-chat-back"
+				@click="emit('back')"
+			>
+				<N8nIcon icon="arrow-left" :size="16" aria-hidden="true" />
+			</button>
+			<span :class="[$style.brandLabel, $style.chatTitle]">
+				{{ chatTitle || i18n.baseText('desktopAssistant.chat.title') }}
+			</span>
+		</div>
+		<div v-else :class="$style.brand">
 			<N8nLogo size="small" :collapsed="true" />
 			<span :class="$style.brandLabel">Assistant</span>
+			<!-- TEMPORARY chat-overlay test trigger: button-sized, but no icon or border. -->
+			<button
+				type="button"
+				:class="$style.iconBtn"
+				aria-label="Open chat (dev)"
+				data-testid="header-dev-chat"
+				@click="openChat(DEV_CHAT_THREAD_ID)"
+			/>
 		</div>
 
 		<div :class="$style.actions">
@@ -72,6 +108,8 @@ const DOT_CLASS: Record<AuthState, string> = {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	/* Lets a long chat title shrink/ellipsize instead of pushing the status pill out. */
+	min-width: 0;
 	font-weight: 600;
 	font-size: 14px;
 	color: var(--da-text);
@@ -81,6 +119,12 @@ const DOT_CLASS: Record<AuthState, string> = {
 	font-weight: 600;
 	font-size: 14px;
 	color: var(--da-text);
+}
+
+.chatTitle {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .actions {

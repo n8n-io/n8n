@@ -6,7 +6,7 @@ import type {
 
 type ThreadBridge = Pick<
 	ElectronApi,
-	'getThread' | 'listenToThread' | 'unlistenToThread' | 'onThreadEvent'
+	'getThread' | 'postThreadMessage' | 'listenToThread' | 'unlistenToThread' | 'onThreadEvent'
 >;
 
 export type ThreadListener = (event: InstanceAiEvent) => void;
@@ -39,6 +39,11 @@ export class ThreadClient {
 		options?: { refresh?: boolean },
 	): Promise<InstanceAiRichMessagesResponse> {
 		return await this.bridge.getThread(threadId, options);
+	}
+
+	/** Send a user message to the thread; the assistant's reply streams to the thread's listeners. */
+	async post(threadId: string, message: string): Promise<{ runId: string }> {
+		return await this.bridge.postThreadMessage(threadId, message);
 	}
 
 	/**

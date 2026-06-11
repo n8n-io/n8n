@@ -62,6 +62,15 @@ export {
 	type DesktopAssistantRecommendation,
 	type DesktopAssistantRecommendationsResponse,
 } from './desktop-assistant/desktop-assistant-recommendations-request.dto';
+export type {
+	DesktopAssistantDescriptionPart,
+	DesktopAssistantTaskDetailResponse,
+} from './desktop-assistant/desktop-assistant-task-detail-response.dto';
+export {
+	DesktopAssistantApplyEditsRequestDto,
+	type DesktopAssistantApplyEditsRequest,
+	type DesktopAssistantApplyEditsResponse,
+} from './desktop-assistant/desktop-assistant-apply-edits-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
 export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';

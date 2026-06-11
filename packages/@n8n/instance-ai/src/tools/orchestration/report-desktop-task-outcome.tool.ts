@@ -17,11 +17,9 @@ const inputSchema = sanitizeInputSchema(
 		title: z
 			.string()
 			.describe(
-				'Short human label for the task, 3-8 words, suitable as a workflow name. Plain text — no emoji',
+				'Short human label naming the task as a repeatable action, 3-8 words, suitable as a workflow name. Present tense ("Sort desktop screenshots"), never a past-tense report of the run ("Sorted 12 screenshots"). Plain text — no emoji',
 			),
-		summary: z
-			.string()
-			.describe('One sentence describing what was done (or why nothing was done)'),
+		summary: z.string().describe('One sentence describing what was done (or why nothing was done)'),
 		icon: z
 			.string()
 			.optional()

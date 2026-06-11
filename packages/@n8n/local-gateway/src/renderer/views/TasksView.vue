@@ -9,11 +9,19 @@ import TaskCard from '../components/TaskCard.vue';
 
 import * as tasksApi from '../assistant/tasks-api';
 import { usePendingTasks } from '../assistant/use-pending-tasks';
+import type { TaskCardVariant } from '../assistant/use-assistant-screen';
+import { useAssistantScreen } from '../assistant/use-assistant-screen';
 import { useRecommendations } from '../assistant/use-recommendations';
-import type { DesktopAssistantTasksResponse } from '../../shared/types';
+import { filterSections, hasAnyMatch } from '../assistant/use-task-search';
+import type {
+	DesktopAssistantTaskCard,
+	DesktopAssistantTasksResponse,
+} from '../../shared/types';
 
 const i18n = useI18n();
 const pendingTasks = usePendingTasks();
+
+const props = withDefaults(defineProps<{ query?: string }>(), { query: '' });
 
 const emit = defineEmits<{ executed: []; 'run-prompt': [prompt: string] }>();
 
@@ -48,6 +56,11 @@ const sections = computed(() => ({
 
 const hasPending = computed(() => pendingTasks.entries.length > 0);
 
+/** Client-side filter over the loaded tasks; active only when the field has text. */
+const hasQuery = computed(() => props.query.trim().length > 0);
+const filteredSections = computed(() => filterSections(sections.value, props.query));
+const hasMatches = computed(() => hasAnyMatch(filteredSections.value));
+
 // Pending (being-set-up) entries count as content, so they suppress the empty state.
 const isEmpty = computed(
 	() =>
@@ -77,8 +90,12 @@ async function load() {
 	}
 }
 
-function openWorkflow(workflowId: string) {
-	void tasksApi.openWorkflow(workflowId);
+const { goTo } = useAssistantScreen();
+
+/** Clicking a card opens the in-app detail view (the browser handoff lives
+ *  there, behind "View in n8n"). */
+function openDetail(card: DesktopAssistantTaskCard, variant: TaskCardVariant) {
+	goTo({ name: 'task-detail', card, variant });
 }
 
 async function runTask(workflowId: string) {
@@ -179,48 +196,59 @@ onBeforeUnmount(() => {
 		</div>
 
 		<template v-else-if="tasks">
-			<section v-if="sections.actionNeeded.length" :class="$style.section">
+			<section v-if="filteredSections.actionNeeded.length" :class="$style.section">
 				<TaskCard
-					v-for="card in sections.actionNeeded"
+					v-for="card in filteredSections.actionNeeded"
 					:key="card.workflowId"
 					:card="card"
 					variant="actionNeeded"
-					@open="openWorkflow"
+					@open="openDetail(card, 'actionNeeded')"
 					@run="runTask"
 				/>
 			</section>
 
-			<section v-if="sections.upcoming.length" :class="$style.section">
+			<section v-if="filteredSections.upcoming.length" :class="$style.section">
 				<N8nText :class="$style.sectionTitle">{{
 					i18n.baseText('desktopAssistant.sections.upcoming')
 				}}</N8nText>
 				<TaskCard
-					v-for="card in sections.upcoming"
+					v-for="card in filteredSections.upcoming"
 					:key="card.workflowId"
 					:card="card"
 					variant="upcoming"
-					@open="openWorkflow"
+					@open="openDetail(card, 'upcoming')"
 					@run="runTask"
 				/>
 			</section>
 
-			<section v-if="sections.readyToRun.length" :class="$style.section">
+			<section v-if="filteredSections.readyToRun.length" :class="$style.section">
 				<N8nText :class="$style.sectionTitle">{{
 					i18n.baseText('desktopAssistant.sections.readyToRun')
 				}}</N8nText>
 				<TaskCard
-					v-for="card in sections.readyToRun"
+					v-for="card in filteredSections.readyToRun"
 					:key="card.workflowId"
 					:card="card"
 					variant="readyToRun"
-					@open="openWorkflow"
+					@open="openDetail(card, 'readyToRun')"
 					@run="runTask"
 				/>
 			</section>
 
+			<!-- Searching with no hits: a dedicated empty state, no recommendations. -->
+			<div v-if="hasQuery && !hasMatches" :class="$style.state" role="status" aria-live="polite">
+				<N8nText color="text-light" size="small">{{
+					i18n.baseText('desktopAssistant.search.noMatches', { interpolate: { query } })
+				}}</N8nText>
+			</div>
+
 			<!-- Recommendations: the whole content when the list is empty, or a
-				 smaller section below the tasks when there are some. -->
-			<section v-if="showRecommendations" :class="[$style.section, $style.recommendations]">
+				 smaller section below the tasks when there are some. Hidden while
+				 searching — they're an empty-state aid, not search results. -->
+			<section
+				v-else-if="!hasQuery && showRecommendations"
+				:class="[$style.section, $style.recommendations]"
+			>
 				<N8nText :class="$style.sectionTitle">{{
 					i18n.baseText('desktopAssistant.sections.recommended')
 				}}</N8nText>

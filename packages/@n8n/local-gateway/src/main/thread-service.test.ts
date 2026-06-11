@@ -47,12 +47,13 @@ function makeService(
 ) {
 	const emit = vi.fn();
 	const getThreadMessages = opts.getThreadMessages ?? vi.fn();
+	const sendChatMessage = vi.fn().mockResolvedValue({ runId: 'r1' });
 	const service = new ThreadService({
 		oauthFlow: opts.oauthFlow ?? makeOAuth(),
-		instanceApi: { getThreadMessages } as unknown as InstanceApi,
+		instanceApi: { getThreadMessages, sendChatMessage } as unknown as InstanceApi,
 		emit,
 	});
-	return { service, emit, getThreadMessages };
+	return { service, emit, getThreadMessages, sendChatMessage };
 }
 
 describe('ThreadService', () => {
@@ -285,6 +286,30 @@ describe('ThreadService', () => {
 
 			await expect(service.getMessages('t1')).rejects.toThrow('boom');
 			await expect(service.getMessages('t1')).resolves.toEqual(snapshot);
+		});
+	});
+
+	describe('postMessage', () => {
+		const snapshot = { threadId: 't1', messages: [], nextEventId: 7 };
+
+		it('delegates to the instance api and returns the run id', async () => {
+			const { service, sendChatMessage } = makeService();
+
+			const result = await service.postMessage('t1', 'hi');
+
+			expect(sendChatMessage).toHaveBeenCalledWith('t1', 'hi');
+			expect(result).toEqual({ runId: 'r1' });
+		});
+
+		it('invalidates the cached snapshot — the new turn makes it stale', async () => {
+			const getThreadMessages = vi.fn().mockResolvedValue(snapshot);
+			const { service } = makeService({ getThreadMessages });
+			await service.getMessages('t1');
+
+			await service.postMessage('t1', 'hi');
+			await service.getMessages('t1');
+
+			expect(getThreadMessages).toHaveBeenCalledTimes(2);
 		});
 	});
 
