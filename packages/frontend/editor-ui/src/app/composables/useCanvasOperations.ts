@@ -3629,5 +3629,6 @@ export function useCanvasOperations() {
 		fitView,
 		openWorkflowTemplate,
 		openWorkflowTemplateFromJSON,
+		openSetupPanelIfEnabled,
 	};
 }

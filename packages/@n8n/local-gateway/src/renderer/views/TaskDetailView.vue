@@ -127,7 +127,7 @@ function viewInN8n() {
 }
 
 function connect() {
-	void window.electronAPI.openCredentials();
+	void window.electronAPI.openWorkflowSetup(props.card.workflowId);
 }
 </script>
 

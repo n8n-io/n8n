@@ -264,10 +264,10 @@ export class InstanceApi {
 		return `${instanceUrl}/workflow/${encodeURIComponent(workflowId)}/executions/${encodeURIComponent(executionId)}`;
 	}
 
-	/** The instance's credentials overview page, or `null` when signed out. */
-	credentialsUrl(): string | null {
-		const { instanceUrl } = this.oauthFlow.getStatus();
-		return instanceUrl ? `${instanceUrl}/home/credentials` : null;
+	/** Editor URL for a workflow with the Set up panel pre-opened, or `null` when signed out. */
+	workflowSetupUrl(workflowId: string): string | null {
+		const url = this.workflowUrl(workflowId);
+		return url ? `${url}?action=openSetup` : null;
 	}
 
 	/** Every n8n REST endpoint wraps its payload in a `data` key; peel it off. */

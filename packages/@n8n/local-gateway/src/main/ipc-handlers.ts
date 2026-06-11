@@ -240,9 +240,9 @@ export function registerIpcHandlers({
 		},
 	);
 
-	ipcMain.handle('tasks:openCredentials', async (): Promise<void> => {
-		logger.debug('IPC tasks:openCredentials');
-		const url = instanceApi.credentialsUrl();
+	ipcMain.handle('tasks:openWorkflowSetup', async (_event, workflowId: string): Promise<void> => {
+		logger.debug('IPC tasks:openWorkflowSetup', { workflowId });
+		const url = instanceApi.workflowSetupUrl(workflowId);
 		if (url) await openExternal(url);
 	});
 
