@@ -174,6 +174,10 @@ function dismissDone() {
 	doneCard.value = null;
 	returnFocusToInput();
 }
+
+// Exposed so sibling surfaces (e.g. an empty-state recommendation card) can fire
+// a prompt through the same path as typing or clicking a suggestion chip.
+defineExpose({ submit });
 </script>
 
 <template>

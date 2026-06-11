@@ -1,15 +1,31 @@
 <script setup lang="ts">
 import { N8nButton, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
+import RecommendationCard from '../components/RecommendationCard.vue';
 import TaskCard from '../components/TaskCard.vue';
 
+import { useRecommendations } from '../assistant/use-recommendations';
 import type { DesktopAssistantTasksResponse } from '../../shared/types';
 
 const i18n = useI18n();
 
-const emit = defineEmits<{ executed: [] }>();
+const emit = defineEmits<{ executed: []; 'run-prompt': [prompt: string] }>();
+
+// Empty-state recommendations: only generated once we know the task list is
+// empty, regenerated as the selected context changes (see use-recommendations).
+const {
+	recommendations,
+	loading: recsLoading,
+	start: startRecommendations,
+	stop: stopRecommendations,
+} = useRecommendations();
+
+// True once we should show recommendations instead of the bare empty text:
+// either they're being generated or we have some to show. On error/empty we
+// fall back to the plain "No tasks yet" text.
+const showRecommendations = computed(() => recsLoading.value || recommendations.value.length > 0);
 
 const tasks = ref<DesktopAssistantTasksResponse | null>(null);
 const loading = ref(true);
@@ -59,7 +75,17 @@ async function runTask(workflowId: string) {
 	await load();
 }
 
-onMounted(load);
+/** A recommendation card was clicked — fire it through the composer's one-shot path. */
+function runRecommendation(prompt: string) {
+	emit('run-prompt', prompt);
+}
+
+onMounted(async () => {
+	await load();
+	// Only spend an AI call on recommendations when the list is actually empty.
+	if (isEmpty.value) void startRecommendations();
+});
+onBeforeUnmount(stopRecommendations);
 </script>
 
 <template>
@@ -80,11 +106,44 @@ onMounted(load);
 			}}</N8nButton>
 		</div>
 
-		<div v-else-if="isEmpty" :class="$style.state">
-			<N8nText color="text-light" size="small">{{
-				i18n.baseText('desktopAssistant.tasks.empty')
-			}}</N8nText>
-		</div>
+		<template v-else-if="isEmpty">
+			<section v-if="showRecommendations" :class="$style.section">
+				<N8nText :class="$style.sectionTitle">{{
+					i18n.baseText('desktopAssistant.sections.recommended')
+				}}</N8nText>
+
+				<template v-if="recsLoading">
+					<div
+						v-for="n in 3"
+						:key="n"
+						:class="$style.skeletonCard"
+						role="status"
+						aria-live="polite"
+						:aria-label="i18n.baseText('desktopAssistant.tasks.loading')"
+					>
+						<span :class="$style.skeletonTile" aria-hidden="true" />
+						<span :class="$style.skeletonBody" aria-hidden="true">
+							<span :class="$style.skeletonLine" />
+							<span :class="[$style.skeletonLine, $style.skeletonLineShort]" />
+						</span>
+					</div>
+				</template>
+
+				<RecommendationCard
+					v-for="(rec, index) in recommendations"
+					v-else
+					:key="index"
+					:recommendation="rec"
+					@run="runRecommendation"
+				/>
+			</section>
+
+			<div v-else :class="$style.state">
+				<N8nText color="text-light" size="small">{{
+					i18n.baseText('desktopAssistant.tasks.empty')
+				}}</N8nText>
+			</div>
+		</template>
 
 		<template v-else-if="tasks">
 			<section v-if="sections.actionNeeded.length" :class="$style.section">
@@ -159,5 +218,56 @@ onMounted(load);
 	justify-content: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xl) var(--spacing--md);
+}
+
+/* Skeleton placeholder while recommendations generate — same footprint as a
+   RecommendationCard so the list doesn't jump when real cards arrive. */
+.skeletonCard {
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	width: 100%;
+	padding: 10px var(--spacing--2xs);
+	border: 1px dashed var(--da-border);
+	border-radius: var(--radius--xs);
+	animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+.skeletonTile {
+	flex-shrink: 0;
+	width: 34px;
+	height: 34px;
+	border-radius: var(--radius--xs);
+	background: var(--da-surface-2);
+}
+
+.skeletonBody {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.skeletonLine {
+	width: 70%;
+	height: 9px;
+	border-radius: var(--radius--full);
+	background: var(--da-surface-2);
+}
+
+.skeletonLineShort {
+	width: 45%;
+}
+
+@keyframes skeletonPulse {
+	0%,
+	100% {
+		opacity: 0.45;
+	}
+
+	50% {
+		opacity: 0.7;
+	}
 }
 </style>

@@ -12,6 +12,14 @@ type Tab = 'tasks' | 'history';
 const i18n = useI18n();
 const activeTab = ref<Tab>('tasks');
 
+// The composer owns the prompt → backend flow; a clicked recommendation routes
+// its prompt through it so the feedback (thinking → doing → done) is identical
+// to typing or tapping a suggestion chip.
+const composer = ref<InstanceType<typeof TaskComposer> | null>(null);
+function runPrompt(prompt: string) {
+	composer.value?.submit(prompt);
+}
+
 const TABS: Array<{
 	id: Tab;
 	labelKey: 'desktopAssistant.tabs.tasks' | 'desktopAssistant.tabs.history';
@@ -106,12 +114,16 @@ onMounted(() => {
 			:aria-labelledby="`da-tab-${activeTab}`"
 			tabindex="0"
 		>
-			<TasksView v-if="activeTab === 'tasks'" @executed="activeTab = 'history'" />
+			<TasksView
+				v-if="activeTab === 'tasks'"
+				@executed="activeTab = 'history'"
+				@run-prompt="runPrompt"
+			/>
 			<HistoryView v-else />
 		</div>
 
 		<!-- The composer is pinned below the scrollable list, only on the Tasks tab. -->
-		<TaskComposer v-if="activeTab === 'tasks'" />
+		<TaskComposer v-if="activeTab === 'tasks'" ref="composer" />
 	</main>
 </template>
 
