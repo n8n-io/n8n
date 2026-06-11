@@ -1,24 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowsConfig } from '@n8n/config';
-import { WorkflowPublishedVersion } from '@n8n/db';
-import type {
-	WorkflowEntity,
-	WorkflowHistory,
-	WorkflowPublicationOutbox,
-	WorkflowPublicationOutboxRepository,
-	WorkflowPublishedVersion as WorkflowPublishedVersionEntity,
-	WorkflowPublishedVersionRepository,
-	WorkflowHistoryRepository,
-	WorkflowRepository,
-} from '@n8n/db';
-import type { EntityManager } from '@n8n/typeorm';
+import type { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
 
-import type { ActivationErrorsService } from '@/activation-errors.service';
+import type { PublicationResult } from '@/workflows/publication/publication-result';
+import type { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import type { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
-import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 
 describe('WorkflowPublicationOutboxConsumer', () => {
 	const logger = mock<Logger>();
@@ -26,11 +15,8 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 	const errorReporter = mock<ErrorReporter>();
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
-	const workflowRepository = mock<WorkflowRepository>();
-	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
-	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
-	const workflowTriggerActivator = mock<WorkflowTriggerActivator>();
-	const activationErrorsService = mock<ActivationErrorsService>();
+	const applier = mock<WorkflowPublicationApplier>();
+	const reporter = mock<PublicationStatusReporter>();
 	const instanceSettings = mock<InstanceSettings>();
 
 	let consumer: WorkflowPublicationOutboxConsumer;
@@ -47,11 +33,8 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			workflowsConfig,
 			errorReporter,
 			outboxRepository,
-			workflowRepository,
-			workflowHistoryRepository,
-			workflowPublishedVersionRepository,
-			workflowTriggerActivator,
-			activationErrorsService,
+			applier,
+			reporter,
 			instanceSettings,
 		);
 	}
@@ -71,82 +54,12 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		} as WorkflowPublicationOutbox;
 	}
 
-	function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
-		return {
-			id: 'wf-1',
-			active: true,
-			activeVersionId: 'v-2',
-			...overrides,
-		} as WorkflowEntity;
-	}
-
-	function makeVersion(versionId: string): WorkflowHistory {
-		return {
-			versionId,
-			workflowId: 'wf-1',
-			nodes: [],
-			connections: {},
-		} as unknown as WorkflowHistory;
-	}
-
-	function triggerNode(id: string, overrides: Partial<INode> = {}): INode {
-		return {
-			id,
-			name: id,
-			type: 'n8n-nodes-base.scheduleTrigger',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-			...overrides,
-		};
-	}
-
-	/** The `workflow_published_version` mapping read by `resolveVersions`. */
-	function makePublishedVersion(
-		publishedVersion: WorkflowHistory | null,
-	): WorkflowPublishedVersionEntity {
-		return {
-			workflowId: 'wf-1',
-			publishedVersionId: publishedVersion?.versionId ?? 'v-1',
-			publishedVersion,
-		} as unknown as WorkflowPublishedVersionEntity;
-	}
-
-	const newVersion = makeVersion('v-2');
-	const oldVersion = makeVersion('v-1');
-
-	/** Drives the trigger diff: first call returns old triggers, second returns new. */
-	function setTriggerSets(oldTriggers: INode[], newTriggers: INode[]) {
-		workflowTriggerActivator.getEnabledTriggerNodes
-			.mockReturnValueOnce(oldTriggers)
-			.mockReturnValueOnce(newTriggers);
-	}
-
-	/** Pin all tracked mock functions so jest-mock-extended Proxy returns stable instances. */
-	function setupDefaultMocks() {
-		workflowRepository.findOneBy.mockResolvedValue(makeWorkflow({ activeVersionId: 'v-1' }));
-		workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(oldVersion));
-		workflowRepository.update.mockResolvedValue({} as never);
-		workflowHistoryRepository.findOneBy.mockResolvedValue(newVersion);
-		workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([]);
-		workflowTriggerActivator.activate.mockResolvedValue(undefined);
-		workflowTriggerActivator.deactivate.mockResolvedValue(undefined);
-		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
-		outboxRepository.claimNextPendingRecord.mockResolvedValue(null);
-		outboxRepository.markCompleted.mockResolvedValue(undefined);
-		outboxRepository.markFailed.mockResolvedValue(undefined);
-		Object.defineProperty(outboxRepository, 'manager', {
-			value: mock<EntityManager>({ upsert: jest.fn() }),
-			writable: true,
-		});
-		activationErrorsService.register.mockResolvedValue(undefined);
-		activationErrorsService.deregister.mockResolvedValue(undefined);
-	}
-
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.useFakeTimers();
-		setupDefaultMocks();
+		outboxRepository.claimNextPendingRecord.mockResolvedValue(null);
+		applier.apply.mockResolvedValue({ type: 'completed' });
+		reporter.report.mockResolvedValue(undefined);
 		consumer = createConsumer();
 	});
 
@@ -221,164 +134,55 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	});
 
 	describe('processRecord', () => {
-		test('marks completed when workflow not found', async () => {
-			workflowRepository.findOneBy.mockResolvedValue(null);
+		test('applies the record then reports the result', async () => {
+			const record = makeRecord();
+			const result: PublicationResult = { type: 'completed' };
+			applier.apply.mockResolvedValue(result);
+
+			await consumer.processRecord(record);
+
+			expect(applier.apply).toHaveBeenCalledWith(record);
+			expect(reporter.report).toHaveBeenCalledWith(record, result);
+		});
+
+		test('reports a failed result when the applier throws unexpectedly', async () => {
+			applier.apply.mockRejectedValue(new Error('teardown failed'));
 
 			await consumer.processRecord(makeRecord());
 
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
-			expect(workflowTriggerActivator.getEnabledTriggerNodes).not.toHaveBeenCalled();
-			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
-			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(reporter.report).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					type: 'failed',
+					error: expect.objectContaining({ message: 'Unexpected: teardown failed' }),
+				}),
+			);
 		});
 
-		test('marks completed when workflow is no longer active', async () => {
-			workflowRepository.findOneBy.mockResolvedValue(
-				makeWorkflow({ active: false, activeVersionId: null }),
-			);
+		test('logs but swallows a reporter failure, leaving the record for retry', async () => {
+			const reportError = new Error('db write failed');
+			reporter.report.mockRejectedValue(reportError);
 
-			await consumer.processRecord(makeRecord());
+			await expect(consumer.processRecord(makeRecord())).resolves.toBeUndefined();
 
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
-			expect(outboxRepository.manager.upsert).not.toHaveBeenCalled();
-			expect(workflowTriggerActivator.getEnabledTriggerNodes).not.toHaveBeenCalled();
-			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
-			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(errorReporter.error).toHaveBeenCalledWith(reportError, { shouldBeLogged: true });
 		});
+	});
 
-		test('marks failed when the published version is not found', async () => {
-			workflowHistoryRepository.findOneBy.mockResolvedValue(null);
+	describe('poll cycle', () => {
+		test('drains all pending records through apply + report', async () => {
+			const first = makeRecord({ id: 1 });
+			const second = makeRecord({ id: 2 });
+			outboxRepository.claimNextPendingRecord
+				.mockResolvedValueOnce(first)
+				.mockResolvedValueOnce(second)
+				.mockResolvedValue(null);
+			consumer.startPolling();
 
-			await consumer.processRecord(makeRecord());
+			await jest.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
 
-			expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'Published version not found');
-			expect(workflowTriggerActivator.getEnabledTriggerNodes).not.toHaveBeenCalled();
-			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
-		});
-
-		test('advances the published version and finalizes when no triggers changed', async () => {
-			const trigger = triggerNode('a');
-			setTriggerSets([trigger], [{ ...trigger }]);
-
-			await consumer.processRecord(makeRecord());
-
-			expect(outboxRepository.manager.upsert).toHaveBeenCalledWith(
-				WorkflowPublishedVersion,
-				{ workflowId: 'wf-1', publishedVersionId: 'v-2' },
-				['workflowId'],
-			);
-			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
-			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
-			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
-		});
-
-		test('registers only added triggers', async () => {
-			setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
-
-			await consumer.processRecord(makeRecord());
-
-			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
-			expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'wf-1' }),
-				newVersion,
-				new Set(['b']),
-			);
-			expect(outboxRepository.manager.upsert).toHaveBeenCalled();
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
-		});
-
-		test('deregisters only removed triggers', async () => {
-			setTriggerSets([triggerNode('a'), triggerNode('b')], [triggerNode('a')]);
-
-			await consumer.processRecord(makeRecord());
-
-			expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'wf-1' }),
-				oldVersion,
-				new Set(['b']),
-			);
-			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
-			expect(workflowTriggerActivator.updateTriggerCount).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'wf-1' }),
-				newVersion,
-			);
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
-		});
-
-		test('reapplies modified triggers as remove-then-add, advancing in between', async () => {
-			setTriggerSets(
-				[triggerNode('a', { parameters: { interval: 1 } })],
-				[triggerNode('a', { parameters: { interval: 5 } })],
-			);
-
-			const callOrder: string[] = [];
-			workflowTriggerActivator.deactivate.mockImplementation(async () => {
-				callOrder.push('remove');
-			});
-			(outboxRepository.manager.upsert as jest.Mock).mockImplementation(async () => {
-				callOrder.push('advance');
-				return await Promise.resolve({} as never);
-			});
-			workflowTriggerActivator.activate.mockImplementation(async () => {
-				callOrder.push('add');
-			});
-
-			await consumer.processRecord(makeRecord());
-
-			expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'wf-1' }),
-				oldVersion,
-				new Set(['a']),
-			);
-			expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'wf-1' }),
-				newVersion,
-				new Set(['a']),
-			);
-			expect(callOrder).toEqual(['remove', 'advance', 'add']);
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
-		});
-
-		test('propagates without advancing when removing triggers throws', async () => {
-			setTriggerSets([triggerNode('a'), triggerNode('b')], [triggerNode('a')]);
-			workflowTriggerActivator.deactivate.mockRejectedValue(new Error('teardown failed'));
-
-			// Teardown failures bubble up to the poll loop (tryProcessRecord), which
-			// marks the record failed.
-			await expect(consumer.processRecord(makeRecord())).rejects.toThrow('teardown failed');
-
-			expect(outboxRepository.manager.upsert).not.toHaveBeenCalled();
-			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
-		});
-
-		test('throws unimplemented when adding triggers throws', async () => {
-			setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
-			workflowTriggerActivator.activate.mockRejectedValue(new Error('registration failed'));
-
-			await expect(consumer.processRecord(makeRecord())).rejects.toThrow(
-				'Workflow publication trigger activation failure handling is not implemented yet',
-			);
-
-			expect(outboxRepository.manager.upsert).toHaveBeenCalled();
-			expect(workflowRepository.update).not.toHaveBeenCalled();
-			expect(activationErrorsService.register).not.toHaveBeenCalled();
-			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
-		});
-
-		test('treats a first publication (no published-version mapping yet) as all-added', async () => {
-			workflowPublishedVersionRepository.findOne.mockResolvedValue(null);
-			setTriggerSets([], [triggerNode('a')]);
-
-			await consumer.processRecord(makeRecord());
-
-			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
-			expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'wf-1' }),
-				newVersion,
-				new Set(['a']),
-			);
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1);
+			expect(applier.apply).toHaveBeenCalledTimes(2);
+			expect(reporter.report).toHaveBeenCalledTimes(2);
 		});
 	});
 });
