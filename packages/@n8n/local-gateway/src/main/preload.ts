@@ -3,10 +3,13 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
 	AppSettings,
 	AuthStatus,
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -66,6 +69,32 @@ const electronApi: ElectronApi = {
 
 	openWorkflow: async (workflowId: string): Promise<void> => {
 		await ipcRenderer.invoke('tasks:openWorkflow', workflowId);
+	},
+
+	getTaskDetail: async (workflowId: string): Promise<DesktopAssistantTaskDetailResponse> =>
+		await (ipcRenderer.invoke(
+			'tasks:detail',
+			workflowId,
+		) as Promise<DesktopAssistantTaskDetailResponse>),
+
+	applyTaskEdits: async (
+		workflowId: string,
+		body: DesktopAssistantApplyEditsRequest,
+	): Promise<DesktopAssistantApplyEditsResponse> =>
+		await (ipcRenderer.invoke(
+			'tasks:applyEdits',
+			workflowId,
+			body,
+		) as Promise<DesktopAssistantApplyEditsResponse>),
+
+	deleteTask: async (workflowId: string): Promise<{ ok: boolean; error?: string }> =>
+		await (ipcRenderer.invoke('tasks:delete', workflowId) as Promise<{
+			ok: boolean;
+			error?: string;
+		}>),
+
+	openCredentials: async (): Promise<void> => {
+		await ipcRenderer.invoke('tasks:openCredentials');
 	},
 
 	getHistory: async (

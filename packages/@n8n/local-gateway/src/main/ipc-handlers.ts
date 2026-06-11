@@ -14,10 +14,13 @@ import type { AppSettings, SettingsStore } from './settings-store';
 import type { ThreadService } from './thread-service';
 import type {
 	AuthStatus,
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -193,6 +196,50 @@ export function registerIpcHandlers({
 	ipcMain.handle('tasks:openWorkflow', async (_event, workflowId: string): Promise<void> => {
 		logger.debug('IPC tasks:openWorkflow', { workflowId });
 		const url = instanceApi.workflowUrl(workflowId);
+		if (url) await openExternal(url);
+	});
+
+	ipcMain.handle(
+		'tasks:detail',
+		async (_event, workflowId: string): Promise<DesktopAssistantTaskDetailResponse> => {
+			logger.debug('IPC tasks:detail', { workflowId });
+			return await instanceApi.getTaskDetail(workflowId);
+		},
+	);
+
+	ipcMain.handle(
+		'tasks:applyEdits',
+		async (
+			_event,
+			workflowId: string,
+			body: DesktopAssistantApplyEditsRequest,
+		): Promise<DesktopAssistantApplyEditsResponse> => {
+			logger.debug('IPC tasks:applyEdits', { workflowId, changes: body.changes.length });
+			return await instanceApi.applyTaskEdits(workflowId, body);
+		},
+	);
+
+	ipcMain.handle(
+		'tasks:delete',
+		async (_event, workflowId: string): Promise<{ ok: boolean; error?: string }> => {
+			logger.debug('IPC tasks:delete', { workflowId });
+			try {
+				await instanceApi.archiveWorkflow(workflowId);
+				return { ok: true };
+			} catch (error) {
+				const message =
+					error instanceof InstanceApiError || error instanceof Error
+						? error.message
+						: String(error);
+				logger.error('IPC tasks:delete failed', { workflowId, error: message });
+				return { ok: false, error: message };
+			}
+		},
+	);
+
+	ipcMain.handle('tasks:openCredentials', async (): Promise<void> => {
+		logger.debug('IPC tasks:openCredentials');
+		const url = instanceApi.credentialsUrl();
 		if (url) await openExternal(url);
 	});
 

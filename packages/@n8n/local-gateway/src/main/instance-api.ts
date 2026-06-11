@@ -1,7 +1,10 @@
 import type {
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -18,6 +21,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Abort instance requests that stall so IPC handlers can't hang the renderer. */
 const REQUEST_TIMEOUT_MS = 15_000;
+
+/** The task-detail description is LLM-generated on first open, which can take
+ * well beyond the default request timeout. */
+const DETAIL_TIMEOUT_MS = 60_000;
 
 export class InstanceApiError extends Error {
 	constructor(
@@ -145,6 +152,53 @@ export class InstanceApi {
 	}
 
 	/**
+	 * `GET /rest/desktop-assistant/tasks/:id/detail` — the task detail view's
+	 * segmented description (LLM-generated server-side, cached per workflow
+	 * version) plus the credential types still missing.
+	 *
+	 * First-open generation can exceed the default request timeout, so this
+	 * call gets a longer one.
+	 */
+	async getTaskDetail(workflowId: string): Promise<DesktopAssistantTaskDetailResponse> {
+		const response = await this.authedFetch(
+			`/desktop-assistant/tasks/${encodeURIComponent(workflowId)}/detail`,
+			{ signal: AbortSignal.timeout(DETAIL_TIMEOUT_MS) },
+		);
+		return await this.unwrap<DesktopAssistantTaskDetailResponse>(response);
+	}
+
+	/**
+	 * `POST /rest/desktop-assistant/tasks/:id/edits` — apply the user's chip edits
+	 * to the workflow via an Instance AI run. Returns the thread/run ids; the
+	 * caller follows the run over the thread's SSE stream.
+	 */
+	async applyTaskEdits(
+		workflowId: string,
+		body: DesktopAssistantApplyEditsRequest,
+	): Promise<DesktopAssistantApplyEditsResponse> {
+		const response = await this.authedFetch(
+			`/desktop-assistant/tasks/${encodeURIComponent(workflowId)}/edits`,
+			{
+				method: 'POST',
+				// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(body),
+			},
+		);
+		return await this.unwrap<DesktopAssistantApplyEditsResponse>(response);
+	}
+
+	/** `POST /rest/workflows/:id/archive` — soft-delete a task's workflow; it drops out of the task list but stays restorable in n8n. */
+	async archiveWorkflow(workflowId: string): Promise<void> {
+		await this.authedFetch(`/workflows/${encodeURIComponent(workflowId)}/archive`, {
+			method: 'POST',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({}),
+		});
+	}
+
+	/**
 	 * `POST /rest/workflows/:id/run` — kick off a manual run of a saved task.
 	 *
 	 * The manual-run endpoint needs to know which trigger to start from; an empty
@@ -210,6 +264,12 @@ export class InstanceApi {
 		return `${instanceUrl}/workflow/${encodeURIComponent(workflowId)}/executions/${encodeURIComponent(executionId)}`;
 	}
 
+	/** The instance's credentials overview page, or `null` when signed out. */
+	credentialsUrl(): string | null {
+		const { instanceUrl } = this.oauthFlow.getStatus();
+		return instanceUrl ? `${instanceUrl}/home/credentials` : null;
+	}
+
 	/** Every n8n REST endpoint wraps its payload in a `data` key; peel it off. */
 	private async unwrap<T>(response: Response): Promise<T> {
 		const body = (await response.json()) as { data: T };
@@ -233,7 +293,9 @@ export class InstanceApi {
 					accept: 'application/json',
 					...init.headers,
 				},
-				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+				// A caller-provided signal (e.g. the longer detail-generation timeout)
+				// wins over the default stall guard.
+				signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			});
 		} catch (error) {
 			const reason = error instanceof Error ? error.message : String(error);

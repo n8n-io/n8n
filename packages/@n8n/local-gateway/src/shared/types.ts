@@ -29,9 +29,12 @@ export interface ConnectPayload {
 // without reaching across packages — the shapes live in @n8n/api-types and are
 // reused verbatim, never redefined here.
 import type {
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantTaskDetailResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -57,6 +60,10 @@ export type {
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendation,
 	DesktopAssistantRecommendationsResponse,
+	DesktopAssistantApplyEditsRequest,
+	DesktopAssistantApplyEditsResponse,
+	DesktopAssistantDescriptionPart,
+	DesktopAssistantTaskDetailResponse,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 } from '@n8n/api-types';
@@ -132,6 +139,17 @@ export interface ElectronApi {
 	getTasks: () => Promise<DesktopAssistantTasksResponse>;
 	runTask: (workflowId: string) => Promise<RunTaskResult>;
 	openWorkflow: (workflowId: string) => Promise<void>;
+	/** The task detail view's segmented description (LLM-generated, cached server-side). */
+	getTaskDetail: (workflowId: string) => Promise<DesktopAssistantTaskDetailResponse>;
+	/** Apply chip edits to the workflow via an Instance AI run; follow it over `onThreadEvent`. */
+	applyTaskEdits: (
+		workflowId: string,
+		body: DesktopAssistantApplyEditsRequest,
+	) => Promise<DesktopAssistantApplyEditsResponse>;
+	/** Archive the task's workflow (soft delete — it drops out of the task list). */
+	deleteTask: (workflowId: string) => Promise<{ ok: boolean; error?: string }>;
+	/** Open the instance's credentials page in the browser (Connect CTA). */
+	openCredentials: () => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
 	openExecution: (workflowId: string, executionId: string) => Promise<void>;
 	getTimeSaved: () => Promise<DesktopAssistantTimeSaved>;
