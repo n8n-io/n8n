@@ -1,13 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { shallowRef } from 'vue';
 import type { INodeExecutionData, IPinData } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 import {
 	useWorkflowDocumentPinData,
 	getPinDataSize,
 	pinDataToExecutionData,
 } from './useWorkflowDocumentPinData';
+import { CHANGE_ACTION } from './types';
+import type { NodesChangeEvent } from './useWorkflowDocumentNodes';
 
 function createPinData() {
-	return useWorkflowDocumentPinData();
+	return useWorkflowDocumentPinData({
+		nodesById: shallowRef(new Map<string, INodeUi>()),
+		onNodesChange: () => {},
+	});
+}
+
+function createPinDataWithNodesChange() {
+	const subscribers: Array<(event: NodesChangeEvent) => void> = [];
+	const pinData = useWorkflowDocumentPinData({
+		nodesById: shallowRef(new Map<string, INodeUi>()),
+		onNodesChange: (cb) => {
+			subscribers.push(cb);
+		},
+	});
+	const fire = (event: NodesChangeEvent) => subscribers.forEach((cb) => cb(event));
+	return { pinData, fire };
 }
 
 describe('useWorkflowDocumentPinData', () => {
@@ -388,5 +407,40 @@ describe('getPinDataSize', () => {
 		});
 
 		expect(twoNodes).toBeGreaterThan(singleNode);
+	});
+
+	describe('orphan pin cleanup on node removal', () => {
+		it('clears pinned data when a DELETE event names the node', () => {
+			const { pinData, fire } = createPinDataWithNodesChange();
+			pinData.pinNodeData('Target', [{ json: { x: 1 } }] as INodeExecutionData[]);
+			expect(pinData.pinnedDataByNodeName.value.Target).toBeDefined();
+
+			fire({ action: CHANGE_ACTION.DELETE, payload: { id: 'node-id-1', name: 'Target' } });
+
+			expect(pinData.pinnedDataByNodeName.value.Target).toBeUndefined();
+		});
+
+		it('leaves unrelated pinned data untouched', () => {
+			const { pinData, fire } = createPinDataWithNodesChange();
+			pinData.pinNodeData('Target', [{ json: { x: 1 } }] as INodeExecutionData[]);
+			pinData.pinNodeData('Other', [{ json: { y: 2 } }] as INodeExecutionData[]);
+
+			fire({ action: CHANGE_ACTION.DELETE, payload: { id: 'node-id-1', name: 'Target' } });
+
+			expect(pinData.pinnedDataByNodeName.value.Target).toBeUndefined();
+			expect(pinData.pinnedDataByNodeName.value.Other).toBeDefined();
+		});
+
+		it('does nothing when DELETE has no node name (removeAllNodes)', () => {
+			const { pinData, fire } = createPinDataWithNodesChange();
+			pinData.pinNodeData('Target', [{ json: { x: 1 } }] as INodeExecutionData[]);
+
+			fire({ action: CHANGE_ACTION.DELETE, payload: {} });
+
+			// `removeAllNodes` clears pin data via the store-level `removeAllNodes`
+			// orchestration, not via this subscriber — so this individual subscription
+			// is a no-op for the bulk case.
+			expect(pinData.pinnedDataByNodeName.value.Target).toBeDefined();
+		});
 	});
 });
