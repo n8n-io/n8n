@@ -151,6 +151,95 @@ describe('DesktopAssistantService.triggerTask', () => {
 	});
 });
 
+describe('DesktopAssistantService.getRecommendations', () => {
+	const RECS = {
+		recommendations: [
+			{ title: 'Summarise this page', prompt: 'Summarise the page I am looking at', icon: '📄' },
+			{ title: 'Save for later', prompt: 'Save this page to my reading list', icon: '⭐️' },
+		],
+	};
+
+	test('grounds the generation in the local context', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+		ctx.instanceAiService.generateStructured.mockResolvedValue(RECS);
+
+		await ctx.service.getRecommendations(USER, {
+			context: {
+				kind: 'browser',
+				app: 'Google Chrome',
+				windowTitle: 'Dashboard',
+				url: 'https://x.test',
+			},
+		});
+
+		const [calledUser, opts] = ctx.instanceAiService.generateStructured.mock.calls[0];
+		expect(calledUser).toBe(USER);
+		expect(opts.input).toContain('Currently looking at: Google Chrome — Dashboard');
+		expect(opts.input).toContain('URL: https://x.test');
+		expect(opts.schema).toBeDefined();
+	});
+
+	test('grounds the generation in the connected integration types only (no secrets)', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+			{ type: 'slackApi', name: 'My Slack', data: 'ENCRYPTED-SECRET' },
+			{ type: 'notionApi', name: 'My Notion', data: 'ENCRYPTED-SECRET' },
+			{ type: 'slackApi', name: 'Other Slack', data: 'ENCRYPTED-SECRET' },
+		] as never);
+		ctx.instanceAiService.generateStructured.mockResolvedValue(RECS);
+
+		await ctx.service.getRecommendations(USER, {});
+
+		const [, opts] = ctx.instanceAiService.generateStructured.mock.calls[0];
+		// Distinct types are surfaced...
+		expect(opts.input).toContain('Connected integrations: slackApi, notionApi');
+		// ...but never credential names or secret data.
+		expect(opts.input).not.toContain('My Slack');
+		expect(opts.input).not.toContain('ENCRYPTED-SECRET');
+	});
+
+	test('still generates generic recommendations with no context and no credentials', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+		ctx.instanceAiService.generateStructured.mockResolvedValue(RECS);
+
+		const result = await ctx.service.getRecommendations(USER, {});
+
+		const [, opts] = ctx.instanceAiService.generateStructured.mock.calls[0];
+		expect(opts.input).toContain('No specific context');
+		expect(result.recommendations).toHaveLength(2);
+		expect(result.recommendations[0]).toEqual({
+			title: 'Summarise this page',
+			prompt: 'Summarise the page I am looking at',
+			icon: '📄',
+		});
+	});
+
+	test('clamps to at most three recommendations', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+		ctx.instanceAiService.generateStructured.mockResolvedValue({
+			recommendations: Array.from({ length: 5 }, (_, i) => ({
+				title: `t${i}`,
+				prompt: `p${i}`,
+				icon: '✨',
+			})),
+		});
+
+		const result = await ctx.service.getRecommendations(USER, {});
+		expect(result.recommendations).toHaveLength(3);
+	});
+
+	test('propagates a generation failure so the client can fall back', async () => {
+		const ctx = makeService();
+		ctx.credentialsFinderService.findCredentialsForUser.mockResolvedValue([]);
+		ctx.instanceAiService.generateStructured.mockRejectedValue(new Error('model unavailable'));
+
+		await expect(ctx.service.getRecommendations(USER, {})).rejects.toThrow('model unavailable');
+	});
+});
+
 describe('DesktopAssistantService.promoteThread', () => {
 	const body = { threadId: 't-1' };
 

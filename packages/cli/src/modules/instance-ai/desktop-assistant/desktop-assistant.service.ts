@@ -2,6 +2,8 @@ import type {
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantPromoteRequest,
 	DesktopAssistantPromoteResponse,
+	DesktopAssistantRecommendationsRequest,
+	DesktopAssistantRecommendationsResponse,
 	DesktopAssistantTaskRequest,
 	DesktopAssistantTaskResponse,
 	DesktopAssistantTasksResponse,
@@ -20,6 +22,7 @@ import type { StoredEvent } from '@n8n/instance-ai';
 import { In } from '@n8n/typeorm';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -40,9 +43,11 @@ import {
 	clampLimit,
 	composeOneShotMessage,
 	composePromoteMessage,
+	composeRecommendationsInput,
 	extractBuiltWorkflowId,
 	extractWorkflowLoopBuildOutcome,
 	readDesktopAssistantMeta,
+	RECOMMENDATIONS_INSTRUCTIONS,
 	splitLeadingEmoji,
 	summarizeExecutionError,
 } from './desktop-assistant.helpers';
@@ -72,6 +77,28 @@ const EMPTY_HISTORY = Object.freeze({
 	estimated: false,
 	count: 0,
 } satisfies DesktopAssistantHistoryResponse);
+
+/** How many task recommendations to surface in the empty state. */
+const MAX_RECOMMENDATIONS = 3;
+
+/** Cap on the distinct integration types fed to the model as grounding, so a
+ * user with hundreds of credentials doesn't bloat the prompt. */
+const MAX_RECOMMENDATION_INTEGRATIONS = 30;
+
+/** Structured-output schema for the recommendations generation. The model is
+ * asked for 1–3 task ideas; we clamp to `MAX_RECOMMENDATIONS` on the way out. */
+const recommendationsSchema = z.object({
+	recommendations: z
+		.array(
+			z.object({
+				title: z.string(),
+				prompt: z.string(),
+				icon: z.string(),
+			}),
+		)
+		.min(1)
+		.max(MAX_RECOMMENDATIONS),
+});
 
 /**
  * BFF for the n8n personal-automation desktop assistant.
@@ -286,6 +313,41 @@ export class DesktopAssistantService {
 			{ promptMode: 'desktop-assistant-one-shot' },
 		);
 		return { threadId, runId };
+	}
+
+	// ── recommendations ──────────────────────────────────────────────────────
+
+	/**
+	 * Generate a few one-shot task suggestions for the desktop assistant's empty
+	 * state, grounded in what the user is looking at (optional context) and the
+	 * integrations they already have connected.
+	 *
+	 * Uses a synchronous structured-output Instance AI call — NOT the streaming
+	 * `startRun` orchestrator — so the client gets a plain JSON list it can render
+	 * as cards. Only integration *types* are sent to the model as grounding; no
+	 * credential secrets ever leave this service.
+	 */
+	async getRecommendations(
+		user: User,
+		body: DesktopAssistantRecommendationsRequest,
+	): Promise<DesktopAssistantRecommendationsResponse> {
+		const credentials = await this.credentialsFinderService.findCredentialsForUser(user, [
+			'credential:read',
+		]);
+		const connectedIntegrations = [...new Set(credentials.map((c) => c.type))]
+			.filter((type): type is string => typeof type === 'string' && type.length > 0)
+			.slice(0, MAX_RECOMMENDATION_INTEGRATIONS);
+
+		const input = composeRecommendationsInput(body.context, connectedIntegrations);
+
+		const { recommendations } = await this.instanceAiService.generateStructured(user, {
+			name: 'desktop-assistant-recommendations',
+			instructions: RECOMMENDATIONS_INSTRUCTIONS,
+			input,
+			schema: recommendationsSchema,
+		});
+
+		return { recommendations: recommendations.slice(0, MAX_RECOMMENDATIONS) };
 	}
 
 	// ── promote thread ──────────────────────────────────────────────────────
