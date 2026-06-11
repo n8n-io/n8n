@@ -9,7 +9,6 @@ import MiniSpinner from './MiniSpinner.vue';
 
 import { suggestionChipsFor } from '../assistant/contexts';
 import { watchAssistantRun } from '../assistant/run-watcher';
-import { createAssistantTask } from '../assistant/tasks-api';
 import { useAssistantContext } from '../assistant/use-assistant-context';
 import { usePendingTasks } from '../assistant/use-pending-tasks';
 import type { DesktopAssistantTaskRequest } from '../../shared/types';
@@ -130,7 +129,10 @@ async function submit(prompt?: string) {
 	state.value = 'thinking';
 
 	try {
-		const created = await createAssistantTask({ prompt: value, context: await buildTaskContext() });
+		const created = await window.electronAPI.createAssistantTask({
+			prompt: value,
+			context: await buildTaskContext(),
+		});
 		if (!created.ok || !created.threadId || !created.runId) {
 			showResult({
 				kind: 'error',

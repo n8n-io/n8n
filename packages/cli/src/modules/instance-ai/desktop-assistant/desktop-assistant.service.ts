@@ -48,7 +48,6 @@ import {
 	PROMOTED_WORKFLOW_ID_KEY,
 	THREAD_SOURCE_METADATA_KEY,
 } from './constants';
-import { DesktopAssistantRunner } from './desktop-assistant-runner';
 import { classifyWorkflowsForDesktopAssistant } from './desktop-assistant.classifier';
 import type { ClassifierInput } from './desktop-assistant.classifier';
 import {
@@ -166,8 +165,6 @@ export class DesktopAssistantService {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly runner: DesktopAssistantRunner,
-		/** Thread runs go through the runner; this is only for `generateStructured` (recommendations). */
 		private readonly instanceAiService: InstanceAiService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly eventBus: InProcessEventBus,
@@ -363,11 +360,14 @@ export class DesktopAssistantService {
 		});
 
 		const composedMessage = composeOneShotMessage(body);
-		const runId = this.runner.startOneShotTask(
+		const runId = this.instanceAiService.startRun(
 			user,
 			threadId,
 			composedMessage,
 			body.context?.attachments,
+			undefined,
+			undefined,
+			{ promptMode: 'desktop-assistant-one-shot' },
 		);
 		return { threadId, runId };
 	}
@@ -605,14 +605,24 @@ export class DesktopAssistantService {
 		// In-flight guard: the desktop client polls this endpoint while the build
 		// runs; without this, every poll tick would start another build run.
 		const inFlightRunId = await this.readPromoteRunId(user.id, body.threadId);
-		if (inFlightRunId && this.runner.isRunActive(body.threadId, inFlightRunId)) {
+		if (inFlightRunId && this.instanceAiService.getActiveRunId(body.threadId) === inFlightRunId) {
 			return { status: 'building', threadId: body.threadId, runId: inFlightRunId };
 		}
 
 		const originalPrompt = await this.recoverOriginalPrompt(body.threadId);
 		const buildPrompt = composePromoteMessage(originalPrompt, body.name);
 
-		const runId = this.runner.startPromoteBuild(user, body.threadId, buildPrompt);
+		const runId = this.instanceAiService.startRun(
+			user,
+			body.threadId,
+			buildPrompt,
+			undefined,
+			undefined,
+			undefined,
+			{
+				promptMode: 'desktop-assistant-promote',
+			},
+		);
 		await this.memoryService.updateThread(body.threadId, {
 			metadata: { [PROMOTE_RUN_ID_KEY]: runId },
 		});

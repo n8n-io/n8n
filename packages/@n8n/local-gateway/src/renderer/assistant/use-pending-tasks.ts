@@ -14,7 +14,6 @@
 import { reactive, readonly } from 'vue';
 
 import { watchAssistantRun } from './run-watcher';
-import { promoteAssistantThread } from './tasks-api';
 
 export interface PendingTask {
 	threadId: string;
@@ -66,7 +65,7 @@ async function delay(ms: number): Promise<void> {
  * promote call. `label` doubles as the requested workflow name.
  */
 async function runPromotion(threadId: string, label: string, icon?: string): Promise<void> {
-	const started = await promoteAssistantThread(threadId, label, icon);
+	const started = await window.electronAPI.promoteAssistantThread(threadId, label, icon);
 	if (!started.ok) {
 		failEntry(threadId, started.error);
 		return;
@@ -93,7 +92,7 @@ async function runPromotion(threadId: string, label: string, icon?: string): Pro
 	// The run succeeded; confirm the saved workflow (retrying briefly while the
 	// finalizer writes the thread metadata).
 	for (let attempt = 0; attempt < CONFIRM_ATTEMPTS; attempt++) {
-		const confirmed = await promoteAssistantThread(threadId, label, icon);
+		const confirmed = await window.electronAPI.promoteAssistantThread(threadId, label, icon);
 		if (isDismissed(threadId)) return;
 		if (confirmed.ok && confirmed.status === 'done') {
 			removeEntry(threadId);
