@@ -9,7 +9,7 @@ import type {
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantTaskRequest,
 } from '@n8n/api-types';
-import type { StoredEvent } from '@n8n/instance-ai';
+import { renderDescriptionSentence, type StoredEvent } from '@n8n/instance-ai';
 import type { ExecutionError, IConnections, INode, IRunExecutionData } from 'n8n-workflow';
 
 import type { PROMOTED_FROM_THREAD_ID_KEY } from './constants';
@@ -83,10 +83,21 @@ function isTextPart(part: unknown): part is { type: 'text'; text: string } {
 
 /** Leads with the replay-vs-fresh decision so the recorded tool calls don't
  *  anchor the model toward literal replay. Naming rules (plain text, no emoji)
- *  live in the promote system prompt. */
-export function composePromoteMessage(originalPrompt: string, name: string | undefined): string {
+ *  live in the promote system prompt.
+ *
+ *  With a `configuredSentence` (a promote of a proposed task plan rather than
+ *  an executed run), the message grounds the build on the user-configured
+ *  description instead — there is nothing recorded to replay. */
+export function composePromoteMessage(
+	originalPrompt: string,
+	name: string | undefined,
+	configuredSentence?: string,
+): string {
 	const trimmedName = name?.trim();
 	const naming = trimmedName ? ` Name it "${trimmedName}".` : '';
+	if (configuredSentence) {
+		return `Turn the task from this thread into a repeatable workflow. This thread contains no executed run to replay — the user reviewed and configured a task plan instead. Build the workflow from the configured description below, using its values verbatim (the schedule, services, and folders are the user's final choices), with the non-manual trigger it implies.${naming}\n\nConfigured description:\n"${configuredSentence}"\n\nThe original request, as context only:\n\n${originalPrompt}`;
+	}
 	return `Turn the task from this thread into a repeatable workflow. Decide first, from the original request below: must a future run reproduce the recorded results exactly, or generate content fresh? The recorded tool calls show what was done, not necessarily what should be replayed literally.${naming} The original request:\n\n${originalPrompt}`;
 }
 
@@ -202,57 +213,10 @@ export function composeTaskDescriptionInput(
 	return lines.join('\n');
 }
 
-/** Loosely-shaped part as the model returns it; normalization tightens it into
- *  the API shape. */
-export interface RawDescriptionPart {
-	kind: 'text' | 'param';
-	text?: string;
-	value?: string;
-	options?: string[];
-}
-
-/** Caps mirroring the description instructions; enforced again here so a
- *  misbehaving generation can't bloat the stored cache. */
-const MAX_DESCRIPTION_PARAMS = 4;
-const MAX_PARAM_OPTIONS = 4;
-
-/**
- * Tighten the model's parts into the API shape: drop empty/malformed parts,
- * merge adjacent text parts, de-duplicate options (and the current value out
- * of them), cap param/option counts, and assign stable per-description param
- * ids (`p1`, `p2`, …) used by the apply-edits request to reference a chip.
- */
-export function normalizeDescriptionParts(
-	rawParts: RawDescriptionPart[],
-): DesktopAssistantDescriptionPart[] {
-	const parts: DesktopAssistantDescriptionPart[] = [];
-	let paramCount = 0;
-	for (const raw of rawParts) {
-		if (raw.kind === 'param' && raw.value?.trim() && paramCount < MAX_DESCRIPTION_PARAMS) {
-			const value = raw.value.trim();
-			const options = [...new Set((raw.options ?? []).map((o) => o.trim()))]
-				.filter((o) => o.length > 0 && o !== value)
-				.slice(0, MAX_PARAM_OPTIONS);
-			paramCount += 1;
-			parts.push({ kind: 'param', id: `p${paramCount}`, value, options });
-			continue;
-		}
-		// Anything else degrades to text (a param without a value, params past the
-		// cap) so the sentence still reads fully.
-		const text = raw.kind === 'text' ? raw.text : (raw.value ?? raw.text);
-		if (!text) continue;
-		const previous = parts.at(-1);
-		if (previous?.kind === 'text') previous.text += text;
-		else parts.push({ kind: 'text', text });
-	}
-	return parts;
-}
-
-/** Render the description parts back into the plain sentence, used to ground
- *  the apply-edits instruction. */
-export function renderDescriptionSentence(parts: DesktopAssistantDescriptionPart[]): string {
-	return parts.map((part) => (part.kind === 'text' ? part.text : part.value)).join('');
-}
+// Moved to @n8n/instance-ai (shared with the propose-task-plan tool);
+// re-exported so existing imports stay stable.
+export { normalizeDescriptionParts, renderDescriptionSentence } from '@n8n/instance-ai';
+export type { RawDescriptionPart } from '@n8n/instance-ai';
 
 /** Compose the apply-edits message handed to Instance AI: the workflow to
  *  modify, the sentence the user was looking at, and the exact value changes

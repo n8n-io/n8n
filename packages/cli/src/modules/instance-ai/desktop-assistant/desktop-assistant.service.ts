@@ -65,6 +65,7 @@ import {
 	readCachedTaskDetail,
 	readDesktopAssistantMeta,
 	RECOMMENDATIONS_INSTRUCTIONS,
+	renderDescriptionSentence,
 	splitLeadingEmoji,
 	summarizeExecutionError,
 	TASK_DESCRIPTION_INSTRUCTIONS,
@@ -705,7 +706,12 @@ export class DesktopAssistantService {
 		}
 
 		const originalPrompt = await this.recoverOriginalPrompt(body.threadId);
-		const buildPrompt = composePromoteMessage(originalPrompt, body.name);
+		// A plan-configured promote ("Set it up" on a proposed task plan) grounds
+		// the build on the user-configured sentence instead of the recorded run.
+		const configuredSentence = body.configuredParts
+			? renderDescriptionSentence(body.configuredParts)
+			: undefined;
+		const buildPrompt = composePromoteMessage(originalPrompt, body.name, configuredSentence);
 
 		const runId = this.instanceAiService.startRun(
 			user,
@@ -730,7 +736,14 @@ export class DesktopAssistantService {
 			runId,
 			async (workflowId) => {
 				try {
-					await this.finalizePromotedWorkflow(user, body.threadId, workflowId, body.icon);
+					await this.finalizePromotedWorkflow(
+						user,
+						body.threadId,
+						workflowId,
+						body.icon,
+						body.configuredParts,
+						body.estimatedMinutesSaved,
+					);
 				} catch (error) {
 					this.logger.warn('Failed to finalise promoted workflow', {
 						threadId: body.threadId,
@@ -867,14 +880,55 @@ export class DesktopAssistantService {
 		threadId: string,
 		workflowId: string,
 		icon?: string,
+		configuredParts?: DesktopAssistantDescriptionPart[],
+		estimatedMinutesSaved?: number,
 	): Promise<void> {
 		await this.applyDesktopAssistantTag(workflowId);
 		await this.writeDesktopAssistantMeta(workflowId, threadId, icon);
 		await this.applyDeviceCredential(user, workflowId);
+		// Plan-derived extras are best-effort: the build already succeeded, and the
+		// promoted-workflow marker + activation below must land regardless.
+		try {
+			if (configuredParts) {
+				// Seed the detail cache with the user-configured sentence — it IS the
+				// description the user approved, so it's trusted until the next version
+				// bump invalidates it. Must run after the node-mutating steps above so
+				// the versionId we key on is the one the workflow ends up with.
+				const workflow = await this.workflowRepository.findOne({
+					where: { id: workflowId },
+					select: ['id', 'versionId'],
+				});
+				if (workflow) {
+					await this.writeTaskDetailCache(workflowId, workflow.versionId, configuredParts);
+				}
+			}
+			if (estimatedMinutesSaved) {
+				await this.writeTimeSavedSetting(workflowId, Math.round(estimatedMinutesSaved));
+			}
+		} catch (error) {
+			this.logger.warn('Failed to apply configured plan details to promoted workflow', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 		await this.memoryService.updateThread(threadId, {
 			metadata: { [PROMOTED_WORKFLOW_ID_KEY]: workflowId },
 		});
 		await this.activateWorkflowIfRunnable(user, workflowId);
+	}
+
+	/** Store the plan's minutes-saved estimate as the workflow's
+	 *  `timeSavedPerExecution` setting, preserving any other settings. Re-reads
+	 *  the row so the build's own settings are not clobbered. */
+	private async writeTimeSavedSetting(workflowId: string, minutes: number): Promise<void> {
+		const workflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			select: ['id', 'settings'],
+		});
+		if (!workflow) return;
+		await this.workflowRepository.update(workflowId, {
+			settings: { ...(workflow.settings ?? {}), timeSavedPerExecution: minutes },
+		});
 	}
 
 	/**
