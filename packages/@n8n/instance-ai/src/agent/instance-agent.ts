@@ -85,7 +85,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	// The desktop-assistant profile is the single owner of which extra tools a run
 	// gets (e.g. the outcome report) and which tool groups are pinned out of deferred search.
-	const desktopProfile = getDesktopAssistantProfile(options.promptMode);
+	const desktopProfile = getDesktopAssistantProfile(options.promptMode, {
+		memory: options.memory,
+	});
 	const desktopProfileTools = createToolRegistryFromTools(desktopProfile.extraTools);
 
 	// Keep MCP tools from shadowing domain or orchestration tools during object composition.

@@ -6,6 +6,8 @@
  */
 import type { BuiltTool } from '@n8n/agents';
 
+import type { PatchableThreadMemory } from '../storage/thread-patch';
+import { createProposeTaskPlanTool } from '../tools/orchestration/propose-task-plan.tool';
 import { createReportDesktopTaskOutcomeTool } from '../tools/orchestration/report-desktop-task-outcome.tool';
 
 /**
@@ -13,15 +15,19 @@ import { createReportDesktopTaskOutcomeTool } from '../tools/orchestration/repor
  *
  * - `desktop-assistant-one-shot` — ad-hoc task triggered from the desktop app.
  *   The orchestrator runs fire-and-forget: no follow-up questions, no
- *   conversational output, and every run ends with a single
- *   `report-desktop-task-outcome` call — success when the task was done,
- *   failure (with a reason) when declining ambiguous, recurring/scheduled,
- *   or out-of-scope requests, or when the task failed.
- * - `desktop-assistant-promote` — compilation of an already-executed
- *   desktop-assistant thread into a real, editable workflow that replays
- *   the task. Same fire-and-forget rules apply, plus the orchestrator picks
- *   a short plain-text workflow name (the task icon is carried separately,
- *   on the workflow's `meta.desktopAssistant.icon`).
+ *   conversational output, and every run ends with exactly one of two tools:
+ *   `propose-task-plan` (first and only call, for requests implying a
+ *   non-manual trigger — the task is planned, not executed) or
+ *   `report-desktop-task-outcome` (all other runs — success when the task was
+ *   done, failure with a reason when declining ambiguous or out-of-scope
+ *   requests, or when the task failed).
+ * - `desktop-assistant-promote` — compilation of a desktop-assistant thread
+ *   into a real, editable workflow: either a replay of an already-executed
+ *   task, or — when the thread holds a user-configured task plan instead —
+ *   a build grounded directly on that plan. Same fire-and-forget rules apply,
+ *   plus the orchestrator picks a short plain-text workflow name (the task
+ *   icon is carried separately, on the workflow's
+ *   `meta.desktopAssistant.icon`).
  * - `desktop-assistant-edit` — targeted modification of an existing workflow
  *   from the desktop app's task detail view. Same fire-and-forget rules
  *   apply; the orchestrator must apply ONLY the listed changes and preserve
@@ -55,14 +61,21 @@ const ONE_SHOT_PROMPT_SECTION = `
 
 ${FIRE_AND_FORGET_RULES}
 
+### Decide first
+
+- Before ANY other tool call, classify the request. If it implies a non-manual trigger — a schedule or recurrence ("every Friday", "each morning", "weekly") or reacting to events ("when X happens", "whenever I get…", watching/polling a service for changes) — do NOT execute anything: call \`propose-task-plan\` as the first and only tool call of the run, then end the run. The user reviews and configures the plan in the desktop app.
+- Everything else is a one-off task: execute it now per the rules below.
+
 ### Execution
 
 - Execute unambiguous, in-scope requests with the appropriate tools.
-- Stop without partial work when the request is ambiguous, too complex, needs context you do not have, or implies a recurring schedule or trigger ("every Friday", "when X happens"). Do not build a workflow — the user will open the editor.
+- Stop without partial work when the request is ambiguous, too complex, or needs context you do not have. Do not build a workflow — the user will open the editor.
 
 ### Ending the run (required)
 
-- Every run MUST end with exactly one \`report-desktop-task-outcome\` call, as the final tool call — including when declining; it is how you stop.
+- Every run MUST end with exactly one of two tools, as the final tool call — never both:
+  - \`propose-task-plan\` — non-manual-trigger requests only; it is the run's first and only tool call.
+  - \`report-desktop-task-outcome\` — all other runs, including declines; it is how you stop.
 - Success: \`success: true\`, a plain-text \`title\` naming the task as a repeatable action (3–8 words, present tense, no emoji — \`"Sort desktop screenshots"\`, never \`"Sorted 12 screenshots"\`), a one-sentence \`summary\`, and an \`icon\` (a single emoji capturing the task).
 - Decline/failure: \`success: false\` plus \`title\`, \`summary\`, and a user-readable \`failureReason\`.
 `;
@@ -83,6 +96,10 @@ This thread contains a task you already executed via device (computer-use) tool 
    - \`replay: generate-fresh\` → Manual Trigger → AI Agent node (prompted with the user's task) with \`@n8n/n8n-nodes-langchain.toolComputerUse\` attached as its tool, plus a chat model sub-node. Bind the chat model's credential per the credential rule below.
 
 Examples of the classification: "create a folder called Receipts on my desktop" — fully specified by the request; \`replay: exact\`. "Add an inspiring quote to my notes" — the request names a *kind* of content, not the content itself; \`replay: generate-fresh\`. "Write me a short bio and save it" — authored once as a fixed artifact the user keeps; \`replay: exact\` is fine.
+
+### Plan-configured builds
+
+When the user message says the thread contains a configured task plan instead of an executed run, skip the replay classification entirely (no verdict line) and build one workflow directly from the configured description, treating its values as the user's final choices. Start from the trigger the description implies — a Schedule Trigger for time-based plans, the matching app trigger or a polling shape for event-driven ones — never a Manual Trigger. The credential and naming rules below still apply.
 
 Additional rules:
 
@@ -108,15 +125,21 @@ ${FIRE_AND_FORGET_RULES}
 - If a listed change cannot be applied faithfully, stop without modifying the workflow. A partial or speculative edit is worse than no edit.
 `;
 
-/** Resolve the desktop-assistant profile for a run. */
+/** Resolve the desktop-assistant profile for a run. `deps.memory` lets the
+ *  one-shot plan-proposal tool persist the plan on thread metadata; callers
+ *  that only read `promptSection` can omit it. */
 export function getDesktopAssistantProfile(
 	promptMode: DesktopAssistantPromptMode | undefined,
+	deps: { memory?: PatchableThreadMemory } = {},
 ): DesktopAssistantProfile {
 	switch (promptMode) {
 		case 'desktop-assistant-one-shot':
 			return {
 				promptSection: ONE_SHOT_PROMPT_SECTION,
-				extraTools: [createReportDesktopTaskOutcomeTool()],
+				extraTools: [
+					createReportDesktopTaskOutcomeTool(),
+					createProposeTaskPlanTool({ memory: deps.memory }),
+				],
 				preloadGatewayTools: true,
 			};
 		case 'desktop-assistant-promote':

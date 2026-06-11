@@ -59,9 +59,12 @@ describe('getDesktopAssistantProfile — extra tools', () => {
 		expect(profile.extraTools).toHaveLength(0);
 	});
 
-	it('registers the outcome report tool for one-shot mode only', () => {
+	it('registers the outcome report and plan proposal tools for one-shot mode only', () => {
 		const oneShot = getDesktopAssistantProfile('desktop-assistant-one-shot');
-		expect(oneShot.extraTools.map((tool) => tool.name)).toEqual(['report-desktop-task-outcome']);
+		expect(oneShot.extraTools.map((tool) => tool.name)).toEqual([
+			'report-desktop-task-outcome',
+			'propose-task-plan',
+		]);
 
 		const promote = getDesktopAssistantProfile('desktop-assistant-promote');
 		expect(promote.extraTools).toHaveLength(0);

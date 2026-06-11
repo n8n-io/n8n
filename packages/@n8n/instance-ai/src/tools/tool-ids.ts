@@ -23,6 +23,7 @@ export const ORCHESTRATION_TOOL_IDS = {
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
 	REPORT_DESKTOP_TASK_OUTCOME: 'report-desktop-task-outcome',
+	PROPOSE_TASK_PLAN: 'propose-task-plan',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {
@@ -53,6 +54,9 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// Only present in desktop one-shot runs (via the desktop-assistant profile);
 	// keeps it out of deferred tool search there, no-op elsewhere.
 	ORCHESTRATION_TOOL_IDS.REPORT_DESKTOP_TASK_OUTCOME,
+	// Same desktop one-shot scope; must be callable as the run's FIRST action,
+	// so it can never sit behind search_tools.
+	ORCHESTRATION_TOOL_IDS.PROPOSE_TASK_PLAN,
 	'web-search',
 	'fetch-url',
 ]);
