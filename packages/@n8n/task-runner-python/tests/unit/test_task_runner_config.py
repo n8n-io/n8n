@@ -1,6 +1,9 @@
 from unittest.mock import patch
 
+import pytest
+
 from src.config.task_runner_config import TaskRunnerConfig
+from src.errors import ConfigurationError
 
 
 class TestEnvAllowParsing:
@@ -52,3 +55,29 @@ class TestEnvAllowParsing:
         config = TaskRunnerConfig.from_env()
 
         assert config.env_allow == {"FOO", "BAR", "BAZ"}
+
+    @patch.dict(
+        "os.environ",
+        {
+            "N8N_RUNNERS_GRANT_TOKEN": "test-token",
+            "N8N_BLOCK_RUNNER_ENV_ACCESS": "false",
+            "N8N_RUNNER_ENV_ALLOW": "*,FOO",
+        },
+        clear=True,
+    )
+    def test_ignores_allowlist_when_env_access_not_blocked(self):
+        config = TaskRunnerConfig.from_env()
+
+        assert config.env_allow == set()
+
+    @patch.dict(
+        "os.environ",
+        {
+            "N8N_RUNNERS_GRANT_TOKEN": "test-token",
+            "N8N_RUNNER_ENV_ALLOW": "*,FOO",
+        },
+        clear=True,
+    )
+    def test_rejects_wildcard_mixed_with_other_entries_when_blocked(self):
+        with pytest.raises(ConfigurationError):
+            TaskRunnerConfig.from_env()

@@ -100,6 +100,13 @@ class TaskRunnerConfig:
                 f"Max payload size of {max_payload_size} bytes exceeds pipe message limit of {PIPE_MSG_MAX_SIZE} bytes. Reduce {ENV_MAX_PAYLOAD_SIZE}."
             )
 
+        env_deny = read_bool_env(ENV_BLOCK_RUNNER_ENV_ACCESS, True)
+        env_allow: set[str] = set()
+        if env_deny:
+            env_allow = parse_allowlist(
+                read_str_env(ENV_RUNNER_ENV_ALLOW, ""), ENV_RUNNER_ENV_ALLOW
+            )
+
         return cls(
             grant_token=grant_token,
             task_broker_uri=read_str_env(ENV_TASK_BROKER_URI, DEFAULT_TASK_BROKER_URI),
@@ -120,8 +127,6 @@ class TaskRunnerConfig:
                     ENV_BUILTINS_DENY, BUILTINS_DENY_DEFAULT
                 ).split(",")
             ),
-            env_deny=read_bool_env(ENV_BLOCK_RUNNER_ENV_ACCESS, True),
-            env_allow=parse_allowlist(
-                read_str_env(ENV_RUNNER_ENV_ALLOW, ""), ENV_RUNNER_ENV_ALLOW
-            ),
+            env_deny=env_deny,
+            env_allow=env_allow,
         )
