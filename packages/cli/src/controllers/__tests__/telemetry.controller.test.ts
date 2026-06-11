@@ -5,6 +5,11 @@ import { Container } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
+type ProxyRequest = {
+	removeHeader: jest.Mock;
+	setHeader: jest.Mock;
+	write: jest.Mock;
+};
 type ProxyResponse = { headers: Record<string, string> };
 type ProxyErrorResponse = {
 	headersSent?: boolean;
@@ -13,7 +18,7 @@ type ProxyErrorResponse = {
 };
 type ProxyOptions = {
 	on?: {
-		proxyReq?: (proxyReq: { removeHeader: jest.Mock }, req: AuthenticatedRequest) => void;
+		proxyReq?: (proxyReq: ProxyRequest, req: AuthenticatedRequest) => void;
 		proxyRes?: (proxyRes: ProxyResponse) => void;
 		error?: (error: Error, req: AuthenticatedRequest, res: ProxyErrorResponse) => void;
 	};
@@ -63,8 +68,16 @@ function createResponse() {
 	return res as unknown as jest.Mocked<Response>;
 }
 
-function createRequest(headers: Record<string, string> = {}) {
-	return { headers } as AuthenticatedRequest;
+function createRequest(headers: Record<string, string> = {}, body?: unknown) {
+	return { headers, body } as AuthenticatedRequest;
+}
+
+function createProxyRequest(): ProxyRequest {
+	return {
+		removeHeader: jest.fn(),
+		setHeader: jest.fn(),
+		write: jest.fn(),
+	};
 }
 
 function getProxyOptions() {
@@ -128,15 +141,41 @@ describe('TelemetryController', () => {
 		expect(mockProxy).toHaveBeenCalledWith(req, res, next);
 	});
 
+	it('applies CORS before proxying beacon batch calls', async () => {
+		const controller = createController();
+		const req = createRequest();
+		const res = createResponse();
+		const next = jest.fn() as NextFunction;
+
+		await controller.batch(req, res, next);
+
+		expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+		expect(mockProxy).toHaveBeenCalledWith(req, res, next);
+	});
+
 	it('keeps proxy request body handling and strips cookies', () => {
 		createController();
-		const proxyReq = { removeHeader: jest.fn() };
+		const proxyReq = createProxyRequest();
 		const req = createRequest();
 
 		getProxyOptions().on?.proxyReq?.(proxyReq, req);
 
 		expect(proxyReq.removeHeader).toHaveBeenCalledWith('cookie');
 		expect(mockFixRequestBody).toHaveBeenCalledWith(proxyReq, req);
+	});
+
+	it('re-writes string request bodies to the proxied request', () => {
+		createController();
+		const proxyReq = createProxyRequest();
+		const body = JSON.stringify({ batch: [{ event: 'test' }] });
+		const req = createRequest({}, body);
+
+		getProxyOptions().on?.proxyReq?.(proxyReq, req);
+
+		expect(proxyReq.removeHeader).toHaveBeenCalledWith('cookie');
+		expect(proxyReq.setHeader).toHaveBeenCalledWith('content-length', Buffer.byteLength(body));
+		expect(proxyReq.write).toHaveBeenCalledWith(body);
+		expect(mockFixRequestBody).not.toHaveBeenCalled();
 	});
 
 	it('normalizes upstream CORS headers on proxied responses', () => {

@@ -184,6 +184,51 @@ describe('telemetry', () => {
 		});
 	});
 
+	describe('init', () => {
+		it('should load RudderStack with beacon transport enabled', () => {
+			const rudderanalyticsBackup = window.rudderanalytics;
+			window.rudderanalytics = undefined as unknown as typeof window.rudderanalytics;
+
+			try {
+				const freshTelemetry = new Telemetry();
+				freshTelemetry.init(
+					{
+						enabled: true,
+						config: {
+							proxy: 'https://proxy.test',
+							key: 'test-key',
+							sourceConfig: 'https://source-config.test',
+							url: '',
+						},
+					},
+					{ versionCli: '1', instanceId: '1' },
+				);
+
+				// before the SDK script loads, calls are queued as [method, ...args] tuples
+				const loadCall = Array.from(window.rudderanalytics as unknown as unknown[][]).find(
+					(call) => Array.isArray(call) && call[0] === 'load',
+				);
+				expect(loadCall).toEqual([
+					'load',
+					'test-key',
+					'https://proxy.test',
+					{
+						integrations: { All: false },
+						loadIntegration: false,
+						configUrl: 'https://source-config.test',
+						useBeacon: true,
+						beaconQueueOptions: {
+							maxItems: 10,
+							flushQueueInterval: 10_000,
+						},
+					},
+				]);
+			} finally {
+				window.rudderanalytics = rudderanalyticsBackup;
+			}
+		});
+	});
+
 	describe('track function', () => {
 		it('should call Rudderstack track method with correct parameters', () => {
 			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');

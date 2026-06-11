@@ -18,13 +18,14 @@ export class TelemetryController {
 			on: {
 				proxyReq: (proxyReq, req) => {
 					proxyReq.removeHeader('cookie');
-					if (typeof req.body === 'string' && req.body.length > 0) {
+					const body = 'body' in req ? req.body : undefined;
+					if (typeof body === 'string' && body.length > 0) {
 						// `text/plain` payloads (e.g. `sendBeacon` batches) are parsed into a
 						// string by our body parser, which also consumes the request stream.
 						// `fixRequestBody` only re-writes json/urlencoded/multipart bodies, so
 						// re-write string bodies explicitly to keep the proxied request intact.
-						proxyReq.setHeader('content-length', Buffer.byteLength(req.body));
-						proxyReq.write(req.body);
+						proxyReq.setHeader('content-length', Buffer.byteLength(body));
+						proxyReq.write(body);
 						return;
 					}
 					fixRequestBody(proxyReq, req);
