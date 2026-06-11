@@ -17,6 +17,9 @@ import { NodeTypes } from '@/node-types';
 
 export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections };
 
+/**
+ * Publication-facing facade for trigger activation, deactivation, and counts.
+ */
 @Service()
 export class WorkflowTriggerActivator {
 	constructor(
@@ -138,7 +141,10 @@ export class WorkflowTriggerActivator {
 			additionalData,
 			nodeIds,
 		);
-		await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(dbWorkflow.id, removedNodeNames);
+		await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
+			dbWorkflow.id,
+			removedNodeNames,
+		);
 
 		await this.liveTriggerRegistrar.deregister(dbWorkflow.id, nodeIds);
 	}

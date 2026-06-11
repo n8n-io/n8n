@@ -15,7 +15,9 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 function hasErrorDetail(error: unknown): error is Error & { detail: string } {
-	return error instanceof Error && typeof (error as Error & { detail?: unknown }).detail === 'string';
+	return (
+		error instanceof Error && typeof (error as Error & { detail?: unknown }).detail === 'string'
+	);
 }
 
 function isQueryFailedError(error: unknown): error is Error {
@@ -30,6 +32,9 @@ export interface WebhookTriggerRegistrationOptions {
 	nodeIds: Set<string>;
 }
 
+/**
+ * Registers and deregisters workflow webhook triggers in storage and external services.
+ */
 @Service()
 export class WebhookTriggerRegistrar {
 	constructor(
@@ -51,10 +56,12 @@ export class WebhookTriggerRegistrar {
 		activation,
 		nodeIds,
 	}: WebhookTriggerRegistrationOptions) {
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true).filter(
-			(webhookData) =>
-				nodeIds.has(workflow.getNode(webhookData.node)?.id ?? ''),
-		);
+		const webhooks = WebhookHelpers.getWorkflowWebhooks(
+			workflow,
+			additionalData,
+			undefined,
+			true,
+		).filter((webhookData) => nodeIds.has(workflow.getNode(webhookData.node)?.id ?? ''));
 
 		if (webhooks.length === 0) return false;
 
