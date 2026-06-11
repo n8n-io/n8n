@@ -296,10 +296,19 @@ export function disconnectEventListeners(
  * @param error - The caught error
  * @returns Log metadata with the redacted error message and optional status
  */
+// The registry client interpolates the upstream HTTP response body into its
+// error message, which can be large, so the logged message is bounded.
+const MAX_REGISTRY_ERROR_MESSAGE_LENGTH = 500;
+
 function sanitizeRegistryError(error: unknown) {
 	const ensured = ensureError(error);
+	const redacted = ensured.message.replace(/\/\/[^/\s]+@/g, '//***@');
+	const message =
+		redacted.length > MAX_REGISTRY_ERROR_MESSAGE_LENGTH
+			? `${redacted.slice(0, MAX_REGISTRY_ERROR_MESSAGE_LENGTH)}...`
+			: redacted;
 	return {
-		message: ensured.message.replace(/\/\/[^/\s]+@/g, '//***@'),
+		message,
 		...('status' in ensured ? { status: ensured.status } : {}),
 	};
 }

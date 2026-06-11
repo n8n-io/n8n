@@ -12,6 +12,7 @@ jest.mock('@kafkajs/confluent-schema-registry');
 const errorWorkflow = (
 	eventName: string,
 	message = '{"foo":"bar"}',
+	onError?: string,
 ): WorkflowTestData['input']['workflowData'] => ({
 	nodes: [
 		{
@@ -37,6 +38,7 @@ const errorWorkflow = (
 			type: 'n8n-nodes-base.kafka',
 			typeVersion: 1,
 			position: [220, 0],
+			...(onError ? { onError } : {}),
 			credentials: {
 				kafka: { id: 'JJBjHkOrIfcj91EX', name: 'Kafka account' },
 				schemaRegistryApi: { id: 'wW0eW1iZK9d3Yz2g', name: 'Schema Registry account' },
@@ -149,6 +151,23 @@ describe('Kafka Node', () => {
 		},
 	});
 
+	harness.setupTest({
+		description: 'should return the error as item data when the node continues on fail',
+		input: {
+			workflowData: errorWorkflow('test-event-name', '{"foo":"bar"}', 'continueRegularOutput'),
+		},
+		output: {
+			nodeData: {
+				'Schema Registry Error': [
+					[{ error: 'Username and password are required for Schema Registry Basic Auth' }],
+				],
+			},
+		},
+		credentials: {
+			schemaRegistryApi: { ...schemaRegistryCredential, password: '' },
+		},
+	});
+
 	test('should only connect the producer once the schema registry is resolved', async () => {
 		// Cumulative count across all the workflows above: 3 node executions from
 		// the two successful workflows, plus 1 from the encode-failure workflow
@@ -240,5 +259,12 @@ describe('Kafka Node', () => {
 				],
 			}),
 		);
+	});
+
+	test('should resolve the schema id from the configured event name and encode with it', async () => {
+		// Exercised by the credential success path (workflow.credentials.json):
+		// eventName 'test-event-name' resolves to schemaId 1, used to encode the payload.
+		expect(mockRegistryGetLatestSchemaId).toHaveBeenCalledWith('test-event-name');
+		expect(mockRegistryEncode).toHaveBeenCalledWith(1, { foo: 'bar' });
 	});
 });

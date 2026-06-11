@@ -834,6 +834,26 @@ describe('Kafka Utils', () => {
 				});
 			});
 
+			it('should cap the logged message length for oversized registry errors', async () => {
+				const ctx = createRegistryContext({
+					params: {
+						useSchemaRegistry: true,
+						schemaRegistryUrl: 'https://fallback-registry.local',
+					},
+				});
+				(SchemaRegistry as jest.Mock).mockImplementationOnce(() => {
+					throw new Error('x'.repeat(2000));
+				});
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeUndefined();
+				const [, logPayload] = jest.mocked(ctx.logger.warn).mock.calls[0];
+				const { message } = logPayload as { message: string };
+				expect(message).toHaveLength(503);
+				expect(message.endsWith('...')).toBe(true);
+			});
+
 			it('should rethrow misconfiguration errors instead of warning', async () => {
 				const ctx = createRegistryContext({
 					params: { useSchemaRegistry: true, schemaRegistryUrl: '' },
