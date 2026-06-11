@@ -7,7 +7,6 @@
 import type { BuiltTool } from '@n8n/agents';
 
 import { createReportDesktopTaskOutcomeTool } from '../tools/orchestration/report-desktop-task-outcome.tool';
-import type { OrchestrationContext } from '../types';
 
 /**
  * Optional prompt-mode override used by the desktop-assistant entry points.
@@ -81,22 +80,15 @@ This run is fire-and-forget from the n8n desktop assistant. **The user does not 
 - If the original intent is ambiguous or requires context you do not have, stop without producing a workflow. Do not produce a low-quality stub.
 `;
 
-/**
- * Resolve the desktop-assistant profile for a run.
- *
- * Pass the orchestration context when assembling tools (the outcome tool
- * persists into thread metadata through it); prompt-only callers may omit it
- * and get an empty `extraTools`.
- */
+/** Resolve the desktop-assistant profile for a run. */
 export function getDesktopAssistantProfile(
 	promptMode: DesktopAssistantPromptMode | undefined,
-	context?: OrchestrationContext,
 ): DesktopAssistantProfile {
 	switch (promptMode) {
 		case 'desktop-assistant-one-shot':
 			return {
 				promptSection: ONE_SHOT_PROMPT_SECTION,
-				extraTools: context ? [createReportDesktopTaskOutcomeTool(context)] : [],
+				extraTools: [createReportDesktopTaskOutcomeTool()],
 			};
 		case 'desktop-assistant-promote':
 			return { promptSection: PROMOTE_PROMPT_SECTION, extraTools: [] };

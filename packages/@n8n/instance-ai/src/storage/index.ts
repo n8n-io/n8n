@@ -7,11 +7,6 @@ export { PlannedTaskStorage } from './planned-task-storage';
 export { getThread, patchThread } from './thread-patch';
 export { TerminalOutcomeStorage } from './terminal-outcome-storage';
 export type { TerminalOutcome } from './terminal-outcome-storage';
-export {
-	DESKTOP_TASK_OUTCOME_METADATA_KEY,
-	DesktopTaskOutcomeStorage,
-	readDesktopTaskOutcome,
-} from './desktop-task-outcome-storage';
 export type { PatchableThreadMemory, ThreadPatch } from './thread-patch';
 export { WorkflowLoopStorage } from './workflow-loop-storage';
 export type {

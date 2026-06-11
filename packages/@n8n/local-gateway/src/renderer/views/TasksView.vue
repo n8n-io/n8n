@@ -6,7 +6,6 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import MiniSpinner from '../components/MiniSpinner.vue';
 import TaskCard from '../components/TaskCard.vue';
 
-import * as tasksApi from '../assistant/tasks-api';
 import { usePendingTasks } from '../assistant/use-pending-tasks';
 
 import type { DesktopAssistantTasksResponse } from '../../shared/types';
@@ -42,7 +41,7 @@ async function load() {
 	loading.value = true;
 	error.value = false;
 	try {
-		tasks.value = await tasksApi.getTasks();
+		tasks.value = await window.electronAPI.getTasks();
 	} catch (e) {
 		// Surface the cause in devtools — the inline state only shows a generic message.
 		console.error('Failed to load desktop-assistant tasks', e);
@@ -53,11 +52,11 @@ async function load() {
 }
 
 function openWorkflow(workflowId: string) {
-	void tasksApi.openWorkflow(workflowId);
+	void window.electronAPI.openWorkflow(workflowId);
 }
 
 async function runTask(workflowId: string) {
-	const result = await tasksApi.runTask(workflowId);
+	const result = await window.electronAPI.runTask(workflowId);
 	if (result.ok) {
 		// Hand off to the History tab so the user watches the run progress (spinner
 		// → done/failed). Reloading the task list here is moot since we're leaving.

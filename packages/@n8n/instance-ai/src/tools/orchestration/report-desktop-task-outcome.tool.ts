@@ -1,14 +1,13 @@
 /**
  * Outcome report filed by desktop one-shot task runs — the run's final tool
- * call. Persists a structured `DesktopAssistantTaskOutcome` into thread
- * metadata (keyed by runId) for the BFF to read when the run finishes.
+ * call. The tool itself is a stateless ack: the desktop client reads the
+ * structured outcome straight from this tool-call event on the thread event
+ * stream, so nothing is persisted server-side.
  */
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
-import { DesktopTaskOutcomeStorage } from '../../storage/desktop-task-outcome-storage';
-import type { OrchestrationContext } from '../../types';
 
 const inputSchema = sanitizeInputSchema(
 	z.object({
@@ -28,21 +27,12 @@ const inputSchema = sanitizeInputSchema(
 	}),
 );
 
-type Input = z.infer<typeof inputSchema>;
-
-export function createReportDesktopTaskOutcomeTool(context: OrchestrationContext) {
+export function createReportDesktopTaskOutcomeTool() {
 	return new Tool('report-desktop-task-outcome')
 		.description(
 			'Report the structured outcome of this task run. Call exactly once, as the final tool call of the run — never call another tool after it.',
 		)
 		.input(inputSchema)
-		.handler(async (input: Input) => {
-			if (!context.memory) {
-				return { result: 'Outcome could not be persisted: thread storage unavailable.' };
-			}
-			const storage = new DesktopTaskOutcomeStorage(context.memory);
-			await storage.save(context.threadId, context.runId, input);
-			return { result: 'Outcome recorded. End the run now.' };
-		})
+		.handler(async () => await Promise.resolve({ result: 'Outcome recorded. End the run now.' }))
 		.build();
 }

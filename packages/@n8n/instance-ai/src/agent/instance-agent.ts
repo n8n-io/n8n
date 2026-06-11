@@ -84,7 +84,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	// Desktop-assistant runs add profile-specific tools (e.g. the outcome report).
 	const desktopProfileTools = createToolRegistryFromTools(
-		getDesktopAssistantProfile(options.promptMode, orchestrationContext).extraTools,
+		getDesktopAssistantProfile(options.promptMode).extraTools,
 	);
 
 	// Keep MCP tools from shadowing domain or orchestration tools during object composition.

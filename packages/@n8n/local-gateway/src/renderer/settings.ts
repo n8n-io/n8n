@@ -1,5 +1,6 @@
-import * as tasksApi from './assistant/tasks-api';
 import type { AppSettings, DaemonStatus, LogLevel, StatusSnapshot } from '../shared/types';
+
+// `window.electronAPI` is typed globally via `electron-api.d.ts` (the shared `ElectronApi` contract).
 
 const STATUS_TEXT: Record<DaemonStatus, string> = {
 	connected: 'Connected',
@@ -104,7 +105,7 @@ function setButtonsState(dirty: boolean): void {
 
 async function saveSettings(initial: AppSettings): Promise<AppSettings | null> {
 	const partial = readForm();
-	const result = await tasksApi.setSettings(partial);
+	const result = await window.electronAPI.setSettings(partial);
 	if (result.ok) {
 		return { ...initial, ...partial } as AppSettings;
 	}
@@ -131,8 +132,8 @@ function isFormDirty(initial: AppSettings): boolean {
 
 async function init(): Promise<void> {
 	const [settings, status] = await Promise.all([
-		tasksApi.getSettings(),
-		tasksApi.getDaemonStatus(),
+		window.electronAPI.getSettings(),
+		window.electronAPI.getDaemonStatus(),
 	]);
 
 	populateForm(settings);
@@ -151,7 +152,7 @@ async function init(): Promise<void> {
 	form.addEventListener('input', updateDirtyState);
 
 	document.getElementById('disconnectBtn')?.addEventListener('click', () => {
-		void tasksApi.disconnectGateway();
+		void window.electronAPI.disconnectGateway();
 	});
 
 	// Apply button — save without closing
@@ -193,7 +194,7 @@ async function init(): Promise<void> {
 	});
 
 	// Live status updates
-	tasksApi.onStatusChanged(updateStatusBadge);
+	window.electronAPI.onStatusChanged(updateStatusBadge);
 }
 
 void init().catch((e: unknown) => {
