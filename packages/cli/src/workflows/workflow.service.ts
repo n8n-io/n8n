@@ -801,6 +801,34 @@ export class WorkflowService {
 				previousActiveVersionId,
 				workflow.updatedAt,
 			);
+
+			if (previousActiveVersionId) {
+				this.eventService.emit('workflow-deactivated', {
+					user,
+					workflowId,
+					workflow,
+					publicApi,
+					deactivatedVersionId: previousActiveVersionId,
+					source,
+				});
+			}
+
+			const activatedWorkflow = this.workflowRepository.create({
+				...workflow,
+				active: true,
+				activeVersionId: versionIdToActivate,
+				activeVersion: versionToActivate,
+				nodes: versionToActivate.nodes,
+				connections: versionToActivate.connections,
+			});
+
+			this.eventService.emit('workflow-activated', {
+				user,
+				workflowId,
+				workflow: activatedWorkflow,
+				publicApi,
+				source,
+			});
 		} else {
 			if (previousActiveVersionId) {
 				await this.activeWorkflowManager.remove(workflowId);
@@ -1320,7 +1348,7 @@ export class WorkflowService {
 	 * Atomically records the requested version and enqueues an outbox record.
 	 * The publication outbox consumer reapplies the triggers and advances the
 	 * published version asynchronously, so we do not touch the active workflow
-	 * manager or emit activation events here.
+	 * manager here.
 	 */
 	private async _publishViaOutbox(
 		user: User,
