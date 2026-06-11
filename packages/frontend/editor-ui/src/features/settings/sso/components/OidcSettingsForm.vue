@@ -25,6 +25,7 @@ const message = useMessage();
 const savingForm = ref<boolean>(false);
 const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
 const isSsoManagedByEnv = computed(() => ssoStore.ssoManagedByEnv);
+const isRulesMappingInN8n = computed(() => mappingMethod.value === 'rules_in_n8n');
 
 const discoveryEndpoint = ref('');
 const clientId = ref('');
@@ -124,6 +125,24 @@ const cannotSaveOidcSettings = computed(() => {
 });
 
 async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false): Promise<boolean> {
+	if (isSsoManagedByEnv.value) {
+		try {
+			savingForm.value = true;
+			const ruleSaveResult = await roleMappingRuleEditorRef.value?.save();
+			trackProvisioningChange({ configChanged: false }, ruleSaveResult);
+			toast.showMessage({
+				title: i18n.baseText('settings.sso.settings.save.success'),
+				type: 'success',
+			});
+			return true;
+		} catch (error) {
+			toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
+			return false;
+		} finally {
+			savingForm.value = false;
+		}
+	}
+
 	if (!provisioningChangesConfirmed && roleAssignmentTransition.value !== 'none') {
 		showUserRoleProvisioningDialog.value = true;
 		return false;
@@ -238,7 +257,10 @@ const onTest = async () => {
 };
 
 const hasUnsavedChanges = computed(
-	() => !cannotSaveOidcSettings.value && !savingForm.value && !isSsoManagedByEnv.value,
+	() =>
+		!cannotSaveOidcSettings.value &&
+		!savingForm.value &&
+		(!isSsoManagedByEnv.value || isRulesMappingInN8n.value),
 );
 
 defineExpose({ hasUnsavedChanges, onSave: onOidcSettingsSave });
@@ -405,7 +427,7 @@ onMounted(async () => {
 
 		<div :class="$style.buttons">
 			<N8nButton
-				v-if="!isSsoManagedByEnv"
+				v-if="!isSsoManagedByEnv || isRulesMappingInN8n"
 				data-test-id="sso-oidc-save"
 				size="large"
 				:loading="savingForm"

@@ -651,6 +651,7 @@ export type ModalState = {
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
+	closeOnSave?: boolean;
 	projectId?: string;
 	suggestedName?: string;
 	nodeName?: string;
@@ -889,6 +890,7 @@ export type CloudUpdateLinkSourceType =
 	| 'chat-hub'
 	| 'empty-state-builder-prompt'
 	| 'instance-ai'
+	| 'data-redaction'
 	| 'workflow-settings';
 
 export type UTMCampaign =

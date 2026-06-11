@@ -94,4 +94,29 @@ describe('workspace-files', () => {
 		expect(writes.get('/tmp/b.txt')).toBe('beta');
 		expect(writes.get('/tmp/c.txt')).toBe('gamma');
 	});
+
+	it('logs successful command fallback at warn level', async () => {
+		const { target } = createWorkspaceTarget(new Map());
+		const writeError = new Error('filesystem unavailable');
+		target.filesystem = {
+			writeFile: vi.fn(async () => await Promise.reject(writeError)),
+		};
+		const logger = {
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+			debug: vi.fn(),
+		};
+
+		await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+			logger,
+			resourceLabel: 'Knowledge base file',
+		});
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Knowledge base file filesystem write failed; used command fallback',
+			expect.objectContaining({ path: '/tmp/a.txt' }),
+		);
+		expect(logger.debug).not.toHaveBeenCalled();
+	});
 });

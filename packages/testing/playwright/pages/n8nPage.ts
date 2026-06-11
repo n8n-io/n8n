@@ -28,6 +28,7 @@ import { MfaLoginPage } from './MfaLoginPage';
 import { MfaSetupModal } from './MfaSetupModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
+import { OAuthConsentPage } from './OAuthConsentPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
 import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
@@ -87,6 +88,7 @@ export class n8nPage {
 	readonly mfaLogin: MfaLoginPage;
 	readonly ndv: NodeDetailsViewPage;
 	readonly npsSurvey: NpsSurveyPage;
+	readonly oauthConsent: OAuthConsentPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
@@ -167,6 +169,7 @@ export class n8nPage {
 		this.mfaLogin = new MfaLoginPage(page);
 		this.ndv = new NodeDetailsViewPage(page);
 		this.npsSurvey = new NpsSurveyPage(page);
+		this.oauthConsent = new OAuthConsentPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);

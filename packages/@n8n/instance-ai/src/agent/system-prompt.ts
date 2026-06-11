@@ -17,6 +17,7 @@ interface SystemPromptOptions {
 	browserAvailable?: boolean;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	projectId?: string;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
 }
@@ -51,6 +52,32 @@ Some trigger nodes expose HTTP endpoints. Always share the full production URL w
 **These URLs are for sharing with the user only.** Do NOT hardcode them into workflow code or build specs unless the workflow actually needs to send or store its own public endpoint.`;
 }
 
+function getProjectScopeSection(projectId?: string): string {
+	if (!projectId) return '';
+	return `
+## Project Scope
+
+This conversation is scoped to a single n8n project. Reads and writes differ:
+
+- **Writes are locked to this project.** Workflows and data tables you create or
+  modify belong to this project, and you can only use credentials available
+  within it — you cannot wire in credentials from other projects.
+- **Credentials are always this project's.** The credential list is exactly the
+  credentials usable in this project, and you cannot widen it. Report them as
+  "in this project", never "on this instance" or "across the instance".
+- **Looking things up defaults to this project, but you can search wider.**
+  Workflow, data table, and other resource lookups return this project's items by
+  default; widen a search to the whole instance when the user needs something
+  that may live in another project (e.g. researching a data table or workflow in
+  another project). Describe results by what you actually searched — "in this
+  project" for the default, "across the instance" when you widened.
+
+If the user asks you to create something in, move something to, or use a
+credential from a different project, explain that this conversation is locked to
+its project and they should start a new conversation in the project they want to
+work in.`;
+}
+
 function getReadOnlySection(branchReadOnly?: boolean): string {
 	if (!branchReadOnly) return '';
 	return `
@@ -83,6 +110,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		timeZone,
 		browserAvailable,
 		branchReadOnly,
+		projectId,
 		workspaceRoot,
 	} = options;
 
@@ -92,6 +120,7 @@ ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBas
 ${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 
 You have access to workflow, execution, and credential tools plus runtime skills (see the skill catalog). You also have delegation capabilities for complex tasks, and may have access to MCP tools for extended capabilities.
+${getProjectScopeSection(projectId)}
 
 Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance — never call \`data-tables\` or \`parse-file\` without loading \`data-table-manager\` first, and never call \`build-workflow\` without loading \`workflow-builder\` first. A single turn may need more than one skill when routing requires it (e.g. \`data-table-manager\` then \`workflow-builder\`).
 

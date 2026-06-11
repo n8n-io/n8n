@@ -20,6 +20,8 @@ import {
 	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRequest,
 	type DelegateSubAgentToolOutput,
+	type InlineSubAgentProviderToolsResolver,
+	type SubAgentTaskDifficulty,
 } from '../runtime/delegate-sub-agent-tool';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
 import { AgentEventBus } from '../runtime/event-bus';
@@ -900,7 +902,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		allTools = this.completeInlineDelegateTools(allTools, {
 			deferredTools: finalDeferredTools,
 			modelConfig,
-			providerTools: this.providerTools,
 			...(telemetry !== undefined ? { telemetry } : {}),
 			...(this.concurrencyValue !== undefined
 				? { toolCallConcurrency: this.concurrencyValue }
@@ -952,7 +953,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options: {
 			deferredTools: BuiltTool[];
 			modelConfig: ModelConfig;
-			providerTools: BuiltProviderTool[];
 			telemetry?: BuiltTelemetry;
 			toolCallConcurrency?: number;
 			toolSearch?: { topK?: number };
@@ -966,6 +966,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				...options,
 				tools,
 				inlineSubAgentBlockedTools: delegateOptions.inlineSubAgentBlockedTools,
+				inlineSubAgentModelsByDifficulty: delegateOptions.inlineSubAgentModelsByDifficulty,
+				resolveInlineSubAgentProviderTools: delegateOptions.resolveInlineSubAgentProviderTools,
 			});
 			const hostRunner = delegateOptions.runSubAgent;
 			const completedTool = createDelegateSubAgentTool({
@@ -997,12 +999,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private createInlineSubAgentRunner(options: {
 		deferredTools: BuiltTool[];
 		modelConfig: ModelConfig;
-		providerTools: BuiltProviderTool[];
 		telemetry?: BuiltTelemetry;
 		toolCallConcurrency?: number;
 		toolSearch?: { topK?: number };
 		tools: BuiltTool[];
 		inlineSubAgentBlockedTools?: string[];
+		inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
+		resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
 	}): (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput> {
 		return async (request) => {
 			const tools = filterInlineSubAgentTools(options.tools, options.inlineSubAgentBlockedTools);
@@ -1010,13 +1013,20 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				options.deferredTools,
 				options.inlineSubAgentBlockedTools,
 			);
-			const providerTools = filterInlineSubAgentTools(
-				options.providerTools,
-				options.inlineSubAgentBlockedTools,
-			);
+			const childModelConfig = resolveInlineSubAgentModelConfig(request, options);
+			const providerTools = options.resolveInlineSubAgentProviderTools
+				? filterInlineSubAgentTools(
+						await options.resolveInlineSubAgentProviderTools(childModelConfig),
+						options.inlineSubAgentBlockedTools,
+					)
+				: [];
+			const childModelId = modelConfigToId(childModelConfig);
+			const childThinkingConfig = shouldInheritThinking(options.modelConfig, childModelConfig)
+				? this.thinkingConfig
+				: undefined;
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
-				model: options.modelConfig,
+				model: childModelConfig,
 				instructions:
 					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
 				tools: tools.length > 0 ? tools : undefined,
@@ -1025,7 +1035,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
 				checkpointStorage: this.checkpointStore,
-				thinking: this.thinkingConfig,
+				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }
@@ -1038,11 +1048,18 @@ export class Agent implements BuiltAgent, AgentBuilder {
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
 					...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+					...(request.parentExecutionCounter !== undefined
+						? { executionCounter: request.parentExecutionCounter }
+						: {}),
 				});
 				if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
-					return failedDelegatedChildSuspendOutput(request.taskPath);
+					return failedDelegatedChildSuspendOutput(request.taskPath, result.model ?? childModelId);
 				}
-				return generateResultToDelegateSubAgentOutput(request.taskPath, result);
+				const resultWithModel =
+					result.model === undefined && childModelId !== undefined
+						? { ...result, model: childModelId }
+						: result;
+				return generateResultToDelegateSubAgentOutput(request.taskPath, resultWithModel);
 			} finally {
 				await childRuntime.dispose();
 			}
@@ -1073,6 +1090,55 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		this.tools = this.tools.filter((tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
 		this.hasRuntimeSkillTool = false;
 	}
+}
+
+function resolveInlineSubAgentModelConfig(
+	request: DelegateSubAgentRequest,
+	options: {
+		modelConfig: ModelConfig;
+		inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
+	},
+): ModelConfig {
+	if (request.difficulty === undefined) {
+		return options.modelConfig;
+	}
+
+	const mappedModel = options.inlineSubAgentModelsByDifficulty?.[request.difficulty];
+	return mappedModel ?? options.modelConfig;
+}
+
+function modelConfigToId(modelConfig: ModelConfig): string | undefined {
+	if (typeof modelConfig === 'string') return modelConfig;
+	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
+		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
+	}
+	if (
+		typeof modelConfig === 'object' &&
+		modelConfig !== null &&
+		'provider' in modelConfig &&
+		'modelId' in modelConfig
+	) {
+		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
+		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
+		return provider && modelId ? `${provider}/${modelId}` : undefined;
+	}
+	return undefined;
+}
+
+function modelConfigProvider(modelConfig: ModelConfig): string | undefined {
+	const modelId = modelConfigToId(modelConfig);
+	if (!modelId) return undefined;
+	const slashIndex = modelId.indexOf('/');
+	return slashIndex > 0 ? modelId.slice(0, slashIndex) : undefined;
+}
+
+function shouldInheritThinking(
+	parentModelConfig: ModelConfig,
+	childModelConfig: ModelConfig,
+): boolean {
+	const parentProvider = modelConfigProvider(parentModelConfig);
+	const childProvider = modelConfigProvider(childModelConfig);
+	return parentProvider !== undefined && parentProvider === childProvider;
 }
 
 export function buildInlineSubAgentBlockedToolNames(hostBlockedTools?: string[]): Set<string> {

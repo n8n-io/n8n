@@ -708,6 +708,34 @@ describe('retry policy', () => {
 		});
 	});
 
+	it('preserves the concrete verdict failure in the budget-exhausted blocked reason', () => {
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 2,
+		});
+
+		const { action } = handleVerificationVerdict(
+			state,
+			[],
+			makeVerdict({
+				verdict: 'needs_rebuild',
+				summary: 'HTTP Request node returned 401 Unauthorized',
+				diagnosis: 'The Authorization header is missing the bearer token',
+				failureSignature: 'http:401',
+			}),
+		);
+
+		expect(action.type).toBe('blocked');
+		if (action.type !== 'blocked') throw new Error('expected blocked action');
+		// The concrete failure must survive alongside the budget-exhaustion guidance.
+		expect(action.reason).toContain('HTTP Request node returned 401 Unauthorized');
+		expect(action.reason).toContain('The Authorization header is missing the bearer token');
+		expect(action.reason).toContain('Signature: http:401');
+		expect(action.reason).toContain('repair budget is exhausted');
+	});
+
 	it('blocks non-editable remediation immediately and preserves workflow id', () => {
 		const state = makeState({
 			phase: 'verifying',

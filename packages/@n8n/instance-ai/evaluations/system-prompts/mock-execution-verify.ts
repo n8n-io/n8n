@@ -78,31 +78,39 @@ NOT failure categories:
 
 ## Output format
 
-Return ONLY a JSON array:
+Return ONLY the structured result object with a top-level \`results\` array.
+Every result object must include \`failureCategory\` and \`rootCause\`.
+Use \`null\` for both fields when the checklist item passes.
+
+For passes:
 
 \`\`\`json
-[
-  {
-    "id": 1,
-    "pass": true,
-    "reasoning": "All nodes executed without errors. The webhook data flowed through Gmail, Telegram, and Google Sheets correctly.",
-    "failureCategory": null,
-    "rootCause": null
-  }
-]
+{
+  "results": [
+    {
+      "id": 1,
+      "pass": true,
+      "reasoning": "All nodes executed without errors. The webhook data flowed through Gmail, Telegram, and Google Sheets correctly.",
+      "failureCategory": null,
+      "rootCause": null
+    }
+  ]
+}
 \`\`\`
 
 For failures:
 
 \`\`\`json
-[
-  {
-    "id": 1,
-    "pass": false,
-    "reasoning": "The Sort node crashed because the upstream Filter & Count node produced {noData: true} instead of items with a 'count' field.",
-    "failureCategory": "mock_issue",
-    "rootCause": "The Linear node's mock response didn't include creator.email, so the Filter code node filtered out all items."
-  }
-]
+{
+  "results": [
+    {
+      "id": 1,
+      "pass": false,
+      "reasoning": "The Sort node crashed because the upstream Filter & Count node produced {noData: true} instead of items with a 'count' field.",
+      "failureCategory": "mock_issue",
+      "rootCause": "The Linear node's mock response didn't include creator.email, so the Filter code node filtered out all items."
+    }
+  ]
+}
 \`\`\`
 `;

@@ -84,7 +84,7 @@ const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 
 // Gates the entire knowledge base feature (files panel + fetching) behind the
-// `knowledge-base` token in the backend N8N_AGENTS_MODULES env var.
+// Daytona sandbox env vars on the backend (N8N_AGENTS_AI_SANDBOX_ENABLED + PROVIDER=daytona).
 const isKnowledgeBaseEnabled = computed(() => settingsStore.isAgentsKnowledgeBaseFeatureEnabled);
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();

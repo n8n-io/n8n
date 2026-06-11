@@ -10,8 +10,8 @@ import type {
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
 	ConnectStartEvent,
-	ExecutionOutputMapData,
 } from '@/features/workflows/canvas/canvas.types';
+import type { ExecutionOutputMapData } from '@/app/types/executionData';
 import {
 	CANVAS_NODE_GROUP_ID_PREFIX,
 	CANVAS_NODE_GROUP_TYPE,

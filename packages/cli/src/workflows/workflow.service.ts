@@ -355,6 +355,26 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, expectedChecksum);
 		}
 
+		// check credentials for old format - scope to the workflow's owner project
+		const ownerProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
+		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
+
+		// Central credential guard for every workflow write path. With sharing
+		// enabled, reject new nodes that reference credentials the acting user
+		// cannot access and revert edits to existing read-only credential nodes.
+		// Runs after replaceInvalidCredentials so old-format/name references are
+		// already resolved to IDs before the check.
+		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
+		// folder/project services which import this module).
+		if (this.licenseState.isSharingLicensed()) {
+			const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
+			await Container.get(EnterpriseWorkflowService).preventTampering(
+				workflowUpdateData,
+				workflowId,
+				user,
+			);
+		}
+
 		// Update the workflow's version when changing nodes, connections, or nodeGroups
 		const hasNodesKey = 'nodes' in workflowUpdateData;
 		const hasConnectionsKey = 'connections' in workflowUpdateData;
@@ -383,10 +403,6 @@ export class WorkflowService {
 			// Do not let users change versionId directly
 			workflowUpdateData.versionId = workflow.versionId;
 		}
-
-		// check credentials for old format - scope to the workflow's owner project
-		const ownerProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
-		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 		WorkflowHelpers.resolveNodeWebhookIds(workflowUpdateData, this.nodeTypes);
@@ -588,6 +604,25 @@ export class WorkflowService {
 			await this.activeWorkflowManager.add(workflowId, mode);
 			didPublish = true;
 		} catch (error) {
+			// Activation failed partway through. It may already have registered triggers
+			// e.g. a Schedule Trigger before throwing; this ensures they get deregistered,
+			// which otherwise may cause them to start unintended executions.
+			// Done before the rollback below so the active version is still
+			// resolvable by `clearWebhooks`.
+			try {
+				await this.activeWorkflowManager.remove(workflowId);
+
+				this.logger.warn(
+					`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
+					{ workflowId },
+				);
+			} catch (cleanupError) {
+				this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
+					workflowId,
+					error: cleanupError,
+				});
+			}
+
 			const rollbackPayload = {
 				active: false,
 				activeVersionId: null,

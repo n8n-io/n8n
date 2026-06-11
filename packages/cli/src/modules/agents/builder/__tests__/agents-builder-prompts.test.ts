@@ -1,3 +1,5 @@
+import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '@n8n/api-types';
+
 import { getBuilderRuntimeSkills } from '../skills';
 
 describe('agents builder integrations prompt', () => {
@@ -15,5 +17,21 @@ describe('MCP skill availability', () => {
 	it('includes the MCP skill', () => {
 		const skills = getBuilderRuntimeSkills();
 		expect(skills.find((s) => s.id === 'agent-builder-mcp')).toBeDefined();
+	});
+});
+
+describe('sub-agent skill availability', () => {
+	it('contains the moved sub-agent delegation guidance', () => {
+		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-sub-agents');
+
+		expect(skill).toBeDefined();
+		expect(skill?.instructions).toContain('`delegate_subagent`');
+		expect(skill?.instructions).toContain('Call `list_sub_agents`');
+		expect(skill?.instructions).toContain('`allowMultiple: true`');
+		expect(skill?.instructions).toContain('subAgentId: "inline"');
+		expect(skill?.instructions).toContain('`subAgents.maxChildren`');
+		expect(skill?.instructions).toContain(
+			`from ${SUB_AGENT_MAX_CHILDREN_MIN} to ${SUB_AGENT_MAX_CHILDREN_MAX}`,
+		);
 	});
 });

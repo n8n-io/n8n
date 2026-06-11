@@ -14,9 +14,6 @@
  *  - Identity: each delegated unit of work gets a unique, traceable name we can
  *    log and surface in the timeline — without the parent having to invent ids.
  *    (Memory/session ids are independent — a run gets its own thread id.)
- *  - Policy enforcement: together with {@link SubAgentTaskPathPolicy}, the path
- *    lets us cap per-parent fan-out so a misbehaving agent can't spawn hundreds
- *    of parallel children, which would blow up cost, latency, and resources.
  *
  * Everything in this file is pure (no I/O, no n8n-specific concepts), which is
  * why it lives in the runtime SDK: it is shared verbatim by both the generic
@@ -31,13 +28,16 @@
 export type SubAgentTaskPath = '/root' | `/root/${string}`;
 
 /**
- * Guardrails applied when a parent tries to spawn a child sub-agent. Every limit
- * is optional; an undefined field means "no limit for that dimension".
+ * Policy fields related to sub-agent task paths and delegation parallelism.
+ * Every limit is optional at the call site; undefined fields use runtime defaults.
  */
 export interface SubAgentTaskPathPolicy {
-	/** Maximum number of children a single parent may spawn. Bounds fan-out width. */
+	/** Maximum number of child sub-agent runs that may execute in parallel. Defaults to {@link DEFAULT_SUB_AGENT_MAX_CHILDREN}. */
 	maxChildren?: number;
 }
+
+/** Default parallel delegate batch width when none is configured. */
+export const DEFAULT_SUB_AGENT_MAX_CHILDREN = 10;
 
 /** Path of the initiating (orchestrating) agent. */
 export const ROOT_SUB_AGENT_TASK_PATH = '/root' satisfies SubAgentTaskPath;
@@ -107,26 +107,4 @@ export function createChildSubAgentTaskPath(
 	assertSubAgentTaskPath(childPath);
 
 	return childPath;
-}
-
-/**
- * Fan-out-dimension gate, checked BEFORE a child is spawned.
- *
- * `childCount` is how many children the parent has ALREADY spawned. If that has
- * reached `maxChildren`, spawning one more (the `+ 1` in the message is the
- * would-be new total) exceeds the limit, so we reject. This stops a single agent
- * from fanning out to an unbounded number of parallel sub-agents. When
- * `maxChildren` is undefined, fan-out is unbounded.
- */
-export function assertSubAgentPolicyAllowsChildCount(
-	childCount: number,
-	policy: SubAgentTaskPathPolicy | undefined,
-): void {
-	if (policy?.maxChildren === undefined) return;
-
-	if (childCount >= policy.maxChildren) {
-		throw new Error(
-			`Sub-agent child count ${childCount + 1} exceeds maxChildren ${policy.maxChildren}`,
-		);
-	}
 }

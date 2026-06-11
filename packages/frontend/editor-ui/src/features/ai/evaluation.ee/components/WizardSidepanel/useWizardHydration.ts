@@ -4,9 +4,11 @@ import type { EvaluationConfigDto, EvaluationMetric, LlmJudgeMetricPreset } from
 
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import type { CustomCheck, JudgeSelection } from '../../wizardSidepanel.store';
+import { useEvaluationStore } from '../../evaluation.store';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useToast } from '@/app/composables/useToast';
 import { getDataTableRowsApi } from '@/features/core/dataTable/dataTable.api';
 import { listEvaluationConfigs } from '../../evaluation.api';
@@ -28,7 +30,9 @@ const CANNED_METRIC_KEYS = new Set<CannedMetricKey>([
 
 export function useWizardHydration() {
 	const wizardStore = useEvaluationsWizardSidepanelStore();
+	const evaluationStore = useEvaluationStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
 	const aiRootNodes = useAiRootNodes();
 	const toast = useToast();
@@ -42,6 +46,10 @@ export function useWizardHydration() {
 		const workflowId = wf?.workflowId;
 		const projectId = wf?.homeProject?.id;
 		if (!workflowId || !projectId) return;
+		// A new/unsaved workflow has no persisted config to load; calling the API
+		// with its placeholder id 404s ("Workflow not found") and surfaces a
+		// spurious error toast. Start blank instead.
+		if (workflowsStore.isNewWorkflow) return;
 
 		isHydrating.value = true;
 		try {
@@ -66,10 +74,32 @@ export function useWizardHydration() {
 					console.warn('[evaluations wizard] failed to hydrate dataset row', error);
 				}
 			}
+
+			await restoreLastRun(workflowId);
 		} catch (error) {
 			toast.showError(error, locale.baseText('evaluations.wizardSidepanel.hydrate.error'));
 		} finally {
 			isHydrating.value = false;
+		}
+	}
+
+	// On a fresh (re)open of a configured eval, land on the results pane showing
+	// the most recent run instead of step 0. Skips when the user is already
+	// mid-flow (past step 0) or has a run pinned this session — e.g. after
+	// "Edit evals", which sends them to step 0 but keeps the run pinned.
+	async function restoreLastRun(workflowId: string): Promise<void> {
+		if (wizardStore.activeStep !== 0 || wizardStore.activeRunId) return;
+		try {
+			await evaluationStore.fetchTestRuns(workflowId);
+			const runs = [...(evaluationStore.testRunsByWorkflowId[workflowId] ?? [])].sort(
+				(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+			);
+			const latest = runs[runs.length - 1];
+			if (!latest) return;
+			wizardStore.setActiveRunId(latest.id);
+			wizardStore.setStep(3);
+		} catch (error) {
+			console.warn('[evaluations wizard] failed to restore last run', error);
 		}
 	}
 
