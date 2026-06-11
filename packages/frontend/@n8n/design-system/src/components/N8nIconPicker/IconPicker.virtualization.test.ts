@@ -1,5 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createRouter, createWebHistory } from 'vue-router';
 
 const largeLucideIconSet = vi.hoisted(() =>
@@ -34,9 +34,6 @@ vi.mock('is-emoji-supported', () => ({
 }));
 
 import IconPicker from '.';
-import { IconBodyLoaderKey } from '../../composables/useIconBodyLoader';
-
-const iconBodyLoader = vi.fn(async (name: string) => `<path data-icon="${name}" />`);
 
 const router = createRouter({
 	history: createWebHistory(),
@@ -50,18 +47,13 @@ const router = createRouter({
 });
 
 describe('IconPicker virtualization', () => {
-	beforeEach(() => {
-		iconBodyLoader.mockClear();
-	});
-
-	it('loads only visible icon bodies in browse mode', async () => {
+	it('renders only visible icon rows in browse mode', async () => {
 		const { getByTestId } = render(IconPicker, {
 			props: {
 				modelValue: { type: 'icon', value: 'icon-1' },
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				stubs: ['N8nButton', 'N8nIcon'],
 			},
@@ -80,8 +72,6 @@ describe('IconPicker virtualization', () => {
 				35,
 			);
 		});
-
-		expect(iconBodyLoader).toHaveBeenCalled();
 	});
 
 	it('keeps broad search results virtualized', async () => {
@@ -91,7 +81,6 @@ describe('IconPicker virtualization', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				stubs: ['N8nButton', 'N8nIcon'],
 			},

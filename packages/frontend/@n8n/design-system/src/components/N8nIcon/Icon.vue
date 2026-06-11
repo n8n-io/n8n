@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, shallowRef, useCssModule, watch } from 'vue';
 
+import { resolveIconColor } from './iconColor';
 import { deprecatedIconSet, updatedIconSet } from './icons';
 import type { IconName, NodeIconName } from './icons';
 import type { nodeIconSet as NodeIconSetType } from './node-icons';
@@ -14,7 +15,8 @@ interface IconProps {
 	icon: IconName | NodeIconName | (string & {});
 	size?: IconSize | number;
 	spin?: boolean;
-	color?: IconColor;
+	// accepts a named IconColor token or a raw CSS custom property (e.g. '--node--icon--color--blue')
+	color?: IconColor | (string & {});
 	strokeWidth?: number | undefined;
 }
 
@@ -61,26 +63,12 @@ const size = computed((): { height: string; width: string } => {
 	};
 });
 
-// @TODO Tech debt - property value should be updated to match token names (text-shade-2 instead of text-dark for example)
-const colorMap: Record<IconColor, string> = {
-	primary: '--color--primary',
-	secondary: '--color--secondary',
-	'text-dark': '--color--text--shade-1',
-	'text-base': '--color--text',
-	'text-light': '--color--text--tint-1',
-	'text-xlight': '--color--text--tint-2',
-	danger: '--color--danger',
-	success: '--color--success',
-	warning: '--color--warning',
-	'foreground-dark': '--color--foreground--shade-1',
-	'foreground-xdark': '--color--foreground--shade-2',
-};
-
 const styles = computed(() => {
 	const stylesToApply: Record<string, string> = {};
 
-	if (props.color) {
-		stylesToApply.color = `var(${colorMap[props.color]})`;
+	const color = resolveIconColor(props.color);
+	if (color) {
+		stylesToApply.color = color;
 	}
 
 	if (props.strokeWidth) {

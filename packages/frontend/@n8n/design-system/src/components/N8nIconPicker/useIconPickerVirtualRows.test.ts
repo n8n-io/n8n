@@ -6,7 +6,6 @@ import {
 	buildIconBrowseRows,
 	buildIconSearchRows,
 	buildEmojiRows,
-	getStickyHeaderLabelKey,
 } from './useIconPickerVirtualRows';
 
 function iconMeta(): LucideIconMeta {
@@ -101,25 +100,5 @@ describe('useIconPickerVirtualRows', () => {
 		expect(rows[2]).toMatchObject({
 			type: 'emoji-row',
 		});
-	});
-
-	it('derives the sticky header label from the nearest previous header row', () => {
-		const rows = buildIconBrowseRows([
-			{
-				key: 'design',
-				labelKey: 'iconPicker.iconSection.design',
-				icons: Array.from({ length: 3 }, (_, index) => [`design-${index + 1}`, iconMeta()]),
-			},
-			{
-				key: 'shapes',
-				labelKey: 'iconPicker.iconSection.shapes',
-				icons: Array.from({ length: 3 }, (_, index) => [`shape-${index + 1}`, iconMeta()]),
-			},
-		]);
-
-		expect(getStickyHeaderLabelKey(rows, 0)).toBe('iconPicker.iconSection.design');
-		expect(getStickyHeaderLabelKey(rows, 1)).toBe('iconPicker.iconSection.design');
-		expect(getStickyHeaderLabelKey(rows, 3)).toBe('iconPicker.iconSection.shapes');
-		expect(getStickyHeaderLabelKey(buildIconSearchRows([]), 0)).toBeNull();
 	});
 });

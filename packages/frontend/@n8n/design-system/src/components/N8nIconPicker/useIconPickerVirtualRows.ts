@@ -103,19 +103,3 @@ export function buildEmojiRows(
 
 	return rows;
 }
-
-export function getStickyHeaderLabelKey(
-	rows: IconPickerVirtualRow[],
-	firstVisibleIndex: number,
-): string | null {
-	const clampedIndex = Math.min(Math.max(firstVisibleIndex, 0), rows.length - 1);
-
-	for (let index = clampedIndex; index >= 0; index--) {
-		const row = rows[index];
-		if (row?.type === 'header') {
-			return row.labelKey;
-		}
-	}
-
-	return null;
-}

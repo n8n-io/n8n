@@ -43,11 +43,15 @@ export function useIconPickerSearch(
 			entries = entries.filter(([, icon]) => icon.categories.includes(cat));
 		}
 
-		// Filter by search query
+		// Filter by search query. Tokenize so multi-word queries ("alarm clock")
+		// match when every token is found in the name or any keyword.
 		const q = debouncedQuery.value.toLowerCase().trim();
 		if (q) {
-			entries = entries.filter(
-				([name, icon]) => name.includes(q) || icon.keywords.some((kw) => kw.includes(q)),
+			const tokens = q.split(/\s+/);
+			entries = entries.filter(([name, icon]) =>
+				tokens.every(
+					(token) => name.includes(token) || icon.keywords.some((kw) => kw.includes(token)),
+				),
 			);
 		}
 
@@ -100,13 +104,18 @@ export function useIconPickerSearch(
 
 	const filteredEmojiSections = computed<DisplayEmojiSection[]>(() => {
 		const q = debouncedQuery.value.toLowerCase().trim();
+		const tokens = q ? q.split(/\s+/) : [];
 		const tone = selectedSkinTone.value;
 
 		return emojiSectionsData.value
 			.map((section) => {
 				let emojis = section.emojis;
 				if (q) {
-					emojis = emojis.filter((e) => e.k.some((kw) => kw.includes(q)));
+					// Tokenize so multi-word queries ("grinning face", "thumbs up")
+					// match when every token is found in any keyword.
+					emojis = emojis.filter((e) =>
+						tokens.every((token) => e.k.some((kw) => kw.includes(token))),
+					);
 				}
 				// Apply skin tone to display
 				const displayEmojis: DisplayEmojiEntry[] = emojis.map((e) => ({

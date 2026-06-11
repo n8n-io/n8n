@@ -122,7 +122,6 @@ const tooltipPlacement = computed(() => {
 					<N8nText
 						v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
 						:class="$style.menuItemEmoji"
-						:color="iconColor"
 						>{{ item.icon.value }}</N8nText
 					>
 					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />

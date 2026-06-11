@@ -11,8 +11,8 @@ export type IMenuItem = {
 	icon?:
 		| IconName
 		| (string & {})
-		| { type: 'icon'; value: IconName | (string & {}); color?: IconColor }
-		| { type: 'emoji'; value: string; color?: IconColor };
+		| { type: 'icon'; value: IconName | (string & {}); color?: IconColor | (string & {}) }
+		| { type: 'emoji'; value: string; color?: IconColor | (string & {}) };
 	secondaryIcon?: {
 		name: IconName;
 		size?: 'xsmall' | 'small' | 'medium' | 'large';

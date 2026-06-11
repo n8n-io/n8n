@@ -68,16 +68,50 @@ function titleCase(str) {
 	return str.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function extractSkinTones(emoji) {
+/**
+ * Whether a skin tone represents a uniform variation.
+ *
+ * Single-person emojis use a scalar tone (1–5). Multi-person emojis use one tone
+ * per person: emojibase collapses uniform combinations to a scalar but could also
+ * represent them as an array whose entries are all equal (e.g. [3, 3]). Mixed
+ * combinations such as [1, 2] are not uniform.
+ */
+function isUniformTone(tone) {
+	if (typeof tone === 'number') {
+		return true;
+	}
+	if (Array.isArray(tone) && tone.length > 0) {
+		return tone.every((value) => value === tone[0]);
+	}
+	return false;
+}
+
+/** Build a hexcode → tone lookup from the full dataset's skin variations. */
+function buildToneByHexcode(fullData) {
+	const toneByHexcode = new Map();
+	for (const emoji of fullData) {
+		if (Array.isArray(emoji.skins)) {
+			for (const skin of emoji.skins) {
+				toneByHexcode.set(skin.hexcode, skin.tone);
+			}
+		}
+	}
+	return toneByHexcode;
+}
+
+function extractSkinTones(emoji, toneByHexcode) {
 	if (!emoji.skins || !Array.isArray(emoji.skins) || emoji.skins.length === 0) {
 		return undefined;
 	}
-	// For simple emojis (5 skin tones), take the first 5 skins
-	// For multi-person emojis, we may have more — just take the first 5 simple ones
+	// Single-person emojis expose exactly five uniform tones. Multi-person emojis
+	// expose every tone combination, ordered with the first person fixed at the
+	// light tone — so the first five would be mixed pairs (light+light,
+	// light+medium-light, …). Keep only the uniform variations so the five swatches
+	// map cleanly onto [light, medium-light, medium, medium-dark, dark].
 	const tones = [];
 	for (const skin of emoji.skins) {
 		if (tones.length >= 5) break;
-		if (skin.unicode) {
+		if (skin.unicode && isUniformTone(toneByHexcode.get(skin.hexcode))) {
 			tones.push(skin.unicode);
 		}
 	}
@@ -92,6 +126,12 @@ function main() {
 	const rawData = JSON.parse(readFileSync(compactDataPath, 'utf-8'));
 
 	console.log(`Loaded ${rawData.length} emoji entries`);
+
+	// The compact dataset omits skin `tone` metadata, so load the full dataset to
+	// tell uniform skin-tone variations apart from mixed multi-person combinations.
+	const fullDataPath = require.resolve('emojibase-data/en/data.json');
+	const fullData = JSON.parse(readFileSync(fullDataPath, 'utf-8'));
+	const toneByHexcode = buildToneByHexcode(fullData);
 
 	// Group emojis into sections
 	const sections = {};
@@ -116,7 +156,7 @@ function main() {
 		}
 
 		const keywords = buildKeywords(emoji);
-		const skins = extractSkinTones(emoji);
+		const skins = extractSkinTones(emoji, toneByHexcode);
 		if (skins) totalWithSkins++;
 
 		const entry = {

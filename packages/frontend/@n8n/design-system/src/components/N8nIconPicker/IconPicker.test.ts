@@ -2,9 +2,6 @@ import { fireEvent, render, waitFor } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 import IconPicker from '.';
-import { IconBodyLoaderKey } from '../../composables/useIconBodyLoader';
-
-const iconBodyLoader = vi.fn(async (name: string) => `<path data-icon="${name}" />`);
 
 // Mock the lazy-loaded data modules
 // lucideIconData now exports metadata only (no SVG bodies)
@@ -104,7 +101,6 @@ function getTabElement(tabContainer: Element): Element | null {
 describe('IconPicker', () => {
 	beforeEach(() => {
 		localStorage.clear();
-		iconBodyLoader.mockClear();
 		vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (
 			this: HTMLElement,
 		) {
@@ -121,7 +117,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nButton', 'N8nIcon'],
@@ -150,7 +145,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select something...',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				stubs: ['N8nButton'],
 			},
@@ -173,7 +167,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select something...',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 			},
@@ -188,7 +181,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon', 'N8nButton'],
@@ -211,7 +203,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon', 'N8nButton'],
@@ -242,7 +233,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an emoji',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon'],
@@ -274,7 +264,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon', 'N8nButton'],
@@ -303,7 +292,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon', 'N8nButton'],
@@ -335,7 +323,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon', 'N8nButton'],
@@ -358,9 +345,9 @@ describe('IconPicker', () => {
 			props: {
 				modelValue: { type: 'icon', value: 'smile' },
 				buttonTooltip: 'Select an icon',
+				showColorPicker: true,
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon', 'N8nButton'],
@@ -390,6 +377,26 @@ describe('IconPicker', () => {
 		expect(emittedValue.color).toBe('--node--icon--color--blue');
 	});
 
+	it('does not render the color picker by default', async () => {
+		const { getByTestId, queryByTestId, findAllByTestId } = render(IconPicker, {
+			props: {
+				modelValue: { type: 'icon', value: 'smile' },
+				buttonTooltip: 'Select an icon',
+			},
+			global: {
+				plugins: [router],
+				components,
+				stubs: ['N8nIcon', 'N8nButton'],
+			},
+		});
+
+		await fireEvent.click(getByTestId('icon-picker-button'));
+		// Wait for the icons tab content so the search row (which would host the color picker) is rendered
+		await findAllByTestId('icon-picker-icon');
+
+		expect(queryByTestId('icon-color-picker-trigger')).toBeNull();
+	});
+
 	it('persists skin tone preference to localStorage', async () => {
 		const { getByTestId, findAllByTestId } = render(IconPicker, {
 			props: {
@@ -397,7 +404,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon', 'N8nButton'],
@@ -430,7 +436,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon', 'N8nButton'],
@@ -475,7 +480,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an emoji',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon'],
@@ -520,7 +524,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon', 'N8nButton'],
@@ -550,7 +553,6 @@ describe('IconPicker', () => {
 				buttonTooltip: 'Select an icon',
 			},
 			global: {
-				provide: { [IconBodyLoaderKey as symbol]: iconBodyLoader },
 				plugins: [router],
 				components,
 				stubs: ['N8nIcon', 'N8nButton'],

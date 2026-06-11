@@ -6,7 +6,6 @@ import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed, watch, nextTick } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import { useInjectIconBodyLoader } from '../../composables/useIconBodyLoader';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
@@ -26,7 +25,6 @@ import {
 	buildEmojiRows,
 	buildIconBrowseRows,
 	buildIconSearchRows,
-	type IconPickerIconRow,
 	type IconPickerVirtualRow,
 } from './useIconPickerVirtualRows';
 
@@ -34,21 +32,23 @@ import IconShuffle from '~icons/lucide/shuffle';
 
 /**
  * Icon picker with support for all Lucide icons and emojis.
- * Data is prefetched on hover over the trigger button and cached for instant popup open.
- * Icons render as raw SVGs sourced from @iconify/json (via unplugin-icons ecosystem).
- * Search metadata (keywords, categories) comes from a generated data file.
+ * Search metadata (keywords, categories) and emoji data are lazy data modules,
+ * prefetched on hover over the trigger button for instant popup open.
+ * Icon SVG bodies load on demand in hash-bucketed chunks via the IconBodyLoader
+ * injected into N8nIcon (see src/icons/lucide), deduplicated per bucket.
  * Emojis use emojibase-data with categories and skin tone support.
  */
 defineOptions({ name: 'N8nIconPicker' });
 
 const SKIN_TONE_STORAGE_KEY = 'n8n-emoji-skin-tone';
 const VIRTUAL_ROW_SIZE = 32;
-const PREFETCH_ICON_ROW_COUNT = 3;
 
 type Props = {
 	buttonTooltip: string;
 	buttonSize?: 'small' | 'large' | 'xlarge';
 	isReadOnly?: boolean;
+	/** Show the icon color picker. Only enable for consumers that persist and render the color. */
+	showColorPicker?: boolean;
 	/** Additional CSS class(es) for the outer container element */
 	containerClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
 	/** Additional CSS class(es) for the trigger button */
@@ -59,15 +59,10 @@ const { t } = useI18n();
 
 const props = withDefaults(defineProps<Props>(), {
 	buttonSize: 'large',
+	showColorPicker: false,
 });
 
 const model = defineModel<IconOrEmoji>({ default: { type: 'icon', value: 'smile' } });
-
-const loadIconBody = useInjectIconBodyLoader();
-
-async function loadIconBodies(names: string[]): Promise<void> {
-	await Promise.all(names.map(loadIconBody));
-}
 
 // --- Lazy-loaded data ---
 const lucideData = ref<Record<string, LucideIconMeta> | null>(null);
@@ -119,7 +114,7 @@ const selectedTab = ref<string>(tabs[0].value);
 const searchQuery = ref('');
 const selectedCategory = ref<string | null>(null);
 const selectedColor = ref<string | undefined>(
-	model.value.type === 'icon' ? model.value.color : undefined,
+	props.showColorPicker && model.value.type === 'icon' ? model.value.color : undefined,
 );
 const buttonIconName = computed<IconName>(() =>
 	model.value.type === 'icon' ? (model.value.value as IconName) : 'smile',
@@ -132,7 +127,6 @@ const container = ref<HTMLDivElement>();
 const searchInputRef = ref<InstanceType<typeof N8nInput>>();
 const colorPickerRef = ref<InstanceType<typeof IconColorPicker>>();
 const skinTonePickerRef = ref<InstanceType<typeof SkinTonePicker>>();
-const iconScrollerRef = ref<{ visibleItems: IconPickerVirtualRow[] }>();
 
 onClickOutside(container, () => {
 	popupVisible.value = false;
@@ -165,37 +159,17 @@ const selectIcon = (value: IconOrEmoji) => {
 	popupVisible.value = false;
 };
 
-function getPrefetchIconNames(rows: IconPickerVirtualRow[]): string[] {
-	return rows
-		.filter((row): row is IconPickerIconRow => row.type === 'icon-row')
-		.slice(0, PREFETCH_ICON_ROW_COUNT)
-		.flatMap((row) => row.iconNames);
-}
-
-async function prefetchVisibleIconBodies(rows = iconRows.value) {
-	const iconNames = getPrefetchIconNames(rows);
-	if (iconNames.length === 0) return;
-	await loadIconBodies(iconNames);
-}
-
-async function prefetchPickerData() {
-	await loadData();
-	await prefetchVisibleIconBodies();
-}
-
 const togglePopup = async () => {
 	popupVisible.value = !popupVisible.value;
 	if (popupVisible.value) {
 		selectedTab.value = model.value.type === 'emoji' ? 'emojis' : 'icons';
 		searchQuery.value = '';
 		selectedCategory.value = null;
-		// Initialize color from current model value
-		selectedColor.value = model.value.type === 'icon' ? model.value.color : undefined;
+		// Initialize color from current model value (only when the color picker is enabled)
+		selectedColor.value =
+			props.showColorPicker && model.value.type === 'icon' ? model.value.color : undefined;
 		// Load data on first open
 		await loadData();
-		if (selectedTab.value === 'icons') {
-			await prefetchVisibleIconBodies();
-		}
 		await nextTick();
 		focusSearchInput();
 	}
@@ -215,30 +189,6 @@ watch(selectedTab, async () => {
 	await nextTick();
 	focusSearchInput();
 });
-
-watch([popupVisible, selectedTab, iconRows], async ([visible, tab, rows]) => {
-	if (!visible || tab !== 'icons') return;
-	await prefetchVisibleIconBodies(rows);
-});
-
-// Batch-load icon bodies for newly visible rows as the user scrolls
-watch(
-	() => iconScrollerRef.value?.visibleItems,
-	async (currentVisible, previousVisible) => {
-		if (!currentVisible || !popupVisible.value || selectedTab.value !== 'icons') return;
-
-		const previousKeys = new Set((previousVisible ?? []).map((item) => item.id));
-		const newlyVisible = currentVisible.filter((item) => !previousKeys.has(item.id));
-
-		const iconNames = newlyVisible
-			.filter((row): row is IconPickerIconRow => row.type === 'icon-row')
-			.flatMap((row) => row.iconNames);
-
-		if (iconNames.length > 0) {
-			await loadIconBodies(iconNames);
-		}
-	},
-);
 
 // --- Random selection ---
 const selectRandomIcon = () => {
@@ -279,7 +229,7 @@ function humanizeIconName(name: string): string {
 		role="button"
 		aria-haspopup="true"
 	>
-		<div :class="$style['icon-picker-button']" @pointerenter="prefetchPickerData">
+		<div :class="$style['icon-picker-button']" @pointerenter="loadData">
 			<N8nTooltip placement="top" data-test-id="icon-picker-tooltip" :disabled="isReadOnly">
 				<template #content>
 					{{ props.buttonTooltip ?? t('iconPicker.button.defaultToolTip') }}
@@ -334,7 +284,7 @@ function humanizeIconName(name: string): string {
 					</template>
 				</N8nInput>
 				<N8nTooltip
-					v-if="selectedTab === 'icons'"
+					v-if="selectedTab === 'icons' && showColorPicker"
 					placement="top"
 					:disabled="colorPickerRef?.isOpen"
 					:teleported="false"
@@ -390,7 +340,6 @@ function humanizeIconName(name: string): string {
 			<div v-else-if="selectedTab === 'icons' && dataLoaded" :class="$style.content">
 				<N8nRecycleScroller
 					v-if="iconRows.length > 0"
-					ref="iconScrollerRef"
 					:items="iconRows"
 					item-key="id"
 					:item-size="VIRTUAL_ROW_SIZE"
@@ -480,16 +429,16 @@ function humanizeIconName(name: string): string {
 		width: var(--spacing--md);
 		height: var(--spacing--md);
 		stroke-width: 1.5;
-	}
 
-	.xlarge & {
-		width: 24px;
-		height: 24px;
-	}
+		.xlarge & {
+			width: 24px;
+			height: 24px;
+		}
 
-	.xxlarge & {
-		width: 32px;
-		height: 32px;
+		.xxlarge & {
+			width: 32px;
+			height: 32px;
+		}
 	}
 }
 

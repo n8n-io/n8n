@@ -29,8 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 			v-if="icon.type === 'icon'"
 			:icon="icon.value"
 			:class="$style.icon"
-			:color="icon.color ? undefined : color"
-			:style="icon.color ? { color: `var(${icon.color})` } : undefined"
+			:color="icon.color ?? color"
 		></N8nIcon>
 		<N8nText v-else-if="icon.type === 'emoji'" color="text-light" :class="$style.emoji">
 			{{ icon.value }}
