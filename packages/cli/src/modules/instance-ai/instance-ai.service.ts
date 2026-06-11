@@ -4462,10 +4462,14 @@ export class InstanceAiService {
 			const errorMessage = getErrorMessage(error);
 			const userFacingErrorMessage = getUserFacingErrorMessage(error);
 
-			this.logger.error('Instance AI run error', {
+			this.logger.error(`Instance AI run error: ${errorMessage}`, {
 				error: errorMessage,
 				threadId,
 				runId,
+			});
+			this.errorReporter.error(error, {
+				tags: { component: 'instance-ai-run' },
+				extra: { threadId, runId },
 			});
 			this.evaluateTerminalResponse(threadId, runId, 'errored', {
 				messageGroupId,
@@ -5452,10 +5456,14 @@ export class InstanceAiService {
 			const errorMessage = getErrorMessage(error);
 			const userFacingErrorMessage = getUserFacingErrorMessage(error);
 
-			this.logger.error('Instance AI resumed run error', {
+			this.logger.error(`Instance AI resumed run error: ${errorMessage}`, {
 				error: errorMessage,
 				threadId: opts.threadId,
 				runId: opts.runId,
+			});
+			this.errorReporter.error(error, {
+				tags: { component: 'instance-ai-run' },
+				extra: { threadId: opts.threadId, runId: opts.runId },
 			});
 			const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
 			this.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {

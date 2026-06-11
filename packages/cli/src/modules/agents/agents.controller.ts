@@ -11,6 +11,7 @@ import {
 	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	CreateSlackAgentAppDto,
+	ListAgentsQueryDto,
 	type CreateSlackAgentAppResponse,
 	type SlackAgentAppManifestResponse,
 	CreateAgentDto,
@@ -176,12 +177,17 @@ export class AgentsController {
 
 	@Get('/')
 	@ProjectScope('agent:list')
-	async list(req: AuthenticatedRequest<{ projectId: string }, unknown, unknown, { all?: string }>) {
-		// ?all=true returns all agents for this user (cross-project, for Instance AI switcher)
-		if (req.query.all === 'true') {
-			return await this.agentsService.findByUser(req.user.id);
-		}
-		return await this.agentsService.findByProjectId(req.params.projectId);
+	async list(
+		req: AuthenticatedRequest<
+			{ projectId: string },
+			unknown,
+			unknown,
+			{ filter?: string; skip?: string; take?: string; sortBy?: string }
+		>,
+		res: Response,
+		@Query query: ListAgentsQueryDto,
+	) {
+		res.json(await this.agentsService.findByProjectIdPaginated(req.params.projectId, query));
 	}
 
 	@Get('/:agentId/config')

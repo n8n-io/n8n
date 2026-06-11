@@ -7,11 +7,11 @@ import type { AuthorizationCode } from './database/entities/oauth-authorization-
 import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
 
 /**
- * Handles OAuth 2.1 authorization code lifecycle for MCP server
+ * Handles the OAuth 2.1 authorization code lifecycle for the shared OAuth server.
  * Generates, validates, and consumes authorization codes with PKCE support
  */
 @Service()
-export class McpOAuthAuthorizationCodeService {
+export class OAuthAuthorizationCodeService {
 	private readonly AUTHORIZATION_CODE_EXPIRY_MS = 10 * Time.minutes.toMilliseconds;
 
 	constructor(private readonly authorizationCodeRepository: AuthorizationCodeRepository) {}
