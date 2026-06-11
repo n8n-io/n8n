@@ -10,6 +10,7 @@ import { agentHasLanguageModel } from './agent-has-language-model';
 import { allNodesConnected } from './all-nodes-connected';
 import { correctNodeOperations } from './correct-node-operations';
 import { descriptiveNodeNames } from './descriptive-node-names';
+import { errorRoutesConsistent } from './error-routes-consistent';
 import { expressionsReferenceExistingNodes } from './expressions-reference-existing-nodes';
 import { fulfillsUserRequest } from './fulfills-user-request';
 import { handlesMultipleItems } from './handles-multiple-items';
@@ -48,6 +49,7 @@ export const CONNECTION_TOPOLOGY_CHECKS: BinaryCheck[] = [
 	noUnreachableNodes,
 	switchFallbackOutputEnabled,
 	handlesMultipleItems,
+	errorRoutesConsistent,
 ];
 
 export const PARAMETER_CORRECTNESS_CHECKS: BinaryCheck[] = [
