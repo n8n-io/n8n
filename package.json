@@ -139,7 +139,7 @@
       "glob@7": "7.2.3",
       "jws@3": "3.2.2",
       "jws@4": "4.0.1",
-      "qs@6": "6.15.2",
+      "qs@6": "catalog:",
       "@smithy/config-resolver": ">=4.4.0",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
       "diff": "8.0.3",
