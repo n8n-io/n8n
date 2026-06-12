@@ -7,8 +7,9 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { parseWorkbook } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
-import { workbookRLC } from '../common.descriptions';
+import { workbookRLC, workbookSourceOption } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	workbookRLC,
@@ -19,6 +20,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add option',
 		default: {},
 		options: [
+			workbookSourceOption,
 			{
 				displayName: 'Name',
 				name: 'name',
@@ -49,9 +51,10 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
+			const workbookValue = this.getNodeParameter('workbook', i, undefined, {
 				extractValue: true,
 			}) as string;
+			const { root, workbookId } = parseWorkbook(workbookValue);
 
 			const additionalFields = this.getNodeParameter('additionalFields', i);
 			const body: IDataObject = {};
@@ -61,13 +64,13 @@ export async function execute(
 			const { id } = await microsoftApiRequest.call(
 				this,
 				'POST',
-				`/drive/items/${workbookId}/workbook/createSession`,
+				`${root}/items/${workbookId}/workbook/createSession`,
 				{ persistChanges: true },
 			);
 			const responseData = await microsoftApiRequest.call(
 				this,
 				'POST',
-				`/drive/items/${workbookId}/workbook/worksheets/add`,
+				`${root}/items/${workbookId}/workbook/worksheets/add`,
 				body,
 				{},
 				'',
@@ -76,7 +79,7 @@ export async function execute(
 			await microsoftApiRequest.call(
 				this,
 				'POST',
-				`/drive/items/${workbookId}/workbook/closeSession`,
+				`${root}/items/${workbookId}/workbook/closeSession`,
 				{},
 				{},
 				'',

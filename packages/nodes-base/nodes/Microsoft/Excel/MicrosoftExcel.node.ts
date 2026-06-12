@@ -13,7 +13,7 @@ export class MicrosoftExcel extends VersionedNodeType {
 			group: ['input'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume Microsoft Excel API',
-			defaultVersion: 2.2,
+			defaultVersion: 2.3,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -21,6 +21,7 @@ export class MicrosoftExcel extends VersionedNodeType {
 			2: new MicrosoftExcelV2(baseDescription),
 			2.1: new MicrosoftExcelV2(baseDescription),
 			2.2: new MicrosoftExcelV2(baseDescription),
+			2.3: new MicrosoftExcelV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

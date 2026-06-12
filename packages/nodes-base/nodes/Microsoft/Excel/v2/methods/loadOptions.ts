@@ -1,14 +1,14 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
+import { parseAddress, parseWorkbook } from '../helpers/utils';
 import { microsoftApiRequest } from '../transport';
-import { parseAddress } from '../helpers/utils';
 
 export async function getWorksheetColumnRow(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const workbookId = this.getNodeParameter('workbook', undefined, {
-		extractValue: true,
-	}) as string;
+	const { root, workbookId } = parseWorkbook(
+		this.getNodeParameter('workbook', undefined, { extractValue: true }) as string,
+	);
 
 	const worksheetId = this.getNodeParameter('worksheet', undefined, {
 		extractValue: true,
@@ -21,7 +21,7 @@ export async function getWorksheetColumnRow(
 		const worksheetData = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+			`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 			undefined,
 			{ select: 'values' },
 		);
@@ -34,7 +34,7 @@ export async function getWorksheetColumnRow(
 		const worksheetData = await microsoftApiRequest.call(
 			this,
 			'PATCH',
-			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+			`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 			{ select: 'values' },
 		);
 
@@ -62,9 +62,9 @@ export async function getWorksheetColumnRowSkipColumnToMatchOn(
 export async function getTableColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const workbookId = this.getNodeParameter('workbook', undefined, {
-		extractValue: true,
-	}) as string;
+	const { root, workbookId } = parseWorkbook(
+		this.getNodeParameter('workbook', undefined, { extractValue: true }) as string,
+	);
 
 	const worksheetId = this.getNodeParameter('worksheet', undefined, {
 		extractValue: true,
@@ -77,7 +77,7 @@ export async function getTableColumns(
 	const response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
+		`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
 		{},
 	);
 

@@ -5,6 +5,12 @@ import type {
 	INodeListSearchResult,
 } from 'n8n-workflow';
 
+import { parseWorkbook } from '../helpers/utils';
+import {
+	fetchWorkbookList,
+	getWorkbookSourceForPicker,
+	stripWorkbookExtension,
+} from '../helpers/workbookSource';
 import { microsoftApiRequest } from '../transport';
 
 export async function searchWorkbooks(
@@ -12,56 +18,24 @@ export async function searchWorkbooks(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const fileExtensions = ['.xlsx', '.xlsm', '.xlst'];
-	const extensionFilter = fileExtensions.join(' OR ');
+	// Source lives in the operation's collapsible options. When left unset it falls
+	// back to the node-version default (OneDrive for existing nodes, everywhere for new).
+	const source = getWorkbookSourceForPicker(this);
 
-	const q = filter || extensionFilter;
-
-	let response: IDataObject = {};
-
-	if (paginationToken) {
-		response = await microsoftApiRequest.call(
-			this,
-			'GET',
-			'',
-			undefined,
-			undefined,
-			paginationToken, // paginationToken contains the full URL
-		);
-	} else {
-		response = await microsoftApiRequest.call(
-			this,
-			'GET',
-			`/drive/root/search(q='${q}')`,
-			undefined,
-			{
-				select: 'id,name,webUrl',
-				$top: 100,
-			},
-		);
-	}
-
-	if (response.value && filter) {
-		response.value = (response.value as IDataObject[]).filter((workbook: IDataObject) => {
-			return fileExtensions.some((extension) => (workbook.name as string).includes(extension));
-		});
-	}
+	const { items, paginationToken: nextToken } = await fetchWorkbookList.call(this, source, {
+		filter,
+		paginationToken,
+	});
 
 	return {
-		results: (response.value as IDataObject[]).map((workbook: IDataObject) => {
-			for (const extension of fileExtensions) {
-				if ((workbook.name as string).includes(extension)) {
-					workbook.name = (workbook.name as string).replace(extension, '');
-					break;
-				}
-			}
-			return {
-				name: workbook.name as string,
-				value: workbook.id as string,
-				url: workbook.webUrl as string,
-			};
-		}),
-		paginationToken: response['@odata.nextLink'],
+		results: items.map((item) => ({
+			name: stripWorkbookExtension(item.name),
+			// Non-personal workbooks live in another drive, so the value carries it as
+			// "{driveId}/{itemId}". Personal OneDrive keeps a bare id (-> /me/drive).
+			value: item.driveId ? `${item.driveId}/${item.id}` : item.id,
+			url: item.webUrl,
+		})),
+		paginationToken: nextToken,
 	};
 }
 
@@ -69,19 +43,17 @@ export async function getWorksheetsList(
 	this: ILoadOptionsFunctions,
 ): Promise<INodeListSearchResult> {
 	const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
-	const workbookId = workbookRLC.value as string;
+	const { root, workbookId } = parseWorkbook(workbookRLC.value as string);
 	let workbookURL = (workbookRLC.cachedResultUrl as string) ?? '';
 
 	if (workbookURL.includes('1drv.ms')) {
 		workbookURL = `https://onedrive.live.com/edit.aspx?resid=${workbookId}`;
 	}
 
-	let response: IDataObject = {};
-
-	response = await microsoftApiRequest.call(
+	const response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${workbookId}/workbook/worksheets`,
+		`${root}/items/${workbookId}/workbook/worksheets`,
 		undefined,
 		{
 			select: 'id,name',
@@ -103,7 +75,7 @@ export async function getWorksheetTables(
 	this: ILoadOptionsFunctions,
 ): Promise<INodeListSearchResult> {
 	const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
-	const workbookId = workbookRLC.value as string;
+	const { root, workbookId } = parseWorkbook(workbookRLC.value as string);
 	let workbookURL = (workbookRLC.cachedResultUrl as string) ?? '';
 
 	if (workbookURL.includes('1drv.ms')) {
@@ -114,12 +86,10 @@ export async function getWorksheetTables(
 		extractValue: true,
 	}) as string;
 
-	let response: IDataObject = {};
-
-	response = await microsoftApiRequest.call(
+	const response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables`,
+		`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/tables`,
 		undefined,
 	);
 
@@ -132,7 +102,7 @@ export async function getWorksheetTables(
 		const { address } = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${value}/range`,
+			`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${value}/range`,
 			undefined,
 			{
 				select: 'address',

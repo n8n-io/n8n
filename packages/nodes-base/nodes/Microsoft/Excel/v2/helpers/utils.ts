@@ -7,6 +7,26 @@ import type { ExcelResponse, SheetData, UpdateSummary } from './interfaces';
 
 export const CELL_REGEX = /([a-zA-Z]{1,10})([0-9]{0,10})/;
 
+/**
+ * Resolve a workbook resource-locator value into its Graph drive base and item id.
+ *
+ * Search results encode the value as `"{driveId}/{itemId}"` so a workbook can be
+ * opened in whatever drive it lives in (personal OneDrive, a shared drive, or a
+ * SharePoint document library). A bare id (an old saved workflow, or a By-ID value
+ * typed without a drive) falls back to the signed-in user's OneDrive (`/drive`,
+ * which the transport scopes to `/me`), so existing workflows keep working.
+ */
+export function parseWorkbook(workbookValue: string): { root: string; workbookId: string } {
+	const separatorIndex = workbookValue.indexOf('/');
+	if (separatorIndex === -1) {
+		return { root: '/drive', workbookId: workbookValue };
+	}
+	return {
+		root: `/drives/${workbookValue.slice(0, separatorIndex)}`,
+		workbookId: workbookValue.slice(separatorIndex + 1),
+	};
+}
+
 type PrepareOutputConfig = {
 	rawData: boolean;
 	dataProperty?: string;

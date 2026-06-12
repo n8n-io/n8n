@@ -7,8 +7,9 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { parseWorkbook } from '../../helpers/utils';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
-import { workbookRLC } from '../common.descriptions';
+import { workbookRLC, workbookSourceOption } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	workbookRLC,
@@ -42,6 +43,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		default: {},
 		options: [
+			workbookSourceOption,
 			{
 				displayName: 'Fields',
 				name: 'fields',
@@ -73,9 +75,10 @@ export async function execute(
 		const qs: IDataObject = {};
 		try {
 			const returnAll = this.getNodeParameter('returnAll', i);
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
+			const workbookValue = this.getNodeParameter('workbook', i, undefined, {
 				extractValue: true,
 			}) as string;
+			const { root, workbookId } = parseWorkbook(workbookValue);
 			const filters = this.getNodeParameter('filters', i);
 			if (filters.fields) {
 				qs.$select = filters.fields;
@@ -87,7 +90,7 @@ export async function execute(
 					this,
 					'value',
 					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets`,
+					`${root}/items/${workbookId}/workbook/worksheets`,
 					{},
 					qs,
 				);
@@ -96,7 +99,7 @@ export async function execute(
 				responseData = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets`,
+					`${root}/items/${workbookId}/workbook/worksheets`,
 					{},
 					qs,
 				);

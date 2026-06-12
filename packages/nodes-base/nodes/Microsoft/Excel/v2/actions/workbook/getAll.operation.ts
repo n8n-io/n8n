@@ -7,7 +7,12 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import {
+	collectWorkbooksFromSearch,
+	fetchPersonalOneDriveWorkbooks,
+	resolveWorkbookSource,
+} from '../../helpers/workbookSource';
+import { workbookSourceOption } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -16,6 +21,18 @@ const properties: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName:
+			'"Return All" can return a very large number of files, especially when Source is set to "Everything" on a large organization. Consider setting a limit instead.',
+		name: 'returnAllNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				returnAll: [true],
+			},
+		},
 	},
 	{
 		displayName: 'Limit',
@@ -40,6 +57,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		default: {},
 		options: [
+			workbookSourceOption,
 			{
 				displayName: 'Fields',
 				name: 'fields',
@@ -68,49 +86,22 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const returnAll = this.getNodeParameter('returnAll', i);
-			const filters = this.getNodeParameter('filters', i);
-			const qs: IDataObject = {};
-			if (filters.fields) {
-				qs.$select = filters.fields;
-			}
-			let responseData;
-			if (returnAll) {
-				responseData = await microsoftApiRequestAllItems.call(
-					this,
-					'value',
-					'GET',
-					"/drive/root/search(q='.xlsx')",
-					{},
-					qs,
-				);
-			} else {
-				qs.$top = this.getNodeParameter('limit', i);
-				responseData = await microsoftApiRequest.call(
-					this,
-					'GET',
-					"/drive/root/search(q='.xlsx')",
-					{},
-					qs,
-				);
-				responseData = responseData.value;
-			}
+			const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+			const filters = this.getNodeParameter('filters', i) as IDataObject;
+			const limit = returnAll ? Infinity : (this.getNodeParameter('limit', i) as number);
+			const source = resolveWorkbookSource(filters.workbookSource, this.getNode().typeVersion ?? 0);
+			const fields = filters.fields as string | undefined;
 
-			if (Array.isArray(responseData)) {
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
-					{ itemData: { item: i } },
-				);
+			const workbooks =
+				source === 'oneDrive'
+					? await fetchPersonalOneDriveWorkbooks.call(this, { returnAll, limit, fields })
+					: await collectWorkbooksFromSearch.call(this, source, { limit, fields });
 
-				returnData.push(...executionData);
-			} else if (responseData !== undefined) {
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData as IDataObject),
-					{ itemData: { item: i } },
-				);
-
-				returnData.push(...executionData);
-			}
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(workbooks),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
