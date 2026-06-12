@@ -1,25 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 import type { INode, INodePropertyOptions } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { AgentJsonMcpServerConfig } from '../types';
 
 type ApprovalMode = 'disabled' | 'global' | 'selected';
-
-const I18N_KEYS = {
-	label: 'agents.toolConfig.mcpApproval.label' as BaseTextKey,
-	hint: 'agents.toolConfig.mcpApproval.hint' as BaseTextKey,
-	disabled: 'agents.toolConfig.mcpApproval.disabled' as BaseTextKey,
-	askAll: 'agents.toolConfig.mcpApproval.askAll' as BaseTextKey,
-	askSelected: 'agents.toolConfig.mcpApproval.askSelected' as BaseTextKey,
-	refresh: 'agents.toolConfig.mcpApproval.refresh' as BaseTextKey,
-	refreshHint: 'agents.toolConfig.mcpApproval.refresh.hint' as BaseTextKey,
-	toolsPlaceholder: 'agents.toolConfig.mcpApproval.tools.placeholder' as BaseTextKey,
-	loadError: 'agents.toolConfig.mcpApproval.loadError' as BaseTextKey,
-};
 
 const props = defineProps<{
 	modelValue?: AgentJsonMcpServerConfig['approval'];
@@ -42,9 +30,12 @@ const isLoadingTools = ref(false);
 const loadingError = ref<string | null>(null);
 
 const modeOptions = computed(() => [
-	{ label: i18n.baseText(I18N_KEYS.disabled), value: 'disabled' },
-	{ label: i18n.baseText(I18N_KEYS.askAll), value: 'global' },
-	{ label: i18n.baseText(I18N_KEYS.askSelected), value: 'selected' },
+	{ label: i18n.baseText('agents.toolConfig.mcpApproval.disabled'), value: 'disabled' },
+	{ label: i18n.baseText('agents.toolConfig.mcpApproval.askAll'), value: 'global' },
+	{
+		label: i18n.baseText('agents.toolConfig.mcpApproval.askSelected'),
+		value: 'selected',
+	},
 ]);
 
 const exposedToolNames = computed(() => {
@@ -177,10 +168,10 @@ async function refreshTools() {
 	<div :class="$style.approvalRow">
 		<div :class="$style.approvalText">
 			<N8nText size="small" :bold="true">
-				{{ i18n.baseText(I18N_KEYS.label) }}
+				{{ i18n.baseText('agents.toolConfig.mcpApproval.label') }}
 			</N8nText>
 			<N8nText size="small" color="text-light">
-				{{ i18n.baseText(I18N_KEYS.hint) }}
+				{{ i18n.baseText('agents.toolConfig.mcpApproval.hint') }}
 			</N8nText>
 		</div>
 
@@ -201,14 +192,14 @@ async function refreshTools() {
 			</N8nSelect>
 			<N8nTooltip
 				v-if="approvalMode === 'selected'"
-				:content="i18n.baseText(I18N_KEYS.refreshHint)"
+				:content="i18n.baseText('agents.toolConfig.mcpApproval.refresh.hint')"
 			>
 				<N8nButton
 					variant="subtle"
 					size="small"
 					icon-only
 					:loading="isLoadingTools"
-					:aria-label="i18n.baseText(I18N_KEYS.refresh)"
+					:aria-label="i18n.baseText('agents.toolConfig.mcpApproval.refresh')"
 					data-test-id="agent-mcp-approval-refresh"
 					@click="refreshTools"
 				>
@@ -226,7 +217,7 @@ async function refreshTools() {
 			filterable
 			size="small"
 			:loading="isLoadingTools"
-			:placeholder="i18n.baseText(I18N_KEYS.toolsPlaceholder)"
+			:placeholder="i18n.baseText('agents.toolConfig.mcpApproval.tools.placeholder')"
 			data-test-id="agent-mcp-approval-tools"
 			@update:model-value="handleSelectedToolsUpdate"
 		>
@@ -239,7 +230,7 @@ async function refreshTools() {
 		</N8nSelect>
 
 		<N8nText v-if="loadingError && approvalMode === 'selected'" size="xsmall" color="danger">
-			{{ i18n.baseText(I18N_KEYS.loadError) }}
+			{{ i18n.baseText('agents.toolConfig.mcpApproval.loadError') }}
 		</N8nText>
 	</div>
 </template>
