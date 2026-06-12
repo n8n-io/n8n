@@ -456,6 +456,10 @@ export class ExecutionService {
 	 * and whether the total is an estimate or not.
 	 */
 	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
+		if (!query.order) {
+			query.order = { startedAt: 'DESC' };
+		}
+
 		const results = await this.executionRepository.findManyByRangeQuery(query);
 
 		const { range: _, ...countQuery } = query;
@@ -489,6 +493,7 @@ export class ExecutionService {
 
 		const currentQuery: ExecutionSummaries.RangeQuery = {
 			...query,
+			range: { limit: query.range.limit }, // strip lastId/firstId — always fetch current executions
 			status: currentStatuses,
 			order: { top: 'running' }, // ensure limit cannot exclude running
 		};
