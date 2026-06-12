@@ -121,6 +121,46 @@ export function clean(obj: any) {
 	return obj;
 }
 
+// v3 list endpoints use a different list identifier than v1 (`listId` vs `legacyListId`).
+// Best-effort mapping: idmapping needs `crm.lists.read`, which older credentials lack until
+// the user reconnects. If the call fails (missing scope), fall through to the input id so
+// users who already supply a v3 listId keep working without re-authenticating.
+// Docs: https://developers.hubspot.com/docs/api-reference/legacy/crm/lists/v1-list-api-migration-guide
+export async function getListId(this: IExecuteFunctions, listId: string): Promise<string> {
+	try {
+		const response = (await hubspotApiRequest.call(this, 'POST', '/crm/lists/2026-03/idmapping', [
+			listId,
+		])) as IDataObject;
+
+		const mappings = response.legacyListIdsToIdsMapping as IDataObject[] | undefined;
+		const mapping = mappings?.find((m) => String(m.legacyListId) === listId);
+
+		return (mapping?.listId as string | undefined) ?? listId;
+	} catch {
+		return listId;
+	}
+}
+
+// v3 membership endpoints accept contact ids only, so resolve email -> id before calling them.
+// Docs: https://developers.hubspot.com/docs/api-reference/crm/objects/contacts#search
+export async function getContactIdByEmail(
+	this: IExecuteFunctions,
+	email: string,
+): Promise<string | undefined> {
+	const response = (await hubspotApiRequest.call(this, 'POST', '/crm/v3/objects/contacts/search', {
+		filterGroups: [
+			{
+				filters: [{ propertyName: 'email', operator: 'EQ', value: email }],
+			},
+		],
+		properties: ['hs_object_id'],
+		limit: 1,
+	})) as IDataObject;
+
+	const results = response.results as IDataObject[] | undefined;
+	return results?.[0]?.id as string | undefined;
+}
+
 export const propertyEvents = [
 	'contact.propertyChange',
 	'company.propertyChange',

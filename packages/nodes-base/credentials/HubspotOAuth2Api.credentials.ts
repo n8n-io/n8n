@@ -1,6 +1,7 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
+	'crm.lists.read',
 	'crm.lists.write',
 	'crm.objects.contacts.read',
 	'crm.objects.contacts.write',
