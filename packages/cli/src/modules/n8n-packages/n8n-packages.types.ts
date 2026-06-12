@@ -44,6 +44,25 @@ export interface ImportedWorkflowSummary {
 	status: 'created' | 'updated' | 'skipped';
 }
 
+/**
+ * A reason the import cannot proceed, produced by some policy from any subsystem.
+ * Discriminated by `type` so new gates add a variant rather than a new throw site.
+ * The import aborts when any are present.
+ */
+export type BlockingIssue =
+	| {
+			type: 'workflow-conflict';
+			sourceWorkflowId: string;
+			existingWorkflowId: string;
+			name: string;
+	  }
+	| {
+			type: 'credential-unresolved';
+			kind: 'not_found' | 'unknown_type';
+			sourceId: string;
+			usedByWorkflows: string[];
+	  };
+
 /** Source id → target id mapping for one entity type within an imported package. */
 export type ImportBindingMap = Map<string, string>;
 
@@ -75,12 +94,15 @@ export function serializeBindings(bindings: PackageImportBindings): SerializedBi
 	};
 }
 
+export interface ImportPackageSummary {
+	sourceN8nVersion: string;
+	sourceId: string;
+	exportedAt: string;
+}
+
+/** Result of an import: the workflows written to the database. */
 export interface ImportResult {
-	package: {
-		sourceN8nVersion: string;
-		sourceId: string;
-		exportedAt: string;
-	};
+	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
 	bindings: SerializedBindings;
 }

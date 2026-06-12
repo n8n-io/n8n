@@ -2978,6 +2978,15 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
+	 * Error from a sub-workflow that finished with an error while its parent was
+	 * waiting for it. Written onto the parent's Execute Workflow stack entry by
+	 * `updateParentExecutionWithChildResults` (packages/cli) and consumed on resume
+	 * by `WorkflowExecute.runNode`, which fails the node with this error (honoring
+	 * its `onError` setting) instead of letting it pass its input through.
+	 */
+	resumeError?: ExecutionError;
+
+	/**
 	 * AI model token usage captured from vendor node API responses before the simplify step
 	 * strips it. Used by telemetry to populate ai_input_tokens / ai_output_tokens in node_graph_string.
 	 */
@@ -3016,6 +3025,14 @@ export interface ITaskData extends ITaskStartedData {
 	metadata?: ITaskMetadata;
 	/** True when at least one credential used by this node was resolved dynamically */
 	usedDynamicCredentials?: boolean;
+	/**
+	 * True when this node attempted to resolve at least one private (resolvable)
+	 * credential, regardless of whether resolution succeeded. Unlike
+	 * `usedDynamicCredentials` (set only on success and consumed by the redaction
+	 * layer), this is a superset used purely for telemetry: it also captures
+	 * failed attempts (e.g. the running user has not connected the credential).
+	 */
+	attemptedDynamicCredentials?: boolean;
 }
 
 export interface ISourceData {
@@ -3322,6 +3339,14 @@ export interface IWorkflowExecuteAdditionalData {
 	 * dynamically. Reset to false by the execution engine before each node runs.
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
+	/**
+	 * Mutable flag set to true during a node's execution when it attempts to resolve a
+	 * private (resolvable) credential, set before resolution is attempted so it is
+	 * recorded even when resolution throws (e.g. the user has not connected the
+	 * credential). Reset to false by the execution engine before each node runs.
+	 * Telemetry-only; the redaction layer relies on `currentNodeUsedDynamicCredentials`.
+	 */
+	currentNodeAttemptedDynamicCredentials?: boolean;
 	/**
 	 * The n8n user a dynamically-resolved private credential belongs to, set during
 	 * credential resolution when the resolver maps the execution's identity to an n8n
