@@ -9,6 +9,7 @@ import { InstanceSettings } from 'n8n-core';
 export class AgentsModule implements ModuleInterface {
 	async init() {
 		await import('./agents.controller');
+		await import('./agent-sandbox.controller');
 		await import('./agents-list.controller');
 		await import('./builder/agents-builder-settings.controller');
 
@@ -76,18 +77,19 @@ export class AgentsModule implements ModuleInterface {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const { isAgentKnowledgeBaseEnabled } = await import('./agent-knowledge-gate');
 		return {
 			enabled: true,
 			modules: [...config.modules],
-			knowledgeBaseEnabled: config.sandboxEnabled && config.sandboxProvider === 'daytona',
+			knowledgeBaseEnabled: isAgentKnowledgeBaseEnabled(config),
 		};
 	}
 
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity');
+		const { AgentFile } = await import('./entities/agent-file.entity');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
@@ -116,6 +118,7 @@ export class AgentsModule implements ModuleInterface {
 
 		return [
 			Agent,
+			AgentFile,
 			AgentCheckpoint,
 			AgentResourceEntity,
 			AgentThreadEntity,
