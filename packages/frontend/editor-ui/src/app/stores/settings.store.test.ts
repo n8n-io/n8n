@@ -252,15 +252,6 @@ describe('settings.store', () => {
 			settingsStore.moduleSettings = {
 				otel: {
 					enabled: true,
-					exporterEndpoint: '',
-					exporterTracingPath: '',
-					exporterServiceName: '',
-					exporterHeaders: '',
-					tracesSampleRate: 1,
-					startupConnectivityTimeoutMs: 2000,
-					includeNodeSpans: true,
-					injectOutbound: true,
-					productionExecutionsOnly: true,
 				},
 			};
 
@@ -279,15 +270,6 @@ describe('settings.store', () => {
 			settingsStore.moduleSettings = {
 				otel: {
 					enabled: false,
-					exporterEndpoint: '',
-					exporterTracingPath: '',
-					exporterServiceName: '',
-					exporterHeaders: '',
-					tracesSampleRate: 1,
-					startupConnectivityTimeoutMs: 2000,
-					includeNodeSpans: true,
-					injectOutbound: true,
-					productionExecutionsOnly: true,
 				},
 			};
 
@@ -306,15 +288,6 @@ describe('settings.store', () => {
 			settingsStore.moduleSettings = {
 				otel: {
 					enabled: true,
-					exporterEndpoint: '',
-					exporterTracingPath: '',
-					exporterServiceName: '',
-					exporterHeaders: '',
-					tracesSampleRate: 1,
-					startupConnectivityTimeoutMs: 2000,
-					includeNodeSpans: true,
-					injectOutbound: true,
-					productionExecutionsOnly: true,
 				},
 			};
 
@@ -333,15 +306,6 @@ describe('settings.store', () => {
 			settingsStore.moduleSettings = {
 				otel: {
 					enabled: true,
-					exporterEndpoint: '',
-					exporterTracingPath: '',
-					exporterServiceName: '',
-					exporterHeaders: '',
-					tracesSampleRate: 1,
-					startupConnectivityTimeoutMs: 2000,
-					includeNodeSpans: true,
-					injectOutbound: true,
-					productionExecutionsOnly: true,
 				},
 			};
 
