@@ -79,6 +79,32 @@ const properties: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 				description: 'The fields you want to include in the output',
 			},
+			{
+				displayName: 'Return Fields by Field ID',
+				name: 'returnFieldsByFieldId',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return field values by field ID instead of field name. This is recommended to avoid your integration breaking if you rename Airtable fields.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Return Fields by Field ID',
+				name: 'returnFieldsByFieldId',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to return field values by field ID instead of field name. This is recommended to avoid your integration breaking if you rename Airtable fields.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 2.2 } }],
+					},
+				},
+			},
 			viewRLC,
 		],
 	},
@@ -192,6 +218,10 @@ export async function execute(
 
 			if (options.view) {
 				qs.view = (options.view as IDataObject).value as string;
+			}
+
+			if (options.returnFieldsByFieldId !== undefined) {
+				qs.returnFieldsByFieldId = options.returnFieldsByFieldId as boolean;
 			}
 
 			let responseData;
