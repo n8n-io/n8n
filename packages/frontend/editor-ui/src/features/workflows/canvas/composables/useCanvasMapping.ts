@@ -260,7 +260,13 @@ export function useCanvasMapping({
 
 	function getConnectionLabel(connection: CanvasConnection): string {
 		const rd = renderData.value;
-		const sourceId = connection.source;
+		// For edges remapped to `group:*` ids, the real endpoints live on
+		// `data.canonicals`; the label describes the underlying node, like the status.
+		const {
+			source: sourceId,
+			target: targetId,
+			sourceHandle,
+		} = connection.data?.canonicals?.[0] ?? connection;
 
 		const pinned = rd.pinnedDataByNodeId.get(sourceId)?.value;
 		if (pinned) {
@@ -276,17 +282,17 @@ export function useCanvasMapping({
 		const sourceRunData = rd.executionRunDataByNodeId.get(sourceId)?.value;
 		if (!sourceRunData) return '';
 
-		const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
+		const { type, index } = parseCanvasConnectionHandleString(sourceHandle);
 		const outputMap = rd.executionRunDataOutputMapByNodeId.get(sourceId);
 		const outputData = outputMap?.[type]?.[index];
 
 		const isMainConnection = type === NodeConnectionTypes.Main;
-		const targetRunData = rd.executionRunDataByNodeId.get(connection.target)?.value;
+		const targetRunData = rd.executionRunDataByNodeId.get(targetId)?.value;
 
 		// Non-main connections (AI tool/memory/embedding) track per-target counts
 		// when the target has run data; otherwise stay quiet.
 		if (!isMainConnection && outputData?.byTarget) {
-			const targetData = outputData.byTarget[connection.target];
+			const targetData = outputData.byTarget[targetId];
 			if (targetData && targetData.total > 0 && targetRunData) {
 				return i18n.baseText(
 					targetData.iterations > 1 ? 'ndv.output.itemsTotal' : 'ndv.output.items',

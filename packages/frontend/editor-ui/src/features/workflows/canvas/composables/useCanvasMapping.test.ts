@@ -628,5 +628,45 @@ describe('useCanvasMapping — mapped connections', () => {
 			expect(mapped.value).toHaveLength(1);
 			expect(mapped.value[0].data?.status).toBe('pinned');
 		});
+
+		it('resolves the item-count label through the canonical source (not the group id)', () => {
+			const { nodes, connections } = fanInWorkflow();
+			const rd = createEmptyCanvasRenderData();
+			setRunData(rd, 'm1', [{ executionStatus: 'success' } as ITaskData]);
+			rd.executionRunDataOutputMapByNodeId.set('m1', {
+				main: { '0': { total: 5, iterations: 1 } },
+			});
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(nodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+				allGroups: ref([group]),
+				nodeGroupView: collapsedView,
+			});
+
+			expect(mapped.value).toHaveLength(1);
+			expect(mapped.value[0].source).toBe('group:g1');
+			expect(mapped.value[0].label).toBe('5 items');
+		});
+
+		it('resolves the pinned item-count label through the canonical source', () => {
+			const { nodes, connections } = fanInWorkflow();
+			const rd = createEmptyCanvasRenderData();
+			rd.pinnedDataByNodeId.set(
+				'm1',
+				computed(() => [{ json: {} }, { json: {} }]),
+			);
+
+			const { connections: mapped } = useCanvasMapping({
+				nodes: ref(nodes),
+				connections: ref(connections),
+				renderData: shallowRef(rd),
+				allGroups: ref([group]),
+				nodeGroupView: collapsedView,
+			});
+
+			expect(mapped.value[0].label).toBe('2 items');
+		});
 	});
 });
