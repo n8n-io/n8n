@@ -13,11 +13,13 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
+import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';
 import { buildOAuthClientLimitReachedMessage } from './oauth.errors';
 
 const oauthServerService = Container.get(OAuthServerService);
 const globalConfig = Container.get(GlobalConfig);
+const oauthServerConfig = Container.get(OAuthServerConfig);
 const logger = Container.get(Logger);
 
 /**
@@ -63,25 +65,37 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		router: registerRouter,
 		skipAuth: true,
 		middlewares: [oauthClientLimitGuard],
-		ipRateLimit: { limit: 10, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: {
+			limit: oauthServerConfig.rateLimitRegister,
+			windowMs: 5 * Time.minutes.toMilliseconds,
+		},
 	},
 	{
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
-		ipRateLimit: { limit: 50, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: {
+			limit: oauthServerConfig.rateLimitAuthorize,
+			windowMs: 5 * Time.minutes.toMilliseconds,
+		},
 	},
 	{
 		path: `${basePath}/token`,
 		router: tokenRouter,
 		skipAuth: true,
-		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: {
+			limit: oauthServerConfig.rateLimitToken,
+			windowMs: 5 * Time.minutes.toMilliseconds,
+		},
 	},
 	{
 		path: `${basePath}/revoke`,
 		router: revokeRouter,
 		skipAuth: true,
-		ipRateLimit: { limit: 30, windowMs: 5 * Time.minutes.toMilliseconds },
+		ipRateLimit: {
+			limit: oauthServerConfig.rateLimitRevoke,
+			windowMs: 5 * Time.minutes.toMilliseconds,
+		},
 	},
 ];
 
