@@ -121,6 +121,71 @@ describe('WebhookTriggerRegistrar', () => {
 		expect(removed).toEqual(['Webhook B']);
 	});
 
+	test('cleans registered external webhooks and stored rows when later registration fails', async () => {
+		const webhookService = mock<WebhookService>();
+		const workflowStaticDataService = mock<WorkflowStaticDataService>();
+		const registrar = new WebhookTriggerRegistrar(
+			logger,
+			mock<ErrorReporter>(),
+			webhookService,
+			workflowStaticDataService,
+		);
+		webhookService.createWebhook.mockImplementation(
+			(data) => ({ webhookPath: data.webhookPath, node: data.node }) as WebhookEntity,
+		);
+		webhookService.createWebhookIfNotExists
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('external registration failed'));
+		const webhookA = mock<IWebhookData>({
+			node: 'Webhook A',
+			workflowId: 'wf-1',
+			httpMethod: 'GET',
+			path: 'a',
+		});
+		const webhookB = mock<IWebhookData>({
+			node: 'Webhook B',
+			workflowId: 'wf-1',
+			httpMethod: 'POST',
+			path: 'b',
+		});
+		jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhookA, webhookB]);
+		const workflow = createWorkflow([
+			node('a', 'webhook', { name: 'Webhook A' }),
+			node('b', 'webhook', { name: 'Webhook B' }),
+		]);
+
+		await expect(
+			registrar.register({
+				workflow,
+				additionalData: mock<IWorkflowExecuteAdditionalData>(),
+				mode: 'trigger',
+				activation: 'update',
+				nodeIds: new Set(['a', 'b']),
+			}),
+		).rejects.toThrow('external registration failed');
+
+		expect(webhookService.deleteWebhook).toHaveBeenCalledTimes(2);
+		expect(webhookService.deleteWebhook).toHaveBeenNthCalledWith(
+			1,
+			workflow,
+			webhookA,
+			'internal',
+			'update',
+		);
+		expect(webhookService.deleteWebhook).toHaveBeenNthCalledWith(
+			2,
+			workflow,
+			webhookB,
+			'internal',
+			'update',
+		);
+		expect(webhookService.deleteWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+			'Webhook A',
+			'Webhook B',
+		]);
+		expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
+	});
+
 	test('translates update duplicate insert errors and tolerates init duplicates', async () => {
 		const webhookService = mock<WebhookService>();
 		const workflowStaticDataService = mock<WorkflowStaticDataService>();
@@ -153,7 +218,8 @@ describe('WebhookTriggerRegistrar', () => {
 				nodeIds: new Set(['webhook-node']),
 			}),
 		).rejects.toBeInstanceOf(WebhookPathTakenError);
-		expect(webhookService.deleteWorkflowWebhooks).toHaveBeenCalledWith('wf-1');
+		expect(webhookService.deleteWebhook).not.toHaveBeenCalled();
+		expect(webhookService.deleteWorkflowWebhooksForNodes).not.toHaveBeenCalled();
 
 		webhookService.storeWebhook.mockRejectedValueOnce(dbError);
 		await expect(

@@ -3,6 +3,7 @@ import type { WebhookEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	INode,
+	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -66,6 +67,8 @@ export class WebhookTriggerRegistrar {
 
 		if (webhooks.length === 0) return false;
 
+		const registeredWebhooks: IWebhookData[] = [];
+
 		for (const webhookData of webhooks) {
 			const node = workflow.getNode(webhookData.node) as INode;
 			node.name = webhookData.node;
@@ -85,6 +88,7 @@ export class WebhookTriggerRegistrar {
 				// by another workflow. The `catch` below still cleans up any webhooks
 				// already registered for this workflow if a later step fails.
 				await this.webhookService.storeWebhook(webhook);
+				registeredWebhooks.push(webhookData);
 				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
 			} catch (error) {
 				if (['init', 'leadershipChange'].includes(activation) && isQueryFailedError(error)) {
@@ -97,7 +101,7 @@ export class WebhookTriggerRegistrar {
 				}
 
 				try {
-					await this.clearWorkflowWebhooks(workflow.id);
+					await this.clearRegisteredWebhooks(workflow, registeredWebhooks);
 				} catch (clearError) {
 					this.errorReporter.error(clearError);
 					this.logger.error(
@@ -167,12 +171,23 @@ export class WebhookTriggerRegistrar {
 		return removedNodeNames;
 	}
 
-	async clearWorkflowWebhooks(workflowId: string) {
-		await this.webhookService.deleteWorkflowWebhooks(workflowId);
-	}
-
 	async clearWorkflowWebhooksForNodes(workflowId: string, nodeNames: string[]) {
 		await this.webhookService.deleteWorkflowWebhooksForNodes(workflowId, nodeNames);
+	}
+
+	private async clearRegisteredWebhooks(workflow: Workflow, webhooks: IWebhookData[]) {
+		if (webhooks.length === 0) return;
+
+		const removedNodeNames: string[] = [];
+
+		for (const webhookData of webhooks) {
+			await this.webhookService.deleteWebhook(workflow, webhookData, 'internal', 'update');
+			removedNodeNames.push(webhookData.node);
+		}
+
+		await this.workflowStaticDataService.saveStaticData(workflow);
+
+		await this.clearWorkflowWebhooksForNodes(workflow.id, removedNodeNames);
 	}
 
 	private normalizeWebhookPath(webhook: WebhookEntity, nodeWebhookId?: string) {
