@@ -8,6 +8,7 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
+	EXECUTION_DATA_REDACTION_DOCS_URL,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
@@ -1374,7 +1375,12 @@ onBeforeUnmount(() => {
 							</N8nBadge>
 							<N8nTooltip placement="top">
 								<template #content>
-									<div v-text="helpTexts.redactProductionData"></div>
+									<div>
+										{{ helpTexts.redactProductionData }}
+										<N8nLink :to="EXECUTION_DATA_REDACTION_DOCS_URL" size="small" new-window>
+											{{ i18n.baseText('generic.learnMore') }}
+										</N8nLink>
+									</div>
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
@@ -1470,7 +1476,12 @@ onBeforeUnmount(() => {
 							</N8nBadge>
 							<N8nTooltip placement="top">
 								<template #content>
-									<div v-text="helpTexts.redactManualData"></div>
+									<div>
+										{{ helpTexts.redactManualData }}
+										<N8nLink :to="EXECUTION_DATA_REDACTION_DOCS_URL" size="small" new-window>
+											{{ i18n.baseText('generic.learnMore') }}
+										</N8nLink>
+									</div>
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
