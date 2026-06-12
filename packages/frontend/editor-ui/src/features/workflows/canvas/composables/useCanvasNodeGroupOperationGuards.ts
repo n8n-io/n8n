@@ -33,12 +33,6 @@ const BLOCKED_TITLE_KEY: Record<ConnectionChangeAction, BaseTextKey> = {
 	remove: 'canvas.nodeGroup.connectionRemoveBlocked.title',
 };
 
-const MESSAGE_KEY_BY_REASON: Partial<Record<InvalidGroupValidationResult['reason'], BaseTextKey>> =
-	{
-		'multiple-input-branches': 'canvas.nodeGroup.connectionChangeBlocked.multipleInputBranches',
-		'multiple-output-branches': 'canvas.nodeGroup.connectionChangeBlocked.multipleOutputBranches',
-	};
-
 const MESSAGE_KEY_BY_ERROR_CODE: Record<ExtractableErrorCode, BaseTextKey> = {
 	'Multiple Input Nodes': 'canvas.nodeGroup.connectionChangeBlocked.multipleInputNodes',
 	'Input Edge To Non-Root Node': 'canvas.nodeGroup.connectionChangeBlocked.inputEdgeToNonRoot',
@@ -171,8 +165,7 @@ export function useCanvasNodeGroupOperationGuards() {
 				? MESSAGE_KEY_BY_ERROR_CODE[result.errors[0].errorCode]
 				: undefined;
 
-		const key: BaseTextKey =
-			errorCodeKey ?? MESSAGE_KEY_BY_REASON[result.reason] ?? FALLBACK_MESSAGE_KEY;
+		const key: BaseTextKey = errorCodeKey ?? FALLBACK_MESSAGE_KEY;
 		return i18n.baseText(key, { interpolate: groupInterpolation });
 	}
 

@@ -3,20 +3,17 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { SELF_SEND_COMMANDS } from '@/scaling/constants';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { CacheService } from '@/services/cache/cache.service';
 
 import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
-import { N8N_ENV_FEAT_REDACTION_ENFORCEMENT } from '../redaction-enforcement.feature-flag';
 
 const KEY = 'redaction.enforcement';
 
 describe('InstanceRedactionEnforcementService', () => {
-	const originalFlag = process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT];
-
 	let service: InstanceRedactionEnforcementService;
 	let findByKey: jest.Mock<Promise<Settings | null>, [string]>;
 	let upsert: jest.Mock;
@@ -38,14 +35,6 @@ describe('InstanceRedactionEnforcementService', () => {
 			value: { enabled: false },
 			configurable: true,
 		});
-	};
-
-	const enableFlag = () => {
-		process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT] = 'true';
-	};
-
-	const disableFlag = () => {
-		delete process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT];
 	};
 
 	// Mirrors the real CacheService.get refreshFn contract: on miss, invoke the
@@ -80,167 +69,130 @@ describe('InstanceRedactionEnforcementService', () => {
 		);
 	});
 
-	afterEach(() => {
-		if (originalFlag === undefined) {
-			delete process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT];
-		} else {
-			process.env[N8N_ENV_FEAT_REDACTION_ENFORCEMENT] = originalFlag;
-		}
-	});
-
 	describe('get', () => {
-		describe('with feature flag off', () => {
-			beforeEach(() => disableFlag());
+		it('returns parsed floor from cache on hit without reading DB', async () => {
+			const cached: RedactionFloor = 'all';
+			simulateCacheHit(JSON.stringify(cached));
 
-			it('returns the default floor without touching cache or repository', async () => {
-				await expect(service.get()).resolves.toBe(REDACTION_FLOOR_DEFAULT);
-				expect(cacheService.get).not.toHaveBeenCalled();
-				expect(findByKey).not.toHaveBeenCalled();
-				expect(cacheService.set).not.toHaveBeenCalled();
-			});
+			await expect(service.get()).resolves.toBe(cached);
+			expect(findByKey).not.toHaveBeenCalled();
+			expect(cacheService.set).not.toHaveBeenCalled();
 		});
 
-		describe('with feature flag on', () => {
-			beforeEach(() => enableFlag());
+		it('falls back to DB, returns row, and backfills cache on cache miss', async () => {
+			const stored: RedactionFloor = 'production';
+			simulateCacheMiss();
+			findByKey.mockResolvedValueOnce(
+				mock<Settings>({
+					key: KEY,
+					value: JSON.stringify(stored),
+					loadOnStartup: true,
+				}),
+			);
 
-			it('returns parsed floor from cache on hit without reading DB', async () => {
-				const cached: RedactionFloor = 'all';
-				simulateCacheHit(JSON.stringify(cached));
+			await expect(service.get()).resolves.toBe(stored);
+			expect(findByKey).toHaveBeenCalledWith(KEY);
+			expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(stored));
+		});
 
-				await expect(service.get()).resolves.toBe(cached);
-				expect(findByKey).not.toHaveBeenCalled();
-				expect(cacheService.set).not.toHaveBeenCalled();
-			});
+		it('returns the default floor and backfills cache when no DB row exists', async () => {
+			simulateCacheMiss();
+			findByKey.mockResolvedValueOnce(null);
 
-			it('falls back to DB, returns row, and backfills cache on cache miss', async () => {
-				const stored: RedactionFloor = 'production';
-				simulateCacheMiss();
-				findByKey.mockResolvedValueOnce(
-					mock<Settings>({
-						key: KEY,
-						value: JSON.stringify(stored),
-						loadOnStartup: true,
-					}),
-				);
+			await expect(service.get()).resolves.toBe(REDACTION_FLOOR_DEFAULT);
+			expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(REDACTION_FLOOR_DEFAULT));
+		});
 
-				await expect(service.get()).resolves.toBe(stored);
-				expect(findByKey).toHaveBeenCalledWith(KEY);
-				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(stored));
-			});
+		it('returns the default floor when cache has invalid JSON, and logs a warning', async () => {
+			simulateCacheHit('not-json');
 
-			it('returns the default floor and backfills cache when no DB row exists', async () => {
-				simulateCacheMiss();
-				findByKey.mockResolvedValueOnce(null);
+			await expect(service.get()).resolves.toBe(REDACTION_FLOOR_DEFAULT);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to parse redaction enforcement setting JSON',
+				expect.objectContaining({ source: 'cache' }),
+			);
+			expect(findByKey).not.toHaveBeenCalled();
+		});
 
-				await expect(service.get()).resolves.toBe(REDACTION_FLOOR_DEFAULT);
-				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(REDACTION_FLOOR_DEFAULT));
-			});
+		it('returns the default floor and backfills cache when DB value has an invalid shape, and logs a warning', async () => {
+			simulateCacheMiss();
+			findByKey.mockResolvedValueOnce(
+				mock<Settings>({
+					key: KEY,
+					value: JSON.stringify('bogus'),
+					loadOnStartup: true,
+				}),
+			);
 
-			it('returns the default floor when cache has invalid JSON, and logs a warning', async () => {
-				simulateCacheHit('not-json');
-
-				await expect(service.get()).resolves.toBe(REDACTION_FLOOR_DEFAULT);
-				expect(logger.warn).toHaveBeenCalledWith(
-					'Failed to parse redaction enforcement setting JSON',
-					expect.objectContaining({ source: 'cache' }),
-				);
-				expect(findByKey).not.toHaveBeenCalled();
-			});
-
-			it('returns the default floor and backfills cache when DB value has an invalid shape, and logs a warning', async () => {
-				simulateCacheMiss();
-				findByKey.mockResolvedValueOnce(
-					mock<Settings>({
-						key: KEY,
-						value: JSON.stringify('bogus'),
-						loadOnStartup: true,
-					}),
-				);
-
-				await expect(service.get()).resolves.toBe(REDACTION_FLOOR_DEFAULT);
-				expect(logger.warn).toHaveBeenCalledWith(
-					'Redaction enforcement setting has an invalid shape',
-					expect.objectContaining({ source: 'database' }),
-				);
-				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(REDACTION_FLOOR_DEFAULT));
-			});
+			await expect(service.get()).resolves.toBe(REDACTION_FLOOR_DEFAULT);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Redaction enforcement setting has an invalid shape',
+				expect.objectContaining({ source: 'database' }),
+			);
+			expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(REDACTION_FLOOR_DEFAULT));
 		});
 	});
 
 	describe('set', () => {
-		describe('with feature flag off', () => {
-			beforeEach(() => disableFlag());
+		it('upserts the floor and writes the same serialized value to cache', async () => {
+			const next: RedactionFloor = 'production';
 
-			it('throws OperationalError without touching cache or repository', async () => {
-				await expect(service.set('all')).rejects.toThrow(OperationalError);
-				expect(upsert).not.toHaveBeenCalled();
-				expect(cacheService.set).not.toHaveBeenCalled();
+			await service.set(next);
+
+			expect(upsert).toHaveBeenCalledWith(
+				{ key: KEY, value: JSON.stringify(next), loadOnStartup: true },
+				['key'],
+			);
+			expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(next));
+		});
+
+		it('rejects invalid input with a UserError and logs validation issues', async () => {
+			const invalid = 'bogus' as unknown as RedactionFloor;
+
+			await expect(service.set(invalid)).rejects.toThrow(UserError);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Invalid redaction enforcement settings payload',
+				expect.objectContaining({ issues: expect.any(Array) }),
+			);
+			expect(upsert).not.toHaveBeenCalled();
+			expect(cacheService.set).not.toHaveBeenCalled();
+		});
+
+		it('publishes redaction-floor-changed when multi-main is enabled', async () => {
+			enableMultiMain();
+
+			await service.set('production');
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'redaction-floor-changed',
 			});
 		});
 
-		describe('with feature flag on', () => {
-			beforeEach(() => enableFlag());
+		it('does not broadcast when multi-main is disabled', async () => {
+			disableMultiMain();
 
-			it('upserts the floor and writes the same serialized value to cache', async () => {
-				const next: RedactionFloor = 'production';
+			await service.set('production');
 
-				await service.set(next);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
 
-				expect(upsert).toHaveBeenCalledWith(
-					{ key: KEY, value: JSON.stringify(next), loadOnStartup: true },
-					['key'],
-				);
-				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify(next));
-			});
+		it('swallows publisher failures so the update keeps succeeding, and logs a warning', async () => {
+			enableMultiMain();
+			publisher.publishCommand.mockRejectedValueOnce(new Error('redis is down'));
 
-			it('rejects invalid input with a UserError and logs validation issues', async () => {
-				const invalid = 'bogus' as unknown as RedactionFloor;
-
-				await expect(service.set(invalid)).rejects.toThrow(UserError);
-				expect(logger.warn).toHaveBeenCalledWith(
-					'Invalid redaction enforcement settings payload',
-					expect.objectContaining({ issues: expect.any(Array) }),
-				);
-				expect(upsert).not.toHaveBeenCalled();
-				expect(cacheService.set).not.toHaveBeenCalled();
-			});
-
-			it('publishes redaction-floor-changed when multi-main is enabled', async () => {
-				enableMultiMain();
-
-				await service.set('production');
-
-				expect(publisher.publishCommand).toHaveBeenCalledWith({
-					command: 'redaction-floor-changed',
-				});
-			});
-
-			it('does not broadcast when multi-main is disabled', async () => {
-				disableMultiMain();
-
-				await service.set('production');
-
-				expect(publisher.publishCommand).not.toHaveBeenCalled();
-			});
-
-			it('swallows publisher failures so the update keeps succeeding, and logs a warning', async () => {
-				enableMultiMain();
-				publisher.publishCommand.mockRejectedValueOnce(new Error('redis is down'));
-
-				await expect(service.set('production')).resolves.toBeUndefined();
-				// Allow the fire-and-forget catch handler to run.
-				await Promise.resolve();
-				// The update still persisted and re-cached despite the publish failure.
-				expect(upsert).toHaveBeenCalledWith(
-					{ key: KEY, value: JSON.stringify('production'), loadOnStartup: true },
-					['key'],
-				);
-				expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify('production'));
-				expect(logger.warn).toHaveBeenCalledWith(
-					'[InstanceRedactionEnforcementService] Failed to publish redaction-floor-changed',
-					expect.objectContaining({ error: 'redis is down' }),
-				);
-			});
+			await expect(service.set('production')).resolves.toBeUndefined();
+			// Allow the fire-and-forget catch handler to run.
+			await Promise.resolve();
+			// The update still persisted and re-cached despite the publish failure.
+			expect(upsert).toHaveBeenCalledWith(
+				{ key: KEY, value: JSON.stringify('production'), loadOnStartup: true },
+				['key'],
+			);
+			expect(cacheService.set).toHaveBeenCalledWith(KEY, JSON.stringify('production'));
+			expect(logger.warn).toHaveBeenCalledWith(
+				'[InstanceRedactionEnforcementService] Failed to publish redaction-floor-changed',
+				expect.objectContaining({ error: 'redis is down' }),
+			);
 		});
 	});
 
@@ -255,8 +207,6 @@ describe('InstanceRedactionEnforcementService', () => {
 		});
 
 		it('delete causes the next get to miss and re-read the new value from the DB', async () => {
-			enableFlag();
-
 			// Stateful in-memory cache so the delete — not the test harness — is what
 			// forces the subsequent read to miss. The test fails if the handler stops
 			// calling cacheService.delete.

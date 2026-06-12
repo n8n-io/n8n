@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
 import {
@@ -109,6 +110,7 @@ describe('search-workflows MCP tool', () => {
 					scopes: ['workflow:read', 'workflow:execute'],
 					canExecute: true,
 					availableInMCP: true,
+					tags: [],
 				},
 				{
 					id: 'b',
@@ -121,8 +123,64 @@ describe('search-workflows MCP tool', () => {
 					scopes: ['workflow:read'],
 					canExecute: false,
 					availableInMCP: true,
+					tags: [],
 				},
 			]);
+		});
+
+		test('forwards tags filter and surfaces workflow tags in output', async () => {
+			const tags = [
+				{ id: 'tag-1', name: 'production' },
+				{ id: 'tag-2', name: 'critical' },
+			] as unknown as WorkflowEntity['tags'];
+			const workflows = [
+				createWorkflow({
+					id: 'tagged',
+					activeVersionId: uuid(),
+					tags,
+				}),
+			];
+			const workflowService = mockInstance(WorkflowService, {
+				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
+			});
+
+			const result = await searchWorkflows(user, workflowService as unknown as WorkflowService, {
+				tags: ['production', 'critical'],
+			});
+
+			const [, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
+			expect(optionsArg.filter).toMatchObject({ tags: ['production', 'critical'] });
+			expect(optionsArg.select).toMatchObject({ tags: true });
+			expect(result.data[0].tags).toEqual([
+				{ id: 'tag-1', name: 'production' },
+				{ id: 'tag-2', name: 'critical' },
+			]);
+		});
+
+		test('drops empty tag entries and omits filter when no tags remain', async () => {
+			const workflowService = mockInstance(WorkflowService, {
+				getMany: jest.fn().mockResolvedValue({ workflows: [], count: 0 }),
+			});
+
+			await searchWorkflows(user, workflowService as unknown as WorkflowService, {
+				tags: ['', ''],
+			});
+
+			const [, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
+			expect(optionsArg.filter.tags).toBeUndefined();
+		});
+
+		test('deduplicates repeated tag names before forwarding the filter', async () => {
+			const workflowService = mockInstance(WorkflowService, {
+				getMany: jest.fn().mockResolvedValue({ workflows: [], count: 0 }),
+			});
+
+			await searchWorkflows(user, workflowService as unknown as WorkflowService, {
+				tags: ['production', 'production', 'critical', 'production'],
+			});
+
+			const [, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
+			expect(optionsArg.filter.tags).toEqual(['production', 'critical']);
 		});
 
 		test('applies provided filters and clamps high limit', async () => {

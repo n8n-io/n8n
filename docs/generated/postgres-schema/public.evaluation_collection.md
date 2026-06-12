@@ -1,0 +1,136 @@
+# public.evaluation_collection
+
+## Columns
+
+| Name | Type | Default | Nullable | Children | Parents | Comment |
+| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| id | varchar(36) |  | false | [public.test_run](public.test_run.md) |  |  |
+| name | varchar(128) |  | false |  |  |  |
+| description | text |  | true |  |  |  |
+| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
+| evaluationConfigId | varchar(36) |  | false |  | [public.evaluation_config](public.evaluation_config.md) |  |
+| createdById | uuid |  | true |  | [public.user](public.user.md) |  |
+| insightsCache | json |  | true |  |  |  |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+
+## Constraints
+
+| Name | Type | Definition |
+| ---- | ---- | ---------- |
+| evaluation_collection_createdAt_not_null | n | NOT NULL "createdAt" |
+| evaluation_collection_evaluationConfigId_not_null | n | NOT NULL "evaluationConfigId" |
+| evaluation_collection_id_not_null | n | NOT NULL id |
+| evaluation_collection_name_not_null | n | NOT NULL name |
+| evaluation_collection_updatedAt_not_null | n | NOT NULL "updatedAt" |
+| evaluation_collection_workflowId_not_null | n | NOT NULL "workflowId" |
+| FK_f4561f38b5a22a4f090d5cd3eae | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
+| FK_a48ce930c3bc7604894b8f0eaad | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| FK_d634a0c93fd7de68a87eab951b2 | FOREIGN KEY | FOREIGN KEY ("evaluationConfigId") REFERENCES evaluation_config(id) ON DELETE CASCADE |
+| PK_e720b6efc1e45b878ebb0b2ca30 | PRIMARY KEY | PRIMARY KEY (id) |
+
+## Indexes
+
+| Name | Definition |
+| ---- | ---------- |
+| PK_e720b6efc1e45b878ebb0b2ca30 | CREATE UNIQUE INDEX "PK_e720b6efc1e45b878ebb0b2ca30" ON public.evaluation_collection USING btree (id) |
+| IDX_a48ce930c3bc7604894b8f0eaa | CREATE INDEX "IDX_a48ce930c3bc7604894b8f0eaa" ON public.evaluation_collection USING btree ("workflowId") |
+| IDX_d634a0c93fd7de68a87eab951b | CREATE INDEX "IDX_d634a0c93fd7de68a87eab951b" ON public.evaluation_collection USING btree ("evaluationConfigId") |
+
+## Relations
+
+```mermaid
+erDiagram
+
+"public.test_run" }o--o| "public.evaluation_collection" : "FOREIGN KEY (#quot;collectionId#quot;) REFERENCES evaluation_collection(id) ON DELETE SET NULL"
+"public.evaluation_collection" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.evaluation_collection" }o--|| "public.evaluation_config" : "FOREIGN KEY (#quot;evaluationConfigId#quot;) REFERENCES evaluation_config(id) ON DELETE CASCADE"
+"public.evaluation_collection" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+
+"public.evaluation_collection" {
+  varchar_36_ id
+  varchar_128_ name
+  text description
+  varchar_36_ workflowId FK
+  varchar_36_ evaluationConfigId FK
+  uuid createdById FK
+  json insightsCache
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone updatedAt
+}
+"public.test_run" {
+  varchar_36_ id
+  varchar_36_ workflowId FK
+  varchar status
+  varchar errorCode
+  json errorDetails
+  timestamp_3__with_time_zone runAt
+  timestamp_3__with_time_zone completedAt
+  json metrics
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone updatedAt
+  varchar_255_ runningInstanceId
+  boolean cancelRequested
+  varchar_36_ workflowVersionId
+  varchar_36_ evaluationConfigId FK
+  jsonb evaluationConfigSnapshot
+  varchar_36_ collectionId FK
+}
+"public.workflow_entity" {
+  varchar_128_ name
+  boolean active
+  json nodes
+  json connections
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone updatedAt
+  json settings
+  json staticData
+  json pinData
+  character_36_ versionId
+  integer triggerCount
+  varchar_36_ id
+  json meta
+  varchar_36_ parentFolderId FK
+  boolean isArchived
+  integer versionCounter
+  text description
+  varchar_36_ activeVersionId FK
+  json nodeGroups
+  varchar sourceWorkflowId
+}
+"public.evaluation_config" {
+  varchar_36_ id
+  varchar_36_ workflowId FK
+  varchar_128_ name
+  varchar_16_ status
+  varchar_64_ invalidReason
+  varchar_32_ datasetSource
+  json datasetRef
+  varchar_255_ startNodeName
+  varchar_255_ endNodeName
+  json metrics
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone updatedAt
+}
+"public.user" {
+  uuid id
+  varchar_255_ email
+  varchar_32_ firstName
+  varchar_32_ lastName
+  varchar_255_ password
+  json personalizationAnswers
+  timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone updatedAt
+  json settings
+  boolean disabled
+  boolean mfaEnabled
+  text mfaSecret
+  text mfaRecoveryCodes
+  date lastActiveAt
+  varchar_128_ roleSlug FK
+}
+```
+
+---
+
+> Generated by [tbls](https://github.com/k1LoW/tbls)

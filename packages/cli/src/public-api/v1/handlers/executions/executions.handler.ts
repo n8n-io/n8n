@@ -230,7 +230,7 @@ const executionHandlers: ExecutionHandlers = {
 	retryExecution: [
 		publicApiScope('execution:retry'),
 		async (req, res) => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
