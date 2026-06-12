@@ -267,6 +267,59 @@ describe('classifyNodesForSimulation', () => {
 		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
 	});
 
+	it('classifies mid-workflow form pages as simulate', async () => {
+		const verdicts = await classify([
+			trigger,
+			{
+				name: 'Approval Form',
+				type: 'n8n-nodes-base.form',
+				parameters: { formFields: { values: [{ fieldLabel: 'Approved?' }] } },
+			},
+		]);
+		expect(verdictOf(verdicts, 'Approval Form')).toMatchObject({
+			verdict: 'simulate',
+			source: 'deterministic',
+		});
+		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
+	});
+
+	it('executes short time-interval waits to preserve pass-through data', async () => {
+		const verdicts = await classify([
+			trigger,
+			{
+				name: 'Brief Pause',
+				type: 'n8n-nodes-base.wait',
+				parameters: { resume: 'timeInterval', amount: 30, unit: 'seconds' },
+			},
+		]);
+		expect(verdictOf(verdicts, 'Brief Pause')).toMatchObject({
+			verdict: 'execute',
+			source: 'deterministic',
+		});
+	});
+
+	it('simulates a default wait node (1 hour time interval)', async () => {
+		const verdicts = await classify([
+			trigger,
+			{ name: 'Wait', type: 'n8n-nodes-base.wait', parameters: {} },
+		]);
+		expect(verdictOf(verdicts, 'Wait')).toMatchObject({
+			verdict: 'simulate',
+			source: 'deterministic',
+		});
+	});
+
+	it('simulates waits that resume on webhook or form', async () => {
+		const verdicts = await classify([
+			trigger,
+			{ name: 'Wait Hook', type: 'n8n-nodes-base.wait', parameters: { resume: 'webhook' } },
+			{ name: 'Wait Form', type: 'n8n-nodes-base.wait', parameters: { resume: 'form' } },
+		]);
+		expect(verdictOf(verdicts, 'Wait Hook').verdict).toBe('simulate');
+		expect(verdictOf(verdicts, 'Wait Form').verdict).toBe('simulate');
+		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
+	});
+
 	it('classifies destructive-by-type nodes as simulate', async () => {
 		const verdicts = await classify([
 			trigger,

@@ -125,6 +125,40 @@ describe('generateSimulationFixtures', () => {
 		expect(result.A).toEqual([{ json: { ok: true } }]);
 	});
 
+	it('includes upstream context in the prompt for user-action nodes', async () => {
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(JSON.stringify({ Wait: [{ json: { email: 'a@b.c' } }] }));
+
+		const workflow = wf([
+			{ name: 'Fetch User', type: 'n8n-nodes-base.httpRequest' },
+			{ name: 'Wait', type: 'n8n-nodes-base.wait' },
+		]);
+		(workflow.connections as Record<string, unknown>)['Fetch User'] = {
+			main: [[{ node: 'Wait', type: 'main', index: 0 }]],
+		};
+
+		await generateSimulationFixtures({
+			workflow,
+			plan: [
+				{
+					nodeName: 'Wait',
+					verdict: 'simulate',
+					reason: 'Pauses the workflow',
+					confidence: 'high',
+					source: 'deterministic',
+				},
+			],
+		});
+
+		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
+			.content[0].text;
+		expect(promptText).toContain('Immediate upstream nodes');
+		expect(promptText).toContain('"Fetch User" (n8n-nodes-base.httpRequest)');
+	});
+
 	it('ignores plan entries whose node is missing from the workflow', async () => {
 		const result = await generateSimulationFixtures({
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),

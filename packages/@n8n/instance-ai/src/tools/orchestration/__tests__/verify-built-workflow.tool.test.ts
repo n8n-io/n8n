@@ -29,6 +29,7 @@ type VerifyBuiltWorkflowOutput = {
 	simulatedNodes?: Array<{ nodeName: string; reason: string }>;
 	simulationNote?: string;
 	data?: Record<string, unknown>;
+	remediation?: { category: string; shouldEdit: boolean; reason?: string };
 };
 
 function createContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
@@ -735,6 +736,39 @@ describe('verify-built-workflow tool', () => {
 		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
 
 		expect(result.success).toBe(false);
+	});
+
+	it('treats waiting as a failure when the build has a simulation plan (unsimulated user-action node)', async () => {
+		// With a plan, every legitimate pause should have been pinned — a
+		// `waiting` result means a user-action node slipped past classification
+		// and everything downstream went unverified.
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [
+					{
+						nodeName: 'Send Slack',
+						verdict: 'simulate',
+						reason: 'Sends a message',
+						confidence: 'high',
+						source: 'deterministic',
+					},
+				],
+			}),
+			{
+				executionId: 'exec-waiting-plan',
+				status: 'waiting',
+				data: { 'Community Pause': [{ ok: true }] },
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'unsimulated_user_action_node',
+		});
 	});
 
 	it('never reads or deletes data-table rows, even when the workflow contains insert nodes', async () => {

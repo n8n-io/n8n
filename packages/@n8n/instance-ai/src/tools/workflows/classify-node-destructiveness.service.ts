@@ -87,6 +87,22 @@ const CODE_NODE_TYPES = new Set([
 	'n8n-nodes-base.functionItem',
 ]);
 
+const FORM_NODE_TYPE = 'n8n-nodes-base.form';
+const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
+
+/**
+ * A real wait this short is harmless during verification and — unlike a
+ * simulated one — preserves pass-through data for downstream expressions.
+ */
+const MAX_EXECUTABLE_WAIT_SECONDS = 60;
+
+const WAIT_UNIT_SECONDS: Record<string, number> = {
+	seconds: 1,
+	minutes: 60,
+	hours: 3600,
+	days: 86_400,
+};
+
 const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 
 /** Operation/mode values that unambiguously read. */
@@ -236,6 +252,50 @@ function deterministicVerdict(
 		// POST/PUT/PATCH/DELETE can still be reads (e.g. POST /search) — let the
 		// LLM judge URL + body; the fallback is simulate.
 		return 'ambiguous';
+	}
+
+	// User-action nodes: nothing destructive about them, but executing one
+	// parks the run in `waiting` and everything downstream is never verified.
+	// Pinning them lets execution flow past (a pinned node never calls
+	// putExecutionToWait).
+	if (node.type === FORM_NODE_TYPE) {
+		return {
+			nodeName: node.name,
+			verdict: 'simulate',
+			reason: 'Displays a form page and waits for a user submission',
+			confidence: 'high',
+			source: 'deterministic',
+		};
+	}
+
+	if (node.type === WAIT_NODE_TYPE) {
+		// Wait node defaults: resume='timeInterval', amount=1, unit='hours'.
+		const params = isRecord(node.parameters) ? node.parameters : {};
+		const resume = typeof params.resume === 'string' ? params.resume : 'timeInterval';
+		if (resume === 'timeInterval') {
+			const amount = typeof params.amount === 'number' ? params.amount : 1;
+			const unit = typeof params.unit === 'string' ? params.unit : 'hours';
+			const seconds = amount * (WAIT_UNIT_SECONDS[unit] ?? 3600);
+			if (seconds <= MAX_EXECUTABLE_WAIT_SECONDS) {
+				return {
+					nodeName: node.name,
+					verdict: 'execute',
+					reason: `Short wait (${seconds}s) — runs for real to preserve pass-through data`,
+					confidence: 'high',
+					source: 'deterministic',
+				};
+			}
+		}
+		return {
+			nodeName: node.name,
+			verdict: 'simulate',
+			reason:
+				resume === 'timeInterval' || resume === 'specificTime'
+					? 'Pauses the workflow for longer than verification can wait'
+					: 'Pauses the workflow until a user or external system resumes it',
+			confidence: 'high',
+			source: 'deterministic',
+		};
 	}
 
 	if (CODE_NODE_TYPES.has(node.type)) {

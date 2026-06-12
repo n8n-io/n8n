@@ -216,12 +216,17 @@ function classifyVerificationFailure(
 	}
 
 	if (status === 'waiting') {
+		const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,
-			reason: 'execution_waiting',
-			guidance:
-				'Workflow verification is waiting for user action or setup. Stop code edits and ask the user to complete setup.',
+			reason: hasSimulationPlan ? 'unsimulated_user_action_node' : 'execution_waiting',
+			guidance: hasSimulationPlan
+				? 'Verification paused on a node that waits for user action and was not simulated — ' +
+					'nodes downstream of it were not verified. This is not a workflow bug: do not edit ' +
+					'the code. Report to the user which node paused and that the rest of the workflow ' +
+					'needs a manual test.'
+				: 'Workflow verification is waiting for user action or setup. Stop code edits and ask the user to complete setup.',
 		});
 	}
 
@@ -391,16 +396,24 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				simulation: simulationMap,
 			});
 
-			// Treat `waiting` as success when the workflow produced output and recorded
-			// no error. `waiting` is a terminal-ish state for several legitimate flows:
-			// Form Trigger workflows that end on a form-respond / completion page, Wait
-			// nodes, and HITL prompts. Considering it a failure caused builders to
-			// falsely retry verified form workflows and prevented checkpoints from
-			// reusing builder evidence. Only treat `waiting` with no output rows AND
-			// no error as indeterminate (falls through to failure).
+			// `waiting` handling depends on whether this build has a simulation plan.
+			//
+			// With a plan, every legitimate user-action pause (Form pages, Wait,
+			// sendAndWait) was classified and pinned, so execution should never park
+			// in `waiting` — when it does, a user-action node slipped past
+			// classification (e.g. a community node that waits) and everything
+			// downstream of it went unverified. That is a failure, not a success.
+			//
+			// Without a plan (build outcomes from before classification, or a total
+			// classification failure), keep the legacy fallback: `waiting` with
+			// output and no error counts as success — Form Trigger workflows ending
+			// on a completion page legitimately finish in `waiting`, and failing
+			// them caused builders to falsely retry verified workflows.
+			const hasSimulationPlan = (buildOutcome.nodeSimulationPlan?.length ?? 0) > 0;
 			const hasOutput = result.data ? Object.keys(result.data).length > 0 : false;
 			const success =
-				result.status === 'success' || (result.status === 'waiting' && !result.error && hasOutput);
+				result.status === 'success' ||
+				(!hasSimulationPlan && result.status === 'waiting' && !result.error && hasOutput);
 
 			const failureRemediation = success
 				? undefined
