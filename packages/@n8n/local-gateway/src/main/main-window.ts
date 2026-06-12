@@ -1,7 +1,23 @@
-import { BrowserWindow, nativeTheme, screen, type Rectangle } from 'electron';
+import { app, BrowserWindow, nativeTheme } from 'electron';
+import * as path from 'node:path';
 
-/** The single, frameless main window. Behaves like a menubar popover anchored to the tray. */
+/** The single main window. Closing it hides it; the app lives on in the tray and Dock. */
 let mainWindow: BrowserWindow | null = null;
+
+/** Once quitting starts, `close` must destroy the window instead of hiding it. */
+let isQuitting = false;
+app.on('before-quit', () => {
+	isQuitting = true;
+});
+
+/**
+ * Apply the branded Dock icon (unpackaged dev builds default to Electron's icon).
+ * macOS drops a custom icon whenever the Dock entry is hidden, so this must be
+ * re-applied after every `dock.show()`.
+ */
+export function applyDockIcon(): void {
+	app.dock?.setIcon(path.join(app.getAppPath(), 'assets', 'icon.png'));
+}
 
 /**
  * Callbacks fired when the renderer's state is wiped — the window is closed or its
@@ -29,23 +45,21 @@ function surfaceColor(): string {
 	return nativeTheme.shouldUseDarkColors ? '#212121' : '#ffffff';
 }
 
-const WINDOW_WIDTH = 420;
+const WINDOW_WIDTH = 630;
 const WINDOW_HEIGHT = 640;
-/** Gap between the tray icon and the window edge. */
-const TRAY_GAP = 6;
 
 function createMainWindow(preloadPath: string, rendererPath: string): BrowserWindow {
 	const window = new BrowserWindow({
 		width: WINDOW_WIDTH,
 		height: WINDOW_HEIGHT,
 		show: false,
-		frame: false,
+		// macOS: native traffic lights overlay the renderer's own dark title strip.
+		// Other platforms keep the default native frame (working window controls).
+		...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
 		backgroundColor: surfaceColor(),
 		resizable: false,
-		movable: false,
 		maximizable: false,
 		fullscreenable: false,
-		skipTaskbar: true,
 		roundedCorners: true,
 		title: 'n8n Assistant',
 		webPreferences: {
@@ -67,20 +81,26 @@ function createMainWindow(preloadPath: string, rendererPath: string): BrowserWin
 	}
 
 	// Tell the renderer when the window is actually on screen, so background polling
-	// can pause while it's hidden. The renderer's own visibility/focus events are
-	// unreliable for a frameless hide-on-blur window, so the main process is the
-	// source of truth.
+	// can pause while it's hidden. A visible-but-unfocused window stays active —
+	// the user can still see it.
 	const broadcastActive = (active: boolean) => {
 		if (!window.isDestroyed()) window.webContents.send('windowActiveChanged', active);
 	};
 	window.on('show', () => broadcastActive(true));
 	window.on('focus', () => broadcastActive(true));
-	window.on('hide', () => broadcastActive(false));
-
-	// Menubar behaviour: dismiss when the window loses focus (e.g. clicking elsewhere).
-	window.on('blur', () => {
+	// The Dock icon mirrors window visibility: the app reads as "open" only while
+	// its window is up; otherwise it recedes to the menu-bar tray. A minimized
+	// window keeps the Dock entry — its thumbnail lives there.
+	window.on('hide', () => {
 		broadcastActive(false);
-		if (!window.webContents.isDevToolsOpened()) window.hide();
+		if (!window.isMinimized()) app.dock?.hide();
+	});
+
+	// Closing the window keeps the app running in the tray/Dock.
+	window.on('close', (event) => {
+		if (isQuitting) return;
+		event.preventDefault();
+		window.hide();
 	});
 	window.on('closed', () => {
 		mainWindow = null;
@@ -99,57 +119,39 @@ function getMainWindow(preloadPath: string, rendererPath: string): BrowserWindow
 	return mainWindow;
 }
 
-/** Position the window centred under (macOS) or above (Win/Linux) the tray icon, clamped on-screen. */
-function anchorToTray(window: BrowserWindow, trayBounds: Rectangle): void {
-	const { workArea } = screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y });
-	const [width, height] = window.getSize();
-
-	const centredX = Math.round(trayBounds.x + trayBounds.width / 2 - width / 2);
-	const x = Math.max(workArea.x, Math.min(centredX, workArea.x + workArea.width - width));
-
-	const unclampedY =
-		process.platform === 'darwin'
-			? Math.round(trayBounds.y + trayBounds.height + TRAY_GAP)
-			: Math.round(trayBounds.y - height - TRAY_GAP);
-	const y = Math.max(workArea.y, Math.min(unclampedY, workArea.y + workArea.height - height));
-
-	window.setPosition(x, y, false);
-}
-
-/** Show the window, anchoring it to the tray when bounds are supplied. */
-export function showMainWindow(
-	preloadPath: string,
-	rendererPath: string,
-	trayBounds?: Rectangle,
-): void {
-	const window = getMainWindow(preloadPath, rendererPath);
-	// Empty tray bounds (e.g. before the tray has laid out) → fall back to centering.
-	if (trayBounds && trayBounds.width > 0) {
-		anchorToTray(window, trayBounds);
-	} else {
-		window.center();
-	}
-	window.show();
-}
-
-/** Toggle the window from a tray click: hide if visible, otherwise anchor + show. */
-export function toggleMainWindow(
-	preloadPath: string,
-	rendererPath: string,
-	trayBounds: Rectangle,
-): void {
-	const window = getMainWindow(preloadPath, rendererPath);
-	if (window.isVisible()) {
-		window.hide();
+/**
+ * Reveal the window, restoring the Dock entry first. The order matters: a window
+ * shown while the app is still an accessory (Dock hidden) is hidden again by macOS
+ * as soon as the app deactivates — the popover behaviour this app moved away from.
+ */
+function revealWindow(window: BrowserWindow): void {
+	const present = () => {
+		// show() alone does not de-minimize on macOS.
+		if (window.isMinimized()) window.restore();
+		window.show();
+	};
+	if (app.dock && !app.dock.isVisible()) {
+		void app.dock.show().then(() => {
+			applyDockIcon();
+			present();
+		});
 		return;
 	}
-	anchorToTray(window, trayBounds);
-	window.show();
+	present();
 }
 
-/** Whether the window is currently on screen (it hides on blur — visible ≈ in front of the user). */
-export function isMainWindowVisible(): boolean {
-	return mainWindow !== null && !mainWindow.isDestroyed() && mainWindow.isVisible();
+/**
+ * Show the window: open it (a new one centered, a hidden one where the user left it),
+ * restore it if minimized, focus it if already open. Never hides — closing is the
+ * window's own `x` button.
+ */
+export function showMainWindow(preloadPath: string, rendererPath: string): void {
+	revealWindow(getMainWindow(preloadPath, rendererPath));
+}
+
+/** Whether the window is focused — actually in front of the user right now. */
+export function isMainWindowFocused(): boolean {
+	return mainWindow !== null && !mainWindow.isDestroyed() && mainWindow.isFocused();
 }
 
 /** Send an IPC message to the renderer, if the window exists. */
