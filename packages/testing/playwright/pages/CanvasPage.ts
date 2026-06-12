@@ -567,7 +567,10 @@ export class CanvasPage extends BasePage {
 
 	async waitForBlankCanvasReady(): Promise<void> {
 		await this.waitForCanvasReady();
-		await expect(this.getChoicePrompt()).toBeVisible();
+		// A blank canvas shows the AI choice prompt when AI Builder is enabled,
+		// otherwise the default add-first-step button. Accept either so this works
+		// in both environments.
+		await expect(this.getChoicePrompt().or(this.getCanvasPlusButton())).toBeVisible();
 	}
 
 	async addInitialNodeToCanvas(nodeName: string): Promise<void> {
