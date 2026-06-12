@@ -6,6 +6,7 @@ import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import { PrometheusWebhookAndFormMetricsService } from '@/metrics/prometheus/webhook-and-form-metrics.service';
 import * as ResponseHelper from '@/response-helper';
 import type { ExpectedWebhookNodeType } from '@/webhooks/node-type-matcher';
 import type {
@@ -234,6 +235,7 @@ class WebhookRequestHandler {
 export function createWebhookHandlerFor(
 	webhookManager: IWebhookManager,
 	expectedNodeType?: ExpectedWebhookNodeType,
+	metricKind: 'webhook' | 'form' | 'none' = 'none',
 ): express.RequestHandler {
 	const handler = new WebhookRequestHandler(webhookManager, expectedNodeType);
 
@@ -244,6 +246,36 @@ export function createWebhookHandlerFor(
 		if (Array.isArray(params.path)) {
 			params.path = params.path.join('/');
 		}
+
+		if (metricKind !== 'none') {
+			const startNs = process.hrtime.bigint();
+			res.on('finish', () => {
+				const durationSeconds = Number(process.hrtime.bigint() - startNs) / 1e9;
+				const workflowId = (res.locals as { workflowId?: string }).workflowId ?? '';
+				const metricsService = Container.get(PrometheusWebhookAndFormMetricsService);
+
+				if (metricKind === 'form') {
+					// Only POST requests are form submissions; GET renders the form page.
+					if (req.method !== 'POST') return;
+					metricsService.observeFormSubmission({
+						statusCode: res.statusCode,
+						formPath: params.path,
+						workflowId,
+						durationSeconds,
+					});
+					return;
+				}
+
+				metricsService.observeWebhookRequest({
+					method: req.method,
+					statusCode: res.statusCode,
+					webhookPath: params.path,
+					workflowId,
+					durationSeconds,
+				});
+			});
+		}
+
 		await handler.handleRequest(webhookRequest, res);
 	};
 }
