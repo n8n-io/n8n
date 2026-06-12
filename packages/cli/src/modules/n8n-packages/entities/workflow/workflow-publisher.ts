@@ -17,10 +17,9 @@ import {
 } from './workflow-publishing-policy.types';
 
 /**
- * Owns the publish lifecycle of imported workflows: the pre-import permission
- * gate and the per-workflow publish/unpublish that {@link WorkflowPublishingPolicy}
- * dictates once content is saved. Decisions are delegated to the pure
- * {@link decideWorkflowPublishingAction}; this service only performs the writes.
+ * Owns the publish lifecycle of imported workflows: an upfront permission check for
+ * {@link WorkflowPublishingPolicy.PublishAll}, and per-workflow publish/unpublish
+ * for every policy once the workflow is persisted.
  */
 @Service()
 export class WorkflowPublisher {
@@ -32,16 +31,16 @@ export class WorkflowPublisher {
 	) {}
 
 	/**
-	 * Fails the import up front when the actor lacks publish permission for a
-	 * policy that would publish workflows, so we never write content we can't
-	 * bring to the requested state.
+	 * Fail the import before any writes when {@link WorkflowPublishingPolicy.PublishAll}
+	 * is selected and the actor lacks `workflow:publish`. Other policies skip this check;
+	 * publish permission is checked per workflow in workflowService
 	 */
 	async assertCanPublish(
 		user: User,
 		projectId: string,
 		policy: WorkflowPublishingPolicy,
 	): Promise<void> {
-		if (policy !== WorkflowPublishingPolicy.AllPublished) {
+		if (policy !== WorkflowPublishingPolicy.PublishAll) {
 			return;
 		}
 
@@ -87,7 +86,7 @@ export class WorkflowPublisher {
 			});
 		} catch (error) {
 			// Content import already succeeded; a publish/unpublish failure (e.g. a
-			// triggerless workflow under `all-published`) must not fail the import.
+			// triggerless workflow under `publish-all`) must not fail the import.
 			// Keep the post-save state and surface the reason for diagnostics.
 			this.logger.warn('Failed to apply publishing policy to imported workflow', {
 				workflowId: workflow.id,

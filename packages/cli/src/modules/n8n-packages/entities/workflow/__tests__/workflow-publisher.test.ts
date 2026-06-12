@@ -34,7 +34,7 @@ describe('WorkflowPublisher', () => {
 	});
 
 	describe('assertCanPublish', () => {
-		it('does nothing for policies other than all-published', async () => {
+		it('does nothing for policies other than publish-all', async () => {
 			await publisher.assertCanPublish(user, 'project-1', WorkflowPublishingPolicy.MatchSource);
 
 			expect(projectService.getProjectWithScope).not.toHaveBeenCalled();
@@ -44,7 +44,7 @@ describe('WorkflowPublisher', () => {
 			projectService.getProjectWithScope.mockResolvedValue(mock<Project>({ id: 'project-1' }));
 
 			await expect(
-				publisher.assertCanPublish(user, 'project-1', WorkflowPublishingPolicy.AllPublished),
+				publisher.assertCanPublish(user, 'project-1', WorkflowPublishingPolicy.PublishAll),
 			).resolves.toBeUndefined();
 		});
 
@@ -53,7 +53,7 @@ describe('WorkflowPublisher', () => {
 			projectRepository.existsBy.mockResolvedValue(true);
 
 			await expect(
-				publisher.assertCanPublish(user, 'project-1', WorkflowPublishingPolicy.AllPublished),
+				publisher.assertCanPublish(user, 'project-1', WorkflowPublishingPolicy.PublishAll),
 			).rejects.toThrow(ForbiddenError);
 		});
 
@@ -62,7 +62,7 @@ describe('WorkflowPublisher', () => {
 			projectRepository.existsBy.mockResolvedValue(false);
 
 			await expect(
-				publisher.assertCanPublish(user, 'missing-project', WorkflowPublishingPolicy.AllPublished),
+				publisher.assertCanPublish(user, 'missing-project', WorkflowPublishingPolicy.PublishAll),
 			).rejects.toThrow(NotFoundError);
 		});
 	});
@@ -108,7 +108,7 @@ describe('WorkflowPublisher', () => {
 				user,
 				createItem(true),
 				workflow,
-				WorkflowPublishingPolicy.AllPublished,
+				WorkflowPublishingPolicy.PublishAll,
 			);
 
 			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
@@ -131,7 +131,7 @@ describe('WorkflowPublisher', () => {
 				user,
 				createItem(true),
 				workflow,
-				WorkflowPublishingPolicy.AllPublished,
+				WorkflowPublishingPolicy.PublishAll,
 			);
 
 			expect(result).toBe(workflow);

@@ -60,7 +60,7 @@ export class ImportPipeline {
 			request.folderId,
 		);
 
-		// Fail fast if the actor does not have permission to publish all workflows
+		// PublishAll requires publish scope up front; other policies are checked per workflow
 		await this.workflowPublisher.assertCanPublish(
 			request.user,
 			target.projectId,

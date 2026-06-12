@@ -5,9 +5,9 @@ export const WorkflowPublishingPolicy = {
 	/** Target publish state follows the package workflow's published flag. */
 	MatchSource: 'match-source',
 	/** Publishes every imported workflow. */
-	AllPublished: 'all-published',
+	PublishAll: 'publish-all',
 	/** Leaves new workflows inactive; unpublishes updated workflows that were published. */
-	AllUnpublished: 'all-unpublished',
+	UnpublishAll: 'unpublish-all',
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 

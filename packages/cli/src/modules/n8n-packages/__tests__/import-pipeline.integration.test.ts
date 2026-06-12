@@ -828,8 +828,8 @@ describe('ImportPipeline workflow publishing policy', () => {
 	it.each<WorkflowPublishingPolicyValue>([
 		WorkflowPublishingPolicy.PreservePublishedState,
 		WorkflowPublishingPolicy.MatchSource,
-		WorkflowPublishingPolicy.AllPublished,
-		WorkflowPublishingPolicy.AllUnpublished,
+		WorkflowPublishingPolicy.PublishAll,
+		WorkflowPublishingPolicy.UnpublishAll,
 	])('returns published state for every workflow under "%s"', async (workflowPublishingPolicy) => {
 		const owner = await createOwner();
 
@@ -850,7 +850,7 @@ describe('ImportPipeline workflow publishing policy', () => {
 		expect(result.workflows).toHaveLength(1);
 		// activeVersionId is non-null exactly when the workflow ends up published.
 		expect(result.workflows[0]?.activeVersionId !== null).toBe(
-			workflowPublishingPolicy === WorkflowPublishingPolicy.AllPublished,
+			workflowPublishingPolicy === WorkflowPublishingPolicy.PublishAll,
 		);
 	});
 
@@ -887,7 +887,7 @@ describe('ImportPipeline workflow publishing policy', () => {
 		expect(unpublishedSummary?.activeVersionId).toBeNull();
 	});
 
-	it('"all-unpublished" unpublishes a previously published matched workflow', async () => {
+	it('"unpublish-all" unpublishes a previously published matched workflow', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			owner.id,
@@ -915,7 +915,7 @@ describe('ImportPipeline workflow publishing policy', () => {
 				}),
 			]),
 			workflowConflictPolicy: 'new-version',
-			workflowPublishingPolicy: WorkflowPublishingPolicy.AllUnpublished,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.UnpublishAll,
 		});
 
 		const summary = result.workflows.find(

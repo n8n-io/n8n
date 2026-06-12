@@ -40,14 +40,14 @@ describe('decideWorkflowPublishingAction', () => {
 			expected: 'unpublish',
 		},
 		{
-			policy: WorkflowPublishingPolicy.AllPublished,
+			policy: WorkflowPublishingPolicy.PublishAll,
 			status: 'created' as const,
 			sourcePublished: false,
 			currentlyPublished: false,
 			expected: 'publish',
 		},
 		{
-			policy: WorkflowPublishingPolicy.AllUnpublished,
+			policy: WorkflowPublishingPolicy.UnpublishAll,
 			status: 'updated' as const,
 			sourcePublished: true,
 			currentlyPublished: true,
@@ -66,7 +66,7 @@ describe('decideWorkflowPublishingAction', () => {
 
 	it('returns noop for skipped imports regardless of policy', () => {
 		expect(
-			decideWorkflowPublishingAction(WorkflowPublishingPolicy.AllPublished, {
+			decideWorkflowPublishingAction(WorkflowPublishingPolicy.PublishAll, {
 				status: 'skipped',
 				sourcePublished: true,
 				currentlyPublished: true,
@@ -77,7 +77,7 @@ describe('decideWorkflowPublishingAction', () => {
 
 	it('unpublishes archived workflows that were published', () => {
 		expect(
-			decideWorkflowPublishingAction(WorkflowPublishingPolicy.AllPublished, {
+			decideWorkflowPublishingAction(WorkflowPublishingPolicy.PublishAll, {
 				status: 'updated',
 				sourcePublished: true,
 				currentlyPublished: true,

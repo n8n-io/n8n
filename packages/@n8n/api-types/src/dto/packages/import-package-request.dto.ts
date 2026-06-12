@@ -29,7 +29,7 @@ export class ImportPackageRequestDto extends Z.class({
 	credentialMissingMode: z.enum(['must-preexist']).optional().default('must-preexist'),
 	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']),
 	workflowPublishingPolicy: z
-		.enum(['preserve-published-state', 'match-source', 'all-published', 'all-unpublished'])
+		.enum(['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'])
 		.optional()
 		.default('preserve-published-state'),
 }) {}

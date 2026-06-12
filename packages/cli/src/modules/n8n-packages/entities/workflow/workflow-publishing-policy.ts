@@ -26,8 +26,8 @@ const WORKFLOW_PUBLISHING_POLICIES: Record<
 		}
 		return 'noop';
 	},
-	[WorkflowPublishingPolicy.AllPublished]: () => 'publish',
-	[WorkflowPublishingPolicy.AllUnpublished]: ({ status, currentlyPublished }) =>
+	[WorkflowPublishingPolicy.PublishAll]: () => 'publish',
+	[WorkflowPublishingPolicy.UnpublishAll]: ({ status, currentlyPublished }) =>
 		status === 'updated' && currentlyPublished ? 'unpublish' : 'noop',
 };
 
