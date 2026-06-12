@@ -1,3 +1,4 @@
+import type { SsrfBridge } from '@n8n/backend-network';
 import FormData from 'form-data';
 import type { Agent as HttpsAgent } from 'https';
 import type {
@@ -11,7 +12,6 @@ import nock from 'nock';
 import type { SecureContextOptions } from 'tls';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import { parseRequestObject, proxyRequestToAxios } from '../legacy-request-adapter';

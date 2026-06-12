@@ -1,17 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRouter } from 'vue-router';
 
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nButton, N8nIcon, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
 
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { getExpectedFieldsForMetrics } from '../../evaluation.constants';
-import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
-import { nodeViewEventBus } from '@/app/event-bus';
 
 const props = defineProps<{
 	sliceInputs: {
@@ -23,56 +18,22 @@ const props = defineProps<{
 
 const wizardStore = useEvaluationsWizardSidepanelStore();
 const locale = useI18n();
-const router = useRouter();
-const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const { inputs, expectedValues, selectedMetricKeys } = storeToRefs(wizardStore);
 
-const { runEntireWorkflow } = useRunWorkflow({ router });
-
 const expectedFields = computed(() => getExpectedFieldsForMetrics(selectedMetricKeys.value));
-
-// Chat-trigger workflows can't be executed directly — they need a chat message
-// to start. Open and focus the chat panel instead (NodeView listens for this
-// event and opens the chat-hub or logs chat as appropriate).
-const hasChatTrigger = computed(() =>
-	(workflowDocumentStore.value?.allNodes ?? []).some(
-		(node) =>
-			[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type) &&
-			node.disabled !== true,
-	),
-);
-
-function onRunWorkflow() {
-	if (hasChatTrigger.value) {
-		nodeViewEventBus.emit('openChat');
-		return;
-	}
-	void runEntireWorkflow('main');
-}
 </script>
 
 <template>
 	<div :class="$style.formBlock">
 		<div
-			v-if="!props.sliceInputs.hasExecution"
-			:class="$style.runFirstCallout"
-			data-test-id="evaluations-wizard-sidepanel-no-execution"
+			v-if="props.sliceInputs.fieldNames.length > 0"
+			:class="$style.heading"
+			data-test-id="evaluations-wizard-sidepanel-input-heading"
 		>
-			<N8nIcon icon="info" size="medium" :class="$style.runFirstIcon" />
-			<div :class="$style.runFirstContent">
-				<N8nText size="small" color="text-base">
-					{{ locale.baseText('evaluations.wizardSidepanel.step.addTestCases.runFirst') }}
-				</N8nText>
-				<N8nButton
-					size="small"
-					type="button"
-					data-test-id="evaluations-wizard-sidepanel-run-workflow"
-					@click="onRunWorkflow"
-				>
-					{{ locale.baseText('evaluations.wizardSidepanel.step.addTestCases.runButton') }}
-				</N8nButton>
-			</div>
+			<N8nText size="xsmall" bold color="text-dark">
+				{{ locale.baseText('evaluations.wizardSidepanel.step2.input') }}
+			</N8nText>
 		</div>
 
 		<div
@@ -133,25 +94,8 @@ function onRunWorkflow() {
 	overflow: hidden;
 }
 
-.runFirstCallout {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--sm);
-	background-color: var(--background--subtle);
-	border-bottom: var(--border);
-}
-
-.runFirstIcon {
-	flex-shrink: 0;
-	margin-top: var(--spacing--4xs);
-	color: var(--color--secondary);
-}
-
-.runFirstContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
+.heading {
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
 }
 
 .field {

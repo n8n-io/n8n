@@ -6,43 +6,29 @@ const {
 	mockCreateSharedSandbox,
 	mockCreateFilesystem,
 	mockSnapshotManagerConstructor,
-	mockEnsureSnapshot,
+	mockSnapshotName,
 	mockEnsureImage,
-	mockDaytonaConstructor,
 } = vi.hoisted(() => ({
 	mockCreateSharedSandbox: vi.fn(),
 	mockCreateFilesystem: vi.fn(),
 	mockSnapshotManagerConstructor: vi.fn(),
-	mockEnsureSnapshot: vi.fn(),
+	mockSnapshotName: vi.fn(),
 	mockEnsureImage: vi.fn(),
-	mockDaytonaConstructor: vi.fn(),
 }));
 
 vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
 	...(await importOriginal<typeof SharedSandboxMod>()),
 	createSandbox: mockCreateSharedSandbox,
 	createFilesystem: mockCreateFilesystem,
-	loadDaytona: () => ({
-		Daytona: class {
-			constructor(config: unknown) {
-				mockDaytonaConstructor(config);
-			}
-		},
-	}),
 }));
 
 vi.mock('../snapshot-manager', () => ({
 	SnapshotManager: class {
-		constructor(
-			baseImage: string | undefined,
-			logger: unknown,
-			n8nVersion: string | undefined,
-			errorReporter: unknown,
-		) {
-			mockSnapshotManagerConstructor(baseImage, logger, n8nVersion, errorReporter);
+		constructor(baseImage: string | undefined, logger: unknown, n8nVersion: string | undefined) {
+			mockSnapshotManagerConstructor(baseImage, logger, n8nVersion);
 		}
 
-		ensureSnapshot = mockEnsureSnapshot;
+		snapshotName = mockSnapshotName;
 		ensureImage = mockEnsureImage;
 	},
 }));
@@ -96,7 +82,7 @@ describe('createSandbox', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockCreateSharedSandbox.mockResolvedValue(sandbox);
-		mockEnsureSnapshot.mockResolvedValue('snapshot-name');
+		mockSnapshotName.mockReturnValue('n8n/instance-ai:1.2.3');
 		mockEnsureImage.mockResolvedValue({ dockerfile: 'FROM node:20' });
 	});
 
@@ -152,7 +138,7 @@ describe('createSandbox', () => {
 		});
 	});
 
-	it('prepares snapshot and image in Daytona direct snapshot fallback mode', async () => {
+	it('prepares image in direct Daytona snapshot fallback mode without a versioned snapshot', async () => {
 		const config: SandboxConfig = {
 			enabled: true,
 			provider: 'daytona',
@@ -169,17 +155,8 @@ describe('createSandbox', () => {
 
 		await expect(createSandbox(config, options)).resolves.toBe(sandbox);
 
-		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith(
-			'node:20',
-			logger,
-			'1.2.3',
-			errorReporter,
-		);
-		expect(mockDaytonaConstructor).toHaveBeenCalledWith({
-			apiKey: 'test-key',
-			apiUrl: 'https://api.daytona.io',
-		});
-		expect(mockEnsureSnapshot).toHaveBeenCalledWith(expect.any(Object), 'direct');
+		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith('node:20', logger, '1.2.3');
+		expect(mockSnapshotName).not.toHaveBeenCalled();
 		expect(mockEnsureImage).toHaveBeenCalledWith();
 		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
 		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
@@ -193,7 +170,6 @@ describe('createSandbox', () => {
 				labels: {
 					'n8n-instance-ai-sandbox-id': sharedConfig.id,
 				},
-				snapshot: 'snapshot-name',
 			},
 			{ logger, errorReporter },
 		);
@@ -213,7 +189,6 @@ describe('createSandbox', () => {
 			undefined,
 			expect.anything(),
 			'1.2.3',
-			undefined,
 		);
 	});
 
@@ -229,12 +204,7 @@ describe('createSandbox', () => {
 
 		await createSandbox(config, { logger, useSnapshotFallback: true });
 
-		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith(
-			undefined,
-			logger,
-			'1.2.3',
-			undefined,
-		);
+		expect(mockSnapshotManagerConstructor).toHaveBeenCalledWith(undefined, logger, '1.2.3');
 	});
 
 	it('prepares snapshot and image in Daytona proxy snapshot fallback mode', async () => {
@@ -256,8 +226,7 @@ describe('createSandbox', () => {
 			}),
 		).resolves.toBe(sandbox);
 
-		expect(mockDaytonaConstructor).not.toHaveBeenCalled();
-		expect(mockEnsureSnapshot).toHaveBeenCalledWith(undefined, 'proxy');
+		expect(mockSnapshotName).toHaveBeenCalledWith();
 		expect(mockEnsureImage).toHaveBeenCalledWith();
 		const sharedConfig = mockCreateSharedSandbox.mock.calls[0][0] as DaytonaSandboxConfig;
 		expect(mockCreateSharedSandbox).toHaveBeenCalledWith(
@@ -271,7 +240,7 @@ describe('createSandbox', () => {
 				labels: {
 					'n8n-instance-ai-sandbox-id': sharedConfig.id,
 				},
-				snapshot: 'snapshot-name',
+				snapshot: 'n8n/instance-ai:1.2.3',
 			},
 			{ logger, errorReporter },
 		);

@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Logger } from '@n8n/backend-common';
+import type { SsrfBridge } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { AxiosHeaders, AxiosRequestConfig } from 'axios';
 import crypto from 'crypto';
@@ -24,8 +25,6 @@ import type {
 import { NodeSslError } from 'n8n-workflow';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
-
-import type { SsrfBridge } from '@/execution-engine';
 
 import { binaryToString } from '../binary-helper-functions';
 import { parseIncomingMessage } from '../parse-incoming-message';

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
+import type { SsrfBridge } from '@n8n/backend-network';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import type { AgentOptions } from 'https';
@@ -12,8 +13,6 @@ import type {
 } from 'n8n-workflow';
 import { isObjectEmpty } from 'n8n-workflow';
 import { stringify } from 'qs';
-
-import type { SsrfBridge } from '@/execution-engine';
 
 import {
 	buildTargetUrl,

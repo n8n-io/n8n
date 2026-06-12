@@ -111,6 +111,7 @@ describe('Workflow Status API', () => {
 	let savedWorkflow: WorkflowEntity;
 	let savedCredential: CredentialsEntity;
 	let owner: User;
+	let unrelatedMember: User;
 	let isLeaderSpy: jest.SpyInstance;
 
 	beforeAll(async () => {
@@ -156,6 +157,10 @@ describe('Workflow Status API', () => {
 		await Container.get(N8nResolverSeeder).seed();
 
 		({ savedWorkflow, savedCredential, owner } = await setupWorkflow());
+
+		// A second regular member with no relationship to the owner's workflow:
+		// not the owner, no project membership, no sharing.
+		unrelatedMember = await createUser();
 	});
 
 	afterAll(async () => {
@@ -261,6 +266,18 @@ describe('Workflow Status API', () => {
 							credentialStatus: expect.any(String),
 						}),
 					]),
+				});
+			});
+
+			describe("when an unrelated authenticated member targets another user's workflow", () => {
+				it('should not expose the credentials of a workflow the member cannot access', async () => {
+					const response = await testServer
+						.authAgentFor(unrelatedMember)
+						.get(`/workflows/${savedWorkflow.id}/execution-status`)
+						.set('Authorization', 'Bearer test-token');
+
+					expect([403, 404]).toContain(response.status);
+					expect(response.body?.data).toBeUndefined();
 				});
 			});
 		});

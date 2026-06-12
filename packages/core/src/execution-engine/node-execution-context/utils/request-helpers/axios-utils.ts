@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { SsrfBridge } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
@@ -12,7 +13,6 @@ import {
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
 
-import type { SsrfBridge } from '@/execution-engine';
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 
 export function throwIfDomainNotAllowed(

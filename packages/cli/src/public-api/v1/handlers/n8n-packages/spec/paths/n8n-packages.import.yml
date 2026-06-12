@@ -11,12 +11,14 @@ post:
     Imports a gzip-compressed tar package (`.n8np`) into the target project. Send the
     archive as the multipart field `package`. Optional routing uses form fields
     `projectId`, `folderId`, `credentialMatchingMode`, and `credentialMissingMode`
-    (omit or leave empty for defaults). Maximum upload size is
+    (omit or leave empty for defaults). The required `workflowConflictPolicy` field
+    controls what happens when a package workflow matches an existing workflow by
+    source id in the target project. Maximum upload size is
     `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default 16).
 
     The package must declare its manifest at `manifest.json` and include every file
     referenced by the manifest. The caller is authorised through the `workflow:import`
-    scope. Each imported workflow is created with a fresh local id and arrives inactive.
+    scope. Newly created workflows receive a fresh local id and arrive inactive.
 
     Credential references are resolved before any workflow is written. Only credentials owned by the
     target project (with `credential:read`) or global credentials (with `credential:read`)
@@ -29,6 +31,7 @@ post:
           type: object
           required:
             - package
+            - workflowConflictPolicy
           properties:
             package:
               type: string
@@ -61,9 +64,19 @@ post:
                 What to do when a credential reference cannot be resolved.
                 `must-preexist` requires every referenced credential to already
                 exist and be accessible on the target instance.
+            workflowConflictPolicy:
+              type: string
+              enum:
+                - new-version
+                - fail
+                - skip
+              description: >
+                `new-version` updates matching workflows and creates a new version,
+                `fail` rejects the import when any matching workflow exists, and
+                      description: Workflow id on the target instance (newly created for `created`, existing for `updated`/`skipped`).
   responses:
     '200':
-      description: Import succeeded.
+      description: Import succeeded; the listed workflows were written to the target project.
       content:
         application/json:
           schema:
@@ -71,7 +84,7 @@ post:
             required:
               - package
               - workflows
-              - credentials
+              - bindings
             properties:
               package:
                 type: object
@@ -92,14 +105,15 @@ post:
                 items:
                   type: object
                   required:
-                    - sourceId
+                    - sourceWorkflowId
                     - localId
                     - name
                     - projectId
                     - parentFolderId
                     - activeVersionId
+                    - status
                   properties:
-                    sourceId:
+                    sourceWorkflowId:
                       type: string
                       description: Workflow id as it appeared in the package.
                     localId:
@@ -116,59 +130,70 @@ post:
                       type: string
                       nullable: true
                       description: >
-                        Published version on the target instance. Always null
-                        immediately after import.
-              credentials:
+                        Published version on the target instance, if any.
+                    status:
+                      type: string
+                      enum:
+                        - created
+                        - updated
+                        - skipped
+                      description: Import outcome for this package workflow.
+              bindings:
                 type: object
+                description: >
+                  Source id → target id mappings produced during import, one map per
+                  entity type. Each value maps an id as it appeared in the package to
+                  the id on the target instance.
                 required:
-                  - matched
+                  - workflows
+                  - credentials
                 properties:
-                  matched:
-                    type: array
-                    items:
-                      type: object
-                      required:
-                        - sourceId
-                        - targetId
-                      properties:
-                        sourceId:
-                          type: string
-                          description: Credential id from `requirements.credentials` in the package manifest.
-                        targetId:
-                          type: string
-                          description: Matched credential id on the target instance.
-    '422':
-      description: One or more credential references could not be resolved.
+                  workflows:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  credentials:
+                    type: object
+                    description: >
+                      Credential id from `requirements.credentials` in the package
+                      manifest → matched credential id on the target instance.
+                    additionalProperties:
+                      type: string
+    '409':
+      description: >
+        Import blocked, with at least one workflow source-id conflict among the
+        issues.
       content:
         application/json:
           schema:
             type: object
             required:
               - message
-              - failures
+              - issues
             properties:
               message:
                 type: string
-              failures:
+              issues:
                 type: array
                 items:
-                  type: object
-                  required:
-                    - kind
-                    - sourceId
-                    - usedByWorkflows
-                  properties:
-                    kind:
-                      type: string
-                      enum:
-                        - not_found
-                        - unknown_type
-                    sourceId:
-                      type: string
-                    usedByWorkflows:
-                      type: array
-                      items:
-                        type: string
+                  $ref: '../schemas/importBlockingIssue.yml'
+    '422':
+      description: >
+        Import blocked by non-conflict issues only (e.g. unresolved credentials).
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+              - issues
+            properties:
+              message:
+                type: string
+              issues:
+                type: array
+                items:
+                  $ref: '../schemas/importBlockingIssue.yml'
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':

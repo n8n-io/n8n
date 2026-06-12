@@ -73,6 +73,34 @@ export class InstanceAiConfig {
 	sandboxNamePrefix: string = '';
 
 	/**
+	 * When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of
+	 * lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_EPHEMERAL')
+	sandboxEphemeral: boolean = false;
+
+	/**
+	 * Minutes an idle Daytona sandbox waits before it is stopped. Default 15 minutes.
+	 * `0` disables auto-stop (the sandbox stays running).
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES')
+	sandboxAutoStopMinutes: number = 15;
+
+	/**
+	 * Minutes a stopped Daytona sandbox waits before it is archived to cold storage.
+	 * Default 7 days. `0` uses Daytona's maximum interval.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES')
+	sandboxAutoArchiveMinutes: number = 7 * 24 * 60;
+
+	/**
+	 * Minutes a stopped Daytona sandbox waits before it is deleted. Default 30 days. A negative
+	 * value disables auto-delete; `0` deletes on stop. Ignored when {@link sandboxEphemeral} is true.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES')
+	sandboxAutoDeleteMinutes: number = 30 * 24 * 60;
+
+	/**
 	 * Skew (milliseconds) used to proactively refresh the Daytona proxy JWT before it expires.
 	 * Refresh fires when the cached token's remaining lifetime falls below this threshold.
 	 * Only used in proxy mode (when a `getAuthToken` callback is configured); ignored for static API keys.
@@ -111,4 +139,20 @@ export class InstanceAiConfig {
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;
+
+	/** Scan and redact secrets/PII from agent output before it reaches the user. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED')
+	outputRedactionEnabled: boolean = true;
+
+	/** Redact credential/secret patterns from agent output. Applies only when output redaction is enabled. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS')
+	outputRedactionSecrets: boolean = true;
+
+	/** Comma-separated PII categories to redact from agent output. Available: email, credit-card, ssn-us. Empty = no PII scanning. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PII')
+	outputRedactionPii: string = 'credit-card';
+
+	/** Replacement text substituted for each redacted match in agent output. */
+	@Env('N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER')
+	outputRedactionPlaceholder: string = '[REDACTED]';
 }
