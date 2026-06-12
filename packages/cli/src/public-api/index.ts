@@ -20,6 +20,57 @@ import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/impo
 
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
+// Swagger UI plugin that renders `x-required-scope` from the spec as a badge
+// on each operation. swagger-ui-express serializes this function's source
+// into the browser HTML, so it MUST be self-contained — no closures, no
+// imports. The `system` argument is provided by Swagger UI's plugin host
+// at runtime and is untyped on our side.
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/naming-convention */
+function scopeBadgePlugin() {
+	return {
+		wrapComponents: {
+			OperationSummary: (Original: any, system: any) => (props: any) => {
+				const React = system.React;
+				const specPath = props.specPath;
+				const pathArr = specPath?.toJS ? specPath.toJS() : null;
+				const op =
+					pathArr && system.specSelectors?.specJson
+						? system.specSelectors.specJson().getIn(pathArr)
+						: null;
+				const scope = op?.get ? op.get('x-required-scope') : null;
+				const method = pathArr ? pathArr[2] : null;
+				const pathStr = pathArr ? pathArr[1] : null;
+				React.useEffect(() => {
+					if (!scope || scope === 'none' || !method || !pathStr) return;
+					const candidates = document.querySelectorAll('.opblock-summary-' + method);
+					let target: Element | null = null;
+					for (const c of candidates) {
+						const pathEl = c.querySelector('.opblock-summary-path');
+						if (pathEl && pathEl.getAttribute('data-path') === pathStr) {
+							target =
+								c.querySelector('.opblock-summary-path-description-wrapper') ??
+								c.querySelector('.opblock-summary-description');
+							break;
+						}
+					}
+					if (!target) return;
+					const existing = target.querySelector(':scope > .x-scope-badge');
+					if (existing) existing.remove();
+					const badge = document.createElement('span');
+					badge.className = 'x-scope-badge';
+					badge.textContent = scope;
+					target.appendChild(badge);
+					return () => {
+						badge.remove();
+					};
+				}, [scope, method, pathStr]);
+				return React.createElement(Original, props);
+			},
+		},
+	};
+}
+/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/naming-convention */
+
 function createLazySwaggerMiddleware(
 	openApiSpecPath: string,
 	publicApiEndpoint: string,
@@ -47,14 +98,18 @@ function createLazySwaggerMiddleware(
 			const swaggerThemePath = path.join(__dirname, 'swagger-theme.css');
 			const swaggerThemeCss = await fs.readFile(swaggerThemePath, { encoding: 'utf-8' });
 
+			const swaggerSetupOpts = {
+				customCss: swaggerThemeCss,
+				customSiteTitle: 'n8n Public API UI',
+				customfavIcon: `${n8nPath}favicon.ico`,
+				swaggerOptions: {
+					plugins: [scopeBadgePlugin],
+				},
+			};
 			cachedRouter = express.Router();
 			cachedRouter.use(
-				serveFiles(swaggerDocument),
-				setup(swaggerDocument, {
-					customCss: swaggerThemeCss,
-					customSiteTitle: 'n8n Public API UI',
-					customfavIcon: `${n8nPath}favicon.ico`,
-				}),
+				serveFiles(swaggerDocument, swaggerSetupOpts),
+				setup(swaggerDocument, swaggerSetupOpts),
 			);
 		}
 
