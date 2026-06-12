@@ -15,11 +15,8 @@ import type { WorkflowStructureIssue } from 'n8n-workflow';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import { classifyNodesForSimulation } from './classify-node-destructiveness.service';
-import {
-	generateSimulationFixtures,
-	type SimulationFixtures,
-} from './generate-simulation-fixtures.service';
+import type { SimulationFixtures } from './generate-simulation-fixtures.service';
+import { planVerificationSimulation } from './plan-verification-simulation';
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
@@ -701,32 +698,12 @@ export function createSubmitWorkflowTool(
 				// Scan node parameters for unresolved placeholder values
 				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
 
-				// Execute-vs-simulate plan + mock output for verification. Never
-				// blocks the submit. An empty plan (no candidate nodes) is kept as []
-				// so verify can tell "nothing to simulate" apart from "classification
-				// failed" — only the latter (plan undefined) runs unprotected and
-				// makes verify surface a warning.
-				let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
-				let simulationFixtures: SimulationFixtures | undefined;
-				try {
-					nodeSimulationPlan = await classifyNodesForSimulation({
-						workflow: json,
-						mockedNodeNames: mockResult.mockedNodeNames,
-					});
-					if (nodeSimulationPlan.length > 0) {
-						const fixtures = await generateSimulationFixtures({
-							workflow: json,
-							plan: nodeSimulationPlan,
-						});
-						simulationFixtures = Object.keys(fixtures).length > 0 ? fixtures : undefined;
-					}
-				} catch (error) {
-					context.logger?.warn('Node simulation planning failed', {
-						workflowId: savedId,
-						planAvailable: nodeSimulationPlan !== undefined,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
+				const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
+					workflow: json,
+					mockedNodeNames: mockResult.mockedNodeNames,
+					workflowId: savedId,
+					logger: context.logger,
+				});
 
 				await reportAttempt({
 					success: true,

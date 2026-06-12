@@ -5,8 +5,7 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { classifyNodesForSimulation } from './classify-node-destructiveness.service';
-import { generateSimulationFixtures } from './generate-simulation-fixtures.service';
+import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
@@ -608,40 +607,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						(context.runId ? `build-${context.runId}` : `build-${nanoid(8)}`));
 
 				const createSuccessResponse = async (savedId: string) => {
-					// Classify every main-flow node as execute-vs-simulate for the
-					// verification run, then generate mock output for the simulated
-					// nodes. Never blocks the submit. An empty plan (no candidate
-					// nodes) is kept as [] so verify can tell "nothing to simulate"
-					// apart from "classification failed" — only the latter (plan
-					// undefined) runs unprotected and makes verify surface a warning.
-					let nodeSimulationPlan: WorkflowBuildOutcome['nodeSimulationPlan'];
-					let simulationFixtures: WorkflowBuildOutcome['simulationFixtures'];
-					try {
-						nodeSimulationPlan = await classifyNodesForSimulation({
-							workflow: json,
-							mockedNodeNames: mockResult.mockedNodeNames,
-						});
-						if (nodeSimulationPlan.length > 0) {
-							const fixtures = await generateSimulationFixtures({
-								workflow: json,
-								plan: nodeSimulationPlan,
-							});
-							simulationFixtures = Object.keys(fixtures).length > 0 ? fixtures : undefined;
-							context.logger?.debug('Classified workflow nodes for verification simulation', {
-								workflowId: savedId,
-								nodeCount: nodeSimulationPlan.length,
-								simulateCount: nodeSimulationPlan.filter((v) => v.verdict === 'simulate').length,
-								llmCount: nodeSimulationPlan.filter((v) => v.source === 'llm').length,
-								fallbackCount: nodeSimulationPlan.filter((v) => v.source === 'fallback').length,
-							});
-						}
-					} catch (error) {
-						context.logger?.warn('Node simulation planning failed', {
-							workflowId: savedId,
-							planAvailable: nodeSimulationPlan !== undefined,
-							error: error instanceof Error ? error.message : String(error),
-						});
-					}
+					const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
+						workflow: json,
+						mockedNodeNames: mockResult.mockedNodeNames,
+						workflowId: savedId,
+						logger: context.logger,
+					});
 
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
