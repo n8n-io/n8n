@@ -181,17 +181,25 @@ async function main() {
 	// Resolve which tbls runtime to use, before spinning up a DB and running
 	// migrations. Prefer a local tbls binary; fall back to the Docker image when
 	// it's absent. `--docker` (or CI) forces the Docker path.
-	const hasBin = (cmd) => !spawnSync(cmd, ['version'], { stdio: 'ignore' }).error;
+	const probeBin = (cmd) => {
+		const { error, status } = spawnSync(cmd, ['version'], { stdio: 'ignore' });
+		if (error) return 'missing';
+		return status === 0 ? 'ok' : 'broken';
+	};
+
 	if (docker) {
-		if (!hasBin('docker')) fail(spawnErrorMessage('docker', { code: 'ENOENT' }));
-	} else if (!hasBin('tbls')) {
-		if (hasBin('docker')) {
+		const state = probeBin('docker');
+		if (state === 'missing') fail(spawnErrorMessage('docker', { code: 'ENOENT' }));
+		if (state === 'broken')
+			fail('docker is installed but not responding — is the Docker daemon running?');
+	} else if (probeBin('tbls') !== 'ok') {
+		if (probeBin('docker') === 'ok') {
 			docker = true;
-			console.error('tbls not found on PATH — falling back to the tbls Docker image.');
+			console.error('tbls not available — falling back to the tbls Docker image.');
 		} else {
 			fail(
 				'neither tbls nor docker is available. Install tbls (`brew install tbls`, ' +
-					'see https://github.com/k1LoW/tbls#install) or Docker.',
+					'see https://github.com/k1LoW/tbls#install) or ensure Docker is set up.',
 			);
 		}
 	}
