@@ -67,7 +67,7 @@
 	"desktopAssistant.tasks.error": "Couldn't load tasks",
 	"desktopAssistant.tasks.retry": "Try again",
 	"desktopAssistant.tasks.settingUp": "Setting up the workflow…",
-	"desktopAssistant.tasks.setupFailed": "Couldn't finish setting this up",
+	"desktopAssistant.tasks.setupFailed": "Couldn't finish setting up the workflow",
 	"desktopAssistant.tasks.dismiss": "Dismiss",
 	"desktopAssistant.sections.recommended": "Recommended tasks",
 	"desktopAssistant.recommendations.suggested": "Suggested",
