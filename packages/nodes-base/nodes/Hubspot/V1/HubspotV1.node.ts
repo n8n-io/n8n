@@ -1558,6 +1558,12 @@ export class HubspotV1 implements INodeType {
 									value: additionalFields.linkedInCompanyPage,
 								});
 							}
+							if (additionalFields.facebookCompanyPage) {
+								body.push({
+									name: 'facebook_company_page',
+									value: additionalFields.facebookCompanyPage,
+								});
+							}
 							if (additionalFields.numberOfEmployees) {
 								body.push({
 									name: 'numberofemployees',
@@ -1783,6 +1789,12 @@ export class HubspotV1 implements INodeType {
 								body.push({
 									name: 'linkedin_company_page',
 									value: updateFields.linkedInCompanyPage,
+								});
+							}
+							if (updateFields.facebookCompanyPage) {
+								body.push({
+									name: 'facebook_company_page',
+									value: updateFields.facebookCompanyPage,
 								});
 							}
 							if (updateFields.numberOfEmployees) {
