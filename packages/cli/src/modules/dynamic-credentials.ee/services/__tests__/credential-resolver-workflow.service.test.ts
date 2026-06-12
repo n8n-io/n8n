@@ -5,6 +5,7 @@ import type { Cipher } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
@@ -81,6 +82,7 @@ describe('CredentialResolverWorkflowService', () => {
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockResolverImplementation: jest.Mocked<ICredentialResolver>;
 	let mockDynamicCredentialsProxy: jest.Mocked<DynamicCredentialsProxy>;
+	let mockWorkflowFinderService: jest.Mocked<WorkflowFinderService>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -122,6 +124,10 @@ describe('CredentialResolverWorkflowService', () => {
 			getEffectiveResolverId: jest.fn((settings) => settings?.credentialResolverId ?? null),
 		} as unknown as jest.Mocked<DynamicCredentialsProxy>;
 
+		mockWorkflowFinderService = {
+			findWorkflowForUser: jest.fn(),
+		} as unknown as jest.Mocked<WorkflowFinderService>;
+
 		service = new CredentialResolverWorkflowService(
 			mockWorkflowRepository,
 			mockCredentialRepository,
@@ -129,6 +135,7 @@ describe('CredentialResolverWorkflowService', () => {
 			mockResolverRepository,
 			mockCipher,
 			mockDynamicCredentialsProxy,
+			mockWorkflowFinderService,
 		);
 	});
 

@@ -40,6 +40,7 @@ export type FoundWorkflow = NonNullable<
 export type GetMcpWorkflowOptions = {
 	includeActiveVersion?: boolean;
 	includeProductionVersion?: boolean;
+	includeTags?: boolean;
 };
 
 /**
@@ -58,6 +59,7 @@ export async function getMcpWorkflow(
 	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, scopes, {
 		includeActiveVersion: options?.includeActiveVersion,
 		includeProductionVersion: options?.includeProductionVersion,
+		includeTags: options?.includeTags,
 	});
 
 	if (!workflow) {

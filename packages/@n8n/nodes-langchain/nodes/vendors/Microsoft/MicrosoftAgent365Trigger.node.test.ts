@@ -10,6 +10,7 @@ import {
 	type ActivityCapture,
 } from './microsoft-utils';
 import { MicrosoftAgent365Trigger } from './MicrosoftAgent365Trigger.node';
+import { authorizeJWT } from '@microsoft/agents-hosting';
 
 // Mock the dependencies
 vi.mock('./microsoft-utils', () => ({
@@ -19,6 +20,10 @@ vi.mock('./microsoft-utils', () => ({
 		{ name: 'Calendar', value: 'mcp_CalendarTools' },
 		{ name: 'Mail', value: 'mcp_MailTools' },
 	],
+}));
+
+vi.mock('@microsoft/agents-hosting', () => ({
+	authorizeJWT: vi.fn(),
 }));
 
 vi.mock('../../agents/Agent/V2/utils', () => ({
@@ -47,6 +52,7 @@ describe('MicrosoftAgent365Trigger', () => {
 			end: vi.fn(),
 			status: vi.fn().mockReturnThis(),
 			send: vi.fn().mockReturnThis(),
+			headersSent: false,
 		};
 
 		// Create mock adapter
@@ -75,6 +81,11 @@ describe('MicrosoftAgent365Trigger', () => {
 
 		// Reset mocks
 		vi.clearAllMocks();
+
+		// Default: authorizeJWT authorizes the request (invokes next)
+		(authorizeJWT as Mock).mockReturnValue(async (_req: unknown, _res: unknown, next: () => void) =>
+			next(),
+		);
 	});
 
 	describe('Node Description', () => {
@@ -150,7 +161,10 @@ describe('MicrosoftAgent365Trigger', () => {
 				};
 
 				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
-				(createMicrosoftAgentApplication as Mock).mockReturnValue(mockAgent);
+				(createMicrosoftAgentApplication as Mock).mockReturnValue({
+					agent: mockAgent,
+					authConfig: {},
+				});
 			});
 
 			test('should process POST request successfully', async () => {
@@ -177,12 +191,8 @@ describe('MicrosoftAgent365Trigger', () => {
 					}),
 				);
 
-				// Verify request user was set
-				expect(mockRequest.user).toEqual({
-					aud: mockCredentials.clientId,
-					appid: mockCredentials.clientId,
-					azp: mockCredentials.clientId,
-				});
+				// Verify the inbound request was authenticated before processing
+				expect(authorizeJWT).toHaveBeenCalledWith({});
 
 				// Verify adapter process was called
 				expect(mockAdapter.process).toHaveBeenCalledWith(mockRequest, mockResponse, mockCallback);
@@ -257,16 +267,58 @@ describe('MicrosoftAgent365Trigger', () => {
 				expect(calledWith).not.toHaveProperty('activity');
 			});
 
-			test('should set request user properties correctly', async () => {
+			test('should reject an unauthenticated request and not run the agent', async () => {
+				const mockCallback = vi.fn();
+				(configureAdapterProcessCallback as Mock).mockReturnValue(mockCallback);
+				// authorizeJWT rejects: it writes a 401 itself (sets headersSent) and never calls next()
+				(authorizeJWT as Mock).mockReturnValue(async (_req: unknown, res: any) => {
+					res.status(401).send({ 'jwt-auth-error': 'authorization header not found' });
+					res.headersSent = true;
+				});
+
+				const result = await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
+
+				expect(mockAdapter.process).not.toHaveBeenCalled();
+				expect(result).toEqual({ noWebhookResponse: true });
+				// our backstop must not double-send when the middleware already responded
+				expect(mockResponse.status).toHaveBeenCalledTimes(1);
+			});
+
+			test('should run the agent only after the request is authorized', async () => {
 				const mockCallback = vi.fn();
 				(configureAdapterProcessCallback as Mock).mockReturnValue(mockCallback);
 
 				await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
 
-				expect(mockRequest.user).toBeDefined();
-				expect(mockRequest.user.aud).toBe(mockCredentials.clientId);
-				expect(mockRequest.user.appid).toBe(mockCredentials.clientId);
-				expect(mockRequest.user.azp).toBe(mockCredentials.clientId);
+				expect(authorizeJWT).toHaveBeenCalledWith({});
+				expect(mockAdapter.process).toHaveBeenCalledWith(mockRequest, mockResponse, mockCallback);
+			});
+
+			test('sends a 401 backstop when the middleware rejects without responding', async () => {
+				const mockCallback = vi.fn();
+				(configureAdapterProcessCallback as Mock).mockReturnValue(mockCallback);
+				// middleware neither authorizes (no next) nor writes a response
+				(authorizeJWT as Mock).mockReturnValue(async () => {});
+
+				const result = await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
+
+				expect(mockResponse.status).toHaveBeenCalledWith(401);
+				expect(mockAdapter.process).not.toHaveBeenCalled();
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			test('treats a next(error) from the middleware as unauthorized', async () => {
+				const mockCallback = vi.fn();
+				(configureAdapterProcessCallback as Mock).mockReturnValue(mockCallback);
+				(authorizeJWT as Mock).mockReturnValue(
+					async (_req: unknown, _res: unknown, next: (err?: unknown) => void) =>
+						next(new Error('invalid token')),
+				);
+
+				const result = await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
+
+				expect(mockAdapter.process).not.toHaveBeenCalled();
+				expect(result).toEqual({ noWebhookResponse: true });
 			});
 		});
 
@@ -365,7 +417,10 @@ describe('MicrosoftAgent365Trigger', () => {
 				};
 
 				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
-				(createMicrosoftAgentApplication as Mock).mockReturnValue(mockAgent);
+				(createMicrosoftAgentApplication as Mock).mockReturnValue({
+					agent: mockAgent,
+					authConfig: {},
+				});
 
 				await expect(microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions)).rejects.toThrow(
 					NodeOperationError,
@@ -389,7 +444,10 @@ describe('MicrosoftAgent365Trigger', () => {
 				const mockCallback = vi.fn();
 
 				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
-				(createMicrosoftAgentApplication as Mock).mockReturnValue(mockAgent);
+				(createMicrosoftAgentApplication as Mock).mockReturnValue({
+					agent: mockAgent,
+					authConfig: {},
+				});
 				(configureAdapterProcessCallback as Mock).mockImplementation(
 					(_ctx, _agent, _creds, activityCapture) => {
 						capturedActivityCapture = activityCapture;

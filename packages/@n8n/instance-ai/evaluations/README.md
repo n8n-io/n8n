@@ -52,7 +52,8 @@ You need an n8n instance running with Instance AI enabled, a seeded owner accoun
 
 1. **Create `.env.local`** at the repo root with at minimum:
    ```env
-   N8N_INSTANCE_AI_MODEL_API_KEY=sk-ant-...
+   N8N_INSTANCE_AI_MODEL=openai/gpt-5.5
+   OPENAI_API_KEY=sk-proj-...
    N8N_EVAL_EMAIL=nathan@n8n.io
    N8N_EVAL_PASSWORD=PlaywrightTest123
    # Optional — see "Environment variables" for the full list
@@ -165,7 +166,7 @@ Every run produces:
 
 - **Console** — live progress, per-scenario pass/fail with `[failure_category]` tag, and a grouped summary.
 - **`eval-results.json`** — structured results in `--output-dir` (or cwd). Consumed by the CI PR comment.
-- **`.data/workflow-eval-report.html`** — self-contained debugging view with per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
+- **`.data/workflow-eval-report.html`** — self-contained debugging view with a green/red stage review for prompt, planner, builder, and verifier behavior, generalized prompt-improvement suggestions for failures, per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
 - **LangSmith experiment** — only when `LANGSMITH_API_KEY` is set. See the caveat in [Environment variables](#environment-variables).
 
 ### Workflow checks (per built workflow)
@@ -196,11 +197,42 @@ Operational details:
 - Failures don't flip `scenario_pass`; they're independent signals per the rubric design.
 - LLM checks (`fulfills_user_request`, `valid_data_flow`, `correct_node_operations`, `handles_multiple_items`, `descriptive_node_names`, `response_matches_workflow_changes`) reuse the same Sonnet model as the verifier — auto-skipped (N/A) when no Anthropic key is set.
 
+### Build expectations (per test case)
+
+A test case can declare optional natural-language assertions about *how the build went* — `buildExpectations: string[]` in its JSON. Each is graded by a separate Sonnet judge (`build-expectations/verifier.ts`) against the **conversation transcript + final workflow + conversation metrics**, and **counts as a unit in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. It doesn't flip an individual scenario's pass/fail (it's its own unit), and a judge `incomplete` verdict is excluded from the count.
+
+Use it for things the binary checks and `successCriteria` don't cover:
+
+- **Process / conversational** — `"Before building, the agent asked which Slack channel to use."` (judged from the transcript)
+- **Outcome tied to the conversation** — `"The final workflow reflects the user's follow-up to split the records envelope before posting."` (judged from the workflow)
+
+```json
+"buildExpectations": [
+  "Before building, the agent asked which Airtable table and which Slack channel to use.",
+  "The agent honored the user's instruction to fetch via an HTTP Request node, not the Airtable node."
+]
+```
+
+The signal surfaces in:
+
+- **HTML report** — a "Build expectations" disclosure on the test case: per-expectation &#10003;/&#10007; with a one-line judge reason.
+- **`eval-results.json`** — `buildExpectations` (aggregated per-expectation pass rate) plus `buildExpectationResultsPerRun` (per-iteration verdicts).
+
+Operational details:
+
+- Judged **once per build** (not per scenario), fired concurrently with the scenario batch — ~0 added wall-clock in the common case.
+- Runs on both eval paths (direct loop + LangSmith). Requires a build transcript, so it's judged even when the build fails, and skipped only when no transcript was captured.
+- The judge retries on failure, has a per-attempt timeout, and falls back to an all-fail verdict — a judge failure can't break a run.
+- Absent the field, it's a complete no-op.
+
 ## Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `N8N_INSTANCE_AI_MODEL_API_KEY` | Yes | Anthropic API key for the agent, mock generation, and verification |
+| `N8N_INSTANCE_AI_MODEL` | Yes | Model used by Instance AI and, by default, the eval helper calls for mock generation and verification |
+| `N8N_INSTANCE_AI_MODEL_API_KEY` | No | Generic eval-model API key override |
+| `OPENAI_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `openai/` |
+| `ANTHROPIC_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `anthropic/` |
 | `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
 | `N8N_EVAL_PASSWORD` | No | n8n login password (defaults to E2E test owner) |
 | `LANGSMITH_API_KEY` | No | Enables experiment tracking + tracing. **See caveat below.** |
@@ -484,31 +516,52 @@ When `LANGSMITH_API_KEY` is set, each run is recorded as a LangSmith experiment 
 
 ## Adding test cases
 
-Test cases live in `evaluations/data/workflows/*.json`. Drop a file in, the CLI and LangSmith sync picks it up — no registration step.
+Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the CLI and LangSmith sync pick it up, no registration step. Every case is validated against `data/workflows/schema.ts`.
 
 ```json
 {
-  "prompt": "Create a workflow that...",
+  "description": "Optional note on what this case checks.",
+  "conversation": [
+    { "role": "user", "text": "Every morning, post a summary of yesterday's signups to Slack #growth." }
+  ],
   "complexity": "medium",
-  "tags": ["build", "webhook", "gmail"],
-  "triggerType": "webhook",
-  "scenarios": [
+  "tags": ["build", "schedule", "slack"],
+  "triggerType": "schedule",
+  "executionScenarios": [
     {
       "name": "happy-path",
       "description": "Normal operation",
-      "dataSetup": "The webhook receives a submission from Jane (jane@example.com)...",
-      "successCriteria": "The workflow executes without errors. An email is sent to jane@example.com..."
+      "dataSetup": "The signups source returns 3 rows for yesterday: Ana, Ben, Cara.",
+      "successCriteria": "The workflow runs without errors and posts a summary of the 3 signups to Slack #growth."
     }
   ]
 }
 ```
 
-**One JSON file = one LangSmith split.** Scenarios in the same file share a split; split names derive from the filename slug. Pick a slug you're happy to also use as a `--filter` target.
+`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `buildExpectations`, and `datasets` (default `["full"]`) are optional. A turn's `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
 
-**Prompt tips**
+**One JSON file = one LangSmith split**, named from the filename slug. Pick a slug you're happy to also use as a `--filter` target.
 
-- Be specific about node configuration — document IDs, sheet names, channel names, chat IDs. The agent won't ask for these in eval mode (no multi-turn yet).
-- Add "Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later."
+### Conversations & stage directions
+
+`conversation` replaces the old single `prompt`; its mode is chosen automatically:
+
+- **Single-prompt (auto-approve):** one `user` turn, no `assistant` turns — the prompt is sent and every confirmation is auto-approved. Use for plain build cases.
+- **Multi-turn:** anything else. A user-proxy LLM plays the user — it answers questions, audits the agent's plan against the script, and sends follow-ups (capped by `messageBudget`). `assistant` turns are *reference* for the proxy (the expected flow); they're never sent to the builder.
+
+Write the turns as a screenplay of what the user wants, keeping concrete values (channel IDs, schedules) verbatim. Inside a `user` turn, text in `[square brackets]` is a **stage direction** for the proxy — behaviour, not dialogue, never spoken to the builder. It overrides the proxy's defaults (e.g. "always answer"):
+
+| To make the user… | Direction |
+|---|---|
+| Withhold a value until asked | `[Don't bring up the channel unless the agent asks where to post; then say 'Slack #growth.']` |
+| Refuse and hold firm on re-ask | `[The user has no channel and won't provide one. If asked — question or setup card, even repeatedly — skip it; never invent one.]` |
+| Keep the conversation going | `[After each change lands, send the next one from the list, one at a time, until done.]` |
+
+A direction governs only what it covers; otherwise the proxy answers every question (inventing plausible placeholders) and never sets credentials. Setup cards (the "configure your workflow" card) are filled via the wizard — or dismissed when a direction withholds the value — not answered as questions.
+
+**Prompt / conversation tips**
+
+- Be specific about node configuration (IDs, sheet names, channel names). In single-prompt mode the agent won't ask; in multi-turn the proxy supplies or withholds per the script.
 - If a built-in node doesn't expose a field you need (e.g. the Linear node doesn't query `creator.email`), tell the agent to use HTTP Request instead.
 
 **Scenario tips**
@@ -526,7 +579,7 @@ Test cases live in `evaluations/data/workflows/*.json`. Drop a file in, the CLI 
 
 ### Adding a new credential type
 
-`credentials/seeder.ts` seeds generic creds (HTTP Header, HTTP Basic) on every run, plus env-gated creds (GitHub, Gmail, Teams, Linear…) when the matching env var is set. If your scenario needs a credential type that isn't there, add it to the appropriate list in `seeder.ts` — env-gated if it requires a real token, generic if a placeholder is fine.
+`credentials/seeder.ts` seeds every credential with a placeholder token on every run — execution is mocked at the wire level, so the value is never used. Set the matching `EVAL_*_ACCESS_TOKEN` to override a service with a real token for a live run. If your scenario needs a credential type that isn't seeded, add it to `seeder.ts`.
 
 ## Failure categories
 

@@ -30,6 +30,7 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'remove-triggers-and-pollers',
 	'relay-execution-lifecycle-event',
 	'relay-chat-stream-event',
+	'agent-chat-subscription-changed',
 	'cancel-test-run',
 	'display-workflow-activation',
 	'display-workflow-deactivation',

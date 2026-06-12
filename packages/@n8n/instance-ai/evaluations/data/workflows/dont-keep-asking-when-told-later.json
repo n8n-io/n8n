@@ -1,0 +1,42 @@
+{
+	"description": "If the user says they'll give a detail later, the agent should build the workflow and stop asking for that detail.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every Monday at 9am, post the message 'Have a great week, team!' to the team."
+		},
+		{
+			"role": "assistant",
+			"text": "Which service should I post it through?"
+		},
+		{
+			"role": "user",
+			"text": "Slack, I don't know which channel yet I'll tell you later."
+		},
+		{
+			"role": "assistant",
+			"text": "Which Slack channel should I post to?"
+		},
+		{
+			"role": "user",
+			"text": "[The user doesn't answer this one — they don't give a channel and don't tell the agent to pick one. Just skip the question.]"
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": ["behaviour", "clarification", "repeat-questions", "schedule", "slack"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"buildExpectations": [
+		"Before building, the agent asked which app to use, since the user hadn't said which one.",
+		"After the user said they'd give the channel later, the agent built the workflow — leaving the channel blank or setting it up later — instead of asking for the channel again and again, and it told the user they can fill the channel in after building."
+	],
+	"executionScenarios": [
+		{
+			"name": "channel-skipped",
+			"description": "Built on a Monday schedule posting to Slack; the user didn't give a channel, so the workflow fails its validation check",
+			"dataSetup": "No mock data is needed. If the Slack node's channel is empty, the workflow fails its validation check before any node runs, so no API call is made.",
+			"successCriteria": "The workflow is built correctly: a Monday 9am schedule trigger feeding a Slack message node with the text 'Have a great week, team!'. If the Slack channel is empty, the workflow fails its validation check ('Not a valid Slack Channel ID or name') — treat that as fine (an empty channel is something to set up later, not a build mistake) and a pass. If a channel is set and the run succeeds, that's also a pass. Only judge the workflow's structure and how it handles the channel when it runs; don't judge anything about the conversation."
+		}
+	]
+}
