@@ -1,6 +1,6 @@
 {
   "name": "@n8n/computer-use",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "publishConfig": {
     "bin": {
@@ -47,6 +47,7 @@
     "@vscode/ripgrep": "^1.17.1",
     "eventsource": "^3.0.6",
     "fast-glob": "catalog:",
+    "mime-types": "catalog:",
     "node-screenshots": "^0.2.8",
     "picocolors": "catalog:",
     "yargs-parser": "21.1.1",
@@ -56,6 +57,7 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/mime-types": "catalog:",
     "@types/node": "catalog:",
     "@types/yargs-parser": "21.0.0",
     "@vitest/coverage-v8": "catalog:",

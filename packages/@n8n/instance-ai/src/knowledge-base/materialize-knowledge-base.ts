@@ -145,6 +145,12 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		fileName: 'trigger-input-data-shapes.md',
 	},
 	{
+		id: 'workflow-builder-guardrails',
+		description:
+			'Workflow builder guardrails for source preservation, fan-out/fan-in, effects, and Code nodes',
+		fileName: 'workflow-builder-guardrails.md',
+	},
+	{
 		id: 'workflow-sdk-language',
 		description:
 			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset',

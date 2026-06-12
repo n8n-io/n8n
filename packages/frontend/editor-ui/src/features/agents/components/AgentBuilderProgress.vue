@@ -22,16 +22,28 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 
 const MAX_LINES = 7;
-const logLines = ref<string[]>([]);
+
+interface LogLine {
+	id: number;
+	text: string;
+}
+
+// Stable per-line ids keep TransitionGroup keys constant as the window
+// slides, so surviving lines move instead of leaving + re-entering (which
+// would briefly stack them all at the top via `position: absolute`).
+let nextLineId = 0;
+const logLines = ref<LogLine[]>([]);
+const hasDroppedLines = ref(false);
 const isStreaming = ref(false);
 const hasError = ref(false);
 
 function pushLine(line: string) {
 	const trimmed = line.replace(/\s+/g, ' ').trim();
 	if (!trimmed) return;
-	logLines.value.push(trimmed);
+	logLines.value.push({ id: nextLineId++, text: trimmed });
 	if (logLines.value.length > MAX_LINES) {
 		logLines.value = logLines.value.slice(-MAX_LINES);
+		hasDroppedLines.value = true;
 	}
 }
 
@@ -191,10 +203,10 @@ onMounted(() => {
 				}}
 			</N8nText>
 
-			<div :class="$style.logBox" aria-live="polite">
+			<div :class="[$style.logBox, hasDroppedLines && $style.logBoxFaded]" aria-live="polite">
 				<TransitionGroup name="builder-line" tag="div" :class="$style.logInner">
-					<div v-for="(line, i) in logLines" :key="line + i" :class="$style.line">
-						{{ line }}
+					<div v-for="line in logLines" :key="line.id" :class="$style.line">
+						{{ line.text }}
 					</div>
 				</TransitionGroup>
 			</div>
@@ -328,7 +340,11 @@ onMounted(() => {
 	max-height: 140px;
 	overflow: hidden;
 	position: relative;
-	/* Soft fade at the top so older lines visually dissolve */
+}
+
+/* Soft fade at the top so older lines visually dissolve, applied only once
+   the log is at capacity and older lines are being dropped */
+.logBoxFaded {
 	mask-image: linear-gradient(to bottom, transparent 0, black 32px, black 100%);
 	-webkit-mask-image: linear-gradient(to bottom, transparent 0, black 32px, black 100%);
 }
@@ -352,7 +368,8 @@ onMounted(() => {
 }
 
 :global(.builder-line-enter-active),
-:global(.builder-line-leave-active) {
+:global(.builder-line-leave-active),
+:global(.builder-line-move) {
 	transition:
 		opacity 200ms ease,
 		transform 200ms ease;
@@ -366,6 +383,10 @@ onMounted(() => {
 	transform: translateY(-4px);
 }
 :global(.builder-line-leave-active) {
+	/* Span the full row while out of flow so text-align: center keeps the
+	   leaving line centered instead of shrinking to fit at the left edge */
 	position: absolute;
+	left: 0;
+	width: 100%;
 }
 </style>
