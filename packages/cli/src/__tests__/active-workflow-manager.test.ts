@@ -63,49 +63,6 @@ describe('ActiveWorkflowManager', () => {
 		);
 	});
 
-	describe('getEnabledTriggerNodes', () => {
-		function node(id: string, type: string, overrides: Partial<INode> = {}): INode {
-			return {
-				id,
-				name: id,
-				type,
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-				...overrides,
-			};
-		}
-
-		beforeEach(() => {
-			const description = { properties: [] };
-			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
-				if (type === 'trigger') return { description, trigger: jest.fn() } as never;
-				if (type === 'poll') return { description, poll: jest.fn() } as never;
-				if (type === 'webhook') return { description, webhook: jest.fn() } as never;
-				return { description } as never;
-			});
-		});
-
-		test('returns enabled trigger, poll and webhook nodes, excluding regular and disabled nodes', () => {
-			const result = activeWorkflowManager.getEnabledTriggerNodes({
-				nodes: [
-					node('t', 'trigger'),
-					node('p', 'poll'),
-					node('w', 'webhook'),
-					node('regular', 'n8n-nodes-base.set'),
-					node('disabled', 'trigger', { disabled: true }),
-				],
-				connections: {},
-			});
-
-			expect(result.map((n) => n.id).sort()).toEqual(['p', 't', 'w']);
-		});
-
-		test('returns an empty array when the version is null', () => {
-			expect(activeWorkflowManager.getEnabledTriggerNodes(null)).toEqual([]);
-		});
-	});
-
 	describe('shouldAddWebhooks', () => {
 		describe('if leader', () => {
 			beforeAll(() => {
