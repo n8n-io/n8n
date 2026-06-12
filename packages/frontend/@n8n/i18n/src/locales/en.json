@@ -39,6 +39,7 @@
 	},
 	"desktopAssistant.tabs.tasks": "Tasks",
 	"desktopAssistant.tabs.history": "History",
+	"desktopAssistant.tabs.chat": "Chat",
 	"desktopAssistant.chat.title": "Chat",
 	"desktopAssistant.chat.back": "Back",
 	"desktopAssistant.chat.placeholder": "Ask anything…",

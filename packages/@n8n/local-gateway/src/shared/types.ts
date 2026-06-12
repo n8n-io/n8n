@@ -147,6 +147,13 @@ export interface CreateAssistantTaskResult {
 	error?: string;
 }
 
+/** Result of ensuring a fresh Instance AI chat thread for the desktop chat view. */
+export interface CreateChatThreadResult {
+	ok: boolean;
+	threadId?: string;
+	error?: string;
+}
+
 /**
  * Result of asking the instance to promote a thread into a saved workflow.
  * Idempotent: `building` while the build runs, `done` (with `workflowId`)
@@ -199,6 +206,8 @@ export interface ElectronApi {
 	runTask: (workflowId: string) => Promise<RunTaskResult>;
 	/** Start a one-shot assistant task run with the prompt + detected context. */
 	createAssistantTask: (body: DesktopAssistantTaskRequest) => Promise<CreateAssistantTaskResult>;
+	/** Ensure a fresh Instance AI chat thread (in the personal project); returns its id. */
+	createChatThread: () => Promise<CreateChatThreadResult>;
 	promoteAssistantThread: (
 		threadId: string,
 		name?: string,

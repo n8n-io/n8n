@@ -43,6 +43,11 @@ export {
 	type DesktopAssistantPromoteRequest,
 	type DesktopAssistantPromoteResponse,
 } from './desktop-assistant/desktop-assistant-promote-request.dto';
+export {
+	DesktopAssistantChatThreadRequestDto,
+	type DesktopAssistantChatThreadRequest,
+	type DesktopAssistantChatThreadResponse,
+} from './desktop-assistant/desktop-assistant-chat-thread-request.dto';
 export type {
 	DesktopAssistantTasksResponse,
 	DesktopAssistantTaskCard,

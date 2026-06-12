@@ -356,6 +356,23 @@ export class DesktopAssistantService {
 		return map;
 	}
 
+	// ── chat ─────────────────────────────────────────────────────────────────
+
+	/**
+	 * Ensure a fresh chat thread exists in the user's personal project and return
+	 * its id. The desktop chat view opens this thread before the first message,
+	 * so its message-snapshot fetch resolves instead of 404-ing on an unborn
+	 * thread. Tagged desktop-originated like every other desktop-assistant thread.
+	 */
+	async createChatThread(user: User, threadId?: string): Promise<{ threadId: string }> {
+		const id = threadId ?? randomUUID();
+		const projectId = await this.resolvePersonalProjectId(user);
+		await this.memoryService.ensureThread(user.id, id, projectId, {
+			[THREAD_SOURCE_METADATA_KEY]: DESKTOP_ASSISTANT_THREAD_SOURCE,
+		});
+		return { threadId: id };
+	}
+
 	// ── one-shot task ────────────────────────────────────────────────────────
 
 	async triggerTask(

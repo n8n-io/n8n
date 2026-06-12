@@ -1,28 +1,59 @@
 <script setup lang="ts">
-import { N8nIcon, N8nInput } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 
 import HistoryView from './HistoryView.vue';
 import TasksView from './TasksView.vue';
+import ChatView from '../components/ChatView.vue';
 import TaskComposer from '../components/TaskComposer.vue';
 
 import { useTaskSearch } from '../assistant/use-task-search';
 
-type Tab = 'tasks' | 'history';
+type Tab = 'tasks' | 'history' | 'chat';
 
 const i18n = useI18n();
 const activeTab = ref<Tab>('tasks');
+
+// Chat is a real tab, but each selection starts a fresh thread (no resume). The
+// thread is ensured server-side before ChatView opens it, so its snapshot fetch
+// resolves instead of 404-ing on an unborn thread.
+const chatThreadId = ref<string | null>(null);
+const chatCreating = ref(false);
+const chatError = ref(false);
+
+async function startNewChat() {
+	// Dedupe concurrent creates (rapid clicks / arrow-key roving) into one thread.
+	if (chatCreating.value) return;
+	chatCreating.value = true;
+	chatError.value = false;
+	chatThreadId.value = null;
+	try {
+		const result = await window.electronAPI.createChatThread();
+		if (result.ok && result.threadId) {
+			chatThreadId.value = result.threadId;
+		} else {
+			chatError.value = true;
+			console.error('Failed to create chat thread', result.error);
+		}
+	} catch (error) {
+		chatError.value = true;
+		console.error('Failed to create chat thread', error);
+	} finally {
+		chatCreating.value = false;
+	}
+}
 
 // Search is tasks-scoped: the field only shows on the Tasks tab, and the query
 // is passed down to TasksView for client-side filtering.
 const search = useTaskSearch();
 const searchVisible = computed(() => search.open.value && activeTab.value === 'tasks');
 
-/** Search lives in the shared tab bar but only filters Tasks. From History,
- *  clicking it jumps to Tasks and opens the field; from Tasks it toggles. */
+/** Search lives in the shared tab bar but only filters Tasks. From any other
+ *  tab (History, Chat), clicking it jumps to Tasks and opens the field; from
+ *  Tasks it toggles. */
 function onSearchIconClick() {
-	if (activeTab.value === 'history') {
+	if (activeTab.value !== 'tasks') {
 		selectTab('tasks');
 		search.openSearch();
 		return;
@@ -44,10 +75,14 @@ function runPrompt(prompt: string) {
 
 const TABS: Array<{
 	id: Tab;
-	labelKey: 'desktopAssistant.tabs.tasks' | 'desktopAssistant.tabs.history';
+	labelKey:
+		| 'desktopAssistant.tabs.tasks'
+		| 'desktopAssistant.tabs.history'
+		| 'desktopAssistant.tabs.chat';
 }> = [
 	{ id: 'tasks', labelKey: 'desktopAssistant.tabs.tasks' },
 	{ id: 'history', labelKey: 'desktopAssistant.tabs.history' },
+	{ id: 'chat', labelKey: 'desktopAssistant.tabs.chat' },
 ];
 
 // Refs to the tab buttons, so arrow keys can move focus along with selection
@@ -56,6 +91,8 @@ const tabRefs = ref<HTMLButtonElement[]>([]);
 
 function selectTab(id: Tab) {
 	activeTab.value = id;
+	// Selecting Chat always begins a fresh conversation.
+	if (id === 'chat') void startNewChat();
 }
 
 /** Left/Right arrow + Home/End move selection and focus between tabs. */
@@ -167,7 +204,24 @@ onMounted(() => {
 				@executed="activeTab = 'history'"
 				@run-prompt="runPrompt"
 			/>
-			<HistoryView v-else />
+			<HistoryView v-else-if="activeTab === 'history'" />
+			<template v-else>
+				<div v-if="chatError" :class="$style.chatState" role="alert">
+					<N8nText color="text-light" size="small">{{
+						i18n.baseText('desktopAssistant.chat.error')
+					}}</N8nText>
+					<N8nButton variant="outline" size="small" @click="startNewChat">{{
+						i18n.baseText('desktopAssistant.chat.retry')
+					}}</N8nButton>
+				</div>
+				<div v-else-if="!chatThreadId" :class="$style.chatState" role="status" aria-live="polite">
+					<N8nSpinner aria-hidden="true" />
+					<N8nText color="text-light" size="small">{{
+						i18n.baseText('desktopAssistant.chat.loading')
+					}}</N8nText>
+				</div>
+				<ChatView v-else :thread-id="chatThreadId" />
+			</template>
 		</div>
 
 		<!-- The composer is pinned below the scrollable list, only on the Tasks tab.
@@ -297,5 +351,16 @@ onMounted(() => {
 .content:focus-visible {
 	outline: var(--da-focus-ring);
 	outline-offset: calc(-1 * var(--da-focus-ring-offset));
+}
+
+/* Centered loading/error state shown while a chat thread is being created. */
+.chatState {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--xl) var(--spacing--md);
 }
 </style>

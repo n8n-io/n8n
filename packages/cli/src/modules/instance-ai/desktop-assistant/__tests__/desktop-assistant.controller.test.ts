@@ -47,6 +47,10 @@ describe('DesktopAssistantController', () => {
 			expect(scopeOf('getHistory')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 			expect(scopeOf('getTaskDetail')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 			expect(scopeOf('applyTaskEdits')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+			expect(scopeOf('createChatThread')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
 		});
 	});
 
@@ -91,6 +95,12 @@ describe('DesktopAssistantController', () => {
 					changes: [{ paramId: 'p1', from: 'a', to: 'b' }],
 				}),
 			).rejects.toBeInstanceOf(ForbiddenError);
+		});
+
+		test('createChatThread throws ForbiddenError', async () => {
+			await expect(controller.createChatThread(req, null, {})).rejects.toBeInstanceOf(
+				ForbiddenError,
+			);
 		});
 	});
 
@@ -155,6 +165,13 @@ describe('DesktopAssistantController', () => {
 			const result = await controller.applyTaskEdits(req, null, 'wf-1', body);
 			expect(service.applyTaskEdits).toHaveBeenCalledWith(user, 'wf-1', body);
 			expect(result).toEqual({ threadId: 't-1', runId: 'r-1' });
+		});
+
+		test('createChatThread forwards the optional id to the service', async () => {
+			service.createChatThread.mockResolvedValue({ threadId: 't-chat' });
+			const result = await controller.createChatThread(req, null, { threadId: 't-chat' });
+			expect(service.createChatThread).toHaveBeenCalledWith(user, 't-chat');
+			expect(result).toEqual({ threadId: 't-chat' });
 		});
 
 		test('getHistory forwards the validated cursor query to the service', async () => {

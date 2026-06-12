@@ -1,6 +1,7 @@
 import type {
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
+	DesktopAssistantChatThreadResponse,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantPromoteRequest,
 	DesktopAssistantPromoteResponse,
@@ -256,6 +257,21 @@ export class InstanceApi {
 			body: JSON.stringify(body),
 		});
 		return await this.unwrap<DesktopAssistantPromoteResponse>(response);
+	}
+
+	/**
+	 * `POST /rest/desktop-assistant/chat-thread` — ensure a fresh chat thread in
+	 * the user's personal project and return its id. The renderer opens this
+	 * thread before the first message so the snapshot fetch resolves.
+	 */
+	async createChatThread(): Promise<DesktopAssistantChatThreadResponse> {
+		const response = await this.authedFetch('/desktop-assistant/chat-thread', {
+			method: 'POST',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({}),
+		});
+		return await this.unwrap<DesktopAssistantChatThreadResponse>(response);
 	}
 
 	/** `GET /rest/instance-ai/threads/:threadId/messages` — the thread's stored messages plus the `nextEventId` SSE cursor. */

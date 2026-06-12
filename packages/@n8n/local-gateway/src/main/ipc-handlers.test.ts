@@ -384,6 +384,41 @@ describe('registerIpcHandlers', () => {
 		expect(result).toEqual({ ok: true, threadId: 't-1', runId: 'r-1' });
 	});
 
+	it('assistant:createChatThread returns the ensured thread id', async () => {
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn(),
+			getTimeSaved: vi.fn(),
+			createChatThread: vi.fn().mockResolvedValue({ threadId: 't-chat' }),
+		};
+		register({ instanceApi });
+
+		const result = await getRegisteredHandler('assistant:createChatThread')();
+
+		expect(instanceApi.createChatThread).toHaveBeenCalled();
+		expect(result).toEqual({ ok: true, threadId: 't-chat' });
+	});
+
+	it('assistant:createChatThread surfaces a failure as { ok: false }', async () => {
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn(),
+			getTimeSaved: vi.fn(),
+			createChatThread: vi.fn().mockRejectedValue(new InstanceApiError('boom', 500)),
+		};
+		register({ instanceApi });
+
+		const result = await getRegisteredHandler('assistant:createChatThread')();
+
+		expect(result).toEqual({ ok: false, error: 'boom' });
+	});
+
 	it('permissions:get returns the mac permission status', async () => {
 		const status = {
 			supported: true,
