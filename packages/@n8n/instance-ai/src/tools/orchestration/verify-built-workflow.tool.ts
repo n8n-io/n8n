@@ -412,7 +412,8 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			// would otherwise look like a clean success while most of the workflow
 			// — including its planned simulations — was never exercised.
 			// `executedNodeNames` includes zero-output nodes that `result.data`
-			// omits; fall back to data keys for adapters that predate it.
+			// omits; fall back to data keys for hosts that don't report it (e.g.
+			// the eval-harness execution stub).
 			const reachedNames = new Set(
 				result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
 			);

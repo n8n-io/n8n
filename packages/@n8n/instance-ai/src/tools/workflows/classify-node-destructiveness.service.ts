@@ -201,51 +201,39 @@ function collectMainFlowNodeNames(workflow: WorkflowJSON): Set<string> {
 	return names;
 }
 
+function deterministic(
+	nodeName: string,
+	verdict: 'simulate' | 'execute',
+	reason: string,
+): NodeSimulationVerdict {
+	return { nodeName, verdict, reason, confidence: 'high', source: 'deterministic' };
+}
+
 function deterministicVerdict(
 	node: WorkflowNode & { name: string },
 	mockedNodeNames: Set<string>,
 ): NodeSimulationVerdict | 'ambiguous' {
 	if (mockedNodeNames.has(node.name)) {
-		return {
-			nodeName: node.name,
-			verdict: 'simulate',
-			reason: 'Credentials are not configured for this node',
-			confidence: 'high',
-			source: 'deterministic',
-		};
+		return deterministic(node.name, 'simulate', 'Credentials are not configured for this node');
 	}
 
 	if (SAFE_NODE_TYPES.has(node.type)) {
-		return {
-			nodeName: node.name,
-			verdict: 'execute',
-			reason: 'Transforms data without touching external systems',
-			confidence: 'high',
-			source: 'deterministic',
-		};
+		return deterministic(node.name, 'execute', 'Transforms data without touching external systems');
 	}
 
 	const destructiveByType = DESTRUCTIVE_NODE_TYPES.get(node.type);
 	if (destructiveByType) {
-		return {
-			nodeName: node.name,
-			verdict: 'simulate',
-			reason: destructiveByType,
-			confidence: 'high',
-			source: 'deterministic',
-		};
+		return deterministic(node.name, 'simulate', destructiveByType);
 	}
 
 	if (node.type === HTTP_REQUEST_NODE_TYPE) {
 		const method = (getStringParam(node, 'method') ?? 'GET').toUpperCase();
 		if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-			return {
-				nodeName: node.name,
-				verdict: 'execute',
-				reason: `HTTP ${method} request — read-only by HTTP semantics`,
-				confidence: 'high',
-				source: 'deterministic',
-			};
+			return deterministic(
+				node.name,
+				'execute',
+				`HTTP ${method} request — read-only by HTTP semantics`,
+			);
 		}
 		// POST/PUT/PATCH/DELETE can still be reads (e.g. POST /search) — let the
 		// LLM judge URL + body; the fallback is simulate.
@@ -257,13 +245,11 @@ function deterministicVerdict(
 	// Pinning them lets execution flow past (a pinned node never calls
 	// putExecutionToWait).
 	if (node.type === FORM_NODE_TYPE) {
-		return {
-			nodeName: node.name,
-			verdict: 'simulate',
-			reason: 'Displays a form page and waits for a user submission',
-			confidence: 'high',
-			source: 'deterministic',
-		};
+		return deterministic(
+			node.name,
+			'simulate',
+			'Displays a form page and waits for a user submission',
+		);
 	}
 
 	if (node.type === WAIT_NODE_TYPE) {
@@ -275,25 +261,20 @@ function deterministicVerdict(
 			const unit = typeof params.unit === 'string' ? params.unit : 'hours';
 			const seconds = amount * (WAIT_UNIT_SECONDS[unit] ?? 3600);
 			if (seconds <= MAX_EXECUTABLE_WAIT_SECONDS) {
-				return {
-					nodeName: node.name,
-					verdict: 'execute',
-					reason: `Short wait (${seconds}s) — runs for real to preserve pass-through data`,
-					confidence: 'high',
-					source: 'deterministic',
-				};
+				return deterministic(
+					node.name,
+					'execute',
+					`Short wait (${seconds}s) — runs for real to preserve pass-through data`,
+				);
 			}
 		}
-		return {
-			nodeName: node.name,
-			verdict: 'simulate',
-			reason:
-				resume === 'timeInterval' || resume === 'specificTime'
-					? 'Pauses the workflow for longer than verification can wait'
-					: 'Pauses the workflow until a user or external system resumes it',
-			confidence: 'high',
-			source: 'deterministic',
-		};
+		return deterministic(
+			node.name,
+			'simulate',
+			resume === 'timeInterval' || resume === 'specificTime'
+				? 'Pauses the workflow for longer than verification can wait'
+				: 'Pauses the workflow until a user or external system resumes it',
+		);
 	}
 
 	if (CODE_NODE_TYPES.has(node.type)) {
@@ -305,13 +286,7 @@ function deterministicVerdict(
 		).toLowerCase();
 		const hasIo = CODE_IO_TOKENS.some((token) => source.includes(token));
 		if (!hasIo) {
-			return {
-				nodeName: node.name,
-				verdict: 'execute',
-				reason: 'Code without network or filesystem access',
-				confidence: 'high',
-				source: 'deterministic',
-			};
+			return deterministic(node.name, 'execute', 'Code without network or filesystem access');
 		}
 		return 'ambiguous';
 	}
@@ -321,22 +296,14 @@ function deterministicVerdict(
 		.replace(/[^a-z]/g, '');
 	if (operation) {
 		if (WRITE_OPERATIONS.has(operation)) {
-			return {
-				nodeName: node.name,
-				verdict: 'simulate',
-				reason: `The "${operation}" operation modifies external data`,
-				confidence: 'high',
-				source: 'deterministic',
-			};
+			return deterministic(
+				node.name,
+				'simulate',
+				`The "${operation}" operation modifies external data`,
+			);
 		}
 		if (READ_OPERATIONS.has(operation)) {
-			return {
-				nodeName: node.name,
-				verdict: 'execute',
-				reason: `The "${operation}" operation only reads data`,
-				confidence: 'high',
-				source: 'deterministic',
-			};
+			return deterministic(node.name, 'execute', `The "${operation}" operation only reads data`);
 		}
 	}
 
