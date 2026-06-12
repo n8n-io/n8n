@@ -42,4 +42,14 @@ export class NodesConfig {
 	/** Whether to enable Python execution on the Code node. */
 	@Env('N8N_PYTHON_ENABLED')
 	pythonEnabled: boolean = true;
+
+	/**
+	 * When enabled, the backend refuses to create or modify workflows that
+	 * introduce new instances of deprecated nodes (or edit existing ones).
+	 * Existing workflows that already contain deprecated nodes continue to run
+	 * unchanged. Defaults to `false` to avoid breaking imports of older
+	 * backups; set to `true` to opt into enforcement.
+	 */
+	@Env('N8N_DEPRECATED_NODES_BLOCK')
+	blockDeprecated: boolean = false;
 }
