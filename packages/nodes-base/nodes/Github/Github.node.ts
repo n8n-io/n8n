@@ -121,6 +121,10 @@ export class Github implements INodeType {
 						value: 'organization',
 					},
 					{
+						name: 'Pull Request',
+						value: 'pullRequest',
+					},
+					{
 						name: 'Release',
 						value: 'release',
 					},
@@ -172,6 +176,70 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'getRepositories',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['pullRequest'],
+					},
+				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new pull request',
+						action: 'Create a pull request',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a pull request',
+						action: 'Update a pull request',
+					},
+					{
+						name: 'Close',
+						value: 'close',
+						description: 'Close a pull request',
+						action: 'Close a pull request',
+					},
+					{
+						name: 'Reopen',
+						value: 'reopen',
+						description: 'Reopen a pull request',
+						action: 'Reopen a pull request',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get the data of a single pull request',
+						action: 'Get a pull request',
+					},
+					{
+						name: 'Create Comment',
+						value: 'createComment',
+						description: 'Create a new comment on a pull request',
+						action: 'Create a comment on a pull request',
+					},
+					{
+						name: 'Edit Comment',
+						value: 'editComment',
+						description: 'Edit a comment on a pull request',
+						action: 'Edit a comment on a pull request',
+					},
+					{
+						name: 'Merge',
+						value: 'merge',
+						description: 'Merge a pull request',
+						action: 'Merge a pull request',
+					},
+				],
+				default: 'create',
 			},
 
 			{
@@ -1338,6 +1406,281 @@ export class Github implements INodeType {
 			},
 
 			// ----------------------------------
+			//         pullRequest
+			// ----------------------------------
+
+			// ----------------------------------
+			//         pullRequest:create
+			// ----------------------------------
+			{
+				displayName: 'Base Branch',
+				name: 'base',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'The branch you want to merge into (e.g. master)',
+				placeholder: 'master',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Head Branch',
+				name: 'head',
+				type: 'string',
+				default: '',
+				required: true,
+				description:
+					'The branch containing your changes. For a cross‑fork PR, use the format owner:branchname (e.g. johndoe:featurebranch).',
+				placeholder: 'feature or johndoe:featurebranch',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'The title of the pull request',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Body',
+				name: 'body',
+				type: 'string',
+				typeOptions: { rows: 5 },
+				default: '',
+				description: 'The body of the pull request',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Create a Draft Pull Request',
+				name: 'draft',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to create the pull request as a draft',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['create'] } },
+			},
+			// ----------------------------------
+			//         pullRequest:update
+			// ----------------------------------
+			{
+				displayName: 'PR Number',
+
+				name: 'pullRequestNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				description: 'The number of the pull request to update',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['update'] } },
+			},
+			{
+				displayName: 'Edit Fields',
+				name: 'editFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['update'] } },
+				options: [
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: 'The new title of the pull request',
+					},
+					{
+						displayName: 'Body',
+						name: 'body',
+						type: 'string',
+						typeOptions: { rows: 5 },
+						default: '',
+						description: 'The new body of the pull request',
+					},
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'options',
+						options: [
+							{ name: 'Open', value: 'open' },
+							{ name: 'Closed', value: 'closed' },
+						],
+						default: '',
+						description: 'The state of the pull request',
+					},
+					{
+						displayName: 'Base Branch',
+						name: 'base',
+						type: 'string',
+						default: '',
+						description: 'The branch you want to merge into (e.g. master)',
+					},
+				],
+			},
+			// ----------------------------------
+			//         pullRequest:close
+			// ----------------------------------
+			{
+				displayName: 'PR Number',
+				name: 'pullRequestNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				description: 'The number of the pull request to close',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['close'] } },
+			},
+			// ----------------------------------
+			//         pullRequest:reopen
+			// ----------------------------------
+			{
+				displayName: 'PR Number',
+				name: 'pullRequestNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				description: 'The number of the pull request to reopen',
+				displayOptions: {
+					show: {
+						resource: ['pullRequest'],
+						operation: ['reopen'],
+					},
+				},
+			},
+			// ----------------------------------
+			//         pullRequest:get
+			// ----------------------------------
+			{
+				displayName: 'PR Number',
+				name: 'pullRequestNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				description: 'The number of the pull request to retrieve',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['get'] } },
+			},
+			// ----------------------------------
+			//         pullRequest:createComment
+			// ----------------------------------
+			{
+				displayName: 'PR Number',
+				name: 'pullRequestNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				description: 'The number of the pull request on which to create the comment on',
+				displayOptions: {
+					show: {
+						operation: ['createComment'],
+						resource: ['pullRequest'],
+					},
+				},
+			},
+			{
+				displayName: 'Body',
+				name: 'body',
+				type: 'string',
+				typeOptions: {
+					rows: 5,
+				},
+				displayOptions: {
+					show: {
+						operation: ['createComment'],
+						resource: ['pullRequest'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'The body of the comment',
+			},
+			// ----------------------------------
+			//         pullRequest:editComment
+			// ----------------------------------
+			{
+				displayName: 'Comment ID',
+				name: 'commentId',
+				type: 'number',
+				default: 0,
+				required: true,
+				description: 'The ID of the comment to edit',
+				displayOptions: {
+					show: {
+						operation: ['editComment'],
+						resource: ['pullRequest'],
+					},
+				},
+			},
+			{
+				displayName: 'Body',
+				name: 'body',
+				type: 'string',
+				typeOptions: {
+					rows: 5,
+				},
+				displayOptions: {
+					show: {
+						operation: ['editComment'],
+						resource: ['pullRequest'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'The body of the comment',
+			},
+			// ----------------------------------
+			//         pullRequest:merge
+			// ----------------------------------
+			{
+				displayName: 'PR Number',
+				name: 'pullRequestNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				description: 'The number of the pull request to merge',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['merge'] } },
+			},
+			{
+				displayName: 'Merge Method',
+				name: 'mergeMethod',
+				type: 'options',
+				options: [
+					{ name: 'Merge Commit', value: 'merge' },
+					{ name: 'Squash and Merge', value: 'squash' },
+					{ name: 'Rebase and Merge', value: 'rebase' },
+				],
+				default: 'merge',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['merge'] } },
+			},
+			{
+				displayName: 'Commit Title',
+				name: 'commitTitle',
+				type: 'string',
+				default: '',
+				description: 'Title for the automatic merge commit',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['merge'] } },
+			},
+			{
+				displayName: 'Commit Message',
+				name: 'commitMessage',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				description: 'Extra detail to append to automatic merge commit',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['merge'] } },
+			},
+
+			{
+				displayName:
+					'If a merge queue is required on the target branch, this request will automatically enqueue the pull request and return 202 Accepted. If no queue is required, the pull request will be merged immediately and return 200 OK.',
+				name: 'mergeQueueNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: ['pullRequest'],
+						operation: ['merge'],
+					},
+				},
+			},
+
+			// ----------------------------------
 			//         release
 			// ----------------------------------
 
@@ -2326,6 +2669,14 @@ export class Github implements INodeType {
 			'issue:createComment',
 			'issue:edit',
 			'issue:get',
+			'pullRequest:close',
+			'pullRequest:create',
+			'pullRequest:createComment',
+			'pullRequest:editComment',
+			'pullRequest:get',
+			'pullRequest:merge',
+			'pullRequest:reopen',
+			'pullRequest:update',
 			'release:create',
 			'release:delete',
 			'release:get',
@@ -2369,7 +2720,7 @@ export class Github implements INodeType {
 		let endpoint: string;
 
 		const operation = this.getNodeParameter('operation', 0);
-		const resource = this.getNodeParameter('resource', 0);
+		const resource = this.getNodeParameter('resource', 0) as string;
 		const fullOperation = `${resource}:${operation}`;
 
 		if (resource === 'workflow' && operation === 'dispatchAndWait') {
@@ -2632,6 +2983,100 @@ export class Github implements INodeType {
 						qs.lock_reason = this.getNodeParameter('lockReason', i) as string;
 
 						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/lock`;
+					}
+				} else if (resource === 'pullRequest') {
+					if (operation === 'create') {
+						// ----------------------------------
+						//         create
+						// ----------------------------------
+						requestMethod = 'POST';
+
+						body.title = this.getNodeParameter('title', i) as string;
+						body.body = this.getNodeParameter('body', i, '') as string;
+						body.head = this.getNodeParameter('head', i) as string; // owner:branch supported
+						body.base = this.getNodeParameter('base', i) as string;
+						body.draft = this.getNodeParameter('draft', i, false) as boolean;
+
+						endpoint = `/repos/${owner}/${repository}/pulls`;
+					} else if (operation === 'update') {
+						// ----------------------------------
+						//         update pull request
+						// ----------------------------------
+						requestMethod = 'PATCH';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const editFields = this.getNodeParameter('editFields', i, {}) as IDataObject;
+
+						if (editFields.title !== undefined) body.title = editFields.title;
+						if (editFields.body !== undefined) body.body = editFields.body;
+						if (editFields.state !== undefined) body.state = editFields.state;
+						if (editFields.base !== undefined) body.base = editFields.base;
+
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+					} else if (operation === 'close') {
+						// ----------------------------------
+						//         close pull request
+						// ----------------------------------
+						requestMethod = 'PATCH';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						body.state = 'closed';
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+					} else if (operation === 'reopen') {
+						// ----------------------------------
+						//         reopen pull request
+						// ----------------------------------
+						requestMethod = 'PATCH';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						body.state = 'open';
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+					} else if (operation === 'get') {
+						// ----------------------------------
+						//         get pull request
+						// ----------------------------------
+						requestMethod = 'GET';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+					} else if (operation === 'createComment') {
+						// ----------------------------------
+						//         createComment
+						// ----------------------------------
+						requestMethod = 'POST';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+
+						body.body = this.getNodeParameter('body', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/issues/${pullRequestNumber}/comments`;
+					} else if (operation === 'editComment') {
+						// ----------------------------------
+						//         edit comment
+						// ----------------------------------
+						requestMethod = 'PATCH';
+
+						const commentId = this.getNodeParameter('commentId', i) as string;
+						body.body = this.getNodeParameter('body', i) as string;
+						endpoint = `/repos/${owner}/${repository}/issues/comments/${commentId}`;
+					} else if (operation === 'merge') {
+						// ----------------------------------
+						//         merge pull request
+						// ----------------------------------
+						requestMethod = 'PUT';
+
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const mergeMethod = this.getNodeParameter('mergeMethod', i, 'merge') as string;
+						const commitTitle = (this.getNodeParameter('commitTitle', i, '') as string).trim();
+						const commitMessage = (this.getNodeParameter('commitMessage', i, '') as string).trim();
+
+						// Only attach optional fields when non-empty so we never
+						// send empty strings to GitHub's API parser.
+						if (commitTitle !== '') body.commit_title = commitTitle;
+						if (commitMessage !== '') body.commit_message = commitMessage;
+						body.merge_method = mergeMethod;
+
+						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/merge`;
 					}
 				} else if (resource === 'release') {
 					if (operation === 'create') {
