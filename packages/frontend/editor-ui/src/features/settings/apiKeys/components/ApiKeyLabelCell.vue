@@ -20,7 +20,7 @@ const update = () => {
 
 onMounted(() => {
 	update();
-	if (labelEl.value && typeof ResizeObserver !== 'undefined') {
+	if (labelEl.value) {
 		observer = new ResizeObserver(update);
 		observer.observe(labelEl.value);
 	}
@@ -33,7 +33,12 @@ onBeforeUnmount(() => {
 
 <template>
 	<div :class="$style.cell">
-		<N8nTooltip :content="label" placement="top" :show-after="500" :disabled="!isOverflowing">
+		<N8nTooltip
+			:content="label"
+			:show-after="500"
+			:disabled="!isOverflowing"
+			:content-class="$style.tooltip"
+		>
 			<span ref="labelEl" :class="$style.label">
 				<N8nText bold>{{ label }}</N8nText>
 			</span>
@@ -62,5 +67,10 @@ onBeforeUnmount(() => {
 
 .redacted {
 	font-family: var(--font-family--monospace);
+}
+
+:global(.n8n-tooltip).tooltip {
+	max-width: none;
+	white-space: nowrap;
 }
 </style>
