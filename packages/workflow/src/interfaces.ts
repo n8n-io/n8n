@@ -1723,6 +1723,9 @@ export interface ResourceMapperTypeOptionsBase {
 	};
 	showTypeConversionOptions?: boolean;
 	allowEmptyValues?: boolean;
+	// When true, the cached schema is refreshed against the source on node
+	// open, instead of only flagging it as stale.
+	refreshSchemaOnOpen?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
