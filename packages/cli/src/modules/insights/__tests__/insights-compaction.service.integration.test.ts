@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import {
 	mockLogger,
 	createTeamProject,
@@ -5,11 +6,11 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { Logger } from '@n8n/backend-common';
-import type { WorkflowEntity } from '@n8n/db';
+import type { DbLockService, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock, type MockProxy } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
+import { OperationalError } from 'n8n-workflow';
 
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
 
@@ -23,6 +24,24 @@ import type { PeriodUnit } from '../database/entities/insights-shared';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsCompactionService } from '../insights-compaction.service';
 import { InsightsConfig } from '../insights.config';
+
+/** A DbLockService mock that serializes runs like the SQLite in-process mutex. */
+function dbLockServiceWithInProcessLock(): MockProxy<DbLockService> {
+	const dbLockService = mock<DbLockService>();
+	let isHeld = false;
+	dbLockService.tryWithLock.mockImplementation(async (lockId, fn) => {
+		if (isHeld) {
+			throw new OperationalError(`DbLock ${lockId} is already held by another process`);
+		}
+		isHeld = true;
+		try {
+			return await fn(undefined as never);
+		} finally {
+			isHeld = false;
+		}
+	});
+	return dbLockService;
+}
 
 type CompactionConfig = Pick<
 	InsightsConfig,
@@ -378,6 +397,7 @@ describe('compaction', () => {
 					compactionIntervalMinutes: 60,
 				}),
 				mockLogger(),
+				mock<DbLockService>(),
 			);
 			// spy on the compactInsights method to check if it's called
 			const compactInsightsSpy = jest.spyOn(insightsCompactionService, 'compactInsights');
@@ -385,12 +405,16 @@ describe('compaction', () => {
 			try {
 				insightsCompactionService.startCompactionTimer();
 
+				// ASSERT
+				// runs once immediately on becoming leader (leading edge)
+				expect(compactInsightsSpy).toHaveBeenCalledTimes(1);
+
 				// ACT
-				// advance by 1 hour and 1 minute
+				// advance by 1 hour and 1 minute -> one more scheduled run
 				jest.advanceTimersByTime(1000 * 60 * 61);
 
 				// ASSERT
-				expect(compactInsightsSpy).toHaveBeenCalledTimes(1);
+				expect(compactInsightsSpy).toHaveBeenCalledTimes(2);
 			} finally {
 				insightsCompactionService.stopCompactionTimer();
 				jest.useRealTimers();
@@ -398,7 +422,7 @@ describe('compaction', () => {
 		});
 	});
 
-	describe('compactInsights in-memory run guard', () => {
+	describe('compactInsights lock guard', () => {
 		test('skips a concurrent run and accepts another run after the active one finishes', async () => {
 			// ARRANGE
 			const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
@@ -412,6 +436,7 @@ describe('compaction', () => {
 					compactionMaxRuntimeSeconds: 0,
 				}),
 				logger,
+				dbLockServiceWithInProcessLock(),
 			);
 
 			let resolveRawToHour!: (numberOfCompactedRawData: number) => void;
@@ -433,7 +458,7 @@ describe('compaction', () => {
 
 			// ASSERT
 			expect(logger.debug).toHaveBeenCalledWith(
-				'Skipping insights compaction because another compaction run is active',
+				'Skipping insights compaction because another run already holds the lock',
 			);
 
 			resolveRawToHour(0);
@@ -456,6 +481,7 @@ describe('compaction', () => {
 					compactionMaxRuntimeSeconds: 0,
 				}),
 				logger,
+				dbLockServiceWithInProcessLock(),
 			);
 			const rawToHourSpy = jest
 				.spyOn(insightsCompactionService, 'compactRawToHour')

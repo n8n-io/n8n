@@ -8,7 +8,8 @@ import { DbLockService } from '../db-lock.service';
 
 describe('DbLockService', () => {
 	const mockTx = mock<EntityManager>();
-	const dataSource = mock<DataSource>();
+	const mockManager = mock<EntityManager>();
+	const dataSource = mock<DataSource>({ manager: mockManager });
 	const databaseConfig = mock<DatabaseConfig>();
 
 	const transactionMock =
@@ -19,7 +20,7 @@ describe('DbLockService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		transactionMock.mockImplementation(async (fn) => await fn(mockTx));
-		dataSource.manager.transaction = transactionMock as never;
+		mockManager.transaction = transactionMock as never;
 		mockTx.query.mockResolvedValue([]);
 		service = new DbLockService(dataSource, databaseConfig);
 	});
@@ -44,7 +45,8 @@ describe('DbLockService', () => {
 
 			expect(result).toBe('result');
 			expect(mockTx.query).not.toHaveBeenCalled();
-			expect(fn).toHaveBeenCalledWith(mockTx);
+			expect(transactionMock).not.toHaveBeenCalled();
+			expect(fn).toHaveBeenCalledWith(mockManager);
 		});
 
 		it('should set lock_timeout when timeoutMs is provided', async () => {
@@ -147,7 +149,8 @@ describe('DbLockService', () => {
 
 			expect(result).toBe('result');
 			expect(mockTx.query).not.toHaveBeenCalled();
-			expect(fn).toHaveBeenCalledWith(mockTx);
+			expect(transactionMock).not.toHaveBeenCalled();
+			expect(fn).toHaveBeenCalledWith(mockManager);
 		});
 	});
 
