@@ -165,5 +165,23 @@ describe('Test Webhook Node', () => {
 			const node = new Webhook();
 			expect(node.description.sensitiveOutputFields).not.toContain('headers.content-type');
 		});
+
+		it('declares the opt-out parameter path so users can expose auth headers when needed', () => {
+			const node = new Webhook();
+			expect(node.description.sensitiveOutputFieldsOptOutPath).toBe('options.exposeAuthHeaders');
+		});
+
+		it('exposes the opt-out as a boolean option, defaulted to false (security-by-default)', () => {
+			const node = new Webhook();
+			const optionsParam = node.description.properties.find((p) => p.name === 'options');
+			expect(optionsParam).toBeDefined();
+			const subOptions = (
+				optionsParam as { options?: Array<{ name: string; type: string; default: unknown }> }
+			).options;
+			const expose = subOptions?.find((o) => o.name === 'exposeAuthHeaders');
+			expect(expose).toBeDefined();
+			expect(expose?.type).toBe('boolean');
+			expect(expose?.default).toBe(false);
+		});
 	});
 });
