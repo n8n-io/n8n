@@ -29,8 +29,14 @@ const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettin
 	includeNodeSpans: true,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
+	envManagedFields: [],
 	...overrides,
 });
+
+function extractSettings(r: OtelSettingsResponse) {
+	const { envManagedFields: _, ...settings } = r;
+	return settings;
+}
 
 describe('headersStringToPairs', () => {
 	it('returns empty array for empty string', () => {
@@ -116,8 +122,8 @@ describe('useOtelStore', () => {
 			const store = useOtelStore();
 			await store.fetchSettings();
 
-			expect(store.settings).toEqual(remote);
-			expect(store.savedSettings).toEqual(remote);
+			expect(store.settings).toEqual(extractSettings(remote));
+			expect(store.savedSettings).toEqual(extractSettings(remote));
 		});
 
 		it('stores independent copies so mutations do not affect savedSettings', async () => {
@@ -168,9 +174,9 @@ describe('useOtelStore', () => {
 			await store.fetchSettings();
 			await store.saveSettings();
 
-			expect(saveMock).toHaveBeenCalledWith(expect.anything(), current);
-			expect(store.settings).toEqual(updated);
-			expect(store.savedSettings).toEqual(updated);
+			expect(saveMock).toHaveBeenCalledWith(expect.anything(), extractSettings(current));
+			expect(store.settings).toEqual(extractSettings(updated));
+			expect(store.savedSettings).toEqual(extractSettings(updated));
 		});
 
 		it('sets saving to true during the call and resets it after', async () => {

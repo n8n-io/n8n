@@ -1,7 +1,7 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
-export type OtelSettingsResponse = {
+export type OtelSettings = {
 	enabled: boolean;
 	exporterEndpoint: string;
 	exporterTracingPath: string;
@@ -14,13 +14,17 @@ export type OtelSettingsResponse = {
 	productionExecutionsOnly: boolean;
 };
 
+export type OtelSettingsResponse = OtelSettings & {
+	envManagedFields: Array<keyof OtelSettings>;
+};
+
 export async function getOtelSettings(context: IRestApiContext): Promise<OtelSettingsResponse> {
 	return await makeRestApiRequest(context, 'GET', '/otel/settings');
 }
 
 export async function updateOtelSettings(
 	context: IRestApiContext,
-	settings: OtelSettingsResponse,
+	settings: OtelSettings,
 ): Promise<OtelSettingsResponse> {
 	return await makeRestApiRequest(context, 'PUT', '/otel/settings', settings);
 }

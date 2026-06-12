@@ -27,21 +27,12 @@ describe('OtelSettingsService', () => {
 		process.env = originalEnv;
 	});
 
-	describe('getPersistedSettings', () => {
-		it('returns undefined when row exists but value is empty', async () => {
-			settingsRepository.findByKey.mockResolvedValue({ value: '' } as Settings);
-
-			const result = await service.getPersistedSettings();
-
-			expect(result).toBeUndefined();
-		});
-	});
-
-	describe('loadEffective', () => {
+	describe('loadSettings', () => {
 		it('returns defaults when DB row is absent and no env vars are set', async () => {
 			settingsRepository.findByKey.mockResolvedValue(null);
 
-			const result = await service.loadEffective();
+			await service.loadSettings();
+			const result = service.getSettings();
 
 			expect(result).toEqual({
 				enabled: false,
@@ -54,6 +45,7 @@ describe('OtelSettingsService', () => {
 				includeNodeSpans: true,
 				injectOutbound: true,
 				productionExecutionsOnly: true,
+				envManagedFields: [],
 			});
 		});
 
@@ -69,77 +61,73 @@ describe('OtelSettingsService', () => {
 				value: JSON.stringify(persisted),
 			} as Settings);
 
-			const result = await service.loadEffective();
+			await service.loadSettings();
+			const result = service.getSettings();
 
 			expect(result.enabled).toBe(true);
 			expect(result.exporterEndpoint).toBe('https://collector.example.com');
 			expect(result.exporterServiceName).toBe('n8n-prod');
 			expect(result.tracesSampleRate).toBe(0.5);
 			expect(result.includeNodeSpans).toBe(false);
-			// Fields not in DB row fall back to defaults
 			expect(result.exporterTracingPath).toBe('/v1/traces');
 			expect(result.injectOutbound).toBe(true);
+			expect(result.envManagedFields).toEqual([]);
 		});
 
-		it('lets env vars override DB values', async () => {
+		it('env vars override DB values and are tracked in envManagedFields', async () => {
 			settingsRepository.findByKey.mockResolvedValue({
 				value: JSON.stringify({ enabled: true, exporterEndpoint: 'https://from-db' }),
 			} as Settings);
 			process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT = 'https://from-env';
 
-			// Re-build config so @Env decorator picks up the new process.env value
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterEndpoint = 'https://from-env';
 			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
 
-			const result = await serviceWithEnv.loadEffective();
+			await serviceWithEnv.loadSettings();
+			const result = serviceWithEnv.getSettings();
 
 			expect(result.exporterEndpoint).toBe('https://from-env');
-			// Other DB fields still applied
 			expect(result.enabled).toBe(true);
+			expect(result.envManagedFields).toContain('exporterEndpoint');
+			expect(result.envManagedFields).not.toContain('enabled');
 		});
 
-		it('uses env values when no DB row exists', async () => {
-			settingsRepository.findByKey.mockResolvedValue(null);
-			process.env.N8N_OTEL_ENABLED = 'true';
-
-			const configWithEnv = new OtelConfig();
-			configWithEnv.enabled = true;
-			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
-
-			const result = await serviceWithEnv.loadEffective();
-
-			expect(result.enabled).toBe(true);
-		});
-	});
-
-	describe('loadSaved', () => {
-		it('returns DB values without applying env override', async () => {
+		it('env vars win over DB even after UI save', async () => {
 			settingsRepository.findByKey.mockResolvedValue({
 				value: JSON.stringify({ enabled: false, exporterEndpoint: 'https://from-db' }),
 			} as Settings);
 			process.env.N8N_OTEL_ENABLED = 'true';
 			process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT = 'https://from-env';
 
-			// Even with env vars set, loadSaved ignores them and returns DB values
 			const configWithEnv = new OtelConfig();
 			configWithEnv.enabled = true;
 			configWithEnv.exporterEndpoint = 'https://from-env';
 			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
 
-			const result = await serviceWithEnv.loadSaved();
+			await serviceWithEnv.loadSettings();
+			const result = serviceWithEnv.getSettings();
 
-			expect(result.enabled).toBe(false);
-			expect(result.exporterEndpoint).toBe('https://from-db');
+			expect(result.enabled).toBe(true);
+			expect(result.exporterEndpoint).toBe('https://from-env');
+			expect(result.envManagedFields).toContain('enabled');
+			expect(result.envManagedFields).toContain('exporterEndpoint');
+		});
+	});
+
+	describe('getSettings', () => {
+		it('throws if loadSettings was never called', () => {
+			expect(() => service.getSettings()).toThrow('OTel settings not yet initialized');
 		});
 
-		it('returns defaults when no DB row and no UI save has happened', async () => {
+		it('returns settings with envManagedFields after loadSettings', async () => {
 			settingsRepository.findByKey.mockResolvedValue(null);
 
-			const result = await service.loadSaved();
+			await service.loadSettings();
+			const result = service.getSettings();
 
+			expect(result.envManagedFields).toEqual([]);
 			expect(result.enabled).toBe(false);
-			expect(result.exporterEndpoint).toBe('http://localhost:4318');
 		});
 	});
 
@@ -162,14 +150,12 @@ describe('OtelSettingsService', () => {
 
 			await service.saveSettings(settings);
 
-			expect(settingsRepository.save).toHaveBeenCalledWith(
-				{
-					key: OTEL_SETTINGS_KEY,
-					value: JSON.stringify(settings),
-					loadOnStartup: true,
-				},
-				{ transaction: false },
-			);
+			const [row] = settingsRepository.save.mock.calls[0] as [
+				{ key: string; value: string; loadOnStartup: boolean },
+			];
+			expect(row.key).toBe(OTEL_SETTINGS_KEY);
+			expect(row.loadOnStartup).toBe(true);
+			expect(JSON.parse(row.value)).toEqual(settings);
 		});
 
 		it('updates an existing row in place', async () => {
@@ -178,8 +164,25 @@ describe('OtelSettingsService', () => {
 
 			await service.saveSettings(settings);
 
-			expect(existing.value).toBe(JSON.stringify(settings));
+			expect(JSON.parse(existing.value)).toEqual(settings);
 			expect(settingsRepository.save).toHaveBeenCalledWith(existing, { transaction: false });
+		});
+
+		it('replaces env-managed fields with env-var values before persisting', async () => {
+			process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT = 'https://from-env';
+			const configWithEnv = new OtelConfig();
+			configWithEnv.exporterEndpoint = 'https://from-env';
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+			settingsRepository.findByKey.mockResolvedValue(null);
+
+			const incoming: OtelConfig = { ...settings, exporterEndpoint: 'https://tampered-by-client' };
+			await serviceWithEnv.saveSettings(incoming);
+
+			const saved = JSON.parse(
+				(settingsRepository.save.mock.calls[0]?.[0] as { value: string }).value,
+			) as OtelConfig;
+			expect(saved.exporterEndpoint).toBe('https://from-env');
+			expect(saved.enabled).toBe(settings.enabled);
 		});
 	});
 });

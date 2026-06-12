@@ -58,6 +58,7 @@ const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettin
 	includeNodeSpans: true,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
+	envManagedFields: [],
 	...overrides,
 });
 

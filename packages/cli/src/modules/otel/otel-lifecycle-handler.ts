@@ -59,15 +59,12 @@ export class OtelLifecycleHandler {
 	}
 
 	private shouldTrace(ctx: { type: string; workflow: IWorkflowBase }): boolean {
-		const settings = this.otelSettingsService.currentSettings;
-		if (!settings?.enabled) return false;
-		if (settings.productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return false;
-		if (
-			(ctx.type === 'nodeExecuteBefore' || ctx.type === 'nodeExecuteAfter') &&
-			!settings.includeNodeSpans
-		) {
+		const { enabled, productionExecutionsOnly, includeNodeSpans } =
+			this.otelSettingsService.getSettings();
+		if (!enabled) return false;
+		if (productionExecutionsOnly && !this.isPublishedWorkflow(ctx.workflow)) return false;
+		if ((ctx.type === 'nodeExecuteBefore' || ctx.type === 'nodeExecuteAfter') && !includeNodeSpans)
 			return false;
-		}
 		return true;
 	}
 

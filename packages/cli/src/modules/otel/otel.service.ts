@@ -27,13 +27,13 @@ export class OtelService {
 	) {}
 
 	async init(): Promise<void> {
-		const settings = await this.otelSettingsService.loadEffective();
+		const settings = await this.otelSettingsService.loadSettings();
 		this.start(settings);
 	}
 
 	async restart(): Promise<void> {
 		await this.shutdown();
-		const settings = await this.otelSettingsService.loadSaved();
+		const settings = await this.otelSettingsService.loadSettings();
 		this.start(settings);
 	}
 
@@ -42,7 +42,10 @@ export class OtelService {
 		if (!settings.enabled) return;
 
 		this.configureDiagnosticsLogger();
-		void this.checkEndpointReachability(this.startSdk(settings));
+		void this.checkEndpointReachability(
+			this.startSdk(settings),
+			settings.startupConnectivityTimeoutMs,
+		);
 	}
 
 	async shutdown(): Promise<void> {
@@ -130,16 +133,14 @@ export class OtelService {
 		return `${exporterEndpointWithoutTrailingSlash}${path}`;
 	}
 
-	private async checkEndpointReachability(url: string): Promise<void> {
+	private async checkEndpointReachability(url: string, timeoutMs: number): Promise<void> {
 		try {
 			// HEAD is used for a cheap connectivity check (no request/response body).
 			// OTLP endpoints are POST-only, so this will often return 4xx, but any
 			// HTTP response means the server is reachable. We only catch network errors.
 			await fetch(url, {
 				method: 'HEAD',
-				signal: AbortSignal.timeout(
-					this.otelSettingsService.currentSettings?.startupConnectivityTimeoutMs ?? 2_000,
-				),
+				signal: AbortSignal.timeout(timeoutMs),
 			});
 		} catch (error) {
 			if (this.hasLoggedStartupConnectivityFailure) return;

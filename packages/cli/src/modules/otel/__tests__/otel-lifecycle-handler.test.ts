@@ -36,8 +36,10 @@ function createWorkflowInstance() {
 	});
 }
 
-function makeOtelSettingsService(overrides: Partial<OtelConfig> = {}): OtelSettingsService {
-	const currentSettings: OtelConfig = {
+function makeOtelSettingsService(
+	overrides: Partial<OtelConfig> = {},
+): OtelSettingsService & { _settings: OtelConfig } {
+	const _settings: OtelConfig = {
 		enabled: true,
 		productionExecutionsOnly: false,
 		includeNodeSpans: true,
@@ -50,7 +52,12 @@ function makeOtelSettingsService(overrides: Partial<OtelConfig> = {}): OtelSetti
 		injectOutbound: true,
 		...overrides,
 	};
-	return { currentSettings } as unknown as OtelSettingsService;
+	return {
+		getSettings: () => ({ ..._settings, envManagedFields: [] }),
+		_settings,
+	} as unknown as OtelSettingsService & {
+		_settings: OtelConfig;
+	};
 }
 
 describe('OtelLifecycleHandler', () => {
@@ -686,7 +693,7 @@ describe('OtelLifecycleHandler', () => {
 		});
 
 		it('should skip node spans when includeNodeSpans is false', () => {
-			otelSettingsService.currentSettings!.includeNodeSpans = false;
+			otelSettingsService._settings.includeNodeSpans = false;
 			handler = new OtelLifecycleHandler(
 				tracer,
 				traceContextService,
@@ -893,7 +900,7 @@ describe('productionExecutionsOnly filter', () => {
 		expect(tracer.startWorkflow).toHaveBeenCalled();
 
 		// Simulate settings change mid-execution
-		otelSettingsService.currentSettings!.productionExecutionsOnly = true;
+		otelSettingsService._settings.productionExecutionsOnly = true;
 
 		handler.onWorkflowEnd(makeWorkflowEndCtx(activeWorkflow));
 		expect(tracer.endWorkflow).toHaveBeenCalled();
@@ -909,7 +916,7 @@ describe('productionExecutionsOnly filter', () => {
 	});
 
 	it('should trace an inactive workflow when productionExecutionsOnly is false', async () => {
-		otelSettingsService.currentSettings!.productionExecutionsOnly = false;
+		otelSettingsService._settings.productionExecutionsOnly = false;
 		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
 
 		await handler.onWorkflowStart(makeWorkflowStartCtx(inactiveWorkflow));

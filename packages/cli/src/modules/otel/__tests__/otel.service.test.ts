@@ -74,7 +74,7 @@ describe('OtelService', () => {
 
 	describe('init', () => {
 		it('does not start SDK when enabled is false', async () => {
-			otelSettingsService.loadEffective.mockResolvedValue(disabledSettings);
+			otelSettingsService.loadSettings.mockResolvedValue(disabledSettings);
 
 			await service.init();
 
@@ -82,7 +82,7 @@ describe('OtelService', () => {
 		});
 
 		it('starts SDK when enabled is true', async () => {
-			otelSettingsService.loadEffective.mockResolvedValue(enabledSettings);
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
@@ -91,7 +91,7 @@ describe('OtelService', () => {
 		});
 
 		it('logs connectivity failure and still finishes startup', async () => {
-			otelSettingsService.loadEffective.mockResolvedValue(enabledSettings);
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			global.fetch = jest
 				.fn()
 				.mockRejectedValue(new Error('connect ECONNREFUSED')) as unknown as typeof fetch;
@@ -108,24 +108,24 @@ describe('OtelService', () => {
 	});
 
 	describe('restart', () => {
-		it('shuts down existing SDK then starts a new one with loadSaved settings', async () => {
-			otelSettingsService.loadEffective.mockResolvedValue(enabledSettings);
-			otelSettingsService.loadSaved.mockResolvedValue(enabledSettings);
+		it('shuts down existing SDK then reloads settings and starts a new one', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
 			jest.clearAllMocks();
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 
 			await service.restart();
 
 			expect(shutdown).toHaveBeenCalledTimes(1);
-			expect(otelSettingsService.loadSaved).toHaveBeenCalledTimes(1);
+			expect(otelSettingsService.loadSettings).toHaveBeenCalledTimes(1);
 			expect(start).toHaveBeenCalledTimes(1);
 		});
 
-		it('does not start SDK after restart when loadSaved returns enabled=false', async () => {
-			otelSettingsService.loadEffective.mockResolvedValue(enabledSettings);
-			otelSettingsService.loadSaved.mockResolvedValue(disabledSettings);
+		it('does not start SDK after restart when reloaded settings have enabled=false', async () => {
+			otelSettingsService.loadSettings.mockResolvedValueOnce(enabledSettings);
+			otelSettingsService.loadSettings.mockResolvedValueOnce(disabledSettings);
 			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
@@ -139,7 +139,7 @@ describe('OtelService', () => {
 
 	describe('shutdown', () => {
 		it('disables all four OTel globals so the next SDK start can re-register providers', async () => {
-			otelSettingsService.loadEffective.mockResolvedValue(enabledSettings);
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 			await service.init();
 
@@ -164,7 +164,7 @@ describe('OtelService', () => {
 		});
 
 		it('forwards all log levels to the n8n logger', async () => {
-			otelSettingsService.loadEffective.mockResolvedValue(enabledSettings);
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 			await service.init();
 
@@ -190,8 +190,7 @@ describe('OtelService', () => {
 		});
 
 		it('only configures the diag logger once across multiple init calls', async () => {
-			otelSettingsService.loadEffective.mockResolvedValue(enabledSettings);
-			otelSettingsService.loadSaved.mockResolvedValue(enabledSettings);
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			global.fetch = jest.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch;
 
 			await service.init();
@@ -203,7 +202,7 @@ describe('OtelService', () => {
 
 	describe('connectivity failure deduplication', () => {
 		it('does not log a second failure within the same start cycle', async () => {
-			otelSettingsService.loadEffective.mockResolvedValue(enabledSettings);
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			let rejectFn!: () => void;
 			global.fetch = jest.fn().mockImplementation(
 				async () =>
@@ -221,7 +220,7 @@ describe('OtelService', () => {
 		});
 
 		it('logs string errors that are not Error instances', async () => {
-			otelSettingsService.loadEffective.mockResolvedValue(enabledSettings);
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
 			global.fetch = jest.fn().mockRejectedValue('string-error') as unknown as typeof fetch;
 
 			await service.init();

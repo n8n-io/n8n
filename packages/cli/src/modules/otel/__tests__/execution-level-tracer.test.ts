@@ -12,8 +12,12 @@ describe('ExecutionLevelTracer', () => {
 	let tracer: ExecutionLevelTracer;
 	const logger = mock<Logger>();
 
-	const makeOtelSettingsService = (overrides: Partial<OtelConfig> = {}): OtelSettingsService =>
-		({ currentSettings: { injectOutbound: true, ...overrides } }) as unknown as OtelSettingsService;
+	const makeOtelSettingsService = (overrides: Partial<OtelConfig> = {}): OtelSettingsService => {
+		const _settings = { injectOutbound: true, ...overrides } as OtelConfig;
+		return {
+			getSettings: () => ({ ..._settings, envManagedFields: [] }),
+		} as unknown as OtelSettingsService;
+	};
 
 	beforeAll(() => {
 		otel = OtelTestProvider.create();

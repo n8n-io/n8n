@@ -199,7 +199,7 @@ export class ExecutionLevelTracer {
 		headers: Record<string, string>,
 	): void {
 		try {
-			if (!this.otelSettingsService.currentSettings?.injectOutbound) return;
+			if (!this.otelSettingsService.getSettings().injectOutbound) return;
 
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;

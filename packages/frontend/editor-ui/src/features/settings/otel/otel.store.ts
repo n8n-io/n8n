@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getOtelSettings, updateOtelSettings } from './otel.api';
-import type { OtelSettingsResponse } from './otel.api';
+import type { OtelSettings, OtelSettingsResponse } from './otel.api';
 import { OTEL_STORE } from './otel.constants';
 
 export function headersStringToPairs(str: string): Array<{ key: string; value: string }> {
@@ -24,7 +24,7 @@ export function headersPairsToString(pairs: Array<{ key: string; value: string }
 		.join(',');
 }
 
-const defaultSettings: OtelSettingsResponse = {
+const defaultSettings: OtelSettings = {
 	enabled: false,
 	exporterEndpoint: 'http://localhost:4318',
 	exporterTracingPath: '/v1/traces',
@@ -37,11 +37,17 @@ const defaultSettings: OtelSettingsResponse = {
 	productionExecutionsOnly: true,
 };
 
+function extractSettings(response: OtelSettingsResponse): OtelSettings {
+	const { envManagedFields: _, ...settings } = response;
+	return settings;
+}
+
 export const useOtelStore = defineStore(OTEL_STORE, () => {
 	const rootStore = useRootStore();
 
-	const settings = ref<OtelSettingsResponse>({ ...defaultSettings });
-	const savedSettings = ref<OtelSettingsResponse>({ ...defaultSettings });
+	const settings = ref<OtelSettings>({ ...defaultSettings });
+	const savedSettings = ref<OtelSettings>({ ...defaultSettings });
+	const envManagedFields = ref<Array<keyof OtelSettings>>([]);
 	const loading = ref(true);
 	const saving = ref(false);
 
@@ -53,8 +59,9 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 		loading.value = true;
 		try {
 			const fetched = await getOtelSettings(rootStore.restApiContext);
-			settings.value = { ...fetched };
-			savedSettings.value = { ...fetched };
+			settings.value = extractSettings(fetched);
+			savedSettings.value = extractSettings(fetched);
+			envManagedFields.value = fetched.envManagedFields;
 		} finally {
 			loading.value = false;
 		}
@@ -64,8 +71,9 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 		saving.value = true;
 		try {
 			const updated = await updateOtelSettings(rootStore.restApiContext, settings.value);
-			settings.value = { ...updated };
-			savedSettings.value = { ...updated };
+			settings.value = extractSettings(updated);
+			savedSettings.value = extractSettings(updated);
+			envManagedFields.value = updated.envManagedFields;
 		} finally {
 			saving.value = false;
 		}
@@ -78,6 +86,7 @@ export const useOtelStore = defineStore(OTEL_STORE, () => {
 	return {
 		settings,
 		savedSettings,
+		envManagedFields,
 		loading,
 		saving,
 		isDirty,

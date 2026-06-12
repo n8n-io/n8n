@@ -61,6 +61,10 @@ function onHeaderChange(index: number, field: 'key' | 'value', value: string) {
 	syncHeaderPairsToStore();
 }
 
+function isEnvManaged(field: keyof typeof OTEL_FIELD_ENV_VARS): boolean {
+	return otelStore.envManagedFields.includes(field);
+}
+
 function envTooltip(field: keyof typeof OTEL_FIELD_ENV_VARS): string {
 	return i18n.baseText('settings.opentelemetry.envVarTooltip', {
 		interpolate: { envVar: OTEL_FIELD_ENV_VARS[field] },
@@ -203,24 +207,34 @@ watch(
 						<small>{{ i18n.baseText('settings.opentelemetry.enable.description') }}</small>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nSelect
-							:model-value="otelStore.settings.enabled ? 'enabled' : 'disabled'"
-							size="medium"
-							data-test-id="otel-enabled-toggle"
-							@update:model-value="otelStore.settings.enabled = $event === 'enabled'"
+						<component
+							:is="isEnvManaged('enabled') ? N8nTooltip : 'span'"
+							v-bind="
+								isEnvManaged('enabled')
+									? { content: i18n.baseText('settings.opentelemetry.envVarManagedTooltip') }
+									: {}
+							"
 						>
-							<template #prefix>
-								<span v-if="otelStore.settings.enabled" :class="$style.greenDot" />
-							</template>
-							<N8nOption
-								value="enabled"
-								:label="i18n.baseText('settings.opentelemetry.enable.option.enabled')"
-							/>
-							<N8nOption
-								value="disabled"
-								:label="i18n.baseText('settings.opentelemetry.enable.option.disabled')"
-							/>
-						</N8nSelect>
+							<N8nSelect
+								:model-value="otelStore.settings.enabled ? 'enabled' : 'disabled'"
+								size="medium"
+								data-test-id="otel-enabled-toggle"
+								:disabled="isEnvManaged('enabled')"
+								@update:model-value="otelStore.settings.enabled = $event === 'enabled'"
+							>
+								<template #prefix>
+									<span v-if="otelStore.settings.enabled" :class="$style.greenDot" />
+								</template>
+								<N8nOption
+									value="enabled"
+									:label="i18n.baseText('settings.opentelemetry.enable.option.enabled')"
+								/>
+								<N8nOption
+									value="disabled"
+									:label="i18n.baseText('settings.opentelemetry.enable.option.disabled')"
+								/>
+							</N8nSelect>
+						</component>
 					</div>
 				</div>
 			</div>
@@ -247,11 +261,21 @@ watch(
 						}}</small>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nInput
-							v-model="otelStore.settings.exporterEndpoint"
-							:placeholder="i18n.baseText('settings.opentelemetry.exporterEndpoint.placeholder')"
-							data-test-id="otel-exporter-endpoint"
-						/>
+						<component
+							:is="isEnvManaged('exporterEndpoint') ? N8nTooltip : 'span'"
+							v-bind="
+								isEnvManaged('exporterEndpoint')
+									? { content: i18n.baseText('settings.opentelemetry.envVarManagedTooltip') }
+									: {}
+							"
+						>
+							<N8nInput
+								v-model="otelStore.settings.exporterEndpoint"
+								:placeholder="i18n.baseText('settings.opentelemetry.exporterEndpoint.placeholder')"
+								:disabled="isEnvManaged('exporterEndpoint')"
+								data-test-id="otel-exporter-endpoint"
+							/>
+						</component>
 					</div>
 				</div>
 
@@ -272,11 +296,23 @@ watch(
 						}}</small>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nInput
-							v-model="otelStore.settings.exporterServiceName"
-							:placeholder="i18n.baseText('settings.opentelemetry.exporterServiceName.placeholder')"
-							data-test-id="otel-service-name"
-						/>
+						<component
+							:is="isEnvManaged('exporterServiceName') ? N8nTooltip : 'span'"
+							v-bind="
+								isEnvManaged('exporterServiceName')
+									? { content: i18n.baseText('settings.opentelemetry.envVarManagedTooltip') }
+									: {}
+							"
+						>
+							<N8nInput
+								v-model="otelStore.settings.exporterServiceName"
+								:placeholder="
+									i18n.baseText('settings.opentelemetry.exporterServiceName.placeholder')
+								"
+								:disabled="isEnvManaged('exporterServiceName')"
+								data-test-id="otel-service-name"
+							/>
+						</component>
 					</div>
 				</div>
 
@@ -295,66 +331,79 @@ watch(
 						</div>
 						<small>{{ i18n.baseText('settings.opentelemetry.exporterHeaders.description') }}</small>
 					</div>
-					<div :class="$style.headersBlock">
-						<div v-for="(pair, index) in headerPairs" :key="index" :class="$style.headerRow">
-							<N8nInputLabel
-								:label="
-									index === 0
-										? i18n.baseText('settings.opentelemetry.exporterHeaders.keyLabel')
-										: undefined
-								"
-								size="small"
-							>
-								<N8nInput
-									:model-value="pair.key"
-									:placeholder="
-										i18n.baseText('settings.opentelemetry.exporterHeaders.keyPlaceholder')
+					<component
+						:is="isEnvManaged('exporterHeaders') ? N8nTooltip : 'span'"
+						v-bind="
+							isEnvManaged('exporterHeaders')
+								? { content: i18n.baseText('settings.opentelemetry.envVarManagedTooltip') }
+								: {}
+						"
+					>
+						<div :class="$style.headersBlock">
+							<div v-for="(pair, index) in headerPairs" :key="index" :class="$style.headerRow">
+								<N8nInputLabel
+									:label="
+										index === 0
+											? i18n.baseText('settings.opentelemetry.exporterHeaders.keyLabel')
+											: undefined
 									"
-									data-test-id="otel-header-key"
-									@update:model-value="(v: string) => onHeaderChange(index, 'key', v)"
-								/>
-							</N8nInputLabel>
-							<N8nInputLabel
-								:label="
-									index === 0
-										? i18n.baseText('settings.opentelemetry.exporterHeaders.valueLabel')
-										: undefined
-								"
-								size="small"
-							>
-								<N8nInput
-									:model-value="pair.value"
-									:placeholder="
-										i18n.baseText('settings.opentelemetry.exporterHeaders.valuePlaceholder')
-									"
-									data-test-id="otel-header-value"
-									@update:model-value="(v: string) => onHeaderChange(index, 'value', v)"
-								/>
-							</N8nInputLabel>
-							<div :class="$style.headerRemove">
-								<N8nButton
-									icon="trash-2"
-									variant="ghost"
 									size="small"
-									native-type="button"
-									:aria-label="i18n.baseText('settings.opentelemetry.exporterHeaders.remove')"
-									data-test-id="otel-header-remove"
-									@click.stop.prevent="removeHeader(index)"
-								/>
+								>
+									<N8nInput
+										:model-value="pair.key"
+										:placeholder="
+											i18n.baseText('settings.opentelemetry.exporterHeaders.keyPlaceholder')
+										"
+										:disabled="isEnvManaged('exporterHeaders')"
+										data-test-id="otel-header-key"
+										@update:model-value="(v: string) => onHeaderChange(index, 'key', v)"
+									/>
+								</N8nInputLabel>
+								<N8nInputLabel
+									:label="
+										index === 0
+											? i18n.baseText('settings.opentelemetry.exporterHeaders.valueLabel')
+											: undefined
+									"
+									size="small"
+								>
+									<N8nInput
+										:model-value="pair.value"
+										:placeholder="
+											i18n.baseText('settings.opentelemetry.exporterHeaders.valuePlaceholder')
+										"
+										:disabled="isEnvManaged('exporterHeaders')"
+										data-test-id="otel-header-value"
+										@update:model-value="(v: string) => onHeaderChange(index, 'value', v)"
+									/>
+								</N8nInputLabel>
+								<div :class="$style.headerRemove">
+									<N8nButton
+										icon="trash-2"
+										variant="ghost"
+										size="small"
+										native-type="button"
+										:disabled="isEnvManaged('exporterHeaders')"
+										:aria-label="i18n.baseText('settings.opentelemetry.exporterHeaders.remove')"
+										data-test-id="otel-header-remove"
+										@click.stop.prevent="removeHeader(index)"
+									/>
+								</div>
 							</div>
+							<N8nButton
+								icon="plus"
+								variant="subtle"
+								size="small"
+								native-type="button"
+								:disabled="isEnvManaged('exporterHeaders')"
+								class="mt-2xs"
+								data-test-id="otel-header-add"
+								@click.stop.prevent="addHeader"
+							>
+								{{ i18n.baseText('settings.opentelemetry.exporterHeaders.addHeader') }}
+							</N8nButton>
 						</div>
-						<N8nButton
-							icon="plus"
-							variant="subtle"
-							size="small"
-							native-type="button"
-							class="mt-2xs"
-							data-test-id="otel-header-add"
-							@click.stop.prevent="addHeader"
-						>
-							{{ i18n.baseText('settings.opentelemetry.exporterHeaders.addHeader') }}
-						</N8nButton>
-					</div>
+					</component>
 				</div>
 
 				<div :class="$style.settingsItem">
@@ -374,11 +423,23 @@ watch(
 						}}</small>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nInput
-							v-model="otelStore.settings.exporterTracingPath"
-							:placeholder="i18n.baseText('settings.opentelemetry.exporterTracingPath.placeholder')"
-							data-test-id="otel-tracing-path"
-						/>
+						<component
+							:is="isEnvManaged('exporterTracingPath') ? N8nTooltip : 'span'"
+							v-bind="
+								isEnvManaged('exporterTracingPath')
+									? { content: i18n.baseText('settings.opentelemetry.envVarManagedTooltip') }
+									: {}
+							"
+						>
+							<N8nInput
+								v-model="otelStore.settings.exporterTracingPath"
+								:placeholder="
+									i18n.baseText('settings.opentelemetry.exporterTracingPath.placeholder')
+								"
+								:disabled="isEnvManaged('exporterTracingPath')"
+								data-test-id="otel-tracing-path"
+							/>
+						</component>
 					</div>
 				</div>
 
@@ -401,21 +462,31 @@ watch(
 						}}</small>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<div :class="$style.inputWithSlug">
-							<N8nInputNumber
-								:model-value="otelStore.settings.startupConnectivityTimeoutMs"
-								:min="0"
-								:step="100"
-								:controls="false"
-								data-test-id="otel-connectivity-timeout"
-								@update:model-value="
-									otelStore.settings.startupConnectivityTimeoutMs = Number($event)
-								"
-							/>
-							<span :class="$style.slug">{{
-								i18n.baseText('settings.opentelemetry.startupConnectivityTimeoutMs.slug')
-							}}</span>
-						</div>
+						<component
+							:is="isEnvManaged('startupConnectivityTimeoutMs') ? N8nTooltip : 'span'"
+							v-bind="
+								isEnvManaged('startupConnectivityTimeoutMs')
+									? { content: i18n.baseText('settings.opentelemetry.envVarManagedTooltip') }
+									: {}
+							"
+						>
+							<div :class="$style.inputWithSlug">
+								<N8nInputNumber
+									:model-value="otelStore.settings.startupConnectivityTimeoutMs"
+									:min="0"
+									:step="100"
+									:controls="false"
+									:disabled="isEnvManaged('startupConnectivityTimeoutMs')"
+									data-test-id="otel-connectivity-timeout"
+									@update:model-value="
+										otelStore.settings.startupConnectivityTimeoutMs = Number($event)
+									"
+								/>
+								<span :class="$style.slug">{{
+									i18n.baseText('settings.opentelemetry.startupConnectivityTimeoutMs.slug')
+								}}</span>
+							</div>
+						</component>
 					</div>
 				</div>
 			</div>
@@ -442,21 +513,31 @@ watch(
 						}}</small>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<div :class="$style.inputWithSlug">
-							<N8nInputNumber
-								:model-value="otelStore.settings.tracesSampleRate"
-								:min="0"
-								:max="1"
-								:step="0.01"
-								:precision="2"
-								:controls="false"
-								data-test-id="otel-sample-rate"
-								@update:model-value="otelStore.settings.tracesSampleRate = Number($event)"
-							/>
-							<span :class="$style.slug">{{
-								i18n.baseText('settings.opentelemetry.tracesSampleRate.slug')
-							}}</span>
-						</div>
+						<component
+							:is="isEnvManaged('tracesSampleRate') ? N8nTooltip : 'span'"
+							v-bind="
+								isEnvManaged('tracesSampleRate')
+									? { content: i18n.baseText('settings.opentelemetry.envVarManagedTooltip') }
+									: {}
+							"
+						>
+							<div :class="$style.inputWithSlug">
+								<N8nInputNumber
+									:model-value="otelStore.settings.tracesSampleRate"
+									:min="0"
+									:max="1"
+									:step="0.01"
+									:precision="2"
+									:controls="false"
+									:disabled="isEnvManaged('tracesSampleRate')"
+									data-test-id="otel-sample-rate"
+									@update:model-value="otelStore.settings.tracesSampleRate = Number($event)"
+								/>
+								<span :class="$style.slug">{{
+									i18n.baseText('settings.opentelemetry.tracesSampleRate.slug')
+								}}</span>
+							</div>
+						</component>
 					</div>
 				</div>
 
@@ -477,11 +558,21 @@ watch(
 						}}</small>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nCheckbox
-							:model-value="otelStore.settings.includeNodeSpans"
-							data-test-id="otel-include-node-spans"
-							@update:model-value="otelStore.settings.includeNodeSpans = Boolean($event)"
-						/>
+						<component
+							:is="isEnvManaged('includeNodeSpans') ? N8nTooltip : 'span'"
+							v-bind="
+								isEnvManaged('includeNodeSpans')
+									? { content: i18n.baseText('settings.opentelemetry.envVarManagedTooltip') }
+									: {}
+							"
+						>
+							<N8nCheckbox
+								:model-value="otelStore.settings.includeNodeSpans"
+								:disabled="isEnvManaged('includeNodeSpans')"
+								data-test-id="otel-include-node-spans"
+								@update:model-value="otelStore.settings.includeNodeSpans = Boolean($event)"
+							/>
+						</component>
 					</div>
 				</div>
 
@@ -500,11 +591,21 @@ watch(
 						<small>{{ i18n.baseText('settings.opentelemetry.injectOutbound.description') }}</small>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nCheckbox
-							:model-value="otelStore.settings.injectOutbound"
-							data-test-id="otel-inject-outbound"
-							@update:model-value="otelStore.settings.injectOutbound = Boolean($event)"
-						/>
+						<component
+							:is="isEnvManaged('injectOutbound') ? N8nTooltip : 'span'"
+							v-bind="
+								isEnvManaged('injectOutbound')
+									? { content: i18n.baseText('settings.opentelemetry.envVarManagedTooltip') }
+									: {}
+							"
+						>
+							<N8nCheckbox
+								:model-value="otelStore.settings.injectOutbound"
+								:disabled="isEnvManaged('injectOutbound')"
+								data-test-id="otel-inject-outbound"
+								@update:model-value="otelStore.settings.injectOutbound = Boolean($event)"
+							/>
+						</component>
 					</div>
 				</div>
 
@@ -527,11 +628,21 @@ watch(
 						}}</small>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nCheckbox
-							:model-value="otelStore.settings.productionExecutionsOnly"
-							data-test-id="otel-production-only"
-							@update:model-value="otelStore.settings.productionExecutionsOnly = Boolean($event)"
-						/>
+						<component
+							:is="isEnvManaged('productionExecutionsOnly') ? N8nTooltip : 'span'"
+							v-bind="
+								isEnvManaged('productionExecutionsOnly')
+									? { content: i18n.baseText('settings.opentelemetry.envVarManagedTooltip') }
+									: {}
+							"
+						>
+							<N8nCheckbox
+								:model-value="otelStore.settings.productionExecutionsOnly"
+								:disabled="isEnvManaged('productionExecutionsOnly')"
+								data-test-id="otel-production-only"
+								@update:model-value="otelStore.settings.productionExecutionsOnly = Boolean($event)"
+							/>
+						</component>
 					</div>
 				</div>
 			</div>

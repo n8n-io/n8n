@@ -7,48 +7,71 @@ import { OTEL_ENV_VARS } from './otel.constants';
 
 export const OTEL_SETTINGS_KEY = 'features.otel';
 
+export type OtelSettingsResponse = OtelConfig & {
+	envManagedFields: Array<keyof OtelConfig>;
+};
+
 @Service()
 export class OtelSettingsService {
-	/**
-	 * Runtime cache — the active config used everywhere (lifecycle handler, tracer,
-	 * controller responses, module settings). Populated by `loadEffective()` on
-	 * startup and refreshed by `loadSaved()` after a UI save or PubSub reload.
-	 */
-	currentSettings: OtelConfig | null = null;
+	private currentSettings: OtelConfig | null = null;
+
+	private envManagedFields: Array<keyof OtelConfig> = [];
 
 	constructor(
 		private readonly config: OtelConfig,
 		private readonly settingsRepository: SettingsRepository,
 	) {}
 
-	async getPersistedSettings(): Promise<Partial<OtelConfig> | undefined> {
+	getSettings(): OtelSettingsResponse {
+		if (!this.currentSettings) throw new Error('OTel settings not yet initialized');
+		return { ...this.currentSettings, envManagedFields: this.envManagedFields };
+	}
+
+	/**
+	 * Reloads settings from DB with env-var priority applied.
+	 */
+	async loadSettings(): Promise<OtelConfig> {
+		const persisted = await this.getPersistedSettings();
+
+		this.envManagedFields = (Object.keys(OTEL_ENV_VARS) as Array<keyof OtelConfig>).filter((key) =>
+			this.isEnvManaged(key),
+		);
+
+		this.currentSettings = this.buildConfig((key) =>
+			this.isEnvManaged(key) ? this.config[key] : (persisted?.[key] ?? this.config[key]),
+		);
+
+		return this.currentSettings;
+	}
+
+	private async getPersistedSettings(): Promise<Partial<OtelConfig> | undefined> {
 		const row = await this.settingsRepository.findByKey(OTEL_SETTINGS_KEY);
 		if (!row?.value) return undefined;
 		return jsonParse<Partial<OtelConfig>>(row.value, { fallbackValue: undefined });
 	}
 
-	/**
-	 * Refreshes currentSettings from DB only (env override skipped). Used after a
-	 * UI save or PubSub reload — the user explicitly set values via the UI.
-	 */
-	async loadSaved(): Promise<OtelConfig> {
-		const persisted = await this.getPersistedSettings();
-		this.currentSettings = this.buildConfig((key) => persisted?.[key] ?? this.config[key]);
-		return this.currentSettings;
+	async saveSettings(incoming: OtelConfig): Promise<void> {
+		// Env-var fields always win — override any frontend-submitted values with
+		// the canonical env-var value so the DB stays consistent even if a client
+		// sends a stale or tampered payload.
+		const sanitized = this.buildConfig((key) =>
+			this.isEnvManaged(key) ? this.config[key] : incoming[key],
+		);
+		const existing = await this.settingsRepository.findByKey(OTEL_SETTINGS_KEY);
+		const value = JSON.stringify(sanitized);
+		if (existing) {
+			existing.value = value;
+			await this.settingsRepository.save(existing, { transaction: false });
+		} else {
+			await this.settingsRepository.save(
+				{ key: OTEL_SETTINGS_KEY, value, loadOnStartup: true },
+				{ transaction: false },
+			);
+		}
 	}
 
-	/**
-	 * Refreshes currentSettings from DB + env override. Used only on initial
-	 * startup; after that, UI/pubsub reloads use `loadSaved()` (DB only).
-	 */
-	async loadEffective(): Promise<OtelConfig> {
-		const persisted = await this.getPersistedSettings();
-		this.currentSettings = this.buildConfig((key) =>
-			process.env[OTEL_ENV_VARS[key]] !== undefined
-				? this.config[key]
-				: (persisted?.[key] ?? this.config[key]),
-		);
-		return this.currentSettings;
+	private isEnvManaged(key: keyof OtelConfig): boolean {
+		return process.env[OTEL_ENV_VARS[key]] !== undefined;
 	}
 
 	private buildConfig(pick: <K extends keyof OtelConfig>(key: K) => OtelConfig[K]): OtelConfig {
@@ -64,19 +87,5 @@ export class OtelSettingsService {
 			injectOutbound: pick('injectOutbound'),
 			productionExecutionsOnly: pick('productionExecutionsOnly'),
 		};
-	}
-
-	async saveSettings(settings: OtelConfig): Promise<void> {
-		const existing = await this.settingsRepository.findByKey(OTEL_SETTINGS_KEY);
-		const value = JSON.stringify(settings);
-		if (existing) {
-			existing.value = value;
-			await this.settingsRepository.save(existing, { transaction: false });
-		} else {
-			await this.settingsRepository.save(
-				{ key: OTEL_SETTINGS_KEY, value, loadOnStartup: true },
-				{ transaction: false },
-			);
-		}
 	}
 }
