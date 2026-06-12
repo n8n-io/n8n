@@ -114,7 +114,9 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 				<ApiKeyScopesCell :api-key="item" @open="emit('open-scopes', $event)" />
 			</template>
 			<template #[`item.expiresAt`]="{ item }">
-				<N8nText>{{ formatExpiration(item.expiresAt) }}</N8nText>
+				<N8nText :color="item.expiresAt ? undefined : 'text-light'">
+					{{ formatExpiration(item.expiresAt) }}
+				</N8nText>
 			</template>
 			<template #[`item.lastUsedAt`]="{ item }">
 				<N8nText :color="item.lastUsedAt ? undefined : 'text-light'">
