@@ -1,0 +1,58 @@
+{
+	"createdAt": "2026-02-28T00:06:13.000Z",
+	"updatedAt": "2026-02-28T00:06:13.000Z",
+	"id": "270",
+	"name": "LineMessagingApi:Message:broadcast",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "c3d4e5f6-a7b8-9012-cdef-123456789012"
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "broadcast",
+				"messages": "[{\"type\": \"text\", \"text\": \"Broadcast from n8n!\"}]"
+			},
+			"name": "LINE Messaging API",
+			"type": "n8n-nodes-base.lineMessagingApi",
+			"typeVersion": 1,
+			"position": [480, 300],
+			"credentials": {
+				"lineApi": {
+					"id": "224",
+					"name": "LINE API"
+				}
+			},
+			"id": "d4e5f6a7-b8c9-0123-def0-234567890123"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "LINE Messaging API",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LINE Messaging API": {
+			"main": [[]]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}
