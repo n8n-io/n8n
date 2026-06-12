@@ -869,6 +869,7 @@
     ]
   },
   "devDependencies": {
+    "@n8n/backend-network": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",

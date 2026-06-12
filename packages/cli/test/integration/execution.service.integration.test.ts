@@ -97,6 +97,8 @@ describe('ExecutionService', () => {
 				waitTill: null,
 				retrySuccessId: null,
 				workflowName: expect.any(String),
+				workflowVersionId: null,
+				jsonSizeBytes: 0,
 				annotation: {
 					tags: expect.arrayContaining([]),
 					vote: null,
@@ -960,6 +962,8 @@ describe('ExecutionService', () => {
 			waitTill: null,
 			retrySuccessId: null,
 			workflowName: expect.any(String),
+			workflowVersionId: null,
+			jsonSizeBytes: 0,
 		};
 
 		afterEach(async () => {

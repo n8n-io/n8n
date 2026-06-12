@@ -11,6 +11,7 @@ import {
 	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
 	CreateSlackAgentAppDto,
+	ListAgentsQueryDto,
 	type CreateSlackAgentAppResponse,
 	type SlackAgentAppManifestResponse,
 	CreateAgentDto,
@@ -176,12 +177,17 @@ export class AgentsController {
 
 	@Get('/')
 	@ProjectScope('agent:list')
-	async list(req: AuthenticatedRequest<{ projectId: string }, unknown, unknown, { all?: string }>) {
-		// ?all=true returns all agents for this user (cross-project, for Instance AI switcher)
-		if (req.query.all === 'true') {
-			return await this.agentsService.findByUser(req.user.id);
-		}
-		return await this.agentsService.findByProjectId(req.params.projectId);
+	async list(
+		req: AuthenticatedRequest<
+			{ projectId: string },
+			unknown,
+			unknown,
+			{ filter?: string; skip?: string; take?: string; sortBy?: string }
+		>,
+		res: Response,
+		@Query query: ListAgentsQueryDto,
+	) {
+		res.json(await this.agentsService.findByProjectIdPaginated(req.params.projectId, query));
 	}
 
 	@Get('/:agentId/config')
@@ -399,9 +405,9 @@ export class AgentsController {
 		return await this.withRunnableState(agent, req.params.projectId, req.user);
 	}
 
-	/** Knowledge base endpoints are gated behind the `knowledge-base` agents module. */
+	/** Knowledge base endpoints are gated behind Daytona sandbox env vars. */
 	private assertKnowledgeBaseEnabled() {
-		if (!this.agentsService.isKnowledgeBaseModuleEnabled()) {
+		if (!this.agentsService.isKnowledgeBaseEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}
@@ -889,28 +895,21 @@ export class AgentsController {
 			);
 		}
 
-		if (!agent.activeVersionId) {
-			await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
-			const publishedAgent = await this.agentsService.publishAgent(
-				agentId,
-				agent.projectId,
-				req.user,
-				undefined,
-				{ syncIntegrations: false },
-			);
-			await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
-			await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
-			return {
-				status: 'connected',
-				agent: await this.withRunnableState(publishedAgent, agent.projectId, req.user),
-			};
-		}
-
+		await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
+		const publishedAgent = await this.agentsService.publishAgent(
+			agentId,
+			agent.projectId,
+			req.user,
+			undefined,
+			{ syncIntegrations: false },
+		);
 		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
+		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
 
-		await this.agentsService.saveCredentialIntegration(agent, integration);
-
-		return { status: 'connected' };
+		return {
+			status: 'connected',
+			agent: await this.withRunnableState(publishedAgent, agent.projectId, req.user),
+		};
 	}
 
 	@Post('/:agentId/integrations/slack/app')
