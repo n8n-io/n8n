@@ -12,6 +12,8 @@ import {
 	chatAdministratorsResponse,
 	sendAnimationMessageResponse,
 	sendAudioResponse,
+	sendVoiceResponse,
+	sendVideoNoteResponse,
 	getMemberResponse,
 	sendMessageWithBinaryDataAndReplyMarkupResponse,
 } from './apiResponses';
@@ -45,6 +47,8 @@ describe('Telegram', () => {
 			mock.post('/bottestToken/getChatAdministrators').reply(200, chatAdministratorsResponse);
 			mock.post('/bottestToken/sendAnimation').reply(200, sendAnimationMessageResponse);
 			mock.post('/bottestToken/sendAudio').reply(200, sendAudioResponse);
+			mock.post('/bottestToken/sendVoice').reply(200, sendVoiceResponse);
+			mock.post('/bottestToken/sendVideoNote').reply(200, sendVideoNoteResponse);
 			mock.post('/bottestToken/getChatMember').reply(200, getMemberResponse);
 		});
 

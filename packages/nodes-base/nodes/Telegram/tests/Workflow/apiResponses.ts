@@ -382,6 +382,63 @@ export const sendAudioResponse = {
 	},
 };
 
+export const sendVoiceResponse = {
+	ok: true,
+	result: {
+		message_id: 47,
+		from: {
+			id: 9876543210,
+			is_bot: true,
+			first_name: '@n8n',
+			username: 'n8n_test_bot',
+		},
+		chat: {
+			id: 123456789,
+			first_name: 'Nathan',
+			last_name: 'W',
+			username: 'n8n',
+			type: 'private',
+		},
+		date: 1732969291,
+		voice: {
+			duration: 3,
+			file_name: 'sample-3s.ogg',
+			mime_type: 'audio/ogg',
+			file_id: 'AwACAgQAAxkDAAMuZ0sDSxCh3hW89NQa-eTpxKioqGAAAjsEAAIBCU1SGtsPA4N9TSo2BA',
+			file_unique_id: 'AgADOwQAAgEJTVI',
+			file_size: 12345,
+		},
+	},
+};
+
+export const sendVideoNoteResponse = {
+	ok: true,
+	result: {
+		message_id: 48,
+		from: {
+			id: 9876543210,
+			is_bot: true,
+			first_name: '@n8n',
+			username: 'n8n_test_bot',
+		},
+		chat: {
+			id: 123456789,
+			first_name: 'Nathan',
+			last_name: 'W',
+			username: 'n8n',
+			type: 'private',
+		},
+		date: 1732969291,
+		video_note: {
+			duration: 5,
+			length: 240,
+			file_id: 'DQACAgQAAxkDAAMwZ0sDSxCh3hW89NQa-eTpxKioqGAAAjsEAAIBCU1SGtsPA4N9TSo2BA',
+			file_unique_id: 'AgADOwQAAgEJTVJ',
+			file_size: 98765,
+		},
+	},
+};
+
 export const getMemberResponse = {
 	ok: true,
 	result: {
