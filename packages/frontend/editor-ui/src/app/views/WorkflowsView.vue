@@ -764,43 +764,45 @@ const isInitializing = ref(false);
 const initialize = async () => {
 	if (isInitializing.value) return;
 	isInitializing.value = true;
-	loading.value = true;
-	await setFiltersFromQueryString();
-
-	currentFolderId.value = route.params.folderId as string | null;
-
-	await Promise.all([
-		fetchWorkflows(),
-		workflowsListStore.fetchActiveWorkflows(),
-		usageStore.getLicenseInfo(),
-		foldersStore.fetchTotalWorkflowsAndFoldersCount(
-			route.params.projectId as string | undefined,
-			currentFolderId.value ?? undefined,
-		),
-	]);
-
-	// Only needed on an empty overview to decide whether to show the simplified layout.
-	if (foldersStore.totalWorkflowCount === 0 && projectPages.isOverviewSubPage) {
-		const variablesEnabled =
-			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
-		const dataTablesEnabled = settingsStore.isDataTableFeatureEnabled;
-
+	try {
 		loading.value = true;
-		try {
-			await Promise.all([
-				credentialsStore.fetchAllCredentials(),
-				variablesEnabled ? environmentsStore.fetchAllVariables() : Promise.resolve(),
-				dataTablesEnabled ? dataTableStore.fetchDataTables('', 1, 1) : Promise.resolve(),
-			]);
-		} catch (error) {
-			toast.showError(error, i18n.baseText('workflows.list.error.fetching.emptyStateData'));
-		} finally {
-			loading.value = false;
-		}
-	}
+		await setFiltersFromQueryString();
 
-	breadcrumbsLoading.value = false;
-	isInitializing.value = false;
+		currentFolderId.value = route.params.folderId as string | null;
+
+		await Promise.all([
+			fetchWorkflows(),
+			workflowsListStore.fetchActiveWorkflows(),
+			usageStore.getLicenseInfo(),
+			foldersStore.fetchTotalWorkflowsAndFoldersCount(
+				route.params.projectId as string | undefined,
+				currentFolderId.value ?? undefined,
+			),
+		]);
+
+		// Only needed on an empty overview to decide whether to show the simplified layout.
+		if (foldersStore.totalWorkflowCount === 0 && projectPages.isOverviewSubPage) {
+			const variablesEnabled =
+				settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
+			const dataTablesEnabled = settingsStore.isDataTableFeatureEnabled;
+
+			loading.value = true;
+			try {
+				await Promise.all([
+					credentialsStore.fetchAllCredentials(),
+					variablesEnabled ? environmentsStore.fetchAllVariables() : Promise.resolve(),
+					dataTablesEnabled ? dataTableStore.fetchDataTables('', 1, 1) : Promise.resolve(),
+				]);
+			} catch (error) {
+				toast.showError(error, i18n.baseText('workflows.list.error.fetching.emptyStateData'));
+			}
+		}
+
+		breadcrumbsLoading.value = false;
+	} finally {
+		loading.value = false;
+		isInitializing.value = false;
+	}
 };
 
 /**
