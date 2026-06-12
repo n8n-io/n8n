@@ -364,6 +364,18 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
+	/** Stops a running or waiting execution and returns the stopped execution summary. */
+	async stopExecution(executionId: string): Promise<ExecutionListResponse> {
+		const response = await this.api.request.post(`/rest/executions/${executionId}/stop`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to stop execution: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
 	async waitForExecution(
 		workflowId: string,
 		timeoutMs = 10000,

@@ -607,6 +607,9 @@ function hookFunctionsSave(
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
 				executionData: fullExecutionData,
+				// Once an execution has been canceled (e.g. a subworkflow stopped by the user in
+				// queue mode), do not overwrite that status when the run later completes.
+				conditions: { requireNotCanceled: true },
 			});
 
 			await updateExistingExecutionMetadata(

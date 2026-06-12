@@ -52,6 +52,7 @@ import { EventService } from '@/events/event.service';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { RoleService } from '@/services/role.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -128,6 +129,7 @@ export class ExecutionService {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly eventService: EventService,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+		private readonly executionStopService: ExecutionStopService,
 	) {}
 
 	/**
@@ -662,6 +664,11 @@ export class ExecutionService {
 		if (this.waitTracker.has(execution.id)) {
 			this.waitTracker.stopExecution(execution.id);
 		}
+
+		// Subworkflow executions run inline in a worker process and have no Bull job, so the main
+		// process cannot reach them locally. Broadcast a stop so the worker running the execution
+		// cancels it from its own ActiveExecutions. Workers not running it ignore the command.
+		await this.executionStopService.requestStop(execution.id);
 
 		return await this.stopDuringRun(execution);
 	}
