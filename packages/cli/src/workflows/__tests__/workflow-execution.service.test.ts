@@ -862,10 +862,10 @@ describe('WorkflowExecutionService', () => {
 			});
 
 			const workflowRepositoryMock = mock<WorkflowRepository>();
-			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
 
 			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
-			workflowPublishedDataService.resolveProductionVersion.mockResolvedValue({
+			workflowPublishedDataService.loadProductionWorkflow.mockResolvedValue(errorWorkflow);
+			workflowPublishedDataService.extractProductionVersion.mockReturnValue({
 				nodes: [errorTriggerNode],
 				connections: {},
 			});
@@ -995,10 +995,10 @@ describe('WorkflowExecutionService', () => {
 			});
 
 			const workflowRepositoryMock = mock<WorkflowRepository>();
-			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
 
 			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
-			workflowPublishedDataService.resolveProductionVersion.mockResolvedValue({
+			workflowPublishedDataService.loadProductionWorkflow.mockResolvedValue(errorWorkflow);
+			workflowPublishedDataService.extractProductionVersion.mockReturnValue({
 				nodes: publishedNodes,
 				connections: publishedConnections,
 			});
@@ -1016,7 +1016,7 @@ describe('WorkflowExecutionService', () => {
 				mock<Project>({ id: 'project-id' }),
 			);
 
-			expect(workflowPublishedDataService.resolveProductionVersion).toHaveBeenCalledTimes(1);
+			expect(workflowPublishedDataService.extractProductionVersion).toHaveBeenCalledTimes(1);
 			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
 			const runCall = workflowRunnerMock.run.mock.calls[0][0];
 
@@ -1053,10 +1053,10 @@ describe('WorkflowExecutionService', () => {
 			});
 
 			const workflowRepositoryMock = mock<WorkflowRepository>();
-			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
 
 			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
-			workflowPublishedDataService.resolveProductionVersion.mockResolvedValue(null);
+			workflowPublishedDataService.loadProductionWorkflow.mockResolvedValue(errorWorkflow);
+			workflowPublishedDataService.extractProductionVersion.mockReturnValue(null);
 
 			const service = buildService(
 				workflowRepositoryMock,

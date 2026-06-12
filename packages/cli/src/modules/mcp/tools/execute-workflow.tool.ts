@@ -204,7 +204,7 @@ export const executeWorkflow = async (
 		user,
 		['workflow:execute'],
 		workflowFinderService,
-		{ includeActiveVersion: true },
+		{ includeProductionVersion: true },
 	);
 	const runData = await buildRunData(
 		workflow,
@@ -223,7 +223,7 @@ export const executeWorkflow = async (
 	};
 };
 
-const getVersionDataForExecution = async (
+const getVersionDataForExecution = (
 	workflow: FoundWorkflow,
 	workflowId: string,
 	executionMode: z.infer<typeof inputSchema>['executionMode'],
@@ -232,12 +232,9 @@ const getVersionDataForExecution = async (
 		return { nodes: workflow.nodes ?? [], connections: workflow.connections ?? {} };
 	}
 
-	// Resolve the production (published) version via the shared selector; a null
-	// result means the workflow has no published version to execute.
-	const version = await Container.get(WorkflowPublishedDataService).resolveProductionVersion(
-		workflow,
-		workflowId,
-	);
+	// The workflow was loaded with its production version joined (see
+	// getMcpWorkflow); read it here. A null result means there is none to execute.
+	const version = Container.get(WorkflowPublishedDataService).extractProductionVersion(workflow);
 	if (version === null) {
 		throw new WorkflowAccessError(
 			`Workflow '${workflowId}' has no published (active) version to execute`,
@@ -255,11 +252,7 @@ const buildRunData = async (
 	inputs: z.infer<typeof inputSchema>['inputs'],
 	mcpService: McpService,
 ): Promise<IWorkflowExecutionDataProcess> => {
-	const { nodes, connections } = await getVersionDataForExecution(
-		workflow,
-		workflowId,
-		executionMode,
-	);
+	const { nodes, connections } = getVersionDataForExecution(workflow, workflowId, executionMode);
 	const triggerNode = findMcpSupportedTrigger(nodes, executionMode);
 
 	if (!triggerNode) {

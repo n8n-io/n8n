@@ -171,41 +171,53 @@ export async function getDraftWorkflowData(
 
 /**
  * Loads published workflow data for sub-workflow execution.
- * Used for production executions - requires the workflow to have an active (published) version.
- * Uses nodes/connections from the activeVersion in WorkflowHistory.
+ * Used for production executions - requires the workflow to have a published version.
+ * Loads the workflow and its production version in a single query.
  */
 export async function getPublishedWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
 	parentWorkflowId: string,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
-	const workflowData = await fetchWorkflowData(
-		workflowInfo,
-		parentWorkflowId,
-		parentWorkflowSettings,
-	);
-
-	// If workflow was provided as code, return as-is
-	if (workflowInfo.code !== undefined) {
-		return workflowData!;
-	}
-
-	// Resolve the production (published) version's nodes/connections via the
-	// shared selector; metadata (settings, tags) still comes from the workflow
-	// entity. A null result means the workflow is not active.
-	if (workflowData && 'activeVersion' in workflowData) {
-		const version = await Container.get(WorkflowPublishedDataService).resolveProductionVersion(
-			workflowData,
-			workflowData.id,
+	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
+		throw new UnexpectedError(
+			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
 		);
-		if (version) {
-			return { ...workflowData, nodes: version.nodes, connections: version.connections };
-		}
 	}
 
-	throw new UnexpectedError('Workflow is not active and cannot be executed.', {
-		extra: { workflowId: workflowInfo.id },
-	});
+	// DB workflow (id takes precedence over code): load the workflow and its
+	// production version in a single query, then read the published
+	// nodes/connections (metadata stays from the entity).
+	if (workflowInfo.id !== undefined) {
+		const publishedDataService = Container.get(WorkflowPublishedDataService);
+		const includeTags = !Container.get(GlobalConfig).tags.disabled;
+		const workflowData = await publishedDataService.loadProductionWorkflow(
+			workflowInfo.id,
+			includeTags ? { tags: true } : {},
+		);
+		if (!workflowData) {
+			throw new UnexpectedError('Workflow does not exist.', {
+				extra: { workflowId: workflowInfo.id },
+			});
+		}
+
+		const version = publishedDataService.extractProductionVersion(workflowData);
+		if (!version) {
+			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
+				extra: { workflowId: workflowInfo.id },
+			});
+		}
+
+		return { ...workflowData, nodes: version.nodes, connections: version.connections };
+	}
+
+	// Workflow provided as code: use as-is.
+	const workflowData = workflowInfo.code;
+	if (workflowData) {
+		if (!workflowData.id) workflowData.id = parentWorkflowId;
+		workflowData.settings ??= parentWorkflowSettings;
+	}
+	return workflowData!;
 }
 
 /**

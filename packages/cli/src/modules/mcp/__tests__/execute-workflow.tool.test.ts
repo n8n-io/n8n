@@ -40,8 +40,8 @@ describe('execute-workflow MCP tool', () => {
 		});
 		workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
 		// Default to the flag-off behavior (read from the activeVersion relation);
-		// flag-on tests override resolveProductionVersion.
-		workflowPublishedDataService.resolveProductionVersion.mockImplementation(async (workflow) =>
+		// individual tests override extractProductionVersion.
+		workflowPublishedDataService.extractProductionVersion.mockImplementation((workflow) =>
 			workflow.activeVersionId
 				? {
 						nodes: workflow.activeVersion?.nodes ?? [],
@@ -941,7 +941,7 @@ describe('execute-workflow MCP tool', () => {
 			const workflow = createWorkflow({ activeVersionId: uuid() });
 			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
 			(workflowRunner.run as jest.Mock).mockResolvedValue('exec-1');
-			workflowPublishedDataService.resolveProductionVersion.mockResolvedValue({
+			workflowPublishedDataService.extractProductionVersion.mockReturnValue({
 				nodes: [mappingTrigger],
 				connections: {},
 			});
@@ -956,7 +956,7 @@ describe('execute-workflow MCP tool', () => {
 				'production',
 			);
 
-			expect(workflowPublishedDataService.resolveProductionVersion).toHaveBeenCalledTimes(1);
+			expect(workflowPublishedDataService.extractProductionVersion).toHaveBeenCalledTimes(1);
 			const runCall = (workflowRunner.run as jest.Mock).mock
 				.calls[0][0] as IWorkflowExecutionDataProcess;
 			expect(runCall.startNodes).toEqual([{ name: 'MappingWebhook', sourceData: null }]);
@@ -965,7 +965,7 @@ describe('execute-workflow MCP tool', () => {
 		test('production throws when the resolver reports no published version', async () => {
 			const workflow = createWorkflow({ activeVersionId: uuid() });
 			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
-			workflowPublishedDataService.resolveProductionVersion.mockResolvedValue(null);
+			workflowPublishedDataService.extractProductionVersion.mockReturnValue(null);
 
 			await expect(
 				executeWorkflow(

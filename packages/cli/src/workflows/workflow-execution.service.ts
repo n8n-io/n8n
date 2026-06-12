@@ -321,10 +321,9 @@ export class WorkflowExecutionService {
 	): Promise<void> {
 		// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 		try {
-			const workflowData = await this.workflowRepository.get(
-				{ id: workflowId },
-				{ relations: ['activeVersion'] },
-			);
+			// Load the workflow and its production version in a single query.
+			const workflowData =
+				await this.workflowPublishedDataService.loadProductionWorkflow(workflowId);
 			if (workflowData === null) {
 				// The workflow could not be found
 				this.logger.error(
@@ -338,10 +337,7 @@ export class WorkflowExecutionService {
 
 			// Use the published (production) version's nodes/connections, not the
 			// draft. A null result means the workflow is not active.
-			const version = await this.workflowPublishedDataService.resolveProductionVersion(
-				workflowData,
-				workflowId,
-			);
+			const version = this.workflowPublishedDataService.extractProductionVersion(workflowData);
 			if (version === null) {
 				this.logger.error(
 					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`,
