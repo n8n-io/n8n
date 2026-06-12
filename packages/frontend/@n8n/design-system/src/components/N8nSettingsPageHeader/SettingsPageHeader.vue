@@ -94,8 +94,11 @@ if (import.meta.env.DEV) {
 	width: 100%;
 	/* The header column stays capped even when the layout content is full-width. */
 	max-width: var(--settings-content--max-width, 45rem);
-	/* Spacing below the header before the content begins. */
-	margin-block-end: var(--spacing--2xl);
+	/*
+	 * The 48px gap to the content below is owned and enforced by N8nSettingsLayout
+	 * (`.content > header + *`), not by an external margin here, so it stays deterministic
+	 * and never relies on margin-collapsing.
+	 */
 }
 
 .title {
@@ -105,13 +108,13 @@ if (import.meta.env.DEV) {
 .description {
 	margin: 0;
 	display: inline;
-	/* Tighter than the default body line-height (lg) so the short description doesn't read tall. */
-	line-height: var(--line-height--md);
+	/* Intentionally the standard body line-height (lg). */
+	line-height: var(--line-height--lg);
 }
 
-/* The inline N8nText pieces set their own line-height (lg); pull them down to match. */
+/* The inline N8nText pieces already use the body line-height (lg); keep them consistent. */
 .description :global(.n8n-text) {
-	line-height: var(--line-height--md);
+	line-height: var(--line-height--lg);
 }
 
 /* Keeps "leading copy + link + arrow" together so the docs sentence wraps as a single unit. */
@@ -123,7 +126,7 @@ if (import.meta.env.DEV) {
 	/* Reads as part of the description: same base text color, no link/primary color. */
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--sm);
-	line-height: var(--line-height--md);
+	line-height: var(--line-height--lg);
 	text-decoration: none;
 	cursor: pointer;
 }

@@ -52,17 +52,18 @@ const hasHeader = computed(() =>
 .section {
 	display: flex;
 	flex-direction: column;
+	/* Enforced section-header (title/description) → body gap: 16px. */
 	gap: var(--spacing--sm);
 	width: 100%;
 }
 
 /*
- * Sections own the vertical separation from a preceding sibling section (32px).
+ * Sections own the enforced vertical separation from a preceding sibling section (32px).
  * Higher specificity than the layout's generic inter-child spacing, so adjacent
  * sections sit 32px apart while the header→content gap stays untouched.
  */
 .section + .section {
-	margin-block-start: var(--spacing--xl);
+	margin-block-start: var(--spacing--xl); /* 32px */
 }
 
 .header {
@@ -74,6 +75,10 @@ const hasHeader = computed(() =>
 .groups {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	/*
+	 * Enforced gap between separate row GROUPS within a section: 12px. (Rows WITHIN a single
+	 * group are separated by dividers in N8nSettingsRowGroup, not by this gap.)
+	 */
+	gap: var(--spacing--xs); /* 12px */
 }
 </style>

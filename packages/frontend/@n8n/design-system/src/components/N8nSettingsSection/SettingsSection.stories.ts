@@ -14,7 +14,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'An optionally titled section that wraps one or more row groups with consistent vertical rhythm.',
+					'An optionally titled section that wraps one or more row groups. The vertical rhythm is fixed by design and driven by spacing tokens — there are no spacing props to override: the section header (title/description) sits 16px (`--spacing--sm`) above its body, separate row groups within the section are 12px (`--spacing--xs`) apart, and adjacent sibling sections are 32px (`--spacing--xl`) apart.',
 			},
 		},
 	},

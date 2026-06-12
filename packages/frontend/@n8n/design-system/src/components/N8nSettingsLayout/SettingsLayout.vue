@@ -92,9 +92,22 @@ const onBack = () => emit('back');
 		margin-inline: auto;
 	}
 
-	/* Vertical rhythm between sections; margins collapse so the header below gets 48px. */
+	/*
+	 * Vertical rhythm is owned solely by the FOLLOWING child's margin-block-start, so two
+	 * adjacent margins never meet and the spacing never depends on margin-collapsing.
+	 * Default rhythm for non-section direct children:
+	 */
 	> * + * {
-		margin-block-start: var(--spacing--lg);
+		margin-block-start: var(--spacing--lg); /* 24px */
+	}
+
+	/*
+	 * Enforced page-header → content gap (48px). The page header renders a semantic <header>,
+	 * so the element that follows it owns the larger gap. Kept here (not on the header's own
+	 * margin) so it is deterministic, can't be overridden, and never relies on collapse.
+	 */
+	> header + * {
+		margin-block-start: var(--spacing--2xl); /* 48px */
 	}
 }
 
