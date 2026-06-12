@@ -111,6 +111,18 @@ n8n-assistant leaves a comment on every community PR containing `This PR has bee
 
 If no n8n-assistant comment exists (older PRs that predate the automation), `linearTicket` is `null`.
 
+## Step 5b — Find Linear tickets for issues this PR claims to fix
+
+The PR body often says `Fixes #NNNN` / `Closes #NNNN` / `Resolves #NNNN` (or links to `https://github.com/n8n-io/n8n/issues/NNNN`). Each of those issues usually has its own GHC ticket (or has already been triaged to a team). Surface those so the assign action can cross-reference them.
+
+1. Extract every issue number from the PR body matching `\b(?:fix(?:es)?|close[sd]?|resolve[sd]?)\s+#?(\d+)\b` (case-insensitive) **or** URLs matching `github\.com/n8n-io/n8n/issues/(\d+)`. Deduplicate.
+2. For each issue number, search Linear with `mcp__linear-server__list_issues(query="github.com/n8n-io/n8n/issues/<num>", limit=5)` and filter the result to issues whose `description` contains the exact URL `https://github.com/n8n-io/n8n/issues/<num>`. The n8n-assistant bot embeds that URL in the description of every community-issue ticket it creates, so the match is reliable.
+3. Collect the matching ticket IDs (e.g. `GHC-1234`, or wherever they've been routed since — `NODE-5678`, `CAT-3338`). Include cancelled/duplicate tickets too — the comment is still useful for traceability.
+
+Emit the result as `relatedIssueTickets` in the JSON. The orchestrator uses this list during the `assign` action to post a cross-reference comment on each related ticket — *"FYI, [community PR #<pr>](https://github.com/n8n-io/n8n/pull/<pr>) claims to fix the issue tracked here; routed to <team> as <linearTicket>."*
+
+If no `Fixes/Closes/Resolves` references exist, return `relatedIssueTickets: []`.
+
 ## Step 6 — Output JSON
 
 ```json
@@ -119,6 +131,7 @@ If no n8n-assistant comment exists (older PRs that predate the automation), `lin
   "messageForUser": "<Short message to the contributor listing what they need to address. 'N/A' if ready.>",
   "team": "<Linear team name (from reference/teams.md), or 'Engineering' as fallback>",
   "linearTicket": "<GHC-XXXX or null>",
+  "relatedIssueTickets": [<"GHC-1234" | "NODE-5678" | ...>],
   "checks": {
     "AutoReject": <"typo-only" | "new-node" | null>,
     "CLA": <bool>,
