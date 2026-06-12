@@ -28,6 +28,13 @@ import { truncateText } from '../utils/ast-helpers.js';
  * - page.goto('/workflow/123')
  * - this.page.goto(`/workflow/${id}`)
  * - n8n.page.goto(ROUTES.NEW_WORKFLOW_PAGE)
+ *
+ * Legitimate raw navigations (e.g. benchmarks measuring cold load time, or
+ * tests exercising routing/URL behaviour directly) can opt out with a
+ * directive comment on the preceding line, ideally with a reason:
+ *
+ *   // janitor-disable-next-line no-raw-editor-navigation -- measures cold load
+ *   await n8n.page.goto(`/workflow/${workflowId}`);
  */
 export class NoRawEditorNavigationRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'no-raw-editor-navigation';
@@ -56,6 +63,7 @@ export class NoRawEditorNavigationRule extends AstRule<{ rootDir: string }> {
 		const violations: Violation[] = [];
 
 		for (const file of files) {
+			const lines = file.getFullText().split('\n');
 			const calls = file.getDescendantsOfKind(SyntaxKind.CallExpression);
 
 			for (const call of calls) {
@@ -75,6 +83,10 @@ export class NoRawEditorNavigationRule extends AstRule<{ rootDir: string }> {
 
 				const callText = call.getText();
 				if (ruleAllows(this.id, callText)) {
+					continue;
+				}
+
+				if (this.isSuppressed(lines, call.getStartLineNumber())) {
 					continue;
 				}
 
@@ -114,5 +126,21 @@ export class NoRawEditorNavigationRule extends AstRule<{ rootDir: string }> {
 			NoRawEditorNavigationRule.EDITOR_ROUTE.test(argText) ||
 			NoRawEditorNavigationRule.NEW_WORKFLOW_CONSTANT.test(argText)
 		);
+	}
+
+	/** True when the line above the call carries a disable directive for this rule. */
+	private isSuppressed(lines: string[], lineNumber: number): boolean {
+		const previousLine = lines[lineNumber - 2] ?? '';
+		const directive = /\/\/\s*janitor-disable-next-line\s+([^\s].*)?$/.exec(previousLine);
+		if (!directive) {
+			return false;
+		}
+		const ruleList = (directive[1] ?? '').split('--')[0];
+		const rules = ruleList
+			.split(/[\s,]+/)
+			.map((r) => r.trim())
+			.filter(Boolean);
+		// A bare directive (no rule ids) suppresses everything; otherwise it must name this rule.
+		return rules.length === 0 || rules.includes(this.id);
 	}
 }
