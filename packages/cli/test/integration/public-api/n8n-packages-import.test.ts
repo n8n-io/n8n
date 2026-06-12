@@ -157,6 +157,23 @@ describe('POST /n8n-packages/import', () => {
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
 	});
 
+	test('accepts a request that supplies every documented form field', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', ownerPersonalProject.id)
+			.field('folderId', '')
+			.field('credentialMatchingMode', 'id-only')
+			.field('credentialMissingMode', 'must-preexist')
+			.field('workflowConflictPolicy', 'fail')
+			.field('workflowIdPolicy', 'new')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
 	test('returns 409 with conflict metadata when a workflow already exists under fail policy', async () => {
 		const firstBuffer = await buildImportPackage();
 
