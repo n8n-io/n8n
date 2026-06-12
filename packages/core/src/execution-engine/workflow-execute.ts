@@ -49,7 +49,7 @@ import {
 	ApplicationError,
 	BaseError,
 	sleep,
-	Node,
+	isNodeClassInstance,
 	UnexpectedError,
 	UserError,
 	OperationalError,
@@ -1048,10 +1048,9 @@ export class WorkflowExecute {
 			if (customOperation) {
 				data = await customOperation.call(context);
 			} else if (nodeType.execute) {
-				data =
-					nodeType instanceof Node
-						? await nodeType.execute(context, subNodeExecutionResults)
-						: await nodeType.execute.call(context, subNodeExecutionResults);
+				data = isNodeClassInstance(nodeType)
+					? await nodeType.execute(context, subNodeExecutionResults)
+					: await nodeType.execute.call(context, subNodeExecutionResults);
 			} else {
 				throw new UnexpectedError(
 					"Can't execute node. There is no custom operation and the node has not execute function.",
