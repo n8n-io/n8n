@@ -57,33 +57,20 @@ export function validateNodeSelectionForExtraction<TNode extends INode>(
 	const subgraphResult = validateNodeSelectionSubgraph(input);
 	if (!subgraphResult.valid) return subgraphResult;
 
+	const { nodes, getNodeType, getNodeInputs, getNodeOutputs } = input;
 	const { start, end } = subgraphResult.subGraphData;
-	const nodesByName = new Map(input.nodes.map((node) => [node.name, node]));
+	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
 
 	if (
 		start &&
-		!hasSingleMainIO(
-			start,
-			'inputs',
-			nodesByName,
-			input.getNodeType,
-			input.getNodeInputs,
-			input.getNodeOutputs,
-		)
+		!hasSingleMainIO(start, 'inputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
 	) {
 		return { valid: false, reason: 'multiple-input-branches', node: start };
 	}
 
 	if (
 		end &&
-		!hasSingleMainIO(
-			end,
-			'outputs',
-			nodesByName,
-			input.getNodeType,
-			input.getNodeInputs,
-			input.getNodeOutputs,
-		)
+		!hasSingleMainIO(end, 'outputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
 	) {
 		return { valid: false, reason: 'multiple-output-branches', node: end };
 	}

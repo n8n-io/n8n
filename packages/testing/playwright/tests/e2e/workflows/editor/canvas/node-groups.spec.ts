@@ -37,6 +37,7 @@ test.describe(
 			await setupRequirements(requirements);
 			const importResult = await n8n.start.fromImportedWorkflow(FIXTURE);
 			workflowId = importResult.workflowId;
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.canvas.deselectAll();
 		});
@@ -245,6 +246,7 @@ test.describe(
 		test.beforeEach(async ({ n8n, setupRequirements }) => {
 			await setupRequirements(requirements);
 			await n8n.start.fromImportedWorkflow(IF_FIXTURE);
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(5);
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.canvas.deselectAll();
 		});
