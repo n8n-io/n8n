@@ -49,6 +49,7 @@ import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { NodeTypes } from '@/node-types';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
@@ -140,6 +141,7 @@ export class SourceControlImportService {
 		private readonly dataTableColumnRepository: DataTableColumnRepository,
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly nodeTypes: NodeTypes,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -754,7 +756,7 @@ export class SourceControlImportService {
 		importedWorkflow.nodeGroups ??= [];
 
 		try {
-			validateWorkflowNodeGroups(importedWorkflow);
+			validateWorkflowNodeGroups(importedWorkflow, this.nodeTypes);
 		} catch {
 			this.logger.warn(
 				`Workflow file ${candidate.file} has invalid nodeGroups, resetting to empty`,

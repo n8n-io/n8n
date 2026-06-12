@@ -372,6 +372,17 @@ export class WorkflowService {
 			);
 		}
 
+		// Reconcile node groups with the effective node set: nodes removed by this
+		// update are dropped from their groups and emptied groups are dissolved,
+		// mirroring the canvas behavior when nodes are deleted.
+		const repairedNodeGroups = WorkflowHelpers.repairWorkflowNodeGroups({
+			nodes: workflowUpdateData.nodes ?? workflow.nodes,
+			nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
+		});
+		if (repairedNodeGroups) {
+			workflowUpdateData.nodeGroups = repairedNodeGroups;
+		}
+
 		// Update the workflow's version when changing nodes, connections, or nodeGroups
 		const hasNodesKey = 'nodes' in workflowUpdateData;
 		const hasConnectionsKey = 'connections' in workflowUpdateData;
@@ -407,10 +418,14 @@ export class WorkflowService {
 			nodes: workflowUpdateData.nodes ?? workflow.nodes,
 			connections: workflowUpdateData.connections ?? workflow.connections,
 		});
-		WorkflowHelpers.validateWorkflowNodeGroups({
-			nodes: workflowUpdateData.nodes ?? workflow.nodes,
-			nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
-		});
+		WorkflowHelpers.validateWorkflowNodeGroups(
+			{
+				nodes: workflowUpdateData.nodes ?? workflow.nodes,
+				connections: workflowUpdateData.connections ?? workflow.connections,
+				nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
+			},
+			this.nodeTypes,
+		);
 
 		// Strip redactionPolicy if instance lacks data-redaction license
 		if (

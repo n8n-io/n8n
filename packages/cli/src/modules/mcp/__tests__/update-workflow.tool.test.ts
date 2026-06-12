@@ -7,6 +7,7 @@ import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workf
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
 import { TagService } from '@/services/tag.service';
@@ -418,6 +419,23 @@ describe('update-workflow MCP tool', () => {
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
 			expect(response.error).toBe("Workflow not found or you don't have permission to access it.");
+		});
+
+		test('returns a recoverable error when the update would leave a node group invalid', async () => {
+			updateMock.mockRejectedValueOnce(
+				new BadRequestError(
+					'The nodes in group "My Group" are not all connected to each other. Grouped nodes must form a single connected sequence.',
+				),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'removeConnection', source: 'A', target: 'B' }],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain('group "My Group"');
 		});
 
 		test('tracks telemetry on success with op metadata', async () => {
