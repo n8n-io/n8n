@@ -62,12 +62,14 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		memory: options.memory,
 	});
 
-	// Desktop runs have no surface to answer a "configure credentials" suspend, so
-	// thread the flag onto the context the domain tools capture — setup auto-defers
-	// rather than hanging the run.
+	// Desktop runs have no surface to answer a "configure credentials" or
+	// "edit workflow?" suspend, so thread the profile flags onto the context the
+	// domain tools capture — setup auto-defers and pre-approved edits skip the
+	// confirmation rather than hanging the run.
 	const toolContext = {
 		...context,
 		suppressInteractiveSetup: desktopProfile.suppressInteractiveSetup,
+		workflowEditsPreApproved: desktopProfile.preApproveWorkflowEdits,
 	};
 
 	// Build native n8n domain tools (context captured via closures — per-run)

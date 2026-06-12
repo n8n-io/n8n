@@ -66,6 +66,13 @@ export interface DesktopAssistantProfile {
 	 * is saved credential-less, surfacing in the desktop app's "Action needed".
 	 */
 	suppressInteractiveSetup: boolean;
+	/**
+	 * Skip the HITL "Edit <workflow>?" confirmation on `build-workflow` updates.
+	 * Edit-mode runs are launched from the task detail view after the user picked
+	 * the exact changes and pressed Done — that interaction is the approval, and
+	 * the run has no surface to answer a suspend (it would hang until timeout).
+	 */
+	preApproveWorkflowEdits: boolean;
 }
 
 /** Shared preamble: both desktop modes run headless, so text output is waste. */
@@ -176,6 +183,7 @@ export function getDesktopAssistantProfile(
 				],
 				preloadGatewayTools: true,
 				suppressInteractiveSetup: true,
+				preApproveWorkflowEdits: false,
 			};
 		case 'desktop-assistant-promote':
 			return {
@@ -183,6 +191,7 @@ export function getDesktopAssistantProfile(
 				extraTools: [createReportPromoteOutcomeTool({ memory: deps.memory })],
 				preloadGatewayTools: false,
 				suppressInteractiveSetup: true,
+				preApproveWorkflowEdits: false,
 			};
 		case 'desktop-assistant-edit':
 			return {
@@ -190,6 +199,7 @@ export function getDesktopAssistantProfile(
 				extraTools: [],
 				preloadGatewayTools: false,
 				suppressInteractiveSetup: true,
+				preApproveWorkflowEdits: true,
 			};
 		case undefined:
 			return {
@@ -197,6 +207,7 @@ export function getDesktopAssistantProfile(
 				extraTools: [],
 				preloadGatewayTools: false,
 				suppressInteractiveSetup: false,
+				preApproveWorkflowEdits: false,
 			};
 	}
 }
