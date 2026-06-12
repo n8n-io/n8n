@@ -3393,6 +3393,7 @@
 	"settings.externalSecrets.actionBox.buttonText": "See plans",
 	"settings.externalSecrets.card.setUp": "Set Up",
 	"settings.externalSecrets.card.secretsCount": "{count} secret | {count} secrets",
+	"settings.externalSecrets.card.onDemand": "On-demand secrets",
 	"settings.externalSecrets.card.connectedAt": "Connected {date}",
 	"settings.externalSecrets.card.connected": "Enabled",
 	"settings.externalSecrets.card.disconnected": "Disabled",
