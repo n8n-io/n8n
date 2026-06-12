@@ -13,6 +13,7 @@
  */
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { getParentNodes, mapConnectionsByDestination, type IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { HAIKU_MODEL } from '../../utils/eval-agents';
@@ -51,28 +52,6 @@ Return only the JSON object. No prose, no markdown fences.`;
 
 const USER_ACTION_NODE_TYPES = new Set(['n8n-nodes-base.form', 'n8n-nodes-base.wait']);
 
-/**
- * Immediate upstream node names per node, derived from `main` connections.
- * Used to give the LLM pass-through context for user-action nodes (a Wait
- * node's output is its input; a Form page's output rides on upstream data).
- */
-function buildUpstreamMap(workflow: WorkflowJSON): Map<string, string[]> {
-	const parents = new Map<string, string[]>();
-	for (const [sourceName, outputs] of Object.entries(workflow.connections ?? {})) {
-		if (!isRecord(outputs) || !Array.isArray(outputs.main)) continue;
-		for (const port of outputs.main) {
-			if (!Array.isArray(port)) continue;
-			for (const target of port) {
-				if (!isRecord(target) || typeof target.node !== 'string') continue;
-				const list = parents.get(target.node) ?? [];
-				list.push(sourceName);
-				parents.set(target.node, list);
-			}
-		}
-	}
-	return parents;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -102,10 +81,10 @@ function formatNodeBlock(
 function buildUpstreamContext(
 	workflow: WorkflowJSON,
 	nodeName: string,
-	upstreamMap: Map<string, string[]>,
+	connectionsByDestination: IConnections,
 ): string | undefined {
-	const parentNames = upstreamMap.get(nodeName);
-	if (!parentNames?.length) return undefined;
+	const parentNames = getParentNodes(connectionsByDestination, nodeName, 'main', 1);
+	if (parentNames.length === 0) return undefined;
 	const nodesByName = new Map(
 		(workflow.nodes ?? [])
 			.filter((n): n is WorkflowJSON['nodes'][number] & { name: string } => Boolean(n.name))
@@ -149,7 +128,9 @@ export async function generateSimulationFixtures(
 	const nodeNames = nodes.map((n) => n.name);
 	if (nodeNames.length === 0) return {};
 
-	const upstreamMap = buildUpstreamMap(input.workflow);
+	const connectionsByDestination = mapConnectionsByDestination(
+		(input.workflow.connections ?? {}) as IConnections,
+	);
 	const userText = [
 		'Generate realistic mock output (pin-data items) for the following simulated n8n nodes.',
 		input.workflow.name ? `\nWorkflow: ${input.workflow.name}` : '',
@@ -160,7 +141,7 @@ export async function generateSimulationFixtures(
 					n,
 					reasonByName.get(n.name) ?? '',
 					USER_ACTION_NODE_TYPES.has(n.type)
-						? buildUpstreamContext(input.workflow, n.name, upstreamMap)
+						? buildUpstreamContext(input.workflow, n.name, connectionsByDestination)
 						: undefined,
 				),
 			)

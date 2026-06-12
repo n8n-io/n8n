@@ -17,6 +17,7 @@
  */
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { isTriggerNodeType } from './workflow-json-utils';
@@ -185,19 +186,15 @@ function getStringParam(node: WorkflowNode, key: string): string | undefined {
  * pin data, so the plan excludes them.
  */
 function collectMainFlowNodeNames(workflow: WorkflowJSON): Set<string> {
+	const connections = (workflow.connections ?? {}) as IConnections;
 	const names = new Set<string>();
-	const connections = workflow.connections ?? {};
 	for (const [sourceName, outputs] of Object.entries(connections)) {
-		if (!isRecord(outputs)) continue;
 		const main = outputs.main;
-		if (!Array.isArray(main)) continue;
+		if (!main) continue;
 		names.add(sourceName);
 		for (const port of main) {
-			if (!Array.isArray(port)) continue;
-			for (const target of port) {
-				if (isRecord(target) && typeof target.node === 'string') {
-					names.add(target.node);
-				}
+			for (const target of port ?? []) {
+				names.add(target.node);
 			}
 		}
 	}
