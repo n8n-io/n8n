@@ -224,4 +224,155 @@ describe('get_resource_locator_options tool', () => {
 			paginationToken: undefined,
 		});
 	});
+
+	it('auto-detects the authentication parameter from the credential type', async () => {
+		const { tool, dynamicNodeParametersService } = makeTool(
+			makeNodeType({
+				credentials: [
+					{
+						name: 'googleSheetsOAuth2Api',
+						required: true,
+						displayOptions: { show: { authentication: ['oAuth2'] } },
+					},
+					{
+						name: 'googleApi',
+						required: true,
+						displayOptions: { show: { authentication: ['serviceAccount'] } },
+					},
+				],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						default: 'oAuth2',
+						options: [
+							{ name: 'OAuth2', value: 'oAuth2' },
+							{ name: 'Service Account', value: 'serviceAccount' },
+						],
+					},
+					{
+						displayName: 'Sheet Name or ID',
+						name: 'sheetId',
+						type: 'options',
+						default: '',
+						typeOptions: { loadOptionsMethod: 'getSheets' },
+					},
+				],
+			}),
+		);
+		dynamicNodeParametersService.getOptionsViaMethodName.mockResolvedValue([]);
+
+		await tool.handler!(
+			{
+				nodeType: 'n8n-nodes-base.googleSheetsTool',
+				nodeTypeVersion: 1,
+				parameterPath: 'sheetId',
+				credentials: { googleApi: { id: 'cred-1', name: 'Google Service Account' } },
+			},
+			ctx,
+		);
+
+		expect(dynamicNodeParametersService.getOptionsViaMethodName).toHaveBeenCalledWith(
+			'getSheets',
+			'parameters.sheetId',
+			expect.any(Object),
+			{ name: 'n8n-nodes-base.googleSheetsTool', version: 1 },
+			{ authentication: 'serviceAccount' },
+			{ googleApi: { id: 'cred-1', name: 'Google Service Account' } },
+		);
+	});
+
+	it('keeps an explicitly provided authentication parameter', async () => {
+		const { tool, dynamicNodeParametersService } = makeTool(
+			makeNodeType({
+				credentials: [
+					{
+						name: 'googleSheetsOAuth2Api',
+						required: true,
+						displayOptions: { show: { authentication: ['oAuth2'] } },
+					},
+				],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						default: 'oAuth2',
+						options: [{ name: 'OAuth2', value: 'oAuth2' }],
+					},
+					{
+						displayName: 'Sheet Name or ID',
+						name: 'sheetId',
+						type: 'options',
+						default: '',
+						typeOptions: { loadOptionsMethod: 'getSheets' },
+					},
+				],
+			}),
+		);
+		dynamicNodeParametersService.getOptionsViaMethodName.mockResolvedValue([]);
+
+		await tool.handler!(
+			{
+				nodeType: 'n8n-nodes-base.googleSheetsTool',
+				nodeTypeVersion: 1,
+				parameterPath: 'sheetId',
+				nodeParameters: { authentication: 'customAuth' },
+				credentials: { googleSheetsOAuth2Api: { id: 'cred-1', name: 'Google Sheets' } },
+			},
+			ctx,
+		);
+
+		expect(dynamicNodeParametersService.getOptionsViaMethodName).toHaveBeenCalledWith(
+			'getSheets',
+			'parameters.sheetId',
+			expect.any(Object),
+			{ name: 'n8n-nodes-base.googleSheetsTool', version: 1 },
+			{ authentication: 'customAuth' },
+			{ googleSheetsOAuth2Api: { id: 'cred-1', name: 'Google Sheets' } },
+		);
+	});
+
+	it('surfaces the property builderHint alongside results', async () => {
+		const rlcResult: INodeListSearchResult = {
+			results: [{ name: 'Roadmap', value: 'project-1' }],
+		};
+		const { tool, dynamicNodeParametersService } = makeTool(
+			makeNodeType({
+				properties: [
+					{
+						displayName: 'Project',
+						name: 'projectId',
+						type: 'resourceLocator',
+						default: { __rl: true, mode: 'list', value: '' },
+						builderHint: { propertyHint: 'Pick the project the user mentioned' },
+						modes: [
+							{
+								displayName: 'From List',
+								name: 'list',
+								type: 'list',
+								typeOptions: { searchListMethod: 'searchProjects' },
+							},
+						],
+					},
+				],
+			}),
+		);
+		dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue(rlcResult);
+
+		const result = await tool.handler!(
+			{
+				nodeType: 'n8n-nodes-base.projectTool',
+				nodeTypeVersion: 1,
+				parameterPath: 'projectId',
+			},
+			ctx,
+		);
+
+		expect(result).toMatchObject({
+			ok: true,
+			builderHint: 'Pick the project the user mentioned',
+		});
+	});
 });

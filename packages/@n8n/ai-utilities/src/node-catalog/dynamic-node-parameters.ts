@@ -215,6 +215,100 @@ export function toLoadedOptionParameterValue(option: INodePropertyOptions): Node
 	return option.value;
 }
 
+/**
+ * The selection guidance that should accompany live options for a dynamic
+ * parameter, taken from the property's `builderHint` annotation.
+ */
+export function getPropertyBuilderHint(property: INodeProperties): string | undefined {
+	return property.builderHint?.propertyHint;
+}
+
+/**
+ * Find the `builderHint.propertyHint` of the property that references a given
+ * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
+ * Returns undefined if no matching property is found.
+ *
+ * Used to surface a node's per-parameter hint alongside live option results
+ * so agents that skip reading the full type definition still see selection
+ * guidance.
+ */
+export function findBuilderHintForMethod(
+	nodeDesc: INodeTypeDescription,
+	methodName: string,
+	methodType: 'listSearch' | 'loadOptions',
+): string | undefined {
+	const referencesMethod = (prop: INodeProperties): boolean => {
+		switch (methodType) {
+			case 'loadOptions':
+				return prop.typeOptions?.loadOptionsMethod === methodName;
+			case 'listSearch': {
+				const modes: INodePropertyMode[] = prop.modes ?? [];
+				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
+			}
+		}
+	};
+
+	// `options` on INodeProperties is a three-way union: enum values (no nested
+	// params), INodeProperties (nested params), or INodePropertyCollection
+	// (nested params under `.values`). Discriminate instead of blind-casting.
+	const isCollection = (item: NodePropertyItem): item is INodePropertyCollection =>
+		'values' in item;
+	const isProperty = (item: NodePropertyItem): item is INodeProperties => 'type' in item;
+
+	const searchProps = (items?: NodePropertyItem[]): string | undefined => {
+		for (const item of items ?? []) {
+			if (isCollection(item)) {
+				const nested = searchProps(item.values);
+				if (nested) return nested;
+				continue;
+			}
+			if (!isProperty(item)) continue; // plain enum value — skip
+			if (referencesMethod(item)) {
+				const hint = getPropertyBuilderHint(item);
+				if (hint) return hint;
+			}
+			const nested = searchProps(item.options);
+			if (nested) return nested;
+		}
+		return undefined;
+	};
+
+	return searchProps(nodeDesc.properties);
+}
+
+/**
+ * Detect the value a node's `authentication` parameter must take for a given
+ * credential type. Many nodes (e.g. Google Sheets) use an `authentication`
+ * parameter to switch between serviceAccount/oAuth2, and
+ * `getNodeParameter('authentication', 0)` falls back to the wrong default
+ * when it's not set. Returns undefined when the node has no matching
+ * authentication option.
+ */
+export function detectAuthenticationParameterValue(
+	nodeDesc: INodeTypeDescription,
+	credentialType: string,
+): string | undefined {
+	const authProp = nodeDesc.properties.find((p) => p.name === 'authentication');
+	if (!authProp?.options) return undefined;
+
+	// Find the option whose credentialTypes includes our credential type
+	for (const opt of authProp.options) {
+		if (typeof opt === 'object' && 'value' in opt && typeof opt.value === 'string') {
+			const credTypes = nodeDesc.credentials
+				?.filter((c) => {
+					const show = c.displayOptions?.show?.authentication;
+					return Array.isArray(show) && show.includes(opt.value);
+				})
+				.map((c) => c.name);
+			if (credTypes?.includes(credentialType)) {
+				return opt.value;
+			}
+		}
+	}
+
+	return undefined;
+}
+
 function escapeXmlText(value: string): string {
 	return value
 		.replaceAll('&', '&amp;')

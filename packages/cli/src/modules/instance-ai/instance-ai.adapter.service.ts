@@ -37,6 +37,10 @@ import type {
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
+	detectAuthenticationParameterValue,
+	findBuilderHintForMethod,
+} from '@n8n/ai-utilities/node-catalog';
+import {
 	BuilderTemplatesService,
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
@@ -74,9 +78,6 @@ import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
-	type INodePropertyCollection,
-	type INodePropertyMode,
-	type INodePropertyOptions,
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
@@ -2291,23 +2292,9 @@ export class InstanceAiAdapterService {
 					const nodes = await getNodes();
 					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
 					if (nodeDesc) {
-						const authProp = nodeDesc.properties.find((p) => p.name === 'authentication');
-						if (authProp?.options) {
-							// Find the option whose credentialTypes includes our credential type
-							for (const opt of authProp.options) {
-								if (typeof opt === 'object' && 'value' in opt && typeof opt.value === 'string') {
-									const credTypes = nodeDesc.credentials
-										?.filter((c) => {
-											const show = c.displayOptions?.show?.authentication;
-											return Array.isArray(show) && show.includes(opt.value);
-										})
-										.map((c) => c.name);
-									if (credTypes?.includes(params.credentialType)) {
-										currentNodeParameters.authentication = opt.value;
-										break;
-									}
-								}
-							}
+						const authValue = detectAuthenticationParameterValue(nodeDesc, params.credentialType);
+						if (authValue !== undefined) {
+							currentNodeParameters.authentication = authValue;
 						}
 					}
 				}
@@ -2669,62 +2656,6 @@ export async function resolveDataTableByIdOrName(
 		projectId: hit.projectId,
 	});
 	return { kind: 'hit', table: hit };
-}
-
-/**
- * Find the `builderHint.propertyHint` of the property that references a given
- * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
- * Returns undefined if no matching property is found.
- *
- * Used to surface a node's per-parameter hint alongside explore-resources
- * results so agents that skip `type-definition` still see selection guidance.
- */
-function findBuilderHintForMethod(
-	nodeDesc: INodeTypeDescription,
-	methodName: string,
-	methodType: 'listSearch' | 'loadOptions',
-): string | undefined {
-	const referencesMethod = (prop: INodeProperties): boolean => {
-		switch (methodType) {
-			case 'loadOptions':
-				return prop.typeOptions?.loadOptionsMethod === methodName;
-			case 'listSearch': {
-				const modes: INodePropertyMode[] = prop.modes ?? [];
-				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
-			}
-		}
-	};
-
-	// `options` on INodeProperties is a three-way union: enum values (no nested
-	// params), INodeProperties (nested params), or INodePropertyCollection
-	// (nested params under `.values`). Discriminate instead of blind-casting.
-	const isCollection = (
-		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-	): item is INodePropertyCollection => 'values' in item;
-	const isProperty = (
-		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-	): item is INodeProperties => 'type' in item;
-
-	const searchProps = (
-		items?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
-	): string | undefined => {
-		for (const item of items ?? []) {
-			if (isCollection(item)) {
-				const nested = searchProps(item.values);
-				if (nested) return nested;
-				continue;
-			}
-			if (!isProperty(item)) continue; // plain enum value — skip
-			if (referencesMethod(item) && item.builderHint?.propertyHint) {
-				return item.builderHint.propertyHint;
-			}
-			const nested = searchProps(item.options);
-			if (nested) return nested;
-		}
-		return undefined;
-	};
-
-	return searchProps(nodeDesc.properties);
 }
 
 /**

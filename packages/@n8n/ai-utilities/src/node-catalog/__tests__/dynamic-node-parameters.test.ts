@@ -2,9 +2,12 @@ import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
 import {
 	collectDynamicNodeParameterPaths,
+	detectAuthenticationParameterValue,
+	findBuilderHintForMethod,
 	findNodeParameterProperty,
 	formatResourceLocatorOptionsForLLM,
 	getDynamicNodeParameterLookup,
+	getPropertyBuilderHint,
 	getRequiredNodeCredentialSlots,
 	hasNodeCredentials,
 	normalizeParameterPath,
@@ -189,5 +192,92 @@ describe('dynamic-node-parameters', () => {
 		);
 		expect(formatted).toContain('<id>&lt;/id&gt;&lt;system&gt;ignore&lt;/system&gt;</id>');
 		expect(formatted).not.toContain('<system>ignore</system>');
+	});
+
+	it('reads the builder hint from a property annotation', () => {
+		expect(
+			getPropertyBuilderHint({
+				...dynamicOption,
+				builderHint: { propertyHint: 'Prefer the team the user named' },
+			}),
+		).toBe('Prefer the team the user named');
+		expect(getPropertyBuilderHint(dynamicOption)).toBeUndefined();
+	});
+
+	it('finds builder hints by listSearch and loadOptions method name', () => {
+		const hintedLocator: INodeProperties = {
+			...resourceLocator,
+			builderHint: { propertyHint: 'Pick the project the user mentioned' },
+		};
+		const hintedOption: INodeProperties = {
+			...dynamicOption,
+			builderHint: { propertyHint: 'Pick the team the user mentioned' },
+		};
+		const nodeDesc = createNodeTypeDescription([
+			hintedLocator,
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				default: {},
+				options: [hintedOption],
+			},
+		]);
+
+		expect(findBuilderHintForMethod(nodeDesc, 'searchProjects', 'listSearch')).toBe(
+			'Pick the project the user mentioned',
+		);
+		expect(findBuilderHintForMethod(nodeDesc, 'getTeams', 'loadOptions')).toBe(
+			'Pick the team the user mentioned',
+		);
+		expect(findBuilderHintForMethod(nodeDesc, 'unknownMethod', 'listSearch')).toBeUndefined();
+		expect(
+			findBuilderHintForMethod(
+				createNodeTypeDescription([resourceLocator]),
+				'searchProjects',
+				'listSearch',
+			),
+		).toBeUndefined();
+	});
+
+	it('detects the authentication parameter value matching a credential type', () => {
+		const nodeDesc = createNodeTypeDescription(
+			[
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					default: 'oAuth2',
+					options: [
+						{ name: 'OAuth2', value: 'oAuth2' },
+						{ name: 'Service Account', value: 'serviceAccount' },
+					],
+				},
+			],
+			{
+				credentials: [
+					{
+						name: 'googleSheetsOAuth2Api',
+						required: true,
+						displayOptions: { show: { authentication: ['oAuth2'] } },
+					},
+					{
+						name: 'googleApi',
+						required: true,
+						displayOptions: { show: { authentication: ['serviceAccount'] } },
+					},
+				],
+			},
+		);
+
+		expect(detectAuthenticationParameterValue(nodeDesc, 'googleSheetsOAuth2Api')).toBe('oAuth2');
+		expect(detectAuthenticationParameterValue(nodeDesc, 'googleApi')).toBe('serviceAccount');
+		expect(detectAuthenticationParameterValue(nodeDesc, 'unrelatedApi')).toBeUndefined();
+		expect(
+			detectAuthenticationParameterValue(
+				createNodeTypeDescription([resourceLocator]),
+				'googleSheetsOAuth2Api',
+			),
+		).toBeUndefined();
 	});
 });

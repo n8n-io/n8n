@@ -2,8 +2,10 @@ import { Tool } from '@n8n/agents/tool';
 import type { BuiltTool } from '@n8n/agents';
 import {
 	collectDynamicNodeParameterPaths,
+	detectAuthenticationParameterValue,
 	findNodeParameterProperty,
 	getDynamicNodeParameterLookup,
+	getPropertyBuilderHint,
 	getRequiredNodeCredentialSlots,
 	hasNodeCredentials,
 	normalizeParameterPath,
@@ -134,6 +136,25 @@ export function buildGetResourceLocatorOptionsTool(deps: {
 				const resourceIds = { projectId: deps.projectId, credentials };
 				await deps.dynamicNodeParametersService.refineResourceIds(deps.user, resourceIds);
 
+				// Auto-detect the authentication parameter value from the credential type.
+				// Many nodes (e.g. Google Sheets) use an `authentication` parameter to switch
+				// between serviceAccount/oAuth2, and `getNodeParameter('authentication', 0)`
+				// falls back to the wrong default when it's not set.
+				if (!currentNodeParameters.authentication && resourceIds.credentials) {
+					for (const credentialType of Object.keys(resourceIds.credentials)) {
+						const authValue = detectAuthenticationParameterValue(
+							nodeTypeDescription.description,
+							credentialType,
+						);
+						if (authValue !== undefined) {
+							currentNodeParameters.authentication = authValue;
+							break;
+						}
+					}
+				}
+
+				const builderHint = getPropertyBuilderHint(property);
+
 				const additionalData = await getBase({
 					userId: deps.user.id,
 					projectId: resourceIds.projectId,
@@ -170,6 +191,7 @@ export function buildGetResourceLocatorOptionsTool(deps: {
 								parameterValue: toResourceLocatorParameterValue(option, lookup.mode),
 							})),
 							paginationToken: result.paginationToken,
+							...(builderHint ? { builderHint } : {}),
 						};
 					}
 
@@ -194,6 +216,7 @@ export function buildGetResourceLocatorOptionsTool(deps: {
 								...(option.description ? { description: option.description } : {}),
 								parameterValue: toLoadedOptionParameterValue(option),
 							})),
+							...(builderHint ? { builderHint } : {}),
 						};
 					}
 
@@ -215,6 +238,7 @@ export function buildGetResourceLocatorOptionsTool(deps: {
 							...(option.description ? { description: option.description } : {}),
 							parameterValue: toLoadedOptionParameterValue(option),
 						})),
+						...(builderHint ? { builderHint } : {}),
 					};
 				} catch (error) {
 					return {

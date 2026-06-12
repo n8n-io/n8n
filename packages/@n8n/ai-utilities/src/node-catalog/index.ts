@@ -61,9 +61,12 @@ export type {
 
 export {
 	collectDynamicNodeParameterPaths,
+	detectAuthenticationParameterValue,
+	findBuilderHintForMethod,
 	findNodeParameterProperty,
 	formatResourceLocatorOptionsForLLM,
 	getDynamicNodeParameterLookup,
+	getPropertyBuilderHint,
 	getRequiredNodeCredentialSlots,
 	hasNodeCredentials,
 	normalizeParameterPath,
