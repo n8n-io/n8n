@@ -1223,3 +1223,41 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	 */
 	credentialIds: z.array(z.string().min(1)).max(50),
 }) {}
+
+/**
+ * A workflow artifact a conversation seed references. Recreated at its given
+ * id so the seeded message history's workflow references stay resolvable.
+ * Node/connection content is opaque here; the server validates structure.
+ */
+const instanceAiEvalSeedWorkflowSchema = z.object({
+	id: z.string().min(1).max(64),
+	name: z.string().min(1).max(255),
+	nodes: z.array(z.record(z.unknown())).max(500),
+	connections: z.record(z.unknown()),
+});
+
+export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkflowSchema>;
+
+export class InstanceAiEvalRestoreThreadRequest extends Z.class({
+	threadId: z.string().uuid(),
+	/**
+	 * Native agent message log to seed the thread with (the shape persisted in
+	 * `instance_ai_messages`, `createdAt` as ISO strings). Stored verbatim —
+	 * the server only validates the minimal structural contract.
+	 */
+	messages: z.array(z.record(z.unknown())).min(1).max(1000),
+	/**
+	 * Workflows the seeded history references, recreated before the messages
+	 * are written. Pre-attached node credentials are stripped on restore.
+	 */
+	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(10).optional(),
+}) {}
+
+/** Response of `GET /instance-ai/eval/export-thread/:threadId` — a thread's
+ *  native message log, exactly as persisted (seedable via restore-thread). */
+export interface InstanceAiEvalThreadExportResponse {
+	threadId: string;
+	projectId?: string;
+	/** Native agent messages, opaque to this layer (`createdAt` serializes to ISO). */
+	messages: unknown[];
+}

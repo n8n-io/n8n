@@ -15,8 +15,9 @@ import {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalRestoreThreadRequest,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiEvalThreadExportResponse } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -40,6 +41,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
+import { EvalThreadRestoreService } from './eval/thread-restore.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
@@ -100,6 +102,7 @@ export class InstanceAiController {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
+		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
@@ -658,6 +661,61 @@ export class InstanceAiController {
 		await this.assertThreadAccess(req.user.id, payload.threadId);
 		this.evalCredentialAllowlists.set(payload.threadId, payload.credentialIds);
 		return { ok: true };
+	}
+
+	/**
+	 * Seed an existing (owned) thread with a previously exported conversation:
+	 * recreate the workflow artifacts the history references (node credentials
+	 * stripped — see `EvalThreadRestoreService`), then write the native message
+	 * log verbatim. The thread then continues as if the conversation really
+	 * happened, so an eval can drive the next turn live.
+	 */
+	@Post('/eval/restore-thread')
+	@GlobalScope('instanceAi:eval')
+	async restoreEvalThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalRestoreThreadRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		const projectId = await this.memoryService.getThreadProjectId(payload.threadId);
+		if (!projectId) {
+			throw new BadRequestError('Thread is not bound to a project');
+		}
+
+		const workflows = payload.workflows ?? [];
+		await this.evalThreadRestore.restoreWorkflows(workflows, projectId);
+		const { restored } = await this.memoryService.restoreThreadMessages(
+			req.user.id,
+			payload.threadId,
+			payload.messages,
+		);
+		return {
+			ok: true,
+			threadId: payload.threadId,
+			restored,
+			workflowIds: workflows.map((workflow) => workflow.id),
+		};
+	}
+
+	/**
+	 * A thread's complete native message log, exactly as persisted. The output
+	 * is the seedable input of `restore-thread` — the eval export script turns
+	 * a real conversation into a test-case seed with it.
+	 */
+	@Get('/eval/export-thread/:threadId')
+	@GlobalScope('instanceAi:eval')
+	async exportEvalThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<InstanceAiEvalThreadExportResponse> {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const messages = await this.memoryService.exportThreadMessages(threadId);
+		const projectId = await this.memoryService.getThreadProjectId(threadId);
+		return { threadId, projectId, messages };
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
