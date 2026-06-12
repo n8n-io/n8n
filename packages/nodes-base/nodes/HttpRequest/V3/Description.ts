@@ -746,6 +746,15 @@ A user saying "API key" or "header auth" usually means httpBearerAuth only when 
 					'Whether to download the response even if SSL certificate validation is not possible',
 			},
 			{
+				displayName: 'Request Uncompressed Response',
+				name: 'requestUncompressedResponse',
+				type: 'boolean',
+				noDataExpression: true,
+				default: false,
+				description:
+					'Whether to disable response compression by sending "Accept-Encoding: identity". Enable this when a server returns HTTP parse errors despite returning a valid response.',
+			},
+			{
 				displayName: 'Array Format in Query Parameters',
 				name: 'queryParameterArrays',
 				type: 'options',
