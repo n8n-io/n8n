@@ -237,31 +237,7 @@ describe('WorkflowsTable', () => {
 			);
 		});
 
-		it('should show "Click to view full" tooltip when description is clamped', async () => {
-			const workflow = createWorkflow({
-				description: 'word '.repeat(200).trim(),
-			});
-
-			const { getByTestId } = createComponent({
-				props: {
-					workflows: [workflow],
-					loading: false,
-				},
-			});
-
-			// Simulate the line clamp cutting off the rendered text
-			const descriptionText = getByTestId('mcp-workflow-description');
-			Object.defineProperty(descriptionText, 'scrollHeight', { value: 100, configurable: true });
-			Object.defineProperty(descriptionText, 'clientHeight', { value: 60, configurable: true });
-
-			await userEvent.hover(getByTestId('mcp-workflow-description-cell'));
-
-			await waitFor(() => {
-				expect(getTooltip()).toHaveTextContent('Click to view full');
-			});
-		});
-
-		it('should show "Click to edit" tooltip when description fits in the cell', async () => {
+		it('should show "Click to edit" tooltip when description is present', async () => {
 			const workflow = createWorkflow({
 				description: 'Short description',
 			});

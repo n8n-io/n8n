@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useCssModule } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { WorkflowListItem, UserAction } from '@/Interface';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
@@ -106,30 +106,6 @@ const tableHeaders = ref<Array<TableHeader<WorkflowListItem>>>([
 		},
 	},
 ]);
-
-const style = useCssModule();
-
-// Tracks per workflow whether the line-clamped description cell is overflowing,
-// measured on hover since clamping depends on the rendered layout
-const clampedDescriptions = ref<Record<string, boolean>>({});
-
-const onDescriptionCellEnter = (event: MouseEvent, workflow: WorkflowListItem) => {
-	if (!(event.currentTarget instanceof HTMLElement)) {
-		return;
-	}
-	const text = event.currentTarget.querySelector(`.${style['description-text']}`);
-	clampedDescriptions.value[workflow.id] =
-		text instanceof HTMLElement && text.scrollHeight > text.clientHeight;
-};
-
-const getDescriptionTooltip = (workflow: WorkflowListItem): string => {
-	if (!workflow.description) {
-		return i18n.baseText('settings.mcp.workflows.table.column.description.emptyTooltip');
-	}
-	return clampedDescriptions.value[workflow.id]
-		? i18n.baseText('settings.mcp.workflows.table.column.description.viewFullTooltip')
-		: i18n.baseText('settings.mcp.workflows.table.column.description.editTooltip');
-};
 
 const getAvailableActions = (workflow: WorkflowListItem): Array<UserAction<WorkflowListItem>> => {
 	const permissions = getResourcePermissions(workflow.scopes);
@@ -239,7 +215,11 @@ const onConnectClick = () => {
 					<!-- as-child anchors the tooltip to the cell content itself, keeping it
 						above the cell instead of positioning against an inline wrapper span -->
 					<N8nTooltip
-						:content="getDescriptionTooltip(item)"
+						:content="
+							item.description
+								? i18n.baseText('settings.mcp.workflows.table.column.description.editTooltip')
+								: i18n.baseText('settings.mcp.workflows.table.column.description.emptyTooltip')
+						"
 						:show-after="MCP_TOOLTIP_DELAY"
 						as-child
 					>
@@ -247,7 +227,6 @@ const onConnectClick = () => {
 							data-test-id="mcp-workflow-description-cell"
 							:class="$style['description-cell']"
 							@click="emit('updateDescription', item)"
-							@mouseenter="onDescriptionCellEnter($event, item)"
 						>
 							<N8nText
 								v-if="item.description"
