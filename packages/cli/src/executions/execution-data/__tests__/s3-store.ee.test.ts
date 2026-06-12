@@ -8,7 +8,7 @@ import type { Readable } from 'node:stream';
 
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
 import { ExecutionDataWriteError } from '../execution-data-write.error';
-import { S3Store } from '../s3-store';
+import { S3Store } from '../s3-store.ee';
 import { createExecutionRef } from '../types';
 import { executionId, payload, ref, workflowId } from './mocks';
 
