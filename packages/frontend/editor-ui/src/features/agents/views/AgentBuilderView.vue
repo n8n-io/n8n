@@ -53,7 +53,6 @@ import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
-	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
@@ -84,7 +83,7 @@ const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 
 // Gates the entire knowledge base feature (files panel + fetching) behind the
-// `knowledge-base` token in the backend N8N_AGENTS_MODULES env var.
+// Daytona sandbox env vars on the backend (N8N_AGENTS_AI_SANDBOX_ENABLED + PROVIDER=daytona).
 const isKnowledgeBaseEnabled = computed(() => settingsStore.isAgentsKnowledgeBaseFeatureEnabled);
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
@@ -155,7 +154,13 @@ const connectedTriggers = ref<string[]>([]);
 const tasksReloadKey = ref(0);
 const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
-const isChatFullWidth = ref(false);
+function shouldAutoExpandInitialBuild(): boolean {
+	return Boolean(route.query.prompt) && route.query.expandBuildChat === 'true';
+}
+
+const shouldStartWithExpandedBuildChat = shouldAutoExpandInitialBuild();
+const isChatFullWidth = ref(shouldStartWithExpandedBuildChat);
+const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
@@ -656,6 +661,13 @@ async function onConfigUpdated() {
 	builderTelemetry.trackTasksChanged();
 }
 
+function onBuildDone() {
+	isBuildChatStreaming.value = false;
+	if (!shouldCollapseChatAfterInitialBuild.value) return;
+	isChatFullWidth.value = false;
+	shouldCollapseChatAfterInitialBuild.value = false;
+}
+
 const headerActions = computed(() =>
 	canDeleteAgent.value
 		? [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }]
@@ -781,7 +793,13 @@ async function initialize() {
 	// into the build chat.
 	const prompt = route.query.prompt as string | undefined;
 	if (prompt) {
-		void router.replace({ query: { ...route.query, prompt: undefined } });
+		if (shouldAutoExpandInitialBuild()) {
+			isChatFullWidth.value = true;
+			shouldCollapseChatAfterInitialBuild.value = true;
+		}
+		void router.replace({
+			query: { ...route.query, prompt: undefined, expandBuildChat: undefined },
+		});
 		startChat(prompt);
 	}
 
@@ -828,27 +846,6 @@ function onOpenAddToolModal() {
 			agentId: agentId.value,
 			onConfirm: (tools: AgentJsonToolConfig[], mcpServers: AgentJsonMcpServerConfig[] = []) =>
 				onConfigFieldUpdate({ tools, mcpServers }),
-		},
-	});
-}
-
-function onOpenAddTriggerModal(initialTriggerType?: string) {
-	const targetProjectId = projectId.value;
-	const targetAgentId = agentId.value;
-	uiStore.openModalWithData({
-		name: AGENT_ADD_TRIGGER_MODAL_KEY,
-		data: {
-			initialTriggerType,
-			projectId: targetProjectId,
-			agentId: targetAgentId,
-			agentName: agentName.value,
-			isPublished: Boolean(agent.value?.activeVersionId),
-			connectedTriggers: connectedTriggers.value,
-			onConnectedTriggersChange: (triggers: string[]) => onConnectedTriggersUpdate(triggers),
-			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
-				onTriggerAdded(payload),
-			onAgentPublished: (updated: AgentResource) => onPublished(updated),
-			onAgentChanged: () => refreshAgentAfterIntegrationChange(targetProjectId, targetAgentId),
 		},
 	});
 }
@@ -1198,11 +1195,11 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:connected-triggers="connectedTriggers"
 					:initial-prompt="initialPrompt"
 					:is-builder-configured="isBuilderConfigured"
-					:is-published="Boolean(agent?.activeVersionId)"
 					:is-full-width="isChatFullWidth"
 					:can-edit-agent="canEditAgent"
 					:before-build-send="flushAutosave"
 					@config-updated="onConfigUpdated"
+					@build-done="onBuildDone"
 					@update:streaming="onBuildChatStreamingChange"
 					@update:tools="onQuickActionAddTool"
 					@update:mcp-servers="onQuickActionAddMcpServers"
@@ -1237,10 +1234,8 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 				@update:config="onConfigFieldUpdate"
 				@open-tool="onOpenToolFromList"
 				@open-skill="onOpenSkillFromList"
-				@open-trigger="onOpenAddTriggerModal"
 				@add-tool="onOpenAddToolModal"
 				@add-skill="onOpenAddSkillModal"
-				@add-trigger="onOpenAddTriggerModal"
 				@upload-files="onUploadAgentFiles"
 				@delete-file="onDeleteAgentFile"
 				@remove-tool="onRemoveTool"
@@ -1249,6 +1244,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 				@trigger-added="onTriggerAdded"
 				@toggle-task="onToggleTask"
 				@tasks-changed="onConfigUpdated"
+				@agent-changed="refreshAgentAfterIntegrationChange"
 			/>
 
 			<AgentVersionHistoryPanel

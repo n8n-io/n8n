@@ -26,7 +26,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Logger as WorkflowLogger,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { OperationalError, jsonParse, NodeOperationError, UserError } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
@@ -141,6 +141,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Revalidating.`,
 	);
 
+	const refreshResource = credentials.oauthTokenData?.resource;
+	if (typeof refreshResource === 'string' && refreshResource.length > 0) {
+		tokenRefreshOptions.resource = refreshResource;
+	}
+
 	let newToken;
 	try {
 		if (credentials.grantType === 'clientCredentials') {
@@ -159,9 +164,20 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 	);
 
+	// Merge old and new token data so fields that the authorization server
+	// does not echo back on refresh (e.g. `resource`) are preserved from the
+	// original token response.
+	const newOAuthTokenData = { ...token.data, ...newToken.data };
+
+	// If the server doesn't echo the resource back, restore it from the
+	// previous token data to ensure it's not lost on refresh.
+	if (!newOAuthTokenData.resource && token.data.resource) {
+		newOAuthTokenData.resource = token.data.resource;
+	}
+
 	const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
 		additionalData,
-		newToken.data,
+		newOAuthTokenData,
 		credentials.jweEnabled === true,
 	);
 
@@ -187,7 +203,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 	}
 
 	if (!node.credentials?.[credentialsType]) {
-		throw new ApplicationError('Node does not have credential type', {
+		throw new UserError('Node does not have credential type', {
 			extra: { nodeName: node.name, credentialType: credentialsType },
 		});
 	}
@@ -228,7 +244,7 @@ export async function requestOAuth2(
 
 	// Only the OAuth2 with authorization code grant needs connection
 	if (credentials.grantType === 'authorizationCode' && credentials.oauthTokenData === undefined) {
-		throw new ApplicationError('OAuth credentials not connected');
+		throw new UserError('OAuth credentials not connected');
 	}
 
 	const oAuthClient = createOAuth2Client(credentials);
@@ -246,14 +262,14 @@ export async function requestOAuth2(
 			tokenResult = await oAuthClient.credentials.getToken();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			throw new ApplicationError(`Failed to acquire OAuth2 access token: ${message}`, {
+			throw new OperationalError(`Failed to acquire OAuth2 access token: ${message}`, {
 				cause: error,
 			});
 		}
 		const { data } = tokenResult;
 		// Find the credentials
 		if (!node.credentials?.[credentialsType]) {
-			throw new ApplicationError('Node does not have credential type', {
+			throw new UserError('Node does not have credential type', {
 				extra: { nodeName: node.name },
 				tags: { credentialType: credentialsType },
 			});
@@ -381,11 +397,11 @@ export async function requestOAuth1(
 	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials === undefined) {
-		throw new ApplicationError('No credentials were returned');
+		throw new UserError('No credentials were returned');
 	}
 
 	if (credentials.oauthTokenData === undefined) {
-		throw new ApplicationError('OAuth credentials not connected');
+		throw new UserError('OAuth credentials not connected');
 	}
 
 	const oauth = new clientOAuth1({
@@ -453,7 +469,7 @@ export async function refreshOAuth2Token(
 		credentialsType,
 	)) as unknown as OAuth2CredentialData;
 	if (credentials.grantType === 'authorizationCode' && credentials.oauthTokenData === undefined) {
-		throw new ApplicationError('OAuth credentials not connected');
+		throw new UserError('OAuth credentials not connected');
 	}
 
 	const oAuthClient = createOAuth2Client(credentials);

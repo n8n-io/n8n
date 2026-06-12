@@ -224,6 +224,8 @@ function onActivate(event: MouseEvent) {
 </template>
 
 <style lang="scss" module>
+@use './_canvasNodeStyles.scss' as styles;
+
 .node {
 	--canvas-node--border-width: 1.5px;
 	--trigger-node--radius: 36px;
@@ -330,9 +332,7 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.selected {
-		/* stylelint-disable-next-line @n8n/css-var-naming */
-		box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
-			var(--canvas--color--selected-transparent);
+		@include styles.canvas-node-selected-ring;
 	}
 
 	&.success {
