@@ -15,7 +15,6 @@ const meta = {
 	component: N8nSettingsRow,
 	argTypes: {
 		layout: { control: 'select', options: ['horizontal', 'vertical', 'custom'] },
-		align: { control: 'select', options: ['center', 'start'] },
 		maxDescriptionLines: { control: { type: 'number', min: 1, max: 3 } },
 		truncateTitle: { control: 'boolean' },
 		showDivider: { control: 'boolean' },
@@ -110,8 +109,8 @@ const metricTilesCard = `
 `;
 
 export const Custom: Story = {
-	render: (args) => ({
-		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nText, N8nIcon },
+	render: () => ({
+		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nText, N8nIcon, N8nButton },
 		setup() {
 			// `delta` drives the colored trend (success/danger); `suffix` is the muted
 			// "/ unlimited" variant that has no trend arrow.
@@ -120,25 +119,29 @@ export const Custom: Story = {
 				{ title: 'Active workflows', value: '865', suffix: '/ unlimited' },
 				{ title: 'Active users', value: '1.9%', delta: 'danger', deltaText: '0.5pp' },
 			];
-			return { args, metrics };
+			return { metrics };
 		},
-		// `layout="custom"` hands the whole row to the slot: the row supplies the side insets
-		// (16px) and the slotted content — here the bordered three-tile metrics card — owns its
-		// own internal layout. No title and no action: the tiles card is the entire content.
+		// "Usage" is a `vertical` row: its title is "Usage" and the full-width slot below holds
+		// the bordered three-column metrics card. It composes inside a row group next to plain
+		// horizontal rows (Plan, Billing) so the rich custom content reads naturally among
+		// regular settings rows.
 		template: card(`
-			<N8nSettingsRow v-bind="args">
-				${metricTilesCard}
+			<N8nSettingsRow layout="vertical" title="Usage">
+				<template #action>${metricTilesCard}</template>
+			</N8nSettingsRow>
+			<N8nSettingsRow title="Plan">
+				<template #action><N8nText size="medium" color="text-dark">Enterprise</N8nText></template>
+			</N8nSettingsRow>
+			<N8nSettingsRow title="Billing">
+				<template #action><N8nButton variant="outline" size="medium" label="Manage plan" /></template>
 			</N8nSettingsRow>
 		`),
 	}),
-	args: {
-		layout: 'custom',
-	},
 	parameters: {
 		docs: {
 			description: {
 				story:
-					'The `custom` layout hands the whole row to the slot (no title/description, no action). The row only supplies the side insets; the slotted content — here a bordered three-tile metrics card — owns its own internal layout.',
+					'A `vertical` row whose title is "Usage" and whose full-width slot below holds a bordered three-column metrics card (with success/danger trend deltas), composed inside a row group alongside plain Plan/Billing rows. This is the recommended pattern for "a labelled row with rich custom content below the title".',
 			},
 		},
 	},
@@ -263,26 +266,6 @@ export const ActionMaxWidth: Story = {
 					'`actionMaxWidth` (horizontal only) accepts any CSS max-width string — percentages ("50%", the default), absolute lengths ("30rem", "200px") — or `false` to remove the cap. By default the action **hugs** its content; add `action-fill` so it **fills** up to the cap. A filled action also shares the row with the info, so it never grows past ~50% in horizontal even when the cap is higher; use `:action-max-width="false"` with intrinsically wide content to exceed that.',
 			},
 		},
-	},
-};
-
-export const Alignment: Story = {
-	render: (args) => ({
-		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nButton },
-		setup: () => ({ args }),
-		template: card(`
-			<N8nSettingsRow v-bind="args" align="center">
-				<template #action><N8nButton variant="outline" size="small" label="Center" /></template>
-			</N8nSettingsRow>
-			<N8nSettingsRow v-bind="args" align="start">
-				<template #action><N8nButton variant="outline" size="small" label="Start" /></template>
-			</N8nSettingsRow>
-		`),
-	}),
-	args: {
-		title: 'Alignment',
-		description:
-			'Use start alignment when the info block is intrinsically tall, so the action stays pinned to the top.',
 	},
 };
 

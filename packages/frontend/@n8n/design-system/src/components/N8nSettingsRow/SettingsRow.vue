@@ -4,7 +4,6 @@ import { computed, useSlots } from 'vue';
 import N8nText from '../N8nText';
 
 export type SettingsRowLayout = 'horizontal' | 'vertical' | 'custom';
-export type SettingsRowAlign = 'center' | 'start';
 
 export interface SettingsRowProps {
 	/** Left title (text-dark, 14/medium). Optional when the `info` slot is used. */
@@ -13,8 +12,6 @@ export interface SettingsRowProps {
 	description?: string;
 	/** Arrangement of info vs action. `custom` hands the whole row to the default slot. */
 	layout?: SettingsRowLayout;
-	/** Vertical alignment of action vs info in the `horizontal` layout. */
-	align?: SettingsRowAlign;
 	/** Soft default 2; hard clamped to a maximum of 3 lines regardless of the value passed. */
 	maxDescriptionLines?: number;
 	/** Single-line ellipsis title. */
@@ -57,7 +54,6 @@ const props = withDefaults(defineProps<SettingsRowProps>(), {
 	title: undefined,
 	description: undefined,
 	layout: 'horizontal',
-	align: 'center',
 	maxDescriptionLines: 2,
 	truncateTitle: true,
 	actionMaxWidth: '50%',
@@ -118,7 +114,6 @@ function onKeydown(event: KeyboardEvent) {
 			$style.row,
 			$style[layout],
 			{
-				[$style.alignStart]: align === 'start',
 				[$style.hoverable]: hoverable,
 				[$style.clickable]: clickable,
 			},
@@ -238,10 +233,6 @@ function onKeydown(event: KeyboardEvent) {
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--sm);
-}
-
-.alignStart.horizontal {
-	align-items: flex-start;
 }
 
 .info {

@@ -12,23 +12,13 @@ describe('N8nSettingsRow', () => {
 		expect(screen.getByText('What it does')).toBeInTheDocument();
 	});
 
-	it('defaults to the horizontal layout with center alignment', () => {
+	it('defaults to the horizontal layout', () => {
 		const { container } = render(N8nSettingsRow, {
 			props: { title: 'Title' },
 		});
 
 		const row = container.querySelector('[data-layout]');
 		expect(row?.getAttribute('data-layout')).toBe('horizontal');
-		expect(row?.className).not.toContain('alignStart');
-	});
-
-	it('applies the start alignment class when align="start"', () => {
-		const { container } = render(N8nSettingsRow, {
-			props: { title: 'Title', align: 'start' },
-		});
-
-		const row = container.querySelector('[data-layout="horizontal"]');
-		expect(row?.className).toContain('alignStart');
 	});
 
 	it.each(['horizontal', 'vertical', 'custom'] as const)('renders the %s layout', (layout) => {
