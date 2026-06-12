@@ -46,6 +46,27 @@ describe('HTTP Node Utils', () => {
 			expect(result).toBeDefined();
 			expect(result).toEqual({ foo: { bar: { spam: 'baz' } } });
 		});
+
+		it('should preserve OData-annotated keys with dots as literal key names', async () => {
+			const bodyParameters: BodyParameter[] = [
+				{
+					name: '@odata.type',
+					value: '#microsoft.graph.aadUserConversationMember',
+				},
+				{
+					name: 'user@odata.bind',
+					value: "https://graph.microsoft.com/v1.0/users('abc')",
+				},
+			];
+			const defaultReducer: BodyParametersReducer = jest.fn();
+
+			const result = await prepareRequestBody(bodyParameters, 'json', 4, defaultReducer);
+
+			expect(result).toEqual({
+				'@odata.type': '#microsoft.graph.aadUserConversationMember',
+				'user@odata.bind': "https://graph.microsoft.com/v1.0/users('abc')",
+			});
+		});
 	});
 
 	describe('setAgentOptions', () => {
