@@ -20,7 +20,7 @@ export class AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029
 		// SQLite has no column comments, so annotate only on Postgres.
 		if (isPostgres) {
 			await runQuery(
-				`COMMENT ON COLUMN ${tableName}.${jsonSizeBytes} IS 'Logical byte size of the JSON execution data bundle (run data, workflow snapshot, version id); excludes binary data. 0 means not yet calculated.'`,
+				`COMMENT ON COLUMN ${tableName}.${jsonSizeBytes} IS 'Byte size of the JSON execution data bundle (run data, workflow snapshot, version id); excludes binary data. 0 means unknown.'`,
 			);
 			await runQuery(
 				`COMMENT ON COLUMN ${tableName}.${workflowVersionId} IS 'Version id of the workflow run by this execution; denormalized from the data bundle.'`,
