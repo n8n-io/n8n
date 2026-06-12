@@ -140,11 +140,11 @@ describe('Kafka Node', () => {
 	});
 
 	harness.setupTest({
-		description: 'should fail with the generic message when encoding a message fails',
+		description: 'should report a malformed message distinctly from a registry config error',
 		input: { workflowData: errorWorkflow('test-event-name', 'not-json') },
 		output: {
 			nodeData: {},
-			error: 'Verify your Schema Registry configuration',
+			error: 'Message is not valid JSON',
 		},
 		credentials: {
 			schemaRegistryApi: schemaRegistryCredential,

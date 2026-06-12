@@ -354,11 +354,19 @@ export class Kafka implements INodeType {
 				}
 
 				if (schemaRegistry) {
+					let parsedMessage: unknown;
 					try {
-						message = await schemaRegistry.registry.encode(
-							schemaRegistry.schemaId,
-							JSON.parse(message),
-						);
+						parsedMessage = JSON.parse(message);
+					} catch (exception) {
+						throw new NodeOperationError(this.getNode(), 'Message is not valid JSON', {
+							description:
+								'The Schema Registry encodes JSON messages. Provide a valid JSON message, or turn off "Use Schema Registry".',
+							itemIndex: i,
+						});
+					}
+
+					try {
+						message = await schemaRegistry.registry.encode(schemaRegistry.schemaId, parsedMessage);
 					} catch (exception) {
 						throw new NodeOperationError(
 							this.getNode(),
