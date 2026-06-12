@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import { LicenseState, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import {
@@ -42,6 +42,7 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -93,6 +94,8 @@ describe('McpService', () => {
 			mockInstance(ExecutionService),
 			mockInstance(DataTableProxyService),
 			mockInstance(CollaborationService),
+			mockInstance(TagService),
+			mockInstance(LicenseState),
 			mockInstance(PostHogClient),
 		);
 	});
@@ -134,6 +137,8 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(TagService),
+				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
 			);
 
@@ -328,6 +333,8 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(TagService),
+				mockInstance(LicenseState),
 				opts.postHogClient,
 			);
 
@@ -430,6 +437,8 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(TagService),
+				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
 			);
 
@@ -473,6 +482,8 @@ describe('McpService', () => {
 				mockInstance(ExecutionService),
 				mockInstance(DataTableProxyService),
 				mockInstance(CollaborationService),
+				mockInstance(TagService),
+				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
 			);
 
@@ -540,6 +551,8 @@ describe('McpService', () => {
 					mockInstance(ExecutionService),
 					mockInstance(DataTableProxyService),
 					mockInstance(CollaborationService),
+					mockInstance(TagService),
+					mockInstance(LicenseState),
 					postHogClient,
 				);
 			};

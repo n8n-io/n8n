@@ -5,6 +5,7 @@ import type {
 	UpdateApiKeyRequestDto,
 } from '@n8n/api-types';
 import { LIST_API_KEYS_SORT_OPTIONS } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ApiKey, ApiKeyRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,6 +21,7 @@ import {
 import { randomUUID } from 'crypto';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';
 
@@ -37,6 +39,8 @@ export class PublicApiKeyService {
 	constructor(
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
+		private readonly mailer: UserManagementMailer,
+		private readonly logger: Logger,
 	) {}
 
 	async createPublicApiKeyForUser(
@@ -172,12 +176,32 @@ export class PublicApiKeyService {
 	// for the existence of another user's keys.
 	async deleteApiKey(caller: User, apiKeyId: string) {
 		const canDeleteAny = hasGlobalScope(caller, 'apiKey:manage');
-		const result = await this.apiKeyRepository.delete({
-			id: apiKeyId,
-			audience: API_KEY_AUDIENCE,
-			...(canDeleteAny ? {} : { userId: caller.id }),
+		const apiKey = await this.apiKeyRepository.findOne({
+			where: {
+				id: apiKeyId,
+				audience: API_KEY_AUDIENCE,
+				...(canDeleteAny ? {} : { userId: caller.id }),
+			},
+			relations: { user: true },
 		});
+		if (!apiKey) throw new NotFoundError('API key not found');
+
+		const result = await this.apiKeyRepository.delete({ id: apiKey.id });
 		if (!result.affected) throw new NotFoundError('API key not found');
+
+		const isOwn = apiKey.userId === caller.id;
+
+		if (!isOwn) {
+			this.mailer.notifyApiKeyRevoked({ apiKey, revoker: caller }).catch((e) => {
+				this.logger.error('Failed to send API key revocation email', {
+					apiKeyId: apiKey.id,
+					ownerId: apiKey.userId,
+					error: e instanceof Error ? e.message : String(e),
+				});
+			});
+		}
+
+		return { isOwn };
 	}
 
 	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {

@@ -40,6 +40,17 @@ pre-commit:
       skip:
         - merge
         - rebase
+    db_schema_check:
+      glob: 'packages/@n8n/db/src/migrations/{common,postgresdb,sqlite}/*.ts'
+      run: |
+        if command -v tbls >/dev/null 2>&1; then
+          pnpm run db:schema:check:sqlite
+        else
+          echo "tbls not installed (brew install tbls) — skipping db schema check"
+        fi
+      skip:
+        - merge
+        - rebase
     playwright_janitor:
       glob: 'packages/testing/playwright/**/*.ts'
       run: |

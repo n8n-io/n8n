@@ -20,7 +20,6 @@ type SuggestionSelectionPayload = {
 	suggestionKind: 'prompt' | 'quick_example';
 	position: number;
 };
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 type SelectedSuggestionDraft = SuggestionSelectionPayload & {
 	originalPrompt: string;
 };
@@ -72,7 +71,6 @@ const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 const previewPromptKey = ref<BaseTextKey | null>(null);
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
 
 function focus() {
@@ -157,7 +155,6 @@ watch(
 	{ immediate: true },
 );
 
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 watch(inputText, (text) => {
 	if (text.length === 0) {
 		selectedSuggestionDraft.value = null;
@@ -245,7 +242,6 @@ function getTelemetryContext() {
 	};
 }
 
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 function trackSelectedSuggestionSubmitted(message: string) {
 	const selectedSuggestion = selectedSuggestionDraft.value;
 	if (!selectedSuggestion) {
@@ -291,12 +287,6 @@ function handleSuggestionsCycled(payload: SuggestionsCyclePayload) {
 	});
 }
 
-function handleSuggestionSubmit(payload: SuggestionSelectionPayload) {
-	trackSuggestionSelected(payload);
-	submitComposerMessage(i18n.baseText(payload.promptKey));
-}
-
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 	trackSuggestionSelected(payload);
 	previewPromptKey.value = null;
@@ -391,7 +381,6 @@ const resizable = computed(() => {
 				@quick-examples-opened="handleQuickExamplesOpened"
 				@cycle-suggestions="handleSuggestionsCycled"
 				@insert-suggestion="handleSuggestionInsert"
-				@submit-suggestion="handleSuggestionSubmit"
 				@workflow-preview="emit('workflow-preview', $event)"
 			/>
 		</Transition>

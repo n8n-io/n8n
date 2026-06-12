@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	Workflow,
 	INode,
@@ -36,7 +36,7 @@ export class TriggersAndPollers {
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (!nodeType.trigger) {
-			throw new ApplicationError('Node type does not have a trigger function defined', {
+			throw new UnexpectedError('Node type does not have a trigger function defined', {
 				extra: { nodeName: node.name },
 				tags: { nodeType: node.type },
 			});
@@ -100,7 +100,7 @@ export class TriggersAndPollers {
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (!nodeType.poll) {
-			throw new ApplicationError('Node type does not have a poll function defined', {
+			throw new UnexpectedError('Node type does not have a poll function defined', {
 				extra: { nodeName: node.name },
 				tags: { nodeType: node.type },
 			});
