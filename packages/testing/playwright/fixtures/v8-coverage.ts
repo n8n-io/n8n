@@ -2,7 +2,6 @@ import type { BrowserContext, Page, TestInfo } from '@playwright/test';
 import { CoverageReport } from 'monocart-coverage-reports';
 import { createWriteStream, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 import {
@@ -79,18 +78,15 @@ export const v8CoverageFixtures = {
 			const specDir = join(BY_SPEC_DIR, slugify(spec));
 			mkdirSync(specDir, { recursive: true });
 			// Stream one V8 entry per line (JSONL). A whole-array JSON.stringify of a
-			// navigation-heavy spec (e.g. signout + signin with resetOnNavigation:false)
-			// exceeds V8's ~512MB single-string cap and throws RangeError; per-entry
-			// serialization stays well under it and the file can grow unbounded.
+			// navigation-heavy spec (signout + signin, resetOnNavigation:false) exceeds
+			// V8's ~512MB single-string cap and throws RangeError; per-entry serialization
+			// stays well under it and the file can grow unbounded.
 			// Unique per test so multiple tests in one spec file accumulate (don't clobber).
-			await pipeline(
-				Readable.from(
-					(function* () {
-						for (const entry of perSpecRaw) yield `${JSON.stringify(entry)}\n`;
-					})(),
-				),
-				createWriteStream(join(specDir, `raw-${slugify(testInfo.testId)}.jsonl`)),
-			);
+			const rawPath = join(specDir, `raw-${slugify(testInfo.testId)}.jsonl`);
+			const toJsonlLines = function* () {
+				for (const entry of perSpecRaw) yield `${JSON.stringify(entry)}\n`;
+			};
+			await pipeline(toJsonlLines(), createWriteStream(rawPath));
 			writeFileSync(join(specDir, '.spec'), spec);
 		}
 	},
