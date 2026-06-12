@@ -31,10 +31,6 @@ function getAgentLookup(agent: http.Agent | https.Agent): unknown {
 	return a.options?.lookup ?? a.connectOpts?.lookup;
 }
 
-function getDirectAgent(agent: http.Agent | https.Agent): http.Agent {
-	return (agent as unknown as { direct: http.Agent }).direct;
-}
-
 // `http.Agent['options']` is not exposed on the public Node types.
 function getAgentOptions(agent: http.Agent | https.Agent): { keepAlive?: boolean } {
 	return (agent as unknown as { options?: { keepAlive?: boolean } }).options ?? {};
@@ -79,12 +75,10 @@ describe('buildNodeAgents', () => {
 			expect(getAgentOptions(httpsAgent).keepAlive).toBe(true);
 		});
 
-		it('forwards options to the env agent and its direct fallback', () => {
+		it('forwards options to the env agent (which serves NO_PROXY targets directly)', () => {
 			const { httpAgent } = buildNodeAgents('env', 'disabled', { keepAlive: true });
 
-			// The direct fallback is what actually serves NO_PROXY targets.
 			expect(getAgentOptions(httpAgent).keepAlive).toBe(true);
-			expect(getAgentOptions(getDirectAgent(httpAgent)).keepAlive).toBe(true);
 		});
 	});
 
@@ -99,14 +93,14 @@ describe('buildNodeAgents', () => {
 			expect(getAgentLookup(httpsAgent)).toBe(lookupFn);
 		});
 
-		it('proxy: env → injects the secure lookup on the direct fallback', () => {
+		it('proxy: env → injects the secure lookup for the direct path', () => {
 			const lookupFn = makeLookupFn();
 			const bridge = makeSsrfBridge({ createSecureLookup: vi.fn().mockReturnValue(lookupFn) });
 
 			const { httpAgent, httpsAgent } = buildNodeAgents('env', bridge);
 
-			expect(getAgentLookup(getDirectAgent(httpAgent))).toBe(lookupFn);
-			expect(getAgentLookup(getDirectAgent(httpsAgent))).toBe(lookupFn);
+			expect(getAgentLookup(httpAgent)).toBe(lookupFn);
+			expect(getAgentLookup(httpsAgent)).toBe(lookupFn);
 		});
 
 		it('proxy: explicit URL → does NOT inject the lookup (proxy validates the target)', () => {
@@ -119,11 +113,11 @@ describe('buildNodeAgents', () => {
 			expect(getAgentLookup(httpsAgent)).toBeUndefined();
 		});
 
-		it('ssrf disabled → no lookup on direct fallback', () => {
+		it('ssrf disabled → no lookup on the direct path', () => {
 			const { httpAgent, httpsAgent } = buildNodeAgents('env', 'disabled');
 
-			expect(getAgentLookup(getDirectAgent(httpAgent))).toBeUndefined();
-			expect(getAgentLookup(getDirectAgent(httpsAgent))).toBeUndefined();
+			expect(getAgentLookup(httpAgent)).toBeUndefined();
+			expect(getAgentLookup(httpsAgent)).toBeUndefined();
 		});
 	});
 });

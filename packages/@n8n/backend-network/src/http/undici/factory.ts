@@ -100,15 +100,18 @@ export class OutboundHttpFactory {
 			config.ssrf === 'disabled'
 				? dispatcher
 				: dispatcher.compose(createSsrfInterceptor(config.ssrf));
-		const defaultNodeAgents = buildNodeAgents(config.proxy, config.ssrf);
+		let defaultNodeAgents: { httpAgent: http.Agent; httpsAgent: https.Agent } | undefined;
 
 		return {
 			asCustomFetch: () => buildCustomFetch(fetchDispatcher, config.ssrf),
 			getDispatcher: () => dispatcher,
-			getNodeAgent: (agentOptions) =>
-				agentOptions === undefined
-					? defaultNodeAgents
-					: buildNodeAgents(config.proxy, config.ssrf, agentOptions),
+			getNodeAgent: (agentOptions) => {
+				if (agentOptions !== undefined) {
+					return buildNodeAgents(config.proxy, config.ssrf, agentOptions);
+				}
+				defaultNodeAgents ??= buildNodeAgents(config.proxy, config.ssrf);
+				return defaultNodeAgents;
+			},
 		};
 	}
 }
@@ -141,9 +144,10 @@ function createSsrfInterceptor(bridge: SsrfBridge): Dispatcher.DispatcherCompose
 			// absolute URI, otherwise it is path-only and resolved against the
 			// origin. Either form yields the final target URL.
 			targetUrl = new URL(opts.path, opts.origin?.toString()).href;
-		} catch {
-			// Could not derive a URL; let the underlying dispatcher reject it.
-			return dispatch(opts, handler);
+		} catch (error: unknown) {
+			// Fail closed: if we cannot derive a target URL we cannot validate it
+			failDispatch(handler, ensureError(error));
+			return true;
 		}
 
 		bridge.validateUrl(targetUrl).then(
@@ -179,11 +183,10 @@ function buildCustomFetch(dispatcher: Dispatcher, ssrf: SsrfOption): CustomFetch
 		return async (input, init) => await dispatchedFetch(dispatcher, input, init);
 	}
 
-	const bridge = ssrf;
 	return async (input, init) => {
 		const url = input instanceof URL ? input.href : typeof input === 'string' ? input : input.url;
 
-		const result = await bridge.validateUrl(url);
+		const result = await ssrf.validateUrl(url);
 		if (!result.ok) {
 			throw result.error;
 		}

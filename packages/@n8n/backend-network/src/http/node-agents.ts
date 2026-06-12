@@ -9,10 +9,10 @@ import type { SsrfBridge } from '../ssrf';
 
 /**
  * An explicit proxy URL for routing all requests from this client.
- * Supported protocols: HTTP, HTTPS, and SOCKS variants.
+ * Only HTTP(S) forward proxies are supported: both the Node.js agents
+ * and the undici dispatcher (`ProxyAgent`) speak the HTTP CONNECT protocol, not SOCKS.
  */
-export type ProxyUrl =
-	`${'http' | 'https' | 'socks' | 'socks4' | 'socks4a' | 'socks5'}://${string}`;
+export type ProxyUrl = `${'http' | 'https'}://${string}`;
 
 /**
  * Controls how outgoing requests are routed through a proxy.
@@ -82,9 +82,9 @@ export function buildNodeAgents(
 //
 // Per-request env-proxy routing (HTTP_PROXY / HTTPS_PROXY / NO_PROXY): each
 // request is resolved against the environment and dispatched either through a
-// cached proxy agent or a direct fallback. An optional SSRF `lookup` is applied
-// to the direct path only; behind a proxy the lookup would resolve the proxy
-// host, not the final target, so the proxy validates the final target instead.
+// cached proxy agent or directly from this agent's own pool. An optional SSRF
+// `lookup` is applied to the direct path only; behind a proxy the lookup would
+// resolve the proxy host, not the final target, so the proxy validates it.
 //
 // These also back `installGlobalProxyAgent` in http-proxy.ts (constructed with
 // no lookup), so there is a single env-proxy agent implementation.
@@ -96,14 +96,12 @@ type HttpProxyReqOpts = HttpAddRequestArgs[1];
 
 export class EnvProxyHttpAgent extends http.Agent {
 	private readonly proxyCache = new Map<string, HttpProxyAgent<string>>();
-	private readonly direct: http.Agent;
 
 	constructor(
 		lookup?: LookupFunction,
 		private readonly agentOptions?: NodeAgentOptions,
 	) {
 		super({ ...agentOptions, lookup });
-		this.direct = new http.Agent({ ...agentOptions, lookup });
 	}
 
 	addRequest(req: http.ClientRequest, options: http.RequestOptions): void {
@@ -122,7 +120,8 @@ export class EnvProxyHttpAgent extends http.Agent {
 			return agent.addRequest(req as HttpProxyClientReq, options as HttpProxyReqOpts);
 		}
 
-		return this.direct.addRequest(req, options);
+		// No proxy for this target: serve it directly from this agent's own pool.
+		super.addRequest(req, options);
 	}
 }
 
@@ -130,14 +129,12 @@ type HttpsProxyReqOpts = Parameters<HttpsProxyAgent<string>['addRequest']>[1];
 
 export class EnvProxyHttpsAgent extends https.Agent {
 	private readonly proxyCache = new Map<string, HttpsProxyAgent<string>>();
-	private readonly direct: https.Agent;
 
 	constructor(
 		lookup?: LookupFunction,
 		private readonly agentOptions?: NodeAgentOptions,
 	) {
 		super({ ...agentOptions, lookup });
-		this.direct = new https.Agent({ ...agentOptions, lookup });
 	}
 
 	addRequest(req: http.ClientRequest, options: https.RequestOptions): void {
@@ -156,6 +153,7 @@ export class EnvProxyHttpsAgent extends https.Agent {
 			return agent.addRequest(req, options as HttpsProxyReqOpts);
 		}
 
-		return this.direct.addRequest(req, options);
+		// No proxy for this target: serve it directly from this agent's own pool.
+		super.addRequest(req, options);
 	}
 }

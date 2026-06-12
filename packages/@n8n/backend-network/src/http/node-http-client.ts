@@ -79,12 +79,11 @@ export class NodeHttpClientFactory {
 	create(options?: NodeHttpClientOptions): NodeHttpClient {
 		const ssrf = options?.ssrf ?? this.ssrfProtection;
 		const ssrfBridge = ssrf === 'disabled' ? undefined : ssrf;
-		const { logger } = this;
 
 		return {
 			request: async (requestOptions) => await httpRequest(requestOptions, ssrfBridge),
 			requestLegacy: async (requestOptions, callbacks) =>
-				await executeLegacyRequest(requestOptions, ssrfBridge, logger, callbacks),
+				await executeLegacyRequest(requestOptions, ssrfBridge, this.logger, callbacks),
 		};
 	}
 }
