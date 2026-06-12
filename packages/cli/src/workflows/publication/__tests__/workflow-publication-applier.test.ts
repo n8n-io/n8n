@@ -99,7 +99,7 @@ describe('WorkflowPublicationApplier', () => {
 		workflowPublishedVersionRepository.setPublishedVersion.mockResolvedValue(undefined);
 		workflowHistoryRepository.findOneBy.mockResolvedValue(newVersion);
 		workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([]);
-		workflowTriggerActivator.getUnregisteredLiveTriggerNodeIds.mockReturnValue(new Set());
+		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(new Set());
 		workflowTriggerActivator.activate.mockResolvedValue(undefined);
 		workflowTriggerActivator.deactivate.mockResolvedValue(undefined);
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
@@ -171,17 +171,19 @@ describe('WorkflowPublicationApplier', () => {
 		);
 	});
 
-	test('reconciles by registering desired live triggers missing from memory', async () => {
+	test('reconciles by registering desired non-webhook triggers missing from memory', async () => {
 		// Same version on both sides: a pure version diff is empty, but a live
 		// trigger is not actually registered, so it must be re-added.
 		const trigger = triggerNode('a');
 		setTriggerSets([trigger], [{ ...trigger }]);
-		workflowTriggerActivator.getUnregisteredLiveTriggerNodeIds.mockReturnValue(new Set(['a']));
+		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(
+			new Set(['a']),
+		);
 
 		const result = await applier.apply(makeRecord());
 
 		expect(result).toEqual({ type: 'completed' });
-		expect(workflowTriggerActivator.getUnregisteredLiveTriggerNodeIds).toHaveBeenCalledWith(
+		expect(workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds).toHaveBeenCalledWith(
 			'wf-1',
 			[trigger],
 		);
@@ -193,10 +195,10 @@ describe('WorkflowPublicationApplier', () => {
 		);
 	});
 
-	test('is a no-op when the version is unchanged and all live triggers are registered', async () => {
+	test('is a no-op when the version is unchanged and all non-webhook triggers are registered', async () => {
 		const trigger = triggerNode('a');
 		setTriggerSets([trigger], [{ ...trigger }]);
-		workflowTriggerActivator.getUnregisteredLiveTriggerNodeIds.mockReturnValue(new Set());
+		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(new Set());
 
 		const result = await applier.apply(makeRecord());
 

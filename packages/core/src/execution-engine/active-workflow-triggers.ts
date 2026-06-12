@@ -74,14 +74,12 @@ export class ActiveWorkflowTriggers {
 	 * state. Used by publication to reconcile a version against actual local state.
 	 */
 	getRegisteredTriggerNodeIds(workflowId: string): Set<string> {
-		const nodeIds = new Set<string>(this.scheduledTaskManager.getCronNodeIds(workflowId));
-
 		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
-		for (const nodeId of triggers?.nodeIds ?? []) {
-			nodeIds.add(nodeId);
-		}
 
-		return nodeIds;
+		return new Set([
+			...this.scheduledTaskManager.getCronNodeIds(workflowId),
+			...(triggers?.nodeIds ?? []),
+		]);
 	}
 
 	/**

@@ -139,7 +139,7 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
-	test('re-registers only the live triggers missing from memory after a crash mid-add', async () => {
+	test('re-registers only the non-webhook triggers missing from memory after a crash mid-add', async () => {
 		const owner = await createOwner();
 
 		const present = scheduleNode('present');

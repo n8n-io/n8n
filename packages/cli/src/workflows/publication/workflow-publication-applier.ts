@@ -70,9 +70,10 @@ export class WorkflowPublicationApplier {
 
 		// A record means "reconcile to this version", not "apply edge old→new", so
 		// augment the version diff with actual local state: re-enqueueing the same
-		// version (startup, retry, crash recovery) must re-register the desired live
-		// triggers that aren't actually running, which a pure version diff misses.
-		const unregistered = this.workflowTriggerActivator.getUnregisteredLiveTriggerNodeIds(
+		// version (startup, retry, crash recovery) must re-register the desired
+		// non-webhook triggers that aren't actually running, which a pure version
+		// diff misses.
+		const unregistered = this.workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds(
 			record.workflowId,
 			desiredTriggerNodes,
 		);

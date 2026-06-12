@@ -76,7 +76,7 @@ describe('WorkflowTriggerActivator', () => {
 		expect(activator.getEnabledTriggerNodes(null)).toEqual([]);
 	});
 
-	describe('getUnregisteredLiveTriggerNodeIds', () => {
+	describe('getUnregisteredNonWebhookTriggerNodeIds', () => {
 		function activatorWith(nonWebhookTriggerRegistrar: NonWebhookTriggerRegistrar) {
 			return new WorkflowTriggerActivator(
 				logger,
@@ -92,12 +92,12 @@ describe('WorkflowTriggerActivator', () => {
 			);
 		}
 
-		test('returns desired live triggers not registered in memory', () => {
+		test('returns desired non-webhook triggers not registered in memory', () => {
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockReturnValue(new Set(['t']));
 			const activator = activatorWith(nonWebhookTriggerRegistrar);
 
-			const result = activator.getUnregisteredLiveTriggerNodeIds('wf-1', [
+			const result = activator.getUnregisteredNonWebhookTriggerNodeIds('wf-1', [
 				node('t', 'trigger'),
 				node('p', 'poll'),
 			]);
@@ -111,7 +111,7 @@ describe('WorkflowTriggerActivator', () => {
 			nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockReturnValue(new Set());
 			const activator = activatorWith(nonWebhookTriggerRegistrar);
 
-			const result = activator.getUnregisteredLiveTriggerNodeIds('wf-1', [
+			const result = activator.getUnregisteredNonWebhookTriggerNodeIds('wf-1', [
 				node('t', 'trigger'),
 				node('w', 'webhook'),
 			]);
@@ -119,12 +119,12 @@ describe('WorkflowTriggerActivator', () => {
 			expect(result).toEqual(new Set(['t']));
 		});
 
-		test('returns empty when all desired live triggers are registered', () => {
+		test('returns empty when all desired non-webhook triggers are registered', () => {
 			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 			nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockReturnValue(new Set(['t', 'p']));
 			const activator = activatorWith(nonWebhookTriggerRegistrar);
 
-			const result = activator.getUnregisteredLiveTriggerNodeIds('wf-1', [
+			const result = activator.getUnregisteredNonWebhookTriggerNodeIds('wf-1', [
 				node('t', 'trigger'),
 				node('p', 'poll'),
 			]);
