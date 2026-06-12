@@ -239,34 +239,28 @@ export abstract class AbstractServer {
 			const liveWebhooks = Container.get(LiveWebhooks);
 
 			// Register a handler for live forms
-			this.app.all(
-				`/${this.endpointForm}/*path`,
-				createWebhookHandlerFor(liveWebhooks, 'form', 'form'),
-			);
+			this.app.all(`/${this.endpointForm}/*path`, createWebhookHandlerFor(liveWebhooks, 'form'));
 
 			// Register a handler for live webhooks
 			this.app.all(
 				`/${this.endpointWebhook}/*path`,
-				createWebhookHandlerFor(liveWebhooks, 'webhook', 'webhook'),
+				createWebhookHandlerFor(liveWebhooks, 'webhook'),
 			);
 
 			// Register a handler for waiting forms (excluded from metrics to avoid double-counting)
 			this.app.all(
 				`/${this.endpointFormWaiting}/:path{/:suffix}`,
-				createWebhookHandlerFor(Container.get(WaitingForms), undefined, 'none'),
+				createWebhookHandlerFor(Container.get(WaitingForms)),
 			);
 
 			// Register a handler for waiting webhooks (excluded from metrics to avoid double-counting)
 			this.app.all(
 				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
-				createWebhookHandlerFor(Container.get(WaitingWebhooks), undefined, 'none'),
+				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
 			);
 
 			// Register a handler for live MCP servers
-			this.app.all(
-				`/${this.endpointMcp}/*path`,
-				createWebhookHandlerFor(liveWebhooks, 'mcp', 'none'),
-			);
+			this.app.all(`/${this.endpointMcp}/*path`, createWebhookHandlerFor(liveWebhooks, 'mcp'));
 		}
 
 		if (this.testWebhooksEnabled) {
@@ -274,18 +268,15 @@ export abstract class AbstractServer {
 
 			this.app.all(
 				`/${this.endpointFormTest}/*path`,
-				createWebhookHandlerFor(testWebhooks, 'form', 'form'),
+				createWebhookHandlerFor(testWebhooks, 'form'),
 			);
 			this.app.all(
 				`/${this.endpointWebhookTest}/*path`,
-				createWebhookHandlerFor(testWebhooks, 'webhook', 'webhook'),
+				createWebhookHandlerFor(testWebhooks, 'webhook'),
 			);
 
 			// Register a handler for test MCP servers
-			this.app.all(
-				`/${this.endpointMcpTest}/*path`,
-				createWebhookHandlerFor(testWebhooks, 'mcp', 'none'),
-			);
+			this.app.all(`/${this.endpointMcpTest}/*path`, createWebhookHandlerFor(testWebhooks, 'mcp'));
 		}
 
 		// Block bots from scanning the application.

@@ -232,12 +232,20 @@ class WebhookRequestHandler {
 	}
 }
 
+/**
+ * Creates an Express request handler for the given webhook manager.
+ *
+ * When `expectedNodeType` is `'webhook'` or `'form'`, metrics are automatically
+ * recorded on each response: webhook requests via `observeWebhookRequest`,
+ * form submissions (POST only) via `observeFormSubmission`. No metrics are
+ * emitted for other node types.
+ */
 export function createWebhookHandlerFor(
 	webhookManager: IWebhookManager,
 	expectedNodeType?: ExpectedWebhookNodeType,
-	metricKind: 'webhook' | 'form' | 'none' = 'none',
 ): express.RequestHandler {
 	const handler = new WebhookRequestHandler(webhookManager, expectedNodeType);
+	const metricsService = Container.get(PrometheusWebhookAndFormMetricsService);
 
 	return async (req, res) => {
 		const webhookRequest = req as WebhookRequest | WebhookOptionsRequest;
@@ -247,14 +255,14 @@ export function createWebhookHandlerFor(
 			params.path = params.path.join('/');
 		}
 
-		if (metricKind !== 'none') {
+		if (expectedNodeType === 'form' || expectedNodeType === 'webhook') {
+			// TODO: cosnider if we should get the prometheus config here nad return early if PrometheusWebhookAndFormMetricsService.enabled is false (also add method to check form/webhook enabled individually)
 			const startNs = process.hrtime.bigint();
 			res.on('finish', () => {
 				const durationSeconds = Number(process.hrtime.bigint() - startNs) / 1e9;
 				const workflowId = (res.locals as { workflowId?: string }).workflowId ?? '';
-				const metricsService = Container.get(PrometheusWebhookAndFormMetricsService);
 
-				if (metricKind === 'form') {
+				if (expectedNodeType === 'form') {
 					// Only POST requests are form submissions; GET renders the form page.
 					if (req.method !== 'POST') return;
 					metricsService.observeFormSubmission({
