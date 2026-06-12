@@ -9,7 +9,7 @@
  *
  * API:
  *   GET https://api.n8n.io/api/workflows/{id}
- *   Response: { data: { attributes: { name, status, workflow: { nodes, connections, ... } } } }
+ *   Response: { data: { attributes: { name, status | reviewStatus, workflow: { nodes, connections, ... } } } }
  *
  *   GET https://n8n.io/api/product-api/workflows/search?rows=100&page=1
  *   Returns workflow metadata for discovering IDs
@@ -24,7 +24,8 @@ interface WorkflowResponse {
 	data: {
 		attributes: {
 			name: string;
-			status: string;
+			status?: string;
+			reviewStatus?: string;
 			workflow: {
 				nodes: unknown[];
 				connections: Record<string, unknown>;
@@ -132,11 +133,12 @@ async function main() {
 		const data = await fetchWorkflow(id);
 
 		if (data && data.data && data.data.attributes) {
-			const { name, status, workflow } = data.data.attributes;
+			const { name, status, reviewStatus, workflow } = data.data.attributes;
+			const effectiveStatus = status ?? reviewStatus;
 
 			// Only include published workflows
-			if (status !== 'published') {
-				console.log(`  Skipping: status=${status} (not published)`);
+			if (effectiveStatus !== 'published') {
+				console.log(`  Skipping: status=${effectiveStatus} (not published)`);
 				continue;
 			}
 
