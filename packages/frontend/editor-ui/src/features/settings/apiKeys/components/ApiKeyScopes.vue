@@ -23,9 +23,19 @@ const selectedScopes = ref(props.modelValue);
 
 const i18n = useI18n();
 
-const checkAll = ref(false);
-const indeterminate = ref(false);
 const popperContainer = ref(null);
+
+const allScopesSelected = computed(() => {
+	return (
+		props.availableScopes.length > 0 && selectedScopes.value.length === props.availableScopes.length
+	);
+});
+
+const indeterminate = computed(() => {
+	return (
+		selectedScopes.value.length > 0 && selectedScopes.value.length < props.availableScopes.length
+	);
+});
 
 const groupedScopes = computed(() => {
 	const groups = {};
@@ -46,31 +56,25 @@ const groupedScopes = computed(() => {
 });
 
 watch(selectedScopes, (newValue) => {
-	if (newValue.length === props.availableScopes.length) {
-		indeterminate.value = false;
-		checkAll.value = true;
-	} else if (newValue.length > 0) {
-		indeterminate.value = true;
-	} else if (newValue.length === 0) {
-		indeterminate.value = false;
-		checkAll.value = false;
-	}
 	emit('update:modelValue', newValue);
 });
 
-watch(checkAll, (newValue) => {
-	if (newValue) {
-		selectedScopes.value = props.availableScopes;
-	} else {
-		selectedScopes.value = [];
-	}
-});
+function onSelectAllScopes(shouldSelectAll) {
+	selectedScopes.value = shouldSelectAll ? [...props.availableScopes] : [];
+}
 </script>
 
 <template>
 	<div :class="$style['api-key-scopes']">
 		<div ref="popperContainer"></div>
 		<N8nInputLabel :label="i18n.baseText('settings.api.scopes.label')" color="text-dark">
+			<N8nCheckbox
+				:model-value="allScopesSelected"
+				:class="$style['scopes-checkbox']"
+				:indeterminate="indeterminate"
+				:label="i18n.baseText('settings.api.scopes.selectAll')"
+				@update:model-value="onSelectAllScopes"
+			/>
 			<ElSelect
 				v-model="selectedScopes"
 				data-test-id="scopes-select"
@@ -84,15 +88,6 @@ watch(checkAll, (newValue) => {
 				:placeholder="i18n.baseText('settings.api.scopes.placeholder')"
 				:append-to="popperContainer"
 			>
-				<template #header>
-					<N8nCheckbox
-						v-model="checkAll"
-						:class="$style['scopes-checkbox']"
-						:indeterminate="indeterminate"
-						:label="i18n.baseText('settings.api.scopes.selectAll')"
-					/>
-				</template>
-
 				<template v-for="(actions, resource) in groupedScopes" :key="resource">
 					<ElOptionGroup :label="capitalCase(resource).toUpperCase()">
 						<ElOption
@@ -151,7 +146,7 @@ watch(checkAll, (newValue) => {
 
 .scopes-checkbox {
 	display: flex;
-	margin-left: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .scopes-dropdown-container :global(.el-select-group__wrap::after) {
