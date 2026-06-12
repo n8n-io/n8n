@@ -50,6 +50,16 @@ export class BitbucketTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'bitbucketOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+						'@version': [1.1],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -93,6 +103,10 @@ export class BitbucketTrigger implements INodeType {
 					{
 						name: 'Access Token',
 						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
 					},
 				],
 				default: 'accessToken',

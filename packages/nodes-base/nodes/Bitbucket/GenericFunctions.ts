@@ -19,9 +19,12 @@ export async function bitbucketApiRequest(
 	uri?: string,
 ): Promise<any> {
 	try {
-		const authentication = this.getNodeParameter('authentication', 0) as 'password' | 'accessToken';
+		const authentication = this.getNodeParameter('authentication', 0) as
+			| 'password'
+			| 'accessToken'
+			| 'oAuth2';
 
-		if (authentication === 'accessToken') {
+		if (authentication === 'accessToken' || authentication === 'oAuth2') {
 			const httpRequestOptions: IHttpRequestOptions = {
 				method,
 				qs,
@@ -34,9 +37,12 @@ export async function bitbucketApiRequest(
 				delete httpRequestOptions.body;
 			}
 
+			const credentialType =
+				authentication === 'oAuth2' ? 'bitbucketOAuth2Api' : 'bitbucketAccessTokenApi';
+
 			return await this.helpers.httpRequestWithAuthentication.call(
 				this,
-				'bitbucketAccessTokenApi',
+				credentialType,
 				httpRequestOptions,
 			);
 		}
