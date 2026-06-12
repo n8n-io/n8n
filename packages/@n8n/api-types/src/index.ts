@@ -316,6 +316,7 @@ export {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
+	InstanceAiEvalRestoreThreadRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -418,6 +419,8 @@ export type {
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSeedWorkflow,
+	InstanceAiEvalThreadExportResponse,
 } from './schemas/instance-ai.schema';
 
 export type {

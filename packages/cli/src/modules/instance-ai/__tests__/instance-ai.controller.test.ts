@@ -29,6 +29,7 @@ jest.mock('../eval/execution.service', () => ({
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequest,
@@ -51,6 +52,7 @@ import type { Scope } from '@n8n/permissions';
 import type { Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -61,6 +63,7 @@ import type { UrlService } from '@/services/url.service';
 
 import type { EvalExecutionService } from '../eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
+import type { EvalThreadRestoreService } from '../eval/thread-restore.service';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
@@ -103,6 +106,7 @@ describe('InstanceAiController', () => {
 	const projectService = mock<ProjectService>();
 
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+	const evalThreadRestore = mock<EvalThreadRestoreService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -111,6 +115,7 @@ describe('InstanceAiController', () => {
 		settingsService,
 		mock<EvalExecutionService>(),
 		evalCredentialAllowlists,
+		evalThreadRestore,
 		eventBus,
 		moduleRegistry,
 		push,
@@ -534,6 +539,89 @@ describe('InstanceAiController', () => {
 					payload as InstanceAiEvalCredentialAllowlistRequest,
 				),
 			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('restoreEvalThread', () => {
+		const seedMessages = [
+			{ id: 'm1', type: 'llm', role: 'user', content: [], createdAt: '2026-01-01T00:00:00.000Z' },
+		];
+		const seedWorkflow = { id: 'wf-1', name: 'Seeded', nodes: [], connections: {} };
+		const payload = {
+			threadId: THREAD_ID,
+			messages: seedMessages,
+			workflows: [seedWorkflow],
+		} as InstanceAiEvalRestoreThreadRequest;
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('restoreEvalThread')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
+		});
+
+		it('should recreate referenced workflows in the thread project, then seed messages', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			memoryService.restoreThreadMessages.mockResolvedValue({ restored: 1 });
+
+			const result = await controller.restoreEvalThread(req, res, payload);
+
+			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith([seedWorkflow], 'project-1');
+			expect(memoryService.restoreThreadMessages).toHaveBeenCalledWith(
+				USER_ID,
+				THREAD_ID,
+				seedMessages,
+			);
+			expect(result).toEqual({
+				ok: true,
+				threadId: THREAD_ID,
+				restored: 1,
+				workflowIds: ['wf-1'],
+			});
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(NotFoundError);
+			expect(evalThreadRestore.restoreWorkflows).not.toHaveBeenCalled();
+		});
+
+		it("should reject another user's thread", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should reject a thread without a project binding', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue(undefined);
+
+			await expect(controller.restoreEvalThread(req, res, payload)).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(evalThreadRestore.restoreWorkflows).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('exportEvalThread', () => {
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('exportEvalThread')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
+		});
+
+		it('should return the native message log with the thread project', async () => {
+			const messages = [{ id: 'm1', role: 'user' }];
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.exportThreadMessages.mockResolvedValue(messages as never);
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+
+			const result = await controller.exportEvalThread(req, res, THREAD_ID);
+
+			expect(result).toEqual({ threadId: THREAD_ID, projectId: 'project-1', messages });
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(controller.exportEvalThread(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
 		});
 	});
 
