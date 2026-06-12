@@ -9,32 +9,15 @@ import { Get, Options, RootLevelController, StaticRouterMetadata } from '@n8n/de
 import { Container } from '@n8n/di';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
 import { OAuthServerService } from './oauth-server.service';
-import { OAUTH_SERVER_DISABLED_ERROR_MESSAGE } from './oauth.constants';
 import { buildOAuthClientLimitReachedMessage } from './oauth.errors';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 const oauthServerService = Container.get(OAuthServerService);
-const resourceRegistry = Container.get(ProtectedResourceRegistry);
 const globalConfig = Container.get(GlobalConfig);
 const logger = Container.get(Logger);
-
-/**
- * Middleware that rejects requests when no protected resource is enabled.
- * Prevents unauthenticated access to OAuth endpoints when every registered
- * resource (currently only the instance MCP server) is turned off.
- */
-const oauthServerEnabledGuard: RequestHandler = async (_req, res, next) => {
-	const enabled = await resourceRegistry.isAnyResourceEnabled();
-	if (!enabled) {
-		res.status(403).json({ error: OAUTH_SERVER_DISABLED_ERROR_MESSAGE });
-		return;
-	}
-	next();
-};
 
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
@@ -78,28 +61,25 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/register`,
 		router: registerRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard, oauthClientLimitGuard],
+		middlewares: [oauthClientLimitGuard],
 		ipRateLimit: { limit: 10, windowMs: 5 * Time.minutes.toMilliseconds },
 	},
 	{
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard],
 		ipRateLimit: { limit: 50, windowMs: 5 * Time.minutes.toMilliseconds },
 	},
 	{
 		path: `${basePath}/token`,
 		router: tokenRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard],
 		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
 	},
 	{
 		path: `${basePath}/revoke`,
 		router: revokeRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard],
 		ipRateLimit: { limit: 30, windowMs: 5 * Time.minutes.toMilliseconds },
 	},
 ];
@@ -168,7 +148,7 @@ export class OAuthController {
 		res.json(metadata);
 	}
 
-	@Options('/.well-known/oauth-protected-resource/mcp-server/http', {
+	@Options('/.well-known/oauth-protected-resource/*resourcePath', {
 		skipAuth: true,
 		usesTemplates: true,
 		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
@@ -179,33 +159,40 @@ export class OAuthController {
 	}
 
 	/**
-	 * RFC 9728 protected-resource metadata for the instance MCP server.
-	 *
-	 * The route stays explicit (rather than a catch-all resolving any registered
-	 * resource path) because the instance MCP server is the only registered
-	 * resource today and existing clients depend on this exact URL. Generalize
-	 * to a registry-driven catch-all when per-workflow trigger resources land
-	 * (IAM-799).
+	 * RFC 9728 protected-resource metadata, resolved dynamically through the
+	 * registry so any registered resource path is served by one route — the
+	 * static instance MCP resource today, per-workflow resources later.
 	 */
-	@Get('/.well-known/oauth-protected-resource/mcp-server/http', {
+	@Get('/.well-known/oauth-protected-resource/*resourcePath', {
 		skipAuth: true,
 		usesTemplates: true,
 		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
 	})
-	protectedResourceMetadata(_req: Request, res: Response) {
+	async protectedResourceMetadata(req: Request, res: Response) {
 		this.setCorsHeaders(res);
 
-		const resource = this.resourceRegistry.getByResourcePath('/mcp-server/http');
+		const resourcePath =
+			'/' +
+			(Array.isArray(req.params.resourcePath)
+				? req.params.resourcePath.join('/')
+				: req.params.resourcePath); // Wildcard params are captured as arrays
+		const resource = await this.resourceRegistry.getByResourcePath(resourcePath);
 		if (!resource) {
-			throw new NotFoundError('Unknown protected resource');
+			res.status(404).json({ message: 'Unknown protected resource' });
+			return;
 		}
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
-		res.json({
+		const metadata: Record<string, unknown> = {
 			resource: resource.getResourceUrl(),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [baseUrl],
-			scopes_supported: resource.scopes,
-		});
+		};
+
+		if (resource.scopes.length > 0) {
+			metadata.scopes_supported = resource.scopes;
+		}
+
+		res.json(metadata);
 	}
 }

@@ -12,8 +12,8 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "vitest run --passWithNoTests",
-    "test:unit": "vitest run --passWithNoTests",
+    "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest --silent=false"
   },
   "main": "dist/index.js",
@@ -23,13 +23,30 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "@n8n/backend-common": "workspace:*"
+    "@n8n/backend-common": "workspace:*",
+    "@n8n/config": "workspace:*",
+    "@n8n/constants": "workspace:*",
+    "@n8n/di": "workspace:*",
+    "axios": "catalog:",
+    "cache-manager": "catalog:",
+    "form-data": "catalog:",
+    "http-proxy-agent": "catalog:",
+    "https-proxy-agent": "catalog:",
+    "iconv-lite": "catalog:",
+    "n8n-workflow": "workspace:*",
+    "proxy-from-env": "catalog:",
+    "qs": "catalog:",
+    "reflect-metadata": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/proxy-from-env": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "vitest": "catalog:"
+    "nock": "^14.0.14",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

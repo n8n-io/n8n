@@ -1,8 +1,9 @@
-ARG NODE_VERSION=24.15.0
+ARG NODE_VERSION=24.16.0
 
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the digest together with the tag when updating the base image.
-FROM dhi.io/node:24.15.0-alpine3.22-dev@sha256:a7eead704e9bd2d7a4c1b52cf595848f180365eba7c15a185ce1c3a690c1a19d
+# Digest pins to dhi.io/node:24.16.0-alpine3.22-dev (Node 24.16.0, Alpine 3.22, DHI dev variant).
+FROM dhi.io/node:24.16.0-alpine3.22-dev@sha256:67906dda1e458153488aecb9a7a5a926cb03cf1e8890eb8602a86a78162b2556
 
 ARG NODE_VERSION
 
@@ -14,13 +15,13 @@ RUN apk add --no-cache busybox-binsh && \
     fc-cache -f && \
     apk del .build-deps-fonts && \
     find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; && \
-    # Install OS dependencies
-    apk update && \
-    apk upgrade --no-cache && \
+    # Install OS dependencies. No blanket `apk upgrade` — it floats the whole
+    # world off the Alpine repos at build time and defeats the pinned base;
+    # patched bytes come from bumping the pinned DHI digest instead. git and
+    # openssl omitted: the base already provides git and the libssl3/libcrypto3
+    # libs Node uses (the openssl CLI binary isn't needed at runtime).
     apk add --no-cache \
-        git \
         openssh \
-        openssl \
         graphicsmagick=1.3.45-r0 `# pinned to avoid ghostscript-fonts (GPL-2.0); see SEC-398 + NODE-4184` \
         tini \
         tzdata \

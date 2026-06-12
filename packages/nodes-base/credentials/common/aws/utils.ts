@@ -1,3 +1,4 @@
+import { resolveProxyUrl } from '@n8n/backend-network';
 import {
 	ApplicationError,
 	type IHttpRequestMethods,
@@ -20,7 +21,6 @@ import {
 	type AwsSecurityHeaders,
 } from './types';
 import { sign } from 'aws4';
-import { getProxyForUrl } from 'proxy-from-env';
 import { ProxyAgent } from 'undici';
 
 import { getSystemCredentials } from './system-credentials-utils';
@@ -379,7 +379,7 @@ export async function assumeRole(
 		throw new ApplicationError('Failed to sign STS request');
 	}
 
-	const proxyUrl = getProxyForUrl(stsEndpoint);
+	const proxyUrl = resolveProxyUrl(stsEndpoint);
 	const dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
 	const requestInit: RequestInit & { dispatcher?: unknown } = {
 		method: 'POST',
