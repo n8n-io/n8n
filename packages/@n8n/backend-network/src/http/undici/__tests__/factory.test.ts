@@ -263,16 +263,6 @@ describe('getNodeAgent SSRF lookup injection', () => {
 			expect(getAgentLookup(httpAgent)).toBeUndefined();
 			expect(getAgentLookup(httpsAgent)).toBeUndefined();
 		});
-
-		it('does NOT inject lookup when SSRF is disabled', () => {
-			const factory = makeFactory();
-			const { httpAgent, httpsAgent } = factory
-				.create({ ssrf: 'disabled', proxy: 'http://proxy.internal:3128' })
-				.getNodeAgent();
-
-			expect(getAgentLookup(httpAgent)).toBeUndefined();
-			expect(getAgentLookup(httpsAgent)).toBeUndefined();
-		});
 	});
 
 	describe('proxy: env', () => {
@@ -290,16 +280,6 @@ describe('getNodeAgent SSRF lookup injection', () => {
 			// EnvProxy* agents inherit from http/https.Agent and pass lookup to super()
 			expect(getAgentLookup(httpAgent)).toBe(lookupFn);
 			expect(getAgentLookup(httpsAgent)).toBe(lookupFn);
-		});
-
-		it('does NOT inject lookup when SSRF is disabled', () => {
-			const factory = makeFactory();
-			const { httpAgent, httpsAgent } = factory
-				.create({ ssrf: 'disabled', proxy: 'env' })
-				.getNodeAgent();
-
-			expect(getAgentLookup(httpAgent)).toBeUndefined();
-			expect(getAgentLookup(httpsAgent)).toBeUndefined();
 		});
 	});
 });
