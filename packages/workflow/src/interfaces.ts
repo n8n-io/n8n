@@ -147,6 +147,11 @@ export interface IUser {
 	lastName: string;
 }
 
+export interface IFormUser extends IUser {
+	picture?: string;
+	emailVerified?: boolean;
+}
+
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
@@ -1369,6 +1374,8 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
+	buildWebhookOAuth2RedirectUrl(): Promise<string>;
+	exchangeOAuth2Code(code: string): Promise<IFormUser>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
