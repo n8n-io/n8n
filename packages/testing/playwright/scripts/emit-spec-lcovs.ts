@@ -11,8 +11,9 @@
  * Frontend only: backend coverage is a shared worker-scoped process with no
  * per-test boundary, so it stays at report granularity. See DEVP-205.
  */
-import { readFileSync } from 'node:fs';
+import { createReadStream } from 'node:fs';
 import { join } from 'node:path';
+import { createInterface } from 'node:readline';
 
 import { emitPerSpecLcovs } from '@n8n/test-impact';
 import type { CoverageReport } from 'monocart-coverage-reports';
@@ -27,9 +28,25 @@ async function main() {
 		outDir: OUT_DIR,
 		coverageOptions,
 		feedRaws: async (report: CoverageReport, rawFiles, dir) => {
+			// Raws are JSONL (one V8 entry per line) — read line-by-line and add in
+			// batches so neither a >512MB whole-file string nor the full entry array
+			// is ever materialised at once.
 			for (const rf of rawFiles) {
 				try {
-					await report.add(JSON.parse(readFileSync(join(dir, rf), 'utf8')));
+					const lines = createInterface({
+						input: createReadStream(join(dir, rf)),
+						crlfDelay: Infinity,
+					});
+					let batch: unknown[] = [];
+					for await (const line of lines) {
+						if (!line) continue;
+						batch.push(JSON.parse(line));
+						if (batch.length >= 100) {
+							await report.add(batch as never);
+							batch = [];
+						}
+					}
+					if (batch.length) await report.add(batch as never);
 				} catch (error) {
 					console.warn(`  ⚠ ${rf}: ${String(error)}`);
 				}

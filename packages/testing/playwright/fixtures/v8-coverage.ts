@@ -1,7 +1,9 @@
 import type { BrowserContext, Page, TestInfo } from '@playwright/test';
 import { CoverageReport } from 'monocart-coverage-reports';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { createWriteStream, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 
 import {
 	BY_SPEC_DIR,
@@ -76,26 +78,20 @@ export const v8CoverageFixtures = {
 			const spec = specId(testInfo);
 			const specDir = join(BY_SPEC_DIR, slugify(spec));
 			mkdirSync(specDir, { recursive: true });
+			// Stream one V8 entry per line (JSONL). A whole-array JSON.stringify of a
+			// navigation-heavy spec (e.g. signout + signin with resetOnNavigation:false)
+			// exceeds V8's ~512MB single-string cap and throws RangeError; per-entry
+			// serialization stays well under it and the file can grow unbounded.
 			// Unique per test so multiple tests in one spec file accumulate (don't clobber).
-			try {
-				writeFileSync(
-					join(specDir, `raw-${slugify(testInfo.testId)}.json`),
-					JSON.stringify(perSpecRaw),
-				);
-				writeFileSync(join(specDir, '.spec'), spec);
-			} catch (error) {
-				// V8 coverage entries include full script source text. Tests that navigate
-				// extensively (e.g. signout + signin in one test with resetOnNavigation:false)
-				// accumulate enough script entries that JSON.stringify hits V8's ~536MB string
-				// limit (RangeError: Invalid string length). The shard-level sharedReport
-				// already received the data above, so aggregate coverage is unaffected — only
-				// this test's per-spec impact map entry is dropped. Re-throw anything else: a
-				// real write failure (disk full, permissions) must not silently lose attribution.
-				if (!(error instanceof RangeError)) throw error;
-				console.warn(
-					`[coverage] per-spec raw write skipped for ${testInfo.titlePath.join(' > ')}: ${error.message}`,
-				);
-			}
+			await pipeline(
+				Readable.from(
+					(function* () {
+						for (const entry of perSpecRaw) yield `${JSON.stringify(entry)}\n`;
+					})(),
+				),
+				createWriteStream(join(specDir, `raw-${slugify(testInfo.testId)}.jsonl`)),
+			);
+			writeFileSync(join(specDir, '.spec'), spec);
 		}
 	},
 };
