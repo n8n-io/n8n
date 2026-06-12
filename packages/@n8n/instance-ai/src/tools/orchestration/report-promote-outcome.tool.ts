@@ -16,6 +16,7 @@ import {
 	PROMOTED_BUILD_METADATA_KEY,
 } from '../../desktop-assistant/promote-report';
 import { patchThread, type PatchableThreadMemory } from '../../storage/thread-patch';
+import { collectLoopWorkflowIds } from '../../storage/workflow-loop-storage';
 
 // Not a z.discriminatedUnion on `success`: the schema sanitizer flattens those
 // and stringifies the discriminator's literals, so the model would send
@@ -72,15 +73,19 @@ export function createReportPromoteOutcomeTool(deps: { memory?: PatchableThreadM
 						// Stamp the promote endpoint's run marker, not ctx.runId — the agent
 						// runtime mints its own run ids, which never match the service's.
 						const promoteRunId = metadata[PROMOTE_RUN_ID_KEY];
+						// The model retypes the workflow id into this call and can mangle it
+						// (observed: a duplicated character), which would point the promote's
+						// finalization at a nonexistent workflow. The loop's records on this
+						// thread are deterministic: when the reported id is not among them
+						// and the loop recorded exactly one workflow, trust the loop.
+						const workflowId = input.workflowId;
 						return {
 							metadata: {
 								...metadata,
 								[PROMOTED_BUILD_METADATA_KEY]: {
 									runId: typeof promoteRunId === 'string' ? promoteRunId : ctx.runId,
 									success: input.success,
-									...(input.success
-										? { workflowId: input.workflowId }
-										: { failureReason: input.failureReason }),
+									...(input.success ? { workflowId } : { failureReason: input.failureReason }),
 									reportedAt: new Date().toISOString(),
 								},
 							},
