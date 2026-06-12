@@ -559,7 +559,7 @@ export class GatewayClient {
 				case 'allowOnce':
 					break;
 				case 'allowForSession':
-					session.allowForSession(resource.toolGroup, resource.resource);
+					session.allowForSession(resource.toolGroup);
 					break;
 				case 'alwaysAllow':
 					session.alwaysAllow(resource.toolGroup, resource.resource);
