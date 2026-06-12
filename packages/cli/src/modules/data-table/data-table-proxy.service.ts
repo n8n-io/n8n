@@ -223,6 +223,12 @@ export class DataTableProxyService implements DataTableProxyProvider {
 					options.dryRun,
 				);
 			},
+
+			async clearRows(dataTableId: string, projectId: string) {
+				checkInstanceWriteAccess();
+				await requireScope('dataTable:writeRow', projectId);
+				return await dataTableService.clearRows(dataTableId, projectId);
+			},
 		};
 	}
 
@@ -324,6 +330,10 @@ export class DataTableProxyService implements DataTableProxyProvider {
 					true,
 					options.dryRun,
 				);
+			},
+
+			async clearRows() {
+				return await dataTableService.clearRows(dataTableId, projectId);
 			},
 		};
 	}
