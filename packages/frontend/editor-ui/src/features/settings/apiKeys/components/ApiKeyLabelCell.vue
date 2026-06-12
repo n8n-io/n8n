@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 
-defineProps<{
+const props = defineProps<{
 	label: string;
 	apiKey: string;
 }>();
@@ -25,6 +25,8 @@ onMounted(() => {
 		observer.observe(labelEl.value);
 	}
 });
+
+watch(() => props.label, update, { flush: 'post' });
 
 onBeforeUnmount(() => {
 	observer?.disconnect();
