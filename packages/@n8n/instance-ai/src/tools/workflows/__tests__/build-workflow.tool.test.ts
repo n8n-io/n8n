@@ -41,6 +41,14 @@ vi.mock('../submit-workflow.tool', () => ({
 	ensureWebhookIds: vi.fn(async () => await Promise.resolve()),
 }));
 
+// LLM-backed services must never hit the network from unit tests.
+vi.mock('../classify-node-destructiveness.service', () => ({
+	classifyNodesForSimulation: vi.fn(async () => await Promise.resolve([])),
+}));
+vi.mock('../generate-simulation-fixtures.service', () => ({
+	generateSimulationFixtures: vi.fn(async () => await Promise.resolve({})),
+}));
+
 describe('createBuildWorkflowTool', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();

@@ -24,7 +24,10 @@ type VerifyBuiltWorkflowOutput = {
 		preview: string;
 		truncated: boolean;
 		chars: number;
+		simulated?: boolean;
 	}>;
+	simulatedNodes?: Array<{ nodeName: string; reason: string }>;
+	simulationNote?: string;
 	data?: Record<string, unknown>;
 };
 
@@ -998,5 +1001,137 @@ describe('verify-built-workflow tool', () => {
 
 		expect(result.success).toBe(true);
 		expect(deleteRows).not.toHaveBeenCalled();
+	});
+});
+
+describe('verify-built-workflow tool — node simulation plan', () => {
+	const simulateVerdict = (nodeName: string, reason = 'Sends a message') => ({
+		nodeName,
+		verdict: 'simulate' as const,
+		reason,
+		confidence: 'high' as const,
+		source: 'deterministic' as const,
+	});
+	const executeVerdict = (nodeName: string) => ({
+		nodeName,
+		verdict: 'execute' as const,
+		reason: 'Reads data',
+		confidence: 'high' as const,
+		source: 'deterministic' as const,
+	});
+
+	it('pins unwrapped fixture items for simulated nodes, merged over legacy credential markers', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				verificationPinData: { Gmail: [{ _mockedCredential: 'gmailOAuth2' }] },
+				nodeSimulationPlan: [simulateVerdict('Send Slack'), executeVerdict('Get Rows')],
+				simulationFixtures: { 'Send Slack': [{ json: { ok: true, ts: '1718000000.1' } }] },
+			}),
+			{ executionId: 'exec-sim', status: 'success', data: {} },
+		);
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run).toHaveBeenCalledTimes(1);
+		// Fixture items are passed unwrapped — the adapter wraps each in {json}.
+		expect(run.mock.calls[0][2]).toMatchObject({
+			pinData: {
+				Gmail: [{ _mockedCredential: 'gmailOAuth2' }],
+				'Send Slack': [{ ok: true, ts: '1718000000.1' }],
+			},
+		});
+	});
+
+	it('pins an empty item for simulate-verdict nodes that have no fixture', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [simulateVerdict('Send Slack')],
+			}),
+			{ executionId: 'exec-sim', status: 'success', data: {} },
+		);
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({
+			pinData: { 'Send Slack': [{}] },
+		});
+	});
+
+	it('does not pin execute-verdict nodes', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [executeVerdict('Get Rows')],
+			}),
+			{ executionId: 'exec-sim', status: 'success', data: {} },
+		);
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run.mock.calls[0][2]).toMatchObject({ pinData: undefined });
+	});
+
+	it('marks simulated nodes in previews and reports them with reasons', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [
+					simulateVerdict('Send Slack', 'Sends a message to a Slack channel'),
+				],
+				simulationFixtures: { 'Send Slack': [{ json: { ok: true } }] },
+			}),
+			{
+				executionId: 'exec-sim',
+				status: 'success',
+				data: {
+					'Send Slack': [{ ok: true }],
+					Transform: [{ value: 1 }],
+				},
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		const previews = result.nodePreviews ?? [];
+		expect(previews.find((p) => p.nodeName === 'Send Slack')).toMatchObject({ simulated: true });
+		expect(previews.find((p) => p.nodeName === 'Transform')?.simulated).toBeUndefined();
+		expect(result.simulatedNodes).toEqual([
+			{ nodeName: 'Send Slack', reason: 'Sends a message to a Slack channel' },
+		]);
+		expect(result.simulationNote).toContain('Send Slack');
+		expect(result.simulationNote).toContain('no real external writes');
+	});
+
+	it('excludes simulated insert nodes from data-table cleanup and snapshotting', async () => {
+		const { ctx, deleteRows, queryRows } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [simulateVerdict('Insert Lead', 'Inserts a row')],
+				// Fabricated fixture ID — must never reach the delete set.
+				simulationFixtures: { 'Insert Lead': [{ json: { id: 3 } }] },
+			}),
+			{
+				executionId: 'exec-sim',
+				status: 'success',
+				data: { 'Insert Lead': [{ id: 3 }] },
+			},
+			{
+				workflowNodes: [
+					{
+						name: 'Insert Lead',
+						type: 'n8n-nodes-base.dataTable',
+						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
+					},
+				],
+				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }] },
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(deleteRows).not.toHaveBeenCalled();
+		expect(queryRows).not.toHaveBeenCalled();
 	});
 });

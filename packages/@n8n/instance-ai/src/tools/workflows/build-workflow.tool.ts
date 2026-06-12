@@ -5,6 +5,8 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { classifyNodesForSimulation } from './classify-node-destructiveness.service';
+import { generateSimulationFixtures } from './generate-simulation-fixtures.service';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
@@ -599,6 +601,39 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						(context.runId ? `build-${context.runId}` : `build-${nanoid(8)}`));
 
 				const createSuccessResponse = async (savedId: string) => {
+					// Classify every main-flow node as execute-vs-simulate for the
+					// verification run, then generate mock output for the simulated
+					// nodes. Never blocks the submit: errors degrade to an absent plan
+					// (verify falls back to legacy behavior).
+					let nodeSimulationPlan: WorkflowBuildOutcome['nodeSimulationPlan'];
+					let simulationFixtures: WorkflowBuildOutcome['simulationFixtures'];
+					try {
+						const plan = await classifyNodesForSimulation({
+							workflow: json,
+							mockedNodeNames: mockResult.mockedNodeNames,
+						});
+						nodeSimulationPlan = plan.length > 0 ? plan : undefined;
+						if (nodeSimulationPlan) {
+							const fixtures = await generateSimulationFixtures({
+								workflow: json,
+								plan: nodeSimulationPlan,
+							});
+							simulationFixtures = Object.keys(fixtures).length > 0 ? fixtures : undefined;
+							context.logger?.debug('Classified workflow nodes for verification simulation', {
+								workflowId: savedId,
+								nodeCount: nodeSimulationPlan.length,
+								simulateCount: nodeSimulationPlan.filter((v) => v.verdict === 'simulate').length,
+								llmCount: nodeSimulationPlan.filter((v) => v.source === 'llm').length,
+								fallbackCount: nodeSimulationPlan.filter((v) => v.source === 'fallback').length,
+							});
+						}
+					} catch (error) {
+						context.logger?.warn('Node simulation classification failed — plan omitted', {
+							workflowId: savedId,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
+
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${workflowId ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${savedId}).`;
@@ -636,6 +671,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								: undefined,
 						usesWorkflowPinDataForVerification:
 							mockResult.usesWorkflowPinDataForVerification || undefined,
+						nodeSimulationPlan,
+						simulationFixtures,
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,

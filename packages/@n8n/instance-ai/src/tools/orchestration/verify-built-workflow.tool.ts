@@ -170,12 +170,14 @@ function previewValue(value: unknown, maxChars: number): { preview: string; trun
 function buildNodePreviews(
 	resultData: Record<string, unknown> | undefined,
 	maxChars: number,
+	simulatedNodeNames?: ReadonlySet<string>,
 ): Array<{
 	nodeName: string;
 	itemCount?: number;
 	preview: string;
 	truncated: boolean;
 	chars: number;
+	simulated?: boolean;
 }> {
 	if (!resultData) return [];
 
@@ -188,8 +190,40 @@ function buildNodePreviews(
 			preview: preview.preview,
 			truncated: preview.truncated,
 			chars: serialized.length,
+			...(simulatedNodeNames?.has(nodeName) ? { simulated: true } : {}),
 		};
 	});
+}
+
+/**
+ * Per-execution pin data for the verification run, assembled from the build
+ * outcome sidecar. Fixture items take precedence over the legacy
+ * `{_mockedCredential}` markers for the same node. A `simulate`-verdict node
+ * without a fixture is still pinned (with an empty item) — losing output
+ * realism is acceptable, executing a destructive operation is not.
+ *
+ * Items are returned UNWRAPPED (plain objects, not `{json: ...}`): the
+ * adapter's `sdkPinDataToRuntime` wraps every item in `{json}` itself.
+ */
+function buildVerificationPinData(buildOutcome: WorkflowBuildOutcome): {
+	pinData: Record<string, unknown[]> | undefined;
+	simulatedNodes: Array<{ nodeName: string; reason: string }>;
+} {
+	const merged: Record<string, unknown[]> = { ...(buildOutcome.verificationPinData ?? {}) };
+	const fixtures = buildOutcome.simulationFixtures ?? {};
+	const simulatedNodes: Array<{ nodeName: string; reason: string }> = [];
+
+	for (const verdict of buildOutcome.nodeSimulationPlan ?? []) {
+		if (verdict.verdict !== 'simulate') continue;
+		simulatedNodes.push({ nodeName: verdict.nodeName, reason: verdict.reason });
+		const items = fixtures[verdict.nodeName];
+		merged[verdict.nodeName] = items?.length ? items.map((item) => item.json) : [{}];
+	}
+
+	return {
+		pinData: Object.keys(merged).length > 0 ? merged : undefined,
+		simulatedNodes,
+	};
 }
 
 function countProducedOutputRows(
@@ -499,9 +533,14 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 							preview: z.string(),
 							truncated: z.boolean(),
 							chars: z.number(),
+							simulated: z.boolean().optional(),
 						}),
 					)
 					.optional(),
+				simulatedNodes: z
+					.array(z.object({ nodeName: z.string(), reason: z.string() }))
+					.optional(),
+				simulationNote: z.string().optional(),
 				data: z.record(z.unknown()).optional(),
 				error: z.string().optional(),
 				remediation: remediationOutputSchema,
@@ -568,6 +607,10 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 
 			const workflowId = buildOutcome.workflowId;
 
+			const { pinData: verificationPinData, simulatedNodes } =
+				buildVerificationPinData(buildOutcome);
+			const simulatedNodeNameSet = new Set(simulatedNodes.map((n) => n.nodeName));
+
 			// Pre-verify: enumerate the dataTable write nodes in the workflow and
 			// snapshot current row IDs for each insert-touched table. The delete
 			// set comes from each insert node's own output after verify (so
@@ -575,19 +618,20 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			// defensive filter so any ID that pre-existed cannot be deleted.
 			// Upsert outputs are deliberately never cleaned — see
 			// `cleanupInsertedRowsByNodeOutput` for the rationale.
-			const writeNodes = await extractDataTableWriteNodes(
-				context.domainContext.workflowService,
-				workflowId,
-			);
+			// Simulated nodes are excluded entirely: they never execute, so they
+			// create nothing — and their fabricated fixture IDs must never feed
+			// the delete set (a fixture ID could collide with a real row).
+			const writeNodes = (
+				await extractDataTableWriteNodes(context.domainContext.workflowService, workflowId)
+			).filter((n) => !simulatedNodeNameSet.has(n.nodeName));
 			const preSnapshots = await snapshotRowIdsPerTable(
 				context.domainContext.dataTableService,
 				new Set(writeNodes.map((n) => n.dataTableId)),
 				context.logger,
 			);
-
 			const result = await context.domainContext.executionService.run(workflowId, input.inputData, {
 				timeout: input.timeout,
-				pinData: buildOutcome.verificationPinData as Record<string, unknown[]> | undefined,
+				pinData: verificationPinData,
 			});
 
 			// Treat `waiting` as success when the workflow produced output and recorded
@@ -695,12 +739,21 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 
 			const maxDataChars = input.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
 			const nodesExecuted = result.data ? Object.keys(result.data) : undefined;
+			const simulatedNames = new Set(simulatedNodes.map((n) => n.nodeName));
+			const simulationNote =
+				simulatedNodes.length > 0
+					? `Simulated ${simulatedNodes.length} node(s) during verification — no real external writes happened: ` +
+						simulatedNodes.map((n) => `${n.nodeName} (${n.reason})`).join('; ') +
+						'. Relay this to the user when presenting the result.'
+					: undefined;
 			return {
 				executionId: result.executionId || undefined,
 				success,
 				status: result.status,
 				nodesExecuted,
-				nodePreviews: buildNodePreviews(result.data, maxDataChars),
+				nodePreviews: buildNodePreviews(result.data, maxDataChars, simulatedNames),
+				simulatedNodes: simulatedNodes.length > 0 ? simulatedNodes : undefined,
+				simulationNote,
 				...(input.includeData ? { data: result.data } : {}),
 				error: result.error,
 				remediation,

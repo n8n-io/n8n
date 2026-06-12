@@ -207,6 +207,23 @@ export const triggerNodeDescriptorSchema = z.object({
 
 export type TriggerNodeDescriptor = z.infer<typeof triggerNodeDescriptorSchema>;
 
+/**
+ * Per-node execute-vs-simulate verdict for verification runs. Nodes with
+ * verdict `simulate` are mocked via per-execution pin data so verification
+ * never performs their real (potentially destructive) operation.
+ * See `.claude/specs/instance-ai-simulated-verification.md`.
+ */
+export const nodeSimulationVerdictSchema = z.object({
+	nodeName: z.string(),
+	verdict: z.enum(['simulate', 'execute']),
+	/** Human-readable rationale — doubles as user-facing labeling copy. */
+	reason: z.string(),
+	confidence: z.enum(['high', 'low']),
+	source: z.enum(['deterministic', 'llm', 'fallback']),
+});
+
+export type NodeSimulationVerdict = z.infer<typeof nodeSimulationVerdictSchema>;
+
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
@@ -237,6 +254,19 @@ export const workflowBuildOutcomeSchema = z.object({
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
 	/** True when mocked credentials can be verified with saved workflow-level pin data. */
 	usesWorkflowPinDataForVerification: z.boolean().optional(),
+	/**
+	 * Per-node execute-vs-simulate plan for verification. Sidecar — scoped to
+	 * this build, never persisted to the workflow.
+	 */
+	nodeSimulationPlan: z.array(nodeSimulationVerdictSchema).optional(),
+	/**
+	 * LLM-generated mock output for `simulate`-verdict nodes, keyed by node
+	 * name. Becomes per-execution pin data during verification. Sidecar —
+	 * never persisted to the workflow.
+	 */
+	simulationFixtures: z
+		.record(z.array(z.object({ json: z.record(z.unknown()) })))
+		.optional(),
 	/** Draft sub-workflows created by the builder that must publish before the main workflow. */
 	supportingWorkflowIds: z.array(z.string()).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */

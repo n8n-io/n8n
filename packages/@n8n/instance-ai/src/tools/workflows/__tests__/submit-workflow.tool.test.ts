@@ -21,6 +21,14 @@ vi.mock('@n8n/workflow-sdk', () => ({
 	validateWorkflow: vi.fn(() => ({ errors: [], warnings: [] })),
 }));
 
+// LLM-backed services must never hit the network from unit tests.
+vi.mock('../classify-node-destructiveness.service', () => ({
+	classifyNodesForSimulation: vi.fn(async () => await Promise.resolve([])),
+}));
+vi.mock('../generate-simulation-fixtures.service', () => ({
+	generateSimulationFixtures: vi.fn(async () => await Promise.resolve({})),
+}));
+
 import { createSubmitWorkflowTool } from '../submit-workflow.tool';
 
 const mockedValidateWorkflow = vi.mocked(validateWorkflow);

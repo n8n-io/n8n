@@ -15,6 +15,11 @@ import type { WorkflowStructureIssue } from 'n8n-workflow';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+import { classifyNodesForSimulation } from './classify-node-destructiveness.service';
+import {
+	generateSimulationFixtures,
+	type SimulationFixtures,
+} from './generate-simulation-fixtures.service';
 import { resolveCredentials, type CredentialMap } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { getReferencedWorkflowIds, isTriggerNodeType } from './workflow-json-utils';
@@ -22,7 +27,10 @@ import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
 import { createRemediation } from '../../workflow-loop/remediation';
-import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
+import type {
+	NodeSimulationVerdict,
+	RemediationMetadata,
+} from '../../workflow-loop/workflow-loop-state';
 import {
 	escapeSingleQuotes,
 	readFileViaSandbox,
@@ -53,6 +61,10 @@ export interface SubmitWorkflowAttempt {
 	verificationPinData?: Record<string, Array<Record<string, unknown>>>;
 	/** True when mocked credential nodes can be skipped by existing workflow-level pin data. */
 	usesWorkflowPinDataForVerification?: boolean;
+	/** Per-node execute-vs-simulate plan for verification. Sidecar — never persisted to workflow. */
+	nodeSimulationPlan?: NodeSimulationVerdict[];
+	/** Mock output for simulated nodes, keyed by node name. Sidecar — never persisted to workflow. */
+	simulationFixtures?: SimulationFixtures;
 	/** Sub-workflow IDs referenced by the submitted main workflow. */
 	referencedWorkflowIds?: string[];
 	/** Whether any node parameters contain unresolved placeholder values. */
@@ -696,10 +708,33 @@ export function createSubmitWorkflowTool(
 				// Scan node parameters for unresolved placeholder values
 				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
 
+				// Execute-vs-simulate plan + mock output for verification. Never
+				// blocks the submit: errors degrade to an absent plan.
+				let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
+				let simulationFixtures: SimulationFixtures | undefined;
+				try {
+					const plan = await classifyNodesForSimulation({
+						workflow: json,
+						mockedNodeNames: mockResult.mockedNodeNames,
+					});
+					nodeSimulationPlan = plan.length > 0 ? plan : undefined;
+					if (nodeSimulationPlan) {
+						const fixtures = await generateSimulationFixtures({
+							workflow: json,
+							plan: nodeSimulationPlan,
+						});
+						simulationFixtures = Object.keys(fixtures).length > 0 ? fixtures : undefined;
+					}
+				} catch {
+					// plan omitted — verify falls back to legacy behavior
+				}
+
 				await reportAttempt({
 					success: true,
 					workflowId: savedId,
 					triggerNodes,
+					nodeSimulationPlan,
+					simulationFixtures,
 					mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
 					mockedCredentialTypes: hasMockedCredentials
 						? mockResult.mockedCredentialTypes
