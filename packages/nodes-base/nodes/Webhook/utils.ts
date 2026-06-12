@@ -259,7 +259,7 @@ export async function validateWebhookAuthentication(
 		if (!providedAuth) {
 			const authToken = headers['x-auth-token'];
 			if (!authToken) {
-				throw new WebhookAuthorizationError(401);
+				throw new WebhookAuthorizationError(401, undefined, 'Basic');
 			}
 
 			const expectedAuthToken = generateBasicAuthToken(ctx.getNode(), expectedAuth);
@@ -269,14 +269,14 @@ export async function validateWebhookAuthentication(
 				expectedAuthToken.length !== authToken.length ||
 				!timingSafeEqual(Buffer.from(expectedAuthToken), Buffer.from(authToken))
 			) {
-				throw new WebhookAuthorizationError(403);
+				throw new WebhookAuthorizationError(401, undefined, 'Basic');
 			}
 		} else if (
 			providedAuth.name !== expectedAuth.user ||
 			providedAuth.pass !== expectedAuth.password
 		) {
 			// Provided authentication data is wrong
-			throw new WebhookAuthorizationError(403);
+			throw new WebhookAuthorizationError(401, undefined, 'Basic');
 		}
 	} else if (authentication === 'bearerAuth') {
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
@@ -290,7 +290,7 @@ export async function validateWebhookAuthentication(
 		}
 
 		if (headers.authorization !== `Bearer ${expectedToken}`) {
-			throw new WebhookAuthorizationError(403);
+			throw new WebhookAuthorizationError(401, undefined, 'Bearer');
 		}
 	} else if (authentication === 'headerAuth') {
 		// Special header with value is needed to call webhook
@@ -311,7 +311,7 @@ export async function validateWebhookAuthentication(
 			(headers as IDataObject)[headerName] !== expectedValue
 		) {
 			// Provided authentication data is wrong
-			throw new WebhookAuthorizationError(403);
+			throw new WebhookAuthorizationError(401);
 		}
 	} else if (authentication === 'jwtAuth') {
 		let expectedAuth;
@@ -334,7 +334,7 @@ export async function validateWebhookAuthentication(
 		const token = authHeader?.split(' ')[1];
 
 		if (!token) {
-			throw new WebhookAuthorizationError(401, 'No token provided');
+			throw new WebhookAuthorizationError(401, 'No token provided', 'Bearer');
 		}
 
 		let secretOrPublicKey;
@@ -350,7 +350,7 @@ export async function validateWebhookAuthentication(
 				algorithms: [expectedAuth.algorithm],
 			}) as IDataObject;
 		} catch (error) {
-			throw new WebhookAuthorizationError(403, error.message);
+			throw new WebhookAuthorizationError(401, error.message, 'Bearer');
 		}
 	}
 }

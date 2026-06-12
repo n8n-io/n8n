@@ -454,7 +454,7 @@ describe('Webhook Utils', () => {
 			const authPropertyName = 'authentication';
 			await expect(
 				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
-			).rejects.toThrowError('Authorization data is wrong!');
+			).rejects.toThrowError('Authorization is required!');
 		});
 
 		it('should throw an error if jwtAuth is enabled but no authentication data is defined on the node', async () => {
@@ -516,6 +516,126 @@ describe('Webhook Utils', () => {
 			await expect(
 				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
 			).rejects.toThrowError('jwt malformed');
+		});
+
+		it('should throw 401 with Basic scheme for invalid basic auth credentials', async () => {
+			const headers = {
+				authorization: `Basic ${Buffer.from('admin:wrongpassword').toString('base64')}`,
+			};
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
+				getCredentials: jest.fn().mockResolvedValue({
+					user: 'admin',
+					password: 'password',
+				}),
+				getRequestObject: jest.fn().mockReturnValue({
+					headers,
+				}),
+				getHeaderData: jest.fn().mockReturnValue(headers),
+			};
+			try {
+				await validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication');
+				fail('Expected WebhookAuthorizationError to be thrown');
+			} catch (error) {
+				expect(error.responseCode).toBe(401);
+				expect(error.scheme).toBe('Basic');
+			}
+		});
+
+		it('should throw 401 with Bearer scheme for invalid bearer auth token', async () => {
+			const headers = {
+				authorization: 'Bearer invalid-token',
+			};
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('bearerAuth'),
+				getCredentials: jest.fn().mockResolvedValue({
+					token: 'correct-token',
+				}),
+				getRequestObject: jest.fn().mockReturnValue({
+					headers,
+				}),
+				getHeaderData: jest.fn().mockReturnValue(headers),
+			};
+			try {
+				await validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication');
+				fail('Expected WebhookAuthorizationError to be thrown');
+			} catch (error) {
+				expect(error.responseCode).toBe(401);
+				expect(error.scheme).toBe('Bearer');
+			}
+		});
+
+		it('should throw 401 without scheme for invalid header auth', async () => {
+			const headers = {
+				'x-custom-auth': 'wrong-value',
+			};
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('headerAuth'),
+				getCredentials: jest.fn().mockResolvedValue({
+					name: 'X-Custom-Auth',
+					value: 'correct-value',
+				}),
+				getRequestObject: jest.fn().mockReturnValue({
+					headers,
+				}),
+				getHeaderData: jest.fn().mockReturnValue(headers),
+			};
+			try {
+				await validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication');
+				fail('Expected WebhookAuthorizationError to be thrown');
+			} catch (error) {
+				expect(error.responseCode).toBe(401);
+				expect(error.scheme).toBeUndefined();
+			}
+		});
+
+		it('should throw 401 with Bearer scheme for invalid JWT token', async () => {
+			const headers = {
+				authorization: 'Bearer invalid-jwt-token',
+			};
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('jwtAuth'),
+				getCredentials: jest.fn().mockResolvedValue({
+					keyType: 'passphrase',
+					publicKey: '',
+					secret: 'secret',
+					algorithm: 'HS256',
+				}),
+				getRequestObject: jest.fn().mockReturnValue({
+					headers,
+				}),
+				getHeaderData: jest.fn().mockReturnValue(headers),
+			};
+			(jwt.verify as jest.Mock).mockImplementationOnce(() => {
+				throw new ApplicationError('jwt malformed');
+			});
+			try {
+				await validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication');
+				fail('Expected WebhookAuthorizationError to be thrown');
+			} catch (error) {
+				expect(error.responseCode).toBe(401);
+				expect(error.scheme).toBe('Bearer');
+			}
+		});
+
+		it('should throw 500 when no credentials are configured', async () => {
+			const headers = {
+				authorization: `Basic ${Buffer.from('admin:password').toString('base64')}`,
+			};
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
+				getCredentials: jest.fn().mockRejectedValue(new Error()),
+				getRequestObject: jest.fn().mockReturnValue({
+					headers,
+				}),
+				getHeaderData: jest.fn().mockReturnValue(headers),
+			};
+			try {
+				await validateWebhookAuthentication(ctx as IWebhookFunctions, 'authentication');
+				fail('Expected WebhookAuthorizationError to be thrown');
+			} catch (error) {
+				expect(error.responseCode).toBe(500);
+			}
 		});
 
 		it('should return the decoded JWT payload if jwtAuth is enabled and the token is valid', async () => {
