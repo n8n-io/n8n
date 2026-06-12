@@ -319,6 +319,12 @@ export function registerIpcHandlers({
 		if (url) await openExternal(url);
 	});
 
+	ipcMain.handle('assistant:openThread', async (_event, threadId: string): Promise<void> => {
+		logger.debug('IPC assistant:openThread', { threadId });
+		const url = instanceApi.threadUrl(threadId);
+		if (url) await openExternal(url);
+	});
+
 	ipcMain.handle(
 		'history:list',
 		async (

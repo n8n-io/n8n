@@ -100,6 +100,9 @@ function confirmBodyFromResponse(response: PromptResponse): InstanceAiConfirmReq
 			return { kind: 'domainAccessApprove', domainAccessAction: response.action };
 		case 'domainAccessDeny':
 			return { kind: 'domainAccessDeny' };
+		case 'openInWebUi':
+			// Handled separately in respondToPrompt — not a confirm body.
+			return null;
 	}
 }
 
@@ -120,6 +123,15 @@ export async function respondToPrompt(id: string, response: PromptResponse): Pro
 			if (response.kind !== 'resourceDecision') return;
 			await window.electronAPI.respondToPermissionPrompt(prompt.localId, response.decision);
 			removePrompt(id);
+			return;
+		}
+
+		if (response.kind === 'openInWebUi') {
+			// Hand off to the web UI rather than answering here: open the thread so
+			// the user finishes the flow (e.g. credential setup) there. Leave the
+			// prompt in place — the run stays suspended and the prompt clears via the
+			// live tool-result/run-finish once it's resolved in the web UI.
+			await window.electronAPI.openThread(prompt.threadId);
 			return;
 		}
 

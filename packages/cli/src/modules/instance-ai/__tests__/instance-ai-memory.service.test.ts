@@ -342,6 +342,43 @@ describe('InstanceAiMemoryService.ensureThread', () => {
 	});
 });
 
+describe('InstanceAiMemoryService.listThreads', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	function threadWithSource(id: string, source?: string) {
+		return {
+			id,
+			title: id,
+			resourceId: 'user-1',
+			metadata: source ? { source } : {},
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		};
+	}
+
+	it('hides desktop-assistant task threads but keeps chat threads and plain threads visible', async () => {
+		mockListThreads.mockResolvedValueOnce({
+			threads: [
+				threadWithSource('task', 'desktop-assistant'),
+				threadWithSource('chat', 'desktop-assistant-chat'),
+				threadWithSource('plain'),
+			],
+			total: 3,
+			page: 0,
+			hasMore: false,
+		});
+
+		const service = createService();
+		const result = await service.listThreads('user-1');
+
+		const ids = result.threads.map((t) => t.id);
+		expect(ids).toEqual(['chat', 'plain']);
+		expect(ids).not.toContain('task');
+	});
+});
+
 describe('InstanceAiMemoryService.deleteThread', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();

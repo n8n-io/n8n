@@ -41,6 +41,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import {
 	COMPUTER_USE_NODE_TYPES,
+	DESKTOP_ASSISTANT_CHAT_THREAD_SOURCE,
 	DESKTOP_ASSISTANT_TAG,
 	DESKTOP_ASSISTANT_THREAD_SOURCE,
 	DEVICE_CONNECTION_CREDENTIAL_TYPE,
@@ -362,13 +363,15 @@ export class DesktopAssistantService {
 	 * Ensure a fresh chat thread exists in the user's personal project and return
 	 * its id. The desktop chat view opens this thread before the first message,
 	 * so its message-snapshot fetch resolves instead of 404-ing on an unborn
-	 * thread. Tagged desktop-originated like every other desktop-assistant thread.
+	 * thread. Tagged with the chat source so it stays visible in the web UI thread
+	 * list — the desktop app deep-links to it for flows the chat surface can't
+	 * render inline (e.g. credential setup).
 	 */
 	async createChatThread(user: User, threadId?: string): Promise<{ threadId: string }> {
 		const id = threadId ?? randomUUID();
 		const projectId = await this.resolvePersonalProjectId(user);
 		await this.memoryService.ensureThread(user.id, id, projectId, {
-			[THREAD_SOURCE_METADATA_KEY]: DESKTOP_ASSISTANT_THREAD_SOURCE,
+			[THREAD_SOURCE_METADATA_KEY]: DESKTOP_ASSISTANT_CHAT_THREAD_SOURCE,
 		});
 		return { threadId: id };
 	}
