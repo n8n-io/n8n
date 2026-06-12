@@ -11,6 +11,7 @@ import type { ContextDetector } from './context-detector';
 import type { DaemonController } from './daemon-controller';
 import { InstanceApiError, type InstanceApi } from './instance-api';
 import { getMacPermissionStatus, openMacPermissionSettings } from './mac-permissions';
+import type { PromptNotifier } from './notifications';
 import type { OAuthFlow } from './oauth/oauth-flow';
 import type { PermissionBroker } from './permission-broker';
 import type { AppSettings, SettingsStore } from './settings-store';
@@ -51,6 +52,7 @@ export interface IpcHandlerDeps {
 	threadService: ThreadService;
 	contextDetector: ContextDetector;
 	permissionBroker: PermissionBroker;
+	promptNotifier: PromptNotifier;
 	/**
 	 * Re-establishes the gateway connection with the current settings (no-op when
 	 * signed out). Fire-and-forget — failures surface via daemon status events.
@@ -133,6 +135,7 @@ export function registerIpcHandlers({
 	threadService,
 	contextDetector,
 	permissionBroker,
+	promptNotifier,
 	reconnectGateway,
 	openExternal,
 }: IpcHandlerDeps): void {
@@ -401,6 +404,11 @@ export function registerIpcHandlers({
 			}
 		},
 	);
+
+	ipcMain.handle('notifications:taskResult', (_event, title: string, body: string): void => {
+		logger.debug('IPC notifications:taskResult', { title });
+		promptNotifier.notifyTaskResult(String(title), String(body));
+	});
 
 	ipcMain.handle('permissionPrompt:list', (): LocalPermissionPromptRequest[] => {
 		logger.debug('IPC permissionPrompt:list');

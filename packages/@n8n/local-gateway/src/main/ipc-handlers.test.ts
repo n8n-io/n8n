@@ -59,6 +59,7 @@ function register(overrides: {
 	threadService?: unknown;
 	contextDetector?: unknown;
 	permissionBroker?: unknown;
+	promptNotifier?: unknown;
 	reconnectGateway?: () => void;
 	openExternal?: HandlerFn;
 }): void {
@@ -95,6 +96,11 @@ function register(overrides: {
 		permissionBroker: (overrides.permissionBroker ?? {
 			list: vi.fn().mockReturnValue([]),
 			respond: vi.fn().mockReturnValue(true),
+		}) as never,
+		promptNotifier: (overrides.promptNotifier ?? {
+			notifyLocalPrompt: vi.fn(),
+			notifyConfirmationRequest: vi.fn(),
+			notifyTaskResult: vi.fn(),
 		}) as never,
 		reconnectGateway: overrides.reconnectGateway ?? vi.fn(),
 		openExternal: (overrides.openExternal ?? vi.fn().mockResolvedValue(undefined)) as never,

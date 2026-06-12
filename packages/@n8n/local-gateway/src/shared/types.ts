@@ -275,6 +275,8 @@ export interface ElectronApi {
 	getMacPermissions: () => Promise<MacPermissionStatus>;
 	/** Open the System Settings pane to grant a macOS permission. */
 	openMacPermissionSettings: (kind: MacPermissionKind) => Promise<void>;
+	/** Show a system notification for a resolved task run when the window is hidden; clicking it shows the window. */
+	notifyTaskResult: (title: string, body: string) => Promise<void>;
 	/** Local resource-access prompts still pending in the main process (renderer-reload resync). */
 	listPermissionPrompts: () => Promise<LocalPermissionPromptRequest[]>;
 	/** Answer a local resource-access prompt; `ok: false` when the prompt is unknown (already resolved). */

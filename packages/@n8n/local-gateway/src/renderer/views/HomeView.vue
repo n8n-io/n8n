@@ -1,19 +1,30 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon, N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import HistoryView from './HistoryView.vue';
 import TasksView from './TasksView.vue';
 import ChatView from '../components/ChatView.vue';
 import TaskComposer from '../components/TaskComposer.vue';
 
+import { usePendingTasks } from '../assistant/use-pending-tasks';
 import { useTaskSearch } from '../assistant/use-task-search';
 
 type Tab = 'tasks' | 'history' | 'chat';
 
 const i18n = useI18n();
 const activeTab = ref<Tab>('tasks');
+
+// A freshly kept task (from the App-level result card) should be seen "setting
+// up" — jump to the Tasks tab where its pending entry renders.
+const pendingTasks = usePendingTasks();
+watch(
+	() => pendingTasks.entries.length,
+	(count, previous) => {
+		if (count > previous) activeTab.value = 'tasks';
+	},
+);
 
 // Chat is a real tab, but each selection starts a fresh thread (no resume). The
 // thread is ensured server-side before ChatView opens it, so its snapshot fetch
@@ -224,9 +235,8 @@ onMounted(() => {
 			</template>
 		</div>
 
-		<!-- The composer is pinned below the scrollable list, only on the Tasks tab.
-		     "Keep this" lands the user on the Tasks list, where the pending entry shows. -->
-		<TaskComposer v-if="activeTab === 'tasks'" ref="composer" @kept="activeTab = 'tasks'" />
+		<!-- The composer is pinned below the scrollable list, only on the Tasks tab. -->
+		<TaskComposer v-if="activeTab === 'tasks'" ref="composer" />
 	</main>
 </template>
 
