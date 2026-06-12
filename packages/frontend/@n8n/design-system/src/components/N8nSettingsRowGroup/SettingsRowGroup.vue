@@ -29,7 +29,9 @@ withDefaults(defineProps<SettingsRowGroupProps>(), {
 
 	// Auto-hide the divider of the last row so consumers don't manage `showDivider`
 	// for the common case. Individual rows can still opt out with `show-divider="false"`.
-	> :last-child [data-test-id='settings-row-divider'] {
+	// Scoped to the row's own (direct) divider so dividers nested inside a row's expanded
+	// region keep rendering as continuation rows.
+	> :last-child > [data-test-id='settings-row-divider'] {
 		display: none;
 	}
 }

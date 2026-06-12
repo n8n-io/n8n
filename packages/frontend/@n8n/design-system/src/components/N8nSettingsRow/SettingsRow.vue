@@ -237,8 +237,9 @@ function onKeydown(event: KeyboardEvent) {
 </template>
 
 <style lang="scss" module>
-// The expand/collapse motion. 200ms maps to `--duration--snappy`; the curve has no DS token,
-// so it lives here as a local constant per the motion spec.
+// The expand/collapse motion. No DS duration token equals 350ms (snappy=200, base=400) and the
+// curve has no token either, so both live here as local constants per the motion spec.
+$expand-duration: 350ms;
 $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 
 .row {
@@ -276,7 +277,8 @@ $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	flex-direction: row;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--spacing--2xs);
+	// Column-gap only: a row-gap would push the wrapped expand region away from the header.
+	column-gap: var(--spacing--2xs);
 	min-height: var(--height--4xl);
 	padding-inline: var(--spacing--sm);
 }
@@ -396,7 +398,7 @@ $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .disclosureIcon {
-	transition: transform var(--duration--snappy) $expand-easing;
+	transition: transform $expand-duration $expand-easing;
 }
 
 .disclosure[aria-expanded='true'] .disclosureIcon {
@@ -406,19 +408,22 @@ $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 /*
  * Animated reveal: the grid 0fr→1fr technique animates real height without `height: auto`,
  * paired with an opacity fade and a subtle blur. The region always takes a full row (it wraps
- * below the header in the horizontal layout).
+ * below the header in the horizontal layout) and breaks out of the row's side padding so the
+ * revealed content reads as continuation rows of the same group, flush to the parent's edges.
  */
 .expandRegion {
-	flex: 0 0 100%;
-	width: 100%;
+	flex: 0 0 auto;
+	width: calc(100% + 2 * var(--spacing--sm));
+	margin-inline: calc(-1 * var(--spacing--sm));
+	box-sizing: border-box;
 	display: grid;
 	grid-template-rows: 0fr;
 	opacity: 0;
 	filter: blur(4px);
 	transition:
-		grid-template-rows var(--duration--snappy) $expand-easing,
-		opacity var(--duration--snappy) $expand-easing,
-		filter var(--duration--snappy) $expand-easing;
+		grid-template-rows $expand-duration $expand-easing,
+		opacity $expand-duration $expand-easing,
+		filter $expand-duration $expand-easing;
 }
 
 .expandRegion[data-expanded='true'] {
@@ -432,10 +437,19 @@ $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	overflow: hidden;
 }
 
-// Indents the revealed content so nested rows read as children of this row.
+// Flush continuation rows: no indent/box, just an inset top separator (matching the group's
+// row dividers) between the header and the first revealed row.
 .expandContent {
-	padding-block: var(--spacing--3xs) var(--spacing--sm);
-	padding-inline-start: var(--spacing--lg);
+	position: relative;
+}
+
+.expandContent::before {
+	content: '';
+	position: absolute;
+	inset-block-start: 0;
+	inset-inline: var(--spacing--sm);
+	height: 1px;
+	background: var(--border-color--subtle);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -446,7 +460,7 @@ $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	// Drop the blur and the height animation; keep only a simple, quick fade.
 	.expandRegion {
 		filter: none;
-		transition: opacity var(--duration--snappy) linear;
+		transition: opacity $expand-duration linear;
 	}
 
 	.expandRegion[data-expanded='true'] {

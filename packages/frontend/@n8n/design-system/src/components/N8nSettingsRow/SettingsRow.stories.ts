@@ -308,17 +308,15 @@ export const Expandable: Story = {
 			>
 				<template #action><N8nSwitch v-model="enabled" /></template>
 				<template #expanded>
-					<N8nSettingsRowGroup>
-						<N8nSettingsRow title="Identity provider URL" layout="vertical">
-							<template #action><N8nInput placeholder="https://idp.example.com/sso" /></template>
-						</N8nSettingsRow>
-						<N8nSettingsRow title="Require SSO for all members" description="Members must sign in through your identity provider.">
-							<template #action><N8nButton variant="outline" size="medium" label="Configure" /></template>
-						</N8nSettingsRow>
-						<N8nSettingsRow title="Test connection" :show-divider="false">
-							<template #action><N8nButton variant="outline" size="medium" label="Run test" /></template>
-						</N8nSettingsRow>
-					</N8nSettingsRowGroup>
+					<N8nSettingsRow title="Identity provider URL" layout="vertical">
+						<template #action><N8nInput placeholder="https://idp.example.com/sso" /></template>
+					</N8nSettingsRow>
+					<N8nSettingsRow title="Require SSO for all members" description="Members must sign in through your identity provider.">
+						<template #action><N8nButton variant="outline" size="medium" label="Configure" /></template>
+					</N8nSettingsRow>
+					<N8nSettingsRow title="Test connection" :show-divider="false">
+						<template #action><N8nButton variant="outline" size="medium" label="Run test" /></template>
+					</N8nSettingsRow>
 				</template>
 			</N8nSettingsRow>
 		`),
@@ -350,14 +348,12 @@ export const ExpandableChevron: Story = {
 				v-model="expanded"
 			>
 				<template #expanded>
-					<N8nSettingsRowGroup>
-						<N8nSettingsRow title="Beta features" description="Opt into experimental functionality.">
-							<template #action><N8nButton variant="outline" size="medium" label="Manage" /></template>
-						</N8nSettingsRow>
-						<N8nSettingsRow title="Reset to defaults" :show-divider="false">
-							<template #action><N8nButton variant="outline" size="medium" label="Reset" /></template>
-						</N8nSettingsRow>
-					</N8nSettingsRowGroup>
+					<N8nSettingsRow title="Beta features" description="Opt into experimental functionality.">
+						<template #action><N8nButton variant="outline" size="medium" label="Manage" /></template>
+					</N8nSettingsRow>
+					<N8nSettingsRow title="Reset to defaults" :show-divider="false">
+						<template #action><N8nButton variant="outline" size="medium" label="Reset" /></template>
+					</N8nSettingsRow>
 				</template>
 			</N8nSettingsRow>
 		`),
