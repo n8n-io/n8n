@@ -592,6 +592,47 @@ Declared credentials are created for real (placeholder token; set the matching `
 
 Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
 
+### Seeded cases (conversation pre-seeding)
+
+A seeded case starts **mid-conversation**: prior history is restored into the build thread before `conversation[0]` is sent live, so the eval drives only the turn under test. Use it to replicate a real misbehaviour — restore the conversation up to the moment it went wrong, re-drive that turn, and assert what should happen instead.
+
+Pick the lightest path that fits:
+
+| Situation | Path |
+|---|---|
+| Misbehaviour on an instance we control (the common case) | `seedFile` — export the real thread, zero reconstruction |
+| Prelude is just "what was discussed" (no tool calls, no workflows) | `priorConversation` — prose turns, authored inline |
+| Shallow 2–3 turn prelude where the agent's live replies matter | Neither — a plain multi-turn `conversation` script re-drives it live |
+
+Authors never hand-write message history. Export a real thread:
+
+```bash
+N8N_BASE_URL=http://localhost:5678 pnpm eval:export-thread <threadId> --name my-case
+```
+
+This writes `data/workflows/seeds/<name>.seed.json` (native message log + every workflow the history references) and a case skeleton with the thread's **last user message** as `conversation[0]` — everything before it becomes the seed; the original response to it is dropped, because that's the turn the eval re-drives. Then trim the seed if early history is irrelevant, fill the TODOs, and review the seed before committing (it contains the conversation verbatim).
+
+```json
+"seedFile": "seeds/my-case.seed.json"
+```
+
+or, for a prose-only prelude:
+
+```json
+"priorConversation": [
+  { "role": "user", "text": "We agreed: digests go to #growth, daily at 9am." },
+  { "role": "assistant", "text": "Noted — #growth, daily at 9am." }
+]
+```
+
+At build time the seed is restored right after the credential pin: seeded workflows are recreated under **fresh ids** (every reference in the history is remapped, so parallel iterations never share a workflow row) with node credentials stripped, and the message log is written verbatim. Restore failures fail the build — a seeded case cannot meaningfully run unseeded. Seeded turns join the transcript marked as *seeded prior context*, visible to the expectations judge and prompt-aware checks but distinguishable from live behaviour.
+
+Rules of thumb:
+
+- **A seeded case is only worth shipping with `buildExpectations` that detect the misbehaviour recurring** — without them it passes vacuously. Sanity-check by running the case once with the seed removed: it should fail.
+- The export captures each workflow's **current** state. If turns after the seed point edited the workflow, revert it (or re-export sooner next time) so the seed reflects the state the live turn actually saw.
+- `seedFile` and `priorConversation` are mutually exclusive; both order strictly before the live turn.
+
 ## Failure categories
 
 When a scenario fails, the verifier categorizes the root cause:
