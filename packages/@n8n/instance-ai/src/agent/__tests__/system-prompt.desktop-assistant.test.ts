@@ -84,6 +84,17 @@ describe('getDesktopAssistantProfile — extra tools', () => {
 		expect(getDesktopAssistantProfile(undefined).preloadGatewayTools).toBe(false);
 	});
 
+	it('pre-approves workflow edits for edit mode only', () => {
+		expect(getDesktopAssistantProfile('desktop-assistant-edit').preApproveWorkflowEdits).toBe(true);
+		expect(getDesktopAssistantProfile('desktop-assistant-one-shot').preApproveWorkflowEdits).toBe(
+			false,
+		);
+		expect(getDesktopAssistantProfile('desktop-assistant-promote').preApproveWorkflowEdits).toBe(
+			false,
+		);
+		expect(getDesktopAssistantProfile(undefined).preApproveWorkflowEdits).toBe(false);
+	});
+
 	it('suppresses interactive setup for every desktop mode but not regular chat', () => {
 		expect(getDesktopAssistantProfile('desktop-assistant-one-shot').suppressInteractiveSetup).toBe(
 			true,
