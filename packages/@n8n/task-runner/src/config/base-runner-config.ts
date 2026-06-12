@@ -43,6 +43,17 @@ export class BaseRunnerConfig {
 	timezone: string = 'America/New_York';
 
 	/**
+	 * How long (in seconds) the runner waits for in-flight tasks to complete
+	 * after receiving a shutdown signal (SIGTERM/SIGINT) before forcing exit.
+	 * This should be aligned with the container orchestrator's termination
+	 * grace period (e.g. Cloud Run's `terminationGracePeriodSeconds`).
+	 *
+	 * The Python runner already supports this via the same env var.
+	 */
+	@Env('N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT')
+	gracefulShutdownTimeout: number = 10;
+
+	/**
 	 * How long (in seconds) a task is allowed to take for completion, else the
 	 * task will be aborted. (In internal mode, the runner will also be
 	 * restarted.) Must be greater than 0.
