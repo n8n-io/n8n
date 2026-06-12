@@ -14,33 +14,13 @@ import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
 import { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
- * Applies a single workflow publication outbox record by reconciling the
- * workflow's triggers to match the version being published. It computes a
- * trigger-level diff between the currently published version and the new version
- * and applies only the necessary operations: removing deleted triggers, adding
- * new ones, and re-applying modified ones (remove-then-add) while leaving
- * unchanged triggers running.
- *
- * This is the only class that knows the remove → advance published version → add
- * ordering invariant, and the only one that touches `workflow_published_version`.
- * It writes no outbox statuses; instead it returns a {@link PublicationResult}
- * for {@link PublicationStatusReporter} to turn into terminal state.
- *
- * The caller must uphold these invariants for `apply` to behave correctly:
- *
- * - **Serialized per workflow.** Two concurrent `apply` calls for the same
- *   workflow would race on the published version and on trigger registration,
- *   leaving the in-memory triggers inconsistent with `workflow_published_version`.
- *   The outbox claim guarantees this: a workflow with an in-progress record is
- *   never claimed again, and records are processed in FIFO (enqueue) order.
- * - **Runs on the instance that owns trigger execution (the leader).**
- *   (De)activation mutates in-memory webhook/poll registrations, so it must run
- *   where those triggers actually fire. The consumer only polls on the leader.
- * - **The currently registered triggers match the published version.** The diff
- *   is computed against `oldVersion` (= the row in `workflow_published_version`)
- *   and the remove step deregisters from it, so the triggers running in memory
- *   must correspond to that version; otherwise the wrong triggers are
- *   (de)registered.
+ * Reconciles a workflow's triggers to a published version, one outbox record at
+ * a time. This is the only class that knows the remove → advance published
+ * version → add ordering invariant, and the only one that touches
+ * `workflow_published_version`. It writes no outbox statuses; instead each
+ * {@link WorkflowPublicationApplier.apply} call returns a
+ * {@link PublicationResult} for {@link PublicationStatusReporter} to turn into
+ * terminal state.
  */
 @Service()
 export class WorkflowPublicationApplier {
@@ -51,6 +31,31 @@ export class WorkflowPublicationApplier {
 		private readonly workflowTriggerActivator: WorkflowTriggerActivator,
 	) {}
 
+	/**
+	 * Reconciles the workflow's triggers to the version requested by `record`. It
+	 * computes a trigger-level diff between the currently published version and the
+	 * requested version, augments it with any desired non-webhook trigger that is
+	 * missing locally, and applies only the necessary operations: removing deleted
+	 * triggers, adding new ones, and re-applying modified ones (remove-then-add)
+	 * while leaving unchanged triggers running. The published version is advanced
+	 * between the remove and add steps.
+	 *
+	 * The caller must uphold these invariants for `apply` to behave correctly:
+	 *
+	 * - **Serialized per workflow.** Two concurrent `apply` calls for the same
+	 *   workflow would race on the published version and on trigger registration,
+	 *   leaving the in-memory triggers inconsistent with `workflow_published_version`.
+	 *   The outbox claim guarantees this: a workflow with an in-progress record is
+	 *   never claimed again, and records are processed in FIFO (enqueue) order.
+	 * - **Runs on the instance that owns trigger execution (the leader).**
+	 *   (De)activation mutates in-memory webhook/poll registrations, so it must run
+	 *   where those triggers actually fire. The consumer only polls on the leader.
+	 * - **The currently registered triggers match the published version.** The diff
+	 *   is computed against `oldVersion` (= the row in `workflow_published_version`)
+	 *   and the remove step deregisters from it, so the triggers running in memory
+	 *   must correspond to that version; otherwise the wrong triggers are
+	 *   (de)registered.
+	 */
 	async apply(record: WorkflowPublicationOutbox): Promise<PublicationResult> {
 		const { workflow, oldVersion, newVersion } = await this.resolveVersions(record);
 
