@@ -73,11 +73,9 @@ export class WorkflowPublicationApplier {
 		// version (startup, retry, crash recovery) must re-register the desired
 		// non-webhook triggers that aren't actually running, which a pure version
 		// diff misses.
-		const unregistered = this.workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds(
-			record.workflowId,
-			desiredTriggerNodes,
-		);
-		for (const nodeId of unregistered) toAdd.add(nodeId);
+		this.workflowTriggerActivator
+			.getUnregisteredNonWebhookTriggerNodeIds(record.workflowId, desiredTriggerNodes)
+			.forEach((nodeId) => toAdd.add(nodeId));
 
 		// No trigger changed: advance the published version and finish. Unchanged
 		// triggers keep running and re-read the new version on their next fire.
