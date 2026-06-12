@@ -47,7 +47,7 @@ import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import AgentSection from './components/AgentSection.vue';
-import { collectActiveBuilderAgents, createVisibleMessagesGetter } from './builderAgents';
+import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
@@ -82,9 +82,7 @@ const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages)
 // Assistant messages whose only content has been extracted to the bottom
 // builder section (or which haven't produced anything renderable yet) would
 // otherwise leave an empty wrapper in the list — filter them out.
-// Identity-stable: returns the same array while the selection is unchanged,
-// so streamed tokens don't re-render the whole message list.
-const displayedMessages = computed(createVisibleMessagesGetter(() => thread.messages));
+const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (generic approvals + domain/web-search access). Drives the swap

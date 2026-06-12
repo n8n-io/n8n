@@ -292,54 +292,7 @@ export function useResourceRegistry(
 	});
 
 	return {
-		producedArtifacts: stableMapIdentity(() => collections.value.produced),
-		resourceNameIndex: stableMapIdentity(() => collections.value.byName),
+		producedArtifacts: computed(() => collections.value.produced),
+		resourceNameIndex: computed(() => collections.value.byName),
 	};
-}
-
-/**
- * Compares every `ResourceEntry` field — keep in sync with the interface, or
- * a changed field would be masked by the stale previous map.
- */
-function resourceEntryEqual(a: ResourceEntry, b: ResourceEntry): boolean {
-	return (
-		a.type === b.type &&
-		a.id === b.id &&
-		a.name === b.name &&
-		a.createdAt === b.createdAt &&
-		a.updatedAt === b.updatedAt &&
-		a.projectId === b.projectId &&
-		a.archived === b.archived
-	);
-}
-
-function mapsEquivalent(a: Map<string, ResourceEntry>, b: Map<string, ResourceEntry>): boolean {
-	if (a.size !== b.size) return false;
-	for (const [key, entry] of b) {
-		const prev = a.get(key);
-		if (!prev || !resourceEntryEqual(prev, entry)) return false;
-	}
-	return true;
-}
-
-/**
- * Identity-stable view over a rebuilt-from-scratch Map.
- *
- * `collections` rebuilds both maps whenever ANY message's agent tree gains a
- * tool call or child (the deep walk tracks those arrays), which during a live
- * run is every structural event. Without this layer every consumer re-runs on
- * each rebuild — notably `InstanceAiMarkdown`'s `source` computed, which
- * re-decorated (O(content × resources)) and re-rendered every settled block
- * in every message of the thread per event. Returning the previous map when
- * the contents are equivalent cuts reactive propagation at this computed, so
- * consumers only update when the registry actually changed.
- */
-function stableMapIdentity(source: () => Map<string, ResourceEntry>) {
-	let prev: Map<string, ResourceEntry> | undefined;
-	return computed(() => {
-		const next = source();
-		if (prev && (prev === next || mapsEquivalent(prev, next))) return prev;
-		prev = next;
-		return next;
-	});
 }
