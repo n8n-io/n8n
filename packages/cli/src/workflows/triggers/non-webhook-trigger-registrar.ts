@@ -16,7 +16,7 @@ import type { TriggerFailureHandler } from '@/workflows/triggers/trigger-executi
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
-export interface LiveTriggerRegistrationContext {
+export interface NonWebhookTriggerRegistrationContext {
 	activationMode: WorkflowActivateMode;
 	executionMode: WorkflowExecuteMode;
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -28,7 +28,7 @@ export interface LiveTriggerRegistrationContext {
  * Registers and deregisters leader-local trigger and poll nodes in memory.
  */
 @Service()
-export class LiveTriggerRegistrar {
+export class NonWebhookTriggerRegistrar {
 	constructor(
 		private readonly logger: Logger,
 		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
@@ -49,7 +49,7 @@ export class LiveTriggerRegistrar {
 			additionalData,
 			resolveWorkflowData,
 			onTriggerFailure,
-		}: LiveTriggerRegistrationContext,
+		}: NonWebhookTriggerRegistrationContext,
 		nodeIds: Set<string>,
 	) {
 		const triggerAndPollNodeIds = [...workflow.getTriggerNodes(), ...workflow.getPollNodes()].map(

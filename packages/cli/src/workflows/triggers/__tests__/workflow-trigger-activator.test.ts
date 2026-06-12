@@ -7,7 +7,7 @@ import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { WorkflowExpression } from 'n8n-workflow';
 
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { LiveTriggerRegistrar } from '@/workflows/triggers/live-trigger-registrar';
+import type { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import type { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
@@ -32,7 +32,7 @@ describe('WorkflowTriggerActivator', () => {
 			mock<WorkflowsConfig>(),
 			mock<TriggerExecutionContextFactory>(),
 			mock<WebhookTriggerRegistrar>(),
-			mock<LiveTriggerRegistrar>(),
+			mock<NonWebhookTriggerRegistrar>(),
 			mock<TriggerCountService>(),
 		);
 
@@ -51,7 +51,7 @@ describe('WorkflowTriggerActivator', () => {
 		expect(activator.getEnabledTriggerNodes(null)).toEqual([]);
 	});
 
-	test('activates webhooks, live triggers, count, and persistence in order', async () => {
+	test('activates webhooks, non-webhook triggers, count, and persistence in order', async () => {
 		const callOrder: string[] = [];
 		jest.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
 			callOrder.push('acquire');
@@ -77,9 +77,9 @@ describe('WorkflowTriggerActivator', () => {
 			callOrder.push('webhooks');
 			return true;
 		});
-		const liveTriggerRegistrar = mock<LiveTriggerRegistrar>();
-		liveTriggerRegistrar.register.mockImplementation(async () => {
-			callOrder.push('live');
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.register.mockImplementation(async () => {
+			callOrder.push('non-webhook');
 			return true;
 		});
 		const triggerCountService = mock<TriggerCountService>();
@@ -97,7 +97,7 @@ describe('WorkflowTriggerActivator', () => {
 			mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
 			mock<TriggerExecutionContextFactory>(),
 			webhookTriggerRegistrar,
-			liveTriggerRegistrar,
+			nonWebhookTriggerRegistrar,
 			triggerCountService,
 		);
 
@@ -110,7 +110,7 @@ describe('WorkflowTriggerActivator', () => {
 		expect(callOrder).toEqual([
 			'acquire',
 			'webhooks',
-			'live',
+			'non-webhook',
 			'count',
 			'release',
 			'persist-count',
@@ -119,7 +119,7 @@ describe('WorkflowTriggerActivator', () => {
 		expect(workflowRepository.updateWorkflowTriggerCount).toHaveBeenCalledWith('wf-1', 2);
 	});
 
-	test('deactivates webhook rows before live triggers', async () => {
+	test('deactivates webhook rows before non-webhook triggers', async () => {
 		jest
 			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
 			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
@@ -133,9 +133,9 @@ describe('WorkflowTriggerActivator', () => {
 		webhookTriggerRegistrar.clearWorkflowWebhooksForNodes.mockImplementation(async () => {
 			callOrder.push('clear-webhook-rows');
 		});
-		const liveTriggerRegistrar = mock<LiveTriggerRegistrar>();
-		liveTriggerRegistrar.deregister.mockImplementation(async () => {
-			callOrder.push('deregister-live');
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.deregister.mockImplementation(async () => {
+			callOrder.push('deregister-non-webhook');
 		});
 
 		const activator = new WorkflowTriggerActivator(
@@ -147,7 +147,7 @@ describe('WorkflowTriggerActivator', () => {
 			mock<WorkflowsConfig>(),
 			mock<TriggerExecutionContextFactory>(),
 			webhookTriggerRegistrar,
-			liveTriggerRegistrar,
+			nonWebhookTriggerRegistrar,
 			mock<TriggerCountService>(),
 		);
 
@@ -157,6 +157,10 @@ describe('WorkflowTriggerActivator', () => {
 			new Set(['webhook-node']),
 		);
 
-		expect(callOrder).toEqual(['deregister-webhooks', 'clear-webhook-rows', 'deregister-live']);
+		expect(callOrder).toEqual([
+			'deregister-webhooks',
+			'clear-webhook-rows',
+			'deregister-non-webhook',
+		]);
 	});
 });

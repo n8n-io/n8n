@@ -371,7 +371,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // push
 				factory,
 				mock(), // webhookTriggerRegistrar
-				mock(), // liveTriggerRegistrar
+				mock(), // nonWebhookTriggerRegistrar
 				mock(), // triggerCountService
 				mock(), // eventBus
 			);

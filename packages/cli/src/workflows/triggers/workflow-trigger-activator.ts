@@ -8,7 +8,7 @@ import type { IConnections, INode, IWorkflowBase, WorkflowId } from 'n8n-workflo
 import { Workflow } from 'n8n-workflow';
 
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { LiveTriggerRegistrar } from '@/workflows/triggers/live-trigger-registrar';
+import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
@@ -31,7 +31,7 @@ export class WorkflowTriggerActivator {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly webhookTriggerRegistrar: WebhookTriggerRegistrar,
-		private readonly liveTriggerRegistrar: LiveTriggerRegistrar,
+		private readonly nonWebhookTriggerRegistrar: NonWebhookTriggerRegistrar,
 		private readonly triggerCountService: TriggerCountService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
@@ -91,7 +91,7 @@ export class WorkflowTriggerActivator {
 
 			const resolveWorkflowData = this.createWorkflowDataResolver(dbWorkflow);
 
-			await this.liveTriggerRegistrar.register(
+			await this.nonWebhookTriggerRegistrar.register(
 				dbWorkflow,
 				workflow,
 				{
@@ -146,7 +146,7 @@ export class WorkflowTriggerActivator {
 			removedNodeNames,
 		);
 
-		await this.liveTriggerRegistrar.deregister(dbWorkflow.id, nodeIds);
+		await this.nonWebhookTriggerRegistrar.deregister(dbWorkflow.id, nodeIds);
 	}
 
 	/**

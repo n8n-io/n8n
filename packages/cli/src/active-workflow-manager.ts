@@ -48,7 +48,7 @@ import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-import { LiveTriggerRegistrar } from '@/workflows/triggers/live-trigger-registrar';
+import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
@@ -83,7 +83,7 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly webhookTriggerRegistrar: WebhookTriggerRegistrar,
-		private readonly liveTriggerRegistrar: LiveTriggerRegistrar,
+		private readonly nonWebhookTriggerRegistrar: NonWebhookTriggerRegistrar,
 		private readonly triggerCountService: TriggerCountService,
 		private readonly eventBus: MessageEventBus,
 	) {
@@ -864,7 +864,7 @@ export class ActiveWorkflowManager {
 			nodeIds?: Set<string>;
 		},
 	) {
-		return await this.liveTriggerRegistrar.register(
+		return await this.nonWebhookTriggerRegistrar.register(
 			dbWorkflow,
 			workflow,
 			{

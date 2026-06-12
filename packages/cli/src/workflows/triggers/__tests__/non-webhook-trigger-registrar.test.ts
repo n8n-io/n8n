@@ -4,12 +4,12 @@ import { mock } from 'jest-mock-extended';
 import type { ActiveWorkflowTriggers } from 'n8n-core';
 import type { IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-import { LiveTriggerRegistrar } from '@/workflows/triggers/live-trigger-registrar';
+import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import { createWorkflow, logger, node } from './trigger-test-utils';
 
-describe('LiveTriggerRegistrar', () => {
+describe('NonWebhookTriggerRegistrar', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.restoreAllMocks();
@@ -22,7 +22,7 @@ describe('LiveTriggerRegistrar', () => {
 		const getPollFunctions = jest.fn();
 		factory.getExecuteTriggerFunctions.mockReturnValue(getTriggerFunctions);
 		factory.getExecutePollFunctions.mockReturnValue(getPollFunctions);
-		const registrar = new LiveTriggerRegistrar(logger, activeWorkflowTriggers, factory);
+		const registrar = new NonWebhookTriggerRegistrar(logger, activeWorkflowTriggers, factory);
 		const workflow = createWorkflow([node('trigger-a', 'trigger'), node('poll-a', 'poll')]);
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
@@ -51,12 +51,12 @@ describe('LiveTriggerRegistrar', () => {
 		);
 	});
 
-	test('returns false when no requested live triggers match and propagates activation errors', async () => {
+	test('returns false when no requested non-webhook triggers match and propagates activation errors', async () => {
 		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 		const factory = mock<TriggerExecutionContextFactory>();
 		factory.getExecuteTriggerFunctions.mockReturnValue(jest.fn());
 		factory.getExecutePollFunctions.mockReturnValue(jest.fn());
-		const registrar = new LiveTriggerRegistrar(logger, activeWorkflowTriggers, factory);
+		const registrar = new NonWebhookTriggerRegistrar(logger, activeWorkflowTriggers, factory);
 		const workflow = createWorkflow([node('trigger-a', 'trigger')]);
 		const context = {
 			activationMode: 'update' as const,
