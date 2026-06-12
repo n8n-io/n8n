@@ -99,6 +99,7 @@ function emitScopes(scopes: ApiKeyScope[]) {
 
 function onModeChange(newMode: string | number | boolean | undefined) {
 	userPickedCustom.value = newMode === 'custom';
+	treeExpanded.value = newMode === 'custom';
 
 	if (newMode === 'all') {
 		emitScopes([...props.availableScopes]);
