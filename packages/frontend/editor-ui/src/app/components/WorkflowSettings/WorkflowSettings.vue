@@ -1377,7 +1377,12 @@ onBeforeUnmount(() => {
 								<template #content>
 									<div>
 										{{ helpTexts.redactProductionData }}
-										<N8nLink :to="EXECUTION_DATA_REDACTION_DOCS_URL" size="small" new-window>
+										<N8nLink
+											:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+											size="small"
+											new-window
+											data-test-id="redact-production-data-docs-link"
+										>
 											{{ i18n.baseText('generic.learnMore') }}
 										</N8nLink>
 									</div>
@@ -1478,7 +1483,12 @@ onBeforeUnmount(() => {
 								<template #content>
 									<div>
 										{{ helpTexts.redactManualData }}
-										<N8nLink :to="EXECUTION_DATA_REDACTION_DOCS_URL" size="small" new-window>
+										<N8nLink
+											:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+											size="small"
+											new-window
+											data-test-id="redact-manual-data-docs-link"
+										>
 											{{ i18n.baseText('generic.learnMore') }}
 										</N8nLink>
 									</div>

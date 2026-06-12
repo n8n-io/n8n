@@ -15,9 +15,15 @@ describe('RevealDataWarning', () => {
 		});
 
 		expect(getByText('Warning text')).toBeInTheDocument();
-		expect(getByTestId('reveal-data-warning-docs-link').closest('a')).toHaveAttribute(
+		expect(getByText('Logged item')).toBeInTheDocument();
+		expect(getByText('Legitimate item')).toBeInTheDocument();
+		expect(getByText('Policy item')).toBeInTheDocument();
+
+		const link = getByTestId('reveal-data-warning-docs-link').closest('a');
+		expect(link).toHaveAttribute(
 			'href',
 			'https://docs.n8n.io/workflows/executions/execution-data-redaction/',
 		);
+		expect(link).toHaveAttribute('target', '_blank');
 	});
 });

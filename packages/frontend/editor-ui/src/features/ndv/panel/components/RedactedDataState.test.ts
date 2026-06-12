@@ -86,25 +86,20 @@ describe('RedactedDataState', () => {
 		expect(emitted('openSettings')).toHaveLength(1);
 	});
 
-	it('should show docs link in standard description when canReveal is true', () => {
-		const { getByTestId } = renderComponent({
-			props: { title: 'Redacted', isDynamicCredentials: false, canReveal: true },
-		});
+	it.each([
+		{ isDynamicCredentials: false, canReveal: true },
+		{ isDynamicCredentials: false, canReveal: false },
+	])(
+		'should show docs link regardless of redaction reason (%o)',
+		({ isDynamicCredentials, canReveal }) => {
+			const { getByTestId } = renderComponent({
+				props: { title: 'Redacted', isDynamicCredentials, canReveal },
+			});
 
-		expect(getByTestId('redacted-data-docs-link').closest('a')).toHaveAttribute(
-			'href',
-			'https://docs.n8n.io/workflows/executions/execution-data-redaction/',
-		);
-	});
-
-	it('should show docs link in no-permission description when canReveal is false', () => {
-		const { getByTestId } = renderComponent({
-			props: { title: 'Redacted', isDynamicCredentials: false, canReveal: false },
-		});
-
-		expect(getByTestId('redacted-data-docs-link').closest('a')).toHaveAttribute(
-			'href',
-			'https://docs.n8n.io/workflows/executions/execution-data-redaction/',
-		);
-	});
+			expect(getByTestId('redacted-data-docs-link').closest('a')).toHaveAttribute(
+				'href',
+				'https://docs.n8n.io/workflows/executions/execution-data-redaction/',
+			);
+		},
+	);
 });
