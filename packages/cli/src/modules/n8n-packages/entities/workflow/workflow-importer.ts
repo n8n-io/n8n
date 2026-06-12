@@ -5,7 +5,11 @@ import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { decideWorkflowConflictAction } from './workflow-conflict-policy';
-import { WorkflowImportMatchService } from './workflow-import-match.service';
+import { decideWorkflowId } from './workflow-id-policy';
+import {
+	WorkflowImportMatchService,
+	type WorkflowIdConflict,
+} from './workflow-import-match.service';
 import type {
 	PreparedWorkflow,
 	WorkflowConflict,
@@ -15,7 +19,11 @@ import type {
 	WorkflowPlanItem,
 	WorkflowPlannedAction,
 } from './workflow-import.types';
-import type { PackageImportBindings, WorkflowConflictPolicy } from '../../n8n-packages.types';
+import type {
+	ImportWorkflowProperties,
+	PackageImportBindings,
+	WorkflowIdPolicy,
+} from '../../n8n-packages.types';
 
 export interface WorkflowImportResult {
 	outcomes: WorkflowImportOutcome[];
@@ -36,24 +44,36 @@ export class WorkflowImporter {
 	) {}
 
 	async plan(
+		context: WorkflowImportContext,
 		prepared: PreparedWorkflow[],
-		policy: WorkflowConflictPolicy,
-		projectId: string,
+		options: ImportWorkflowProperties,
 	): Promise<WorkflowImportPlan> {
 		const existingBySourceWorkflowId =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
-				projectId,
+				context.projectId,
 				prepared.map(({ sourceWorkflowId }) => sourceWorkflowId),
 			);
 
 		const items: WorkflowPlanItem[] = [];
 		const conflicts: WorkflowConflict[] = [];
+		// `source`-policy ids that would be freshly created — candidates for a
+		// global id collision check below. Blocked creates are excluded: they
+		// already report a workflow-conflict for the same workflow.
+		const sourceCreateIds: string[] = [];
 
 		for (const workflow of prepared) {
 			const existing = existingBySourceWorkflowId.get(workflow.sourceWorkflowId) ?? null;
-			const { action, blocked } = decideWorkflowConflictAction(policy, existing);
+			const { action, blocked } = decideWorkflowConflictAction(
+				options.workflowConflictPolicy,
+				existing,
+			);
 
-			items.push(toPlanItem(workflow, existing, action));
+			const item = toPlanItem(workflow, existing, action, options.workflowIdPolicy);
+			items.push(item);
+
+			if (item.action === 'create' && options.workflowIdPolicy === 'source' && !blocked) {
+				sourceCreateIds.push(item.decidedId);
+			}
 
 			if (blocked && existing) {
 				conflicts.push({
@@ -64,7 +84,33 @@ export class WorkflowImporter {
 			}
 		}
 
-		return { items, conflicts };
+		const idConflicts = await this.collectIdConflicts(sourceCreateIds);
+
+		return { items, conflicts, idConflicts };
+	}
+
+	/**
+	 * For `source`-policy creates, a workflow id is only safe to reuse if it
+	 * exists nowhere else in the instance (ids are a global primary key). Any hit
+	 * — even in another project — blocks the import.
+	 */
+	private async collectIdConflicts(candidateIds: string[]): Promise<WorkflowIdConflict[]> {
+		const existing =
+			await this.workflowImportMatchService.findOwningProjectsByWorkflowId(candidateIds);
+
+		return candidateIds.flatMap((id) => {
+			const location = existing.get(id);
+			if (!location) return [];
+			return [
+				{
+					sourceWorkflowId: id,
+					existingWorkflowId: id,
+					existingProjectId: location.projectId,
+					isArchived: location.isArchived,
+					name: location.name,
+				},
+			];
+		});
 	}
 
 	async apply(
@@ -91,6 +137,7 @@ export class WorkflowImporter {
 	): Promise<WorkflowImportOutcome> {
 		switch (item.action) {
 			case 'create': {
+				item.entity.id = item.decidedId;
 				const workflow = await this.workflowCreationService.createWorkflow(
 					context.user,
 					item.entity,
@@ -131,9 +178,14 @@ function toPlanItem(
 	prepared: PreparedWorkflow,
 	existing: WorkflowEntity | null,
 	action: WorkflowPlannedAction,
+	idPolicy: WorkflowIdPolicy,
 ): WorkflowPlanItem {
 	if (existing === null) {
-		return { action: 'create', ...prepared };
+		return {
+			action: 'create',
+			decidedId: decideWorkflowId(idPolicy, prepared.sourceWorkflowId),
+			...prepared,
+		};
 	}
 
 	switch (action) {
@@ -143,6 +195,10 @@ function toPlanItem(
 			return { action, ...prepared, existing };
 		case 'create':
 			// Only `fail` reaches here with a match; it records a conflict the gate rejects first.
-			return { action, ...prepared };
+			return {
+				action,
+				decidedId: decideWorkflowId(idPolicy, prepared.sourceWorkflowId),
+				...prepared,
+			};
 	}
 }
