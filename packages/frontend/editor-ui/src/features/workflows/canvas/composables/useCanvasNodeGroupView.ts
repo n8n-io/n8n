@@ -290,12 +290,14 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	}
 
 	// Default collapse state per change action: SET (workflow load /
-	// replacement) collapses every group; ADD (new group) starts expanded;
-	// DELETE removes the id; UPDATE leaves collapse state alone.
+	// replacement) collapses every group; ADD (new group) starts expanded,
+	// unless flagged `startCollapsed` (imported/pasted groups, whose stored
+	// positions describe the collapsed layout); DELETE removes the id;
+	// UPDATE leaves collapse state alone.
 	const subscription = deps.onNodeGroupsChange((event) => {
 		if (event.action === CHANGE_ACTION.SET) {
 			applyPersistedExpandedState(event.payload.groups);
-		} else if (event.action === CHANGE_ACTION.ADD) {
+		} else if (event.action === CHANGE_ACTION.ADD && !event.payload.startCollapsed) {
 			setGroupExpanded(event.payload.group.id, true);
 			// New groups open expanded, but creating one shouldn't shove existing
 			// nodes/groups around. Keep it out of the active push sources for now —

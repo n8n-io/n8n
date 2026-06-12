@@ -102,6 +102,42 @@ describe('useCanvasNodeGroupView', () => {
 
 			expect(view.isGroupCollapsed('g1')).toBe(true);
 		});
+
+		it('keeps a group created with startCollapsed collapsed (imported/pasted groups)', () => {
+			const { nodeGroups, view } = setup();
+
+			const group = nodeGroups.createGroup(['a'], 'Imported', { startCollapsed: true });
+
+			expect(view.isGroupCollapsed(group.id)).toBe(true);
+		});
+
+		it('pushes on first expand of a startCollapsed group, unlike a user-created one', () => {
+			// User-created groups are kept out of the push sources until re-expanded;
+			// imported groups behave like loaded ones — their first expansion pushes.
+			const { nodeGroups, view } = setup();
+			const group = nodeGroups.createGroup(['a'], 'Imported', { startCollapsed: true });
+			view.syncLayoutComponents([
+				{
+					id: `group:${group.id}`,
+					kind: 'group',
+					groupId: group.id,
+					nodeIds: ['a'],
+					rect: { x: 0, y: 0, width: 400, height: 40 },
+					collapsedRect: { x: 0, y: 0, width: 400, height: 40 },
+					expandedRect: { x: 0, y: 0, width: 600, height: 240 },
+				},
+				{
+					id: 'b',
+					kind: 'node',
+					nodeIds: ['b'],
+					rect: { x: 450, y: 10, width: 96, height: 96 },
+				},
+			]);
+
+			view.toggleCollapsed(group.id);
+
+			expect(view.getVisualOffsetForNode('b').x).toBeGreaterThan(0);
+		});
 	});
 
 	describe('deleteGroup', () => {
