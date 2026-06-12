@@ -1,10 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
-import type { SsrfBridge } from '@n8n/backend-network';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import type { AgentOptions } from 'https';
-import isEmpty from 'lodash/isEmpty';
 import type {
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
@@ -14,6 +12,7 @@ import type {
 import { isObjectEmpty } from 'n8n-workflow';
 import { stringify } from 'qs';
 
+import type { SsrfBridge } from '../ssrf';
 import {
 	buildTargetUrl,
 	digestAuthAxiosConfig,
@@ -167,6 +166,22 @@ export function convertN8nRequestToAxios(
 }
 
 const NoBodyHttpMethods = ['GET', 'HEAD', 'OPTIONS'];
+
+/**
+ * Checks whether a request body should be considered empty.
+ */
+function isEmpty(value: unknown): boolean {
+	if (value === null || value === undefined) {
+		return true;
+	}
+	if (typeof value === 'string' || Array.isArray(value) || Buffer.isBuffer(value)) {
+		return value.length === 0;
+	}
+	if (typeof value === 'object') {
+		return Object.keys(value).length === 0;
+	}
+	return false;
+}
 
 /** Remove empty request body on GET, HEAD, and OPTIONS requests */
 export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOptions) {
