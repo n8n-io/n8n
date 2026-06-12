@@ -259,6 +259,19 @@ describe('FromAiOverride', () => {
 			`={{ $fromAI('${DISPLAY_NAME}', \`${description}\`, 'string') }}`,
 		);
 	});
+
+	it('creates unique keys for dot-separated assignment paths', () => {
+		const override: FromAIOverride = {
+			type: 'fromAI',
+			extraProps: fromAIExtraProps,
+			extraPropValues: {},
+		};
+
+		expect(buildValueFromOverride(override, makeContext('', 'parameters.fields.assignments.0.value'), true))
+			.toContain("$fromAI('assignments0_aDisplayName'");
+		expect(buildValueFromOverride(override, makeContext('', 'parameters.fields.assignments.1.value'), true))
+			.toContain("$fromAI('assignments1_aDisplayName'");
+	});
 });
 
 describe('buildUniqueName', () => {
@@ -272,6 +285,16 @@ describe('buildUniqueName', () => {
 		[
 			'multiple list segments in the path',
 			'parameters.someList[0].nestedList[1].someParameter',
+			'someList0_nestedList1_' + DISPLAY_NAME,
+		],
+		[
+			'dot-separated list segments in the path',
+			'parameters.someList.0.someParameter',
+			'someList0_' + DISPLAY_NAME,
+		],
+		[
+			'multiple dot-separated list segments in the path',
+			'parameters.someList.0.nestedList.1.someParameter',
 			'someList0_nestedList1_' + DISPLAY_NAME,
 		],
 		[

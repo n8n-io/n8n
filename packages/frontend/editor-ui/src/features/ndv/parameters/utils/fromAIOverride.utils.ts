@@ -128,11 +128,22 @@ function getBestQuoteChar(description: string) {
 export function buildUniqueName(props: Pick<OverrideContext, 'parameter' | 'path'>) {
 	const path = props.path.split('.');
 
-	// include any list segments in the path (e.g. .myListName[0].) for uniqueness
+	// include any list segments in the path (e.g. .myListName[0]. or .myListName.0.) for uniqueness
 	// but drop brackets to avoid token limits
-	const filteredPaths = path
-		.filter((x) => /\[\d+\]/i.test(x))
-		.map((x) => x.replaceAll(/[\[\]]/gi, ''));
+	const filteredPaths = path.flatMap((segment, index) => {
+		if (/\[\d+\]/i.test(segment)) {
+			return segment.replaceAll(/[\[\]]/gi, '');
+		}
+
+		if (/^\d+$/i.test(segment)) {
+			const parentSegment = path[index - 1];
+			return parentSegment && !/^\d+$/i.test(parentSegment)
+				? `${parentSegment}${segment}`
+				: segment;
+		}
+
+		return [];
+	});
 	let result = [...filteredPaths, props.parameter.displayName].join('_');
 
 	// Langchain requires the name to be <64 characters
