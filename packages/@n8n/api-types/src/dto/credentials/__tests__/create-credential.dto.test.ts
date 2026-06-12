@@ -45,6 +45,24 @@ describe('CreateCredentialDto', () => {
 					},
 				},
 			},
+			{
+				name: 'with metadata object',
+				request: {
+					name: 'My API Credentials',
+					type: 'apiKey',
+					data: { apiKey: '123' },
+					metadata: { owner: 'team-x', environment: 'staging' },
+				},
+			},
+			{
+				name: 'with empty metadata object',
+				request: {
+					name: 'My API Credentials',
+					type: 'apiKey',
+					data: { apiKey: '123' },
+					metadata: {},
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = CreateCredentialDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -142,6 +160,36 @@ describe('CreateCredentialDto', () => {
 					data: 'invalid',
 				},
 				expectedErrorPath: ['data'],
+			},
+			{
+				name: 'metadata as array',
+				request: {
+					name: 'My API Credentials',
+					type: 'apiKey',
+					data: {},
+					metadata: ['not', 'an', 'object'],
+				},
+				expectedErrorPath: ['metadata'],
+			},
+			{
+				name: 'metadata as string',
+				request: {
+					name: 'My API Credentials',
+					type: 'apiKey',
+					data: {},
+					metadata: 'not-an-object',
+				},
+				expectedErrorPath: ['metadata'],
+			},
+			{
+				name: 'metadata as number',
+				request: {
+					name: 'My API Credentials',
+					type: 'apiKey',
+					data: {},
+					metadata: 42,
+				},
+				expectedErrorPath: ['metadata'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = CreateCredentialDto.safeParse(request);

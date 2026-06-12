@@ -1439,6 +1439,7 @@ export class CredentialsService {
 			...encryptedCredential,
 			isManaged: opts.isManaged,
 			isResolvable: opts.isResolvable ?? false,
+			metadata: opts.metadata ?? null,
 		});
 
 		const { shared, ...credential } = await this.save(

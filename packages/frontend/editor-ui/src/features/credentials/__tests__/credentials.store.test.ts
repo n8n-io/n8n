@@ -207,6 +207,69 @@ describe('credentials.store', () => {
 			);
 		});
 
+		it('should forward metadata to the API when provided', async () => {
+			const store = useCredentialsStore();
+
+			const mockCredential = mock<ICredentialsResponse>({
+				id: 'new-cred-metadata',
+				name: 'New Credential With Metadata',
+				type: 'httpBasicAuth',
+			});
+
+			vi.spyOn(credentialsApi, 'createNewCredential').mockResolvedValue(mockCredential);
+
+			await store.createNewCredential(
+				{
+					id: 'new-cred-metadata',
+					name: 'New Credential With Metadata',
+					type: 'httpBasicAuth',
+					data: {},
+					metadata: { owner: 'team-x', environment: 'staging' },
+				},
+				'project-123',
+			);
+
+			expect(credentialsApi.createNewCredential).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				{
+					name: 'New Credential With Metadata',
+					type: 'httpBasicAuth',
+					data: {},
+					projectId: 'project-123',
+					uiContext: undefined,
+					isGlobal: undefined,
+					isResolvable: undefined,
+					metadata: { owner: 'team-x', environment: 'staging' },
+				},
+			);
+		});
+
+		it('should omit metadata from the payload when it is null', async () => {
+			const store = useCredentialsStore();
+
+			const mockCredential = mock<ICredentialsResponse>({
+				id: 'new-cred-no-metadata',
+				name: 'New Credential',
+				type: 'httpBasicAuth',
+			});
+
+			vi.spyOn(credentialsApi, 'createNewCredential').mockResolvedValue(mockCredential);
+
+			await store.createNewCredential(
+				{
+					id: 'new-cred-no-metadata',
+					name: 'New Credential',
+					type: 'httpBasicAuth',
+					data: {},
+					metadata: null,
+				},
+				'project-123',
+			);
+
+			const payload = vi.mocked(credentialsApi.createNewCredential).mock.calls[0][1];
+			expect(payload).not.toHaveProperty('metadata');
+		});
+
 		it('should create credential without isGlobal when not provided', async () => {
 			const store = useCredentialsStore();
 
