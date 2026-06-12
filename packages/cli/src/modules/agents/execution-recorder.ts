@@ -140,7 +140,9 @@ function normaliseToolErrorOutput(output: unknown): unknown {
 }
 
 function normaliseStreamError(error: unknown): string {
-	if (error instanceof Error) return error.message || error.name || 'Agent execution failed';
+	if (error instanceof Error) {
+		return scrubSecretsInText(error.message || error.name || 'Agent execution failed');
+	}
 	if (typeof error === 'string') return scrubSecretsInText(error);
 
 	const sanitized = sanitizeExecutionLogValue(error);

@@ -1233,7 +1233,8 @@ export class AgentRuntime {
 					writer.abort(error).catch(() => {});
 				}
 			})
-			.finally(() => {
+			.finally(async () => {
+				await writer.close().catch(() => {});
 				this.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);
 				this.eventBus.off(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 				this.eventBus.off(AgentEvent.SubAgentStarted, onSubAgentStarted);
@@ -1572,6 +1573,7 @@ export class AgentRuntime {
 
 		this.updateState({ status: 'success', messageList: list.serialize() });
 		this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
+		// on error writer.close() will be called in startStreamLoop
 		await writer.close();
 	}
 

@@ -703,6 +703,19 @@ describe('ExecutionRecorder — tool-result error normalization', () => {
 		expect(record.error).toContain('NODE_TOOL_VALIDATION');
 		expect(record.error).toContain('n8n-nodes-base.httpRequestTool');
 	});
+
+	it('scrubs secrets from Error-shaped stream errors', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({
+			type: 'error',
+			error: new Error('Request failed with apiKey=super-secret-token'),
+		} as never);
+		rec.record({ type: 'finish', finishReason: 'error' } as StreamChunk);
+
+		const record = rec.getMessageRecord();
+
+		expect(record.error).toBe('Request failed with [REDACTED]');
+	});
 });
 
 describe('ExecutionRecorder — node-tool {{$json.x}} resolution', () => {
