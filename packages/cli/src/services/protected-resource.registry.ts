@@ -12,6 +12,9 @@ export interface ProtectedResource {
 	/** Stable identifier, e.g. `'instance-mcp'`. */
 	id: string;
 
+	/** Human readable name, for consent screen */
+	displayName?: string;
+
 	/**
 	 * Canonical RFC 8707 resource URL used as the JWT `aud` claim and advertised
 	 * as the resource indicator (e.g. `https://instance.example/mcp-server/http`).
@@ -68,13 +71,6 @@ export interface ProtectedResourceResolver {
 	 * pre-normalized (trailing slash trimmed) by the registry.
 	 */
 	resolveByPath(pathname: string): Promise<ProtectedResource | undefined>;
-
-	/**
-	 * Whether this resolver currently owns at least one enabled resource. Drives
-	 * the shared OAuth server's availability guard via
-	 * {@link ProtectedResourceRegistry.isAnyResourceEnabled}.
-	 */
-	hasAnyEnabledResource(): Promise<boolean>;
 }
 
 const trimTrailingSlash = (url: string): string => url.replace(/\/$/, '');
