@@ -1,4 +1,4 @@
-import type { WorkflowEntity } from '@n8n/db';
+import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -147,9 +147,7 @@ export class WorkflowImporter {
 			};
 		}
 
-		applyCredentialBindingsInPlace(item.entity, bindings.credentials);
-
-		const savedWorkflow = await this.persistWorkflow(context, item);
+		const savedWorkflow = await this.persistWorkflow(context, item, bindings.credentials);
 		const workflow = await this.workflowPublisher.apply(
 			context.user,
 			item,
@@ -167,10 +165,11 @@ export class WorkflowImporter {
 	private async persistWorkflow(
 		context: WorkflowImportContext,
 		item: PersistedWorkflowPlanItem,
+		credentialBindings: PackageImportBindings['credentials'],
 	): Promise<WorkflowEntity> {
 		if (item.action === 'create') {
-			item.entity.id = item.decidedId;
-			return await this.workflowCreationService.createWorkflow(context.user, item.entity, {
+			const entity = prepareEntityForPersist(item.entity, credentialBindings, item.decidedId);
+			return await this.workflowCreationService.createWorkflow(context.user, entity, {
 				projectId: context.projectId,
 				parentFolderId: context.folderId ?? undefined,
 				publicApi: true,
@@ -179,16 +178,29 @@ export class WorkflowImporter {
 			});
 		}
 
-		const workflow = await this.workflowService.update(
-			context.user,
-			item.entity,
-			item.existing.id,
-			{ publicApi: true, source: 'import' },
-		);
+		const entity = prepareEntityForPersist(item.entity, credentialBindings);
+		const workflow = await this.workflowService.update(context.user, entity, item.existing.id, {
+			publicApi: true,
+			source: 'import',
+		});
 		// update() doesn't re-hydrate parentFolder; carry over the existing folder for the result.
 		workflow.parentFolder = item.existing.parentFolder;
 		return workflow;
 	}
+}
+
+/** Clones package content for persistence without mutating the import plan. */
+function prepareEntityForPersist(
+	source: WorkflowEntity,
+	credentialBindings: PackageImportBindings['credentials'],
+	decidedId?: string,
+): WorkflowEntity {
+	const entity = Object.assign(new WorkflowEntity(), source, {
+		nodes: structuredClone(source.nodes),
+		...(decidedId !== undefined ? { id: decidedId } : {}),
+	});
+	applyCredentialBindingsInPlace(entity, credentialBindings);
+	return entity;
 }
 
 /** Mutates node credential ids on `entity` using the resolved import binding map. */

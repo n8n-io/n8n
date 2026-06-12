@@ -60,6 +60,7 @@ type ImportPackageParams = Omit<
 			ImportPackageRequest,
 			| 'credentialMatchingMode'
 			| 'credentialMissingMode'
+			| 'credentialBindings'
 			| 'workflowConflictPolicy'
 			| 'workflowPublishingPolicy'
 			| 'workflowIdPolicy'
