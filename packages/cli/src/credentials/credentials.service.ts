@@ -8,6 +8,7 @@ import {
 	ProjectRepository,
 	SharedCredentialsRepository,
 	UserRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import type { ListQueryDb, SlimProject, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -57,6 +58,7 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import {
@@ -140,6 +142,8 @@ export class CredentialsService {
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowSharingService: WorkflowSharingService,
 	) {}
 
 	/**
@@ -632,6 +636,44 @@ export class CredentialsService {
 
 		await this.populateConnectedByMe(result, user);
 		return result;
+	}
+
+	/**
+	 * Returns workflows that reference the given credential ID in any of their
+	 * nodes, scoped to workflows the user has `workflow:read` access to. The
+	 * caller is expected to have already verified that the user can read the
+	 * credential itself.
+	 * @param user The user making the request
+	 * @param credentialId The credential to fetch the workflows for
+	 */
+	async getWorkflowsUsingCredential(user: User, credentialId: string) {
+		const canReadAll = hasGlobalScope(user, 'workflow:read');
+		const accessibleWorkflowIds = canReadAll
+			? undefined
+			: await this.workflowSharingService.getSharedWorkflowIds(user, {
+					scopes: ['workflow:read'],
+				});
+
+		const [workflows, totalCount] = await Promise.all([
+			this.workflowRepository.findWorkflowsUsingCredential(credentialId, {
+				workflowIds: accessibleWorkflowIds,
+			}),
+			canReadAll
+				? // Admins see everything, so skip the extra COUNT round-trip
+					Promise.resolve(undefined)
+				: this.workflowRepository.countWorkflowsUsingCredential(credentialId),
+		]);
+
+		const accessible = workflows.map((w) => ({
+			id: w.id,
+			name: w.name,
+			active: w.active,
+		}));
+
+		const inaccessibleCount =
+			totalCount === undefined ? 0 : Math.max(totalCount - accessible.length, 0);
+
+		return { workflows: accessible, inaccessibleCount };
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {

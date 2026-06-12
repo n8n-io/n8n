@@ -508,6 +508,8 @@ describe('CredentialsService', () => {
 			mock(), // externalSecretsConfig
 			mock(), // externalSecretsProviderAccessCheckService
 			mock(), // connectionStatusProxy
+			mock(), // workflowRepository
+			mock(), // workflowSharingService
 		);
 
 		beforeEach(() => {

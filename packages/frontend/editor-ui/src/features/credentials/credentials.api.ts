@@ -73,6 +73,24 @@ export async function getAllCredentials(
 	});
 }
 
+export type CredentialUsageWorkflow = {
+	id: string;
+	name: string;
+	active: boolean;
+};
+
+export type CredentialUsageResponse = {
+	workflows: CredentialUsageWorkflow[];
+	inaccessibleCount: number;
+};
+
+export async function getWorkflowsUsingCredential(
+	context: IRestApiContext,
+	credentialId: string,
+): Promise<CredentialUsageResponse> {
+	return await makeRestApiRequest(context, 'GET', `/credentials/${credentialId}/workflows`);
+}
+
 export async function getAllCredentialsForWorkflow(
 	context: IRestApiContext,
 	options: { workflowId: string } | { projectId: string },

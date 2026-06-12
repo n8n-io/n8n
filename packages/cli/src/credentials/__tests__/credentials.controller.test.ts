@@ -58,6 +58,8 @@ describe('CredentialsController', () => {
 		mock(), // externalSecretsConfig
 		mock(), // externalSecretsProviderAccessCheckService
 		mock(), // connectionStatusProxy
+		mock(), // workflowRepository
+		mock(), // workflowSharingService
 	);
 
 	// Spy on methods that need to be mocked in tests

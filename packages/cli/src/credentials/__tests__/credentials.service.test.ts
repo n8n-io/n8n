@@ -8,6 +8,7 @@ import type {
 	User,
 	SharedCredentials,
 	ListQueryDb,
+	WorkflowRepository,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -39,6 +40,7 @@ import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
@@ -80,6 +82,8 @@ describe('CredentialsService', () => {
 	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
 	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
+	const workflowRepository = mock<WorkflowRepository>();
+	const workflowSharingService = mock<WorkflowSharingService>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -100,6 +104,8 @@ describe('CredentialsService', () => {
 		externalSecretsConfig,
 		externalSecretsProviderAccessCheckService,
 		connectionStatusProxy,
+		workflowRepository,
+		workflowSharingService,
 	);
 
 	beforeEach(() => {
@@ -2974,6 +2980,81 @@ describe('CredentialsService', () => {
 			await expect(
 				service.checkCredentialData('myOAuth1Cred', data, ownerUser, testProjectId),
 			).resolves.toBeUndefined();
+		});
+	});
+
+	describe('getWorkflowsUsingCredential', () => {
+		it('should return all workflows with zero inaccessibleCount when caller has global workflow:read', async () => {
+			workflowRepository.findWorkflowsUsingCredential.mockResolvedValue([
+				{ id: 'wf-1', name: 'Workflow A', active: true, activeVersionId: 'v1' },
+				{ id: 'wf-2', name: 'Workflow B', active: false, activeVersionId: null },
+			]);
+
+			const result = await service.getWorkflowsUsingCredential(ownerUser, 'cred-1');
+
+			expect(workflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();
+			expect(workflowRepository.findWorkflowsUsingCredential).toHaveBeenCalledWith('cred-1', {
+				workflowIds: undefined,
+			});
+			expect(workflowRepository.countWorkflowsUsingCredential).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				workflows: [
+					{ id: 'wf-1', name: 'Workflow A', active: true },
+					{ id: 'wf-2', name: 'Workflow B', active: false },
+				],
+				inaccessibleCount: 0,
+			});
+		});
+
+		it('should scope to accessible workflows and report inaccessibleCount for a member user', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			workflowRepository.findWorkflowsUsingCredential.mockResolvedValue([
+				{ id: 'wf-1', name: 'Workflow A', active: true, activeVersionId: 'v1' },
+			]);
+			workflowRepository.countWorkflowsUsingCredential.mockResolvedValue(3);
+
+			const result = await service.getWorkflowsUsingCredential(memberUser, 'cred-1');
+
+			expect(workflowSharingService.getSharedWorkflowIds).toHaveBeenCalledWith(memberUser, {
+				scopes: ['workflow:read'],
+			});
+			expect(workflowRepository.findWorkflowsUsingCredential).toHaveBeenCalledWith('cred-1', {
+				workflowIds: ['wf-1'],
+			});
+			expect(workflowRepository.countWorkflowsUsingCredential).toHaveBeenCalledWith('cred-1');
+			expect(result).toEqual({
+				workflows: [{ id: 'wf-1', name: 'Workflow A', active: true }],
+				inaccessibleCount: 2,
+			});
+		});
+
+		it('should return only inaccessibleCount when the member user has no accessible workflows', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+			workflowRepository.findWorkflowsUsingCredential.mockResolvedValue([]);
+			workflowRepository.countWorkflowsUsingCredential.mockResolvedValue(2);
+
+			const result = await service.getWorkflowsUsingCredential(memberUser, 'cred-1');
+
+			expect(workflowRepository.findWorkflowsUsingCredential).toHaveBeenCalledWith('cred-1', {
+				workflowIds: [],
+			});
+			expect(result).toEqual({
+				workflows: [],
+				inaccessibleCount: 2,
+			});
+		});
+
+		it('should never report a negative inaccessibleCount', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1', 'wf-2']);
+			workflowRepository.findWorkflowsUsingCredential.mockResolvedValue([
+				{ id: 'wf-1', name: 'Workflow A', active: true, activeVersionId: 'v1' },
+				{ id: 'wf-2', name: 'Workflow B', active: false, activeVersionId: null },
+			]);
+			workflowRepository.countWorkflowsUsingCredential.mockResolvedValue(1); // racy total
+
+			const result = await service.getWorkflowsUsingCredential(memberUser, 'cred-1');
+
+			expect(result.inaccessibleCount).toBe(0);
 		});
 	});
 });
