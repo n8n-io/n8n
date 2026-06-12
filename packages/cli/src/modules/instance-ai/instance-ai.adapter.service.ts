@@ -1079,7 +1079,9 @@ export class InstanceAiAdapterService {
 						if (execution?.data) {
 							const runData = execution.data.resultData.runData ?? {};
 							const simulation = Object.fromEntries(
-								Object.entries(options.simulation).filter(([nodeName]) => nodeName in runData),
+								Object.entries(options.simulation).filter(([nodeName]) =>
+									Object.hasOwn(runData, nodeName),
+								),
 							);
 							if (Object.keys(simulation).length > 0) {
 								execution.data.resultData.simulation = simulation;
