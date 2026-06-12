@@ -1,6 +1,8 @@
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import FormData from 'form-data';
 
+import type { SsrfBridge } from '../../../ssrf';
+import { buildNodeAgents } from '../../node-agents';
 import {
 	buildTargetUrl,
 	createFormDataObject,
@@ -13,13 +15,25 @@ import {
 	searchForHeader,
 	setAxiosAgents,
 	tryParseUrl,
-} from '../axios-utils';
-import { createHttpProxyAgent, createHttpsProxyAgent } from '../http-proxy';
+} from '../utils';
 
-vi.mock('../http-proxy', () => ({
-	createHttpProxyAgent: vi.fn((_proxy, _url, opts) => ({ type: 'http', ...opts })),
-	createHttpsProxyAgent: vi.fn((_proxy, _url, opts) => ({ type: 'https', ...opts })),
+// Agent construction is owned by `buildNodeAgents` (./factory).
+// SSRF lookup injection is exercised there; here we only assert the transport
+// policy (proxy + ssrf option) that the axios utils forward to it.
+vi.mock('../../node-agents', () => ({
+	buildNodeAgents: vi.fn((_proxy, _ssrf, opts) => ({
+		httpAgent: { type: 'http', ...opts },
+		httpsAgent: { type: 'https', ...opts },
+	})),
 }));
+
+const makeSsrfBridge = (): SsrfBridge =>
+	({
+		validateUrl: vi.fn(),
+		validateIp: vi.fn(),
+		validateRedirectSync: vi.fn(),
+		createSecureLookup: vi.fn(),
+	}) as unknown as SsrfBridge;
 
 describe('isIgnoreStatusErrorConfig', () => {
 	test('should return true for valid IgnoreStatusErrorConfig', () => {
@@ -163,9 +177,8 @@ describe('getBeforeRedirectFn', () => {
 		expect(ssrfBridge.validateRedirectSync).toHaveBeenCalledWith('https://example.com/other');
 	});
 
-	test('should resolve proxy URL from proxyConfig and pass it to agent factories', () => {
-		vi.mocked(createHttpProxyAgent).mockClear();
-		vi.mocked(createHttpsProxyAgent).mockClear();
+	test('should resolve proxy URL from proxyConfig and pass it to buildNodeAgents', () => {
+		vi.mocked(buildNodeAgents).mockClear();
 
 		const beforeRedirect = getBeforeRedirectFn(
 			agentOptions,
@@ -182,14 +195,9 @@ describe('getBeforeRedirectFn', () => {
 
 		beforeRedirect(redirectedRequest);
 
-		expect(createHttpProxyAgent).toHaveBeenCalledWith(
+		expect(buildNodeAgents).toHaveBeenCalledWith(
 			'http://proxy:8080',
-			'https://example.com/other',
-			expect.objectContaining({ servername: 'example.com' }),
-		);
-		expect(createHttpsProxyAgent).toHaveBeenCalledWith(
-			'http://proxy:8080',
-			'https://example.com/other',
+			'disabled',
 			expect.objectContaining({ servername: 'example.com' }),
 		);
 	});
@@ -449,15 +457,14 @@ describe('setAxiosAgents', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should set httpAgent and httpsAgent on config', () => {
+	it('should set httpAgent and httpsAgent on config (env proxy by default)', () => {
 		const config: AxiosRequestConfig = { url: 'https://example.com/api' };
 
 		setAxiosAgents(config);
 
 		expect(config.httpAgent).toEqual({ type: 'http' });
 		expect(config.httpsAgent).toEqual({ type: 'https' });
-		expect(createHttpProxyAgent).toHaveBeenCalledWith(null, 'https://example.com/api', undefined);
-		expect(createHttpsProxyAgent).toHaveBeenCalledWith(null, 'https://example.com/api', undefined);
+		expect(buildNodeAgents).toHaveBeenCalledWith('env', 'disabled', undefined);
 	});
 
 	it('should not override existing agents', () => {
@@ -470,7 +477,7 @@ describe('setAxiosAgents', () => {
 		setAxiosAgents(config);
 
 		expect(config.httpAgent).toBe(existingAgent);
-		expect(createHttpProxyAgent).not.toHaveBeenCalled();
+		expect(buildNodeAgents).not.toHaveBeenCalled();
 	});
 
 	it('should not set agents when url is missing', () => {
@@ -482,39 +489,33 @@ describe('setAxiosAgents', () => {
 		expect(config.httpsAgent).toBeUndefined();
 	});
 
-	it('should pass proxy URL to agent factories', () => {
+	it('should pass a custom proxy URL through to buildNodeAgents', () => {
 		const config: AxiosRequestConfig = { url: 'https://example.com' };
 
 		setAxiosAgents(config, undefined, 'http://proxy:8080');
 
-		expect(createHttpProxyAgent).toHaveBeenCalledWith(
-			'http://proxy:8080',
-			'https://example.com',
-			undefined,
-		);
+		expect(buildNodeAgents).toHaveBeenCalledWith('http://proxy:8080', 'disabled', undefined);
 	});
 
-	it('should inject secureLookup when no proxy is configured', () => {
+	it('should forward the ssrf option to buildNodeAgents when no proxy is configured', () => {
 		const config: AxiosRequestConfig = { url: 'https://example.com' };
-		const secureLookup = vi.fn();
+		const ssrf = makeSsrfBridge();
 
-		setAxiosAgents(config, {}, undefined, secureLookup as never);
+		setAxiosAgents(config, {}, undefined, ssrf);
 
-		expect(createHttpProxyAgent).toHaveBeenCalledWith(null, 'https://example.com', {
-			lookup: secureLookup,
-		});
+		// SSRF lookup injection is buildNodeAgents' responsibility (env path
+		// applies it to direct connections only).
+		expect(buildNodeAgents).toHaveBeenCalledWith('env', ssrf, {});
 	});
 
-	it('should not inject secureLookup when proxy is configured', () => {
+	it('should forward the ssrf option to buildNodeAgents when a proxy is configured', () => {
 		const config: AxiosRequestConfig = { url: 'https://example.com' };
-		const secureLookup = vi.fn();
+		const ssrf = makeSsrfBridge();
 
-		setAxiosAgents(config, {}, 'http://proxy:8080', secureLookup as never);
+		setAxiosAgents(config, {}, 'http://proxy:8080', ssrf);
 
-		expect(createHttpProxyAgent).toHaveBeenCalledWith(
-			'http://proxy:8080',
-			'https://example.com',
-			{},
-		);
+		// Behind a proxy, buildNodeAgents omits the lookup; the proxy validates
+		// the final target.
+		expect(buildNodeAgents).toHaveBeenCalledWith('http://proxy:8080', ssrf, {});
 	});
 });

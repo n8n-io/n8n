@@ -2,7 +2,7 @@ import { HttpRequestConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import * as nodePathActual from 'node:path';
 
-import { buildRfcStyleUserAgent, getDefaultN8nOutboundUserAgent } from '../outbound-user-agent';
+import { buildRfcStyleUserAgent, getDefaultN8nOutboundUserAgent } from '../user-agent';
 
 describe('outbound-user-agent', () => {
 	const originalConfig = new HttpRequestConfig();
@@ -69,7 +69,7 @@ describe('outbound-user-agent', () => {
 
 			const di = await import('@n8n/di');
 			const config = await import('@n8n/config');
-			const mod = await import('../outbound-user-agent');
+			const mod = await import('../user-agent');
 
 			di.Container.set(config.HttpRequestConfig, {
 				enforceGlobalUserAgent: true,
