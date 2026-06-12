@@ -1,0 +1,20 @@
+packages/@n8n/nodes-langchain/nodes/chains/TextClassifier/test/TextClassifier.node.test.ts
+  s_a8c057f8cddad1::t_631db562196f01 160-162
+  s_a8c057f8cddad1::t_ed4b0a4a91a3eb 2,14-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f7f5211805c25f1c0a4f153285113dea48fea414",
+  "prompts": {},
+  "sessions": {
+    "s_a8c057f8cddad1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2977fa8b-465a-4551-8fb5-ea206a788476",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
