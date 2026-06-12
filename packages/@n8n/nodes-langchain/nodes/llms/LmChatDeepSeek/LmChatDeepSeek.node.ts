@@ -16,6 +16,53 @@ import {
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
+/**
+ * Determines if the model is a DeepSeek thinking model that requires reasoning_content handling.
+ * DeepSeek V4 (Pro/Flash) has thinking mode enabled by default.
+ * DeepSeek Reasoner series (legacy) explicitly requires thinking mode.
+ * During tool call loops, these models require reasoning_content to be present in assistant messages.
+ */
+function isDeepSeekThinkingModel(modelName: string): boolean {
+	return (
+		modelName.startsWith('deepseek-reasoner') ||
+		modelName.startsWith('deepseek-v4-pro') ||
+		modelName.startsWith('deepseek-v4-flash')
+	);
+}
+
+/**
+ * Injects `reasoning_content: null` into assistant messages for DeepSeek thinking models.
+ * DeepSeek's thinking models require this field in assistant messages during tool call loops.
+ * Without this field, the API returns a 400 error: "Missing reasoning_content field in assistant message".
+ */
+export function injectReasoningContent(modelName: string, bodyString: string): string | undefined {
+	if (!isDeepSeekThinkingModel(modelName)) {
+		return undefined;
+	}
+
+	try {
+		const body = JSON.parse(bodyString);
+		if (!body.messages || !Array.isArray(body.messages)) {
+			return undefined;
+		}
+
+		let modified = false;
+		for (const message of body.messages) {
+			if (message.role === 'assistant' && !('reasoning_content' in message)) {
+				message.reasoning_content = null;
+				modified = true;
+			}
+		}
+
+		if (modified) {
+			return JSON.stringify(body);
+		}
+		return undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export class LmChatDeepSeek implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'DeepSeek Chat Model',
@@ -239,6 +286,15 @@ export class LmChatDeepSeek implements INodeType {
 					headersTimeout: timeout,
 					bodyTimeout: timeout,
 				}),
+			},
+			fetch: async (url: RequestInfo | URL, init?: RequestInit) => {
+				if (init?.body && typeof init.body === 'string') {
+					const modifiedBody = injectReasoningContent(modelName, init.body);
+					if (modifiedBody) {
+						init.body = modifiedBody;
+					}
+				}
+				return await fetch(url, init);
 			},
 		};
 
