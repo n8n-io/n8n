@@ -909,8 +909,8 @@ describe('ParameterInput.vue', () => {
 		});
 	});
 
-	describe('credential change resets options value', () => {
-		test('should reset options value when credentials change', async () => {
+	describe('credential change preserves options value', () => {
+		test('should preserve options value when credentials change', async () => {
 			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
 				{ name: 'GPT-4', value: 'gpt-4' },
 				{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' },
@@ -951,17 +951,20 @@ describe('ParameterInput.vue', () => {
 				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
 			});
 
-			// Change credentials — the previously selected model should be reset to the default
+			// Change credentials — the previously selected model should be preserved
 			activeNode.credentials = {
 				openAiApi: { id: '2', name: 'OpenAI Account 2' },
 			};
 			await nextTick();
 
+			// Options should be re-fetched with new credentials
 			await waitFor(() => {
-				expect(emitted('update')).toContainEqual([
-					expect.objectContaining({ name: 'model', value: 'gpt-4' }),
-				]);
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(2);
 			});
+
+			// Value should NOT be reset
+			const updates = emitted('update') ?? [];
+			expect(updates).not.toContainEqual([expect.objectContaining({ name: 'model' })]);
 		});
 
 		test('should not reset non-options parameter when credentials change', async () => {
