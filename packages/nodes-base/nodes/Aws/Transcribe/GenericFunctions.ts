@@ -18,6 +18,7 @@ import type {
 	AwsAssumeRoleCredentialsType,
 	AwsCredentialsTypeBase,
 	AwsIamCredentialsType,
+	AwsSecurityHeaders,
 } from '../../../credentials/common/aws/types';
 import { assertSupportedAwsRegion, assumeRole } from '../../../credentials/common/aws/utils';
 import { getAwsCredentials } from '../GenericFunctions';
@@ -51,31 +52,31 @@ export async function awsApiRequest(
 	// Sign AWS API request with the resolved credentials
 	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
 
-	let securityHeaders;
-	if (credentialsType === 'awsAssumeRole') {
-		const assumeRoleCredentials = credentials as AwsAssumeRoleCredentialsType;
-		securityHeaders = await assumeRole(assumeRoleCredentials, assumeRoleCredentials.region);
-	} else {
-		const iamCredentials = credentials as AwsIamCredentialsType;
-		securityHeaders = {
-			accessKeyId: `${iamCredentials.accessKeyId}`.trim(),
-			secretAccessKey: `${iamCredentials.secretAccessKey}`.trim(),
-			sessionToken: iamCredentials.temporaryCredentials
-				? `${iamCredentials.sessionToken}`.trim()
-				: undefined,
-		};
-	}
-
-	sign(signOpts, securityHeaders);
-
-	const options: IRequestOptions = {
-		headers: signOpts.headers,
-		method,
-		uri: endpoint.href,
-		body: signOpts.body,
-	};
-
 	try {
+		let securityHeaders: AwsSecurityHeaders;
+		if (credentialsType === 'awsAssumeRole') {
+			const assumeRoleCredentials = credentials as AwsAssumeRoleCredentialsType;
+			securityHeaders = await assumeRole(assumeRoleCredentials, assumeRoleCredentials.region);
+		} else {
+			const iamCredentials = credentials as AwsIamCredentialsType;
+			securityHeaders = {
+				accessKeyId: `${iamCredentials.accessKeyId}`.trim(),
+				secretAccessKey: `${iamCredentials.secretAccessKey}`.trim(),
+				sessionToken: iamCredentials.temporaryCredentials
+					? `${iamCredentials.sessionToken}`.trim()
+					: undefined,
+			};
+		}
+
+		sign(signOpts, securityHeaders);
+
+		const options: IRequestOptions = {
+			headers: signOpts.headers,
+			method,
+			uri: endpoint.href,
+			body: signOpts.body,
+		};
+
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject); // no XML parsing needed

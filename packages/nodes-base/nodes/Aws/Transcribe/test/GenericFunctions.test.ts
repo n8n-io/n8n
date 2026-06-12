@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError } from 'n8n-workflow';
 
 jest.mock('aws4', () => ({
 	sign: jest.fn(),
@@ -130,6 +130,25 @@ describe('AWS Transcribe Generic Functions', () => {
 			expect(mockAssumeRole).toHaveBeenCalledWith(assumeRoleCredentials, 'us-east-1');
 			expect(mockSign).toHaveBeenCalledWith(expect.anything(), temporaryCredentials);
 			expect(helpers.request).toHaveBeenCalledTimes(1);
+		});
+
+		it('wraps an assumeRole failure in a NodeApiError without signing or sending', async () => {
+			mockAssumeRole.mockRejectedValue(new ApplicationError('STS failure'));
+
+			const assumeRoleCredentials = {
+				region: 'us-east-1',
+				roleArn: 'arn:aws:iam::123456789012:role/MyRole',
+				externalId: 'ext-id',
+				roleSessionName: 'n8n-session',
+			};
+			const { context, helpers } = buildContext('assumeRole', assumeRoleCredentials);
+
+			await expect(awsApiRequest.call(context, 'transcribe', 'POST', '/')).rejects.toThrow(
+				NodeApiError,
+			);
+
+			expect(mockSign).not.toHaveBeenCalled();
+			expect(helpers.request).not.toHaveBeenCalled();
 		});
 	});
 });
