@@ -1477,6 +1477,10 @@ export const messageTypeFields: INodeProperties[] = [
 												name: 'Image',
 												value: 'image',
 											},
+											{
+												name: 'Document',
+												value: 'document',
+											},
 										],
 										default: 'text',
 									},
@@ -1535,6 +1539,17 @@ export const messageTypeFields: INodeProperties[] = [
 										displayOptions: {
 											show: {
 												type: ['image'],
+											},
+										},
+										default: '',
+									},
+									{
+										displayName: 'Document Link',
+										name: 'documentLink',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: ['document'],
 											},
 										},
 										default: '',
