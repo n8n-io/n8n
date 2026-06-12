@@ -3,8 +3,10 @@ import {
 	DesktopAssistantHistoryQueryDto,
 	DesktopAssistantPromoteRequestDto,
 	DesktopAssistantRecommendationsRequestDto,
+	DesktopAssistantChatThreadRequestDto,
 	DesktopAssistantTaskRequestDto,
 	type DesktopAssistantApplyEditsResponse,
+	type DesktopAssistantChatThreadResponse,
 	type DesktopAssistantHistoryResponse,
 	type DesktopAssistantPromoteResponse,
 	type DesktopAssistantRecommendationsResponse,
@@ -92,6 +94,17 @@ export class DesktopAssistantController {
 	): Promise<DesktopAssistantRecommendationsResponse> {
 		this.requireEnabled();
 		return await this.desktopAssistantService.getRecommendations(req.user, body);
+	}
+
+	@Post('/chat-thread')
+	@GlobalScope('instanceAi:message')
+	async createChatThread(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: DesktopAssistantChatThreadRequestDto,
+	): Promise<DesktopAssistantChatThreadResponse> {
+		this.requireEnabled();
+		return await this.desktopAssistantService.createChatThread(req.user, body.threadId);
 	}
 
 	@Post('/promote-thread')

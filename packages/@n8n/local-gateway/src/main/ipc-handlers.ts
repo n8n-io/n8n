@@ -19,6 +19,7 @@ import type {
 	AuthStatus,
 	ConfirmThreadResult,
 	CreateAssistantTaskResult,
+	CreateChatThreadResult,
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
@@ -233,6 +234,18 @@ export function registerIpcHandlers({
 			}
 		},
 	);
+
+	ipcMain.handle('assistant:createChatThread', async (): Promise<CreateChatThreadResult> => {
+		logger.debug('IPC assistant:createChatThread');
+		try {
+			const { threadId } = await instanceApi.createChatThread();
+			return { ok: true, threadId };
+		} catch (error) {
+			const message = ipcErrorMessage(error);
+			logger.error('IPC assistant:createChatThread failed', { error: message });
+			return { ok: false, error: message };
+		}
+	});
 
 	ipcMain.handle(
 		'assistant:promote',

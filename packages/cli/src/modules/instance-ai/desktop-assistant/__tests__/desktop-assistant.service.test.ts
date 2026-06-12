@@ -166,6 +166,56 @@ describe('DesktopAssistantService.triggerTask', () => {
 	});
 });
 
+describe('DesktopAssistantService.createChatThread', () => {
+	function mockEnsuredThread(ctx: ReturnType<typeof makeService>) {
+		ctx.projectService.getPersonalProject.mockResolvedValue({ id: 'proj-1' } as never);
+		ctx.memoryService.ensureThread.mockResolvedValue({
+			thread: {
+				id: 't',
+				resourceId: USER.id,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			},
+			created: true,
+		});
+	}
+
+	test('ensures a desktop-tagged thread in the personal project without starting a run', async () => {
+		const ctx = makeService();
+		mockEnsuredThread(ctx);
+
+		const result = await ctx.service.createChatThread(USER);
+
+		expect(ctx.projectService.getPersonalProject).toHaveBeenCalledWith(USER);
+		expect(ctx.memoryService.ensureThread).toHaveBeenCalledTimes(1);
+		const [userId, threadId, projectId, metadata] = ctx.memoryService.ensureThread.mock.calls[0];
+		expect(userId).toBe(USER.id);
+		expect(projectId).toBe('proj-1');
+		expect(metadata).toEqual({ source: 'desktop-assistant' });
+		expect(result.threadId).toBe(threadId);
+		expect(ctx.instanceAiService.startRun).not.toHaveBeenCalled();
+	});
+
+	test('honors a supplied thread id', async () => {
+		const ctx = makeService();
+		mockEnsuredThread(ctx);
+
+		const result = await ctx.service.createChatThread(USER, 'chat-1');
+
+		expect(result.threadId).toBe('chat-1');
+		const [, threadId] = ctx.memoryService.ensureThread.mock.calls[0];
+		expect(threadId).toBe('chat-1');
+	});
+
+	test('throws BadRequestError when the user has no personal project', async () => {
+		const ctx = makeService();
+		ctx.projectService.getPersonalProject.mockResolvedValue(null as never);
+
+		await expect(ctx.service.createChatThread(USER)).rejects.toBeInstanceOf(BadRequestError);
+		expect(ctx.memoryService.ensureThread).not.toHaveBeenCalled();
+	});
+});
+
 describe('DesktopAssistantService.triggerTask publishing', () => {
 	/**
 	 * Run a one-shot task and emit a legacy planned-task build outcome for the
