@@ -55,10 +55,10 @@ export class OtelService {
 		// Unregister the global providers so the next NodeSDK.start() can register
 		// new ones. Without this, OTel's allowOverride=false guard blocks
 		// re-registration and the restart silently fails.
-		trace.disable();
-		context.disable();
-		propagation.disable();
-		metrics.disable();
+		trace?.disable();
+		context?.disable();
+		propagation?.disable();
+		metrics?.disable();
 	}
 
 	private startSdk(settings: OtelConfig): string {
