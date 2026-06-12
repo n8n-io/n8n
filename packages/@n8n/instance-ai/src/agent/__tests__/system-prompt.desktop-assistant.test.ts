@@ -34,6 +34,7 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 		expect(prompt).toMatch(/Desktop Assistant.+Promote/i);
 		expect(prompt).toContain('@n8n/n8n-nodes-langchain.computerUse');
 		expect(prompt).toContain('@n8n/n8n-nodes-langchain.toolComputerUse');
+		expect(prompt).toContain('@n8n/n8n-nodes-langchain.chainLlm');
 		expect(prompt).toContain('deviceConnectionApi');
 	});
 
@@ -64,12 +65,17 @@ describe('getDesktopAssistantProfile — extra tools', () => {
 		expect(profile.extraTools).toHaveLength(0);
 	});
 
-	it('registers the outcome report tool for one-shot mode only', () => {
+	it('registers the outcome report and plan proposal tools for one-shot mode', () => {
 		const oneShot = getDesktopAssistantProfile('desktop-assistant-one-shot');
-		expect(oneShot.extraTools.map((tool) => tool.name)).toEqual(['report-desktop-task-outcome']);
+		expect(oneShot.extraTools.map((tool) => tool.name)).toEqual([
+			'report-desktop-task-outcome',
+			'propose-task-plan',
+		]);
+	});
 
+	it('registers the promote outcome report tool for promote mode', () => {
 		const promote = getDesktopAssistantProfile('desktop-assistant-promote');
-		expect(promote.extraTools).toHaveLength(0);
+		expect(promote.extraTools.map((tool) => tool.name)).toEqual(['report-promote-outcome']);
 	});
 
 	it('pins gateway tools out of deferred search for one-shot runs only', () => {

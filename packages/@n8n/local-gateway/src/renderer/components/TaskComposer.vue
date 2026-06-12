@@ -11,6 +11,7 @@ import MiniSpinner from './MiniSpinner.vue';
 import { suggestionChipsFor } from '../assistant/contexts';
 import { watchAssistantRun } from '../assistant/run-watcher';
 import { useAssistantContext } from '../assistant/use-assistant-context';
+import { useAssistantScreen } from '../assistant/use-assistant-screen';
 import { usePendingTasks } from '../assistant/use-pending-tasks';
 import { getThreadPromptWatcher } from '../permissions/thread-prompt-watcher';
 import type { DesktopAssistantTaskRequest } from '../../shared/types';
@@ -45,6 +46,7 @@ const MAX_LABEL_LENGTH = 60;
 
 const i18n = useI18n();
 const pendingTasks = usePendingTasks();
+const { goTo } = useAssistantScreen();
 
 const emit = defineEmits<{ kept: [] }>();
 
@@ -84,9 +86,25 @@ const resultCardRef = ref<HTMLElement | null>(null);
 
 const busy = computed(() => state.value === 'thinking' || state.value === 'doing');
 
+/** Thread of the in-flight run, so the stop button can cancel it. */
+const activeThreadId = ref<string | null>(null);
+
+/** Best-effort: the run's own `run-finish` (status `cancelled`) resolves the watcher. */
+function stop() {
+	if (activeThreadId.value) void window.electronAPI.cancelThreadRun(activeThreadId.value);
+}
+
 const chips = computed(() =>
 	suggestionChipsFor(activeContext.value.kind, activeContext.value.fileType),
 );
+
+// Fill the input before submitting so the user sees what the chip asked for,
+// and it clears on success exactly like a typed prompt.
+function submitChip(label: string) {
+	if (busy.value) return;
+	text.value = label;
+	void submit();
+}
 
 function truncateLabel(value: string): string {
 	return value.length > MAX_LABEL_LENGTH ? `${value.slice(0, MAX_LABEL_LENGTH - 1)}…` : value;
@@ -135,9 +153,12 @@ async function submit(prompt?: string) {
 	const value = (prompt ?? text.value).trim();
 	if (!value || busy.value) return;
 
-	text.value = '';
 	resultCard.value = null;
 	state.value = 'thinking';
+
+	const releasePrompt = () => {
+		if (prompt === undefined) text.value = '';
+	};
 
 	try {
 		const created = await window.electronAPI.createAssistantTask({
@@ -155,11 +176,21 @@ async function submit(prompt?: string) {
 		// Watch the new thread app-wide so its permission prompts surface even
 		// though no chat view is open; auto-released when the run finishes.
 		getThreadPromptWatcher().trackTaskThread(created.threadId, created.runId);
+		activeThreadId.value = created.threadId;
 
 		// The run executes on the user's machine and can take minutes; the input
 		// stays disabled and the Doing pill stays up until it resolves.
 		state.value = 'doing';
 		const run = await watchAssistantRun(created.threadId, created.runId);
+
+		if (run.status === 'success') releasePrompt();
+
+		// The agent proposed a task plan instead of executing — hand the user over
+		// to the draft view to review and promote it (the finally block resets us).
+		if (run.plan) {
+			goTo({ name: 'draft', threadId: created.threadId, plan: run.plan });
+			return;
+		}
 
 		// Prefer the agent's structured outcome report over the tookAction heuristic.
 		if (run.outcome?.success) {
@@ -177,6 +208,8 @@ async function submit(prompt?: string) {
 			showResult({ kind: 'done', threadId: created.threadId, label: truncateLabel(value) });
 		} else if (run.status === 'success') {
 			showResult({ kind: 'handoff' });
+		} else if (run.status === 'canceled') {
+			// The user stopped the run — reset quietly, no result card.
 		} else {
 			showResult({
 				kind: 'error',
@@ -192,6 +225,7 @@ async function submit(prompt?: string) {
 					: i18n.baseText('desktopAssistant.composer.errorFallback'),
 		});
 	} finally {
+		activeThreadId.value = null;
 		state.value = 'idle';
 	}
 }
@@ -367,7 +401,9 @@ defineExpose({ submit });
 				:input-aria-label="i18n.baseText('desktopAssistant.composer.inputAriaLabel')"
 				:placeholder="i18n.baseText('desktopAssistant.composer.placeholder')"
 				:send-aria-label="i18n.baseText('desktopAssistant.composer.send')"
+				:stop-aria-label="i18n.baseText('desktopAssistant.composer.stop')"
 				@submit="submit()"
+				@stop="stop"
 			/>
 		</div>
 
@@ -390,20 +426,19 @@ defineExpose({ submit });
 			</N8nTooltip>
 		</div>
 
-		<div :class="$style.chipRowWrapper">
-			<div :class="$style.chipRow">
-				<button
-					v-for="chip in chips"
-					:key="chip.label"
-					type="button"
-					:class="$style.chip"
-					@click="submit(chip.label)"
-				>
-					<N8nIcon :icon="chip.icon" :size="12" aria-hidden="true" />
-					{{ chip.label }}
-				</button>
-			</div>
-			<div :class="$style.chipFade" aria-hidden="true" />
+		<div :class="$style.chipRow">
+			<div :class="[$style.chipFade, $style.chipFadeLeft]" aria-hidden="true" />
+			<button
+				v-for="chip in chips"
+				:key="chip.label"
+				type="button"
+				:class="$style.chip"
+				@click="submitChip(chip.label)"
+			>
+				<N8nIcon :icon="chip.icon" :size="12" aria-hidden="true" />
+				{{ chip.label }}
+			</button>
+			<div :class="[$style.chipFade, $style.chipFadeRight]" aria-hidden="true" />
 		</div>
 	</div>
 </template>
@@ -669,16 +704,13 @@ defineExpose({ submit });
 	border-color: rgba(167, 139, 250, 0.35);
 }
 
-.chipRowWrapper {
-	position: relative;
-	margin-top: var(--spacing--2xs);
-}
-
 .chipRow {
 	display: flex;
 	gap: var(--spacing--3xs);
+	margin-top: var(--spacing--2xs);
 	overflow-x: auto;
 	scrollbar-width: none;
+	container-type: scroll-state;
 }
 
 .chipRow::-webkit-scrollbar {
@@ -719,13 +751,58 @@ defineExpose({ submit });
 	box-shadow: var(--da-focus-shadow);
 }
 
+/* Edge fades, no JS: zero-width sticky flex items pinned to each edge of the
+   scrollport; their ::before paints the gradient and a scroll-state container
+   query (Chromium 133+) shows it only while more chips remain in that
+   direction. The negative margin cancels the slot each fade adds to the row's
+   gap so the chips lay out as if the fades weren't there. */
 .chipFade {
+	position: sticky;
+	z-index: 1;
+	flex: none;
+	width: 0;
+	pointer-events: none;
+}
+
+.chipFadeLeft {
+	left: 0;
+	margin-right: calc(-1 * var(--spacing--3xs));
+}
+
+.chipFadeRight {
+	right: 0;
+	margin-left: calc(-1 * var(--spacing--3xs));
+}
+
+.chipFade::before {
+	content: '';
 	position: absolute;
 	top: 0;
-	right: 0;
 	bottom: 0;
 	width: var(--spacing--xl);
-	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.12s;
+}
+
+.chipFadeLeft::before {
+	left: 0;
+	background: linear-gradient(to left, rgba(33, 33, 33, 0), var(--da-bg));
+}
+
+.chipFadeRight::before {
+	right: 0;
 	background: linear-gradient(to right, rgba(33, 33, 33, 0), var(--da-bg));
+}
+
+@container scroll-state(scrollable: left) {
+	.chipFadeLeft::before {
+		opacity: 1;
+	}
+}
+
+@container scroll-state(scrollable: right) {
+	.chipFadeRight::before {
+		opacity: 1;
+	}
 }
 </style>

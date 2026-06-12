@@ -47,7 +47,10 @@ export function useMenuRovingFocus({ open, selectedIndex }: UseMenuRovingFocusOp
 	function onKeydown(event: KeyboardEvent) {
 		const all = items();
 		if (all.length === 0) return;
-		const current = all.indexOf(document.activeElement as HTMLElement);
+		const active = document.activeElement as HTMLElement;
+		const current = all.indexOf(active);
+		// Inside a text field, Home/End move the caret — only the arrows rove.
+		const typing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
 
 		switch (event.key) {
 			case 'ArrowDown':
@@ -59,10 +62,12 @@ export function useMenuRovingFocus({ open, selectedIndex }: UseMenuRovingFocusOp
 				focusAt(current - 1);
 				break;
 			case 'Home':
+				if (typing) break;
 				event.preventDefault();
 				focusAt(0);
 				break;
 			case 'End':
+				if (typing) break;
 				event.preventDefault();
 				focusAt(all.length - 1);
 				break;

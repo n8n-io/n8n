@@ -5,6 +5,7 @@ import {
 	classifyWorkflowsForDesktopAssistant,
 	deriveNextRunAt,
 	deriveSourceLabel,
+	humanizeNextRun,
 } from '../desktop-assistant.classifier';
 import type { ClassifierInput } from '../desktop-assistant.classifier';
 
@@ -511,6 +512,58 @@ describe('classifier derivations — exported helpers', () => {
 
 		test('does not require a trailing Trigger word', () => {
 			expect(deriveSourceLabel('Webhook')).toBe('On new webhook message');
+		});
+	});
+
+	describe('humanizeNextRun', () => {
+		// 2026-06-12 is a Friday; 13:00Z = 15:00 in Europe/Brussels (CEST).
+		test('a run later the same local day says Today, in the schedule timezone', () => {
+			const result = humanizeNextRun(
+				'2026-06-12T13:00:00.000Z',
+				'Europe/Brussels',
+				new Date('2026-06-12T07:30:00.000Z'),
+			);
+			expect(result).toBe('Today at 15:00');
+		});
+
+		test('a run on the next local day says Tomorrow', () => {
+			const result = humanizeNextRun(
+				'2026-06-13T07:00:00.000Z', // Saturday 09:00 Brussels
+				'Europe/Brussels',
+				new Date('2026-06-12T07:30:00.000Z'),
+			);
+			expect(result).toBe('Tomorrow at 09:00');
+		});
+
+		test('crossing local midnight counts as Tomorrow even within 24h', () => {
+			const result = humanizeNextRun(
+				'2026-06-13T04:00:00.000Z', // Saturday 06:00 Brussels
+				'Europe/Brussels',
+				new Date('2026-06-12T21:00:00.000Z'), // Friday 23:00 Brussels
+			);
+			expect(result).toBe('Tomorrow at 06:00');
+		});
+
+		test('within the coming week uses the weekday name', () => {
+			const result = humanizeNextRun(
+				'2026-06-15T07:00:00.000Z', // Monday 09:00 Brussels
+				'Europe/Brussels',
+				new Date('2026-06-12T07:30:00.000Z'),
+			);
+			expect(result).toBe('Monday at 09:00');
+		});
+
+		test('a week or more out uses the date instead of an ambiguous weekday', () => {
+			const result = humanizeNextRun(
+				'2026-07-01T07:00:00.000Z',
+				'Europe/Brussels',
+				new Date('2026-06-12T07:30:00.000Z'),
+			);
+			expect(result).toBe('Jul 1 at 09:00');
+		});
+
+		test('falls back to a generic label for an invalid timestamp', () => {
+			expect(humanizeNextRun('not-a-date', 'Europe/Brussels')).toBe('Recurring task');
 		});
 	});
 });

@@ -171,6 +171,29 @@ describe('useTaskDetail', () => {
 		expect(threadFollower.unlisten).toHaveBeenCalled();
 	});
 
+	it('retries the refetch once when it beats the server description sync', async () => {
+		const { getTaskDetail, queueDetail, threadFollower, emit } = stub();
+		// The first post-edit fetch wins the race against the server's description
+		// sync: new version, old parts. The retry sees the synced detail.
+		queueDetail({ ...DETAIL, versionId: 'v2' });
+		queueDetail(EDITED_DETAIL);
+		const taskDetail = useTaskDetail('wf-1', { threadFollower });
+		await taskDetail.load();
+		taskDetail.startEditing();
+		taskDetail.setParamValue('p1', 'weekdays at 9am');
+
+		const finishPromise = taskDetail.finishEditing();
+		await vi.advanceTimersByTimeAsync(0);
+		emit(runFinish('run-1'));
+		await vi.advanceTimersByTimeAsync(500);
+		await finishPromise;
+
+		expect(getTaskDetail).toHaveBeenCalledTimes(3);
+		expect(taskDetail.detail.value).toEqual(EDITED_DETAIL);
+		expect(taskDetail.editing.value).toBe(false);
+		expect(taskDetail.updateFailed.value).toBe(false);
+	});
+
 	it('gives up waiting after the timeout and still refetches', async () => {
 		const { getTaskDetail, queueDetail, threadFollower } = stub();
 		queueDetail(EDITED_DETAIL);

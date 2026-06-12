@@ -4,7 +4,6 @@ import { computed, onMounted, ref, watch } from 'vue';
 import AppHeader from './components/AppHeader.vue';
 import ChatPanel from './components/ChatPanel.vue';
 import PermissionPromptStack from './components/PermissionPromptStack.vue';
-import ComplexTaskView from './views/ComplexTaskView.vue';
 import HomeView from './views/HomeView.vue';
 import SettingsView from './views/SettingsView.vue';
 import SignInView from './views/SignInView.vue';
@@ -29,8 +28,8 @@ const auth = ref<AuthStatus>({
 const { screen, goHome } = useAssistantScreen();
 const { prompts, respondingIds, failedIds, respondToPrompt } = usePermissionPrompts();
 
-// The setup and complex screens carry their own back-header, so the main
-// AppHeader is suppressed for them; home and draft keep it.
+// The setup screen carries its own back-header, so the main AppHeader is
+// suppressed for it; home and draft keep it.
 const showHeader = computed(
 	() =>
 		auth.value.state !== 'signedIn' ||
@@ -80,14 +79,17 @@ watch(
 		<div :class="$style.content">
 			<template v-if="auth.state === 'signedIn'">
 				<SettingsView v-if="showSettings" :status="auth" @close="showSettings = false" />
-				<TaskDraftView v-else-if="screen.name === 'draft'" :plan="screen.plan" />
+				<TaskDraftView
+					v-else-if="screen.name === 'draft'"
+					:thread-id="screen.threadId"
+					:plan="screen.plan"
+				/>
 				<TaskSetupView
 					v-else-if="screen.name === 'setup'"
 					:title="screen.title"
 					:icon="screen.icon"
 					:required-connections="screen.requiredConnections"
 				/>
-				<ComplexTaskView v-else-if="screen.name === 'complex'" :plan="screen.plan" />
 				<TaskDetailView
 					v-else-if="screen.name === 'task-detail'"
 					:key="screen.card.workflowId"

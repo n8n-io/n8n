@@ -33,6 +33,8 @@ export const OAUTH_CONFIG = {
 		'instanceAi:message',
 		'workflow:read',
 		'workflow:execute',
+		// Archive (soft-delete) a task's workflow from the task list.
+		'workflow:delete',
 		// Read-only insights, for the History tab's "Time saved" panel (/insights/summary).
 		'insights:list',
 	],
