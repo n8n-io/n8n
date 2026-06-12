@@ -6,6 +6,7 @@ import type { ApiKey } from '@n8n/api-types';
 import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import { N8nButton, N8nDataTableServer, N8nText } from '@n8n/design-system';
 
+import ApiKeyLabelCell from './ApiKeyLabelCell.vue';
 import ApiKeyOwnerCell from './ApiKeyOwnerCell.vue';
 import ApiKeyScopesCell from './ApiKeyScopesCell.vue';
 
@@ -55,7 +56,7 @@ const rows = computed(() => props.apiKeys);
 // `resize: false` everywhere — these columns are fixed-shape and the resizer
 // handle otherwise highlights on every header hover.
 const headers = ref<Array<TableHeader<ApiKey>>>([
-	{ title: i18n.baseText('settings.api.columns.name'), key: 'label', resize: false },
+	{ title: i18n.baseText('settings.api.columns.name'), key: 'label', width: 280, resize: false },
 	{
 		title: i18n.baseText('settings.api.columns.owner'),
 		key: 'owner',
@@ -100,12 +101,7 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 			@click:row="onRowClick"
 		>
 			<template #[`item.label`]="{ item }">
-				<div :class="$style.name">
-					<N8nText bold>{{ item.label }}</N8nText>
-					<N8nText size="small" color="text-light" :class="$style.redacted">
-						{{ item.apiKey }}
-					</N8nText>
-				</div>
+				<ApiKeyLabelCell :label="item.label" :api-key="item.apiKey" />
 			</template>
 			<template #[`item.owner`]="{ item }">
 				<ApiKeyOwnerCell v-if="item.owner" :owner="item.owner" :is-current-user="isOwn(item)" />
@@ -145,17 +141,6 @@ const headers = ref<Array<TableHeader<ApiKey>>>([
 </template>
 
 <style lang="scss" module>
-.name {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
-}
-
-.redacted {
-	font-family: var(--font-family--monospace);
-}
-
 .rowActions {
 	display: flex;
 	gap: var(--spacing--2xs);
