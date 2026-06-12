@@ -76,11 +76,9 @@ export class WorkflowPublicationApplier {
 
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerNodes, desiredTriggerNodes);
 
-		// A record means "reconcile to this version", not "apply edge old→new", so
-		// augment the version diff with actual local state: re-enqueueing the same
-		// version (startup, retry, crash recovery) must re-register the desired
-		// non-webhook triggers that aren't actually running, which a pure version
-		// diff misses.
+		// We also register triggers that are in our desired state that aren't
+		// present locally, even if they aren't in this version diff. This is
+		// necessary for startup/retry/crash recovery.
 		this.workflowTriggerActivator
 			.getUnregisteredNonWebhookTriggerNodeIds(record.workflowId, desiredTriggerNodes)
 			.forEach((nodeId) => toAdd.add(nodeId));
