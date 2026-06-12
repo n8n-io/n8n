@@ -10,6 +10,7 @@ import TaskComposer from '../components/TaskComposer.vue';
 
 import { usePendingTasks } from '../assistant/use-pending-tasks';
 import { useTaskSearch } from '../assistant/use-task-search';
+import { getThreadPromptWatcher } from '../permissions/thread-prompt-watcher';
 
 type Tab = 'tasks' | 'history' | 'chat';
 
@@ -32,6 +33,21 @@ watch(
 const chatThreadId = ref<string | null>(null);
 const chatCreating = ref(false);
 const chatError = ref(false);
+
+// Permission-watch the chat-tab thread so its confirmations (e.g. an "Edit
+// workflow?" approval) surface in the app-wide prompt stack. The chat tab is a
+// separate surface from the home composer's chat overlay, which is watched
+// elsewhere; without this its prompts only ever appeared in the web UI.
+// Refcounted watch, released when the thread changes or HomeView unmounts.
+watch(
+	chatThreadId,
+	(threadId, _previous, onCleanup) => {
+		if (!threadId) return;
+		const release = getThreadPromptWatcher().watchThread(threadId);
+		onCleanup(release);
+	},
+	{ immediate: true },
+);
 
 async function startNewChat() {
 	// Dedupe concurrent creates (rapid clicks / arrow-key roving) into one thread.

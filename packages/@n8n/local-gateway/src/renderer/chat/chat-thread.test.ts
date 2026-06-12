@@ -28,6 +28,9 @@ const runStart = (runId: string, agentId: string, messageGroupId?: string) =>
 const textDelta = (runId: string, agentId: string, text: string) =>
 	({ type: 'text-delta', runId, agentId, payload: { text } }) as InstanceAiEvent;
 
+const toolCall = (runId: string, agentId: string) =>
+	({ type: 'tool-call', runId, agentId, payload: {} }) as InstanceAiEvent;
+
 const runFinish = (runId: string) =>
 	({
 		type: 'run-finish',
@@ -134,17 +137,29 @@ describe('createChatThreadState', () => {
 		expect(messages[0].isStreaming).toBe(false);
 	});
 
-	it('reuses the bubble for a follow-up run of the same message group', () => {
+	it('separates text blocks split by a tool call with a paragraph break', () => {
+		const { messages, state } = makeState();
+
+		state.apply(runStart('r1', 'root'));
+		state.apply(textDelta('r1', 'root', 'Let me check the config.'));
+		state.apply(toolCall('r1', 'root'));
+		state.apply(textDelta('r1', 'root', 'Workflow updated:'));
+		state.apply(textDelta('r1', 'root', ' done.'));
+
+		expect(messages[0].content).toBe('Let me check the config.\n\nWorkflow updated: done.');
+	});
+
+	it('reuses the bubble for a follow-up run, paragraph-separating the new run text', () => {
 		const { messages, state } = makeState();
 
 		state.apply(runStart('r1', 'root', 'g1'));
 		state.apply(textDelta('r1', 'root', 'first'));
 		state.apply(runFinish('r1'));
 		state.apply(runStart('r2', 'root-2', 'g1'));
-		state.apply(textDelta('r2', 'root-2', ' second'));
+		state.apply(textDelta('r2', 'root-2', 'second'));
 
 		expect(messages).toHaveLength(1);
-		expect(messages[0]).toMatchObject({ content: 'first second', isStreaming: true });
+		expect(messages[0]).toMatchObject({ content: 'first\n\nsecond', isStreaming: true });
 	});
 
 	it('ignores replayed events of a run whose message is already complete in the snapshot', () => {

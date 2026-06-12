@@ -225,6 +225,8 @@ export interface ElectronApi {
 	deleteTask: (workflowId: string) => Promise<{ ok: boolean; error?: string }>;
 	/** Open the task's workflow with the Set up panel pre-opened in the browser (Connect CTA). */
 	openWorkflowSetup: (workflowId: string) => Promise<void>;
+	/** Open a specific Instance AI thread in the browser (e.g. to finish a credential setup there). */
+	openThread: (threadId: string) => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
 	openExecution: (workflowId: string, executionId: string) => Promise<void>;
 	getTimeSaved: () => Promise<DesktopAssistantTimeSaved>;

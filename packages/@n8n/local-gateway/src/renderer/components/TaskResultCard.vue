@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nMarkdown } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { onMounted, ref, watch } from 'vue';
 
@@ -54,7 +54,18 @@ watch(
 				<N8nIcon icon="x" :size="14" aria-hidden="true" />
 			</button>
 		</div>
-		<div :class="$style.resultBody">
+		<div :class="[$style.resultBody, $style.doneBody]">
+			<div v-if="card.summary" :class="$style.resultMessage">
+				{{ card.summary }}
+			</div>
+			<div
+				v-if="card.details"
+				:class="$style.detailsScroll"
+				tabindex="0"
+				:aria-label="i18n.baseText('desktopAssistant.composer.resultDetailsAriaLabel')"
+			>
+				<N8nMarkdown :content="card.details" />
+			</div>
 			<div :class="$style.resultMessage">
 				{{ i18n.baseText('desktopAssistant.composer.keepPrompt') }}
 			</div>
@@ -223,7 +234,43 @@ watch(
 
 /* Done variant: green accents. */
 .doneCard {
+	display: flex;
+	flex-direction: column;
+	max-height: calc(100vh - 200px);
 	border: 1px solid rgba(63, 207, 142, 0.45);
+}
+
+.doneBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	min-height: 0;
+}
+
+/* Only the details region absorbs the height cap; everything else keeps its size. */
+.doneBody > :not(.detailsScroll) {
+	flex-shrink: 0;
+}
+
+.detailsScroll {
+	flex: 1;
+	min-height: 0;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	overflow-y: auto;
+	overflow-wrap: anywhere;
+	font-size: 12px;
+	color: var(--da-text);
+	background: var(--da-surface);
+	border: 1px solid var(--da-border);
+	border-radius: 7px;
+	/* N8nMarkdown colors its text, code blocks, and blockquotes with design-system
+	   tokens that default to the light theme (dark on dark here); pin them to the
+	   assistant palette. */
+	--color--text: var(--da-text);
+	--color--text--shade-1: var(--da-text);
+	--color--background: var(--da-surface-2);
+	--border-color: var(--da-border-strong);
+	--color--primary: var(--da-accent);
 }
 
 .doneHeader {

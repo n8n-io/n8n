@@ -68,6 +68,7 @@ function stubElectronApi(
 	let onWithdrawn: WithdrawnCb | undefined;
 	const api = {
 		respondToPermissionPrompt: vi.fn(async () => await Promise.resolve({ ok: true })),
+		openThread: vi.fn(async () => await Promise.resolve()),
 		confirmThreadRequest:
 			overrides.confirmThreadRequest ??
 			vi.fn(async (): Promise<ConfirmThreadResult> => await Promise.resolve({ ok: true })),
@@ -263,6 +264,18 @@ describe('permission-prompt-store', () => {
 				expect(permissionPromptState.prompts).toHaveLength(0);
 			},
 		);
+
+		it('hands an external prompt off to the web UI without confirming or removing it', async () => {
+			const { api } = stubElectronApi();
+			addPrompt(makeInstancePrompt({ kind: 'external' }));
+
+			await respondToPrompt('instance:req-1', { kind: 'openInWebUi' });
+
+			expect(api.openThread).toHaveBeenCalledWith('t1');
+			expect(api.confirmThreadRequest).not.toHaveBeenCalled();
+			// Left in place — it clears via the live tool-result/run-finish once resolved.
+			expect(permissionPromptState.prompts).toHaveLength(1);
+		});
 
 		it('silently drops the prompt when the request is stale (400/404)', async () => {
 			const confirmThreadRequest = vi.fn(

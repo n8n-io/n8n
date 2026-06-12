@@ -28,11 +28,21 @@ export const PROMOTED_FROM_THREAD_ID_KEY = 'promotedFromThreadId';
 export const THREAD_SOURCE_METADATA_KEY = 'source';
 
 /**
- * Metadata value marking a thread as desktop-assistant-originated. Threads
- * carrying this source are hidden from the chat UI's thread list; everything
- * else (promote, metadata reads/updates) treats them like any other thread.
+ * Metadata value marking a thread as desktop-assistant task backing state
+ * (one-shot tasks, promote, edit). Threads carrying this source are hidden from
+ * the web UI's thread list; everything else (promote, metadata reads/updates)
+ * treats them like any other thread.
  */
 export const DESKTOP_ASSISTANT_THREAD_SOURCE = 'desktop-assistant';
+
+/**
+ * Metadata value marking a thread started from the desktop app's Chat tab.
+ * Unlike {@link DESKTOP_ASSISTANT_THREAD_SOURCE}, these are real conversations
+ * and stay VISIBLE in the web UI thread list, so the desktop app can deep-link
+ * to a specific thread (e.g. to finish a credential setup the chat surface can't
+ * render inline).
+ */
+export const DESKTOP_ASSISTANT_CHAT_THREAD_SOURCE = 'desktop-assistant-chat';
 
 /** Node types that execute on the user's device via a Device Connection credential. */
 export const COMPUTER_USE_NODE_TYPES = new Set([

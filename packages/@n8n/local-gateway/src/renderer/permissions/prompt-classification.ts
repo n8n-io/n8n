@@ -87,7 +87,9 @@ export type PromptResponse =
 	| { kind: 'continue' }
 	| { kind: 'resourceDecision'; decision: ResourceDecision }
 	| { kind: 'domainAccessApprove'; action: DomainAccessAction }
-	| { kind: 'domainAccessDeny' };
+	| { kind: 'domainAccessDeny' }
+	/** 'external' prompts the chat surface can't answer inline — hand off to the web UI. */
+	| { kind: 'openInWebUi' };
 
 /**
  * Whether the chat composer can answer this prompt as free text: ask-user

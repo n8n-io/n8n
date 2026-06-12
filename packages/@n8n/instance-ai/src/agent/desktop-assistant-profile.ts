@@ -55,7 +55,7 @@ export interface DesktopAssistantProfile {
 
 /** Shared preamble for the promote and edit modes, which run headless — text output is waste there. */
 const FIRE_AND_FORGET_RULES =
-	"This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, progress commentary, or summaries, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.";
+	"This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, or progress commentary, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.";
 
 const ONE_SHOT_PROMPT_SECTION = `
 ## Desktop Assistant — One-Shot Task
@@ -73,6 +73,7 @@ This run was triggered from the n8n desktop assistant. Your text output is shown
 
 - Whenever you attempted a task, end the run with exactly one \`report-desktop-task-outcome\` call, as the final tool call.
 - Success: \`success: true\`, a plain-text \`title\` naming the task as a repeatable action (3–8 words, present tense, no emoji — \`"Sort desktop screenshots"\`, never \`"Sorted 12 screenshots"\`), a one-sentence \`summary\`, and an \`icon\` (a single emoji capturing the task).
+- Deliverable: when the request asks for information — a summary, an answer to a question, extracted data — the outcome card is what the user sees and keeps, so the full deliverable MUST go in \`details\` as markdown; a deliverable not in \`details\` is lost. Keep it under ~300 words unless the request calls for more. Omit \`details\` when the result is an action on the system (files moved, message sent) rather than information.
 - Failure: \`success: false\` plus \`title\`, \`summary\`, and a user-readable \`failureReason\`.
 - Skip the report when you did not attempt a task — when you only asked a clarifying question or replied conversationally.
 `;

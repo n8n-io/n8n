@@ -123,6 +123,10 @@ const electronApi: ElectronApi = {
 		await ipcRenderer.invoke('tasks:openWorkflowSetup', workflowId);
 	},
 
+	openThread: async (threadId: string): Promise<void> => {
+		await ipcRenderer.invoke('assistant:openThread', threadId);
+	},
+
 	getHistory: async (
 		params?: DesktopAssistantHistoryParams,
 	): Promise<DesktopAssistantHistoryResponse> =>

@@ -24,6 +24,11 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 		expect(prompt).toContain('report-desktop-task-outcome');
 	});
 
+	it('one-shot mode references the details field the done card renders', () => {
+		const prompt = getSystemPrompt({ promptMode: 'desktop-assistant-one-shot' });
+		expect(prompt).toContain('`details`');
+	});
+
 	it('promote mode references the node types and credential the build must emit', () => {
 		const prompt = getSystemPrompt({ promptMode: 'desktop-assistant-promote' });
 		expect(prompt).toMatch(/Desktop Assistant.+Promote/i);

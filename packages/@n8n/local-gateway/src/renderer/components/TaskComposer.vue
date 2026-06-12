@@ -163,6 +163,8 @@ async function submit(prompt?: string) {
 				threadId: created.threadId,
 				label: run.outcome.title,
 				icon: run.outcome.icon,
+				summary: run.outcome.summary,
+				details: run.outcome.details,
 			});
 		} else if (run.outcome) {
 			showResult({ kind: 'handoff', message: run.outcome.failureReason });

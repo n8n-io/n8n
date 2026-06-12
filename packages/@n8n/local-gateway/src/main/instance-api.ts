@@ -329,6 +329,12 @@ export class InstanceApi {
 		return url ? `${url}?action=openSetup` : null;
 	}
 
+	/** Instance AI thread URL on the signed-in instance, or `null` when signed out. */
+	threadUrl(threadId: string): string | null {
+		const { instanceUrl } = this.oauthFlow.getStatus();
+		return instanceUrl ? `${instanceUrl}/instance-ai/${encodeURIComponent(threadId)}` : null;
+	}
+
 	/** Every n8n REST endpoint wraps its payload in a `data` key; peel it off. */
 	private async unwrap<T>(response: Response): Promise<T> {
 		const body = (await response.json()) as { data: T };
