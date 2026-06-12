@@ -131,7 +131,7 @@ catalog:
   playwright-core: 1.60.0
   posthog-node: 5.33.4
   proxy-from-env: ^1.1.0
-  qs: 6.14.2
+  qs: 6.15.2
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
   sass-embedded: ^1.98.0
