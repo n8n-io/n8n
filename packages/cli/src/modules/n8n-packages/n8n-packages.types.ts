@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import type { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
 
 export type { CredentialResolution } from './entities/credential/credential.types';
-export type { WorkflowPublishingPolicy };
+export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
 
 export type CredentialMatchingMode = 'id-only';
 export type CredentialMissingMode = 'must-preexist';

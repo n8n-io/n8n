@@ -11,9 +11,9 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import type { PersistedWorkflowPlanItem } from './workflow-import.types';
 import { decideWorkflowPublishingAction } from './workflow-publishing-policy';
-import type {
-	WorkflowPublishingContext,
+import {
 	WorkflowPublishingPolicy,
+	type WorkflowPublishingContext,
 } from './workflow-publishing-policy.types';
 
 /**
@@ -41,7 +41,7 @@ export class WorkflowPublisher {
 		projectId: string,
 		policy: WorkflowPublishingPolicy,
 	): Promise<void> {
-		if (policy !== 'all-published') {
+		if (policy !== WorkflowPublishingPolicy.AllPublished) {
 			return;
 		}
 
@@ -106,7 +106,6 @@ function toPublishingContext(
 	return {
 		status: item.action === 'create' ? 'created' : 'updated',
 		sourcePublished: item.sourcePublished,
-		priorWasPublished: item.action === 'update' ? !!item.existing.activeVersionId : false,
 		currentlyPublished: !!workflow.activeVersionId,
 		isArchived: workflow.isArchived,
 	};

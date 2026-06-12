@@ -28,8 +28,12 @@ import { initNodeTypes } from '@test-integration/utils';
 
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
-import { WorkflowConflictPolicy, type ImportPackageRequest } from '../n8n-packages.types';
-import type { WorkflowPublishingPolicy } from '../entities/workflow/workflow-publishing-policy.types';
+import {
+	WorkflowConflictPolicy,
+	WorkflowPublishingPolicy,
+	type ImportPackageRequest,
+} from '../n8n-packages.types';
+import type { WorkflowPublishingPolicy as WorkflowPublishingPolicyValue } from '../entities/workflow/workflow-publishing-policy.types';
 import { FORMAT_VERSION } from '../spec/constants';
 import {
 	buildImportPackageBuffer,
@@ -62,7 +66,7 @@ async function importPackage(params: ImportPackageParams) {
 		credentialMatchingMode: 'id-only',
 		credentialMissingMode: 'must-preexist',
 		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
-		workflowPublishingPolicy: 'preserve-published-state',
+		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		...params,
 	});
 }
@@ -821,11 +825,11 @@ describe('ImportPipeline workflow publishing policy', () => {
 		},
 	];
 
-	it.each<WorkflowPublishingPolicy>([
-		'preserve-published-state',
-		'match-source',
-		'all-published',
-		'all-unpublished',
+	it.each<WorkflowPublishingPolicyValue>([
+		WorkflowPublishingPolicy.PreservePublishedState,
+		WorkflowPublishingPolicy.MatchSource,
+		WorkflowPublishingPolicy.AllPublished,
+		WorkflowPublishingPolicy.AllUnpublished,
 	])('returns published state for every workflow under "%s"', async (workflowPublishingPolicy) => {
 		const owner = await createOwner();
 
@@ -846,7 +850,7 @@ describe('ImportPipeline workflow publishing policy', () => {
 		expect(result.workflows).toHaveLength(1);
 		// activeVersionId is non-null exactly when the workflow ends up published.
 		expect(result.workflows[0]?.activeVersionId !== null).toBe(
-			workflowPublishingPolicy === 'all-published',
+			workflowPublishingPolicy === WorkflowPublishingPolicy.AllPublished,
 		);
 	});
 
@@ -869,7 +873,7 @@ describe('ImportPipeline workflow publishing policy', () => {
 				}),
 			]),
 			workflowConflictPolicy: 'fail',
-			workflowPublishingPolicy: 'match-source',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
 		});
 
 		const publishedSummary = result.workflows.find(
@@ -911,7 +915,7 @@ describe('ImportPipeline workflow publishing policy', () => {
 				}),
 			]),
 			workflowConflictPolicy: 'new-version',
-			workflowPublishingPolicy: 'all-unpublished',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.AllUnpublished,
 		});
 
 		const summary = result.workflows.find(
@@ -946,7 +950,7 @@ describe('ImportPipeline workflow publishing policy', () => {
 			user: owner,
 			packageBuffer: await buildImportPackageBuffer([baseWorkflow]),
 			workflowConflictPolicy: 'new-version',
-			workflowPublishingPolicy: 'preserve-published-state',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		});
 
 		const summary = result.workflows.find(
@@ -985,7 +989,7 @@ describe('ImportPipeline workflow publishing policy', () => {
 				}),
 			]),
 			workflowConflictPolicy: 'new-version',
-			workflowPublishingPolicy: 'preserve-published-state',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		});
 
 		const summary = result.workflows.find(

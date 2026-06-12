@@ -9,6 +9,7 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { PersistedWorkflowPlanItem } from '../workflow-import.types';
 import { WorkflowPublisher } from '../workflow-publisher';
+import { WorkflowPublishingPolicy } from '../workflow-publishing-policy.types';
 
 // The publish/unpublish matrix is covered end-to-end by
 // `import-pipeline.integration.test.ts`. These unit tests cover the permission
@@ -34,7 +35,7 @@ describe('WorkflowPublisher', () => {
 
 	describe('assertCanPublish', () => {
 		it('does nothing for policies other than all-published', async () => {
-			await publisher.assertCanPublish(user, 'project-1', 'match-source');
+			await publisher.assertCanPublish(user, 'project-1', WorkflowPublishingPolicy.MatchSource);
 
 			expect(projectService.getProjectWithScope).not.toHaveBeenCalled();
 		});
@@ -43,7 +44,7 @@ describe('WorkflowPublisher', () => {
 			projectService.getProjectWithScope.mockResolvedValue(mock<Project>({ id: 'project-1' }));
 
 			await expect(
-				publisher.assertCanPublish(user, 'project-1', 'all-published'),
+				publisher.assertCanPublish(user, 'project-1', WorkflowPublishingPolicy.AllPublished),
 			).resolves.toBeUndefined();
 		});
 
@@ -51,9 +52,9 @@ describe('WorkflowPublisher', () => {
 			projectService.getProjectWithScope.mockResolvedValue(null);
 			projectRepository.existsBy.mockResolvedValue(true);
 
-			await expect(publisher.assertCanPublish(user, 'project-1', 'all-published')).rejects.toThrow(
-				ForbiddenError,
-			);
+			await expect(
+				publisher.assertCanPublish(user, 'project-1', WorkflowPublishingPolicy.AllPublished),
+			).rejects.toThrow(ForbiddenError);
 		});
 
 		it('throws NotFoundError when the project does not exist', async () => {
@@ -61,7 +62,7 @@ describe('WorkflowPublisher', () => {
 			projectRepository.existsBy.mockResolvedValue(false);
 
 			await expect(
-				publisher.assertCanPublish(user, 'missing-project', 'all-published'),
+				publisher.assertCanPublish(user, 'missing-project', WorkflowPublishingPolicy.AllPublished),
 			).rejects.toThrow(NotFoundError);
 		});
 	});
@@ -85,7 +86,7 @@ describe('WorkflowPublisher', () => {
 				user,
 				createItem(false),
 				workflow,
-				'preserve-published-state',
+				WorkflowPublishingPolicy.PreservePublishedState,
 			);
 
 			expect(result).toBe(workflow);
@@ -103,7 +104,12 @@ describe('WorkflowPublisher', () => {
 			const published = mock<WorkflowEntity>({ id: 'wf-1', activeVersionId: 'v1' });
 			workflowService.activateWorkflow.mockResolvedValue(published);
 
-			const result = await publisher.apply(user, createItem(true), workflow, 'all-published');
+			const result = await publisher.apply(
+				user,
+				createItem(true),
+				workflow,
+				WorkflowPublishingPolicy.AllPublished,
+			);
 
 			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
 				versionId: 'v1',
@@ -121,7 +127,12 @@ describe('WorkflowPublisher', () => {
 			});
 			workflowService.activateWorkflow.mockRejectedValue(new Error('no trigger node'));
 
-			const result = await publisher.apply(user, createItem(true), workflow, 'all-published');
+			const result = await publisher.apply(
+				user,
+				createItem(true),
+				workflow,
+				WorkflowPublishingPolicy.AllPublished,
+			);
 
 			expect(result).toBe(workflow);
 			expect(logger.warn).toHaveBeenCalledWith(
