@@ -102,8 +102,8 @@ describe('GSuiteAdmin Node - loadOptions', () => {
 
 			const result = await node.methods.loadOptions.getOrgUnits.call(mockThis);
 			expect(result).toEqual([
-				{ name: 'Engineering', value: '/engineering' },
-				{ name: 'HR', value: '/hr' },
+				{ name: '/engineering', value: '/engineering' },
+				{ name: '/hr', value: '/hr' },
 			]);
 		});
 	});

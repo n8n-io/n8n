@@ -122,7 +122,7 @@ export class GSuiteAdmin implements INodeType {
 
 				for (const unit of orgUnits.organizationUnits) {
 					returnData.push({
-						name: unit.name,
+						name: unit.orgUnitPath,
 						value: unit.orgUnitPath,
 					});
 				}
