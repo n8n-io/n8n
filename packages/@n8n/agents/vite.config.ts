@@ -16,8 +16,8 @@ import { configDefaults } from 'vitest/config';
  * because those tests deliberately exercise the real provider packages.
  */
 const REWRITE_REQUIRE_TARGETS = [
-	'/src/runtime/lazy-ai.ts',
-	'/src/runtime/model-factory.ts',
+	'/src/runtime/model/lazy-ai.ts',
+	'/src/runtime/model/model-factory.ts',
 	'/src/utils/parse.ts',
 ];
 

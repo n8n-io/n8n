@@ -38,20 +38,32 @@ for a single agent turn. It uses the Vercel AI SDK directly (`generateText` /
 - Emitting lifecycle events via `AgentEventBus`
 - Tracking run state (`idle` → `running` → `success / failed / suspended / cancelled`)
 
-There are two parallel execution paths — non-streaming (`generate`) and
-streaming (`stream`) — that mirror each other in structure.
+`AgentRuntime` is a thin orchestrator that delegates to focused collaborators
+(`RuntimeTelemetry`, `MemoryOrchestrator`, `RuntimeContextBuilder`,
+`ToolCallExecutor`). Both execution paths — non-streaming (`generate`) and
+streaming (`stream`) — share a **single** `runAgentLoop`, parameterized by a
+`RunOutputSink` strategy (`GenerateSink` vs `StreamSink`). The streaming path is
+wrapped by `startStreamSession`, which owns the `TransformStream`, the event-bus
+→ chunk bridge, and a single idempotent shutdown via `StreamWriterGuard`.
 
 ```mermaid
 graph TD
-    A[User Input] --> B[normalizeInput]
-    B --> C[buildMessageList]
-    C --> D{generate or stream?}
-    D -->|generate| E[runGenerateLoop]
-    D -->|stream| F[startStreamLoop → runStreamLoop]
-    E --> G[saveToMemory]
-    F --> G
-    G --> H[Return Result]
+    A[User Input] --> B[initRun → buildMessageList]
+    B --> C{generate or stream?}
+    C -->|generate| D["runAgentLoop(GenerateSink)"]
+    C -->|stream| E["startStreamSession → runAgentLoop(StreamSink)"]
+    D --> F[sink.finishComplete / finishSuspended]
+    E --> F
+    F --> G[Return GenerateResult / StreamChunks]
 ```
+
+The sink boundary keeps the loop free of mode-specific concerns: `callModel`
+runs `generateText` vs `streamText` (the streaming sink also emits text/tool
+chunks while consuming `fullStream`); `emitToolBatch` collects tool results vs
+writes chunks; and the terminal `finishComplete` / `finishSuspended` build the
+`GenerateResult` vs write the final `finish` / `tool-call-suspended` chunks.
+Aborts and model/tool errors propagate as throws; `generate`'s try/catch and
+`startStreamSession`'s catch translate them into each mode's terminal contract.
 
 ---
 
@@ -408,8 +420,17 @@ after a successful save when persistence and memory are present.
 
 ## Stream architecture
 
-The streaming path uses a `TransformStream`: `startStreamLoop` returns the
-readable side immediately; the loop writes chunks in the background.
+The streaming path uses a `TransformStream`: `startStreamSession`
+(`stream-session.ts`) returns the readable side immediately; the shared loop
+writes chunks in the background via `StreamSink`.
+
+All writes and the terminal close go through a single `StreamWriterGuard`
+(`stream-writer-guard.ts`): `write()` is a no-op after close and `close()` /
+`fail()` are idempotent, so error, abort, and success paths converge on one
+shutdown with no double-close / write-after-close hazard. `startStreamSession`'s
+catch translates a thrown abort/error into the terminal `error` + `finish`
+chunks, sets `cancelled` / `failed`, emits `AgentEvent.Error` (non-abort only),
+runs `cleanupRun`, and flushes telemetry.
 
 `stream.ts` **`convertChunk`** maps AI SDK v6 `TextStreamPart` values to our
 `StreamChunk` union (including `finish-step` / `finish` consolidation).
@@ -430,23 +451,44 @@ readable side immediately; the loop writes chunks in the background.
 
 ## File map
 
+The `runtime/` folder is grouped into purpose subfolders:
+
 ```
 src/
   runtime/
-    agent-runtime.ts              — AgentRuntime (generate/stream/resume loops, HITL, state)
-    event-bus.ts                  — AgentEventBus + AbortController
-    message-list.ts               — AgentMessageList
-    run-state.ts                  — RunStateManager, generateRunId
-    memory-store.ts               — saveMessagesToThread helper
-    messages.ts                   — AI SDK message conversion
-    model-factory.ts              — createModel / createEmbeddingModel
-    tool-adapter.ts               — buildToolMap, executeTool, toAiSdkTools, suspend guards
-    stream.ts                     — convertChunk, toTokenUsage
-    runtime-helpers.ts            — normalizeInput, usage merge, stream error helpers, …
-    working-memory.ts             — instruction text, update_working_memory tool builder
-    strip-orphaned-tool-messages.ts
-    title-generation.ts
-    logger.ts
+    loop/                         — the agentic loop and its output sinks
+      agent-runtime.ts            — AgentRuntime facade: public API (generate/stream/resume),
+                                    initRun, the shared runAgentLoop, suspension persistence, state
+      run-output-sink.ts          — RunOutputSink interface + ModelTurnResult / ModelCallContext / RunServices
+      generate-sink.ts            — GenerateSink: non-streaming output (generateText → GenerateResult)
+      stream-sink.ts              — StreamSink: streaming output (streamText → StreamChunks)
+      runtime-context.ts          — RuntimeContextBuilder: per-run/per-iteration model + tool +
+                                    provider/thinking context, getModelIdString
+      runtime-helpers.ts          — normalizeInput, usage merge, stream error helpers, …
+      execution-counter.ts        — message/tool/token counter helpers (best-effort)
+    streaming/                    — stream plumbing
+      stream.ts                   — convertChunk, toTokenUsage
+      stream-session.ts           — startStreamSession: TransformStream + event bridge + single shutdown
+      stream-writer-guard.ts      — StreamWriterGuard: idempotent write/close/fail
+    tools/                        — tool adapter + executor + built-in/delegate tools
+      tool-adapter.ts             — buildToolMap, executeTool, toAiSdkTools, suspend guards
+      tool-call-executor.ts       — ToolCallExecutor: batched tool-call execution + pending-resume
+      fix-tool-call.ts, deferred-tool-manager.ts, sdk-owned-tool.ts, write-todos-tool.ts,
+      delegate-sub-agent-tool.ts, sub-agent-task-path.ts
+    memory/                       — persistence + observation-log / episodic memory + titles
+      memory-orchestrator.ts      — MemoryOrchestrator: history load, turn persistence, indexing jobs
+      memory-store.ts, memory-lifecycle.ts, scoped-memory-task-runner.ts,
+      observation-log-*.ts, episodic-memory*.ts, title-generation.ts,
+      strip-orphaned-tool-messages.ts
+    model/                        — model + message conversion
+      model-factory.ts, provider-credentials.ts, lazy-ai.ts, messages.ts, message-list.ts
+    telemetry/
+      runtime-telemetry.ts        — RuntimeTelemetry: span wrappers + AI-SDK telemetry options + attrs
+    state/
+      run-state.ts, event-bus.ts, background-task-tracker.ts
+    mcp/
+      mcp-connection.ts, mcp-tool-resolver.ts
+    logger.ts, json-value.ts      — shared leaf utils (runtime root)
   types/
     sdk/agent.ts                  — BuiltAgent, GenerateResult, StreamChunk, SerializableAgentState, …
     sdk/tool.ts, sdk/memory.ts, … — Public SDK contracts

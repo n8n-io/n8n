@@ -12,16 +12,16 @@ import type { StreamChunk } from '../../types/sdk/agent';
 import type { ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
-import { AgentRuntime } from '../agent-runtime';
+import { AgentRuntime } from '../loop/agent-runtime';
+import { InMemoryMemory } from '../memory/memory-store';
+import { AgentEventBus } from '../state/event-bus';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY,
 	createDelegateSubAgentTool,
 	type DelegateSubAgentRunner,
-} from '../delegate-sub-agent-tool';
-import { AgentEventBus } from '../event-bus';
-import { InMemoryMemory } from '../memory-store';
-import { toAiSdkTools } from '../tool-adapter';
+} from '../tools/delegate-sub-agent-tool';
+import { toAiSdkTools } from '../tools/tool-adapter';
 
 // ---------------------------------------------------------------------------
 // Module mocks

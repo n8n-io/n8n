@@ -9,7 +9,7 @@ import {
 	type StreamChunk,
 	type AgentMessage,
 } from '../../index';
-import { InMemoryMemory } from '../../runtime/memory-store';
+import { InMemoryMemory } from '../../runtime/memory/memory-store';
 
 export type { StreamChunk };
 

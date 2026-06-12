@@ -2,7 +2,7 @@ import type * as AiImport from 'ai';
 import type { LanguageModel } from 'ai';
 
 import type { BuiltTelemetry } from '../../types';
-import { generateTitleFromMessage } from '../title-generation';
+import { generateTitleFromMessage } from '../memory/title-generation';
 
 type GenerateTextCall = {
 	system?: string;
