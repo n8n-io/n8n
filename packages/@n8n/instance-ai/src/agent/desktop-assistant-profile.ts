@@ -56,7 +56,7 @@ export interface DesktopAssistantProfile {
 
 /** Shared preamble: both desktop modes run headless, so text output is waste. */
 const FIRE_AND_FORGET_RULES =
-	"This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, progress commentary, or summaries, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.";
+	"This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, or progress commentary, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.";
 
 const ONE_SHOT_PROMPT_SECTION = `
 ## Desktop Assistant — One-Shot Task
@@ -72,6 +72,7 @@ ${FIRE_AND_FORGET_RULES}
 
 - Every run MUST end with exactly one \`report-desktop-task-outcome\` call, as the final tool call — including when declining; it is how you stop.
 - Success: \`success: true\`, a plain-text \`title\` naming the task as a repeatable action (3–8 words, present tense, no emoji — \`"Sort desktop screenshots"\`, never \`"Sorted 12 screenshots"\`), a one-sentence \`summary\`, and an \`icon\` (a single emoji capturing the task).
+- Deliverable: when the request asks for information — a summary, an answer to a question, extracted data — the outcome card is the only thing the user ever sees, so the full deliverable MUST go in \`details\` as markdown; a deliverable not in \`details\` is lost. Keep it under ~300 words unless the request calls for more. Omit \`details\` when the result is an action on the system (files moved, message sent) rather than information.
 - Decline/failure: \`success: false\` plus \`title\`, \`summary\`, and a user-readable \`failureReason\`.
 `;
 

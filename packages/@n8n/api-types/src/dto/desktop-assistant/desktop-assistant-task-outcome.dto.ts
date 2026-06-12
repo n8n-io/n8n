@@ -13,6 +13,12 @@ export interface DesktopAssistantTaskOutcome {
 	title: string;
 	/** One-sentence description of what was done (or why nothing was). */
 	summary: string;
+	/**
+	 * The task's actual output, as markdown, when the deliverable is information
+	 * the user asked for — a summary, an answer, extracted data. Absent for
+	 * pure-action tasks whose result is a side effect on the system.
+	 */
+	details?: string;
 	/** Single emoji that captures the task; becomes the saved workflow's icon. */
 	icon?: string;
 	/** Present when `success` is false — a user-readable reason. */

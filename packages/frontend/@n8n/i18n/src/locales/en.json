@@ -93,6 +93,7 @@
 	"desktopAssistant.composer.handoffMessage": "This one needs more than I can do from here — it might be recurring, need extra setup, or be out of scope. Open your n8n instance to set it up there.",
 	"desktopAssistant.composer.errorTitle": "Something went wrong",
 	"desktopAssistant.composer.errorFallback": "I couldn't finish that. Please try again.",
+	"desktopAssistant.composer.resultDetailsAriaLabel": "Task result",
 	"desktopAssistant.composer.keepPrompt": "Want me to keep this so you can run it again any time?",
 	"desktopAssistant.composer.noThanks": "No thanks",
 	"desktopAssistant.composer.saveAsReady": "Save as ready to run",

@@ -36,9 +36,11 @@ function parseOutcome(args: Record<string, unknown>): DesktopAssistantTaskOutcom
 		return undefined;
 	}
 	if (failureReason !== undefined && typeof failureReason !== 'string') return undefined;
-	// A malformed icon doesn't invalidate the report — it just gets dropped.
+	// A malformed icon or details value doesn't invalidate the report — it just gets dropped.
 	const icon = typeof args.icon === 'string' && args.icon.trim() ? args.icon.trim() : undefined;
-	return { success, title, summary, icon, failureReason };
+	const details =
+		typeof args.details === 'string' && args.details.trim() ? args.details : undefined;
+	return { success, title, summary, icon, details, failureReason };
 }
 
 /**
