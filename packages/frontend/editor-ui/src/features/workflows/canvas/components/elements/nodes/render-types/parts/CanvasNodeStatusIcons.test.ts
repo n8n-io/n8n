@@ -24,18 +24,18 @@ vi.mock('vue-router', async (importOriginal) => {
 const pinnedDataByNodeName: IPinData = {};
 const executionSimulationByNodeName: Record<string, { reason: string }> = {};
 
-vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
-	injectCanvasRenderData: vi.fn(() => ({
-		value: {
-			nodeInputsByNodeId: new Map(),
-			nodeOutputsByNodeId: new Map(),
-			pinnedDataByNodeName,
-			executionSimulationByNodeName,
-			executionIssuesByNodeName: new Map(),
-		},
-	})),
-}));
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({
+			value: actual.createEmptyCanvasRenderData({
+				pinnedDataByNodeName,
+				executionSimulationByNodeName,
+			}),
+		})),
+	};
+});
 
 const renderComponent = createComponentRenderer(CanvasNodeStatusIcons, {
 	pinia: createTestingPinia(),

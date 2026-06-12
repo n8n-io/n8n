@@ -42,8 +42,7 @@ const executionErrors = computed(
 const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
 const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const executionSimulation = computed(
-	// Defensive access: test fixtures mock the render-data facade partially.
-	() => renderData.value.executionSimulationByNodeName?.[name.value],
+	() => renderData.value.executionSimulationByNodeName[name.value],
 );
 const route = useRoute();
 
