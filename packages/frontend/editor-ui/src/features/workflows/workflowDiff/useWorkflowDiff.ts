@@ -21,7 +21,12 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
+	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowExecutionStateStore,
+	disposeWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import {
 	createEmptyCanvasRenderData,
@@ -121,18 +126,32 @@ function createDiffRenderData(
 ) {
 	const renderData = shallowRef<CanvasRenderData>(createEmptyCanvasRenderData());
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore> | null = null;
+	// Document id of the stores this side currently owns.
+	let currentDocumentId: WorkflowDocumentId | null = null;
 	// `useWorkflowDocumentRenderData` is side-effectful; own its scope so it can
 	// be torn down when the diffed workflow changes or this side disposes.
 	let renderDataScope: EffectScope | undefined;
+
+	function disposeStores() {
+		renderDataScope?.stop();
+		renderDataScope = undefined;
+		if (currentDocumentId) {
+			// Render data created an execution-state store keyed by this document id;
+			// dispose it with the document store so neither outlives the diff side.
+			disposeWorkflowExecutionStateStore(useWorkflowExecutionStateStore(currentDocumentId));
+			currentDocumentId = null;
+		}
+		if (workflowDocumentStore) {
+			disposeWorkflowDocumentStore(workflowDocumentStore);
+			workflowDocumentStore = null;
+		}
+	}
 
 	watchEffect(() => {
 		const wf = workflowRef.value;
 		if (!wf?.id) return;
 
-		if (workflowDocumentStore) {
-			disposeWorkflowDocumentStore(workflowDocumentStore);
-		}
-		renderDataScope?.stop();
+		disposeStores();
 
 		const versionId = wf.versionId ?? `diff-${side}`;
 		const docId = createWorkflowDocumentId(wf.id, versionId);
@@ -147,22 +166,14 @@ function createDiffRenderData(
 			nodes: workflowNodes.value.map((node) => ({ ...node })),
 			versionId,
 		} as IWorkflowDb);
+		currentDocumentId = docId;
 		renderDataScope = effectScope(true);
 		renderDataScope.run(() => {
 			renderData.value = useWorkflowDocumentRenderData(docId);
 		});
 	});
 
-	function dispose() {
-		renderDataScope?.stop();
-		renderDataScope = undefined;
-		if (workflowDocumentStore) {
-			disposeWorkflowDocumentStore(workflowDocumentStore);
-			workflowDocumentStore = null;
-		}
-	}
-
-	return { renderData, dispose };
+	return { renderData, dispose: disposeStores };
 }
 
 export const useWorkflowDiff = (
