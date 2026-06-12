@@ -149,7 +149,11 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 			return;
 		}
 
-		await credentialsStore.fetchAllCredentialsForWorkflow({ workflowId: data.workflowData.id });
+		try {
+			await credentialsStore.fetchAllCredentialsForWorkflow({ workflowId: data.workflowData.id });
+		} catch {
+			// Credential prefetch is best-effort; keep opening the execution preview.
+		}
 
 		const wfId = workflowsStore.workflowId;
 		if (wfId) {
