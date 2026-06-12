@@ -62,6 +62,7 @@ export const SecurityAndLogin: Story = {
 				<N8nSettingsPageHeader
 					title="Security & login"
 					description="Your 2FA setup, passkeys, active sessions, and authorized OAuth applications."
+					docs-url="https://docs.n8n.io/user-management/"
 				/>
 
 				<N8nSettingsSection title="Sign-in" description="How you sign in to n8n.">
@@ -119,6 +120,7 @@ export const PasskeysSubPage: Story = {
 				<N8nSettingsPageHeader
 					title="Passkeys"
 					description="Manage the passkeys you use to sign in with your face, fingerprint, or device PIN."
+					docs-url="https://docs.n8n.io/user-management/"
 				/>
 
 				<N8nSettingsSection>
@@ -158,9 +160,8 @@ export const ThisInstance: Story = {
 			<N8nSettingsLayout show-back @back="onBack">
 				<N8nSettingsPageHeader
 					title="This instance"
-					description="Plan, usage, version, updates, instance details, resources, and support for this n8n instance. Licensing"
-					docs-label="documentation"
-					docs-href="https://docs.n8n.io"
+					description="Plan, usage, version, updates, instance details, resources, and support for this n8n instance."
+					docs-url="https://docs.n8n.io"
 				/>
 
 				<N8nSettingsSection title="Plan and usage">
@@ -262,9 +263,8 @@ export const ApiKeys: Story = {
 			<N8nSettingsLayout full-width show-back back-label="Back" @back="onBack">
 				<N8nSettingsPageHeader
 					title="API keys"
-					description="Use your API keys to control n8n programmatically. You can learn more in the"
-					docs-label="documentation"
-					docs-href="https://docs.n8n.io"
+					description="Use your API keys to control n8n programmatically."
+					docs-url="https://docs.n8n.io/api/"
 				/>
 
 				<N8nSettingsSection>
@@ -273,7 +273,9 @@ export const ApiKeys: Story = {
 							<N8nText size="small" color="text-base">{{ value }}</N8nText>
 						</template>
 						<template #[slotActions]>
-							<N8nButton variant="ghost" size="small" icon-only icon="ellipsis-vertical" aria-label="API key actions" />
+							<div style="display: flex; justify-content: flex-end">
+								<N8nButton variant="ghost" size="small" icon-only icon="ellipsis-vertical" aria-label="API key actions" />
+							</div>
 						</template>
 					</N8nDataTableServer>
 				</N8nSettingsSection>

@@ -21,6 +21,12 @@ export interface SettingsRowProps {
 	truncateTitle?: boolean;
 	/** Horizontal layout only: caps the action width (default 50%). `false` removes the cap. */
 	actionMaxWidth?: string | false;
+	/**
+	 * Horizontal layout only: let the action grow to fill its available width up to
+	 * `actionMaxWidth` (Figma "fill"). Default `false` hugs the action to its content (Figma
+	 * "hug"). Pair with a slot child that is `width: 100%` so it visibly fills the slot.
+	 */
+	actionFill?: boolean;
 	/** Bottom divider. The last row in a group auto-hides its divider via CSS. */
 	showDivider?: boolean;
 	/** Show the leading visual slot. Implicitly true when the `visual` slot is filled. */
@@ -55,6 +61,7 @@ const props = withDefaults(defineProps<SettingsRowProps>(), {
 	maxDescriptionLines: 2,
 	truncateTitle: true,
 	actionMaxWidth: '50%',
+	actionFill: false,
 	showDivider: true,
 	showVisual: false,
 	expandable: false,
@@ -154,7 +161,13 @@ function onKeydown(event: KeyboardEvent) {
 			</div>
 			<div
 				v-if="slots.action"
-				:class="[$style.action, { [$style.revealActions]: revealActionsOnHover }]"
+				:class="[
+					$style.action,
+					{
+						[$style.revealActions]: revealActionsOnHover,
+						[$style.actionFill]: actionFill && layout === 'horizontal',
+					},
+				]"
 				:style="actionStyle"
 				@click="revealActionsOnHover ? $event.stopPropagation() : undefined"
 			>
@@ -284,6 +297,15 @@ function onKeydown(event: KeyboardEvent) {
 	align-items: center;
 	justify-content: flex-end;
 	min-width: 0;
+}
+
+/*
+ * "Fill": the action shares the row with the info (both grow), so it expands to its
+ * available width and is bounded by `actionMaxWidth`. Without this the action hugs its
+ * content (flex: 0 0 auto) and the cap only clamps intrinsically-wide content.
+ */
+.actionFill {
+	flex: 1 1 0;
 }
 
 .vertical .action {

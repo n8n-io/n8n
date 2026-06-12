@@ -89,6 +89,36 @@ describe('N8nSettingsRow', () => {
 		expect(action.style.maxWidth).toBe('');
 	});
 
+	it('lets the action fill its width in the horizontal layout when actionFill is set', () => {
+		const { container } = render(N8nSettingsRow, {
+			props: { title: 'Title', actionFill: true },
+			slots: { action: '<button>Do</button>' },
+		});
+
+		const action = container.querySelector('[class*="action"]') as HTMLElement;
+		expect(action.className).toContain('actionFill');
+	});
+
+	it('hugs the action (no fill) by default', () => {
+		const { container } = render(N8nSettingsRow, {
+			props: { title: 'Title' },
+			slots: { action: '<button>Do</button>' },
+		});
+
+		const action = container.querySelector('[class*="action"]') as HTMLElement;
+		expect(action.className).not.toContain('actionFill');
+	});
+
+	it('does not apply actionFill outside the horizontal layout', () => {
+		const { container } = render(N8nSettingsRow, {
+			props: { title: 'Title', layout: 'vertical', actionFill: true },
+			slots: { action: '<button>Do</button>' },
+		});
+
+		const action = container.querySelector('[class*="action"]') as HTMLElement;
+		expect(action.className).not.toContain('actionFill');
+	});
+
 	it('shows the visual slot when provided', () => {
 		render(N8nSettingsRow, {
 			props: { title: 'Title' },

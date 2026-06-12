@@ -20,6 +20,8 @@ const meta = {
 		truncateTitle: { control: 'boolean' },
 		showDivider: { control: 'boolean' },
 		showVisual: { control: 'boolean' },
+		actionMaxWidth: { control: 'text' },
+		actionFill: { control: 'boolean' },
 		hoverable: { control: 'boolean' },
 		clickable: { control: 'boolean' },
 		revealActionsOnHover: { control: 'boolean' },
@@ -40,32 +42,13 @@ type Story = StoryObj<typeof meta>;
 const card = (inner: string) =>
 	`<div style="max-width: 45rem;"><N8nSettingsRowGroup>${inner}</N8nSettingsRowGroup></div>`;
 
-export const Default: Story = {
-	render: (args) => ({
-		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nSwitch },
-		setup() {
-			const enabled = ref(true);
-			return { args, enabled };
-		},
-		template: card(`
-			<N8nSettingsRow v-bind="args">
-				<template #action><N8nSwitch v-model="enabled" /></template>
-			</N8nSettingsRow>
-		`),
-	}),
-	args: {
-		title: 'Enable telemetry',
-		description: 'Share anonymous usage data to help us improve n8n.',
-	},
-};
-
 export const Horizontal: Story = {
 	render: (args) => ({
 		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nButton },
 		setup: () => ({ args }),
 		template: card(`
 			<N8nSettingsRow v-bind="args">
-				<template #action><N8nButton variant="outline" size="small" label="Change password" /></template>
+				<template #action><N8nButton variant="outline" size="medium" label="Change password" /></template>
 			</N8nSettingsRow>
 		`),
 	}),
@@ -182,21 +165,65 @@ export const DescriptionTruncation: Story = {
 };
 
 export const ActionMaxWidth: Story = {
-	render: (args) => ({
-		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nInput },
-		setup: () => ({ args }),
+	render: () => ({
+		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nInput, N8nButton },
 		template: card(`
-			<N8nSettingsRow v-bind="args" action-max-width="50%">
-				<template #action><N8nInput placeholder="Capped at 50%" /></template>
+			<N8nSettingsRow
+				title="Fill · 50% (default)"
+				description="The recommended horizontal default: the action fills up to half the 720px row."
+				action-fill
+				action-max-width="50%"
+			>
+				<template #action><N8nInput style="width: 100%" placeholder="Fills 50%" /></template>
 			</N8nSettingsRow>
-			<N8nSettingsRow v-bind="args" :action-max-width="false">
-				<template #action><N8nInput placeholder="No cap" /></template>
+			<N8nSettingsRow
+				title="Fill · 20%"
+				description="A compact action; the info keeps the remaining ~80%."
+				action-fill
+				action-max-width="20%"
+			>
+				<template #action><N8nInput style="width: 100%" placeholder="20%" /></template>
+			</N8nSettingsRow>
+			<N8nSettingsRow
+				title="Fill · 5%"
+				description="A minimal action — almost all the space goes to the info."
+				action-fill
+				action-max-width="5%"
+			>
+				<template #action>
+					<N8nButton style="width: 100%" variant="outline" size="medium" icon-only icon="ellipsis-vertical" aria-label="More" />
+				</template>
+			</N8nSettingsRow>
+			<N8nSettingsRow
+				title="Fill · 100% requested → still ~50%"
+				description="In horizontal, a filled action shares the row with the info, so it stays about half even when you ask for more."
+				action-fill
+				action-max-width="100%"
+			>
+				<template #action><N8nInput style="width: 100%" placeholder="Still ~50%" /></template>
+			</N8nSettingsRow>
+			<N8nSettingsRow
+				title="Hug (default sizing)"
+				description="Without fill, the action sizes to its own content and sits on the right."
+			>
+				<template #action><N8nButton variant="outline" size="medium" label="Edit" /></template>
+			</N8nSettingsRow>
+			<N8nSettingsRow
+				title="Override · uncapped (false)"
+				description="action-max-width=false removes the cap, so intrinsically wide content can exceed 50%."
+				:action-max-width="false"
+			>
+				<template #action><N8nInput style="width: 30rem" placeholder="Wider than 50% — uncapped" /></template>
 			</N8nSettingsRow>
 		`),
 	}),
-	args: {
-		title: 'API key',
-		description: 'The action can be capped or allowed to grow.',
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'`actionMaxWidth` (horizontal only) accepts any CSS max-width string — percentages ("50%", the default), absolute lengths ("30rem", "200px") — or `false` to remove the cap. By default the action **hugs** its content; add `action-fill` so it **fills** up to the cap. A filled action also shares the row with the info, so it never grows past ~50% in horizontal even when the cap is higher; use `:action-max-width="false"` with intrinsically wide content to exceed that.',
+			},
+		},
 	},
 };
 
