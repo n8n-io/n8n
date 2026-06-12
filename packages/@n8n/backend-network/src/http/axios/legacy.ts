@@ -99,7 +99,7 @@ export async function buildAxiosConfigFromLegacyRequest(
 			// If we have only form
 			axiosConfig.data =
 				typeof requestObject.form === 'string'
-					? stringify(requestObject.form, { format: 'RFC3986' })
+					? requestObject.form
 					: stringify(requestObject.form).toString();
 			if (axiosConfig.headers !== undefined) {
 				const headerName = searchForHeader(axiosConfig, 'content-type');

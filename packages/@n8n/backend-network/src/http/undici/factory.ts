@@ -1,10 +1,12 @@
 import { Service } from '@n8n/di';
+import { ensureError } from 'n8n-workflow';
 import type http from 'node:http';
 import type https from 'node:https';
 import type { Dispatcher } from 'undici';
 import { Agent, EnvHttpProxyAgent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
 import { SsrfProtectionService } from '../../ssrf';
+import type { SsrfBridge } from '../../ssrf';
 import { buildNodeAgents } from '../node-agents';
 import type { NodeAgentOptions, ProxyOption, SsrfOption } from '../node-agents';
 
@@ -30,9 +32,11 @@ export interface OutboundHttpClient {
 	 * Returns a drop-in replacement for the global `fetch`, suitable for AI
 	 * SDKs that accept a `customFetch` option (e.g. Anthropic SDK, OpenAI SDK).
 	 *
-	 * When SSRF protection is active the URL is validated (pre-flight async DNS
-	 * check) before every request is dispatched. Proxy routing is applied via
-	 * the underlying undici dispatcher.
+	 * When SSRF protection is active the target URL is validated before every
+	 * request is dispatched — not only the initial URL, but each hop of an HTTP
+	 * redirect chain, since `fetch` re-dispatches per hop through the SSRF
+	 * dispatcher. This closes redirect-based SSRF bypasses. Proxy routing is
+	 * applied via the underlying undici dispatcher.
 	 */
 	asCustomFetch(): CustomFetch;
 
@@ -88,10 +92,18 @@ export class OutboundHttpFactory {
 
 	private buildClient(config: { proxy: ProxyOption; ssrf: SsrfOption }): OutboundHttpClient {
 		const dispatcher = buildDispatcher(config.proxy);
+		// `getDispatcher()` intentionally exposes the bare dispatcher (no SSRF).
+		// `asCustomFetch()` gets a dispatcher composed with an SSRF interceptor so
+		// that every dispatched request — including each redirect hop — is
+		// validated.
+		const fetchDispatcher =
+			config.ssrf === 'disabled'
+				? dispatcher
+				: dispatcher.compose(createSsrfInterceptor(config.ssrf));
 		const defaultNodeAgents = buildNodeAgents(config.proxy, config.ssrf);
 
 		return {
-			asCustomFetch: () => buildCustomFetch(dispatcher, config.ssrf),
+			asCustomFetch: () => buildCustomFetch(fetchDispatcher, config.ssrf),
 			getDispatcher: () => dispatcher,
 			getNodeAgent: (agentOptions) =>
 				agentOptions === undefined
@@ -109,6 +121,57 @@ function buildDispatcher(proxy: ProxyOption): Dispatcher {
 		return new EnvHttpProxyAgent();
 	}
 	return new ProxyAgent(proxy);
+}
+
+/**
+ * undici `compose` interceptor that runs SSRF validation against the target URL
+ * of every dispatched request.
+ *
+ * `fetch` re-dispatches through this dispatcher for each redirect hop, so this
+ * validates the initial request **and** every redirect target (both hostname
+ * and direct-IP targets), unlike a connect-time DNS lookup which never fires for
+ * IP-literal targets. Validation runs against the request target, never the
+ * proxy, so it is proxy-agnostic.
+ */
+function createSsrfInterceptor(bridge: SsrfBridge): Dispatcher.DispatcherComposeInterceptor {
+	return (dispatch) => (opts, handler) => {
+		let targetUrl: string;
+		try {
+			// `opts.path` is the request target. Behind a forward proxy it can be an
+			// absolute URI, otherwise it is path-only and resolved against the
+			// origin. Either form yields the final target URL.
+			targetUrl = new URL(opts.path, opts.origin?.toString()).href;
+		} catch {
+			// Could not derive a URL; let the underlying dispatcher reject it.
+			return dispatch(opts, handler);
+		}
+
+		bridge.validateUrl(targetUrl).then(
+			(result) => {
+				if (result.ok) {
+					dispatch(opts, handler);
+				} else {
+					failDispatch(handler, result.error);
+				}
+			},
+			(error: unknown) => failDispatch(handler, ensureError(error)),
+		);
+
+		return true;
+	};
+}
+
+/**
+ * Signals a pre-dispatch failure to an undici dispatch handler. Mirrors undici's
+ * own interceptors (e.g. the DNS interceptor), which pass a `null` controller
+ * when erroring before a request reaches the socket.
+ */
+function failDispatch(handler: Dispatcher.DispatchHandler, error: Error): void {
+	if (typeof handler.onResponseError === 'function') {
+		handler.onResponseError(null as unknown as Dispatcher.DispatchController, error);
+	} else if (typeof handler.onError === 'function') {
+		handler.onError(error);
+	}
 }
 
 function buildCustomFetch(dispatcher: Dispatcher, ssrf: SsrfOption): CustomFetch {

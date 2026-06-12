@@ -380,9 +380,9 @@ describe('asCustomFetch', () => {
 		expect(calledInit).toMatchObject({ method: 'POST' });
 	});
 
-	it('injects the dispatcher into every undiciFetch call', async () => {
+	it('injects the bare dispatcher into undiciFetch when SSRF is disabled', async () => {
 		const factory = makeFactory();
-		const client = factory.create({ proxy: false });
+		const client = factory.create({ proxy: false, ssrf: 'disabled' });
 		const expectedDispatcher = client.getDispatcher();
 		const fetchFn = client.asCustomFetch();
 
@@ -393,6 +393,22 @@ describe('asCustomFetch', () => {
 			{ dispatcher: unknown },
 		];
 		expect(calledInit.dispatcher).toBe(expectedDispatcher);
+	});
+
+	it('dispatches through an SSRF-composed dispatcher, not the bare getDispatcher(), when SSRF is enabled', async () => {
+		const factory = makeFactory();
+		const client = factory.create({ proxy: false });
+		const bareDispatcher = client.getDispatcher();
+		const fetchFn = client.asCustomFetch();
+
+		await fetchFn('https://api.example.com/data');
+
+		const [, calledInit] = vi.mocked(undiciFetch).mock.calls[0] as [
+			unknown,
+			{ dispatcher: unknown },
+		];
+		expect(calledInit.dispatcher).toBeDefined();
+		expect(calledInit.dispatcher).not.toBe(bareDispatcher);
 	});
 
 	it('returns a new function on each call (fresh closure)', () => {

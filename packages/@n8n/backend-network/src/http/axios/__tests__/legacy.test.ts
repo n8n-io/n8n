@@ -108,6 +108,36 @@ describe('buildAxiosConfigFromLegacyRequest', () => {
 		});
 	});
 
+	test('should forward a string form body unchanged', async () => {
+		const form = 'user=john%20doe&token=a%2Bb';
+
+		const axiosOptions = await buildAxiosConfigFromLegacyRequest({
+			url: 'https://example.com',
+			method: 'POST',
+			// The legacy `request` library accepted pre-encoded string form bodies,
+			// even though the type only models object/FormData forms.
+			form: form as unknown as IRequestOptions['form'],
+		});
+
+		expect(axiosOptions.data).toBe(form);
+		expect(axiosOptions.headers).toMatchObject({
+			'Content-Type': 'application/x-www-form-urlencoded',
+		});
+	});
+
+	test('should serialize an object form body as x-www-form-urlencoded', async () => {
+		const axiosOptions = await buildAxiosConfigFromLegacyRequest({
+			url: 'https://example.com',
+			method: 'POST',
+			form: { foo: 'bar', baz: 'qux' },
+		});
+
+		expect(axiosOptions.data).toBe('foo=bar&baz=qux');
+		expect(axiosOptions.headers).toMatchObject({
+			'Content-Type': 'application/x-www-form-urlencoded',
+		});
+	});
+
 	test('should not use Host header for SNI', async () => {
 		const axiosOptions = await buildAxiosConfigFromLegacyRequest({
 			url: 'https://example.de/foo/bar',
