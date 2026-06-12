@@ -457,12 +457,12 @@ export const useGlobalEntityCreation = () => {
 						? (projectsStore.personalProject?.id ?? '')
 						: id.slice('variable-'.length);
 			uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new', projectId } });
-			telemetry.track('User clicked universal add variable button');
+			telemetry.track('User clicked sidebar add variable button');
 			return;
 		}
 
 		if (id.startsWith(DATA_TABLE_MENU_ID) && id !== 'data-table-title') {
-			telemetry.track('User clicked universal add data table button');
+			telemetry.track('User clicked sidebar add data table button');
 			return;
 		}
 

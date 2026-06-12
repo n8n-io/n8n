@@ -518,7 +518,7 @@ describe('useGlobalEntityCreation', () => {
 				name: VARIABLE_MODAL_KEY,
 				data: { mode: 'new', projectId: '' },
 			});
-			expect(trackMock).toHaveBeenCalledWith('User clicked universal add variable button');
+			expect(trackMock).toHaveBeenCalledWith('User clicked sidebar add variable button');
 		});
 
 		it('opens the variable modal pre-scoped to the personal project on select', () => {
@@ -614,7 +614,7 @@ describe('useGlobalEntityCreation', () => {
 			const { handleSelect } = useGlobalEntityCreation();
 			handleSelect('data-table-personal');
 
-			expect(trackMock).toHaveBeenCalledWith('User clicked universal add data table button');
+			expect(trackMock).toHaveBeenCalledWith('User clicked sidebar add data table button');
 		});
 	});
 
