@@ -13,6 +13,29 @@ let testDbName: string | undefined;
 let originalDatabase: string | undefined;
 
 /**
+ * Per-attempt deadline for the Postgres init steps (create the test DB and
+ * connect to it). Comfortably below the 30s testcontainers hook timeout so a
+ * stalled connection or a blocked `CREATE DATABASE` fails fast with an
+ * actionable error and gets retried, instead of silently eating the whole
+ * hook budget and surfacing as an opaque "Exceeded timeout of a hook".
+ */
+const PG_INIT_STEP_TIMEOUT_MS = 20_000;
+const PG_INIT_MAX_ATTEMPTS = 3;
+
+/** Reject if `operation` doesn't settle within `ms`, with a labelled error. */
+async function withTimeout<T>(operation: Promise<T>, ms: number, label: string): Promise<T> {
+	let timer: NodeJS.Timeout | undefined;
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => reject(new Error(`${label} did not complete within ${ms}ms`)), ms);
+	});
+	try {
+		return await Promise.race([operation, timeout]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
+/**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
  */
 export const getBootstrapDBOptions = (): DataSourceOptions => {
@@ -40,35 +63,97 @@ export async function init() {
 
 	const globalConfig = Container.get(GlobalConfig);
 	const dbType = globalConfig.database.type;
-	testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
 
 	const templateDb = dbType === 'postgresdb' ? process.env.N8N_TEST_TEMPLATE_DB : undefined;
 
 	if (dbType === 'postgresdb') {
 		originalDatabase = globalConfig.database.postgresdb.database;
-		const bootstrapPostgres = await new Connection(getBootstrapDBOptions()).initialize();
-		if (templateDb) {
-			await bootstrapPostgres.query(`CREATE DATABASE ${testDbName} TEMPLATE ${templateDb}`);
-		} else {
-			await bootstrapPostgres.query(`CREATE DATABASE ${testDbName}`);
-		}
-		await bootstrapPostgres.destroy();
-
-		globalConfig.database.postgresdb.database = testDbName;
-	}
-
-	const dbConnection = Container.get(DbConnection);
-	await dbConnection.init();
-
-	if (templateDb) {
-		// Template already carries migrations + seeded roles — just mark state.
-		dbConnection.connectionState.migrated = true;
+		// Creating the per-file test DB and opening its connection are the steps
+		// that can stall under parallel workers (a blocked `CREATE DATABASE ...
+		// TEMPLATE` contending for the template, or a DataSource that never
+		// connects). Bound each attempt and retry with a fresh DB name so a
+		// transient stall recovers instead of timing out the whole hook.
+		await initPostgresWithRetry(templateDb);
 	} else {
+		testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
+		const dbConnection = Container.get(DbConnection);
+		await dbConnection.init();
 		await dbConnection.migrate();
 		await Container.get(AuthRolesService).init();
 	}
 
 	isInitialized = true;
+}
+
+/**
+ * Postgres-only: create the per-file test DB (optionally cloning a template)
+ * and open its connection, each step bounded by a timeout and retried with a
+ * fresh DB name. Throws the last error if every attempt fails.
+ */
+async function initPostgresWithRetry(templateDb: string | undefined): Promise<void> {
+	let lastError: unknown;
+
+	for (let attempt = 1; attempt <= PG_INIT_MAX_ATTEMPTS; attempt++) {
+		const candidateDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
+
+		try {
+			const bootstrapPostgres = await withTimeout(
+				new Connection(getBootstrapDBOptions()).initialize(),
+				PG_INIT_STEP_TIMEOUT_MS,
+				'Bootstrap Postgres connection',
+			);
+			try {
+				const createQuery = templateDb
+					? `CREATE DATABASE ${candidateDbName} TEMPLATE ${templateDb}`
+					: `CREATE DATABASE ${candidateDbName}`;
+				await withTimeout(
+					bootstrapPostgres.query(createQuery),
+					PG_INIT_STEP_TIMEOUT_MS,
+					`CREATE DATABASE ${candidateDbName}`,
+				);
+			} finally {
+				await bootstrapPostgres.destroy();
+			}
+
+			testDbName = candidateDbName;
+			// Re-fetch GlobalConfig from the container each attempt: a prior
+			// failed attempt's Container.reset() invalidates any earlier handle.
+			Container.get(GlobalConfig).database.postgresdb.database = testDbName;
+
+			const dbConnection = Container.get(DbConnection);
+			await withTimeout(
+				dbConnection.init(),
+				PG_INIT_STEP_TIMEOUT_MS,
+				`Open connection to test DB ${testDbName}`,
+			);
+
+			if (templateDb) {
+				// Template already carries migrations + seeded roles — just mark state.
+				dbConnection.connectionState.migrated = true;
+			} else {
+				await dbConnection.migrate();
+				await Container.get(AuthRolesService).init();
+			}
+
+			return;
+		} catch (error) {
+			lastError = error;
+			console.warn(
+				`testDb.init() attempt ${attempt}/${PG_INIT_MAX_ATTEMPTS} failed:`,
+				error instanceof Error ? error.message : error,
+			);
+			// Drop DI singletons (incl. a half-initialized DbConnection/DataSource)
+			// so the next attempt rebuilds the whole chain from scratch.
+			Container.reset();
+			testDbName = undefined;
+		}
+	}
+
+	throw new Error(
+		`testDb.init() failed after ${PG_INIT_MAX_ATTEMPTS} attempts: ${
+			lastError instanceof Error ? lastError.message : String(lastError)
+		}`,
+	);
 }
 
 /**
