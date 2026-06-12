@@ -17,8 +17,11 @@ const IMPORT_PACKAGE_BODY_FIELD_SET = new Set<string>([
 /** Max length for optional routing ids in multipart form fields. */
 const IMPORT_PACKAGE_FIELD_SIZE_BYTES = 128;
 
-/** `package` file + routing / credential / policy fields + small margin. */
-const IMPORT_PACKAGE_MAX_PARTS = 7;
+/**
+ * `package` file + every documented form field, plus one because busboy rejects
+ * the request when the part count reaches (not exceeds) the limit.
+ */
+const IMPORT_PACKAGE_MAX_PARTS = IMPORT_PACKAGE_REQUEST_FORM_FIELDS.length + 2;
 
 export function createN8nPackageMulterOptions(globalConfig: GlobalConfig): multer.Options {
 	const maxFileSizeBytes = globalConfig.endpoints.payloadSizeMax * 1024 * 1024;

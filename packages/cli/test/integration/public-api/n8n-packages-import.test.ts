@@ -86,7 +86,7 @@ async function buildImportPackage(): Promise<Buffer> {
 			connections: {},
 			versionId: 'wire-version-id',
 			parentFolderId: null,
-			active: false,
+			isPublished: false,
 			isArchived: false,
 		}),
 	);
@@ -154,6 +154,23 @@ describe('POST /n8n-packages/import', () => {
 			},
 		});
 
+		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
+	});
+
+	test('accepts a request that supplies every documented form field', async () => {
+		const tarBuffer = await buildImportPackage();
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', ownerPersonalProject.id)
+			.field('folderId', '')
+			.field('credentialMatchingMode', 'id-only')
+			.field('credentialMissingMode', 'must-preexist')
+			.field('workflowConflictPolicy', 'fail')
+			.field('workflowIdPolicy', 'new')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
 	});
 

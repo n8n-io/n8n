@@ -7,7 +7,23 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Logger } from '@n8n/backend-common';
-import type { SsrfBridge } from '@n8n/backend-network';
+import {
+	applyDefaultOutboundUserAgent,
+	binaryToString,
+	createFormDataObject,
+	generateContentLengthHeader,
+	getBeforeRedirectFn,
+	getHostFromRequestObject,
+	invokeAxios,
+	isFormDataInstance,
+	parseIncomingMessage,
+	resolveLegacyRequestUrl,
+	searchForHeader,
+	setAxiosAgents,
+	throwIfDomainNotAllowed,
+	validateUrlSsrf,
+	type SsrfBridge,
+} from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { AxiosHeaders, AxiosRequestConfig } from 'axios';
 import crypto from 'crypto';
@@ -25,23 +41,6 @@ import type {
 import { NodeSslError } from 'n8n-workflow';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
-
-import { binaryToString } from '../binary-helper-functions';
-import { parseIncomingMessage } from '../parse-incoming-message';
-import {
-	createFormDataObject,
-	generateContentLengthHeader,
-	getBeforeRedirectFn,
-	getHostFromRequestObject,
-	isFormDataInstance,
-	resolveLegacyRequestUrl,
-	searchForHeader,
-	setAxiosAgents,
-	throwIfDomainNotAllowed,
-	validateUrlSsrf,
-} from './axios-utils';
-import { invokeAxios } from './http-request';
-import { applyDefaultOutboundUserAgent } from './outbound-user-agent';
 
 /**
  * This function is a temporary implementation that translates all http requests

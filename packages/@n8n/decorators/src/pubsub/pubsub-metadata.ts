@@ -32,6 +32,7 @@ export type PubSubEventName =
 	| 'cancel-test-run'
 	| 'cancel-collection'
 	| 'agent-chat-integration-changed'
+	| 'agent-chat-subscription-changed'
 	| 'agent-config-changed'
 	| 'agent-tasks-changed'
 	| 'redaction-floor-changed';

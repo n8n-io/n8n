@@ -44,6 +44,8 @@ export async function createExecution(
 		deletedAt,
 		metadata,
 		createdAt,
+		jsonSizeBytes,
+		workflowVersionId,
 	} = attributes;
 
 	const execution = await Container.get(ExecutionRepository).save({
@@ -56,6 +58,8 @@ export async function createExecution(
 		waitTill: waitTill ?? null,
 		status: status ?? 'success',
 		deletedAt,
+		...(jsonSizeBytes !== undefined && { jsonSizeBytes }),
+		...(workflowVersionId !== undefined && { workflowVersionId }),
 	});
 
 	if (metadata?.length) {

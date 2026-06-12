@@ -82,7 +82,7 @@ export const API_KEY_RESOURCES = {
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
 	project: ['create', 'update', 'delete', 'list'] as const,
-	user: ['read', 'list', 'create', 'changeRole', 'delete', 'enforceMfa'] as const,
+	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'stop'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	sourceControl: ['pull'] as const,
