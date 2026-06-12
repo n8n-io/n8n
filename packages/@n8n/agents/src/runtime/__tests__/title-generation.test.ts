@@ -2,7 +2,7 @@ import type * as AiImport from 'ai';
 import type { LanguageModel } from 'ai';
 
 import type { BuiltTelemetry } from '../../types';
-import { generateTitleFromMessage } from '../title-generation';
+import { generateTitleAndEmojiFromMessage, generateTitleFromMessage } from '../title-generation';
 
 type GenerateTextCall = {
 	system?: string;
@@ -205,5 +205,26 @@ describe('generateTitleFromMessage', () => {
 			'build a workflow that queries Scryfall for a random card',
 		);
 		expect(result).toBe('Scryfall random card workflow');
+	});
+});
+
+describe('generateTitleAndEmojiFromMessage', () => {
+	beforeEach(() => {
+		mockGenerateText.mockReset();
+	});
+
+	it('wraps the user message as conversation context so the model does not answer it', async () => {
+		mockGenerateText.mockResolvedValue({ text: '{"title":"Berlin rain alert","emoji":"rain"}' });
+		await generateTitleAndEmojiFromMessage(fakeModel, 'Build a daily Berlin rain alert workflow');
+
+		const call = mockGenerateText.mock.calls[0][0];
+		expect(call.messages[0]).toEqual({
+			role: 'user',
+			content: `
+Here's the conversation:
+<conversation>
+Build a daily Berlin rain alert workflow
+</conversation>`,
+		});
 	});
 });

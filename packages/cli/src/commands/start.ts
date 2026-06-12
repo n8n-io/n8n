@@ -232,6 +232,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const { WorkflowPublicationOutboxConsumer } = await import(
+				'@/workflows/publication/workflow-publication-outbox-consumer'
+			);
+			Container.get(WorkflowPublicationOutboxConsumer).init();
+		}
+
 		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));

@@ -13,7 +13,7 @@ export { StructuredToolkit, type SupplyDataToolResponse } from './utils/ai-tool-
 export { constructExecutionMetaData } from './utils/construct-execution-metadata';
 export { getAdditionalKeys, getNonWorkflowAdditionalKeys } from './utils/get-additional-keys';
 export { normalizeItems } from './utils/normalize-items';
-export { parseIncomingMessage } from './utils/parse-incoming-message';
+export { parseIncomingMessage } from '@n8n/backend-network';
 export { returnJsonArray } from './utils/return-json-array';
 export { resolveSourceOverwrite } from './utils/resolve-source-overwrite';
 export * from './utils/binary-helper-functions';
