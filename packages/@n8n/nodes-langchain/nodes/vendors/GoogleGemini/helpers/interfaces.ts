@@ -46,6 +46,10 @@ export interface GenerateContentResponse {
 	}>;
 }
 
+export interface SystemInstruction {
+	parts: Part[];
+}
+
 export interface Content {
 	parts: Part[];
 	role: string;
