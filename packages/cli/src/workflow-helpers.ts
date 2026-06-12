@@ -8,6 +8,7 @@ import {
 	safeParseWorkflowStructure,
 	validateNodeSelectionForGrouping,
 	type ExtractableErrorResult,
+	type IConnections,
 	type IDataObject,
 	type INode,
 	type INodeCredentialsDetails,
@@ -223,14 +224,7 @@ export function validateWorkflowNodeGroups(
 
 	// Same graph rules the canvas enforces when creating a group
 	const nodesById = new Map(nodes.map((node) => [node.id, node]));
-	const getNodeType = (node: INode) => {
-		try {
-			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
-		} catch {
-			// Unknown node type (e.g. not installed): skip type-dependent rules
-			return null;
-		}
-	};
+	const getNodeType = buildGetNodeType(nodeTypes);
 
 	for (const group of nodeGroups) {
 		const memberNodes = group.nodeIds
@@ -247,6 +241,117 @@ export function validateWorkflowNodeGroups(
 			throw new BadRequestError(formatNodeGroupValidationError(group.name, result));
 		}
 	}
+}
+
+/**
+ * Extends node groups with newly added nodes when that restores a group's
+ * validity — the backend counterpart of the canvas auto-extend behavior when
+ * a node is inserted between grouped nodes. Groups that are already valid, or
+ * that cannot be made valid by absorbing candidate nodes, are left untouched.
+ * Returns the extended groups, or `undefined` when no group was extended.
+ */
+export function extendWorkflowNodeGroups(
+	workflow: Pick<IWorkflowBase, 'nodes' | 'connections' | 'nodeGroups'>,
+	candidateNodeIds: Set<string>,
+	nodeTypes: INodeTypes,
+): IWorkflowGroup[] | undefined {
+	const { nodeGroups, nodes, connections } = workflow;
+	if (!nodeGroups || nodeGroups.length === 0 || candidateNodeIds.size === 0) return undefined;
+
+	const getNodeType = buildGetNodeType(nodeTypes);
+	const nodesById = new Map(nodes.map((node) => [node.id, node]));
+	const neighborsByNodeName = buildUndirectedNeighborsByNodeName(connections);
+	const groupedNodeIds = new Set(nodeGroups.flatMap((group) => group.nodeIds));
+
+	const isValidSelection = (memberIds: Set<string>) => {
+		const memberNodes = [...memberIds]
+			.map((nodeId) => nodesById.get(nodeId))
+			.filter((node): node is INode => node !== undefined);
+		return validateNodeSelectionForGrouping({
+			nodes: memberNodes,
+			connectionsBySourceNode: connections,
+			getNodeType,
+		}).valid;
+	};
+
+	// Candidates in workflow node order, excluding nodes that belong to a group
+	const availableCandidateIds = nodes
+		.map((node) => node.id)
+		.filter((nodeId) => candidateNodeIds.has(nodeId) && !groupedNodeIds.has(nodeId));
+
+	let changed = false;
+	const extendedGroups = nodeGroups.map((group) => {
+		const memberIds = new Set(group.nodeIds);
+		if (memberIds.size === 0 || isValidSelection(memberIds)) return group;
+
+		const isAdjacentToMember = (nodeId: string) => {
+			const neighbors = neighborsByNodeName.get(nodesById.get(nodeId)?.name ?? '');
+			if (!neighbors) return false;
+			return [...memberIds].some((memberId) => {
+				const member = nodesById.get(memberId);
+				return member !== undefined && neighbors.has(member.name);
+			});
+		};
+
+		// Grow: absorb adjacent candidates one at a time until the group is valid
+		const absorbedNodeIds: string[] = [];
+		while (!isValidSelection(memberIds)) {
+			const next = availableCandidateIds.find(
+				(nodeId) => !memberIds.has(nodeId) && isAdjacentToMember(nodeId),
+			);
+			if (next === undefined) return group; // extension cannot make this group valid
+			memberIds.add(next);
+			absorbedNodeIds.push(next);
+		}
+
+		// Shrink: drop absorbed nodes that turn out to be unnecessary
+		for (const nodeId of absorbedNodeIds) {
+			const withoutNode = new Set(memberIds);
+			withoutNode.delete(nodeId);
+			if (isValidSelection(withoutNode)) memberIds.delete(nodeId);
+		}
+
+		changed = true;
+		return {
+			...group,
+			nodeIds: [...group.nodeIds, ...absorbedNodeIds.filter((nodeId) => memberIds.has(nodeId))],
+		};
+	});
+
+	return changed ? extendedGroups : undefined;
+}
+
+function buildGetNodeType(nodeTypes: INodeTypes) {
+	return (node: INode) => {
+		try {
+			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			// Unknown node type (e.g. not installed): skip type-dependent rules
+			return null;
+		}
+	};
+}
+
+function buildUndirectedNeighborsByNodeName(connections: IConnections): Map<string, Set<string>> {
+	const neighbors = new Map<string, Set<string>>();
+	const link = (from: string, to: string) => {
+		const set = neighbors.get(from) ?? new Set<string>();
+		set.add(to);
+		neighbors.set(from, set);
+	};
+
+	for (const [sourceNodeName, connectionsByType] of Object.entries(connections)) {
+		for (const connectionsByOutputIndex of Object.values(connectionsByType)) {
+			for (const outputConnections of connectionsByOutputIndex) {
+				for (const connection of outputConnections ?? []) {
+					link(sourceNodeName, connection.node);
+					link(connection.node, sourceNodeName);
+				}
+			}
+		}
+	}
+
+	return neighbors;
 }
 
 function formatNodeGroupValidationError(

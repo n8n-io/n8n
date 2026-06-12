@@ -4,6 +4,7 @@ import type {
 	INode,
 	INodeParameters,
 	IWorkflowBase,
+	IWorkflowGroup,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { isSafeObjectProperty, NodeConnectionTypes } from 'n8n-workflow';
@@ -184,6 +185,14 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			.max(50)
 			.describe('Tag names to detach from the workflow. Unknown names are ignored.'),
 	}),
+	z.object({
+		type: z.literal('removeNodeGroup'),
+		groupName: z
+			.string()
+			.describe(
+				"Name of the node group to dissolve. Only the grouping is removed — the group's nodes stay in the workflow. Use this when an update was rejected because it would break a node group and the change is intended.",
+			),
+	}),
 ]);
 
 export type PartialUpdateOperation = z.infer<typeof partialUpdateOperationSchema>;
@@ -195,6 +204,8 @@ interface WorkflowSlice {
 	connections: IConnections;
 	/** Existing tag names on the workflow. Undefined when not loaded; tag ops require this. */
 	tagNames?: string[];
+	/** Existing node groups on the workflow. */
+	nodeGroups?: IWorkflowGroup[];
 }
 
 export interface ApplyOperationsSuccess {
@@ -203,6 +214,8 @@ export interface ApplyOperationsSuccess {
 	addedNodeNames: string[];
 	/** Final tag set after applying tag ops. Undefined means "leave unchanged". */
 	tagNames?: string[];
+	/** Final node groups after applying group ops. Undefined means "leave unchanged". */
+	nodeGroups?: IWorkflowGroup[];
 }
 
 export interface ApplyOperationsFailure {
@@ -219,6 +232,7 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	nodes: workflow.nodes.map((node) => structuredClone(node)),
 	connections: structuredClone(workflow.connections),
 	tagNames: workflow.tagNames ? [...workflow.tagNames] : undefined,
+	nodeGroups: workflow.nodeGroups ? structuredClone(workflow.nodeGroups) : undefined,
 });
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -404,6 +418,7 @@ export function applyOperations(
 	// Tag set is null until the first tag op runs; that keeps "no tag ops"
 	// distinguishable from "tag ops applied to an empty set" at return time.
 	let tagSet: Set<string> | null = null;
+	let nodeGroupsChanged = false;
 
 	for (let i = 0; i < operations.length; i++) {
 		const op = operations[i];
@@ -604,6 +619,23 @@ export function applyOperations(
 				break;
 			}
 
+			case 'removeNodeGroup': {
+				const groups = workflow.nodeGroups ?? [];
+				const index = groups.findIndex((group) => group.name === op.groupName);
+				if (index === -1) {
+					return fail(
+						i,
+						`node group '${op.groupName}' not found. Existing groups: ${
+							groups.length > 0 ? groups.map((g) => `'${g.name}'`).join(', ') : 'none'
+						}`,
+					);
+				}
+				groups.splice(index, 1);
+				workflow.nodeGroups = groups;
+				nodeGroupsChanged = true;
+				break;
+			}
+
 			default: {
 				op satisfies never;
 				return fail(i, 'unknown operation type');
@@ -620,6 +652,7 @@ export function applyOperations(
 		workflow,
 		addedNodeNames: [...addedNodeNames],
 		tagNames: tagSet !== null ? [...tagSet] : undefined,
+		nodeGroups: nodeGroupsChanged ? (workflow.nodeGroups ?? []) : undefined,
 	};
 }
 
@@ -645,5 +678,6 @@ export function toWorkflowSlice(
 		nodes: workflow.nodes,
 		connections: workflow.connections,
 		tagNames,
+		nodeGroups: workflow.nodeGroups,
 	};
 }

@@ -458,6 +458,50 @@ describe('createBuildWorkflowTool', () => {
 		);
 	});
 
+	it('forwards removeNodeGroups to the workflow update', async () => {
+		const reportBuildOutcome = vi.fn(
+			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),
+		);
+		const suspend = vi.fn();
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				updateFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			workflowBuildContext: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				taskId: 'task-1',
+				workItemId: 'wi-1',
+				allowPostPlanWorkflowCreate: true,
+				workflowTaskService: {
+					reportBuildOutcome,
+				},
+			},
+			permissions: { updateWorkflow: 'ask' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+		await executeTool(
+			tool,
+			{ workflowId: 'wf-1', code: 'workflow code', removeNodeGroups: ['My Group'] },
+			{ suspend },
+		);
+
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+			'wf-1',
+			expect.objectContaining({ name: 'Generated workflow' }),
+			{ removeNodeGroups: ['My Group'] },
+		);
+	});
+
 	it('does not finalize the planned task when saving a supporting workflow', async () => {
 		const reportBuildOutcome = vi.fn<
 			(outcome: WorkflowBuildOutcome) => Promise<{ type: 'verify'; workflowId: string }>

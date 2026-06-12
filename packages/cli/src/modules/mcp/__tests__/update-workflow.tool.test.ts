@@ -438,6 +438,61 @@ describe('update-workflow MCP tool', () => {
 			expect(response.error).toContain('group "My Group"');
 		});
 
+		test('dissolves a node group via removeNodeGroup', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [
+						{ id: 'g1', name: 'My Group', nodeIds: ['a'] },
+						{ id: 'g2', name: 'Other Group', nodeIds: ['b'] },
+					],
+				}),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'removeNodeGroup', groupName: 'My Group' }],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toEqual([{ id: 'g2', name: 'Other Group', nodeIds: ['b'] }]);
+		});
+
+		test('returns an error for removeNodeGroup with an unknown group name', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['a'] }],
+				}),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'removeNodeGroup', groupName: 'Missing' }],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain("node group 'Missing' not found");
+			expect(updateMock).not.toHaveBeenCalled();
+		});
+
+		test('does not touch nodeGroups when no group operations run', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['a'] }],
+				}),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toBeUndefined();
+		});
+
 		test('tracks telemetry on success with op metadata', async () => {
 			await callHandler({
 				workflowId: 'wf-1',

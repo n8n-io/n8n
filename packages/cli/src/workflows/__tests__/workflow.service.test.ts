@@ -363,6 +363,25 @@ describe('WorkflowService', () => {
 			);
 		});
 
+		test('should persist extended nodeGroups when auto-extend changes them', async () => {
+			setupExistingWorkflow();
+			const extendedNodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }];
+			jest.mocked(WorkflowHelpers.extendWorkflowNodeGroups).mockReturnValueOnce(extendedNodeGroups);
+
+			const user = mock<User>();
+			await workflowService.update(user, { nodes: [] } as unknown as WorkflowEntity, 'workflow-1', {
+				forceSave: true,
+			});
+
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					nodeGroups: extendedNodeGroups,
+					versionId: expect.not.stringMatching('v1'),
+				}),
+			);
+		});
+
 		test('should throw BadRequestError for invalid workflow structure', async () => {
 			setupExistingWorkflow();
 			jest.mocked(WorkflowHelpers.validateWorkflowStructure).mockImplementationOnce(() => {

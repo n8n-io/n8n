@@ -16,6 +16,7 @@ import {
 	applyOperations,
 	partialUpdateOperationSchema,
 	toWorkflowSlice,
+	type ApplyOperationsSuccess,
 	type PartialUpdateOperation,
 } from './workflow-operations';
 
@@ -49,6 +50,7 @@ const operationTypeSchema = z.enum([
 	'setWorkflowMetadata',
 	'addTags',
 	'removeTags',
+	'removeNodeGroup',
 ]);
 
 const positionInputSchema = z.array(z.number()).length(2).describe('Canvas [x, y].');
@@ -117,6 +119,12 @@ const operationInputSchema = z
 		name: z.string().max(128).optional().describe('Only used for setWorkflowMetadata.'),
 		description: z.string().max(255).optional().describe('Only used for setWorkflowMetadata.'),
 		names: z.array(z.string()).optional().describe('For addTags / removeTags.'),
+		groupName: z
+			.string()
+			.optional()
+			.describe(
+				"For removeNodeGroup: name of the node group to dissolve. Only the grouping is removed — the group's nodes stay in the workflow. Use when an update was rejected because it would break a node group and the change is intended.",
+			),
 	})
 	.describe('Workflow update operation. Provide fields matching type.');
 
@@ -212,6 +220,31 @@ const outputSchema = {
 		),
 	note: z.string().optional(),
 } satisfies z.ZodRawShape;
+
+function buildWorkflowUpdateEntity(
+	result: ApplyOperationsSuccess,
+	existingWorkflow: WorkflowEntity,
+	hasNonTagOperations: boolean,
+): WorkflowEntity {
+	const workflowUpdateData = new WorkflowEntity();
+	Object.assign(workflowUpdateData, {
+		name: result.workflow.name,
+		...(result.workflow.description !== undefined
+			? { description: result.workflow.description }
+			: {}),
+		nodes: result.workflow.nodes,
+		connections: result.workflow.connections,
+		...(result.nodeGroups !== undefined ? { nodeGroups: result.nodeGroups } : {}),
+		meta: hasNonTagOperations
+			? {
+					...(existingWorkflow.meta ?? {}),
+					aiBuilderAssisted: true,
+					builderVariant: 'mcp',
+				}
+			: (existingWorkflow.meta ?? {}),
+	});
+	return workflowUpdateData;
+}
 
 /**
  * MCP tool that updates a workflow by applying a small list of named operations
@@ -343,22 +376,11 @@ export const createUpdateWorkflowTool = (
 				(op) => op.type !== 'addTags' && op.type !== 'removeTags',
 			);
 
-			const workflowUpdateData = new WorkflowEntity();
-			Object.assign(workflowUpdateData, {
-				name: result.workflow.name,
-				...(result.workflow.description !== undefined
-					? { description: result.workflow.description }
-					: {}),
-				nodes: result.workflow.nodes,
-				connections: result.workflow.connections,
-				meta: hasNonTagOperations
-					? {
-							...(existingWorkflow.meta ?? {}),
-							aiBuilderAssisted: true,
-							builderVariant: 'mcp',
-						}
-					: (existingWorkflow.meta ?? {}),
-			});
+			const workflowUpdateData = buildWorkflowUpdateEntity(
+				result,
+				existingWorkflow,
+				hasNonTagOperations,
+			);
 
 			resolveNodeWebhookIds(workflowUpdateData, nodeTypes);
 
