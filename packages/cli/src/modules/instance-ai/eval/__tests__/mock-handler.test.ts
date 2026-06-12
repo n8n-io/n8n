@@ -1,6 +1,7 @@
 interface MockResponseSpec {
-	type: 'json' | 'binary' | 'error';
+	type: 'json' | 'text' | 'binary' | 'error';
 	body?: unknown;
+	textBody?: string;
 	statusCode?: number;
 	contentType?: string;
 	filename?: string;
@@ -293,6 +294,127 @@ describe('createLlmMockHandler', () => {
 			headers: { 'content-type': 'application/json' },
 			statusCode: 500,
 		});
+	});
+
+	it('should materialize text spec as a raw string body with the given content type', async () => {
+		const soap =
+			'<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body><GetQuoteResponse><Price>42.5</Price></GetQuoteResponse></soap:Body></soap:Envelope>';
+		llmSubmits({ type: 'text', textBody: soap, contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: soap,
+			headers: { 'content-type': 'text/xml' },
+			statusCode: 200,
+		});
+		expect(typeof result.body).toBe('string');
+	});
+
+	it('should default text content type to text/plain when omitted', async () => {
+		llmSubmits({ type: 'text', textBody: 'id,name\n1,Jane' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: 'id,name\n1,Jane',
+			headers: { 'content-type': 'text/plain' },
+			statusCode: 200,
+		});
+	});
+
+	it('should materialize error spec with a text document body when textBody is provided', async () => {
+		const fault =
+			'<?xml version="1.0"?><soap:Fault><faultcode>soap:Client</faultcode></soap:Fault>';
+		llmSubmits({ type: 'error', statusCode: 500, textBody: fault, contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: fault,
+			headers: { 'content-type': 'text/xml' },
+			statusCode: 500,
+		});
+	});
+
+	it('should not capture a text spec missing textBody and succeed on the retry submission', async () => {
+		llmSubmits({ type: 'text', contentType: 'text/xml' });
+		llmSubmits({ type: 'text', textBody: '<ok/>', contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: '<ok/>',
+			headers: { 'content-type': 'text/xml' },
+			statusCode: 200,
+		});
+	});
+
+	it('should return corrective messages from the submit handler for invalid cross-field specs', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const handler = createLlmMockHandler();
+		await callHandler(handler);
+
+		const submitHandler = submitCapture.handler;
+		if (!submitHandler) throw new Error('submit_response handler was not captured');
+
+		await expect(submitHandler({ type: 'text', contentType: 'text/xml' })).resolves.toContain(
+			'requires textBody',
+		);
+		await expect(submitHandler({ type: 'json', textBody: '<oops/>' })).resolves.toContain(
+			'not allowed with type="json"',
+		);
+		await expect(
+			submitHandler({ type: 'text', textBody: '<html>503</html>', statusCode: 503 }),
+		).resolves.toContain('resubmit with type="error"');
+		await expect(
+			submitHandler({ type: 'text', textBody: '{"items": [1, 2]}', contentType: 'text/plain' }),
+		).resolves.toContain('looks like a JSON response');
+		await expect(
+			submitHandler({ type: 'text', textBody: '<ok/>', contentType: 'application/json' }),
+		).resolves.toContain('looks like a JSON response');
+		await expect(
+			submitHandler({
+				type: 'error',
+				statusCode: 429,
+				body: { error: 'rate limited' },
+				textBody: 'Too Many Requests',
+			}),
+		).resolves.toContain('not both');
+	});
+
+	it('should fall back to a soft-captured json body when the model never resubmits after a json+textBody rejection', async () => {
+		llmSubmits({ type: 'json', body: { id: 7 }, textBody: '<stray/>' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result).toEqual({
+			body: { id: 7 },
+			headers: { 'content-type': 'application/json' },
+			statusCode: 200,
+		});
+	});
+
+	it('should surface the rejection reason when a rejected spec is never resubmitted', async () => {
+		llmSubmits({ type: 'text', contentType: 'text/xml' });
+		llmSubmits({ type: 'text', contentType: 'text/xml' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result.body).toEqual(
+			expect.objectContaining({
+				_evalMockError: true,
+				message: expect.stringContaining('rejected'),
+			}),
+		);
+	});
+
+	it('should default text content type to text/plain when contentType is an empty string', async () => {
+		llmSubmits({ type: 'text', textBody: '<rss/>', contentType: '' });
+		const handler = createLlmMockHandler();
+		const result = await callHandler(handler);
+
+		expect(result.headers['content-type']).toBe('text/plain');
 	});
 
 	it('should return _evalMockError when agent does not call submit_response', async () => {

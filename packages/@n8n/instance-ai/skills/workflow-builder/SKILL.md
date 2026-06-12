@@ -391,9 +391,11 @@ column names.
   field.
 - For unresolved resource-locator fields (values shaped like `{ __rl: true,
   mode, value }`, such as Slack channel selectors), use the resource-locator
-  object shape instead of a raw `placeholder()` string. If no credential exists
-  to resolve a real channel, prefer id mode with an empty value and a cached
-  result name, for example `{ __rl: true, mode: 'id', value: '',
+  object shape instead of a raw `placeholder()` string. Pick the mode per the
+  resource-locator rule in Node Configuration Safety Rules: a `name`/`url`
+  mode with the known value when the locator offers one and you know the
+  resource by name; otherwise id mode with an empty value and a cached result
+  name, for example `{ __rl: true, mode: 'id', value: '',
   cachedResultName: 'Select support channel to monitor' }`.
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
@@ -482,6 +484,13 @@ Follow these rules strictly when generating workflows:
   definitions and `@builderHint` annotations are the source of truth.
 - Use live `nodes(action="explore-resources")` for resource locator, list, and
   model fields when credentials are available.
+- Resource-locator `list` and `id` modes hold opaque IDs picked from real data —
+  never put a human-readable name in their `value` (a sheet/board/folder title
+  in `list` mode can never resolve, in production or in tests). When you only
+  know the resource by name and the locator offers a `name` (or `url`) mode,
+  use that mode with the known name. Fall back to id mode with an empty value
+  and a `cachedResultName` only when no name mode exists and no credential is
+  available to resolve a real ID.
 - If a configuration is unclear after reading the definition, ask for
   clarification or use placeholders. Do not guess.
 - Pay attention to `@builderHint` annotations in search results and type
