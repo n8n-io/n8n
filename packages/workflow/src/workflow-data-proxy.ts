@@ -76,15 +76,9 @@ export class WorkflowDataProxy {
 		private contextNodeName: string = activeNodeName,
 		private envProviderState?: EnvProviderState,
 	) {
-		this.runExecutionData = isScriptingNode(this.contextNodeName, workflow)
-			? runExecutionData !== null
-				? augmentObject(runExecutionData)
-				: null
-			: runExecutionData;
+		this.runExecutionData = runExecutionData !== null ? augmentObject(runExecutionData) : null;
 
-		this.connectionInputData = isScriptingNode(this.contextNodeName, workflow)
-			? augmentArray(connectionInputData)
-			: connectionInputData;
+		this.connectionInputData = augmentArray(connectionInputData);
 
 		this.timezone = workflow.settings?.timezone ?? getGlobalState().defaultTimezone;
 		Settings.defaultZone = this.timezone;
