@@ -85,17 +85,11 @@ jobs:
         with:
           build-command: 'pnpm build'
 
-      # Cache populated by prepare-docker; fallback covers PRs that only touch this workflow file.
+      # Cache populated by prepare-docker; on a miss (e.g. fresh PR-open runs
+      # that outpace prepare-docker) the action itself falls back to a rebuild
+      # via build-n8n-docker.
       - name: Load n8n Docker image
-        id: load-image
-        continue-on-error: true
         uses: ./.github/actions/load-n8n-docker
-
-      - name: Build Docker image (fallback on cache miss)
-        if: steps.load-image.outcome == 'failure'
-        run: pnpm build:docker
-        env:
-          INCLUDE_TEST_CONTROLLER: 'true'
 
       - name: Start sandbox service
         if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
@@ -108,7 +102,8 @@ jobs:
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
-          SANDBOX_NAME_PREFIX: evals-ci-${{ inputs.branch || github.ref_name }}
+          # Prefer head_ref: inputs.branch may be a merge ref (refs/pull/N/merge).
+          SANDBOX_NAME_PREFIX: evals-ci-${{ github.head_ref || inputs.branch || github.ref_name }}
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
         run: |
           # Build provider-specific env args

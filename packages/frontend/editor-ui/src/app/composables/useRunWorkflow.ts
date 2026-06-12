@@ -22,7 +22,7 @@ import {
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
-import { computed, type Ref } from 'vue';
+import { computed, getCurrentInstance, type Ref } from 'vue';
 
 import { useToast } from '@/app/composables/useToast';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -61,6 +61,7 @@ import { chatEventBus } from '@n8n/chat/event-buses';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { useDocumentTitle } from './useDocumentTitle';
+import { useEditorContext } from './useEditorContext';
 import { useChat } from '@n8n/chat/composables';
 import type { WorkflowObjectAccessors } from '../types';
 
@@ -92,11 +93,17 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
 	);
 	const nodeHelpers = useNodeHelpers();
+
+	// Editor hosts (e.g. the Instance AI artifact preview) can suppress execution
+	// error toasts for their embedded editor. Resolved at setup; `inject` can't
+	// run in the async, non-setup callers (push handlers), so fall back to
+	// showing toasts when there is no active component instance.
+	const editorContext = getCurrentInstance() ? useEditorContext() : undefined;
 	const workflowSaving = useWorkflowSaving({
 		router: useRunWorkflowOpts.router,
 	});
 	const executionsStore = useExecutionsStore();
-	const { dirtinessByName } = useNodeDirtiness();
+	const { dirtinessByName } = useNodeDirtiness(() => workflowDocumentStore.value.documentId);
 	const { startChat } = useCanvasOperations();
 	const chatStore = useChat();
 
@@ -468,7 +475,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			console.error(error);
 			workflowExecutionState.value.setWorkflowExecutionData(null);
 			useDocumentTitle().setDocumentTitle(workflowDocumentStore.value.name, 'ERROR');
-			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
+			if (editorContext?.executionErrorToasts.value !== false) {
+				toast.showError(error, i18n.baseText('workflowRun.showError.title'));
+			}
 			return undefined;
 		}
 	}

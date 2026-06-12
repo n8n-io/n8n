@@ -26,7 +26,6 @@ import type { OauthService } from '@/oauth/oauth.service';
 import type { UrlService } from '@/services/url.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { AgentKnowledgeCommandService } from '../agent-knowledge-command.service';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService, chatThreadId } from '../agents.service';
@@ -107,8 +106,6 @@ function makeRuntimeReconstructionService(
 		mock<N8nMemory>(),
 		mock<OauthService>(),
 		{ modules } as unknown as AgentsConfig,
-		mock<AgentKnowledgeService>(),
-		mock<AgentKnowledgeCommandService>(),
 	);
 }
 
@@ -184,7 +181,11 @@ describe('AgentsService', () => {
 		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
-		agentsConfig = { modules: [] } as unknown as AgentsConfig;
+		agentsConfig = {
+			modules: [],
+			sandboxEnabled: false,
+			sandboxProvider: '',
+		} as unknown as AgentsConfig;
 		globalConfig = mock<GlobalConfig>({
 			multiMainSetup: { enabled: false },
 		} as Partial<GlobalConfig>);
@@ -214,6 +215,22 @@ describe('AgentsService', () => {
 
 	afterEach(() => {
 		Container.reset();
+	});
+
+	describe('isKnowledgeBaseEnabled', () => {
+		it('only enables the knowledge base for Daytona sandbox config', () => {
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+
+			agentsConfig.sandboxEnabled = true;
+			agentsConfig.sandboxProvider = 'n8n-sandbox';
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+
+			agentsConfig.sandboxProvider = 'daytona';
+			expect(service.isKnowledgeBaseEnabled()).toBe(true);
+
+			agentsConfig.sandboxEnabled = false;
+			expect(service.isKnowledgeBaseEnabled()).toBe(false);
+		});
 	});
 
 	describe('validateConfig', () => {
@@ -1605,6 +1622,26 @@ describe('AgentsService', () => {
 			});
 		}
 
+		function makeFailingStream(error: Error): ReadableStream {
+			let readCount = 0;
+			return {
+				getReader: () => ({
+					read: jest.fn().mockImplementation(async () => {
+						readCount++;
+						if (readCount === 1) {
+							return {
+								done: false,
+								value: { type: 'text-delta', id: 't1', delta: 'partial answer' },
+							};
+						}
+						throw error;
+					}),
+					cancel: jest.fn(),
+					releaseLock: jest.fn(),
+				}),
+			} as unknown as ReadableStream;
+		}
+
 		async function collectChunks(
 			config: object,
 		): Promise<Array<{ type: string; [k: string]: unknown }>> {
@@ -1666,6 +1703,78 @@ describe('AgentsService', () => {
 			});
 
 			expect(chunks.every((c) => c.type !== 'text-delta')).toBe(true);
+		});
+
+		it('records the first user message when the stream is stopped after suspension', async () => {
+			const agentInstance = {
+				name: 'test',
+				stream: jest.fn().mockResolvedValue({
+					runId: 'run-1',
+					stream: makeStream([
+						{
+							type: 'tool-call-suspended',
+							toolCallId: 'tool-call-1',
+							toolName: 'approve',
+						},
+					]),
+				}),
+			};
+
+			const stream = (service as unknown as StreamChatResponse).streamChatResponse({
+				agentInstance,
+				toolRegistry: new Map(),
+				agentId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'user-1' },
+				projectId,
+			});
+
+			const first = await stream.next();
+			expect(first.value.type).toBe('tool-call-suspended');
+			await stream.return(undefined);
+
+			expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'thread-1',
+					userMessage: 'hello',
+					hitlStatus: 'suspended',
+				}),
+			);
+		});
+
+		it('records a failed execution when the stream reader errors before finish', async () => {
+			const streamError = new Error('reader failed while consuming stream');
+			const agentInstance = {
+				name: 'test',
+				stream: jest.fn().mockResolvedValue({
+					runId: 'run-1',
+					stream: makeFailingStream(streamError),
+				}),
+			};
+
+			await expect(
+				collectChunks({
+					agentInstance,
+					toolRegistry: new Map(),
+					agentId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'user-1' },
+					projectId,
+				}),
+			).rejects.toThrow('reader failed while consuming stream');
+
+			expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'thread-1',
+					agentId,
+					userMessage: 'hello',
+					record: expect.objectContaining({
+						assistantResponse: 'partial answer',
+						finishReason: 'error',
+						error: 'reader failed while consuming stream',
+					}),
+				}),
+			);
 		});
 	});
 	describe('executeForWorkflow', () => {

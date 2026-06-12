@@ -10,6 +10,7 @@ import {
 
 import {
 	applyOpenSuspensions,
+	buildDisplayGroups,
 	convertDbMessages,
 	rebuildInteractiveFromHistory,
 	isGroupable,
@@ -376,8 +377,7 @@ describe('isGroupable', () => {
 });
 
 describe('buildDisplayGroups — interactive payloads', () => {
-	it('collects interactive payloads from each grouped message into the toolRun group', async () => {
-		const { buildDisplayGroups } = await import('../composables/agentChatMessages');
+	it('collects interactive payloads from each grouped message into the toolRun group', () => {
 		const groups = buildDisplayGroups([
 			// First grouped turn: a resolved ask_llm card
 			{
@@ -432,6 +432,65 @@ describe('buildDisplayGroups — interactive payloads', () => {
 		expect(grouped.interactives[0].resolvedAt).toBeDefined();
 		expect(grouped.interactives[1].toolName).toBe(ASK_CREDENTIAL_TOOL_NAME);
 		expect(grouped.interactives[1].resolvedAt).toBeUndefined();
+	});
+
+	it('merges duplicate persisted tool calls by id and keeps the resolved one', () => {
+		const chat = convertDbMessages([
+			{
+				id: 'user-1',
+				role: 'user',
+				content: [{ type: 'text', text: 'Can you fetch this page?' }],
+			},
+			{
+				id: 'assistant-pending',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'notion_notion-fetch',
+						toolCallId: 'toolu_1',
+						input: { id: 'https://app.notion.com/p/example' },
+						startTime: 1_000,
+					},
+				],
+			},
+			{
+				id: 'assistant-resolved',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'notion_notion-fetch',
+						toolCallId: 'toolu_1',
+						state: 'resolved',
+						output: { content: [{ type: 'text', text: 'Page contents' }] },
+						startTime: 2_000,
+						endTime: 2_000,
+					},
+					{ type: 'text', text: 'Here is the page I fetched.' },
+				],
+			},
+		]);
+
+		const groups = buildDisplayGroups(chat);
+
+		expect(groups).toHaveLength(2);
+		const toolRun = groups[1];
+		expect(toolRun.kind).toBe('toolRun');
+		if (toolRun.kind !== 'toolRun') return;
+		expect(toolRun.toolCalls).toHaveLength(1);
+		expect(toolRun.toolCalls[0]).toEqual(
+			expect.objectContaining({
+				tool: 'notion_notion-fetch',
+				toolCallId: 'toolu_1',
+				state: 'done',
+				input: { id: 'https://app.notion.com/p/example' },
+				output: { content: [{ type: 'text', text: 'Page contents' }] },
+				startTime: 1_000,
+				endTime: 2_000,
+			}),
+		);
+		expect(toolRun.finalMessage?.content).toBe('Here is the page I fetched.');
 	});
 });
 

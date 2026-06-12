@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { ApplicationError, NodeApiError } from 'n8n-workflow';
+import { NodeApiError, UserError } from 'n8n-workflow';
 
 jest.mock('aws4', () => ({
 	sign: jest.fn(),
@@ -64,7 +64,7 @@ describe('AWS Transcribe Generic Functions', () => {
 			const { context, helpers } = buildContext(region);
 
 			await expect(awsApiRequest.call(context, 'transcribe', 'POST', '/')).rejects.toThrow(
-				ApplicationError,
+				UserError,
 			);
 			await expect(awsApiRequest.call(context, 'transcribe', 'POST', '/')).rejects.toThrow(
 				'Unsupported AWS region',
@@ -133,7 +133,7 @@ describe('AWS Transcribe Generic Functions', () => {
 		});
 
 		it('wraps an assumeRole failure in a NodeApiError without signing or sending', async () => {
-			mockAssumeRole.mockRejectedValue(new ApplicationError('STS failure'));
+			mockAssumeRole.mockRejectedValue(new UserError('STS failure'));
 
 			const assumeRoleCredentials = {
 				region: 'us-east-1',
