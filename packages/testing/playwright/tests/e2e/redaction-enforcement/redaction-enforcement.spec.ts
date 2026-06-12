@@ -24,10 +24,13 @@ interface ExecutionRef {
 async function runProductionExecution(
 	api: ApiHelpers,
 	settings?: Partial<IWorkflowBase['settings']>,
+	projectId?: string,
 ): Promise<ExecutionRef> {
 	const secret = uniqueSecret();
 	const { workflowId, webhookPath, createdWorkflow } =
-		await api.workflows.createWorkflowFromDefinition(webhookWorkflow({ secret, settings }));
+		await api.workflows.createWorkflowFromDefinition(webhookWorkflow({ secret, settings }), {
+			projectId,
+		});
 
 	await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 	await api.webhooks.trigger(`/webhook/${webhookPath}`, { maxNotFoundRetries: 5 });
@@ -68,7 +71,6 @@ test.describe(
 		test.beforeEach(async ({ api }) => {
 			await api.enableFeature('personalSpacePolicy');
 			await api.enableFeature('dataRedaction');
-			// Reset the instance-global floor to a known-clean value before each test.
 			await api.securitySettings.setRedactionFloor('off');
 		});
 
@@ -94,17 +96,79 @@ test.describe(
 			expect(await n8n.api.securitySettings.getRedactionFloor()).toBe('all');
 		});
 
-		test('rejects redaction floor changes from a non-admin member', async ({ api }) => {
-			const member = await api.publicApi.createUser({
-				email: `member-${nanoid()}@test.com`,
-				firstName: 'Red',
-				lastName: 'Action',
-				role: 'global:member',
-			});
-			const memberApi = await api.createApiForUser(member);
+		test.describe('authorization', () => {
+			test('rejects redaction floor changes from a non-admin member', async ({ api }) => {
+				const member = await api.publicApi.createUser({
+					email: `member-${nanoid()}@test.com`,
+					firstName: 'Red',
+					lastName: 'Action',
+					role: 'global:member',
+				});
+				const memberApi = await api.createApiForUser(member);
 
-			const response = await memberApi.securitySettings.setRedactionFloorRaw('production');
-			expect(response.status()).toBe(403);
+				const response = await memberApi.securitySettings.setRedactionFloorRaw('production');
+				expect(response.status()).toBe(403);
+			});
+
+			test('shows the no-permission notice when a member without the reveal scope opens redacted data', async ({
+				api,
+				n8n,
+			}) => {
+				await api.enableProjectFeatures();
+				await api.securitySettings.setRedactionFloor('all');
+
+				// A project editor lacks execution:reveal
+				const project = await api.projects.createProject(`Redaction Team ${nanoid()}`);
+				const execution = await runProductionExecution(api, undefined, project.id);
+
+				const member = await api.publicApi.createUser({
+					email: `member-${nanoid()}@test.com`,
+					firstName: 'Red',
+					lastName: 'Action',
+					role: 'global:member',
+				});
+				await api.projects.addUserToProject(project.id, member.id, 'project:editor');
+
+				const memberN8n = await n8n.start.withUser(member);
+				const output = await openExecutionOutput(memberN8n, execution);
+				await expect(output).toHaveText(/Output data redacted/);
+				await expect(output).toContainText('You do not have the permissions to reveal it');
+			});
+
+			test('prevents members without the enable-redaction scope from setting redaction', async ({
+				api,
+				n8n,
+			}) => {
+				await api.enableProjectFeatures();
+
+				// A project editor lacks workflow:enableRedaction
+				const project = await api.projects.createProject(`Redaction Team ${nanoid()}`);
+				const member = await api.publicApi.createUser({
+					email: `member-${nanoid()}@test.com`,
+					firstName: 'Red',
+					lastName: 'Action',
+					role: 'global:member',
+				});
+				await api.projects.addUserToProject(project.id, member.id, 'project:editor');
+
+				const memberApi = await api.createApiForUser(member);
+				const created = await memberApi.workflows.createWorkflow(
+					webhookWorkflow({ settings: { redactionPolicy: 'all' } }),
+					project.id,
+				);
+				const saved = await memberApi.workflows.getWorkflow(created.id);
+				expect(saved.settings?.redactionPolicy).toBeUndefined();
+
+				const memberN8n = await n8n.start.withUser(member);
+				await memberN8n.navigate.toWorkflow(created.id);
+				await memberN8n.workflowSettingsModal.open();
+				await expect(memberN8n.workflowSettingsModal.getRedactProductionInput()).toBeDisabled();
+
+				await memberN8n.workflowSettingsModal.hoverRedactProductionSelect();
+				await expect(memberN8n.workflowSettingsModal.getTooltip()).toHaveText(
+					/You don't have permission to change data redaction settings./,
+				);
+			});
 		});
 
 		test.describe('when floor is "production"', () => {

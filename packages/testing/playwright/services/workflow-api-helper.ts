@@ -26,8 +26,10 @@ type WorkflowImportResult = {
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
-	async createWorkflow(workflow: Partial<IWorkflowBase>) {
-		const response = await this.api.request.post('/rest/workflows', { data: workflow });
+	async createWorkflow(workflow: Partial<IWorkflowBase>, projectId?: string) {
+		const response = await this.api.request.post('/rest/workflows', {
+			data: projectId ? { ...workflow, projectId } : workflow,
+		});
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to create workflow: ${await response.text()}`);
@@ -280,13 +282,18 @@ export class WorkflowApiHelper {
 	/** Creates a workflow from definition, making it unique for testing. */
 	async createWorkflowFromDefinition(
 		workflow: Partial<IWorkflowBase>,
-		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+		options?: {
+			webhookPrefix?: string;
+			idLength?: number;
+			makeUnique?: boolean;
+			projectId?: string;
+		},
 	): Promise<WorkflowImportResult> {
-		const { makeUnique = true, ...rest } = options ?? {};
+		const { makeUnique = true, projectId, ...rest } = options ?? {};
 		const { webhookPath, webhookId, webhookMethod } = makeUnique
 			? this.makeWorkflowUnique(workflow, rest)
 			: { webhookPath: undefined, webhookId: undefined, webhookMethod: undefined };
-		const createdWorkflow = await this.createWorkflow(workflow);
+		const createdWorkflow = await this.createWorkflow(workflow, projectId);
 		const workflowId: string = String(createdWorkflow.id);
 
 		return {
