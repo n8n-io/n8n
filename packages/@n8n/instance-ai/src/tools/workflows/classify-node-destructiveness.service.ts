@@ -20,7 +20,8 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
 import { isTriggerNodeType } from './workflow-json-utils';
-import { createEvalAgent, extractText, HAIKU_MODEL } from '../../utils/eval-agents';
+import { HAIKU_MODEL } from '../../utils/eval-agents';
+import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
 
 type WorkflowNode = WorkflowJSON['nodes'][number];
@@ -386,12 +387,6 @@ function formatNodeBlock(node: WorkflowNode & { name: string }): string {
 	return [`Node name: ${node.name}`, `Node type: ${node.type}`, `Parameters: ${params}`].join('\n');
 }
 
-function stripMarkdownFences(text: string): string {
-	const trimmed = text.trim();
-	const fencedMatch = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
-	return fencedMatch ? fencedMatch[1].trim() : trimmed;
-}
-
 async function classifyAmbiguousNodes(
 	nodes: Array<WorkflowNode & { name: string }>,
 ): Promise<NodeSimulationVerdict[]> {
@@ -403,21 +398,13 @@ async function classifyAmbiguousNodes(
 		`Output a single JSON object with exactly these keys: ${nodes.map((n) => `"${n.name}"`).join(', ')}.`,
 	].join('\n');
 
-	let parsed: z.infer<typeof LlmVerdictSchema> | undefined;
-	try {
-		const llm = createEvalAgent('verification-destructiveness-classifier', {
-			model: HAIKU_MODEL,
-			instructions: SYSTEM_INSTRUCTIONS,
-		});
-		const result = await llm.generate([
-			{ role: 'user' as const, content: [{ type: 'text' as const, text: userText }] },
-		]);
-		const raw: unknown = JSON.parse(stripMarkdownFences(extractText(result)));
-		const validated = LlmVerdictSchema.safeParse(raw);
-		if (validated.success) parsed = validated.data;
-	} catch {
-		// fall through to per-node fallback below
-	}
+	const result = await generateValidatedJson('verification-destructiveness-classifier', {
+		model: HAIKU_MODEL,
+		instructions: SYSTEM_INSTRUCTIONS,
+		userText,
+		schema: LlmVerdictSchema,
+	});
+	const parsed = result.ok ? result.data : undefined;
 
 	return nodes.map((node) => {
 		const entry = parsed?.[node.name];

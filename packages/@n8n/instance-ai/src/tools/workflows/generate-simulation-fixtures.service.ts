@@ -15,7 +15,8 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
-import { createEvalAgent, extractText, HAIKU_MODEL } from '../../utils/eval-agents';
+import { HAIKU_MODEL } from '../../utils/eval-agents';
+import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
 
 /**
@@ -124,12 +125,6 @@ function buildUpstreamContext(
 	return ['Immediate upstream nodes (this node passes their data through):', ...lines].join('\n');
 }
 
-function stripMarkdownFences(text: string): string {
-	const trimmed = text.trim();
-	const fencedMatch = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
-	return fencedMatch ? fencedMatch[1].trim() : trimmed;
-}
-
 function emptyFixtures(nodeNames: string[]): SimulationFixtures {
 	return Object.fromEntries(nodeNames.map((name) => [name, [{}]]));
 }
@@ -175,24 +170,17 @@ export async function generateSimulationFixtures(
 		'Each value: an array with one item shaped like { "json": { ...fields } }.',
 	].join('\n');
 
-	try {
-		const llm = createEvalAgent('verification-simulation-fixtures', {
-			model: HAIKU_MODEL,
-			instructions: SYSTEM_INSTRUCTIONS,
-		});
-		const result = await llm.generate([
-			{ role: 'user' as const, content: [{ type: 'text' as const, text: userText }] },
-		]);
-		const parsed: unknown = JSON.parse(stripMarkdownFences(extractText(result)));
-		const validated = FixturesResponseSchema.safeParse(parsed);
-		if (!validated.success) return emptyFixtures(nodeNames);
+	const result = await generateValidatedJson('verification-simulation-fixtures', {
+		model: HAIKU_MODEL,
+		instructions: SYSTEM_INSTRUCTIONS,
+		userText,
+		schema: FixturesResponseSchema,
+	});
+	if (!result.ok) return emptyFixtures(nodeNames);
 
-		const fixtures: SimulationFixtures = {};
-		for (const name of nodeNames) {
-			fixtures[name] = validated.data[name]?.map((item) => item.json) ?? [{}];
-		}
-		return fixtures;
-	} catch {
-		return emptyFixtures(nodeNames);
+	const fixtures: SimulationFixtures = {};
+	for (const name of nodeNames) {
+		fixtures[name] = result.data[name]?.map((item) => item.json) ?? [{}];
 	}
+	return fixtures;
 }
