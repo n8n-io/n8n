@@ -785,27 +785,6 @@ function commit() {
 				</AgentToolsSection>
 
 				<AgentToolsSection
-					v-if="filteredAvailableWorkflows.length > 0"
-					v-model="isAvailableWorkflowsSectionExpanded"
-					:title="
-						i18n.baseText('agents.tools.availableWorkflows', {
-							interpolate: { count: filteredAvailableWorkflows.length },
-						})
-					"
-					list-test-id="agent-tools-available-workflows-list"
-				>
-					<WorkflowToolRow
-						v-for="workflow in filteredAvailableWorkflows"
-						:key="workflow.id"
-						mode="available"
-						:name="workflow.name"
-						:description="workflow.description"
-						row-test-id="agent-tools-available-workflow-row"
-						@add="handleAddWorkflow(workflow)"
-					/>
-				</AgentToolsSection>
-
-				<AgentToolsSection
 					v-if="filteredAvailableAiTools.length > 0"
 					v-model="isAvailableAiToolsSectionExpanded"
 					:title="
@@ -862,6 +841,27 @@ function commit() {
 						mode="available"
 						:class="$style.toolsListItem"
 						@add="handleAddTool(nodeType)"
+					/>
+				</AgentToolsSection>
+
+				<AgentToolsSection
+					v-if="filteredAvailableWorkflows.length > 0"
+					v-model="isAvailableWorkflowsSectionExpanded"
+					:title="
+						i18n.baseText('agents.tools.availableWorkflows', {
+							interpolate: { count: filteredAvailableWorkflows.length },
+						})
+					"
+					list-test-id="agent-tools-available-workflows-list"
+				>
+					<WorkflowToolRow
+						v-for="workflow in filteredAvailableWorkflows"
+						:key="workflow.id"
+						mode="available"
+						:name="workflow.name"
+						:description="workflow.description"
+						row-test-id="agent-tools-available-workflow-row"
+						@add="handleAddWorkflow(workflow)"
 					/>
 				</AgentToolsSection>
 
