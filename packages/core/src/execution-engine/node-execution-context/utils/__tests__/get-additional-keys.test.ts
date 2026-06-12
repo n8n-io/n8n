@@ -162,4 +162,52 @@ describe('getAdditionalKeys', () => {
 		const allData = customData?.getAll() ?? {};
 		expect(Object.keys(allData)).toHaveLength(10);
 	});
+
+	it('should handle undefined webhookWaitingBaseUrl gracefully', () => {
+		const dataWithoutWebhookUrl = mock<IWorkflowExecuteAdditionalData>({
+			executionId: '123',
+			webhookWaitingBaseUrl: undefined,
+			formWaitingBaseUrl: 'https://form.test',
+			variables: {},
+			externalSecretsProxy,
+		});
+		const result = getAdditionalKeys(dataWithoutWebhookUrl, 'manual', null);
+
+		// Should not crash and should return empty string for resumeUrl
+		expect(result.$execution?.resumeUrl).toBe('');
+		expect(result.$execution?.resumeFormUrl).toBe('https://form.test/123');
+		expect(result.$resumeWebhookUrl).toBe('');
+	});
+
+	it('should handle undefined formWaitingBaseUrl gracefully', () => {
+		const dataWithoutFormUrl = mock<IWorkflowExecuteAdditionalData>({
+			executionId: '123',
+			webhookWaitingBaseUrl: 'https://webhook.test',
+			formWaitingBaseUrl: undefined,
+			variables: {},
+			externalSecretsProxy,
+		});
+		const result = getAdditionalKeys(dataWithoutFormUrl, 'manual', null);
+
+		// Should not crash and should return empty string for resumeFormUrl
+		expect(result.$execution?.resumeUrl).toBe('https://webhook.test/123');
+		expect(result.$execution?.resumeFormUrl).toBe('');
+		expect(result.$resumeWebhookUrl).toBe('https://webhook.test/123');
+	});
+
+	it('should handle both webhookWaitingBaseUrl and formWaitingBaseUrl undefined gracefully', () => {
+		const dataWithoutUrls = mock<IWorkflowExecuteAdditionalData>({
+			executionId: '123',
+			webhookWaitingBaseUrl: undefined,
+			formWaitingBaseUrl: undefined,
+			variables: {},
+			externalSecretsProxy,
+		});
+		const result = getAdditionalKeys(dataWithoutUrls, 'manual', null);
+
+		// Should not crash and should return empty strings
+		expect(result.$execution?.resumeUrl).toBe('');
+		expect(result.$execution?.resumeFormUrl).toBe('');
+		expect(result.$resumeWebhookUrl).toBe('');
+	});
 });
