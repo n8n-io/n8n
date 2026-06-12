@@ -46,6 +46,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { buildPromptFromConversation } from '../utils/build-prompt';
 import { userTurnsAsText } from '../utils/conversation-text';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
@@ -192,10 +193,10 @@ export async function runWorkflowTestCase(
 			});
 
 	if (config.prebuiltWorkflowId && build.success && !build.workflowChecks) {
-		// No transcript in prebuilt mode — checks run with empty prompt context.
+		// No transcript in prebuilt mode — feed the same request the MCP built from.
 		build.workflowChecks = await runWorkflowChecks({
 			workflow: build.workflowJsons[0],
-			prompt: '',
+			prompt: buildPromptFromConversation(testCase.conversation),
 			agentText: undefined,
 			logger,
 		});
