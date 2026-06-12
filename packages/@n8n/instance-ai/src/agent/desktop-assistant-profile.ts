@@ -76,13 +76,18 @@ ${FIRE_AND_FORGET_RULES} One exception in this mode: step 2 of the procedure req
 
 This thread contains a task you already executed via device (computer-use) tool calls. Build exactly one workflow (via the workflow-builder skill) that fulfils the user's request every time it runs — **the request, not the artifacts of this particular run**. Follow these steps in order:
 
-1. **Classify before building.** Look at every value in the recorded tool arguments and ask where it came from. Values the user specified (or that follow mechanically from the request) are safe to replay literally. Content **you authored** because the request only named a *kind* of content is not — a future run must generate it fresh. If **any** value must be generated fresh, the whole task classifies as \`generate-fresh\`.
-2. **Output your verdict** as a single line of text immediately before building — \`replay: exact\` or \`replay: generate-fresh\`, plus a one-clause reason.
+1. **Classify before building.** For every value in the recorded tool arguments, ask where it came from:
+   - **From the request** — the user specified it, or it follows mechanically from the request (e.g. a folder name or a path they named). Safe to replay literally.
+   - **Discovered at run time** — read out of the current system state during the run: a directory listing, search result, file read, or what was on screen, where an earlier call produced the value and later calls consumed it. These differ on every run; the recorded values are a snapshot, not a script. Tell-tale signal: a read/list/search call (\`get_file_tree\`, \`list_files\`, \`search_files\`, \`read_file\`, a screenshot) whose output drives the arguments of the calls after it.
+   - **Authored by you** — the request named only a *kind* of content, so you wrote the content itself; a future run must generate it fresh.
+
+   If **every** value is from the request, the task is \`exact\`. If **any** value was discovered at run time **or** authored by you, the task is \`dynamic\` — a fixed list of the recorded calls cannot reproduce the request, so the workflow has to decide at run time.
+2. **Output your verdict** as a single line of text immediately before building — \`replay: exact\` or \`replay: dynamic\`, plus a one-clause reason.
 3. **Build the matching shape:**
    - \`replay: exact\` → Manual Trigger → one \`@n8n/n8n-nodes-langchain.computerUse\` node per recorded call, in order — \`tool\` resourceLocator (mode \`id\`) set to the tool name that was called, \`inputMode: json\`, \`jsonInput\` set to the literal arguments used.
-   - \`replay: generate-fresh\` → Manual Trigger → AI Agent node (prompted with the user's task) with \`@n8n/n8n-nodes-langchain.toolComputerUse\` attached as its tool, plus a chat model sub-node. Bind the chat model's credential per the credential rule below.
+   - \`replay: dynamic\` → Manual Trigger → AI Agent node (prompted with the user's task, and told to inspect the current state — list/search/read as needed — and act on whatever it finds) with \`@n8n/n8n-nodes-langchain.toolComputerUse\` attached as its tool, plus a chat model sub-node. Bind the chat model's credential per the credential rule below.
 
-Examples of the classification: "create a folder called Receipts on my desktop" — fully specified by the request; \`replay: exact\`. "Add an inspiring quote to my notes" — the request names a *kind* of content, not the content itself; \`replay: generate-fresh\`. "Write me a short bio and save it" — authored once as a fixed artifact the user keeps; \`replay: exact\` is fine.
+Examples of the classification: "create a folder called Receipts on my desktop" — fully specified by the request; \`replay: exact\`. "Organize the files on my desktop into subfolders by type" — the run listed the desktop and moved whichever files were there, but a future run faces different files; \`replay: dynamic\`. "Add an inspiring quote to my notes" — the request names a *kind* of content, not the content itself; \`replay: dynamic\`. "Write me a short bio and save it" — authored once as a fixed artifact the user keeps; \`replay: exact\` is fine.
 
 Additional rules:
 

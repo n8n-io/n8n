@@ -87,7 +87,7 @@ function isTextPart(part: unknown): part is { type: 'text'; text: string } {
 export function composePromoteMessage(originalPrompt: string, name: string | undefined): string {
 	const trimmedName = name?.trim();
 	const naming = trimmedName ? ` Name it "${trimmedName}".` : '';
-	return `Turn the task from this thread into a repeatable workflow. Decide first, from the original request below: must a future run reproduce the recorded results exactly, or generate content fresh? The recorded tool calls show what was done, not necessarily what should be replayed literally.${naming} The original request:\n\n${originalPrompt}`;
+	return `Turn the task from this thread into a repeatable workflow. Decide first, from the original request below: can a fixed list of the recorded steps reproduce the request on every future run, or must the workflow inspect the current state (what files/items are there now) or generate content fresh each time? The recorded tool calls are a snapshot of one run, not necessarily a script to replay literally.${naming} The original request:\n\n${originalPrompt}`;
 }
 
 // ── Recommendations ──────────────────────────────────────────────────────────
