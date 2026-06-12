@@ -2,10 +2,23 @@
 
 @mixin canvas-node-border-defaults {
 	--canvas-node--border-width: 1.5px;
-	--canvas-node--border-color: light-dark(
-		oklch(from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity-light, 0.1)),
-		oklch(from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity-dark, 0.15))
-	);
+}
+
+// The color default must stay a var() fallback — defining it on the element
+// would mask --canvas-node--border-color set by ancestors (e.g. diff views).
+@mixin canvas-node-border($line-style: solid) {
+	border: var(--canvas-node--border-width) $line-style
+		var(
+			--canvas-node--border-color,
+			light-dark(
+				oklch(
+					from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity-light, 0.1)
+				),
+				oklch(
+					from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity-dark, 0.15)
+				)
+			)
+		);
 }
 
 @mixin canvas-node-selected-ring {

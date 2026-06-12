@@ -242,7 +242,7 @@ function onActivate(event: MouseEvent) {
 	justify-content: center;
 	background: var(--canvas-node--color--background, var(--node--color--background));
 	background-clip: padding-box;
-	border: var(--canvas-node--border-width) solid var(--canvas-node--border-color);
+	@include styles.canvas-node-border;
 	border-radius: var(--radius--lg);
 
 	&.trigger {

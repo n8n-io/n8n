@@ -272,7 +272,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	height: 100%;
 	background: var(--background--surface);
 	background-clip: padding-box;
-	border: var(--canvas-node--border-width) solid var(--canvas-node--border-color);
+	@include styles.canvas-node-border;
 	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	box-sizing: border-box;
 	.wrapper.collapsed & {
@@ -380,7 +380,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	left: 0;
 	width: 100%;
 	background: transparent;
-	border: var(--canvas-node--border-width, 1.5px) dashed var(--canvas-node--border-color);
+	@include styles.canvas-node-border(dashed);
 	border-top: none;
 	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
 	pointer-events: none;
