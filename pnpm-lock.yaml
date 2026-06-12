@@ -207,6 +207,9 @@ catalogs:
     '@types/mime-types':
       specifier: 3.0.1
       version: 3.0.1
+    '@types/proxy-from-env':
+      specifier: ^1.0.4
+      version: 1.0.4
     '@types/uuid':
       specifier: ^11.0.0
       version: 11.0.0
@@ -327,6 +330,9 @@ catalogs:
     posthog-node:
       specifier: 5.33.4
       version: 5.33.4
+    proxy-from-env:
+      specifier: ^1.1.0
+      version: 1.1.0
     reflect-metadata:
       specifier: 0.2.2
       version: 0.2.2
@@ -539,7 +545,7 @@ overrides:
   glob@7: 7.2.3
   jws@3: 3.2.2
   jws@4: 4.0.1
-  qs@6: 6.15.2
+  qs: 6.15.2
   '@smithy/config-resolver': '>=4.4.0'
   '@rudderstack/rudder-sdk-node@<=3.0.0': 3.0.0
   diff: 8.0.3
@@ -889,7 +895,7 @@ importers:
         specifier: 2.4.5
         version: 2.4.5
       proxy-from-env:
-        specifier: ^1.1.0
+        specifier: 'catalog:'
         version: 1.1.0
       tmp-promise:
         specifier: 3.0.3
@@ -1150,12 +1156,33 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      axios:
+        specifier: 1.16.1
+        version: 1.16.1(debug@4.4.3)
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
+      form-data:
+        specifier: 4.0.4
+        version: 4.0.4
+      http-proxy-agent:
+        specifier: 'catalog:'
+        version: 7.0.2
+      https-proxy-agent:
+        specifier: 'catalog:'
+        version: 7.0.6
+      iconv-lite:
+        specifier: 'catalog:'
+        version: 0.6.3
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      proxy-from-env:
+        specifier: 'catalog:'
+        version: 1.1.0
+      qs:
+        specifier: 6.15.2
+        version: 6.15.2
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
@@ -1169,9 +1196,15 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/proxy-from-env':
+        specifier: 'catalog:'
+        version: 1.0.4
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
+      nock:
+        specifier: ^14.0.14
+        version: 14.0.14
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1620,6 +1653,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@testcontainers/postgresql':
+        specifier: 'catalog:'
+        version: 11.13.0
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
@@ -3609,9 +3645,6 @@ importers:
       axios:
         specifier: 1.16.1
         version: 1.16.1(debug@4.4.3)
-      cache-manager:
-        specifier: 'catalog:'
-        version: 5.2.3
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -3633,15 +3666,6 @@ importers:
       htmlparser2:
         specifier: ^10.0.0
         version: 10.0.0
-      http-proxy-agent:
-        specifier: 'catalog:'
-        version: 7.0.2
-      https-proxy-agent:
-        specifier: 'catalog:'
-        version: 7.0.6
-      iconv-lite:
-        specifier: 'catalog:'
-        version: 0.6.3
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.3
@@ -3672,12 +3696,6 @@ importers:
       pretty-bytes:
         specifier: 5.6.0
         version: 5.6.0
-      proxy-from-env:
-        specifier: ^1.1.0
-        version: 1.1.0
-      qs:
-        specifier: 6.15.2
-        version: 6.15.2
       ssh2:
         specifier: 1.15.0
         version: 1.15.0
@@ -3715,9 +3733,6 @@ importers:
       '@types/mime-types':
         specifier: 'catalog:'
         version: 3.0.1
-      '@types/proxy-from-env':
-        specifier: ^1.0.4
-        version: 1.0.4
       '@types/uuid':
         specifier: 'catalog:'
         version: 11.0.0
@@ -4789,6 +4804,9 @@ importers:
       '@mozilla/readability':
         specifier: 0.6.0
         version: 0.6.0
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../@n8n/backend-network
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
@@ -4954,9 +4972,6 @@ importers:
       promise-ftp:
         specifier: 1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
-      proxy-from-env:
-        specifier: ^1.1.0
-        version: 1.1.0
       redis:
         specifier: 4.6.14
         version: 4.6.14
@@ -5015,9 +5030,6 @@ importers:
         specifier: 3.1.0
         version: 3.1.0
     devDependencies:
-      '@n8n/backend-network':
-        specifier: workspace:*
-        version: link:../@n8n/backend-network
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2

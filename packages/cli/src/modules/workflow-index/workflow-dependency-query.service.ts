@@ -87,42 +87,65 @@ export class WorkflowDependencyQueryService {
 			this.filterByAccess([...maps.allDtIds], 'dataTable', user),
 		]);
 
-		// Only enrich names for accessible resources
+		// Load all referenced resources (not just accessible ones) so that ids whose
+		// resource has been deleted — the index may still reference them — can be
+		// dropped instead of being reported as inaccessible.
 		const [credentials, workflows, dataTables] = await Promise.all([
-			accessibleCredIds.length > 0
+			maps.allCredIds.size > 0
 				? this.credentialsRepository.find({
-						where: { id: In(accessibleCredIds) },
+						where: { id: In([...maps.allCredIds]) },
 						select: ['id', 'name'],
 					})
 				: [],
-			accessibleWfIds.length > 0
+			maps.allWfIds.size > 0
 				? this.workflowRepository.find({
-						where: { id: In(accessibleWfIds) },
+						where: { id: In([...maps.allWfIds]) },
 						select: ['id', 'name'],
 					})
 				: [],
-			accessibleDtIds.length > 0
+			maps.allDtIds.size > 0
 				? this.dataTableRepository.find({
-						where: { id: In(accessibleDtIds) },
+						where: { id: In([...maps.allDtIds]) },
 						select: ['id', 'name', 'projectId'],
 					})
 				: [],
 		]);
 
+		const accessibleWfIdSet = new Set(accessibleWfIds);
+		const accessibleCredIdSet = new Set(accessibleCredIds);
+		const accessibleDtIdSet = new Set(accessibleDtIds);
+
 		const wfNames = new Map<string, string>();
 		const credNames = new Map<string, string>();
 		const dtNames = new Map<string, { name: string; projectId: string }>();
+		const existingWfIds = new Set<string>();
+		const existingCredIds = new Set<string>();
+		const existingDtIds = new Set<string>();
 
-		for (const c of credentials) credNames.set(c.id, c.name ?? c.id);
-		for (const w of workflows) wfNames.set(w.id, w.name ?? w.id);
-		for (const dt of dataTables)
-			dtNames.set(dt.id, { name: dt.name ?? dt.id, projectId: dt.projectId });
+		for (const c of credentials) {
+			existingCredIds.add(c.id);
+			if (accessibleCredIdSet.has(c.id)) credNames.set(c.id, c.name ?? c.id);
+		}
+		for (const w of workflows) {
+			existingWfIds.add(w.id);
+			if (accessibleWfIdSet.has(w.id)) wfNames.set(w.id, w.name ?? w.id);
+		}
+		for (const dt of dataTables) {
+			existingDtIds.add(dt.id);
+			if (accessibleDtIdSet.has(dt.id))
+				dtNames.set(dt.id, { name: dt.name ?? dt.id, projectId: dt.projectId });
+		}
 
-		return this.buildEnrichedResult(accessibleInputIds, maps, {
-			wfNames,
-			credNames,
-			dtNames,
-		});
+		return this.buildEnrichedResult(
+			accessibleInputIds,
+			maps,
+			{
+				wfNames,
+				credNames,
+				dtNames,
+			},
+			{ existingWfIds, existingCredIds, existingDtIds },
+		);
 	}
 
 	private async loadDepsForResources(
@@ -201,7 +224,10 @@ export class WorkflowDependencyQueryService {
 		};
 	}
 
-	/** Build enriched result — only includes accessible deps, counts inaccessible ones. */
+	/**
+	 * Build enriched result — only includes accessible deps, counts existing but
+	 * inaccessible ones, and drops ids whose resource no longer exists.
+	 */
 	private buildEnrichedResult(
 		resourceIds: string[],
 		maps: RawDepMaps,
@@ -209,6 +235,11 @@ export class WorkflowDependencyQueryService {
 			wfNames: Map<string, string>;
 			credNames: Map<string, string>;
 			dtNames: Map<string, { name: string; projectId: string }>;
+		},
+		existing: {
+			existingWfIds: Set<string>;
+			existingCredIds: Set<string>;
+			existingDtIds: Set<string>;
 		},
 	): DependenciesBatchResponse {
 		const result: DependenciesBatchResponse = {};
@@ -220,9 +251,11 @@ export class WorkflowDependencyQueryService {
 			const resolve = (
 				ids: Set<string> | undefined,
 				nameMap: Map<string, string>,
+				existingIds: Set<string>,
 				type: ResolvedDependency['type'],
 			) => {
 				for (const id of ids ?? []) {
+					if (!existingIds.has(id)) continue;
 					const name = nameMap.get(id);
 					if (name !== undefined) {
 						dependencies.push({ id, name, type });
@@ -232,13 +265,39 @@ export class WorkflowDependencyQueryService {
 				}
 			};
 
-			resolve(maps.subMap.get(resourceId), accessMaps.wfNames, 'workflowCall');
-			resolve(maps.parentMap.get(resourceId), accessMaps.wfNames, 'workflowParent');
-			resolve(maps.errorWfMap.get(resourceId), accessMaps.wfNames, 'errorWorkflow');
-			resolve(maps.errorWfParentMap.get(resourceId), accessMaps.wfNames, 'errorWorkflowParent');
-			resolve(maps.credMap.get(resourceId), accessMaps.credNames, 'credentialId');
+			resolve(
+				maps.subMap.get(resourceId),
+				accessMaps.wfNames,
+				existing.existingWfIds,
+				'workflowCall',
+			);
+			resolve(
+				maps.parentMap.get(resourceId),
+				accessMaps.wfNames,
+				existing.existingWfIds,
+				'workflowParent',
+			);
+			resolve(
+				maps.errorWfMap.get(resourceId),
+				accessMaps.wfNames,
+				existing.existingWfIds,
+				'errorWorkflow',
+			);
+			resolve(
+				maps.errorWfParentMap.get(resourceId),
+				accessMaps.wfNames,
+				existing.existingWfIds,
+				'errorWorkflowParent',
+			);
+			resolve(
+				maps.credMap.get(resourceId),
+				accessMaps.credNames,
+				existing.existingCredIds,
+				'credentialId',
+			);
 
 			for (const id of maps.dtMap.get(resourceId) ?? []) {
+				if (!existing.existingDtIds.has(id)) continue;
 				const dt = accessMaps.dtNames.get(id);
 				if (dt) {
 					dependencies.push({ id, name: dt.name, type: 'dataTableId', projectId: dt.projectId });
