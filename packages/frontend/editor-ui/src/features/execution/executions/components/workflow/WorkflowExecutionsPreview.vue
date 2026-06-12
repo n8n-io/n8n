@@ -9,6 +9,8 @@ import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
+import { useClipboard } from '@/app/composables/useClipboard';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
@@ -39,12 +41,14 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const locale = useI18n();
-const { showError } = useToast();
+const { showError, showMessage } = useToast();
+const clipboard = useClipboard();
 
 const executionHelpers = useExecutionHelpers();
 const message = useMessage();
 const executionDebugging = useExecutionDebugging();
 const workflowsListStore = useWorkflowsListStore();
+const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
 const workflowId = useInjectWorkflowId();
@@ -204,6 +208,25 @@ function onRetryButtonBlur(event: FocusEvent) {
 	// Hide dropdown when clicking outside of current document
 	if (retryDropdownRef.value && event.relatedTarget === null) {
 		retryDropdownRef.value.handleClose();
+	}
+}
+
+async function onCopyExecutionData() {
+	if (!props.execution) {
+		return;
+	}
+	try {
+		const execution = await workflowsStore.getExecution(props.execution.id);
+		if (!execution) {
+			return;
+		}
+		await clipboard.copy(JSON.stringify(execution, null, 2));
+		showMessage({
+			title: locale.baseText('generic.copiedToClipboard'),
+			type: 'success',
+		});
+	} catch (error) {
+		showError(error, locale.baseText('generic.copiedToClipboard'));
 	}
 }
 
@@ -373,6 +396,16 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						</span>
 					</N8nButton>
 				</RouterLink>
+
+				<N8nIconButton
+					v-if="settingsStore.isDevRelease"
+					variant="subtle"
+					size="medium"
+					icon="clipboard"
+					:title="locale.baseText('executionsList.debug.button.copyExecutionData')"
+					data-test-id="execution-preview-copy-data-button"
+					@click="onCopyExecutionData"
+				/>
 
 				<ElDropdown
 					v-if="isRetriable"

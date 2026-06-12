@@ -8,7 +8,9 @@ import WorkflowExecutionsPreview from './WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import type { IExecutionResponse } from '../../executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionSummaryWithScopes } from '../../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -24,6 +26,11 @@ const showError = vi.fn();
 const showToast = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError, showToast }),
+}));
+
+const copyMock = vi.fn();
+vi.mock('@/app/composables/useClipboard', () => ({
+	useClipboard: () => ({ copy: copyMock }),
 }));
 
 const routes = [
@@ -325,6 +332,99 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		// Should not show annotation-related elements
 		expect(queryByTestId('annotation-tags-container')).not.toBeInTheDocument();
 		expect(queryByTestId('execution-preview-ellipsis-button')).not.toBeInTheDocument();
+	});
+
+	describe('copy execution data button', () => {
+		beforeEach(() => {
+			copyMock.mockClear();
+			showMessage.mockClear();
+			showError.mockClear();
+		});
+
+		it('should not show button when release channel is not dev', async () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings.releaseChannel = 'stable';
+
+			const { queryByTestId } = renderComponent({
+				props: { execution: executionData },
+			});
+
+			await nextTick();
+
+			expect(queryByTestId('execution-preview-copy-data-button')).not.toBeInTheDocument();
+		});
+
+		it('should show button when release channel is dev', async () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings.releaseChannel = 'dev';
+
+			const { getByTestId } = renderComponent({
+				props: { execution: executionData },
+			});
+
+			await nextTick();
+
+			expect(getByTestId('execution-preview-copy-data-button')).toBeInTheDocument();
+		});
+
+		it('should copy execution data as JSON and show success toast on click', async () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings.releaseChannel = 'dev';
+
+			const fullExecution = {
+				id: executionData.id,
+				data: { resultData: { runData: { Node: [] } } },
+			} as unknown as IExecutionResponse;
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.getExecution.mockResolvedValueOnce(fullExecution);
+
+			const { getByTestId } = renderComponent({
+				props: { execution: executionData },
+			});
+
+			await userEvent.click(getByTestId('execution-preview-copy-data-button'));
+
+			expect(workflowsStore.getExecution).toHaveBeenCalledWith(executionData.id);
+			expect(copyMock).toHaveBeenCalledWith(JSON.stringify(fullExecution, null, 2));
+			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('should not copy or toast when getExecution returns undefined', async () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings.releaseChannel = 'dev';
+
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.getExecution.mockResolvedValueOnce(undefined);
+
+			const { getByTestId } = renderComponent({
+				props: { execution: executionData },
+			});
+
+			await userEvent.click(getByTestId('execution-preview-copy-data-button'));
+
+			expect(workflowsStore.getExecution).toHaveBeenCalledWith(executionData.id);
+			expect(copyMock).not.toHaveBeenCalled();
+			expect(showMessage).not.toHaveBeenCalled();
+		});
+
+		it('should show error toast when getExecution rejects', async () => {
+			const settingsStore = mockedStore(useSettingsStore);
+			settingsStore.settings.releaseChannel = 'dev';
+
+			const error = new Error('fetch failed');
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			workflowsStore.getExecution.mockRejectedValueOnce(error);
+
+			const { getByTestId } = renderComponent({
+				props: { execution: executionData },
+			});
+
+			await userEvent.click(getByTestId('execution-preview-copy-data-button'));
+
+			expect(copyMock).not.toHaveBeenCalled();
+			expect(showError).toHaveBeenCalledWith(error, expect.any(String));
+		});
 	});
 
 	describe('workflow version link', () => {
