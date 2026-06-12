@@ -3,8 +3,6 @@ import { Service } from '@n8n/di';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
-import { McpSettingsService } from './mcp.settings.service';
-
 export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
 
 /** OAuth scopes advertised for the instance MCP server in discovery documents. */
@@ -38,10 +36,7 @@ export class McpProtectedResource implements ProtectedResource {
 	 */
 	readonly isDefault = true;
 
-	constructor(
-		private readonly urlService: UrlService,
-		private readonly mcpSettingsService: McpSettingsService,
-	) {}
+	constructor(private readonly urlService: UrlService) {}
 
 	getResourceUrl(): string {
 		const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
@@ -52,9 +47,5 @@ export class McpProtectedResource implements ProtectedResource {
 		// The legacy audience stays scoped to this resource only — it must never
 		// be accepted at another protected resource's gate.
 		return [this.getResourceUrl(), LEGACY_MCP_AUDIENCE];
-	}
-
-	async isEnabled(): Promise<boolean> {
-		return await this.mcpSettingsService.getEnabled();
 	}
 }
