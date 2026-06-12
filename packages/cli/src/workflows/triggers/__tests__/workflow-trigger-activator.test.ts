@@ -22,6 +22,28 @@ describe('WorkflowTriggerActivator', () => {
 		jest.restoreAllMocks();
 	});
 
+	function enabledWorkflowsConfig() {
+		return mock<WorkflowsConfig>({ useWorkflowPublicationService: true });
+	}
+
+	test('requires workflow publication service to be enabled', () => {
+		expect(
+			() =>
+				new WorkflowTriggerActivator(
+					logger,
+					mock<ErrorReporter>(),
+					createNodeTypes(),
+					mock<WorkflowRepository>(),
+					mock<WorkflowStaticDataService>(),
+					mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+					mock<TriggerExecutionContextFactory>(),
+					mock<WebhookTriggerRegistrar>(),
+					mock<NonWebhookTriggerRegistrar>(),
+					mock<TriggerCountService>(),
+				),
+		).toThrow('WorkflowTriggerActivator requires workflow publication service to be enabled');
+	});
+
 	test('returns enabled trigger, poll and webhook nodes, excluding regular and disabled nodes', () => {
 		const activator = new WorkflowTriggerActivator(
 			logger,
@@ -29,7 +51,7 @@ describe('WorkflowTriggerActivator', () => {
 			createNodeTypes(),
 			mock<WorkflowRepository>(),
 			mock<WorkflowStaticDataService>(),
-			mock<WorkflowsConfig>(),
+			enabledWorkflowsConfig(),
 			mock<TriggerExecutionContextFactory>(),
 			mock<WebhookTriggerRegistrar>(),
 			mock<NonWebhookTriggerRegistrar>(),
@@ -94,7 +116,7 @@ describe('WorkflowTriggerActivator', () => {
 			createNodeTypes(),
 			workflowRepository,
 			workflowStaticDataService,
-			mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
+			enabledWorkflowsConfig(),
 			mock<TriggerExecutionContextFactory>(),
 			webhookTriggerRegistrar,
 			nonWebhookTriggerRegistrar,
@@ -144,7 +166,7 @@ describe('WorkflowTriggerActivator', () => {
 			createNodeTypes(),
 			mock<WorkflowRepository>(),
 			mock<WorkflowStaticDataService>(),
-			mock<WorkflowsConfig>(),
+			enabledWorkflowsConfig(),
 			mock<TriggerExecutionContextFactory>(),
 			webhookTriggerRegistrar,
 			nonWebhookTriggerRegistrar,

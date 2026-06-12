@@ -4,6 +4,7 @@ import {
 	setActiveVersion,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowPublicationOutboxRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
@@ -40,6 +41,7 @@ let activeWorkflowManager: ActiveWorkflowManager;
 let activeWorkflowTriggers: ActiveWorkflowTriggers;
 let outboxRepository: WorkflowPublicationOutboxRepository;
 let publishedVersionRepository: WorkflowPublishedVersionRepository;
+let originalUseWorkflowPublicationService: boolean;
 
 const scheduleNode = (suffix: string): INode => ({
 	id: `node-${suffix}`,
@@ -59,6 +61,9 @@ beforeAll(async () => {
 	await utils.initNodeTypes(nodes);
 
 	Container.get(InstanceSettings).markAsLeader();
+	const workflowsConfig = Container.get(WorkflowsConfig);
+	originalUseWorkflowPublicationService = workflowsConfig.useWorkflowPublicationService;
+	workflowsConfig.useWorkflowPublicationService = true;
 
 	consumer = Container.get(WorkflowPublicationOutboxConsumer);
 	activeWorkflowManager = Container.get(ActiveWorkflowManager);
@@ -81,6 +86,8 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+	Container.get(WorkflowsConfig).useWorkflowPublicationService =
+		originalUseWorkflowPublicationService;
 	await testDb.terminate();
 });
 

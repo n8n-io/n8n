@@ -1,3 +1,5 @@
+import assert from 'node:assert/strict';
+
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
@@ -34,6 +36,10 @@ export class WorkflowTriggerActivator {
 		private readonly nonWebhookTriggerRegistrar: NonWebhookTriggerRegistrar,
 		private readonly triggerCountService: TriggerCountService,
 	) {
+		assert(
+			this.workflowsConfig.useWorkflowPublicationService,
+			'WorkflowTriggerActivator requires workflow publication service to be enabled',
+		);
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
 
@@ -195,12 +201,8 @@ export class WorkflowTriggerActivator {
 	}
 
 	private createWorkflowDataResolver(dbWorkflow: WorkflowEntity): () => Promise<IWorkflowBase> {
-		if (this.workflowsConfig.useWorkflowPublicationService) {
-			return async () =>
-				await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow);
-		}
-
-		return async () => dbWorkflow as IWorkflowBase;
+		return async () =>
+			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow);
 	}
 
 	private reportRuntimeTriggerFailure(
