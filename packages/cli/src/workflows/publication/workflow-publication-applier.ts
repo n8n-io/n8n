@@ -63,10 +63,20 @@ export class WorkflowPublicationApplier {
 
 		if (!newVersion) return { type: 'version-missing' };
 
-		const { toAdd, toRemove } = computeTriggerDiff(
-			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion),
-			this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion),
+		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
+		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
+
+		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerNodes, desiredTriggerNodes);
+
+		// A record means "reconcile to this version", not "apply edge old→new", so
+		// augment the version diff with actual local state: re-enqueueing the same
+		// version (startup, retry, crash recovery) must re-register the desired live
+		// triggers that aren't actually running, which a pure version diff misses.
+		const unregistered = this.workflowTriggerActivator.getUnregisteredLiveTriggerNodeIds(
+			record.workflowId,
+			desiredTriggerNodes,
 		);
+		for (const nodeId of unregistered) toAdd.add(nodeId);
 
 		// No trigger changed: advance the published version and finish. Unchanged
 		// triggers keep running and re-read the new version on their next fire.

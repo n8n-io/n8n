@@ -74,6 +74,48 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
+	 * Returns the desired live-trigger nodes (active, schedule and poll triggers)
+	 * that are not currently registered in memory for the workflow. Webhook
+	 * triggers are excluded because they live in the `webhook_entity` table rather
+	 * than the in-memory registry. `desiredNodes` are the enabled trigger-like
+	 * nodes of the version being published.
+	 *
+	 * This is how publication reconciles a record ("be at version X") against
+	 * actual local state: a re-enqueued version whose live triggers were never (or
+	 * only partly) registered yields exactly the missing nodes to add.
+	 */
+	getUnregisteredLiveTriggerNodeIds(
+		workflowId: WorkflowId,
+		desiredNodes: INode[],
+	): Set<INode['id']> {
+		const registered = this.nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds(workflowId);
+
+		const unregistered = new Set<INode['id']>();
+		for (const nodeId of this.getLiveTriggerNodeIds(desiredNodes)) {
+			if (!registered.has(nodeId)) unregistered.add(nodeId);
+		}
+
+		return unregistered;
+	}
+
+	/**
+	 * Filters the given nodes to the live-trigger nodes (active, schedule and poll
+	 * triggers), matching the registration logic in `NonWebhookTriggerRegistrar`.
+	 */
+	private getLiveTriggerNodeIds(nodes: INode[]): string[] {
+		const workflow = new Workflow({
+			id: 'trigger-diff',
+			name: 'trigger-diff',
+			nodes,
+			connections: {},
+			active: false,
+			nodeTypes: this.nodeTypes,
+		});
+
+		return [...workflow.getTriggerNodes(), ...workflow.getPollNodes()].map((node) => node.id);
+	}
+
+	/**
 	 * Registers only the given trigger nodes (webhook and non-webhook) of the
 	 * given workflow version, leaving any other already-active triggers
 	 * untouched. The "add" side of a publication trigger diff; runs on the leader

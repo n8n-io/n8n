@@ -67,6 +67,24 @@ export class ActiveWorkflowTriggers {
 	}
 
 	/**
+	 * Returns the ids of the trigger and poll nodes currently registered in memory
+	 * for the workflow. Unions the recorded trigger responses (active and schedule
+	 * triggers) with the nodes that have registered crons (poll triggers), since a
+	 * poll node lives only in the cron scheduler and never in the trigger-response
+	 * state. Used by publication to reconcile a version against actual local state.
+	 */
+	getRegisteredTriggerNodeIds(workflowId: string): Set<string> {
+		const nodeIds = new Set<string>(this.scheduledTaskManager.getCronNodeIds(workflowId));
+
+		const triggers = this.activeTriggersByWorkflowId.get(workflowId);
+		for (const nodeId of triggers?.nodeIds ?? []) {
+			nodeIds.add(nodeId);
+		}
+
+		return nodeIds;
+	}
+
+	/**
 	 * Makes a workflow active by registering all of its trigger and poll nodes.
 	 *
 	 * @param {string} workflowId The id of the workflow to activate

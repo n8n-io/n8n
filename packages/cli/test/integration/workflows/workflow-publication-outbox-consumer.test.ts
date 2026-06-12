@@ -139,6 +139,71 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
+	test('re-registers only the live triggers missing from memory after a crash mid-add', async () => {
+		const owner = await createOwner();
+
+		const present = scheduleNode('present');
+		const missing = scheduleNode('missing');
+
+		const workflow = await createWorkflowWithHistory(
+			{ active: true, nodes: [present, missing] },
+			owner,
+		);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await activeWorkflowManager.add(workflow.id, 'activate');
+
+		// Simulate a crash mid-add that left `missing` unregistered while `present`
+		// stayed live, then re-enqueue the SAME version (startup/retry/recovery).
+		await activeWorkflowTriggers.removeTriggers(workflow.id, new Set([missing.id]));
+		const presentResponse = activeWorkflowTriggers.get(workflow.id)?.get(present.id);
+		expect(presentResponse).toBeDefined();
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(missing.id)).toBe(false);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		await consumer.processRecord(record!);
+
+		// `missing` got re-registered; `present` was left untouched (same response object).
+		const state = activeWorkflowTriggers.get(workflow.id);
+		expect(state?.has(missing.id)).toBe(true);
+		expect(state?.get(present.id)).toBe(presentResponse);
+
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('completed');
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('re-enqueueing an already fully-published version is a no-op marked completed', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('only');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await activeWorkflowManager.add(workflow.id, 'activate');
+
+		const responseBefore = activeWorkflowTriggers.get(workflow.id)?.get(trigger.id);
+		expect(responseBefore).toBeDefined();
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		await consumer.processRecord(record!);
+
+		// Nothing re-registered (same response object) and the version is unchanged.
+		expect(activeWorkflowTriggers.get(workflow.id)?.get(trigger.id)).toBe(responseBefore);
+		const published = await publishedVersionRepository.getPublishedVersionWithRelations(
+			workflow.id,
+		);
+		expect(published?.publishedVersionId).toBe(workflow.versionId);
+
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('completed');
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
 	test('does no trigger work when only non-trigger content changed', async () => {
 		const owner = await createOwner();
 

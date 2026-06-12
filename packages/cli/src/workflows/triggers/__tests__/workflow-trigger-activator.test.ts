@@ -76,6 +76,63 @@ describe('WorkflowTriggerActivator', () => {
 		expect(activator.getEnabledTriggerNodes(null)).toEqual([]);
 	});
 
+	describe('getUnregisteredLiveTriggerNodeIds', () => {
+		function activatorWith(nonWebhookTriggerRegistrar: NonWebhookTriggerRegistrar) {
+			return new WorkflowTriggerActivator(
+				logger,
+				mock<ErrorReporter>(),
+				createNodeTypes(),
+				mock<WorkflowRepository>(),
+				mock<WorkflowStaticDataService>(),
+				enabledWorkflowsConfig(),
+				mock<TriggerExecutionContextFactory>(),
+				mock<WebhookTriggerRegistrar>(),
+				nonWebhookTriggerRegistrar,
+				mock<TriggerCountService>(),
+			);
+		}
+
+		test('returns desired live triggers not registered in memory', () => {
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockReturnValue(new Set(['t']));
+			const activator = activatorWith(nonWebhookTriggerRegistrar);
+
+			const result = activator.getUnregisteredLiveTriggerNodeIds('wf-1', [
+				node('t', 'trigger'),
+				node('p', 'poll'),
+			]);
+
+			expect(result).toEqual(new Set(['p']));
+			expect(nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds).toHaveBeenCalledWith('wf-1');
+		});
+
+		test('excludes webhook nodes since they are not tracked in memory', () => {
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockReturnValue(new Set());
+			const activator = activatorWith(nonWebhookTriggerRegistrar);
+
+			const result = activator.getUnregisteredLiveTriggerNodeIds('wf-1', [
+				node('t', 'trigger'),
+				node('w', 'webhook'),
+			]);
+
+			expect(result).toEqual(new Set(['t']));
+		});
+
+		test('returns empty when all desired live triggers are registered', () => {
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getRegisteredTriggerNodeIds.mockReturnValue(new Set(['t', 'p']));
+			const activator = activatorWith(nonWebhookTriggerRegistrar);
+
+			const result = activator.getUnregisteredLiveTriggerNodeIds('wf-1', [
+				node('t', 'trigger'),
+				node('p', 'poll'),
+			]);
+
+			expect(result).toEqual(new Set());
+		});
+	});
+
 	test('activates webhooks, non-webhook triggers, count, and persistence in order', async () => {
 		const callOrder: string[] = [];
 		jest.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
