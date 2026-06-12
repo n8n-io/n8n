@@ -123,6 +123,21 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		return out;
 	}
 
+	// VueFlow fires drag-stop even for a click without movement. A move that
+	// matches the node's current visual position (store + push offset) is a
+	// no-op — committing it would bake live push offsets into the document.
+	function dropNoopMoves(moves: CanvasNodeMoveEvent[]): CanvasNodeMoveEvent[] {
+		return moves.filter((move) => {
+			const node = deps.getNodeById(move.id);
+			if (!node) return true;
+			const offset = deps.getNodeVisualOffset?.(move.id) ?? { x: 0, y: 0 };
+			return (
+				node.position[0] + offset.x !== move.position.x ||
+				node.position[1] + offset.y !== move.position.y
+			);
+		});
+	}
+
 	// Live push so the title bar tracks the drag — store positions only
 	// catch up on drag-stop. Same formula as mapping, with live overrides.
 	function syncGroupBoundsFromNodes(
@@ -238,7 +253,7 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 			deps.onMovedExpandedGroups?.([...movedGroupIds]);
 		}
 		reset();
-		return [...memberMoves, ...nonGroupMoves(eventNodes, movedNodeIds)];
+		return dropNoopMoves([...memberMoves, ...nonGroupMoves(eventNodes, movedNodeIds)]);
 	}
 
 	function processNodeDragStop(event: NodeDragEvent): CanvasNodeMoveEvent[] {
@@ -254,7 +269,7 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 		}
 		if (!isCanvasGroupNode(event.node) || !snapshots.has(event.node.id)) {
 			reset();
-			return nonGroupMoves(event.nodes ?? [], new Set());
+			return dropNoopMoves(nonGroupMoves(event.nodes ?? [], new Set()));
 		}
 		recordFinalPosition(event.node);
 		return finalizeDragStop(event.nodes ?? []);
@@ -279,7 +294,7 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 			reset();
 			isSelectionBoxDragInProgress = false;
 			skipPairedNodeDragStop = true;
-			return nonGroupMoves(event.nodes ?? [], new Set());
+			return dropNoopMoves(nonGroupMoves(event.nodes ?? [], new Set()));
 		}
 		for (const node of event.nodes ?? []) {
 			if (isCanvasGroupNode(node)) recordFinalPosition(node);

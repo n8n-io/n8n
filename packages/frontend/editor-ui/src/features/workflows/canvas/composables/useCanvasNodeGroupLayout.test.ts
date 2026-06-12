@@ -348,6 +348,20 @@ describe('useCanvasNodeGroupLayout', () => {
 		expect(offsets.has('other')).toBe(false);
 	});
 
+	it('pushes a node below a narrow group when it sits under the rendered minimum-width frame', () => {
+		// A single-node group's content width is far below the rendered minimum
+		// frame width — the push band must use the rendered footprint, or the
+		// expanded frame overlaps the node below.
+		const narrowGroup: IWorkflowGroup = { id: 'g6', name: 'G6', nodeIds: ['a'] };
+		const offsets = layout([makeNode('a', 100, 200), makeNode('x', 300, 340)], {
+			groups: [narrowGroup],
+			expanded: new Set(['g6']),
+		});
+
+		expect(offsets.get('x')?.y).toBeGreaterThan(0);
+		expect(offsets.get('x')?.x).toBe(0);
+	});
+
 	it('returns no offsets when no group is expanded', () => {
 		const offsets = layout(
 			[makeNode('a', 100, 200), makeNode('b', 400, 200), makeNode('x', 560, 210)],

@@ -188,17 +188,33 @@ describe('useCanvasNodeGroupDrag', () => {
 		]);
 	});
 
-	it('emits moves when drag has zero delta', () => {
-		// VueFlow fires drag-stop for click-without-drag — emit unchanged
-		// positions for consistency with single-node behaviour.
+	it('emits no moves when drag has zero delta', () => {
+		// VueFlow fires drag-stop for click-without-drag — committing the
+		// unchanged positions would bake live push offsets into the document.
 		const { drag } = setup();
 		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
 		drag.onNodeDragStart(makeEvent(groupNode));
 		const moves = drag.processNodeDragStop(makeEvent(groupNode));
-		// Zero delta; positions are unchanged.
+		expect(moves).toEqual([]);
+	});
+
+	it('does not bake push offsets when a pushed group title bar is clicked without moving', () => {
+		const { drag } = setup({ getNodeVisualOffset: () => ({ x: 0, y: 216 }) });
+		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
+		drag.onNodeDragStart(makeEvent(groupNode));
+		const moves = drag.processNodeDragStop(makeEvent(groupNode));
+		expect(moves).toEqual([]);
+	});
+
+	it('bakes push offsets into member moves when the group actually moved', () => {
+		const { drag } = setup({ getNodeVisualOffset: () => ({ x: 0, y: 216 }) });
+		const groupNode = makeGroupGraphNode('group:g1', 0, 0);
+		drag.onNodeDragStart(makeEvent(groupNode));
+		groupNode.position = { x: 50, y: 0 };
+		const moves = drag.processNodeDragStop(makeEvent(groupNode));
 		expect(moves).toEqual([
-			{ id: 'a', position: { x: 100, y: 200 } },
-			{ id: 'b', position: { x: 300, y: 200 } },
+			{ id: 'a', position: { x: 150, y: 416 } },
+			{ id: 'b', position: { x: 350, y: 416 } },
 		]);
 	});
 

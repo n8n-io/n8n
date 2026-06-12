@@ -67,7 +67,7 @@ export interface NodeGroupLayoutPushEntry {
 const GROUP_REPOSITION_SPACING = GRID_SIZE;
 
 // Works in unsnapped store space — the render path additionally grid-snaps
-// and width-clamps the title bar (`titleBarFromNodesRect`).
+// the title bar (`titleBarFromNodesRect`).
 function getGroupRects(memberRect: BoundingBox) {
 	const x = memberRect.x - GROUP_PADDING_X;
 	const y = memberRect.y - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT;
@@ -80,7 +80,9 @@ function getGroupRects(memberRect: BoundingBox) {
 	const expandedRect: BoundingBox = {
 		x,
 		y,
-		width: memberRect.width + 2 * GROUP_PADDING_X,
+		// The rendered frame never goes below the collapsed header width, so a
+		// narrow group must claim the same footprint or neighbors overlap it.
+		width: Math.max(memberRect.width + 2 * GROUP_PADDING_X, GROUP_HEADER_WIDTH_COLLAPSED),
 		height: GROUP_HEADER_HEIGHT + memberRect.height + GROUP_PADDING_Y_TOP + GROUP_PADDING_Y_BOTTOM,
 	};
 	return { collapsedRect, expandedRect };

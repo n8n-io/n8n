@@ -125,8 +125,9 @@ const {
 });
 
 const layoutComponents = computed(() =>
-	// Without groups there can be no pushes — skip building per-node components.
-	workflowDocumentStore.value.allGroups.length === 0
+	// Without grouping enabled or without groups there can be no pushes —
+	// skip building per-node components.
+	!isCanvasNodeGroupingEnabled.value || workflowDocumentStore.value.allGroups.length === 0
 		? []
 		: buildNodeGroupLayoutComponents({
 				allGroups: workflowDocumentStore.value.allGroups,
