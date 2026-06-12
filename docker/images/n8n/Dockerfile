@@ -1,10 +1,10 @@
-ARG NODE_VERSION=24.15.0
+ARG NODE_VERSION=24.16.0
 ARG N8N_VERSION=snapshot
 
 # Builder stage exists because the runtime base image has no toolchain.
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the digest together with the tag when updating the base image.
-FROM node:24.15.0-alpine3.22@sha256:b689d4005875ae167178471a7a622ec2909459a3bbb32277260be1971af7a99f AS builder
+FROM node:24.16.0-alpine3.22@sha256:191c9f0080fcbbc6547a85dc0ff7988072214a355aabdc1d2ec55a7dae5eea8a AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
 RUN apk add --no-cache python3 make g++ && \
     cd /usr/local/lib/node_modules/n8n && \
