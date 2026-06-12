@@ -1,10 +1,18 @@
 import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { CredentialsEntity, Project, Variables } from '@n8n/db';
+import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
-import type { IRun, ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	IRun,
+	ITaskData,
+	IWorkflowBase,
+	IWorkflowSettings,
+	RelatedExecution,
+} from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
 import {
 	getLastExecutedNodeData,
@@ -14,6 +22,7 @@ import {
 	removeDefaultValues,
 	replaceInvalidCredentials,
 	shouldRestartParentExecution,
+	updateParentExecutionWithChildResults,
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
 	validateWorkflowStructure,
@@ -665,4 +674,117 @@ describe('getLastExecutedNodeRuns', () => {
 		getLastExecutedNodeRuns(buildRun('Last executed node', { 'Last executed node': runs }));
 		expect(runs).toEqual(snapshot);
 	});
+});
+
+describe('updateParentExecutionWithChildResults', () => {
+	const PARENT_ID = 'parent-execution-id';
+
+	const waitingParent = (): IExecutionResponse =>
+		({
+			status: 'waiting',
+			data: {
+				executionData: {
+					nodeExecutionStack: [
+						{
+							node: { name: 'Execute Sub-workflow' },
+							data: { main: [[{ json: { in: 1 } }]] },
+							source: null,
+						},
+					],
+				},
+			},
+		}) as unknown as IExecutionResponse;
+
+	const childRun = (
+		status: string,
+		lastNode: string,
+		nodeRun: Partial<ITaskData>,
+		error?: ExecutionError,
+	): IRun =>
+		({
+			mode: 'integrated',
+			status,
+			data: {
+				resultData: { lastNodeExecuted: lastNode, error, runData: { [lastNode]: [nodeRun] } },
+			},
+		}) as unknown as IRun;
+
+	type StackEntry = {
+		data?: unknown;
+		metadata?: { resumeError?: ExecutionError; subExecution?: RelatedExecution };
+	};
+
+	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
+	async function resumeWith(child: IRun, childExecution?: RelatedExecution) {
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		executionPersistence.findSingleExecution.mockResolvedValue(waitingParent());
+
+		await updateParentExecutionWithChildResults(PARENT_ID, child, childExecution);
+
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+		const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
+		return (payload as IExecutionResponse).data.executionData!
+			.nodeExecutionStack[0] as unknown as StackEntry;
+	}
+
+	it('carries the child error and execution reference onto the parent node so resume can fail it', async () => {
+		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+		const entry = await resumeWith(childRun('error', 'Stop and Error', { error }, error), {
+			executionId: 'child-execution-id',
+			workflowId: 'child-workflow-id',
+		});
+
+		expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+		expect(entry.metadata?.subExecution).toEqual({
+			executionId: 'child-execution-id',
+			workflowId: 'child-workflow-id',
+		});
+	});
+
+	it('copies the last node output for a successful child and sets no resume error', async () => {
+		const entry = await resumeWith(
+			childRun('success', 'Done', { data: { main: [[{ json: { out: 2 } }]] } }),
+		);
+
+		expect(entry.data).toEqual({ main: [[{ json: { out: 2 } }]] });
+		expect(entry.metadata?.resumeError).toBeUndefined();
+	});
+
+	// In "run once for each item" mode multiple children update the same waiting
+	// parent. Contract: if any child errored before the parent resumed, the parent
+	// node fails — a later successful sibling must not mask the error.
+	it.each(['error-then-success', 'success-then-error'] as const)(
+		'preserves the child error on the parent when children complete in order %s',
+		async (order) => {
+			// In-memory persistence: deep-clone on read so the second call can only see
+			// the first call's write through the persisted blob, not via object aliasing
+			// (the helper mutates the stack entry it read in place).
+			let stored = waitingParent();
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockImplementation(async () =>
+				structuredClone(stored),
+			);
+			executionPersistence.updateExistingExecution.mockImplementation(async (_id, patch) => {
+				stored = { ...stored, ...patch } as IExecutionResponse;
+				return true;
+			});
+
+			const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+			const errorChild = childRun('error', 'Stop and Error', { error }, error);
+			const successChild = childRun('success', 'Done', {
+				data: { main: [[{ json: { out: 2 } }]] },
+			});
+			const children =
+				order === 'error-then-success' ? [errorChild, successChild] : [successChild, errorChild];
+
+			for (const child of children) {
+				await updateParentExecutionWithChildResults(PARENT_ID, child);
+			}
+
+			const entry = stored.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
+			expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+			expect(entry.data).toEqual({ main: [[{ json: { out: 2 } }]] });
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(2);
+		},
+	);
 });

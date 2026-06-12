@@ -237,6 +237,8 @@ describe('GlobalConfig', () => {
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
 				includeExecutionDataMetrics: false,
+				includeSsrfMetrics: false,
+				includeDnsCacheMetrics: false,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,

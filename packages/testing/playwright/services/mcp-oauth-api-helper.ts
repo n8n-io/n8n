@@ -4,6 +4,16 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
 
+/**
+ * The OAuth endpoints are mounted under both the legacy `/mcp-oauth` paths
+ * (advertised in discovery, persisted by existing DCR clients) and the
+ * neutral `/oauth` aliases that future, non-MCP protected resources will
+ * advertise.
+ */
+export type OAuthEndpointBasePath = '/mcp-oauth' | '/oauth';
+
+const DEFAULT_ENDPOINT_BASE_PATH: OAuthEndpointBasePath = '/mcp-oauth';
+
 export interface PkcePair {
 	verifier: string;
 	challenge: string;
@@ -64,14 +74,18 @@ export class McpOAuthApiHelper {
 	}
 
 	/** Dynamic client registration (RFC 7591). Unauthenticated. */
-	async registerClient(registration: OAuthClientRegistration): Promise<APIResponse> {
-		return await this.api.request.post('/mcp-oauth/register', { data: registration });
+	async registerClient(
+		registration: OAuthClientRegistration,
+		basePath: OAuthEndpointBasePath = DEFAULT_ENDPOINT_BASE_PATH,
+	): Promise<APIResponse> {
+		return await this.api.request.post(`${basePath}/register`, { data: registration });
 	}
 
 	async registerClientOrFail(
 		registration: OAuthClientRegistration,
+		basePath: OAuthEndpointBasePath = DEFAULT_ENDPOINT_BASE_PATH,
 	): Promise<RegisteredOAuthClient> {
-		const response = await this.registerClient(registration);
+		const response = await this.registerClient(registration, basePath);
 		if (response.status() !== 201) {
 			throw new TestError(
 				`Failed to register OAuth client: ${response.status()} ${await response.text()}`,
@@ -86,6 +100,7 @@ export class McpOAuthApiHelper {
 		challenge: string;
 		state?: string;
 		resource?: string;
+		basePath?: OAuthEndpointBasePath;
 	}): string {
 		const query = new URLSearchParams({
 			client_id: params.clientId,
@@ -96,7 +111,7 @@ export class McpOAuthApiHelper {
 			...(params.state && { state: params.state }),
 			...(params.resource && { resource: params.resource }),
 		});
-		return `/mcp-oauth/authorize?${query.toString()}`;
+		return `${params.basePath ?? DEFAULT_ENDPOINT_BASE_PATH}/authorize?${query.toString()}`;
 	}
 
 	/**
@@ -110,6 +125,7 @@ export class McpOAuthApiHelper {
 		challenge: string;
 		state?: string;
 		resource?: string;
+		basePath?: OAuthEndpointBasePath;
 	}): Promise<APIResponse> {
 		return await this.api.request.get(this.buildAuthorizeUrl(params), { maxRedirects: 0 });
 	}
@@ -146,8 +162,9 @@ export class McpOAuthApiHelper {
 		codeVerifier: string;
 		redirectUri: string;
 		resource?: string;
+		basePath?: OAuthEndpointBasePath;
 	}): Promise<APIResponse> {
-		return await this.api.request.post('/mcp-oauth/token', {
+		return await this.api.request.post(`${params.basePath ?? DEFAULT_ENDPOINT_BASE_PATH}/token`, {
 			form: {
 				grant_type: 'authorization_code',
 				code: params.code,
@@ -165,6 +182,7 @@ export class McpOAuthApiHelper {
 		codeVerifier: string;
 		redirectUri: string;
 		resource?: string;
+		basePath?: OAuthEndpointBasePath;
 	}): Promise<OAuthTokens> {
 		const response = await this.exchangeAuthorizationCode(params);
 		if (!response.ok()) {
@@ -175,8 +193,12 @@ export class McpOAuthApiHelper {
 		return (await response.json()) as OAuthTokens;
 	}
 
-	async refreshToken(params: { refreshToken: string; clientId: string }): Promise<APIResponse> {
-		return await this.api.request.post('/mcp-oauth/token', {
+	async refreshToken(params: {
+		refreshToken: string;
+		clientId: string;
+		basePath?: OAuthEndpointBasePath;
+	}): Promise<APIResponse> {
+		return await this.api.request.post(`${params.basePath ?? DEFAULT_ENDPOINT_BASE_PATH}/token`, {
 			form: {
 				grant_type: 'refresh_token',
 				refresh_token: params.refreshToken,
@@ -189,8 +211,9 @@ export class McpOAuthApiHelper {
 		token: string;
 		clientId: string;
 		tokenTypeHint?: 'access_token' | 'refresh_token';
+		basePath?: OAuthEndpointBasePath;
 	}): Promise<APIResponse> {
-		return await this.api.request.post('/mcp-oauth/revoke', {
+		return await this.api.request.post(`${params.basePath ?? DEFAULT_ENDPOINT_BASE_PATH}/revoke`, {
 			form: {
 				token: params.token,
 				client_id: params.clientId,
@@ -206,23 +229,29 @@ export class McpOAuthApiHelper {
 	async completeAuthorizationCodeFlow(options?: {
 		clientName?: string;
 		redirectUri?: string;
+		basePath?: OAuthEndpointBasePath;
 	}): Promise<AuthorizationFlowResult> {
 		const redirectUri = options?.redirectUri ?? 'https://example.com/callback';
 		const state = randomBytes(16).toString('hex');
 		const pkce = this.createPkcePair();
+		const basePath = options?.basePath ?? DEFAULT_ENDPOINT_BASE_PATH;
 
-		const client = await this.registerClientOrFail({
-			client_name: options?.clientName ?? 'n8n e2e OAuth client',
-			redirect_uris: [redirectUri],
-			grant_types: ['authorization_code', 'refresh_token'],
-			token_endpoint_auth_method: 'none',
-		});
+		const client = await this.registerClientOrFail(
+			{
+				client_name: options?.clientName ?? 'n8n e2e OAuth client',
+				redirect_uris: [redirectUri],
+				grant_types: ['authorization_code', 'refresh_token'],
+				token_endpoint_auth_method: 'none',
+			},
+			basePath,
+		);
 
 		const authorizeResponse = await this.authorize({
 			clientId: client.client_id,
 			redirectUri,
 			challenge: pkce.challenge,
 			state,
+			basePath,
 		});
 		if (authorizeResponse.status() !== 302) {
 			throw new TestError(
@@ -241,6 +270,7 @@ export class McpOAuthApiHelper {
 			clientId: client.client_id,
 			codeVerifier: pkce.verifier,
 			redirectUri,
+			basePath,
 		});
 
 		return { client, tokens, pkce, redirectUri, state };

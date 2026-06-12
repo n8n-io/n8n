@@ -49,6 +49,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:valid': [isValid: boolean];
 	'update:node-name': [name: string];
+	'update:node': [node: INode];
 }>();
 
 const i18n = useI18n();
@@ -315,6 +316,16 @@ watch(
 watch(isValid, (val) => {
 	emit('update:valid', !!val);
 });
+
+watch(
+	node,
+	(updatedNode) => {
+		if (updatedNode) {
+			emit('update:node', updatedNode);
+		}
+	},
+	{ immediate: true },
+);
 
 watch(
 	() => node.value?.name,

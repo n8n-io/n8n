@@ -254,8 +254,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 
 		// Handle team projects
 		projectNavActiveId.value = workflowHomeProject?.id ?? null;
-		if (workflowHomeProject?.id && !currentProjectId.value) {
-			await getProject(workflowHomeProject?.id);
+		// Compare against the loaded project, not currentProjectId: a `?projectId=` query param
+		// makes currentProjectId truthy without currentProject ever being fetched
+		if (workflowHomeProject?.id && currentProject.value?.id !== workflowHomeProject.id) {
+			await getProject(workflowHomeProject.id);
 		}
 	};
 
