@@ -19,7 +19,7 @@ type YamlOperation = {
 	method: Method;
 	operationId: string;
 	handlerPath: string;
-	requiredScope: string;
+	requiredScope: string | null;
 };
 
 function walkYamlPaths(root: string): string[] {
@@ -54,7 +54,7 @@ function collectYamlOperations(): YamlOperation[] {
 				method,
 				operationId,
 				handlerPath,
-				requiredScope: requiredScope ?? '<missing>',
+				requiredScope: requiredScope ?? null,
 			});
 		}
 	}
@@ -79,7 +79,7 @@ describe('Public API scope parity', () => {
 	const yamlOps = collectYamlOperations();
 
 	test('every path YAML method declares x-required-scope', () => {
-		const missing = yamlOps.filter((op) => op.requiredScope === '<missing>');
+		const missing = yamlOps.filter((op) => op.requiredScope === null);
 		expect(
 			missing.map((m) => `${path.relative(PUBLIC_API_ROOT, m.file)} ${m.method} ${m.operationId}`),
 		).toEqual([]);
@@ -88,7 +88,7 @@ describe('Public API scope parity', () => {
 	test('every x-required-scope matches the handler middleware __apiKeyScope', () => {
 		const mismatches: string[] = [];
 		for (const op of yamlOps) {
-			if (op.requiredScope === '<missing>') continue;
+			if (op.requiredScope === null) continue;
 			const handlerScope = loadHandlerScope(op.handlerPath, op.operationId);
 			const expected = op.requiredScope === 'none' ? undefined : op.requiredScope;
 			if (handlerScope !== expected) {
@@ -104,7 +104,7 @@ describe('Public API scope parity', () => {
 
 	test('every API key scope in API_KEY_RESOURCES is consumed by at least one endpoint', () => {
 		const consumed = new Set(
-			yamlOps.map((op) => op.requiredScope).filter((s) => s !== 'none' && s !== '<missing>'),
+			yamlOps.map((op) => op.requiredScope).filter((s): s is string => s !== null && s !== 'none'),
 		);
 		const declared = new Set<string>();
 		for (const [resource, operations] of Object.entries(API_KEY_RESOURCES)) {
