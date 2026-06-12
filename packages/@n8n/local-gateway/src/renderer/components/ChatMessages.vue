@@ -3,6 +3,8 @@ import { N8nButton, N8nMarkdown, N8nSpinner, N8nText } from '@n8n/design-system'
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
+import AssistantButton from './AssistantButton.vue';
+
 import { createChatThreadState, type ChatMessage, type ChatThreadState } from '../chat/chat-thread';
 import { markChatThreadVisible } from '../chat/visible-chat-threads';
 import {
@@ -11,9 +13,10 @@ import {
 	permissionPromptState,
 	respondToPrompt,
 } from '../permissions/permission-prompt-store';
-import type {
-	InstancePermissionPrompt,
-	PromptResponse,
+import {
+	isChatAnswerable,
+	type InstancePermissionPrompt,
+	type PromptResponse,
 } from '../permissions/prompt-classification';
 import { getThreadClient, type ThreadListener } from '../services/thread-client';
 
@@ -115,6 +118,11 @@ function promptContent(prompt: InstancePermissionPrompt): string {
 	}
 	if (parts.length === 0) parts.push(prompt.message);
 	return parts.join('\n\n');
+}
+
+/** Hand a prompt the chat can't answer (e.g. credential setup) off to the web UI. */
+async function openPromptInWebUi(prompt: InstancePermissionPrompt) {
+	await respondToPrompt(prompt.id, { kind: 'openInWebUi' });
 }
 
 function answerResponse(prompt: InstancePermissionPrompt, text: string): PromptResponse {
@@ -242,7 +250,10 @@ onBeforeUnmount(() => {
 			</template>
 
 			<!-- The agent's pending requests (e.g. clarifying questions), shown as
-			     assistant messages; answering one moves it into the transcript above. -->
+			     assistant messages; answering one moves it into the transcript above.
+			     Requests the composer can't answer as text (credential/workflow setup,
+			     plan review) get a handoff to the web UI instead — without it the
+			     locked composer would dead-end the thread. -->
 			<div
 				v-for="prompt in pendingPrompts"
 				:key="prompt.id"
@@ -250,6 +261,24 @@ onBeforeUnmount(() => {
 				data-testid="chat-pending-prompt"
 			>
 				<N8nMarkdown :content="promptContent(prompt)" />
+				<template v-if="!isChatAnswerable(prompt)">
+					<div :class="$style.externalHint">
+						{{ i18n.baseText('desktopAssistant.permissions.externalHint') }}
+					</div>
+					<div v-if="permissionPromptState.failedIds.has(prompt.id)" :class="$style.promptError">
+						{{ i18n.baseText('desktopAssistant.permissions.submitFailed') }}
+					</div>
+					<div :class="$style.promptActions">
+						<AssistantButton
+							variant="solid"
+							:disabled="permissionPromptState.respondingIds.has(prompt.id)"
+							data-testid="chat-prompt-open-in-web-ui"
+							@click="openPromptInWebUi(prompt)"
+						>
+							{{ i18n.baseText('desktopAssistant.permissions.openInInstanceAi') }}
+						</AssistantButton>
+					</div>
+				</template>
 			</div>
 
 			<div v-if="sendError" :class="$style.sendError" role="alert">
@@ -338,5 +367,22 @@ onBeforeUnmount(() => {
 	align-self: center;
 	font-size: 12px;
 	color: var(--da-red);
+}
+
+.externalHint {
+	margin-top: var(--spacing--xs);
+	font-size: 12px;
+	color: var(--da-subtler);
+}
+
+.promptError {
+	margin-top: var(--spacing--2xs);
+	font-size: 12px;
+	color: var(--da-red);
+}
+
+.promptActions {
+	display: flex;
+	margin-top: var(--spacing--xs);
 }
 </style>
