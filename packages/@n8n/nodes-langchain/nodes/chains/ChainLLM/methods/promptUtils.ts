@@ -191,5 +191,13 @@ export const getAgentStepsParser =
 			return parsedOutput;
 		}
 
+		if (typeof steps === 'object' && steps !== null && !Array.isArray(steps)) {
+			const parsedOutput = (await outputParser.parse(JSON.stringify(steps))) as Record<
+				string,
+				unknown
+			>;
+			return parsedOutput;
+		}
+
 		throw new Error('Failed to parse agent steps');
 	};
