@@ -1,6 +1,3 @@
-import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
-import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
 import type {
 	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
@@ -214,6 +211,7 @@ export class Kafka implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
+					const { Kafka: apacheKafka } = await import('kafkajs');
 					const brokers = ((credentials.brokers as string) || '')
 						.split(',')
 						.map((item) => item.trim());
@@ -222,7 +220,7 @@ export class Kafka implements INodeType {
 
 					const ssl = credentials.ssl as boolean;
 
-					const config: KafkaConfig = {
+					const config: any = {
 						clientId,
 						brokers,
 						ssl,
@@ -237,7 +235,7 @@ export class Kafka implements INodeType {
 							username: credentials.username as string,
 							password: credentials.password as string,
 							mechanism: credentials.saslMechanism as string,
-						} as SASLOptions;
+						};
 					}
 
 					const kafka = new apacheKafka(config);
@@ -259,12 +257,13 @@ export class Kafka implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const { Kafka: apacheKafka, CompressionTypes } = await import('kafkajs');
 		const items = this.getInputData();
 		const itemData = generatePairedItemData(items.length);
 
 		const length = items.length;
 
-		const topicMessages: TopicMessages[] = [];
+		const topicMessages: any[] = [];
 
 		let responseData: IDataObject[];
 
@@ -292,7 +291,7 @@ export class Kafka implements INodeType {
 
 			const ssl = credentials.ssl as boolean;
 
-			const config: KafkaConfig = {
+			const config: any = {
 				clientId,
 				brokers,
 				ssl,
@@ -309,7 +308,7 @@ export class Kafka implements INodeType {
 					username: credentials.username as string,
 					password: credentials.password as string,
 					mechanism: credentials.saslMechanism as string,
-				} as SASLOptions;
+				};
 			}
 
 			const kafka = new apacheKafka(config);
@@ -329,6 +328,7 @@ export class Kafka implements INodeType {
 
 				if (useSchemaRegistry) {
 					try {
+						const { SchemaRegistry } = await import('@kafkajs/confluent-schema-registry');
 						const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
 						const eventName = this.getNodeParameter('eventName', 0) as string;
 

@@ -1,14 +1,4 @@
 import type {
-	Consumer,
-	RemoveInstrumentationEventListener,
-	KafkaMessage,
-	KafkaConfig,
-	SASLOptions,
-	ConsumerConfig,
-} from 'kafkajs';
-import { logLevel } from 'kafkajs';
-import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import type {
 	Logger,
 	ITriggerFunctions,
 	IDataObject,
@@ -63,12 +53,13 @@ type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatu
  * @returns Kafka configuration object with authentication settings
  */
 export async function createConfig(ctx: ITriggerFunctions) {
+	const { logLevel } = await import('kafkajs');
 	const credentials = (await ctx.getCredentials('kafka')) as KafkaCredentials;
 	const clientId = credentials.clientId;
 	const brokers = (credentials.brokers ?? '').split(',').map((item) => item.trim());
 	const ssl = credentials.ssl;
 
-	const config: KafkaConfig = {
+	const config: any = {
 		clientId,
 		brokers,
 		ssl,
@@ -86,7 +77,7 @@ export async function createConfig(ctx: ITriggerFunctions) {
 			username: credentials.username as string,
 			password: credentials.password as string,
 			mechanism: credentials.saslMechanism as string,
-		} as SASLOptions;
+		};
 	}
 
 	return config;
@@ -123,7 +114,7 @@ export function createConsumerConfig(
 	const maxBytesPerPartition = options.fetchMaxBytes;
 	const minBytes = options.fetchMinBytes;
 
-	const consumerConfig: ConsumerConfig = {
+	const consumerConfig: any = {
 		groupId,
 		maxInFlightRequests,
 		sessionTimeout,
@@ -153,10 +144,10 @@ export function createConsumerConfig(
 export function configureMessageParser(
 	options: KafkaTriggerOptions,
 	logger: Logger,
-	registry: SchemaRegistry | undefined,
+	registry: any,
 	prepareBinaryData: ITriggerFunctions['helpers']['prepareBinaryData'],
 ) {
-	return async (message: KafkaMessage, messageTopic: string): Promise<INodeExecutionData> => {
+	return async (message: any, messageTopic: string): Promise<INodeExecutionData> => {
 		let data: IDataObject = {};
 		let value = message.value?.toString() as string;
 		const binary: IBinaryKeyData = {};
@@ -219,7 +210,7 @@ export function configureMessageParser(
  * @param logger - Logger instance for event logging
  * @returns Array of listener removal functions
  */
-export function connectEventListeners(consumer: Consumer, logger: Logger) {
+export function connectEventListeners(consumer: any, logger: Logger) {
 	const onConnected = consumer.on(consumer.events.CONNECT, () => {
 		logger.debug('Kafka consumer connected');
 	});
@@ -268,9 +259,7 @@ export function connectEventListeners(consumer: Consumer, logger: Logger) {
  * Removes all event listeners from the Kafka consumer
  * @param listeners - Array of listener removal functions
  */
-export function disconnectEventListeners(
-	listeners: Array<RemoveInstrumentationEventListener<'consumer.connect'>>,
-) {
+export function disconnectEventListeners(listeners: Array<any>) {
 	listeners.forEach((listener) => listener());
 }
 
@@ -279,11 +268,12 @@ export function disconnectEventListeners(
  * @param ctx - The trigger function context
  * @returns Schema registry instance or undefined if not configured
  */
-export function setSchemaRegistry(ctx: ITriggerFunctions) {
+export async function setSchemaRegistry(ctx: ITriggerFunctions) {
 	const useSchemaRegistry = ctx.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
 	if (useSchemaRegistry) {
 		try {
+			const { SchemaRegistry } = await import('@kafkajs/confluent-schema-registry');
 			const schemaRegistryUrl = ctx.getNodeParameter('schemaRegistryUrl', 0) as string;
 			return new SchemaRegistry({ host: schemaRegistryUrl });
 		} catch (error) {
