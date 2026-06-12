@@ -224,13 +224,26 @@ describe('aggregateGroupExecution', () => {
 		);
 	});
 
-	it('returns the maximum iteration count across nodes', () => {
+	it('returns the maximum iteration count across nodes for a success badge', () => {
 		expect(
 			aggregateGroupExecution(
 				['a', 'b'],
-				snapshotGetter({ a: { iterations: 1 }, b: { iterations: 5 } }),
+				snapshotGetter({
+					a: { iterations: 1, status: 'success' },
+					b: { iterations: 5, status: 'success' },
+				}),
 			).maxNodeIterations,
 		).toBe(5);
+	});
+
+	it('returns 0 iterations for non-success statuses (the count only belongs to success)', () => {
+		// A dirty member with iterations from another member must not leak a badge count.
+		expect(
+			aggregateGroupExecution(
+				['a', 'b'],
+				snapshotGetter({ a: { iterations: 5, status: 'success' }, b: { dirty: true } }),
+			),
+		).toEqual({ status: 'warning', maxNodeIterations: 0 });
 	});
 
 	it('returns 0 iterations when nothing is set', () => {

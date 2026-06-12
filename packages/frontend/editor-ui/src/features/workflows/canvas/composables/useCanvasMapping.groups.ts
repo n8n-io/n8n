@@ -201,7 +201,8 @@ export function aggregateGroupExecution(
 	else if (anyWarning) status = 'warning';
 	else if (anySuccess && !anyOther) status = 'success';
 
-	return { status, maxNodeIterations };
+	// success is the only status that speaks for every member
+	return { status, maxNodeIterations: status === 'success' ? maxNodeIterations : 0 };
 }
 
 export interface MapGroupsToVueFlowNodesInputs {
