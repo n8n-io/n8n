@@ -290,4 +290,13 @@ describe('InstanceApi', () => {
 			expect(new InstanceApi(makeOAuth({ instanceUrl: null })).workflowSetupUrl('wf-1')).toBeNull();
 		});
 	});
+
+	describe('threadUrl', () => {
+		it('builds the Instance AI thread url, or null when signed out', () => {
+			expect(new InstanceApi(makeOAuth()).threadUrl('thread 1')).toBe(
+				'https://n.example/instance-ai/thread%201',
+			);
+			expect(new InstanceApi(makeOAuth({ instanceUrl: null })).threadUrl('thread-1')).toBeNull();
+		});
+	});
 });
