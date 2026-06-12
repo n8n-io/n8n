@@ -225,9 +225,6 @@ function humanizeIconName(name: string): string {
 			},
 			containerClass,
 		]"
-		:aria-expanded="popupVisible"
-		role="button"
-		aria-haspopup="true"
 	>
 		<div :class="$style['icon-picker-button']" @pointerenter="loadData">
 			<N8nTooltip placement="top" data-test-id="icon-picker-tooltip" :disabled="isReadOnly">
@@ -243,6 +240,8 @@ function humanizeIconName(name: string): string {
 					:disabled="isReadOnly"
 					variant="subtle"
 					:aria-label="props.buttonTooltip ?? t('iconPicker.button.defaultToolTip')"
+					:aria-expanded="popupVisible"
+					aria-haspopup="true"
 					data-test-id="icon-picker-button"
 					:style="
 						model.type === 'icon' && model.color ? { color: `var(${model.color})` } : undefined
@@ -256,6 +255,8 @@ function humanizeIconName(name: string): string {
 					icon-only
 					variant="subtle"
 					:aria-label="props.buttonTooltip ?? t('iconPicker.button.defaultToolTip')"
+					:aria-expanded="popupVisible"
+					aria-haspopup="true"
 					data-test-id="icon-picker-button"
 					:disabled="isReadOnly"
 					@click="togglePopup"
