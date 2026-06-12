@@ -18,6 +18,20 @@ export type WorkflowFailedToActivate = {
 	};
 };
 
+export type WorkflowPartiallyActivated = {
+	type: 'workflowPartiallyActivated';
+	data: {
+		workflowId: string;
+		activeVersionId: string;
+		errorMessage: string;
+		failedNodes: Array<{
+			nodeId: string;
+			nodeName: string;
+			errorMessage: string;
+		}>;
+	};
+};
+
 export type WorkflowDeactivated = {
 	type: 'workflowDeactivated';
 	data: {
@@ -52,6 +66,7 @@ export type WorkflowSettingsUpdated = {
 export type WorkflowPushMessage =
 	| WorkflowActivated
 	| WorkflowFailedToActivate
+	| WorkflowPartiallyActivated
 	| WorkflowDeactivated
 	| WorkflowAutoDeactivated
 	| WorkflowUpdated

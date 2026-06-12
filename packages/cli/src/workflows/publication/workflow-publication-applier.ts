@@ -7,11 +7,14 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { WebhookPathTakenError, ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
-import { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
+import {
+	WorkflowTriggerActivator,
+	type TriggerActivationOutcome,
+} from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
  * Applies a single workflow publication outbox record by reconciling the
@@ -97,8 +100,11 @@ export class WorkflowPublicationApplier {
 
 		try {
 			if (toAdd.size > 0) {
-				await this.workflowTriggerActivator.activate(workflow, newVersion, toAdd);
-			} else if (toRemove.size > 0) {
+				const outcome = await this.workflowTriggerActivator.activate(workflow, newVersion, toAdd);
+				return this.classifyActivationOutcome(outcome);
+			}
+
+			if (toRemove.size > 0) {
 				await this.workflowTriggerActivator.updateTriggerCount(workflow, newVersion);
 			}
 		} catch (e) {
@@ -106,6 +112,32 @@ export class WorkflowPublicationApplier {
 		}
 
 		return { type: 'completed' };
+	}
+
+	/**
+	 * Maps a per-node activation outcome to a publication result. With every node
+	 * activated it is a full success. A deterministic failure
+	 * (`WebhookPathTakenError`, i.e. a webhook path already owned by another
+	 * workflow) will recur on retry, so it is reported as `failed` rather than
+	 * `partial`. Any other failure leaves the surviving triggers running and is
+	 * reported as `partial`: the new version stays published and re-publishing can
+	 * recover it.
+	 */
+	private classifyActivationOutcome(outcome: TriggerActivationOutcome): PublicationResult {
+		if (outcome.failures.length === 0) return { type: 'completed' };
+
+		const deterministicFailure = outcome.failures.find(
+			(failure) => failure.error instanceof WebhookPathTakenError,
+		);
+		if (deterministicFailure) {
+			return { type: 'failed', error: deterministicFailure.error };
+		}
+
+		return {
+			type: 'partial',
+			activatedNodeIds: outcome.activated,
+			failures: outcome.failures,
+		};
 	}
 
 	/**
