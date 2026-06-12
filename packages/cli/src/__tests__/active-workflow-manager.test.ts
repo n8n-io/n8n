@@ -32,6 +32,7 @@ import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 describe('ActiveWorkflowManager', () => {
 	let activeWorkflowManager: ActiveWorkflowManager;
@@ -47,12 +48,9 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			mock(),
-			mock(),
 			nodeTypes,
 			mock(),
 			workflowRepository,
-			mock(),
-			mock(),
 			mock(),
 			mock(),
 			mock(),
@@ -60,9 +58,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			workflowsConfig,
 			mock(),
-			mock(),
-			mock(),
-			mock(),
+			mock<TriggerExecutionContextFactory>(),
 			mock(),
 		);
 	});
@@ -225,12 +221,9 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				mock(),
 				mock(),
-				mock(),
 				nodeTypes,
 				mock(),
 				workflowRepository,
-				mock(),
-				mock(),
 				mock(),
 				mock(),
 				mock(),
@@ -238,9 +231,7 @@ describe('ActiveWorkflowManager', () => {
 				publisher,
 				mock(),
 				push,
-				mock(),
-				mock(),
-				mock(),
+				mock<TriggerExecutionContextFactory>(),
 				mock(),
 			);
 		});
@@ -375,6 +366,8 @@ describe('ActiveWorkflowManager', () => {
 		const executionService = mock<ExecutionService>();
 		let scopedLogger: Logger;
 
+		let factory: TriggerExecutionContextFactory;
+
 		beforeEach(() => {
 			jest.clearAllMocks();
 			workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
@@ -386,28 +379,35 @@ describe('ActiveWorkflowManager', () => {
 			scopedLogger = mock<Logger>();
 			const rootLogger = mock<Logger>({ scoped: jest.fn().mockReturnValue(scopedLogger) });
 
-			activeWorkflowManager = new ActiveWorkflowManager(
+			factory = new TriggerExecutionContextFactory(
 				rootLogger,
-				mock(),
-				activeWorkflowTriggers,
-				mock(),
-				mock(),
-				nodeTypes,
-				mock(),
-				workflowRepository,
-				activationErrorsService,
+				mock(), // errorReporter
+				mock(), // activeExecutions
+				eventService,
 				executionService,
 				workflowStaticDataService,
-				mock(),
 				workflowExecutionService,
+				mock(), // storageConfig
+				mock(), // workflowPublishedDataService
+			);
+
+			activeWorkflowManager = new ActiveWorkflowManager(
+				rootLogger,
+				mock(), // errorReporter
+				activeWorkflowTriggers,
+				mock(), // externalHooks
+				nodeTypes,
+				mock(), // webhookService
+				workflowRepository,
+				activationErrorsService,
+				workflowStaticDataService,
+				mock(), // activeWorkflowsService
 				instanceSettings,
-				mock(),
+				mock(), // publisher
 				workflowsConfig,
-				mock(),
-				eventService,
-				mock(),
-				mock(),
-				mock(),
+				mock(), // push
+				factory,
+				mock(), // eventBus
 			);
 		});
 
@@ -606,7 +606,7 @@ describe('ActiveWorkflowManager', () => {
 				const executionError = mock<ExecutionError>();
 
 				const executeErrorWorkflowSpy = jest
-					.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
+					.spyOn(factory, 'executeErrorWorkflow')
 					.mockImplementation(() => {});
 
 				const getTriggerFunctions = activeWorkflowManager.getExecuteTriggerFunctions(
@@ -808,12 +808,9 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				realActiveWorkflowTriggers,
 				mock(),
-				mock(),
 				nodeTypes,
 				mock(),
 				workflowRepository,
-				mock(),
-				mock(),
 				mock(),
 				mock(),
 				mock(),
@@ -821,9 +818,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				workflowsConfig,
 				mock(),
-				mock(),
-				mock(),
-				mock(),
+				mock<TriggerExecutionContextFactory>(),
 				mock(),
 			);
 		});
