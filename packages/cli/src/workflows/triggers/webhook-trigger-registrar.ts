@@ -8,7 +8,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
+import { WebhookPathTakenError, Workflow, ensureError } from 'n8n-workflow';
 
 import { ErrorReporter } from 'n8n-core';
 
@@ -28,10 +28,14 @@ function isQueryFailedError(error: unknown): error is Error {
 
 export interface WebhookTriggerRegistrationOptions {
 	workflow: Workflow;
-	additionalData: IWorkflowExecuteAdditionalData;
+	webhookData: IWebhookData;
 	mode: WorkflowExecuteMode;
 	activation: WorkflowActivateMode;
-	nodeIds: Set<string>;
+}
+
+export interface WebhookTriggerDeregistrationOptions {
+	workflow: Workflow;
+	webhookData: IWebhookData;
 }
 
 /**
@@ -49,136 +53,96 @@ export class WebhookTriggerRegistrar {
 	}
 
 	/**
-	 * Register workflow-defined webhooks in storage and with third-party services.
+	 * Resolve workflow-defined webhook triggers.
 	 */
-	async register({
-		workflow,
-		additionalData,
-		mode,
-		activation,
-		nodeIds,
-	}: WebhookTriggerRegistrationOptions) {
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(
-			workflow,
-			additionalData,
-			undefined,
-			true,
-		).filter((webhookData) => nodeIds.has(workflow.getNode(webhookData.node)?.id ?? ''));
+	getWebhookTriggers(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
+		return WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
+	}
 
-		if (webhooks.length === 0) return false;
+	/**
+	 * Register one workflow-defined webhook in storage and with third-party services.
+	 */
+	async register({ workflow, webhookData, mode, activation }: WebhookTriggerRegistrationOptions) {
+		const node = workflow.getNode(webhookData.node) as INode;
+		node.name = webhookData.node;
 
-		const registeredWebhooks: IWebhookData[] = [];
+		const webhook = this.webhookService.createWebhook({
+			workflowId: webhookData.workflowId,
+			webhookPath: webhookData.path,
+			node: node.name,
+			method: webhookData.httpMethod,
+		});
 
-		for (const webhookData of webhooks) {
-			const node = workflow.getNode(webhookData.node) as INode;
-			node.name = webhookData.node;
+		this.normalizeWebhookPath(webhook, node.webhookId);
 
-			const webhook = this.webhookService.createWebhook({
-				workflowId: webhookData.workflowId,
-				webhookPath: webhookData.path,
-				node: node.name,
-				method: webhookData.httpMethod,
-			});
-
-			this.normalizeWebhookPath(webhook, node.webhookId);
-
-			try {
-				// `storeWebhook` registers the webhook atomically on the
-				// (webhookPath, method) primary key and rejects a path already owned
-				// by another workflow. The `catch` below still cleans up any webhooks
-				// already registered for this workflow if a later step fails.
-				await this.webhookService.storeWebhook(webhook);
-				registeredWebhooks.push(webhookData);
-				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
-			} catch (error) {
-				try {
-					await this.clearRegisteredWebhooks(workflow, registeredWebhooks);
-				} catch (clearError) {
-					this.errorReporter.error(clearError);
-					this.logger.error(
-						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${clearError.message}"`,
-					);
-				}
-
-				// If it's a workflow from the insert.
-				// TODO check if there is standard error code for duplicate key violation that works
-				// with all databases.
-				if (isQueryFailedError(error)) {
-					throw new WebhookPathTakenError(webhook.node, error);
-				}
-
-				if (hasErrorDetail(error)) {
-					// It's an error running the webhook methods (checkExists, create).
-					error.message = error.detail;
-				}
-
-				throw error;
+		let isStored = false;
+		try {
+			// `storeWebhook` registers the webhook atomically on the
+			// (webhookPath, method) primary key and rejects a path already owned
+			// by another workflow.
+			await this.webhookService.storeWebhook(webhook);
+			isStored = true;
+			await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
+		} catch (error) {
+			if (['init', 'leadershipChange'].includes(activation) && isQueryFailedError(error)) {
+				// n8n does not remove the registered webhooks on exit.
+				// This means that further initializations will always fail
+				// when inserting to database. This is why we ignore this error
+				// as it's expected to happen.
+				return false;
 			}
+
+			if (isStored) await this.clearRegisteredWebhook(workflow, webhookData);
+
+			// If it's a workflow from the insert.
+			// TODO check if there is standard error code for duplicate key violation that works
+			// with all databases.
+			if (isQueryFailedError(error)) {
+				throw new WebhookPathTakenError(webhook.node, error);
+			}
+
+			if (hasErrorDetail(error)) {
+				// It's an error running the webhook methods (checkExists, create).
+				error.message = error.detail;
+			}
+
+			throw error;
 		}
 
-		await this.workflowStaticDataService.saveStaticData(workflow);
-
-		this.logger.debug(`Added webhooks for workflow "${workflow.name}" (ID ${workflow.id})`, {
+		this.logger.debug(`Added webhook "${webhookData.node}" for workflow "${workflow.name}"`, {
 			workflowId: workflow.id,
+			nodeName: webhookData.node,
 		});
 
 		return true;
 	}
 
 	/**
-	 * Deregisters a workflow's webhooks from external services and persists any
-	 * resulting static data. Returns the names of the nodes whose webhooks were
-	 * deregistered.
+	 * Deregister one workflow-defined webhook from external services.
 	 */
-	async deregister(
-		workflow: Workflow,
-		additionalData: IWorkflowExecuteAdditionalData,
-		nodeIds: Set<string>,
-	) {
-		const removedNodeNames: string[] = [];
+	async deregister({ workflow, webhookData }: WebhookTriggerDeregistrationOptions) {
+		await this.webhookService.deleteWebhook(workflow, webhookData, 'internal', 'update');
 
-		await workflow.expression.acquireIsolate();
-		try {
-			const webhooks = WebhookHelpers.getWorkflowWebhooks(
-				workflow,
-				additionalData,
-				undefined,
-				true,
-			);
-
-			for (const webhookData of webhooks) {
-				if (!nodeIds.has(workflow.getNode(webhookData.node)?.id ?? '')) {
-					continue;
-				}
-				await this.webhookService.deleteWebhook(workflow, webhookData, 'internal', 'update');
-				removedNodeNames.push(webhookData.node);
-			}
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
-
-		await this.workflowStaticDataService.saveStaticData(workflow);
-
-		return removedNodeNames;
+		return webhookData.node;
 	}
 
 	async clearWorkflowWebhooksForNodes(workflowId: string, nodeNames: string[]) {
 		await this.webhookService.deleteWorkflowWebhooksForNodes(workflowId, nodeNames);
 	}
 
-	private async clearRegisteredWebhooks(workflow: Workflow, webhooks: IWebhookData[]) {
-		if (webhooks.length === 0) return;
+	private async clearRegisteredWebhook(workflow: Workflow, webhookData: IWebhookData) {
+		try {
+			await this.deregister({ workflow, webhookData });
+			await this.workflowStaticDataService.saveStaticData(workflow);
 
-		const removedNodeNames: string[] = [];
-
-		for (const webhookData of webhooks) {
-			await this.webhookService.deleteWebhook(workflow, webhookData, 'internal', 'update');
-			removedNodeNames.push(webhookData.node);
+			await this.clearWorkflowWebhooksForNodes(workflow.id, [webhookData.node]);
+		} catch (clearError) {
+			const error = ensureError(clearError);
+			this.errorReporter.error(error);
+			this.logger.error(
+				`Could not remove webhook "${webhookData.node}" of workflow "${workflow.id}" because of error: "${error.message}"`,
+			);
 		}
-
-		await this.workflowStaticDataService.saveStaticData(workflow);
-
-		await this.clearWorkflowWebhooksForNodes(workflow.id, removedNodeNames);
 	}
 
 	private normalizeWebhookPath(webhook: WebhookEntity, nodeWebhookId?: string) {

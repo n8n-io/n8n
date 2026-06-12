@@ -6,8 +6,15 @@ import type { WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { IConnections, INode, IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { Workflow } from 'n8n-workflow';
+import type {
+	IConnections,
+	INode,
+	IWebhookData,
+	IWorkflowBase,
+	IWorkflowExecuteAdditionalData,
+	WorkflowId,
+} from 'n8n-workflow';
+import { Workflow, ensureError } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -88,13 +95,7 @@ export class WorkflowTriggerActivator {
 		let triggerCount = 0;
 		await workflow.expression.acquireIsolate();
 		try {
-			await this.webhookTriggerRegistrar.register({
-				workflow,
-				additionalData,
-				mode: 'trigger',
-				activation: 'update',
-				nodeIds,
-			});
+			await this.registerWebhookTriggers(workflow, additionalData, nodeIds);
 
 			const resolveWorkflowData = this.createWorkflowDataResolver(dbWorkflow);
 
@@ -144,7 +145,7 @@ export class WorkflowTriggerActivator {
 			workflowSettings: dbWorkflow.settings,
 		});
 
-		const removedNodeNames = await this.webhookTriggerRegistrar.deregister(
+		const removedNodeNames = await this.deregisterWebhookTriggers(
 			workflow,
 			additionalData,
 			nodeIds,
@@ -198,6 +199,96 @@ export class WorkflowTriggerActivator {
 			staticData: dbWorkflow.staticData,
 			settings: dbWorkflow.settings,
 		});
+	}
+
+	private async registerWebhookTriggers(
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeIds: Set<INode['id']>,
+	) {
+		const webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
+		const registeredWebhooks: IWebhookData[] = [];
+
+		try {
+			for (const webhookData of webhooks) {
+				const wasRegistered = await this.webhookTriggerRegistrar.register({
+					workflow,
+					webhookData,
+					mode: 'trigger',
+					activation: 'update',
+				});
+				if (wasRegistered) registeredWebhooks.push(webhookData);
+			}
+		} catch (error) {
+			await this.clearRegisteredWebhookTriggers(workflow, registeredWebhooks);
+			throw error;
+		}
+	}
+
+	private async deregisterWebhookTriggers(
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeIds: Set<INode['id']>,
+	) {
+		const removedNodeNames: string[] = [];
+
+		await workflow.expression.acquireIsolate();
+		try {
+			const webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
+
+			for (const webhookData of webhooks) {
+				const nodeName = await this.webhookTriggerRegistrar.deregister({
+					workflow,
+					webhookData,
+				});
+				removedNodeNames.push(nodeName);
+			}
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
+
+		await this.workflowStaticDataService.saveStaticData(workflow);
+
+		return removedNodeNames;
+	}
+
+	private getWebhookTriggersForNodeIds(
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeIds: Set<INode['id']>,
+	) {
+		return this.webhookTriggerRegistrar
+			.getWebhookTriggers(workflow, additionalData)
+			.filter((webhookData) => nodeIds.has(workflow.getNode(webhookData.node)?.id ?? ''));
+	}
+
+	private async clearRegisteredWebhookTriggers(workflow: Workflow, webhooks: IWebhookData[]) {
+		if (webhooks.length === 0) return;
+
+		try {
+			const removedNodeNames: string[] = [];
+
+			for (const webhookData of webhooks) {
+				const nodeName = await this.webhookTriggerRegistrar.deregister({
+					workflow,
+					webhookData,
+				});
+				removedNodeNames.push(nodeName);
+			}
+
+			await this.workflowStaticDataService.saveStaticData(workflow);
+
+			await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
+				workflow.id,
+				removedNodeNames,
+			);
+		} catch (clearError) {
+			const error = ensureError(clearError);
+			this.errorReporter.error(error);
+			this.logger.error(
+				`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error.message}"`,
+			);
+		}
 	}
 
 	private createWorkflowDataResolver(dbWorkflow: WorkflowEntity): () => Promise<IWorkflowBase> {

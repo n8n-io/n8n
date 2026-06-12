@@ -18,7 +18,28 @@ describe('WebhookTriggerRegistrar', () => {
 		jest.restoreAllMocks();
 	});
 
-	test('normalizes webhook paths, stores dynamic metadata, and saves static data', async () => {
+	test('resolves workflow webhook definitions', () => {
+		const registrar = new WebhookTriggerRegistrar(
+			logger,
+			mock<ErrorReporter>(),
+			mock<WebhookService>(),
+			mock<WorkflowStaticDataService>(),
+		);
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const webhookData = mock<IWebhookData>({ node: 'Webhook' });
+		jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhookData]);
+		const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+		expect(registrar.getWebhookTriggers(workflow, additionalData)).toEqual([webhookData]);
+		expect(WebhookHelpers.getWorkflowWebhooks).toHaveBeenCalledWith(
+			workflow,
+			additionalData,
+			undefined,
+			true,
+		);
+	});
+
+	test('normalizes webhook paths and stores dynamic metadata', async () => {
 		const webhookService = mock<WebhookService>();
 		const workflowStaticDataService = mock<WorkflowStaticDataService>();
 		const registrar = new WebhookTriggerRegistrar(
@@ -35,17 +56,15 @@ describe('WebhookTriggerRegistrar', () => {
 			httpMethod: 'GET',
 			path: '/team/:id/',
 		});
-		jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhookData]);
 		const workflow = createWorkflow([
 			node('webhook-node', 'webhook', { name: 'Webhook', webhookId: 'hook-id' }),
 		]);
 
 		await registrar.register({
 			workflow,
-			additionalData: mock<IWorkflowExecuteAdditionalData>(),
+			webhookData,
 			mode: 'trigger',
 			activation: 'update',
-			nodeIds: new Set(['webhook-node']),
 		});
 
 		expect(webhookService.storeWebhook).toHaveBeenCalledWith(
@@ -61,10 +80,10 @@ describe('WebhookTriggerRegistrar', () => {
 			'trigger',
 			'update',
 		);
-		expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
+		expect(workflowStaticDataService.saveStaticData).not.toHaveBeenCalled();
 	});
 
-	test('filters registration and deregistration by node id', async () => {
+	test('registers and deregisters a single webhook', async () => {
 		const webhookService = mock<WebhookService>();
 		const workflowStaticDataService = mock<WorkflowStaticDataService>();
 		const registrar = new WebhookTriggerRegistrar(
@@ -76,19 +95,12 @@ describe('WebhookTriggerRegistrar', () => {
 		webhookService.createWebhook.mockImplementation(
 			(data) => ({ webhookPath: data.webhookPath, node: data.node }) as WebhookEntity,
 		);
-		const webhookA = mock<IWebhookData>({
-			node: 'Webhook A',
-			workflowId: 'wf-1',
-			httpMethod: 'GET',
-			path: 'a',
-		});
 		const webhookB = mock<IWebhookData>({
 			node: 'Webhook B',
 			workflowId: 'wf-1',
 			httpMethod: 'POST',
 			path: 'b',
 		});
-		jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhookA, webhookB]);
 		const workflow = createWorkflow([
 			node('a', 'webhook', { name: 'Webhook A' }),
 			node('b', 'webhook', { name: 'Webhook B' }),
@@ -96,16 +108,11 @@ describe('WebhookTriggerRegistrar', () => {
 
 		await registrar.register({
 			workflow,
-			additionalData: mock<IWorkflowExecuteAdditionalData>(),
+			webhookData: webhookB,
 			mode: 'trigger',
 			activation: 'update',
-			nodeIds: new Set(['b']),
 		});
-		const removed = await registrar.deregister(
-			workflow,
-			mock<IWorkflowExecuteAdditionalData>(),
-			new Set(['b']),
-		);
+		const removed = await registrar.deregister({ workflow, webhookData: webhookB });
 
 		expect(webhookService.storeWebhook).toHaveBeenCalledTimes(1);
 		expect(webhookService.storeWebhook).toHaveBeenCalledWith(
@@ -118,10 +125,10 @@ describe('WebhookTriggerRegistrar', () => {
 			'internal',
 			'update',
 		);
-		expect(removed).toEqual(['Webhook B']);
+		expect(removed).toBe('Webhook B');
 	});
 
-	test('cleans registered external webhooks and stored rows when later registration fails', async () => {
+	test('cleans the stored external webhook and row when third-party registration fails', async () => {
 		const webhookService = mock<WebhookService>();
 		const workflowStaticDataService = mock<WorkflowStaticDataService>();
 		const registrar = new WebhookTriggerRegistrar(
@@ -133,54 +140,34 @@ describe('WebhookTriggerRegistrar', () => {
 		webhookService.createWebhook.mockImplementation(
 			(data) => ({ webhookPath: data.webhookPath, node: data.node }) as WebhookEntity,
 		);
-		webhookService.createWebhookIfNotExists
-			.mockResolvedValueOnce(undefined)
-			.mockRejectedValueOnce(new Error('external registration failed'));
-		const webhookA = mock<IWebhookData>({
-			node: 'Webhook A',
-			workflowId: 'wf-1',
-			httpMethod: 'GET',
-			path: 'a',
-		});
+		webhookService.createWebhookIfNotExists.mockRejectedValueOnce(
+			new Error('external registration failed'),
+		);
 		const webhookB = mock<IWebhookData>({
 			node: 'Webhook B',
 			workflowId: 'wf-1',
 			httpMethod: 'POST',
 			path: 'b',
 		});
-		jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhookA, webhookB]);
-		const workflow = createWorkflow([
-			node('a', 'webhook', { name: 'Webhook A' }),
-			node('b', 'webhook', { name: 'Webhook B' }),
-		]);
+		const workflow = createWorkflow([node('b', 'webhook', { name: 'Webhook B' })]);
 
 		await expect(
 			registrar.register({
 				workflow,
-				additionalData: mock<IWorkflowExecuteAdditionalData>(),
+				webhookData: webhookB,
 				mode: 'trigger',
 				activation: 'update',
-				nodeIds: new Set(['a', 'b']),
 			}),
 		).rejects.toThrow('external registration failed');
 
-		expect(webhookService.deleteWebhook).toHaveBeenCalledTimes(2);
-		expect(webhookService.deleteWebhook).toHaveBeenNthCalledWith(
-			1,
-			workflow,
-			webhookA,
-			'internal',
-			'update',
-		);
-		expect(webhookService.deleteWebhook).toHaveBeenNthCalledWith(
-			2,
+		expect(webhookService.deleteWebhook).toHaveBeenCalledTimes(1);
+		expect(webhookService.deleteWebhook).toHaveBeenCalledWith(
 			workflow,
 			webhookB,
 			'internal',
 			'update',
 		);
 		expect(webhookService.deleteWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
-			'Webhook A',
 			'Webhook B',
 		]);
 		expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
@@ -212,10 +199,9 @@ describe('WebhookTriggerRegistrar', () => {
 		await expect(
 			registrar.register({
 				workflow,
-				additionalData: mock<IWorkflowExecuteAdditionalData>(),
+				webhookData,
 				mode: 'trigger',
 				activation: 'update',
-				nodeIds: new Set(['webhook-node']),
 			}),
 		).rejects.toBeInstanceOf(WebhookPathTakenError);
 		expect(webhookService.deleteWebhook).not.toHaveBeenCalled();
@@ -225,13 +211,12 @@ describe('WebhookTriggerRegistrar', () => {
 		await expect(
 			registrar.register({
 				workflow,
-				additionalData: mock<IWorkflowExecuteAdditionalData>(),
+				webhookData,
 				mode: 'trigger',
 				activation: 'init',
-				nodeIds: new Set(['webhook-node']),
 			}),
-		).resolves.toBe(true);
+		).resolves.toBe(false);
 		expect(webhookService.createWebhookIfNotExists).not.toHaveBeenCalled();
-		expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
+		expect(workflowStaticDataService.saveStaticData).not.toHaveBeenCalled();
 	});
 });

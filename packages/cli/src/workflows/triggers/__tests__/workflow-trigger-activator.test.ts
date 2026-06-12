@@ -3,7 +3,7 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { WorkflowExpression } from 'n8n-workflow';
 
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -95,6 +95,8 @@ describe('WorkflowTriggerActivator', () => {
 			callOrder.push('save-static');
 		});
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		const webhookData = mock<IWebhookData>({ node: 'Webhook' });
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookData]);
 		webhookTriggerRegistrar.register.mockImplementation(async () => {
 			callOrder.push('webhooks');
 			return true;
@@ -125,8 +127,11 @@ describe('WorkflowTriggerActivator', () => {
 
 		await activator.activate(
 			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
-			{ nodes: [node('t', 'trigger')], connections: {} },
-			new Set(['t']),
+			{
+				nodes: [node('t', 'trigger'), node('webhook-node', 'webhook', { name: 'Webhook' })],
+				connections: {},
+			},
+			new Set(['t', 'webhook-node']),
 		);
 
 		expect(callOrder).toEqual([
@@ -148,9 +153,11 @@ describe('WorkflowTriggerActivator', () => {
 
 		const callOrder: string[] = [];
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		const webhookData = mock<IWebhookData>({ node: 'Webhook' });
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookData]);
 		webhookTriggerRegistrar.deregister.mockImplementation(async () => {
 			callOrder.push('deregister-webhooks');
-			return ['Webhook'];
+			return 'Webhook';
 		});
 		webhookTriggerRegistrar.clearWorkflowWebhooksForNodes.mockImplementation(async () => {
 			callOrder.push('clear-webhook-rows');
@@ -184,5 +191,62 @@ describe('WorkflowTriggerActivator', () => {
 			'clear-webhook-rows',
 			'deregister-non-webhook',
 		]);
+	});
+
+	test('cleans already registered webhooks when a later webhook registration fails', async () => {
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		const webhookA = mock<IWebhookData>({ node: 'Webhook A' });
+		const webhookB = mock<IWebhookData>({ node: 'Webhook B' });
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookA, webhookB]);
+		webhookTriggerRegistrar.register
+			.mockResolvedValueOnce(true)
+			.mockRejectedValueOnce(new Error('registration failed'));
+		webhookTriggerRegistrar.deregister.mockResolvedValueOnce('Webhook A');
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+
+		const activator = new WorkflowTriggerActivator(
+			logger,
+			mock<ErrorReporter>(),
+			createNodeTypes(),
+			mock<WorkflowRepository>(),
+			mock<WorkflowStaticDataService>(),
+			enabledWorkflowsConfig(),
+			mock<TriggerExecutionContextFactory>(),
+			webhookTriggerRegistrar,
+			nonWebhookTriggerRegistrar,
+			mock<TriggerCountService>(),
+		);
+
+		await expect(
+			activator.activate(
+				mock<WorkflowEntity>({
+					id: 'wf-1',
+					name: 'Test workflow',
+					staticData: {},
+					settings: {},
+				}),
+				{
+					nodes: [
+						node('webhook-a', 'webhook', { name: 'Webhook A' }),
+						node('webhook-b', 'webhook', { name: 'Webhook B' }),
+					],
+					connections: {},
+				},
+				new Set(['webhook-a', 'webhook-b']),
+			),
+		).rejects.toThrow('registration failed');
+
+		expect(webhookTriggerRegistrar.deregister).toHaveBeenCalledWith({
+			workflow: expect.anything(),
+			webhookData: webhookA,
+		});
+		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+			'Webhook A',
+		]);
+		expect(nonWebhookTriggerRegistrar.register).not.toHaveBeenCalled();
 	});
 });
