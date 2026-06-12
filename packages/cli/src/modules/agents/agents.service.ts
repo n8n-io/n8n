@@ -1,20 +1,22 @@
 import {
-	type Agent as RuntimeAgent,
 	AgentExecutionCounter,
 	BuiltAgent,
 	CredentialProvider,
 	StreamChunk,
 	ToolDescriptor,
+	type Agent as RuntimeAgent,
 } from '@n8n/agents';
+import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
+	AgentModelSchema,
+	AgentPersistedMessageDto,
 	type ListAgentsQueryDto,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
-	AgentModelSchema,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
@@ -22,14 +24,10 @@ import {
 	type AgentSkillMutationResponse,
 	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
-	AgentPersistedMessageDto,
 } from '@n8n/api-types';
-import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig, GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { AgentsConfig } from '@n8n/config';
 import { In, ProjectRelationRepository, User } from '@n8n/db';
-import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { JSONSchema7 } from 'json-schema';
@@ -46,40 +44,43 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { Telemetry } from '@/telemetry';
-import { TtlMap } from '@/utils/ttl-map';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
-import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
-import { generateAgentResourceId } from './utils/agent-resource-id';
-import { streamAgentChunks } from './utils/agent-stream';
 import { describeStructuredOutputError } from './utils/structured-output-error';
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentSkillsService } from './agent-skills.service';
+import {
+	agentRuntimeCacheKey,
+	AgentsRuntimeService,
+	integrationAgentStreamKey,
+	testChatAgentStreamKey,
+} from './agents-runtime.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
-import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
+import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { getProviderPrefix } from './json-config/model-id';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
-import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { type ToolRegistry } from './tool-registry';
-import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
+import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import { generateAgentResourceId } from './utils/agent-resource-id';
+import { streamAgentChunks } from './utils/agent-stream';
+import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -103,6 +104,7 @@ export interface ExecuteForChatConfig {
 	userId: string;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	abortSignal?: AbortSignal;
 }
 
 export interface ExecuteForChatPublishedConfig {
@@ -112,6 +114,7 @@ export interface ExecuteForChatPublishedConfig {
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
 	integrationType?: string;
+	abortSignal?: AbortSignal;
 }
 
 export interface ResumeForChatConfig {
@@ -131,6 +134,7 @@ export interface ResumeForChatConfig {
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
+	abortSignal?: AbortSignal;
 }
 
 export interface ExecuteForTaskPublishedConfig {
@@ -165,9 +169,11 @@ interface StreamChatResponseConfig {
 	message: string;
 	memory: AgentMemoryScope;
 	projectId: string;
+	streamKey?: string;
 	source?: string;
 	taskId?: string;
 	taskVersionId?: string;
+	abortSignal?: AbortSignal;
 }
 
 interface GetRuntimeParams {
@@ -187,90 +193,10 @@ interface SaveCredentialIntegrationOptions {
 	broadcast?: boolean;
 }
 
-function getMaxIterationsChunks(): StreamChunk[] {
-	const id = crypto.randomUUID();
-	return [
-		{ type: 'text-start', id },
-		{
-			type: 'text-delta',
-			id,
-			delta: 'The agent has reached the maximum number of iterations and has stopped.',
-		},
-		{ type: 'text-end', id },
-	];
-}
-
 @Service()
 export class AgentsService {
-	/**
-	 * Cached agent runtimes.  Keys follow the pattern:
-	 *   Draft:     `{agentId}:draft:{n8nUserId}`
-	 *   Published: `{agentId}:published[:{integrationType}]`
-	 *
-	 * TTL = 30 minutes — entries are evicted when the agent is idle so that
-	 * memory is freed without requiring an explicit shutdown step.
-	 *
-	 * Separating draft and published with explicit prefixes prevents a draft
-	 * runtime from being mistakenly returned to a published-agent execution.
-	 */
-	private readonly runtimes = new TtlMap<
-		string,
-		{ agent: RuntimeAgent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
-	>(30 * Time.minutes.toMilliseconds);
-
-	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
-		if (params.usePublishedVersion) {
-			const parts = [params.agentId, 'published'];
-			if (params.integrationType) parts.push(params.integrationType);
-			return parts.join(':');
-		}
-		const parts = [params.agentId, 'draft'];
-		if (params.n8nUserId) parts.push(params.n8nUserId);
-		return parts.join(':');
-	}
-
-	/**
-	 * Drop all cached runtimes (draft and published) for an agent and, in
-	 * multi-main mode, broadcast the invalidation to peer mains so their
-	 * caches stay in sync.
-	 *
-	 * Pass `skipBroadcast: true` from the pubsub handler to avoid a re-publish
-	 * loop when applying an event received from another main.
-	 */
-	private clearRuntimes(agentId: string, options: { skipBroadcast?: boolean } = {}): void {
-		for (const key of this.runtimes.keys()) {
-			if (key === agentId || key.startsWith(`${agentId}:`)) {
-				const entry = this.runtimes.get(key);
-				this.runtimes.delete(key);
-				if (entry) this.closeAgentResources(entry.agent, agentId);
-			}
-		}
-
-		if (options.skipBroadcast) return;
-		if (!this.globalConfig.multiMainSetup.enabled) return;
-
-		void this.publisher
-			.publishCommand({
-				command: 'agent-config-changed',
-				payload: { agentId },
-			})
-			.catch((error) => {
-				this.logger.warn(`[AgentsService] Failed to publish agent-config-changed for ${agentId}`, {
-					error: error instanceof Error ? error.message : String(error),
-				});
-			});
-	}
-
-	/**
-	 * Reconcile the local runtime cache when a peer main reports that an
-	 * agent's configuration changed. The originating main has already cleared
-	 * its own cache synchronously before publishing — this handler runs on
-	 * every other main so the next request rebuilds the runtime from the
-	 * current DB state.
-	 */
-	@OnPubSubEvent('agent-config-changed', { instanceType: 'main' })
-	handleAgentConfigChanged(payload: PubSubCommandMap['agent-config-changed']): void {
-		this.clearRuntimes(payload.agentId, { skipBroadcast: true });
+	requestAgentStreamAbort(streamKey: string, steerMessage?: string): boolean {
+		return this.agentsRuntimeService.requestAgentStreamAbort(streamKey, steerMessage);
 	}
 
 	constructor(
@@ -281,17 +207,20 @@ export class AgentsService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentHistoryRepository: AgentHistoryRepository,
+		private readonly agentsRuntimeService: AgentsRuntimeService,
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly agentTaskSnapshotRepository: AgentTaskSnapshotRepository,
-		private readonly publisher: Publisher,
 		private readonly agentsConfig: AgentsConfig,
-		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 	) {}
+
+	private clearRuntimes(agentId: string): void {
+		this.agentsRuntimeService.clearRuntimes(agentId);
+	}
 
 	private isNodeToolsModuleEnabled(): boolean {
 		return this.agentsConfig.modules.includes('node-tools-searcher');
@@ -303,20 +232,6 @@ export class AgentsService {
 	 */
 	isKnowledgeBaseEnabled(): boolean {
 		return this.agentsConfig.sandboxEnabled && this.agentsConfig.sandboxProvider === 'daytona';
-	}
-
-	/**
-	 * Best-effort close of an agent instance. Delegates to `agent.close()`
-	 * which disposes the runtime and disconnects any attached MCP clients.
-	 * Errors are logged but never thrown.
-	 */
-	private closeAgentResources(agent: { close(): Promise<void> }, agentId: string): void {
-		agent.close().catch((error) => {
-			this.logger.warn('[AgentsService] Failed to close agent resources on eviction', {
-				agentId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		});
 	}
 
 	private createAgentExecutionCounter({
@@ -842,40 +757,35 @@ export class AgentsService {
 	}> {
 		const { agentId, projectId, integrationType, usePublishedVersion } = params;
 
-		const cacheKey = this.computeRuntimeCacheKey(params);
+		const cacheKey = agentRuntimeCacheKey(params);
 
-		const cached = this.runtimes.get(cacheKey);
-		if (cached) return cached;
+		return await this.agentsRuntimeService.getOrCreateRuntime(cacheKey, async () => {
+			const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+			if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
 
-		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+			let n8nUserId = params.n8nUserId;
+			let agentData: Agent = agentEntity;
 
-		let n8nUserId = params.n8nUserId;
-		let agentData: Agent = agentEntity;
+			if (usePublishedVersion) {
+				agentData = this.getPublishedAgent(agentEntity);
+				// Resolve n8n user from publishedById when not provided by the caller.
+				n8nUserId ??= agentEntity.activeVersion?.publishedById ?? undefined;
+			}
 
-		if (usePublishedVersion) {
-			agentData = this.getPublishedAgent(agentEntity);
+			if (!n8nUserId) {
+				throw new UserError('Agent user owner id is required');
+			}
 
-			// Resolve n8n user from publishedById when not provided by the caller.
-			n8nUserId ??= agentEntity.activeVersion?.publishedById ?? undefined;
-		}
+			const credentialProvider = this.createCredentialProvider(projectId);
+			const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
+				agentData,
+				credentialProvider,
+				n8nUserId,
+				integrationType,
+			);
 
-		if (!n8nUserId) {
-			throw new UserError('Agent user owner id is required');
-		}
-
-		const credentialProvider = this.createCredentialProvider(projectId);
-		const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
-			agentData,
-			credentialProvider,
-			n8nUserId,
-			integrationType,
-		);
-
-		this.runtimes.set(cacheKey, { agent: agentInstance, agentId, toolRegistry, projectId });
-		const runtime = this.runtimes.get(cacheKey);
-		if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
-		return runtime;
+			return { agent: agentInstance, agentId, toolRegistry, projectId };
+		});
 	}
 
 	/**
@@ -893,6 +803,7 @@ export class AgentsService {
 			integrationType,
 			userId,
 			usePublishedVersion = true,
+			abortSignal,
 		} = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
@@ -909,8 +820,6 @@ export class AgentsService {
 			throw new UserError(`Checkpoint ${runId} has no memory data and cannot be resumed`);
 		}
 
-		const threadId = memoryScope.threadId;
-
 		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
@@ -920,39 +829,26 @@ export class AgentsService {
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
-		const recorder = new ExecutionRecorder(toolRegistry);
 
-		const resultStream = await agentInstance.resume('stream', resumeData, {
+		// Derive a stream key so the resumed SSE stream can be interrupted by a
+		// concurrent `chat/steer` call — matching the behaviour of `build/resume`.
+		const streamKey = userId
+			? testChatAgentStreamKey(projectId, agentId, userId, memoryScope.threadId)
+			: undefined;
+
+		yield* this.agentsRuntimeService.streamResumeResponse({
+			agentInstance,
+			toolRegistry,
+			agentId,
+			projectId,
 			runId,
 			toolCallId,
+			resumeData,
+			memory: memoryScope,
+			streamKey,
 			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
+			abortSignal,
 		});
-
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
-			yield value;
-		}
-
-		// Always record resumed executions — even if they suspend again (chained HITL).
-		// Don't repeat the original user message — the pre-suspension execution already has it.
-		const messageRecord = recorder.getMessageRecord();
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: '',
-				record: messageRecord,
-				hitlStatus: 'resumed',
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record resumed agent execution', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			});
 	}
 
 	/**
@@ -1147,7 +1043,7 @@ export class AgentsService {
 	 *
 	 */
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, userId, memory } = config;
+		const { agentId, projectId, message, userId, memory, abortSignal } = config;
 
 		const runtime = await this.getRuntime({ agentId, projectId, n8nUserId: userId });
 
@@ -1159,6 +1055,8 @@ export class AgentsService {
 			message,
 			memory,
 			projectId: runtime.projectId,
+			streamKey: testChatAgentStreamKey(projectId, agentId, userId, memory.threadId),
+			abortSignal,
 		});
 	}
 
@@ -1214,6 +1112,7 @@ export class AgentsService {
 			message,
 			memory,
 			projectId: runtime.projectId,
+			streamKey: integrationAgentStreamKey(projectId, agentId, integrationType, memory.threadId),
 			source: integrationType,
 		});
 	}
@@ -1278,68 +1177,27 @@ export class AgentsService {
 	 * `agentInstance.stream()` to scope memory per chat user — it is
 	 * deliberately distinct from the n8n user ID used for RBAC.
 	 */
-	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
-		const {
-			agentInstance,
-			toolRegistry,
-			agentId,
-			userId,
+	steerChatAgent(
+		agentId: string,
+		projectId: string,
+		userId: string,
+		threadId: string,
+		message: string,
+	): boolean {
+		return this.requestAgentStreamAbort(
+			testChatAgentStreamKey(projectId, agentId, userId, threadId),
 			message,
-			memory,
-			projectId,
-			source,
-			taskId,
-			taskVersionId,
-		} = config;
-		const { threadId, resourceId } = memory;
+		);
+	}
 
-		const recorder = new ExecutionRecorder(toolRegistry);
-
-		const resultStream = await agentInstance.stream(message, {
-			persistence: { threadId, resourceId },
-			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
+	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
+		yield* this.agentsRuntimeService.streamAgentResponse({
+			...config,
+			executionCounter: this.createAgentExecutionCounter({
+				agentId: config.agentId,
+				userId: config.userId,
+			}),
 		});
-
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
-			if (value.type === 'tool-call-suspended') {
-				this.logger.info('Chat: tool-call-suspended chunk received', {
-					agentId,
-					toolCallId: value.toolCallId,
-					toolName: value.toolName,
-				});
-			}
-			if (value.type === 'finish' && value.finishReason === 'max-iterations') {
-				for (const chunk of getMaxIterationsChunks()) {
-					yield chunk;
-				}
-			}
-			yield value;
-		}
-
-		// Always record — even if suspended, the pre-suspension response text
-		// and tool calls are valuable. Usage/model will be null for suspended runs.
-		const messageRecord = recorder.getMessageRecord();
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: message,
-				record: messageRecord,
-				hitlStatus: recorder.suspended ? 'suspended' : undefined,
-				source,
-				taskId,
-				taskVersionId,
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record agent execution', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			});
 	}
 
 	/**

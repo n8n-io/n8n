@@ -246,7 +246,7 @@ export interface BuiltAgent {
 	on(event: AgentEvent, handler: AgentEventHandler): void;
 
 	/** Cancel the currently running agent. Synchronous — sets an abort flag that the agentic loop checks asynchronously. */
-	abort(): void;
+	abort(reason?: unknown): void;
 
 	/**
 	 * Close the agent and release all held resources.

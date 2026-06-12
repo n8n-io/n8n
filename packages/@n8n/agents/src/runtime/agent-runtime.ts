@@ -66,6 +66,7 @@ import {
 import { runObservationLogReflector } from './observation-log-reflector';
 import { renderObservationLog } from './observation-log-renderer';
 import { hasObservationLogStore, hasObservationLogTaskLockStore } from './observation-log-store';
+import { PartialResponseAccumulator } from './partial-response-accumulator';
 import { generateRunId, RunStateManager } from './run-state';
 import {
 	accumulateUsage,
@@ -85,7 +86,7 @@ import {
 	toAiSdkProviderTools,
 	toAiSdkTools,
 } from './tool-adapter';
-import { isCancellation } from '../sdk/cancellation';
+import { isCancellation, isSavePartialAbortError } from '../sdk/cancellation';
 import { Telemetry } from '../sdk/telemetry';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentEventData } from '../types/runtime/event';
@@ -445,8 +446,8 @@ export class AgentRuntime {
 	}
 
 	/** Set the abort flag to cancel the currently running agent. */
-	abort(): void {
-		this.eventBus.abort();
+	abort(reason?: unknown): void {
+		this.eventBus.abort(reason);
 	}
 
 	/** Non-streaming: run the full agent loop using generateText and return the final result. */
@@ -593,6 +594,7 @@ export class AgentRuntime {
 				...mergedExecOptions,
 			};
 
+			this.updateState({ status: 'running' });
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
 			const activeAbortScope = abortScope;
 
@@ -1266,8 +1268,31 @@ export class AgentRuntime {
 			await writer.close();
 		};
 
-		const handleAbort = async (): Promise<boolean> => {
+		const persistPartialResponseOnAbort = async (
+			accumulator: PartialResponseAccumulator,
+		): Promise<AgentMessage[]> => {
+			const newMessages = accumulator.toAgentMessages();
+			if (newMessages.length !== 0) {
+				list.addResponse(newMessages);
+			}
+
+			await this.saveToMemory(list, options);
+			return newMessages;
+		};
+
+		const handleAbort = async (accumulator?: PartialResponseAccumulator): Promise<boolean> => {
 			if (!abortScope.isAborted) return false;
+			if (accumulator !== undefined && isSavePartialAbortError(abortScope.signal.reason)) {
+				try {
+					await persistPartialResponseOnAbort(accumulator);
+				} catch (error) {
+					this.eventBus.emit({
+						type: AgentEvent.Error,
+						message: `Failed to save partial response on abort: ${String(error)}`,
+						error,
+					});
+				}
+			}
 			await closeStreamWithError(new Error('Agent run was aborted'), 'cancelled');
 			return true;
 		};
@@ -1348,6 +1373,7 @@ export class AgentRuntime {
 					return;
 				}
 			} catch (error) {
+				if (await handleAbort()) return;
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 				await closeStreamWithError(error, 'failed');
 				return;
@@ -1380,12 +1406,13 @@ export class AgentRuntime {
 				...this.buildAiSdkOptions(toolMap, options),
 				...this.buildSmoothStreamTransformOptions(options),
 			});
+			const partialResponseAccumulator = new PartialResponseAccumulator();
 
-			// Consume the stream. When the AbortSignal fires mid-stream the
-			// AI SDK cancels the underlying fetch and the async iterator throws.
-			// We catch that here and close the consumer stream with an error chunk.
+			// Consume the stream. When the AbortSignal fires, the AI SDK returns {type: 'abort'} chunk. Check the
+			// runtime abort flag after iteration before reading final result data.
 			try {
 				for await (const chunk of result.fullStream) {
+					partialResponseAccumulator.add(chunk);
 					// Filter only the SDK's terminal `finish` chunk — the runtime
 					// emits its own consolidated `finish` after the loop completes.
 					// `start-step` / `finish-step` are passed through so consumers
@@ -1424,7 +1451,7 @@ export class AgentRuntime {
 					}
 				}
 			} catch (streamError) {
-				if (await handleAbort()) return;
+				if (await handleAbort(partialResponseAccumulator)) return;
 				this.eventBus.emit({
 					type: AgentEvent.Error,
 					message: String(streamError),
@@ -1434,7 +1461,7 @@ export class AgentRuntime {
 				return;
 			}
 
-			if (await handleAbort()) return;
+			if (await handleAbort(partialResponseAccumulator)) return;
 
 			const aiFinishReason = await result.finishReason;
 			const usage = await result.usage;
@@ -1587,10 +1614,10 @@ export class AgentRuntime {
 			options.persistence.resourceId,
 			delta,
 		);
-
+		// avoid starting long running jobs if the run is aborted
+		if (this.eventBus.isAborted) return;
 		// Memory jobs receive the execution counter so their LLM and embedding
 		// usage contributes to token_count.
-
 		const observationTasks = this.scheduleObservationLogJobs(
 			options.persistence,
 			options.executionCounter,

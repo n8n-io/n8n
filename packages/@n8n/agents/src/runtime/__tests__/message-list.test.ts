@@ -74,7 +74,6 @@ describe('AgentMessageList — monotonic timestamps', () => {
 		expect(inputMsg.createdAt.getTime()).toBeGreaterThan(futureTs.getTime());
 	});
 });
-
 // ---------------------------------------------------------------------------
 // History messages keep their DB-sourced createdAt
 // ---------------------------------------------------------------------------
@@ -92,7 +91,6 @@ describe('AgentMessageList — chronological order', () => {
 		expect(msgs[1].content[0]).toMatchObject({ type: 'text', text: 'second' });
 	});
 });
-
 // ---------------------------------------------------------------------------
 // History messages keep their DB-sourced createdAt
 // ---------------------------------------------------------------------------

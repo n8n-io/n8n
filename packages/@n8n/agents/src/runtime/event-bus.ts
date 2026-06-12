@@ -39,8 +39,8 @@ class EventBusAbortScope implements AgentAbortScope {
 		return this.controller.signal.aborted;
 	}
 
-	abort(): void {
-		this.controller.abort();
+	abort(reason?: unknown): void {
+		this.controller.abort(reason);
 	}
 
 	dispose(): void {
@@ -97,10 +97,10 @@ export class AgentEventBus {
 		}
 	}
 
-	abort(): void {
-		this.controller.abort();
+	abort(reason?: unknown): void {
+		this.controller.abort(reason);
 		for (const scope of this.abortScopes) {
-			scope.abort();
+			scope.abort(reason);
 		}
 	}
 

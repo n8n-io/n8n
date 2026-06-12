@@ -1,34 +1,40 @@
-import type {
-	CredentialProvider,
-	SerializableAgentState,
-	StreamChunk,
-	StreamResult,
-	Agent as RuntimeAgent,
+import {
+	isSavePartialAbortError,
+	type CredentialProvider,
+	type Agent as RuntimeAgent,
+	type SerializableAgentState,
+	type StreamChunk,
+	type StreamResult,
 } from '@n8n/agents';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { NodeCatalogService } from '@/node-catalog';
-
+import {
+	AgentsRuntimeService,
+	builderRuntimeCacheKey,
+	type AgentStreamControl,
+} from '../agents-runtime.service';
 import { AgentsService } from '../agents.service';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
+import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { buildBuilderPrompt } from './agents-builder-prompts';
+import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder-tool-names';
-import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
-import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
-import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { getBuilderRuntimeSkills } from './skills';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NodeCatalogService } from '@/node-catalog';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -40,6 +46,7 @@ export class AgentsBuilderService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentsService: AgentsService,
+		private readonly agentsRuntimeService: AgentsRuntimeService,
 		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly n8nMemory: N8nMemory,
@@ -80,17 +87,41 @@ export class AgentsBuilderService {
 		message: string,
 		credentialProvider: CredentialProvider,
 		user: User,
+		abortSignal?: AbortSignal,
 	): AsyncGenerator<StreamChunk> {
 		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
 
 		this.logger.debug('Starting builder agent stream', { agentId, projectId });
 
 		const resourceId = user.id;
-		const resultStream = await builder.stream(message, {
-			persistence: { threadId: builderThreadId(agentId), resourceId },
-		});
+		const streamKey = builderRuntimeCacheKey({ projectId, agentId, userId: user.id });
+		const streamFromAgent = (resultStream: StreamResult, signal?: AbortSignal) =>
+			this.streamFromAgent(resultStream, signal);
 
-		yield* this.streamFromAgent(resultStream);
+		yield* this.agentsRuntimeService.streamSteerableTurns({
+			message,
+			streamKey,
+			abortSignal,
+			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
+				const resultStream = await builder.stream(turnMessage, {
+					persistence: { threadId: builderThreadId(agentId), resourceId },
+					abortSignal: control?.signal,
+				});
+
+				yield* streamFromAgent(resultStream, control?.signal);
+			},
+		});
+	}
+
+	/**
+	 * Interrupt the active builder stream for an agent and steer it with a new
+	 * message. No-op if no build stream is currently in progress for this agent.
+	 */
+	steerBuilderAgent(agentId: string, projectId: string, userId: string, message: string): boolean {
+		return this.agentsRuntimeService.requestAgentStreamAbort(
+			builderRuntimeCacheKey({ projectId, agentId, userId }),
+			message,
+		);
 	}
 
 	/**
@@ -111,6 +142,7 @@ export class AgentsBuilderService {
 		resumeData: unknown,
 		credentialProvider: CredentialProvider,
 		user: User,
+		abortSignal?: AbortSignal,
 	): AsyncGenerator<StreamChunk> {
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -124,12 +156,32 @@ export class AgentsBuilderService {
 
 		this.logger.debug('Resuming builder agent', { agentId, runId, toolCallId });
 
-		const resultStream = await builder.resume('stream', resumeData, {
-			runId,
-			toolCallId,
-		});
+		const resourceId = user.id;
+		const streamKey = builderRuntimeCacheKey({ projectId, agentId, userId: user.id });
+		const streamFromAgent = (resultStream: StreamResult, signal?: AbortSignal) =>
+			this.streamFromAgent(resultStream, signal);
 
-		yield* this.streamFromAgent(resultStream);
+		yield* this.agentsRuntimeService.streamSteerableTurns({
+			streamKey,
+			abortSignal,
+			async *initialTurn(control: AgentStreamControl | undefined) {
+				const resultStream = await builder.resume('stream', resumeData, {
+					runId,
+					toolCallId,
+					abortSignal: control?.signal,
+				});
+
+				yield* streamFromAgent(resultStream, control?.signal);
+			},
+			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
+				const resultStream = await builder.stream(turnMessage, {
+					persistence: { threadId: builderThreadId(agentId), resourceId },
+					abortSignal: control?.signal,
+				});
+
+				yield* streamFromAgent(resultStream, control?.signal);
+			},
+		});
 	}
 
 	// ---------------------------------------------------------------------------
@@ -233,8 +285,15 @@ export class AgentsBuilderService {
 	 * on each `tool-call-suspended` chunk by the SDK, so this is just a
 	 * plain reader→generator adapter.
 	 */
-	private async *streamFromAgent(resultStream: StreamResult): AsyncGenerator<StreamChunk> {
+	private async *streamFromAgent(
+		resultStream: StreamResult,
+		signal?: AbortSignal,
+	): AsyncGenerator<StreamChunk> {
 		for await (const value of streamAgentChunks(resultStream.stream)) {
+			// silence partial response abort errors
+			if (value.type === 'error' && signal?.aborted && isSavePartialAbortError(signal.reason)) {
+				return;
+			}
 			yield value;
 		}
 	}

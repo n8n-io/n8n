@@ -31,6 +31,16 @@ interface ChunkHandlerCtx {
  * Set up SSE headers and return a typed `send(event)` helper.
  */
 export function initSseStream(res: FlushableResponse) {
+	const controller = new AbortController();
+	const abortOnClose = () => {
+		if (!res.writableEnded) controller.abort(new Error('SSE client disconnected'));
+	};
+	const abortOnError = (error: Error) => {
+		if (!controller.signal.aborted) controller.abort(error);
+	};
+
+	res.once('close', abortOnClose);
+	res.once('error', abortOnError);
 	res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 	res.setHeader('Cache-Control', 'no-cache');
 	res.setHeader('Connection', 'keep-alive');
@@ -39,11 +49,17 @@ export function initSseStream(res: FlushableResponse) {
 	(res.socket as { setNoDelay?: (v: boolean) => void })?.setNoDelay?.(true);
 
 	const send = (event: AgentSseEvent) => {
+		if (controller.signal.aborted || res.writableEnded) return;
 		res.write(`data: ${JSON.stringify(event)}\n\n`);
 		res.flush?.();
 	};
 
-	return { send };
+	const cleanup = () => {
+		res.off('close', abortOnClose);
+		res.off('error', abortOnError);
+	};
+
+	return { send, abortSignal: controller.signal, cleanup };
 }
 
 function toAgentSseMessage(message: AgentMessage): AgentSseMessage | undefined {

@@ -9,6 +9,7 @@ const props = withDefaults(
 		modelValue: string;
 		placeholder?: string;
 		isStreaming: boolean;
+		isInterruptable?: boolean;
 		canSubmit: boolean;
 		disabled?: boolean;
 		showVoice?: boolean;
@@ -135,6 +136,7 @@ defineExpose({
 			:model-value="modelValue"
 			:placeholder="placeholder"
 			:streaming="isStreaming"
+			:is-interruptable="isInterruptable"
 			:disabled="disabled"
 			:submit-disabled="!canSubmit"
 			send-button-test-id="instance-ai-send-button"

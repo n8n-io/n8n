@@ -60,6 +60,8 @@ interface AgentExecutor {
 		resumeData: unknown;
 		integrationType?: string;
 	}): AsyncGenerator<StreamChunk>;
+
+	abortAgentStream?(config: { streamKey: string }): void;
 }
 
 const SLACK_THINKING_STATUS = 'Thinking...';
@@ -263,6 +265,9 @@ export class AgentChatBridge {
 			async *resumeForChat(config) {
 				yield* agentService.resumeForChat(config);
 			},
+			abortAgentStream(config) {
+				agentService.requestAgentStreamAbort(config.streamKey);
+			},
 		};
 		return new AgentChatBridge(
 			chat,
@@ -355,6 +360,7 @@ export class AgentChatBridge {
 
 		const platformThreadId = this.resolvePlatformThreadId(thread);
 		const threadId = this.toAgentThreadId(platformThreadId);
+
 		const slackThreadContext = this.getSlackThreadContext(message);
 		const useNativeSlackThreadFeatures =
 			this.integration.type !== 'slack' || slackThreadContext?.hasRealThreadTs === true;
@@ -539,8 +545,7 @@ export class AgentChatBridge {
 						await this.postErrorToThread(thread, chunk.error);
 						break;
 					default:
-						// Ignore other chunk types (finish, tool-input-*,
-						// start-step, finish-step, etc.)
+						// Other chunk types (finish, tool-input-*, start-step, finish-step) are ignored.
 						break;
 				}
 			}

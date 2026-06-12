@@ -1,5 +1,5 @@
+import type { BuiltTool, CredentialProvider, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
-import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import {
 	agentSkillSchema,
 	agentTaskSchema,
@@ -55,6 +55,13 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 	message:
 		'Agent config changed since you last read it. Call read_config and retry with the returned configHash.',
 };
+
+export class ToolCallAbortError extends Error {
+	constructor(message?: string) {
+		super(message ?? 'Tool call aborted');
+		this.name = 'BuilderAgentAbortError';
+	}
+}
 
 export interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
@@ -116,6 +123,18 @@ export function getAgentConfigHash(config: AgentJsonConfig | null): string | nul
 	return createHash('sha256')
 		.update(JSON.stringify(canonicalizeJson(config)))
 		.digest('hex');
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+	if (signal?.aborted) {
+		throw new ToolCallAbortError();
+	}
+}
+
+function throwIfToolCallAborted(error: unknown): void {
+	if (error instanceof ToolCallAbortError) {
+		throw error;
+	}
 }
 
 function snapshotFromConfig(
@@ -249,59 +268,59 @@ export class AgentsBuilderToolsService {
 						),
 				}),
 			)
-			.handler(
-				async ({ json, baseConfigHash }: { json: string; baseConfigHash: string | null }) => {
-					const parsed = tryParseConfigJson(json);
-					if (!parsed.ok) {
-						return { ok: false, errors: parsed.errors };
-					}
-					let snapshot: AgentConfigSnapshot;
-					try {
-						snapshot = await this.getConfigSnapshot(agentId, projectId);
-					} catch (e) {
-						return {
-							ok: false,
-							stage: 'stale',
-							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
-						};
-					}
-					if (baseConfigHash !== snapshot.configHash) {
-						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
-					}
-					const zodResult = RunnableAgentJsonConfigSchema.safeParse(
-						sanitizeAgentJsonConfig(parsed.data),
+			.handler(async ({ json, baseConfigHash }, ctx) => {
+				const parsed = tryParseConfigJson(json);
+				if (!parsed.ok) {
+					return { ok: false, errors: parsed.errors };
+				}
+				let snapshot: AgentConfigSnapshot;
+				try {
+					snapshot = await this.getConfigSnapshot(agentId, projectId);
+				} catch (e) {
+					return {
+						ok: false,
+						stage: 'stale',
+						errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+				if (baseConfigHash !== snapshot.configHash) {
+					return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
+				}
+				const zodResult = RunnableAgentJsonConfigSchema.safeParse(
+					sanitizeAgentJsonConfig(parsed.data),
+				);
+				if (!zodResult.success) {
+					return { ok: false, errors: formatZodErrors(zodResult.error) };
+				}
+				const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
+				if (emptyInstructions) {
+					return { ok: false, errors: emptyInstructions.errors };
+				}
+				const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
+				if (unsupportedNativeWebSearch) {
+					return { ok: false, errors: unsupportedNativeWebSearch.errors };
+				}
+				const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
+				try {
+					throwIfAborted(ctx.abortSignal);
+					const result = await this.agentsService.updateConfig(
+						agentId,
+						projectId,
+						normalizedConfig,
 					);
-					if (!zodResult.success) {
-						return { ok: false, errors: formatZodErrors(zodResult.error) };
-					}
-					const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
-					if (emptyInstructions) {
-						return { ok: false, errors: emptyInstructions.errors };
-					}
-					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
-					if (unsupportedNativeWebSearch) {
-						return { ok: false, errors: unsupportedNativeWebSearch.errors };
-					}
-					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
-					try {
-						const result = await this.agentsService.updateConfig(
-							agentId,
-							projectId,
-							normalizedConfig,
-						);
-						return {
-							ok: true,
-							...snapshotFromConfig(result.config, result.updatedAt, result.versionId),
-						};
-					} catch (e) {
-						return {
-							ok: false,
-							stage: 'schema',
-							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
-						};
-					}
-				},
-			)
+					return {
+						ok: true,
+						...snapshotFromConfig(result.config, result.updatedAt, result.versionId),
+					};
+				} catch (e) {
+					throwIfToolCallAborted(e);
+					return {
+						ok: false,
+						stage: 'schema',
+						errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
 			.build();
 
 		const patchConfigTool = new Tool(BUILDER_TOOLS.PATCH_CONFIG)
@@ -327,13 +346,16 @@ export class AgentsBuilderToolsService {
 				}),
 			)
 			.handler(
-				async ({
-					operations,
-					baseConfigHash,
-				}: {
-					operations: string;
-					baseConfigHash: string | null;
-				}) => {
+				async (
+					{
+						operations,
+						baseConfigHash,
+					}: {
+						operations: string;
+						baseConfigHash: string | null;
+					},
+					ctx: ToolContext,
+				) => {
 					const parsedOps = tryParseConfigJson(operations);
 					if (!parsedOps.ok) {
 						return { ok: false, stage: 'parse', errors: parsedOps.errors };
@@ -393,6 +415,7 @@ export class AgentsBuilderToolsService {
 					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
 
 					try {
+						throwIfAborted(ctx.abortSignal);
 						const result = await this.agentsService.updateConfig(
 							agentId,
 							projectId,
@@ -403,6 +426,7 @@ export class AgentsBuilderToolsService {
 							...snapshotFromConfig(result.config, result.updatedAt, result.versionId),
 						};
 					} catch (e) {
+						throwIfToolCallAborted(e);
 						return {
 							ok: false,
 							stage: 'schema',
@@ -499,9 +523,10 @@ export class AgentsBuilderToolsService {
 						.describe('Complete TypeScript source using export default new Tool(...)'),
 				}),
 			)
-			.handler(async ({ code }: { code: string }) => {
+			.handler(async ({ code }: { code: string }, ctx: ToolContext) => {
 				try {
 					const descriptor = await this.secureRuntime.describeToolSecurely(code);
+					throwIfAborted(ctx.abortSignal);
 					const built = await this.agentsService.buildCustomTool(
 						agentId,
 						projectId,
@@ -510,6 +535,7 @@ export class AgentsBuilderToolsService {
 					);
 					return { ok: true, id: built.id, descriptor };
 				} catch (e) {
+					throwIfToolCallAborted(e);
 					return {
 						ok: false,
 						errors: [{ message: e instanceof Error ? e.message : String(e) }],
@@ -545,23 +571,28 @@ export class AgentsBuilderToolsService {
 				}),
 			)
 			.handler(
-				async ({
-					name,
-					description,
-					body,
-				}: {
-					name: string;
-					description: string;
-					body: string;
-				}) => {
+				async (
+					{
+						name,
+						description,
+						body,
+					}: {
+						name: string;
+						description: string;
+						body: string;
+					},
+					ctx: ToolContext,
+				) => {
 					// Input is already validated against `.input()` (agentSkillSchema
 					// shapes) by the tool runtime before the handler runs.
 					const skill = { name, description, instructions: body };
 
 					try {
+						throwIfAborted(ctx.abortSignal);
 						const created = await this.agentsService.createSkill(agentId, projectId, skill);
 						return { ok: true, id: created.id, skill: created.skill };
 					} catch (e) {
+						throwIfToolCallAborted(e);
 						return {
 							ok: false,
 							errors: [{ message: e instanceof Error ? e.message : String(e) }],
@@ -606,15 +637,18 @@ export class AgentsBuilderToolsService {
 				}),
 			)
 			.handler(
-				async ({
-					name,
-					objective,
-					cronExpression,
-				}: {
-					name: string;
-					objective: string;
-					cronExpression: string;
-				}) => {
+				async (
+					{
+						name,
+						objective,
+						cronExpression,
+					}: {
+						name: string;
+						objective: string;
+						cronExpression: string;
+					},
+					ctx: ToolContext,
+				) => {
 					// Input is already validated against `.input()` (agentTaskSchema
 					// shapes) by the tool runtime before the handler runs.
 					const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
@@ -626,6 +660,7 @@ export class AgentsBuilderToolsService {
 						// Adds a `{ type:'task', id, enabled }` ref to the agent config and
 						// creates the body. Enabled by default; it starts running once the
 						// agent is (re)published.
+						throwIfAborted(ctx.abortSignal);
 						const task = await this.agentTaskService.create(agentId, {
 							name,
 							objective,
@@ -634,6 +669,7 @@ export class AgentsBuilderToolsService {
 						});
 						return { ok: true, task };
 					} catch (e) {
+						throwIfToolCallAborted(e);
 						return {
 							ok: false,
 							errors: [{ message: e instanceof Error ? e.message : String(e) }],

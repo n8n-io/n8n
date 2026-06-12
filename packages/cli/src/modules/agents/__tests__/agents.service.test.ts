@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
+import { SavePartialResponseAbortError } from '@n8n/agents';
 import type { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { type AgentIntegrationConfig, type AgentJsonConfig } from '@n8n/api-types';
@@ -15,6 +16,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentsRuntimeService, builderRuntimeCacheKey } from '../agents-runtime.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentsToolsService } from '../agents-tools.service';
@@ -162,6 +164,7 @@ describe('AgentsService', () => {
 	let agentsConfig: AgentsConfig;
 	let globalConfig: jest.Mocked<GlobalConfig>;
 	let telemetry: jest.Mocked<Telemetry>;
+	let agentsRuntimeService: AgentsRuntimeService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -191,6 +194,12 @@ describe('AgentsService', () => {
 		} as Partial<GlobalConfig>);
 		telemetry = mock<Telemetry>();
 		const logger = mockLogger();
+		agentsRuntimeService = new AgentsRuntimeService(
+			logger,
+			publisher,
+			globalConfig,
+			agentExecutionService,
+		);
 
 		service = new AgentsService(
 			logger,
@@ -200,12 +209,11 @@ describe('AgentsService', () => {
 			n8nMemory,
 			agentExecutionService,
 			agentHistoryRepository,
+			agentsRuntimeService,
 			new AgentSkillsService(logger, agentRepository),
 			agentTaskRepository,
 			agentTaskSnapshotRepository,
-			publisher,
 			agentsConfig,
-			globalConfig,
 			telemetry,
 			chatIntegrationService,
 			agentKnowledgeService,
@@ -3190,8 +3198,134 @@ describe('AgentsService', () => {
 		it('handleAgentConfigChanged clears the local cache without re-publishing — no broadcast loop', () => {
 			enableMultiMain();
 
-			service.handleAgentConfigChanged({ agentId });
+			agentsRuntimeService.handleAgentConfigChanged({ agentId });
 
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('does not clear builder runtime cache entries for the changed agent', async () => {
+			const cacheKey = builderRuntimeCacheKey({ projectId, agentId, userId });
+			const cachedAgent = { close: jest.fn().mockResolvedValue(undefined) };
+			const rebuiltAgent = { close: jest.fn().mockResolvedValue(undefined) };
+			const factory = jest.fn().mockResolvedValue({
+				agent: cachedAgent,
+				agentId,
+				projectId,
+				toolRegistry: new Map(),
+			});
+			const rebuildFactory = jest.fn().mockResolvedValue({
+				agent: rebuiltAgent,
+				agentId,
+				projectId,
+				toolRegistry: new Map(),
+			});
+
+			await agentsRuntimeService.getOrCreateRuntime(cacheKey, factory);
+
+			agentsRuntimeService.clearRuntimes(agentId);
+			const runtime = await agentsRuntimeService.getOrCreateRuntime(cacheKey, rebuildFactory);
+
+			expect(factory).toHaveBeenCalledTimes(1);
+			expect(cachedAgent.close).not.toHaveBeenCalled();
+			expect(rebuildFactory).not.toHaveBeenCalled();
+			expect(runtime.agent).toBe(cachedAgent);
+		});
+
+		it('aborts a local active stream and stores the steering message', () => {
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			service.requestAgentStreamAbort('stream-key', 'new message');
+
+			expect(control.wasAborted()).toBe(true);
+			expect(control.takePendingSteerMessage()).toBe('new message');
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('aborts with a SavePartialResponseAbortError reason when a steer message is provided', () => {
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			service.requestAgentStreamAbort('stream-key', 'steer me');
+
+			expect(control.signal.reason).toBeInstanceOf(SavePartialResponseAbortError);
+		});
+
+		it('does not set a SavePartialResponseAbortError reason on a plain cancel', () => {
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			service.requestAgentStreamAbort('stream-key');
+
+			expect(control.signal.reason).not.toBeInstanceOf(SavePartialResponseAbortError);
+		});
+
+		it('broadcasts stream aborts in multi-main mode', () => {
+			enableMultiMain();
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			service.requestAgentStreamAbort('stream-key', 'new message');
+
+			expect(control.wasAborted()).toBe(true);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-stream-abort',
+				payload: { streamKey: 'stream-key', steerMessage: 'new message' },
+			});
+		});
+
+		it('returns true for multi-main steer requests when no local stream was aborted', () => {
+			enableMultiMain();
+
+			const interrupted = service.requestAgentStreamAbort('missing-stream-key', 'new message');
+
+			expect(interrupted).toBe(true);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-stream-abort',
+				payload: { streamKey: 'missing-stream-key', steerMessage: 'new message' },
+			});
+		});
+
+		it('broadcasts abort-only stream interrupts in multi-main mode', () => {
+			enableMultiMain();
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			service.requestAgentStreamAbort('stream-key');
+
+			expect(control.wasAborted()).toBe(true);
+			expect(control.takePendingSteerMessage()).toBeUndefined();
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-stream-abort',
+				payload: { streamKey: 'stream-key' },
+			});
+		});
+
+		it('returns true for multi-main abort requests when no local stream was aborted but command was published', () => {
+			enableMultiMain();
+
+			const interrupted = service.requestAgentStreamAbort('missing-stream-key');
+
+			expect(interrupted).toBe(true);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-stream-abort',
+				payload: { streamKey: 'missing-stream-key' },
+			});
+		});
+
+		it('returns false for local abort requests when no local stream was aborted', () => {
+			const interrupted = service.requestAgentStreamAbort('missing-stream-key');
+
+			expect(interrupted).toBe(false);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('handles peer stream abort commands without re-publishing', () => {
+			enableMultiMain();
+			const control = agentsRuntimeService.createAgentStreamControl('stream-key');
+
+			agentsRuntimeService.handleAgentStreamAbort({
+				streamKey: 'stream-key',
+				steerMessage: 'peer message',
+			});
+
+			expect(control.wasAborted()).toBe(true);
+			expect(control.takePendingSteerMessage()).toBe('peer message');
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
