@@ -18,9 +18,17 @@ import { createInterface } from 'node:readline';
 import { emitPerSpecLcovs } from '@n8n/test-impact';
 import type { CoverageReport } from 'monocart-coverage-reports';
 
-import { BY_SPEC_DIR, coverageOptions } from '../coverage-options';
+import { addV8CoverageInBatches, BY_SPEC_DIR, coverageOptions } from '../coverage-options';
 
 const OUT_DIR = join(coverageOptions.outputDir ?? './coverage', 'by-spec');
+
+/** Stream a JSONL raw (one V8 entry per line) without materialising a >512MB string. */
+async function* readJsonlEntries(path: string): AsyncGenerator<unknown> {
+	const lines = createInterface({ input: createReadStream(path), crlfDelay: Infinity });
+	for await (const line of lines) {
+		if (line) yield JSON.parse(line);
+	}
+}
 
 async function main() {
 	const stats = await emitPerSpecLcovs({
@@ -28,25 +36,9 @@ async function main() {
 		outDir: OUT_DIR,
 		coverageOptions,
 		feedRaws: async (report: CoverageReport, rawFiles, dir) => {
-			// Raws are JSONL (one V8 entry per line) — read line-by-line and add in
-			// batches so neither a >512MB whole-file string nor the full entry array
-			// is ever materialised at once.
 			for (const rf of rawFiles) {
 				try {
-					const lines = createInterface({
-						input: createReadStream(join(dir, rf)),
-						crlfDelay: Infinity,
-					});
-					let batch: unknown[] = [];
-					for await (const line of lines) {
-						if (!line) continue;
-						batch.push(JSON.parse(line));
-						if (batch.length >= 100) {
-							await report.add(batch as never);
-							batch = [];
-						}
-					}
-					if (batch.length) await report.add(batch as never);
+					await addV8CoverageInBatches(report, readJsonlEntries(join(dir, rf)));
 				} catch (error) {
 					console.warn(`  ⚠ ${rf}: ${String(error)}`);
 				}

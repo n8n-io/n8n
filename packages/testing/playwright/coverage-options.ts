@@ -1,5 +1,5 @@
 import type { TestInfo } from '@playwright/test';
-import type { CoverageReportOptions } from 'monocart-coverage-reports';
+import type { CoverageReport, CoverageReportOptions } from 'monocart-coverage-reports';
 import { relative } from 'node:path';
 
 /**
@@ -88,3 +88,30 @@ export function specId(testInfo: TestInfo): string {
 
 /** Filesystem-safe slug for a spec id (per-spec coverage directory name). */
 export const slugify = (spec: string): string => spec.replace(/[^a-zA-Z0-9]+/g, '_');
+
+/**
+ * Feed a V8 coverage list into a report in byte-bounded batches. MCR's `add()`
+ * JSON.stringify's each call's data into a single cache file, so one
+ * navigation-heavy page's list (duplicate bundle sources across navigations)
+ * can exceed V8's ~512MB string cap. Splitting by cumulative source bytes keeps
+ * every stringify well under it; MCR unions the cache files at `generate()`.
+ * Accepts a sync or async iterable so callers can stream entries off disk.
+ */
+export async function addV8CoverageInBatches(
+	report: CoverageReport,
+	entries: Iterable<unknown> | AsyncIterable<unknown>,
+	maxBytes = 200_000_000,
+): Promise<void> {
+	let batch: unknown[] = [];
+	let bytes = 0;
+	for await (const entry of entries) {
+		batch.push(entry);
+		bytes += (entry as { source?: string }).source?.length ?? 0;
+		if (bytes >= maxBytes) {
+			await report.add(batch as never);
+			batch = [];
+			bytes = 0;
+		}
+	}
+	if (batch.length) await report.add(batch as never);
+}

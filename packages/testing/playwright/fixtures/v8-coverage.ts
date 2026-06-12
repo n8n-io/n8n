@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
 import {
+	addV8CoverageInBatches,
 	BY_SPEC_DIR,
 	coverageOptions,
 	COVERAGE_ENABLED,
@@ -67,7 +68,7 @@ export const v8CoverageFixtures = {
 				const coverage = await page.coverage.stopJSCoverage();
 				if (coverage?.length) {
 					perSpecRaw.push(...coverage.map((entry) => structuredClone(entry)));
-					await sharedReport.add(coverage);
+					await addV8CoverageInBatches(sharedReport, coverage);
 				}
 			} catch {
 				// Page closed before collection — ignore.
