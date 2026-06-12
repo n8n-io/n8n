@@ -89,10 +89,11 @@ function createMainWindow(preloadPath: string, rendererPath: string): BrowserWin
 	window.on('show', () => broadcastActive(true));
 	window.on('focus', () => broadcastActive(true));
 	// The Dock icon mirrors window visibility: the app reads as "open" only while
-	// its window is up; otherwise it recedes to the menu-bar tray.
+	// its window is up; otherwise it recedes to the menu-bar tray. A minimized
+	// window keeps the Dock entry — its thumbnail lives there.
 	window.on('hide', () => {
 		broadcastActive(false);
-		app.dock?.hide();
+		if (!window.isMinimized()) app.dock?.hide();
 	});
 
 	// Closing the window keeps the app running in the tray/Dock.
@@ -124,33 +125,28 @@ function getMainWindow(preloadPath: string, rendererPath: string): BrowserWindow
  * as soon as the app deactivates — the popover behaviour this app moved away from.
  */
 function revealWindow(window: BrowserWindow): void {
+	const present = () => {
+		// show() alone does not de-minimize on macOS.
+		if (window.isMinimized()) window.restore();
+		window.show();
+	};
 	if (app.dock && !app.dock.isVisible()) {
 		void app.dock.show().then(() => {
 			applyDockIcon();
-			window.show();
+			present();
 		});
 		return;
 	}
-	window.show();
+	present();
 }
 
-/** Show the window. A new window opens centered; a hidden one reappears where the user left it. */
+/**
+ * Show the window: open it (a new one centered, a hidden one where the user left it),
+ * restore it if minimized, focus it if already open. Never hides — closing is the
+ * window's own `x` button.
+ */
 export function showMainWindow(preloadPath: string, rendererPath: string): void {
 	revealWindow(getMainWindow(preloadPath, rendererPath));
-}
-
-/** Toggle the window from a tray click: surface it if buried, hide if focused, otherwise show. */
-export function toggleMainWindow(preloadPath: string, rendererPath: string): void {
-	const window = getMainWindow(preloadPath, rendererPath);
-	if (window.isVisible() && !window.isFocused()) {
-		window.focus();
-		return;
-	}
-	if (window.isVisible()) {
-		window.hide();
-		return;
-	}
-	revealWindow(window);
 }
 
 /** Whether the window is focused — actually in front of the user right now. */

@@ -10,7 +10,6 @@ import { requestMacPermissions } from './mac-permissions';
 import {
 	applyDockIcon,
 	showMainWindow,
-	toggleMainWindow,
 	notifyMainWindow,
 	onMainWindowReset,
 	isMainWindowFocused,
@@ -193,7 +192,7 @@ if (!app.requestSingleInstanceLock()) {
 					// by the time this resolves the user's real previous app is still up.
 					void (async () => {
 						await contextDetector.refresh().catch(() => {});
-						toggleMainWindow(preloadPath, rendererPath);
+						showMainWindow(preloadPath, rendererPath);
 					})();
 				},
 				() => {

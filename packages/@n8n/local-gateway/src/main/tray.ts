@@ -50,19 +50,19 @@ function getTrayIcon(status: DaemonStatus): Electron.NativeImage {
 }
 
 /**
- * Create the tray icon. Left-click toggles the main window; right-click offers a minimal Quit.
- * On Linux, where the tray emits no click/right-click events, an Open + Quit context menu
- * provides the same actions. The icon reflects connection status.
+ * Create the tray icon. Left-click opens (or focuses) the main window; right-click offers a
+ * minimal Quit. On Linux, where the tray emits no click/right-click events, an Open + Quit
+ * context menu provides the same actions. The icon reflects connection status.
  */
 export function createTray(
 	controller: DaemonController,
-	onToggle: () => void,
+	onOpen: () => void,
 	onQuit: () => void,
 ): Tray {
 	const tray = new Tray(getTrayIcon('disconnected'));
 	tray.setToolTip('n8n Assistant');
 
-	tray.on('click', () => onToggle());
+	tray.on('click', () => onOpen());
 	tray.on('right-click', () => {
 		tray.popUpContextMenu(Menu.buildFromTemplate([{ label: 'Quit', click: onQuit }]));
 	});
@@ -72,7 +72,7 @@ export function createTray(
 	if (process.platform === 'linux') {
 		tray.setContextMenu(
 			Menu.buildFromTemplate([
-				{ label: 'Open n8n Assistant', click: () => onToggle() },
+				{ label: 'Open n8n Assistant', click: () => onOpen() },
 				{ type: 'separator' },
 				{ label: 'Quit', click: onQuit },
 			]),
