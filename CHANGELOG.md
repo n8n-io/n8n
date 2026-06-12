@@ -1,3 +1,11 @@
+## [1.123.55](https://github.com/n8n-io/n8n/compare/n8n@1.123.55...n8n@1.123.55) (2026-06-12)
+
+
+### Bug Fixes
+
+* Fix 5 security issues in hono, vue-i18n ([#31882](https://github.com/n8n-io/n8n/issues/31882)) ([bb369bc](https://github.com/n8n-io/n8n/commit/bb369bcaf2c5061103af044fee8cadb29be9ad1c))
+
+
 ## [1.123.54](https://github.com/n8n-io/n8n/compare/n8n@1.123.53...n8n@1.123.54) (2026-06-08)
 
 
