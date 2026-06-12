@@ -15,5 +15,6 @@ export interface ITask {
 	markdown_content?: string;
 	notify_all?: boolean;
 	parent?: string;
+	points?: number;
 	custom_fields?: IDataObject[];
 }
