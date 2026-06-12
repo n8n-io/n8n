@@ -7,7 +7,10 @@ import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow'
 import { WorkflowExpression } from 'n8n-workflow';
 
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
+import type {
+	NonWebhookTriggerRegistrar,
+	PreparedNonWebhookTriggerRegistration,
+} from '@/workflows/triggers/non-webhook-trigger-registrar';
 import type { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
@@ -101,10 +104,14 @@ describe('WorkflowTriggerActivator', () => {
 			callOrder.push('webhooks');
 		});
 		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
-		nonWebhookTriggerRegistrar.register.mockImplementation(async () => {
-			callOrder.push('non-webhook');
-			return true;
-		});
+		const nonWebhookRegistration = mock<PreparedNonWebhookTriggerRegistration>();
+		nonWebhookTriggerRegistrar.createRegistrationContext.mockReturnValue(nonWebhookRegistration);
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['t', 'p']);
+		nonWebhookTriggerRegistrar.register.mockImplementation(
+			async (_workflow, _registration, nodeId) => {
+				callOrder.push(`non-webhook:${nodeId}`);
+			},
+		);
 		const triggerCountService = mock<TriggerCountService>();
 		triggerCountService.count.mockImplementation(() => {
 			callOrder.push('count');
@@ -127,16 +134,21 @@ describe('WorkflowTriggerActivator', () => {
 		await activator.activate(
 			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
 			{
-				nodes: [node('t', 'trigger'), node('webhook-node', 'webhook', { name: 'Webhook' })],
+				nodes: [
+					node('t', 'trigger'),
+					node('p', 'poll'),
+					node('webhook-node', 'webhook', { name: 'Webhook' }),
+				],
 				connections: {},
 			},
-			new Set(['t', 'webhook-node']),
+			new Set(['t', 'p', 'webhook-node']),
 		);
 
 		expect(callOrder).toEqual([
 			'acquire',
 			'webhooks',
-			'non-webhook',
+			'non-webhook:t',
+			'non-webhook:p',
 			'count',
 			'release',
 			'persist-count',
@@ -162,8 +174,9 @@ describe('WorkflowTriggerActivator', () => {
 			callOrder.push('clear-webhook-rows');
 		});
 		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
-		nonWebhookTriggerRegistrar.deregister.mockImplementation(async () => {
-			callOrder.push('deregister-non-webhook');
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['trigger-node']);
+		nonWebhookTriggerRegistrar.deregister.mockImplementation(async (_workflowId, nodeId) => {
+			callOrder.push(`deregister-non-webhook:${nodeId}`);
 		});
 
 		const activator = new WorkflowTriggerActivator(
@@ -181,14 +194,20 @@ describe('WorkflowTriggerActivator', () => {
 
 		await activator.deactivate(
 			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
-			{ nodes: [node('webhook-node', 'webhook', { name: 'Webhook' })], connections: {} },
-			new Set(['webhook-node']),
+			{
+				nodes: [
+					node('webhook-node', 'webhook', { name: 'Webhook' }),
+					node('trigger-node', 'trigger'),
+				],
+				connections: {},
+			},
+			new Set(['webhook-node', 'trigger-node']),
 		);
 
 		expect(callOrder).toEqual([
 			'deregister-webhooks',
 			'clear-webhook-rows',
-			'deregister-non-webhook',
+			'deregister-non-webhook:trigger-node',
 		]);
 	});
 

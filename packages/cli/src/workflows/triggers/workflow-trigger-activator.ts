@@ -99,18 +99,11 @@ export class WorkflowTriggerActivator {
 
 			const resolveWorkflowData = this.createWorkflowDataResolver(dbWorkflow);
 
-			await this.nonWebhookTriggerRegistrar.register(
+			await this.registerNonWebhookTriggers(
 				dbWorkflow,
 				workflow,
-				{
-					activationMode: 'update',
-					executionMode: 'trigger',
-					additionalData,
-					resolveWorkflowData,
-					onTriggerFailure: ({ error, node, workflowData, mode, activation }) => {
-						this.reportRuntimeTriggerFailure(error, node, workflowData.id, mode, activation);
-					},
-				},
+				additionalData,
+				resolveWorkflowData,
 				nodeIds,
 			);
 
@@ -155,7 +148,7 @@ export class WorkflowTriggerActivator {
 			removedNodeNames,
 		);
 
-		await this.nonWebhookTriggerRegistrar.deregister(dbWorkflow.id, nodeIds);
+		await this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds);
 	}
 
 	/**
@@ -289,6 +282,49 @@ export class WorkflowTriggerActivator {
 				`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error.message}"`,
 			);
 		}
+	}
+
+	private async registerNonWebhookTriggers(
+		dbWorkflow: WorkflowEntity,
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		resolveWorkflowData: () => Promise<IWorkflowBase>,
+		nodeIds: Set<INode['id']>,
+	) {
+		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
+		if (triggerNodeIds.length === 0) return;
+
+		const registration = this.nonWebhookTriggerRegistrar.createRegistrationContext(dbWorkflow, {
+			activationMode: 'update',
+			executionMode: 'trigger',
+			additionalData,
+			resolveWorkflowData,
+			onTriggerFailure: ({ error, node, workflowData, mode, activation }) => {
+				this.reportRuntimeTriggerFailure(error, node, workflowData.id, mode, activation);
+			},
+		});
+
+		for (const nodeId of triggerNodeIds) {
+			await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId);
+		}
+	}
+
+	private async deregisterNonWebhookTriggers(
+		workflowId: WorkflowId,
+		workflow: Workflow,
+		nodeIds: Set<INode['id']>,
+	) {
+		const triggerNodeIds = this.getNonWebhookTriggerNodeIdsForNodeIds(workflow, nodeIds);
+
+		for (const nodeId of triggerNodeIds) {
+			await this.nonWebhookTriggerRegistrar.deregister(workflowId, nodeId);
+		}
+	}
+
+	private getNonWebhookTriggerNodeIdsForNodeIds(workflow: Workflow, nodeIds: Set<INode['id']>) {
+		return this.nonWebhookTriggerRegistrar
+			.getTriggerNodeIds(workflow)
+			.filter((nodeId) => nodeIds.has(nodeId));
 	}
 
 	private createWorkflowDataResolver(dbWorkflow: WorkflowEntity): () => Promise<IWorkflowBase> {

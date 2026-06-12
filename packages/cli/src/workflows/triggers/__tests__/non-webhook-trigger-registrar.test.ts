@@ -15,7 +15,22 @@ describe('NonWebhookTriggerRegistrar', () => {
 		jest.restoreAllMocks();
 	});
 
-	test('registers only requested trigger and poll node ids', async () => {
+	test('resolves trigger and poll node ids', () => {
+		const registrar = new NonWebhookTriggerRegistrar(
+			logger,
+			mock<ActiveWorkflowTriggers>(),
+			mock<TriggerExecutionContextFactory>(),
+		);
+		const workflow = createWorkflow([
+			node('trigger-a', 'trigger'),
+			node('poll-a', 'poll'),
+			node('regular', 'regular'),
+		]);
+
+		expect(registrar.getTriggerNodeIds(workflow)).toEqual(['trigger-a', 'poll-a']);
+	});
+
+	test('registers one trigger or poll node id', async () => {
 		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 		const factory = mock<TriggerExecutionContextFactory>();
 		const getTriggerFunctions = jest.fn();
@@ -25,19 +40,17 @@ describe('NonWebhookTriggerRegistrar', () => {
 		const registrar = new NonWebhookTriggerRegistrar(logger, activeWorkflowTriggers, factory);
 		const workflow = createWorkflow([node('trigger-a', 'trigger'), node('poll-a', 'poll')]);
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const dbWorkflow = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow' });
 
-		await registrar.register(
-			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow' }),
-			workflow,
-			{
-				activationMode: 'update',
-				executionMode: 'trigger',
-				additionalData,
-				resolveWorkflowData: async () => mock<IWorkflowBase>(),
-				onTriggerFailure: jest.fn(),
-			},
-			new Set(['poll-a']),
-		);
+		const registration = registrar.createRegistrationContext(dbWorkflow, {
+			activationMode: 'update',
+			executionMode: 'trigger',
+			additionalData,
+			resolveWorkflowData: async () => mock<IWorkflowBase>(),
+			onTriggerFailure: jest.fn(),
+		});
+
+		await registrar.register(workflow, registration, 'poll-a');
 
 		expect(activeWorkflowTriggers.addTriggers).toHaveBeenCalledWith(
 			'wf-1',
@@ -51,7 +64,20 @@ describe('NonWebhookTriggerRegistrar', () => {
 		);
 	});
 
-	test('returns false when no requested non-webhook triggers match and propagates activation errors', async () => {
+	test('deregisters one trigger or poll node id', async () => {
+		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
+		const registrar = new NonWebhookTriggerRegistrar(
+			logger,
+			activeWorkflowTriggers,
+			mock<TriggerExecutionContextFactory>(),
+		);
+
+		await registrar.deregister('wf-1', 'poll-a');
+
+		expect(activeWorkflowTriggers.removeTriggers).toHaveBeenCalledWith('wf-1', new Set(['poll-a']));
+	});
+
+	test('propagates activation errors', async () => {
 		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 		const factory = mock<TriggerExecutionContextFactory>();
 		factory.getExecuteTriggerFunctions.mockReturnValue(jest.fn());
@@ -65,28 +91,13 @@ describe('NonWebhookTriggerRegistrar', () => {
 			resolveWorkflowData: async () => mock<IWorkflowBase>(),
 			onTriggerFailure: jest.fn(),
 		};
-
-		await expect(
-			registrar.register(
-				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow' }),
-				workflow,
-				context,
-				new Set(['missing']),
-			),
-		).resolves.toBe(false);
-		expect(activeWorkflowTriggers.addTriggers).not.toHaveBeenCalled();
-		expect(factory.getExecuteTriggerFunctions).not.toHaveBeenCalled();
-		expect(factory.getExecutePollFunctions).not.toHaveBeenCalled();
-
-		jest.clearAllMocks();
+		const registration = registrar.createRegistrationContext(
+			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow' }),
+			context,
+		);
 		activeWorkflowTriggers.addTriggers.mockRejectedValue(new Error('activation failed'));
-		await expect(
-			registrar.register(
-				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow' }),
-				workflow,
-				context,
-				new Set(['trigger-a']),
-			),
-		).rejects.toThrow('activation failed');
+		await expect(registrar.register(workflow, registration, 'trigger-a')).rejects.toThrow(
+			'activation failed',
+		);
 	});
 });
