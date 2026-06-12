@@ -7,10 +7,10 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class MetabaseApi implements ICredentialType {
-	name = 'metabaseApi';
+export class MetabaseUserApi implements ICredentialType {
+	name = 'metabaseUserApi';
 
-	displayName = 'Metabase API';
+	displayName = 'Metabase API User';
 
 	documentationUrl = 'metabase';
 
