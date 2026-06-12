@@ -99,7 +99,8 @@ const isCanvasNodeGroupingEnabled = computed(() =>
 );
 
 const nodeGroupView = useCanvasNodeGroupView({
-	allGroups: computed(() => workflowDocumentStore.value.allGroups),
+	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
+	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	isGroupingEnabled: () => isCanvasNodeGroupingEnabled.value,
 });

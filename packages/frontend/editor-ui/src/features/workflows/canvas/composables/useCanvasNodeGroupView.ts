@@ -1,8 +1,9 @@
-import { computed, getCurrentScope, onScopeDispose, ref, type InjectionKey, type Ref } from 'vue';
+import { computed, getCurrentScope, onScopeDispose, ref, type InjectionKey } from 'vue';
+import { jsonParse } from 'n8n-workflow';
 import type { NodeGroupChangeEvent } from '@/app/stores/workflowDocument/useWorkflowDocumentNodeGroups';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
-import type { IWorkflowGroup } from 'n8n-workflow';
-import { LOCAL_STORAGE_CANVAS_EXPANDED_GROUP_IDS } from '@/app/constants/localStorage';
+import { LOCAL_STORAGE_CANVAS_GROUP_EXPANDED } from '@/app/constants/localStorage';
+import { isStringArrayRecord } from '@/app/utils/objectUtils';
 import {
 	aggregateNodeGroupLayoutOffsets,
 	computeNodeGroupLayoutPushes,
@@ -12,7 +13,8 @@ import {
 } from './useCanvasNodeGroupLayout';
 
 export interface UseCanvasNodeGroupViewDeps {
-	allGroups: Ref<IWorkflowGroup[]>;
+	workflowId: () => string;
+	getCurrentGroupIds: () => string[];
 	onNodeGroupsChange: (handler: (event: NodeGroupChangeEvent) => void) => { off: () => void };
 	isGroupingEnabled?: () => boolean;
 }
@@ -28,19 +30,24 @@ export type CanvasNodeGroupView = ReturnType<typeof useCanvasNodeGroupView>;
 
 export const NodeGroupViewKey: InjectionKey<CanvasNodeGroupView> = Symbol('nodeGroupView');
 
-/** Persisted expand order, restricted to ids present in `groups`. */
-function readPersistedExpandedGroupIdOrder(groups: IWorkflowGroup[]): string[] {
+// workflowId -> ordered expanded group ids.
+type ExpandedGroupStore = Record<string, string[]>;
+
+function readStore(): ExpandedGroupStore {
 	try {
-		const value: unknown = JSON.parse(
-			localStorage.getItem(LOCAL_STORAGE_CANVAS_EXPANDED_GROUP_IDS) ?? '[]',
-		);
-		if (!Array.isArray(value)) return [];
-		const groupIds = new Set(groups.map((group) => group.id));
-		return value.filter(
-			(groupId): groupId is string => typeof groupId === 'string' && groupIds.has(groupId),
-		);
+		const raw = localStorage.getItem(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED) ?? '';
+		const parsed = jsonParse<unknown>(raw, { fallbackValue: {} });
+		return isStringArrayRecord(parsed) ? parsed : {};
 	} catch {
-		return [];
+		return {};
+	}
+}
+
+function writeStore(store: ExpandedGroupStore) {
+	try {
+		localStorage.setItem(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED, JSON.stringify(store));
+	} catch {
+		// Failure is not critical, as collapse state is a view preference
 	}
 }
 
@@ -65,13 +72,15 @@ function withIgnoredNodes(
  * Canvas view-state for group collapse/expand. Lives separately from the
  * workflow document store because collapse is not workflow data — it does
  * not dirty the document, does not enter undo, and is not serialized.
+ *
+ * The expanded ids are persisted to localStorage per workflow as an ordered
+ * array, ordered by expansion recency (most recently expanded last), so a
+ * reload restores the groups the user had open.
  */
 export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	// Source of truth for expand state: group ids in expansion order
 	// (oldest first). Everything not listed is collapsed.
-	const expandedGroupIdOrder = ref<string[]>(
-		readPersistedExpandedGroupIdOrder(deps.allGroups.value),
-	);
+	const expandedGroupIdOrder = ref<string[]>([]);
 	const expandedIds = computed(() => new Set(expandedGroupIdOrder.value));
 	const disabledPushSourceGroupIds = ref<Set<string>>(new Set());
 	const layoutComponents = ref<NodeGroupLayoutComponent[]>([]);
@@ -95,13 +104,8 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	);
 	const componentOffsets = computed(() => aggregateNodeGroupLayoutOffsets(pushEntries.value));
 
-	function persistExpandedGroupIds() {
-		try {
-			localStorage.setItem(
-				LOCAL_STORAGE_CANVAS_EXPANDED_GROUP_IDS,
-				JSON.stringify(expandedGroupIdOrder.value),
-			);
-		} catch {}
+	function persist() {
+		writeStore({ ...readStore(), [deps.workflowId()]: [...expandedGroupIdOrder.value] });
 	}
 
 	function clearIgnoredNodesForSourceGroup(id: string) {
@@ -117,14 +121,16 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 			[...disabledPushSourceGroupIds.value].filter((groupId) => groupId !== id),
 		);
 		clearIgnoredNodesForSourceGroup(id);
-		persistExpandedGroupIds();
+		persist();
 	}
 
-	function applyPersistedExpandedState(groups: IWorkflowGroup[]) {
-		expandedGroupIdOrder.value = readPersistedExpandedGroupIdOrder(groups);
+	// Load the persisted ids, dropping any whose group no longer exists.
+	function restore(presentIds: Set<string>) {
+		const stored = readStore()[deps.workflowId()] ?? [];
+		expandedGroupIdOrder.value = stored.filter((id) => presentIds.has(id));
 		disabledPushSourceGroupIds.value = new Set();
 		ignoredNodeIdsBySourceGroup.value = new Map();
-		persistExpandedGroupIds();
+		persist();
 	}
 
 	function setGroupExpanded(id: string, value: boolean) {
@@ -140,7 +146,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		disabledPushSourceGroupIds.value = new Set(
 			[...disabledPushSourceGroupIds.value].filter((groupId) => groupId !== id),
 		);
-		persistExpandedGroupIds();
+		persist();
 	}
 
 	const isGroupingEnabled = () => deps.isGroupingEnabled?.() ?? true;
@@ -289,14 +295,17 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		return pushedNodeMoves;
 	}
 
+	// Seed from groups already loaded (the SET event can fire before we subscribe).
+	restore(new Set(deps.getCurrentGroupIds()));
+
 	// Default collapse state per change action: SET (workflow load /
-	// replacement) collapses every group; ADD (new group) starts expanded,
-	// unless flagged `startCollapsed` (imported/pasted groups, whose stored
-	// positions describe the collapsed layout); DELETE removes the id;
-	// UPDATE leaves collapse state alone.
+	// replacement) restores the persisted expanded state; ADD (new group)
+	// starts expanded, unless flagged `startCollapsed` (imported/pasted
+	// groups, whose stored positions describe the collapsed layout); DELETE
+	// removes the id; UPDATE leaves collapse state alone.
 	const subscription = deps.onNodeGroupsChange((event) => {
 		if (event.action === CHANGE_ACTION.SET) {
-			applyPersistedExpandedState(event.payload.groups);
+			restore(new Set(event.payload.groups.map((group) => group.id)));
 		} else if (event.action === CHANGE_ACTION.ADD && !event.payload.startCollapsed) {
 			setGroupExpanded(event.payload.group.id, true);
 			// New groups open expanded, but creating one shouldn't shove existing

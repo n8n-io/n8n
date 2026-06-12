@@ -192,11 +192,11 @@ test.describe(
 			);
 
 			await n8n.page.reload();
-			// The group was created expanded in this session and expansion state is
-			// persisted in localStorage, so its member nodes stay visible after reload.
+			// Creating a group persists its expand state, so it reloads expanded with all nodes visible.
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(4);
 			await expect(n8n.canvas.getNodeGroups()).toHaveCount(1);
 			await expect(n8n.canvas.getNodeGroupTitle(DEFAULT_GROUP_TITLE)).toBeVisible();
+			await expect(n8n.canvas.getNodeGroupFrame(DEFAULT_GROUP_TITLE)).toBeVisible();
 		});
 
 		test('blocks Convert to sub-workflow for selections that include a trigger', async ({
@@ -321,6 +321,30 @@ test.describe(
 
 				await expect(n8n.canvas.getNodeGroupFrame(DEFAULT_GROUP_TITLE)).toBeVisible();
 				await expect(n8n.canvas.groupToggleButton(DEFAULT_GROUP_TITLE)).toHaveAttribute(
+					'aria-label',
+					'Collapse',
+				);
+			});
+		});
+
+		test.describe('Expand state persists across reload', () => {
+			test.beforeEach(async ({ n8n, setupRequirements }) => {
+				await setupRequirements(requirements);
+				await n8n.start.fromImportedWorkflow(PERSISTED_FIXTURE);
+				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(VISIBLE_NODES_AFTER_COLLAPSED_LOAD);
+				await n8n.canvas.clickZoomToFitButton();
+			});
+
+			test('a group expanded by the user reloads expanded', async ({ n8n }) => {
+				// The group loads collapsed by default; expand it deliberately.
+				await expect(n8n.canvas.getNodeGroupFrame(PERSISTED_GROUP_TITLE)).toBeHidden();
+				await n8n.canvas.toggleNodeGroup(PERSISTED_GROUP_TITLE);
+				await expect(n8n.canvas.getNodeGroupFrame(PERSISTED_GROUP_TITLE)).toBeVisible();
+
+				await n8n.page.reload();
+
+				await expect(n8n.canvas.getNodeGroupFrame(PERSISTED_GROUP_TITLE)).toBeVisible();
+				await expect(n8n.canvas.groupToggleButton(PERSISTED_GROUP_TITLE)).toHaveAttribute(
 					'aria-label',
 					'Collapse',
 				);

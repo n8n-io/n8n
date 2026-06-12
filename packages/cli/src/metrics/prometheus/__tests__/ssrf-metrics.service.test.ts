@@ -1,6 +1,6 @@
+import type { SsrfProtectionService } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig, SsrfProtectionConfig } from '@n8n/config';
-import type { SsrfProtectionService } from 'n8n-core';
 import promClient from 'prom-client';
 
 import { PrometheusSsrfMetricsService } from '../ssrf-metrics.service';
