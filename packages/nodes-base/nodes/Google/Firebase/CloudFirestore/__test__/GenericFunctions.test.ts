@@ -249,12 +249,10 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 		it('should convert numeric values', () => {
 			expect(jsonToDocument(42)).toEqual({ integerValue: 42 });
 			expect(jsonToDocument(3.14)).toEqual({ doubleValue: 3.14 });
-			// Note: The current implementation preserves numeric strings as strings in Firestore document values
-			// While Firestore API spec typically expects numeric types for doubleValue/integerValue,
-			// this behavior is maintained for backward compatibility and to avoid breaking existing workflows
-			// that may depend on string preservation in certain edge cases
-			expect(jsonToDocument('123')).toEqual({ integerValue: '123' });
-			expect(jsonToDocument('123.45')).toEqual({ doubleValue: '123.45' });
+			expect(jsonToDocument('123')).toEqual({ stringValue: '123' });
+			expect(jsonToDocument('123.45')).toEqual({ stringValue: '123.45' });
+			expect(jsonToDocument('0123')).toEqual({ stringValue: '0123' });
+			expect(jsonToDocument('9999')).toEqual({ stringValue: '9999' });
 		});
 
 		it('should convert string values', () => {
@@ -351,7 +349,7 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 		it('should handle edge cases', () => {
 			expect(jsonToDocument(0)).toEqual({ integerValue: 0 });
 			expect(jsonToDocument(NaN as any)).toEqual({});
-			expect(jsonToDocument(undefined as any)).toEqual({});
+			expect(jsonToDocument(undefined as any)).toEqual({ nullValue: null });
 		});
 
 		it('should skip unsafe object properties', () => {
