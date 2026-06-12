@@ -82,17 +82,27 @@ export function useCanvasMapping({
 		const rd = renderData.value;
 		const render = rd.renderTypeByNodeId.get(id)?.value;
 		const name = nodeNameById.value.get(id);
+		const status = rd.executionStatusByNodeId.get(id)?.value;
+		const tasks = rd.executionRunDataByNodeId.get(id)?.value;
+
+		// Mirror the single-node `computeHasIssues`
 		const executionIssues = name ? rd.executionIssuesByNodeName.get(name)?.value : undefined;
+		const hasExecutionError =
+			status === 'error' ||
+			status === 'crashed' ||
+			(executionIssues?.length ?? 0) > 0 ||
+			Boolean(tasks?.at(-1)?.error);
+
 		return {
 			running: rd.executionRunningByNodeId.get(id)?.value ?? false,
 			waitingForNext: rd.executionWaitingForNextByNodeId.get(id)?.value ?? false,
 			waiting: rd.executionWaitingByNodeId.get(id)?.value,
-			hasExecutionError: (executionIssues?.length ?? 0) > 0,
+			hasExecutionError,
 			hasValidationError: (rd.validationErrorsByNodeId.get(id)?.value?.length ?? 0) > 0,
-			status: rd.executionStatusByNodeId.get(id)?.value,
+			status,
 			dirty:
 				render?.type === CanvasNodeRenderType.Default && render.options.dirtiness !== undefined,
-			iterations: countNonCanceledIterations(rd.executionRunDataByNodeId.get(id)?.value),
+			iterations: countNonCanceledIterations(tasks),
 		};
 	}
 

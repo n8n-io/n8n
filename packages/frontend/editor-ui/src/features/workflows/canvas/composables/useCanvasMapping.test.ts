@@ -314,6 +314,37 @@ describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
 		expect(snapshot.hasValidationError).toBe(true);
 		expect(snapshot.hasExecutionError).toBe(false);
 	});
+
+	it.each(['error', 'crashed'] as const)(
+		'flags hasExecutionError on %s status even without execution-issue text',
+		(status) => {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData();
+			setStatus(rd, 'a', status);
+
+			const { getNodeExecutionSnapshot } = useCanvasMapping({
+				nodes: ref([node]),
+				connections: ref({}),
+				renderData: shallowRef(rd),
+			});
+
+			expect(getNodeExecutionSnapshot('a').hasExecutionError).toBe(true);
+		},
+	);
+
+	it('flags hasExecutionError from a last-task error when no issue text exists', () => {
+		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		setRunData(rd, 'a', [{ error: { message: 'Boom' } } as unknown as ITaskData]);
+
+		const { getNodeExecutionSnapshot } = useCanvasMapping({
+			nodes: ref([node]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		expect(getNodeExecutionSnapshot('a').hasExecutionError).toBe(true);
+	});
 });
 
 describe('useCanvasMapping — mapped connections', () => {
