@@ -310,9 +310,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						}),
 					)
 					.optional(),
-				simulatedNodes: z
-					.array(z.object({ nodeName: z.string(), reason: z.string() }))
-					.optional(),
+				simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })).optional(),
 				simulationNote: z.string().optional(),
 				lastNodeExecuted: z.string().optional(),
 				nodesNotReached: z.array(z.string()).optional(),

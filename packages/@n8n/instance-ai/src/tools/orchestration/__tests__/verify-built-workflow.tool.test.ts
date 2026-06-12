@@ -882,9 +882,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 	it('marks simulated nodes in previews and reports them with reasons', async () => {
 		const { ctx } = makeContext(
 			makeBuildOutcome({
-				nodeSimulationPlan: [
-					simulateVerdict('Send Slack', 'Sends a message to a Slack channel'),
-				],
+				nodeSimulationPlan: [simulateVerdict('Send Slack', 'Sends a message to a Slack channel')],
 				simulationFixtures: { 'Send Slack': [{ json: { ok: true } }] },
 			}),
 			{

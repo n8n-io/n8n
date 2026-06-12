@@ -121,7 +121,10 @@ describe('classifyNodesForSimulation', () => {
 
 	it('forces simulate for nodes with mocked credentials, even read operations', async () => {
 		const verdicts = await classify(
-			[trigger, { name: 'Get Rows', type: 'n8n-nodes-base.slack', parameters: { operation: 'get' } }],
+			[
+				trigger,
+				{ name: 'Get Rows', type: 'n8n-nodes-base.slack', parameters: { operation: 'get' } },
+			],
 			['Get Rows'],
 		);
 		expect(verdictOf(verdicts, 'Get Rows')).toMatchObject({

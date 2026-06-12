@@ -275,9 +275,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * name. Becomes per-execution pin data during verification. Sidecar —
 	 * never persisted to the workflow.
 	 */
-	simulationFixtures: z
-		.record(z.array(z.object({ json: z.record(z.unknown()) })))
-		.optional(),
+	simulationFixtures: z.record(z.array(z.object({ json: z.record(z.unknown()) }))).optional(),
 	/** Draft sub-workflows created by the builder that must publish before the main workflow. */
 	supportingWorkflowIds: z.array(z.string()).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */

@@ -383,9 +383,7 @@ function formatNodeBlock(node: WorkflowNode & { name: string }): string {
 	const params = isRecord(node.parameters)
 		? JSON.stringify(node.parameters).slice(0, 800)
 		: '(none)';
-	return [`Node name: ${node.name}`, `Node type: ${node.type}`, `Parameters: ${params}`].join(
-		'\n',
-	);
+	return [`Node name: ${node.name}`, `Node type: ${node.type}`, `Parameters: ${params}`].join('\n');
 }
 
 function stripMarkdownFences(text: string): string {
