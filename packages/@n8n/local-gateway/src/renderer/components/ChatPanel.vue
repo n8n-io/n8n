@@ -7,7 +7,7 @@ import ComposerField from './ComposerField.vue';
 
 import { useViewTitle } from '../app/view-title';
 import { chatOverlay, closeChat, setChatTitle } from '../chat/chat-overlay';
-import { hasBlockingPromptForThread } from '../permissions/permission-prompt-store';
+import { hasUnanswerablePromptForThread } from '../permissions/permission-prompt-store';
 
 const i18n = useI18n();
 
@@ -16,10 +16,11 @@ useViewTitle(() => chatOverlay.title ?? i18n.baseText('desktopAssistant.chat.tit
 const text = ref('');
 const messagesRef = ref<InstanceType<typeof ChatMessages> | null>(null);
 
-// A pending confirmation suspends the run server-side (posting would 409);
-// refuse input and say why via the placeholder.
+// A pending confirmation suspends the run server-side (posting would 409); refuse
+// input and say why via the placeholder — unless the chat can answer it as text,
+// in which case ChatMessages routes the reply to the confirm endpoint.
 const suspended = computed(
-	() => chatOverlay.threadId !== null && hasBlockingPromptForThread(chatOverlay.threadId),
+	() => chatOverlay.threadId !== null && hasUnanswerablePromptForThread(chatOverlay.threadId),
 );
 
 const placeholder = computed(() =>
@@ -50,7 +51,6 @@ function onTitleChanged(title: string, isFallback?: boolean) {
 			:key="chatOverlay.threadId"
 			ref="messagesRef"
 			:thread-id="chatOverlay.threadId"
-			:last-event-id="chatOverlay.lastEventId"
 			@title-changed="onTitleChanged"
 		/>
 

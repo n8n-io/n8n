@@ -7,13 +7,12 @@ import { chatOverlay, closeChat, openChat, setChatTitle } from './chat-overlay';
 describe('chat-overlay', () => {
 	beforeEach(() => closeChat());
 
-	it('opens with thread id, replay cursor, and an initial title', () => {
-		openChat('t1', { lastEventId: 7, title: 'Banana prices' });
+	it('opens with thread id and an initial title', () => {
+		openChat('t1', { title: 'Banana prices' });
 
 		expect(chatOverlay).toMatchObject({
 			isOpen: true,
 			threadId: 't1',
-			lastEventId: 7,
 			title: 'Banana prices',
 		});
 	});
@@ -24,20 +23,18 @@ describe('chat-overlay', () => {
 		expect(chatOverlay).toMatchObject({
 			isOpen: true,
 			threadId: 't1',
-			lastEventId: undefined,
 			title: null,
 		});
 	});
 
 	it('close resets the state', () => {
-		openChat('t1', { lastEventId: 7, title: 'x' });
+		openChat('t1', { title: 'x' });
 
 		closeChat();
 
 		expect(chatOverlay).toMatchObject({
 			isOpen: false,
 			threadId: null,
-			lastEventId: undefined,
 			title: null,
 		});
 	});

@@ -95,6 +95,36 @@ describe('createChatThreadState', () => {
 		expect(messages).toHaveLength(0);
 	});
 
+	it('streams a registered run (no run-start seen) into a lazily created message', () => {
+		const { messages, state } = makeState();
+
+		state.registerRun('r-resumed', 'root');
+		expect(messages).toHaveLength(0);
+
+		state.apply(textDelta('r-resumed', 'root', 'Renaming '));
+		state.apply(textDelta('r-resumed', 'root', 'it now.'));
+		state.apply(runFinish('r-resumed'));
+
+		expect(messages).toHaveLength(1);
+		expect(messages[0]).toMatchObject({
+			role: 'assistant',
+			content: 'Renaming it now.',
+			isStreaming: false,
+		});
+	});
+
+	it('registering an already-known run does not override its routing', () => {
+		const { messages, state } = makeState();
+
+		state.apply(runStart('r1', 'root'));
+		state.apply(textDelta('r1', 'root', 'Hello'));
+		state.registerRun('r1', 'other-agent');
+		state.apply(textDelta('r1', 'root', ' there'));
+
+		expect(messages).toHaveLength(1);
+		expect(messages[0].content).toBe('Hello there');
+	});
+
 	it('ends the streaming state on run-finish', () => {
 		const { messages, state } = makeState();
 

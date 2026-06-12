@@ -10,6 +10,7 @@ import MiniSpinner from './MiniSpinner.vue';
 
 import { suggestionChipsFor } from '../assistant/contexts';
 import { watchAssistantRun } from '../assistant/run-watcher';
+import { openChat } from '../chat/chat-overlay';
 import { useAssistantContext } from '../assistant/use-assistant-context';
 import { usePendingTasks } from '../assistant/use-pending-tasks';
 import { getThreadPromptWatcher } from '../permissions/thread-prompt-watcher';
@@ -22,10 +23,12 @@ type ComposerState = 'idle' | 'thinking' | 'doing';
  * - `done`: the assistant did the thing — offer to keep it as a saved task.
  *   `label` is the agent's outcome title (or the truncated prompt) and doubles
  *   as the workflow name when the task is kept.
- * - `handoff`: the run finished but the task wasn't done (declined, ambiguous,
- *   or failed per the agent's own outcome report) — point the user to the
- *   instance UI; `message` is the agent's failure reason when it gave one.
+ * - `handoff`: the agent reported a failed task outcome — point the user to
+ *   the instance UI; `message` is the agent's failure reason when it gave one.
  * - `error`: the run errored, timed out, or was canceled.
+ *
+ * A run that finishes with no outcome and no action shows no card at all: the
+ * agent replied in text, so the thread is opened in the chat overlay instead.
  */
 type ResultCard =
 	| { kind: 'done'; threadId: string; label: string; icon?: string }
@@ -165,7 +168,9 @@ async function submit(prompt?: string) {
 		} else if (run.status === 'success' && run.tookAction) {
 			showResult({ kind: 'done', threadId: created.threadId, label: truncateLabel(value) });
 		} else if (run.status === 'success') {
-			showResult({ kind: 'handoff' });
+			// No outcome and no action: the agent replied in text (conversational
+			// answer or clarifying question) — continue in the chat instead of a card.
+			openChat(created.threadId, { title: truncateLabel(value) });
 		} else {
 			showResult({
 				kind: 'error',

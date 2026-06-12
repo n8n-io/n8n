@@ -49,11 +49,17 @@ export interface InstancePermissionPrompt extends PromptBase {
 	toolCallId: string;
 	/** The run that raised the prompt; replayed `run-finish` of other runs must not clear it. */
 	runId?: string;
+	/** The agent that suspended on this prompt — routes the resumed run's deltas in the chat. */
+	agentId?: string;
 	/** kind 'domainAccess' — one of the two is present. */
 	domainAccess?: DomainAccessMeta;
 	webSearch?: WebSearchMeta;
 	/** kind 'resourceDecision' */
 	resourceDecision?: ResourceDecisionDetails;
+	/** kind 'external' — lets the chat render the request and answer text-shaped ones inline. */
+	inputType?: InstanceAiConfirmation['inputType'];
+	questions?: InstanceAiConfirmation['questions'];
+	introMessage?: string;
 }
 
 /** A computer-use `client`-mode prompt pending in the main process; answered over IPC. */
@@ -66,13 +72,33 @@ export interface LocalPermissionPrompt extends PromptBase {
 
 export type PermissionPrompt = InstancePermissionPrompt | LocalPermissionPrompt;
 
+/** One answer of a Q&A-wizard confirmation (inputType 'questions'). */
+export interface QuestionAnswer {
+	questionId: string;
+	selectedOptions: string[];
+	customText?: string;
+	skipped?: boolean;
+}
+
 /** What the prompt card emits; the store maps it to the confirm body / IPC decision. */
 export type PromptResponse =
-	| { kind: 'approval'; approved: boolean }
+	| { kind: 'approval'; approved: boolean; userInput?: string }
+	| { kind: 'questions'; answers: QuestionAnswer[] }
 	| { kind: 'continue' }
 	| { kind: 'resourceDecision'; decision: ResourceDecision }
 	| { kind: 'domainAccessApprove'; action: DomainAccessAction }
 	| { kind: 'domainAccessDeny' };
+
+/**
+ * Whether the chat composer can answer this prompt as free text: ask-user
+ * style questions and plain text-input confirmations. Other 'external' kinds
+ * (plan review, credential/workflow setup) need the n8n editor's rich UI.
+ */
+export function isChatAnswerable(prompt: PermissionPrompt): prompt is InstancePermissionPrompt {
+	if (prompt.source !== 'instance' || prompt.kind !== 'external') return false;
+	if (prompt.inputType === 'text') return true;
+	return prompt.inputType === 'questions' && (prompt.questions?.length ?? 0) > 0;
+}
 
 export function instancePromptId(requestId: string): string {
 	return `instance:${requestId}`;
@@ -125,7 +151,7 @@ function classifyKind(confirmation: InstanceAiConfirmation): PermissionPromptKin
 export function classifyConfirmation(
 	threadId: string,
 	confirmation: InstanceAiConfirmation,
-	context: { toolCallId: string; runId?: string },
+	context: { toolCallId: string; runId?: string; agentId?: string },
 ): InstancePermissionPrompt | null {
 	if (confirmation.expired) return null;
 	const kind = classifyKind(confirmation);
@@ -137,6 +163,7 @@ export function classifyConfirmation(
 		requestId: confirmation.requestId,
 		toolCallId: context.toolCallId,
 		runId: context.runId,
+		agentId: context.agentId,
 		severity: confirmation.severity,
 		message: confirmation.message,
 	};
@@ -147,6 +174,11 @@ export function classifyConfirmation(
 	if (kind === 'resourceDecision' && confirmation.resourceDecision) {
 		const { resource, description, options } = confirmation.resourceDecision;
 		prompt.resourceDecision = { resource, description, options };
+	}
+	if (kind === 'external') {
+		prompt.inputType = confirmation.inputType;
+		prompt.questions = confirmation.questions;
+		prompt.introMessage = confirmation.introMessage;
 	}
 	return prompt;
 }
@@ -164,7 +196,7 @@ export function pendingPromptsFromSnapshot(
 		if (!message.agentTree) continue;
 		// A suspended run is the group's latest; older runs in the group are finished.
 		const runId = message.runIds?.at(-1) ?? message.runId;
-		collectPendingPrompts(threadId, message.agentTree, runId, prompts);
+		collectPendingPrompts(threadId, message.agentTree, runId, message.agentTree.agentId, prompts);
 	}
 	return prompts;
 }
@@ -173,6 +205,7 @@ function collectPendingPrompts(
 	threadId: string,
 	node: InstanceAiAgentNode,
 	runId: string | undefined,
+	rootAgentId: string | undefined,
 	prompts: InstancePermissionPrompt[],
 ): void {
 	for (const toolCall of node.toolCalls) {
@@ -183,10 +216,13 @@ function collectPendingPrompts(
 		const prompt = classifyConfirmation(threadId, toolCall.confirmation, {
 			toolCallId: toolCall.toolCallId,
 			runId,
+			agentId: rootAgentId,
 		});
 		if (prompt) prompts.push(prompt);
 	}
-	for (const child of node.children) collectPendingPrompts(threadId, child, runId, prompts);
+	for (const child of node.children) {
+		collectPendingPrompts(threadId, child, runId, rootAgentId, prompts);
+	}
 }
 
 /** The renderer-side view of a main-process (computer-use `client`-mode) prompt. */

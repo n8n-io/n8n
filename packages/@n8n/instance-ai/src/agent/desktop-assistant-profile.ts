@@ -12,11 +12,10 @@ import { createReportDesktopTaskOutcomeTool } from '../tools/orchestration/repor
  * Optional prompt-mode override used by the desktop-assistant entry points.
  *
  * - `desktop-assistant-one-shot` — ad-hoc task triggered from the desktop app.
- *   The orchestrator runs fire-and-forget: no follow-up questions, no
- *   conversational output, and every run ends with a single
- *   `report-desktop-task-outcome` call — success when the task was done,
- *   failure (with a reason) when declining ambiguous, recurring/scheduled,
- *   or out-of-scope requests, or when the task failed.
+ *   Text output reaches the user, so the orchestrator executes clear requests
+ *   directly, asks back when clarification is needed, and ends every attempted
+ *   task with a `report-desktop-task-outcome` call — success when the task was
+ *   done, failure (with a reason) when it failed.
  * - `desktop-assistant-promote` — compilation of an already-executed
  *   desktop-assistant thread into a real, editable workflow that replays
  *   the task. Same fire-and-forget rules apply, plus the orchestrator picks
@@ -54,25 +53,28 @@ export interface DesktopAssistantProfile {
 	suppressInteractiveSetup: boolean;
 }
 
-/** Shared preamble: both desktop modes run headless, so text output is waste. */
+/** Shared preamble for the promote and edit modes, which run headless — text output is waste there. */
 const FIRE_AND_FORGET_RULES =
 	"This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, progress commentary, or summaries, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.";
 
 const ONE_SHOT_PROMPT_SECTION = `
 ## Desktop Assistant — One-Shot Task
 
-${FIRE_AND_FORGET_RULES}
+This run was triggered from the n8n desktop assistant. Your text output is shown to the user, and they can reply on the same thread.
 
 ### Execution
 
-- Execute unambiguous, in-scope requests with the appropriate tools.
-- Stop without partial work when the request is ambiguous, too complex, needs context you do not have, or implies a recurring schedule or trigger ("every Friday", "when X happens"). Do not build a workflow — the user will open the editor.
+- When the request is clear, execute it with the appropriate tools right away — no preamble, no confirmation questions, no conversation around the work.
+- When the request is ambiguous or missing details you need, ask a short clarifying question instead of guessing; the user's answer arrives as the next message.
+- When the message is conversational rather than a task (a greeting, a question about your capabilities), just answer in text.
+- Never comment on tool calls or their output: no narration, progress commentary, or summaries of what a tool returned.
 
-### Ending the run (required)
+### Reporting the outcome
 
-- Every run MUST end with exactly one \`report-desktop-task-outcome\` call, as the final tool call — including when declining; it is how you stop.
+- Whenever you attempted a task, end the run with exactly one \`report-desktop-task-outcome\` call, as the final tool call.
 - Success: \`success: true\`, a plain-text \`title\` naming the task as a repeatable action (3–8 words, present tense, no emoji — \`"Sort desktop screenshots"\`, never \`"Sorted 12 screenshots"\`), a one-sentence \`summary\`, and an \`icon\` (a single emoji capturing the task).
-- Decline/failure: \`success: false\` plus \`title\`, \`summary\`, and a user-readable \`failureReason\`.
+- Failure: \`success: false\` plus \`title\`, \`summary\`, and a user-readable \`failureReason\`.
+- Skip the report when you did not attempt a task — when you only asked a clarifying question or replied conversationally.
 `;
 
 const PROMOTE_PROMPT_SECTION = `

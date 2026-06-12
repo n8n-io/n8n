@@ -5,9 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	__resetPermissionPromptsForTests,
 	addPrompt,
+	chatAnswerablePromptForThread,
 	clearAllPrompts,
 	connectLocalPromptSource,
+	externalPromptsForThread,
 	hasBlockingPromptForThread,
+	hasUnanswerablePromptForThread,
 	permissionPromptState,
 	removeInstancePromptsByRun,
 	removeInstancePromptsByThread,
@@ -157,6 +160,37 @@ describe('permission-prompt-store', () => {
 		});
 	});
 
+	describe('chat-answerable helpers', () => {
+		it('exposes the oldest answerable prompt and unlocks the composer for it', () => {
+			addPrompt(
+				makeInstancePrompt({
+					kind: 'external',
+					inputType: 'questions',
+					questions: [{ id: 'q1', question: 'Which file?', type: 'text' }],
+				}),
+			);
+
+			expect(chatAnswerablePromptForThread('t1')?.id).toBe('instance:req-1');
+			expect(hasUnanswerablePromptForThread('t1')).toBe(false);
+		});
+
+		it('keeps the composer locked for external prompts the chat cannot answer', () => {
+			addPrompt(makeInstancePrompt({ kind: 'external', inputType: 'plan-review' }));
+
+			expect(chatAnswerablePromptForThread('t1')).toBeUndefined();
+			expect(hasUnanswerablePromptForThread('t1')).toBe(true);
+		});
+
+		it('lists only the thread’s external prompts for the transcript', () => {
+			const external = makeInstancePrompt({ kind: 'external', inputType: 'text' });
+			addPrompt(external);
+			addPrompt(makeInstancePrompt({ requestId: 'req-2', id: 'instance:req-2' }));
+			addPrompt(makeInstancePrompt({ requestId: 'req-3', id: 'instance:req-3', threadId: 't2' }));
+
+			expect(externalPromptsForThread('t1').map((prompt) => prompt.id)).toEqual([external.id]);
+		});
+	});
+
 	describe('respondToPrompt', () => {
 		it('routes a local prompt decision over IPC and removes the prompt', async () => {
 			const { api } = stubElectronApi();
@@ -198,6 +232,24 @@ describe('permission-prompt-store', () => {
 				makeInstancePrompt({ kind: 'domainAccess' }),
 				{ kind: 'domainAccessDeny' } as const,
 				{ kind: 'domainAccessDeny' },
+			],
+			[
+				'text answer',
+				makeInstancePrompt({ kind: 'external', inputType: 'text' }),
+				{ kind: 'approval', approved: true, userInput: 'the backup one' } as const,
+				{ kind: 'approval', approved: true, userInput: 'the backup one' },
+			],
+			[
+				'questions answer',
+				makeInstancePrompt({ kind: 'external', inputType: 'questions' }),
+				{
+					kind: 'questions',
+					answers: [{ questionId: 'q1', selectedOptions: [], customText: 'jokes.txt' }],
+				} as const,
+				{
+					kind: 'questions',
+					answers: [{ questionId: 'q1', selectedOptions: [], customText: 'jokes.txt' }],
+				},
 			],
 		])(
 			'maps an instance %s response to the confirm body',

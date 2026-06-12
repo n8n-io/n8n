@@ -48,7 +48,9 @@ Proactively suggest Computer Use (or use it directly if connected) when you dete
 					);
 					if (localGateway.capabilities.includes('filesystem')) {
 						promptParts.push(`
-### Computer Use - Filesystem Exploration
+### Computer Use - Filesystem
+
+When the user refers to files or folders (read, list, rename, move, organize, save), use the Computer Use filesystem tools (\`list_files\`, \`read_file\`, \`move\`, …) — never the sandbox \`workspace_*\` tools. The sandbox workspace holds internal reference material and cannot see the user's machine.
 
 Keep exploration shallow: start at depth 1–2, prefer \`search\` over browsing, and read specific files rather than whole directories.`);
 					}
