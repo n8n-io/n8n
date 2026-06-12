@@ -38,6 +38,8 @@ const mockAgent: MockAgent = {
 	}),
 	generate: mockGenerate,
 };
+const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+
 const mockExtractText = jest.fn((result: { _text?: string }) => result._text ?? '');
 
 jest.mock('@n8n/instance-ai', () => ({
@@ -92,12 +94,7 @@ import { extractNodeConfig } from '../node-config';
 // inside jest.mock factories before every test, so re-apply the mocks that
 // matter for tests to pass. Keep in sync with the factory bodies above.
 function reapplyMockImplementations() {
-	jest.mocked(Container.get).mockReturnValue({
-		info: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
-		debug: jest.fn(),
-	});
+	jest.mocked(Container.get).mockReturnValue(mockLogger);
 	jest.mocked(fetchApiDocs).mockResolvedValue('');
 	jest.mocked(extractNodeConfig).mockReturnValue('{}');
 	jest.mocked(createEvalAgent).mockReturnValue(mockAgent as never);
@@ -394,8 +391,7 @@ describe('createLlmMockHandler', () => {
 			statusCode: 200,
 		});
 		// The fallback is observable: serving a rejected, never-resubmitted spec warns.
-		const logger = Container.get('' as never);
-		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
+		expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
 	});
 
 	it('should not warn when an accepted submission is served', async () => {
@@ -403,8 +399,7 @@ describe('createLlmMockHandler', () => {
 		const handler = createLlmMockHandler();
 		await callHandler(handler);
 
-		const logger = Container.get('' as never);
-		expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
+		expect(mockLogger.warn).not.toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
 	});
 
 	it('should surface the rejection reason when a rejected spec is never resubmitted', async () => {
