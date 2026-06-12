@@ -12,8 +12,6 @@ import nock from 'nock';
 import type { SecureContextOptions } from 'tls';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
-
 import { parseRequestObject, proxyRequestToAxios } from '../legacy-request-adapter';
 
 const TEST_CA_CERT = '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----';
@@ -21,7 +19,7 @@ const TEST_CA_CERT = '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE---
 describe('proxyRequestToAxios', () => {
 	const baseUrl = 'https://example.de';
 	const workflow = mock<Workflow>();
-	const hooks = mock<ExecutionLifecycleHooks>();
+	const hooks = mock<NonNullable<IWorkflowExecuteAdditionalData['hooks']>>();
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		hooks,
 		ssrfBridge: undefined,
@@ -455,7 +453,7 @@ describe('parseRequestObject', () => {
 describe('SSRF protection', () => {
 	const baseUrl = 'https://example.com';
 	const workflow = mock<Workflow>();
-	const hooks = mock<ExecutionLifecycleHooks>();
+	const hooks = mock<NonNullable<IWorkflowExecuteAdditionalData['hooks']>>();
 	const node = mock<INode>();
 
 	const createSsrfBridge = (overrides?: Partial<SsrfBridge>): SsrfBridge => ({

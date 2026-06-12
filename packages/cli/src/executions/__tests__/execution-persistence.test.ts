@@ -3,7 +3,6 @@
 
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
-	ExecutionData,
 	ExecutionEntity,
 	type CreateExecutionPayload,
 	type EntityManager,
@@ -120,6 +119,52 @@ describe('ExecutionPersistence', () => {
 					mockTx,
 				);
 				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('persists the byte size the store reports and emits it on the write event', async () => {
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+				dbStore.write.mockResolvedValue(4321);
+
+				await executionPersistence.create(createPayload);
+
+				// size is whatever the store reports, persisted after the timed write (not on the insert)
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: 'exec-1' },
+					{ jsonSizeBytes: 4321 },
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-data-write',
+					expect.objectContaining({ jsonSizeBytes: 4321 }),
+				);
+			});
+
+			it('records the workflow version id on the entity from the workflow snapshot', async () => {
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.create(createPayload);
+
+				expect(mockTx.insert).toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.objectContaining({ workflowVersionId: 'version-abc' }),
+				);
+			});
+
+			it('records a null workflow version id when the workflow has no version', async () => {
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.create({
+					...createPayload,
+					workflowData: { ...workflowData, versionId: undefined },
+				});
+
+				expect(mockTx.insert).toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.objectContaining({ workflowVersionId: null }),
+				);
 			});
 		});
 
@@ -332,6 +377,7 @@ describe('ExecutionPersistence', () => {
 				id: executionId,
 				workflowId,
 				storedAt,
+				workflowVersionId: 'v-entity',
 			} as unknown as Awaited<ReturnType<ExecutionRepository['findOne']>>);
 		};
 
@@ -412,9 +458,10 @@ describe('ExecutionPersistence', () => {
 		});
 
 		describe('data updates on db-mode executions', () => {
-			it('should update data and workflowData directly without reading the existing bundle first', async () => {
+			it('should overwrite the bundle in place without reading the existing bundle first', async () => {
 				const executionPersistence = createPersistenceService('db');
 				mockEntity('db');
+				dbStore.overwrite.mockResolvedValue(123);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -430,17 +477,16 @@ describe('ExecutionPersistence', () => {
 				expect(result).toBe(true);
 				expect(executionRepository.findOne).toHaveBeenCalledWith({
 					where: { id: executionId },
-					select: ['id', 'workflowId', 'storedAt'],
+					select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
 				});
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
 					{ id: executionId },
 					{ status: 'success' },
 				);
-				expect(mockTx.update).toHaveBeenCalledWith(
-					ExecutionData,
-					{ executionId },
-					{
+				expect(dbStore.overwrite).toHaveBeenCalledWith(
+					{ workflowId, executionId },
+					expect.objectContaining({
 						data: expect.any(String) as string,
 						workflowData: {
 							id: workflowData.id,
@@ -449,21 +495,52 @@ describe('ExecutionPersistence', () => {
 							connections: workflowData.connections,
 							settings: workflowData.settings,
 						},
-					},
+						// sourced from the entity row, not the incoming workflowData.versionId
+						workflowVersionId: 'v-entity',
+					}),
+					mockTx,
 				);
 				expect(dbStore.read).not.toHaveBeenCalled();
 				expect(dbStore.write).not.toHaveBeenCalled();
 				expect(fsStore.write).not.toHaveBeenCalled();
 			});
 
-			it('should throw MissingExecutionDataError when the data row no longer exists during a full overwrite', async () => {
+			it('takes the fast path on full overwrite even when the entity has no version id', async () => {
 				const executionPersistence = createPersistenceService('db');
-				mockEntity('db');
+				// pre-migration row: workflowVersionId was never backfilled, so it's null on the entity
+				executionRepository.findOne.mockResolvedValue({
+					id: executionId,
+					workflowId,
+					storedAt: 'db',
+					workflowVersionId: null,
+				} as unknown as Awaited<ReturnType<ExecutionRepository['findOne']>>);
+				dbStore.overwrite.mockResolvedValue(256);
 
 				const mockTx = createMockTransaction();
-				mockTx.update
-					.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: {} })
-					.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: {} });
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+				});
+
+				// db overwrite never writes the version-id column, so a null entity value can't clobber it
+				expect(dbStore.overwrite).toHaveBeenCalledWith(
+					{ workflowId, executionId },
+					expect.objectContaining({ workflowVersionId: null }),
+					mockTx,
+				);
+				expect(dbStore.read).not.toHaveBeenCalled();
+			});
+
+			it('should propagate MissingExecutionDataError when the store reports the data row is gone', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.overwrite.mockRejectedValue(
+					new MissingExecutionDataError({ workflowId, executionId }),
+				);
+
+				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
 				await expect(
@@ -491,6 +568,7 @@ describe('ExecutionPersistence', () => {
 				expect(dbStore.write).toHaveBeenCalledWith(
 					{ workflowId, executionId },
 					expect.objectContaining({
+						// partial update reads & preserves both workflowData and version id from the bundle
 						workflowData: existingBundle.workflowData,
 						workflowVersionId: existingBundle.workflowVersionId,
 					}),
@@ -560,17 +638,16 @@ describe('ExecutionPersistence', () => {
 				expect(result).toBe(false);
 				expect(executionRepository.findOne).toHaveBeenCalledWith({
 					where: { id: executionId, status: 'waiting' },
-					select: ['id', 'workflowId', 'storedAt'],
+					select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
 				});
 				expect(executionRepository.manager.transaction).not.toHaveBeenCalled();
 			});
 		});
 
 		describe('data updates on fs-mode executions', () => {
-			it('should update entity in a transaction and write a fresh bundle to fs', async () => {
+			it('should overwrite a fresh bundle on fs without reading the existing one', async () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
-				fsStore.read.mockResolvedValue(existingBundle);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -589,6 +666,8 @@ describe('ExecutionPersistence', () => {
 					{ id: executionId },
 					{ status: 'success' },
 				);
+				// full overwrite goes through the fast path for fs too (a write is a full replace),
+				// skipping the read
 				expect(fsStore.write).toHaveBeenCalledWith(
 					{ workflowId, executionId },
 					expect.objectContaining({
@@ -600,8 +679,39 @@ describe('ExecutionPersistence', () => {
 							connections: workflowData.connections,
 							settings: workflowData.settings,
 						},
-						workflowVersionId: 'v-original',
+						// from the entity row, not the incoming workflowData.versionId
+						workflowVersionId: 'v-entity',
 					}),
+					mockTx,
+				);
+				expect(fsStore.read).not.toHaveBeenCalled();
+			});
+
+			it('falls back to read-merge on full overwrite when the entity has no version id, preserving the bundle value', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				// pre-migration row: workflowVersionId was never backfilled, so it's null on the entity
+				executionRepository.findOne.mockResolvedValue({
+					id: executionId,
+					workflowId,
+					storedAt: 'fs',
+					workflowVersionId: null,
+				} as unknown as Awaited<ReturnType<ExecutionRepository['findOne']>>);
+				fsStore.read.mockResolvedValue(existingBundle); // bundle still holds the real version id
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+				});
+
+				// must read the bundle (read-merge) to recover the real version id, rather than take the
+				// no-read fast path and clobber it with the entity's null
+				expect(fsStore.read).toHaveBeenCalled();
+				expect(fsStore.write).toHaveBeenCalledWith(
+					{ workflowId, executionId },
+					expect.objectContaining({ workflowVersionId: existingBundle.workflowVersionId }),
 					mockTx,
 				);
 			});
@@ -619,6 +729,7 @@ describe('ExecutionPersistence', () => {
 				expect(fsStore.write).toHaveBeenCalledWith(
 					{ workflowId, executionId },
 					expect.objectContaining({
+						// partial update reads & preserves both workflowData and version id from the bundle
 						workflowData: existingBundle.workflowData,
 						workflowVersionId: existingBundle.workflowVersionId,
 					}),
@@ -654,6 +765,7 @@ describe('ExecutionPersistence', () => {
 				const executionPersistence = createPersistenceService('fs');
 				mockEntity('fs');
 				fsStore.read.mockResolvedValue(existingBundle);
+				fsStore.write.mockResolvedValue(512);
 
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
@@ -663,8 +775,14 @@ describe('ExecutionPersistence', () => {
 				});
 
 				expect(result).toBe(true);
-				expect(mockTx.update).not.toHaveBeenCalled();
 				expect(fsStore.write).toHaveBeenCalled();
+				// No caller-supplied entity columns, so the only entity-row update is the bundle size.
+				expect(mockTx.update).toHaveBeenCalledTimes(1);
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes: 512 },
+				);
 			});
 
 			it('should skip the fs write on a data-only update when conditions do not match', async () => {
@@ -871,6 +989,93 @@ describe('ExecutionPersistence', () => {
 				);
 			});
 		});
+
+		describe('jsonSizeBytes tracking', () => {
+			it('persists the size the store reports on the read-merge path and emits it', async () => {
+				const executionPersistence = createPersistenceService('fs');
+				mockEntity('fs');
+				fsStore.read.mockResolvedValue(existingBundle);
+				fsStore.write.mockResolvedValue(2048);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, { data: runData });
+
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes: 2048 },
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-data-write',
+					expect.objectContaining({ jsonSizeBytes: 2048 }),
+				);
+			});
+
+			it('persists the size the store reports for the db fast path and emits it', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.overwrite.mockResolvedValue(1536);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				// fast path overwrites via `dbStore.overwrite`, which reports the byte size
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+				});
+
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes: 1536 },
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-data-write',
+					expect.objectContaining({ jsonSizeBytes: 1536 }),
+				);
+			});
+
+			it('records the reported size and ignores a caller-supplied jsonSizeBytes', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.overwrite.mockResolvedValue(1536);
+
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				await executionPersistence.updateExistingExecution(executionId, {
+					data: runData,
+					workflowData,
+					jsonSizeBytes: 999_999,
+				});
+
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes: 1536 },
+				);
+				expect(mockTx.update).not.toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.anything(),
+					expect.objectContaining({ jsonSizeBytes: 999_999 }),
+				);
+			});
+
+			it('does not touch jsonSizeBytes on a metadata-only update', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue({ affected: 1, generatedMaps: [], raw: {} });
+
+				await executionPersistence.updateExistingExecution(executionId, { status: 'success' });
+
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId },
+					expect.not.objectContaining({ jsonSizeBytes: expect.anything() }),
+				);
+			});
+		});
 	});
 
 	describe('findSingleExecution', () => {
@@ -895,6 +1100,7 @@ describe('ExecutionPersistence', () => {
 				id: executionId,
 				workflowId,
 				storedAt,
+				jsonSizeBytes: 4096,
 				metadata: [{ key: 'k', value: 'v' }],
 				annotation: undefined,
 				status: 'success',
@@ -941,6 +1147,7 @@ describe('ExecutionPersistence', () => {
 				workflowId,
 				data: bundle.data,
 				workflowData: bundle.workflowData,
+				jsonSizeBytes: 4096,
 				workflowVersionId: 'v-1',
 				customData: { k: 'v' },
 			});
@@ -1063,6 +1270,7 @@ describe('ExecutionPersistence', () => {
 				id,
 				workflowId: wf,
 				storedAt,
+				jsonSizeBytes: 4096,
 				metadata: [],
 				annotation: undefined,
 				status: 'success',
