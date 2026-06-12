@@ -13,19 +13,68 @@ import type {
 	CreateSlackAgentAppResponse,
 	SlackAgentAppManifestResponse,
 } from '@n8n/api-types';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentResource, AgentJsonConfig } from '../types';
+
+export type ListAgentsSortBy =
+	| 'name:asc'
+	| 'name:desc'
+	| 'createdAt:asc'
+	| 'createdAt:desc'
+	| 'updatedAt:asc'
+	| 'updatedAt:desc';
+
+export type ListAgentsOptions = {
+	skip?: number;
+	take?: number;
+	sortBy?: ListAgentsSortBy;
+	filter?: {
+		query?: string;
+	};
+};
+
+const AGENTS_LIST_PAGE_SIZE = 250;
+
+export const listAgentsPage = async (
+	context: IRestApiContext,
+	projectId: string,
+	options: ListAgentsOptions,
+): Promise<{ count: number; data: AgentResource[] }> => {
+	return await getFullApiResponse<AgentResource[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2`,
+		options,
+	);
+};
+
+export const listAgentsPageGlobal = async (
+	context: IRestApiContext,
+	options: ListAgentsOptions,
+): Promise<{ count: number; data: AgentResource[] }> => {
+	return await getFullApiResponse<AgentResource[]>(context, 'GET', '/agents/v2', options);
+};
 
 export const listAgents = async (
 	context: IRestApiContext,
 	projectId: string,
 ): Promise<AgentResource[]> => {
-	return await makeRestApiRequest<AgentResource[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2`,
-	);
+	const agents: AgentResource[] = [];
+	let total = 0;
+
+	do {
+		const { count, data } = await listAgentsPage(context, projectId, {
+			skip: agents.length,
+			take: AGENTS_LIST_PAGE_SIZE,
+		});
+		agents.push(...data);
+		total = count;
+
+		if (data.length === 0) break;
+	} while (agents.length < total);
+
+	return agents;
 };
 
 export const getAgent = async (
@@ -269,17 +318,6 @@ export const getSlackAgentAppManifest = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/slack/manifest`,
-	);
-};
-
-export const listAllAgents = async (
-	context: IRestApiContext,
-	projectId: string,
-): Promise<AgentResource[]> => {
-	return await makeRestApiRequest<AgentResource[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2?all=true`,
 	);
 };
 
