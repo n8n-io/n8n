@@ -304,9 +304,7 @@ export class JobProcessor {
 			throw new ManualExecutionCancelledError(executionId);
 		}
 
-		const props = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING
-			? this.deriveJobFinishedProps(run, startedAt)
-			: await this.fetchJobFinishedResult(executionId);
+		const props = this.deriveJobFinishedProps(run, startedAt);
 
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
 			executionId,
@@ -400,31 +398,6 @@ export class JobProcessor {
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
 			waitTill: run.waitTill ?? null,
-		};
-	}
-
-	private async fetchJobFinishedResult(executionId: string): Promise<JobFinishedProps> {
-		const execution = await this.executionPersistence.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		if (!execution) {
-			throw new UnexpectedError(
-				`Worker failed to find execution ${executionId} immediately after workflow completed`,
-			);
-		}
-
-		return {
-			success: execution.status !== 'error' && execution.data?.resultData?.error === undefined,
-			status: execution.status,
-			error: execution.data?.resultData?.error,
-			startedAt: execution.startedAt,
-			stoppedAt: execution.stoppedAt!,
-			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
-			usedDynamicCredentials: !!execution.data?.executionData?.runtimeData?.credentials,
-			metadata: execution.data?.resultData?.metadata,
-			waitTill: execution.waitTill ?? null,
 		};
 	}
 
