@@ -17,8 +17,8 @@ an error: most existing nodes ship a single icon, so this nudges authors toward
 themed variants without failing verification.
 
 The companion `icon-validation` rule still validates that the referenced files
-exist, are SVG, use the `file:` protocol, and that the light and dark variants
-point to different files.
+exist, use the `file:` protocol, and that the light and dark variants point to
+different files.
 
 ## Examples
 
