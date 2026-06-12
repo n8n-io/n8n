@@ -152,6 +152,13 @@ export interface CreateAssistantTaskResult {
 	error?: string;
 }
 
+/** Result of ensuring a fresh Instance AI chat thread for the desktop chat view. */
+export interface CreateChatThreadResult {
+	ok: boolean;
+	threadId?: string;
+	error?: string;
+}
+
 /**
  * Extras the draft-flow promote carries: the user-configured plan parts that
  * ground the build, and the minutes-saved estimate stored on the workflow.
@@ -217,6 +224,8 @@ export interface ElectronApi {
 	runTask: (workflowId: string) => Promise<RunTaskResult>;
 	/** Start a one-shot assistant task run with the prompt + detected context. */
 	createAssistantTask: (body: DesktopAssistantTaskRequest) => Promise<CreateAssistantTaskResult>;
+	/** Ensure a fresh Instance AI chat thread (in the personal project); returns its id. */
+	createChatThread: () => Promise<CreateChatThreadResult>;
 	promoteAssistantThread: (
 		threadId: string,
 		name?: string,
@@ -235,6 +244,8 @@ export interface ElectronApi {
 	deleteTask: (workflowId: string) => Promise<{ ok: boolean; error?: string }>;
 	/** Open the task's workflow with the Set up panel pre-opened in the browser (Connect CTA). */
 	openWorkflowSetup: (workflowId: string) => Promise<void>;
+	/** Open a specific Instance AI thread in the browser (e.g. to finish a credential setup there). */
+	openThread: (threadId: string) => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
 	openExecution: (workflowId: string, executionId: string) => Promise<void>;
 	getTimeSaved: () => Promise<DesktopAssistantTimeSaved>;

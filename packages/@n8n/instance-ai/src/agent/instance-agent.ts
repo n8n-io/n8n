@@ -55,9 +55,24 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		memoryConfig,
 	} = options;
 
+	// The desktop-assistant profile is the single owner of which extra tools a run
+	// gets (e.g. the outcome report), which tool groups are pinned out of deferred
+	// search, and whether interactive setup auto-defers.
+	const desktopProfile = getDesktopAssistantProfile(options.promptMode, {
+		memory: options.memory,
+	});
+
+	// Desktop runs have no surface to answer a "configure credentials" suspend, so
+	// thread the flag onto the context the domain tools capture — setup auto-defers
+	// rather than hanging the run.
+	const toolContext = {
+		...context,
+		suppressInteractiveSetup: desktopProfile.suppressInteractiveSetup,
+	};
+
 	// Build native n8n domain tools (context captured via closures — per-run)
-	const domainTools = createAllTools(context);
-	const orchestratorDomainTools = createOrchestratorDomainTools(context);
+	const domainTools = createAllTools(toolContext);
+	const orchestratorDomainTools = createOrchestratorDomainTools(toolContext);
 
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change).
@@ -83,11 +98,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// The desktop-assistant profile is the single owner of which extra tools a run
-	// gets (e.g. the outcome report) and which tool groups are pinned out of deferred search.
-	const desktopProfile = getDesktopAssistantProfile(options.promptMode, {
-		memory: options.memory,
-	});
 	const desktopProfileTools = createToolRegistryFromTools(desktopProfile.extraTools);
 
 	// Keep MCP tools from shadowing domain or orchestration tools during object composition.

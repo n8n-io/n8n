@@ -19,6 +19,7 @@ import type {
 	AuthStatus,
 	ConfirmThreadResult,
 	CreateAssistantTaskResult,
+	CreateChatThreadResult,
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
@@ -235,6 +236,18 @@ export function registerIpcHandlers({
 		},
 	);
 
+	ipcMain.handle('assistant:createChatThread', async (): Promise<CreateChatThreadResult> => {
+		logger.debug('IPC assistant:createChatThread');
+		try {
+			const { threadId } = await instanceApi.createChatThread();
+			return { ok: true, threadId };
+		} catch (error) {
+			const message = ipcErrorMessage(error);
+			logger.error('IPC assistant:createChatThread failed', { error: message });
+			return { ok: false, error: message };
+		}
+	});
+
 	ipcMain.handle(
 		'assistant:promote',
 		async (
@@ -307,6 +320,12 @@ export function registerIpcHandlers({
 	ipcMain.handle('tasks:openWorkflowSetup', async (_event, workflowId: string): Promise<void> => {
 		logger.debug('IPC tasks:openWorkflowSetup', { workflowId });
 		const url = instanceApi.workflowSetupUrl(workflowId);
+		if (url) await openExternal(url);
+	});
+
+	ipcMain.handle('assistant:openThread', async (_event, threadId: string): Promise<void> => {
+		logger.debug('IPC assistant:openThread', { threadId });
+		const url = instanceApi.threadUrl(threadId);
 		if (url) await openExternal(url);
 	});
 

@@ -5,6 +5,7 @@ import type {
 	AuthStatus,
 	ConfirmThreadResult,
 	CreateAssistantTaskResult,
+	CreateChatThreadResult,
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
@@ -78,6 +79,9 @@ const electronApi: ElectronApi = {
 	): Promise<CreateAssistantTaskResult> =>
 		await (ipcRenderer.invoke('assistant:createTask', body) as Promise<CreateAssistantTaskResult>),
 
+	createChatThread: async (): Promise<CreateChatThreadResult> =>
+		await (ipcRenderer.invoke('assistant:createChatThread') as Promise<CreateChatThreadResult>),
+
 	promoteAssistantThread: async (
 		threadId: string,
 		name?: string,
@@ -120,6 +124,10 @@ const electronApi: ElectronApi = {
 
 	openWorkflowSetup: async (workflowId: string): Promise<void> => {
 		await ipcRenderer.invoke('tasks:openWorkflowSetup', workflowId);
+	},
+
+	openThread: async (threadId: string): Promise<void> => {
+		await ipcRenderer.invoke('assistant:openThread', threadId);
 	},
 
 	getHistory: async (

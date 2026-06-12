@@ -24,6 +24,11 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 		expect(prompt).toContain('report-desktop-task-outcome');
 	});
 
+	it('one-shot mode references the details field the done card renders', () => {
+		const prompt = getSystemPrompt({ promptMode: 'desktop-assistant-one-shot' });
+		expect(prompt).toContain('`details`');
+	});
+
 	it('promote mode references the node types and credential the build must emit', () => {
 		const prompt = getSystemPrompt({ promptMode: 'desktop-assistant-promote' });
 		expect(prompt).toMatch(/Desktop Assistant.+Promote/i);
@@ -77,5 +82,18 @@ describe('getDesktopAssistantProfile — extra tools', () => {
 		expect(getDesktopAssistantProfile('desktop-assistant-one-shot').preloadGatewayTools).toBe(true);
 		expect(getDesktopAssistantProfile('desktop-assistant-promote').preloadGatewayTools).toBe(false);
 		expect(getDesktopAssistantProfile(undefined).preloadGatewayTools).toBe(false);
+	});
+
+	it('suppresses interactive setup for every desktop mode but not regular chat', () => {
+		expect(getDesktopAssistantProfile('desktop-assistant-one-shot').suppressInteractiveSetup).toBe(
+			true,
+		);
+		expect(getDesktopAssistantProfile('desktop-assistant-promote').suppressInteractiveSetup).toBe(
+			true,
+		);
+		expect(getDesktopAssistantProfile('desktop-assistant-edit').suppressInteractiveSetup).toBe(
+			true,
+		);
+		expect(getDesktopAssistantProfile(undefined).suppressInteractiveSetup).toBe(false);
 	});
 });

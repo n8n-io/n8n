@@ -557,6 +557,27 @@ describe('credentials tool', () => {
 	// ── setup ───────────────────────────────────────────────────────────────
 
 	describe('setup action', () => {
+		it('defers without suspending when the run has no interactive setup surface', async () => {
+			const context = createMockContext({ suppressInteractiveSetup: true });
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi', reason: 'For sending messages' }],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(result).toEqual(
+				expect.objectContaining({ success: true, deferred: true, reason: expect.any(String) }),
+			);
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(context.credentialService.list).not.toHaveBeenCalled();
+		});
+
 		it('should suspend with credentialRequests on first call', async () => {
 			const existingCreds: CredentialSummary[] = [
 				{ id: 'c1', name: 'Existing Slack', type: 'slackApi' },

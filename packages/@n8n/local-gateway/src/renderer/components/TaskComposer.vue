@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nMarkdown, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
@@ -22,14 +22,23 @@ type ComposerState = 'idle' | 'thinking' | 'doing';
  * The card shown above the input once a run finishes:
  * - `done`: the assistant did the thing — offer to keep it as a saved task.
  *   `label` is the agent's outcome title (or the truncated prompt) and doubles
- *   as the workflow name when the task is kept.
+ *   as the workflow name when the task is kept. `details` is the task's actual
+ *   output (markdown) for information deliverables — a summary, an answer —
+ *   and this card is the only place the user ever sees it.
  * - `handoff`: the run finished but the task wasn't done (declined, ambiguous,
  *   or failed per the agent's own outcome report) — point the user to the
  *   instance UI; `message` is the agent's failure reason when it gave one.
  * - `error`: the run errored, timed out, or was canceled.
  */
 type ResultCard =
-	| { kind: 'done'; threadId: string; label: string; icon?: string }
+	| {
+			kind: 'done';
+			threadId: string;
+			label: string;
+			icon?: string;
+			summary?: string;
+			details?: string;
+	  }
 	| { kind: 'handoff'; message?: string }
 	| { kind: 'error'; message: string };
 
@@ -190,6 +199,8 @@ async function submit(prompt?: string) {
 				threadId: created.threadId,
 				label: run.outcome.title,
 				icon: run.outcome.icon,
+				summary: run.outcome.summary,
+				details: run.outcome.details,
 			});
 		} else if (run.outcome) {
 			showResult({ kind: 'handoff', message: run.outcome.failureReason });
@@ -294,7 +305,18 @@ defineExpose({ submit });
 							<N8nIcon icon="x" :size="14" aria-hidden="true" />
 						</button>
 					</div>
-					<div :class="$style.resultBody">
+					<div :class="[$style.resultBody, $style.doneBody]">
+						<div v-if="resultCard.summary" :class="$style.resultMessage">
+							{{ resultCard.summary }}
+						</div>
+						<div
+							v-if="resultCard.details"
+							:class="$style.detailsScroll"
+							tabindex="0"
+							:aria-label="i18n.baseText('desktopAssistant.composer.resultDetailsAriaLabel')"
+						>
+							<N8nMarkdown :content="resultCard.details" />
+						</div>
 						<div :class="$style.resultMessage">
 							{{ i18n.baseText('desktopAssistant.composer.keepPrompt') }}
 						</div>
@@ -468,6 +490,7 @@ defineExpose({ submit });
 
 .resultHeader {
 	display: flex;
+	flex-shrink: 0;
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: 10px var(--spacing--xs);
@@ -541,9 +564,52 @@ defineExpose({ submit });
 	margin-top: var(--spacing--xs);
 }
 
-/* Done variant: green accents. */
+/* Done variant: green accents. A flex column capped near the window height so
+   an information deliverable (the details block) can take all the spare room
+   while the header, summary, and keep-prompt/actions stay visible. */
 .doneCard {
+	display: flex;
+	flex-direction: column;
+	max-height: calc(100vh - 200px);
 	border: 1px solid rgba(63, 207, 142, 0.45);
+}
+
+.doneBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	min-height: 0;
+}
+
+/* Only the details region absorbs the height cap; everything else keeps its size. */
+.doneBody > :not(.detailsScroll) {
+	flex-shrink: 0;
+}
+
+.detailsScroll {
+	flex: 1;
+	min-height: 0;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	overflow-y: auto;
+	overflow-wrap: anywhere;
+	font-size: 12px;
+	color: var(--da-text);
+	background: var(--da-surface);
+	border: 1px solid var(--da-border);
+	border-radius: 7px;
+	/* N8nMarkdown colors its text, code blocks, and blockquotes with design-system
+	   tokens that default to the light theme (dark on dark here); pin them to the
+	   assistant palette. */
+	--color--text: var(--da-text);
+	--color--text--shade-1: var(--da-text);
+	--color--background: var(--da-surface-2);
+	--border-color: var(--da-border-strong);
+	--color--primary: var(--da-accent);
+}
+
+.detailsScroll:focus-visible {
+	outline: var(--da-focus-ring);
+	outline-offset: var(--da-focus-ring-offset);
 }
 
 .doneHeader {

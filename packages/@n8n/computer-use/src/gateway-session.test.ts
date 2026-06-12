@@ -198,13 +198,13 @@ describe('GatewaySession', () => {
 			expect(session.check('shell', 'npm')).toBe('deny');
 		});
 
-		it('returns allow for a session-allowed resource', () => {
+		it('returns allow for a session-allowed group', () => {
 			const store = makeStore();
 			const session = new GatewaySession(
 				{ permissions: buildDefaultPermissions({ shell: 'ask' }), dir: '/' },
 				store as unknown as SettingsStore,
 			);
-			session.allowForSession('shell', 'npm');
+			session.allowForSession('shell');
 			expect(session.check('shell', 'npm')).toBe('allow');
 		});
 
@@ -288,7 +288,7 @@ describe('GatewaySession', () => {
 				{ permissions: buildDefaultPermissions({ shell: 'ask' }), dir: '/' },
 				store as unknown as SettingsStore,
 			);
-			session.allowForSession('shell', 'npm');
+			session.allowForSession('shell');
 			expect(session.check('shell', 'npm')).toBe('allow');
 			session.clearSession();
 			expect(session.check('shell', 'npm')).toBe('ask');
@@ -300,8 +300,29 @@ describe('GatewaySession', () => {
 				{ permissions: buildDefaultPermissions({ shell: 'ask', browser: 'ask' }), dir: '/' },
 				store as unknown as SettingsStore,
 			);
-			session.allowForSession('shell', 'npm');
+			session.allowForSession('shell');
 			expect(session.check('browser', 'npm')).toBe('ask');
+		});
+
+		it('session allow covers other resources in the same group (coarse, per run)', () => {
+			const store = makeStore();
+			const session = new GatewaySession(
+				{
+					permissions: buildDefaultPermissions({
+						filesystemRead: 'allow',
+						filesystemWrite: 'ask',
+					}),
+					dir: '/',
+				},
+				store as unknown as SettingsStore,
+			);
+			// One approval for a single write should cover the whole run's writes,
+			// even to distinct destination paths.
+			session.allowForSession('filesystemWrite');
+			expect(session.check('filesystemWrite', '/home/user/Desktop/a.png')).toBe('allow');
+			expect(session.check('filesystemWrite', '/home/user/Desktop/Screenshots/b.png')).toBe(
+				'allow',
+			);
 		});
 	});
 

@@ -269,6 +269,41 @@ describe('registerIpcHandlers', () => {
 		expect(openExternal).not.toHaveBeenCalled();
 	});
 
+	it('assistant:openThread opens the resolved thread url externally', async () => {
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn(),
+			threadUrl: vi.fn().mockReturnValue('https://n.example/instance-ai/t1'),
+		};
+		const openExternal = vi.fn().mockResolvedValue(undefined);
+		register({ instanceApi, openExternal });
+
+		await getRegisteredHandler('assistant:openThread')(undefined, 't1');
+
+		expect(instanceApi.threadUrl).toHaveBeenCalledWith('t1');
+		expect(openExternal).toHaveBeenCalledWith('https://n.example/instance-ai/t1');
+	});
+
+	it('assistant:openThread does not open anything when signed out', async () => {
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn(),
+			threadUrl: vi.fn().mockReturnValue(null),
+		};
+		const openExternal = vi.fn().mockResolvedValue(undefined);
+		register({ instanceApi, openExternal });
+
+		await getRegisteredHandler('assistant:openThread')(undefined, 't1');
+
+		expect(openExternal).not.toHaveBeenCalled();
+	});
+
 	it('insights:timeSaved returns the week/month figures from the instance api', async () => {
 		const timeSaved = { weekMinutes: 73, monthMinutes: null };
 		const instanceApi = {
@@ -382,6 +417,41 @@ describe('registerIpcHandlers', () => {
 
 		expect(instanceApi.triggerTask).toHaveBeenCalledWith(body);
 		expect(result).toEqual({ ok: true, threadId: 't-1', runId: 'r-1' });
+	});
+
+	it('assistant:createChatThread returns the ensured thread id', async () => {
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn(),
+			getTimeSaved: vi.fn(),
+			createChatThread: vi.fn().mockResolvedValue({ threadId: 't-chat' }),
+		};
+		register({ instanceApi });
+
+		const result = await getRegisteredHandler('assistant:createChatThread')();
+
+		expect(instanceApi.createChatThread).toHaveBeenCalled();
+		expect(result).toEqual({ ok: true, threadId: 't-chat' });
+	});
+
+	it('assistant:createChatThread surfaces a failure as { ok: false }', async () => {
+		const instanceApi = {
+			getTasks: vi.fn(),
+			runWorkflow: vi.fn(),
+			workflowUrl: vi.fn(),
+			getHistory: vi.fn(),
+			executionUrl: vi.fn(),
+			getTimeSaved: vi.fn(),
+			createChatThread: vi.fn().mockRejectedValue(new InstanceApiError('boom', 500)),
+		};
+		register({ instanceApi });
+
+		const result = await getRegisteredHandler('assistant:createChatThread')();
+
+		expect(result).toEqual({ ok: false, error: 'boom' });
 	});
 
 	it('permissions:get returns the mac permission status', async () => {

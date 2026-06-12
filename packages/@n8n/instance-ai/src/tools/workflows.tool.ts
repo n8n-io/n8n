@@ -491,6 +491,19 @@ async function handleSetup(
 
 	const resumeData = ctx.resumeData;
 
+	// Headless runs (desktop assistant) have no surface to answer a setup prompt.
+	// Defer instead of suspending: the workflow is already saved, so it surfaces
+	// credential-less in the desktop app's "Action needed" for the user to connect.
+	if (context.suppressInteractiveSetup) {
+		return {
+			success: true,
+			deferred: true,
+			reason:
+				'Setup deferred: this run has no interactive setup surface. The workflow is saved; ' +
+				'the user connects any remaining credentials from "Action needed".',
+		};
+	}
+
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
 		const setupRequests = await analyzeWorkflow(context, input.workflowId);

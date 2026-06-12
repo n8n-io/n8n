@@ -1,6 +1,7 @@
 import type {
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
+	DesktopAssistantChatThreadResponse,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantPromoteRequest,
 	DesktopAssistantPromoteResponse,
@@ -271,6 +272,21 @@ export class InstanceApi {
 		return await this.unwrap<DesktopAssistantPromoteResponse>(response);
 	}
 
+	/**
+	 * `POST /rest/desktop-assistant/chat-thread` — ensure a fresh chat thread in
+	 * the user's personal project and return its id. The renderer opens this
+	 * thread before the first message so the snapshot fetch resolves.
+	 */
+	async createChatThread(): Promise<DesktopAssistantChatThreadResponse> {
+		const response = await this.authedFetch('/desktop-assistant/chat-thread', {
+			method: 'POST',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({}),
+		});
+		return await this.unwrap<DesktopAssistantChatThreadResponse>(response);
+	}
+
 	/** `GET /rest/instance-ai/threads/:threadId/messages` — the thread's stored messages plus the `nextEventId` SSE cursor. */
 	async getThreadMessages(threadId: string): Promise<InstanceAiRichMessagesResponse> {
 		const response = await this.authedFetch(
@@ -338,6 +354,12 @@ export class InstanceApi {
 	workflowSetupUrl(workflowId: string): string | null {
 		const url = this.workflowUrl(workflowId);
 		return url ? `${url}?action=openSetup` : null;
+	}
+
+	/** Instance AI thread URL on the signed-in instance, or `null` when signed out. */
+	threadUrl(threadId: string): string | null {
+		const { instanceUrl } = this.oauthFlow.getStatus();
+		return instanceUrl ? `${instanceUrl}/instance-ai/${encodeURIComponent(threadId)}` : null;
 	}
 
 	/** Every n8n REST endpoint wraps its payload in a `data` key; peel it off. */

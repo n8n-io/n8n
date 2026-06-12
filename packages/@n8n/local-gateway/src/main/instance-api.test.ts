@@ -252,6 +252,27 @@ describe('InstanceApi', () => {
 		});
 	});
 
+	describe('createChatThread', () => {
+		it('POSTs to the chat-thread endpoint and unwraps the thread id', async () => {
+			mockFetch.mockResolvedValue(jsonResponse({ data: { threadId: 't-chat' } }));
+
+			const result = await new InstanceApi(makeOAuth()).createChatThread();
+
+			const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n.example/rest/desktop-assistant/chat-thread');
+			expect(init.method).toBe('POST');
+			expect(init.body).toBe('{}');
+			expect((init.headers as Record<string, string>).authorization).toBe('Bearer tok');
+			expect(result).toEqual({ threadId: 't-chat' });
+		});
+
+		it('throws InstanceApiError on a non-ok response', async () => {
+			mockFetch.mockResolvedValue(jsonResponse({ message: 'nope' }, { ok: false, status: 500 }));
+
+			await expect(new InstanceApi(makeOAuth()).createChatThread()).rejects.toThrow();
+		});
+	});
+
 	describe('workflowUrl', () => {
 		it('builds the editor url, or null when signed out', () => {
 			expect(new InstanceApi(makeOAuth()).workflowUrl('wf-1')).toBe(
@@ -267,6 +288,15 @@ describe('InstanceApi', () => {
 				'https://n.example/workflow/wf-1?action=openSetup',
 			);
 			expect(new InstanceApi(makeOAuth({ instanceUrl: null })).workflowSetupUrl('wf-1')).toBeNull();
+		});
+	});
+
+	describe('threadUrl', () => {
+		it('builds the Instance AI thread url, or null when signed out', () => {
+			expect(new InstanceApi(makeOAuth()).threadUrl('thread 1')).toBe(
+				'https://n.example/instance-ai/thread%201',
+			);
+			expect(new InstanceApi(makeOAuth({ instanceUrl: null })).threadUrl('thread-1')).toBeNull();
 		});
 	});
 });

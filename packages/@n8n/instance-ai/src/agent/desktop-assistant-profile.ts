@@ -58,11 +58,19 @@ export interface DesktopAssistantProfile {
 	 * blind first (a burst of tool errors at run start).
 	 */
 	preloadGatewayTools: boolean;
+	/**
+	 * Auto-defer credential/parameter setup instead of suspending on it. Desktop
+	 * runs are fire-and-forget with no surface to answer a "configure
+	 * credentials" prompt — suspending there hangs the run. With this set, the
+	 * `workflows`/`credentials` setup actions skip the suspend and the workflow
+	 * is saved credential-less, surfacing in the desktop app's "Action needed".
+	 */
+	suppressInteractiveSetup: boolean;
 }
 
 /** Shared preamble: both desktop modes run headless, so text output is waste. */
 const FIRE_AND_FORGET_RULES =
-	"This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, progress commentary, or summaries, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.";
+	"This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, or progress commentary, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.";
 
 const ONE_SHOT_PROMPT_SECTION = `
 ## Desktop Assistant — One-Shot Task
@@ -87,6 +95,7 @@ ${FIRE_AND_FORGET_RULES}
   - \`propose-task-plan\` — non-manual-trigger requests only; it is the run's first and only tool call.
   - \`report-desktop-task-outcome\` — all other runs, including declines; it is how you stop.
 - Success: \`success: true\`, a plain-text \`title\` naming the task as a repeatable action (3–8 words, present tense, no emoji — \`"Sort desktop screenshots"\`, never \`"Sorted 12 screenshots"\`), a one-sentence \`summary\`, and an \`icon\` (a single emoji capturing the task).
+- Deliverable: when the request asks for information — a summary, an answer to a question, extracted data — the outcome card is the only thing the user ever sees, so the full deliverable MUST go in \`details\` as markdown; a deliverable not in \`details\` is lost. Keep it under ~300 words unless the request calls for more. Omit \`details\` when the result is an action on the system (files moved, message sent) rather than information.
 - Decline/failure: \`success: false\` plus \`title\`, \`summary\`, and a user-readable \`failureReason\`.
 - If the task built and saved a workflow, include its id as \`workflowId\` so the instance can publish it.
 `;
@@ -102,9 +111,9 @@ This thread contains a task you already carried out on the user's machine via de
 
 ### Building blocks
 
-- A recorded action replays as a \`@n8n/n8n-nodes-langchain.computerUse\` node: \`tool\` resourceLocator (mode \`id\`) set to the recorded tool name, \`inputMode: json\`, \`jsonInput\` carrying the arguments.
+- A recorded action replays as a \`@n8n/n8n-nodes-langchain.computerUse\` node: \`tool\` resourceLocator (mode \`id\`) set to the recorded tool name, \`inputMode: json\`, \`jsonInput\` carrying the arguments. Only values that came from the request (or follow mechanically from it) are safe to replay literally.
 - Content that must be produced fresh each run comes from one Basic LLM Chain (\`@n8n/n8n-nodes-langchain.chainLlm\`) with a chat model sub-node, prompted to output only the content, feeding the action node(s) via an expression (e.g. \`{{ $json.text }}\`).
-- An AI Agent with \`@n8n/n8n-nodes-langchain.toolComputerUse\` attached (plus a chat model sub-node) is the shape of last resort, for tasks whose *actions* — not just content — depend on what the run finds. An agent picks its own steps and may repeat them, so whenever the action sequence is knowable in advance, build it as fixed nodes instead.
+- An AI Agent with \`@n8n/n8n-nodes-langchain.toolComputerUse\` attached (plus a chat model sub-node) is the shape of last resort, for tasks whose *actions* — not just content — depend on what the run finds. Tell-tale signal: a read/list/search call (\`get_file_tree\`, \`list_files\`, \`search_files\`, \`read_file\`, a screenshot) whose output drives the arguments of the calls after it — those values are a snapshot of one run, not a script. An agent picks its own steps and may repeat them, so whenever the action sequence is knowable in advance, build it as fixed nodes instead.
 
 Every build starts from a Manual Trigger.
 
@@ -122,7 +131,7 @@ When the user message says the thread contains a configured task plan instead of
 Additional rules:
 
 - **The task runs exactly once per execution.** n8n executes a node once per incoming item, so a node that emits several items makes every downstream action repeat — a "send one reminder" task would send N. Where an intermediate node can produce multiple items, collapse them to a single item before the action node(s) (an Aggregate node, or \`executeOnce: true\` on the action node), and never add loop shapes around the task itself.
-- **There is no credential-setup step after this build** — the workflow must be runnable exactly as saved. List the user's credentials (\`credentials(action="list")\`) and bind a concrete existing credential on every node that needs one, using \`newCredential('Name', 'id')\` with the real id — never the id-less form, which defers to a setup phase this surface does not have. When several credentials match, pick the most plausible one rather than leaving the node unbound. Only leave a credential unset when the user has none of a matching type (Computer Use nodes' \`deviceConnectionApi\` is filled in automatically in that case).
+- **There is no credential-setup step after this build** — the workflow must be runnable exactly as saved. List the user's credentials (\`credentials(action="list")\`) and bind a concrete existing credential on every node that needs one, using \`newCredential('Name', 'id')\` with the real id — never the id-less form, which defers to a setup phase this surface does not have. When several credentials match, pick the most plausible one rather than leaving the node unbound. Only leave a credential unset when the user has none of a matching type (Computer Use nodes' \`deviceConnectionApi\` is filled in automatically in that case). When you do leave a credential unset, do NOT call the setup action — save the workflow as-is; it will surface in the desktop app for the user to connect the credential later.
 - The user's request in this thread may end with appended context lines (\`Currently looking at:\`, \`URL:\`, \`Path:\`, \`Selected text:\`). They capture what was on screen when the task ran — context, not requirements. Use them to disambiguate the request; do not bake them into the workflow unless the request itself depends on them.
 - Set the workflow \`name\` to a short plain-text label naming the task, not the run: 3–8 words, present tense (\`"Archive old downloads"\`), never a past-tense report (\`"Archived 12 files"\`). If the user's prompt provided a name, use it (correcting tense if needed).
 - If the original intent is ambiguous or requires context you do not have, stop without producing a workflow — no low-quality stubs.
@@ -166,16 +175,28 @@ export function getDesktopAssistantProfile(
 					createProposeTaskPlanTool({ memory: deps.memory }),
 				],
 				preloadGatewayTools: true,
+				suppressInteractiveSetup: true,
 			};
 		case 'desktop-assistant-promote':
 			return {
 				promptSection: PROMOTE_PROMPT_SECTION,
 				extraTools: [createReportPromoteOutcomeTool({ memory: deps.memory })],
 				preloadGatewayTools: false,
+				suppressInteractiveSetup: true,
 			};
 		case 'desktop-assistant-edit':
-			return { promptSection: EDIT_PROMPT_SECTION, extraTools: [], preloadGatewayTools: false };
+			return {
+				promptSection: EDIT_PROMPT_SECTION,
+				extraTools: [],
+				preloadGatewayTools: false,
+				suppressInteractiveSetup: true,
+			};
 		case undefined:
-			return { promptSection: '', extraTools: [], preloadGatewayTools: false };
+			return {
+				promptSection: '',
+				extraTools: [],
+				preloadGatewayTools: false,
+				suppressInteractiveSetup: false,
+			};
 	}
 }

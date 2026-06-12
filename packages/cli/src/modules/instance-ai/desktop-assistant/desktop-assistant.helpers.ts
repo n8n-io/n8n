@@ -104,7 +104,7 @@ export function composePromoteMessage(
 	if (configuredSentence) {
 		return `Turn the task from this thread into a repeatable workflow. This thread contains no executed run to replay — the user reviewed and configured a task plan instead. Build the workflow from the configured description below, using its values verbatim (the schedule, services, and folders are the user's final choices), with the non-manual trigger it implies.${naming}\n\nConfigured description:\n"${configuredSentence}"\n\nThe original request, as context only:\n\n${originalPrompt}`;
 	}
-	return `Turn the task from this thread into a repeatable workflow. Decide first, from the original request below: must a future run reproduce the recorded results exactly, or generate content fresh? The recorded tool calls show what was done, not necessarily what should be replayed literally.${naming} The original request:\n\n${originalPrompt}`;
+	return `Turn the task from this thread into a repeatable workflow. Decide first, from the original request below: can a fixed list of the recorded steps reproduce the request on every future run, or must the workflow inspect the current state (what files/items are there now) or generate content fresh each time? The recorded tool calls are a snapshot of one run, not necessarily a script to replay literally.${naming} The original request:\n\n${originalPrompt}`;
 }
 
 // ── Recommendations ──────────────────────────────────────────────────────────
