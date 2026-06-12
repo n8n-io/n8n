@@ -1,17 +1,21 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 
 import type { WorkflowIdConflict } from './workflow-import-match.service';
+import type { WorkflowPublishingPolicy } from './workflow-publishing-policy.types';
 
 /** The actor and destination a batch of workflows is imported into. */
 export interface WorkflowImportContext {
 	user: User;
 	projectId: string;
 	folderId: string | null;
+	publishingPolicy: WorkflowPublishingPolicy;
 }
 
 export interface PreparedWorkflow {
 	entity: WorkflowEntity;
 	sourceWorkflowId: string;
+	/** Whether the workflow was published (active) in the source instance. */
+	sourcePublished: boolean;
 }
 
 export type WorkflowPlannedAction = 'create' | 'update' | 'skip';
@@ -34,7 +38,11 @@ export interface WorkflowDecision {
  */
 export type WorkflowPlanItem =
 	| ({ action: 'create'; decidedId: string } & PreparedWorkflow)
-	| ({ action: 'update' | 'skip'; existing: WorkflowEntity } & PreparedWorkflow);
+	| ({ action: 'update'; existing: WorkflowEntity } & PreparedWorkflow)
+	| ({ action: 'skip'; existing: WorkflowEntity } & PreparedWorkflow);
+
+/** A plan item whose content is written to the database (i.e. not skipped). */
+export type PersistedWorkflowPlanItem = Extract<WorkflowPlanItem, { action: 'create' | 'update' }>;
 
 export interface WorkflowConflict {
 	sourceWorkflowId: string;

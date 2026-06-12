@@ -9,6 +9,7 @@ describe('ImportPackageRequestDto', () => {
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'fail',
+				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 			});
 		}
@@ -26,6 +27,7 @@ describe('ImportPackageRequestDto', () => {
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'fail',
+				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 			});
 		}
@@ -45,6 +47,7 @@ describe('ImportPackageRequestDto', () => {
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'new-version',
+				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 			});
 		}
@@ -63,6 +66,7 @@ describe('ImportPackageRequestDto', () => {
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'skip',
+				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
 			});
 		}

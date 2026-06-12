@@ -80,6 +80,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				credentialMatchingMode: payload.data.credentialMatchingMode,
 				credentialMissingMode: payload.data.credentialMissingMode,
 				workflowConflictPolicy: payload.data.workflowConflictPolicy,
+				workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
 				workflowIdPolicy: payload.data.workflowIdPolicy,
 				packageBuffer: packageFile.buffer,
 			});
