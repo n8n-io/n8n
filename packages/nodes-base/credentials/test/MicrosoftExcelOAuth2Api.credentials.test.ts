@@ -5,7 +5,8 @@ import { MicrosoftExcelOAuth2Api } from '../MicrosoftExcelOAuth2Api.credentials'
 
 describe('MicrosoftExcelOAuth2Api Credential', () => {
 	const microsoftExcelOAuth2Api = new MicrosoftExcelOAuth2Api();
-	const defaultScopes = ['openid', 'offline_access', 'Files.ReadWrite'];
+	const defaultScopes = ['openid', 'offline_access', 'Files.ReadWrite.All'];
+	const defaultScopesString = defaultScopes.join(' ');
 
 	// Shared OAuth2 configuration
 	const baseUrl = 'https://login.microsoftonline.com';
@@ -62,7 +63,7 @@ describe('MicrosoftExcelOAuth2Api Credential', () => {
 		const enabledScopesProperty = microsoftExcelOAuth2Api.properties.find(
 			(p) => p.name === 'enabledScopes',
 		);
-		expect(enabledScopesProperty?.default).toBe('openid offline_access Files.ReadWrite');
+		expect(enabledScopesProperty?.default).toBe(defaultScopesString);
 	});
 
 	describe('OAuth2 flow with default scopes', () => {
@@ -84,7 +85,7 @@ describe('MicrosoftExcelOAuth2Api Credential', () => {
 			const oauthClient = createOAuthClient(defaultScopes);
 			const token = await oauthClient.code.getToken(redirectUri + `?code=${code}`);
 
-			expect(token.data.scope).toBe('openid offline_access Files.ReadWrite');
+			expect(token.data.scope).toBe(defaultScopesString);
 		});
 	});
 

@@ -8,6 +8,21 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { mapMicrosoftApiError } from '../helpers/errorHandling';
+
+// Resources whose path is an absolute Graph path and must NOT be nested under the
+// signed-in user's `/me` context: a specific drive (`/drives/...`), a SharePoint
+// site (`/sites/...`), or tenant-wide search (`/search/...`). Everything else stays
+// scoped to `/me`, so existing personal-OneDrive calls (e.g. `/drive/...`) are
+// unchanged. Note `/drive` (personal) is intentionally not in this list, only `/drives`.
+const ABSOLUTE_GRAPH_PREFIXES = ['/drives', '/sites', '/search'];
+
+function isAbsoluteGraphResource(resource: string): boolean {
+	return ABSOLUTE_GRAPH_PREFIXES.some(
+		(prefix) => resource === prefix || resource.startsWith(`${prefix}/`),
+	);
+}
+
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
@@ -23,6 +38,7 @@ export async function microsoftApiRequest(
 			? credentials.graphApiBaseUrl
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
+	const scope = isAbsoluteGraphResource(resource) ? '' : '/me';
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -30,7 +46,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `${baseUrl}/v1.0/me${resource}`,
+		uri: uri || `${baseUrl}/v1.0${scope}${resource}`,
 		json: true,
 	};
 	try {
@@ -39,7 +55,10 @@ export async function microsoftApiRequest(
 		}
 		return await this.helpers.requestOAuth2.call(this, 'microsoftExcelOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		// Surface actionable guidance for permission/licensing failures; fall back
+		// to the default parsing for everything else.
+		const mappedError = mapMicrosoftApiError(error);
+		throw new NodeApiError(this.getNode(), error as JsonObject, mappedError);
 	}
 }
 

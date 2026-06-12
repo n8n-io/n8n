@@ -1,7 +1,13 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 //https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent
-const defaultScopes = ['openid', 'offline_access', 'Files.ReadWrite'];
+// Files.ReadWrite.All grants read and write to every file the user can access,
+// including shared and SharePoint document libraries (not just personal OneDrive),
+// and satisfies the tenant-wide /search/query used to list workbooks. This is an
+// admin-consent scope; that is acceptable for this node because it enables reading
+// and writing workbooks wherever they live. Existing credentials keep working for
+// OneDrive on the old token and need a one-time reconnect to reach shared/SharePoint.
+const defaultScopes = ['openid', 'offline_access', 'Files.ReadWrite.All'];
 
 export class MicrosoftExcelOAuth2Api implements ICredentialType {
 	name = 'microsoftExcelOAuth2Api';

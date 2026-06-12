@@ -206,5 +206,66 @@ describe('Microsoft Excel Transport', () => {
 				);
 			});
 		});
+
+		describe('resource path scoping', () => {
+			beforeEach(() => {
+				mockRequestOAuth2.mockResolvedValue({ data: 'test' });
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: { access_token: 'test-access-token' },
+				});
+			});
+
+			it('should scope personal-drive resources under /me', async () => {
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive/root/search');
+
+				expect(mockRequestOAuth2).toHaveBeenCalledWith(
+					'microsoftExcelOAuth2Api',
+					expect.objectContaining({
+						uri: 'https://graph.microsoft.com/v1.0/me/drive/root/search',
+					}),
+				);
+			});
+
+			it('should not nest /drives/{id} resources under /me', async () => {
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/drives/drive-id/items/item-id/workbook/worksheets',
+				);
+
+				expect(mockRequestOAuth2).toHaveBeenCalledWith(
+					'microsoftExcelOAuth2Api',
+					expect.objectContaining({
+						uri: 'https://graph.microsoft.com/v1.0/drives/drive-id/items/item-id/workbook/worksheets',
+					}),
+				);
+			});
+
+			it('should not nest /sites resources under /me', async () => {
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/sites');
+
+				expect(mockRequestOAuth2).toHaveBeenCalledWith(
+					'microsoftExcelOAuth2Api',
+					expect.objectContaining({
+						uri: 'https://graph.microsoft.com/v1.0/sites',
+					}),
+				);
+			});
+
+			it('should not nest /sites/{id}/drive resources under /me', async () => {
+				await microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/sites/site-id/drive/root/search',
+				);
+
+				expect(mockRequestOAuth2).toHaveBeenCalledWith(
+					'microsoftExcelOAuth2Api',
+					expect.objectContaining({
+						uri: 'https://graph.microsoft.com/v1.0/sites/site-id/drive/root/search',
+					}),
+				);
+			});
+		});
 	});
 });
