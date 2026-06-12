@@ -28,6 +28,9 @@ type VerifyBuiltWorkflowOutput = {
 	}>;
 	simulatedNodes?: Array<{ nodeName: string; reason: string }>;
 	simulationNote?: string;
+	lastNodeExecuted?: string;
+	nodesNotReached?: string[];
+	coverageNote?: string;
 	data?: Record<string, unknown>;
 	remediation?: { category: string; shouldEdit: boolean; reason?: string };
 };
@@ -359,6 +362,8 @@ type ExecutionRunResult = {
 	executionId?: string | null;
 	status: 'success' | 'error' | 'waiting' | 'running' | 'unknown';
 	data?: Record<string, unknown>;
+	executedNodeNames?: string[];
+	lastNodeExecuted?: string;
 	error?: string;
 };
 
@@ -903,6 +908,79 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		]);
 		expect(result.simulationNote).toContain('Send Slack');
 		expect(result.simulationNote).toContain('no real external writes');
+	});
+
+	it('reports planned simulations the execution never reached as unverified (empty-read dead-end)', async () => {
+		// Reproduces the order-fulfillment scenario: a data-table lookup on an
+		// empty table returns zero items mid-chain, so everything downstream —
+		// including all planned simulations — never runs. The run is still a
+		// legitimate `success`, but the tool must not claim those nodes were
+		// simulated, and must surface the coverage gap.
+		const { ctx } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [
+					executeVerdict('Look Up Order'),
+					simulateVerdict('Wait 2 Hours', 'Pauses the workflow'),
+					simulateVerdict('Send Follow-up Email', 'Sends an email'),
+					simulateVerdict('Mark Order Fulfilled', 'Updates a row'),
+				],
+				simulationFixtures: {
+					'Wait 2 Hours': [{ json: {} }],
+					'Send Follow-up Email': [{ json: { id: 'msg-1' } }],
+					'Mark Order Fulfilled': [{ json: { id: 1 } }],
+				},
+			}),
+			{
+				executionId: 'exec-dead-end',
+				status: 'success',
+				data: {
+					'Order Received': [{ body: { orderId: 'ORD-1001' } }],
+					'Wait 10s': [{ body: { orderId: 'ORD-1001' } }],
+				},
+				// The lookup ran but produced zero items — present here, absent from data.
+				executedNodeNames: ['Order Received', 'Wait 10s', 'Look Up Order'],
+				lastNodeExecuted: 'Look Up Order',
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		// The lookup ran (zero output) — it counts as executed, not unreached.
+		expect(result.nodesExecuted).toContain('Look Up Order');
+		expect(result.lastNodeExecuted).toBe('Look Up Order');
+		// None of the planned simulations actually happened.
+		expect(result.simulatedNodes).toBeUndefined();
+		expect(result.simulationNote).toBeUndefined();
+		expect(result.nodesNotReached).toEqual([
+			'Wait 2 Hours',
+			'Send Follow-up Email',
+			'Mark Order Fulfilled',
+		]);
+		expect(result.coverageNote).toContain('UNVERIFIED');
+		expect(result.coverageNote).toContain('Look Up Order');
+		expect(result.coverageNote).toContain('Seed matching test data');
+	});
+
+	it('persists unreached nodes in the verification evidence', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome({
+				nodeSimulationPlan: [simulateVerdict('Send Slack')],
+			}),
+			{
+				executionId: 'exec-evidence',
+				status: 'success',
+				data: { Trigger: [{ ok: true }] },
+				executedNodeNames: ['Trigger'],
+				lastNodeExecuted: 'Trigger',
+			},
+		);
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(updateBuildOutcome.mock.calls[0][1].verification?.evidence?.nodesNotReached).toEqual([
+			'Send Slack',
+		]);
 	});
 
 	it('never deletes rows whose IDs come from fabricated fixture output', async () => {

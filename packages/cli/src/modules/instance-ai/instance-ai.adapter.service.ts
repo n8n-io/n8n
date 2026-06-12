@@ -2824,6 +2824,11 @@ export async function extractExecutionResult(
 	// When N8N_AI_ALLOW_SENDING_PARAMETER_VALUES is disabled, only return
 	// status + error — no full node output data flows to the LLM provider
 	const resultData: Record<string, unknown> = {};
+	// All nodes that ran — including zero-output ones, which `resultData`
+	// omits. Verification uses this to tell "ran and returned nothing" apart
+	// from "never reached". Node names only, so it is safe regardless of the
+	// parameter-values privacy setting.
+	const executedNodeNames = Object.keys(execution.data?.resultData?.runData ?? {});
 	if (includeOutputData) {
 		const runData = execution.data?.resultData?.runData;
 		if (runData) {
@@ -2853,6 +2858,8 @@ export async function extractExecutionResult(
 			Object.keys(resultData).length > 0
 				? wrapResultDataEntries(truncateResultData(resultData))
 				: undefined,
+		executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+		lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
 		error: errorMessage,
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),

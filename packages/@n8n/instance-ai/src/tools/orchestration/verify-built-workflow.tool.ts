@@ -314,6 +314,9 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					.array(z.object({ nodeName: z.string(), reason: z.string() }))
 					.optional(),
 				simulationNote: z.string().optional(),
+				lastNodeExecuted: z.string().optional(),
+				nodesNotReached: z.array(z.string()).optional(),
+				coverageNote: z.string().optional(),
 				data: z.record(z.unknown()).optional(),
 				error: z.string().optional(),
 				remediation: remediationOutputSchema,
@@ -396,6 +399,21 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				simulation: simulationMap,
 			});
 
+			// Coverage: partition the simulation plan against the nodes that
+			// actually ran. A read node returning zero items legitimately ends the
+			// execution early (empty item list → downstream never runs), which
+			// would otherwise look like a clean success while most of the workflow
+			// — including its planned simulations — was never exercised.
+			// `executedNodeNames` includes zero-output nodes that `result.data`
+			// omits; fall back to data keys for adapters that predate it.
+			const reachedNames = new Set(
+				result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
+			);
+			const reachedSimulatedNodes = simulatedNodes.filter((n) => reachedNames.has(n.nodeName));
+			const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
+				.map((verdict) => verdict.nodeName)
+				.filter((name) => !reachedNames.has(name));
+
 			// `waiting` handling depends on whether this build has a simulation plan.
 			//
 			// With a plan, every legitimate user-action pause (Form pages, Wait,
@@ -428,7 +446,12 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			// checkpoint follow-up turn can reuse it instead of re-running verify.
 			// Best-effort: swallow storage errors so they don't mask the verify result.
 			try {
-				const nodesExecuted = result.data ? Object.keys(result.data) : undefined;
+				const executedForEvidence =
+					reachedNames.size > 0
+						? [...reachedNames]
+						: result.data
+							? Object.keys(result.data)
+							: undefined;
 				await context.workflowTaskService.updateBuildOutcome(input.workItemId, {
 					verification: {
 						attempted: true,
@@ -437,7 +460,11 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						status: result.status,
 						failureSignature: success ? undefined : result.error,
 						evidence: {
-							nodesExecuted: nodesExecuted && nodesExecuted.length > 0 ? nodesExecuted : undefined,
+							nodesExecuted:
+								executedForEvidence && executedForEvidence.length > 0
+									? executedForEvidence
+									: undefined,
+							nodesNotReached: nodesNotReached.length > 0 ? nodesNotReached : undefined,
 							producedOutputRows: countProducedOutputRows(result.data),
 							errorMessage: success ? undefined : result.error,
 						},
@@ -489,22 +516,41 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 
 			const maxDataChars = input.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
-			const nodesExecuted = result.data ? Object.keys(result.data) : undefined;
-			const simulatedNames = new Set(simulatedNodes.map((n) => n.nodeName));
+			const nodesExecuted =
+				reachedNames.size > 0
+					? [...reachedNames]
+					: result.data
+						? Object.keys(result.data)
+						: undefined;
+			const simulatedNames = new Set(reachedSimulatedNodes.map((n) => n.nodeName));
 			const simulationNote =
-				simulatedNodes.length > 0
-					? `Simulated ${simulatedNodes.length} node(s) during verification — no real external writes happened: ` +
-						simulatedNodes.map((n) => `${n.nodeName} (${n.reason})`).join('; ') +
+				reachedSimulatedNodes.length > 0
+					? `Simulated ${reachedSimulatedNodes.length} node(s) during verification — no real external writes happened: ` +
+						reachedSimulatedNodes.map((n) => `${n.nodeName} (${n.reason})`).join('; ') +
 						'. Relay this to the user when presenting the result.'
+					: undefined;
+			const coverageNote =
+				nodesNotReached.length > 0
+					? `Partial coverage: ${nodesNotReached.length} node(s) were never reached and remain UNVERIFIED: ` +
+						nodesNotReached.join(', ') +
+						(result.lastNodeExecuted
+							? `. Execution ended at "${result.lastNodeExecuted}"${success ? ' because it produced no output items (empty item lists stop downstream nodes)' : ''}.`
+							: '.') +
+						(success
+							? ' This usually means a lookup or query returned nothing. Seed matching test data and re-run verification, or tell the user the unreached part needs a manual test. Do NOT report the workflow as fully verified.'
+							: '')
 					: undefined;
 			return {
 				executionId: result.executionId || undefined,
 				success,
 				status: result.status,
 				nodesExecuted,
+				lastNodeExecuted: result.lastNodeExecuted,
 				nodePreviews: buildNodePreviews(result.data, maxDataChars, simulatedNames),
-				simulatedNodes: simulatedNodes.length > 0 ? simulatedNodes : undefined,
+				simulatedNodes: reachedSimulatedNodes.length > 0 ? reachedSimulatedNodes : undefined,
 				simulationNote,
+				nodesNotReached: nodesNotReached.length > 0 ? nodesNotReached : undefined,
+				coverageNote,
 				...(input.includeData ? { data: result.data } : {}),
 				error: result.error,
 				remediation,

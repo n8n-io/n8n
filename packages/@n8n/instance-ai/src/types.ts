@@ -78,6 +78,14 @@ export interface ExecutionResult {
 	executionId: string;
 	status: 'running' | 'success' | 'error' | 'waiting' | 'unknown';
 	data?: Record<string, unknown>;
+	/**
+	 * Every node that ran, including those whose last run produced zero output
+	 * items (`data` omits those). Lets verification tell "ran and returned
+	 * nothing" apart from "never reached".
+	 */
+	executedNodeNames?: string[];
+	/** Name of the last node the execution processed, when available. */
+	lastNodeExecuted?: string;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;

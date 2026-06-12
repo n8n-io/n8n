@@ -153,6 +153,12 @@ export const workflowVerificationEvidenceSchema = z.object({
 	evidence: z
 		.object({
 			nodesExecuted: z.array(z.string()).optional(),
+			/**
+			 * Plan nodes the execution never reached (e.g. a lookup returned zero
+			 * items and stopped the chain). Non-empty means partial coverage —
+			 * checkpoints must not treat the run as full end-to-end evidence.
+			 */
+			nodesNotReached: z.array(z.string()).optional(),
 			producedOutputRows: z.number().optional(),
 			errorNodeName: z.string().optional(),
 			errorMessage: z.string().optional(),
