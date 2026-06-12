@@ -146,16 +146,15 @@ export interface NodeExecutionSnapshot {
 }
 
 /**
- * Reduce a group's per-node state into one dominant status (plus the largest
- * per-node iteration count for the success badge). Priority mirrors the
- * single-node order: waiting > running > error > issues > warning > success > idle.
+ * Reduce a group's per-node state into one dominant status. Priority mirrors
+ * the single-node order: waiting > running > error > issues > warning > success > idle.
  * Pre-execution validation issues surface as `issues` (the triangle), never as
  * an execution `error`. `success` requires every node to have succeeded or not run.
  */
 export function aggregateGroupExecution(
 	nodeIds: string[],
 	getNodeExecutionSnapshot: (id: string) => NodeExecutionSnapshot,
-): { status: GroupExecutionStatus | undefined; maxNodeIterations: number } {
+): GroupExecutionStatus | undefined {
 	let anyWaiting = false;
 	let anyRunning = false;
 	let anyError = false;
@@ -163,13 +162,10 @@ export function aggregateGroupExecution(
 	let anyWarning = false;
 	let anySuccess = false;
 	let anyOther = false;
-	let maxNodeIterations = 0;
 
 	for (const id of nodeIds) {
 		const snapshot = getNodeExecutionSnapshot(id);
 		const status = snapshot.status;
-
-		if (snapshot.iterations > maxNodeIterations) maxNodeIterations = snapshot.iterations;
 
 		if (snapshot.waiting || status === 'waiting') {
 			anyWaiting = true;
@@ -193,16 +189,14 @@ export function aggregateGroupExecution(
 		}
 	}
 
-	let status: GroupExecutionStatus | undefined;
-	if (anyWaiting) status = 'waiting';
-	else if (anyRunning) status = 'running';
-	else if (anyError) status = 'error';
-	else if (anyIssues) status = 'issues';
-	else if (anyWarning) status = 'warning';
-	else if (anySuccess && !anyOther) status = 'success';
-
+	if (anyWaiting) return 'waiting';
+	if (anyRunning) return 'running';
+	if (anyError) return 'error';
+	if (anyIssues) return 'issues';
+	if (anyWarning) return 'warning';
 	// success is the only status that speaks for every member
-	return { status, maxNodeIterations: status === 'success' ? maxNodeIterations : 0 };
+	if (anySuccess && !anyOther) return 'success';
+	return undefined;
 }
 
 export interface MapGroupsToVueFlowNodesInputs {
@@ -235,16 +229,11 @@ export function mapGroupsToVueFlowNodes({
 
 		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
 		const collapsed = isGroupCollapsed(group.id);
-		const { status, maxNodeIterations } = aggregateGroupExecution(
-			group.nodeIds,
-			getNodeExecutionSnapshot,
-		);
 		const data: CanvasGroupNodeData = {
 			group,
 			nodesRect,
 			isCollapsed: collapsed,
-			executionStatus: status,
-			maxNodeIterations,
+			executionStatus: aggregateGroupExecution(group.nodeIds, getNodeExecutionSnapshot),
 		};
 
 		const titleBar = titleBarFromNodesRect(nodesRect, collapsed);

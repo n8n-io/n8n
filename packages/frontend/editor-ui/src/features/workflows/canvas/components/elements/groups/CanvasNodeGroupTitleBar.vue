@@ -247,7 +247,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 					:class="$style.statusIcons"
 					:data-test-id="`canvas-node-group-status-${markStatus}`"
 				>
-					<CanvasNodeStatusMark :status="markStatus" :iterations="data.maxNodeIterations" />
+					<CanvasNodeStatusMark :status="markStatus" />
 				</div>
 				<div
 					v-else-if="isCollapsed && executionStatus === 'issues'"

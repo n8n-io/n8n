@@ -177,14 +177,6 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.queryByTestId('canvas-node-group-status-error')).toBeNull();
 		});
 
-		it('shows iteration count on success when maxNodeIterations > 1', () => {
-			const wrapper = render({
-				data: makeData({ executionStatus: 'success', maxNodeIterations: 3 }),
-			});
-			const icon = wrapper.getByTestId('canvas-node-group-status-success');
-			expect(icon).toHaveTextContent('3');
-		});
-
 		it('hides the status mark when the group is expanded (member nodes show their own)', () => {
 			const wrapper = render({
 				data: makeData({ executionStatus: 'success', isCollapsed: false }),

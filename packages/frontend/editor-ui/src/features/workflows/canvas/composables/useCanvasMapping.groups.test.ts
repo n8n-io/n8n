@@ -114,7 +114,7 @@ describe('computeNodesRectFromStore', () => {
 
 describe('aggregateGroupExecution', () => {
 	function statusOf(nodeIds: string[], byId: Record<string, Partial<NodeExecutionSnapshot>> = {}) {
-		return aggregateGroupExecution(nodeIds, snapshotGetter(byId)).status;
+		return aggregateGroupExecution(nodeIds, snapshotGetter(byId));
 	}
 
 	it('returns running when any node is running', () => {
@@ -222,32 +222,6 @@ describe('aggregateGroupExecution', () => {
 		expect(statusOf(['a', 'b'], { a: { running: true }, b: { waiting: 'waiting for form' } })).toBe(
 			'waiting',
 		);
-	});
-
-	it('returns the maximum iteration count across nodes for a success badge', () => {
-		expect(
-			aggregateGroupExecution(
-				['a', 'b'],
-				snapshotGetter({
-					a: { iterations: 1, status: 'success' },
-					b: { iterations: 5, status: 'success' },
-				}),
-			).maxNodeIterations,
-		).toBe(5);
-	});
-
-	it('returns 0 iterations for non-success statuses (the count only belongs to success)', () => {
-		// A dirty member with iterations from another member must not leak a badge count.
-		expect(
-			aggregateGroupExecution(
-				['a', 'b'],
-				snapshotGetter({ a: { iterations: 5, status: 'success' }, b: { dirty: true } }),
-			),
-		).toEqual({ status: 'warning', maxNodeIterations: 0 });
-	});
-
-	it('returns 0 iterations when nothing is set', () => {
-		expect(aggregateGroupExecution(['a'], snapshotGetter()).maxNodeIterations).toBe(0);
 	});
 });
 

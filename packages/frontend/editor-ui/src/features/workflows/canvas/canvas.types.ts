@@ -158,7 +158,6 @@ export interface CanvasGroupNodeData {
 	nodesRect: { x: number; y: number; width: number; height: number };
 	isCollapsed: boolean;
 	executionStatus?: GroupExecutionStatus;
-	maxNodeIterations?: number;
 }
 
 export type CanvasGroupNode = Node<CanvasGroupNodeData>;
