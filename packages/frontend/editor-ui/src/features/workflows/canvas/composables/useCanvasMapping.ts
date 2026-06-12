@@ -32,8 +32,8 @@ import { MarkerType } from '@vue-flow/core';
 import type { Connection } from '@vue-flow/core';
 import * as workflowUtils from 'n8n-workflow/common';
 
-// Highest priority first — also picks the dominant status across merged edges.
-const EDGE_STATUS_PRIORITY = ['running', 'pinned', 'error', 'success'] as const;
+// Highest priority first — single source of precedence for connection status.
+const CONNECTION_STATUS_PRIORITY = ['running', 'pinned', 'error', 'success'] as const;
 
 /**
  * Maps workflow nodes and connections into the vue-flow canvas shape.
@@ -203,7 +203,7 @@ export function useCanvasMapping({
 			type === NodeConnectionTypes.Main ||
 			Boolean(rd.executionRunDataByNodeId.get(connection.target)?.value);
 
-		const matches: Record<(typeof EDGE_STATUS_PRIORITY)[number], boolean> = {
+		const matches: Record<(typeof CONNECTION_STATUS_PRIORITY)[number], boolean> = {
 			running:
 				(rd.executionRunningByNodeId.get(connection.source)?.value ?? false) && runDataTotal === 0,
 			pinned: Boolean(rd.pinnedDataByNodeId.get(connection.source)?.value && sourceTasks),
@@ -211,7 +211,7 @@ export function useCanvasMapping({
 			success: runDataTotal > 0 && lastSourceTask?.executionStatus !== 'canceled' && targetExecuted,
 		};
 
-		return EDGE_STATUS_PRIORITY.find((status) => matches[status]);
+		return CONNECTION_STATUS_PRIORITY.find((status) => matches[status]);
 	}
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
@@ -226,7 +226,7 @@ export function useCanvasMapping({
 			status = getConnectionStatus(canonicals[0]);
 		} else {
 			const statuses = canonicals.map(getConnectionStatus);
-			status = EDGE_STATUS_PRIORITY.find((s) => statuses.includes(s));
+			status = CONNECTION_STATUS_PRIORITY.find((s) => statuses.includes(s));
 		}
 
 		const { source: sourceNodeId, target: targetNodeId, sourceHandle } = canonicals[0];

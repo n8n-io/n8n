@@ -145,15 +145,10 @@ export interface NodeExecutionSnapshot {
 }
 
 /**
- * Roll a group's per-node state up into one status, plus the largest per-node
- * iteration count (the count badge next to the success ✓).
- *
- * Priority mirrors the single-node CSS rule order so the group shows the same
- * dominant state a node would:
- * waiting > running > error > warning > success > idle.
- * `error` includes 'crashed' and `onError=continue` nodes; `warning` means a
- * node is dirty (parameters changed since its last run); `success` requires
- * every node to be 'success' or to have not run; anything else is idle.
+ * Reduce a group's per-node state into one dominant status (plus the largest
+ * per-node iteration count for the success badge). Priority mirrors the
+ * single-node CSS order: waiting > running > error > warning > success > idle.
+ * `success` requires every node to have succeeded or not run.
  */
 export function aggregateGroupExecution(
 	nodeIds: string[],
