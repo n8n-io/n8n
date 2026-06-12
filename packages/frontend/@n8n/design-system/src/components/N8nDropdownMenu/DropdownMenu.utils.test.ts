@@ -300,6 +300,7 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 		const wrapper = renderSearchableContent([
 			{ id: 'parent', label: 'Parent', children: createItems(1) },
 		]);
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- Needed for typecheck when calling setSelectionRange
 		const input = wrapper.getByRole('textbox') as HTMLInputElement;
 
 		await userEvent.type(input, 'ab');
@@ -325,6 +326,8 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 		const wrapper = renderSearchableContent([
 			{ id: 'parent', label: 'Parent', children: createItems(1) },
 		]);
+
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- Needed for typecheck when calling setSelectionRange
 		const input = wrapper.getByRole('textbox') as HTMLInputElement;
 
 		await userEvent.type(input, 'ab');
