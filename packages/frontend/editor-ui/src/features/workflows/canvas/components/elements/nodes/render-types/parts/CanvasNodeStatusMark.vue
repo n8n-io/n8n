@@ -1,26 +1,30 @@
 <script setup lang="ts">
 import { N8nIcon } from '@n8n/design-system';
+import type { IconSize } from '@n8n/design-system/types';
 
-defineProps<{
-	status: 'success' | 'error';
+const STATUS_ICONS = {
+	success: 'node-success',
+	error: 'node-execution-error',
+	warning: 'node-dirty',
+} as const;
+
+const {
+	status,
+	iterations = 0,
+	size = 'large',
+} = defineProps<{
+	status: keyof typeof STATUS_ICONS;
 	iterations?: number;
-	size?: 'small' | 'medium' | 'large';
+	size?: IconSize;
 }>();
 </script>
 
 <template>
-	<div
-		v-if="status === 'success'"
-		:class="[$style.mark, $style.success]"
-		data-test-id="canvas-node-status-mark-success"
-	>
-		<N8nIcon icon="node-success" :size="size ?? 'large'" />
-		<span v-if="iterations !== undefined && iterations > 1" :class="$style.count">
+	<div :class="[$style.mark, $style[status]]" :data-test-id="`canvas-node-status-mark-${status}`">
+		<N8nIcon :icon="STATUS_ICONS[status]" :size="size" />
+		<span v-if="status !== 'error' && iterations > 1" :class="$style.count">
 			{{ iterations }}
 		</span>
-	</div>
-	<div v-else :class="[$style.mark, $style.error]" data-test-id="canvas-node-status-mark-error">
-		<N8nIcon icon="node-execution-error" :size="size ?? 'large'" />
 	</div>
 </template>
 
@@ -38,6 +42,10 @@ defineProps<{
 
 .error {
 	color: var(--color--danger);
+}
+
+.warning {
+	color: var(--color--warning);
 }
 
 .count {

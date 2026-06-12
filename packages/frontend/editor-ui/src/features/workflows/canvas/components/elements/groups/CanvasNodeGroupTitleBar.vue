@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
@@ -16,7 +16,6 @@ import {
 	CANVAS_NODE_GROUP_ID_PREFIX,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
-import { executionStatusClasses, executionStatusToFlags } from '../../../canvas.utils';
 
 const UNGROUP_NODES_SHORTCUT = { metaKey: true, shiftKey: true, keys: ['G'] };
 
@@ -47,6 +46,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 const titleText = useTemplateRef<HTMLElement>('titleText');
 
@@ -55,8 +55,19 @@ const isAutofocusReady = computed(
 	() => !props.dimensions || (props.dimensions.width > 0 && props.dimensions.height > 0),
 );
 const isCollapsed = computed(() => props.data.isCollapsed);
-const maxNodeIterations = computed(() => props.data.maxNodeIterations);
-const statusFlags = computed(() => executionStatusToFlags(props.data.executionStatus));
+const executionStatus = computed(() => props.data.executionStatus);
+
+const wrapperClasses = computed(() => [
+	$style.wrapper,
+	{
+		[$style.collapsed]: isCollapsed.value,
+		[$style.selected]: props.selected,
+		[$style.success]: executionStatus.value === 'success',
+		[$style.error]: executionStatus.value === 'error',
+		[$style.running]: executionStatus.value === 'running',
+		[$style.waiting]: executionStatus.value === 'waiting',
+	},
+]);
 
 const frameStyle = computed(() => ({
 	top: `${HEADER_HEIGHT}px`,
@@ -145,14 +156,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 <template>
 	<div
-		:class="[
-			$style.wrapper,
-			{
-				[$style.collapsed]: isCollapsed,
-				[$style.selected]: selected,
-			},
-			executionStatusClasses(statusFlags, $style),
-		]"
+		:class="wrapperClasses"
 		:style="{
 			width: '100%',
 			height: `${HEADER_HEIGHT}px`,
@@ -234,18 +238,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 					</N8nTooltip>
 				</div>
 				<div
-					v-if="statusFlags.success"
+					v-if="executionStatus === 'success' || executionStatus === 'error'"
 					:class="$style.statusIcons"
-					data-test-id="canvas-node-group-status-success"
+					:data-test-id="`canvas-node-group-status-${executionStatus}`"
 				>
-					<CanvasNodeStatusMark status="success" :iterations="maxNodeIterations" />
-				</div>
-				<div
-					v-else-if="statusFlags.error"
-					:class="$style.statusIcons"
-					data-test-id="canvas-node-group-status-error"
-				>
-					<CanvasNodeStatusMark status="error" />
+					<CanvasNodeStatusMark :status="executionStatus" :iterations="data.maxNodeIterations" />
 				</div>
 			</div>
 		</div>

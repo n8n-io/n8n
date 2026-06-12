@@ -131,8 +131,7 @@ const groupedExecutionErrors = computed(() => {
 				}}
 			</template>
 			<div data-test-id="canvas-node-status-warning" :class="[...commonClasses, $style.warning]">
-				<N8nIcon icon="node-dirty" :size="size" />
-				<span v-if="runDataIterations > 1" :class="$style.count"> {{ runDataIterations }}</span>
+				<CanvasNodeStatusMark status="warning" :iterations="runDataIterations" :size="size" />
 			</div>
 		</N8nTooltip>
 	</div>
@@ -151,10 +150,6 @@ const groupedExecutionErrors = computed(() => {
 	align-items: center;
 	gap: var(--spacing--5xs);
 	font-weight: var(--font-weight--bold);
-}
-
-.runData {
-	color: var(--color--success);
 }
 
 .waiting {
@@ -192,10 +187,6 @@ const groupedExecutionErrors = computed(() => {
 .issues {
 	color: var(--color--danger);
 	cursor: default;
-}
-
-.count {
-	font-size: var(--font-size--sm);
 }
 
 .warning {

@@ -4,10 +4,7 @@ import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
-import {
-	executionStatusClasses,
-	injectCanvasRenderData,
-} from '@/features/workflows/canvas/canvas.utils';
+import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
@@ -70,8 +67,6 @@ const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRe
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 
 const classes = computed(() => {
-	const success = Boolean(hasRunData.value && executionStatus.value === 'success');
-	const error = hasExecutionErrors.value;
 	const waiting = Boolean(executionWaiting.value || executionStatus.value === 'waiting');
 	const running = Boolean(executionRunning.value || executionWaitingForNext.value);
 	return {
@@ -79,7 +74,10 @@ const classes = computed(() => {
 		[$style.selected]: isSelected.value,
 		[$style.disabled]:
 			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
-		...executionStatusClasses({ success, error, running, waiting }, $style),
+		[$style.success]: Boolean(hasRunData.value && executionStatus.value === 'success'),
+		[$style.error]: hasExecutionErrors.value,
+		[$style.running]: running,
+		[$style.waiting]: waiting,
 		[$style.pinned]: hasPinnedData.value,
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
