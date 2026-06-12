@@ -88,19 +88,17 @@ function createMainWindow(preloadPath: string, rendererPath: string): BrowserWin
 	};
 	window.on('show', () => broadcastActive(true));
 	window.on('focus', () => broadcastActive(true));
-	// The Dock icon mirrors window visibility: the app reads as "open" only while
-	// its window is up; otherwise it recedes to the menu-bar tray. A minimized
-	// window keeps the Dock entry — its thumbnail lives there.
-	window.on('hide', () => {
-		broadcastActive(false);
-		if (!window.isMinimized()) app.dock?.hide();
-	});
+	// Broadcast only — never drop the Dock entry here: macOS also emits `hide` for a
+	// fully occluded window, and hiding the Dock then would make macOS cull it for real.
+	window.on('hide', () => broadcastActive(false));
 
-	// Closing the window keeps the app running in the tray/Dock.
+	// Closing the window keeps the app running in the tray. Only this explicit close
+	// recedes the app to the menu bar — the Dock entry drops here and nowhere else.
 	window.on('close', (event) => {
 		if (isQuitting) return;
 		event.preventDefault();
 		window.hide();
+		app.dock?.hide();
 	});
 	window.on('closed', () => {
 		mainWindow = null;

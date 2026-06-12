@@ -131,7 +131,7 @@ describe('main-window', () => {
 		});
 	});
 
-	it('hides on close instead of destroying the window', async () => {
+	it('hides the window and the Dock entry on close instead of destroying it', async () => {
 		const { showMainWindow } = await loadMainWindow();
 		showMainWindow('preload', 'renderer');
 		const window = getWindow();
@@ -141,6 +141,7 @@ describe('main-window', () => {
 
 		expect(event.preventDefault).toHaveBeenCalled();
 		expect(window.hide).toHaveBeenCalled();
+		expect(mocks.dock.hide).toHaveBeenCalled();
 	});
 
 	it('lets close through once the app is quitting', async () => {
@@ -156,22 +157,11 @@ describe('main-window', () => {
 		expect(window.hide).not.toHaveBeenCalled();
 	});
 
-	it('hides the Dock entry when the window hides', async () => {
+	it('keeps the Dock entry on a hide event (macOS also emits it for occluded windows)', async () => {
 		const { showMainWindow } = await loadMainWindow();
 		showMainWindow('preload', 'renderer');
 
 		getWindow().hide();
-
-		expect(mocks.dock.hide).toHaveBeenCalled();
-	});
-
-	it('keeps the Dock entry while the window is minimized', async () => {
-		const { showMainWindow } = await loadMainWindow();
-		showMainWindow('preload', 'renderer');
-		const window = getWindow();
-
-		window.minimized = true;
-		window.hide();
 
 		expect(mocks.dock.hide).not.toHaveBeenCalled();
 	});
@@ -180,7 +170,7 @@ describe('main-window', () => {
 		const { showMainWindow } = await loadMainWindow();
 		showMainWindow('preload', 'renderer');
 		const window = getWindow();
-		window.hide();
+		window.emit('close', { preventDefault: vi.fn() });
 		vi.clearAllMocks();
 
 		showMainWindow('preload', 'renderer');
