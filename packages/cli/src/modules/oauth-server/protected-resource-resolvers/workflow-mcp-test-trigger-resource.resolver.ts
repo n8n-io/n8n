@@ -6,7 +6,12 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
-import { WORKFLOW_MCP_TRIGGER_SCOPES, trimSlashes, trimTrailingSlash } from './utils';
+import {
+	WORKFLOW_MCP_TRIGGER_SCOPES,
+	resourceUrlToWebhookPath,
+	trimSlashes,
+	trimTrailingSlash,
+} from './utils';
 
 @Service()
 export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResourceResolver {
@@ -21,17 +26,12 @@ export class WorkflowMcpTestTriggerResourceResolver implements ProtectedResource
 	readonly scopes = WORKFLOW_MCP_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		let url: URL;
-		try {
-			url = new URL(resourceUrl);
-		} catch {
-			this.logger.debug(`Failed to parse resource URL: ${resourceUrl}`);
+		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl());
+		if (pathname === undefined) {
+			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
 			return undefined;
 		}
-		if (url.origin !== new URL(this.urlService.getWebhookBaseUrl()).origin) {
-			return undefined;
-		}
-		return await this.resolveByPath(url.pathname);
+		return await this.resolveByPath(pathname);
 	}
 
 	async resolveByPath(pathname: string) {

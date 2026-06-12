@@ -7,7 +7,12 @@ import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WORKFLOW_MCP_TRIGGER_SCOPES, trimSlashes, trimTrailingSlash } from './utils';
+import {
+	WORKFLOW_MCP_TRIGGER_SCOPES,
+	resourceUrlToWebhookPath,
+	trimSlashes,
+	trimTrailingSlash,
+} from './utils';
 
 @Service()
 export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceResolver {
@@ -23,17 +28,12 @@ export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceReso
 	readonly scopes = WORKFLOW_MCP_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		let url: URL;
-		try {
-			url = new URL(resourceUrl);
-		} catch {
-			this.logger.debug(`Failed to parse resource URL: ${resourceUrl}`);
+		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getWebhookBaseUrl());
+		if (pathname === undefined) {
+			this.logger.debug(`Resource URL is not under the webhook base URL: ${resourceUrl}`);
 			return undefined;
 		}
-		if (url.origin !== new URL(this.urlService.getWebhookBaseUrl()).origin) {
-			return undefined;
-		}
-		return await this.resolveByPath(url.pathname);
+		return await this.resolveByPath(pathname);
 	}
 
 	async resolveByPath(pathname: string) {
@@ -46,7 +46,10 @@ export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceReso
 
 		this.logger.debug(`Resolving workflow MCP trigger resource for path: ${path}`);
 
-		const webhook = await this.webhookService.findWebhook('POST', path);
+		// Static-only lookup: this resolver never owns dynamic webhooks, so we avoid
+		// the extra dynamic-webhook DB probe that `findWebhook` does on a static miss
+		// — this path is reachable unauthenticated via the well-known route.
+		const webhook = await this.webhookService.findStaticWebhook('POST', path);
 
 		if (!webhook) {
 			this.logger.debug(`No webhook found for path: ${path}`);
@@ -54,6 +57,8 @@ export class WorkflowMcpTriggerResourceResolver implements ProtectedResourceReso
 		}
 
 		if (webhook.isDynamic) {
+			// A request path that literally matches a dynamic webhook's template
+			// (e.g. `:param`) can still be returned by the static lookup; reject it.
 			this.logger.debug(
 				`Webhook for path ${path} is dynamic, skipping protected resource resolution`,
 			);

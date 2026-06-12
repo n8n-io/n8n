@@ -136,6 +136,31 @@ describe('protected resource metadata for test MCP triggers', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should not resolve when the registration node name does not match', async () => {
+		const webhookPath = randomUUID();
+		// the webhook points at a node name absent from the registered workflow
+		await registrations.register({
+			version: 1,
+			workflowEntity: {
+				id: randomUUID(),
+				name: 'My test workflow',
+				active: false,
+				nodes: [mcpTriggerNode()],
+				connections: {},
+			} as IWorkflowBase,
+			webhook: {
+				httpMethod: 'POST',
+				path: webhookPath,
+				node: 'Ghost node',
+				workflowId: randomUUID(),
+			} as IWebhookData,
+		});
+
+		const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
+
+		expect(response.statusCode).toBe(404);
+	});
+
 	test.each([
 		['authentication is none', mcpTriggerNode({ authentication: 'none' })],
 		['authentication is bearerAuth', mcpTriggerNode({ authentication: 'bearerAuth' })],

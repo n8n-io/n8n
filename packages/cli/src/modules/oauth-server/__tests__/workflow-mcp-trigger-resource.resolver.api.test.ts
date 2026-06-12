@@ -186,6 +186,19 @@ describe('protected resource metadata for workflow MCP triggers', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should not resolve when the webhook node is missing from the active version', async () => {
+		const node = mcpTriggerNode();
+		const webhookPath = randomUUID();
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [node] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		// the webhook row points at a node name that the published version does not contain
+		await insertWebhookRow(workflow.id, webhookPath, 'Ghost node');
+
+		const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
+
+		expect(response.statusCode).toBe(404);
+	});
+
 	test('should not resolve a dynamic webhook path', async () => {
 		const node = mcpTriggerNode();
 		const workflow = await createWorkflowWithHistory({ active: true, nodes: [node] }, owner);
@@ -213,6 +226,8 @@ describe('protected resource metadata for workflow MCP triggers', () => {
 
 		const stillProtected = await testServer.restlessAgent.get(prmPathFor(protectedPath));
 		expect(stillProtected.statusCode).toBe(200);
+		// pin which resource resolved, not merely that something did
+		expect(stillProtected.body.resource).toBe(resourceUrlFor(protectedPath));
 
 		// published none, draft switched to n8nOAuth2 -> no resource
 		const unprotectedPath = randomUUID();
