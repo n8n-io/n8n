@@ -979,6 +979,19 @@ describe('Execution Lifecycle Hooks', () => {
 							finished: true,
 							status: 'success',
 						}),
+						{ requireNotCanceled: true },
+					);
+				});
+
+				it('should not overwrite a canceled execution when the run later completes', async () => {
+					executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+						executionId,
+						expect.objectContaining({ finished: true, status: 'success' }),
+						{ requireNotCanceled: true },
 					);
 				});
 
