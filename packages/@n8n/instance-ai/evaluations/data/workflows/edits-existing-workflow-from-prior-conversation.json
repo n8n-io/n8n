@@ -1,0 +1,27 @@
+{
+	"description": "Seeded continuation of a real conversation: the prior turns (restored from the seed, not re-driven) already built 'Otter Digest' — a daily-9am Slack post of 'Daily digest ready' to #cosmic-otter-alerts, credential left for setup. The live turn asks for a schedule change. The agent must continue from the restored context: edit the existing workflow in place, without re-asking for established details and without building a new workflow.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Change the schedule to every 30 minutes instead."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["behaviour", "seeded", "edit", "schedule", "slack"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"seedFile": "seeds/edits-existing-workflow-from-prior-conversation.seed.json",
+	"buildExpectations": [
+		"The agent modified the existing 'Otter Digest' workflow, rather than creating a new workflow or asking which workflow was meant.",
+		"The agent did not ask the user for any detail established earlier in the conversation (Slack channel, message text, workflow name or purpose).",
+		"After the live turn, the workflow's schedule trigger runs every 30 minutes, and the Slack step still posts 'Daily digest ready' to #cosmic-otter-alerts — the schedule change did not drop or alter the rest of the workflow."
+	],
+	"executionScenarios": [
+		{
+			"name": "edited-schedule-fires",
+			"description": "The pre-existing Otter Digest workflow after the requested schedule change",
+			"dataSetup": "No special data needed: the schedule trigger fires once and the Slack node posts a single message. The Slack credential is intentionally unset (the user deferred setup).",
+			"successCriteria": "The schedule trigger is configured to run every 30 minutes (not daily at 9am). The Slack step posts the message 'Daily digest ready' to the #cosmic-otter-alerts channel. Judge the workflow's structure and parameters only — a Slack credential/auth failure at runtime is expected (the credential is deliberately unset) and must not fail the scenario."
+		}
+	]
+}
