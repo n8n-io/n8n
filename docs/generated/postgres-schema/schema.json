@@ -16860,6 +16860,159 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.agent_chat_subscriptions",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "varchar(36)",
+          "nullable": false,
+          "comment": "Agent that owns this subscription"
+        },
+        {
+          "name": "integrationType",
+          "type": "varchar(64)",
+          "nullable": false,
+          "comment": "Chat integration platform for this subscription"
+        },
+        {
+          "name": "credentialId",
+          "type": "varchar(255)",
+          "nullable": false,
+          "comment": "Credential connection that owns this subscription"
+        },
+        {
+          "name": "threadId",
+          "type": "varchar(255)",
+          "nullable": false,
+          "comment": "Platform thread ID the agent is subscribed to"
+        },
+        {
+          "name": "createdAt",
+          "type": "timestamp(3) with time zone",
+          "nullable": false,
+          "default": "CURRENT_TIMESTAMP(3)"
+        },
+        {
+          "name": "updatedAt",
+          "type": "timestamp(3) with time zone",
+          "nullable": false,
+          "default": "CURRENT_TIMESTAMP(3)"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "PK_76598cf91038bee1f3ac94c94bc",
+          "def": "CREATE UNIQUE INDEX \"PK_76598cf91038bee1f3ac94c94bc\" ON public.agent_chat_subscriptions USING btree (\"agentId\", \"integrationType\", \"credentialId\", \"threadId\")",
+          "table": "public.agent_chat_subscriptions",
+          "columns": [
+            "agentId",
+            "integrationType",
+            "credentialId",
+            "threadId"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "CHK_agent_chat_subscriptions_integrationType",
+          "type": "CHECK",
+          "def": "CHECK (((\"integrationType\")::text = ANY ((ARRAY['telegram'::character varying, 'slack'::character varying, 'linear'::character varying])::text[])))",
+          "table": "public.agent_chat_subscriptions",
+          "referenced_table": "",
+          "columns": [
+            "integrationType"
+          ]
+        },
+        {
+          "name": "agent_chat_subscriptions_agentId_not_null",
+          "type": "n",
+          "def": "NOT NULL \"agentId\"",
+          "table": "public.agent_chat_subscriptions",
+          "referenced_table": "",
+          "columns": [
+            "agentId"
+          ]
+        },
+        {
+          "name": "agent_chat_subscriptions_createdAt_not_null",
+          "type": "n",
+          "def": "NOT NULL \"createdAt\"",
+          "table": "public.agent_chat_subscriptions",
+          "referenced_table": "",
+          "columns": [
+            "createdAt"
+          ]
+        },
+        {
+          "name": "agent_chat_subscriptions_credentialId_not_null",
+          "type": "n",
+          "def": "NOT NULL \"credentialId\"",
+          "table": "public.agent_chat_subscriptions",
+          "referenced_table": "",
+          "columns": [
+            "credentialId"
+          ]
+        },
+        {
+          "name": "agent_chat_subscriptions_integrationType_not_null",
+          "type": "n",
+          "def": "NOT NULL \"integrationType\"",
+          "table": "public.agent_chat_subscriptions",
+          "referenced_table": "",
+          "columns": [
+            "integrationType"
+          ]
+        },
+        {
+          "name": "agent_chat_subscriptions_threadId_not_null",
+          "type": "n",
+          "def": "NOT NULL \"threadId\"",
+          "table": "public.agent_chat_subscriptions",
+          "referenced_table": "",
+          "columns": [
+            "threadId"
+          ]
+        },
+        {
+          "name": "agent_chat_subscriptions_updatedAt_not_null",
+          "type": "n",
+          "def": "NOT NULL \"updatedAt\"",
+          "table": "public.agent_chat_subscriptions",
+          "referenced_table": "",
+          "columns": [
+            "updatedAt"
+          ]
+        },
+        {
+          "name": "FK_e79153bd179c011e779d5016796",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (\"agentId\") REFERENCES agents(id) ON DELETE CASCADE",
+          "table": "public.agent_chat_subscriptions",
+          "referenced_table": "public.agents",
+          "columns": [
+            "agentId"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "PK_76598cf91038bee1f3ac94c94bc",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (\"agentId\", \"integrationType\", \"credentialId\", \"threadId\")",
+          "table": "public.agent_chat_subscriptions",
+          "referenced_table": "",
+          "columns": [
+            "agentId",
+            "integrationType",
+            "credentialId",
+            "threadId"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -18773,6 +18926,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (\"serverSlug\") REFERENCES mcp_registry_server(slug) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.agent_chat_subscriptions",
+      "columns": [
+        "agentId"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.agents",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (\"agentId\") REFERENCES agents(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -18845,7 +19011,7 @@
   ],
   "driver": {
     "name": "postgres",
-    "database_version": "PostgreSQL 18.4 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+    "database_version": "PostgreSQL 18.3 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
     "meta": {
       "current_schema": "public",
       "search_paths": [
