@@ -83,7 +83,11 @@ export function buildLocalInstanceEnv(options: LocalInstanceEnvOptions): Record<
 		N8N_RUNNERS_ENABLED: 'true',
 		EXECUTIONS_MODE: 'regular',
 		N8N_AI_ENABLED: 'true',
+		// The docker-backed sandbox service isn't available in the app; the 'local'
+		// provider runs the agent's commands directly on the host instead, so the
+		// full instance-ai (including the workflow builder) works without docker.
 		N8N_INSTANCE_AI_SANDBOX_ENABLED: 'true',
+		N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'local',
 		N8N_ENABLED_MODULES: 'instance-ai,mcp-registry,agents',
 		N8N_MCP_MANAGED_BY_ENV: 'true',
 		N8N_MCP_ACCESS_ENABLED: 'true',

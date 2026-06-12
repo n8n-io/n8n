@@ -9,6 +9,7 @@ import { registerIpcHandlers } from './ipc-handlers';
 import { LocalInstanceManager } from './local-instance/local-instance-manager';
 import { LocalInstanceProcess } from './local-instance/local-instance-process';
 import { LocalInstanceStore } from './local-instance/local-instance-store';
+import { openLocalInstanceUi } from './local-instance/local-instance-ui';
 import { requestMacPermissions } from './mac-permissions';
 import {
 	showMainWindow,
@@ -229,6 +230,23 @@ if (!app.requestSingleInstanceLock()) {
 						},
 					);
 				},
+				// Debug aid: open the embedded instance's web UI pre-authenticated.
+				() =>
+					localInstanceManager.getStatus().state === 'running'
+						? [
+								{
+									label: 'Open n8n',
+									click: () => {
+										void openLocalInstanceUi(localInstanceManager).catch((error: unknown) => {
+											logger.error('Failed to open local n8n UI', {
+												error: error instanceof Error ? error.message : String(error),
+											});
+										});
+									},
+								},
+								{ type: 'separator' as const },
+							]
+						: [],
 			);
 
 			// Cold start: handle an OAuth redirect passed in argv (Windows/Linux deep link).

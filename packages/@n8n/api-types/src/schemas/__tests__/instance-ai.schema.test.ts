@@ -13,17 +13,18 @@ describe('sandbox provider', () => {
 	it('accepts supported providers', () => {
 		expect(isInstanceAiSandboxProvider('n8n-sandbox')).toBe(true);
 		expect(isInstanceAiSandboxProvider('daytona')).toBe(true);
+		expect(isInstanceAiSandboxProvider('local')).toBe(true);
 	});
 
 	it('rejects unsupported or non-string providers', () => {
-		expect(isInstanceAiSandboxProvider('local')).toBe(false);
+		expect(isInstanceAiSandboxProvider('unknown')).toBe(false);
 		expect(isInstanceAiSandboxProvider('')).toBe(false);
 		expect(isInstanceAiSandboxProvider(undefined)).toBe(false);
 	});
 
 	it('rejects unsupported providers on the admin settings update request', () => {
 		expect(
-			InstanceAiAdminSettingsUpdateRequest.safeParse({ sandboxProvider: 'local' }).success,
+			InstanceAiAdminSettingsUpdateRequest.safeParse({ sandboxProvider: 'unknown' }).success,
 		).toBe(false);
 		expect(
 			InstanceAiAdminSettingsUpdateRequest.safeParse({ sandboxProvider: 'n8n-sandbox' }).success,

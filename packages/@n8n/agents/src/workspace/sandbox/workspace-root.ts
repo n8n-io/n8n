@@ -1,3 +1,6 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { runInSandbox, type SandboxCommandTarget } from './run-in-sandbox';
 import type { SandboxProvider } from './types';
 
@@ -6,6 +9,8 @@ export const DAYTONA_HOME = '/home/daytona';
 export const DAYTONA_WORKSPACE_ROOT = `${DAYTONA_HOME}/${WORKSPACE_DIR}`;
 export const N8N_SANDBOX_HOME = '/home/user';
 export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
+/** Default host workspace root for the local provider when none is configured. */
+export const LOCAL_WORKSPACE_ROOT = join(tmpdir(), 'n8n-instance-ai', WORKSPACE_DIR);
 
 export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
 	switch (provider) {
@@ -13,6 +18,8 @@ export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
 			return DAYTONA_WORKSPACE_ROOT;
 		case 'n8n-sandbox':
 			return N8N_SANDBOX_WORKSPACE_ROOT;
+		case 'local':
+			return LOCAL_WORKSPACE_ROOT;
 	}
 }
 

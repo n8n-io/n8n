@@ -40,7 +40,11 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
 
-	/** Sandbox provider: 'n8n-sandbox' for n8n sandbox service, 'daytona' for Daytona-backed containers. */
+	/**
+	 * Sandbox provider: 'n8n-sandbox' for the n8n sandbox service, 'daytona' for
+	 * Daytona-backed containers, or 'local' to run commands directly on the host
+	 * (no isolation — trusted single-user setups only).
+	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_PROVIDER')
 	sandboxProvider: string = 'n8n-sandbox';
 

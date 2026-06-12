@@ -25,6 +25,7 @@ describe('local-instance-config', () => {
 				N8N_USER_FOLDER: '/tmp/user-data/local-n8n',
 				N8N_AI_ENABLED: 'true',
 				N8N_INSTANCE_AI_SANDBOX_ENABLED: 'true',
+				N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'local',
 				N8N_ENABLED_MODULES: 'instance-ai,mcp-registry,agents',
 				N8N_MCP_MANAGED_BY_ENV: 'true',
 				N8N_MCP_ACCESS_ENABLED: 'true',

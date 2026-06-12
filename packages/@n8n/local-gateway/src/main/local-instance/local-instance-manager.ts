@@ -131,6 +131,14 @@ export class LocalInstanceManager extends EventEmitter<LocalInstanceManagerEvent
 		}
 	}
 
+	/** A fresh auth cookie for opening the instance's web UI pre-authenticated. */
+	async getUiAuthCookie(): Promise<string> {
+		if (!this.instanceProcess.isRunning()) {
+			throw new Error('Local instance is not running');
+		}
+		return await this.authenticate();
+	}
+
 	/** Owner login with stored credentials, or first-run owner setup. Returns the auth cookie. */
 	private async authenticate(): Promise<string> {
 		const stored = this.store.getCredentials();

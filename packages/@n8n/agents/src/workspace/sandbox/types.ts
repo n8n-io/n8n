@@ -51,7 +51,7 @@ export type {
 	WriteOptions,
 };
 
-export type SandboxProvider = 'daytona' | 'n8n-sandbox';
+export type SandboxProvider = 'daytona' | 'n8n-sandbox' | 'local';
 
 export interface SandboxConfigBase {
 	provider: SandboxProvider;
@@ -85,7 +85,19 @@ export interface N8nSandboxConfig extends SandboxConfigBase {
 	apiKey?: string;
 }
 
-export type SandboxConfig = DisabledSandboxConfig | DaytonaSandboxConfig | N8nSandboxConfig;
+export interface LocalSandboxConfig extends SandboxConfigBase {
+	enabled: true;
+	provider: 'local';
+	/** Host directory used as the workspace root; defaults to an OS temp dir. */
+	workspaceRoot?: string;
+	env?: NodeJS.ProcessEnv;
+}
+
+export type SandboxConfig =
+	| DisabledSandboxConfig
+	| DaytonaSandboxConfig
+	| N8nSandboxConfig
+	| LocalSandboxConfig;
 
 export type SandboxInstance = WorkspaceSandbox;
 export type SandboxFilesystem = WorkspaceFilesystem;

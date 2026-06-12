@@ -782,6 +782,14 @@ export class InstanceAiService {
 			};
 		}
 
+		if (provider === 'local') {
+			return {
+				enabled: true,
+				provider: 'local',
+				timeout: sandboxTimeout,
+			};
+		}
+
 		return {
 			enabled: true,
 			provider: 'n8n-sandbox',
@@ -823,6 +831,8 @@ export class InstanceAiService {
 				daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
 			};
 		}
+		// The local provider needs no external credentials or service URL.
+		if (base.provider === 'local') return base;
 		const sandbox = await this.settingsService.resolveN8nSandboxConfig(user);
 		return {
 			...base,

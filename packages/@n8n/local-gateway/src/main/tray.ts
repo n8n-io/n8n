@@ -59,17 +59,22 @@ export function createTray(
 	controller: DaemonController,
 	onToggle: (trayBounds: Rectangle) => void,
 	onQuit: () => void,
+	/** Extra context-menu entries, built per open so they can reflect current state. */
+	buildExtraMenuItems: () => Electron.MenuItemConstructorOptions[] = () => [],
 ): Tray {
 	const tray = new Tray(getTrayIcon('disconnected'));
 	tray.setToolTip('n8n Assistant');
 
 	tray.on('click', () => onToggle(tray.getBounds()));
 	tray.on('right-click', () => {
-		tray.popUpContextMenu(Menu.buildFromTemplate([{ label: 'Quit', click: onQuit }]));
+		tray.popUpContextMenu(
+			Menu.buildFromTemplate([...buildExtraMenuItems(), { label: 'Quit', click: onQuit }]),
+		);
 	});
 
 	// Linux trays don't emit click/right-click events; a menu set via setContextMenu is the only
 	// reliable interaction there, so expose Open + Quit that way (mac/Windows keep click handlers).
+	// The static menu can't reflect state, so the extra entries are mac/Windows-only.
 	if (process.platform === 'linux') {
 		tray.setContextMenu(
 			Menu.buildFromTemplate([

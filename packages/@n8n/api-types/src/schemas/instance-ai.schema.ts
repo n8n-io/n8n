@@ -1015,7 +1015,7 @@ export function applyBranchReadOnlyOverrides(
 // Admin settings — instance-scoped, admin-only
 // ---------------------------------------------------------------------------
 
-export const instanceAiSandboxProviderSchema = z.enum(['n8n-sandbox', 'daytona']);
+export const instanceAiSandboxProviderSchema = z.enum(['n8n-sandbox', 'daytona', 'local']);
 export type InstanceAiSandboxProvider = z.infer<typeof instanceAiSandboxProviderSchema>;
 
 export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAiSandboxProvider {

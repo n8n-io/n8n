@@ -220,6 +220,24 @@ describe('LocalInstanceManager', () => {
 		});
 	});
 
+	describe('getUiAuthCookie', () => {
+		it('logs in with the stored credentials while running', async () => {
+			const { manager, instanceProcess } = makeManager({
+				credentials: { email: LOCAL_OWNER_EMAIL, password: 'A1stored' },
+			});
+			vi.mocked(instanceProcess.isRunning).mockReturnValue(true);
+			vi.mocked(login).mockResolvedValue('n8n-auth=fresh-jwt');
+
+			await expect(manager.getUiAuthCookie()).resolves.toBe('n8n-auth=fresh-jwt');
+		});
+
+		it('rejects when the instance is not running', async () => {
+			const { manager } = makeManager();
+
+			await expect(manager.getUiAuthCookie()).rejects.toThrow('not running');
+		});
+	});
+
 	describe('lifecycle', () => {
 		it('disable stops the instance and clears the flag but keeps credentials', async () => {
 			const { manager, store, instanceProcess } = makeManager({
