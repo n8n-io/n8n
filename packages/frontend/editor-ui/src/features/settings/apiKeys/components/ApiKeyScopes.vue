@@ -263,7 +263,7 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--2xs);
+	margin-top: var(--spacing--xs);
 }
 
 .treeHeader {
@@ -275,7 +275,7 @@ function toggleScope(scope: ApiKeyScope, checked: boolean) {
 	border: none;
 	cursor: pointer;
 	color: var(--color--text);
-	font-size: var(--font-size--s);
+	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--regular);
 	text-align: left;
 
