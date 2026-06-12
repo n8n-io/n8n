@@ -27,8 +27,6 @@ vi.mock('../resolve-credentials', () => ({
 				mockedNodeNames: [],
 				mockedCredentialTypes: [],
 				mockedCredentialsByNode: {},
-				verificationPinData: {},
-				usesWorkflowPinDataForVerification: false,
 			}),
 	),
 }));

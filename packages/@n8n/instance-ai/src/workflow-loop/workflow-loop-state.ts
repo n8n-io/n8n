@@ -244,15 +244,20 @@ export const workflowBuildOutcomeSchema = z.object({
 	needsUserInput: z.boolean(),
 	blockingReason: z.string().optional(),
 	failureSignature: z.string().optional(),
-	/** Node names whose credentials were mocked via pinned data. */
+	/** Node names whose credentials were mocked (simulated during verification). */
 	mockedNodeNames: z.array(z.string()).optional(),
 	/** Credential types that were mocked (not resolved to real credentials). */
 	mockedCredentialTypes: z.array(z.string()).optional(),
 	/** Map of node name → credential types that were mocked on that node. */
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
+	/**
+	 * @deprecated Legacy `{_mockedCredential}` marker channel. No longer
+	 * written — `nodeSimulationPlan` + `simulationFixtures` replaced it. Kept
+	 * in the schema so build outcomes stored before the change still parse and
+	 * verify (verify-built-workflow merges it under the new pin data).
+	 */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
-	/** True when mocked credentials can be verified with saved workflow-level pin data. */
+	/** @deprecated See `verificationPinData`. No longer written. */
 	usesWorkflowPinDataForVerification: z.boolean().optional(),
 	/**
 	 * Per-node execute-vs-simulate plan for verification. Sidecar — scoped to

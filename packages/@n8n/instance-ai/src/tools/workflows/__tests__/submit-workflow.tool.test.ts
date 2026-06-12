@@ -262,7 +262,7 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 		);
 	});
 
-	it('returns and reports workflow pin-data verification and referenced workflow IDs', async () => {
+	it('returns and reports mocked credentials and referenced workflow IDs', async () => {
 		const attempts: SubmitWorkflowAttempt[] = [];
 		const workflowService = {
 			createFromWorkflowJSON: vi.fn(async () => {
@@ -320,7 +320,8 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 		expect(output).toMatchObject({
 			success: true,
 			workflowId: 'main-workflow-id',
-			usesWorkflowPinDataForVerification: true,
+			mockedNodeNames: ['Slack'],
+			mockedCredentialTypes: ['slackApi'],
 			referencedWorkflowIds: ['sub-workflow-id'],
 		});
 		expect(output.verificationGuidance).toContain('Call verify-built-workflow next');
@@ -328,7 +329,7 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 		expect(attempts[0]).toMatchObject({
 			success: true,
 			workflowId: 'main-workflow-id',
-			usesWorkflowPinDataForVerification: true,
+			mockedNodeNames: ['Slack'],
 			referencedWorkflowIds: ['sub-workflow-id'],
 		});
 	});

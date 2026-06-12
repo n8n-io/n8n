@@ -132,7 +132,16 @@ Send a course correction to a running background task.
 
 ### `verify-built-workflow` *(conditional)*
 
-Run a built workflow with sidecar pin data for verification (never persisted).
+Run a built workflow with per-execution pin data for verification (never
+persisted to the workflow). Destructive nodes — write operations, nodes with
+mocked credentials — are **simulated**: the build outcome carries a per-node
+execute-vs-simulate plan (`nodeSimulationPlan`, produced by a deterministic
+classifier plus an LLM pass at submit time) and LLM-generated mock output
+(`simulationFixtures`). Simulated nodes are pinned with their fixture, so
+verification never sends messages, writes rows, or deletes data. The tool
+output marks simulated nodes (`simulatedNodes`, `nodePreviews[].simulated`,
+`simulationNote`), and the saved execution carries `resultData.simulation`
+so the editor can label simulated outputs.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|

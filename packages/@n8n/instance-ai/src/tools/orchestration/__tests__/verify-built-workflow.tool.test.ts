@@ -404,9 +404,6 @@ function makeContext(
 	overrides: {
 		workflowNodes?: Array<{ name?: string; type: string; parameters?: Record<string, unknown> }>;
 		tableRows?: Record<string, Array<Record<string, unknown>>>;
-		queriesAfterRun?: Record<string, Array<Record<string, unknown>>>;
-		/** Throw `snapshotError` on the first queryRows call for the given table id. */
-		snapshotErrors?: Record<string, Error>;
 	} = {},
 ) {
 	const updateBuildOutcome = vi.fn(
@@ -426,35 +423,16 @@ function makeContext(
 	);
 
 	type QueryRowsResult = { count: number; data: Array<Record<string, unknown>> };
-	/**
-	 * Track which dataTableIds we've already "seen a last page for" — any call
-	 * after the snapshot phase for a given table switches to `queriesAfterRun`.
-	 */
-	const snapshotDone = new Set<string>();
 	const queryRows = vi.fn(
 		async (
 			dataTableId: string,
 			opts?: { limit?: number; offset?: number },
 		): Promise<QueryRowsResult> => {
-			const snapshotError = overrides.snapshotErrors?.[dataTableId];
-			if (snapshotError && !snapshotDone.has(dataTableId)) {
-				// Mark done so post-run phase doesn't keep throwing if that matters.
-				snapshotDone.add(dataTableId);
-				throw snapshotError;
-			}
+			const rows = overrides.tableRows?.[dataTableId] ?? [];
 			const limit = opts?.limit ?? Number.MAX_SAFE_INTEGER;
 			const offset = opts?.offset ?? 0;
-			const baseRows: Array<Record<string, unknown>> = snapshotDone.has(dataTableId)
-				? (overrides.queriesAfterRun?.[dataTableId] ?? overrides.tableRows?.[dataTableId] ?? [])
-				: (overrides.tableRows?.[dataTableId] ?? []);
-			const page = baseRows.slice(offset, offset + limit);
-			// If this page is the last one of the snapshot (fewer than `limit` rows),
-			// any subsequent calls for this table should fall through to post-run data.
-			if (!snapshotDone.has(dataTableId) && page.length < limit) {
-				snapshotDone.add(dataTableId);
-			}
 			await Promise.resolve();
-			return { count: baseRows.length, data: page };
+			return { count: rows.length, data: rows.slice(offset, offset + limit) };
 		},
 	);
 	type DeleteRowsFilter = {
@@ -719,152 +697,6 @@ describe('verify-built-workflow tool', () => {
 		expect(updateBuildOutcome.mock.calls[0][1].verification?.evidence?.producedOutputRows).toBe(14);
 	});
 
-	it('cleans up rows inserted by the verification run, reading row IDs from the node output', async () => {
-		const { ctx, deleteRows } = makeContext(
-			makeBuildOutcome(),
-			{
-				executionId: 'exec-4',
-				status: 'success',
-				// The insert node's output is what drives the delete set — a concurrent
-				// writer's row would never appear here, so it's safe from cleanup.
-				data: {
-					'Lead Form': [{ name: 'Test' }],
-					'Insert Lead': [{ id: 3, name: 'Test', email: 'test@example.com' }],
-				},
-			},
-			{
-				workflowNodes: [
-					{
-						name: 'Insert Lead',
-						type: 'n8n-nodes-base.dataTable',
-						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
-					},
-				],
-				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }] },
-			},
-		);
-
-		const result = await runTool(ctx, {
-			workItemId: 'wi-1',
-			workflowId: 'wf-1',
-			inputData: { name: 'Test' },
-		});
-
-		expect(result.success).toBe(true);
-		expect(deleteRows).toHaveBeenCalledTimes(1);
-		const call = deleteRows.mock.calls[0];
-		expect(call).toBeDefined();
-		expect(call[0]).toBe('tbl-leads');
-		expect(call[1]).toEqual({
-			type: 'or',
-			filters: [{ columnName: 'id', condition: 'eq', value: 3 }],
-		});
-	});
-
-	it('cleans up inserted rows when the execution output is wrapped', async () => {
-		const { ctx, deleteRows } = makeContext(
-			makeBuildOutcome(),
-			{
-				executionId: 'exec-wrapped-insert',
-				status: 'success',
-				data: {
-					'Insert Lead': wrapExecutionOutput([{ id: 3, name: 'Test' }]),
-				},
-			},
-			{
-				workflowNodes: [
-					{
-						name: 'Insert Lead',
-						type: 'n8n-nodes-base.dataTable',
-						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
-					},
-				],
-				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }] },
-			},
-		);
-
-		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
-
-		expect(result.success).toBe(true);
-		expect(deleteRows.mock.calls[0][1]).toEqual({
-			type: 'or',
-			filters: [{ columnName: 'id', condition: 'eq', value: 3 }],
-		});
-	});
-
-	it('never deletes rows produced by an upsert node, even when the ID looks new', async () => {
-		// Upsert outputs cannot distinguish a freshly-created row from a match on
-		// an existing row. A concurrent writer inserting between snapshot and
-		// upsert would yield an ID that looks "new" to ID-diff but actually
-		// belongs to that writer — deleting it would destroy production data.
-		// We therefore skip cleanup for upsert nodes entirely.
-		const { ctx, deleteRows } = makeContext(
-			makeBuildOutcome(),
-			{
-				executionId: 'exec-upsert',
-				status: 'success',
-				data: {
-					// id=99 is not in the pre-verify snapshot — under the old
-					// ID-diff logic this would be deleted. The new contract leaves
-					// it alone because we cannot prove it was created by verify.
-					'Upsert Lead': [{ id: 99, name: 'Could be a concurrent writer' }],
-				},
-			},
-			{
-				workflowNodes: [
-					{
-						name: 'Upsert Lead',
-						type: 'n8n-nodes-base.dataTable',
-						parameters: { operation: 'upsert', dataTableId: 'tbl-leads' },
-					},
-				],
-				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }] },
-			},
-		);
-
-		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
-
-		expect(result.success).toBe(true);
-		expect(deleteRows).not.toHaveBeenCalled();
-	});
-
-	it('does not delete rows from concurrent writers that never appeared in the node output', async () => {
-		const { ctx, deleteRows } = makeContext(
-			makeBuildOutcome(),
-			{
-				executionId: 'exec-concurrent',
-				status: 'success',
-				// The verify's insert node only emitted id=3; a concurrent writer that
-				// added id=4 after the snapshot would be invisible to us and must NOT
-				// be deleted. This test asserts the delete set is driven purely by
-				// node output, not by a post-verify table-wide diff.
-				data: {
-					'Insert Lead': [{ id: 3, name: 'VerifyRow' }],
-				},
-			},
-			{
-				workflowNodes: [
-					{
-						name: 'Insert Lead',
-						type: 'n8n-nodes-base.dataTable',
-						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
-					},
-				],
-				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }] },
-			},
-		);
-
-		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
-
-		expect(result.success).toBe(true);
-		expect(deleteRows).toHaveBeenCalledTimes(1);
-		// Only id=3 (the row our insert node emitted), not id=4 from the concurrent writer.
-		expect(deleteRows.mock.calls[0][1]).toEqual({
-			type: 'or',
-			filters: [{ columnName: 'id', condition: 'eq', value: 3 }],
-		});
-	});
-
 	it('treats a waiting status with output as a successful run (e.g. Form Trigger response page)', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-form-1',
@@ -905,23 +737,18 @@ describe('verify-built-workflow tool', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('paginates the pre-verify snapshot so a pathological insert output cannot delete a pre-existing row past the first page', async () => {
-		// Build a table with 1500 rows — past the snapshot page size.
-		// The insert node's output is `id=1234` (a row that already existed). If
-		// pagination is broken the snapshot only contains ids 1..1000, and the
-		// snapshot's defensive filter wouldn't protect id=1234 — the cleanup
-		// would delete a pre-existing row.
-		const bigTable: Array<Record<string, unknown>> = Array.from({ length: 1500 }, (_v, i) => ({
-			id: i + 1,
-		}));
+	it('never reads or deletes data-table rows, even when the workflow contains insert nodes', async () => {
+		// Destructive nodes are simulated via the node simulation plan; the verify
+		// tool itself must not touch data tables (the old snapshot/cleanup
+		// machinery is gone — deleting rows based on node output is never safe
+		// when outputs can be fabricated fixtures).
 		const { ctx, deleteRows, queryRows } = makeContext(
 			makeBuildOutcome(),
 			{
-				executionId: 'exec-insert-past-page',
+				executionId: 'exec-4',
 				status: 'success',
 				data: {
-					// Insert node's output references id=1234 — beyond the single-page cap.
-					'Insert Lead': [{ id: 1234, name: 'Existing', stage: 'qualified' }],
+					'Insert Lead': [{ id: 3, name: 'Test', email: 'test@example.com' }],
 				},
 			},
 			{
@@ -932,74 +759,14 @@ describe('verify-built-workflow tool', () => {
 						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
 					},
 				],
-				tableRows: { 'tbl-leads': bigTable },
+				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }] },
 			},
 		);
 
 		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
 
 		expect(result.success).toBe(true);
-		// Must have made more than one snapshot query to cover a 1500-row table.
-		const snapshotCalls = queryRows.mock.calls.filter(
-			(c) => c[0] === 'tbl-leads' && typeof (c[1] as { offset?: number })?.offset === 'number',
-		);
-		expect(snapshotCalls.length).toBeGreaterThan(1);
-		// And the pre-existing row must not have been deleted.
-		expect(deleteRows).not.toHaveBeenCalled();
-	});
-
-	it('skips insert cleanup for a table when the pre-verify snapshot read fails', async () => {
-		const { ctx, deleteRows } = makeContext(
-			makeBuildOutcome(),
-			{
-				executionId: 'exec-snapshot-fail',
-				status: 'success',
-				data: {
-					'Insert Lead': [{ id: 42, name: 'Existing', stage: 'qualified' }],
-				},
-			},
-			{
-				workflowNodes: [
-					{
-						name: 'Insert Lead',
-						type: 'n8n-nodes-base.dataTable',
-						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
-					},
-				],
-				tableRows: { 'tbl-leads': [{ id: 42 }] },
-				snapshotErrors: { 'tbl-leads': new Error('DB unavailable') },
-			},
-		);
-
-		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
-
-		expect(result.success).toBe(true);
-		expect(deleteRows).not.toHaveBeenCalled();
-	});
-
-	it('does not delete rows for dataTable nodes that only read', async () => {
-		const { ctx, deleteRows } = makeContext(
-			makeBuildOutcome(),
-			{
-				executionId: 'exec-5',
-				status: 'success',
-				data: { 'Lookup Lead': [{ id: 1, name: 'Existing' }] },
-			},
-			{
-				workflowNodes: [
-					{
-						name: 'Lookup Lead',
-						type: 'n8n-nodes-base.dataTable',
-						parameters: { operation: 'get', dataTableId: 'tbl-leads' },
-					},
-				],
-				tableRows: { 'tbl-leads': [{ id: 1 }] },
-			},
-		);
-
-		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
-
-		expect(result.success).toBe(true);
+		expect(queryRows).not.toHaveBeenCalled();
 		expect(deleteRows).not.toHaveBeenCalled();
 	});
 });
@@ -1104,11 +871,12 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.simulationNote).toContain('no real external writes');
 	});
 
-	it('excludes simulated insert nodes from data-table cleanup and snapshotting', async () => {
-		const { ctx, deleteRows, queryRows } = makeContext(
+	it('never deletes rows whose IDs come from fabricated fixture output', async () => {
+		const { ctx, deleteRows } = makeContext(
 			makeBuildOutcome({
 				nodeSimulationPlan: [simulateVerdict('Insert Lead', 'Inserts a row')],
-				// Fabricated fixture ID — must never reach the delete set.
+				// Fabricated fixture ID that collides with a real row — must never
+				// reach a delete call.
 				simulationFixtures: { 'Insert Lead': [{ json: { id: 3 } }] },
 			}),
 			{
@@ -1124,7 +892,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
 					},
 				],
-				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }] },
+				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }, { id: 3 }] },
 			},
 		);
 
@@ -1132,6 +900,5 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 
 		expect(result.success).toBe(true);
 		expect(deleteRows).not.toHaveBeenCalled();
-		expect(queryRows).not.toHaveBeenCalled();
 	});
 });
