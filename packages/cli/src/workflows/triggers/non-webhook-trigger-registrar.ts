@@ -57,6 +57,9 @@ export class NonWebhookTriggerRegistrar {
 		return [...workflow.getTriggerNodes(), ...workflow.getPollNodes()].map((node) => node.id);
 	}
 
+	/**
+	 * Build reusable trigger and poll execution functions for one activation.
+	 */
 	createRegistrationContext(
 		dbWorkflow: WorkflowEntity,
 		{
@@ -125,6 +128,9 @@ export class NonWebhookTriggerRegistrar {
 		);
 	}
 
+	/**
+	 * Deregister one active, poll, or schedule trigger node from memory.
+	 */
 	async deregister(workflowId: WorkflowId, nodeId: INode['id']) {
 		await this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
 	}
