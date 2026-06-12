@@ -14,7 +14,11 @@ import { createEvalAgent, extractText } from './eval-agents';
 
 export type ValidatedJsonResult<T> =
 	| { ok: true; data: T }
-	| { ok: false; reason: 'generation_failed' | 'invalid_json' | 'schema_mismatch'; issues?: z.ZodIssue[] };
+	| {
+			ok: false;
+			reason: 'generation_failed' | 'invalid_json' | 'schema_mismatch';
+			issues?: z.ZodIssue[];
+	  };
 
 export interface GenerateValidatedJsonOptions<T> {
 	model?: string;

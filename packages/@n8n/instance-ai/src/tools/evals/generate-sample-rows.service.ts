@@ -244,10 +244,9 @@ export async function runBatch(input: RunBatchInput): Promise<Array<Record<strin
 		].join('\n'),
 	);
 	sections.push(
-		[
-			`Columns: ${generatedColumns.join(', ')}`,
-			`Generate exactly ${requestedRowCount} rows.`,
-		].join('\n'),
+		[`Columns: ${generatedColumns.join(', ')}`, `Generate exactly ${requestedRowCount} rows.`].join(
+			'\n',
+		),
 	);
 
 	const result = await generateValidatedJson('eval-sample-rows', {
