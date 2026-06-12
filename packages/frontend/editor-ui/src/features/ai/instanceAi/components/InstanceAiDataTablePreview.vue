@@ -2,11 +2,9 @@
 import { computed, ref, watch } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { getResourcePermissions } from '@n8n/permissions';
 import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { collectActiveBuilderAgents } from '../builderAgents';
 import { useThread } from '../instanceAi.store';
@@ -23,7 +21,6 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const dataTableStore = useDataTableStore();
-const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const thread = useThread();
 
@@ -46,30 +43,10 @@ const isAgentWorking = computed(
 		collectActiveBuilderAgents(thread.messages).length > 0,
 );
 
-// Whether the user may edit rows of this table. Resolved from the table's own
-// project — dataTableStore.projectPermissions derives from the route-driven
-// currentProject, which is null on the instance-ai route.
-const canWriteRows = ref(false);
-
-watch(
-	() => props.projectId,
-	async (projectId) => {
-		canWriteRows.value = false;
-		if (!projectId) return;
-		try {
-			const project = await projectsStore.fetchProject(projectId);
-			if (projectId !== props.projectId) return; // stale response
-			canWriteRows.value = getResourcePermissions(project.scopes).dataTable.writeRow === true;
-		} catch {
-			canWriteRows.value = false;
-		}
-	},
-	{ immediate: true },
-);
-
+// No client-side RBAC gate, mirroring DataTableDetailsView: the server
+// enforces write permissions and rejections surface as error toasts.
 const isReadOnly = computed(
-	() =>
-		isAgentWorking.value || !canWriteRows.value || sourceControlStore.preferences.branchReadOnly,
+	() => isAgentWorking.value || sourceControlStore.preferences.branchReadOnly,
 );
 
 async function fetchDataTable(id: string, projectId: string) {
