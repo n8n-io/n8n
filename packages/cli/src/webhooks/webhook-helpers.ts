@@ -202,8 +202,11 @@ export function autoDetectResponseMode(
 
 		for (const nodeName of connectedNodes) {
 			const node = workflow.nodes[nodeName];
+			if (!node) {
+				continue;
+			}
 
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume !== 'form') {
+			if (node.type === WAIT_NODE_TYPE && node.parameters?.resume !== 'form') {
 				continue;
 			}
 
@@ -224,6 +227,9 @@ export function autoDetectResponseMode(
 
 		for (const nodeName of connectedNodes) {
 			const node = workflow.nodes[nodeName];
+			if (!node) {
+				continue;
+			}
 
 			if (node.type === FORM_NODE_TYPE && !node.disabled) {
 				return 'formPage';
@@ -231,13 +237,16 @@ export function autoDetectResponseMode(
 		}
 	}
 
-	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
+	if (
+		workflowStartNode.type === WAIT_NODE_TYPE &&
+		workflowStartNode.parameters?.resume !== 'form'
+	) {
 		return undefined;
 	}
 
 	if (
 		workflowStartNode.type === FORM_NODE_TYPE &&
-		workflowStartNode.parameters.operation === 'completion'
+		workflowStartNode.parameters?.operation === 'completion'
 	) {
 		return 'onReceived';
 	}
@@ -246,8 +255,11 @@ export function autoDetectResponseMode(
 
 		for (const nodeName of connectedNodes) {
 			const node = workflow.nodes[nodeName];
+			if (!node) {
+				continue;
+			}
 
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume !== 'form') {
+			if (node.type === WAIT_NODE_TYPE && node.parameters?.resume !== 'form') {
 				continue;
 			}
 
@@ -267,7 +279,10 @@ export const handleFormRedirectionCase = (
 	data: IWebhookResponseCallbackData,
 	workflowStartNode: INode,
 ) => {
-	if (workflowStartNode.type === WAIT_NODE_TYPE && workflowStartNode.parameters.resume !== 'form') {
+	if (
+		workflowStartNode.type === WAIT_NODE_TYPE &&
+		workflowStartNode.parameters?.resume !== 'form'
+	) {
 		return data;
 	}
 
