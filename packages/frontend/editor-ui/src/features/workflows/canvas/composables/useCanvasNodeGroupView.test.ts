@@ -8,7 +8,7 @@ function setup(
 	initialGroups: Array<{ id: string; name: string; nodeIds: string[] }> = [],
 	{
 		workflowId = 'wf-test',
-		isGroupingEnabled,
+		isGroupingEnabled = () => true,
 	}: { workflowId?: string; isGroupingEnabled?: () => boolean } = {},
 ) {
 	const nodeGroups = useWorkflowDocumentNodeGroups();

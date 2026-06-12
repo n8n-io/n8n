@@ -16,7 +16,7 @@ export interface UseCanvasNodeGroupViewDeps {
 	workflowId: () => string;
 	getCurrentGroupIds: () => string[];
 	onNodeGroupsChange: (handler: (event: NodeGroupChangeEvent) => void) => { off: () => void };
-	isGroupingEnabled?: () => boolean;
+	isGroupingEnabled: () => boolean;
 }
 
 export interface NodeGroupNodePosition {
@@ -149,9 +149,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		persist();
 	}
 
-	const isGroupingEnabled = () => deps.isGroupingEnabled?.() ?? true;
-
-	const isGroupCollapsed = (id: string) => isGroupingEnabled() && !expandedIds.value.has(id);
+	const isGroupCollapsed = (id: string) => deps.isGroupingEnabled() && !expandedIds.value.has(id);
 
 	function toggleCollapsed(id: string) {
 		setGroupExpanded(id, isGroupCollapsed(id));
