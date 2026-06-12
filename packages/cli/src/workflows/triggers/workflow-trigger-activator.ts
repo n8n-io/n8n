@@ -7,13 +7,13 @@ import { ErrorReporter } from 'n8n-core';
 import type { IConnections, INode, IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
+import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { WebhookTriggerRegistrar } from '@/workflows/triggers/webhook-trigger-registrar';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
-import { NodeTypes } from '@/node-types';
 
 export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections };
 
@@ -71,7 +71,8 @@ export class WorkflowTriggerActivator {
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
 	) {
-		const workflow = this.createWorkflow(dbWorkflow, version);
+		this.applyVersionToDbWorkflow(dbWorkflow, version);
+		const workflow = this.createWorkflow(dbWorkflow);
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
@@ -129,7 +130,8 @@ export class WorkflowTriggerActivator {
 	) {
 		if (nodeIds.size === 0) return;
 
-		const workflow = this.createWorkflow(dbWorkflow, version);
+		this.applyVersionToDbWorkflow(dbWorkflow, version);
+		const workflow = this.createWorkflow(dbWorkflow);
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
@@ -154,7 +156,8 @@ export class WorkflowTriggerActivator {
 	 * registering any triggers. Used when publication only removes triggers.
 	 */
 	async updateTriggerCount(dbWorkflow: WorkflowEntity, version: WorkflowTriggerVersion) {
-		const workflow = this.createWorkflow(dbWorkflow, version);
+		this.applyVersionToDbWorkflow(dbWorkflow, version);
+		const workflow = this.createWorkflow(dbWorkflow);
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
@@ -172,15 +175,18 @@ export class WorkflowTriggerActivator {
 		await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
 	}
 
-	private createWorkflow(dbWorkflow: WorkflowEntity, version: WorkflowTriggerVersion) {
+	private applyVersionToDbWorkflow(dbWorkflow: WorkflowEntity, version: WorkflowTriggerVersion) {
+		// TODO: Remove this mutation once trigger registration accepts immutable version data.
 		dbWorkflow.nodes = version.nodes;
 		dbWorkflow.connections = version.connections;
+	}
 
+	private createWorkflow(dbWorkflow: WorkflowEntity) {
 		return new Workflow({
 			id: dbWorkflow.id,
 			name: dbWorkflow.name,
-			nodes: version.nodes,
-			connections: version.connections,
+			nodes: dbWorkflow.nodes,
+			connections: dbWorkflow.connections,
 			active: true,
 			nodeTypes: this.nodeTypes,
 			staticData: dbWorkflow.staticData,
