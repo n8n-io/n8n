@@ -173,7 +173,7 @@ describe('WebhookTriggerRegistrar', () => {
 		expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
 	});
 
-	test('translates update duplicate insert errors and tolerates init duplicates', async () => {
+	test('translates duplicate insert errors', async () => {
 		const webhookService = mock<WebhookService>();
 		const workflowStaticDataService = mock<WorkflowStaticDataService>();
 		const registrar = new WebhookTriggerRegistrar(
@@ -215,7 +215,7 @@ describe('WebhookTriggerRegistrar', () => {
 				mode: 'trigger',
 				activation: 'init',
 			}),
-		).resolves.toBe(false);
+		).rejects.toBeInstanceOf(WebhookPathTakenError);
 		expect(webhookService.createWebhookIfNotExists).not.toHaveBeenCalled();
 		expect(workflowStaticDataService.saveStaticData).not.toHaveBeenCalled();
 	});

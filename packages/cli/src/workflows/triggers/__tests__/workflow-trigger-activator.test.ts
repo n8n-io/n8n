@@ -99,7 +99,6 @@ describe('WorkflowTriggerActivator', () => {
 		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookData]);
 		webhookTriggerRegistrar.register.mockImplementation(async () => {
 			callOrder.push('webhooks');
-			return true;
 		});
 		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 		nonWebhookTriggerRegistrar.register.mockImplementation(async () => {
@@ -203,7 +202,7 @@ describe('WorkflowTriggerActivator', () => {
 		const webhookB = mock<IWebhookData>({ node: 'Webhook B' });
 		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookA, webhookB]);
 		webhookTriggerRegistrar.register
-			.mockResolvedValueOnce(true)
+			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('registration failed'));
 		webhookTriggerRegistrar.deregister.mockResolvedValueOnce('Webhook A');
 		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();

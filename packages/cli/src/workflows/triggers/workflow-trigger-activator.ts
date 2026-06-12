@@ -211,13 +211,13 @@ export class WorkflowTriggerActivator {
 
 		try {
 			for (const webhookData of webhooks) {
-				const wasRegistered = await this.webhookTriggerRegistrar.register({
+				await this.webhookTriggerRegistrar.register({
 					workflow,
 					webhookData,
 					mode: 'trigger',
 					activation: 'update',
 				});
-				if (wasRegistered) registeredWebhooks.push(webhookData);
+				registeredWebhooks.push(webhookData);
 			}
 		} catch (error) {
 			await this.clearRegisteredWebhookTriggers(workflow, registeredWebhooks);
