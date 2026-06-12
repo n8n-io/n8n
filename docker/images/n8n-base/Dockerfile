@@ -2,6 +2,7 @@ ARG NODE_VERSION=24.16.0
 
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the digest together with the tag when updating the base image.
+# Digest pins to dhi.io/node:24.16.0-alpine3.22-dev (Node 24.16.0, Alpine 3.22, DHI dev variant).
 FROM dhi.io/node:24.16.0-alpine3.22-dev@sha256:67906dda1e458153488aecb9a7a5a926cb03cf1e8890eb8602a86a78162b2556
 
 ARG NODE_VERSION
