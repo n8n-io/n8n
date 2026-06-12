@@ -67,7 +67,7 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 				autoLimit: args.autoCutLimit ?? undefined,
 				alpha: args.alpha ?? undefined,
 				vector: query,
-				filter: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
+				filters: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
 				queryProperties: args.queryProperties
 					? args.queryProperties.split(',').map((prop) => prop.trim())
 					: undefined,
