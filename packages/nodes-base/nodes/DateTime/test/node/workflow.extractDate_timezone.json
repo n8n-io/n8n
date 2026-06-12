@@ -1,0 +1,110 @@
+{
+	"name": "Extract Date Hour - Timezone",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-200, 0]
+		},
+		{
+			"parameters": {
+				"operation": "extractDate",
+				"date": "2023-04-11T14:30:00",
+				"part": "hour",
+				"outputFieldName": "datePart",
+				"options": {}
+			},
+			"id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+			"name": "Extract Naive ISO",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 2,
+			"position": [0, -160]
+		},
+		{
+			"parameters": {
+				"operation": "extractDate",
+				"date": "April 11, 2023 2:30 PM",
+				"part": "hour",
+				"outputFieldName": "datePart",
+				"options": {}
+			},
+			"id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+			"name": "Extract Non-ISO",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 2,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "extractDate",
+				"date": "2023-04-11T14:30:00+05:00",
+				"part": "hour",
+				"outputFieldName": "datePart",
+				"options": {}
+			},
+			"id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+			"name": "Extract With Offset",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 2,
+			"position": [0, 160]
+		}
+	],
+	"pinData": {
+		"Extract Naive ISO": [
+			{
+				"json": {
+					"datePart": 14
+				}
+			}
+		],
+		"Extract Non-ISO": [
+			{
+				"json": {
+					"datePart": 14
+				}
+			}
+		],
+		"Extract With Offset": [
+			{
+				"json": {
+					"datePart": 5
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Extract Naive ISO",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Extract Non-ISO",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Extract With Offset",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"timezone": "America/New_York"
+	},
+	"versionId": "",
+	"meta": {
+		"instanceId": ""
+	},
+	"tags": []
+}
