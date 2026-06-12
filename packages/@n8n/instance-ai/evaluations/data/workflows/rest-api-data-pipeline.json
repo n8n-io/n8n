@@ -18,10 +18,18 @@
 		},
 		{
 			"role": "user",
-			"text": "It should say how many posts remain after filtering and list each remaining post's title. If no posts remain after filtering, still post the message saying 0 posts remain."
+			"text": "It should say how many posts remain after filtering and list each remaining post's title."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it. Anything else before I build it?"
+		},
+		{
+			"role": "user",
+			"text": "One more thing — if every post gets filtered out, I still want the Slack message posted that day saying 0 posts remain. Don't skip the message just because nothing is left."
 		}
 	],
-	"messageBudget": 6,
+	"messageBudget": 8,
 	"complexity": "medium",
 	"tags": ["build", "http-request", "slack", "data-transformation", "schedule"],
 	"triggerType": "schedule",
