@@ -3333,6 +3333,8 @@ export interface IWorkflowExecuteAdditionalData {
 	 * data consistently across the entire execution tree.
 	 */
 	rootExecutionMode?: WorkflowExecuteMode;
+	langsmithConfig?: LangSmithConfig;
+	langsmithConfigError?: string;
 	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
@@ -3417,6 +3419,13 @@ export interface IWorkflowSettings {
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	customTelemetryTags?: ICustomTelemetryTag[];
+	langsmithCredentialId?: string;
+	langsmithProject?: string;
+}
+
+export interface LangSmithConfig {
+	apiKey: string;
+	project?: string;
 }
 
 export interface WorkflowFEMeta {
