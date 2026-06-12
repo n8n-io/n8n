@@ -292,6 +292,8 @@ function looksLikeJsonDocument(text: string): boolean {
 interface SubmitCapture {
 	spec?: MockResponseSpec;
 	lastRejection?: string;
+	/** Set when `spec` came from a rejected submission kept as a fallback. */
+	softOnly?: boolean;
 }
 
 function createSubmitResponseTool(capture: SubmitCapture) {
@@ -329,6 +331,7 @@ function createSubmitResponseTool(capture: SubmitCapture) {
 			if (input.type === 'json' && typeof input.textBody === 'string') {
 				// Soft-capture: the json body may be valid on its own — a resubmission overwrites it.
 				capture.spec = input;
+				capture.softOnly = true;
 				return reject(
 					'Invalid: textBody is not allowed with type="json". If the endpoint returns a non-JSON text document, resubmit with type="text"; otherwise resubmit with the JSON in body.',
 				);
@@ -343,6 +346,7 @@ function createSubmitResponseTool(capture: SubmitCapture) {
 				);
 			}
 			capture.spec = input;
+			capture.softOnly = false;
 			return 'Response submitted.';
 		})
 		.build();
@@ -408,6 +412,12 @@ async function callLlm(
 			: 'Agent did not call submit_response';
 		throw new Error(
 			`${what}. finishReason=${result.finishReason ?? 'unknown'}${errPart} text="${preview.replace(/\s+/g, ' ').trim()}"`,
+		);
+	}
+
+	if (capture.softOnly) {
+		Container.get(Logger).warn(
+			`[EvalMock] Serving soft-captured json body — submit_response was rejected (${capture.lastRejection ?? 'unknown reason'}) and never resubmitted`,
 		);
 	}
 

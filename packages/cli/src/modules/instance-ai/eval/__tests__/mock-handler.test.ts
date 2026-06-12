@@ -393,6 +393,18 @@ describe('createLlmMockHandler', () => {
 			headers: { 'content-type': 'application/json' },
 			statusCode: 200,
 		});
+		// The fallback is observable: serving a rejected, never-resubmitted spec warns.
+		const logger = Container.get('' as never) as unknown as { warn: jest.Mock };
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
+	});
+
+	it('should not warn when an accepted submission is served', async () => {
+		llmSubmits({ type: 'json', body: { ok: true } });
+		const handler = createLlmMockHandler();
+		await callHandler(handler);
+
+		const logger = Container.get('' as never) as unknown as { warn: jest.Mock };
+		expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
 	});
 
 	it('should surface the rejection reason when a rejected spec is never resubmitted', async () => {
