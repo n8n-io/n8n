@@ -1,6 +1,7 @@
 import { defineConfig } from 'eslint/config';
 import { baseConfig } from '@n8n/eslint-config/base';
 
+// TODO will be cleaned up after the http unification. See CAT-3390
 export default defineConfig(
 	baseConfig,
 	{

@@ -6,8 +6,7 @@ import { binaryToString } from '../binary-string';
 const bufferToIncomingMessage = (buffer: Buffer, encoding = 'utf-8') => {
 	const incomingMessage = Readable.from(buffer) as IncomingMessage;
 	incomingMessage.headers = { 'content-type': `application/json;charset=${encoding}` };
-	// @ts-expect-error need this hack to fake `instanceof IncomingMessage` checks
-	incomingMessage.__proto__ = IncomingMessage.prototype;
+	Object.setPrototypeOf(incomingMessage, IncomingMessage.prototype);
 	return incomingMessage;
 };
 
