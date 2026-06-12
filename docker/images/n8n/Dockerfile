@@ -16,9 +16,12 @@ RUN apk add --no-cache python3 make g++ && \
     # Removing prebuilds and invoking node-gyp directly avoids npm rebuild's
     # double-build behavior (built-in node-gyp + install-script node-gyp)
     # which races on dep-file state.
+    # Use npm's bundled node-gyp rather than `npx node-gyp` so the toolchain
+    # version is fixed by the pinned image digest instead of being fetched
+    # from the registry at build time.
     rm -rf node_modules/isolated-vm/prebuilds && \
     cd node_modules/isolated-vm && \
-    npx --yes node-gyp rebuild --release -j max
+    node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release -j max
 
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # n8nio/base is republished by a separate workflow (docker/images/n8n-base) on every

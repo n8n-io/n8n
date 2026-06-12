@@ -1,5 +1,8 @@
 import type { RouteLocationNormalized } from 'vue-router';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useRoute } from 'vue-router';
 
@@ -8,12 +11,18 @@ import { useRoute } from 'vue-router';
  */
 export function useEmptyStateDetection() {
 	const foldersStore = useFoldersStore();
+	const credentialsStore = useCredentialsStore();
+	const environmentsStore = useEnvironmentsStore();
+	const dataTableStore = useDataTableStore();
 	const projectPages = useProjectPages();
 	const route = useRoute();
 
 	/**
 	 * Checks if the current state qualifies as "truly empty"
 	 * - No workflows exist in the instance
+	 * - No credentials exist in the instance
+	 * - No variables exist in the instance
+	 * - No data tables exist in the instance
 	 * - User is on the main workflows view (not in a specific folder)
 	 * - User is on overview page or personal project workflows
 	 * - No search filters are applied
@@ -22,6 +31,9 @@ export function useEmptyStateDetection() {
 	const isTrulyEmpty = (currentRoute: RouteLocationNormalized = route) => {
 		const hasNoWorkflows =
 			foldersStore.workflowsCountLoaded && foldersStore.totalWorkflowCount === 0;
+		const hasNoCredentials = credentialsStore.allCredentials.length === 0;
+		const hasNoVariables = environmentsStore.variables.length === 0;
+		const hasNoDataTables = dataTableStore.totalCount === 0;
 		const isNotInSpecificFolder = !currentRoute.params?.folderId;
 		const isMainWorkflowsPage = projectPages.isOverviewSubPage;
 
@@ -36,6 +48,9 @@ export function useEmptyStateDetection() {
 
 		return (
 			hasNoWorkflows &&
+			hasNoCredentials &&
+			hasNoVariables &&
+			hasNoDataTables &&
 			isNotInSpecificFolder &&
 			isMainWorkflowsPage &&
 			!hasSearchQuery &&
