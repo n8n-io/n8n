@@ -36,6 +36,7 @@ import type {
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
+import { detectAuthenticationParameterValue } from '@n8n/ai-utilities/node-catalog';
 import {
 	BuilderTemplatesService,
 	builderTemplatesOptionsFromEnv,
@@ -2291,23 +2292,9 @@ export class InstanceAiAdapterService {
 					const nodes = await getNodes();
 					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
 					if (nodeDesc) {
-						const authProp = nodeDesc.properties.find((p) => p.name === 'authentication');
-						if (authProp?.options) {
-							// Find the option whose credentialTypes includes our credential type
-							for (const opt of authProp.options) {
-								if (typeof opt === 'object' && 'value' in opt && typeof opt.value === 'string') {
-									const credTypes = nodeDesc.credentials
-										?.filter((c) => {
-											const show = c.displayOptions?.show?.authentication;
-											return Array.isArray(show) && show.includes(opt.value);
-										})
-										.map((c) => c.name);
-									if (credTypes?.includes(params.credentialType)) {
-										currentNodeParameters.authentication = opt.value;
-										break;
-									}
-								}
-							}
+						const authValue = detectAuthenticationParameterValue(nodeDesc, params.credentialType);
+						if (authValue !== undefined) {
+							currentNodeParameters.authentication = authValue;
 						}
 					}
 				}
