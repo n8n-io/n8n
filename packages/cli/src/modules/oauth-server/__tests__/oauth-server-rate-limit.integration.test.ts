@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- jest.mock factory */
 jest.mock('@n8n/backend-common', () => {
 	const actual = jest.requireActual('@n8n/backend-common');
 	return {
@@ -5,6 +6,7 @@ jest.mock('@n8n/backend-common', () => {
 		inProduction: true,
 	};
 });
+/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return */
 
 import { mockInstance } from '@n8n/backend-test-utils';
 
