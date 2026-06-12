@@ -182,6 +182,12 @@ export class InstanceAiBrowserSessionService {
 		session.connected = true;
 		session.connectedAt = new Date();
 		session.hasConnectedOnce = true;
+		// I think await is not necessary because it'll take
+		// some time before the LLM calls one of the browser tools
+		void session.mcpServer.callTool({
+			name: 'browser_connect',
+			arguments: {},
+		});
 		this.logger.info('Browser Use extension connected', { userId });
 		this.pushState(userId);
 	}
