@@ -4,7 +4,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import AppHeader from './components/AppHeader.vue';
 import ChatPanel from './components/ChatPanel.vue';
 import PermissionPromptStack from './components/PermissionPromptStack.vue';
-import ComplexTaskView from './views/ComplexTaskView.vue';
+import TaskResultCard from './components/TaskResultCard.vue';
 import HomeView from './views/HomeView.vue';
 import SettingsView from './views/SettingsView.vue';
 import SignInView from './views/SignInView.vue';
@@ -12,7 +12,9 @@ import TaskDetailView from './views/TaskDetailView.vue';
 import TaskDraftView from './views/TaskDraftView.vue';
 import TaskSetupView from './views/TaskSetupView.vue';
 
+import { dismissTaskResult, taskResultState } from './assistant/task-result-store';
 import { useAssistantScreen } from './assistant/use-assistant-screen';
+import { usePendingTasks } from './assistant/use-pending-tasks';
 import { chatOverlay, closeChat } from './chat/chat-overlay';
 import { clearAllPrompts } from './permissions/permission-prompt-store';
 import { getThreadPromptWatcher } from './permissions/thread-prompt-watcher';
@@ -27,10 +29,25 @@ const auth = ref<AuthStatus>({
 	error: null,
 });
 const { screen, goHome } = useAssistantScreen();
-const { prompts, respondingIds, failedIds, respondToPrompt } = usePermissionPrompts();
 
-// The setup and complex screens carry their own back-header, so the main
-// AppHeader is suppressed for them; home and draft keep it.
+// macOS uses titleBarStyle 'hiddenInset': the native traffic lights overlay the renderer,
+// so it provides its own draggable title strip. Other platforms have a native title bar.
+const isMac = navigator.platform.startsWith('Mac');
+const { prompts, respondingIds, failedIds, respondToPrompt } = usePermissionPrompts();
+const pendingTasks = usePendingTasks();
+
+/** Keep the one-off: promote its thread into a saved task; home shows the pending entry. */
+function keepTaskResult() {
+	const card = taskResultState.card;
+	if (card?.kind !== 'done') return;
+	// The icon (from the agent's outcome report) lands on the workflow's meta, not in its name.
+	pendingTasks.promote(card.threadId, card.label, card.icon);
+	dismissTaskResult();
+	closeChat();
+}
+
+// The setup screen carries its own back-header, so the main AppHeader is
+// suppressed for it; home and draft keep it.
 const showHeader = computed(
 	() =>
 		auth.value.state !== 'signedIn' ||
@@ -62,6 +79,7 @@ watch(
 			showSettings.value = false;
 			goHome();
 			closeChat();
+			dismissTaskResult();
 			// Another user must never see this user's pending prompts.
 			getThreadPromptWatcher().stopAllWatches();
 			clearAllPrompts();
@@ -72,6 +90,7 @@ watch(
 
 <template>
 	<div :class="$style.app">
+		<div v-if="isMac" :class="$style.titleStrip" />
 		<AppHeader
 			v-if="showHeader"
 			:state="auth.state"
@@ -80,14 +99,17 @@ watch(
 		<div :class="$style.content">
 			<template v-if="auth.state === 'signedIn'">
 				<SettingsView v-if="showSettings" :status="auth" @close="showSettings = false" />
-				<TaskDraftView v-else-if="screen.name === 'draft'" :plan="screen.plan" />
+				<TaskDraftView
+					v-else-if="screen.name === 'draft'"
+					:thread-id="screen.threadId"
+					:plan="screen.plan"
+				/>
 				<TaskSetupView
 					v-else-if="screen.name === 'setup'"
 					:title="screen.title"
 					:icon="screen.icon"
 					:required-connections="screen.requiredConnections"
 				/>
-				<ComplexTaskView v-else-if="screen.name === 'complex'" :plan="screen.plan" />
 				<TaskDetailView
 					v-else-if="screen.name === 'task-detail'"
 					:key="screen.card.workflowId"
@@ -110,16 +132,24 @@ watch(
 				</div>
 			</Transition>
 
-			<!-- Permission prompts float above the active composer, on any view. -->
+			<!-- Permission prompts and the task result card float above the active
+			     composer, on any view — including over the chat overlay. -->
 			<div
-				v-if="auth.state === 'signedIn' && prompts.length > 0"
+				v-if="auth.state === 'signedIn' && (prompts.length > 0 || taskResultState.card)"
 				:class="[$style.promptArea, chatOverlay.isOpen ? $style.aboveChat : $style.aboveHome]"
 			>
 				<PermissionPromptStack
+					v-if="prompts.length > 0"
 					:prompts="prompts"
 					:responding-ids="respondingIds"
 					:failed-ids="failedIds"
 					@respond="respondToPrompt"
+				/>
+				<TaskResultCard
+					v-if="taskResultState.card"
+					:card="taskResultState.card"
+					@keep="keepTaskResult"
+					@dismiss="dismissTaskResult"
 				/>
 			</div>
 		</div>
@@ -133,6 +163,14 @@ watch(
 	height: 100vh;
 	/* Header/window sit on the darker base; the content body is a touch lighter. */
 	background: var(--da-bg);
+}
+
+/* Drag region for the otherwise chrome-less window; the traffic lights sit on it. */
+.titleStrip {
+	flex-shrink: 0;
+	height: 32px;
+	background: var(--da-bg);
+	-webkit-app-region: drag;
 }
 
 .content {
@@ -169,6 +207,9 @@ watch(
 	right: var(--spacing--xs);
 	left: var(--spacing--xs);
 	z-index: 10;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
 /* Clears the chat panel's single-row composer. */

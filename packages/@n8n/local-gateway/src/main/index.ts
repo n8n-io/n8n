@@ -12,11 +12,11 @@ import { LocalInstanceProcess } from './local-instance/local-instance-process';
 import { LocalInstanceStore } from './local-instance/local-instance-store';
 import { requestMacPermissions } from './mac-permissions';
 import {
+	applyDockIcon,
 	showMainWindow,
-	toggleMainWindow,
 	notifyMainWindow,
 	onMainWindowReset,
-	isMainWindowVisible,
+	isMainWindowFocused,
 } from './main-window';
 import { createPromptNotifier } from './notifications';
 import { parseOAuthCallback } from './oauth/oauth-callback';
@@ -49,16 +49,14 @@ if (!app.requestSingleInstanceLock()) {
 	app.quit();
 } else {
 	app.on('window-all-closed', () => {
-		// Intentionally do nothing: this is a tray-only app that stays alive
+		// Intentionally do nothing: the app stays alive in the tray and Dock
 		// even when all BrowserWindows are closed.
 	});
 
 	app
 		.whenReady()
 		.then(() => {
-			if (process.platform === 'darwin') {
-				app.dock?.hide();
-			}
+			applyDockIcon();
 
 			// Register our custom scheme so the OS routes `<scheme>://…` deep links (OAuth redirect) here.
 			app.setAsDefaultProtocolClient(APP_URL_SCHEME);
@@ -71,7 +69,7 @@ if (!app.requestSingleInstanceLock()) {
 			const rendererPath = path.join(__dirname, '..', 'renderer', 'index.html');
 
 			const promptNotifier = createPromptNotifier({
-				isWindowVisible: isMainWindowVisible,
+				isWindowFocused: isMainWindowFocused,
 				showWindow: () => showMainWindow(preloadPath, rendererPath),
 			});
 			const permissionBroker = new PermissionBroker({
@@ -170,6 +168,7 @@ if (!app.requestSingleInstanceLock()) {
 				contextDetector,
 				localInstanceManager,
 				permissionBroker,
+				promptNotifier,
 				// Settings changes re-apply seamlessly: connect() replaces any current
 				// connection, authenticated with a fresh OAuth token.
 				reconnectGateway: () => syncGatewayConnection(oauthFlow.getStatus()),
@@ -196,8 +195,8 @@ if (!app.requestSingleInstanceLock()) {
 				if (status.state === 'signedIn') {
 					void requestMacPermissions();
 				}
-				// The window auto-hid on blur when the system browser opened — bring it back so the
-				// user sees the result (the signed-in view, or a sign-in error).
+				// Bring the window forward after the browser OAuth round-trip so the user
+				// sees the result (the signed-in view, or a sign-in error).
 				if (status.state === 'signedIn' || status.state === 'error') {
 					showMainWindow(preloadPath, rendererPath);
 				}
@@ -218,7 +217,7 @@ if (!app.requestSingleInstanceLock()) {
 
 			createTray(
 				controller,
-				(trayBounds) => {
+				() => {
 					// Detect what the user is looking at *before* showing our window —
 					// once it shows, it becomes the frontmost app. Detection must finish
 					// before the show: get-windows is async, so a fire-and-forget call
@@ -227,7 +226,7 @@ if (!app.requestSingleInstanceLock()) {
 					// by the time this resolves the user's real previous app is still up.
 					void (async () => {
 						await contextDetector.refresh().catch(() => {});
-						toggleMainWindow(preloadPath, rendererPath, trayBounds);
+						showMainWindow(preloadPath, rendererPath);
 					})();
 				},
 				() => {
@@ -284,7 +283,12 @@ if (!app.requestSingleInstanceLock()) {
 				syncGatewayConnection(oauthFlow.getStatus());
 			}
 
-			// The window opens only from the tray — nothing to auto-open on launch.
+			showMainWindow(preloadPath, rendererPath);
+
+			// macOS — clicking the Dock icon reopens the hidden window.
+			app.on('activate', () => {
+				showMainWindow(preloadPath, rendererPath);
+			});
 
 			// Safety net for quits that bypass the tray (e.g. logout, updater): never orphan the child.
 			app.on('before-quit', () => {

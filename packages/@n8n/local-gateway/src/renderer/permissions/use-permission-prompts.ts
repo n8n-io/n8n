@@ -6,7 +6,8 @@ import {
 	respondToPrompt,
 } from './permission-prompt-store';
 import { getThreadPromptWatcher, type ThreadPromptWatcher } from './thread-prompt-watcher';
-import { chatOverlay } from '../chat/chat-overlay';
+import { chatOverlay, openChat } from '../chat/chat-overlay';
+import { isChatThreadVisible } from '../chat/visible-chat-threads';
 
 /**
  * Internal factory behind `usePermissionPrompts` — tests inject `registerCleanup`
@@ -30,15 +31,50 @@ export function createPermissionPrompts(
 		{ immediate: true },
 	);
 
+	// An 'external' prompt means the agent is waiting on input the prompt cards
+	// cannot collect (question, plan review, setup) — open its conversation so
+	// the user sees the request in context (the chat renders it as an assistant
+	// message). Each prompt opens the chat at most once, so closing it isn't
+	// fought.
+	const openedExternalPromptIds = new Set<string>();
+	const stopExternalPromptWatch = watch(
+		() => permissionPromptState.prompts.length,
+		() => {
+			for (const prompt of permissionPromptState.prompts) {
+				if (prompt.source !== 'instance' || prompt.kind !== 'external') continue;
+				if (openedExternalPromptIds.has(prompt.id)) continue;
+				openedExternalPromptIds.add(prompt.id);
+				if (isChatThreadVisible(prompt.threadId)) continue;
+				if (chatOverlay.isOpen && chatOverlay.threadId === prompt.threadId) continue;
+				openChat(prompt.threadId);
+			}
+		},
+		{ immediate: true },
+	);
+
 	registerCleanup(() => {
 		stopChatThreadWatch();
+		stopExternalPromptWatch();
 		releaseChatWatch?.();
 		releaseChatWatch = undefined;
 	});
 
 	return {
-		/** All pending prompts, oldest first. */
-		prompts: computed(() => permissionPromptState.prompts),
+		/**
+		 * Pending prompts for the floating card stack, oldest first. 'External'
+		 * prompts of a thread whose chat transcript is on screen are omitted —
+		 * the transcript renders them as assistant messages.
+		 */
+		prompts: computed(() =>
+			permissionPromptState.prompts.filter(
+				(prompt) =>
+					!(
+						prompt.source === 'instance' &&
+						prompt.kind === 'external' &&
+						isChatThreadVisible(prompt.threadId)
+					),
+			),
+		),
 		/** Prompt ids with an in-flight response. */
 		respondingIds: computed(() => permissionPromptState.respondingIds),
 		/** Prompt ids whose response failed retryably. */

@@ -1,6 +1,7 @@
 import type {
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
+	DesktopAssistantChatThreadResponse,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantPromoteRequest,
 	DesktopAssistantPromoteResponse,
@@ -16,7 +17,11 @@ import type {
 } from '@n8n/api-types';
 import { logger } from '@n8n/computer-use/logger';
 
-import type { DesktopAssistantHistoryParams, DesktopAssistantTimeSaved } from '../shared/types';
+import type {
+	DesktopAssistantHistoryParams,
+	DesktopAssistantTimeSaved,
+	PromoteAssistantThreadOptions,
+} from '../shared/types';
 import type { OAuthFlow } from './oauth/oauth-flow';
 
 /** Day in ms, for the trailing time-saved ranges. */
@@ -157,11 +162,12 @@ export class InstanceApi {
 
 	/**
 	 * `GET /rest/desktop-assistant/tasks/:id/detail` — the task detail view's
-	 * segmented description (LLM-generated server-side, cached per workflow
-	 * version) plus the credential types still missing.
+	 * segmented description (stored on the workflow at creation) plus the
+	 * credential types still missing.
 	 *
-	 * First-open generation can exceed the default request timeout, so this
-	 * call gets a longer one.
+	 * Normally a simple read, but workflows predating stored descriptions
+	 * generate one on first open, which can exceed the default request
+	 * timeout — so this call gets a longer one.
 	 */
 	async getTaskDetail(workflowId: string): Promise<DesktopAssistantTaskDetailResponse> {
 		const response = await this.authedFetch(
@@ -243,11 +249,19 @@ export class InstanceApi {
 		threadId: string,
 		name?: string,
 		icon?: string,
+		options?: PromoteAssistantThreadOptions,
 	): Promise<DesktopAssistantPromoteResponse> {
 		const body: DesktopAssistantPromoteRequest = {
 			threadId,
 			...(name ? { name } : {}),
 			...(icon ? { icon } : {}),
+			...(options?.configuredParts ? { configuredParts: options.configuredParts } : {}),
+			...(options?.estimatedMinutesSaved
+				? { estimatedMinutesSaved: options.estimatedMinutesSaved }
+				: {}),
+			// The machine's IANA zone, pinned as the new workflow's timezone so
+			// schedules fire in the user's local time, not the instance default.
+			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		};
 		const response = await this.authedFetch('/desktop-assistant/promote-thread', {
 			method: 'POST',
@@ -256,6 +270,21 @@ export class InstanceApi {
 			body: JSON.stringify(body),
 		});
 		return await this.unwrap<DesktopAssistantPromoteResponse>(response);
+	}
+
+	/**
+	 * `POST /rest/desktop-assistant/chat-thread` — ensure a fresh chat thread in
+	 * the user's personal project and return its id. The renderer opens this
+	 * thread before the first message so the snapshot fetch resolves.
+	 */
+	async createChatThread(): Promise<DesktopAssistantChatThreadResponse> {
+		const response = await this.authedFetch('/desktop-assistant/chat-thread', {
+			method: 'POST',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({}),
+		});
+		return await this.unwrap<DesktopAssistantChatThreadResponse>(response);
 	}
 
 	/** `GET /rest/instance-ai/threads/:threadId/messages` — the thread's stored messages plus the `nextEventId` SSE cursor. */
@@ -278,6 +307,20 @@ export class InstanceApi {
 			}),
 		});
 		return await this.unwrap<{ runId: string }>(response);
+	}
+
+	/** `POST /rest/instance-ai/chat/:threadId/cancel` — stop the thread's active run; it finishes with a `cancelled` run-finish event. */
+	async cancelRun(threadId: string): Promise<void> {
+		const response = await this.authedFetch(
+			`/instance-ai/chat/${encodeURIComponent(threadId)}/cancel`,
+			{
+				method: 'POST',
+				// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({}),
+			},
+		);
+		await this.unwrap<{ ok: boolean }>(response);
 	}
 
 	/** `POST /rest/instance-ai/confirm/:requestId` — resolve a pending confirmation; the suspended run resumes. */
@@ -329,6 +372,12 @@ export class InstanceApi {
 	workflowSetupUrl(workflowId: string): string | null {
 		const url = this.workflowUrl(workflowId);
 		return url ? `${url}?action=openSetup` : null;
+	}
+
+	/** Instance AI thread URL on the signed-in instance, or `null` when signed out. */
+	threadUrl(threadId: string): string | null {
+		const { instanceUrl } = this.oauthFlow.getStatus();
+		return instanceUrl ? `${instanceUrl}/instance-ai/${encodeURIComponent(threadId)}` : null;
 	}
 
 	/** Every n8n REST endpoint wraps its payload in a `data` key; peel it off. */

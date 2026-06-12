@@ -402,6 +402,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			if (
 				input.workflowId &&
 				!isApprovedBuildContext(context) &&
+				!context.workflowEditsPreApproved &&
 				context.permissions?.updateWorkflow !== 'always_allow'
 			) {
 				if (ctx.resumeData && !ctx.resumeData.approved) {

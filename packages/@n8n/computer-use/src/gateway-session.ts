@@ -13,7 +13,7 @@ import type { SettingsStore } from './settings-store';
 export class GatewaySession {
 	private _dir: string;
 	private _permissions: Record<ToolGroup, PermissionMode>;
-	private readonly sessionAllows: Map<ToolGroup, Set<string>> = new Map();
+	private readonly sessionAllowedGroups: Set<ToolGroup> = new Set();
 	private readonly _secretsBuffer: Map<string, Map<string, string>> = new Map();
 
 	constructor(
@@ -67,10 +67,10 @@ export class GatewaySession {
 	/**
 	 * Check the effective permission for a resource.
 	 * Evaluation order:
-	 *  1. Persistent deny list  → 'deny'  (takes absolute priority even in Allow mode)
-	 *  2. Persistent allow list → 'allow'
-	 *  3. Session allow set     → 'allow'
-	 *  4. Group mode            → via getGroupMode() (includes cross-group constraints)
+	 *  1. Persistent deny list   → 'deny'  (takes absolute priority even in Allow mode)
+	 *  2. Persistent allow list  → 'allow'
+	 *  3. Session-allowed group  → 'allow'
+	 *  4. Group mode             → via getGroupMode() (includes cross-group constraints)
 	 */
 	check(toolGroup: ToolGroup, resource: string): PermissionMode {
 		// Self-protection: prevent tools from accessing the gateway settings directory
@@ -84,7 +84,7 @@ export class GatewaySession {
 		const rp = this.settingsStore.getResourcePermissions(toolGroup);
 		if (rp.deny.includes(resource)) return 'deny';
 		if (rp.allow.includes(resource)) return 'allow';
-		if (this.hasSessionAllow(toolGroup, resource)) return 'allow';
+		if (this.hasSessionAllow(toolGroup)) return 'allow';
 		return this.getGroupMode(toolGroup);
 	}
 
@@ -92,17 +92,20 @@ export class GatewaySession {
 	// Session-scoped allow rules
 	// ---------------------------------------------------------------------------
 
-	allowForSession(toolGroup: ToolGroup, resource: string): void {
-		let set = this.sessionAllows.get(toolGroup);
-		if (!set) {
-			set = new Set();
-			this.sessionAllows.set(toolGroup, set);
-		}
-		set.add(resource);
+	/**
+	 * Grant a whole tool group for the rest of the session. Deliberately coarser
+	 * than the persistent per-resource allow list: "allow for session" is the
+	 * user consenting to this kind of access for the run (e.g. organizing many
+	 * files writes to many distinct paths), so we don't re-prompt per resource.
+	 * The persistent deny list and settings self-protection still take priority
+	 * in check(). Cleared by clearSession().
+	 */
+	allowForSession(toolGroup: ToolGroup): void {
+		this.sessionAllowedGroups.add(toolGroup);
 	}
 
 	clearSession(): void {
-		this.sessionAllows.clear();
+		this.sessionAllowedGroups.clear();
 		this._secretsBuffer.clear();
 	}
 
@@ -152,8 +155,8 @@ export class GatewaySession {
 	// Private helpers
 	// ---------------------------------------------------------------------------
 
-	private hasSessionAllow(toolGroup: ToolGroup, resource: string): boolean {
-		return this.sessionAllows.get(toolGroup)?.has(resource) ?? false;
+	private hasSessionAllow(toolGroup: ToolGroup): boolean {
+		return this.sessionAllowedGroups.has(toolGroup);
 	}
 }
 

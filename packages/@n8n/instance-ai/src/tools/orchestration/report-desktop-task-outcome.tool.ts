@@ -20,6 +20,12 @@ const inputSchema = sanitizeInputSchema(
 				'Short human label naming the task as a repeatable action, 3-8 words, suitable as a workflow name. Present tense ("Sort desktop screenshots"), never a past-tense report of the run ("Sorted 12 screenshots"). Plain text — no emoji',
 			),
 		summary: z.string().describe('One sentence describing what was done (or why nothing was done)'),
+		details: z
+			.string()
+			.optional()
+			.describe(
+				"The task's actual output, in markdown, when the deliverable is information the user asked for — a summary, an answer, extracted data. This field is the only channel that reaches the user, so include the full deliverable. Keep it under ~300 words unless the request calls for more. Omit for pure-action tasks whose result is a side effect on the system",
+			),
 		icon: z
 			.string()
 			.optional()
@@ -28,6 +34,14 @@ const inputSchema = sanitizeInputSchema(
 			.string()
 			.optional()
 			.describe('User-readable reason the task was not completed. Required when success is false'),
+		workflowId: z
+			.string()
+			.trim()
+			.min(1)
+			.optional()
+			.describe(
+				'Id of the workflow this run built and saved, when the task produced one (exactly as returned by build-workflow). Omit otherwise',
+			),
 	}),
 );
 

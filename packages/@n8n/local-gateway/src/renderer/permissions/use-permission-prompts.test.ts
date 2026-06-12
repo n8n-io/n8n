@@ -3,9 +3,31 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 
-import { __resetPermissionPromptsForTests, addPrompt } from './permission-prompt-store';
+import {
+	__resetPermissionPromptsForTests,
+	addPrompt,
+	removePrompt,
+} from './permission-prompt-store';
+import type { InstancePermissionPrompt } from './prompt-classification';
 import { createPermissionPrompts } from './use-permission-prompts';
-import { closeChat, openChat } from '../chat/chat-overlay';
+import { chatOverlay, closeChat, openChat } from '../chat/chat-overlay';
+import { markChatThreadVisible } from '../chat/visible-chat-threads';
+
+function externalPrompt(
+	overrides: Partial<InstancePermissionPrompt> = {},
+): InstancePermissionPrompt {
+	return {
+		id: 'instance:r1',
+		source: 'instance',
+		kind: 'external',
+		threadId: 't-ext',
+		requestId: 'r1',
+		toolCallId: 'tc1',
+		severity: 'info',
+		message: 'Which folder do you mean?',
+		...overrides,
+	};
+}
 
 function stubElectronApi() {
 	const api = {
@@ -97,5 +119,65 @@ describe('createPermissionPrompts', () => {
 		});
 
 		expect(prompts.value.map((prompt) => prompt.id)).toEqual(['local:p1']);
+	});
+
+	it('opens the chat for the thread of a new external prompt', async () => {
+		createPermissionPrompts(makeWatcher(), () => {});
+
+		addPrompt(externalPrompt());
+		await nextTick();
+
+		expect(chatOverlay.isOpen).toBe(true);
+		expect(chatOverlay.threadId).toBe('t-ext');
+	});
+
+	it('opens the chat for an external prompt only once, so closing it is not fought', async () => {
+		createPermissionPrompts(makeWatcher(), () => {});
+
+		addPrompt(externalPrompt());
+		await nextTick();
+		closeChat();
+		removePrompt('instance:r1');
+		await nextTick();
+
+		addPrompt(externalPrompt());
+		await nextTick();
+
+		expect(chatOverlay.isOpen).toBe(false);
+	});
+
+	it('does not disturb a chat already open on the external prompt thread', async () => {
+		createPermissionPrompts(makeWatcher(), () => {});
+
+		openChat('t-ext', { title: 'My task' });
+		addPrompt(externalPrompt());
+		await nextTick();
+
+		expect(chatOverlay.title).toBe('My task');
+	});
+
+	it('does not open the chat for non-external prompts', async () => {
+		createPermissionPrompts(makeWatcher(), () => {});
+
+		addPrompt(externalPrompt({ kind: 'approval' }));
+		await nextTick();
+
+		expect(chatOverlay.isOpen).toBe(false);
+	});
+
+	it('hides external prompts of a visible chat thread from the card stack and skips auto-open', async () => {
+		const { prompts } = createPermissionPrompts(makeWatcher(), () => {});
+		const release = markChatThreadVisible('t-ext');
+
+		addPrompt(externalPrompt());
+		addPrompt(externalPrompt({ id: 'instance:r2', requestId: 'r2', kind: 'approval' }));
+		await nextTick();
+
+		// The transcript renders the external prompt; approval cards still float.
+		expect(prompts.value.map((prompt) => prompt.id)).toEqual(['instance:r2']);
+		expect(chatOverlay.isOpen).toBe(false);
+
+		release();
+		expect(prompts.value.map((prompt) => prompt.id)).toEqual(['instance:r1', 'instance:r2']);
 	});
 });

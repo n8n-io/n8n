@@ -5,6 +5,7 @@ import type {
 	AuthStatus,
 	ConfirmThreadResult,
 	CreateAssistantTaskResult,
+	CreateChatThreadResult,
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
@@ -24,8 +25,9 @@ import type {
 	LocalPermissionPromptRequest,
 	MacPermissionKind,
 	MacPermissionStatus,
-	ResourceDecision,
+	PromoteAssistantThreadOptions,
 	PromoteAssistantThreadResult,
+	ResourceDecision,
 	RunTaskResult,
 	ScreenshotAttachment,
 	StatusSnapshot,
@@ -90,16 +92,21 @@ const electronApi: ElectronApi = {
 	): Promise<CreateAssistantTaskResult> =>
 		await (ipcRenderer.invoke('assistant:createTask', body) as Promise<CreateAssistantTaskResult>),
 
+	createChatThread: async (): Promise<CreateChatThreadResult> =>
+		await (ipcRenderer.invoke('assistant:createChatThread') as Promise<CreateChatThreadResult>),
+
 	promoteAssistantThread: async (
 		threadId: string,
 		name?: string,
 		icon?: string,
+		options?: PromoteAssistantThreadOptions,
 	): Promise<PromoteAssistantThreadResult> =>
 		await (ipcRenderer.invoke(
 			'assistant:promote',
 			threadId,
 			name,
 			icon,
+			options,
 		) as Promise<PromoteAssistantThreadResult>),
 
 	openWorkflow: async (workflowId: string): Promise<void> => {
@@ -130,6 +137,10 @@ const electronApi: ElectronApi = {
 
 	openWorkflowSetup: async (workflowId: string): Promise<void> => {
 		await ipcRenderer.invoke('tasks:openWorkflowSetup', workflowId);
+	},
+
+	openThread: async (threadId: string): Promise<void> => {
+		await ipcRenderer.invoke('assistant:openThread', threadId);
 	},
 
 	getHistory: async (
@@ -170,6 +181,12 @@ const electronApi: ElectronApi = {
 	unlistenToThread: async (threadId: string): Promise<void> => {
 		await ipcRenderer.invoke('thread:unlisten', threadId);
 	},
+
+	cancelThreadRun: async (threadId: string): Promise<{ ok: boolean; error?: string }> =>
+		await (ipcRenderer.invoke('thread:cancel', threadId) as Promise<{
+			ok: boolean;
+			error?: string;
+		}>),
 
 	onThreadEvent: (
 		onEventCallback: (threadId: string, event: InstanceAiEvent) => void,
@@ -222,6 +239,10 @@ const electronApi: ElectronApi = {
 		const handler = (_event: unknown, status: LocalInstanceStatus) => onChangeCallback(status);
 		ipcRenderer.on('localInstanceStatusChanged', handler);
 		return () => ipcRenderer.removeListener('localInstanceStatusChanged', handler);
+	},
+
+	notifyTaskResult: async (title: string, body: string): Promise<void> => {
+		await ipcRenderer.invoke('notifications:taskResult', title, body);
 	},
 
 	listPermissionPrompts: async (): Promise<LocalPermissionPromptRequest[]> =>

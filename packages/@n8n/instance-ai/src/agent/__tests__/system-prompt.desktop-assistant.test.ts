@@ -24,11 +24,17 @@ describe('getSystemPrompt — desktop-assistant promptMode variants', () => {
 		expect(prompt).toContain('report-desktop-task-outcome');
 	});
 
+	it('one-shot mode references the details field the done card renders', () => {
+		const prompt = getSystemPrompt({ promptMode: 'desktop-assistant-one-shot' });
+		expect(prompt).toContain('`details`');
+	});
+
 	it('promote mode references the node types and credential the build must emit', () => {
 		const prompt = getSystemPrompt({ promptMode: 'desktop-assistant-promote' });
 		expect(prompt).toMatch(/Desktop Assistant.+Promote/i);
 		expect(prompt).toContain('@n8n/n8n-nodes-langchain.computerUse');
 		expect(prompt).toContain('@n8n/n8n-nodes-langchain.toolComputerUse');
+		expect(prompt).toContain('@n8n/n8n-nodes-langchain.chainLlm');
 		expect(prompt).toContain('deviceConnectionApi');
 	});
 
@@ -59,17 +65,46 @@ describe('getDesktopAssistantProfile — extra tools', () => {
 		expect(profile.extraTools).toHaveLength(0);
 	});
 
-	it('registers the outcome report tool for one-shot mode only', () => {
+	it('registers the outcome report and plan proposal tools for one-shot mode', () => {
 		const oneShot = getDesktopAssistantProfile('desktop-assistant-one-shot');
-		expect(oneShot.extraTools.map((tool) => tool.name)).toEqual(['report-desktop-task-outcome']);
+		expect(oneShot.extraTools.map((tool) => tool.name)).toEqual([
+			'report-desktop-task-outcome',
+			'propose-task-plan',
+		]);
+	});
 
+	it('registers the promote outcome report tool for promote mode', () => {
 		const promote = getDesktopAssistantProfile('desktop-assistant-promote');
-		expect(promote.extraTools).toHaveLength(0);
+		expect(promote.extraTools.map((tool) => tool.name)).toEqual(['report-promote-outcome']);
 	});
 
 	it('pins gateway tools out of deferred search for one-shot runs only', () => {
 		expect(getDesktopAssistantProfile('desktop-assistant-one-shot').preloadGatewayTools).toBe(true);
 		expect(getDesktopAssistantProfile('desktop-assistant-promote').preloadGatewayTools).toBe(false);
 		expect(getDesktopAssistantProfile(undefined).preloadGatewayTools).toBe(false);
+	});
+
+	it('pre-approves workflow edits for edit mode only', () => {
+		expect(getDesktopAssistantProfile('desktop-assistant-edit').preApproveWorkflowEdits).toBe(true);
+		expect(getDesktopAssistantProfile('desktop-assistant-one-shot').preApproveWorkflowEdits).toBe(
+			false,
+		);
+		expect(getDesktopAssistantProfile('desktop-assistant-promote').preApproveWorkflowEdits).toBe(
+			false,
+		);
+		expect(getDesktopAssistantProfile(undefined).preApproveWorkflowEdits).toBe(false);
+	});
+
+	it('suppresses interactive setup for every desktop mode but not regular chat', () => {
+		expect(getDesktopAssistantProfile('desktop-assistant-one-shot').suppressInteractiveSetup).toBe(
+			true,
+		);
+		expect(getDesktopAssistantProfile('desktop-assistant-promote').suppressInteractiveSetup).toBe(
+			true,
+		);
+		expect(getDesktopAssistantProfile('desktop-assistant-edit').suppressInteractiveSetup).toBe(
+			true,
+		);
+		expect(getDesktopAssistantProfile(undefined).suppressInteractiveSetup).toBe(false);
 	});
 });

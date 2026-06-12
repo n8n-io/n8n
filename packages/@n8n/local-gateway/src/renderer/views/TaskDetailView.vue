@@ -3,7 +3,7 @@ import { N8nIcon, N8nLogo, N8nNodeIcon, N8nSpinner, N8nText } from '@n8n/design-
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-import InlineChipPicker from '../components/InlineChipPicker.vue';
+import TaskDescriptionParts from '../components/TaskDescriptionParts.vue';
 import TaskStatusBadge from '../components/TaskStatusBadge.vue';
 
 import type { TaskCardVariant } from '../assistant/use-assistant-screen';
@@ -143,17 +143,18 @@ function connect() {
 			>
 				<N8nIcon icon="arrow-left" :size="18" aria-hidden="true" />
 			</button>
-			<span :class="$style.tile" aria-hidden="true">
+			<!-- Emojis read as icons on their own; only node icons (arbitrary SVGs)
+			     need the tile's contrast backing. -->
+			<span v-if="nodeIcon" :class="$style.tile" aria-hidden="true">
 				<N8nNodeIcon
-					v-if="nodeIcon"
 					:type="nodeIcon.type"
 					:src="nodeIcon.src"
 					:name="nodeIcon.name"
 					:node-type-name="card.name"
 					:size="16"
 				/>
-				<template v-else>{{ emojiGlyph }}</template>
 			</span>
+			<span v-else :class="$style.emoji" aria-hidden="true">{{ emojiGlyph }}</span>
 			<h1 :class="$style.headerTitle">{{ card.name }}</h1>
 			<button
 				type="button"
@@ -167,8 +168,28 @@ function connect() {
 		</header>
 
 		<div :class="$style.content">
-			<div v-if="badge" :class="$style.meta">
-				<TaskStatusBadge :variant="badge.variant" :label="badge.label" />
+			<!-- Badge + run location render instantly from the card; the time-saved
+			     estimate arrives with the fetched detail. -->
+			<div :class="$style.meta">
+				<TaskStatusBadge v-if="badge" :variant="badge.variant" :label="badge.label" />
+				<span :class="$style.metaItem">
+					<N8nIcon :icon="card.runsLocally ? 'monitor' : 'cloud'" :size="12" aria-hidden="true" />
+					{{
+						i18n.baseText(
+							card.runsLocally
+								? 'desktopAssistant.taskDetail.runsOnMac'
+								: 'desktopAssistant.taskDetail.runsInCloud',
+						)
+					}}
+				</span>
+				<span v-if="detail?.timeSavedMin" :class="[$style.metaItem, $style.metaSaves]">
+					<N8nIcon icon="clock" :size="12" aria-hidden="true" />
+					{{
+						i18n.baseText('desktopAssistant.taskDetail.savesTime', {
+							interpolate: { minutes: detail.timeSavedMin },
+						})
+					}}
+				</span>
 			</div>
 
 			<div v-if="phase === 'loading'" :class="$style.state" role="status" aria-live="polite">
@@ -198,16 +219,12 @@ function connect() {
 				<!-- The description sentence: params render emphasized in read mode and
 				     as inline dropdown chips in edit mode. -->
 				<p :class="$style.sentence">
-					<template v-for="(part, index) in detail.parts" :key="index">
-						<span v-if="part.kind === 'text'">{{ part.text }}</span>
-						<InlineChipPicker
-							v-else-if="editing"
-							:value="pickerValues[part.id] ?? part.value"
-							:options="part.options"
-							@change="setParamValue(part.id, $event)"
-						/>
-						<strong v-else :class="$style.paramValue">{{ part.value }}</strong>
-					</template>
+					<TaskDescriptionParts
+						:parts="detail.parts"
+						:editing="editing"
+						:values="pickerValues"
+						@change="setParamValue"
+					/>
 				</p>
 
 				<p v-if="updateFailed" :class="$style.inlineError" role="alert">
@@ -330,6 +347,12 @@ function connect() {
 	border-radius: var(--radius--xs);
 }
 
+.emoji {
+	flex-shrink: 0;
+	font-size: 15px;
+	line-height: 1;
+}
+
 .headerTitle {
 	flex: 1;
 	min-width: 0;
@@ -355,21 +378,29 @@ function connect() {
 .meta {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	margin-bottom: var(--spacing--sm);
 }
 
+.metaItem {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 12px;
+	color: var(--da-subtlest);
+}
+
+.metaSaves {
+	color: var(--da-green);
+}
+
+/* Prose sits a step dimmer than the params so the editable values carry the sentence. */
 .sentence {
 	margin: 0;
 	font-size: 20px;
 	font-weight: 300;
 	line-height: 1.65;
-	color: var(--da-text);
-}
-
-/* Read-mode emphasis of an editable value — the same words that become a chip in edit mode. */
-.paramValue {
-	font-weight: 600;
+	color: var(--da-subtler);
 }
 
 .state {

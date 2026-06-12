@@ -2,6 +2,7 @@
   "name": "@n8n/local-gateway",
   "version": "0.1.0",
   "description": "n8n Assistant desktop app",
+  "author": "n8n GmbH <hello@n8n.io>",
   "private": true,
   "main": "dist/main/index.js",
   "scripts": {
@@ -26,17 +27,15 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
-    "@n8n/api-types": "workspace:*",
     "@n8n/computer-use": "workspace:*",
-    "@n8n/design-system": "workspace:*",
-    "@n8n/i18n": "workspace:*",
-    "electron-store": "^8.2.0",
-    "eventsource": "^3.0.6",
-    "vue": "catalog:frontend"
+    "electron-store": "^8.2.0"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.4",
     "@iconify/json": "^2.2.349",
+    "@n8n/api-types": "workspace:*",
+    "@n8n/design-system": "workspace:*",
+    "@n8n/i18n": "workspace:*",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
@@ -45,13 +44,15 @@
     "@vitest/coverage-v8": "catalog:",
     "electron": "^41.3.0",
     "electron-builder": "^26.9.0",
+    "eventsource": "^3.0.6",
     "rimraf": "catalog:",
     "sass-embedded": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-plugin-electron": "catalog:",
     "vite-svg-loader": "catalog:frontend",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vue": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

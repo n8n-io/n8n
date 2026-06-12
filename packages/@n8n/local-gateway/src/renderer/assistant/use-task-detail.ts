@@ -4,8 +4,8 @@
  * Owns the description fetch, the read ↔ edit mode toggle, the per-param edited
  * values, and the apply-edits round-trip: POST the changes, follow the returned
  * run over the thread's SSE stream until `run-finish` (bounded by a timeout),
- * then refetch the detail — the builder's update bumped the workflow's
- * versionId, so the server regenerates the description from the new state.
+ * then refetch the detail — on a successful edit the server applies the same
+ * changes to the description it stores on the workflow.
  */
 import { computed, ref } from 'vue';
 
@@ -21,6 +21,11 @@ export type TaskDetailPhase = 'loading' | 'ready' | 'updating' | 'error';
 /** Give the edit run ample time — it's an LLM applying a workflow change — but
  * never hang the view: on timeout we refetch and show whatever state exists. */
 const EDIT_RUN_TIMEOUT_MS = 120_000;
+
+/** The server syncs the stored description on the same run-finish event we
+ * follow, so the post-edit refetch can race that write; one delayed retry
+ * covers the race. */
+const SETTLE_RETRY_DELAY_MS = 500;
 
 interface ThreadFollower {
 	listen: (
@@ -117,6 +122,15 @@ export function useTaskDetail(workflowId: string, options: UseTaskDetailOptions 
 		});
 	}
 
+	/** Whether the loaded detail reflects every requested change. */
+	function editsReflected(requested: DesktopAssistantApplyEditsRequest['changes']) {
+		return requested.every((change) =>
+			detail.value?.parts.some(
+				(part) => part.kind === 'param' && part.id === change.paramId && part.value === change.to,
+			),
+		);
+	}
+
 	/** Re-apply the user's picks onto the (re)loaded detail, where they still fit
 	 *  — i.e. the param still exists with the same generated value. */
 	function restorePicks(requested: DesktopAssistantApplyEditsRequest['changes']) {
@@ -162,6 +176,11 @@ export function useTaskDetail(workflowId: string, options: UseTaskDetailOptions 
 				restorePicks(requested);
 				updateFailed.value = true;
 				return;
+			}
+			if (!editsReflected(requested)) {
+				// The refetch beat the server's description sync — retry once.
+				await new Promise((resolve) => setTimeout(resolve, SETTLE_RETRY_DELAY_MS));
+				await load();
 			}
 			editing.value = false;
 		} catch (error) {

@@ -37,6 +37,7 @@ export const N8N_OAUTH_SCOPES = [
 	'instanceAi:gateway',
 	'workflow:read',
 	'workflow:execute',
+	'workflow:delete',
 	'execution:read',
 	'execution:list',
 	'insights:list',

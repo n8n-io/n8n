@@ -1712,6 +1712,11 @@ export class InstanceAiService {
 		return this.runState.getActiveRunId(threadId);
 	}
 
+	/** Get the runId of a thread's suspended run (waiting on user input), if any. */
+	getSuspendedRunId(threadId: string): string | undefined {
+		return this.runState.getSuspendedRun(threadId)?.runId;
+	}
+
 	cancelRun(threadId: string, reason = 'user_cancelled'): void {
 		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
 		const user = this.runState.getThreadUser(threadId);

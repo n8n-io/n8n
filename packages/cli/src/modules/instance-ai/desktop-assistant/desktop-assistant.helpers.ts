@@ -9,7 +9,13 @@ import type {
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantTaskRequest,
 } from '@n8n/api-types';
-import type { StoredEvent } from '@n8n/instance-ai';
+import {
+	CHANNEL_PARAM_GUIDANCE,
+	PARAM_OPTIONS_COUNT_GUIDANCE,
+	PROMOTED_BUILD_METADATA_KEY,
+	renderDescriptionSentence,
+	type StoredEvent,
+} from '@n8n/instance-ai';
 import type { ExecutionError, IConnections, INode, IRunExecutionData } from 'n8n-workflow';
 
 import type { PROMOTED_FROM_THREAD_ID_KEY } from './constants';
@@ -83,11 +89,22 @@ function isTextPart(part: unknown): part is { type: 'text'; text: string } {
 
 /** Leads with the replay-vs-fresh decision so the recorded tool calls don't
  *  anchor the model toward literal replay. Naming rules (plain text, no emoji)
- *  live in the promote system prompt. */
-export function composePromoteMessage(originalPrompt: string, name: string | undefined): string {
+ *  live in the promote system prompt.
+ *
+ *  With a `configuredSentence` (a promote of a proposed task plan rather than
+ *  an executed run), the message grounds the build on the user-configured
+ *  description instead — there is nothing recorded to replay. */
+export function composePromoteMessage(
+	originalPrompt: string,
+	name: string | undefined,
+	configuredSentence?: string,
+): string {
 	const trimmedName = name?.trim();
 	const naming = trimmedName ? ` Name it "${trimmedName}".` : '';
-	return `Turn the task from this thread into a repeatable workflow. Decide first, from the original request below: must a future run reproduce the recorded results exactly, or generate content fresh? The recorded tool calls show what was done, not necessarily what should be replayed literally.${naming} The original request:\n\n${originalPrompt}`;
+	if (configuredSentence) {
+		return `Turn the task from this thread into a repeatable workflow. This thread contains no executed run to replay — the user reviewed and configured a task plan instead. Build the workflow from the configured description below, using its values verbatim (the schedule, services, and folders are the user's final choices), with the non-manual trigger it implies.${naming}\n\nConfigured description:\n"${configuredSentence}"\n\nThe original request, as context only:\n\n${originalPrompt}`;
+	}
+	return `Turn the task from this thread into a repeatable workflow. Decide first, from the original request below: can a fixed list of the recorded steps reproduce the request on every future run, or must the workflow inspect the current state (what files/items are there now) or generate content fresh each time? The recorded tool calls are a snapshot of one run, not necessarily a script to replay literally.${naming} The original request:\n\n${originalPrompt}`;
 }
 
 // ── Recommendations ──────────────────────────────────────────────────────────
@@ -160,10 +177,12 @@ export const TASK_DESCRIPTION_INSTRUCTIONS = [
 	'- Mark as params ONLY clearly tweakable concrete values: a schedule',
 	'  ("weekday at 6am"), a service (Gmail, Slack), a folder, a grouping',
 	'  criterion. At most 4 params; prefer fewer.',
-	'- For each param, provide 2-3 realistic alternatives in "options" (do not',
-	'  repeat the current value). For service params, prefer alternatives from the',
-	'  connected integrations listed in the input when they make sense, but you',
-	'  may include one popular not-yet-connected service as well.',
+	`- ${CHANNEL_PARAM_GUIDANCE}`,
+	'- For each param, provide realistic alternatives in "options" (do not repeat',
+	`  the current value) — ${PARAM_OPTIONS_COUNT_GUIDANCE}.`,
+	'  For service params, prefer alternatives from the connected integrations',
+	'  listed in the input when they make sense, but you may include one popular',
+	'  not-yet-connected service as well.',
 	'- Each alternative must be something the workflow could plausibly be changed',
 	'  to with a small edit. Keep param values short (1-4 words).',
 	'- If the workflow is too complex to render faithfully as one short sentence,',
@@ -202,57 +221,10 @@ export function composeTaskDescriptionInput(
 	return lines.join('\n');
 }
 
-/** Loosely-shaped part as the model returns it; normalization tightens it into
- *  the API shape. */
-export interface RawDescriptionPart {
-	kind: 'text' | 'param';
-	text?: string;
-	value?: string;
-	options?: string[];
-}
-
-/** Caps mirroring the description instructions; enforced again here so a
- *  misbehaving generation can't bloat the stored cache. */
-const MAX_DESCRIPTION_PARAMS = 4;
-const MAX_PARAM_OPTIONS = 4;
-
-/**
- * Tighten the model's parts into the API shape: drop empty/malformed parts,
- * merge adjacent text parts, de-duplicate options (and the current value out
- * of them), cap param/option counts, and assign stable per-description param
- * ids (`p1`, `p2`, …) used by the apply-edits request to reference a chip.
- */
-export function normalizeDescriptionParts(
-	rawParts: RawDescriptionPart[],
-): DesktopAssistantDescriptionPart[] {
-	const parts: DesktopAssistantDescriptionPart[] = [];
-	let paramCount = 0;
-	for (const raw of rawParts) {
-		if (raw.kind === 'param' && raw.value?.trim() && paramCount < MAX_DESCRIPTION_PARAMS) {
-			const value = raw.value.trim();
-			const options = [...new Set((raw.options ?? []).map((o) => o.trim()))]
-				.filter((o) => o.length > 0 && o !== value)
-				.slice(0, MAX_PARAM_OPTIONS);
-			paramCount += 1;
-			parts.push({ kind: 'param', id: `p${paramCount}`, value, options });
-			continue;
-		}
-		// Anything else degrades to text (a param without a value, params past the
-		// cap) so the sentence still reads fully.
-		const text = raw.kind === 'text' ? raw.text : (raw.value ?? raw.text);
-		if (!text) continue;
-		const previous = parts.at(-1);
-		if (previous?.kind === 'text') previous.text += text;
-		else parts.push({ kind: 'text', text });
-	}
-	return parts;
-}
-
-/** Render the description parts back into the plain sentence, used to ground
- *  the apply-edits instruction. */
-export function renderDescriptionSentence(parts: DesktopAssistantDescriptionPart[]): string {
-	return parts.map((part) => (part.kind === 'text' ? part.text : part.value)).join('');
-}
+// Moved to @n8n/instance-ai (shared with the propose-task-plan tool);
+// re-exported so existing imports stay stable.
+export { normalizeDescriptionParts, renderDescriptionSentence } from '@n8n/instance-ai';
+export type { RawDescriptionPart } from '@n8n/instance-ai';
 
 /** Compose the apply-edits message handed to Instance AI: the workflow to
  *  modify, the sentence the user was looking at, and the exact value changes
@@ -368,9 +340,9 @@ function toOneLine(text: string): string {
 export interface StoredDesktopAssistantMeta {
 	icon?: string;
 	[PROMOTED_FROM_THREAD_ID_KEY]?: string;
-	/** Cached detail-view description, valid while `versionId` matches the workflow. */
+	/** The task's durable detail-view description, written at promote time and
+	 *  kept in sync deterministically by apply-edits. */
 	detail?: {
-		versionId: string;
 		parts: DesktopAssistantDescriptionPart[];
 	};
 }
@@ -385,16 +357,13 @@ export function readDesktopAssistantMeta(meta: unknown): StoredDesktopAssistantM
 	return candidate as StoredDesktopAssistantMeta;
 }
 
-/** Return the cached detail-view description parts when they were generated
- *  from the workflow version given, `undefined` otherwise (stale or absent).
- *  Defensive about shape: the meta blob is plain JSON anyone could write. */
-export function readCachedTaskDetail(
-	meta: unknown,
-	versionId: string,
-): DesktopAssistantDescriptionPart[] | undefined {
+/** Return the stored detail-view description parts when present and
+ *  well-formed, `undefined` otherwise. Defensive about shape: the meta blob is
+ *  plain JSON anyone could write. Only `parts` is picked, so legacy rows that
+ *  carry an extra `versionId` key still read fine. */
+export function readCachedTaskDetail(meta: unknown): DesktopAssistantDescriptionPart[] | undefined {
 	const detail = readDesktopAssistantMeta(meta)?.detail;
 	if (!detail || typeof detail !== 'object') return undefined;
-	if (detail.versionId !== versionId) return undefined;
 	if (!Array.isArray(detail.parts) || detail.parts.length === 0) return undefined;
 	const valid = detail.parts.every(
 		(part) =>
@@ -407,74 +376,79 @@ export function readCachedTaskDetail(
 	return valid ? detail.parts : undefined;
 }
 
-// ── Build-outcome extraction (two orchestrator paths) ────────────────────────
+/** Apply chip edits to the stored description parts: each referenced param's
+ *  value becomes its `to`, and its `from` takes the picked value's slot in
+ *  `options` — the full choice set is conserved, so an edit never removes an
+ *  alternative from the dropdown. */
+export function applyChangesToDescriptionParts(
+	parts: DesktopAssistantDescriptionPart[],
+	changes: DesktopAssistantApplyEditsRequest['changes'],
+): DesktopAssistantDescriptionPart[] {
+	const changeByParamId = new Map(changes.map((change) => [change.paramId, change]));
+	return parts.map((part) => {
+		if (part.kind !== 'param') return part;
+		const change = changeByParamId.get(part.id);
+		if (!change) return part;
+		return {
+			...part,
+			value: change.to,
+			options: [change.from, ...part.options.filter((o) => o !== change.to && o !== change.from)],
+		};
+	});
+}
+
+// ── Run-outcome extraction ───────────────────────────────────────────────────
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+export type PromoteOutcomeReport =
+	| { success: true; workflowId: string }
+	| { success: false; failureReason?: string };
 
 /**
- * Inspect a stored SSE event and return the workflow id of a completed
- * build-workflow planned task, or undefined otherwise.
- *
- * The `build-workflow` tool runs in a sub-agent / planned-task context, so
- * its `tool-result` event is published on the sub-agent's thread, NOT on the
- * parent promote thread. The signal that DOES reach the parent thread is
- * `tasks-update`: each carries `planItems[]` where the build-workflow planned
- * task has its `workflowId` populated, and the matching entry in `tasks[]`
- * moves to status `'done'`. We require BOTH — a populated `workflowId` AND
- * a `done` status — to avoid acting on an in-flight task that already has its
- * id slot allocated.
+ * Read the completion report a promote run filed via `report-promote-outcome`
+ * from thread metadata. `undefined` means the given run filed no (valid)
+ * report — the run died or the model skipped the call — which callers treat
+ * as a failure without a reason.
  */
-export function extractBuiltWorkflowId(storedEvent: StoredEvent): string | undefined {
-	const ev = storedEvent.event;
-	if (ev.type !== 'tasks-update') return undefined;
-	const payload = ev.payload as {
-		tasks?: { tasks?: Array<{ id?: unknown; status?: unknown }> };
-		planItems?: Array<{ id?: unknown; kind?: unknown; workflowId?: unknown }>;
-	};
-	const planItems = payload.planItems;
-	const taskList = payload.tasks?.tasks;
-	if (!Array.isArray(planItems) || !Array.isArray(taskList)) return undefined;
-
-	const doneTaskIds = new Set<string>();
-	for (const task of taskList) {
-		if (typeof task.id === 'string' && task.status === 'done') doneTaskIds.add(task.id);
+export function extractPromoteOutcomeReport(
+	metadata: unknown,
+	runId: string,
+): PromoteOutcomeReport | undefined {
+	if (!isRecord(metadata)) return undefined;
+	const report = metadata[PROMOTED_BUILD_METADATA_KEY];
+	if (!isRecord(report) || report.runId !== runId) return undefined;
+	if (report.success === true) {
+		const { workflowId } = report;
+		if (typeof workflowId !== 'string' || workflowId.length === 0) return undefined;
+		return { success: true, workflowId };
 	}
-
-	for (const item of planItems) {
-		if (item.kind !== 'build-workflow') continue;
-		if (typeof item.workflowId !== 'string') continue;
-		if (typeof item.id !== 'string') continue;
-		if (!doneTaskIds.has(item.id)) continue;
-		return item.workflowId;
+	if (report.success === false) {
+		const { failureReason } = report;
+		return {
+			success: false,
+			...(typeof failureReason === 'string' && failureReason.length > 0 ? { failureReason } : {}),
+		};
 	}
 	return undefined;
 }
 
 /**
- * Read the workflow id produced by a workflow-loop build for the given run
- * from `thread.metadata.instanceAiWorkflowLoop`. The workflow loop persists
- * a `lastBuildOutcome` per work item; we pick the one whose `runId` matches
- * the promote run we kicked off and that was successfully submitted.
- *
- * Returns `undefined` when no such outcome exists (e.g. the run finished
- * without ever invoking the workflow builder, the build failed, or the
- * metadata structure changed under us).
+ * Read the workflow id off a `report-desktop-task-outcome` tool-call event from
+ * the given run. The one-shot prompt instructs the agent to include
+ * `workflowId` when the task built a workflow; only a successful outcome
+ * counts — a failed run's leftover workflow must not be published.
  */
-export function extractWorkflowLoopBuildOutcome(
-	metadata: unknown,
+export function extractReportedWorkflowId(
+	storedEvent: StoredEvent,
 	runId: string,
 ): string | undefined {
-	if (!metadata || typeof metadata !== 'object') return undefined;
-	const loop = (metadata as { instanceAiWorkflowLoop?: unknown }).instanceAiWorkflowLoop;
-	if (!loop || typeof loop !== 'object') return undefined;
-	for (const workItem of Object.values(loop as Record<string, unknown>)) {
-		if (!workItem || typeof workItem !== 'object') continue;
-		const outcome = (workItem as { lastBuildOutcome?: unknown }).lastBuildOutcome;
-		if (!outcome || typeof outcome !== 'object') continue;
-		const o = outcome as { runId?: unknown; submitted?: unknown; workflowId?: unknown };
-		if (o.runId !== runId) continue;
-		if (o.submitted !== true) continue;
-		if (typeof o.workflowId === 'string' && o.workflowId.length > 0) {
-			return o.workflowId;
-		}
-	}
-	return undefined;
+	const ev = storedEvent.event;
+	if (ev.type !== 'tool-call' || ev.runId !== runId) return undefined;
+	if (ev.payload.toolName !== 'report-desktop-task-outcome') return undefined;
+	const { success, workflowId } = ev.payload.args;
+	if (success !== true) return undefined;
+	return typeof workflowId === 'string' && workflowId.length > 0 ? workflowId : undefined;
 }

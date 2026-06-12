@@ -349,6 +349,61 @@ describe('createBuildWorkflowTool', () => {
 		);
 	});
 
+	it('updates existing workflows without suspending when edits are pre-approved on the context', async () => {
+		const suspend = vi.fn();
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {
+				updateFromWorkflowJSON: vi.fn(async () => await Promise.resolve({ id: 'wf-1' })),
+				clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+			},
+			credentialService: {},
+			nodeService: {},
+			dataTableService: {},
+			executionService: {},
+			workflowEditsPreApproved: true,
+			permissions: { updateWorkflow: 'require_approval' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		const tool = createBuildWorkflowTool(context);
+		const result = await executeTool(
+			tool,
+			{ workflowId: 'wf-1', code: 'workflow code' },
+			{ suspend },
+		);
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf-1' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+			'wf-1',
+			expect.objectContaining({ name: 'Generated workflow' }),
+			undefined,
+		);
+	});
+
+	it('still blocks pre-approved edits when the admin policy blocks workflow updates', async () => {
+		const suspend = vi.fn();
+		const context = {
+			workflowService: {
+				updateFromWorkflowJSON: vi.fn(),
+			},
+			workflowEditsPreApproved: true,
+			permissions: { updateWorkflow: 'blocked' },
+		} as unknown as InstanceAiContext;
+
+		const result = await executeTool(
+			createBuildWorkflowTool(context),
+			{ workflowId: 'wf-1', code: 'workflow code' },
+			{ suspend },
+		);
+
+		expect(result).toMatchObject({ success: false, errors: ['Action blocked by admin'] });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
 	it('allows new workflow builds during post-plan follow-up repairs', async () => {
 		const reportBuildOutcome = vi.fn(
 			async () => await Promise.resolve({ type: 'verify' as const, workflowId: 'wf-1' }),

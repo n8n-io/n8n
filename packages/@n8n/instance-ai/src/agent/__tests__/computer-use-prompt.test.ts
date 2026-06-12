@@ -88,24 +88,25 @@ describe('getComputerUsePrompt', () => {
 			expect(result).toContain('did not enable any capabilities');
 		});
 
-		it('does not include the filesystem exploration section', () => {
+		it('does not include the filesystem section', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'connected', capabilities: [] },
 			});
 
-			expect(result).not.toContain('Filesystem Exploration');
+			expect(result).not.toContain('### Computer Use - Filesystem');
 		});
 	});
 
 	describe('when Computer Use is connected with filesystem capability', () => {
-		it('includes the filesystem exploration guidance', () => {
+		it('includes the filesystem guidance', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
 				localGateway: { status: 'connected', capabilities: ['filesystem'] },
 			});
 
-			expect(result).toContain('### Computer Use - Filesystem Exploration');
+			expect(result).toContain('### Computer Use - Filesystem');
+			expect(result).toContain('never the sandbox `workspace_*` tools');
 			expect(result).toContain('start at depth 1');
 			expect(result).toContain('prefer `search` over browsing');
 			expect(result).toContain('read specific files rather than whole directories');
@@ -113,13 +114,13 @@ describe('getComputerUsePrompt', () => {
 	});
 
 	describe('when Computer Use is connected without filesystem capability', () => {
-		it('does not include the filesystem exploration section', () => {
+		it('does not include the filesystem section', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['browser'] },
 			});
 
-			expect(result).not.toContain('Filesystem Exploration');
+			expect(result).not.toContain('### Computer Use - Filesystem');
 		});
 	});
 
@@ -175,13 +176,13 @@ describe('getComputerUsePrompt', () => {
 	});
 
 	describe('when Computer Use is connected with both filesystem and browser', () => {
-		it('includes both the filesystem exploration section and browser rules', () => {
+		it('includes both the filesystem section and browser rules', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: true,
 				localGateway: { status: 'connected', capabilities: ['filesystem', 'browser'] },
 			});
 
-			expect(result).toContain('Filesystem Exploration');
+			expect(result).toContain('### Computer Use - Filesystem');
 			expect(result).toContain('Browser Automation rules');
 		});
 	});

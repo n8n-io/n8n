@@ -108,9 +108,20 @@ function deny() {
 				{{ i18n.baseText('desktopAssistant.permissions.submitFailed') }}
 			</div>
 
-			<div v-if="prompt.kind === 'external'" :class="$style.externalHint">
-				{{ i18n.baseText('desktopAssistant.permissions.externalHint') }}
-			</div>
+			<template v-if="prompt.kind === 'external'">
+				<div :class="$style.externalHint">
+					{{ i18n.baseText('desktopAssistant.permissions.externalHint') }}
+				</div>
+				<div :class="$style.actions">
+					<AssistantButton
+						variant="solid"
+						:disabled="responding"
+						@click="emit('respond', { kind: 'openInWebUi' })"
+					>
+						{{ i18n.baseText('desktopAssistant.permissions.openInInstanceAi') }}
+					</AssistantButton>
+				</div>
+			</template>
 
 			<div v-else :class="$style.actions">
 				<AssistantButton :disabled="responding" @click="deny">

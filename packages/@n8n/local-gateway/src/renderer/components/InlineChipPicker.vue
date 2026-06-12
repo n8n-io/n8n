@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { N8nIcon, N8nPopover } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { useMenuRovingFocus } from '../assistant/use-menu-roving-focus';
+import { PART_VALUE_MAX_LENGTH } from '../../shared/types';
 
 const props = defineProps<{ value: string; options?: string[] }>();
 const emit = defineEmits<{ change: [value: string] }>();
@@ -32,6 +33,22 @@ const { menuRef, onKeydown } = useMenuRovingFocus({ open, selectedIndex });
 function select(choice: string) {
 	emit('change', choice);
 	open.value = false;
+}
+
+// Free-text row below the options, so the user is never limited to the
+// generated alternatives. Cleared on every open — it's an entry field, not
+// a mirror of the current value (that's the first option).
+const customValue = ref('');
+watch(open, (isOpen) => {
+	if (isOpen) customValue.value = '';
+});
+
+/** Enter that confirms an IME composition (CJK input) must not submit. */
+function submitCustom(event: KeyboardEvent) {
+	if (event.isComposing) return;
+	const value = customValue.value.trim();
+	if (!value) return;
+	select(value);
 }
 </script>
 
@@ -64,26 +81,35 @@ function select(choice: string) {
 		</template>
 
 		<template #content>
-			<div
-				ref="menuRef"
-				:class="$style.menu"
-				role="listbox"
-				:aria-label="i18n.baseText('desktopAssistant.composer.chooseOption')"
-				@keydown="onKeydown"
-			>
-				<button
-					v-for="choice in choices"
-					:key="choice"
-					type="button"
-					role="option"
-					data-menu-item
-					:aria-selected="choice === props.value"
-					:class="[$style.item, { [$style.selected]: choice === props.value }]"
-					@click="select(choice)"
-				>
-					<span :class="$style.itemLabel">{{ choice }}</span>
-					<N8nIcon v-if="choice === props.value" icon="check" :size="13" aria-hidden="true" />
-				</button>
+			<div ref="menuRef" :class="$style.menu" @keydown="onKeydown">
+				<div role="listbox" :aria-label="i18n.baseText('desktopAssistant.composer.chooseOption')">
+					<button
+						v-for="choice in choices"
+						:key="choice"
+						type="button"
+						role="option"
+						data-menu-item
+						:aria-selected="choice === props.value"
+						:class="[$style.item, { [$style.selected]: choice === props.value }]"
+						@click="select(choice)"
+					>
+						<span :class="$style.itemLabel">{{ choice }}</span>
+						<N8nIcon v-if="choice === props.value" icon="check" :size="13" aria-hidden="true" />
+					</button>
+				</div>
+				<div :class="$style.customRow">
+					<!-- maxlength matches the server-side cap on param values, so a long
+					     paste is truncated here instead of failing the request later. -->
+					<input
+						v-model="customValue"
+						data-menu-item
+						:maxlength="PART_VALUE_MAX_LENGTH"
+						:class="$style.customInput"
+						:placeholder="i18n.baseText('desktopAssistant.composer.customValue')"
+						:aria-label="i18n.baseText('desktopAssistant.composer.customValue')"
+						@keydown.enter="submitCustom"
+					/>
+				</div>
 			</div>
 		</template>
 	</N8nPopover>
@@ -178,5 +204,34 @@ function select(choice: string) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.customRow {
+	margin-top: var(--spacing--4xs);
+	padding-top: var(--spacing--4xs);
+	border-top: 1px solid var(--da-border);
+}
+
+/* Styled like an item so the row reads as part of the menu, not a form. */
+.customInput {
+	width: 100%;
+	padding: 7px 9px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--da-text);
+	background: none;
+	border: none;
+	border-radius: var(--radius--2xs);
+	outline: none;
+}
+
+.customInput::placeholder {
+	color: var(--da-subtlest);
+}
+
+.customInput:focus-visible {
+	background: var(--da-surface);
+	outline: var(--da-focus-ring);
+	outline-offset: calc(-1 * var(--da-focus-ring-offset));
 }
 </style>

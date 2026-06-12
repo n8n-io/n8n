@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, toRaw } from 'vue';
 
-import InlineChipPicker from '../components/InlineChipPicker.vue';
 import MinutesChip from '../components/MinutesChip.vue';
+import TaskDescriptionParts from '../components/TaskDescriptionParts.vue';
 
-import { useAssistantScreen, type Plan, type PlanPart } from '../assistant/use-assistant-screen';
+import { usePendingTasks } from '../assistant/use-pending-tasks';
+import { useAssistantScreen } from '../assistant/use-assistant-screen';
+import type { DesktopAssistantDescriptionPart, DesktopAssistantTaskPlan } from '../../shared/types';
 
-const props = defineProps<{ plan: Plan }>();
+const props = defineProps<{ threadId: string; plan: DesktopAssistantTaskPlan }>();
 
 const i18n = useI18n();
-const { goTo, goHome } = useAssistantScreen();
+const { goHome } = useAssistantScreen();
+const pendingTasks = usePendingTasks();
 
 const titleRef = ref<HTMLElement | null>(null);
 
@@ -31,72 +34,41 @@ onMounted(() => {
 });
 
 const DEFAULT_TIME_SAVED_MIN = 10;
+const DEFAULT_ICON = '✨';
 
-// Editable copies: one value per picker part, plus the minutes estimate.
-const pickerValues = ref<string[]>(
-	props.plan.parts
-		.filter((part): part is { value: string; options?: string[] } => typeof part !== 'string')
-		.map((part) => part.value),
+const icon = computed(() => props.plan.icon ?? DEFAULT_ICON);
+
+// Editable copies: one value per param part (keyed by its server-assigned id),
+// plus the minutes estimate.
+const pickerValues = ref<Record<string, string>>(
+	Object.fromEntries(
+		props.plan.parts.flatMap((part) => (part.kind === 'param' ? [[part.id, part.value]] : [])),
+	),
 );
-const minutes = ref(props.plan.timeSavedMin ?? DEFAULT_TIME_SAVED_MIN);
+const minutes = ref(props.plan.estimatedMinutesSaved ?? DEFAULT_TIME_SAVED_MIN);
 
-// Render-time view of the sentence: strings stay as spans, objects become pickers
-// bound to their slot in `pickerValues`.
-interface RenderPart {
-	kind: 'text' | 'picker';
-	text?: string;
-	pickerIndex?: number;
-	options?: string[];
-}
-
-const renderParts = computed<RenderPart[]>(() => {
-	let pickerIndex = 0;
-	return props.plan.parts.map((part): RenderPart => {
-		if (typeof part === 'string') return { kind: 'text', text: part };
-		const index = pickerIndex;
-		pickerIndex += 1;
-		return { kind: 'picker', pickerIndex: index, options: part.options };
+/** The plan's parts with the user's picked values baked in. A changed param
+ *  keeps the full choice set: the plan's value takes the pick's slot in
+ *  `options`, so it stays selectable in the detail view later.
+ *  Unchanged parts are unwrapped with `toRaw` — these objects cross the IPC
+ *  boundary, and reactive proxies fail structured clone. */
+function buildConfiguredParts(): DesktopAssistantDescriptionPart[] {
+	return props.plan.parts.map((part) => {
+		if (part.kind !== 'param') return toRaw(part);
+		const value = pickerValues.value[part.id] ?? part.value;
+		if (value === part.value) return toRaw(part);
+		return { ...part, value, options: [part.value, ...part.options.filter((o) => o !== value)] };
 	});
-});
-
-const locationKey = computed(() =>
-	props.plan.location === 'local'
-		? 'desktopAssistant.draft.runsOnMac'
-		: 'desktopAssistant.draft.runsInCloud',
-);
-
-function updatePicker(index: number, value: string) {
-	pickerValues.value = pickerValues.value.map((current, i) => (i === index ? value : current));
-}
-
-/** Rebuilds the plan from the edited picker values + minutes. */
-function buildEditedPlan(): Plan {
-	let pickerIndex = 0;
-	const parts: PlanPart[] = props.plan.parts.map((part) => {
-		if (typeof part === 'string') return part;
-		const value = pickerValues.value[pickerIndex];
-		pickerIndex += 1;
-		return { value, options: part.options };
-	});
-	const summary = parts.map((part) => (typeof part === 'string' ? part : part.value)).join('');
-	return {
-		...props.plan,
-		parts,
-		summary,
-		timeSavedMin: minutes.value,
-	};
 }
 
 function setItUp() {
-	// TODO(desktop-assistant): POST the edited plan to the backend; it then
-	// shows up in the Tasks list via getTasks().
-	const plan = buildEditedPlan();
-	goTo({
-		name: 'setup',
-		title: plan.title,
-		icon: plan.icon,
-		requiredConnections: plan.requiredConnections,
+	// Promote the thread with the configured plan; the pending-card flow on the
+	// Tasks list takes over from here (building → saved / failed).
+	pendingTasks.promote(props.threadId, props.plan.title, props.plan.icon, {
+		configuredParts: buildConfiguredParts(),
+		estimatedMinutesSaved: minutes.value,
 	});
+	goHome();
 }
 </script>
 
@@ -104,7 +76,7 @@ function setItUp() {
 	<div :class="$style.view" @keydown.esc="onEscape">
 		<div :class="$style.content">
 			<div :class="$style.titleRow">
-				<span :class="$style.icon" aria-hidden="true">{{ props.plan.icon }}</span>
+				<span :class="$style.icon" aria-hidden="true">{{ icon }}</span>
 				<h1
 					ref="titleRef"
 					tabindex="-1"
@@ -120,15 +92,12 @@ function setItUp() {
 			</div>
 
 			<p :class="$style.sentence">
-				<template v-for="(part, index) in renderParts" :key="index">
-					<span v-if="part.kind === 'text'">{{ part.text }}</span>
-					<InlineChipPicker
-						v-else
-						:value="pickerValues[part.pickerIndex ?? 0]"
-						:options="part.options"
-						@change="updatePicker(part.pickerIndex ?? 0, $event)"
-					/>
-				</template>
+				<TaskDescriptionParts
+					:parts="props.plan.parts"
+					:editing="true"
+					:values="pickerValues"
+					@change="(id, value) => (pickerValues[id] = value)"
+				/>
 			</p>
 
 			<div :class="$style.meta">
@@ -139,12 +108,8 @@ function setItUp() {
 					{{ i18n.baseText('desktopAssistant.draft.savesAfter') }}
 				</span>
 				<span :class="[$style.metaRow, $style.locationRow]">
-					<N8nIcon
-						:icon="props.plan.location === 'local' ? 'monitor' : 'cloud'"
-						:size="14"
-						aria-hidden="true"
-					/>
-					{{ i18n.baseText(locationKey) }}
+					<N8nIcon icon="cloud" :size="14" aria-hidden="true" />
+					{{ i18n.baseText('desktopAssistant.draft.runsInCloud') }}
 				</span>
 			</div>
 		</div>

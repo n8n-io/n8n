@@ -26,6 +26,22 @@ const loopStorageSchema = z.record(z.string(), workItemRecordSchema);
 
 export type WorkflowLoopWorkItemRecord = z.infer<typeof workItemRecordSchema>;
 
+/**
+ * Distinct workflow ids the loop recorded on this thread's metadata, from work
+ * item state and build outcomes. The loop writes these deterministically from
+ * actual build results, so they are trustworthy where a model-retyped id is not.
+ */
+export function collectLoopWorkflowIds(metadata: Record<string, unknown>): string[] {
+	const parsed = loopStorageSchema.safeParse(metadata[METADATA_KEY]);
+	if (!parsed.success) return [];
+	const ids = new Set<string>();
+	for (const { state, lastBuildOutcome } of Object.values(parsed.data)) {
+		if (state.workflowId) ids.add(state.workflowId);
+		if (lastBuildOutcome?.workflowId) ids.add(lastBuildOutcome.workflowId);
+	}
+	return [...ids];
+}
+
 export interface WorkflowSetupRoutingClaim {
 	claimId: string;
 	claimedAt: string;

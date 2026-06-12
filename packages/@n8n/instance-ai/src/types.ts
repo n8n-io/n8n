@@ -738,6 +738,14 @@ export interface InstanceAiContext {
 	localGatewayStatus?: LocalGatewayStatus;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/** When set, credential/parameter setup actions auto-defer instead of suspending.
+	 *  Desktop-assistant runs are fire-and-forget with no surface to answer a setup
+	 *  prompt; suspending there would hang the run. See `DesktopAssistantProfile`. */
+	suppressInteractiveSetup?: boolean;
+	/** When set, `build-workflow` updates to existing workflows skip the HITL edit
+	 *  confirmation. Set for desktop-assistant edit runs, where the user already
+	 *  approved the exact changes in the task detail view. See `DesktopAssistantProfile`. */
+	workflowEditsPreApproved?: boolean;
 	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.
 	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
 	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */

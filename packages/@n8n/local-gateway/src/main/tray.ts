@@ -1,5 +1,5 @@
 import { logger } from '@n8n/computer-use/logger';
-import { app, Menu, nativeImage, Tray, type Rectangle } from 'electron';
+import { app, Menu, nativeImage, Tray } from 'electron';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -50,14 +50,13 @@ function getTrayIcon(status: DaemonStatus): Electron.NativeImage {
 }
 
 /**
- * Create the tray icon. Left-click toggles the main window anchored to the tray (the app's
- * primary surface); right-click offers a minimal Quit. On Linux, where the tray emits no
- * click/right-click events, an Open + Quit context menu provides the same actions. The icon
- * reflects connection status.
+ * Create the tray icon. Left-click opens (or focuses) the main window; right-click offers a
+ * minimal Quit. On Linux, where the tray emits no click/right-click events, an Open + Quit
+ * context menu provides the same actions. The icon reflects connection status.
  */
 export function createTray(
 	controller: DaemonController,
-	onToggle: (trayBounds: Rectangle) => void,
+	onOpen: () => void,
 	onQuit: () => void,
 	/** Extra context-menu entries, built per open so they can reflect current state. */
 	buildExtraMenuItems: () => Electron.MenuItemConstructorOptions[] = () => [],
@@ -65,7 +64,7 @@ export function createTray(
 	const tray = new Tray(getTrayIcon('disconnected'));
 	tray.setToolTip('n8n Assistant');
 
-	tray.on('click', () => onToggle(tray.getBounds()));
+	tray.on('click', () => onOpen());
 	tray.on('right-click', () => {
 		tray.popUpContextMenu(
 			Menu.buildFromTemplate([...buildExtraMenuItems(), { label: 'Quit', click: onQuit }]),
@@ -78,7 +77,7 @@ export function createTray(
 	if (process.platform === 'linux') {
 		tray.setContextMenu(
 			Menu.buildFromTemplate([
-				{ label: 'Open n8n Assistant', click: () => onToggle(tray.getBounds()) },
+				{ label: 'Open n8n Assistant', click: () => onOpen() },
 				{ type: 'separator' },
 				{ label: 'Quit', click: onQuit },
 			]),

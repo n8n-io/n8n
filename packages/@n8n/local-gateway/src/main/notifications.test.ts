@@ -53,13 +53,13 @@ describe('createPromptNotifier', () => {
 		notifications.instances = [];
 	});
 
-	function createNotifier({ visible = false } = {}) {
+	function createNotifier({ focused = false } = {}) {
 		const showWindow = vi.fn();
-		const notifier = createPromptNotifier({ isWindowVisible: () => visible, showWindow });
+		const notifier = createPromptNotifier({ isWindowFocused: () => focused, showWindow });
 		return { notifier, showWindow };
 	}
 
-	it('shows a notification for a local prompt while the window is hidden', () => {
+	it('shows a notification for a local prompt while the window is not focused', () => {
 		const { notifier, showWindow } = createNotifier();
 		notifier.notifyLocalPrompt(LOCAL_PROMPT);
 
@@ -72,8 +72,8 @@ describe('createPromptNotifier', () => {
 		expect(showWindow).toHaveBeenCalled();
 	});
 
-	it('does nothing while the window is visible', () => {
-		const { notifier } = createNotifier({ visible: true });
+	it('does nothing while the window is focused', () => {
+		const { notifier } = createNotifier({ focused: true });
 		notifier.notifyLocalPrompt(LOCAL_PROMPT);
 		notifier.notifyConfirmationRequest(CONFIRMATION);
 		expect(notifications.instances).toHaveLength(0);
@@ -99,5 +99,23 @@ describe('createPromptNotifier', () => {
 		const { notifier } = createNotifier();
 		notifier.notifyConfirmationRequest({ ...CONFIRMATION, requestId: 'req-2', message: '' });
 		expect(notifications.instances).toHaveLength(0);
+	});
+
+	it('shows a task result notification only while the window is not focused', () => {
+		const { notifier, showWindow } = createNotifier();
+		notifier.notifyTaskResult('Done: Sort screenshots', 'Want me to keep this?');
+
+		expect(notifications.instances).toHaveLength(1);
+		expect(notifications.instances[0].options).toMatchObject({
+			title: 'Done: Sort screenshots',
+			body: 'Want me to keep this?',
+		});
+
+		notifications.instances[0].handlers.get('click')?.();
+		expect(showWindow).toHaveBeenCalled();
+
+		const { notifier: focusedNotifier } = createNotifier({ focused: true });
+		focusedNotifier.notifyTaskResult('Done', 'body');
+		expect(notifications.instances).toHaveLength(1);
 	});
 });

@@ -6,22 +6,36 @@
  */
 import type { BuiltTool } from '@n8n/agents';
 
+import {
+	CHANNEL_PARAM_GUIDANCE,
+	PARAM_OPTIONS_COUNT_GUIDANCE,
+} from '../desktop-assistant/description-parts';
+import type { PatchableThreadMemory } from '../storage/thread-patch';
+import { createProposeTaskPlanTool } from '../tools/orchestration/propose-task-plan.tool';
 import { createReportDesktopTaskOutcomeTool } from '../tools/orchestration/report-desktop-task-outcome.tool';
+import { createReportPromoteOutcomeTool } from '../tools/orchestration/report-promote-outcome.tool';
 
 /**
  * Optional prompt-mode override used by the desktop-assistant entry points.
  *
  * - `desktop-assistant-one-shot` — ad-hoc task triggered from the desktop app.
- *   The orchestrator runs fire-and-forget: no follow-up questions, no
- *   conversational output, and every run ends with a single
+ *   Text output reaches the user, so the orchestrator executes clear requests
+ *   directly and asks back when clarification is needed. Requests implying a
+ *   non-manual trigger are not executed — the run ends with a single
+ *   `propose-task-plan` call (first and only tool call) the user configures
+ *   in the desktop app. Every attempted task ends with a
  *   `report-desktop-task-outcome` call — success when the task was done,
- *   failure (with a reason) when declining ambiguous, recurring/scheduled,
- *   or out-of-scope requests, or when the task failed.
- * - `desktop-assistant-promote` — compilation of an already-executed
- *   desktop-assistant thread into a real, editable workflow that replays
- *   the task. Same fire-and-forget rules apply, plus the orchestrator picks
- *   a short plain-text workflow name (the task icon is carried separately,
- *   on the workflow's `meta.desktopAssistant.icon`).
+ *   failure (with a reason) when it failed.
+ * - `desktop-assistant-promote` — compilation of a desktop-assistant thread
+ *   into a real, editable workflow: either a replay of an already-executed
+ *   task, or — when the thread holds a user-configured task plan instead —
+ *   a build grounded directly on that plan. Same fire-and-forget rules apply,
+ *   plus the orchestrator picks a short plain-text workflow name (the task
+ *   icon is carried separately, on the workflow's
+ *   `meta.desktopAssistant.icon`). Every run ends with
+ *   `report-promote-outcome` — the explicit completion signal the confirming
+ *   promote call settles from: success carries the workflow id to finalize,
+ *   failure a user-readable reason; ending without a report reads as failed.
  * - `desktop-assistant-edit` — targeted modification of an existing workflow
  *   from the desktop app's task detail view. Same fire-and-forget rules
  *   apply; the orchestrator must apply ONLY the listed changes and preserve
@@ -44,52 +58,104 @@ export interface DesktopAssistantProfile {
 	 * blind first (a burst of tool errors at run start).
 	 */
 	preloadGatewayTools: boolean;
+	/**
+	 * Auto-defer credential/parameter setup instead of suspending on it. Desktop
+	 * runs are fire-and-forget with no surface to answer a "configure
+	 * credentials" prompt — suspending there hangs the run. With this set, the
+	 * `workflows`/`credentials` setup actions skip the suspend and the workflow
+	 * is saved credential-less, surfacing in the desktop app's "Action needed".
+	 */
+	suppressInteractiveSetup: boolean;
+	/**
+	 * Skip the HITL "Edit <workflow>?" confirmation on `build-workflow` updates.
+	 * Edit-mode runs are launched from the task detail view after the user picked
+	 * the exact changes and pressed Done — that interaction is the approval, and
+	 * the run has no surface to answer a suspend (it would hang until timeout).
+	 */
+	preApproveWorkflowEdits: boolean;
 }
 
-/** Shared preamble: both desktop modes run headless, so text output is waste. */
+/** Shared preamble for the promote and edit modes, which run headless — text output is waste there. */
 const FIRE_AND_FORGET_RULES =
-	"This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, progress commentary, or summaries, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.";
+	"This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, or progress commentary, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.";
 
 const ONE_SHOT_PROMPT_SECTION = `
 ## Desktop Assistant — One-Shot Task
 
-${FIRE_AND_FORGET_RULES}
+This run was triggered from the n8n desktop assistant. Your text output is shown to the user, and they can reply on the same thread.
+
+### Decide first
+
+- Before ANY other tool call, classify the request. If it implies a non-manual trigger — a schedule or recurrence ("every Friday", "each morning", "weekly") or reacting to events ("when X happens", "whenever I get…", watching/polling a service for changes) — do NOT execute anything: call \`propose-task-plan\` as the first and only tool call of the run, then end the run. The user reviews and configures the plan in the desktop app.
+- In the plan's \`parts\`, every param MUST carry realistic alternatives in \`options\` (never repeating its current value) — the draft view renders each param as a dropdown, and a param without options is a dead control. Offer ${PARAM_OPTIONS_COUNT_GUIDANCE}.
+- ${CHANNEL_PARAM_GUIDANCE} For a channel param, offer alternative integrations you know n8n supports.
+- Everything else is a one-off task: execute it now per the rules below.
 
 ### Execution
 
-- Execute unambiguous, in-scope requests with the appropriate tools.
-- Stop without partial work when the request is ambiguous, too complex, needs context you do not have, or implies a recurring schedule or trigger ("every Friday", "when X happens"). Do not build a workflow — the user will open the editor.
+- When the request is clear, execute it with the appropriate tools right away — no preamble, no confirmation questions, no conversation around the work.
+- When the request is ambiguous or missing details you need, ask a short clarifying question instead of guessing; the user's answer arrives as the next message.
+- When the message is conversational rather than a task (a greeting, a question about your capabilities), just answer in text.
+- Never comment on tool calls or their output: no narration, progress commentary, or summaries of what a tool returned.
 
-### Ending the run (required)
+### Reporting the outcome
 
-- Every run MUST end with exactly one \`report-desktop-task-outcome\` call, as the final tool call — including when declining; it is how you stop.
+- A run ends with at most one of two tools, never both:
+  - \`propose-task-plan\` — non-manual-trigger requests only; it is the run's first and only tool call.
+  - \`report-desktop-task-outcome\` — whenever you attempted a task, as the final tool call.
 - Success: \`success: true\`, a plain-text \`title\` naming the task as a repeatable action (3–8 words, present tense, no emoji — \`"Sort desktop screenshots"\`, never \`"Sorted 12 screenshots"\`), a one-sentence \`summary\`, and an \`icon\` (a single emoji capturing the task).
-- Decline/failure: \`success: false\` plus \`title\`, \`summary\`, and a user-readable \`failureReason\`.
+- Deliverable: when the request asks for information — a summary, an answer to a question, extracted data — the outcome card is what the user sees and keeps, so the full deliverable MUST go in \`details\` as markdown; a deliverable not in \`details\` is lost. Keep it under ~300 words unless the request calls for more. Omit \`details\` when the result is an action on the system (files moved, message sent) rather than information.
+- Failure: \`success: false\` plus \`title\`, \`summary\`, and a user-readable \`failureReason\`.
+- If the task built and saved a workflow, include its id as \`workflowId\` so the instance can publish it.
+- Skip the report when you did not attempt a task — when you only asked a clarifying question or replied conversationally.
 `;
 
 const PROMOTE_PROMPT_SECTION = `
 ## Desktop Assistant — Promote To Workflow
 
-${FIRE_AND_FORGET_RULES} One exception in this mode: step 2 of the procedure requires exactly one line of text — the classification verdict. No other text.
+${FIRE_AND_FORGET_RULES}
 
-### Procedure
+### Goal
 
-This thread contains a task you already executed via device (computer-use) tool calls. Build exactly one workflow (via the workflow-builder skill) that fulfils the user's request every time it runs — **the request, not the artifacts of this particular run**. Follow these steps in order:
+This thread contains a task you already carried out on the user's machine via device (computer-use) tool calls. Build exactly one workflow (via the workflow-builder skill) that fulfils the user's request every time it runs. The request is the spec; the recorded run is evidence of how to do it once. The judgment call is which recorded values replay literally on every run and which the user expects to be different each time.
 
-1. **Classify before building.** Look at every value in the recorded tool arguments and ask where it came from. Values the user specified (or that follow mechanically from the request) are safe to replay literally. Content **you authored** because the request only named a *kind* of content is not — a future run must generate it fresh. If **any** value must be generated fresh, the whole task classifies as \`generate-fresh\`.
-2. **Output your verdict** as a single line of text immediately before building — \`replay: exact\` or \`replay: generate-fresh\`, plus a one-clause reason.
-3. **Build the matching shape:**
-   - \`replay: exact\` → Manual Trigger → one \`@n8n/n8n-nodes-langchain.computerUse\` node per recorded call, in order — \`tool\` resourceLocator (mode \`id\`) set to the tool name that was called, \`inputMode: json\`, \`jsonInput\` set to the literal arguments used.
-   - \`replay: generate-fresh\` → Manual Trigger → AI Agent node (prompted with the user's task) with \`@n8n/n8n-nodes-langchain.toolComputerUse\` attached as its tool, plus a chat model sub-node. Bind the chat model's credential per the credential rule below.
+### Building blocks
 
-Examples of the classification: "create a folder called Receipts on my desktop" — fully specified by the request; \`replay: exact\`. "Add an inspiring quote to my notes" — the request names a *kind* of content, not the content itself; \`replay: generate-fresh\`. "Write me a short bio and save it" — authored once as a fixed artifact the user keeps; \`replay: exact\` is fine.
+- A recorded action replays as a \`@n8n/n8n-nodes-langchain.computerUse\` node: \`tool\` resourceLocator (mode \`id\`) set to the recorded tool name, \`inputMode: json\`, \`jsonInput\` carrying the arguments. Only values that came from the request (or follow mechanically from it) are safe to replay literally.
+- Content that must be produced fresh each run comes from one Basic LLM Chain (\`@n8n/n8n-nodes-langchain.chainLlm\`) with a chat model sub-node, prompted to output only the content, feeding the action node(s) via an expression (e.g. \`{{ $json.text }}\`).
+- An AI Agent with \`@n8n/n8n-nodes-langchain.toolComputerUse\` attached (plus a chat model sub-node) is the shape of last resort, for tasks whose *actions* — not just content — depend on what the run finds. Tell-tale signal: a read/list/search call (\`get_file_tree\`, \`list_files\`, \`search_files\`, \`read_file\`, a screenshot) whose output drives the arguments of the calls after it — those values are a snapshot of one run, not a script. An agent picks its own steps and may repeat them, so whenever the action sequence is knowable in advance, build it as fixed nodes instead.
 
-Additional rules:
+Every build starts from a Manual Trigger.
 
-- **There is no credential-setup step after this build** — the workflow must be runnable exactly as saved. List the user's credentials (\`credentials(action="list")\`) and bind a concrete existing credential on every node that needs one, using \`newCredential('Name', 'id')\` with the real id — never the id-less form, which defers to a setup phase this surface does not have. When several credentials match, pick the most plausible one rather than leaving the node unbound. Only leave a credential unset when the user has none of a matching type (Computer Use nodes' \`deviceConnectionApi\` is filled in automatically in that case).
+### Examples
+
+- "Move the budget spreadsheet from my desktop into my Finance folder" — every value came from the user. Manual Trigger → the recorded computerUse call(s), arguments verbatim.
+- "Add a fun fact about the ocean to my facts file" — the request names a *kind* of content; the fact in the recorded run was authored on the spot, so each run needs a new one. Manual Trigger → Basic LLM Chain generating one fresh fact → the recorded computerUse save call, with the authored text in \`jsonInput\` replaced by \`{{ $json.text }}\`. One fact per run, no agent.
+- "Save a packing checklist for my trips into my documents" — authored content, but authored *once* as a fixed artifact the user keeps. Replaying the recorded calls verbatim is correct; regenerating would overwrite the thing they wanted kept.
+- "File whatever is in my screenshots folder into dated subfolders" — which files exist differs every run, so no fixed node sequence can express it. Manual Trigger → AI Agent prompted with the task, \`@n8n/n8n-nodes-langchain.toolComputerUse\` attached.
+
+### Plan-configured builds
+
+When the user message says the thread contains a configured task plan instead of an executed run, build one workflow directly from the configured description, treating its values as the user's final choices. Start from the trigger the description implies — a Schedule Trigger for time-based plans, the matching app trigger or a polling shape for event-driven ones — never a Manual Trigger. The same building blocks apply: generated content gets one LLM Chain step feeding fixed action node(s), not an agent.
+
+### Rules for every promote build
+
+These apply to replay builds and plan-configured builds alike, and override the workflow-builder skill where they conflict.
+
+- **There is no setup step after this build** — the saved workflow is final and must be runnable exactly as saved. The workflow-builder skill's placeholder guidance assumes a setup card collects values after the build; this surface has none, so a deferred value is a dead value the user sees as a broken parameter.
+- **Never use \`placeholder()\`.** Every node parameter must hold a real, runnable value. When a value needs to be looked up — a resource id, a coin/channel/board/spreadsheet id — research it now instead of deferring it: take it from the recorded run, resolve it via \`nodes(action="explore-resources")\` or the service's own search/list operation, or derive it from the request. When several candidates match, commit to the most plausible one. Only when a value genuinely cannot be determined should you stop and report failure naming the missing value — never save a workflow containing a placeholder.
+- **Bind a concrete credential on every node that needs one.** List the user's credentials (\`credentials(action="list")\`) and use \`newCredential('Name', 'id')\` with the real id — never the id-less form, which defers to a setup phase this surface does not have. When several credentials match, pick the most plausible one rather than leaving the node unbound. Only leave a credential unset when the user has none of a matching type (Computer Use nodes' \`deviceConnectionApi\` is filled in automatically in that case). When you do leave a credential unset, do NOT call the setup action — save the workflow as-is; it will surface in the desktop app for the user to connect the credential later.
+- **The task runs exactly once per execution.** n8n executes a node once per incoming item, so a node that emits several items makes every downstream action repeat — a "send one reminder" task would send N. Where an intermediate node can produce multiple items, collapse them to a single item before the action node(s) (an Aggregate node, or \`executeOnce: true\` on the action node), and never add loop shapes around the task itself.
 - The user's request in this thread may end with appended context lines (\`Currently looking at:\`, \`URL:\`, \`Path:\`, \`Selected text:\`). They capture what was on screen when the task ran — context, not requirements. Use them to disambiguate the request; do not bake them into the workflow unless the request itself depends on them.
 - Set the workflow \`name\` to a short plain-text label naming the task, not the run: 3–8 words, present tense (\`"Archive old downloads"\`), never a past-tense report (\`"Archived 12 files"\`). If the user's prompt provided a name, use it (correcting tense if needed).
 - If the original intent is ambiguous or requires context you do not have, stop without producing a workflow — no low-quality stubs.
+
+### Ending the run (required)
+
+- Every promote run MUST end with exactly one \`report-promote-outcome\` call, as the run's FINAL tool call. It is the promote's completion signal: a run that ends without it is reported to the user as failed without explanation.
+- Before reporting success, inspect the saved workflow with \`workflows(action="get-json")\`: any \`<__PLACEHOLDER_VALUE__...__>\` marker in a parameter, or a credential-requiring node left unbound while a matching credential exists, means the build is NOT done — fix the workflow first, researching the real value if needed.
+- \`success: true\` plus \`workflowId\` — only when the workflow was saved successfully and works (verification passed where verification was possible). Report the main workflow only, never a supporting workflow.
+- \`success: false\` plus a user-readable \`failureReason\` — everything else, including declining an ambiguous request or giving up on a build that will not verify. Say what blocked the build and what would unblock it.
 `;
 
 const EDIT_PROMPT_SECTION = `
@@ -108,22 +174,48 @@ ${FIRE_AND_FORGET_RULES}
 - If a listed change cannot be applied faithfully, stop without modifying the workflow. A partial or speculative edit is worse than no edit.
 `;
 
-/** Resolve the desktop-assistant profile for a run. */
+/** Resolve the desktop-assistant profile for a run. `deps.memory` lets the
+ *  one-shot plan-proposal tool persist the plan on thread metadata; callers
+ *  that only read `promptSection` can omit it. */
 export function getDesktopAssistantProfile(
 	promptMode: DesktopAssistantPromptMode | undefined,
+	deps: { memory?: PatchableThreadMemory } = {},
 ): DesktopAssistantProfile {
 	switch (promptMode) {
 		case 'desktop-assistant-one-shot':
 			return {
 				promptSection: ONE_SHOT_PROMPT_SECTION,
-				extraTools: [createReportDesktopTaskOutcomeTool()],
+				extraTools: [
+					createReportDesktopTaskOutcomeTool(),
+					createProposeTaskPlanTool({ memory: deps.memory }),
+				],
 				preloadGatewayTools: true,
+				suppressInteractiveSetup: true,
+				preApproveWorkflowEdits: false,
 			};
 		case 'desktop-assistant-promote':
-			return { promptSection: PROMOTE_PROMPT_SECTION, extraTools: [], preloadGatewayTools: false };
+			return {
+				promptSection: PROMOTE_PROMPT_SECTION,
+				extraTools: [createReportPromoteOutcomeTool({ memory: deps.memory })],
+				preloadGatewayTools: false,
+				suppressInteractiveSetup: true,
+				preApproveWorkflowEdits: false,
+			};
 		case 'desktop-assistant-edit':
-			return { promptSection: EDIT_PROMPT_SECTION, extraTools: [], preloadGatewayTools: false };
+			return {
+				promptSection: EDIT_PROMPT_SECTION,
+				extraTools: [],
+				preloadGatewayTools: false,
+				suppressInteractiveSetup: true,
+				preApproveWorkflowEdits: true,
+			};
 		case undefined:
-			return { promptSection: '', extraTools: [], preloadGatewayTools: false };
+			return {
+				promptSection: '',
+				extraTools: [],
+				preloadGatewayTools: false,
+				suppressInteractiveSetup: false,
+				preApproveWorkflowEdits: false,
+			};
 	}
 }

@@ -33,6 +33,7 @@ export interface ConnectPayload {
 import type {
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
+	DesktopAssistantDescriptionPart,
 	DesktopAssistantHistoryResponse,
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantRecommendationsResponse,
@@ -73,6 +74,7 @@ export type {
 	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantDescriptionPart,
 	DesktopAssistantTaskDetailResponse,
+	DesktopAssistantTaskPlan,
 	InstanceAiEvent,
 	InstanceAiRichMessagesResponse,
 	InstanceAiToolCallState,
@@ -91,6 +93,9 @@ export type {
 	ScreenshotAttachment,
 	WindowCaptureTarget,
 } from '@n8n/computer-use/context';
+
+/** Cap on a free-typed param value, matching the server-side schema limit. */
+export const PART_VALUE_MAX_LENGTH = 500;
 
 /** Cursor + page-size params for the history list. */
 export interface DesktopAssistantHistoryParams {
@@ -147,19 +152,39 @@ export interface CreateAssistantTaskResult {
 	error?: string;
 }
 
-/**
- * Result of asking the instance to promote a thread into a saved workflow.
- * Idempotent: `building` while the build runs, `done` (with `workflowId`)
- * once a promote has produced the workflow.
- */
-export interface PromoteAssistantThreadResult {
+/** Result of ensuring a fresh Instance AI chat thread for the desktop chat view. */
+export interface CreateChatThreadResult {
 	ok: boolean;
-	status?: 'building' | 'done';
-	/** The build run to watch, set while `status === 'building'`. */
-	runId?: string;
-	workflowId?: string;
+	threadId?: string;
 	error?: string;
 }
+
+/**
+ * Extras the draft-flow promote carries: the user-configured plan parts that
+ * ground the build, and the minutes-saved estimate stored on the workflow.
+ * Threaded through to `POST /desktop-assistant/promote-thread` verbatim.
+ */
+export interface PromoteAssistantThreadOptions {
+	configuredParts?: DesktopAssistantDescriptionPart[];
+	estimatedMinutesSaved?: number;
+}
+
+/**
+ * Result of asking the instance to promote a thread into a saved workflow.
+ * Idempotent: `building` (with the run to watch) while the build runs, `done`
+ * (with `workflowId`) once a promote has produced the workflow, `failed` when
+ * the build run ended without reporting a working workflow.
+ */
+export type PromoteAssistantThreadResult =
+	| { ok: false; error: string }
+	| { ok: true; status: 'building'; runId: string }
+	| { ok: true; status: 'done'; workflowId: string }
+	| {
+			ok: true;
+			status: 'failed';
+			/** The run's self-reported, user-readable failure reason, when it filed one. */
+			reason?: string;
+	  };
 
 /** Grant state of a single macOS permission; `unknown` covers not-determined / non-macOS. */
 export type MacPermissionState = 'granted' | 'denied' | 'unknown';
@@ -205,13 +230,16 @@ export interface ElectronApi {
 	runTask: (workflowId: string) => Promise<RunTaskResult>;
 	/** Start a one-shot assistant task run with the prompt + detected context. */
 	createAssistantTask: (body: DesktopAssistantTaskRequest) => Promise<CreateAssistantTaskResult>;
+	/** Ensure a fresh Instance AI chat thread (in the personal project); returns its id. */
+	createChatThread: () => Promise<CreateChatThreadResult>;
 	promoteAssistantThread: (
 		threadId: string,
 		name?: string,
 		icon?: string,
+		options?: PromoteAssistantThreadOptions,
 	) => Promise<PromoteAssistantThreadResult>;
 	openWorkflow: (workflowId: string) => Promise<void>;
-	/** The task detail view's segmented description (LLM-generated, cached server-side). */
+	/** The task detail view's segmented description (stored on the workflow at creation). */
 	getTaskDetail: (workflowId: string) => Promise<DesktopAssistantTaskDetailResponse>;
 	/** Apply chip edits to the workflow via an Instance AI run; follow it over `onThreadEvent`. */
 	applyTaskEdits: (
@@ -222,6 +250,8 @@ export interface ElectronApi {
 	deleteTask: (workflowId: string) => Promise<{ ok: boolean; error?: string }>;
 	/** Open the task's workflow with the Set up panel pre-opened in the browser (Connect CTA). */
 	openWorkflowSetup: (workflowId: string) => Promise<void>;
+	/** Open a specific Instance AI thread in the browser (e.g. to finish a credential setup there). */
+	openThread: (threadId: string) => Promise<void>;
 	getHistory: (params?: DesktopAssistantHistoryParams) => Promise<DesktopAssistantHistoryResponse>;
 	openExecution: (workflowId: string, executionId: string) => Promise<void>;
 	getTimeSaved: () => Promise<DesktopAssistantTimeSaved>;
@@ -241,6 +271,8 @@ export interface ElectronApi {
 	listenToThread: (threadId: string, lastEventId?: number) => Promise<void>;
 	/** Close the thread's SSE event stream. */
 	unlistenToThread: (threadId: string) => Promise<void>;
+	/** Stop the thread's active run on the instance; it finishes with a `cancelled` run-finish event. */
+	cancelThreadRun: (threadId: string) => Promise<{ ok: boolean; error?: string }>;
 	/**
 	 * Subscribe to events from all open thread streams. Returns a disposer to
 	 * unsubscribe. Fan-out per thread is the renderer ThreadClient's job.
@@ -272,6 +304,8 @@ export interface ElectronApi {
 	getMacPermissions: () => Promise<MacPermissionStatus>;
 	/** Open the System Settings pane to grant a macOS permission. */
 	openMacPermissionSettings: (kind: MacPermissionKind) => Promise<void>;
+	/** Show a system notification for a resolved task run when the window is hidden; clicking it shows the window. */
+	notifyTaskResult: (title: string, body: string) => Promise<void>;
 	/** Local resource-access prompts still pending in the main process (renderer-reload resync). */
 	listPermissionPrompts: () => Promise<LocalPermissionPromptRequest[]>;
 	/** Answer a local resource-access prompt; `ok: false` when the prompt is unknown (already resolved). */

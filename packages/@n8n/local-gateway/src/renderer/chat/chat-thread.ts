@@ -17,11 +17,24 @@ interface RunInfo {
 	 * only be a replay (caller-supplied cursor) and must not mutate the message again.
 	 */
 	replayOnly?: boolean;
+	/**
+	 * Whether we're mid-text-block. A model turn emits text in separate blocks
+	 * (text → tool call → more text); the deltas within a block concatenate
+	 * seamlessly, but block boundaries (a tool call or reasoning between them)
+	 * need a paragraph break, or sentences run together ("…model.Workflow…").
+	 */
+	textOpen?: boolean;
 }
 
 export interface ChatThreadState {
 	/** Append a locally-sent user message (optimistic — the server stores it on post). */
 	addUserMessage(text: string): void;
+	/**
+	 * Route a run's upcoming `text-delta`s into the transcript. Needed for runs whose
+	 * `run-start` predates this listener (e.g. a suspended run resumed by answering its
+	 * confirmation from the chat). The message is created lazily on the first delta.
+	 */
+	registerRun(runId: string, rootAgentId: string): void;
 	/** Fold one SSE event into the messages array. */
 	apply(event: InstanceAiEvent): void;
 }
@@ -69,7 +82,14 @@ export function createChatThreadState(
 		const rootAgentId = message.agentTree?.agentId;
 		if (!rootAgentId) continue;
 		for (const runId of message.runIds ?? (message.runId ? [message.runId] : [])) {
-			runs.set(runId, { messageId: message.id, rootAgentId, replayOnly: !message.isStreaming });
+			// A live snapshot message's next delta continues its in-flight text block,
+			// so start mid-block (no spurious paragraph break before the resumed text).
+			runs.set(runId, {
+				messageId: message.id,
+				rootAgentId,
+				replayOnly: !message.isStreaming,
+				textOpen: true,
+			});
 		}
 	}
 
@@ -78,6 +98,11 @@ export function createChatThreadState(
 	return {
 		addUserMessage(text: string) {
 			messages.push({ id: crypto.randomUUID(), role: 'user', content: text, isStreaming: false });
+		},
+
+		registerRun(runId: string, rootAgentId: string) {
+			if (runs.has(runId)) return;
+			runs.set(runId, { messageId: '', rootAgentId });
 		},
 
 		apply(event: InstanceAiEvent) {
@@ -100,14 +125,42 @@ export function createChatThreadState(
 					} else {
 						message.isStreaming = true;
 					}
-					runs.set(event.runId, { messageId: message.id, rootAgentId: event.agentId });
+					runs.set(event.runId, {
+						messageId: message.id,
+						rootAgentId: event.agentId,
+						textOpen: false,
+					});
 					break;
 				}
 				case 'text-delta': {
 					const run = runs.get(event.runId);
 					if (!run || run.replayOnly || run.rootAgentId !== event.agentId) break;
-					const message = findMessage(run.messageId);
-					if (message) message.content += event.payload.text;
+					let message = findMessage(run.messageId);
+					if (!message) {
+						// Run registered without a message (registerRun) — create it on first text.
+						message = { id: event.runId, role: 'assistant', content: '', isStreaming: true };
+						messages.push(message);
+						run.messageId = message.id;
+					}
+					// Starting a new text block after a tool call / reasoning — separate it
+					// from the previous block with a paragraph break so sentences across
+					// blocks don't run together.
+					if (!run.textOpen && message.content.length > 0) {
+						message.content = `${message.content.replace(/\s+$/, '')}\n\n`;
+					}
+					message.content += event.payload.text;
+					run.textOpen = true;
+					break;
+				}
+				case 'tool-call':
+				case 'reasoning-delta': {
+					// A non-text event from the orchestrator closes the current text block;
+					// the next text-delta starts a fresh paragraph. (Sub-agent events carry a
+					// different agentId and are ignored — only the rendered run's text matters.)
+					const run = runs.get(event.runId);
+					if (run && !run.replayOnly && run.rootAgentId === event.agentId) {
+						run.textOpen = false;
+					}
 					break;
 				}
 				case 'run-finish': {

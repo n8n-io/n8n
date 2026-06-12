@@ -151,14 +151,14 @@ describe('GatewayClient.checkPermissions', () => {
 			expect(session.alwaysAllow).not.toHaveBeenCalled();
 		});
 
-		it('allowForSession — allows the specific resource for the session', async () => {
+		it('allowForSession — allows the whole tool group for the session', async () => {
 			const session = makeSession();
 			const confirmResourceAccess = vi.fn().mockResolvedValue('allowForSession');
 			const client = makeClient(session, confirmResourceAccess);
 
 			await client['dispatchToolCall']('test_tool', {});
 
-			expect(session.allowForSession).toHaveBeenCalledWith('shell', 'npm install');
+			expect(session.allowForSession).toHaveBeenCalledWith('shell');
 			expect(session.setPermissions).not.toHaveBeenCalled();
 		});
 
@@ -253,7 +253,7 @@ describe('GatewayClient.checkPermissions', () => {
 			// Simulate the agent sending back _confirmation=allowForSession
 			await client['dispatchToolCall']('test_tool', { _confirmation: 'allowForSession' });
 
-			expect(session.allowForSession).toHaveBeenCalledWith('shell', 'npm install');
+			expect(session.allowForSession).toHaveBeenCalledWith('shell');
 			expect(confirmResourceAccess).not.toHaveBeenCalled();
 		});
 	});

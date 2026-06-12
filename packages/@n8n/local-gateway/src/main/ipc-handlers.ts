@@ -12,6 +12,7 @@ import type { DaemonController } from './daemon-controller';
 import { InstanceApiError, type InstanceApi } from './instance-api';
 import type { LocalInstanceManager } from './local-instance/local-instance-manager';
 import { getMacPermissionStatus, openMacPermissionSettings } from './mac-permissions';
+import type { PromptNotifier } from './notifications';
 import type { OAuthFlow } from './oauth/oauth-flow';
 import type { PermissionBroker } from './permission-broker';
 import type { AppSettings, SettingsStore } from './settings-store';
@@ -20,6 +21,7 @@ import type {
 	AuthStatus,
 	ConfirmThreadResult,
 	CreateAssistantTaskResult,
+	CreateChatThreadResult,
 	DesktopAssistantApplyEditsRequest,
 	DesktopAssistantApplyEditsResponse,
 	DesktopAssistantHistoryParams,
@@ -36,6 +38,7 @@ import type {
 	LocalPermissionPromptRequest,
 	MacPermissionKind,
 	MacPermissionStatus,
+	PromoteAssistantThreadOptions,
 	PromoteAssistantThreadResult,
 	RunTaskResult,
 	ScreenshotAttachment,
@@ -54,6 +57,7 @@ export interface IpcHandlerDeps {
 	/** Present only in the local build variant; `null` in the remote-only build. */
 	localInstanceManager: LocalInstanceManager | null;
 	permissionBroker: PermissionBroker;
+	promptNotifier: PromptNotifier;
 	/**
 	 * Re-establishes the gateway connection with the current settings (no-op when
 	 * signed out). Fire-and-forget — failures surface via daemon status events.
@@ -137,6 +141,7 @@ export function registerIpcHandlers({
 	contextDetector,
 	localInstanceManager,
 	permissionBroker,
+	promptNotifier,
 	reconnectGateway,
 	openExternal,
 }: IpcHandlerDeps): void {
@@ -272,6 +277,18 @@ export function registerIpcHandlers({
 		},
 	);
 
+	ipcMain.handle('assistant:createChatThread', async (): Promise<CreateChatThreadResult> => {
+		logger.debug('IPC assistant:createChatThread');
+		try {
+			const { threadId } = await instanceApi.createChatThread();
+			return { ok: true, threadId };
+		} catch (error) {
+			const message = ipcErrorMessage(error);
+			logger.error('IPC assistant:createChatThread failed', { error: message });
+			return { ok: false, error: message };
+		}
+	});
+
 	ipcMain.handle(
 		'assistant:promote',
 		async (
@@ -279,16 +296,19 @@ export function registerIpcHandlers({
 			threadId: string,
 			name?: string,
 			icon?: string,
+			options?: PromoteAssistantThreadOptions,
 		): Promise<PromoteAssistantThreadResult> => {
 			logger.debug('IPC assistant:promote', { threadId });
 			try {
-				const result = await instanceApi.promoteThread(threadId, name, icon);
-				return {
-					ok: true,
-					status: result.status,
-					runId: result.status === 'building' ? result.runId : undefined,
-					workflowId: result.status === 'done' ? result.workflowId : undefined,
-				};
+				const result = await instanceApi.promoteThread(threadId, name, icon, options);
+				switch (result.status) {
+					case 'building':
+						return { ok: true, status: 'building', runId: result.runId };
+					case 'done':
+						return { ok: true, status: 'done', workflowId: result.workflowId };
+					case 'failed':
+						return { ok: true, status: 'failed', reason: result.reason };
+				}
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
 				logger.error('IPC assistant:promote failed', { threadId, error: message });
@@ -341,6 +361,12 @@ export function registerIpcHandlers({
 	ipcMain.handle('tasks:openWorkflowSetup', async (_event, workflowId: string): Promise<void> => {
 		logger.debug('IPC tasks:openWorkflowSetup', { workflowId });
 		const url = instanceApi.workflowSetupUrl(workflowId);
+		if (url) await openExternal(url);
+	});
+
+	ipcMain.handle('assistant:openThread', async (_event, threadId: string): Promise<void> => {
+		logger.debug('IPC assistant:openThread', { threadId });
+		const url = instanceApi.threadUrl(threadId);
 		if (url) await openExternal(url);
 	});
 
@@ -418,6 +444,21 @@ export function registerIpcHandlers({
 	});
 
 	ipcMain.handle(
+		'thread:cancel',
+		async (_event, threadId: string): Promise<{ ok: boolean; error?: string }> => {
+			logger.debug('IPC thread:cancel', { threadId });
+			try {
+				await instanceApi.cancelRun(threadId);
+				return { ok: true };
+			} catch (error) {
+				const message = ipcErrorMessage(error);
+				logger.error('IPC thread:cancel failed', { threadId, error: message });
+				return { ok: false, error: message };
+			}
+		},
+	);
+
+	ipcMain.handle(
 		'thread:confirm',
 		async (
 			_event,
@@ -444,6 +485,11 @@ export function registerIpcHandlers({
 			}
 		},
 	);
+
+	ipcMain.handle('notifications:taskResult', (_event, title: string, body: string): void => {
+		logger.debug('IPC notifications:taskResult', { title });
+		promptNotifier.notifyTaskResult(String(title), String(body));
+	});
 
 	ipcMain.handle('permissionPrompt:list', (): LocalPermissionPromptRequest[] => {
 		logger.debug('IPC permissionPrompt:list');
