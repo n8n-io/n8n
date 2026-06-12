@@ -272,10 +272,11 @@ export const workflowBuildOutcomeSchema = z.object({
 	nodeSimulationPlan: z.array(nodeSimulationVerdictSchema).optional(),
 	/**
 	 * LLM-generated mock output for `simulate`-verdict nodes, keyed by node
-	 * name. Becomes per-execution pin data during verification. Sidecar —
-	 * never persisted to the workflow.
+	 * name. Items are plain objects (no `{json}` envelope) — the shape
+	 * `executionService.run` expects for pin data. Becomes per-execution pin
+	 * data during verification. Sidecar — never persisted to the workflow.
 	 */
-	simulationFixtures: z.record(z.array(z.object({ json: z.record(z.unknown()) }))).optional(),
+	simulationFixtures: z.record(z.array(z.record(z.unknown()))).optional(),
 	/** Draft sub-workflows created by the builder that must publish before the main workflow. */
 	supportingWorkflowIds: z.array(z.string()).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */

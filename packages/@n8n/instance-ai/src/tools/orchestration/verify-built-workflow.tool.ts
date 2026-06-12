@@ -117,9 +117,6 @@ function buildNodePreviews(
  * the marker channel was retired). A `simulate`-verdict node without a
  * fixture is still pinned (with an empty item) — losing output realism is
  * acceptable, executing a destructive operation is not.
- *
- * Items are returned UNWRAPPED (plain objects, not `{json: ...}`): the
- * adapter's `sdkPinDataToRuntime` wraps every item in `{json}` itself.
  */
 function buildVerificationPinData(buildOutcome: WorkflowBuildOutcome): {
 	pinData: Record<string, unknown[]> | undefined;
@@ -133,7 +130,7 @@ function buildVerificationPinData(buildOutcome: WorkflowBuildOutcome): {
 		if (verdict.verdict !== 'simulate') continue;
 		simulatedNodes.push({ nodeName: verdict.nodeName, reason: verdict.reason });
 		const items = fixtures[verdict.nodeName];
-		merged[verdict.nodeName] = items?.length ? items.map((item) => item.json) : [{}];
+		merged[verdict.nodeName] = items?.length ? items : [{}];
 	}
 
 	return {

@@ -79,7 +79,7 @@ describe('generateSimulationFixtures', () => {
 			plan: [simulateVerdict('Send Slack'), executeVerdict('Get Rows')],
 		});
 		expect(Object.keys(result)).toEqual(['Send Slack']);
-		expect(result['Send Slack'][0].json).toMatchObject({ ok: true });
+		expect(result['Send Slack'][0]).toMatchObject({ ok: true });
 	});
 
 	it('fills empty fixtures for nodes the LLM omitted', async () => {
@@ -91,8 +91,8 @@ describe('generateSimulationFixtures', () => {
 			]),
 			plan: [simulateVerdict('A'), simulateVerdict('B')],
 		});
-		expect(result.A).toEqual([{ json: { id: 1 } }]);
-		expect(result.B).toEqual([{ json: {} }]);
+		expect(result.A).toEqual([{ id: 1 }]);
+		expect(result.B).toEqual([{}]);
 	});
 
 	it('returns empty fixtures for every node on malformed LLM output', async () => {
@@ -101,7 +101,7 @@ describe('generateSimulationFixtures', () => {
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 		});
-		expect(result).toEqual({ A: [{ json: {} }] });
+		expect(result).toEqual({ A: [{}] });
 	});
 
 	it('returns empty fixtures for every node when the LLM call throws', async () => {
@@ -113,7 +113,7 @@ describe('generateSimulationFixtures', () => {
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 		});
-		expect(result).toEqual({ A: [{ json: {} }] });
+		expect(result).toEqual({ A: [{}] });
 	});
 
 	it('strips markdown fences around the JSON output', async () => {
@@ -122,7 +122,7 @@ describe('generateSimulationFixtures', () => {
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 		});
-		expect(result.A).toEqual([{ json: { ok: true } }]);
+		expect(result.A).toEqual([{ ok: true }]);
 	});
 
 	it('includes upstream context in the prompt for user-action nodes', async () => {

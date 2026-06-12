@@ -831,7 +831,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 			makeBuildOutcome({
 				verificationPinData: { Gmail: [{ _mockedCredential: 'gmailOAuth2' }] },
 				nodeSimulationPlan: [simulateVerdict('Send Slack'), executeVerdict('Get Rows')],
-				simulationFixtures: { 'Send Slack': [{ json: { ok: true, ts: '1718000000.1' } }] },
+				simulationFixtures: { 'Send Slack': [{ ok: true, ts: '1718000000.1' }] },
 			}),
 			{ executionId: 'exec-sim', status: 'success', data: {} },
 		);
@@ -883,7 +883,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		const { ctx } = makeContext(
 			makeBuildOutcome({
 				nodeSimulationPlan: [simulateVerdict('Send Slack', 'Sends a message to a Slack channel')],
-				simulationFixtures: { 'Send Slack': [{ json: { ok: true } }] },
+				simulationFixtures: { 'Send Slack': [{ ok: true }] },
 			}),
 			{
 				executionId: 'exec-sim',
@@ -957,9 +957,9 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 					simulateVerdict('Mark Order Fulfilled', 'Updates a row'),
 				],
 				simulationFixtures: {
-					'Wait 2 Hours': [{ json: {} }],
-					'Send Follow-up Email': [{ json: { id: 'msg-1' } }],
-					'Mark Order Fulfilled': [{ json: { id: 1 } }],
+					'Wait 2 Hours': [{}],
+					'Send Follow-up Email': [{ id: 'msg-1' }],
+					'Mark Order Fulfilled': [{ id: 1 }],
 				},
 			}),
 			{
@@ -1021,7 +1021,7 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 				nodeSimulationPlan: [simulateVerdict('Insert Lead', 'Inserts a row')],
 				// Fabricated fixture ID that collides with a real row — must never
 				// reach a delete call.
-				simulationFixtures: { 'Insert Lead': [{ json: { id: 3 } }] },
+				simulationFixtures: { 'Insert Lead': [{ id: 3 }] },
 			}),
 			{
 				executionId: 'exec-sim',

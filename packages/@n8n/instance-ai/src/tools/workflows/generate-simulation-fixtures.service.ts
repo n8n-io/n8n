@@ -8,7 +8,7 @@
  * never written to the workflow.
  *
  * Fallback posture: fixture generation is best-effort. On any failure every
- * simulated node gets `[{ json: {} }]` — verification stays safe (the node
+ * simulated node gets a single empty item — verification stays safe (the node
  * still never executes), downstream data coverage degrades.
  */
 
@@ -18,7 +18,13 @@ import { z } from 'zod';
 import { createEvalAgent, extractText, HAIKU_MODEL } from '../../utils/eval-agents';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
 
-export type SimulationFixtures = Record<string, Array<{ json: Record<string, unknown> }>>;
+/**
+ * Fixture items per node name, stored UNWRAPPED (plain objects, not n8n's
+ * `{json: ...}` envelope) — the same shape `executionService.run` expects for
+ * pin data, so they flow to the verification run without conversion. Only the
+ * LLM prompt/response uses the `{json}` envelope; it is unwrapped here.
+ */
+export type SimulationFixtures = Record<string, Array<Record<string, unknown>>>;
 
 export interface GenerateSimulationFixturesInput {
 	workflow: WorkflowJSON;
@@ -125,13 +131,13 @@ function stripMarkdownFences(text: string): string {
 }
 
 function emptyFixtures(nodeNames: string[]): SimulationFixtures {
-	return Object.fromEntries(nodeNames.map((name) => [name, [{ json: {} }]]));
+	return Object.fromEntries(nodeNames.map((name) => [name, [{}]]));
 }
 
 /**
  * Generate one fixture per `simulate`-verdict node. Always returns an entry
- * for every simulated node — LLM output is used when valid, `[{ json: {} }]`
- * otherwise.
+ * for every simulated node — LLM output is used when valid, a single empty
+ * item otherwise.
  */
 export async function generateSimulationFixtures(
 	input: GenerateSimulationFixturesInput,
@@ -183,7 +189,7 @@ export async function generateSimulationFixtures(
 
 		const fixtures: SimulationFixtures = {};
 		for (const name of nodeNames) {
-			fixtures[name] = validated.data[name] ?? [{ json: {} }];
+			fixtures[name] = validated.data[name]?.map((item) => item.json) ?? [{}];
 		}
 		return fixtures;
 	} catch {
