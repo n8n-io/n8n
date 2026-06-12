@@ -6,6 +6,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import ComposerField from './ComposerField.vue';
 import ContextPill from './ContextPill.vue';
 import MiniSpinner from './MiniSpinner.vue';
+import StatusCycleText from './StatusCycleText.vue';
 
 import { suggestionChipsFor } from '../assistant/contexts';
 import { watchAssistantRun } from '../assistant/run-watcher';
@@ -248,11 +249,7 @@ defineExpose({ submit });
 				<!-- Thinking/Doing pill -->
 				<div v-if="busy" :class="$style.statusPill">
 					<MiniSpinner aria-hidden="true" />
-					<span>{{
-						state === 'doing'
-							? i18n.baseText('desktopAssistant.composer.working')
-							: i18n.baseText('desktopAssistant.composer.thinking')
-					}}</span>
+					<StatusCycleText lead-key="desktopAssistant.composer.thinking" />
 				</div>
 			</div>
 

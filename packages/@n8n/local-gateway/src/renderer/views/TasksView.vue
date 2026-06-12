@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import MiniSpinner from '../components/MiniSpinner.vue';
+import StatusCycleText from '../components/StatusCycleText.vue';
 import RecommendationCard from '../components/RecommendationCard.vue';
 import TaskCard from '../components/TaskCard.vue';
 
@@ -155,11 +156,13 @@ onBeforeUnmount(() => {
 							{ [$style.pendingSubtitleFailed]: entry.status === 'failed' },
 						]"
 					>
-						{{
-							entry.status === 'building'
-								? i18n.baseText('desktopAssistant.tasks.settingUp')
-								: (entry.error ?? i18n.baseText('desktopAssistant.tasks.setupFailed'))
-						}}
+						<StatusCycleText
+							v-if="entry.status === 'building'"
+							lead-key="desktopAssistant.tasks.settingUp"
+						/>
+						<template v-else>{{
+							entry.error ?? i18n.baseText('desktopAssistant.tasks.setupFailed')
+						}}</template>
 					</span>
 				</span>
 				<button
