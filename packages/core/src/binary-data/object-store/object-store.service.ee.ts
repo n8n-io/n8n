@@ -15,6 +15,7 @@ import {
 	ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { Logger } from '@n8n/backend-common';
+import { streamToBuffer } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
@@ -24,7 +25,7 @@ import { PassThrough, Readable, pipeline } from 'node:stream';
 import { ObjectStoreConfig } from './object-store.config';
 import type { MetadataResponseHeaders } from './types';
 import type { BinaryData } from '../types';
-import { createFixedSizeChunker, streamToBuffer } from '../utils';
+import { createFixedSizeChunker } from '../utils';
 
 @Service()
 export class ObjectStoreService {

@@ -2232,10 +2232,20 @@ export type EngineResponse<T = unknown> = {
 };
 
 /**
+ * Tag identifying `Node` subclasses. `Symbol.for` interns into the global symbol
+ * registry, so every copy of `n8n-workflow` loaded in the same process resolves the identical
+ * symbol, regardless of the dependency tree layout.
+ */
+const NODE_CLASS_TAG: unique symbol = Symbol.for('n8n.workflow.NodeClass');
+
+/**
  * This class serves as the base for all nodes using the new context API
  * having this as a class enables us to identify these instances at runtime
  */
 export abstract class Node {
+	get [NODE_CLASS_TAG](): true {
+		return true;
+	}
 	abstract description: INodeTypeDescription;
 	execute?(
 		context: IExecuteFunctions,
@@ -2243,6 +2253,15 @@ export abstract class Node {
 	): Promise<INodeExecutionData[][] | EngineRequest>;
 	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
 	poll?(context: IPollFunctions): Promise<INodeExecutionData[][] | null>;
+}
+
+/**
+ * Returns `true` when `nodeType` is an instance of a `Node` subclass (a node using the new
+ * context API). Prefer this over `nodeType instanceof Node` at runtime: it survives
+ * `n8n-workflow` module duplication, which breaks `instanceof`.
+ */
+export function isNodeClassInstance(nodeType: unknown): nodeType is Node {
+	return typeof nodeType === 'object' && nodeType !== null && NODE_CLASS_TAG in nodeType;
 }
 
 export interface IVersionedNodeType {
@@ -2978,6 +2997,15 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
+	 * Error from a sub-workflow that finished with an error while its parent was
+	 * waiting for it. Written onto the parent's Execute Workflow stack entry by
+	 * `updateParentExecutionWithChildResults` (packages/cli) and consumed on resume
+	 * by `WorkflowExecute.runNode`, which fails the node with this error (honoring
+	 * its `onError` setting) instead of letting it pass its input through.
+	 */
+	resumeError?: ExecutionError;
+
+	/**
 	 * AI model token usage captured from vendor node API responses before the simplify step
 	 * strips it. Used by telemetry to populate ai_input_tokens / ai_output_tokens in node_graph_string.
 	 */
@@ -3016,6 +3044,14 @@ export interface ITaskData extends ITaskStartedData {
 	metadata?: ITaskMetadata;
 	/** True when at least one credential used by this node was resolved dynamically */
 	usedDynamicCredentials?: boolean;
+	/**
+	 * True when this node attempted to resolve at least one private (resolvable)
+	 * credential, regardless of whether resolution succeeded. Unlike
+	 * `usedDynamicCredentials` (set only on success and consumed by the redaction
+	 * layer), this is a superset used purely for telemetry: it also captures
+	 * failed attempts (e.g. the running user has not connected the credential).
+	 */
+	attemptedDynamicCredentials?: boolean;
 }
 
 export interface ISourceData {
@@ -3323,6 +3359,14 @@ export interface IWorkflowExecuteAdditionalData {
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
 	/**
+	 * Mutable flag set to true during a node's execution when it attempts to resolve a
+	 * private (resolvable) credential, set before resolution is attempted so it is
+	 * recorded even when resolution throws (e.g. the user has not connected the
+	 * credential). Reset to false by the execution engine before each node runs.
+	 * Telemetry-only; the redaction layer relies on `currentNodeUsedDynamicCredentials`.
+	 */
+	currentNodeAttemptedDynamicCredentials?: boolean;
+	/**
 	 * The n8n user a dynamically-resolved private credential belongs to, set during
 	 * credential resolution when the resolver maps the execution's identity to an n8n
 	 * user. Execution-scoped (one identity per execution), so it is not reset per node.
@@ -3600,6 +3644,7 @@ export interface ExecutionSummary {
 	workflowId: string;
 	workflowName?: string;
 	workflowVersionId?: string | null;
+	jsonSizeBytes?: number;
 	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;

@@ -2,6 +2,7 @@ import { AiWorkflowBuilderService, createPassthroughSsrfGuard } from '@n8n/ai-wo
 import type { ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
 import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
 import { Logger } from '@n8n/backend-common';
+import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
@@ -21,7 +22,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { InstanceSettings, SsrfProtectionService } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { getBase } from '@/workflow-execute-additional-data';

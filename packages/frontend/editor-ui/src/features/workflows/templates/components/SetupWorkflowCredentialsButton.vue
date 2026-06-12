@@ -63,7 +63,7 @@ const showButton = computed(() => {
 	}
 
 	if (isSetupPanelFeatureEnabled.value) {
-		return (workflowDocumentStore?.value?.allNodes ?? []).length > 0;
+		return (workflowDocumentStore?.value?.allNodes ?? []).length > 0 && !allCredentialsFilled.value;
 	}
 
 	if (isTemplateSetupCompleted.value) {

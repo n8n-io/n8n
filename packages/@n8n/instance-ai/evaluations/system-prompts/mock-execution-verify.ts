@@ -50,6 +50,7 @@ Each branch's items are capped at 10 for artifact size. The full untruncated tot
    - Did a real node crash because a field is missing? → **check the request that was sent**: if the HTTP request (e.g., GraphQL query) didn't ask for that field, the mock correctly omitted it — that's a builder issue (wrong query or wrong node choice), NOT a mock issue. The mock can only return what was requested.
    - Did the mock response have the wrong shape for the endpoint? (e.g., returning a write response for a GET request) → mock issue
    - Did the mock return identical responses for multiple calls to the same endpoint with different request bodies? → mock issue
+   - Did the workflow error with n8n's pagination safety (e.g. "The returned response was identical 5x, so requests got stopped")? → builder_issue: the pagination did not terminate — it failed to stop on the empty page, or never advanced the page parameter. Identical empty pages at end-of-data are the correct stop signal (the builder must detect them), and the mock serving distinct pages in sequence to repeated requests is the testing mechanism working. Only a mock_issue if the mock repeated identical non-empty pages it should have varied.
    - Did the workflow handle an error scenario but the success criteria is ambiguous about what "graceful" means? → evaluate based on whether data was lost or the workflow crashed entirely
 
    KEY PRINCIPLE: A mock response that faithfully matches the HTTP request is NEVER a mock issue, even if downstream nodes needed different data. If the request didn't ask for a field, the mock shouldn't invent it. The fault lies with whatever built the request (the node choice or its configuration).
@@ -78,31 +79,39 @@ NOT failure categories:
 
 ## Output format
 
-Return ONLY a JSON array:
+Return ONLY the structured result object with a top-level \`results\` array.
+Every result object must include \`failureCategory\` and \`rootCause\`.
+Use \`null\` for both fields when the checklist item passes.
+
+For passes:
 
 \`\`\`json
-[
-  {
-    "id": 1,
-    "pass": true,
-    "reasoning": "All nodes executed without errors. The webhook data flowed through Gmail, Telegram, and Google Sheets correctly.",
-    "failureCategory": null,
-    "rootCause": null
-  }
-]
+{
+  "results": [
+    {
+      "id": 1,
+      "pass": true,
+      "reasoning": "All nodes executed without errors. The webhook data flowed through Gmail, Telegram, and Google Sheets correctly.",
+      "failureCategory": null,
+      "rootCause": null
+    }
+  ]
+}
 \`\`\`
 
 For failures:
 
 \`\`\`json
-[
-  {
-    "id": 1,
-    "pass": false,
-    "reasoning": "The Sort node crashed because the upstream Filter & Count node produced {noData: true} instead of items with a 'count' field.",
-    "failureCategory": "mock_issue",
-    "rootCause": "The Linear node's mock response didn't include creator.email, so the Filter code node filtered out all items."
-  }
-]
+{
+  "results": [
+    {
+      "id": 1,
+      "pass": false,
+      "reasoning": "The Sort node crashed because the upstream Filter & Count node produced {noData: true} instead of items with a 'count' field.",
+      "failureCategory": "mock_issue",
+      "rootCause": "The Linear node's mock response didn't include creator.email, so the Filter code node filtered out all items."
+    }
+  ]
+}
 \`\`\`
 `;

@@ -12,6 +12,7 @@ import {
 import {
 	CANVAS_NODE_GROUP_HANDLE_LEFT,
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CANVAS_NODE_GROUP_ID_PREFIX,
 	type CanvasGroupNodeData,
 } from '../../../canvas.types';
 
@@ -26,11 +27,13 @@ const props = withDefaults(
 		data: CanvasGroupNodeData;
 		autofocusGroupId?: string | null;
 		dimensions?: { width: number; height: number };
+		selected?: boolean;
 		readOnly?: boolean;
 	}>(),
 	{
 		autofocusGroupId: null,
 		readOnly: false,
+		selected: false,
 	},
 );
 
@@ -38,6 +41,7 @@ const emit = defineEmits<{
 	'update:name': [id: string, name: string];
 	'title:focused': [id: string];
 	ungroup: [id: string];
+	toggle: [id: string];
 }>();
 
 const i18n = useI18n();
@@ -48,6 +52,7 @@ const group = computed(() => props.data.group);
 const isAutofocusReady = computed(
 	() => !props.dimensions || (props.dimensions.width > 0 && props.dimensions.height > 0),
 );
+const isCollapsed = computed(() => props.data.isCollapsed);
 
 const frameStyle = computed(() => ({
 	top: `${HEADER_HEIGHT}px`,
@@ -66,7 +71,7 @@ function updateTruncated() {
 }
 
 watch(
-	() => [group.value.name, props.data.nodesRect.width],
+	() => [group.value.name, props.data.nodesRect.width, isCollapsed.value],
 	async () => {
 		await nextTick();
 		updateTruncated();
@@ -80,6 +85,10 @@ function onTitleUpdate(value: string) {
 
 function onUngroupClick() {
 	emit('ungroup', group.value.id);
+}
+
+function onToggleClick() {
+	emit('toggle', group.value.id);
 }
 
 async function focusTitleEdit() {
@@ -101,23 +110,38 @@ watch(
 	},
 );
 
+const toggleLabel = computed(() =>
+	isCollapsed.value
+		? i18n.baseText('canvas.nodeGroup.expand')
+		: i18n.baseText('canvas.nodeGroup.collapse'),
+);
+
 const { getSelectedNodes, removeSelectedNodes } = useVueFlow();
 
-// Clear any pre-existing selection before VueFlow snapshots which nodes to
-// drag — otherwise those nodes ride along with the group drag.
+// Clear unrelated pre-existing selection before VueFlow snapshots which
+// nodes to drag — otherwise those nodes ride along with the group drag.
+// Preserve the selection when this title bar is itself part of it
+// (intentional multi-select drag).
 function onWrapperPointerDown(event: PointerEvent) {
 	// Clicks on .nodrag children (chevron, title edit, ungroup) aren't drag intent.
 	const target = event.target as HTMLElement | null;
 	if (target?.closest('.nodrag')) return;
 
 	const selected = getSelectedNodes.value;
-	if (selected.length > 0) removeSelectedNodes(selected);
+	if (selected.length === 0) return;
+
+	// Multi-select drag that includes this title bar → preserve the selection.
+	const myVueFlowId = `${CANVAS_NODE_GROUP_ID_PREFIX}${group.value.id}`;
+	const isPartOfSelection = selected.some((n) => n.id === myVueFlowId);
+	if (isPartOfSelection) return;
+
+	removeSelectedNodes(selected);
 }
 </script>
 
 <template>
 	<div
-		:class="$style.wrapper"
+		:class="[$style.wrapper, { [$style.collapsed]: isCollapsed, [$style.selected]: selected }]"
 		:style="{
 			width: '100%',
 			height: `${HEADER_HEIGHT}px`,
@@ -166,6 +190,17 @@ function onWrapperPointerDown(event: PointerEvent) {
 			</div>
 
 			<div :class="$style.content" data-test-id="canvas-node-group-header">
+				<N8nIconButton
+					class="nodrag"
+					:class="$style.toggle"
+					variant="ghost"
+					size="large"
+					:icon="isCollapsed ? 'chevrons-up-down' : 'chevrons-down-up'"
+					:aria-label="toggleLabel"
+					:aria-expanded="!isCollapsed"
+					data-test-id="canvas-node-group-toggle"
+					@click.stop="onToggleClick"
+				/>
 				<div :class="$style.title" data-test-id="canvas-node-group-title">
 					<N8nTooltip
 						:content="group.name"
@@ -190,7 +225,12 @@ function onWrapperPointerDown(event: PointerEvent) {
 			</div>
 		</div>
 
-		<div :class="$style.frame" :style="frameStyle" data-test-id="canvas-node-group-frame" />
+		<div
+			v-if="!isCollapsed"
+			:class="$style.frame"
+			:style="frameStyle"
+			data-test-id="canvas-node-group-frame"
+		/>
 	</div>
 </template>
 
@@ -213,15 +253,26 @@ function onWrapperPointerDown(event: PointerEvent) {
 	border: var(--canvas-node--border-width) solid var(--canvas-node--border-color);
 	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	box-sizing: border-box;
+	.wrapper.collapsed & {
+		border-radius: var(--radius--lg);
+	}
+
+	.wrapper.selected & {
+		@include styles.canvas-node-selected-ring;
+	}
 }
 
 .content {
 	display: flex;
 	align-items: center;
-	gap: 0;
+	gap: var(--spacing--2xs);
 	height: 100%;
-	padding: 0 var(--spacing--sm);
+	padding: var(--spacing--lg);
 	overflow: hidden;
+}
+
+.toggle {
+	flex-shrink: 0;
 }
 
 .title {
@@ -280,8 +331,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 }
 
 .handle {
-	top: 50%;
-	transform: translateY(-50%);
 	opacity: 0;
 	pointer-events: none;
 }

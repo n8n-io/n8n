@@ -12,7 +12,7 @@ import type {
 	IExecutionResponse,
 	UpdateExecutionConditions,
 } from '@n8n/db';
-import { ExecutionData, ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
+import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
@@ -25,6 +25,7 @@ import { FsStore } from './execution-data/fs-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import type {
 	ExecutionDataBundle,
+	ExecutionDataPayload,
 	ExecutionDataStore,
 	ExecutionRef,
 	WorkflowSnapshot,
@@ -83,8 +84,8 @@ export class ExecutionPersistence {
 		const { connections, nodes, name, settings, id } = workflowData;
 		const workflowSnapshot: WorkflowSnapshot = { connections, nodes, name, settings, id };
 		const storedAt = this.storageConfig.modeTag;
-		const executionEntity = { ...rest, createdAt: new Date(), storedAt };
 		const workflowVersionId = workflowData.versionId ?? null;
+		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
 		try {
 			return await this.executionRepository.manager.transaction(async (tx) => {
@@ -93,14 +94,15 @@ export class ExecutionPersistence {
 				const ref = { workflowId: id, executionId };
 				const store = this.getStoreFor(storedAt);
 
-				await this.trackWrite(storedAt, async () => {
-					const bundle = {
+				const jsonSizeBytes = await this.trackWrite(storedAt, async () => {
+					const bundle: ExecutionDataPayload = {
 						data: stringify(rawData),
 						workflowData: workflowSnapshot,
 						workflowVersionId,
 					};
-					await store.write(ref, bundle, tx);
+					return await store.write(ref, bundle, tx);
 				});
+				await tx.update(ExecutionEntity, { id: executionId }, { jsonSizeBytes });
 
 				return executionId;
 			});
@@ -130,7 +132,7 @@ export class ExecutionPersistence {
 
 		const entity = await this.executionRepository.findOne({
 			where: this.buildEntityWhereCondition(executionId, conditions),
-			select: ['id', 'workflowId', 'storedAt'],
+			select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
 		});
 
 		if (!entity) return false;
@@ -138,7 +140,14 @@ export class ExecutionPersistence {
 		const ref = { workflowId: entity.workflowId, executionId };
 		const store = this.getStoreFor(entity.storedAt);
 
-		return await this.applyDataUpdate(ref, store, entity.storedAt, execution, conditions);
+		return await this.applyDataUpdate(
+			ref,
+			store,
+			entity.storedAt,
+			entity.workflowVersionId,
+			execution,
+			conditions,
+		);
 	}
 
 	/**
@@ -504,6 +513,7 @@ export class ExecutionPersistence {
 		ref: ExecutionRef,
 		store: ExecutionDataStore,
 		mode: ExecutionDataStorageLocation,
+		workflowVersionId: string | null,
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
@@ -530,36 +540,45 @@ export class ExecutionPersistence {
 				if (!matchingRow) return false;
 			}
 
-			if (data !== undefined && workflowData !== undefined && store === this.dbStore) {
-				await this.trackWrite(mode, async () => {
-					const result = await tx.update(
-						ExecutionData,
-						{ executionId: ref.executionId },
-						{ data: stringify(data), workflowData: this.toWorkflowSnapshot(workflowData) },
-					);
-					if ((result.affected ?? 0) === 0) throw new MissingExecutionDataError(ref);
+			// Skip the read on a full overwrite. Safe only with a known version id, except for the DB
+			// store: its overwrite leaves that column untouched, whereas others would clobber it with null.
+			if (
+				data !== undefined &&
+				workflowData !== undefined &&
+				(workflowVersionId !== null || store === this.dbStore)
+			) {
+				const jsonSizeBytes = await this.trackWrite(mode, async () => {
+					const bundle: ExecutionDataPayload = {
+						data: stringify(data),
+						workflowData: this.toWorkflowSnapshot(workflowData),
+						workflowVersionId,
+					};
+
+					return store === this.dbStore
+						? await this.dbStore.overwrite(ref, bundle, tx)
+						: await store.write(ref, bundle, tx);
 				});
+				await tx.update(ExecutionEntity, { id: ref.executionId }, { jsonSizeBytes });
 				return true;
 			}
 
+			// Read the existing bundle to merge the field the caller didn't supply (or to recover the
+			// version id when the entity row doesn't have it).
 			const existing = await this.trackRead(mode, async () => await store.read(ref, tx));
 			if (!existing) throw new MissingExecutionDataError(ref);
 
-			await this.trackWrite(
-				mode,
-				async () =>
-					await store.write(
-						ref,
-						{
-							data: data !== undefined ? stringify(data) : existing.data,
-							workflowData: workflowData
-								? this.toWorkflowSnapshot(workflowData)
-								: existing.workflowData,
-							workflowVersionId: existing.workflowVersionId,
-						},
-						tx,
-					),
-			);
+			const jsonSizeBytes = await this.trackWrite(mode, async () => {
+				const bundle: ExecutionDataPayload = {
+					data: data !== undefined ? stringify(data) : existing.data,
+					workflowData: workflowData
+						? this.toWorkflowSnapshot(workflowData)
+						: existing.workflowData,
+					workflowVersionId: existing.workflowVersionId,
+				};
+
+				return await store.write(ref, bundle, tx);
+			});
+			await tx.update(ExecutionEntity, { id: ref.executionId }, { jsonSizeBytes });
 
 			return true;
 		});
@@ -577,6 +596,8 @@ export class ExecutionPersistence {
 	 * - **Immutable after creation**: `workflowVersionId`, `createdAt`,
 	 *   `startedAt` — set once at insert time and never overwritten.
 	 * - **Not persisted on the entity**: `customData` — handled separately.
+	 * - **Computed locally**: `jsonSizeBytes` — derived from the persisted bundle by
+	 *   the data store, never trusted from the caller.
 	 */
 	private pickUpdatableEntityColumns(
 		execution: Partial<IExecutionResponse>,
@@ -590,6 +611,7 @@ export class ExecutionPersistence {
 			createdAt: _createdAt,
 			startedAt: _startedAt,
 			customData: _customData,
+			jsonSizeBytes: _jsonSizeBytes,
 			...updatableColumns
 		} = execution;
 		return updatableColumns;
@@ -635,20 +657,27 @@ export class ExecutionPersistence {
 		}
 	}
 
+	/**
+	 * Time and emit a metric for a data write. `op` serializes and writes the bundle — both counted
+	 * in the duration — and returns the written byte size, which rides the event (`0` on failure).
+	 */
 	private async trackWrite(
 		mode: ExecutionDataStorageLocation,
-		op: () => Promise<void>,
-	): Promise<void> {
+		op: () => Promise<number>,
+	): Promise<number> {
 		const start = Date.now();
 		let success = false;
+		let jsonSizeBytes = 0;
 		try {
-			await op();
+			jsonSizeBytes = await op();
 			success = true;
+			return jsonSizeBytes;
 		} finally {
 			this.eventService.emit('execution-data-write', {
 				mode,
 				durationMs: Date.now() - start,
 				success,
+				jsonSizeBytes,
 			});
 		}
 	}

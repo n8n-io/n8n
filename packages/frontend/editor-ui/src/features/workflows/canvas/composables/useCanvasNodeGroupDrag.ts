@@ -141,7 +141,9 @@ export function useCanvasNodeGroupDrag(deps: UseCanvasNodeGroupDragDeps) {
 				deps.getNodeDisplaySize,
 				positionOverrides,
 			);
-			const titleBar = titleBarFromNodesRect(rect);
+
+			// Members only drag while expanded, so the group is never collapsed here
+			const titleBar = titleBarFromNodesRect(rect, false);
 			updateNode(groupVueFlowId, (n) => ({
 				position: titleBar.position,
 				width: titleBar.width,
