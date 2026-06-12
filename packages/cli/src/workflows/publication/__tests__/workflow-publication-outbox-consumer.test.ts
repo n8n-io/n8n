@@ -17,7 +17,7 @@ import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
-import { WorkflowPublicationOutboxConsumer } from '@/workflows/workflow-publication-outbox-consumer';
+import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 
 describe('WorkflowPublicationOutboxConsumer', () => {

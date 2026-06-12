@@ -18,7 +18,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowPublicationOutboxConsumer } from '@/workflows/workflow-publication-outbox-consumer';
+import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createOwner } from '../shared/db/users';
