@@ -1,7 +1,10 @@
+import type { Locator } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
-import { manualWorkflow, REDACT_OPTION, webhookWorkflow } from './redaction-helpers';
+import { DATA_NODE, manualWorkflow, uniqueSecret, webhookWorkflow } from './redaction-helpers';
 import { expect, test } from '../../../fixtures/base';
+import type { n8nPage } from '../../../pages/n8nPage';
 import type { ApiHelpers } from '../../../services/api-helper';
 
 test.use({
@@ -12,29 +15,45 @@ test.use({
 	},
 });
 
+interface ExecutionRef {
+	workflowId: string;
+	executionId: string;
+	secret: string;
+}
+
 async function runProductionExecution(
 	api: ApiHelpers,
 	settings?: Partial<IWorkflowBase['settings']>,
-) {
+): Promise<ExecutionRef> {
+	const secret = uniqueSecret();
 	const { workflowId, webhookPath, createdWorkflow } =
-		await api.workflows.createWorkflowFromDefinition(webhookWorkflow(settings));
+		await api.workflows.createWorkflowFromDefinition(webhookWorkflow({ secret, settings }));
 
 	await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 	await api.webhooks.trigger(`/webhook/${webhookPath}`, { maxNotFoundRetries: 5 });
 	const summary = await api.workflows.waitForExecution(workflowId, 15_000, 'webhook');
 
-	return { executionId: summary.id, workflowId, workflow: createdWorkflow };
+	return { workflowId, executionId: summary.id, secret };
 }
 
-async function runManualExecution(api: ApiHelpers, settings?: Partial<IWorkflowBase['settings']>) {
-	const createdWorkflow = await api.workflows.createWorkflow(manualWorkflow(settings));
-	const result = await api.workflows.runManually(createdWorkflow.id, createdWorkflow.nodes[0].name);
+async function runManualExecution(
+	api: ApiHelpers,
+	settings?: Partial<IWorkflowBase['settings']>,
+): Promise<ExecutionRef> {
+	const secret = uniqueSecret();
+	const workflow = await api.workflows.createWorkflow(manualWorkflow({ secret, settings }));
+	const { executionId } = await api.workflows.runManually(workflow.id, 'Manual');
 
-	return {
-		workflowId: createdWorkflow.id,
-		executionId: result.executionId,
-		workflow: createdWorkflow,
-	};
+	return { workflowId: workflow.id, executionId, secret };
+}
+
+async function openExecutionOutput(
+	n8n: n8nPage,
+	{ workflowId, executionId }: ExecutionRef,
+): Promise<Locator> {
+	await n8n.navigate.toExecution(workflowId, executionId);
+	await n8n.executions.openNodeExecutionDetails(DATA_NODE);
+	return n8n.executions.outputPanel.getDataContainer();
 }
 
 test.describe(
@@ -75,6 +94,19 @@ test.describe(
 			expect(await n8n.api.securitySettings.getRedactionFloor()).toBe('all');
 		});
 
+		test('rejects redaction floor changes from a non-admin member', async ({ api }) => {
+			const member = await api.publicApi.createUser({
+				email: `member-${nanoid()}@test.com`,
+				firstName: 'Red',
+				lastName: 'Action',
+				role: 'global:member',
+			});
+			const memberApi = await api.createApiForUser(member);
+
+			const response = await memberApi.securitySettings.setRedactionFloorRaw('production');
+			expect(response.status()).toBe(403);
+		});
+
 		test.describe('when floor is "production"', () => {
 			test.beforeEach(async ({ n8n }) => {
 				await n8n.api.securitySettings.setRedactionFloor('production');
@@ -103,7 +135,7 @@ test.describe(
 				await n8n.workflowSettingsModal.open();
 				await expect(n8n.workflowSettingsModal.getRedactManualInput()).toBeEnabled();
 
-				await n8n.workflowSettingsModal.selectManualRedactMode(REDACT_OPTION.redact);
+				await n8n.workflowSettingsModal.selectManualRedactMode('Redact');
 				await n8n.workflowSettingsModal.clickSave();
 				await expect(n8n.workflowSettingsModal.getModal()).toBeHidden();
 				await expect(
@@ -114,27 +146,35 @@ test.describe(
 				expect(saved.settings?.redactionPolicy).toBe('all');
 			});
 
-			test('redacts production executions', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await runProductionExecution(api);
-
-				await n8n.navigate.toExecution(workflowId, executionId);
-				await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
-				await expect(n8n.executions.outputPanel.getDataContainer()).toHaveText(
-					/Output data redacted/,
+			test('seeds new workflows up to the floor on create', async ({ api }) => {
+				const created = await api.workflows.createWorkflow(
+					webhookWorkflow({ settings: { redactionPolicy: 'none' } }),
 				);
+
+				const saved = await api.workflows.getWorkflow(created.id);
+				expect(saved.settings?.redactionPolicy).toBe('non-manual');
+			});
+
+			test('redacts production executions', async ({ api, n8n }) => {
+				const execution = await runProductionExecution(api);
+				const output = await openExecutionOutput(n8n, execution);
+
+				await expect(output).toHaveText(/Output data redacted/);
+				await expect(output).not.toContainText(execution.secret);
+
+				const executionData = await api.workflows.getExecution(execution.executionId);
+				expect(executionData.data).not.toContain(execution.secret);
 			});
 
 			test('leaves manual executions unredacted', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await runManualExecution(api);
+				const execution = await runManualExecution(api);
+				const output = await openExecutionOutput(n8n, execution);
 
-				await n8n.navigate.toExecution(workflowId, executionId);
-				await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
-				await expect(n8n.executions.outputPanel.getDataContainer()).toHaveText(
-					/This is an item, but it's empty/,
-				);
-				await expect(n8n.executions.outputPanel.getDataContainer()).not.toHaveText(
-					/Output data redacted/,
-				);
+				await expect(output).toContainText(execution.secret);
+				await expect(output).not.toHaveText(/Output data redacted/);
+
+				const executionData = await api.workflows.getExecution(execution.executionId);
+				expect(executionData.data).toContain(execution.secret);
 			});
 
 			test('rejects workflow redaction changes that fall below the floor', async ({ api }) => {
@@ -181,52 +221,49 @@ test.describe(
 			});
 
 			test('redacts production executions', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await runProductionExecution(api);
+				const execution = await runProductionExecution(api);
+				const output = await openExecutionOutput(n8n, execution);
 
-				await n8n.navigate.toExecution(workflowId, executionId);
-				await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
-				await expect(n8n.executions.outputPanel.getDataContainer()).toHaveText(
-					/Output data redacted/,
-				);
+				await expect(output).toHaveText(/Output data redacted/);
+				await expect(output).not.toContainText(execution.secret);
+
+				const executionData = await api.workflows.getExecution(execution.executionId);
+				expect(executionData.data).not.toContain(execution.secret);
 			});
 
 			test('redacts manual executions', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await runManualExecution(api);
+				const execution = await runManualExecution(api);
+				const output = await openExecutionOutput(n8n, execution);
 
-				await n8n.navigate.toExecution(workflowId, executionId);
-				await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
-				await expect(n8n.executions.outputPanel.getDataContainer()).toHaveText(
-					/Output data redacted/,
-				);
+				await expect(output).toHaveText(/Output data redacted/);
+				await expect(output).not.toContainText(execution.secret);
+
+				const executionData = await api.workflows.getExecution(execution.executionId);
+				expect(executionData.data).not.toContain(execution.secret);
 			});
 		});
 
 		test.describe('when floor is "off" and workflow redaction is "non-manual"', () => {
 			test('redacts production executions', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await runProductionExecution(api, {
-					redactionPolicy: 'non-manual',
-				});
+				const execution = await runProductionExecution(api, { redactionPolicy: 'non-manual' });
+				const output = await openExecutionOutput(n8n, execution);
 
-				await n8n.navigate.toExecution(workflowId, executionId);
-				await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
-				await expect(n8n.executions.outputPanel.getDataContainer()).toHaveText(
-					/Output data redacted/,
-				);
+				await expect(output).toHaveText(/Output data redacted/);
+				await expect(output).not.toContainText(execution.secret);
+
+				const executionData = await api.workflows.getExecution(execution.executionId);
+				expect(executionData.data).not.toContain(execution.secret);
 			});
 
 			test('leaves manual executions unredacted', async ({ api, n8n }) => {
-				const { executionId, workflowId, workflow } = await runManualExecution(api, {
-					redactionPolicy: 'non-manual',
-				});
+				const execution = await runManualExecution(api, { redactionPolicy: 'non-manual' });
+				const output = await openExecutionOutput(n8n, execution);
 
-				await n8n.navigate.toExecution(workflowId, executionId);
-				await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
-				await expect(n8n.executions.outputPanel.getDataContainer()).toHaveText(
-					/This is an item, but it's empty/,
-				);
-				await expect(n8n.executions.outputPanel.getDataContainer()).not.toHaveText(
-					/Output data redacted/,
-				);
+				await expect(output).toContainText(execution.secret);
+				await expect(output).not.toHaveText(/Output data redacted/);
+
+				const executionData = await api.workflows.getExecution(execution.executionId);
+				expect(executionData.data).toContain(execution.secret);
 			});
 		});
 
@@ -234,25 +271,20 @@ test.describe(
 			api,
 			n8n,
 		}) => {
-			const { executionId, workflowId, workflow } = await runProductionExecution(api);
-			await n8n.navigate.toExecution(workflowId, executionId);
-			await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
-			await expect(n8n.executions.outputPanel.getDataContainer()).toHaveText(
-				/executionMode[\s\S]*production/i,
-			);
-			await expect(n8n.executions.outputPanel.getDataContainer()).not.toHaveText(
-				/Output data redacted/,
-			);
+			const execution = await runProductionExecution(api);
+
+			const before = await openExecutionOutput(n8n, execution);
+			await expect(before).toContainText(execution.secret);
+			await expect(before).not.toHaveText(/Output data redacted/);
 
 			await api.securitySettings.setRedactionFloor('all');
-			await n8n.navigate.toExecution(workflowId, executionId);
-			await n8n.executions.openNodeExecutionDetails(workflow.nodes[0].name);
-			await expect(n8n.executions.outputPanel.getDataContainer()).toHaveText(
-				/executionMode[\s\S]*production/i,
-			);
-			await expect(n8n.executions.outputPanel.getDataContainer()).not.toHaveText(
-				/Output data redacted/,
-			);
+
+			const after = await openExecutionOutput(n8n, execution);
+			await expect(after).toContainText(execution.secret);
+			await expect(after).not.toHaveText(/Output data redacted/);
+
+			const executionData = await api.workflows.getExecution(execution.executionId);
+			expect(executionData.data).toContain(execution.secret);
 		});
 	},
 );
