@@ -96,6 +96,8 @@ interface CountableInstance {
 	$props: {
 		message?: { id?: string };
 		agentNode?: { agentId?: string };
+		toolCall?: { toolCallId?: string };
+		entry?: { content?: string };
 		content?: string;
 	};
 }
@@ -106,7 +108,8 @@ const countingMixin = {
 		const id =
 			this.$props?.message?.id ??
 			this.$props?.agentNode?.agentId ??
-			this.$props?.content?.slice(0, 16) ??
+			this.$props?.toolCall?.toolCallId ??
+			(this.$props?.entry?.content ?? this.$props?.content)?.slice(0, 16) ??
 			'';
 		const key = id ? `${name}#${id}` : name;
 		renderCounts.set(key, (renderCounts.get(key) ?? 0) + 1);
@@ -230,9 +233,12 @@ describe('message render localization', () => {
 		dispatch(ev.runFinish('run-1', 'root-1'));
 		await nextTick();
 
-		// --- Second message (group g2, root-2) starts streaming ---
+		// --- Second message (group g2, root-2) starts streaming, with one
+		//     already-settled tool-call step in its timeline ---
 		dispatch(ev.runStart('run-2', 'root-2', 'g2'));
 		dispatch(ev.textDelta('run-2', 'root-2', 'Starting follow-up work.'));
+		dispatch(ev.toolCall('run-2', 'root-2', 'tc-2', 'search'));
+		dispatch(ev.toolResult('run-2', 'root-2', 'tc-2', { found: true }));
 		await nextTick();
 		await nextTick();
 
@@ -243,27 +249,38 @@ describe('message render localization', () => {
 		await nextTick();
 		dispatch(ev.textDelta('run-2', 'root-2', ' token2'));
 		await nextTick();
-		dispatch(ev.toolCall('run-2', 'root-2', 'tc-2', 'search'));
-		await nextTick();
-		dispatch(ev.toolResult('run-2', 'root-2', 'tc-2', { found: true }));
-		await nextTick();
 		dispatch(ev.status('run-2', 'root-2', 'Thinking...'));
 		await nextTick();
 
 		// The settled g1 message (its wrapper, activity tree, and markdown
 		// blocks) must not have re-rendered at all.
 		expect(keysTouchingG1()).toEqual([]);
-		// The identity-stable displayedMessages keeps the list itself quiet too.
+		// The stable displayedMessages array keeps the list itself quiet too.
 		expect(renderCounts.has('Harness')).toBe(false);
+		// Streamed tokens must not re-render the streaming message's settled
+		// tool-call steps either (text reads live in the leaf segment, and
+		// ToolCallStep carries no dynamic slots that would defeat the bailout).
+		expect([...renderCounts.keys()].filter((key) => key.startsWith('ToolCallStep'))).toEqual([]);
 		// Sanity: the streaming message did render.
 		expect(renderCounts.get('InstanceAiMessage#run-2')).toBeGreaterThan(0);
+
+		// ====== a structural event re-renders the timeline, not settled steps ==
+		renderCounts.clear();
+
+		dispatch(ev.toolCall('run-2', 'root-2', 'tc-3', 'search'));
+		await nextTick();
+
+		// The new step appears (the timeline re-renders), but the existing
+		// settled step bails out on equal props.
+		expect(renderCounts.has('ToolCallStep#tc-2')).toBe(false);
+		expect(keysTouchingG1()).toEqual([]);
 
 		// ====== a REAL registry change must still propagate ===================
 		renderCounts.clear();
 
-		dispatch(ev.toolCall('run-2', 'root-2', 'tc-3', 'build-workflow'));
+		dispatch(ev.toolCall('run-2', 'root-2', 'tc-4', 'build-workflow'));
 		dispatch(
-			ev.toolResult('run-2', 'root-2', 'tc-3', {
+			ev.toolResult('run-2', 'root-2', 'tc-4', {
 				workflowId: 'wf-2',
 				workflowName: 'Second Pipeline',
 			}),
@@ -271,7 +288,7 @@ describe('message render localization', () => {
 		await nextTick();
 
 		// The settled message's markdown re-decorates against the grown registry
-		// — the stability layer must not mask genuine changes.
+		// — the reconcile must not mask genuine changes.
 		expect(keysTouchingG1().some((key) => key.startsWith('InstanceAiMarkdown'))).toBe(true);
 
 		expect(runtime.messages).toHaveLength(2);
