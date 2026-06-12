@@ -347,6 +347,19 @@ async function handleSetup(
 		};
 	}
 
+	// Headless runs (desktop assistant) have no surface to answer a setup prompt.
+	// Defer instead of suspending; the user connects credentials later from the
+	// desktop app's "Action needed".
+	if (context.suppressInteractiveSetup) {
+		return {
+			success: true,
+			deferred: true,
+			reason:
+				'Setup deferred: this run has no interactive setup surface. Continue without ' +
+				'credentials and let the user connect them from "Action needed".',
+		};
+	}
+
 	// State 1: First call — look up existing credentials per type and suspend
 	if (resumeData === undefined || resumeData === null) {
 		const credentialRequests = await Promise.all(

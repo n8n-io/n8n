@@ -191,6 +191,45 @@ describe('workflows tool', () => {
 		});
 	});
 
+	describe('setup action — suppressInteractiveSetup', () => {
+		it('defers without suspending when the run has no interactive setup surface', async () => {
+			const context = createMockContext({ suppressInteractiveSetup: true });
+			const suspend = vi.fn();
+			const tool = createWorkflowsTool(context, 'full');
+
+			const result = await executeTool(
+				tool,
+				{ action: 'setup', workflowId: 'w1' } as never,
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(result).toEqual(
+				expect.objectContaining({ success: true, deferred: true, reason: expect.any(String) }),
+			);
+			expect(suspend).not.toHaveBeenCalled();
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('still suspends for setup when the flag is absent', async () => {
+			const context = createMockContext();
+			vi.mocked(analyzeWorkflow).mockResolvedValueOnce([
+				{ node: { name: 'n1' }, credentialType: 'openAiApi' },
+			] as never);
+			const suspend = vi.fn();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(
+				tool,
+				{ action: 'setup', workflowId: 'w1' } as never,
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'Configure credentials for your workflow' }),
+			);
+		});
+	});
+
 	describe('version actions', () => {
 		it('should support version actions when listVersions exists', async () => {
 			const context = createMockContext();

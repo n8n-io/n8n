@@ -72,4 +72,17 @@ describe('getDesktopAssistantProfile — extra tools', () => {
 		expect(getDesktopAssistantProfile('desktop-assistant-promote').preloadGatewayTools).toBe(false);
 		expect(getDesktopAssistantProfile(undefined).preloadGatewayTools).toBe(false);
 	});
+
+	it('suppresses interactive setup for every desktop mode but not regular chat', () => {
+		expect(getDesktopAssistantProfile('desktop-assistant-one-shot').suppressInteractiveSetup).toBe(
+			true,
+		);
+		expect(getDesktopAssistantProfile('desktop-assistant-promote').suppressInteractiveSetup).toBe(
+			true,
+		);
+		expect(getDesktopAssistantProfile('desktop-assistant-edit').suppressInteractiveSetup).toBe(
+			true,
+		);
+		expect(getDesktopAssistantProfile(undefined).suppressInteractiveSetup).toBe(false);
+	});
 });

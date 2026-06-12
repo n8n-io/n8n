@@ -44,6 +44,14 @@ export interface DesktopAssistantProfile {
 	 * blind first (a burst of tool errors at run start).
 	 */
 	preloadGatewayTools: boolean;
+	/**
+	 * Auto-defer credential/parameter setup instead of suspending on it. Desktop
+	 * runs are fire-and-forget with no surface to answer a "configure
+	 * credentials" prompt — suspending there hangs the run. With this set, the
+	 * `workflows`/`credentials` setup actions skip the suspend and the workflow
+	 * is saved credential-less, surfacing in the desktop app's "Action needed".
+	 */
+	suppressInteractiveSetup: boolean;
 }
 
 /** Shared preamble: both desktop modes run headless, so text output is waste. */
@@ -91,7 +99,7 @@ Examples of the classification: "create a folder called Receipts on my desktop" 
 
 Additional rules:
 
-- **There is no credential-setup step after this build** — the workflow must be runnable exactly as saved. List the user's credentials (\`credentials(action="list")\`) and bind a concrete existing credential on every node that needs one, using \`newCredential('Name', 'id')\` with the real id — never the id-less form, which defers to a setup phase this surface does not have. When several credentials match, pick the most plausible one rather than leaving the node unbound. Only leave a credential unset when the user has none of a matching type (Computer Use nodes' \`deviceConnectionApi\` is filled in automatically in that case).
+- **There is no credential-setup step after this build** — the workflow must be runnable exactly as saved. List the user's credentials (\`credentials(action="list")\`) and bind a concrete existing credential on every node that needs one, using \`newCredential('Name', 'id')\` with the real id — never the id-less form, which defers to a setup phase this surface does not have. When several credentials match, pick the most plausible one rather than leaving the node unbound. Only leave a credential unset when the user has none of a matching type (Computer Use nodes' \`deviceConnectionApi\` is filled in automatically in that case). When you do leave a credential unset, do NOT call the setup action — save the workflow as-is; it will surface in the desktop app for the user to connect the credential later.
 - The user's request in this thread may end with appended context lines (\`Currently looking at:\`, \`URL:\`, \`Path:\`, \`Selected text:\`). They capture what was on screen when the task ran — context, not requirements. Use them to disambiguate the request; do not bake them into the workflow unless the request itself depends on them.
 - Set the workflow \`name\` to a short plain-text label naming the task, not the run: 3–8 words, present tense (\`"Archive old downloads"\`), never a past-tense report (\`"Archived 12 files"\`). If the user's prompt provided a name, use it (correcting tense if needed).
 - If the original intent is ambiguous or requires context you do not have, stop without producing a workflow — no low-quality stubs.
@@ -123,12 +131,28 @@ export function getDesktopAssistantProfile(
 				promptSection: ONE_SHOT_PROMPT_SECTION,
 				extraTools: [createReportDesktopTaskOutcomeTool()],
 				preloadGatewayTools: true,
+				suppressInteractiveSetup: true,
 			};
 		case 'desktop-assistant-promote':
-			return { promptSection: PROMOTE_PROMPT_SECTION, extraTools: [], preloadGatewayTools: false };
+			return {
+				promptSection: PROMOTE_PROMPT_SECTION,
+				extraTools: [],
+				preloadGatewayTools: false,
+				suppressInteractiveSetup: true,
+			};
 		case 'desktop-assistant-edit':
-			return { promptSection: EDIT_PROMPT_SECTION, extraTools: [], preloadGatewayTools: false };
+			return {
+				promptSection: EDIT_PROMPT_SECTION,
+				extraTools: [],
+				preloadGatewayTools: false,
+				suppressInteractiveSetup: true,
+			};
 		case undefined:
-			return { promptSection: '', extraTools: [], preloadGatewayTools: false };
+			return {
+				promptSection: '',
+				extraTools: [],
+				preloadGatewayTools: false,
+				suppressInteractiveSetup: false,
+			};
 	}
 }
