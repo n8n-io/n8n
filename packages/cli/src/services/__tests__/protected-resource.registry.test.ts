@@ -88,28 +88,4 @@ describe('ProtectedResourceRegistry', () => {
 			]);
 		});
 	});
-
-	describe('isAnyResourceEnabled', () => {
-		it('should return false when no resources are registered', async () => {
-			expect(await new ProtectedResourceRegistry().isAnyResourceEnabled()).toBe(false);
-		});
-
-		it('should treat resources without an isEnabled hook as enabled', async () => {
-			expect(await registry.isAnyResourceEnabled()).toBe(true);
-		});
-
-		it('should return false when every resource reports disabled', async () => {
-			const gated = new ProtectedResourceRegistry();
-			gated.register({ ...resourceA, isEnabled: async () => false });
-			gated.register({ ...resourceB, isEnabled: async () => false });
-			expect(await gated.isAnyResourceEnabled()).toBe(false);
-		});
-
-		it('should return true when at least one resource reports enabled', async () => {
-			const gated = new ProtectedResourceRegistry();
-			gated.register({ ...resourceA, isEnabled: async () => false });
-			gated.register({ ...resourceB, isEnabled: async () => true });
-			expect(await gated.isAnyResourceEnabled()).toBe(true);
-		});
-	});
 });

@@ -10,31 +10,15 @@ import { Container } from '@n8n/di';
 import type { Response, Request, RequestHandler, Router } from 'express';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
 import { OAuthServerService } from './oauth-server.service';
-import { OAUTH_SERVER_DISABLED_ERROR_MESSAGE } from './oauth.constants';
 import { buildOAuthClientLimitReachedMessage } from './oauth.errors';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 const oauthServerService = Container.get(OAuthServerService);
-const resourceRegistry = Container.get(ProtectedResourceRegistry);
 const globalConfig = Container.get(GlobalConfig);
 const logger = Container.get(Logger);
-
-/**
- * Middleware that rejects requests when no protected resource is enabled.
- * Prevents unauthenticated access to OAuth endpoints when every registered
- * resource (currently only the instance MCP server) is turned off.
- */
-const oauthServerEnabledGuard: RequestHandler = async (_req, res, next) => {
-	const enabled = await resourceRegistry.isAnyResourceEnabled();
-	if (!enabled) {
-		res.status(403).json({ error: OAUTH_SERVER_DISABLED_ERROR_MESSAGE });
-		return;
-	}
-	next();
-};
 
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
@@ -78,28 +62,25 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/register`,
 		router: registerRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard, oauthClientLimitGuard],
+		middlewares: [oauthClientLimitGuard],
 		ipRateLimit: { limit: 10, windowMs: 5 * Time.minutes.toMilliseconds },
 	},
 	{
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard],
 		ipRateLimit: { limit: 50, windowMs: 5 * Time.minutes.toMilliseconds },
 	},
 	{
 		path: `${basePath}/token`,
 		router: tokenRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard],
 		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
 	},
 	{
 		path: `${basePath}/revoke`,
 		router: revokeRouter,
 		skipAuth: true,
-		middlewares: [oauthServerEnabledGuard],
 		ipRateLimit: { limit: 30, windowMs: 5 * Time.minutes.toMilliseconds },
 	},
 ];

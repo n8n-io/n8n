@@ -45,10 +45,8 @@ const emit = defineEmits<{
 	'update:config': [updates: Partial<AgentJsonConfig>];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
-	'open-trigger': [triggerType: string];
 	'add-tool': [];
 	'add-skill': [];
-	'add-trigger': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
 	'upload-files': [files: File[]];
@@ -57,6 +55,7 @@ const emit = defineEmits<{
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
 	'tasks-changed': [];
+	'agent-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -113,16 +112,15 @@ const i18n = useI18n();
 							:reload-key="tasksReloadKey"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
-							@open-trigger="emit('open-trigger', $event)"
 							@add-tool="emit('add-tool')"
 							@add-skill="emit('add-skill')"
-							@add-trigger="emit('add-trigger')"
 							@remove-tool="emit('remove-tool', $event)"
 							@remove-skill="emit('remove-skill', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
 							@toggle-task="emit('toggle-task', $event)"
 							@tasks-changed="emit('tasks-changed')"
+							@agent-changed="emit('agent-changed')"
 						/>
 					</N8nCard>
 					<N8nCard variant="outlined" :class="$style.card">

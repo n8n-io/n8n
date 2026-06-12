@@ -235,7 +235,9 @@ describe('POST /mcp-oauth/register', () => {
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 	});
 
-	test('should reject registration when MCP access is disabled', async () => {
+	test('should register a client even when MCP access is disabled', async () => {
+		// The shared OAuth server is decoupled from the instance MCP toggle, so
+		// DCR stays available for other OAuth-protected resources (IAM-798).
 		await mcpSettingsService.setEnabled(false);
 
 		const clientData = {
@@ -247,7 +249,8 @@ describe('POST /mcp-oauth/register', () => {
 
 		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).toBe(201);
+		expect(response.body.client_id).toBeDefined();
 	});
 
 	test('should reject registration with too many redirect URIs', async () => {
@@ -371,7 +374,9 @@ describe('GET /mcp-oauth/authorize', () => {
 		expect(response.statusCode).toBeGreaterThanOrEqual(200);
 	});
 
-	test('should reject authorization when MCP access is disabled', async () => {
+	test('should not reject authorization just because MCP access is disabled', async () => {
+		// Availability of the shared OAuth server is decoupled from the instance
+		// MCP toggle (IAM-798), so the endpoint behaves normally rather than 403.
 		await mcpSettingsService.setEnabled(false);
 
 		const response = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
@@ -382,7 +387,8 @@ describe('GET /mcp-oauth/authorize', () => {
 			code_challenge_method: 'S256',
 		});
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).not.toBe(403);
+		expect([302, 400, 401]).toContain(response.statusCode);
 	});
 });
 
@@ -429,16 +435,23 @@ describe('POST /mcp-oauth/token', () => {
 		expect(response.body.error).toBeDefined();
 	});
 
-	test('should reject token request when MCP access is disabled', async () => {
+	test('should serve token requests even when MCP access is disabled', async () => {
+		// The token service stays available for other OAuth-protected resources
+		// regardless of the instance MCP toggle (IAM-798): an invalid code yields
+		// a normal OAuth error rather than a blanket 403.
 		await mcpSettingsService.setEnabled(false);
 
 		const response = await testServer.restlessAgent.post('/mcp-oauth/token').send({
 			grant_type: 'authorization_code',
-			code: 'test-code',
+			code: 'invalid-authorization-code',
 			client_id: 'test-client',
+			redirect_uri: 'https://example.com/callback',
+			code_verifier: 'test-verifier',
 		});
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).not.toBe(403);
+		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.body.error).toBeDefined();
 	});
 });
 
@@ -479,7 +492,8 @@ describe('POST /mcp-oauth/revoke', () => {
 		expect(response.statusCode).toBeGreaterThanOrEqual(200);
 	});
 
-	test('should reject revocation when MCP access is disabled', async () => {
+	test('should serve revocation even when MCP access is disabled', async () => {
+		// Revocation stays available regardless of the instance MCP toggle (IAM-798).
 		await mcpSettingsService.setEnabled(false);
 
 		const response = await testServer.restlessAgent.post('/mcp-oauth/revoke').send({
@@ -487,7 +501,8 @@ describe('POST /mcp-oauth/revoke', () => {
 			client_id: 'test-client',
 		});
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).not.toBe(403);
+		expect(response.statusCode).toBeGreaterThanOrEqual(200);
 	});
 });
 
@@ -675,7 +690,7 @@ describe('Neutral /oauth/* endpoint aliases', () => {
 		expect(response.statusCode).not.toBe(404);
 	});
 
-	test('should gate /oauth/* endpoints when no resource is enabled', async () => {
+	test('should serve /oauth/* endpoints even when MCP access is disabled', async () => {
 		await mcpSettingsService.setEnabled(false);
 
 		const response = await testServer.restlessAgent.post('/oauth/register').send({
@@ -685,6 +700,91 @@ describe('Neutral /oauth/* endpoint aliases', () => {
 			token_endpoint_auth_method: 'none',
 		});
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).toBe(201);
+		expect(response.body.client_id).toBeDefined();
+	});
+});
+
+describe('OAuth server decoupled from MCP access (IAM-798)', () => {
+	beforeEach(async () => {
+		// MCP access stays OFF for every test in this block: protecting a resource
+		// with n8n OAuth must not depend on the instance MCP server being exposed.
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('should serve discovery documents while MCP access is disabled', async () => {
+		const authServerResponse = await testServer.restlessAgent.get(
+			'/.well-known/oauth-authorization-server',
+		);
+		const protectedResourceResponse = await testServer.restlessAgent.get(
+			'/.well-known/oauth-protected-resource/mcp-server/http',
+		);
+
+		expect(authServerResponse.statusCode).toBe(200);
+		expect(protectedResourceResponse.statusCode).toBe(200);
+	});
+
+	test('should mint a token pair end-to-end while MCP access is disabled', async () => {
+		const { createHash, randomBytes } = await import('node:crypto');
+		const codeVerifier = randomBytes(32).toString('base64url');
+		const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
+
+		// 1. Dynamic Client Registration
+		const registerResponse = await testServer.restlessAgent.post('/mcp-oauth/register').send({
+			client_name: 'Decoupled Flow Client',
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code', 'refresh_token'],
+			token_endpoint_auth_method: 'none',
+		});
+		expect(registerResponse.statusCode).toBe(201);
+		const clientId = registerResponse.body.client_id;
+
+		// 2. Authorize — sets the OAuth session cookie and redirects to consent
+		const authorizeResponse = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
+			client_id: clientId,
+			redirect_uri: 'https://example.com/callback',
+			response_type: 'code',
+			code_challenge: codeChallenge,
+			code_challenge_method: 'S256',
+			state: 'decoupled-state',
+		});
+		expect(authorizeResponse.statusCode).toBe(302);
+		expect(authorizeResponse.headers.location).toBe('/oauth/consent');
+
+		const rawSetCookie: string | string[] = authorizeResponse.headers['set-cookie'] ?? [];
+		const setCookies = Array.isArray(rawSetCookie) ? rawSetCookie : [rawSetCookie];
+		const sessionCookie = setCookies
+			.map((cookie) => cookie.split(';')[0])
+			.find((cookie) => cookie.startsWith('n8n-oauth-session='));
+		expect(sessionCookie).toBeDefined();
+
+		// 3. Consent approval as an authenticated user
+		const authAgent = testServer.authAgentFor(owner);
+		authAgent.jar.setCookie(sessionCookie ?? '');
+		const consentResponse = await authAgent.post('/consent/approve').send({ approved: true });
+		expect(consentResponse.statusCode).toBe(200);
+
+		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
+		const code = redirectUrl.searchParams.get('code');
+		expect(code).toBeTruthy();
+
+		// 4. Token exchange — the token service functions with MCP access disabled
+		const tokenResponse = await testServer.restlessAgent
+			.post('/mcp-oauth/token')
+			.type('form')
+			.send({
+				grant_type: 'authorization_code',
+				code: code!,
+				client_id: clientId,
+				code_verifier: codeVerifier,
+				redirect_uri: 'https://example.com/callback',
+			});
+		expect(tokenResponse.statusCode).toBe(200);
+		expect(tokenResponse.body).toEqual({
+			access_token: expect.any(String),
+			token_type: 'Bearer',
+			expires_in: 3600,
+			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
+		});
 	});
 });

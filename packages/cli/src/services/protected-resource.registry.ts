@@ -30,13 +30,6 @@ export interface ProtectedResource {
 	scopes: string[];
 
 	/**
-	 * Whether the fully registered resource is currently available. When every
-	 * registered resource reports `false`, the shared OAuth endpoints reject
-	 * requests with 403. Omit for resources that are always available.
-	 */
-	isEnabled?(): Promise<boolean>;
-
-	/**
 	 * Fallback audience for token requests that omit an RFC 8707 `resource`
 	 * parameter (pre-8707 clients). At most one registered resource may be the
 	 * default.
@@ -124,16 +117,5 @@ export class ProtectedResourceRegistry {
 			for (const scope of resource.scopes) scopes.add(scope);
 		}
 		return [...scopes];
-	}
-
-	/**
-	 * Whether at least one registered resource is currently enabled. Drives the
-	 * availability guard on the shared OAuth endpoints.
-	 */
-	async isAnyResourceEnabled(): Promise<boolean> {
-		for (const resource of this.resources.values()) {
-			if (!resource.isEnabled || (await resource.isEnabled())) return true;
-		}
-		return false;
 	}
 }
