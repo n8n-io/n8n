@@ -300,7 +300,7 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 		const wrapper = renderSearchableContent([
 			{ id: 'parent', label: 'Parent', children: createItems(1) },
 		]);
-		const input = wrapper.getByRole('textbox');
+		const input = wrapper.getByRole('textbox') as HTMLInputElement;
 
 		await userEvent.type(input, 'ab');
 		await userEvent.keyboard('{ArrowDown}');
@@ -325,7 +325,7 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 		const wrapper = renderSearchableContent([
 			{ id: 'parent', label: 'Parent', children: createItems(1) },
 		]);
-		const input = wrapper.getByRole('textbox');
+		const input = wrapper.getByRole('textbox') as HTMLInputElement;
 
 		await userEvent.type(input, 'ab');
 		await userEvent.keyboard('{ArrowDown}');
