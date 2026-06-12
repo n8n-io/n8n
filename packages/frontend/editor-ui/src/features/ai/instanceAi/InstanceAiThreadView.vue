@@ -6,6 +6,7 @@ import {
 	onUnmounted,
 	provide,
 	ref,
+	shallowReactive,
 	useTemplateRef,
 	watch,
 } from 'vue';
@@ -82,7 +83,20 @@ const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages)
 // Assistant messages whose only content has been extracted to the bottom
 // builder section (or which haven't produced anything renderable yet) would
 // otherwise leave an empty wrapper in the list — filter them out.
-const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
+// Stable array mutated in place: the filter source re-runs per streamed token
+// (it reads message content), but the list is only spliced when membership
+// actually changes — so tokens don't re-render the message list.
+const displayedMessages = shallowReactive<typeof thread.messages>([]);
+watch(
+	() => thread.messages.filter(messageHasVisibleContent),
+	(next) => {
+		const unchanged =
+			next.length === displayedMessages.length &&
+			next.every((msg, i) => msg === displayedMessages[i]);
+		if (!unchanged) displayedMessages.splice(0, displayedMessages.length, ...next);
+	},
+	{ immediate: true },
+);
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (generic approvals + domain/web-search access). Drives the swap

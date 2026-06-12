@@ -1,11 +1,11 @@
-import { computed } from 'vue';
+import { reactive, watch } from 'vue';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 
-export interface ResourceEntry {
+export type ResourceEntry = {
 	type: 'workflow' | 'credential' | 'data-table';
 	id: string;
 	name: string;
@@ -19,7 +19,7 @@ export interface ResourceEntry {
 	 * "Archived" label.
 	 */
 	archived?: boolean;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Internal helpers (defined before use to satisfy no-use-before-define)
@@ -264,35 +264,88 @@ export function useResourceRegistry(
 	workflowNameLookup?: (id: string) => string | undefined,
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 ) {
-	const collections = computed((): Collections => {
-		const col: Collections = {
-			produced: new Map<string, ResourceEntry>(),
-			byName: new Map<string, ResourceEntry>(),
-		};
+	// Long-lived reactive state, mutated in place — never replaced. Consumers
+	// get Vue's per-key/per-field dependency tracking: a rebuild that changes
+	// nothing produces zero writes and therefore zero re-renders, while e.g. an
+	// `archived` flip only notifies the component reading that entry's field.
+	const producedArtifacts = reactive(new Map<string, ResourceEntry>());
+	const resourceNameIndex = reactive(new Map<string, ResourceEntry>());
 
-		for (const msg of messages()) {
-			if (!msg.agentTree) continue;
-			collectFromAgentNode(msg.agentTree, col);
-		}
+	// Deriving from messages (instead of maintaining the registry per event)
+	// keeps it self-healing: hydration, run-sync tree replacement, optimistic
+	// rollback, and reset all just mutate `messages`, and the next derivation
+	// is correct with no lifecycle bookkeeping. The watch SOURCE is tracked
+	// (the deep walk re-runs whenever any tree gains a tool call or child);
+	// the handler is untracked, so reconciling into the maps cannot re-trigger
+	// the watcher.
+	watch(
+		(): Collections => {
+			const col: Collections = {
+				produced: new Map<string, ResourceEntry>(),
+				byName: new Map<string, ResourceEntry>(),
+			};
 
-		if (workflowNameLookup) {
-			enrichWorkflowNames(col, workflowNameLookup);
-		}
+			for (const msg of messages()) {
+				if (!msg.agentTree) continue;
+				collectFromAgentNode(msg.agentTree, col);
+			}
 
-		const archived = archivedWorkflowIds?.();
-		if (archived && archived.size > 0) {
-			for (const entry of col.produced.values()) {
-				if (entry.type === 'workflow' && archived.has(entry.id)) {
-					entry.archived = true;
+			if (workflowNameLookup) {
+				enrichWorkflowNames(col, workflowNameLookup);
+			}
+
+			const archived = archivedWorkflowIds?.();
+			if (archived && archived.size > 0) {
+				for (const entry of col.produced.values()) {
+					if (entry.type === 'workflow' && archived.has(entry.id)) {
+						entry.archived = true;
+					}
 				}
 			}
+
+			return col;
+		},
+		(col) => {
+			reconcileMap(producedArtifacts, col.produced);
+			reconcileMap(resourceNameIndex, col.byName);
+		},
+		{ immediate: true },
+	);
+
+	return { producedArtifacts, resourceNameIndex };
+}
+
+/**
+ * Write a freshly derived map into the long-lived reactive map as a set of
+ * minimal mutations. Every write goes through the reactive proxy's
+ * `hasChanged` guard, so equivalent rebuilds are completely silent.
+ */
+function reconcileMap(target: Map<string, ResourceEntry>, next: Map<string, ResourceEntry>): void {
+	for (const key of [...target.keys()]) {
+		if (!next.has(key)) target.delete(key);
+	}
+	for (const [key, entry] of next) {
+		const existing = target.get(key);
+		if (existing) {
+			reconcileEntryFields(existing, entry);
+		} else {
+			target.set(key, entry);
 		}
+	}
+}
 
-		return col;
-	});
-
-	return {
-		producedArtifacts: computed(() => collections.value.produced),
-		resourceNameIndex: computed(() => collections.value.byName),
-	};
+/**
+ * Field-level reconcile: `Object.assign` writes each property through the
+ * proxy (unchanged values trigger nothing), and the sweep before it deletes
+ * properties the new entry no longer carries. Generic over fields, so adding
+ * a field to `ResourceEntry` needs no changes here.
+ */
+function reconcileEntryFields(
+	existing: Record<string, unknown>,
+	next: Record<string, unknown>,
+): void {
+	for (const key of Object.keys(existing)) {
+		if (!(key in next)) Reflect.deleteProperty(existing, key);
+	}
+	Object.assign(existing, next);
 }
