@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { computed, useSlots } from 'vue';
+import { computed, ref, watch, useSlots } from 'vue';
 
+import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 
 export type SettingsRowLayout = 'horizontal' | 'vertical' | 'custom';
+
+// Stable, per-instance id so the disclosure trigger can `aria-controls` its region.
+let expandRegionUid = 0;
 
 export interface SettingsRowProps {
 	/** Left title (text-dark, 14/medium). Optional when the `info` slot is used. */
@@ -28,10 +32,19 @@ export interface SettingsRowProps {
 	showDivider?: boolean;
 	/** Show the leading visual slot. Implicitly true when the `visual` slot is filled. */
 	showVisual?: boolean;
-	/** PR2 placeholder: reserves the disclosure affordance. Inert in PR1. */
+	/**
+	 * Enables the disclosure region (`#expanded` slot) that animates open/closed. Pair with
+	 * `v-model` (`modelValue`): bind it to whatever control owns the state — a switch in the
+	 * `#action` slot, a button, or the built-in chevron trigger.
+	 */
 	expandable?: boolean;
-	/** PR2 placeholder: pairs with `@update:expanded` (`v-model:expanded`). Inert in PR1. */
-	expanded?: boolean;
+	/** Expanded state. Two-way bound via `v-model`; also drivable by any `#action` control. */
+	modelValue?: boolean;
+	/**
+	 * Renders the built-in chevron disclosure trigger (the default affordance). Set `false`
+	 * when an `#action` control (e.g. a switch) is the sole trigger.
+	 */
+	disclosure?: boolean;
 	/** Shows a subtle hover background on the row. Implied by `clickable`. */
 	hoverable?: boolean;
 	/**
@@ -61,20 +74,39 @@ const props = withDefaults(defineProps<SettingsRowProps>(), {
 	showDivider: true,
 	showVisual: false,
 	expandable: false,
-	expanded: false,
+	modelValue: false,
+	disclosure: true,
 	hoverable: false,
 	clickable: false,
 	revealActionsOnHover: false,
 });
 
 const emit = defineEmits<{
-	// PR2 placeholder: declared so consumers can wire `v-model:expanded` without a breaking
-	// change later. PR1 never emits it internally (state stays consumer-owned).
-	'update:expanded': [value: boolean];
+	'update:modelValue': [value: boolean];
 	click: [event: MouseEvent | KeyboardEvent];
 }>();
 
 const slots = useSlots();
+
+const expandRegionId = `settings-row-expand-${(expandRegionUid += 1)}`;
+
+// Mirror `modelValue` internally so the row also works uncontrolled (built-in chevron) while
+// still honouring a bound `v-model` or an `#action` control that drives the state.
+const internalExpanded = ref(props.modelValue);
+watch(
+	() => props.modelValue,
+	(value) => {
+		internalExpanded.value = value;
+	},
+);
+const isExpanded = computed(() => props.expandable && internalExpanded.value);
+
+function toggleExpanded(event: MouseEvent) {
+	event.stopPropagation();
+	const next = !internalExpanded.value;
+	internalExpanded.value = next;
+	emit('update:modelValue', next);
+}
 
 const descriptionLines = computed(() => Math.min(Math.max(props.maxDescriptionLines, 1), 3));
 
@@ -168,10 +200,31 @@ function onKeydown(event: KeyboardEvent) {
 			>
 				<slot name="action" />
 			</div>
+			<button
+				v-if="expandable && disclosure"
+				type="button"
+				:class="$style.disclosure"
+				:aria-expanded="isExpanded"
+				:aria-controls="expandRegionId"
+				:aria-label="title ? `Toggle ${title}` : 'Toggle details'"
+				@click="toggleExpanded"
+			>
+				<N8nIcon :class="$style.disclosureIcon" icon="chevron-down" />
+			</button>
 		</template>
 
-		<div v-if="expandable && expanded && slots.revealed" :class="$style.revealed">
-			<slot name="revealed" />
+		<div
+			v-if="expandable"
+			:id="expandRegionId"
+			:class="$style.expandRegion"
+			:data-expanded="isExpanded"
+			role="region"
+		>
+			<div :class="$style.expandInner">
+				<div :class="$style.expandContent">
+					<slot name="expanded" />
+				</div>
+			</div>
 		</div>
 
 		<span
@@ -184,9 +237,14 @@ function onKeydown(event: KeyboardEvent) {
 </template>
 
 <style lang="scss" module>
+// The expand/collapse motion. 200ms maps to `--duration--snappy`; the curve has no DS token,
+// so it lives here as a local constant per the motion spec.
+$expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
+
 .row {
 	position: relative;
 	display: flex;
+	flex-wrap: wrap;
 	width: 100%;
 	box-sizing: border-box;
 }
@@ -314,8 +372,86 @@ function onKeydown(event: KeyboardEvent) {
 	opacity: 1;
 }
 
-.revealed {
+.disclosure {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-inline-start: var(--spacing--2xs);
+	padding: var(--spacing--4xs);
+	border: none;
+	background: transparent;
+	border-radius: var(--radius);
+	color: var(--text-color--subtle);
+	cursor: pointer;
+}
+
+.disclosure:hover {
+	background: var(--background--hover);
+}
+
+.disclosure:focus-visible {
+	outline: var(--focus--border-width, 2px) solid var(--focus--border-color);
+	outline-offset: calc(-1 * var(--focus--border-width, 2px));
+}
+
+.disclosureIcon {
+	transition: transform var(--duration--snappy) $expand-easing;
+}
+
+.disclosure[aria-expanded='true'] .disclosureIcon {
+	transform: rotate(180deg);
+}
+
+/*
+ * Animated reveal: the grid 0fr→1fr technique animates real height without `height: auto`,
+ * paired with an opacity fade and a subtle blur. The region always takes a full row (it wraps
+ * below the header in the horizontal layout).
+ */
+.expandRegion {
+	flex: 0 0 100%;
 	width: 100%;
+	display: grid;
+	grid-template-rows: 0fr;
+	opacity: 0;
+	filter: blur(4px);
+	transition:
+		grid-template-rows var(--duration--snappy) $expand-easing,
+		opacity var(--duration--snappy) $expand-easing,
+		filter var(--duration--snappy) $expand-easing;
+}
+
+.expandRegion[data-expanded='true'] {
+	grid-template-rows: 1fr;
+	opacity: 1;
+	filter: blur(0);
+}
+
+.expandInner {
+	min-height: 0;
+	overflow: hidden;
+}
+
+// Indents the revealed content so nested rows read as children of this row.
+.expandContent {
+	padding-block: var(--spacing--3xs) var(--spacing--sm);
+	padding-inline-start: var(--spacing--lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.disclosureIcon {
+		transition: none;
+	}
+
+	// Drop the blur and the height animation; keep only a simple, quick fade.
+	.expandRegion {
+		filter: none;
+		transition: opacity var(--duration--snappy) linear;
+	}
+
+	.expandRegion[data-expanded='true'] {
+		filter: none;
+	}
 }
 
 .divider {

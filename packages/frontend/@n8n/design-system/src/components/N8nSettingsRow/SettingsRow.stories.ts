@@ -289,27 +289,86 @@ export const NoDivider: Story = {
 };
 
 export const Expandable: Story = {
-	render: (args) => ({
-		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nButton, N8nText },
+	render: () => ({
+		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nSwitch, N8nButton, N8nInput },
 		setup() {
-			const expanded = ref(false);
-			return { args, expanded };
+			// The switch in the action slot owns the expanded state via `v-model`; the row
+			// animates its `#expanded` region open/closed in response. `:disclosure="false"`
+			// hides the built-in chevron since the switch is the trigger here.
+			const enabled = ref(true);
+			return { enabled };
 		},
 		template: card(`
-			<N8nSettingsRow v-bind="args" expandable :expanded="expanded">
-				<template #action>
-					<N8nButton variant="ghost" size="small" :label="expanded ? 'Hide' : 'Configure'" @click="expanded = !expanded" />
-				</template>
-				<template #revealed>
-					<N8nText size="small" color="text-base">PR2 reveals this content when expanded.</N8nText>
+			<N8nSettingsRow
+				title="Single sign-on (SSO)"
+				description="Turn on to reveal the SSO configuration below."
+				expandable
+				:disclosure="false"
+				v-model="enabled"
+			>
+				<template #action><N8nSwitch v-model="enabled" /></template>
+				<template #expanded>
+					<N8nSettingsRowGroup>
+						<N8nSettingsRow title="Identity provider URL" layout="vertical">
+							<template #action><N8nInput placeholder="https://idp.example.com/sso" /></template>
+						</N8nSettingsRow>
+						<N8nSettingsRow title="Require SSO for all members" description="Members must sign in through your identity provider.">
+							<template #action><N8nButton variant="outline" size="medium" label="Configure" /></template>
+						</N8nSettingsRow>
+						<N8nSettingsRow title="Test connection" :show-divider="false">
+							<template #action><N8nButton variant="outline" size="medium" label="Run test" /></template>
+						</N8nSettingsRow>
+					</N8nSettingsRowGroup>
 				</template>
 			</N8nSettingsRow>
 		`),
 	}),
-	args: {
-		title: 'Authenticator app',
-		description:
-			'Disclosure pattern reserved for PR2 (control owns the toggle via v-model:expanded).',
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Stateful disclosure: the row exposes the expanded state through `v-model`, so any control can drive it. Here a switch in the action slot reveals nested settings rows with a ~200ms height + fade + blur animation (respecting `prefers-reduced-motion`).',
+			},
+		},
+	},
+};
+
+export const ExpandableChevron: Story = {
+	render: () => ({
+		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nButton },
+		setup() {
+			const expanded = ref(false);
+			return { expanded };
+		},
+		// The built-in chevron is the default trigger affordance: it carries `aria-expanded` /
+		// `aria-controls` and rotates to reflect state. No `#action` control is required.
+		template: card(`
+			<N8nSettingsRow
+				title="Advanced options"
+				description="Use the chevron to reveal the additional settings."
+				expandable
+				v-model="expanded"
+			>
+				<template #expanded>
+					<N8nSettingsRowGroup>
+						<N8nSettingsRow title="Beta features" description="Opt into experimental functionality.">
+							<template #action><N8nButton variant="outline" size="medium" label="Manage" /></template>
+						</N8nSettingsRow>
+						<N8nSettingsRow title="Reset to defaults" :show-divider="false">
+							<template #action><N8nButton variant="outline" size="medium" label="Reset" /></template>
+						</N8nSettingsRow>
+					</N8nSettingsRowGroup>
+				</template>
+			</N8nSettingsRow>
+		`),
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'When no action control drives the state, the built-in chevron disclosure (default `disclosure: true`) is the trigger — fully keyboard operable, with `aria-expanded`/`aria-controls` and a rotating indicator.',
+			},
+		},
 	},
 };
 

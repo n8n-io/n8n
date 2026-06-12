@@ -238,6 +238,105 @@ describe('N8nSettingsRow', () => {
 		});
 	});
 
+	describe('expandable', () => {
+		it('does not render the expand region unless expandable', () => {
+			render(N8nSettingsRow, {
+				props: { title: 'Title' },
+				slots: { expanded: '<div data-test-id="expanded-content">details</div>' },
+			});
+
+			expect(screen.queryByRole('region')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('expanded-content')).not.toBeInTheDocument();
+		});
+
+		it('renders the expand region and slot content when expandable', () => {
+			render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true },
+				slots: { expanded: '<div data-test-id="expanded-content">details</div>' },
+			});
+
+			expect(screen.getByRole('region')).toBeInTheDocument();
+			expect(screen.getByTestId('expanded-content')).toBeInTheDocument();
+		});
+
+		it('renders the built-in chevron trigger wired to the region by default', () => {
+			render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true },
+			});
+
+			const trigger = screen.getByRole('button', { name: 'Toggle Title' });
+			const region = screen.getByRole('region');
+			expect(trigger).toHaveAttribute('aria-controls', region.id);
+		});
+
+		it('reflects the collapsed state via aria-expanded and data-expanded', () => {
+			render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true, modelValue: false },
+			});
+
+			expect(screen.getByRole('button', { name: 'Toggle Title' })).toHaveAttribute(
+				'aria-expanded',
+				'false',
+			);
+			expect(screen.getByRole('region')).toHaveAttribute('data-expanded', 'false');
+		});
+
+		it('reflects the expanded state via aria-expanded and data-expanded', () => {
+			render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true, modelValue: true },
+			});
+
+			expect(screen.getByRole('button', { name: 'Toggle Title' })).toHaveAttribute(
+				'aria-expanded',
+				'true',
+			);
+			expect(screen.getByRole('region')).toHaveAttribute('data-expanded', 'true');
+		});
+
+		it('emits update:modelValue when the chevron trigger is clicked', async () => {
+			const { emitted } = render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true, modelValue: false },
+			});
+
+			await fireEvent.click(screen.getByRole('button', { name: 'Toggle Title' }));
+
+			expect(emitted()['update:modelValue']).toEqual([[true]]);
+		});
+
+		it('works uncontrolled: the chevron toggles its own state', async () => {
+			render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true },
+			});
+
+			const trigger = screen.getByRole('button', { name: 'Toggle Title' });
+			expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+			await fireEvent.click(trigger);
+
+			expect(trigger).toHaveAttribute('aria-expanded', 'true');
+			expect(screen.getByRole('region')).toHaveAttribute('data-expanded', 'true');
+		});
+
+		it('hides the built-in chevron when disclosure is false', () => {
+			render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true, disclosure: false },
+			});
+
+			expect(screen.queryByRole('button', { name: 'Toggle Title' })).not.toBeInTheDocument();
+			expect(screen.getByRole('region')).toBeInTheDocument();
+		});
+
+		it('does not toggle the chevron click into a clickable row', async () => {
+			const { emitted } = render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true, clickable: true },
+			});
+
+			await fireEvent.click(screen.getByRole('button', { name: 'Toggle Title' }));
+
+			expect(emitted().click).toBeUndefined();
+		});
+	});
+
 	describe('revealActionsOnHover', () => {
 		it('marks the action region as reveal-on-hover', () => {
 			const { container } = render(N8nSettingsRow, {
