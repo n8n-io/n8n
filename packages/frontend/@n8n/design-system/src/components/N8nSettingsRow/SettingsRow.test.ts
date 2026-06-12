@@ -335,6 +335,67 @@ describe('N8nSettingsRow', () => {
 
 			expect(emitted().click).toBeUndefined();
 		});
+
+		it('shows the default "View more" label while collapsed', () => {
+			render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true, modelValue: false },
+			});
+
+			const trigger = screen.getByRole('button', { name: 'Toggle Title' });
+			expect(trigger).toHaveTextContent('View more');
+			expect(trigger).not.toHaveTextContent('Show less');
+		});
+
+		it('shows the default "Show less" label while expanded', () => {
+			render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true, modelValue: true },
+			});
+
+			const trigger = screen.getByRole('button', { name: 'Toggle Title' });
+			expect(trigger).toHaveTextContent('Show less');
+			expect(trigger).not.toHaveTextContent('View more');
+		});
+
+		it('toggles the label text when the trigger is clicked (uncontrolled)', async () => {
+			render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true },
+			});
+
+			const trigger = screen.getByRole('button', { name: 'Toggle Title' });
+			expect(trigger).toHaveTextContent('View more');
+
+			await fireEvent.click(trigger);
+
+			expect(trigger).toHaveTextContent('Show less');
+		});
+
+		it('honours custom expand/collapse labels', async () => {
+			render(N8nSettingsRow, {
+				props: {
+					title: 'Title',
+					expandable: true,
+					expandLabel: 'Show details',
+					collapseLabel: 'Hide details',
+				},
+			});
+
+			const trigger = screen.getByRole('button', { name: 'Toggle Title' });
+			expect(trigger).toHaveTextContent('Show details');
+
+			await fireEvent.click(trigger);
+
+			expect(trigger).toHaveTextContent('Hide details');
+		});
+
+		it('keeps the aria-label independent of the visible label', () => {
+			render(N8nSettingsRow, {
+				props: { title: 'Title', expandable: true, expandLabel: 'Show details' },
+			});
+
+			expect(screen.getByRole('button', { name: 'Toggle Title' })).toHaveTextContent(
+				'Show details',
+			);
+		});
 	});
 
 	describe('revealActionsOnHover', () => {

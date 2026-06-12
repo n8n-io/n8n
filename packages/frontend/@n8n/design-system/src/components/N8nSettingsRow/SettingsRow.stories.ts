@@ -21,6 +21,8 @@ const meta = {
 		showVisual: { control: 'boolean' },
 		actionMaxWidth: { control: 'text' },
 		actionFill: { control: 'boolean' },
+		expandLabel: { control: 'text' },
+		collapseLabel: { control: 'text' },
 		hoverable: { control: 'boolean' },
 		clickable: { control: 'boolean' },
 		revealActionsOnHover: { control: 'boolean' },
@@ -362,7 +364,7 @@ export const ExpandableChevron: Story = {
 		docs: {
 			description: {
 				story:
-					'When no action control drives the state, the built-in chevron disclosure (default `disclosure: true`) is the trigger — fully keyboard operable, with `aria-expanded`/`aria-controls` and a rotating indicator.',
+					'When no action control drives the state, the built-in chevron disclosure (default `disclosure: true`) is the trigger — a text label ("View more" → "Show less", customizable via `expandLabel`/`collapseLabel`) beside a rotating chevron, fully keyboard operable with `aria-expanded`/`aria-controls`.',
 			},
 		},
 	},

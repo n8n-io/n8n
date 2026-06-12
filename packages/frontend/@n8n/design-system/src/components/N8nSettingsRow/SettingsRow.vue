@@ -45,6 +45,10 @@ export interface SettingsRowProps {
 	 * when an `#action` control (e.g. a switch) is the sole trigger.
 	 */
 	disclosure?: boolean;
+	/** Built-in disclosure trigger label shown beside the chevron while collapsed. */
+	expandLabel?: string;
+	/** Built-in disclosure trigger label shown beside the chevron while expanded. */
+	collapseLabel?: string;
 	/** Shows a subtle hover background on the row. Implied by `clickable`. */
 	hoverable?: boolean;
 	/**
@@ -76,6 +80,8 @@ const props = withDefaults(defineProps<SettingsRowProps>(), {
 	expandable: false,
 	modelValue: false,
 	disclosure: true,
+	expandLabel: 'View more',
+	collapseLabel: 'Show less',
 	hoverable: false,
 	clickable: false,
 	revealActionsOnHover: false,
@@ -100,6 +106,10 @@ watch(
 	},
 );
 const isExpanded = computed(() => props.expandable && internalExpanded.value);
+
+const disclosureLabel = computed(() =>
+	isExpanded.value ? props.collapseLabel : props.expandLabel,
+);
 
 function toggleExpanded(event: MouseEvent) {
 	event.stopPropagation();
@@ -209,6 +219,14 @@ function onKeydown(event: KeyboardEvent) {
 				:aria-label="title ? `Toggle ${title}` : 'Toggle details'"
 				@click="toggleExpanded"
 			>
+				<N8nText
+					v-if="disclosureLabel"
+					:class="$style.disclosureLabel"
+					size="small"
+					color="text-base"
+				>
+					{{ disclosureLabel }}
+				</N8nText>
 				<N8nIcon :class="$style.disclosureIcon" icon="chevron-down" />
 			</button>
 		</template>
@@ -379,8 +397,9 @@ $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	gap: var(--spacing--5xs);
 	margin-inline-start: var(--spacing--2xs);
-	padding: var(--spacing--4xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border: none;
 	background: transparent;
 	border-radius: var(--radius);
@@ -395,6 +414,10 @@ $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 .disclosure:focus-visible {
 	outline: var(--focus--border-width, 2px) solid var(--focus--border-color);
 	outline-offset: calc(-1 * var(--focus--border-width, 2px));
+}
+
+.disclosureLabel {
+	white-space: nowrap;
 }
 
 .disclosureIcon {
