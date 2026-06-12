@@ -71,6 +71,55 @@ describe('HttpRequestV3', () => {
 		} as unknown as IExecuteFunctions;
 	});
 
+	it('should expose WebDAV methods in the Method dropdown', () => {
+		const methodProperty = node.description.properties.find((p) => p.name === 'method');
+		expect(methodProperty).toBeDefined();
+		expect(methodProperty?.type).toBe('options');
+
+		const options = (methodProperty as { options?: Array<{ value: string }> }).options ?? [];
+		const optionValues = options.map((o) => o.value);
+
+		for (const method of ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT']) {
+			expect(optionValues).toContain(method);
+		}
+	});
+
+	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'])(
+		'should make a %s request',
+		async (method) => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return method;
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method,
+					uri: baseUrl,
+				}),
+			);
+		},
+	);
+
 	it('should make a GET request', async () => {
 		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
 		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
