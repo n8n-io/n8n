@@ -4804,6 +4804,9 @@ importers:
       '@mozilla/readability':
         specifier: 0.6.0
         version: 0.6.0
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../@n8n/backend-network
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
@@ -5027,9 +5030,6 @@ importers:
         specifier: 3.1.0
         version: 3.1.0
     devDependencies:
-      '@n8n/backend-network':
-        specifier: workspace:*
-        version: link:../@n8n/backend-network
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2

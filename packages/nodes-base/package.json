@@ -869,7 +869,6 @@
     ]
   },
   "devDependencies": {
-    "@n8n/backend-network": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
@@ -906,6 +905,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
+    "@n8n/backend-network": "workspace:*",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/config": "workspace:*",
