@@ -52,6 +52,8 @@
     "test:ci:backend:integration": "turbo run test:integration --continue --concurrency=1 --filter='!./packages/frontend/**'",
     "test:ci:backend:integration:changed": "turbo run test:integration:changed --continue --concurrency=1 --filter='!./packages/frontend/**'",
     "test:affected": "turbo run test --affected --concurrency=1",
+    "db:schema:docs": "turbo run build --filter=@n8n/db && pnpm --filter=@n8n/db schema:docs",
+    "db:schema:check": "turbo run build --filter=@n8n/db && pnpm --filter=@n8n/db schema:check",
     "test:with:docker": "pnpm --filter=n8n-playwright test:container:standard",
     "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
     "watch": "turbo run watch --concurrency=64",
