@@ -228,7 +228,12 @@ export class McpServer {
 	}
 
 	getSessionId(req: express.Request): string | undefined {
-		return (req.query.sessionId ?? req.headers['mcp-session-id']) as string | undefined;
+		const fromQuery = req.query.sessionId;
+		const fromHeader = req.headers['mcp-session-id'];
+
+		if (typeof fromQuery === 'string') return fromQuery;
+		if (typeof fromHeader === 'string') return fromHeader;
+		return undefined;
 	}
 
 	getMcpMetadata(req: express.Request): { sessionId: string; messageId: string } | undefined {
