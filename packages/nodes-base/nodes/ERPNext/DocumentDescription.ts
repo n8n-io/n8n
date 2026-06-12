@@ -182,6 +182,10 @@ export const documentFields: INodeProperties[] = [
 										name: 'IS NOT',
 										value: 'isNot',
 									},
+									{
+										name: 'LIKE',
+										value: 'like',
+									},
 								],
 							},
 							{
