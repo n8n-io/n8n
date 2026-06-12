@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon, N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import HistoryView from './HistoryView.vue';
 import TasksView from './TasksView.vue';
@@ -9,6 +9,7 @@ import ChatView from '../components/ChatView.vue';
 import TaskComposer from '../components/TaskComposer.vue';
 
 import { useTaskSearch } from '../assistant/use-task-search';
+import { getThreadPromptWatcher } from '../permissions/thread-prompt-watcher';
 
 type Tab = 'tasks' | 'history' | 'chat';
 
@@ -21,6 +22,21 @@ const activeTab = ref<Tab>('tasks');
 const chatThreadId = ref<string | null>(null);
 const chatCreating = ref(false);
 const chatError = ref(false);
+
+// Permission-watch the chat-tab thread so its confirmations (e.g. an "Edit
+// workflow?" approval) surface in the app-wide prompt stack. The chat tab is a
+// separate surface from the home composer's chat overlay, which is watched
+// elsewhere; without this its prompts only ever appeared in the web UI.
+// Refcounted watch, released when the thread changes or HomeView unmounts.
+watch(
+	chatThreadId,
+	(threadId, _previous, onCleanup) => {
+		if (!threadId) return;
+		const release = getThreadPromptWatcher().watchThread(threadId);
+		onCleanup(release);
+	},
+	{ immediate: true },
+);
 
 async function startNewChat() {
 	// Dedupe concurrent creates (rapid clicks / arrow-key roving) into one thread.
