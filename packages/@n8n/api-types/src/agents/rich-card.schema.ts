@@ -134,6 +134,9 @@ export const richMessageSchema = z
 		card: richCardSchema.optional(),
 	})
 	.strict()
+	.refine((message) => message.text !== undefined || message.card !== undefined, {
+		message: 'Provide message.text or message.card.',
+	})
 	.describe('Generic message payload. Use message.text plus optional message.card only.');
 
 export type RichCardComponent = z.infer<typeof richCardComponentSchema>;

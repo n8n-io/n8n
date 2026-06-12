@@ -89,7 +89,8 @@ export function cardChoiceLabel(card: N8nChatCard, resume: N8nChatResumeValue): 
 						: [];
 			for (const button of candidates) {
 				if (button.value === resume.value) {
-					return button.label ?? resume.value;
+					// Same precedence the renderer uses for the visible button text.
+					return button.label ?? button.text ?? resume.value;
 				}
 			}
 		}

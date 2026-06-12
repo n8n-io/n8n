@@ -60,6 +60,10 @@ describe('parseIntegrationActionCard', () => {
 		expect(
 			parseIntegrationActionCard({ action: 'add_reaction', input: { emoji: 'tada' } }),
 		).toBeUndefined();
+		// Empty message objects fail the shared schema's text-or-card refine.
+		expect(
+			parseIntegrationActionCard({ action: 'respond', input: { message: {} } }),
+		).toBeUndefined();
 	});
 });
 

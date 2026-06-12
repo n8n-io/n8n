@@ -99,6 +99,24 @@ describe('summariseInteractiveOutput — n8n_chat_action', () => {
 		).toBe('Approve & Send');
 	});
 
+	it('falls back to button text when label is absent (same precedence as the renderer)', () => {
+		const textButtonInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: { components: [{ type: 'button', text: 'Confirm & Send', value: 'confirm' }] },
+				},
+			},
+		};
+		expect(
+			summariseInteractiveOutput(
+				N8N_CHAT_ACTION_TOOL_NAME,
+				{ type: 'button', value: 'confirm' },
+				textButtonInput,
+			),
+		).toBe('Confirm & Send');
+	});
+
 	it('resolves a selected option to its label', () => {
 		expect(
 			summariseInteractiveOutput(

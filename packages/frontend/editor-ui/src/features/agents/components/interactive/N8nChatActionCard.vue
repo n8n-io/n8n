@@ -132,7 +132,11 @@ function selectedOptionValue(component: SelectComponent): string | undefined {
 						data-testid="n8n-chat-card-section-button"
 						@click="submitButton(block.component.button)"
 					>
-						{{ block.component.button.label ?? block.component.button.value }}
+						{{
+							block.component.button.label ??
+							block.component.button.text ??
+							block.component.button.value
+						}}
 					</N8nButton>
 				</div>
 

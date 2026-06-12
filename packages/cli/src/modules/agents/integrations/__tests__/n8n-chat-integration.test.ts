@@ -94,6 +94,17 @@ describe('N8nChatIntegration', () => {
 		}
 	});
 
+	it('respond with an empty message object fails fast at the schema boundary', async () => {
+		const result = await integration.executeAction({
+			chat: undefined,
+			descriptor: mock(),
+			action: 'respond',
+			input: { message: {} },
+			currentMessageContext: makeContext(),
+		});
+		expect(result).toMatchObject({ ok: false, error: { code: 'ACTION_FAILED' } });
+	});
+
 	it('respond with completely wrong input shape returns ACTION_FAILED', async () => {
 		const result = await integration.executeAction({
 			chat: undefined,
