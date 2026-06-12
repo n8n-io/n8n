@@ -279,7 +279,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// inflightKeys) plus the lane's traced LangSmith wrappers. `runner` is
 	// the underlying Lane (n8n client, credential state) — named distinctly so
 	// it doesn't shadow the iteration variable `lane` in lanes.map().
-	type BuildArgs = Pick<WorkflowTestCase, 'conversation' | 'messageBudget' | 'credentials'>;
+	type BuildArgs = Pick<
+		WorkflowTestCase,
+		'conversation' | 'messageBudget' | 'credentials' | 'seedFile' | 'priorConversation'
+	>;
 	interface LaneState {
 		runner: Lane;
 		activeBuilds: number;
@@ -307,6 +310,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						conversation: buildArgs.conversation,
 						messageBudget: buildArgs.messageBudget,
 						credentials: buildArgs.credentials,
+						seedFile: buildArgs.seedFile,
+						priorConversation: buildArgs.priorConversation,
 						createdCredentialIds: lane.createdCredentialIds,
 						timeoutMs: args.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
@@ -407,6 +412,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					conversation: entry.conversation,
 					messageBudget: entry.messageBudget,
 					credentials: entry.credentials,
+					seedFile: entry.seedFile,
+					priorConversation: entry.priorConversation,
 				});
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);

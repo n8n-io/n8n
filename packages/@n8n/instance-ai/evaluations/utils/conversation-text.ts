@@ -18,7 +18,12 @@ export function userTurnsAsText(transcript: TranscriptTurn[]): string {
 export function transcriptAsText(transcript: TranscriptTurn[]): string {
 	return transcript
 		.map((turn, i) => {
-			const lines: string[] = [`### Turn ${String(i + 1)}`];
+			// Seeded turns are restored prior context — they predate the evaluated
+			// run, and judges must not score them as live behaviour.
+			const seededSuffix = turn.seeded
+				? ' (seeded prior context — predates the evaluated run)'
+				: '';
+			const lines: string[] = [`### Turn ${String(i + 1)}${seededSuffix}`];
 			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
 			for (const step of turn.steps) {
 				const line = describeStep(step);

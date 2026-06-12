@@ -21,6 +21,12 @@ import {
 	recordUserTurn,
 	type ConfirmationStrategy,
 } from './chat-loop';
+import {
+	loadConversationSeed,
+	remapSeedWorkflowIds,
+	seedFromProse,
+	transcriptPrefixFromSeed,
+} from './conversation-seed';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import { buildWorkflowContextBlock } from './workflow-context';
@@ -189,6 +195,8 @@ export async function runWorkflowTestCase(
 				conversation: testCase.conversation,
 				messageBudget: testCase.messageBudget,
 				credentials: testCase.credentials,
+				seedFile: testCase.seedFile,
+				priorConversation: testCase.priorConversation,
 				createdCredentialIds: config.createdCredentialIds,
 				timeoutMs,
 				preRunWorkflowIds: config.preRunWorkflowIds,
@@ -402,6 +410,16 @@ export interface BuildWorkflowConfig {
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
 	createdCredentialIds?: Set<string>;
+	/**
+	 * Conversation seed file (absolute path) restored into the thread before
+	 * the first live message: native message history + referenced workflows
+	 * (recreated under fresh ids). Restore failures fail the build — a seeded
+	 * case cannot meaningfully run unseeded.
+	 */
+	seedFile?: string;
+	/** Prose turns seeded as plain-text thread history before the first live
+	 *  message. Mutually exclusive with `seedFile` (enforced at case load). */
+	priorConversation?: ConversationTurn[];
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
@@ -443,6 +461,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	const proxyResponses = new Map<string, InstanceAiConfirmRequest>();
 	const followUpMessages: string[] = [];
 	let credentialViewPinned = true;
+	let restoredWorkflowIds: string[] = [];
+	let seededTranscript: TranscriptTurn[] = [];
 
 	try {
 		const buildStart = Date.now();
@@ -477,6 +497,29 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			credentialViewPinned = false;
 			logger.info(
 				`  Credential-pin endpoint unavailable, building unpinned${config.laneTag ?? ''}`,
+			);
+		}
+
+		// Restore the case's conversation seed before the first live message, so
+		// the thread continues a real prior history instead of starting cold.
+		// Unlike the credential pin there is no degraded mode: a seeded case
+		// cannot meaningfully run unseeded, so any restore failure fails the build.
+		const seed = config.seedFile
+			? loadConversationSeed(config.seedFile)
+			: config.priorConversation && config.priorConversation.length > 0
+				? seedFromProse(config.priorConversation)
+				: undefined;
+		if (seed) {
+			const remapped = remapSeedWorkflowIds(seed);
+			const restoreResult = await client.restoreThread(
+				threadId,
+				remapped.messages,
+				remapped.workflows,
+			);
+			restoredWorkflowIds = restoreResult.workflowIds;
+			seededTranscript = transcriptPrefixFromSeed(remapped.messages);
+			logger.info(
+				`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${config.laneTag ?? ''}`,
 			);
 		}
 
@@ -520,12 +563,15 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		await ssePromise.catch(() => {});
 
 		const conversationMetrics = buildConversationMetrics(events);
-		const transcript = buildTranscriptFromEvents({
-			events,
-			openingMessage,
-			followUpMessages,
-			proxyResponses,
-		});
+		const transcript = [
+			...seededTranscript,
+			...buildTranscriptFromEvents({
+				events,
+				openingMessage,
+				followUpMessages,
+				proxyResponses,
+			}),
+		];
 
 		let threadMessages;
 		try {
@@ -536,7 +582,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
 		const eventOutcome = extractOutcomeFromEvents(events);
-		const threadWorkflowIds = [...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds])];
+		// Restored workflows count as part of the thread's outcome surface: they
+		// keep a seeded build scoreable (and cleanable) even when the live turn
+		// never touches a workflow tool. Live tool-call ids stay first so the
+		// agent's latest artifact remains the primary scored workflow.
+		const threadWorkflowIds = [
+			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
+		];
 		const buildTrace: BuildTrace = {
 			finalText: eventOutcome.finalText,
 			toolCalls: eventOutcome.toolCalls,
@@ -589,7 +641,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				error: buildError,
 				workflowJsons: [],
 				buildTrace,
-				createdWorkflowIds: [],
+				createdWorkflowIds: restoredWorkflowIds,
 				createdDataTableIds: outcome.dataTablesCreated,
 				conversationMetrics,
 				events,
@@ -638,7 +690,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
 			workflowJsons: [],
-			createdWorkflowIds: [],
+			createdWorkflowIds: restoredWorkflowIds,
 			createdDataTableIds: [],
 			conversationMetrics,
 			events,
