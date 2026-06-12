@@ -1220,6 +1220,11 @@ export class AgentRuntime {
 			.catch(async (error: unknown) => {
 				await this.flushTelemetry(options);
 				await this.cleanupRun();
+				const isAbort = ctx.abortScope.isAborted;
+				this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
+				if (!isAbort) {
+					this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
+				}
 				try {
 					await writer.write({ type: 'error', error });
 					await writer.write({ type: 'finish', finishReason: 'error' });
@@ -1535,6 +1540,27 @@ export class AgentRuntime {
 			lastFinishReason = 'max-iterations';
 		}
 
+		await this.saveToMemory(list, options);
+
+		if (this.config.titleGeneration && options?.persistence && this.config.memory) {
+			const titlePromise = generateThreadTitle({
+				memory: this.config.memory,
+				threadId: options.persistence.threadId,
+				resourceId: options.persistence.resourceId,
+				titleConfig: this.config.titleGeneration,
+				agentModel: this.config.model,
+				turnDelta: list.turnDelta(),
+				executionCounter: options.executionCounter,
+			});
+			this.backgroundTasks.track(titlePromise);
+			if (this.config.titleGeneration.sync) {
+				await titlePromise;
+			}
+		}
+
+		await this.cleanupRun();
+		await this.flushTelemetry(options);
+
 		const costUsage = this.applyCost(totalUsage);
 		await writer.write({
 			type: 'finish',
@@ -1544,33 +1570,9 @@ export class AgentRuntime {
 			...(structuredOutput !== undefined && { structuredOutput }),
 		});
 
-		try {
-			await this.saveToMemory(list, options);
-
-			if (this.config.titleGeneration && options?.persistence && this.config.memory) {
-				const titlePromise = generateThreadTitle({
-					memory: this.config.memory,
-					threadId: options.persistence.threadId,
-					resourceId: options.persistence.resourceId,
-					titleConfig: this.config.titleGeneration,
-					agentModel: this.config.model,
-					turnDelta: list.turnDelta(),
-					executionCounter: options.executionCounter,
-				});
-				this.backgroundTasks.track(titlePromise);
-				if (this.config.titleGeneration.sync) {
-					await titlePromise;
-				}
-			}
-
-			await this.cleanupRun();
-			await this.flushTelemetry(options);
-
-			this.updateState({ status: 'success', messageList: list.serialize() });
-			this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
-		} finally {
-			await writer.close();
-		}
+		this.updateState({ status: 'success', messageList: list.serialize() });
+		this.eventBus.emit({ type: AgentEvent.AgentEnd, messages: list.responseDelta() });
+		await writer.close();
 	}
 
 	/** Persist the current-turn delta to memory. */

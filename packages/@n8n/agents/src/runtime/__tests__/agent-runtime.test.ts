@@ -650,6 +650,43 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 });
 
 // ---------------------------------------------------------------------------
+// stream() — fallback error observability
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — fallback error observability', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('emits AgentEvent.Error and sets failed state when post-loop persistence throws', async () => {
+		const memory = {
+			getMessages: vi.fn().mockResolvedValue([]),
+			saveMessages: vi.fn().mockRejectedValue(new Error('memory write failed')),
+		} as unknown as InMemoryMemory;
+		const { runtime, bus } = createRuntime();
+		const errorEvents: unknown[] = [];
+		bus.on(AgentEvent.Error, (event) => errorEvents.push(event));
+
+		(runtime as unknown as { config: { memory: unknown } }).config.memory = memory;
+		streamText.mockReturnValue(makeStreamSuccess('done'));
+
+		const result = await runtime.stream('hello', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(chunks).toContainEqual(
+			expect.objectContaining({
+				type: 'finish',
+				finishReason: 'error',
+			}),
+		);
+		expect(errorEvents).toHaveLength(1);
+		expect(runtime.getState().status).toBe('failed');
+	});
+});
+
+// ---------------------------------------------------------------------------
 // stream() — graceful error contract
 // ---------------------------------------------------------------------------
 
