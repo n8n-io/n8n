@@ -75,7 +75,10 @@ export async function microsoftApiRequestAllItems(
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = responseData['@odata.nextLink'];
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		const limit = query.limit as number | undefined;
+		const limit =
+			typeof (query.$top || query.limit) === 'number'
+				? ((query.$top || query.limit) as number)
+				: undefined;
 		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
