@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import { HookContext, WebhookContext } from 'n8n-core';
 import {
 	ensureError,
-	Node,
+	isNodeClassInstance,
 	NodeHelpers,
 	UnexpectedError,
 	WebhookPathTakenError,
@@ -492,7 +492,7 @@ export class WebhookService {
 		);
 
 		try {
-			return nodeType instanceof Node
+			return isNodeClassInstance(nodeType)
 				? await nodeType.webhook(context)
 				: await nodeType.webhook.call(context);
 		} finally {
