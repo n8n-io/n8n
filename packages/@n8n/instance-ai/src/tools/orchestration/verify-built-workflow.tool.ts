@@ -384,6 +384,18 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			// Destructive nodes (including dataTable writes) are simulated via the
 			// build outcome's node simulation plan, so verification creates no
 			// external side effects and needs no post-run cleanup.
+			//
+			// An undefined plan (as opposed to an empty one) means the outcome
+			// predates classification or classification failed entirely — nothing
+			// shields destructive nodes in that run, so flag it instead of
+			// silently executing everything for real.
+			const planMissing = buildOutcome.nodeSimulationPlan === undefined;
+			if (planMissing) {
+				context.logger.warn(
+					'verify-built-workflow: build outcome has no simulation plan — nodes will execute without simulation safeguards',
+					{ workItemId: input.workItemId, workflowId: buildOutcome.workflowId },
+				);
+			}
 			const { pinData: verificationPinData, simulatedNodes } =
 				buildVerificationPinData(buildOutcome);
 			const simulationMap =
@@ -526,7 +538,11 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					? `Simulated ${reachedSimulatedNodes.length} node(s) during verification — no real external writes happened: ` +
 						reachedSimulatedNodes.map((n) => `${n.nodeName} (${n.reason})`).join('; ') +
 						'. Relay this to the user when presenting the result.'
-					: undefined;
+					: planMissing
+						? 'No simulation plan was available for this verification run — nodes were NOT ' +
+							'simulated and may have performed real external writes (sent messages, created or ' +
+							'modified records). Relay this to the user when presenting the result.'
+						: undefined;
 			const coverageNote =
 				nodesNotReached.length > 0
 					? `Partial coverage: ${nodesNotReached.length} node(s) were never reached and remain UNVERIFIED: ` +

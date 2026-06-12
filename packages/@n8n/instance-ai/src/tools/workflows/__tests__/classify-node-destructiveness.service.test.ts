@@ -252,6 +252,25 @@ describe('classifyNodesForSimulation', () => {
 		});
 	});
 
+	it('returns a plan with fallback verdicts even when the LLM path throws before the call', async () => {
+		// A throw outside the LLM call's own try/catch (here: JSON.stringify on
+		// circular parameters while building the prompt) must not abort the whole
+		// plan — the plan is the only source of verification pin data.
+		const circular: Record<string, unknown> = { method: 'POST' };
+		circular.self = circular;
+		const verdicts = await classify([
+			trigger,
+			{ name: 'Transform', type: 'n8n-nodes-base.set', parameters: {} },
+			{ name: 'Post', type: 'n8n-nodes-base.httpRequest', parameters: circular },
+		]);
+		expect(verdictOf(verdicts, 'Transform').verdict).toBe('execute');
+		expect(verdictOf(verdicts, 'Post')).toMatchObject({
+			verdict: 'simulate',
+			confidence: 'low',
+			source: 'fallback',
+		});
+	});
+
 	it('falls back to simulate on malformed LLM output', async () => {
 		setupAgentMock('not json');
 		const verdicts = await classify([

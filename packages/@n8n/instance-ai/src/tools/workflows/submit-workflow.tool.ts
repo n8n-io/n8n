@@ -702,24 +702,30 @@ export function createSubmitWorkflowTool(
 				const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
 
 				// Execute-vs-simulate plan + mock output for verification. Never
-				// blocks the submit: errors degrade to an absent plan.
+				// blocks the submit. An empty plan (no candidate nodes) is kept as []
+				// so verify can tell "nothing to simulate" apart from "classification
+				// failed" — only the latter (plan undefined) runs unprotected and
+				// makes verify surface a warning.
 				let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
 				let simulationFixtures: SimulationFixtures | undefined;
 				try {
-					const plan = await classifyNodesForSimulation({
+					nodeSimulationPlan = await classifyNodesForSimulation({
 						workflow: json,
 						mockedNodeNames: mockResult.mockedNodeNames,
 					});
-					nodeSimulationPlan = plan.length > 0 ? plan : undefined;
-					if (nodeSimulationPlan) {
+					if (nodeSimulationPlan.length > 0) {
 						const fixtures = await generateSimulationFixtures({
 							workflow: json,
 							plan: nodeSimulationPlan,
 						});
 						simulationFixtures = Object.keys(fixtures).length > 0 ? fixtures : undefined;
 					}
-				} catch {
-					// plan omitted — verify falls back to legacy behavior
+				} catch (error) {
+					context.logger?.warn('Node simulation planning failed', {
+						workflowId: savedId,
+						planAvailable: nodeSimulationPlan !== undefined,
+						error: error instanceof Error ? error.message : String(error),
+					});
 				}
 
 				await reportAttempt({

@@ -908,6 +908,40 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(result.simulationNote).toContain('no real external writes');
 	});
 
+	it('warns when the build outcome has no simulation plan at all', async () => {
+		// An undefined plan means the outcome predates classification or
+		// classification failed — nothing shields destructive nodes in that run.
+		const { ctx } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-no-plan',
+			status: 'success',
+			data: { 'Send Slack': [{ ok: true }] },
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.simulationNote).toContain('No simulation plan');
+		expect(result.simulationNote).toContain('NOT');
+		expect(ctx.logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('no simulation plan'),
+			expect.objectContaining({ workItemId: 'wi-1' }),
+		);
+	});
+
+	it('does not warn when the plan is empty (classified, nothing to simulate)', async () => {
+		const { ctx } = makeContext(makeBuildOutcome({ nodeSimulationPlan: [] }), {
+			executionId: 'exec-empty-plan',
+			status: 'success',
+			data: { Transform: [{ value: 1 }] },
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.simulationNote).toBeUndefined();
+		expect(ctx.logger.warn).not.toHaveBeenCalled();
+	});
+
 	it('reports planned simulations the execution never reached as unverified (empty-read dead-end)', async () => {
 		// Reproduces the order-fulfillment scenario: a data-table lookup on an
 		// empty table returns zero items mid-chain, so everything downstream —

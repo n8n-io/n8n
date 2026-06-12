@@ -470,8 +470,17 @@ export async function classifyNodesForSimulation(
 	}
 
 	if (ambiguous.length > 0) {
-		for (const verdict of await classifyAmbiguousNodes(ambiguous)) {
-			verdictByName.set(verdict.nodeName, verdict);
+		// The LLM path must never abort the whole plan: with the marker channel
+		// retired, the plan is the only source of verification pin data, so a
+		// throw here would leave every node executing for real. Fail destructive.
+		try {
+			for (const verdict of await classifyAmbiguousNodes(ambiguous)) {
+				verdictByName.set(verdict.nodeName, verdict);
+			}
+		} catch {
+			for (const node of ambiguous) {
+				verdictByName.set(node.name, fallbackVerdict(node.name));
+			}
 		}
 	}
 

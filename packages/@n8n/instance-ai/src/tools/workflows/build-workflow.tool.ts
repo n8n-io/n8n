@@ -610,17 +610,18 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				const createSuccessResponse = async (savedId: string) => {
 					// Classify every main-flow node as execute-vs-simulate for the
 					// verification run, then generate mock output for the simulated
-					// nodes. Never blocks the submit: errors degrade to an absent plan
-					// (verify falls back to legacy behavior).
+					// nodes. Never blocks the submit. An empty plan (no candidate
+					// nodes) is kept as [] so verify can tell "nothing to simulate"
+					// apart from "classification failed" — only the latter (plan
+					// undefined) runs unprotected and makes verify surface a warning.
 					let nodeSimulationPlan: WorkflowBuildOutcome['nodeSimulationPlan'];
 					let simulationFixtures: WorkflowBuildOutcome['simulationFixtures'];
 					try {
-						const plan = await classifyNodesForSimulation({
+						nodeSimulationPlan = await classifyNodesForSimulation({
 							workflow: json,
 							mockedNodeNames: mockResult.mockedNodeNames,
 						});
-						nodeSimulationPlan = plan.length > 0 ? plan : undefined;
-						if (nodeSimulationPlan) {
+						if (nodeSimulationPlan.length > 0) {
 							const fixtures = await generateSimulationFixtures({
 								workflow: json,
 								plan: nodeSimulationPlan,
@@ -635,8 +636,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							});
 						}
 					} catch (error) {
-						context.logger?.warn('Node simulation classification failed — plan omitted', {
+						context.logger?.warn('Node simulation planning failed', {
 							workflowId: savedId,
+							planAvailable: nodeSimulationPlan !== undefined,
 							error: error instanceof Error ? error.message : String(error),
 						});
 					}
