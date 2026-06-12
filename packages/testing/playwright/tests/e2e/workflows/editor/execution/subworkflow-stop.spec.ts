@@ -37,9 +37,8 @@ test.describe(
 
 			// Stop it mid-run (still in the first delay).
 			await new Promise((resolve) => setTimeout(resolve, 3000));
-			const stopResponse = await api.request.post(`/rest/executions/${child.id}/stop`);
-			expect(stopResponse.ok()).toBe(true);
-			expect((await api.workflows.getExecution(child.id)).status).toBe('canceled');
+			const stopped = await api.workflows.stopExecution(child.id);
+			expect(stopped.status).toBe('canceled');
 
 			// Wait past the full ~15s runtime: if the stop were ignored the worker would finish all
 			// delays and overwrite the status to `success`.
