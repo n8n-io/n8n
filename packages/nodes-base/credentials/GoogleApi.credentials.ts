@@ -12,6 +12,11 @@ import type {
 
 const regions = [
 	{
+		name: 'global',
+		displayName: 'Global',
+		location: '',
+	},
+	{
 		name: 'africa-south1',
 		displayName: 'Africa',
 		location: 'Johannesburg',
@@ -233,7 +238,9 @@ export class GoogleApi implements ICredentialType {
 			name: 'region',
 			type: 'options',
 			options: regions.map((r) => ({
-				name: `${r.displayName} (${r.location}) - ${r.name}`,
+				name: r.location
+					? `${r.displayName} (${r.location}) - ${r.name}`
+					: `${r.displayName} - ${r.name}`,
 				value: r.name,
 			})),
 			default: 'us-central1',
