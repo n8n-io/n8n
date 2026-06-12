@@ -139,6 +139,7 @@ import { type ContextMenuAction } from '@/features/shared/contextMenu/composable
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useCollaborationLifecycle } from '@/features/collaboration/collaboration/composables/useCollaborationLifecycle';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -297,6 +298,10 @@ const stripedCanvasBackground = computed(() => route.query.canvasBackground !== 
 
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
+
+useCollaborationLifecycle(workflowId, {
+	enabled: computed(() => !isDemoRoute.value),
+});
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
