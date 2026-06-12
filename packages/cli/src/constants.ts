@@ -37,6 +37,19 @@ export const AI_ASSISTANT_SDK_VERSION = aiAssistantPackageJson.version;
 export const WORKFLOW_SDK_VERSION = workflowSdkPackageJson.version;
 export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
+type BuildInfo = { commitHash: string; branch: string; buildDate: string };
+
+function readBuildInfo(): BuildInfo | undefined {
+	if (process.env.N8N_INCLUDE_BUILD_INFO !== 'true') return undefined;
+	const commitHash = process.env.N8N_BUILD_COMMIT_HASH ?? '';
+	const branch = process.env.N8N_BUILD_BRANCH ?? '';
+	const buildDate = process.env.N8N_BUILD_DATE ?? '';
+	if (!commitHash && !branch && !buildDate) return undefined;
+	return { commitHash, branch, buildDate };
+}
+
+export const BUILD_INFO = readBuildInfo();
+
 export const STARTING_NODES = [
 	'@n8n/n8n-nodes-langchain.manualChatTrigger',
 	'n8n-nodes-base.manualTrigger',

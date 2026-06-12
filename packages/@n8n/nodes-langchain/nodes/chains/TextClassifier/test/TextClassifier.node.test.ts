@@ -126,31 +126,47 @@ describe('TextClassifier Node', () => {
 		});
 
 		it('should respect delayBetweenBatches', async () => {
-			mockExecuteFunction.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
-				if (param === 'inputText') return 'Test input';
-				if (param === 'categories.categories')
-					return [{ category: 'test', description: 'test category' }];
-				if (param === 'options.batching.batchSize') return 2;
-				if (param === 'options.batching.delayBetweenBatches') return 100;
-				return defaultValue;
-			});
+			vi.useFakeTimers();
 
-			mockExecuteFunction.getInputData.mockReturnValue([
-				{ json: { item: 1 } },
-				{ json: { item: 2 } },
-				{ json: { item: 3 } },
-				{ json: { item: 4 } },
-				{ json: { item: 5 } },
-				{ json: { item: 6 } },
-			]);
+			try {
+				mockExecuteFunction.getNodeParameter.mockImplementation(
+					(param, _itemIndex, defaultValue) => {
+						if (param === 'inputText') return 'Test input';
+						if (param === 'categories.categories')
+							return [{ category: 'test', description: 'test category' }];
+						if (param === 'options.batching.batchSize') return 2;
+						if (param === 'options.batching.delayBetweenBatches') return 100;
+						return defaultValue;
+					},
+				);
 
-			(processItem as Mock).mockResolvedValue({ test: true });
+				mockExecuteFunction.getInputData.mockReturnValue([
+					{ json: { item: 1 } },
+					{ json: { item: 2 } },
+					{ json: { item: 3 } },
+					{ json: { item: 4 } },
+					{ json: { item: 5 } },
+					{ json: { item: 6 } },
+				]);
 
-			const startTime = Date.now();
-			await node.execute.call(mockExecuteFunction);
-			const endTime = Date.now();
+				(processItem as Mock).mockResolvedValue({ test: true });
 
-			expect(endTime - startTime).toBeGreaterThanOrEqual(200);
+				let isExecutionComplete = false;
+				const execution = node.execute.call(mockExecuteFunction).finally(() => {
+					isExecutionComplete = true;
+				});
+
+				await vi.advanceTimersByTimeAsync(199);
+				expect(isExecutionComplete).toBe(false);
+
+				await vi.advanceTimersByTimeAsync(1);
+				await execution;
+
+				expect(processItem).toHaveBeenCalledTimes(6);
+				expect(isExecutionComplete).toBe(true);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('should handle errors in batch processing', async () => {

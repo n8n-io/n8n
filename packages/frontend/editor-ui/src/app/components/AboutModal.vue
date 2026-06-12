@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
@@ -8,6 +8,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useDebugInfo } from '@/app/composables/useDebugInfo';
 import { useInstanceRegistryStore } from '@/features/instanceRegistry/stores/instanceRegistry.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
 import { getThirdPartyLicenses } from '@n8n/rest-api-client';
 
@@ -20,6 +21,14 @@ const debugInfo = useDebugInfo();
 const clipboard = useClipboard();
 const rootStore = useRootStore();
 const instanceRegistryStore = useInstanceRegistryStore();
+const settingsStore = useSettingsStore();
+
+const buildInfo = computed(() => settingsStore.settings.buildInfo);
+const buildDateLabel = computed(() => {
+	const raw = buildInfo.value?.buildDate;
+	if (!raw) return '';
+	return `${raw.slice(0, 10)} ${raw.slice(11, 16)} UTC`;
+});
 
 onMounted(async () => {
 	await instanceRegistryStore.fetchClusterInfo();
@@ -111,6 +120,32 @@ const copyDebugInfoToClipboard = async () => {
 						<N8nText>{{ rootStore.instanceId }}</N8nText>
 					</ElCol>
 				</ElRow>
+				<template v-if="buildInfo">
+					<ElRow>
+						<ElCol :span="8" class="info-name">
+							<N8nText>{{ i18n.baseText('about.branch') }}</N8nText>
+						</ElCol>
+						<ElCol :span="16">
+							<N8nText>{{ buildInfo.branch }}</N8nText>
+						</ElCol>
+					</ElRow>
+					<ElRow>
+						<ElCol :span="8" class="info-name">
+							<N8nText>{{ i18n.baseText('about.commit') }}</N8nText>
+						</ElCol>
+						<ElCol :span="16">
+							<N8nText>{{ buildInfo.commitHash }}</N8nText>
+						</ElCol>
+					</ElRow>
+					<ElRow>
+						<ElCol :span="8" class="info-name">
+							<N8nText>{{ i18n.baseText('about.buildDate') }}</N8nText>
+						</ElCol>
+						<ElCol :span="16">
+							<N8nText>{{ buildDateLabel }}</N8nText>
+						</ElCol>
+					</ElRow>
+				</template>
 				<ElRow>
 					<ElCol :span="8" class="info-name">
 						<N8nText>{{ i18n.baseText('about.debug.title') }}</N8nText>
