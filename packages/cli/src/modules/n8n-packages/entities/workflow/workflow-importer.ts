@@ -125,7 +125,7 @@ export class WorkflowImporter {
 		const outcomes: WorkflowImportOutcome[] = [];
 
 		for (const item of plan.items) {
-			const outcome = await this.applyItem(item, context);
+			const outcome = await this.applyItem(item, context, bindings);
 			outcomes.push(outcome);
 			// Works for every status: created/updated/skipped all resolve to a real target id.
 			workflowBindings.set(outcome.sourceWorkflowId, outcome.workflow.id);
@@ -137,6 +137,7 @@ export class WorkflowImporter {
 	private async applyItem(
 		item: WorkflowPlanItem,
 		context: WorkflowImportContext,
+		bindings: PackageImportBindings,
 	): Promise<WorkflowImportOutcome> {
 		if (item.action === 'skip') {
 			return {
@@ -145,6 +146,8 @@ export class WorkflowImporter {
 				sourceWorkflowId: item.sourceWorkflowId,
 			};
 		}
+
+		applyCredentialBindingsInPlace(item.entity, bindings.credentials);
 
 		const savedWorkflow = await this.persistWorkflow(context, item);
 		const workflow = await this.workflowPublisher.apply(
@@ -185,6 +188,23 @@ export class WorkflowImporter {
 		// update() doesn't re-hydrate parentFolder; carry over the existing folder for the result.
 		workflow.parentFolder = item.existing.parentFolder;
 		return workflow;
+	}
+}
+
+/** Mutates node credential ids on `entity` using the resolved import binding map. */
+function applyCredentialBindingsInPlace(
+	entity: WorkflowEntity,
+	credentialBindings: PackageImportBindings['credentials'],
+): void {
+	for (const node of entity.nodes) {
+		for (const details of Object.values(node.credentials ?? {})) {
+			if (!details.id) continue;
+
+			const targetId = credentialBindings.get(details.id);
+			if (targetId) {
+				details.id = targetId;
+			}
+		}
 	}
 }
 
