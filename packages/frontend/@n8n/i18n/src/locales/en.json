@@ -3005,7 +3005,6 @@
 	"settings.opentelemetry.productionExecutionsOnly.description": "Skip manual canvas runs. Less noise in production.",
 	"settings.opentelemetry.save": "Save settings",
 	"settings.opentelemetry.discard": "Discard changes",
-	"settings.opentelemetry.allChangesSaved": "All changes saved",
 	"settings.opentelemetry.savedSuccess": "Settings saved",
 	"settings.opentelemetry.savedError": "Failed to save settings",
 	"settings.opentelemetry.unsavedChanges.title": "Unsaved changes",

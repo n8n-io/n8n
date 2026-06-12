@@ -1,7 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { flushPromises } from '@vue/test-utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useOtelStore } from './otel.store';
 import SettingsOpenTelemetryView from './SettingsOpenTelemetryView.vue';
@@ -119,26 +118,26 @@ describe('SettingsOpenTelemetryView', () => {
 		expect(getByTestId('otel-production-only')).toBeInTheDocument();
 	});
 
-	it('does not show save/discard buttons when settings are unchanged', async () => {
-		const { queryByTestId } = render();
+	it('disables save/discard buttons when settings are unchanged', async () => {
+		const { getByTestId } = render();
 
-		await waitFor(() => expect(getOtelSettingsMock).toHaveBeenCalled());
-
-		expect(queryByTestId('otel-save-button')).not.toBeInTheDocument();
-		expect(queryByTestId('otel-discard-button')).not.toBeInTheDocument();
+		await waitFor(() => {
+			expect(getByTestId('otel-save-button')).toBeDisabled();
+			expect(getByTestId('otel-discard-button')).toBeDisabled();
+		});
 	});
 
 	// ── dirty state ───────────────────────────────────────────────────────────
 
-	it('shows save and discard buttons after typing in the endpoint field', async () => {
+	it('enables save and discard buttons after typing in the endpoint field', async () => {
 		const { getByTestId } = render();
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
 
 		await dirtyEndpoint(getByTestId);
 
 		await waitFor(() => {
-			expect(getByTestId('otel-save-button')).toBeInTheDocument();
-			expect(getByTestId('otel-discard-button')).toBeInTheDocument();
+			expect(getByTestId('otel-save-button')).not.toBeDisabled();
+			expect(getByTestId('otel-discard-button')).not.toBeDisabled();
 		});
 	});
 
@@ -283,16 +282,17 @@ describe('SettingsOpenTelemetryView', () => {
 
 	// ── discard ───────────────────────────────────────────────────────────────
 
-	it('discards changes and hides save/discard buttons when clicking Discard', async () => {
-		const { getByTestId, queryByTestId } = render();
+	it('discards changes and disables save/discard buttons when clicking Discard', async () => {
+		const { getByTestId } = render();
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
 
 		await dirtyEndpoint(getByTestId);
-		await waitFor(() => expect(getByTestId('otel-discard-button')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('otel-save-button')).not.toBeDisabled());
 		await userEvent.click(getByTestId('otel-discard-button'));
 
 		await waitFor(() => {
-			expect(queryByTestId('otel-discard-button')).not.toBeInTheDocument();
+			expect(getByTestId('otel-save-button')).toBeDisabled();
+			expect(getByTestId('otel-discard-button')).toBeDisabled();
 		});
 		expect(updateOtelSettingsMock).not.toHaveBeenCalled();
 	});
@@ -410,30 +410,6 @@ describe('SettingsOpenTelemetryView', () => {
 				}),
 			);
 		});
-	});
-
-	it('hides the saved confirmation after 3 seconds', async () => {
-		vi.useFakeTimers();
-		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
-		updateOtelSettingsMock.mockResolvedValue(makeSettings());
-
-		const { getByTestId, queryByTestId } = render();
-		await flushPromises(); // fetch resolves
-
-		await user.type(getByTestId('otel-exporter-endpoint'), 'x');
-		await flushPromises();
-
-		await user.click(getByTestId('otel-save-button'));
-		await flushPromises(); // save resolves
-
-		expect(queryByTestId('otel-saved-confirmation')).toBeInTheDocument();
-
-		vi.advanceTimersByTime(3001);
-		await flushPromises(); // Vue re-renders
-
-		expect(queryByTestId('otel-saved-confirmation')).not.toBeInTheDocument();
-
-		vi.useRealTimers();
 	});
 
 	it('pre-populates header rows from exporterHeaders string on load', async () => {

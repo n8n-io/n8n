@@ -33,9 +33,6 @@ const headerPairs = ref<Array<{ key: string; value: string }>>([]);
 const showUnsavedChangesDialog = ref(false);
 const pendingNext = ref<NavigationGuardNext | null>(null);
 
-const showSavedConfirmation = ref(false);
-let savedConfirmationTimer: ReturnType<typeof setTimeout> | null = null;
-
 function syncHeaderPairsFromStore() {
 	headerPairs.value = headersStringToPairs(otelStore.settings.exporterHeaders);
 }
@@ -100,13 +97,6 @@ async function save(): Promise<boolean> {
 			title: i18n.baseText('settings.opentelemetry.savedSuccess'),
 			type: 'success',
 		});
-
-		// Show "All changes saved" briefly after a successful save.
-		showSavedConfirmation.value = true;
-		if (savedConfirmationTimer) clearTimeout(savedConfirmationTimer);
-		savedConfirmationTimer = setTimeout(() => {
-			showSavedConfirmation.value = false;
-		}, 3000);
 
 		return true;
 	} catch (error) {
@@ -650,28 +640,21 @@ watch(
 			<!-- Footer -->
 			<div :class="$style.footer">
 				<N8nButton
-					v-if="otelStore.isDirty"
 					:label="i18n.baseText('settings.opentelemetry.save')"
 					:loading="otelStore.saving"
+					:disabled="!otelStore.isDirty"
+					size="large"
 					data-test-id="otel-save-button"
 					@click="save"
 				/>
 				<N8nButton
-					v-if="otelStore.isDirty"
 					variant="outline"
 					:label="i18n.baseText('settings.opentelemetry.discard')"
-					:disabled="otelStore.saving"
+					:disabled="!otelStore.isDirty || otelStore.saving"
+					size="large"
 					data-test-id="otel-discard-button"
 					@click="discard"
 				/>
-				<N8nText
-					v-if="showSavedConfirmation && !otelStore.isDirty"
-					color="text-light"
-					size="small"
-					data-test-id="otel-saved-confirmation"
-				>
-					{{ i18n.baseText('settings.opentelemetry.allChangesSaved') }}
-				</N8nText>
 			</div>
 		</template>
 
