@@ -4,11 +4,21 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { CLOUD_SUFFIX, toSignInPrefill } from './sign-in-prefill';
+import { LOCAL_N8N_ENABLED } from '../../shared/features';
 import type { AuthStatus, LocalInstanceStatus } from '../../shared/types';
 
 const props = defineProps<{ status: AuthStatus }>();
 
 const i18n = useI18n();
+
+// Compiled out of the remote-only build variant (BUNDLE_LOCAL_N8N unset).
+const localInstanceAvailable = LOCAL_N8N_ENABLED;
+
+// When local mode is available it's the primary path; the external-instance login
+// is tucked behind a link. The remote-only build has no local option, so the
+// external form is always shown.
+const showExternal = ref(false);
+const externalVisible = computed(() => !localInstanceAvailable || showExternal.value);
 
 const useCustomUrl = ref(false);
 const slug = ref('');
@@ -65,6 +75,7 @@ const localStatus = ref<LocalInstanceStatus | null>(null);
 let unsubscribeLocalStatus: (() => void) | null = null;
 
 onMounted(() => {
+	if (!localInstanceAvailable) return;
 	unsubscribeLocalStatus = window.electronAPI.onLocalInstanceStatusChanged((status) => {
 		localStatus.value = status;
 	});
@@ -89,57 +100,11 @@ async function signInLocal() {
 <template>
 	<main :class="$style.container">
 		<N8nHeading tag="h1" size="xlarge" bold>n8n Assistant</N8nHeading>
-		<N8nText :class="$style.subtitle" color="text-light"> Sign in to n8n to get started. </N8nText>
 
-		<div :class="$style.field">
-			<div v-if="!useCustomUrl" :class="$style.cloudField">
-				<N8nText color="text-light">https://</N8nText>
-				<N8nInput
-					v-model="slug"
-					:class="$style.slugInput"
-					placeholder="your-workspace"
-					autofocus
-					data-testid="signin-slug"
-					@keydown.enter="signIn"
-				/>
-				<N8nText color="text-light">{{ CLOUD_SUFFIX }}</N8nText>
-			</div>
-			<N8nInput
-				v-else
-				v-model="customUrl"
-				type="text"
-				placeholder="https://n8n.example.com"
-				autofocus
-				data-testid="signin-url"
-				@keydown.enter="signIn"
-			/>
-		</div>
-
-		<div :class="$style.actions">
+		<div v-if="localInstanceAvailable" :class="$style.localSection">
 			<N8nButton
 				:class="$style.submit"
 				size="large"
-				:loading="loading"
-				:disabled="!canSubmit"
-				@click="signIn"
-			>
-				Sign in
-			</N8nButton>
-			<N8nText v-if="errorMessage" :class="$style.error" color="danger" size="small">
-				{{ errorMessage }}
-			</N8nText>
-			<button type="button" :class="$style.linkButton" @click="toggleInputMode">
-				<N8nText size="small" color="text-light">
-					{{ useCustomUrl ? 'Use n8n Cloud instead' : 'Self-hosting? Enter URL manually' }}
-				</N8nText>
-			</button>
-		</div>
-
-		<div :class="$style.localSection">
-			<N8nButton
-				type="secondary"
-				size="large"
-				:class="$style.submit"
 				:loading="localStarting"
 				:disabled="loading"
 				data-testid="signin-local"
@@ -153,7 +118,67 @@ async function signInLocal() {
 			<N8nText v-else-if="localError" :class="$style.error" color="danger" size="small">
 				{{ localError }}
 			</N8nText>
+			<button
+				v-if="!showExternal"
+				type="button"
+				:class="$style.linkButton"
+				data-testid="signin-show-external"
+				@click="showExternal = true"
+			>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('desktopAssistant.signIn.connectExternal') }}
+				</N8nText>
+			</button>
 		</div>
+
+		<template v-if="externalVisible">
+			<N8nText :class="$style.subtitle" color="text-light">
+				{{ i18n.baseText('desktopAssistant.signIn.subtitle') }}
+			</N8nText>
+			<div :class="$style.field">
+				<div v-if="!useCustomUrl" :class="$style.cloudField">
+					<N8nText color="text-light">https://</N8nText>
+					<N8nInput
+						v-model="slug"
+						:class="$style.slugInput"
+						placeholder="your-workspace"
+						autofocus
+						data-testid="signin-slug"
+						@keydown.enter="signIn"
+					/>
+					<N8nText color="text-light">{{ CLOUD_SUFFIX }}</N8nText>
+				</div>
+				<N8nInput
+					v-else
+					v-model="customUrl"
+					type="text"
+					placeholder="https://n8n.example.com"
+					autofocus
+					data-testid="signin-url"
+					@keydown.enter="signIn"
+				/>
+			</div>
+
+			<div :class="$style.actions">
+				<N8nButton
+					:class="$style.submit"
+					size="large"
+					:loading="loading"
+					:disabled="!canSubmit"
+					@click="signIn"
+				>
+					Sign in
+				</N8nButton>
+				<N8nText v-if="errorMessage" :class="$style.error" color="danger" size="small">
+					{{ errorMessage }}
+				</N8nText>
+				<button type="button" :class="$style.linkButton" @click="toggleInputMode">
+					<N8nText size="small" color="text-light">
+						{{ useCustomUrl ? 'Use n8n Cloud instead' : 'Self-hosting? Enter URL manually' }}
+					</N8nText>
+				</button>
+			</div>
+		</template>
 	</main>
 </template>
 

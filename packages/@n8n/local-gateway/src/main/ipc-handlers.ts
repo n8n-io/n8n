@@ -51,7 +51,8 @@ export interface IpcHandlerDeps {
 	instanceApi: InstanceApi;
 	threadService: ThreadService;
 	contextDetector: ContextDetector;
-	localInstanceManager: LocalInstanceManager;
+	/** Present only in the local build variant; `null` in the remote-only build. */
+	localInstanceManager: LocalInstanceManager | null;
 	permissionBroker: PermissionBroker;
 	/**
 	 * Re-establishes the gateway connection with the current settings (no-op when
@@ -155,6 +156,7 @@ export function registerIpcHandlers({
 
 	ipcMain.handle('local:signIn', async (): Promise<{ ok: boolean; error?: string }> => {
 		logger.debug('IPC local:signIn');
+		if (!localInstanceManager) return { ok: false, error: 'Local instance not available' };
 		try {
 			await localInstanceManager.signIn();
 			return { ok: true };
@@ -166,7 +168,7 @@ export function registerIpcHandlers({
 
 	ipcMain.handle('local:getStatus', (): LocalInstanceStatus => {
 		logger.debug('IPC local:getStatus');
-		return localInstanceManager.getStatus();
+		return localInstanceManager?.getStatus() ?? { state: 'stopped', error: null };
 	});
 
 	ipcMain.handle('oauth:getStatus', (): AuthStatus => {

@@ -19,9 +19,16 @@ const designSystemSrc = resolve(packagesDir, 'frontend', '@n8n', 'design-system'
 // native/workspace deps are never bundled.
 const mainExternals = ['electron', 'electron-store', /^node:/, /^@n8n\/computer-use/];
 
+// Build variant: when `BUNDLE_LOCAL_N8N=true`, the app can spawn an embedded n8n
+// instance ("local mode"); otherwise it's a pure remote client and the local
+// option is compiled out of both the renderer and the main process.
+const bundleLocalN8n = process.env.BUNDLE_LOCAL_N8N === 'true';
+const featureDefines = { __LOCAL_N8N_ENABLED__: JSON.stringify(bundleLocalN8n) };
+
 export default defineConfig({
 	// Loaded over `file://` in production, so assets must be referenced relatively.
 	base: './',
+	define: featureDefines,
 	plugins: [
 		vue(),
 		// Design-system components import `.svg` files as Vue components (e.g. N8nLogo).
@@ -36,6 +43,7 @@ export default defineConfig({
 			main: {
 				entry: 'src/main/index.ts',
 				vite: {
+					define: featureDefines,
 					build: {
 						outDir: 'dist/main',
 						// Main and preload share dist/main — neither may wipe the other's
@@ -48,6 +56,7 @@ export default defineConfig({
 			preload: {
 				input: 'src/main/preload.ts',
 				vite: {
+					define: featureDefines,
 					build: {
 						outDir: 'dist/main',
 						emptyOutDir: false,

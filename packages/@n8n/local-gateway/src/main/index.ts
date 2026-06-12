@@ -6,10 +6,10 @@ import { ContextDetector } from './context-detector';
 import { DaemonController } from './daemon-controller';
 import { InstanceApi } from './instance-api';
 import { registerIpcHandlers } from './ipc-handlers';
+import { openInstanceUi } from './local-instance/instance-ui';
 import { LocalInstanceManager } from './local-instance/local-instance-manager';
 import { LocalInstanceProcess } from './local-instance/local-instance-process';
 import { LocalInstanceStore } from './local-instance/local-instance-store';
-import { openLocalInstanceUi } from './local-instance/local-instance-ui';
 import { requestMacPermissions } from './mac-permissions';
 import {
 	showMainWindow,
@@ -27,11 +27,22 @@ import { SettingsStore } from './settings-store';
 import { ThreadService } from './thread-service';
 import { createTray } from './tray';
 import { APP_URL_SCHEME } from '../shared/constants';
+import { LOCAL_N8N_ENABLED } from '../shared/features';
 import type { AuthStatus } from '../shared/types';
+
+// The local build is a distinct app: a different name gives it its own userData
+// directory (settings, OAuth session, stores) and its own single-instance lock,
+// so it never shares auth/settings with the regular build and the two can run
+// side by side. Must run before the lock and before any store is created.
+// Packaged builds already differ by electron-builder `productName`; only the
+// unpackaged dev run (shared package name) needs the suffix here.
+if (LOCAL_N8N_ENABLED && !app.isPackaged) {
+	app.setName(`${app.getName()}-local`);
+}
 
 // Windows: required for proper taskbar/notification grouping
 if (process.platform === 'win32') {
-	app.setAppUserModelId('io.n8n.gateway');
+	app.setAppUserModelId(LOCAL_N8N_ENABLED ? 'io.n8n.gateway.local' : 'io.n8n.gateway');
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -85,13 +96,17 @@ if (!app.requestSingleInstanceLock()) {
 				openExternal,
 			});
 			const instanceApi = new InstanceApi(oauthFlow);
-			const localInstanceManager = new LocalInstanceManager({
-				instanceProcess: new LocalInstanceProcess(),
-				store: new LocalInstanceStore(),
-				oauthFlow,
-				userDataDir: app.getPath('userData'),
-			});
-			localInstanceManager.on('statusChanged', (status) => {
+			// Embedded local instance only exists in the local build variant
+			// (BUNDLE_LOCAL_N8N); the remote-only build compiles it out entirely.
+			const localInstanceManager = LOCAL_N8N_ENABLED
+				? new LocalInstanceManager({
+						instanceProcess: new LocalInstanceProcess(),
+						store: new LocalInstanceStore(),
+						oauthFlow,
+						userDataDir: app.getPath('userData'),
+					})
+				: null;
+			localInstanceManager?.on('statusChanged', (status) => {
 				notifyMainWindow('localInstanceStatusChanged', status);
 			});
 			const threadService = new ThreadService({
@@ -171,7 +186,7 @@ if (!app.requestSingleInstanceLock()) {
 				syncGatewayConnection(status);
 				// Signing out of the embedded instance also leaves local mode: stop the
 				// child and don't auto-start it on the next launch.
-				if (status.state === 'signedOut' && localInstanceManager.isEnabled()) {
+				if (status.state === 'signedOut' && localInstanceManager?.isEnabled()) {
 					void localInstanceManager.disable().catch(() => {});
 				}
 				// Leaving the signed-in state invalidates thread streams and cached
@@ -217,28 +232,34 @@ if (!app.requestSingleInstanceLock()) {
 				},
 				() => {
 					logger.info('n8n Assistant quitting');
-					void Promise.allSettled([controller.disconnect(), localInstanceManager.stop()]).then(
-						(results) => {
-							for (const result of results) {
-								if (result.status === 'rejected') {
-									logger.error('Cleanup failed during quit', {
-										error: String(result.reason),
-									});
-								}
+					void Promise.allSettled([
+						controller.disconnect(),
+						localInstanceManager?.stop() ?? Promise.resolve(),
+					]).then((results) => {
+						for (const result of results) {
+							if (result.status === 'rejected') {
+								logger.error('Cleanup failed during quit', {
+									error: String(result.reason),
+								});
 							}
-							app.quit();
-						},
-					);
+						}
+						app.quit();
+					});
 				},
-				// Debug aid: open the embedded instance's web UI pre-authenticated.
+				// Open the connected instance's UI: an in-app webview for the local
+				// instance, the browser for a remote one. Shown whenever signed in.
 				() =>
-					localInstanceManager.getStatus().state === 'running'
+					oauthFlow.getStatus().state === 'signedIn'
 						? [
 								{
 									label: 'Open n8n',
 									click: () => {
-										void openLocalInstanceUi(localInstanceManager).catch((error: unknown) => {
-											logger.error('Failed to open local n8n UI', {
+										void openInstanceUi({
+											instanceUrl: oauthFlow.getStatus().instanceUrl,
+											localManager: localInstanceManager,
+											openExternal,
+										}).catch((error: unknown) => {
+											logger.error('Failed to open n8n UI', {
 												error: error instanceof Error ? error.message : String(error),
 											});
 										});
@@ -255,7 +276,7 @@ if (!app.requestSingleInstanceLock()) {
 			// Persisted local mode: bring the embedded instance up first, then connect the
 			// gateway — its token refresh needs the instance to be listening. Otherwise,
 			// reconnect immediately if a (remote) session is already signed in.
-			if (localInstanceManager.isEnabled()) {
+			if (localInstanceManager?.isEnabled()) {
 				void localInstanceManager.ensureRunningAndSignedIn().then(() => {
 					syncGatewayConnection(oauthFlow.getStatus());
 				});
@@ -267,7 +288,7 @@ if (!app.requestSingleInstanceLock()) {
 
 			// Safety net for quits that bypass the tray (e.g. logout, updater): never orphan the child.
 			app.on('before-quit', () => {
-				void localInstanceManager.stop().catch(() => {});
+				void localInstanceManager?.stop().catch(() => {});
 			});
 
 			// macOS — `open-url`: the OS hands the running app the `n8n://callback?...` OAuth redirect.

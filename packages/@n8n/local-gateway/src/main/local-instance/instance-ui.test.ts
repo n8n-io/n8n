@@ -15,9 +15,9 @@ vi.mock('electron', () => ({
 	},
 }));
 
+import { openInstanceUi } from './instance-ui';
 import { LOCAL_INSTANCE_URL } from './local-instance-config';
 import type { LocalInstanceManager } from './local-instance-manager';
-import { openLocalInstanceUi } from './local-instance-ui';
 
 function makeManager(cookiePair: string): LocalInstanceManager {
 	return {
@@ -25,15 +25,22 @@ function makeManager(cookiePair: string): LocalInstanceManager {
 	} as unknown as LocalInstanceManager;
 }
 
-describe('openLocalInstanceUi', () => {
+describe('openInstanceUi', () => {
+	const openExternal = vi.fn<(url: string) => Promise<void>>();
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockCookiesSet.mockResolvedValue(undefined);
 		mockLoadUrl.mockResolvedValue(undefined);
+		openExternal.mockResolvedValue(undefined);
 	});
 
-	it('injects the auth cookie into the window session and loads the instance UI', async () => {
-		await openLocalInstanceUi(makeManager('n8n-auth=jwt-value'));
+	it('opens the local instance in a webview, injecting the auth cookie', async () => {
+		await openInstanceUi({
+			instanceUrl: LOCAL_INSTANCE_URL,
+			localManager: makeManager('n8n-auth=jwt-value'),
+			openExternal,
+		});
 
 		expect(mockCookiesSet).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -47,12 +54,45 @@ describe('openLocalInstanceUi', () => {
 			expect.objectContaining({ webPreferences: { partition: 'local-n8n-ui' } }),
 		);
 		expect(mockLoadUrl).toHaveBeenCalledWith(LOCAL_INSTANCE_URL);
+		expect(openExternal).not.toHaveBeenCalled();
 	});
 
-	it('rejects a malformed cookie pair without opening a window', async () => {
-		await expect(openLocalInstanceUi(makeManager('garbage'))).rejects.toThrow(
-			'Malformed auth cookie',
-		);
+	it('opens a remote instance in the browser, not a webview', async () => {
+		await openInstanceUi({
+			instanceUrl: 'https://workspace.app.n8n.cloud',
+			localManager: null,
+			openExternal,
+		});
+
+		expect(openExternal).toHaveBeenCalledWith('https://workspace.app.n8n.cloud');
 		expect(mockBrowserWindow).not.toHaveBeenCalled();
+	});
+
+	it('opens a remote instance in the browser even when a local manager exists', async () => {
+		await openInstanceUi({
+			instanceUrl: 'https://workspace.app.n8n.cloud',
+			localManager: makeManager('n8n-auth=jwt-value'),
+			openExternal,
+		});
+
+		expect(openExternal).toHaveBeenCalledWith('https://workspace.app.n8n.cloud');
+		expect(mockBrowserWindow).not.toHaveBeenCalled();
+	});
+
+	it('rejects a malformed local cookie pair without opening a window', async () => {
+		await expect(
+			openInstanceUi({
+				instanceUrl: LOCAL_INSTANCE_URL,
+				localManager: makeManager('garbage'),
+				openExternal,
+			}),
+		).rejects.toThrow('Malformed auth cookie');
+		expect(mockBrowserWindow).not.toHaveBeenCalled();
+	});
+
+	it('throws when signed out (no instance URL)', async () => {
+		await expect(
+			openInstanceUi({ instanceUrl: null, localManager: null, openExternal }),
+		).rejects.toThrow('Not signed in');
 	});
 });
