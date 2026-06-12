@@ -38,13 +38,14 @@ describe('S3Store', () => {
 
 	describe('write', () => {
 		it('should put the versioned bundle as JSON at the execution key', async () => {
-			await s3Store.write(ref, payload);
+			const sizeBytes = await s3Store.write(ref, payload);
 
 			expect(objectStoreService.put).toHaveBeenCalledTimes(1);
 			const [key, body, metadata] = objectStoreService.put.mock.calls[0];
 			expect(key).toBe(keyFor(executionId));
 			expect(metadata).toEqual({ mimeType: 'application/json' });
 			expect(JSON.parse(body.toString('utf-8'))).toMatchObject(bundle);
+			expect(sizeBytes).toBe(body.length);
 		});
 
 		it('should wrap a put failure in `ExecutionDataWriteError`', async () => {

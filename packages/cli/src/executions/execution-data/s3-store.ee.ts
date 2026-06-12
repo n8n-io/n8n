@@ -23,7 +23,7 @@ export class S3Store implements ExecutionDataStore {
 		private readonly reporter: ErrorReporter,
 	) {}
 
-	async write(ref: ExecutionRef, payload: ExecutionDataPayload) {
+	async write(ref: ExecutionRef, payload: ExecutionDataPayload): Promise<number> {
 		const body = Buffer.from(
 			jsonStringify({ ...payload, version: EXECUTION_DATA_BUNDLE_VERSION }),
 			'utf-8',
@@ -36,6 +36,8 @@ export class S3Store implements ExecutionDataStore {
 		} catch (error) {
 			throw new ExecutionDataWriteError(ref, error);
 		}
+
+		return body.length;
 	}
 
 	async read(ref: ExecutionRef) {
