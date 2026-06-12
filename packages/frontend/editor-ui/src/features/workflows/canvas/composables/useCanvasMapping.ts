@@ -61,6 +61,13 @@ export function useCanvasMapping({
 }) {
 	const i18n = useI18n();
 
+	// `executionIssuesByNodeName` is keyed by name; groups address nodes by id.
+	const nodeNameById = computed(() => {
+		const map = new Map<string, string>();
+		for (const node of nodes.value) map.set(node.id, node.name);
+		return map;
+	});
+
 	function countNonCanceledIterations(tasks: ITaskData[] | null | undefined): number {
 		if (!tasks) return 0;
 		let count = 0;
@@ -74,11 +81,14 @@ export function useCanvasMapping({
 	function getNodeExecutionSnapshot(id: string): NodeExecutionSnapshot {
 		const rd = renderData.value;
 		const render = rd.renderTypeByNodeId.get(id)?.value;
+		const name = nodeNameById.value.get(id);
+		const executionIssues = name ? rd.executionIssuesByNodeName.get(name)?.value : undefined;
 		return {
 			running: rd.executionRunningByNodeId.get(id)?.value ?? false,
 			waitingForNext: rd.executionWaitingForNextByNodeId.get(id)?.value ?? false,
 			waiting: rd.executionWaitingByNodeId.get(id)?.value,
-			hasIssues: rd.hasIssuesByNodeId.get(id)?.value ?? false,
+			hasExecutionError: (executionIssues?.length ?? 0) > 0,
+			hasValidationError: (rd.validationErrorsByNodeId.get(id)?.value?.length ?? 0) > 0,
 			status: rd.executionStatusByNodeId.get(id)?.value,
 			dirty:
 				render?.type === CanvasNodeRenderType.Default && render.options.dirtiness !== undefined,
@@ -141,7 +151,7 @@ export function useCanvasMapping({
 				},
 				issues: {
 					validation: rd.validationErrorsByNodeId.get(node.id)?.value ?? [],
-					visible: executionSnapshot.hasIssues,
+					visible: rd.hasIssuesByNodeId.get(node.id)?.value ?? false,
 				},
 				execution: {
 					status: executionSnapshot.status,

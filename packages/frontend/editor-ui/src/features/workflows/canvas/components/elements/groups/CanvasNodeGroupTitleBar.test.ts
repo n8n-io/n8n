@@ -168,6 +168,15 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.getByTestId('canvas-node-group-status-warning')).toBeTruthy();
 		});
 
+		it('shows the validation issues triangle when executionStatus is issues', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'issues' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-issues')).toBeTruthy();
+			// Issues must not render the execution-error mark.
+			expect(wrapper.queryByTestId('canvas-node-group-status-error')).toBeNull();
+		});
+
 		it('shows iteration count on success when maxNodeIterations > 1', () => {
 			const wrapper = render({
 				data: makeData({ executionStatus: 'success', maxNodeIterations: 3 }),

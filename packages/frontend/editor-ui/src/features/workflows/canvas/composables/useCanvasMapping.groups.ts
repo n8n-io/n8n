@@ -137,7 +137,8 @@ export interface NodeExecutionSnapshot {
 	running: boolean;
 	waitingForNext: boolean;
 	waiting: string | undefined;
-	hasIssues: boolean;
+	hasExecutionError: boolean;
+	hasValidationError: boolean;
 	status: ExecutionStatus | undefined;
 	/** Parameters changed since the last run — the single-node "dirty" warning. */
 	dirty: boolean;
@@ -147,8 +148,9 @@ export interface NodeExecutionSnapshot {
 /**
  * Reduce a group's per-node state into one dominant status (plus the largest
  * per-node iteration count for the success badge). Priority mirrors the
- * single-node CSS order: waiting > running > error > warning > success > idle.
- * `success` requires every node to have succeeded or not run.
+ * single-node order: waiting > running > error > issues > warning > success > idle.
+ * Pre-execution validation issues surface as `issues` (the triangle), never as
+ * an execution `error`. `success` requires every node to have succeeded or not run.
  */
 export function aggregateGroupExecution(
 	nodeIds: string[],
@@ -157,6 +159,7 @@ export function aggregateGroupExecution(
 	let anyWaiting = false;
 	let anyRunning = false;
 	let anyError = false;
+	let anyIssues = false;
 	let anyWarning = false;
 	let anySuccess = false;
 	let anyOther = false;
@@ -172,8 +175,10 @@ export function aggregateGroupExecution(
 			anyWaiting = true;
 		} else if (snapshot.running || snapshot.waitingForNext) {
 			anyRunning = true;
-		} else if (snapshot.hasIssues || status === 'error' || status === 'crashed') {
+		} else if (snapshot.hasExecutionError) {
 			anyError = true;
+		} else if (snapshot.hasValidationError) {
+			anyIssues = true;
 		} else if (snapshot.dirty) {
 			anyWarning = true;
 		} else if (status === 'success') {
@@ -192,6 +197,7 @@ export function aggregateGroupExecution(
 	if (anyWaiting) status = 'waiting';
 	else if (anyRunning) status = 'running';
 	else if (anyError) status = 'error';
+	else if (anyIssues) status = 'issues';
 	else if (anyWarning) status = 'warning';
 	else if (anySuccess && !anyOther) status = 'success';
 

@@ -125,31 +125,30 @@ describe('aggregateGroupExecution', () => {
 		expect(statusOf(['a'], { a: { waitingForNext: true } })).toBe('running');
 	});
 
-	it('returns error when any node has issues', () => {
-		expect(statusOf(['a', 'b'], { b: { hasIssues: true } })).toBe('error');
+	it('returns error when any node has an execution error', () => {
+		expect(statusOf(['a', 'b'], { b: { hasExecutionError: true } })).toBe('error');
 	});
 
-	// onError=continue surfaces `task.error` on the offending node (via
-	// hasIssues) even when the overall workflow succeeds. The single-node
-	// visual also marks that node as errored.
-	it('returns error when a node errored with onError=continue (task.error set, status success)', () => {
+	it('returns issues (not error) when a node has only validation errors and never ran', () => {
+		expect(statusOf(['a', 'b'], { b: { hasValidationError: true } })).toBe('issues');
+	});
+
+	it('execution error beats validation issues', () => {
 		expect(
 			statusOf(['a', 'b'], {
-				a: { hasIssues: true, status: 'success' },
-				b: { status: 'success' },
+				a: { hasExecutionError: true },
+				b: { hasValidationError: true },
 			}),
 		).toBe('error');
 	});
 
-	it('returns error when any node has executionStatus error', () => {
-		expect(statusOf(['a'], { a: { status: 'error' } })).toBe('error');
-	});
-
-	it('folds crashed into error — parity with single-node hasExecutionErrors', () => {
-		expect(statusOf(['a'], { a: { status: 'crashed' } })).toBe('error');
-		expect(statusOf(['a', 'b'], { a: { status: 'error' }, b: { status: 'crashed' } })).toBe(
-			'error',
-		);
+	it('validation issues beat warning (dirty) and success', () => {
+		expect(
+			statusOf(['a', 'b'], {
+				a: { hasValidationError: true },
+				b: { status: 'success', dirty: true },
+			}),
+		).toBe('issues');
 	});
 
 	it('ignores canceled / new for the success-success rollup (treated as idle, mirroring single-node)', () => {
@@ -192,11 +191,13 @@ describe('aggregateGroupExecution', () => {
 	});
 
 	it('running beats error', () => {
-		expect(statusOf(['a', 'b'], { a: { running: true }, b: { hasIssues: true } })).toBe('running');
+		expect(statusOf(['a', 'b'], { a: { running: true }, b: { hasExecutionError: true } })).toBe(
+			'running',
+		);
 	});
 
 	it('error beats success', () => {
-		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'error' } })).toBe(
+		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { hasExecutionError: true } })).toBe(
 			'error',
 		);
 	});
@@ -209,7 +210,10 @@ describe('aggregateGroupExecution', () => {
 
 	it('error beats warning, warning beats success — mirrors single-node CSS rule order', () => {
 		expect(
-			statusOf(['a', 'b'], { a: { status: 'error' }, b: { status: 'success', dirty: true } }),
+			statusOf(['a', 'b'], {
+				a: { hasExecutionError: true },
+				b: { status: 'success', dirty: true },
+			}),
 		).toBe('error');
 		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { dirty: true } })).toBe('warning');
 	});

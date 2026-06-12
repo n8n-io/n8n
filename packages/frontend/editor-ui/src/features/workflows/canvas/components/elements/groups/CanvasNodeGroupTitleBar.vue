@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
@@ -249,6 +249,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 				>
 					<CanvasNodeStatusMark :status="markStatus" :iterations="data.maxNodeIterations" />
 				</div>
+				<div
+					v-else-if="executionStatus === 'issues'"
+					:class="[$style.statusIcons, $style.issues]"
+					data-test-id="canvas-node-group-status-issues"
+				>
+					<N8nIcon icon="node-validation-error" size="large" />
+				</div>
 			</div>
 		</div>
 
@@ -360,6 +367,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 	align-items: center;
 	margin-left: var(--spacing--xs);
 	flex-shrink: 0;
+}
+
+// Validation issues mirror the single node: red triangle, no status border.
+.issues {
+	color: var(--color--danger);
 }
 
 .toolbar {

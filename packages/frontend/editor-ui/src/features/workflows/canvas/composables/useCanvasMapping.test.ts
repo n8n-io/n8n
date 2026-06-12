@@ -276,6 +276,46 @@ describe('useCanvasMapping — mapped nodes', () => {
 	});
 });
 
+describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
+	it('reads hasExecutionError from executionIssuesByNodeName (single-node parity)', () => {
+		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		rd.executionIssuesByNodeName.set(
+			'Alpha',
+			computed(() => ['Boom']),
+		);
+
+		const { getNodeExecutionSnapshot } = useCanvasMapping({
+			nodes: ref([node]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		const snapshot = getNodeExecutionSnapshot('a');
+		expect(snapshot.hasExecutionError).toBe(true);
+		expect(snapshot.hasValidationError).toBe(false);
+	});
+
+	it('reads hasValidationError without flagging an execution error', () => {
+		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		rd.validationErrorsByNodeId.set(
+			'a',
+			computed(() => ['Missing parameter']),
+		);
+
+		const { getNodeExecutionSnapshot } = useCanvasMapping({
+			nodes: ref([node]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		const snapshot = getNodeExecutionSnapshot('a');
+		expect(snapshot.hasValidationError).toBe(true);
+		expect(snapshot.hasExecutionError).toBe(false);
+	});
+});
+
 describe('useCanvasMapping — mapped connections', () => {
 	function makeWorkflow(connections: IConnections, nodes: INodeUi[] = []) {
 		const alpha = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
