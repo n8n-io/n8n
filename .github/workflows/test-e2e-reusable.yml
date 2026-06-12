@@ -160,6 +160,8 @@ jobs:
             packages/testing/playwright/playwright-report/
             packages/testing/playwright/coverage/lcov.info
             packages/testing/playwright/coverage/by-spec/
+            packages/testing/playwright/coverage/index.html
+            packages/testing/playwright/coverage/assets/
           retention-days: 1
           if-no-files-found: ignore
 

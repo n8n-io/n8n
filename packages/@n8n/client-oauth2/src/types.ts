@@ -19,10 +19,23 @@ export interface OAuth2CredentialData {
 	oauthTokenData?: {
 		access_token: string;
 		refresh_token?: string;
+		resource?: string;
 	};
 	useDynamicClientRegistration?: boolean;
 	serverUrl?: string;
+	/*
+	 * Resource indicator lifecycle:
+	 * - `resourceUrl`       – raw user input from the credential form (optional override)
+	 * - `resource`          – resolved value after discovery / validation, ephemeral for auth URI generation
+	 * - `oauthTokenData.resource` – persisted with tokens so it can be re‑sent on refresh
+	 */
+	resourceUrl?: string;
 	jweEnabled?: boolean;
+	/**
+	 * The resolved RFC 8707 resource indicator, set after discovery/validation.
+	 * Populated from either the discovered metadata or the user's resourceUrl override.
+	 */
+	resource?: string;
 	inlineJwks?: boolean;
 }
 

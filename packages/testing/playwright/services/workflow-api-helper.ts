@@ -1,3 +1,4 @@
+import type { APIResponse } from '@playwright/test';
 import { readFileSync } from 'fs';
 import type { IWorkflowBase, ExecutionSummary } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -116,6 +117,21 @@ export class WorkflowApiHelper {
 
 		const result = await response.json();
 		return result.data ?? result;
+	}
+
+	/**
+	 * Like {@link update}, but returns the raw response instead of throwing on a
+	 * non-2xx status — for asserting a specific status code (e.g. the `422` from
+	 * the redaction floor-enforcement guard).
+	 */
+	async updateRaw(
+		workflowId: string,
+		versionId: string,
+		data: Partial<IWorkflowBase>,
+	): Promise<APIResponse> {
+		return await this.api.request.patch(`/rest/workflows/${workflowId}`, {
+			data: { ...data, versionId },
+		});
 	}
 
 	async deactivate(workflowId: string) {
