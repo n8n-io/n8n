@@ -527,7 +527,7 @@ export class CommunityPackagesService {
 		try {
 			await asyncExecFile(
 				'tar',
-				['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1'],
+				['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1', '--no-same-owner'],
 				{ cwd: this.downloadFolder },
 			);
 
