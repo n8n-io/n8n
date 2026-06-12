@@ -151,8 +151,7 @@ export default defineConfig(
 						'Use injectWorkflowExecutionStateStore().value.activeExecutionRunData instead of workflowsStore.getWorkflowRunData',
 				},
 				{
-					selector:
-						"MemberExpression[property.name='executedNode'][object.name='workflowsStore']",
+					selector: "MemberExpression[property.name='executedNode'][object.name='workflowsStore']",
 					message:
 						'Use injectWorkflowExecutionStateStore().value.activeExecutionExecutedNode instead of workflowsStore.executedNode',
 				},
