@@ -76,32 +76,71 @@ export const Vertical: Story = {
 	},
 };
 
+// Bordered, rounded metrics card: three equal columns (tiles) separated by vertical dividers,
+// built from DS border/radius/spacing tokens. Each tile shows a metric title, a "Last 7 days"
+// sublabel, the big bold value, and either a colored trend delta (success/danger) or the muted
+// "/ unlimited" suffix.
+const metricTilesCard = `
+	<div style="display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; border: var(--border-width, 1px) solid var(--border-color--subtle); border-radius: var(--radius--xs); overflow: clip;">
+		<div
+			v-for="(metric, index) in metrics"
+			:key="metric.title"
+			:style="{
+				display: 'flex',
+				flexDirection: 'column',
+				gap: 'var(--spacing--2xs)',
+				padding: 'var(--spacing--sm)',
+				borderInlineStart: index > 0 ? 'var(--border-width, 1px) solid var(--border-color--subtle)' : '',
+			}"
+		>
+			<div style="display: flex; flex-direction: column; gap: var(--spacing--5xs);">
+				<N8nText size="small" color="text-base" tag="div">{{ metric.title }}</N8nText>
+				<N8nText size="small" color="text-light" tag="div">Last 7 days</N8nText>
+			</div>
+			<div style="display: flex; align-items: center; gap: var(--spacing--2xs);">
+				<N8nText size="xlarge" bold color="text-dark" tag="span">{{ metric.value }}</N8nText>
+				<N8nText v-if="metric.suffix" size="small" color="text-light" tag="span">{{ metric.suffix }}</N8nText>
+				<span v-else style="display: inline-flex; align-items: center; gap: var(--spacing--5xs);">
+					<N8nIcon icon="triangle" :color="metric.delta" size="xsmall" />
+					<N8nText size="small" :color="metric.delta" tag="span">{{ metric.deltaText }}</N8nText>
+				</span>
+			</div>
+		</div>
+	</div>
+`;
+
 export const Custom: Story = {
 	render: (args) => ({
-		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nText },
-		setup: () => ({ args }),
+		components: { N8nSettingsRow, N8nSettingsRowGroup, N8nText, N8nIcon },
+		setup() {
+			// `delta` drives the colored trend (success/danger); `suffix` is the muted
+			// "/ unlimited" variant that has no trend arrow.
+			const metrics = [
+				{ title: 'Prod. executions', value: '23,432', delta: 'success', deltaText: '0.5pp' },
+				{ title: 'Active workflows', value: '865', suffix: '/ unlimited' },
+				{ title: 'Active users', value: '1.9%', delta: 'danger', deltaText: '0.5pp' },
+			];
+			return { args, metrics };
+		},
+		// `layout="custom"` hands the whole row to the slot: the row supplies the side insets
+		// (16px) and the slotted content — here the bordered three-tile metrics card — owns its
+		// own internal layout. No title and no action: the tiles card is the entire content.
 		template: card(`
 			<N8nSettingsRow v-bind="args">
-				<N8nText size="small" color="text-base">Usage</N8nText>
-				<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding-top: 8px;">
-					<div>
-						<N8nText size="small" color="text-light" tag="div">Prod. executions</N8nText>
-						<N8nText size="large" bold color="text-dark" tag="div">23,432</N8nText>
-					</div>
-					<div>
-						<N8nText size="small" color="text-light" tag="div">Active workflows</N8nText>
-						<N8nText size="large" bold color="text-dark" tag="div">865</N8nText>
-					</div>
-					<div>
-						<N8nText size="small" color="text-light" tag="div">Active users</N8nText>
-						<N8nText size="large" bold color="text-dark" tag="div">1.9%</N8nText>
-					</div>
-				</div>
+				${metricTilesCard}
 			</N8nSettingsRow>
 		`),
 	}),
 	args: {
 		layout: 'custom',
+	},
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'The `custom` layout hands the whole row to the slot (no title/description, no action). The row only supplies the side insets; the slotted content — here a bordered three-tile metrics card — owns its own internal layout.',
+			},
+		},
 	},
 };
 
