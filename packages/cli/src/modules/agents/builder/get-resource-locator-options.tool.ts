@@ -5,7 +5,6 @@ import {
 	detectAuthenticationParameterValue,
 	findNodeParameterProperty,
 	getDynamicNodeParameterLookup,
-	getPropertyBuilderHint,
 	getRequiredNodeCredentialSlots,
 	hasNodeCredentials,
 	normalizeParameterPath,
@@ -153,7 +152,7 @@ export function buildGetResourceLocatorOptionsTool(deps: {
 					}
 				}
 
-				const builderHint = getPropertyBuilderHint(property);
+				const builderHint = property.builderHint?.propertyHint;
 
 				const additionalData = await getBase({
 					userId: deps.user.id,
@@ -195,43 +194,29 @@ export function buildGetResourceLocatorOptionsTool(deps: {
 						};
 					}
 
-					if (lookup.kind === 'loadOptionsMethod') {
-						const options = await deps.dynamicNodeParametersService.getOptionsViaMethodName(
-							lookup.methodName,
-							dynamicPath,
-							additionalData,
-							nodeTypeAndVersion,
-							currentNodeParameters,
-							resourceIds.credentials,
-						);
-
-						return {
-							ok: true,
-							kind: lookup.kind,
-							parameterPath: normalizeParameterPath(parameterPath),
-							methodName: lookup.methodName,
-							results: options.map((option) => ({
-								name: option.name,
-								value: option.value,
-								...(option.description ? { description: option.description } : {}),
-								parameterValue: toLoadedOptionParameterValue(option),
-							})),
-							...(builderHint ? { builderHint } : {}),
-						};
-					}
-
-					const options = await deps.dynamicNodeParametersService.getOptionsViaLoadOptions(
-						lookup.loadOptions,
-						additionalData,
-						nodeTypeAndVersion,
-						currentNodeParameters,
-						resourceIds.credentials,
-					);
+					const options =
+						lookup.kind === 'loadOptionsMethod'
+							? await deps.dynamicNodeParametersService.getOptionsViaMethodName(
+									lookup.methodName,
+									dynamicPath,
+									additionalData,
+									nodeTypeAndVersion,
+									currentNodeParameters,
+									resourceIds.credentials,
+								)
+							: await deps.dynamicNodeParametersService.getOptionsViaLoadOptions(
+									lookup.loadOptions,
+									additionalData,
+									nodeTypeAndVersion,
+									currentNodeParameters,
+									resourceIds.credentials,
+								);
 
 					return {
 						ok: true,
 						kind: lookup.kind,
 						parameterPath: normalizeParameterPath(parameterPath),
+						...(lookup.kind === 'loadOptionsMethod' ? { methodName: lookup.methodName } : {}),
 						results: options.map((option) => ({
 							name: option.name,
 							value: option.value,
