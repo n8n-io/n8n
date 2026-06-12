@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { CanvasConnection } from '../canvas.types';
+import type { NodeExecutionSnapshot } from './useCanvasMapping.groups';
 import {
-	aggregateGroupStatus,
-	aggregateMaxNodeIterations,
+	aggregateGroupExecution,
 	buildCollapsedGroupByNodeId,
 	computeNodesRectFromStore,
 	mapGroupsToVueFlowNodes,
@@ -50,14 +50,17 @@ function nodeStore(...nodes: INodeUi[]) {
 	return (id: string) => map.get(id);
 }
 
-const EMPTY_AGG = {
-	nodeExecutionRunningById: {},
-	nodeExecutionWaitingForNextById: {},
-	nodeExecutionWaitingById: {},
-	nodeHasIssuesById: {},
-	nodeExecutionStatusById: {},
-	nodeIterationsById: {},
-};
+function snapshotGetter(byId: Record<string, Partial<NodeExecutionSnapshot>> = {}) {
+	return (id: string): NodeExecutionSnapshot => ({
+		running: false,
+		waitingForNext: false,
+		waiting: undefined,
+		hasIssues: false,
+		status: undefined,
+		iterations: 0,
+		...byId[id],
+	});
+}
 
 describe('computeNodesRectFromStore', () => {
 	// Same defaults used by the design system canvas grid (16 × 6).
@@ -116,163 +119,112 @@ describe('computeNodesRectFromStore', () => {
 	});
 });
 
-describe('aggregateGroupStatus', () => {
+describe('aggregateGroupExecution', () => {
+	function statusOf(nodeIds: string[], byId: Record<string, Partial<NodeExecutionSnapshot>> = {}) {
+		return aggregateGroupExecution(nodeIds, snapshotGetter(byId)).status;
+	}
+
 	it('returns running when any node is running', () => {
-		const status = aggregateGroupStatus(['a', 'b'], {
-			...EMPTY_AGG,
-			nodeExecutionRunningById: { a: true },
-		});
-		expect(status).toBe('running');
+		expect(statusOf(['a', 'b'], { a: { running: true } })).toBe('running');
 	});
 
 	it('returns running when any node is waitingForNext', () => {
-		const status = aggregateGroupStatus(['a'], {
-			...EMPTY_AGG,
-			nodeExecutionWaitingForNextById: { a: true },
-		});
-		expect(status).toBe('running');
+		expect(statusOf(['a'], { a: { waitingForNext: true } })).toBe('running');
 	});
 
 	it('returns error when any node has issues', () => {
-		const status = aggregateGroupStatus(['a', 'b'], {
-			...EMPTY_AGG,
-			nodeHasIssuesById: { b: true },
-		});
-		expect(status).toBe('error');
+		expect(statusOf(['a', 'b'], { b: { hasIssues: true } })).toBe('error');
 	});
 
 	// onError=continue surfaces `task.error` on the offending node (via
-	// nodeHasIssuesById) even when the overall workflow succeeds. The
-	// single-node visual also marks that node as errored.
+	// hasIssues) even when the overall workflow succeeds. The single-node
+	// visual also marks that node as errored.
 	it('returns error when a node errored with onError=continue (task.error set, status success)', () => {
-		const status = aggregateGroupStatus(['a', 'b'], {
-			...EMPTY_AGG,
-			nodeHasIssuesById: { a: true },
-			nodeExecutionStatusById: { a: 'success', b: 'success' },
-		});
-		expect(status).toBe('error');
-	});
-
-	it('returns error when any node has executionStatus error', () => {
 		expect(
-			aggregateGroupStatus(['a'], {
-				...EMPTY_AGG,
-				nodeExecutionStatusById: { a: 'error' },
+			statusOf(['a', 'b'], {
+				a: { hasIssues: true, status: 'success' },
+				b: { status: 'success' },
 			}),
 		).toBe('error');
 	});
 
-	it('returns crashed distinctly so the data layer keeps the info; visual mapping happens in the title bar', () => {
-		expect(
-			aggregateGroupStatus(['a'], {
-				...EMPTY_AGG,
-				nodeExecutionStatusById: { a: 'crashed' },
-			}),
-		).toBe('crashed');
+	it('returns error when any node has executionStatus error', () => {
+		expect(statusOf(['a'], { a: { status: 'error' } })).toBe('error');
 	});
 
-	it('crashed beats plain error on priority — crashed dominates the group', () => {
-		expect(
-			aggregateGroupStatus(['a', 'b'], {
-				...EMPTY_AGG,
-				nodeExecutionStatusById: { a: 'error', b: 'crashed' },
-			}),
-		).toBe('crashed');
+	it('folds crashed into error — parity with single-node hasExecutionErrors', () => {
+		expect(statusOf(['a'], { a: { status: 'crashed' } })).toBe('error');
+		expect(statusOf(['a', 'b'], { a: { status: 'error' }, b: { status: 'crashed' } })).toBe(
+			'error',
+		);
 	});
 
 	it('ignores canceled / new for the success-success rollup (treated as idle, mirroring single-node)', () => {
+		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'canceled' } })).toBe(
+			'success',
+		);
 		expect(
-			aggregateGroupStatus(['a', 'b'], {
-				...EMPTY_AGG,
-				nodeExecutionStatusById: { a: 'success', b: 'canceled' },
-			}),
-		).toBe('success');
-		expect(
-			aggregateGroupStatus(['a', 'b'], {
-				...EMPTY_AGG,
-				nodeExecutionStatusById: { a: 'canceled', b: 'new' },
-			}),
+			statusOf(['a', 'b'], { a: { status: 'canceled' }, b: { status: 'new' } }),
 		).toBeUndefined();
 	});
 
 	it('returns success when all nodes are success', () => {
-		const status = aggregateGroupStatus(['a', 'b'], {
-			...EMPTY_AGG,
-			nodeExecutionStatusById: { a: 'success', b: 'success' },
-		});
-		expect(status).toBe('success');
+		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'success' } })).toBe(
+			'success',
+		);
 	});
 
 	it('returns success when one node is success and others never ran (unknown — e.g. untaken conditional branch)', () => {
-		const status = aggregateGroupStatus(['a', 'b'], {
-			...EMPTY_AGG,
-			nodeExecutionStatusById: { a: 'success', b: 'unknown' },
-		});
-		expect(status).toBe('success');
+		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'unknown' } })).toBe(
+			'success',
+		);
 	});
 
 	it('returns undefined (idle) when all nodes are unknown — workflow has never executed', () => {
-		const status = aggregateGroupStatus(['a', 'b'], {
-			...EMPTY_AGG,
-			nodeExecutionStatusById: { a: 'unknown', b: 'unknown' },
-		});
-		expect(status).toBeUndefined();
+		expect(
+			statusOf(['a', 'b'], { a: { status: 'unknown' }, b: { status: 'unknown' } }),
+		).toBeUndefined();
 	});
 
 	it('returns undefined when no node status is set', () => {
-		const status = aggregateGroupStatus(['a', 'b'], EMPTY_AGG);
-		expect(status).toBeUndefined();
+		expect(statusOf(['a', 'b'])).toBeUndefined();
 	});
 
 	it('returns waiting when any node has a waiting reason (form/webhook/etc.)', () => {
-		const status = aggregateGroupStatus(['a', 'b'], {
-			...EMPTY_AGG,
-			nodeExecutionWaitingById: { a: 'waiting for webhook' },
-		});
-		expect(status).toBe('waiting');
+		expect(statusOf(['a', 'b'], { a: { waiting: 'waiting for webhook' } })).toBe('waiting');
 	});
 
 	it('returns waiting when any node has executionStatus waiting', () => {
-		const status = aggregateGroupStatus(['a'], {
-			...EMPTY_AGG,
-			nodeExecutionStatusById: { a: 'waiting' },
-		});
-		expect(status).toBe('waiting');
+		expect(statusOf(['a'], { a: { status: 'waiting' } })).toBe('waiting');
 	});
 
 	it('running beats error', () => {
-		const status = aggregateGroupStatus(['a', 'b'], {
-			...EMPTY_AGG,
-			nodeExecutionRunningById: { a: true },
-			nodeHasIssuesById: { b: true },
-		});
-		expect(status).toBe('running');
+		expect(statusOf(['a', 'b'], { a: { running: true }, b: { hasIssues: true } })).toBe('running');
 	});
 
 	it('error beats success', () => {
-		const status = aggregateGroupStatus(['a', 'b'], {
-			...EMPTY_AGG,
-			nodeExecutionStatusById: { a: 'success', b: 'error' },
-		});
-		expect(status).toBe('error');
+		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'error' } })).toBe(
+			'error',
+		);
 	});
 
 	it('waiting beats running — mirrors single-node CSS rule order', () => {
-		const status = aggregateGroupStatus(['a', 'b'], {
-			...EMPTY_AGG,
-			nodeExecutionRunningById: { a: true },
-			nodeExecutionWaitingById: { b: 'waiting for form' },
-		});
-		expect(status).toBe('waiting');
+		expect(statusOf(['a', 'b'], { a: { running: true }, b: { waiting: 'waiting for form' } })).toBe(
+			'waiting',
+		);
 	});
-});
 
-describe('aggregateMaxNodeIterations', () => {
 	it('returns the maximum iteration count across nodes', () => {
-		expect(aggregateMaxNodeIterations(['a', 'b'], { a: 1, b: 5 })).toBe(5);
+		expect(
+			aggregateGroupExecution(
+				['a', 'b'],
+				snapshotGetter({ a: { iterations: 1 }, b: { iterations: 5 } }),
+			).maxNodeIterations,
+		).toBe(5);
 	});
-	it('returns 0 when nothing is set', () => {
-		expect(aggregateMaxNodeIterations(['a'], {})).toBe(0);
+
+	it('returns 0 iterations when nothing is set', () => {
+		expect(aggregateGroupExecution(['a'], snapshotGetter()).maxNodeIterations).toBe(0);
 	});
 });
 
@@ -286,7 +238,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => isCollapsed,
 			readOnly: false,
-			aggregates: EMPTY_AGG,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 	}
 
@@ -330,14 +282,14 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => true,
 			readOnly: false,
-			aggregates: EMPTY_AGG,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		const expanded = mapGroupsToVueFlowNodes({
 			allGroups: [group],
 			getNodeById: getById,
 			isGroupCollapsed: () => false,
 			readOnly: false,
-			aggregates: EMPTY_AGG,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		expect(collapsed[0].width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 		expect(expanded[0].width).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
@@ -361,7 +313,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => true,
 			readOnly: true,
-			aggregates: EMPTY_AGG,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		expect(out[0].selectable).toBe(true);
 		expect(out[0].draggable).toBe(false);
@@ -374,7 +326,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => true,
 			readOnly: false,
-			aggregates: EMPTY_AGG,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		expect(out).toHaveLength(0);
 	});
@@ -386,7 +338,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => true,
 			readOnly: true,
-			aggregates: EMPTY_AGG,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		expect(out[0].draggable).toBe(false);
 	});
@@ -398,7 +350,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getNodeById: getById,
 			isGroupCollapsed: () => false,
 			readOnly: false,
-			aggregates: EMPTY_AGG,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 		expect(Math.abs(out[0].position.x % GRID_SIZE)).toBe(0);
 		expect(Math.abs(out[0].position.y % GRID_SIZE)).toBe(0);

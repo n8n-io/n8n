@@ -43,8 +43,6 @@ function makeData(overrides: Partial<CanvasGroupNodeData> = {}): CanvasGroupNode
 		group: baseGroup,
 		nodesRect: { x: 0, y: 0, width: 500, height: 100 },
 		isCollapsed: true,
-		executionStatus: undefined,
-		maxNodeIterations: 0,
 		...overrides,
 	};
 }
@@ -159,13 +157,6 @@ describe('CanvasNodeGroupTitleBar', () => {
 		it('shows error icon when executionStatus is error', () => {
 			const wrapper = render({
 				data: makeData({ executionStatus: 'error' }),
-			});
-			expect(wrapper.getByTestId('canvas-node-group-status-error')).toBeTruthy();
-		});
-
-		it('maps crashed to the error visual (parity with single-node hasExecutionErrors)', () => {
-			const wrapper = render({
-				data: makeData({ executionStatus: 'crashed' }),
 			});
 			expect(wrapper.getByTestId('canvas-node-group-status-error')).toBeTruthy();
 		});

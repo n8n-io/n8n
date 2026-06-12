@@ -81,8 +81,6 @@ function createCanvasGroupNode({
 			group: { id: 'g1', name: 'Group 1', nodeIds: ['node-1'] },
 			nodesRect,
 			isCollapsed: false,
-			executionStatus: undefined,
-			maxNodeIterations: 0,
 		},
 	};
 }

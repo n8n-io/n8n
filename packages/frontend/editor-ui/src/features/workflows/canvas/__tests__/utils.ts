@@ -78,8 +78,6 @@ export function createCanvasGroupElement({
 	position = { x: 0, y: 0 },
 	isCollapsed = true,
 	nodesRect = { x: 0, y: 0, width: 200, height: 100 },
-	executionStatus = undefined,
-	maxNodeIterations = 0,
 }: Partial<{
 	id: string;
 	name: string;
@@ -87,8 +85,6 @@ export function createCanvasGroupElement({
 	position: { x: number; y: number };
 	isCollapsed: boolean;
 	nodesRect: CanvasGroupNodeData['nodesRect'];
-	executionStatus: CanvasGroupNodeData['executionStatus'];
-	maxNodeIterations: number;
 }> = {}): CanvasGroupNode {
 	return {
 		id: `${CANVAS_NODE_GROUP_ID_PREFIX}${id}`,
@@ -98,8 +94,6 @@ export function createCanvasGroupElement({
 			group: { id, name, nodeIds },
 			nodesRect,
 			isCollapsed,
-			executionStatus,
-			maxNodeIterations,
 		},
 	};
 }

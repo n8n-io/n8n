@@ -15,7 +15,7 @@ import type {
 } from '../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
-import type { GroupAggregateInputs } from './useCanvasMapping.groups';
+import type { NodeExecutionSnapshot } from './useCanvasMapping.groups';
 import {
 	buildCollapsedGroupByNodeId,
 	remapCollapsedGroupConnections,
@@ -25,15 +25,14 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
-import type { ExecutionStatus, IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
+import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { MarkerType } from '@vue-flow/core';
 import type { Connection } from '@vue-flow/core';
 import * as workflowUtils from 'n8n-workflow/common';
 
-// Highest priority first — resolves both a single connection's status and the
-// dominant status across merged collapsed-group connections.
+// Highest priority first — also picks the dominant status across merged edges.
 const EDGE_STATUS_PRIORITY = ['running', 'pinned', 'error', 'success'] as const;
 
 /**
@@ -62,9 +61,26 @@ export function useCanvasMapping({
 }) {
 	const i18n = useI18n();
 
-	function filterOutCanceled(tasks: ITaskData[] | null): ITaskData[] | null {
-		if (!tasks) return null;
-		return tasks.filter((task) => task.executionStatus !== 'canceled');
+	function countNonCanceledIterations(tasks: ITaskData[] | null | undefined): number {
+		if (!tasks) return 0;
+		let count = 0;
+		for (const task of tasks) {
+			if (task.executionStatus !== 'canceled') count++;
+		}
+		return count;
+	}
+
+	// Per-node execution projection feeding the group-status aggregation.
+	function getNodeExecutionSnapshot(id: string): NodeExecutionSnapshot {
+		const rd = renderData.value;
+		return {
+			running: rd.executionRunningByNodeId.get(id)?.value ?? false,
+			waitingForNext: rd.executionWaitingForNextByNodeId.get(id)?.value ?? false,
+			waiting: rd.executionWaitingByNodeId.get(id)?.value,
+			hasIssues: rd.hasIssuesByNodeId.get(id)?.value ?? false,
+			status: rd.executionStatusByNodeId.get(id)?.value,
+			iterations: countNonCanceledIterations(rd.executionRunDataByNodeId.get(id)?.value),
+		};
 	}
 
 	// Node id → its collapsed group, for nodes hidden by a collapsed group.
@@ -95,37 +111,6 @@ export function useCanvasMapping({
 		return dimensionsById;
 	});
 
-	const groupAggregates = computed<GroupAggregateInputs>(() => {
-		const rd = renderData.value;
-		const nodeExecutionRunningById: Record<string, boolean> = {};
-		const nodeExecutionWaitingForNextById: Record<string, boolean> = {};
-		const nodeExecutionWaitingById: Record<string, string | undefined> = {};
-		const nodeHasIssuesById: Record<string, boolean> = {};
-		const nodeExecutionStatusById: Record<string, ExecutionStatus> = {};
-		const nodeIterationsById: Record<string, number> = {};
-
-		for (const node of nodes.value) {
-			const id = node.id;
-			nodeExecutionRunningById[id] = rd.executionRunningByNodeId.get(id)?.value ?? false;
-			nodeExecutionWaitingForNextById[id] =
-				rd.executionWaitingForNextByNodeId.get(id)?.value ?? false;
-			nodeExecutionWaitingById[id] = rd.executionWaitingByNodeId.get(id)?.value;
-			nodeHasIssuesById[id] = rd.hasIssuesByNodeId.get(id)?.value ?? false;
-			nodeExecutionStatusById[id] = rd.executionStatusByNodeId.get(id)?.value ?? 'new';
-			nodeIterationsById[id] =
-				filterOutCanceled(rd.executionRunDataByNodeId.get(id)?.value ?? null)?.length ?? 0;
-		}
-
-		return {
-			nodeExecutionRunningById,
-			nodeExecutionWaitingForNextById,
-			nodeExecutionWaitingById,
-			nodeHasIssuesById,
-			nodeExecutionStatusById,
-			nodeIterationsById,
-		};
-	});
-
 	const mappedNodes = computed<CanvasNode[]>(() => {
 		const connectionsBySourceNode = connections.value;
 		const connectionsByDestinationNode =
@@ -138,6 +123,7 @@ export function useCanvasMapping({
 			const inputConnections = connectionsByDestinationNode[node.name] ?? {};
 
 			const runData = rd.executionRunDataByNodeId.get(node.id)?.value ?? null;
+			const executionSnapshot = getNodeExecutionSnapshot(node.id);
 
 			const data: CanvasNodeData = {
 				id: node.id,
@@ -152,17 +138,17 @@ export function useCanvasMapping({
 				},
 				issues: {
 					validation: rd.validationErrorsByNodeId.get(node.id)?.value ?? [],
-					visible: rd.hasIssuesByNodeId.get(node.id)?.value ?? false,
+					visible: executionSnapshot.hasIssues,
 				},
 				execution: {
-					status: rd.executionStatusByNodeId.get(node.id)?.value,
-					waiting: rd.executionWaitingByNodeId.get(node.id)?.value,
-					waitingForNext: rd.executionWaitingForNextByNodeId.get(node.id)?.value ?? false,
-					running: rd.executionRunningByNodeId.get(node.id)?.value ?? false,
+					status: executionSnapshot.status,
+					waiting: executionSnapshot.waiting,
+					waitingForNext: executionSnapshot.waitingForNext,
+					running: executionSnapshot.running,
 				},
 				runData: {
 					outputMap: rd.executionRunDataOutputMapByNodeId.get(node.id),
-					iterations: filterOutCanceled(runData)?.length ?? 0,
+					iterations: executionSnapshot.iterations,
 					visible: !!runData,
 				},
 				render:
@@ -202,14 +188,14 @@ export function useCanvasMapping({
 		const runData = rd.executionRunDataOutputMapByNodeId.get(connection.source)?.[type]?.[index];
 		const runDataTotal = runData?.total ?? 0;
 
-		const sourceTasks = rd.executionRunDataByNodeId.get(connection.source)?.value ?? [];
-		let lastSourceTask: ITaskData | undefined = sourceTasks[sourceTasks.length - 1];
-		if (lastSourceTask?.executionStatus === 'canceled' && sourceTasks.length > 1) {
+		const sourceTasks = rd.executionRunDataByNodeId.get(connection.source)?.value;
+		let lastSourceTask: ITaskData | undefined = sourceTasks?.[sourceTasks.length - 1];
+		if (lastSourceTask?.executionStatus === 'canceled' && sourceTasks && sourceTasks.length > 1) {
 			lastSourceTask = sourceTasks[sourceTasks.length - 2];
 		}
 
-		// For non-main connections (model, memory, tool, etc.), only count as executed
-		// if the target node also executed, since these are passive connections
+		// Non-main connections (model, memory, tool) are passive — count as
+		// executed only if the target node also ran.
 		const targetExecuted =
 			type === NodeConnectionTypes.Main ||
 			Boolean(rd.executionRunDataByNodeId.get(connection.target)?.value);
@@ -217,10 +203,7 @@ export function useCanvasMapping({
 		const matches: Record<(typeof EDGE_STATUS_PRIORITY)[number], boolean> = {
 			running:
 				(rd.executionRunningByNodeId.get(connection.source)?.value ?? false) && runDataTotal === 0,
-			pinned: Boolean(
-				rd.pinnedDataByNodeId.get(connection.source)?.value &&
-					rd.executionRunDataByNodeId.get(connection.source)?.value,
-			),
+			pinned: Boolean(rd.pinnedDataByNodeId.get(connection.source)?.value && sourceTasks),
 			error: rd.hasIssuesByNodeId.get(connection.source)?.value ?? false,
 			success: runDataTotal > 0 && lastSourceTask?.executionStatus !== 'canceled' && targetExecuted,
 		};
@@ -230,15 +213,18 @@ export function useCanvasMapping({
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
 		const rd = renderData.value;
-		// Collapsed-group remapping rewrites `connection.source` / `.target` to
-		// `group:*` ids for display; the real workflow endpoints live on
-		// `data.canonicals` — several of them when same-endpoint edges were
-		// merged into one. The edge surfaces the highest-priority status among
-		// the connections it represents.
+		// For edges remapped to `group:*` ids, the real endpoints live on
+		// `data.canonicals` (multiple when same-endpoint edges were merged).
+		// The edge surfaces the highest-priority status among them.
 		const canonicals: Connection[] = connection.data?.canonicals ?? [connection];
 
-		const statuses = new Set(canonicals.map(getConnectionStatus));
-		const status = EDGE_STATUS_PRIORITY.find((s) => statuses.has(s));
+		let status: CanvasConnectionData['status'];
+		if (canonicals.length === 1) {
+			status = getConnectionStatus(canonicals[0]);
+		} else {
+			const statuses = canonicals.map(getConnectionStatus);
+			status = EDGE_STATUS_PRIORITY.find((s) => statuses.includes(s));
+		}
 
 		const { source: sourceNodeId, target: targetNodeId, sourceHandle } = canonicals[0];
 		const { type } = parseCanvasConnectionHandleString(sourceHandle);
@@ -315,6 +301,6 @@ export function useCanvasMapping({
 		nodes: mappedNodes,
 		connections: mappedConnections,
 		nodeDisplaySizeById,
-		groupAggregates,
+		getNodeExecutionSnapshot,
 	};
 }
