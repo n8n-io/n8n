@@ -45,26 +45,6 @@ import { generateId, toError } from '../utils';
 const log = createLogger('playwright');
 
 // ---------------------------------------------------------------------------
-// Type augmentation for Playwright's private _snapshotForAI API.
-// This is used internally by Playwright MCP (playwright/lib/mcp/browser/tab.js)
-// and returns a YAML accessibility tree with aria-ref= annotations.
-// ---------------------------------------------------------------------------
-
-interface SnapshotForAIResult {
-	/** Complete YAML accessibility tree with [ref=eN] annotations */
-	full: string;
-	/** Incremental diff (only changed elements), undefined on first call */
-	incremental?: string;
-}
-
-interface PlaywrightPagePrivate extends Page {
-	_snapshotForAI(options?: {
-		timeout?: number;
-		track?: string;
-	}): Promise<SnapshotForAIResult>;
-}
-
-// ---------------------------------------------------------------------------
 // Per-page state tracked by the adapter
 // ---------------------------------------------------------------------------
 
@@ -535,22 +515,20 @@ export class PlaywrightAdapter {
 	async snapshot(
 		pageId: string,
 		target?: ElementTarget,
-		_interactive?: boolean,
+		interactive = true,
 	): Promise<SnapshotResult> {
 		const { page } = await this.ensurePage(pageId);
+		const mode = interactive ? 'ai' : 'default';
 
-		// Use Playwright's internal _snapshotForAI API which returns a YAML
-		// accessibility tree with [ref=eN] annotations on interactive elements.
-		// This is the same API used by Playwright MCP's Tab.captureSnapshot().
+		// Use Playwright's public ariaSnapshot() API.
+		// mode='ai' includes [ref=eN] annotations for interaction tools.
 		let yaml: string;
 		if (target) {
 			const locator = await this.resolveLocator(pageId, target);
-			// Scoped snapshots use the public ariaSnapshot() on the locator
-			yaml = await locator.ariaSnapshot();
+			// Scoped snapshots use ariaSnapshot() on the locator.
+			yaml = await locator.ariaSnapshot({ mode });
 		} else {
-			const privatePage = page as PlaywrightPagePrivate;
-			const result = await privatePage._snapshotForAI({ track: 'response' });
-			yaml = result.full;
+			yaml = await page.ariaSnapshot({ mode });
 		}
 
 		if (!yaml) {
