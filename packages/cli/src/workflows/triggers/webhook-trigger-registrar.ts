@@ -91,15 +91,6 @@ export class WebhookTriggerRegistrar {
 				registeredWebhooks.push(webhookData);
 				await this.webhookService.createWebhookIfNotExists(workflow, webhookData, mode, activation);
 			} catch (error) {
-				if (['init', 'leadershipChange'].includes(activation) && isQueryFailedError(error)) {
-					// n8n does not remove the registered webhooks on exit.
-					// This means that further initializations will always fail
-					// when inserting to database. This is why we ignore this error
-					// as it's expected to happen.
-
-					continue;
-				}
-
 				try {
 					await this.clearRegisteredWebhooks(workflow, registeredWebhooks);
 				} catch (clearError) {
