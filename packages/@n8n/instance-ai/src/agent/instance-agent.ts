@@ -58,14 +58,18 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	// The desktop-assistant profile is the single owner of which extra tools a run
 	// gets (e.g. the outcome report), which tool groups are pinned out of deferred
 	// search, and whether interactive setup auto-defers.
-	const desktopProfile = getDesktopAssistantProfile(options.promptMode);
+	const desktopProfile = getDesktopAssistantProfile(options.promptMode, {
+		memory: options.memory,
+	});
 
-	// Desktop runs have no surface to answer a "configure credentials" suspend, so
-	// thread the flag onto the context the domain tools capture — setup auto-defers
-	// rather than hanging the run.
+	// Desktop runs have no surface to answer a "configure credentials" or
+	// "edit workflow?" suspend, so thread the profile flags onto the context the
+	// domain tools capture — setup auto-defers and pre-approved edits skip the
+	// confirmation rather than hanging the run.
 	const toolContext = {
 		...context,
 		suppressInteractiveSetup: desktopProfile.suppressInteractiveSetup,
+		workflowEditsPreApproved: desktopProfile.preApproveWorkflowEdits,
 	};
 
 	// Build native n8n domain tools (context captured via closures — per-run)

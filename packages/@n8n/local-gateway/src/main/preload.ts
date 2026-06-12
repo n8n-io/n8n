@@ -24,8 +24,9 @@ import type {
 	LocalPermissionPromptRequest,
 	MacPermissionKind,
 	MacPermissionStatus,
-	ResourceDecision,
+	PromoteAssistantThreadOptions,
 	PromoteAssistantThreadResult,
+	ResourceDecision,
 	RunTaskResult,
 	ScreenshotAttachment,
 	StatusSnapshot,
@@ -85,12 +86,14 @@ const electronApi: ElectronApi = {
 		threadId: string,
 		name?: string,
 		icon?: string,
+		options?: PromoteAssistantThreadOptions,
 	): Promise<PromoteAssistantThreadResult> =>
 		await (ipcRenderer.invoke(
 			'assistant:promote',
 			threadId,
 			name,
 			icon,
+			options,
 		) as Promise<PromoteAssistantThreadResult>),
 
 	openWorkflow: async (workflowId: string): Promise<void> => {
@@ -165,6 +168,12 @@ const electronApi: ElectronApi = {
 	unlistenToThread: async (threadId: string): Promise<void> => {
 		await ipcRenderer.invoke('thread:unlisten', threadId);
 	},
+
+	cancelThreadRun: async (threadId: string): Promise<{ ok: boolean; error?: string }> =>
+		await (ipcRenderer.invoke('thread:cancel', threadId) as Promise<{
+			ok: boolean;
+			error?: string;
+		}>),
 
 	onThreadEvent: (
 		onEventCallback: (threadId: string, event: InstanceAiEvent) => void,

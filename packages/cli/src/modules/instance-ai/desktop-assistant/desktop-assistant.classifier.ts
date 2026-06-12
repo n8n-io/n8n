@@ -322,23 +322,63 @@ function deriveDescription(
 	return '';
 }
 
+/** Whole calendar days between two instants as seen in `timeZone` — 0 means
+ *  same local date, 1 means the next one. Calendar-based (via Intl), not
+ *  24-hour windows: tonight 23:00 → tomorrow 01:00 is 1 day. */
+function calendarDayDiff(from: Date, to: Date, timeZone: string | undefined): number {
+	const format = new Intl.DateTimeFormat('en-CA', {
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		timeZone,
+	});
+	// en-CA renders as YYYY-MM-DD
+	const [fromUtc, toUtc] = [from, to].map((date) => {
+		const [year, month, day] = format.format(date).split('-').map(Number);
+		return Date.UTC(year, month - 1, day);
+	});
+	return Math.round((toUtc - fromUtc) / 86_400_000);
+}
+
 /**
- * Render a schedule's next run as a friendly line (e.g. `Next Saturday 07:00`)
- * in the user's timezone, rather than a raw ISO timestamp.
+ * Render a schedule's next run as a friendly line in the workflow's effective
+ * timezone, rather than a raw ISO timestamp: `Today at 15:00`,
+ * `Tomorrow at 09:00`, `Saturday at 09:00` within the week, `Jul 1 at 09:00`
+ * beyond it ("next Friday" would read as a week away when the run is today).
+ *
+ * Exported for unit testing.
  */
-function humanizeNextRun(iso: string, timezone: string | undefined): string {
+export function humanizeNextRun(
+	iso: string,
+	timezone: string | undefined,
+	now: Date = new Date(),
+): string {
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return 'Recurring task';
-	const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: timezone }).format(
-		date,
-	);
 	const time = new Intl.DateTimeFormat('en-US', {
 		hour: '2-digit',
 		minute: '2-digit',
 		hour12: false,
 		timeZone: timezone,
 	}).format(date);
-	return `Next ${weekday} ${time}`;
+	const dayDiff = calendarDayDiff(now, date, timezone);
+	let day: string;
+	if (dayDiff <= 1) {
+		const relative = new Intl.RelativeTimeFormat('en-US', { numeric: 'auto' }).format(
+			dayDiff,
+			'day',
+		);
+		day = relative.charAt(0).toUpperCase() + relative.slice(1);
+	} else if (dayDiff <= 6) {
+		day = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: timezone }).format(date);
+	} else {
+		day = new Intl.DateTimeFormat('en-US', {
+			month: 'short',
+			day: 'numeric',
+			timeZone: timezone,
+		}).format(date);
+	}
+	return `${day} at ${time}`;
 }
 
 function classifyOne(input: ClassifierInput): {

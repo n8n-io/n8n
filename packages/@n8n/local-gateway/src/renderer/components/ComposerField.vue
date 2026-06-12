@@ -2,19 +2,18 @@
 import { N8nIcon } from '@n8n/design-system';
 import { ref } from 'vue';
 
-import MiniSpinner from './MiniSpinner.vue';
-
 defineProps<{
 	disabled?: boolean;
-	/** Shows a spinner in the send button (input stays visible, like the disabled state). */
+	/** Swaps the send button for a stop control (input stays visible, dimmed by `disabled`). */
 	busy?: boolean;
 	placeholder: string;
 	inputAriaLabel: string;
 	sendAriaLabel: string;
+	stopAriaLabel: string;
 }>();
 
 const text = defineModel<string>({ required: true });
-const emit = defineEmits<{ submit: [] }>();
+const emit = defineEmits<{ submit: []; stop: [] }>();
 
 const inputRef = ref<HTMLInputElement | null>(null);
 
@@ -38,15 +37,26 @@ defineExpose({ focus: () => inputRef.value?.focus() });
 			:placeholder="placeholder"
 			@keydown.enter="onEnter"
 		/>
+		<!-- While a run is in flight the button becomes a stop control and stays
+		     enabled even though the input is disabled. -->
 		<button
+			v-if="busy"
+			type="button"
+			:class="$style.send"
+			:aria-label="stopAriaLabel"
+			@click="emit('stop')"
+		>
+			<N8nIcon icon="filled-square" :size="11" aria-hidden="true" />
+		</button>
+		<button
+			v-else
 			type="button"
 			:class="$style.send"
 			:disabled="disabled"
 			:aria-label="sendAriaLabel"
 			@click="emit('submit')"
 		>
-			<MiniSpinner v-if="busy" light :size="14" aria-hidden="true" />
-			<N8nIcon v-else icon="arrow-up" :size="14" aria-hidden="true" />
+			<N8nIcon icon="arrow-up" :size="14" aria-hidden="true" />
 		</button>
 	</div>
 </template>
@@ -83,6 +93,11 @@ defineExpose({ focus: () => inputRef.value?.focus() });
 
 .input::placeholder {
 	color: var(--da-subtlest);
+}
+
+/* The in-flight prompt stays visible but reads as inactive. */
+.input:disabled {
+	color: var(--da-subtler);
 }
 
 .send {

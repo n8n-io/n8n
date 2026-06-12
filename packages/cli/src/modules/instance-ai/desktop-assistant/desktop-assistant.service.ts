@@ -24,8 +24,8 @@ import { Service } from '@n8n/di';
 import type { StoredEvent } from '@n8n/instance-ai';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import type { ExecutionStatus } from 'n8n-workflow';
-import { OperationalError } from 'n8n-workflow';
+import type { ExecutionStatus, IConnections, INode } from 'n8n-workflow';
+import { getGlobalState, OperationalError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -53,19 +53,21 @@ import {
 import { classifyWorkflowsForDesktopAssistant } from './desktop-assistant.classifier';
 import type { ClassifierInput } from './desktop-assistant.classifier';
 import {
+	applyChangesToDescriptionParts,
 	clampLimit,
 	composeApplyEditsMessage,
 	composeOneShotMessage,
 	composePromoteMessage,
 	composeRecommendationsInput,
 	composeTaskDescriptionInput,
-	extractBuiltWorkflowId,
+	extractPromoteOutcomeReport,
+	extractReportedWorkflowId,
 	extractTextContent,
-	extractWorkflowLoopBuildOutcome,
 	normalizeDescriptionParts,
 	readCachedTaskDetail,
 	readDesktopAssistantMeta,
 	RECOMMENDATIONS_INSTRUCTIONS,
+	renderDescriptionSentence,
 	splitLeadingEmoji,
 	summarizeExecutionError,
 	TASK_DESCRIPTION_INSTRUCTIONS,
@@ -82,10 +84,6 @@ import { InstanceAiService } from '../instance-ai.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-/** Upper bound on how long a build-outcome listener (promote, edit, one-shot)
- * stays subscribed, so a stalled run never leaks a subscription. */
-const BUILD_FINALIZE_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** Statuses we treat as a failure worth surfacing an error message for. `canceled`
  * is excluded — a user-stopped run has no meaningful error. */
@@ -166,16 +164,6 @@ export class DesktopAssistantService {
 	 * been created yet on this instance. Refreshed lazily on first access
 	 * and after a successful promote. */
 	private desktopAssistantTagId: string | null = null;
-
-	/**
-	 * Build runs that have finished but whose outcome is still being settled
-	 * (outcome read + the `onWorkflowBuilt` follow-up: tag, meta, credential,
-	 * `promotedWorkflowId`, activation). The client's confirming promote call
-	 * races exactly this window: the run is no longer active and the workflow id
-	 * is not yet on the thread, so without this marker `promoteThread` would
-	 * fall through and start a duplicate build.
-	 */
-	private readonly finalizingBuildRunIds = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -268,7 +256,9 @@ export class DesktopAssistantService {
 				active: workflow.active,
 				nodes: workflow.nodes,
 				tags: tagsByWorkflowId.get(workflow.id) ?? [],
-				settings: { timezone: workflow.settings?.timezone },
+				// Same fallback chain as Workflow#timezone, so the next-run preview
+				// matches when the schedule cron will actually fire.
+				settings: { timezone: workflow.settings?.timezone ?? getGlobalState().defaultTimezone },
 				lastExecution: lastExec
 					? {
 							id: lastExec.id,
@@ -386,8 +376,7 @@ export class DesktopAssistantService {
 		// redundant validation needed here.
 		const threadId = randomUUID();
 		const projectId = await this.resolvePersonalProjectId(user);
-		// Mark the thread as desktop-originated at creation so the chat UI's
-		// thread list can filter it out.
+		// Record which surface created the thread for provenance.
 		await this.memoryService.ensureThread(user.id, threadId, projectId, {
 			[THREAD_SOURCE_METADATA_KEY]: DESKTOP_ASSISTANT_THREAD_SOURCE,
 		});
@@ -403,12 +392,31 @@ export class DesktopAssistantService {
 			{ promptMode: 'desktop-assistant-one-shot' },
 		);
 
-		// A one-shot task may build a scheduled/recurring workflow (the prompt
-		// implies one). When it does, publish it so it runs on its own — same
-		// runnable guard as promote. Most one-shots are ad-hoc and build nothing,
-		// in which case the listener simply unsubscribes. Subscribe AFTER startRun
-		// so the listener scopes itself to this run.
-		const cleanup = this.subscribeForBuildOutcome(user, threadId, runId, (workflowId) => {
+		// A one-shot task may build a workflow; when its outcome report names one,
+		// publish it so it runs on its own — same runnable guard as promote.
+		// Subscribe AFTER startRun so the listener scopes itself to this run.
+		this.subscribeForOneShotBuild(user, threadId, runId);
+
+		return { threadId, runId };
+	}
+
+	/**
+	 * Follow a one-shot run and publish the workflow its outcome report names,
+	 * if any. The workflow id comes off the run's `report-desktop-task-outcome`
+	 * tool call — an explicit signal, no build-event heuristics. Self-cleaning:
+	 * every run eventually emits `run-finish` (the liveness sweeper covers
+	 * stalls), which releases the subscription.
+	 */
+	private subscribeForOneShotBuild(user: User, threadId: string, runId: string): void {
+		let builtWorkflowId: string | undefined;
+		const unsubscribe = this.eventBus.subscribe(threadId, (storedEvent: StoredEvent) => {
+			builtWorkflowId = extractReportedWorkflowId(storedEvent, runId) ?? builtWorkflowId;
+
+			const ev = storedEvent.event;
+			if (ev.type !== 'run-finish' || ev.runId !== runId) return;
+			unsubscribe();
+			if (ev.payload.status !== 'completed' || !builtWorkflowId) return;
+			const workflowId = builtWorkflowId;
 			this.activateWorkflowIfRunnable(user, workflowId).catch((error: unknown) => {
 				this.logger.debug('One-shot workflow not auto-published', {
 					threadId,
@@ -417,9 +425,6 @@ export class DesktopAssistantService {
 				});
 			});
 		});
-		setTimeout(cleanup, BUILD_FINALIZE_TIMEOUT_MS).unref();
-
-		return { threadId, runId };
 	}
 
 	// ── recommendations ──────────────────────────────────────────────────────
@@ -461,15 +466,15 @@ export class DesktopAssistantService {
 	// ── task detail ──────────────────────────────────────────────────────────
 
 	/**
-	 * Build the task detail view's payload: a natural-language description of the
-	 * workflow, segmented into static text and editable params, plus the
-	 * credential types still missing for it to run.
+	 * Build the task detail view's payload: the workflow's stored natural-language
+	 * description (static text + editable params), plus the credential types still
+	 * missing for it to run.
 	 *
-	 * The description is LLM-generated (structured output, like recommendations)
-	 * and cached in `workflow_entity.meta.desktopAssistant.detail`, keyed by the
-	 * workflow's `versionId` — edits through the editor or the apply-edits run
-	 * bump the version and naturally invalidate the cache. Meta-only writes (the
-	 * cache itself) do not touch `versionId`, so caching never self-invalidates.
+	 * The description is written at promote time and kept in sync by apply-edits;
+	 * generating it here is only a fallback for tagged workflows that predate
+	 * that (or were built outside the promote flow): generate once, store, return.
+	 * The response carries the workflow's current `versionId` — the renderer uses
+	 * it to detect no-op edit runs.
 	 */
 	async getTaskDetail(user: User, workflowId: string): Promise<DesktopAssistantTaskDetailResponse> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
@@ -485,12 +490,21 @@ export class DesktopAssistantService {
 				displayName: this.resolveCredentialDisplayName(credentialType),
 			}),
 		);
+		const timeSavedMin = workflow.settings?.timeSavedPerExecution;
 
-		const cachedParts = readCachedTaskDetail(workflow.meta, workflow.versionId);
-		if (cachedParts) {
-			return { workflowId, versionId: workflow.versionId, parts: cachedParts, connectionsNeeded };
-		}
+		const parts =
+			readCachedTaskDetail(workflow.meta) ??
+			(await this.generateAndStoreTaskDetail(user, workflow));
+		return { workflowId, versionId: workflow.versionId, parts, connectionsNeeded, timeSavedMin };
+	}
 
+	/** Generate the segmented task description via structured output, persist it
+	 *  as the workflow's durable description, and return the parts. Used by the
+	 *  promote finalizer (create time) and the detail-view fallback above. */
+	private async generateAndStoreTaskDetail(
+		user: User,
+		workflow: { id: string; name: string; nodes: INode[]; connections: IConnections },
+	): Promise<DesktopAssistantDescriptionPart[]> {
 		const credentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
@@ -512,14 +526,14 @@ export class DesktopAssistantService {
 		});
 		const parts = normalizeDescriptionParts(rawParts);
 		if (parts.length === 0) {
-			// All parts were empty/whitespace — caching this would render a blank
-			// sentence and brick apply-edits for the version; treat as a failed
-			// generation so the client shows its error + retry state.
+			// All parts were empty/whitespace — storing this would render a blank
+			// sentence and brick apply-edits; treat as a failed generation so the
+			// client shows its error + retry state.
 			throw new OperationalError('Task description generation returned no usable description');
 		}
 
-		await this.writeTaskDetailCache(workflowId, workflow.versionId, parts);
-		return { workflowId, versionId: workflow.versionId, parts, connectionsNeeded };
+		await this.writeTaskDetailCache(workflow.id, parts);
+		return parts;
 	}
 
 	private resolveCredentialDisplayName(credentialType: string): string {
@@ -530,13 +544,14 @@ export class DesktopAssistantService {
 		}
 	}
 
-	/** Merge the generated description into the workflow's meta. Re-reads the
-	 *  row's meta right before writing: the caller's copy predates a seconds-long
-	 *  LLM call, and writing it back would clobber anything (editor saves, other
-	 *  meta writers) that landed in between. */
+	/** Merge the description into the workflow's meta, re-normalized so every
+	 *  write path (generation, draft promote, apply-edits sync) stores the same
+	 *  contract: deduped options excluding the value, capped counts. Re-reads
+	 *  the row's meta right before writing: the caller's copy may predate a
+	 *  seconds-long LLM call, and writing it back would clobber anything (editor
+	 *  saves, other meta writers) that landed in between. */
 	private async writeTaskDetailCache(
 		workflowId: string,
-		versionId: string,
 		parts: DesktopAssistantDescriptionPart[],
 	): Promise<void> {
 		const workflow = await this.workflowRepository.findOne({
@@ -549,7 +564,7 @@ export class DesktopAssistantService {
 			...(workflow.meta ?? {}),
 			desktopAssistant: {
 				...existing,
-				detail: { versionId, parts },
+				detail: { parts: normalizeDescriptionParts(parts) },
 			},
 		};
 		await this.workflowRepository.update(workflowId, { meta: nextMeta });
@@ -562,8 +577,9 @@ export class DesktopAssistantService {
 	 * kick off an Instance AI run in the `desktop-assistant-edit` prompt mode,
 	 * grounded on the displayed description sentence and the exact from→to value
 	 * changes. The client follows the run via the thread's SSE stream and
-	 * refetches the detail when it finishes (the builder's update bumps the
-	 * workflow's `versionId`, invalidating the cached description).
+	 * refetches the detail when it finishes; a completion listener here syncs the
+	 * stored description to the picked values when the run actually changed the
+	 * workflow.
 	 */
 	async applyTaskEdits(
 		user: User,
@@ -579,7 +595,7 @@ export class DesktopAssistantService {
 
 		// Ground the instruction on the description the user was actually looking
 		// at; without it the from→to pairs lose their sentence context.
-		const parts = readCachedTaskDetail(workflow.meta, workflow.versionId);
+		const parts = readCachedTaskDetail(workflow.meta);
 		if (!parts) {
 			throw new BadRequestError(
 				'No current task description for this workflow — reload the task detail and retry',
@@ -623,60 +639,94 @@ export class DesktopAssistantService {
 			{ promptMode: 'desktop-assistant-edit' },
 		);
 
-		if (wasActive) {
-			// Subscribe AFTER we have the runId so the listener scopes itself to this
-			// exact run. When it finishes, re-publish so the running schedule/webhook
-			// picks up the edited version instead of the stale one.
-			const cleanup = this.subscribeForEditPublish(user, threadId, runId, workflowId);
-			setTimeout(cleanup, BUILD_FINALIZE_TIMEOUT_MS).unref();
-		}
+		// Subscribe AFTER we have the runId so the listener scopes itself to this
+		// exact run. When it finishes having actually changed the workflow, the
+		// stored description gets the picked values, and an already-published
+		// workflow is re-published so the running version catches up.
+		this.subscribeForEditOutcome(
+			user,
+			threadId,
+			runId,
+			workflowId,
+			workflow.versionId,
+			body.changes,
+			wasActive,
+		);
 
 		return { threadId, runId };
 	}
 
 	/**
-	 * Listen for an edit run finishing and re-point the workflow's published
-	 * version at the freshly-saved draft, so an already-active workflow runs the
-	 * edited version rather than the one pinned before the edit. Best-effort: the
-	 * promise is fire-and-forget and failures (e.g. a now-invalid workflow) are
-	 * logged, not surfaced — the edit itself already succeeded.
+	 * Listen for an edit run finishing and settle its outcome (stored-description
+	 * sync + re-publish). Best-effort: the promise is fire-and-forget and
+	 * failures (e.g. a now-invalid workflow) are logged, not surfaced — the edit
+	 * itself already succeeded. Self-cleaning: the subscription is released at
+	 * the run's `run-finish`.
 	 */
-	private subscribeForEditPublish(
+	private subscribeForEditOutcome(
 		user: User,
 		threadId: string,
 		runId: string,
 		workflowId: string,
-	): () => void {
-		let handled = false;
+		versionIdBeforeEdit: string,
+		changes: DesktopAssistantApplyEditsRequest['changes'],
+		wasActive: boolean,
+	): void {
 		const unsubscribe = this.eventBus.subscribe(threadId, (storedEvent: StoredEvent) => {
-			if (handled) return;
 			const ev = storedEvent.event;
 			if (ev.type !== 'run-finish') return;
 			if (ev.runId !== runId) return;
-			handled = true;
 			unsubscribe();
-			this.republishEditedWorkflow(user, workflowId).catch((error: unknown) => {
-				this.logger.debug('Edited workflow not re-published', {
-					workflowId,
-					reason: error instanceof Error ? error.message : String(error),
-				});
-			});
+			// Only a completed run settles. A cancelled/errored run may still have
+			// saved an intermediate version, and syncing the description to the
+			// picked values would claim an edit the client just reported as failed.
+			if (ev.payload.status !== 'completed') return;
+			this.settleEditedWorkflow(user, workflowId, versionIdBeforeEdit, changes, wasActive).catch(
+				(error: unknown) => {
+					this.logger.debug('Edit run outcome not settled', {
+						workflowId,
+						reason: error instanceof Error ? error.message : String(error),
+					});
+				},
+			);
 		});
-		return unsubscribe;
 	}
 
-	private async republishEditedWorkflow(user: User, workflowId: string): Promise<void> {
+	/**
+	 * Settle a finished edit run. A run that changed nothing (the workflow's
+	 * `versionId` still matches the one captured before the run) leaves
+	 * everything untouched. Otherwise sync the stored description to the values
+	 * the user picked, and — when the workflow was published before the edit —
+	 * re-point `activeVersionId` at the freshly-saved draft so the running
+	 * schedule/webhook picks up the edited version.
+	 */
+	private async settleEditedWorkflow(
+		user: User,
+		workflowId: string,
+		versionIdBeforeEdit: string,
+		changes: DesktopAssistantApplyEditsRequest['changes'],
+		wasActive: boolean,
+	): Promise<void> {
 		const updated = await this.workflowRepository.findOne({
 			where: { id: workflowId },
-			select: ['id', 'versionId'],
+			select: ['id', 'versionId', 'meta'],
 		});
-		if (!updated) return;
-		// Re-point activeVersionId at the current draft. No-op-safe if the agent
-		// made no change (the version is unchanged and already active).
-		await this.workflowService.activateWorkflow(user, workflowId, {
-			versionId: updated.versionId,
-			source: 'n8n-ai',
-		});
+		if (!updated || updated.versionId === versionIdBeforeEdit) return;
+
+		const storedParts = readCachedTaskDetail(updated.meta);
+		if (storedParts) {
+			await this.writeTaskDetailCache(
+				workflowId,
+				applyChangesToDescriptionParts(storedParts, changes),
+			);
+		}
+
+		if (wasActive) {
+			await this.workflowService.activateWorkflow(user, workflowId, {
+				versionId: updated.versionId,
+				source: 'n8n-ai',
+			});
+		}
 	}
 
 	// ── promote thread ──────────────────────────────────────────────────────
@@ -711,21 +761,56 @@ export class DesktopAssistantService {
 			// through and rebuild.
 		}
 
-		// In-flight guard: the client re-sends this request to confirm completion
-		// after watching the build run (and a thread can be re-kept); while the
-		// recorded run is still active — or finished but still being finalised —
-		// return it instead of starting another.
+		// The client confirms completion by re-sending this request after the
+		// build run finishes. The promote settles pull-based from the run's
+		// `report-promote-outcome` completion report on thread metadata — no
+		// run-finish listener, so the signal survives long builds and restarts.
 		const inFlightRunId = await this.readPromoteRunId(user.id, body.threadId);
-		if (
-			inFlightRunId &&
-			(this.instanceAiService.getActiveRunId(body.threadId) === inFlightRunId ||
-				this.finalizingBuildRunIds.has(inFlightRunId))
-		) {
-			return { status: 'building', threadId: body.threadId, runId: inFlightRunId };
+		if (inFlightRunId) {
+			// A suspended run (waiting on a permission prompt) is still in flight —
+			// it resumes under the same runId once the user responds.
+			const runInFlight =
+				this.instanceAiService.getActiveRunId(body.threadId) === inFlightRunId ||
+				this.instanceAiService.getSuspendedRunId(body.threadId) === inFlightRunId;
+			if (runInFlight) {
+				return { status: 'building', threadId: body.threadId, runId: inFlightRunId };
+			}
+			const metadata = await this.memoryService.getThreadMetadata(user.id, body.threadId);
+			const report = extractPromoteOutcomeReport(metadata, inFlightRunId);
+			if (report?.success) {
+				// A finalization error propagates without clearing the run marker,
+				// so a retried confirm re-attempts finalization instead of rebuilding.
+				await this.finalizePromotedWorkflow(
+					user,
+					body.threadId,
+					report.workflowId,
+					body.icon,
+					body.configuredParts,
+					body.estimatedMinutesSaved,
+					body.timeZone,
+				);
+				return { status: 'done', threadId: body.threadId, workflowId: report.workflowId };
+			}
+			// Reported failure, or no report at all (run died, model skipped the
+			// call). Clear the marker so a later promote starts fresh.
+			await this.memoryService.updateThread(body.threadId, {
+				metadata: { [PROMOTE_RUN_ID_KEY]: null },
+			});
+			const reason = report && !report.success ? report.failureReason : undefined;
+			return {
+				status: 'failed',
+				threadId: body.threadId,
+				...(reason ? { reason } : {}),
+			};
 		}
 
 		const originalPrompt = await this.recoverOriginalPrompt(body.threadId);
-		const buildPrompt = composePromoteMessage(originalPrompt, body.name);
+		// A plan-configured promote ("Set it up" on a proposed task plan) grounds
+		// the build on the user-configured sentence instead of the recorded run.
+		const configuredSentence = body.configuredParts
+			? renderDescriptionSentence(body.configuredParts)
+			: undefined;
+		const buildPrompt = composePromoteMessage(originalPrompt, body.name, configuredSentence);
 
 		const runId = this.instanceAiService.startRun(
 			user,
@@ -738,36 +823,10 @@ export class DesktopAssistantService {
 				promptMode: 'desktop-assistant-promote',
 			},
 		);
-		// Subscribe AFTER we have the runId so the listener can scope itself to
-		// the exact run we just kicked off, and BEFORE the first await so the
-		// run can't finish (or anything below fail) without a listener in place
-		// to finalise the built workflow. `subscribe` is synchronous and
-		// `startRun` only registers the run; it doesn't dispatch any events on
-		// the bus before this line runs.
-		const cleanup = this.subscribeForBuildOutcome(
-			user,
-			body.threadId,
-			runId,
-			async (workflowId) => {
-				try {
-					await this.finalizePromotedWorkflow(user, body.threadId, workflowId, body.icon);
-				} catch (error) {
-					this.logger.warn('Failed to finalise promoted workflow', {
-						threadId: body.threadId,
-						workflowId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
-			},
-		);
 
-		// Hard-cap the listener so a stalled run does not leak a subscription.
-		setTimeout(cleanup, BUILD_FINALIZE_TIMEOUT_MS).unref();
-
-		// Record the run for the confirming call's in-flight guard. Best-effort:
-		// the run is already underway and subscribed for finalisation, so failing
-		// the request here would only push the client into a retry that starts a
-		// duplicate build.
+		// Record the run for the confirming call. Best-effort: the run is already
+		// underway, so failing the request here would only push the client into a
+		// retry that starts a duplicate build.
 		try {
 			await this.memoryService.updateThread(body.threadId, {
 				metadata: { [PROMOTE_RUN_ID_KEY]: runId },
@@ -783,118 +842,82 @@ export class DesktopAssistantService {
 		return { status: 'building', threadId: body.threadId, runId };
 	}
 
-	/**
-	 * Listen for a build run finishing, resolve which workflow it produced, and
-	 * hand that workflowId to `onWorkflowBuilt`. Used by both promote (to tag +
-	 * activate the new workflow) and the one-shot path (to activate a workflow the
-	 * task happened to build). The callback fires at most once.
-	 *
-	 * We watch two signals because the orchestrator has more than one build
-	 * path:
-	 *  1. The `instanceAiWorkflowLoop` (newer) persists its outcome to
-	 *     `thread.metadata.instanceAiWorkflowLoop[*].lastBuildOutcome` and
-	 *     emits a plain `run-finish` event — no per-build planItem on the
-	 *     parent thread. We read the persisted outcome at run-finish.
-	 *  2. The older planned-task path (still used by some builds) emits
-	 *     `tasks-update` with a `kind: 'build-workflow'` planItem completing.
-	 *     This is the legacy `extractBuiltWorkflowId` heuristic; kept as a
-	 *     fallback so we cover whichever path the orchestrator picks.
-	 *
-	 * Whichever signal fires first wins; both go through the same `handled`
-	 * gate so we only act once. A run that finishes without building a workflow
-	 * (common for ad-hoc one-shot tasks) just unsubscribes without calling back.
-	 */
-	private subscribeForBuildOutcome(
-		user: User,
-		threadId: string,
-		runId: string,
-		onWorkflowBuilt: (workflowId: string) => void | Promise<void>,
-	): () => void {
-		let handled = false;
-		const finalise = (workflowId: string) => {
-			handled = true;
-			unsubscribe();
-			// Hold the run in `finalizingBuildRunIds` until the callback's follow-up
-			// work settles: once it has, the outcome (e.g. `promotedWorkflowId`) is on
-			// the thread — or the follow-up failed and a rebuild is allowed.
-			this.finalizingBuildRunIds.add(runId);
-			Promise.resolve()
-				.then(async () => await onWorkflowBuilt(workflowId))
-				.catch((error: unknown) => {
-					// Call sites own their error handling; this is a safety net.
-					this.logger.warn('Build outcome callback failed', {
-						threadId,
-						workflowId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				})
-				.finally(() => {
-					this.finalizingBuildRunIds.delete(runId);
-				});
-		};
-
-		const unsubscribe = this.eventBus.subscribe(threadId, (storedEvent: StoredEvent) => {
-			if (handled) return;
-
-			// Fallback: legacy planned-task build emits its outcome inline.
-			const plannedTaskBuilt = extractBuiltWorkflowId(storedEvent);
-			if (plannedTaskBuilt) {
-				finalise(plannedTaskBuilt);
-				return;
-			}
-
-			// Primary: workflow-loop builds only surface via thread metadata at
-			// run-finish. Match on the runId we kicked off so we don't react to
-			// unrelated runs that happen to share the thread.
-			const ev = storedEvent.event;
-			if (ev.type !== 'run-finish') return;
-			if (ev.runId !== runId) return;
-
-			// Marked synchronously with the run-finish dispatch, so a confirming
-			// promote call can never observe "run gone, no workflow yet" and rebuild.
-			// `finalise` takes over the marker; the non-finalising exits release it.
-			this.finalizingBuildRunIds.add(runId);
-			void this.memoryService
-				.getThreadMetadata(user.id, threadId)
-				.then((metadata) => {
-					if (handled) return;
-					const workflowId = extractWorkflowLoopBuildOutcome(metadata, runId);
-					if (!workflowId) {
-						// No workflow built (ad-hoc task, or a failed/ambiguous build). The
-						// run is over, so stop listening rather than wait out the timeout.
-						handled = true;
-						unsubscribe();
-						this.finalizingBuildRunIds.delete(runId);
-						this.logger.debug('Build run finished without a workflow', { threadId, runId });
-						return;
-					}
-					finalise(workflowId);
-				})
-				.catch((error: unknown) => {
-					this.finalizingBuildRunIds.delete(runId);
-					this.logger.warn('Failed to read build thread metadata at run-finish', {
-						threadId,
-						runId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				});
-		});
-		return unsubscribe;
-	}
-
 	private async finalizePromotedWorkflow(
 		user: User,
 		threadId: string,
 		workflowId: string,
 		icon?: string,
+		configuredParts?: DesktopAssistantDescriptionPart[],
+		estimatedMinutesSaved?: number,
+		timeZone?: string,
 	): Promise<void> {
 		await this.applyDesktopAssistantTag(workflowId);
 		await this.writeDesktopAssistantMeta(workflowId, threadId, icon);
 		await this.applyDeviceCredential(user, workflowId);
+		const logDetailStoreFailure = (error: unknown) => {
+			this.logger.warn('Failed to store task details on promoted workflow', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		};
+		// The stored description and plan extras are best-effort: the build already
+		// succeeded, and the promoted-workflow marker + activation below must land
+		// regardless. The settings write stays ahead of activateWorkflowIfRunnable:
+		// activation registers schedule crons, which must see the pinned timezone.
+		try {
+			if (estimatedMinutesSaved || timeZone) {
+				await this.writePromoteSettings(workflowId, { estimatedMinutesSaved, timeZone });
+			}
+			if (configuredParts) {
+				// The user-configured sentence IS the description they approved —
+				// store it as the task's durable description.
+				await this.writeTaskDetailCache(workflowId, configuredParts);
+			}
+		} catch (error) {
+			logDetailStoreFailure(error);
+		}
+		// Clearing the run marker alongside the done-marker keeps a re-promote
+		// after workflow deletion on the fresh-build path instead of retrying
+		// finalization against the deleted workflow.
 		await this.memoryService.updateThread(threadId, {
-			metadata: { [PROMOTED_WORKFLOW_ID_KEY]: workflowId },
+			metadata: { [PROMOTED_WORKFLOW_ID_KEY]: workflowId, [PROMOTE_RUN_ID_KEY]: null },
 		});
 		await this.activateWorkflowIfRunnable(user, workflowId);
+		if (!configuredParts) {
+			// Classic executed-thread promote: generate the description eagerly so
+			// the detail view opens without a lazy generation pass — but last, after
+			// the marker write and activation, so the seconds-long LLM call doesn't
+			// delay them. The detail view's lazy fallback covers a failure here.
+			try {
+				const workflow = await this.workflowRepository.findOne({
+					where: { id: workflowId },
+					select: ['id', 'name', 'nodes', 'connections'],
+				});
+				if (workflow) await this.generateAndStoreTaskDetail(user, workflow);
+			} catch (error) {
+				logDetailStoreFailure(error);
+			}
+		}
+	}
+
+	/** Store the promote request's settings extras in one update: the plan's
+	 *  minutes-saved estimate, and the requester's IANA time zone so schedule
+	 *  triggers fire in the user's local time instead of the instance default.
+	 *  Re-reads the row so the build's own settings are not clobbered — in
+	 *  particular, a timezone the build set deliberately wins over the request's. */
+	private async writePromoteSettings(
+		workflowId: string,
+		{ estimatedMinutesSaved, timeZone }: { estimatedMinutesSaved?: number; timeZone?: string },
+	): Promise<void> {
+		const workflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			select: ['id', 'settings'],
+		});
+		if (!workflow) return;
+		const settings = { ...(workflow.settings ?? {}) };
+		if (estimatedMinutesSaved) settings.timeSavedPerExecution = Math.round(estimatedMinutesSaved);
+		if (timeZone && !settings.timezone) settings.timezone = timeZone;
+		await this.workflowRepository.update(workflowId, { settings });
 	}
 
 	/**

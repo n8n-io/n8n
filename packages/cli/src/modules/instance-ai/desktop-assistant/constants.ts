@@ -19,7 +19,7 @@ export const PROMOTED_WORKFLOW_ID_KEY = 'promotedWorkflowId';
  * desktop client polls `POST /promote-thread` while the build runs; this key
  * lets the endpoint return the in-flight run instead of starting another.
  */
-export const PROMOTE_RUN_ID_KEY = 'desktopAssistantPromoteRunId';
+export { PROMOTE_RUN_ID_KEY } from '@n8n/instance-ai';
 
 /** Reverse pointer written on the workflow's meta JSON column. */
 export const PROMOTED_FROM_THREAD_ID_KEY = 'promotedFromThreadId';
