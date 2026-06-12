@@ -83,9 +83,8 @@ const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages)
 // Assistant messages whose only content has been extracted to the bottom
 // builder section (or which haven't produced anything renderable yet) would
 // otherwise leave an empty wrapper in the list — filter them out.
-// Stable array mutated in place: the filter source re-runs per streamed token
-// (it reads message content), but the list is only spliced when membership
-// actually changes — so tokens don't re-render the message list.
+// Reconciled in place: spliced only when membership changes, so streamed
+// tokens don't re-render the list.
 const displayedMessages = shallowReactive<typeof thread.messages>([]);
 watch(
 	() => thread.messages.filter(messageHasVisibleContent),

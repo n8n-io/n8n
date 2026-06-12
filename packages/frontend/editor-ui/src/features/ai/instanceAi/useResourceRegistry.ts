@@ -264,20 +264,15 @@ export function useResourceRegistry(
 	workflowNameLookup?: (id: string) => string | undefined,
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 ) {
-	// Long-lived reactive state, mutated in place — never replaced. Consumers
-	// get Vue's per-key/per-field dependency tracking: a rebuild that changes
-	// nothing produces zero writes and therefore zero re-renders, while e.g. an
-	// `archived` flip only notifies the component reading that entry's field.
+	// Long-lived reactive maps, reconciled in place: rebuilds that change
+	// nothing trigger nothing.
 	const producedArtifacts = reactive(new Map<string, ResourceEntry>());
 	const resourceNameIndex = reactive(new Map<string, ResourceEntry>());
 
-	// Deriving from messages (instead of maintaining the registry per event)
-	// keeps it self-healing: hydration, run-sync tree replacement, optimistic
-	// rollback, and reset all just mutate `messages`, and the next derivation
-	// is correct with no lifecycle bookkeeping. The watch SOURCE is tracked
-	// (the deep walk re-runs whenever any tree gains a tool call or child);
-	// the handler is untracked, so reconciling into the maps cannot re-trigger
-	// the watcher.
+	// Derived from `messages` so every state-arrival path (hydration, run-sync
+	// replacement, rollback, reset) self-heals on the next derivation. Must
+	// stay a watch: the handler reads the target maps, so a watchEffect would
+	// re-trigger itself.
 	watch(
 		(): Collections => {
 			const col: Collections = {
@@ -315,11 +310,7 @@ export function useResourceRegistry(
 	return { producedArtifacts, resourceNameIndex };
 }
 
-/**
- * Write a freshly derived map into the long-lived reactive map as a set of
- * minimal mutations. Every write goes through the reactive proxy's
- * `hasChanged` guard, so equivalent rebuilds are completely silent.
- */
+/** Sync `target` to `next` with minimal writes — unchanged entries trigger no subscribers. */
 function reconcileMap(target: Map<string, ResourceEntry>, next: Map<string, ResourceEntry>): void {
 	for (const key of [...target.keys()]) {
 		if (!next.has(key)) target.delete(key);
@@ -335,10 +326,8 @@ function reconcileMap(target: Map<string, ResourceEntry>, next: Map<string, Reso
 }
 
 /**
- * Field-level reconcile: `Object.assign` writes each property through the
- * proxy (unchanged values trigger nothing), and the sweep before it deletes
- * properties the new entry no longer carries. Generic over fields, so adding
- * a field to `ResourceEntry` needs no changes here.
+ * Per-field sync: `Object.assign` writes through the proxy (equal values
+ * trigger nothing), the sweep deletes fields the new entry no longer carries.
  */
 function reconcileEntryFields(
 	existing: Record<string, unknown>,

@@ -236,8 +236,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 <template>
 	<div :class="$style.timeline">
 		<template v-for="(entry, idx) in timelineEntries" :key="idx">
-			<!-- Text segment — leaf component so the per-token content read is
-				 tracked there, and streamed tokens don't re-render this timeline -->
+			<!-- Text segment (leaf keeps the per-token content read out of this render) -->
 			<TimelineTextSegment
 				v-if="entry.type === 'text'"
 				:entry="entry"
@@ -296,9 +295,8 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 						toolCallsById[entry.toolCallId].isLoading
 					"
 				/>
-				<!-- No slot children on purpose: slots compile as dynamic and would
-					 disable the props-equality bailout, re-rendering every settled
-					 step whenever this timeline re-renders -->
+				<!-- Keep slot-free: slot children disable the props bailout and would
+					 re-render every step on each timeline render -->
 				<ToolCallStep v-else :tool-call="toolCallsById[entry.toolCallId]" :show-connector="true" />
 			</template>
 
