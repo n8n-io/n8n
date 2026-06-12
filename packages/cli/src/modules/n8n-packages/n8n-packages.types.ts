@@ -1,6 +1,9 @@
 import type { User } from '@n8n/db';
 
+import type { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
+
 export type { CredentialResolution } from './entities/credential/credential.types';
+export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishing-policy.types';
 
 export type CredentialMatchingMode = 'id-only';
 export type CredentialMissingMode = 'must-preexist';
@@ -48,6 +51,7 @@ export type ImportCredentialProperties = {
 
 export type ImportWorkflowProperties = {
 	workflowConflictPolicy: WorkflowConflictPolicy;
+	workflowPublishingPolicy: WorkflowPublishingPolicy;
 	workflowIdPolicy: WorkflowIdPolicy;
 };
 
