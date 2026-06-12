@@ -9,7 +9,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.credentials_entity](public.credentials_entity.md) | 11 |  | BASE TABLE |
-| [public.execution_entity](public.execution_entity.md) | 15 |  | BASE TABLE |
+| [public.execution_entity](public.execution_entity.md) | 17 |  | BASE TABLE |
 | [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
 | [public.webhook_entity](public.webhook_entity.md) | 6 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
@@ -316,6 +316,8 @@ erDiagram
   varchar_2_ storedAt
   json tracingContext
   varchar_255_ deduplicationKey
+  bigint jsonSizeBytes
+  varchar_36_ workflowVersionId
 }
 "public.workflow_entity" {
   varchar_128_ name

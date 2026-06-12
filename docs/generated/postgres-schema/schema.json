@@ -301,6 +301,20 @@
           "name": "deduplicationKey",
           "type": "varchar(255)",
           "nullable": true
+        },
+        {
+          "name": "jsonSizeBytes",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "comment": "Byte size of the JSON execution data bundle (run data, workflow snapshot, version id); excludes binary data. 0 means unknown."
+        },
+        {
+          "name": "workflowVersionId",
+          "type": "varchar(36)",
+          "nullable": true,
+          "default": "NULL::character varying",
+          "comment": "Version id of the workflow run by this execution; denormalized from the data bundle."
         }
       ],
       "indexes": [
@@ -387,6 +401,16 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "execution_entity_jsonSizeBytes_not_null",
+          "type": "n",
+          "def": "NOT NULL \"jsonSizeBytes\"",
+          "table": "public.execution_entity",
+          "referenced_table": "",
+          "columns": [
+            "jsonSizeBytes"
           ]
         },
         {
