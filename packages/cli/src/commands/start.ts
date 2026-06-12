@@ -234,7 +234,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			const { WorkflowPublicationOutboxConsumer } = await import(
-				'@/workflows/workflow-publication-outbox-consumer'
+				'@/workflows/publication/workflow-publication-outbox-consumer'
 			);
 			Container.get(WorkflowPublicationOutboxConsumer).init();
 		}
