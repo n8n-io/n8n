@@ -75,7 +75,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [user_favorites](user_favorites.md) | 4 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
 | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) | 4 |  | table |
-| [execution_entity](execution_entity.md) | 15 |  | table |
+| [execution_entity](execution_entity.md) | 17 |  | table |
 | [evaluation_config](evaluation_config.md) | 12 |  | table |
 | [evaluation_collection](evaluation_collection.md) | 9 |  | table |
 | [test_run](test_run.md) | 16 |  | table |
@@ -849,6 +849,8 @@ erDiagram
   varchar_2_ storedAt
   TEXT tracingContext
   varchar_255_ deduplicationKey
+  BIGINT jsonSizeBytes
+  VARCHAR_36_ workflowVersionId
 }
 "evaluation_config" {
   varchar_36_ id PK

@@ -6574,6 +6574,18 @@
           "name": "deduplicationKey",
           "type": "varchar(255)",
           "nullable": true
+        },
+        {
+          "name": "jsonSizeBytes",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "workflowVersionId",
+          "type": "VARCHAR(36)",
+          "nullable": true,
+          "default": "NULL"
         }
       ],
       "indexes": [
@@ -6626,7 +6638,7 @@
           ]
         }
       ],
-      "def": "CREATE TABLE \"execution_entity\" (\"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"workflowId\" varchar(36) NOT NULL, \"finished\" boolean NOT NULL, \"mode\" varchar NOT NULL, \"retryOf\" varchar, \"retrySuccessId\" varchar, \"startedAt\" datetime, \"stoppedAt\" datetime, \"waitTill\" datetime, \"status\" varchar NOT NULL, \"deletedAt\" datetime(3), \"createdAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), \"storedAt\" varchar(2) NOT NULL DEFAULT ('db'), \"tracingContext\" text, \"deduplicationKey\" varchar(255), CONSTRAINT \"FK_c4d999a5e90784e8caccf5589de\" FOREIGN KEY (\"workflowId\") REFERENCES \"workflow_entity\" (\"id\") ON DELETE CASCADE ON UPDATE NO ACTION)"
+      "def": "CREATE TABLE \"execution_entity\" (\"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"workflowId\" varchar(36) NOT NULL, \"finished\" boolean NOT NULL, \"mode\" varchar NOT NULL, \"retryOf\" varchar, \"retrySuccessId\" varchar, \"startedAt\" datetime, \"stoppedAt\" datetime, \"waitTill\" datetime, \"status\" varchar NOT NULL, \"deletedAt\" datetime(3), \"createdAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), \"storedAt\" varchar(2) NOT NULL DEFAULT ('db'), \"tracingContext\" text, \"deduplicationKey\" varchar(255), \"jsonSizeBytes\" BIGINT NOT NULL DEFAULT 0, \"workflowVersionId\" VARCHAR(36) DEFAULT NULL, CONSTRAINT \"FK_c4d999a5e90784e8caccf5589de\" FOREIGN KEY (\"workflowId\") REFERENCES \"workflow_entity\" (\"id\") ON DELETE CASCADE ON UPDATE NO ACTION)"
     },
     {
       "name": "evaluation_config",

@@ -56,6 +56,8 @@ erDiagram
   varchar_2_ storedAt
   json tracingContext
   varchar_255_ deduplicationKey
+  bigint jsonSizeBytes
+  varchar_36_ workflowVersionId
 }
 ```
 
