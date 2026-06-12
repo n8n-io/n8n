@@ -92,7 +92,12 @@ export class RedisTrigger implements INodeType {
 			if (options.jsonParseBody) {
 				try {
 					message = JSON.parse(message);
-				} catch (error) {}
+				} catch (error) {
+					this.logger.debug('Could not parse Redis message as JSON, using raw string', {
+						channel,
+						error: error instanceof Error ? error.message : error,
+					});
+				}
 			}
 
 			const data = options.onlyMessage ? { message } : { channel, message };

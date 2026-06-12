@@ -18,6 +18,7 @@ describe('Redis Trigger Node', () => {
 	const credentials = mock<ICredentialDataDecryptedObject>();
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers: { returnJsonArray },
+		logger: { debug: jest.fn() },
 	});
 
 	beforeEach(() => {
@@ -115,6 +116,30 @@ describe('Redis Trigger Node', () => {
 		onMessage('{"testing": true}', channel);
 		expect(triggerFunctions.emit).toHaveBeenCalledWith([
 			[{ json: { message: { testing: true }, channel } }],
+		]);
+	});
+
+	it('should emit raw message and log debug when JSON parsing fails', async () => {
+		triggerFunctions.getMode.mockReturnValue('trigger');
+		triggerFunctions.getNodeParameter.calledWith('options').mockReturnValue({
+			jsonParseBody: true,
+		});
+
+		await new RedisTrigger().trigger.call(triggerFunctions);
+
+		const mockRedisClient = setupRedisClient(mock());
+		const onMessageCaptor = captor<(message: string, channel: string) => unknown>();
+		expect(mockRedisClient.pSubscribe).toHaveBeenCalledWith([channel], onMessageCaptor);
+
+		const onMessage = onMessageCaptor.value;
+		onMessage('not-valid-json', channel);
+
+		expect(triggerFunctions.logger.debug).toHaveBeenCalledWith(
+			'Could not parse Redis message as JSON, using raw string',
+			expect.objectContaining({ channel, error: expect.any(String) }),
+		);
+		expect(triggerFunctions.emit).toHaveBeenCalledWith([
+			[{ json: { message: 'not-valid-json', channel } }],
 		]);
 	});
 });

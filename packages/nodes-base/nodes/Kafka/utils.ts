@@ -432,7 +432,10 @@ export async function runWithHeartbeat<T>(
 		timer = setInterval(async () => {
 			try {
 				await heartbeat();
-			} catch (error) {}
+			} catch (error) {
+				// Log heartbeat errors but don't interrupt the main task
+				console.warn('Kafka heartbeat failed:', error instanceof Error ? error.message : error);
+			}
 		}, intervalMs);
 
 		return await task;

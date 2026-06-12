@@ -98,7 +98,12 @@ const textOptimizer = (
 		if (typeof response === 'object') {
 			try {
 				response = JSON.stringify(response, null, 2);
-			} catch (error) {}
+			} catch (error) {
+				// If JSON.stringify fails, the response will be validated as non-string below
+				console.debug('Failed to stringify response object:', {
+					error: error instanceof Error ? error.message : error,
+				});
+			}
 		}
 
 		if (typeof response !== 'string') {

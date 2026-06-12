@@ -261,7 +261,12 @@ export class PostgresTrigger implements INodeType {
 			if (data.payload) {
 				try {
 					data.payload = JSON.parse(data.payload as string) as IDataObject;
-				} catch (error) {}
+				} catch (error) {
+					// If parsing fails, keep the raw string payload
+					this.logger.debug('Failed to parse Postgres notification payload as JSON, using raw string', {
+						error: error instanceof Error ? error.message : error,
+					});
+				}
 			}
 			this.emit([this.helpers.returnJsonArray([data])]);
 		};
@@ -348,7 +353,12 @@ export class PostgresTrigger implements INodeType {
 					if (data.payload) {
 						try {
 							data.payload = JSON.parse(data.payload as string) as IDataObject;
-						} catch (error) {}
+						} catch (error) {
+							// If parsing fails, keep the raw string payload
+							this.logger.debug('Failed to parse Postgres notification payload as JSON, using raw string', {
+								error: error instanceof Error ? error.message : error,
+							});
+						}
 					}
 
 					this.emit([this.helpers.returnJsonArray([data])]);
