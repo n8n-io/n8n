@@ -3175,8 +3175,7 @@ export interface IWorkflowExecutionDataProcess {
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
-	 * When true, forces the execution data to be present in the run data
-	 * ignores N8N_MINIMIZE_EXECUTION_DATA_FETCHING environment variable if set
+	 * When true, forces the execution data to be present in the run data.
 	 */
 	forceFullExecutionData?: boolean;
 	/**
@@ -3644,6 +3643,7 @@ export interface ExecutionSummary {
 	workflowId: string;
 	workflowName?: string;
 	workflowVersionId?: string | null;
+	jsonSizeBytes?: number;
 	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;

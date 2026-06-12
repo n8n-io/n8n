@@ -72,9 +72,9 @@ export class ImportPipeline {
 
 		const credentialPlan = await this.credentialImporter.plan(credentialRequest);
 		const workflowPlan = await this.workflowImporter.plan(
+			{ user: request.user, ...target },
 			workflowsForImport,
-			request.workflowConflictPolicy,
-			target.projectId,
+			request,
 		);
 
 		const blockingIssues = this.collectBlockingIssues(
@@ -123,6 +123,11 @@ export class ImportPipeline {
 			...conflict,
 		}));
 
+		const workflowIdConflicts: BlockingIssue[] = workflowPlan.idConflicts.map((conflict) => ({
+			type: 'workflow-id-conflict',
+			...conflict,
+		}));
+
 		const credentialFailures: BlockingIssue[] = this.credentialImporter
 			.blockingFailures(credentialResolution, credentialRequest)
 			.map(({ kind, sourceId, usedByWorkflows }) => ({
@@ -132,7 +137,7 @@ export class ImportPipeline {
 				usedByWorkflows,
 			}));
 
-		return [...workflowConflicts, ...credentialFailures];
+		return [...workflowConflicts, ...workflowIdConflicts, ...credentialFailures];
 	}
 
 	private buildResult(

@@ -15,7 +15,7 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false | [agent_checkpoints](agent_checkpoints.md) [agents_observations](agents_observations.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_memory_entry_cursors](agents_memory_entry_cursors.md) [agent_history](agent_history.md) [agent_files](agent_files.md) [agent_task_definition](agent_task_definition.md) [agent_task_run_lock](agent_task_run_lock.md) [agent_execution_threads](agent_execution_threads.md) |  |  |
+| id | varchar(36) |  | false | [agent_checkpoints](agent_checkpoints.md) [agents_observations](agents_observations.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_memory_entry_cursors](agents_memory_entry_cursors.md) [agent_history](agent_history.md) [agent_files](agent_files.md) [agent_task_definition](agent_task_definition.md) [agent_task_run_lock](agent_task_run_lock.md) [agent_execution_threads](agent_execution_threads.md) [agent_chat_subscriptions](agent_chat_subscriptions.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | description | varchar(512) |  | true |  |  |  |
 | projectId | varchar(255) |  | false |  | [project](project.md) |  |
@@ -63,6 +63,7 @@ erDiagram
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution_threads" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_chat_subscriptions" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents" }o--o| "agent_history" : "FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
@@ -216,6 +217,14 @@ erDiagram
   varchar_36_ taskVersionId FK
   varchar_128_ parentThreadId
   varchar_36_ parentAgentId
+}
+"agent_chat_subscriptions" {
+  varchar_36_ agentId PK
+  varchar_64_ integrationType PK
+  varchar_255_ credentialId PK
+  varchar_255_ threadId PK
+  datetime_3_ createdAt
+  datetime_3_ updatedAt
 }
 "project" {
   varchar_36_ id PK

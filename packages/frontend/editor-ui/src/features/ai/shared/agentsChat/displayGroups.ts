@@ -1,3 +1,4 @@
+import { summariseToolCall } from './interactiveSummary';
 import type { AgentsChatMessage, InteractivePayload, ToolCall } from './types';
 
 /**
@@ -33,19 +34,73 @@ export function isGroupable(message: AgentsChatMessage): boolean {
 	return message.role === 'assistant' && !!message.toolCalls?.length && !message.content.trim();
 }
 
+/**
+ * Merge two records of the same tool call: messages are now stored both when a
+ * stream suspends and again on completion, so history can carry the same
+ * toolCallId twice (open, then resolved). Ported from master's undrained-stream
+ * fix (#32119).
+ */
+function mergeToolCall(previous: ToolCall, next: ToolCall): ToolCall {
+	const merged: ToolCall = {
+		...previous,
+		...next,
+		input: next.input ?? previous.input,
+		startTime: previous.startTime ?? next.startTime,
+		endTime: next.endTime ?? previous.endTime,
+		canceled: next.canceled ?? previous.canceled,
+	};
+	return {
+		...merged,
+		displaySummary: summariseToolCall(merged.tool, merged.output, merged.input),
+	};
+}
+
+function appendToolCalls(existing: ToolCall[], next: ToolCall[]): ToolCall[] {
+	const merged = [...existing];
+	const indexByToolCallId = new Map<string, number>();
+	for (const [index, toolCall] of merged.entries()) {
+		if (toolCall.toolCallId) indexByToolCallId.set(toolCall.toolCallId, index);
+	}
+
+	for (const toolCall of next) {
+		if (!toolCall.toolCallId) {
+			merged.push(toolCall);
+			continue;
+		}
+		const index = indexByToolCallId.get(toolCall.toolCallId);
+		if (index === undefined) {
+			indexByToolCallId.set(toolCall.toolCallId, merged.length);
+			merged.push(toolCall);
+			continue;
+		}
+		merged[index] = mergeToolCall(merged[index], toolCall);
+	}
+	return merged;
+}
+
+function appendInteractivePayloads(
+	existing: InteractivePayload[],
+	next: InteractivePayload | undefined,
+): InteractivePayload[] {
+	if (!next) return existing;
+	const index = existing.findIndex((payload) => payload.toolCallId === next.toolCallId);
+	if (index === -1) return [...existing, next];
+	return existing.map((payload, i) => (i === index ? next : payload));
+}
+
 export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[] {
 	const groups: DisplayGroup[] = [];
 	for (const message of messages) {
 		if (isGroupable(message)) {
 			const last = groups[groups.length - 1];
 			if (last && last.kind === 'toolRun' && !last.finalMessage) {
-				last.toolCalls = [...last.toolCalls, ...(message.toolCalls ?? [])];
+				last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls ?? []);
 				if (message.thinking) {
 					last.thinking = last.thinking
 						? `${last.thinking}\n\n${message.thinking}`
 						: message.thinking;
 				}
-				if (message.interactive) last.interactives.push(message.interactive);
+				last.interactives = appendInteractivePayloads(last.interactives, message.interactive);
 				continue;
 			}
 			groups.push({
@@ -68,9 +123,9 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 						: message.thinking;
 				}
 				if (message.toolCalls?.length) {
-					last.toolCalls = [...last.toolCalls, ...message.toolCalls];
+					last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls);
 				}
-				if (message.interactive) last.interactives.push(message.interactive);
+				last.interactives = appendInteractivePayloads(last.interactives, message.interactive);
 				continue;
 			}
 		}

@@ -8,6 +8,7 @@ import { CredClassOAuth2NamingRule } from './cred-class-oauth2-naming.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
+import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
 import { N8nObjectValidationRule } from './n8n-object-validation.js';
@@ -55,6 +56,7 @@ export const rules = {
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
 	'no-template-placeholders': NoTemplatePlaceholdersRule,
 	'icon-validation': IconValidationRule,
+	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
