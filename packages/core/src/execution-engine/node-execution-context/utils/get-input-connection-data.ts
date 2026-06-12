@@ -483,6 +483,12 @@ export async function getInputConnectionData(
 						connectedNodeType,
 						runExecutionData,
 					),
+					// Pass a context so n8n expressions in the user-provided
+					// `toolDescription` are evaluated against the upstream input
+					// data (matches the behaviour of nodes that supply their own
+					// tool, such as `toolWorkflow`).
+					context: contextFactory(parentRunIndex, parentInputData),
+					itemIndex,
 				});
 				nodes.push(supplyData);
 			} else {
