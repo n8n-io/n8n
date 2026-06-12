@@ -29,6 +29,10 @@ const auth = ref<AuthStatus>({
 	error: null,
 });
 const { screen, goHome } = useAssistantScreen();
+
+// macOS uses titleBarStyle 'hiddenInset': the native traffic lights overlay the renderer,
+// so it provides its own draggable title strip. Other platforms have a native title bar.
+const isMac = navigator.platform.startsWith('Mac');
 const { prompts, respondingIds, failedIds, respondToPrompt } = usePermissionPrompts();
 const pendingTasks = usePendingTasks();
 
@@ -86,6 +90,7 @@ watch(
 
 <template>
 	<div :class="$style.app">
+		<div v-if="isMac" :class="$style.titleStrip" />
 		<AppHeader
 			v-if="showHeader"
 			:state="auth.state"
@@ -158,6 +163,14 @@ watch(
 	height: 100vh;
 	/* Header/window sit on the darker base; the content body is a touch lighter. */
 	background: var(--da-bg);
+}
+
+/* Drag region for the otherwise chrome-less window; the traffic lights sit on it. */
+.titleStrip {
+	flex-shrink: 0;
+	height: 32px;
+	background: var(--da-bg);
+	-webkit-app-region: drag;
 }
 
 .content {
