@@ -78,13 +78,7 @@ export function createReportPromoteOutcomeTool(deps: { memory?: PatchableThreadM
 						// finalization at a nonexistent workflow. The loop's records on this
 						// thread are deterministic: when the reported id is not among them
 						// and the loop recorded exactly one workflow, trust the loop.
-						const loopWorkflowIds = collectLoopWorkflowIds(metadata);
-						const workflowId =
-							input.workflowId &&
-							loopWorkflowIds.length === 1 &&
-							!loopWorkflowIds.includes(input.workflowId)
-								? loopWorkflowIds[0]
-								: input.workflowId;
+						const workflowId = input.workflowId;
 						return {
 							metadata: {
 								...metadata,
