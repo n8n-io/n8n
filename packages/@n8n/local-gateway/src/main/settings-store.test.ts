@@ -86,6 +86,14 @@ describe('SettingsStore (Electron)', () => {
 		expect(config.permissions.browser).toBe('deny');
 	});
 
+	it('grants read but asks per write when the filesystem toggle is on', () => {
+		const store = new SettingsStore();
+		store.set({ filesystemEnabled: true });
+		const config = store.toGatewayConfig();
+		expect(config.permissions.filesystemRead).toBe('allow');
+		expect(config.permissions.filesystemWrite).toBe('ask');
+	});
+
 	it('defaults permissionConfirmation to instance and forwards a persisted client mode', () => {
 		const store = new SettingsStore();
 		expect(store.toGatewayConfig().permissionConfirmation).toBe('instance');

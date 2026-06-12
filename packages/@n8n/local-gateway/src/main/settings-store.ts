@@ -70,12 +70,14 @@ export class SettingsStore {
 			browser: {
 				defaultBrowser: 'chrome',
 			},
-			// Toggle-on means allow: the app's settings toggles are the user's
-			// explicit consent, and 'ask' would suspend fire-and-forget one-shot
-			// runs on a confirmation the desktop surface cannot answer.
+			// Toggle-on grants read access outright (non-destructive), but writes
+			// still ask per resource: the toggle is consent to reach the
+			// filesystem, not blanket consent to mutate it. The suspend surfaces
+			// as a permission prompt on the task thread (watched app-wide), so
+			// even fire-and-forget one-shot runs can answer it.
 			permissions: {
 				filesystemRead: s.filesystemEnabled ? 'allow' : 'deny',
-				filesystemWrite: s.filesystemEnabled ? 'allow' : 'deny',
+				filesystemWrite: s.filesystemEnabled ? 'ask' : 'deny',
 				shell: s.shellEnabled ? 'allow' : 'deny',
 				computer: s.screenshotEnabled || s.mouseKeyboardEnabled ? 'allow' : 'deny',
 				browser: s.browserEnabled ? 'allow' : 'deny',
