@@ -442,10 +442,12 @@ Follow these rules strictly when generating workflows:
 1. Always use `newCredential()` for authentication. Never use placeholder
    strings, fake API keys, hardcoded auth values, invented credential IDs, or
    raw `mock-*` IDs.
-2. Trust empty item lists. When a query returns zero items, downstream nodes
-   simply do not run. Do not add `alwaysOutputData: true` just to keep a chain
-   alive, and do not add an IF gate before a loop only to check whether items
-   exist.
+2. Skip-on-empty is n8n's default behaviour: when a node outputs zero items,
+   downstream nodes simply do not run and the branch ends silently. Trust it —
+   do not add `alwaysOutputData: true` just to keep a chain alive, and do not
+   add an IF gate before a loop only to check whether items exist. To make an
+   outcome happen even with zero items, wire it via the control-flow rule
+   below.
 3. Use `executeOnce: true` for a node that receives many items but should run
    once, such as a summary notification, report generation, shared-context
    fetch, or API call that does not vary per input item. Duplicate
@@ -459,6 +461,16 @@ Follow these rules strictly when generating workflows:
      and `.onFalse()`.
    - Many mutually exclusive paths keyed off a value: Switch with
      `.onCase(index, target)`.
+   - An outcome that must happen even when zero items remain: a node that
+     receives zero items does not run at all — `items.length === 0` logic
+     inside a downstream node is dead code, and an IF placed after an empty
+     output never fires. The fix goes on the PRODUCER, not the consumer:
+     `alwaysOutputData: true` in the config of the node whose output can be
+     empty (the fetch or the filter) makes it emit one empty-marker item
+     (empty `$json`) instead of ending the branch; an IF then separates that
+     marker from real items. Putting the flag on the node you want to run
+     does nothing. Example:
+     `node({ type: 'n8n-nodes-base.httpRequest', config: { alwaysOutputData: true, name: 'Fetch Posts', parameters: { /* ... */ } } })`
    - A Filter or IF only selects items; it does not perform the requested side
      effect. If the user asks to archive, update, delete, send, or create only
      matching items, wire the corresponding action node on the matching path.
