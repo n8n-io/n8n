@@ -3862,8 +3862,6 @@
 	"canvas.nodeGroup.connectionRemoveBlocked.title": "Connection not removed",
 	"canvas.nodeGroup.connectionChangeBlocked.message": "This change would break '{group}'. You can make this change after ungrouping it.",
 	"canvas.nodeGroup.connectionChangeBlocked.nonMainBoundary": "The sub-node connection between '{source}' and '{target}' crosses the boundary of '{group}'. You can make this change after ungrouping it.",
-	"canvas.nodeGroup.connectionChangeBlocked.multipleInputBranches": "'{group}' can have only one main input branch. You can make this change after ungrouping it.",
-	"canvas.nodeGroup.connectionChangeBlocked.multipleOutputBranches": "'{group}' can have only one main output branch. You can make this change after ungrouping it.",
 	"canvas.nodeGroup.connectionChangeBlocked.multipleInputNodes": "'{group}' can have only one entry point. You can make this change after ungrouping it.",
 	"canvas.nodeGroup.connectionChangeBlocked.inputEdgeToNonRoot": "Connections into '{group}' must go to its first node. You can make this change after ungrouping it.",
 	"canvas.nodeGroup.connectionChangeBlocked.multipleOutputNodes": "'{group}' can have only one exit point. You can make this change after ungrouping it.",
