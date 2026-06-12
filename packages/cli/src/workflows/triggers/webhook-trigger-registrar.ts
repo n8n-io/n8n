@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { WebhookEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	INode,
@@ -76,12 +77,7 @@ export class WebhookTriggerRegistrar {
 				method: webhookData.httpMethod,
 			});
 
-			this.normalizeWebhookPath(webhook);
-
-			if ((webhookData.path.startsWith(':') || webhookData.path.includes('/:')) && node.webhookId) {
-				webhook.webhookId = node.webhookId;
-				webhook.pathLength = webhook.webhookPath.split('/').length;
-			}
+			this.normalizeWebhookPath(webhook, node.webhookId);
 
 			try {
 				// `storeWebhook` registers the webhook atomically on the
@@ -179,12 +175,19 @@ export class WebhookTriggerRegistrar {
 		await this.webhookService.deleteWorkflowWebhooksForNodes(workflowId, nodeNames);
 	}
 
-	private normalizeWebhookPath(webhook: { webhookPath: string }) {
+	private normalizeWebhookPath(webhook: WebhookEntity, nodeWebhookId?: string) {
 		if (webhook.webhookPath.startsWith('/')) {
 			webhook.webhookPath = webhook.webhookPath.slice(1);
 		}
 		if (webhook.webhookPath.endsWith('/')) {
 			webhook.webhookPath = webhook.webhookPath.slice(0, -1);
+		}
+		if (
+			(webhook.webhookPath.startsWith(':') || webhook.webhookPath.includes('/:')) &&
+			nodeWebhookId
+		) {
+			webhook.webhookId = nodeWebhookId;
+			webhook.pathLength = webhook.webhookPath.split('/').length;
 		}
 	}
 }
