@@ -282,29 +282,37 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
-		if (isS3Configured) {
-			try {
-				const { ObjectStoreService } = await import(
-					'n8n-core/dist/binary-data/object-store/object-store.service.ee'
-				);
-				const objectStoreService = Container.get(ObjectStoreService);
-				await objectStoreService.init();
+		try {
+			const objectStoreService = await this.initObjectStoreIfConfigured();
+			if (objectStoreService) {
 				const { ObjectStoreManager } = await import(
 					'n8n-core/dist/binary-data/object-store.manager'
 				);
 				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
-
-				const { S3Store } = await import('@/executions/execution-data/s3-store.ee');
-				Container.get(ExecutionPersistence).setS3Store(Container.get(S3Store));
-			} catch {
-				if (isS3WriteMode || isExecutionDataS3Mode) {
-					this.logger.error('Failed to connect to S3. Please check your S3 configuration.');
-					process.exit(1);
-				}
+			}
+		} catch {
+			if (isS3WriteMode || isExecutionDataS3Mode) {
+				this.logger.error('Failed to connect to S3. Please check your S3 configuration.');
+				process.exit(1);
 			}
 		}
 
 		await binaryDataService.init();
+	}
+
+	protected async initObjectStoreIfConfigured() {
+		if (Container.get(ObjectStoreConfig).bucket.name === '') return undefined;
+
+		const { ObjectStoreService } = await import(
+			'n8n-core/dist/binary-data/object-store/object-store.service.ee'
+		);
+		const objectStoreService = Container.get(ObjectStoreService);
+		await objectStoreService.init();
+
+		const { S3Store } = await import('@/executions/execution-data/s3-store.ee');
+		Container.get(ExecutionPersistence).setS3Store(Container.get(S3Store));
+
+		return objectStoreService;
 	}
 
 	protected async initDataDeduplicationService() {

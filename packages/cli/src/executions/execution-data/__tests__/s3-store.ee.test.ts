@@ -148,11 +148,30 @@ describe('S3Store', () => {
 	});
 
 	describe('delete', () => {
-		it('should be a no-op (pruning is delegated to the bucket lifecycle policy)', async () => {
-			await expect(s3Store.delete(ref)).resolves.toBeUndefined();
+		it('should delete the bundle object for a single ref', async () => {
+			await s3Store.delete(ref);
 
-			expect(objectStoreService.deleteMany).not.toHaveBeenCalled();
-			expect(objectStoreService.deleteOne).not.toHaveBeenCalled();
+			expect(objectStoreService.deleteByKeys).toHaveBeenCalledWith([keyFor(executionId)]);
+		});
+
+		it('should delete the bundle objects for multiple refs', async () => {
+			const refs = [
+				createExecutionRef(workflowId, 'exec-1'),
+				createExecutionRef(workflowId, 'exec-2'),
+			];
+
+			await s3Store.delete(refs);
+
+			expect(objectStoreService.deleteByKeys).toHaveBeenCalledWith([
+				keyFor('exec-1'),
+				keyFor('exec-2'),
+			]);
+		});
+
+		it('should not send a request for an empty array', async () => {
+			await s3Store.delete([]);
+
+			expect(objectStoreService.deleteByKeys).not.toHaveBeenCalled();
 		});
 	});
 });

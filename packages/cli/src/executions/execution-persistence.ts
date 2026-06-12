@@ -1,4 +1,4 @@
-import { parseFlatted } from '@n8n/backend-common';
+import { Logger, parseFlatted } from '@n8n/backend-common';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -16,7 +16,7 @@ import { ExecutionData, ExecutionEntity, ExecutionRepository, In, Not } from '@n
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
-import type { IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
+import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
@@ -66,6 +66,7 @@ export class ExecutionPersistence {
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
+		private readonly logger: Logger,
 	) {}
 
 	setS3Store(store: ExecutionDataStore) {
@@ -396,6 +397,37 @@ export class ExecutionPersistence {
 		});
 	}
 
+	/** Find executions scoped to the given workflows for the public API, with data per `storedAt`. */
+	async getExecutionsForPublicApi(params: {
+		limit: number;
+		includeData?: boolean;
+		lastId?: string;
+		workflowIds?: string[];
+		status?: ExecutionStatus;
+		excludedExecutionsIds?: string[];
+	}): Promise<IExecutionBase[]> {
+		return await this.findMultipleExecutions(
+			{
+				select: [
+					'id',
+					'mode',
+					'retryOf',
+					'retrySuccessId',
+					'startedAt',
+					'stoppedAt',
+					'workflowId',
+					'waitTill',
+					'finished',
+					'status',
+				],
+				where: this.executionRepository.getFindExecutionsForPublicApiCondition(params),
+				order: { id: 'DESC' },
+				take: params.limit,
+			},
+			{ includeData: params.includeData, unflattenData: true },
+		);
+	}
+
 	/**
 	 * Delete an in-flight execution that is not meant to be saved.
 	 *
@@ -424,6 +456,7 @@ export class ExecutionPersistence {
 			this.executionRepository.deleteByIds(targets.map((t) => t.executionId)),
 			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
 			fsTargets.length > 0 ? this.fsStore.delete(fsTargets) : Promise.resolve(),
+			this.deleteS3Data(targets.filter((t) => t.storedAt === 's3')),
 		]);
 	}
 
@@ -432,6 +465,26 @@ export class ExecutionPersistence {
 
 		const fsRefs = refs.filter((r) => r.storedAt === 'fs');
 		if (fsRefs.length > 0) await this.fsStore.delete(fsRefs);
+
+		await this.deleteS3Data(refs.filter((r) => r.storedAt === 's3'));
+	}
+
+	/**
+	 * Delete S3-stored execution data. If the S3 store is unavailable, e.g. external
+	 * storage was unconfigured after S3-stored executions were created, we skip data
+	 * deletion rather than block entity deletion.
+	 */
+	private async deleteS3Data(refs: ExecutionRef[]) {
+		if (refs.length === 0) return;
+
+		if (!this.s3Store) {
+			this.logger.warn('Skipped deleting S3 execution data - S3 store is not initialized', {
+				executionIds: refs.map((r) => r.executionId),
+			});
+			return;
+		}
+
+		await this.s3Store.delete(refs);
 	}
 
 	private async updateEntityOnly(

@@ -72,8 +72,11 @@ export class S3Store implements ExecutionDataStore {
 		return bundles;
 	}
 
-	async delete(_ref: ExecutionRef | ExecutionRef[]) {
-		// delegated to bucket lifecycle policy
+	async delete(ref: ExecutionRef | ExecutionRef[]) {
+		const refs = Array.isArray(ref) ? ref : [ref];
+		if (refs.length === 0) return;
+
+		await this.objectStore.deleteByKeys(refs.map((r) => this.key(r)));
 	}
 
 	// ----------------

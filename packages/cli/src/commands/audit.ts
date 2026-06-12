@@ -28,6 +28,13 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class SecurityAudit extends BaseCommand<z.infer<typeof flagsSchema>> {
+	async init() {
+		await super.init();
+
+		// risk reporters read execution data, which may be stored on S3
+		await this.initObjectStoreIfConfigured();
+	}
+
 	async run() {
 		const { flags: auditFlags } = this;
 		const categories =
