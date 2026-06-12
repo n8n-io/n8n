@@ -115,6 +115,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [oauth_refresh_tokens](oauth_refresh_tokens.md) | 7 |  | table |
 | [workflow_publication_outbox](workflow_publication_outbox.md) | 7 |  | table |
 | [instance_ai_threads](instance_ai_threads.md) | 7 |  | table |
+| [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
 
 ## Relations
 
@@ -272,6 +273,7 @@ erDiagram
 "oauth_refresh_tokens" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "oauth_refresh_tokens" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_chat_subscriptions" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "settings" {
   TEXT key PK
@@ -1291,6 +1293,14 @@ erDiagram
   varchar_36_ projectId FK
   TEXT title
   TEXT metadata
+  datetime_3_ createdAt
+  datetime_3_ updatedAt
+}
+"agent_chat_subscriptions" {
+  varchar_36_ agentId PK
+  varchar_64_ integrationType PK
+  varchar_255_ credentialId PK
+  varchar_255_ threadId PK
   datetime_3_ createdAt
   datetime_3_ updatedAt
 }

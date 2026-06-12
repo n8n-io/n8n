@@ -11561,6 +11561,130 @@
         }
       ],
       "def": "CREATE TABLE \"instance_ai_threads\" (\"id\" varchar PRIMARY KEY NOT NULL, \"resourceId\" varchar(255) NOT NULL, \"projectId\" varchar(36) NOT NULL, \"title\" text NOT NULL DEFAULT (''), \"metadata\" text, \"createdAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), \"updatedAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT \"FK_instance_ai_threads_projectId\" FOREIGN KEY (\"projectId\") REFERENCES \"project\" (\"id\") ON DELETE CASCADE)"
+    },
+    {
+      "name": "agent_chat_subscriptions",
+      "type": "table",
+      "columns": [
+        {
+          "name": "agentId",
+          "type": "varchar(36)",
+          "nullable": false
+        },
+        {
+          "name": "integrationType",
+          "type": "varchar(64)",
+          "nullable": false
+        },
+        {
+          "name": "credentialId",
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "threadId",
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "createdAt",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')"
+        },
+        {
+          "name": "updatedAt",
+          "type": "datetime(3)",
+          "nullable": false,
+          "default": "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_agent_chat_subscriptions_1",
+          "def": "PRIMARY KEY (agentId, integrationType, credentialId, threadId)",
+          "table": "agent_chat_subscriptions",
+          "columns": [
+            "agentId",
+            "integrationType",
+            "credentialId",
+            "threadId"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "agentId",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (agentId)",
+          "table": "agent_chat_subscriptions",
+          "columns": [
+            "agentId"
+          ]
+        },
+        {
+          "name": "integrationType",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (integrationType)",
+          "table": "agent_chat_subscriptions",
+          "columns": [
+            "integrationType"
+          ]
+        },
+        {
+          "name": "credentialId",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (credentialId)",
+          "table": "agent_chat_subscriptions",
+          "columns": [
+            "credentialId"
+          ]
+        },
+        {
+          "name": "threadId",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (threadId)",
+          "table": "agent_chat_subscriptions",
+          "columns": [
+            "threadId"
+          ]
+        },
+        {
+          "name": "- (Foreign key ID: 0)",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE",
+          "table": "agent_chat_subscriptions",
+          "referenced_table": "agents",
+          "columns": [
+            "agentId"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_autoindex_agent_chat_subscriptions_1",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (agentId, integrationType, credentialId, threadId)",
+          "table": "agent_chat_subscriptions",
+          "columns": [
+            "agentId",
+            "integrationType",
+            "credentialId",
+            "threadId"
+          ]
+        },
+        {
+          "name": "-",
+          "type": "CHECK",
+          "def": "CHECK (\"integrationType\" IN ('telegram', 'slack', 'linear'))",
+          "table": "agent_chat_subscriptions",
+          "columns": [
+            "integrationType"
+          ]
+        }
+      ],
+      "def": "CREATE TABLE \"agent_chat_subscriptions\" (\"agentId\" varchar(36) NOT NULL, \"integrationType\" varchar(64) NOT NULL, \"credentialId\" varchar(255) NOT NULL, \"threadId\" varchar(255) NOT NULL, \"createdAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), \"updatedAt\" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT \"CHK_agent_chat_subscriptions_integrationType\" CHECK (\"integrationType\" IN ('telegram', 'slack', 'linear')), CONSTRAINT \"FK_e79153bd179c011e779d5016796\" FOREIGN KEY (\"agentId\") REFERENCES \"agents\" (\"id\") ON DELETE CASCADE, PRIMARY KEY (\"agentId\", \"integrationType\", \"credentialId\", \"threadId\"))"
     }
   ],
   "relations": [
@@ -13526,6 +13650,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+    },
+    {
+      "table": "agent_chat_subscriptions",
+      "columns": [
+        "agentId"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "agents",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
     }
   ],
   "driver": {
