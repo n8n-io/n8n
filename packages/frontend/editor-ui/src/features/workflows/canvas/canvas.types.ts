@@ -145,7 +145,7 @@ export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
  * The only execution states a group can surface — node-level statuses like
  * `crashed` are folded into these during aggregation.
  */
-export type GroupExecutionStatus = 'waiting' | 'running' | 'error' | 'success';
+export type GroupExecutionStatus = 'waiting' | 'running' | 'error' | 'warning' | 'success';
 
 export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;

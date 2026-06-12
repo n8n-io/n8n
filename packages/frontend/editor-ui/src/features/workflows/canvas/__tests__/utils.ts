@@ -18,6 +18,7 @@ import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
 } from '@/features/workflows/canvas/canvas.types';
+import type { NodeExecutionSnapshot } from '@/features/workflows/canvas/composables/useCanvasMapping.groups';
 import type { NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { GraphEdge, GraphNode, ViewportTransform } from '@vue-flow/core';
@@ -95,6 +96,21 @@ export function createCanvasGroupElement({
 			nodesRect,
 			isCollapsed,
 		},
+	};
+}
+
+export function createNodeExecutionSnapshot(
+	overrides: Partial<NodeExecutionSnapshot> = {},
+): NodeExecutionSnapshot {
+	return {
+		running: false,
+		waitingForNext: false,
+		waiting: undefined,
+		hasIssues: false,
+		status: undefined,
+		dirty: false,
+		iterations: 0,
+		...overrides,
 	};
 }
 

@@ -73,12 +73,15 @@ export function useCanvasMapping({
 	// Per-node execution projection feeding the group-status aggregation.
 	function getNodeExecutionSnapshot(id: string): NodeExecutionSnapshot {
 		const rd = renderData.value;
+		const render = rd.renderTypeByNodeId.get(id)?.value;
 		return {
 			running: rd.executionRunningByNodeId.get(id)?.value ?? false,
 			waitingForNext: rd.executionWaitingForNextByNodeId.get(id)?.value ?? false,
 			waiting: rd.executionWaitingByNodeId.get(id)?.value,
 			hasIssues: rd.hasIssuesByNodeId.get(id)?.value ?? false,
 			status: rd.executionStatusByNodeId.get(id)?.value,
+			dirty:
+				render?.type === CanvasNodeRenderType.Default && render.options.dirtiness !== undefined,
 			iterations: countNonCanceledIterations(rd.executionRunDataByNodeId.get(id)?.value),
 		};
 	}

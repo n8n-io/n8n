@@ -139,6 +139,8 @@ export interface NodeExecutionSnapshot {
 	waiting: string | undefined;
 	hasIssues: boolean;
 	status: ExecutionStatus | undefined;
+	/** Parameters changed since the last run — the single-node "dirty" warning. */
+	dirty: boolean;
 	iterations: number;
 }
 
@@ -147,8 +149,10 @@ export interface NodeExecutionSnapshot {
  * iteration count (the count badge next to the success ✓).
  *
  * Priority mirrors the single-node CSS rule order so the group shows the same
- * dominant state a node would: waiting > running > error > success > idle.
- * `error` includes 'crashed' and `onError=continue` nodes; `success` requires
+ * dominant state a node would:
+ * waiting > running > error > warning > success > idle.
+ * `error` includes 'crashed' and `onError=continue` nodes; `warning` means a
+ * node is dirty (parameters changed since its last run); `success` requires
  * every node to be 'success' or to have not run; anything else is idle.
  */
 export function aggregateGroupExecution(
@@ -158,6 +162,7 @@ export function aggregateGroupExecution(
 	let anyWaiting = false;
 	let anyRunning = false;
 	let anyError = false;
+	let anyWarning = false;
 	let anySuccess = false;
 	let anyOther = false;
 	let maxNodeIterations = 0;
@@ -174,6 +179,8 @@ export function aggregateGroupExecution(
 			anyRunning = true;
 		} else if (snapshot.hasIssues || status === 'error' || status === 'crashed') {
 			anyError = true;
+		} else if (snapshot.dirty) {
+			anyWarning = true;
 		} else if (status === 'success') {
 			anySuccess = true;
 		} else if (
@@ -190,6 +197,7 @@ export function aggregateGroupExecution(
 	if (anyWaiting) status = 'waiting';
 	else if (anyRunning) status = 'running';
 	else if (anyError) status = 'error';
+	else if (anyWarning) status = 'warning';
 	else if (anySuccess && !anyOther) status = 'success';
 
 	return { status, maxNodeIterations };

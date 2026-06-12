@@ -161,6 +161,13 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.getByTestId('canvas-node-group-status-error')).toBeTruthy();
 		});
 
+		it('shows warning icon when executionStatus is warning (a member node is dirty)', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'warning' }),
+			});
+			expect(wrapper.getByTestId('canvas-node-group-status-warning')).toBeTruthy();
+		});
+
 		it('shows iteration count on success when maxNodeIterations > 1', () => {
 			const wrapper = render({
 				data: makeData({ executionStatus: 'success', maxNodeIterations: 3 }),

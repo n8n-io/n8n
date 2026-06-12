@@ -6,6 +6,7 @@ import type { ExecutionOutputMap } from '@/app/types/executionData';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { NodeDiffStatus, type IConnections } from 'n8n-workflow';
 import { useCanvasMapping } from '@/features/workflows/canvas/composables/useCanvasMapping';
+import { createNodeExecutionSnapshot } from '@/features/workflows/canvas/__tests__/utils';
 
 // Mock modules at top level
 vi.mock('@/app/stores/workflows.store', () => ({
@@ -166,14 +167,7 @@ describe('useWorkflowDiff', () => {
 			nodeDisplaySizeById: computed(
 				() => ({}) as Record<string, { width: number; height: number }>,
 			),
-			getNodeExecutionSnapshot: () => ({
-				running: false,
-				waitingForNext: false,
-				waiting: undefined,
-				hasIssues: false,
-				status: undefined,
-				iterations: 0,
-			}),
+			getNodeExecutionSnapshot: () => createNodeExecutionSnapshot(),
 			nodes: computed(() => nodes as CanvasNode[]),
 			connections: computed(() => connections as CanvasConnection[]),
 		});

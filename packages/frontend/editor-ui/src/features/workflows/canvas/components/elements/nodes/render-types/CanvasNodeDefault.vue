@@ -331,8 +331,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.warning {
-		--canvas-node--border-width: 2px;
-		--canvas-node--border-color: var(--color--warning);
+		@include styles.status-warning;
 	}
 
 	&.error {

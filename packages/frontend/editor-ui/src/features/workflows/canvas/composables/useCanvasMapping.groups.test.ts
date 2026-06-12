@@ -18,6 +18,7 @@ import {
 } from '../stores/canvasNodeGroups.constants';
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { createNodeExecutionSnapshot } from '../__tests__/utils';
 
 const snapToGrid = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
 
@@ -51,15 +52,7 @@ function nodeStore(...nodes: INodeUi[]) {
 }
 
 function snapshotGetter(byId: Record<string, Partial<NodeExecutionSnapshot>> = {}) {
-	return (id: string): NodeExecutionSnapshot => ({
-		running: false,
-		waitingForNext: false,
-		waiting: undefined,
-		hasIssues: false,
-		status: undefined,
-		iterations: 0,
-		...byId[id],
-	});
+	return (id: string): NodeExecutionSnapshot => createNodeExecutionSnapshot(byId[id]);
 }
 
 describe('computeNodesRectFromStore', () => {
@@ -206,6 +199,19 @@ describe('aggregateGroupExecution', () => {
 		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'error' } })).toBe(
 			'error',
 		);
+	});
+
+	it('returns warning when any node is dirty (parameters changed since its last run)', () => {
+		expect(
+			statusOf(['a', 'b'], { a: { status: 'success' }, b: { status: 'success', dirty: true } }),
+		).toBe('warning');
+	});
+
+	it('error beats warning, warning beats success — mirrors single-node CSS rule order', () => {
+		expect(
+			statusOf(['a', 'b'], { a: { status: 'error' }, b: { status: 'success', dirty: true } }),
+		).toBe('error');
+		expect(statusOf(['a', 'b'], { a: { status: 'success' }, b: { dirty: true } })).toBe('warning');
 	});
 
 	it('waiting beats running — mirrors single-node CSS rule order', () => {

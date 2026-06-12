@@ -57,6 +57,10 @@ const isAutofocusReady = computed(
 const isCollapsed = computed(() => props.data.isCollapsed);
 const executionStatus = computed(() => props.data.executionStatus);
 
+// Statuses rendered as a status mark; running/waiting render as the animated border.
+const MARK_STATUSES = ['success', 'error', 'warning'] as const;
+const markStatus = computed(() => MARK_STATUSES.find((status) => status === executionStatus.value));
+
 const wrapperClasses = computed(() => [
 	$style.wrapper,
 	{
@@ -64,6 +68,7 @@ const wrapperClasses = computed(() => [
 		[$style.selected]: props.selected,
 		[$style.success]: executionStatus.value === 'success',
 		[$style.error]: executionStatus.value === 'error',
+		[$style.warning]: executionStatus.value === 'warning',
 		[$style.running]: executionStatus.value === 'running',
 		[$style.waiting]: executionStatus.value === 'waiting',
 	},
@@ -238,11 +243,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 					</N8nTooltip>
 				</div>
 				<div
-					v-if="executionStatus === 'success' || executionStatus === 'error'"
+					v-if="markStatus"
 					:class="$style.statusIcons"
-					:data-test-id="`canvas-node-group-status-${executionStatus}`"
+					:data-test-id="`canvas-node-group-status-${markStatus}`"
 				>
-					<CanvasNodeStatusMark :status="executionStatus" :iterations="data.maxNodeIterations" />
+					<CanvasNodeStatusMark :status="markStatus" :iterations="data.maxNodeIterations" />
 				</div>
 			</div>
 		</div>
@@ -290,6 +295,9 @@ function onWrapperPointerDown(event: PointerEvent) {
 	}
 	.wrapper.collapsed.error & {
 		@include styles.status-error;
+	}
+	.wrapper.collapsed.warning & {
+		@include styles.status-warning;
 	}
 	.wrapper.collapsed.running & {
 		@include styles.status-running-border;

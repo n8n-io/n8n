@@ -36,6 +36,11 @@
 	--canvas-node--border-color: var(--canvas-node--border-color--error, var(--color--danger));
 }
 
+@mixin status-warning {
+	--canvas-node--border-width: 2px;
+	--canvas-node--border-color: var(--color--warning);
+}
+
 @mixin status-running-border {
 	border-color: transparent;
 	--canvas-node--border-color: var(
