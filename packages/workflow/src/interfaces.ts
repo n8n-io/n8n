@@ -2232,10 +2232,20 @@ export type EngineResponse<T = unknown> = {
 };
 
 /**
+ * Tag identifying `Node` subclasses. `Symbol.for` interns into the global symbol
+ * registry, so every copy of `n8n-workflow` loaded in the same process resolves the identical
+ * symbol, regardless of the dependency tree layout.
+ */
+const NODE_CLASS_TAG: unique symbol = Symbol.for('n8n.workflow.NodeClass');
+
+/**
  * This class serves as the base for all nodes using the new context API
  * having this as a class enables us to identify these instances at runtime
  */
 export abstract class Node {
+	get [NODE_CLASS_TAG](): true {
+		return true;
+	}
 	abstract description: INodeTypeDescription;
 	execute?(
 		context: IExecuteFunctions,
@@ -2243,6 +2253,15 @@ export abstract class Node {
 	): Promise<INodeExecutionData[][] | EngineRequest>;
 	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
 	poll?(context: IPollFunctions): Promise<INodeExecutionData[][] | null>;
+}
+
+/**
+ * Returns `true` when `nodeType` is an instance of a `Node` subclass (a node using the new
+ * context API). Prefer this over `nodeType instanceof Node` at runtime: it survives
+ * `n8n-workflow` module duplication, which breaks `instanceof`.
+ */
+export function isNodeClassInstance(nodeType: unknown): nodeType is Node {
+	return typeof nodeType === 'object' && nodeType !== null && NODE_CLASS_TAG in nodeType;
 }
 
 export interface IVersionedNodeType {
@@ -3156,8 +3175,7 @@ export interface IWorkflowExecutionDataProcess {
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
-	 * When true, forces the execution data to be present in the run data
-	 * ignores N8N_MINIMIZE_EXECUTION_DATA_FETCHING environment variable if set
+	 * When true, forces the execution data to be present in the run data.
 	 */
 	forceFullExecutionData?: boolean;
 	/**
@@ -3625,6 +3643,7 @@ export interface ExecutionSummary {
 	workflowId: string;
 	workflowName?: string;
 	workflowVersionId?: string | null;
+	jsonSizeBytes?: number;
 	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;

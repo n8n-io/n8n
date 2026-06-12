@@ -14,25 +14,42 @@ export const WorkflowConflictPolicy = {
 	/** Leaves matched workflows unchanged; creates the rest of the workflows in the package. */
 	Skip: 'skip',
 } as const;
+
+export const WorkflowIdPolicy = {
+	/** Mints a fresh id for each imported workflow; the source id is kept as `sourceWorkflowId`. */
+	New: 'new',
+	/** Reuses the package's own workflow id in the target instance. */
+	Source: 'source',
+} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type WorkflowConflictPolicy =
 	(typeof WorkflowConflictPolicy)[keyof typeof WorkflowConflictPolicy];
+
+export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
 export interface ExportWorkflowsRequest {
 	user: User;
 	workflowIds: string[];
 }
 
-export interface ImportPackageRequest {
+export type ImportPackageRequest = {
 	user: User;
 	projectId?: string;
 	folderId?: string;
 	packageBuffer: Buffer;
+} & ImportCredentialProperties &
+	ImportWorkflowProperties;
+
+export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
 	credentialMissingMode: CredentialMissingMode;
+};
+
+export type ImportWorkflowProperties = {
 	workflowConflictPolicy: WorkflowConflictPolicy;
-}
+	workflowIdPolicy: WorkflowIdPolicy;
+};
 
 export interface ImportedWorkflowSummary {
 	sourceWorkflowId: string;
@@ -54,6 +71,14 @@ export type BlockingIssue =
 			type: 'workflow-conflict';
 			sourceWorkflowId: string;
 			existingWorkflowId: string;
+			name: string;
+	  }
+	| {
+			type: 'workflow-id-conflict';
+			sourceWorkflowId: string;
+			existingWorkflowId: string;
+			existingProjectId: string | null;
+			isArchived: boolean;
 			name: string;
 	  }
 	| {

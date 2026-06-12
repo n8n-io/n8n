@@ -159,6 +159,7 @@ describe('GlobalConfig', () => {
 					'workflow-failure': '',
 					'workflow-shared': '',
 					'project-shared': '',
+					'api-key-revoked': '',
 				},
 			},
 		},
