@@ -37,12 +37,13 @@ const i18n = useI18n();
 
 const searchTerm = ref('');
 const expandedGroups = ref(new Set<string>());
-const treeExpanded = ref(true);
 const userPickedCustom = ref(false);
 
 const mode = ref<ApiKeyScopeSelectionMode>(
 	inferSelectionMode(props.modelValue, props.availableScopes),
 );
+
+const treeExpanded = ref(mode.value === 'custom');
 
 // Sync the radio to the selection except when the user has explicitly picked Custom —
 // in that case we don't want a selection that happens to match "All" or "Read only"
