@@ -10,6 +10,7 @@ describe('ImportPackageRequestDto', () => {
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
+				workflowIdPolicy: 'new',
 			});
 		}
 	});
@@ -27,6 +28,7 @@ describe('ImportPackageRequestDto', () => {
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
+				workflowIdPolicy: 'new',
 			});
 		}
 	});
@@ -46,6 +48,7 @@ describe('ImportPackageRequestDto', () => {
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'new-version',
 				workflowPublishingPolicy: 'preserve-published-state',
+				workflowIdPolicy: 'new',
 			});
 		}
 	});
@@ -64,6 +67,7 @@ describe('ImportPackageRequestDto', () => {
 				credentialMissingMode: 'must-preexist',
 				workflowConflictPolicy: 'skip',
 				workflowPublishingPolicy: 'preserve-published-state',
+				workflowIdPolicy: 'new',
 			});
 		}
 	});
@@ -88,6 +92,36 @@ describe('ImportPackageRequestDto', () => {
 
 	it('rejects omitted workflowConflictPolicy', () => {
 		expect(ImportPackageRequestDto.safeParse({}).success).toBe(false);
+	});
+
+	describe('workflowIdPolicy', () => {
+		it('defaults to "new" when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.workflowIdPolicy).toBe('new');
+			}
+		});
+
+		it('accepts "source"', () => {
+			const result = ImportPackageRequestDto.safeParse({
+				workflowConflictPolicy: 'fail',
+				workflowIdPolicy: 'source',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.workflowIdPolicy).toBe('source');
+			}
+		});
+
+		it('rejects unsupported workflowIdPolicy values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					workflowConflictPolicy: 'fail',
+					workflowIdPolicy: 'reuse',
+				}).success,
+			).toBe(false);
+		});
 	});
 
 	it.each([

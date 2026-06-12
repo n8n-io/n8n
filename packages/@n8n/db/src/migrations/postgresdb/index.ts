@@ -203,6 +203,8 @@ import { AddResourceToOAuthAuthorizationCodes1784000000024 } from '../common/178
 import { MigrateRedactionEnforcementToFloor1784000000025 } from '../common/1784000000025-MigrateRedactionEnforcementToFloor';
 import { AddScopeColumnToOAuthTables1784000000026 } from '../common/1784000000026-AddScopeColumnToOAuthTables';
 import { CreateWorkflowPublicationOutboxTable1784000000027 } from '../common/1784000000027-CreateWorkflowPublicationOutboxTable';
+import { AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029 } from '../common/1784000000029-AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity';
+import { CreateAgentChatSubscriptions1784000000030 } from '../common/1784000000030-CreateAgentChatSubscriptions';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -411,4 +413,6 @@ export const postgresMigrations: Migration[] = [
 	AddScopeColumnToOAuthTables1784000000026,
 	CreateWorkflowPublicationOutboxTable1784000000027,
 	AddProjectIdToInstanceAiThread1784000000028,
+	AddJsonSizeBytesAndWorkflowVersionIdToExecutionEntity1784000000029,
+	CreateAgentChatSubscriptions1784000000030,
 ];

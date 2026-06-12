@@ -63,6 +63,7 @@ Tests → Flows/Composables → Page Objects → Components → Playwright API
 | `dead-code` | Unused public methods in page objects |
 | `deduplication` | Same selector defined in multiple files |
 | `duplicate-logic` | Copy-pasted code across tests/pages (AST fingerprinting) |
+| `no-raw-editor-navigation` | Raw `page.goto()` to a `/workflow/` editor route in tests (use `n8n.start.*` so the canvas loader is awaited) |
 
 ### Commands
 

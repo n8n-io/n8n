@@ -19,7 +19,7 @@ description: Authors n8n database migrations. Use when creating or modifying fil
 - [Cross-database Compatibility](#cross-database-compatibility)
 - [Tests](#tests)
 - [General Design Guidance](#general-design-guidance)
-- [After authoring](#after-authoring)
+- [Schema documentation](#schema-documentation)
 
 ---
 
@@ -123,6 +123,7 @@ Run through this before requesting review. Each item is a real, recurring review
 - [ ] **One logical change per migration**; split unrelated table changes into separate files. — [Don't combine independent schema changes](#dont-combine-independent-schema-changes)
 - [ ] **`up()` / `down()` reads as a list of intentions.** If either body grows past a screen or mixes schema operations with a multi-statement raw-SQL data move, extract the data move into a `private async` method on the same class (e.g. `private async backfillFromX(ctx)`). The top-level should orchestrate, not implement.
 - [ ] **Precedent is the bar to fix, not perpetuate.** When the checklist conflicts with what an older migration does (e.g. redundant `.primary.notNull`, hand-quoted identifiers, missing `.comment()`), the checklist wins for new code — don't copy the violation forward. Note the old occurrences in the PR if you spotted them.
+- [ ] **Regenerated the schema docs** with `pnpm db:schema:docs` and committed the `docs/generated/` changes. The DB Tests CI job fails on stale docs. — [Schema documentation](#schema-documentation)
 
 Treat the checklist as a floor, not a ceiling.
 If any item fails, fix it before opening review.
@@ -779,4 +780,18 @@ A "polymorphic" column pair is one column that points at different tables depend
 - **Separate join tables per relation type** (`credential_external_secret_dependency`, `credential_node_dependency`, …). Each has a real FK. Queries that need "all dependencies" become a UNION.
 - **One nullable FK per possible target** with a CHECK constraint that exactly one is set. Each column is a real FK.
 - **Supertype table**: hoist parents into a single `dependency_target` with its own type column, then have one FK to that table.
--
+
+---
+
+## Schema documentation
+
+The database schema is documented under `docs/generated/` — `docs/generated/sqlite-schema/` and `docs/generated/postgres-schema/`, one Markdown page per table plus a Mermaid ER diagram. These are **auto-generated from the migrations** with [tbls](https://github.com/k1LoW/tbls) (it runs every migration against a throwaway database and introspects the result), so any schema-changing migration makes them stale.
+
+Regenerate and commit them alongside your migration:
+
+```sh
+pnpm db:schema:docs    # rewrites docs/generated/ — requires Docker (and `brew install tbls` locally)
+pnpm db:schema:check   # verify only; what the DB Tests CI job runs
+```
+
+The DB Tests CI job fails the PR when the committed docs don't match the migrations (each matrix leg verifies its own database). Don't hand-edit anything under `docs/generated/` — it's overwritten on every regeneration.

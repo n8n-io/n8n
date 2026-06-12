@@ -71,6 +71,7 @@ describe('WorkflowPublisher', () => {
 		const createItem = (sourcePublished: boolean): PersistedWorkflowPlanItem => ({
 			action: 'create',
 			sourceWorkflowId: 'wf-1',
+			decidedId: 'wf-1',
 			sourcePublished,
 			entity: mock<WorkflowEntity>(),
 		});

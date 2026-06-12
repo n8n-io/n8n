@@ -81,6 +81,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				credentialMissingMode: payload.data.credentialMissingMode,
 				workflowConflictPolicy: payload.data.workflowConflictPolicy,
 				workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
+				workflowIdPolicy: payload.data.workflowIdPolicy,
 				packageBuffer: packageFile.buffer,
 			});
 			return res.status(200).json(result);
