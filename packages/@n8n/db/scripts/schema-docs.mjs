@@ -170,7 +170,7 @@ async function tbls(command, dbType, dsn, docker) {
 }
 
 async function main() {
-	const { command, dbType, docker } = parseArgs(process.argv.slice(2));
+	let { command, dbType, docker } = parseArgs(process.argv.slice(2));
 	if (command !== 'doc' && command !== 'diff') {
 		fail('usage: schema-docs.mjs <doc|diff> --db=<sqlite|postgres> [--docker]');
 	}
@@ -178,10 +178,23 @@ async function main() {
 		fail('--db must be sqlite or postgres');
 	}
 
-	// Fail fast on a missing binary, before spinning up a DB and running migrations.
-	const requiredBin = docker ? 'docker' : 'tbls';
-	const probe = spawnSync(requiredBin, ['version'], { stdio: 'ignore' });
-	if (probe.error) fail(spawnErrorMessage(requiredBin, probe.error));
+	// Resolve which tbls runtime to use, before spinning up a DB and running
+	// migrations. Prefer a local tbls binary; fall back to the Docker image when
+	// it's absent. `--docker` (or CI) forces the Docker path.
+	const hasBin = (cmd) => !spawnSync(cmd, ['version'], { stdio: 'ignore' }).error;
+	if (docker) {
+		if (!hasBin('docker')) fail(spawnErrorMessage('docker', { code: 'ENOENT' }));
+	} else if (!hasBin('tbls')) {
+		if (hasBin('docker')) {
+			docker = true;
+			console.error('tbls not found on PATH — falling back to the tbls Docker image.');
+		} else {
+			fail(
+				'neither tbls nor docker is available. Install tbls (`brew install tbls`, ' +
+					'see https://github.com/k1LoW/tbls#install) or Docker.',
+			);
+		}
+	}
 
 	const provisioned = await provision(dbType);
 	try {
