@@ -149,11 +149,7 @@ export function getOffsetForComponent(
 }
 
 function translateRect(rect: BoundingBox, offset: NodeGroupLayoutOffset): BoundingBox {
-	return {
-		...rect,
-		x: rect.x + offset.x,
-		y: rect.y + offset.y,
-	};
+	return { ...rect, x: rect.x + offset.x, y: rect.y + offset.y };
 }
 
 function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
@@ -247,13 +243,8 @@ function getComponentPushLane(
 		return distanceIntoRightLane >= distanceIntoBottomLane ? 'x' : 'y';
 	}
 
-	if (canPushDownFromLaneOrigin) {
-		return 'y';
-	}
-
-	if (canPushRightFromLaneOrigin) {
-		return 'x';
-	}
+	if (canPushDownFromLaneOrigin) return 'y';
+	if (canPushRightFromLaneOrigin) return 'x';
 
 	if (
 		verticalPushDistance > 0 &&
