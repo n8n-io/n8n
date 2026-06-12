@@ -1010,7 +1010,14 @@ type NativeLanguageModelConfig = Extract<NativeModelConfig, { specificationVersi
  *  `/chat/completions` adapter. */
 export type ModelConfig =
 	| string
-	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
+	| {
+			id: `${string}/${string}`;
+			url: string;
+			apiKey?: string;
+			headers?: Record<string, string>;
+			/** Toggle the model's reasoning pass; honored by providers that support it (e.g. ollama). */
+			think?: boolean;
+	  }
 	| NativeLanguageModelConfig;
 
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import { useViewTitle } from '../app/view-title';
 
+import { LOCAL_INSTANCE_URL } from '../../shared/constants';
 import type { AuthStatus, MacPermissionKind, MacPermissionStatus } from '../../shared/types';
 
-defineProps<{ status: AuthStatus }>();
+const props = defineProps<{ status: AuthStatus }>();
 
 const emit = defineEmits<{ close: [] }>();
 
@@ -32,6 +33,32 @@ const permissionConfirmation = ref<'instance' | 'client'>('instance');
 
 async function savePermissionConfirmation() {
 	await window.electronAPI.setSettings({ permissionConfirmation: permissionConfirmation.value });
+}
+
+// ── Model thinking (local instance only) ────────────────────────────────────
+// The embedded ollama model can run a reasoning pass before answering. It's
+// slow on small local models, so it's off by default and toggleable here. Only
+// meaningful for the local instance — hidden when connected to a remote one.
+const isLocalInstance = computed(() => props.status.instanceUrl === LOCAL_INSTANCE_URL);
+const thinking = ref(false);
+
+async function toggleThinking() {
+	const next = !thinking.value;
+	const result = await window.electronAPI.setInstanceThinking(next);
+	if (result.ok) thinking.value = next;
+}
+
+// ── Working directory ───────────────────────────────────────────────────────
+// The root the assistant reads/writes files in and runs commands from. Defaults
+// to the user's home directory; the picker lets them scope it to a project.
+const filesystemDir = ref('');
+
+async function chooseFilesystemDir() {
+	const picked = await window.electronAPI.pickDirectory(filesystemDir.value || undefined);
+	if (!picked) return;
+	filesystemDir.value = picked;
+	// Persisting a non-logLevel setting reconnects the assistant with the new root.
+	await window.electronAPI.setSettings({ filesystemDir: picked });
 }
 
 // ── macOS permissions ───────────────────────────────────────────────────────
@@ -74,6 +101,10 @@ let disposeActive: (() => void) | undefined;
 onMounted(async () => {
 	const settings = await window.electronAPI.getSettings();
 	permissionConfirmation.value = settings.permissionConfirmation;
+	filesystemDir.value = settings.filesystemDir;
+	if (isLocalInstance.value) {
+		thinking.value = await window.electronAPI.getInstanceThinking();
+	}
 	await refreshPermissions();
 	// Re-check when the window regains focus, so returning from System Settings
 	// flips the status live.
@@ -130,6 +161,50 @@ onBeforeUnmount(() => disposeActive?.());
 			</div>
 			<N8nText size="small" color="text-light">
 				Changing this reconnects the assistant; session-scoped grants are reset.
+			</N8nText>
+
+			<div v-if="isLocalInstance" :class="$style.row" data-testid="settings-thinking">
+				<div :class="$style.rowText">
+					<N8nText>Model thinking</N8nText>
+					<N8nText size="small" color="text-light">
+						Let the local model reason before answering (slower)
+					</N8nText>
+				</div>
+				<button
+					type="button"
+					role="switch"
+					:aria-checked="thinking"
+					:class="[$style.toggle, thinking && $style.toggleOn]"
+					data-testid="settings-thinking-toggle"
+					@click="toggleThinking"
+				>
+					<span :class="$style.toggleKnob" />
+				</button>
+			</div>
+		</section>
+
+		<section :class="$style.section" aria-labelledby="settings-workdir-heading">
+			<N8nHeading id="settings-workdir-heading" tag="h2" size="small" bold>
+				Working directory
+			</N8nHeading>
+			<div :class="$style.row" data-testid="settings-working-directory">
+				<div :class="$style.rowText">
+					<N8nText>Files the assistant can access</N8nText>
+					<N8nText size="small" color="text-light" :title="filesystemDir">
+						{{ filesystemDir || 'Not set' }}
+					</N8nText>
+				</div>
+				<N8nButton
+					variant="outline"
+					data-testid="settings-working-directory-choose"
+					@click="chooseFilesystemDir"
+				>
+					Choose…
+				</N8nButton>
+			</div>
+			<N8nText size="small" color="text-light">
+				The assistant reads, writes and runs commands within this folder. Changing it reconnects the
+				assistant.
 			</N8nText>
 		</section>
 
@@ -240,6 +315,42 @@ onBeforeUnmount(() => disposeActive?.());
 	align-items: center;
 	gap: var(--spacing--3xs);
 	color: var(--da-green);
+}
+
+.toggle {
+	flex-shrink: 0;
+	width: 36px;
+	height: 20px;
+	padding: 2px;
+	cursor: pointer;
+	background: var(--da-surface-2);
+	border: 1px solid var(--da-border);
+	border-radius: 10px;
+	transition: background 0.15s ease;
+}
+
+.toggleOn {
+	background: var(--da-green);
+	border-color: var(--da-green);
+}
+
+.toggleKnob {
+	display: block;
+	width: 14px;
+	height: 14px;
+	background: var(--da-text);
+	border-radius: 50%;
+	transition: transform 0.15s ease;
+}
+
+.toggleOn .toggleKnob {
+	background: #fff;
+	transform: translateX(16px);
+}
+
+.toggle:focus-visible {
+	outline: var(--da-focus-ring);
+	outline-offset: var(--da-focus-ring-offset);
 }
 
 .rowText > * {

@@ -294,6 +294,24 @@ export class InstanceApi {
 		await this.unwrap<{ ok: boolean }>(response);
 	}
 
+	/** `GET /rest/instance-ai/preferences` — read the user's model "thinking" toggle (ollama only). */
+	async getThinking(): Promise<boolean> {
+		const response = await this.authedFetch('/instance-ai/preferences');
+		const prefs = await this.unwrap<{ thinking?: boolean }>(response);
+		return prefs.thinking ?? false;
+	}
+
+	/** `PUT /rest/instance-ai/preferences` — set the model "thinking" toggle; applies to the next run. */
+	async setThinking(enabled: boolean): Promise<void> {
+		const response = await this.authedFetch('/instance-ai/preferences', {
+			method: 'PUT',
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ thinking: enabled }),
+		});
+		await this.unwrap(response);
+	}
+
 	/** Public editor URL for a workflow on the signed-in instance, or `null` when signed out. */
 	workflowUrl(workflowId: string): string | null {
 		const { instanceUrl } = this.oauthFlow.getStatus();

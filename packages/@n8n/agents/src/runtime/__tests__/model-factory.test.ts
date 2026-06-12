@@ -337,6 +337,52 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('custom-key');
 			expect(model.baseURL).toBe('http://ollama.internal:11434/v1');
 		});
+
+		it('injects think:false into ollama requests by default', async () => {
+			const model = createModel('ollama/gemma3') as unknown as { fetch: typeof fetch };
+			const captured: { body?: string } = {};
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async (_url: string, init?: RequestInit) => {
+					captured.body = init?.body as string;
+					return await Promise.resolve(new Response('{}'));
+				}),
+			);
+
+			await model.fetch('http://localhost:11434/v1/chat/completions', {
+				method: 'POST',
+				body: JSON.stringify({ model: 'gemma3', messages: [] }),
+			});
+			vi.unstubAllGlobals();
+
+			expect(captured.body).toContain('"think":false');
+			// Ollama ignores `think` when tools are present; reasoning_effort:none disables it anyway.
+			expect(captured.body).toContain('"reasoning_effort":"none"');
+		});
+
+		it('forwards think:true when set on ollama credentials', async () => {
+			const model = createModel({ id: 'ollama/gemma3', think: true }) as unknown as {
+				fetch: typeof fetch;
+			};
+			const captured: { body?: string } = {};
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async (_url: string, init?: RequestInit) => {
+					captured.body = init?.body as string;
+					return await Promise.resolve(new Response('{}'));
+				}),
+			);
+
+			await model.fetch('http://localhost:11434/v1/chat/completions', {
+				method: 'POST',
+				body: JSON.stringify({ model: 'gemma3', messages: [] }),
+			});
+			vi.unstubAllGlobals();
+
+			expect(captured.body).toContain('"think":true');
+			// Thinking enabled: don't force reasoning off.
+			expect(captured.body).not.toContain('reasoning_effort');
+		});
 	});
 
 	describe('azure-openai', () => {

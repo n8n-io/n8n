@@ -1062,12 +1062,14 @@ export interface InstanceAiUserPreferencesResponse {
 	credentialName: string | null;
 	modelName: string;
 	localGatewayDisabled: boolean;
+	thinking: boolean;
 }
 
 export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
 	credentialId: z.string().nullable().optional(),
 	modelName: z.string().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	thinking: z.boolean().optional(),
 }) {}
 
 export interface InstanceAiModelCredential {

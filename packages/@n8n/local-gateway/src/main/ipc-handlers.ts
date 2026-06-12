@@ -1,7 +1,7 @@
 import { InstanceAiConfirmRequestDto } from '@n8n/api-types';
 import { configure, logger } from '@n8n/computer-use/logger';
 import { RESOURCE_DECISION_KEYS, type ResourceDecision } from '@n8n/computer-use/tools/types';
-import { ipcMain } from 'electron';
+import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -186,6 +186,22 @@ export function registerIpcHandlers({
 	});
 
 	ipcMain.handle(
+		'dialog:pickDirectory',
+		async (_event, currentPath?: string): Promise<string | null> => {
+			logger.debug('IPC dialog:pickDirectory', { currentPath });
+			const parent = BrowserWindow.getFocusedWindow();
+			const options: Electron.OpenDialogOptions = {
+				properties: ['openDirectory', 'createDirectory'],
+				...(currentPath ? { defaultPath: currentPath } : {}),
+			};
+			const result = parent
+				? await dialog.showOpenDialog(parent, options)
+				: await dialog.showOpenDialog(options);
+			return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0];
+		},
+	);
+
+	ipcMain.handle(
 		'settings:set',
 		(_event, partial: Partial<AppSettings>): { ok: boolean; error?: string } => {
 			logger.debug('IPC settings:set', { keys: Object.keys(partial) });
@@ -343,6 +359,24 @@ export function registerIpcHandlers({
 			logger.debug('IPC history:openExecution', { workflowId, executionId });
 			const url = instanceApi.executionUrl(workflowId, executionId);
 			if (url) await openExternal(url);
+		},
+	);
+
+	ipcMain.handle('instance:getThinking', async (): Promise<boolean> => {
+		logger.debug('IPC instance:getThinking');
+		return await instanceApi.getThinking();
+	});
+
+	ipcMain.handle(
+		'instance:setThinking',
+		async (_event, enabled: boolean): Promise<{ ok: boolean; error?: string }> => {
+			logger.debug('IPC instance:setThinking', { enabled });
+			try {
+				await instanceApi.setThinking(enabled);
+				return { ok: true };
+			} catch (error) {
+				return { ok: false, error: ipcErrorMessage(error) };
+			}
 		},
 	);
 

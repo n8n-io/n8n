@@ -55,6 +55,18 @@ const electronApi: ElectronApi = {
 	setSettings: async (partial: Partial<AppSettings>): Promise<{ ok: boolean; error?: string }> =>
 		await (ipcRenderer.invoke('settings:set', partial) as Promise<{ ok: boolean; error?: string }>),
 
+	pickDirectory: async (currentPath?: string): Promise<string | null> =>
+		await (ipcRenderer.invoke('dialog:pickDirectory', currentPath) as Promise<string | null>),
+
+	getInstanceThinking: async (): Promise<boolean> =>
+		await (ipcRenderer.invoke('instance:getThinking') as Promise<boolean>),
+
+	setInstanceThinking: async (enabled: boolean): Promise<{ ok: boolean; error?: string }> =>
+		await (ipcRenderer.invoke('instance:setThinking', enabled) as Promise<{
+			ok: boolean;
+			error?: string;
+		}>),
+
 	getDaemonStatus: async (): Promise<StatusSnapshot> =>
 		await (ipcRenderer.invoke('daemon:status') as Promise<StatusSnapshot>),
 

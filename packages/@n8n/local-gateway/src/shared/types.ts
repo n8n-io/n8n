@@ -192,6 +192,12 @@ export interface ElectronApi {
 	onAuthStatusChanged: (onChangeCallback: (status: AuthStatus) => void) => void;
 	getSettings: () => Promise<AppSettings>;
 	setSettings: (partial: Partial<AppSettings>) => Promise<{ ok: boolean; error?: string }>;
+	/** Open a native folder picker; resolves to the chosen absolute path, or null if cancelled. */
+	pickDirectory: (currentPath?: string) => Promise<string | null>;
+	/** Read the embedded model's "thinking" toggle (ollama only). */
+	getInstanceThinking: () => Promise<boolean>;
+	/** Set the embedded model's "thinking" toggle; applies to the next message. */
+	setInstanceThinking: (enabled: boolean) => Promise<{ ok: boolean; error?: string }>;
 	getDaemonStatus: () => Promise<StatusSnapshot>;
 	disconnectGateway: () => Promise<{ ok: boolean }>;
 	onStatusChanged: (onChangeCallback: (snapshot: StatusSnapshot) => void) => void;

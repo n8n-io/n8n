@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-export const LOCAL_INSTANCE_PORT = 5680;
-export const LOCAL_INSTANCE_URL = `http://127.0.0.1:${LOCAL_INSTANCE_PORT}`;
+import { LOCAL_INSTANCE_PORT, LOCAL_INSTANCE_URL } from '../../shared/constants';
+
+export { LOCAL_INSTANCE_PORT, LOCAL_INSTANCE_URL };
 export const LOCAL_OWNER_EMAIL = 'owner@n8n.local';
 
 /** Dedicated task-broker port, so the embedded instance never collides with a dev n8n on 5679. */

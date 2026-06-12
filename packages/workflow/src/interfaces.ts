@@ -3837,6 +3837,8 @@ export interface IUserSettings {
 		credentialId?: string | null;
 		modelName?: string;
 		localGatewayDisabled?: boolean;
+		/** Enable the model's "thinking"/reasoning pass (only affects providers that support it, e.g. ollama). */
+		thinking?: boolean;
 	};
 }
 

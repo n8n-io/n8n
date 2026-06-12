@@ -3,8 +3,9 @@ type HandlerFn = (...args: unknown[]) => unknown;
 const mockHandle = vi.fn();
 const mockConfigure = vi.fn();
 // Hoisted so the `electron` mock factory (hoisted above imports) can register handlers into it.
-const { registeredHandlers } = vi.hoisted(() => ({
+const { registeredHandlers, mockShowOpenDialog } = vi.hoisted(() => ({
 	registeredHandlers: new Map<string, HandlerFn>(),
+	mockShowOpenDialog: vi.fn(),
 }));
 
 vi.mock('electron', () => ({
@@ -14,6 +15,9 @@ vi.mock('electron', () => ({
 			mockHandle(channel, handler);
 		},
 	},
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- Electron's class name
+	BrowserWindow: { getFocusedWindow: () => null },
+	dialog: { showOpenDialog: mockShowOpenDialog },
 }));
 
 vi.mock('@n8n/computer-use/logger', () => ({
@@ -81,6 +85,8 @@ function register(overrides: {
 			executionUrl: vi.fn(),
 			getTimeSaved: vi.fn(),
 			triggerTask: vi.fn(),
+			getThinking: vi.fn(),
+			setThinking: vi.fn(),
 		}) as never,
 		contextDetector: (overrides.contextDetector ?? {
 			getOptions: vi.fn().mockReturnValue([]),
@@ -149,6 +155,20 @@ describe('registerIpcHandlers', () => {
 		});
 	});
 
+	it('reads and writes the model thinking toggle', async () => {
+		const instanceApi = {
+			getThinking: vi.fn().mockResolvedValue(true),
+			setThinking: vi.fn().mockResolvedValue(undefined),
+		};
+		register({ instanceApi });
+
+		await expect(getRegisteredHandler('instance:getThinking')()).resolves.toBe(true);
+		await expect(getRegisteredHandler('instance:setThinking')(undefined, false)).resolves.toEqual({
+			ok: true,
+		});
+		expect(instanceApi.setThinking).toHaveBeenCalledWith(false);
+	});
+
 	it('returns the local-instance status from local:getStatus', () => {
 		const status = { state: 'running' as const, error: null };
 		const localInstanceManager = {
@@ -158,6 +178,24 @@ describe('registerIpcHandlers', () => {
 		register({ localInstanceManager });
 
 		expect(getRegisteredHandler('local:getStatus')()).toEqual(status);
+	});
+
+	it('returns the chosen folder from dialog:pickDirectory', async () => {
+		register({});
+		mockShowOpenDialog.mockResolvedValue({ canceled: false, filePaths: ['/Users/me/projects'] });
+
+		const result = await getRegisteredHandler('dialog:pickDirectory')(undefined, '/Users/me');
+
+		expect(result).toBe('/Users/me/projects');
+	});
+
+	it('returns null when the folder picker is cancelled', async () => {
+		register({});
+		mockShowOpenDialog.mockResolvedValue({ canceled: true, filePaths: [] });
+
+		const result = await getRegisteredHandler('dialog:pickDirectory')();
+
+		expect(result).toBeNull();
 	});
 
 	it('returns settings from settings:get', () => {

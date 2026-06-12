@@ -259,6 +259,7 @@ export class InstanceAiSettingsService {
 			credentialName,
 			modelName: prefs.modelName || this.extractModelName(this.config.model),
 			localGatewayDisabled: prefs.localGatewayDisabled ?? false,
+			thinking: prefs.thinking ?? false,
 		};
 	}
 
@@ -284,6 +285,7 @@ export class InstanceAiSettingsService {
 		if (update.modelName !== undefined) prefs.modelName = update.modelName;
 		if (update.localGatewayDisabled !== undefined)
 			prefs.localGatewayDisabled = update.localGatewayDisabled;
+		if (update.thinking !== undefined) prefs.thinking = update.thinking;
 		await this.userService.updateSettings(user.id, { instanceAi: prefs });
 		user.settings = { ...(user.settings ?? {}), instanceAi: prefs };
 		return await this.getUserPreferences(user);
@@ -463,6 +465,29 @@ export class InstanceAiSettingsService {
 	/** Resolve the current model configuration for an agent run. */
 	async resolveModelConfig(user: User): Promise<ModelConfig> {
 		const prefs = this.readUserPreferences(user);
+		const base = await this.resolveBaseModelConfig(user, prefs);
+		return this.applyThinkingPreference(base, prefs.thinking);
+	}
+
+	/**
+	 * Attach the user's thinking preference to an ollama model config. Only ollama
+	 * supports toggling the reasoning pass here; other providers are returned as-is.
+	 * Mirrors `envVarModelConfigForModel`'s `url: ''` convention for credless configs.
+	 */
+	private applyThinkingPreference(config: ModelConfig, thinking: boolean | undefined): ModelConfig {
+		if (thinking === undefined) return config;
+		const id = typeof config === 'string' ? config : 'id' in config ? config.id : undefined;
+		if (typeof id !== 'string' || !id.startsWith('ollama/')) return config;
+		if (typeof config === 'string') {
+			return { id: config as `${string}/${string}`, url: '', think: thinking };
+		}
+		return { ...config, think: thinking };
+	}
+
+	private async resolveBaseModelConfig(
+		user: User,
+		prefs: UserInstanceAiPreferences,
+	): Promise<ModelConfig> {
 		const credentialId = prefs.credentialId ?? null;
 
 		if (!credentialId) {

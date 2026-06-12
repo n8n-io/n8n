@@ -25,6 +25,9 @@ export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	ollama: z.object({
 		baseURL: z.string().optional(),
 		apiKey: z.string().optional(),
+		// Ollama enables "thinking" for capable models (gemma3/qwen3/…). Off by default
+		// here: the reasoning latency rarely pays off for local use. Set true to re-enable.
+		think: z.boolean().optional(),
 	}),
 
 	'azure-openai': z.object({

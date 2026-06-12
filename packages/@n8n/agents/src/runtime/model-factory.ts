@@ -43,6 +43,37 @@ function getProxyFetch(): FetchFn | undefined {
 		})) as FetchFn;
 }
 
+/** Apply Ollama's thinking controls to a JSON request body; returns null if it isn't a JSON object. */
+function applyThinkControl(body: string, think: boolean): string | null {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(body);
+	} catch {
+		return null;
+	}
+	if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+	const obj = parsed as Record<string, unknown>;
+	obj.think = think;
+	// Ollama's OpenAI-compatible route ignores `think` once tools are present (which the
+	// agent loop always sends), but it honors OpenAI's `reasoning_effort` — and the
+	// extension value 'none' disables thinking even with tools.
+	if (!think) obj.reasoning_effort = 'none';
+	return JSON.stringify(obj);
+}
+
+/** Wrap a fetch so every JSON-bodied request to Ollama carries explicit thinking controls. */
+function withOllamaThinking(baseFetch: FetchFn | undefined, think: boolean): FetchFn {
+	const doFetch: FetchFn =
+		baseFetch ?? (async (input, init) => await globalThis.fetch(input, init));
+	return async (input, init) => {
+		if (init && typeof init.body === 'string') {
+			const patched = applyThinkControl(init.body, think);
+			if (patched !== null) init = { ...init, body: patched };
+		}
+		return await doFetch(input, init);
+	};
+}
+
 type EntryBuilder<P extends ProviderId> = (
 	creds: ProviderCredentials<P>,
 	modelName: string,
@@ -152,7 +183,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 				// constrained sampling; without this, structured generation relies on
 				// the prompt alone and small models drift off-schema.
 				supportsStructuredOutputs: true,
-				fetch,
+				// Ollama reads a top-level `think` flag on its OpenAI-compatible route; the
+				// AI SDK never sets it, so inject it to keep thinking off (or on) deterministically.
+				fetch: withOllamaThinking(fetch, creds.think ?? false),
 			})(model);
 		},
 	},
