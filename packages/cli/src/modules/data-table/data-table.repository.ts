@@ -8,7 +8,11 @@ import { GlobalConfig } from '@n8n/config';
 import { Project, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, Repository, SelectQueryBuilder } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import {
+	DATA_TABLE_SYSTEM_COLUMNS,
+	DATA_TABLE_SYSTEM_TESTING_COLUMN,
+	UnexpectedError,
+} from 'n8n-workflow';
 import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
@@ -16,6 +20,7 @@ import { DataTableDDLService } from './data-table-ddl.service';
 import { DataTable } from './data-table.entity';
 import { DataTableUserTableName } from './data-table.types';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
+import { DataTableSystemColumnNameConflictError } from './errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { isValidColumnName, toTableId, toTableName } from './utils/sql-utils';
 
@@ -54,6 +59,16 @@ export class DataTableRepository extends Repository<DataTable> {
 		return await withTransaction(this.manager, trx, async (em) => {
 			if (columns.some((c) => !isValidColumnName(c.name))) {
 				throw new DataTableValidationError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
+			}
+
+			for (const col of columns) {
+				const lowerName = col.name.toLowerCase();
+				if (DATA_TABLE_SYSTEM_COLUMNS.some((sc) => sc.toLowerCase() === lowerName)) {
+					throw new DataTableSystemColumnNameConflictError(col.name);
+				}
+				if (lowerName === DATA_TABLE_SYSTEM_TESTING_COLUMN.toLowerCase()) {
+					throw new DataTableSystemColumnNameConflictError(col.name, 'testing');
+				}
 			}
 
 			const dataTable = em.create(DataTable, { name, columns, projectId });
