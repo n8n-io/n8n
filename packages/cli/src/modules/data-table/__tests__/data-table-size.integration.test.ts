@@ -36,6 +36,28 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
+// Sum of UTF-8 bytes of all values in a set of row objects.
+const rowsPayloadBytes = (rows: Array<Record<string, unknown>>): number => {
+	let total = 0;
+	for (const row of rows) {
+		for (const value of Object.values(row)) {
+			total += Buffer.byteLength(String(value), 'utf8');
+		}
+	}
+	return total;
+};
+
+// Deterministic filler with low compressibility so Postgres pglz cannot squash large payloads to near-zero in TOAST.
+const makeFillerString = (seed: number, length: number): string => {
+	let out = '';
+	let x = (seed * 2654435761) >>> 0;
+	while (out.length < length) {
+		x = (Math.imul(x, 1664525) + 1013904223) >>> 0;
+		out += x.toString(36).padStart(7, '0');
+	}
+	return out.slice(0, length);
+};
+
 describe('Data Table Size Tests', () => {
 	let dataTableService: DataTableService;
 	let dataTableRepository: DataTableRepository;
@@ -168,11 +190,13 @@ describe('Data Table Size Tests', () => {
 				columns: [{ name: 'data', type: 'string' }],
 			});
 
-			const data = new Array(1000).fill(0).map((_, i) => ({ data: `test_data_${i}` }));
+			const dt1Rows = new Array(1000).fill(0).map((_, i) => ({ data: `test_data_${i}` }));
+			const dt2Rows = [{ data: 'test' }];
+			const dt1PayloadBytes = rowsPayloadBytes(dt1Rows);
 
-			await dataTableService.insertRows(dataTable1.id, project1.id, data);
+			await dataTableService.insertRows(dataTable1.id, project1.id, dt1Rows);
 
-			await dataTableService.insertRows(dataTable2.id, project2.id, [{ data: 'test' }]);
+			await dataTableService.insertRows(dataTable2.id, project2.id, dt2Rows);
 
 			// ACT
 			const result = await dataTableService.getDataTablesSize(owner);
@@ -193,8 +217,13 @@ describe('Data Table Size Tests', () => {
 			expect(result.dataTables[dataTable2.id].name).toBe('project2-dataTable');
 			expect(result.dataTables[dataTable2.id].projectId).toBe(project2.id);
 
-			expect(result.dataTables[dataTable1.id].sizeBytes).toBeGreaterThan(0);
+			// Reported size must include at least the raw payload bytes...
+			expect(result.dataTables[dataTable1.id].sizeBytes).toBeGreaterThanOrEqual(dt1PayloadBytes);
+			// ...and not be wildly larger than payload + reasonable per-row overhead and indexes.
+			expect(result.dataTables[dataTable1.id].sizeBytes).toBeLessThanOrEqual(dt1PayloadBytes * 50);
+			// dt2 is too small for a payload-relative bound (page overhead dominates), so use absolutes.
 			expect(result.dataTables[dataTable2.id].sizeBytes).toBeGreaterThan(0);
+			expect(result.dataTables[dataTable2.id].sizeBytes).toBeLessThanOrEqual(1024 * 1024);
 			expect(result.dataTables[dataTable1.id].sizeBytes).toBeGreaterThan(
 				result.dataTables[dataTable2.id].sizeBytes,
 			);
@@ -275,6 +304,40 @@ describe('Data Table Size Tests', () => {
 			expect(result.totalBytes).toBe(0);
 			expect(result.dataTables).toBeDefined();
 			expect(Object.keys(result.dataTables)).toHaveLength(0);
+		});
+
+		it('should report size growth proportional to inserted payload', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'differential-dataTable',
+				columns: [{ name: 'data', type: 'string' }],
+			});
+
+			// Each value is large enough to trigger Postgres TOAST out-of-line storage (>2KB);
+			// reported size must include the TOAST relation to reflect actual disk usage.
+			const ROW_COUNT = 50;
+			const PAYLOAD_PER_ROW = 4 * 1024;
+			const rows = Array.from({ length: ROW_COUNT }, (_, i) => ({
+				data: makeFillerString(i, PAYLOAD_PER_ROW),
+			}));
+			const payloadBytes = rowsPayloadBytes(rows);
+
+			// ACT
+			const before = await dataTableService.getDataTablesSize(owner);
+			const beforeSize = before.dataTables[dataTableId]?.sizeBytes ?? 0;
+
+			// insertRows resets the size cache, so the next read re-queries the DB.
+			await dataTableService.insertRows(dataTableId, project1.id, rows);
+
+			const after = await dataTableService.getDataTablesSize(owner);
+			const afterSize = after.dataTables[dataTableId].sizeBytes;
+			const delta = afterSize - beforeSize;
+
+			// ASSERT
+			// Even after TOAST compression, the growth must reflect a meaningful fraction of
+			// the payload — a delta near zero would indicate out-of-line storage is uncounted.
+			expect(delta).toBeGreaterThanOrEqual(payloadBytes * 0.1);
+			expect(delta).toBeLessThanOrEqual(payloadBytes * 20);
 		});
 
 		it('should handle data tables with no rows', async () => {
