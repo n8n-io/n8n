@@ -1,5 +1,6 @@
-import { PostgresChatMessageHistory } from '@langchain/community/stores/message/postgres';
 import { BufferMemory, BufferWindowMemory } from '@langchain/classic/memory';
+import { PostgresChatMessageHistory } from '@langchain/community/stores/message/postgres';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/methods/credentialTest';
@@ -9,11 +10,11 @@ import type {
 	INodeTypeDescription,
 	SupplyData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type pg from 'pg';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { escapeQualifiedSqlIdentifier, isSafeQualifiedSqlIdentifier } from '@utils/sqlIdentifier';
 
 import {
 	sessionIdOption,
@@ -89,7 +90,22 @@ export class MemoryPostgresChat implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
-		const tableName = this.getNodeParameter('tableName', itemIndex, 'n8n_chat_histories') as string;
+		// An expression-bound Table Name can resolve to an empty value (e.g. a request
+		// field that wasn't provided), so fall back to the default instead of failing.
+		const rawTableName =
+			(this.getNodeParameter('tableName', itemIndex, 'n8n_chat_histories') as string) ||
+			'n8n_chat_histories';
+		// The underlying store interpolates the table name directly into SQL.
+		// Reject anything that is not a plain (optionally schema-qualified) identifier,
+		// then quote it as a defence-in-depth measure so nothing unexpected reaches the database.
+		if (!isSafeQualifiedSqlIdentifier(rawTableName)) {
+			throw new NodeOperationError(this.getNode(), `Invalid table name "${rawTableName}"`, {
+				itemIndex,
+				description:
+					'Table names may only contain letters, numbers and underscores, with an optional "schema." prefix.',
+			});
+		}
+		const tableName = escapeQualifiedSqlIdentifier(rawTableName);
 		const sessionId = getSessionId(this, itemIndex);
 
 		const pgConf = await configurePostgres.call(this, credentials);
