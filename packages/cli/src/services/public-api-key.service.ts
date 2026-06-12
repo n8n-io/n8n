@@ -191,7 +191,6 @@ export class PublicApiKeyService {
 
 		const isOwn = apiKey.userId === caller.id;
 
-		// Fire-and-forget — SMTP latency shouldn't block the DELETE response.
 		if (!isOwn) {
 			this.mailer.notifyApiKeyRevoked({ apiKey, revoker: caller }).catch((e) => {
 				this.logger.error('Failed to send API key revocation email', {
