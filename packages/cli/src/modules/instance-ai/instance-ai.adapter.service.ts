@@ -1064,7 +1064,9 @@ export class InstanceAiAdapterService {
 				}
 
 				// Persist the simulation map onto the saved execution so the editor
-				// can label simulated node outputs. Post-completion update: works in
+				// can label simulated node outputs. Only nodes that actually ran are
+				// recorded — an execution that dead-ends early must not claim
+				// simulations that never happened. Post-completion update: works in
 				// queue mode too (plain DB write), and the final save has already
 				// happened once the post-execute promise resolves. Best-effort — a
 				// failure must not mask the execution result.
@@ -1075,10 +1077,16 @@ export class InstanceAiAdapterService {
 							unflattenData: true,
 						});
 						if (execution?.data) {
-							execution.data.resultData.simulation = options.simulation;
-							await executionRepository.updateExistingExecution(executionId, {
-								data: execution.data,
-							});
+							const runData = execution.data.resultData.runData ?? {};
+							const simulation = Object.fromEntries(
+								Object.entries(options.simulation).filter(([nodeName]) => nodeName in runData),
+							);
+							if (Object.keys(simulation).length > 0) {
+								execution.data.resultData.simulation = simulation;
+								await executionRepository.updateExistingExecution(executionId, {
+									data: execution.data,
+								});
+							}
 						}
 					} catch (error) {
 						logger.warn('Failed to persist simulation metadata on execution', {
