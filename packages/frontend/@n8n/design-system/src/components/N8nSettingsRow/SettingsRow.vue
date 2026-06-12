@@ -322,6 +322,20 @@ $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	min-width: 0;
 }
 
+/*
+ * Pin the header line to the full row height so it never re-stretches when the (wrapping)
+ * expand region grows. The horizontal row is a `flex-wrap` container with a `min-height`; with
+ * the default `align-content: stretch` the lone header line is stretched to fill that min-height
+ * while collapsed. As the expand region wraps in and the total content crosses the min-height
+ * threshold, that stretch is released and the vertically-centered header content snaps up by ~1px
+ * at the start of the expand (and back down at the end of the collapse). Guaranteeing the header
+ * line is always the row height keeps the centered content perfectly still while preserving the
+ * resting vertical centering.
+ */
+.horizontal .info {
+	min-height: var(--height--4xl);
+}
+
 .visual {
 	flex: 0 0 auto;
 	display: flex;
