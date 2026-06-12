@@ -405,6 +405,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		}
 	};
 
+	const disconnectMyConnection = async ({ id }: { id: string }) => {
+		await credentialsApi.disconnectMyConnection(rootStore.restApiContext, id);
+		const existing = state.value.credentials[id];
+		if (existing) {
+			state.value.credentials = {
+				...state.value.credentials,
+				[id]: { ...existing, connectedByMe: false },
+			};
+		}
+	};
+
 	const oAuth2Authorize = async (data: ICredentialsResponse): Promise<string> => {
 		return await credentialsApi.oAuth2CredentialAuthorize(rootStore.restApiContext, data);
 	};
@@ -507,6 +518,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		addCredentials,
 		setCredentials,
 		deleteCredential,
+		disconnectMyConnection,
 		upsertCredential,
 		fetchCredentialTypes,
 		fetchAllCredentials,

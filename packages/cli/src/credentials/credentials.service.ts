@@ -9,7 +9,7 @@ import {
 	SharedCredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
-import type { User, ICredentialsDb, ScopesField } from '@n8n/db';
+import type { ListQueryDb, SlimProject, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -58,6 +58,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
+import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
@@ -75,6 +76,19 @@ export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
 
+type PrepareUpdateDataOptions = {
+	/**
+	 * When true, the existing oauthTokenData is NOT carried forward into the
+	 * updated credential blob. Used on Static→Private toggle.
+	 */
+	clearOauthTokenData?: boolean;
+};
+
+type UpdateOptions = {
+	/** When true, delete all per-user entries for this credential (Private→Static toggle). */
+	deleteUserEntries?: boolean;
+};
+
 type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
 };
@@ -87,6 +101,22 @@ type GetManyCredentialsOptions = {
 	filters?: {
 		dependency?: CredentialDependencyFilter;
 	};
+};
+
+type WorkflowCredentialResult = {
+	id: string;
+	name: string;
+	type: string;
+	createdAt: string;
+	updatedAt: string;
+	scopes: Scope[];
+	isManaged: boolean;
+	isGlobal: boolean;
+	isResolvable: boolean;
+	homeProject: SlimProject | null;
+	sharedWithProjects: SlimProject[];
+	currentUserHasAccess: boolean;
+	connectedByMe?: boolean;
 };
 
 @Service()
@@ -109,7 +139,37 @@ export class CredentialsService {
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
+		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 	) {}
+
+	/**
+	 * Sets `connectedByMe` on every resolvable credential in `credentials`,
+	 * using a single bulk lookup against the per-user storage. Static
+	 * (non-resolvable) credentials are left untouched.
+	 *
+	 * Mutates in place; callers may pass entities, decrypted DTOs, or plain
+	 * object literals — any shape that carries `id` and `isResolvable`.
+	 */
+	async countConnectedUsers(credentialId: string): Promise<number> {
+		return await this.connectionStatusProxy.countConnectedUsers(credentialId);
+	}
+
+	async populateConnectedByMe<T extends { id: string; isResolvable?: boolean }>(
+		credentials: T[],
+		user: User,
+	): Promise<void> {
+		const resolvable = credentials.filter((c) => c.isResolvable === true);
+		if (resolvable.length === 0) return;
+
+		const connected = await this.connectionStatusProxy.findConnectedCredentialIds(
+			user.id,
+			resolvable.map((c) => c.id),
+		);
+
+		for (const c of resolvable) {
+			(c as T & { connectedByMe?: boolean }).connectedByMe = connected.has(c.id);
+		}
+	}
 
 	private async addGlobalCredentials(
 		credentials: CredentialsEntity[],
@@ -446,9 +506,12 @@ export class CredentialsService {
 		}
 
 		if (includeData) {
-			return await this.addDecryptedDataToCredentials(credentials);
+			const decrypted = await this.addDecryptedDataToCredentials(credentials);
+			await this.populateConnectedByMe(decrypted, user);
+			return decrypted;
 		}
 
+		await this.populateConnectedByMe(credentials, user);
 		return credentials;
 	}
 
@@ -516,7 +579,7 @@ export class CredentialsService {
 	async getCredentialsAUserCanUseInAWorkflow(
 		user: User,
 		options: { workflowId: string } | { projectId: string },
-	) {
+	): Promise<WorkflowCredentialResult[]> {
 		// necessary to get the scopes
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
 
@@ -537,17 +600,38 @@ export class CredentialsService {
 			(c) => allCredentialsForWorkflow.includes(c.id) || c.isGlobal,
 		);
 
-		return intersection
-			.map((c) => this.roleService.addScopes(c, user, projectRelations))
-			.map((c) => ({
-				id: c.id,
-				name: c.name,
-				type: c.type,
-				scopes: c.scopes,
-				isManaged: c.isManaged,
-				isGlobal: c.isGlobal,
-				isResolvable: c.isResolvable,
-			}));
+		if (intersection.length > 0) {
+			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
+				intersection.map((c) => c.id),
+			);
+			intersection.forEach((c) => {
+				c.shared = relations.filter((r) => r.credentialsId === c.id);
+			});
+		}
+
+		const enriched = intersection
+			.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
+			.map((c) => this.roleService.addScopes(c, user, projectRelations)) as Array<
+			ListQueryDb.Credentials.WithOwnedByAndSharedWith & ScopesField
+		>;
+
+		const result = enriched.map((c) => ({
+			id: c.id,
+			name: c.name,
+			type: c.type,
+			createdAt: c.createdAt.toISOString(),
+			updatedAt: c.updatedAt.toISOString(),
+			scopes: c.scopes,
+			isManaged: c.isManaged,
+			isGlobal: c.isGlobal,
+			isResolvable: c.isResolvable,
+			homeProject: c.homeProject,
+			sharedWithProjects: c.sharedWithProjects,
+			currentUserHasAccess: true,
+		}));
+
+		await this.populateConnectedByMe(result, user);
+		return result;
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
@@ -618,6 +702,7 @@ export class CredentialsService {
 		user: User,
 		data: CredentialRequest.CredentialProperties,
 		existingCredential: CredentialsEntity,
+		options?: PrepareUpdateDataOptions,
 	): Promise<CredentialsEntity> {
 		const decryptedData = await this.decrypt(existingCredential, true);
 
@@ -659,7 +744,8 @@ export class CredentialsService {
 
 		// Do not overwrite the oauth data else data like the access or refresh token would get lost
 		// every time anybody changes anything on the credentials even if it is just the name.
-		if (decryptedData.oauthTokenData) {
+		// Exception: when toggling to private (Static→Private), the shared token must be cleared.
+		if (decryptedData.oauthTokenData && !options?.clearOauthTokenData) {
 			// @ts-ignore
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
@@ -722,12 +808,17 @@ export class CredentialsService {
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
+		options?: UpdateOptions,
 	) {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
 		return await this.credentialsRepository.manager.transaction(async (transactionManager) => {
 			// Update the credentials in DB
 			await transactionManager.update(CredentialsEntity, credentialId, newCredentialData);
+
+			if (options?.deleteUserEntries) {
+				await this.connectionStatusProxy.deleteAllUserEntries(credentialId, transactionManager);
+			}
 
 			if (decryptedCredentialData) {
 				await this.credentialDependencyService.syncExternalSecretProviderDependenciesForCredential({
@@ -1110,15 +1201,31 @@ export class CredentialsService {
 
 		const { data: _, ...rest } = credential;
 
+		const enriched: typeof rest & { connectedByMe?: boolean; connectedUserCount?: number } = rest;
+		await this.populateConnectedByMe([enriched], user);
+
+		if (credential.isResolvable) {
+			enriched.connectedUserCount = await this.countConnectedUsers(credential.id);
+		}
+
 		if (decryptedData) {
 			// We never want to expose the oauthTokenData to the frontend, but it
 			// expects it to check if the credential is already connected.
-			if (decryptedData?.oauthTokenData) {
+			if (credential.isResolvable) {
+				// For resolvable credentials, the "connected" signal lives in the
+				// per-user storage — mirror that into the existing oauthTokenData
+				// flag the frontend banner already reads.
+				if (enriched.connectedByMe) {
+					decryptedData.oauthTokenData = true;
+				} else {
+					delete decryptedData.oauthTokenData;
+				}
+			} else if (decryptedData?.oauthTokenData) {
 				decryptedData.oauthTokenData = true;
 			}
-			return { data: decryptedData, ...rest };
+			return { data: decryptedData, ...enriched };
 		}
-		return { ...rest };
+		return { ...enriched };
 	}
 
 	async getCredentialScopes(user: User, credentialId: string): Promise<Scope[]> {

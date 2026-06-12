@@ -2,12 +2,12 @@
  * Regression suite for the typed-RPC routing pattern.
  *
  * The pattern: `$('Foo').first()` is routed through the dedicated
- * `getNodeFirst` typed RPC rather than the generic `callFunctionAtPath`
- * channel. The in-isolate runtime exposes a synthetic proxy on
- * `target.$(...)` that intercepts `.first` and sends a typed envelope via
- * `callHost`; the bridge handler reads the literal string `"first"`
- * from the host-side proxy. The property name is compile-time fixed and
- * cannot be influenced by expression input.
+ * `getNodeFirst` typed RPC over the `callHost` dispatcher. The in-isolate
+ * runtime exposes a synthetic proxy on `target.$(...)` that intercepts
+ * `.first` and sends a typed envelope via `callHost`; the bridge handler
+ * reads the literal string `"first"` from the host-side proxy. The
+ * property name is compile-time fixed and cannot be influenced by
+ * expression input.
  *
  * Each typed RPC should land with a test in this file
  * confirming:
@@ -314,5 +314,525 @@ describe("Typed RPC: $('Foo') proxy fallthrough and `in` checks", () => {
 		expect(evaluator.evaluate("{{ 'first' in $('Foo') }}", data, caller)).toBe(true);
 		expect(evaluator.evaluate("{{ 'last' in $('Foo') }}", data, caller)).toBe(true);
 		expect(evaluator.evaluate("{{ 'all' in $('Foo') }}", data, caller)).toBe(true);
+	});
+});
+
+describe('Typed RPC: $input.{first,last,all} route via getInput*', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('$input.first() returns the value of data.$input.first()', () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				first: () => ({ json: { id: 1, name: 'first-item' } }),
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $input.first() }}', data, caller);
+		expect(result).toEqual({ json: { id: 1, name: 'first-item' } });
+	});
+
+	it('$input.last() returns the value of data.$input.last()', () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				last: () => ({ json: { id: 9, name: 'last-item' } }),
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $input.last() }}', data, caller);
+		expect(result).toEqual({ json: { id: 9, name: 'last-item' } });
+	});
+
+	it('$input.all() returns the array from data.$input.all()', () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				all: () => [{ json: { id: 1 } }, { json: { id: 2 } }],
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $input.all() }}', data, caller);
+		expect(result).toEqual([{ json: { id: 1 } }, { json: { id: 2 } }]);
+	});
+
+	it('drops any arguments the isolate tries to pass to the host method', () => {
+		// The host's `WorkflowDataProxy` throws if `$input.first/last/all` is
+		// called with any arguments. The typed-RPC schemas have no fields
+		// besides `type`, so the in-isolate stub closes over a zero-arg
+		// invocation regardless of what the expression passed. Documenting:
+		// `$input.first('arg')` produces the same result as `$input.first()`
+		// because the host method is invoked with no arguments either way.
+		const args: unknown[][] = [];
+		const data: Record<string, unknown> = {
+			$input: {
+				first: (...received: unknown[]) => {
+					args.push(received);
+					return { json: { ok: true } };
+				},
+			},
+		};
+
+		evaluator.evaluate('{{ $input.first() }}', data, caller);
+		evaluator.evaluate("{{ $input.first('ignored') }}", data, caller);
+		evaluator.evaluate('{{ $input.first(1, 2, 3) }}', data, caller);
+
+		expect(args).toEqual([[], [], []]);
+	});
+
+	it('non-RPC properties (`.item`) still delegate to the lazy proxy (host getter)', () => {
+		// `.item` on $input is a host getter, not a typed RPC. The synthetic
+		// proxy should fall through to the lazy proxy which fetches via
+		// getValueAtPath — and the host's `.item` getter must be invoked on
+		// the host side. Defining `.item` as a real getter (instead of a
+		// plain property) proves the getter ran: the bridge can only reach
+		// it via host-side property access, which is what `getValueAtPath`
+		// does. If the routing had wrongly sent a typed RPC, the dispatcher
+		// would reject the unknown `type` and return undefined.
+		let getterInvocations = 0;
+		const data: Record<string, unknown> = {
+			$input: Object.defineProperty({} as Record<string, unknown>, 'item', {
+				get() {
+					getterInvocations += 1;
+					return { id: 42 };
+				},
+				enumerable: true,
+			}),
+		};
+
+		const result = evaluator.evaluate('{{ $input.item.id }}', data, caller);
+		expect(result).toBe(42);
+		expect(getterInvocations).toBeGreaterThan(0);
+	});
+
+	it("'first', 'last', 'all' are reported by $input's `has` trap", () => {
+		const data: Record<string, unknown> = {
+			$input: {
+				first: () => undefined,
+				last: () => undefined,
+				all: () => [],
+			},
+		};
+
+		expect(evaluator.evaluate("{{ 'first' in $input }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'last' in $input }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'all' in $input }}", data, caller)).toBe(true);
+	});
+});
+
+describe('Typed RPC: $items() routes via getItems', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('returns the value of data.$items() with no args', () => {
+		const data: Record<string, unknown> = {
+			$items: () => [{ json: { id: 1 } }, { json: { id: 2 } }],
+		};
+
+		const result = evaluator.evaluate('{{ $items() }}', data, caller);
+		expect(result).toEqual([{ json: { id: 1 } }, { json: { id: 2 } }]);
+	});
+
+	it('forwards nodeName, outputIndex, and runIndex verbatim', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$items: (...args: unknown[]) => {
+				calls.push(args);
+				return [];
+			},
+		};
+
+		evaluator.evaluate('{{ $items() }}', data, caller);
+		evaluator.evaluate("{{ $items('Foo') }}", data, caller);
+		evaluator.evaluate("{{ $items('Foo', 1) }}", data, caller);
+		evaluator.evaluate("{{ $items('Foo', 0, 2) }}", data, caller);
+
+		expect(calls).toEqual([
+			[undefined, undefined, undefined],
+			['Foo', undefined, undefined],
+			['Foo', 1, undefined],
+			['Foo', 0, 2],
+		]);
+	});
+
+	it('accepts negative runIndex (host sentinel for "latest")', () => {
+		// `WorkflowDataProxy.$items` uses runIndex === undefined ? -1 : runIndex,
+		// so callers can pass -1 explicitly to request the latest run. The
+		// schema permits negatives via z.number().int() (no .nonnegative()).
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$items: (...args: unknown[]) => {
+				calls.push(args);
+				return [];
+			},
+		};
+
+		evaluator.evaluate("{{ $items('Foo', 0, -1) }}", data, caller);
+
+		expect(calls).toEqual([['Foo', 0, -1]]);
+	});
+
+	it('handles missing data.$items gracefully (returns undefined)', () => {
+		const data: Record<string, unknown> = {};
+
+		const result = evaluator.evaluate('{{ $items() }}', data, caller);
+		expect(result).toBeUndefined();
+	});
+});
+
+describe('Typed RPC: $fromAI() routes via fromAi', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('returns the resolved value of data.$fromAI(name)', () => {
+		const data: Record<string, unknown> = {
+			$fromAI: (name?: string) => `resolved:${name}`,
+		};
+
+		const result = evaluator.evaluate("{{ $fromAI('placeholder_one') }}", data, caller);
+		expect(result).toBe('resolved:placeholder_one');
+	});
+
+	it('forwards name, description, type, and defaultValue verbatim', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$fromAI: (...args: unknown[]) => {
+				calls.push(args);
+				return 'ok';
+			},
+		};
+
+		evaluator.evaluate("{{ $fromAI('a') }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', 'description') }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', 'description', 'number') }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', 'description', 'number', 42) }}", data, caller);
+
+		expect(calls).toEqual([
+			['a', undefined, undefined, undefined],
+			['a', 'description', undefined, undefined],
+			['a', 'description', 'number', undefined],
+			['a', 'description', 'number', 42],
+		]);
+	});
+
+	it('forwards arbitrary defaultValue shapes (number, string, boolean, null, object)', () => {
+		// `defaultValue` is `z.unknown()` because the host applies no shape
+		// constraint — it just returns the fallback via `??`. Verify the
+		// bridge structured-clones each shape through to the host.
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$fromAI: (...args: unknown[]) => {
+				calls.push(args);
+				return 'ok';
+			},
+		};
+
+		evaluator.evaluate("{{ $fromAI('a', '', 'string', 42) }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', '', 'string', 'fallback') }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', '', 'string', true) }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', '', 'string', null) }}", data, caller);
+		evaluator.evaluate("{{ $fromAI('a', '', 'string', { nested: 'value' }) }}", data, caller);
+
+		expect(calls.map((c) => c[3])).toEqual([42, 'fallback', true, null, { nested: 'value' }]);
+	});
+
+	it('$fromAi (mid-case) alias routes through the same handler', () => {
+		const data: Record<string, unknown> = {
+			$fromAI: (name?: string) => `via-aliases:${name}`,
+		};
+
+		expect(evaluator.evaluate("{{ $fromAi('x') }}", data, caller)).toBe('via-aliases:x');
+	});
+
+	it('$fromai (all-lower) alias routes through the same handler', () => {
+		const data: Record<string, unknown> = {
+			$fromAI: (name?: string) => `via-aliases:${name}`,
+		};
+
+		expect(evaluator.evaluate("{{ $fromai('x') }}", data, caller)).toBe('via-aliases:x');
+	});
+
+	it('handles missing data.$fromAI gracefully (returns undefined)', () => {
+		const data: Record<string, unknown> = {};
+
+		const result = evaluator.evaluate("{{ $fromAI('placeholder') }}", data, caller);
+		expect(result).toBeUndefined();
+	});
+});
+
+describe("Typed RPC: $('Foo').pairedItem / .itemMatching / .item route via getNodePairedItem", () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('$("Foo").pairedItem(idx) calls data.$(name).pairedItem with the idx', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) => ({
+				pairedItem: (...args: unknown[]) => {
+					calls.push(args);
+					return { json: { resolved: true } };
+				},
+			}),
+		};
+
+		const result = evaluator.evaluate("{{ $('Foo').pairedItem(2) }}", data, caller);
+		expect(result).toEqual({ json: { resolved: true } });
+		expect(calls).toEqual([[2]]);
+	});
+
+	it('$("Foo").pairedItem() forwards undefined itemIndex (host applies its default)', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) => ({
+				pairedItem: (...args: unknown[]) => {
+					calls.push(args);
+					return { json: {} };
+				},
+			}),
+		};
+
+		evaluator.evaluate("{{ $('Foo').pairedItem() }}", data, caller);
+		expect(calls).toEqual([[undefined]]);
+	});
+
+	it('$("Foo").itemMatching(idx) reads the literal `itemMatching` property', () => {
+		// Distinct discriminator from `.pairedItem` so the host's
+		// `property === 'itemMatching'` branch fires (e.g. for the
+		// "Missing item index" error path).
+		const pairedCalls: Array<unknown[]> = [];
+		const matchingCalls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) => ({
+				pairedItem: (...args: unknown[]) => {
+					pairedCalls.push(args);
+					return { json: { src: 'pairedItem' } };
+				},
+				itemMatching: (...args: unknown[]) => {
+					matchingCalls.push(args);
+					return { json: { src: 'itemMatching' } };
+				},
+			}),
+		};
+
+		const result = evaluator.evaluate("{{ $('Foo').itemMatching(3) }}", data, caller);
+		expect(result).toEqual({ json: { src: 'itemMatching' } });
+		expect(matchingCalls).toEqual([[3]]);
+		expect(pairedCalls).toEqual([]);
+	});
+
+	it('$("Foo").item reads the literal `item` getter (no args)', () => {
+		// `.item` is a host getter — accessing it invokes the resolver
+		// immediately. Distinct discriminator so the host's getter path
+		// fires (not the `.pairedItem` method path).
+		let pairedCalls = 0;
+		let itemAccessed = 0;
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) =>
+				Object.defineProperty(
+					{
+						pairedItem: () => {
+							pairedCalls += 1;
+							return undefined;
+						},
+					} as Record<string, unknown>,
+					'item',
+					{
+						get() {
+							itemAccessed += 1;
+							return { json: { fetched: true } };
+						},
+						enumerable: true,
+					},
+				),
+		};
+
+		const result = evaluator.evaluate("{{ $('Foo').item }}", data, caller);
+		expect(result).toEqual({ json: { fetched: true } });
+		expect(itemAccessed).toBe(1);
+		expect(pairedCalls).toBe(0);
+	});
+
+	it("'pairedItem', 'itemMatching', 'item' are reported by the synthetic proxy `has` trap", () => {
+		const data: Record<string, unknown> = {
+			$: (_nodeName: string) => ({
+				pairedItem: () => undefined,
+			}),
+		};
+
+		expect(evaluator.evaluate("{{ 'pairedItem' in $('Foo') }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'itemMatching' in $('Foo') }}", data, caller)).toBe(true);
+		expect(evaluator.evaluate("{{ 'item' in $('Foo') }}", data, caller)).toBe(true);
+	});
+});
+
+describe('Typed RPC: $evaluateExpression() routes via evaluateExpression', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('returns the value of data.$evaluateExpression(expression)', () => {
+		const data: Record<string, unknown> = {
+			$evaluateExpression: (expression: string) => `evaluated:${expression}`,
+		};
+
+		const result = evaluator.evaluate("{{ $evaluateExpression('1 + 1') }}", data, caller);
+		expect(result).toBe('evaluated:1 + 1');
+	});
+
+	it('forwards expression and itemIndex verbatim', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$evaluateExpression: (...args: unknown[]) => {
+				calls.push(args);
+				return 'ok';
+			},
+		};
+
+		evaluator.evaluate("{{ $evaluateExpression('a') }}", data, caller);
+		evaluator.evaluate("{{ $evaluateExpression('a', 3) }}", data, caller);
+
+		expect(calls).toEqual([
+			['a', undefined],
+			['a', 3],
+		]);
+	});
+
+	it('handles missing data.$evaluateExpression gracefully (returns undefined)', () => {
+		const data: Record<string, unknown> = {};
+
+		const result = evaluator.evaluate("{{ $evaluateExpression('x') }}", data, caller);
+		expect(result).toBeUndefined();
+	});
+});
+
+describe('Typed RPC: $getPairedItem() routes via getPairedItem', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	it('returns the value of data.$getPairedItem(...)', () => {
+		const data: Record<string, unknown> = {
+			$getPairedItem: () => ({ json: { city: 'Prague' } }),
+		};
+
+		const result = evaluator.evaluate(
+			"{{ JSON.stringify($getPairedItem('source', { previousNode: 'source' }, { item: 0 })) }}",
+			data,
+			caller,
+		);
+		expect(result).toBe(JSON.stringify({ json: { city: 'Prague' } }));
+	});
+
+	it('forwards destinationNodeName, incomingSourceData, initialPairedItem verbatim', () => {
+		const calls: Array<unknown[]> = [];
+		const data: Record<string, unknown> = {
+			$getPairedItem: (...args: unknown[]) => {
+				calls.push(args);
+				return 'ok';
+			},
+		};
+
+		evaluator.evaluate(
+			"{{ $getPairedItem('dest', { previousNode: 'src', previousNodeRun: 1 }, { item: 2, input: 0 }) }}",
+			data,
+			caller,
+		);
+		evaluator.evaluate("{{ $getPairedItem('dest', null, { item: 0 }) }}", data, caller);
+
+		expect(calls).toEqual([
+			['dest', { previousNode: 'src', previousNodeRun: 1 }, { item: 2, input: 0 }],
+			['dest', null, { item: 0 }],
+		]);
+	});
+
+	it('handles missing data.$getPairedItem gracefully (returns undefined)', () => {
+		const data: Record<string, unknown> = {};
+
+		const result = evaluator.evaluate(
+			"{{ $getPairedItem('dest', null, { item: 0 }) }}",
+			data,
+			caller,
+		);
+		expect(result).toBeUndefined();
 	});
 });

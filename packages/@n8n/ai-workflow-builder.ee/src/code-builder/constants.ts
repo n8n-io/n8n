@@ -93,6 +93,11 @@ export const CODE_BUILDER_VALIDATE_TOOL: BuilderToolBase = {
 	displayTitle: 'Validating workflow',
 };
 
+export const CODE_BUILDER_VALIDATE_NODE_TOOL: BuilderToolBase = {
+	toolName: 'validate_node_config',
+	displayTitle: 'Validating node config',
+};
+
 export const CODE_BUILDER_SEARCH_NODES_TOOL: BuilderToolBase = {
 	toolName: 'search_nodes',
 	displayTitle: 'Searching nodes',
@@ -127,4 +132,9 @@ export const MCP_ARCHIVE_WORKFLOW_TOOL: BuilderToolBase = {
 export const MCP_UPDATE_WORKFLOW_TOOL: BuilderToolBase = {
 	toolName: 'update_workflow',
 	displayTitle: 'Updating workflow',
+};
+
+export const MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL: BuilderToolBase = {
+	toolName: 'get_workflow_best_practices',
+	displayTitle: 'Getting workflow best practices',
 };

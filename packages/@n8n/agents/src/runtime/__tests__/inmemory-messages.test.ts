@@ -85,12 +85,12 @@ describe('InMemoryMemory — message keyset reads', () => {
 
 		const all = await mem.getMessages('t-1');
 
-		const tail = await mem.getMessagesForScope('thread', 't-1', {
+		const tail = await mem.getMessagesForObservationScope('t-1', {
 			since: { sinceCreatedAt: all[0].createdAt, sinceMessageId: all[0].id },
 		});
 		expect(tail.map(textOf)).toEqual(['b', 'c']);
 
-		const empty = await mem.getMessagesForScope('thread', 't-1', {
+		const empty = await mem.getMessagesForObservationScope('t-1', {
 			since: { sinceCreatedAt: all[2].createdAt, sinceMessageId: all[2].id },
 		});
 		expect(empty).toEqual([]);
@@ -104,14 +104,14 @@ describe('InMemoryMemory — message keyset reads', () => {
 		await mem.saveMessages({ threadId: 't-1', resourceId: 'u-1', messages: [m1, m2] });
 
 		const [low, high] = [m1, m2].sort((a, b) => (a.id < b.id ? -1 : 1));
-		const tail = await mem.getMessagesForScope('thread', 't-1', {
+		const tail = await mem.getMessagesForObservationScope('t-1', {
 			since: { sinceCreatedAt: low.createdAt, sinceMessageId: low.id },
 		});
 		expect(tail).toHaveLength(1);
 		expect(tail[0].id).toBe(high.id);
 	});
 
-	it('filters observation-scope messages by resourceId when provided', async () => {
+	it('reads all messages in the observation source thread', async () => {
 		const mem = new InMemoryMemory();
 		await mem.saveMessages({
 			threadId: 't-1',
@@ -124,8 +124,9 @@ describe('InMemoryMemory — message keyset reads', () => {
 			messages: [makeMsg('user', 'two')],
 		});
 
-		const messages = await mem.getMessagesForScope('thread', 't-1', { resourceId: 'u-2' });
+		const messages = await mem.getMessagesForObservationScope('t-1');
 
-		expect(messages.map(textOf)).toEqual(['two']);
+		expect(messages.map(textOf)).toEqual(expect.arrayContaining(['one', 'two']));
+		expect(messages).toHaveLength(2);
 	});
 });

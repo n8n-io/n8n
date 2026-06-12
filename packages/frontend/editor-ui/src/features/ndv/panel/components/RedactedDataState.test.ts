@@ -20,7 +20,7 @@ describe('RedactedDataState', () => {
 
 		expect(
 			getByText(
-				'This execution used dynamic credentials. Data from dynamic credential executions cannot be revealed.',
+				'This execution used private credentials. Data from private credential executions cannot be revealed.',
 			),
 		).toBeInTheDocument();
 		expect(queryByText('Execution data has been redacted.')).not.toBeInTheDocument();

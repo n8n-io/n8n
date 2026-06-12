@@ -1,6 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import {
+	findAiRootNodeNames,
 	type INode,
 	type IPinData,
 	type IWorkflowBase,
@@ -9,26 +11,21 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
-import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { extractNodeConfig } from './node-config';
 
-/** Targets of `ai_*` connections — Agent/Chain root nodes. Pinning these short-circuits sub-node SDK calls. */
-function findAiRootNodeNames(workflow: IWorkflowBase): Set<string> {
-	const roots = new Set<string>();
-	for (const nodeConns of Object.values(workflow.connections)) {
-		for (const [connType, outputs] of Object.entries(nodeConns)) {
-			if (!connType.startsWith('ai_') || !Array.isArray(outputs)) continue;
-			for (const group of outputs) {
-				if (!Array.isArray(group)) continue;
-				for (const conn of group) {
-					if (typeof conn === 'object' && conn !== null && 'node' in conn) {
-						roots.add((conn as { node: string }).node);
-					}
-				}
-			}
-		}
-	}
-	return roots;
+/**
+ * AI root node types — lets the typo guard accept a no-sub-node Agent.
+ * Keep in sync with new agent/chain types in `@n8n/n8n-nodes-langchain`.
+ */
+const AI_ROOT_NODE_TYPES = new Set<string>([
+	'@n8n/n8n-nodes-langchain.agent',
+	'@n8n/n8n-nodes-langchain.chainLlm',
+	'@n8n/n8n-nodes-langchain.chainRetrievalQa',
+	'@n8n/n8n-nodes-langchain.chainSummarization',
+]);
+
+function isAiRootNodeType(nodeType: string): boolean {
+	return AI_ROOT_NODE_TYPES.has(nodeType);
 }
 
 /** Sources of `ai_*` connections — LLM/tool/memory sub-nodes. Handled via their root, never pinned individually. */
@@ -72,6 +69,11 @@ function isVendorLlmSubNode(nodeType: string): boolean {
 	return nodeType.startsWith('@n8n/n8n-nodes-langchain.lm');
 }
 
+/** MCP registry nodes talk via the MCP SDK's own transport, not n8n's HTTP helper — the mock can't reach them, so their root must stay pinned. */
+function isMcpRegistryNode(nodeType: string): boolean {
+	return nodeType.startsWith('@n8n/mcp-registry.');
+}
+
 /** Non-empty `options.baseURL` on the LangChain OpenAI node beats credentials.url — credential rewrite isn't enough. */
 function hasUnsafeBaseUrlOverride(node: INode): boolean {
 	if (node.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
@@ -101,7 +103,7 @@ export function identifyNodesForPinData(
 	workflow: IWorkflowBase,
 	exclusionSet?: Set<string>,
 ): INode[] {
-	const aiRootNodes = findAiRootNodeNames(workflow);
+	const aiRootNodes = findAiRootNodeNames(workflow.connections);
 
 	return workflow.nodes.filter((node) => {
 		if (node.disabled) return false;
@@ -111,25 +113,279 @@ export function identifyNodesForPinData(
 	});
 }
 
-type UnpinRefusal = {
+// ---------------------------------------------------------------------------
+// Binary dependency detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Trigger-side binary requirement: a downstream node consumes a binary
+ * attachment from the trigger, either by expression (`$binary.data`) or
+ * because its node type is known to read binary input.
+ */
+export interface TriggerBinaryRequirement {
+	/** Binary map key on the pinned item (defaults to `data`). */
+	propertyName: string;
+	/** MIME type for the synthesized fixture. */
+	contentType: string;
+	/** Filename for the synthesized fixture. */
+	filename: string;
+}
+
+/**
+ * Node types that ALWAYS read a binary attachment from their upstream item,
+ * regardless of resource/operation. Service-style nodes (Telegram, Slack, S3,
+ * Drive, Dropbox) only consume binary on specific operations — those flows
+ * always reference `$binary.<key>` in their parameters, so the expression
+ * detector below handles them without needing entries here.
+ */
+const BINARY_CONSUMER_NODE_TYPES: Record<string, Omit<TriggerBinaryRequirement, 'propertyName'>> = {
+	'n8n-nodes-base.extractFromFile': { contentType: 'application/pdf', filename: 'input.pdf' },
+	'n8n-nodes-base.readBinaryFile': {
+		contentType: 'application/octet-stream',
+		filename: 'input.bin',
+	},
+	'n8n-nodes-base.writeBinaryFile': {
+		contentType: 'application/octet-stream',
+		filename: 'input.bin',
+	},
+	'@n8n/n8n-nodes-langchain.documentBinaryInputLoader': {
+		contentType: 'application/pdf',
+		filename: 'input.pdf',
+	},
+};
+
+/**
+ * Preferred content-type defaults when an upload-flavored node references
+ * `$binary.<key>` but the expression alone doesn't say what MIME to use.
+ * Looked up ONLY after a positive expression match — never on node type alone.
+ */
+const PREFERRED_BINARY_DEFAULTS: Record<string, Omit<TriggerBinaryRequirement, 'propertyName'>> = {
+	'n8n-nodes-base.telegram': { contentType: 'audio/ogg', filename: 'voice.ogg' },
+};
+
+const BINARY_EXPRESSION_RE = /\$binary\.([A-Za-z_][\w-]*)/;
+
+/**
+ * Parameter names n8n uses on upload-flavored operations to declare which
+ * binary key on the input item to read from. The literal value is the key
+ * name — there's no `$binary.X` reference because the node looks it up via
+ * `assertBinaryData(itemIndex, binaryPropertyName)` internally.
+ */
+const BINARY_PROPERTY_PARAM_NAMES = new Set([
+	'binaryPropertyName',
+	'binaryProperty',
+	'dataPropertyName',
+	'dataPropertyNameUpload',
+	'binaryDataKey',
+]);
+
+/**
+ * Try to pull a literal string from an n8n expression like `={{ "image" }}` or
+ * `={{ 'image' }}`. Returns undefined when the expression has interpolations or
+ * references — those can't be resolved without an execution context.
+ */
+function extractLiteralFromExpression(value: string): string | undefined {
+	const trimmed = value.slice(1).trim();
+	if (!trimmed.startsWith('{{') || !trimmed.endsWith('}}')) return undefined;
+	const inner = trimmed.slice(2, -2).trim();
+	const m = /^(["'])(.+)\1$/.exec(inner);
+	return m ? m[2] : undefined;
+}
+
+function findBinaryPropertyNameParam(params: unknown): { propertyName: string } | undefined {
+	if (!params || typeof params !== 'object') return undefined;
+	for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
+		if (BINARY_PROPERTY_PARAM_NAMES.has(key) && typeof value === 'string' && value.length > 0) {
+			if (!value.startsWith('=')) return { propertyName: value };
+			// `={{ "image" }}` style — extract the literal if we can; otherwise
+			// fall back to `data` (the n8n default) so we still attach SOMETHING
+			// for the upload node to read.
+			const literal = extractLiteralFromExpression(value);
+			return { propertyName: literal ?? 'data' };
+		}
+		if (typeof value === 'object' && value !== null) {
+			const nested = findBinaryPropertyNameParam(value);
+			if (nested) return nested;
+		}
+	}
+	return undefined;
+}
+
+/**
+ * Find the binary-attachment requirement for the workflow's trigger, if any
+ * downstream node consumes a binary attachment from it. Walks every node
+ * parameter looking for (a) `$binary.<key>` expressions, (b) literal
+ * `binaryPropertyName: '<key>'` parameters used by upload-flavored operations,
+ * or (c) a node type allowlist (Extract from File, Read Binary File, etc.).
+ *
+ * Returns `undefined` when no downstream consumer reads binary, in which case
+ * the trigger emits only its `json` payload.
+ */
+export function detectBinaryDependencies(
+	workflow: IWorkflowBase,
+): TriggerBinaryRequirement | undefined {
+	let match: { propertyName: string; nodeType: string } | undefined;
+
+	for (const node of workflow.nodes) {
+		if (node.disabled) continue;
+
+		const serialized = JSON.stringify(node.parameters ?? {});
+		const exprMatch = BINARY_EXPRESSION_RE.exec(serialized);
+		if (exprMatch && !match) {
+			match = { propertyName: exprMatch[1], nodeType: node.type };
+			continue;
+		}
+
+		// Literal `binaryPropertyName: 'image'` style — common on upload operations
+		// (Slack files.upload, S3 PutObject, Telegram sendVoice, etc.) where the
+		// node reads `binary[<value>]` from the input item directly.
+		const paramMatch = findBinaryPropertyNameParam(node.parameters);
+		if (paramMatch && !match) {
+			match = { propertyName: paramMatch.propertyName, nodeType: node.type };
+		}
+	}
+
+	if (match) {
+		const defaults = BINARY_CONSUMER_NODE_TYPES[match.nodeType] ??
+			PREFERRED_BINARY_DEFAULTS[match.nodeType] ?? {
+				contentType: 'application/octet-stream',
+				filename: 'input.bin',
+			};
+		return { propertyName: match.propertyName, ...defaults };
+	}
+
+	for (const node of workflow.nodes) {
+		if (node.disabled) continue;
+		const defaults = BINARY_CONSUMER_NODE_TYPES[node.type];
+		if (defaults) {
+			return { propertyName: 'data', ...defaults };
+		}
+	}
+
+	return undefined;
+}
+
+export type AutoPinReason =
+	| 'protocol_binary'
+	| 'unsupported_vendor_llm'
+	| 'unsafe_baseurl_override'
+	| 'shared_vendor_llm_subnode';
+
+export interface AutoPinEntry {
 	root: string;
 	subNode: string;
 	subNodeType: string;
-	reason: 'protocol_binary' | 'unsupported_vendor_llm' | 'unsafe_baseurl_override';
-};
+	reason: AutoPinReason;
+}
 
-/** Throws if any unpinned AI root has a sub-node we can't intercept: protocol-binary, unmapped vendor LLM, or unsafe baseURL override. */
-export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: string[]): void {
-	if (unpinNodes.length === 0) return;
+// Routing maps for vendor SDK interception. `partitionAiRoots` auto-pins
+// shared-sub-node topologies, so each remaining sub-node maps to one root.
+export interface VendorLlmRouting {
+	subNodeToRoot: Map<string, string>;
+	rootToSubNode: Map<string, INode>;
+}
+
+/** Walk inbound `ai_languageModel` connections per unpinned root and build the routing maps. */
+export function buildVendorLlmRouting(
+	workflow: IWorkflowBase,
+	unpinNodes: string[],
+): VendorLlmRouting {
+	const subNodeToRoot = new Map<string, string>();
+	const rootToSubNode = new Map<string, INode>();
+
+	if (unpinNodes.length === 0) return { subNodeToRoot, rootToSubNode };
 
 	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
 
-	const refusals: UnpinRefusal[] = [];
-
 	for (const rootName of unpinNodes) {
-		const rootNode = nodesByName.get(rootName);
-		if (!rootNode || rootNode.disabled) continue;
+		const inbound = connectionsByDestination[rootName];
+		if (!inbound) continue;
+
+		for (const [connType, groups] of Object.entries(inbound)) {
+			if (connType !== 'ai_languageModel' || !Array.isArray(groups)) continue;
+			for (const group of groups) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					const subNode = nodesByName.get(conn.node);
+					if (!subNode || subNode.disabled) continue;
+					if (!SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(subNode.type)) continue;
+
+					if (!subNodeToRoot.has(subNode.name)) {
+						subNodeToRoot.set(subNode.name, rootName);
+					}
+					if (!rootToSubNode.has(rootName)) {
+						rootToSubNode.set(rootName, subNode);
+						// Self-map the root: `LmChatOpenAi.supplyData()` reads
+						// `getCredentials('openAiApi')` from a context whose
+						// `executeData.node` is sometimes the parent Agent rather
+						// than the LLM sub-node — observed empirically against a
+						// real LangChain Agent. Without this entry the credential
+						// helper's lookup misses, falls back to the no-root URL,
+						// and the wire server's loud-fail handler rejects the
+						// SDK call. Self-mapping the root keeps the lookup honest
+						// regardless of which side of the supplyData boundary
+						// asked for the credential.
+						subNodeToRoot.set(rootName, rootName);
+					}
+				}
+			}
+		}
+	}
+
+	return { subNodeToRoot, rootToSubNode };
+}
+
+export interface PartitionedAiRoots {
+	/** Names of AI roots that will run through the wire-server interception path. */
+	unpinNodes: string[];
+	/** Names of AI roots that will remain pinned — explicit `pinNodes` + auto-pinned roots. */
+	pinNodes: string[];
+	/** Per-(root, sub-node) reasons a root was auto-pinned, for diagnostic logging. */
+	autoPinned: AutoPinEntry[];
+}
+
+/**
+ * Default-on partition: every AI root in the workflow runs through the wire
+ * server unless one of these applies:
+ *   - It's in the caller-supplied `explicitPinNodes` list (opt-out for nodes
+ *     the caller wants to keep pinned, e.g. for an A/B comparison).
+ *   - One of its inbound `ai_*` sub-nodes is incompatible (protocol-binary
+ *     memory/vector store, unsupported vendor LLM, configured
+ *     `options.baseURL` that bypasses the credential rewrite).
+ *   - It shares a supported vendor LLM sub-node with another root — wire-
+ *     server attribution is path-based and first-wins, so multiple roots
+ *     fanning into the same sub-node would mis-attribute later turns. Both
+ *     sides get auto-pinned.
+ *
+ * `explicitPinNodes` is validated up front: unknown / disabled / non-AI-root
+ * entries throw a `UserError` to surface typos as actionable errors instead
+ * of being silently ignored.
+ */
+export function partitionAiRoots(
+	workflow: IWorkflowBase,
+	explicitPinNodes: string[] = [],
+): PartitionedAiRoots {
+	const nodesByName = new Map(workflow.nodes.map((n) => [n.name, n]));
+	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+	const allRoots = findAiRootNodeNames(workflow.connections);
+
+	validateExplicitPinNodes(nodesByName, allRoots, explicitPinNodes);
+
+	const explicitPinSet = new Set(explicitPinNodes);
+	const sharedSupportedSubNodes = trackSharedSupportedSubNodes(
+		connectionsByDestination,
+		nodesByName,
+		allRoots,
+		explicitPinSet,
+	);
+
+	const autoPinned: AutoPinEntry[] = [];
+	const pinSet = new Set<string>(explicitPinNodes);
+
+	for (const rootName of allRoots) {
+		if (explicitPinSet.has(rootName)) continue;
+
 		const inbound = connectionsByDestination[rootName];
 		if (!inbound) continue;
 
@@ -141,71 +397,122 @@ export function assertUnpinCompatibility(workflow: IWorkflowBase, unpinNodes: st
 					const sourceNode = nodesByName.get(conn.node);
 					if (!sourceNode || sourceNode.disabled) continue;
 
-					if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) {
-						refusals.push({
-							root: rootName,
-							subNode: sourceNode.name,
-							subNodeType: sourceNode.type,
-							reason: 'protocol_binary',
-						});
-					} else if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
-						if (hasUnsafeBaseUrlOverride(sourceNode)) {
-							refusals.push({
-								root: rootName,
-								subNode: sourceNode.name,
-								subNodeType: sourceNode.type,
-								reason: 'unsafe_baseurl_override',
-							});
-						}
-					} else if (isVendorLlmSubNode(sourceNode.type)) {
-						refusals.push({
-							root: rootName,
-							subNode: sourceNode.name,
-							subNodeType: sourceNode.type,
-							reason: 'unsupported_vendor_llm',
-						});
-					}
+					const reason = categorizeSubNodeIncompatibility(sourceNode, sharedSupportedSubNodes);
+					if (reason === null) continue;
+
+					autoPinned.push({
+						root: rootName,
+						subNode: sourceNode.name,
+						subNodeType: sourceNode.type,
+						reason,
+					});
+					pinSet.add(rootName);
 				}
 			}
 		}
 	}
 
-	if (refusals.length === 0) return;
-
-	const formatPairs = (list: UnpinRefusal[]) =>
-		list.map((r) => `"${r.subNode}" (${r.subNodeType}) → "${r.root}"`).join(', ');
-
-	const protocolBinary = refusals.filter((r) => r.reason === 'protocol_binary');
-	const unsupportedVendor = refusals.filter((r) => r.reason === 'unsupported_vendor_llm');
-	const baseUrlOverride = refusals.filter((r) => r.reason === 'unsafe_baseurl_override');
-
-	const segments: string[] = [];
-	if (protocolBinary.length > 0) {
-		segments.push(
-			`protocol-binary sub-nodes (cannot be intercepted via HTTP): ${formatPairs(protocolBinary)}`,
-		);
-	}
-	if (unsupportedVendor.length > 0) {
-		segments.push(
-			`unsupported vendor LLM sub-nodes (no eval URL-rewrite mapping yet): ${formatPairs(unsupportedVendor)}`,
-		);
-	}
-	if (baseUrlOverride.length > 0) {
-		segments.push(
-			`vendor LLM sub-nodes with a configured options.baseURL that bypasses the credential rewrite: ${formatPairs(baseUrlOverride)}`,
-		);
+	const unpinNodes: string[] = [];
+	const pinNodes: string[] = [];
+	for (const rootName of allRoots) {
+		if (pinSet.has(rootName)) pinNodes.push(rootName);
+		else unpinNodes.push(rootName);
 	}
 
-	throw new UserError(
-		`Cannot unpin AI root nodes — ${segments.join('; ')}. ` +
-			'Leave these roots pinned, remove the parameter override, or replace the sub-node with one that has interception support.',
-	);
+	return { unpinNodes, pinNodes, autoPinned };
+}
+
+/** Throw `UserError` if any explicit pin entry isn't a real, enabled AI root in the workflow. */
+function validateExplicitPinNodes(
+	nodesByName: Map<string, INode>,
+	aiRootNodes: Set<string>,
+	explicitPinNodes: string[],
+): void {
+	const unknownRoots: string[] = [];
+	const disabledRoots: string[] = [];
+	const nonAiRoots: string[] = [];
+	for (const rootName of explicitPinNodes) {
+		const node = nodesByName.get(rootName);
+		if (!node) unknownRoots.push(rootName);
+		else if (node.disabled) disabledRoots.push(rootName);
+		else if (!aiRootNodes.has(rootName) && !isAiRootNodeType(node.type)) {
+			nonAiRoots.push(rootName);
+		}
+	}
+	if (unknownRoots.length || disabledRoots.length || nonAiRoots.length) {
+		const formatNames = (names: string[]) => names.map((n) => `"${n}"`).join(', ');
+		const parts: string[] = [];
+		if (unknownRoots.length) parts.push(`not found in workflow: ${formatNames(unknownRoots)}`);
+		if (disabledRoots.length) parts.push(`disabled: ${formatNames(disabledRoots)}`);
+		if (nonAiRoots.length) parts.push(`not AI root nodes: ${formatNames(nonAiRoots)}`);
+		throw new UserError(`Cannot pin — ${parts.join('; ')}.`);
+	}
+}
+
+/**
+ * Walk every AI root in the workflow and record which supported vendor LLM
+ * sub-nodes feed more than one root. Used by `categorizeSubNodeIncompatibility`
+ * so both sides of a shared sub-node get auto-pinned (attribution would be
+ * ambiguous otherwise). Roots in `explicitPinSet` don't contribute — pinning
+ * them removes the ambiguity.
+ */
+function trackSharedSupportedSubNodes(
+	connectionsByDestination: ReturnType<typeof mapConnectionsByDestination>,
+	nodesByName: Map<string, INode>,
+	allRoots: Set<string>,
+	explicitPinSet: Set<string>,
+): Set<string> {
+	const usage = new Map<string, Set<string>>();
+	for (const rootName of allRoots) {
+		if (explicitPinSet.has(rootName)) continue;
+		const inbound = connectionsByDestination[rootName];
+		if (!inbound) continue;
+		for (const [connType, groups] of Object.entries(inbound)) {
+			if (!connType.startsWith('ai_') || !Array.isArray(groups)) continue;
+			for (const group of groups) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					const sourceNode = nodesByName.get(conn.node);
+					if (!sourceNode || sourceNode.disabled) continue;
+					if (!SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) continue;
+					const tracked = usage.get(sourceNode.name) ?? new Set<string>();
+					tracked.add(rootName);
+					usage.set(sourceNode.name, tracked);
+				}
+			}
+		}
+	}
+	const shared = new Set<string>();
+	for (const [subNodeName, roots] of usage) {
+		if (roots.size >= 2) shared.add(subNodeName);
+	}
+	return shared;
+}
+
+/**
+ * Return the auto-pin reason for a sub-node, or null if it's safe to intercept.
+ * Order: protocol-binary (HTTP can't reach it) → shared (attribution ambiguous) →
+ * supported-vendor-with-baseURL-override (SDK bypasses the rewrite) → unsupported
+ * vendor LLM (no URL-rewrite mapping yet).
+ */
+function categorizeSubNodeIncompatibility(
+	sourceNode: INode,
+	sharedSupportedSubNodes: Set<string>,
+): AutoPinReason | null {
+	if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) return 'protocol_binary';
+	if (isMcpRegistryNode(sourceNode.type)) return 'protocol_binary';
+	if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
+		if (sharedSupportedSubNodes.has(sourceNode.name)) return 'shared_vendor_llm_subnode';
+		return hasUnsafeBaseUrlOverride(sourceNode) ? 'unsafe_baseurl_override' : null;
+	}
+	if (isVendorLlmSubNode(sourceNode.type)) return 'unsupported_vendor_llm';
+	return null;
 }
 
 /** Nodes that should receive mock hints — excludes AI sub-nodes (handled via root) and pinned nodes. */
 export function identifyNodesForHints(workflow: IWorkflowBase): INode[] {
 	const aiSubNodes = findAiSubNodeNames(workflow);
-	const aiRootNodes = findAiRootNodeNames(workflow);
+	const aiRootNodes = findAiRootNodeNames(workflow.connections);
 	const pinnedNodeNames = new Set(identifyNodesForPinData(workflow).map((n) => n.name));
 
 	return workflow.nodes.filter((node) => {

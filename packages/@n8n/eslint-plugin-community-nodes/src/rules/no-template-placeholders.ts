@@ -3,7 +3,9 @@ import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
 import { createRule } from '../utils/index.js';
 
-const ANGLE_PLACEHOLDER = /<[^<>\n]+?>/;
+// Excludes `@` so that emails inside npm "person" strings
+// (e.g. `"author": "Jane Doe <jane@example.com>"`) are not flagged.
+const ANGLE_PLACEHOLDER = /<[^<>\n@]+?>/;
 const MUSTACHE_PLACEHOLDER = /\{\{[^{}\n]+?\}\}/;
 
 function findPlaceholder(value: string): { pattern: string; type: 'angle' | 'mustache' } | null {

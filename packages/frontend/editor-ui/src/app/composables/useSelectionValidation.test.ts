@@ -168,16 +168,17 @@ describe('useSelectionValidation', () => {
 		expect(result.valid).toBe(true);
 	});
 
-	it('returns too-few-nodes for a single-node grouping selection', () => {
+	it('returns node-already-grouped when a selection id belongs to an existing group', () => {
 		const graph = makeLinearGraph();
-		setupGraph(graph, {
+		const workflowDocumentStore = setupGraph(graph, {
 			'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
 		});
+		workflowDocumentStore.createGroup(['a', 'c'], 'Group');
 
 		const { isSelectionGroupable } = useSelectionValidation();
-		const result = isSelectionGroupable(['a']);
+		const result = isSelectionGroupable(['a', 'b']);
 
-		expect(result).toEqual({ valid: false, reason: 'too-few-nodes' });
+		expect(result).toEqual({ valid: false, reason: 'node-already-grouped', nodeIds: ['a'] });
 	});
 
 	it('returns trigger-selected when a trigger is part of the selection', () => {

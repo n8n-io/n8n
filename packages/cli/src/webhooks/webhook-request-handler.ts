@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { isWebhookHtmlSandboxingDisabled, getHtmlSandboxCSP } from 'n8n-core';
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
 import { Readable } from 'stream';
 import { finished } from 'stream/promises';
@@ -20,7 +19,7 @@ import {
 	isWebhookResponse,
 	isWebhookStreamResponse,
 } from '@/webhooks/webhook-response';
-import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
+import { applySandboxCSP, WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
 import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
@@ -84,7 +83,7 @@ class WebhookRequestHandler {
 			} else {
 				logger.error(
 					`Error in handling webhook request ${req.method} ${req.path}: ${error.message}`,
-					{ stacktrace: error.stack },
+					{ error },
 				);
 			}
 
@@ -141,10 +140,7 @@ class WebhookRequestHandler {
 
 	private setResponseHeaders(res: express.Response, headers?: WebhookResponseHeaders) {
 		headers?.applyToResponse(res);
-
-		if (!isWebhookHtmlSandboxingDisabled()) {
-			res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-		}
+		applySandboxCSP(res);
 	}
 
 	/**

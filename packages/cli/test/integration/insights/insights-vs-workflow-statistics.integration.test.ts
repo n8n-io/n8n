@@ -204,7 +204,6 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		const executionId = await workflowRunner.run(
 			{
 				workflowData: workflow,
-				userId: project.id,
 				executionMode: mode,
 				executionData,
 			},

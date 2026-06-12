@@ -8,8 +8,7 @@ describe('observation log store', () => {
 
 		const [entry] = await store.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread-1',
+				observationScopeId: 'thread-1',
 				marker: 'critical',
 				text: 'User chose the observation log model.',
 				createdAt,
@@ -17,8 +16,7 @@ describe('observation log store', () => {
 		]);
 
 		expect(entry).toMatchObject({
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			marker: 'critical',
 			text: 'User chose the observation log model.',
 			parentId: null,
@@ -29,29 +27,29 @@ describe('observation log store', () => {
 		});
 
 		await expect(
-			store.getActiveObservationLog({ scopeKind: 'thread', scopeId: 'thread-1' }),
+			store.getActiveObservationLog({ observationScopeId: 'thread-1' }),
 		).resolves.toEqual([entry]);
 	});
 
 	it('keeps dropped and superseded observations out of the active read path', async () => {
 		const store = new InMemoryMemory();
 		const [dropped, superseded, replacement] = await store.appendObservationLogEntries([
-			{ scopeKind: 'thread', scopeId: 'thread-1', marker: 'info', text: 'Small detail' },
-			{ scopeKind: 'thread', scopeId: 'thread-1', marker: 'important', text: 'Old plan' },
-			{ scopeKind: 'thread', scopeId: 'thread-1', marker: 'important', text: 'New plan' },
+			{ observationScopeId: 'thread-1', marker: 'info', text: 'Small detail' },
+			{ observationScopeId: 'thread-1', marker: 'important', text: 'Old plan' },
+			{ observationScopeId: 'thread-1', marker: 'important', text: 'New plan' },
 		]);
 
 		await store.dropObservationLogEntries([dropped.id]);
 		await store.supersedeObservationLogEntries([superseded.id], replacement.id);
 
 		await expect(
-			store.getActiveObservationLog({ scopeKind: 'thread', scopeId: 'thread-1' }),
+			store.getActiveObservationLog({ observationScopeId: 'thread-1' }),
 		).resolves.toEqual([replacement]);
 		await expect(
-			store.getObservationLog({ scopeKind: 'thread', scopeId: 'thread-1', status: 'dropped' }),
+			store.getObservationLog({ observationScopeId: 'thread-1', status: 'dropped' }),
 		).resolves.toMatchObject([{ id: dropped.id, status: 'dropped', supersededBy: null }]);
 		await expect(
-			store.getObservationLog({ scopeKind: 'thread', scopeId: 'thread-1', status: 'superseded' }),
+			store.getObservationLog({ observationScopeId: 'thread-1', status: 'superseded' }),
 		).resolves.toMatchObject([
 			{ id: superseded.id, status: 'superseded', supersededBy: replacement.id },
 		]);
@@ -60,13 +58,13 @@ describe('observation log store', () => {
 	it('applies reflection as drops plus merged replacements', async () => {
 		const store = new InMemoryMemory();
 		const [stale, oldA, oldB] = await store.appendObservationLogEntries([
-			{ scopeKind: 'resource', scopeId: 'user-1', marker: 'info', text: 'Tiny aside' },
-			{ scopeKind: 'resource', scopeId: 'user-1', marker: 'important', text: 'Plan A' },
-			{ scopeKind: 'resource', scopeId: 'user-1', marker: 'important', text: 'Plan B' },
+			{ observationScopeId: 'thread-1', marker: 'info', text: 'Tiny aside' },
+			{ observationScopeId: 'thread-1', marker: 'important', text: 'Plan A' },
+			{ observationScopeId: 'thread-1', marker: 'important', text: 'Plan B' },
 		]);
 
 		const result = await store.applyObservationLogReflection(
-			{ scopeKind: 'resource', scopeId: 'user-1' },
+			{ observationScopeId: 'thread-1' },
 			{
 				drop: [stale.id],
 				merge: [
@@ -83,19 +81,18 @@ describe('observation log store', () => {
 		expect(result.supersededIds).toEqual([oldA.id, oldB.id]);
 		expect(result.inserted).toHaveLength(1);
 		await expect(
-			store.getActiveObservationLog({ scopeKind: 'resource', scopeId: 'user-1' }),
+			store.getActiveObservationLog({ observationScopeId: 'thread-1' }),
 		).resolves.toEqual(result.inserted);
 	});
 
 	it('ignores child-only drops while the parent remains active', async () => {
 		const store = new InMemoryMemory();
 		const [parent] = await store.appendObservationLogEntries([
-			{ scopeKind: 'thread', scopeId: 'thread-1', marker: 'important', text: 'Open case' },
+			{ observationScopeId: 'thread-1', marker: 'important', text: 'Open case' },
 		]);
 		const [child] = await store.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread-1',
+				observationScopeId: 'thread-1',
 				marker: 'completion',
 				text: 'Case closed',
 				parentId: parent.id,
@@ -103,14 +100,13 @@ describe('observation log store', () => {
 		]);
 
 		const result = await store.applyObservationLogReflection(
-			{ scopeKind: 'thread', scopeId: 'thread-1' },
+			{ observationScopeId: 'thread-1' },
 			{ drop: [child.id], merge: [] },
 		);
 
 		expect(result.droppedIds).toEqual([]);
 		const active = await store.getActiveObservationLog({
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 		});
 		expect(active).toHaveLength(2);
 		expect(active).toEqual(expect.arrayContaining([parent, child]));
@@ -119,12 +115,11 @@ describe('observation log store', () => {
 	it('supersedes children when their parent is merged', async () => {
 		const store = new InMemoryMemory();
 		const [parent] = await store.appendObservationLogEntries([
-			{ scopeKind: 'thread', scopeId: 'thread-1', marker: 'important', text: 'Open case' },
+			{ observationScopeId: 'thread-1', marker: 'important', text: 'Open case' },
 		]);
 		const [child] = await store.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread-1',
+				observationScopeId: 'thread-1',
 				marker: 'completion',
 				text: 'Case closed',
 				parentId: parent.id,
@@ -132,7 +127,7 @@ describe('observation log store', () => {
 		]);
 
 		const result = await store.applyObservationLogReflection(
-			{ scopeKind: 'thread', scopeId: 'thread-1' },
+			{ observationScopeId: 'thread-1' },
 			{
 				drop: [],
 				merge: [
@@ -147,7 +142,7 @@ describe('observation log store', () => {
 
 		expect(result.supersededIds).toEqual([parent.id, child.id]);
 		await expect(
-			store.getObservationLog({ scopeKind: 'thread', scopeId: 'thread-1', status: 'superseded' }),
+			store.getObservationLog({ observationScopeId: 'thread-1', status: 'superseded' }),
 		).resolves.toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ id: parent.id, status: 'superseded' }),

@@ -1,6 +1,6 @@
 import { afterEach, expect, it } from 'vitest';
 
-import { Agent, createObservationLogThreadScopeId, Memory } from '../../../index';
+import { Agent, Memory } from '../../../index';
 import {
 	createInMemoryAgentMemory,
 	describeIf,
@@ -27,7 +27,6 @@ describe('episodic memory integration', () => {
 		const { memory, cleanup } = createInMemoryAgentMemory();
 		const memoryConfig = new Memory()
 			.storage(memory)
-			.lastMessages(3)
 			.observationalMemory({
 				observerThresholdTokens: 1,
 				reflectorThresholdTokens: 10_000,
@@ -244,8 +243,7 @@ describe('episodic memory integration', () => {
 		await agent.close();
 
 		const observations = await memory.getActiveObservationLog({
-			scopeKind: 'thread',
-			scopeId: createObservationLogThreadScopeId(threadId, resourceId),
+			observationScopeId: threadId,
 		});
 		expect(observations.length).toBeGreaterThan(0);
 

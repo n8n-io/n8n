@@ -1,7 +1,10 @@
+import type * as AiImport from 'ai';
+
 import type { ObservationLogEntry } from '../../types/sdk/observation-log';
 import { InMemoryMemory } from '../memory-store';
 import {
 	buildObservationLogReflectorPrompt,
+	createObservationLogReflectFn,
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
 } from '../observation-log-defaults';
@@ -12,11 +15,26 @@ import {
 	runObservationLogReflector,
 } from '../observation-log-reflector';
 
+type GenerateTextCall = Record<string, unknown>;
+type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
+
+const { mockGenerateText } = vi.hoisted(() => ({
+	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
+}));
+
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<typeof AiImport>('ai');
+	return {
+		...actual,
+		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
+			await mockGenerateText(call),
+	};
+});
+
 function observation(overrides: Partial<ObservationLogEntry> = {}): ObservationLogEntry {
 	return {
 		id: overrides.id ?? crypto.randomUUID(),
-		scopeKind: overrides.scopeKind ?? 'thread',
-		scopeId: overrides.scopeId ?? 'thread-1',
+		observationScopeId: overrides.observationScopeId ?? 'thread-1',
 		marker: overrides.marker ?? 'important',
 		text: overrides.text ?? 'Observation',
 		parentId: overrides.parentId ?? null,
@@ -28,6 +46,10 @@ function observation(overrides: Partial<ObservationLogEntry> = {}): ObservationL
 }
 
 describe('observation-log reflector defaults', () => {
+	beforeEach(() => {
+		mockGenerateText.mockReset();
+	});
+
 	it('keeps default policy and threshold configuration in the SDK', () => {
 		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(4_000);
 		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain('Return JSON with two arrays');
@@ -38,8 +60,7 @@ describe('observation-log reflector defaults', () => {
 
 	it('builds the default reflector prompt from active log and token budget', () => {
 		const prompt = buildObservationLogReflectorPrompt({
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			now: new Date('2026-05-12T15:00:00.000Z'),
 			activeObservationLog: [],
 			renderedObservationLog:
@@ -49,10 +70,37 @@ describe('observation-log reflector defaults', () => {
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T15:00:00.000Z');
-		expect(prompt).toContain('Scope: thread:thread-1');
+		expect(prompt).not.toContain('Scope:');
 		expect(prompt).toContain('Active observation log tokens: 42');
 		expect(prompt).toContain('Token budget: 8000');
 		expect(prompt).toContain('[obs-1] CRITICAL');
+	});
+
+	it('counts reflector generation tokens when usage is available', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '{"drop":[],"merge":[]}',
+			usage: { totalTokens: 19 },
+		});
+		const counter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+
+		const result = await createObservationLogReflectFn('openai/gpt-4o-mini')({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			activeObservationLog: [],
+			renderedObservationLog: '* [obs-1] INFO 2026-05-12T14:30:00.000Z Small detail',
+			tokenCount: 10,
+			tokenBudget: 4_000,
+			executionCounter: counter,
+		});
+
+		expect(result).toBe('{"drop":[],"merge":[]}');
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(19);
+		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 	});
 });
 
@@ -89,8 +137,7 @@ describe('renderObservationLogForReflection', () => {
 		const rendered = renderObservationLogForReflection([
 			{
 				id: 'parent',
-				scopeKind: 'thread',
-				scopeId: 'thread-1',
+				observationScopeId: 'thread-1',
 				marker: 'critical',
 				text: 'User chose the observation-log model.',
 				parentId: null,
@@ -101,8 +148,7 @@ describe('renderObservationLogForReflection', () => {
 			},
 			{
 				id: 'child',
-				scopeKind: 'thread',
-				scopeId: 'thread-1',
+				observationScopeId: 'thread-1',
 				marker: 'completion',
 				text: 'Plan 7 finished.',
 				parentId: 'parent',
@@ -121,8 +167,7 @@ describe('renderObservationLogForReflection', () => {
 		const rendered = renderObservationLogForReflection([
 			{
 				id: 'orphan',
-				scopeKind: 'thread',
-				scopeId: 'thread-1',
+				observationScopeId: 'thread-1',
 				marker: 'important',
 				text: 'Orphaned active observation remains relevant.',
 				parentId: 'missing-parent',
@@ -219,19 +264,17 @@ describe('runObservationLogReflector', () => {
 		const store = new InMemoryMemory();
 		await store.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread-1',
+				observationScopeId: 'thread-1',
 				marker: 'info',
 				text: 'Small detail',
 				tokenCount: 2,
 			},
 		]);
-		const reflect = jest.fn().mockResolvedValue('{"drop":[],"merge":[]}');
+		const reflect = vi.fn().mockResolvedValue('{"drop":[],"merge":[]}');
 
 		const result = await runObservationLogReflector({
 			memory: store,
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			reflectorThresholdTokens: 10,
 			reflect,
 		});
@@ -244,22 +287,19 @@ describe('runObservationLogReflector', () => {
 		const store = new InMemoryMemory();
 		const [stale, oldA, oldB] = await store.appendObservationLogEntries([
 			{
-				scopeKind: 'resource',
-				scopeId: 'user-1',
+				observationScopeId: 'thread-1',
 				marker: 'info',
 				text: 'Tiny aside',
 				tokenCount: 9,
 			},
 			{
-				scopeKind: 'resource',
-				scopeId: 'user-1',
+				observationScopeId: 'thread-1',
 				marker: 'important',
 				text: 'Old plan A',
 				tokenCount: 9,
 			},
 			{
-				scopeKind: 'resource',
-				scopeId: 'user-1',
+				observationScopeId: 'thread-1',
 				marker: 'important',
 				text: 'Old plan B',
 				tokenCount: 9,
@@ -268,8 +308,7 @@ describe('runObservationLogReflector', () => {
 
 		const result = await runObservationLogReflector({
 			memory: store,
-			scopeKind: 'resource',
-			scopeId: 'user-1',
+			observationScopeId: 'thread-1',
 			reflectorThresholdTokens: 10,
 			now: new Date('2026-05-12T15:00:00.000Z'),
 			reflect: async (input) => {
@@ -306,10 +345,10 @@ describe('runObservationLogReflector', () => {
 			overBudgetAfterReflection: false,
 		});
 		await expect(
-			store.getObservationLog({ scopeKind: 'resource', scopeId: 'user-1', status: 'dropped' }),
+			store.getObservationLog({ observationScopeId: 'thread-1', status: 'dropped' }),
 		).resolves.toMatchObject([{ id: stale.id, status: 'dropped' }]);
 		await expect(
-			store.getObservationLog({ scopeKind: 'resource', scopeId: 'user-1', status: 'superseded' }),
+			store.getObservationLog({ observationScopeId: 'thread-1', status: 'superseded' }),
 		).resolves.toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ id: oldA.id, status: 'superseded' }),
@@ -322,15 +361,13 @@ describe('runObservationLogReflector', () => {
 		const store = new InMemoryMemory();
 		const [critical, stale] = await store.appendObservationLogEntries([
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread-1',
+				observationScopeId: 'thread-1',
 				marker: 'critical',
 				text: 'Large critical fact',
 				tokenCount: 20,
 			},
 			{
-				scopeKind: 'thread',
-				scopeId: 'thread-1',
+				observationScopeId: 'thread-1',
 				marker: 'info',
 				text: 'Small aside',
 				tokenCount: 20,
@@ -340,8 +377,7 @@ describe('runObservationLogReflector', () => {
 
 		const result = await runObservationLogReflector({
 			memory: store,
-			scopeKind: 'thread',
-			scopeId: 'thread-1',
+			observationScopeId: 'thread-1',
 			reflectorThresholdTokens: 10,
 			reflect: async () => await Promise.resolve(JSON.stringify({ drop: [stale.id], merge: [] })),
 			onWarning: (warning) => warnings.push(warning.message),
@@ -354,7 +390,7 @@ describe('runObservationLogReflector', () => {
 		});
 		expect(warnings).toEqual(['Observation log remains over reflector budget after reflection']);
 		await expect(
-			store.getActiveObservationLog({ scopeKind: 'thread', scopeId: 'thread-1' }),
+			store.getActiveObservationLog({ observationScopeId: 'thread-1' }),
 		).resolves.toMatchObject([{ id: critical.id }]);
 	});
 });

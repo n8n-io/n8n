@@ -98,8 +98,8 @@ const maxConditionsReached = computed(
 );
 
 const issues = computed(() => {
-	if (!ndvStore.activeNode) return {};
-	return ndvStore.activeNode?.issues?.parameters ?? {};
+	if (!ndvStore.value.activeNode) return {};
+	return ndvStore.value.activeNode?.issues?.parameters ?? {};
 });
 
 watchEffect(async () => {

@@ -1,7 +1,9 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { type Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { isWebhookHtmlSandboxingDisabled, getHtmlSandboxCSP } from 'n8n-core';
-import { randomString } from 'n8n-workflow';
+import { OperationalError, randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
@@ -20,6 +22,7 @@ jest.mock('n8n-core', () => ({
 }));
 
 describe('WebhookRequestHandler', () => {
+	const logger = mockInstance(Logger);
 	const webhookManager = mock<Required<IWebhookManager>>();
 	const handler = createWebhookHandlerFor(webhookManager) as (
 		req: WebhookRequest | WebhookOptionsRequest,
@@ -207,6 +210,31 @@ describe('WebhookRequestHandler', () => {
 				message: 'Test error',
 				hint: 'Test hint',
 			});
+		});
+
+		it('should log the underlying error cause when execution fails', async () => {
+			const req = mock<WebhookRequest>({
+				path: '/webhook/abc',
+				method: 'GET',
+				params: { path: 'abc' },
+			});
+
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			const rootCause = new Error('SQLITE_BUSY: database is locked');
+			const wrapper = new OperationalError('There was a problem executing the workflow', {
+				cause: rootCause,
+			});
+
+			webhookManager.executeWebhook.mockRejectedValueOnce(wrapper);
+
+			await handler(req, res);
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'Error in handling webhook request GET /webhook/abc: There was a problem executing the workflow',
+				expect.objectContaining({ error: wrapper }),
+			);
 		});
 
 		it('should not throw when legacy response headers contain invalid names', async () => {

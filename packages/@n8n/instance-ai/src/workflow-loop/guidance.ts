@@ -27,33 +27,37 @@ export function formatWorkflowLoopGuidance(
 		}
 		case 'verify':
 			return (
-				`VERIFY: Run workflow ${action.workflowId}. ` +
+				`VERIFY: Inspect the persisted workflow ${action.workflowId} with \`workflows(action="get-json")\` and compare it to the requested outcome. ` +
+				'Build/save success only means a workflow was saved. ' +
 				`If the build had mocked credentials, use \`verify-built-workflow\` with workItemId "${options.workItemId ?? 'unknown'}". ` +
 				'Otherwise use `executions(action="run")`. ' +
 				'If it fails, use `executions(action="debug")` to diagnose. ' +
-				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}" and your findings.`
+				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep patching the same workflow. ' +
+				`Then call \`report-verification-verdict\` with workItemId "${options.workItemId ?? 'unknown'}", \`workflowInspection\`, and your findings.`
 			);
 		case 'blocked':
 			return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
 		case 'rebuild':
 			return (
 				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
-				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
+				'Load the `workflow-builder` skill, then call `build-workflow` directly ' +
+				`with \`workflowId: "${action.workflowId}"\` ` +
 				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
 				'(no plan — this is a single-task rebuild; `workflowId` and `workItemId` are required ' +
 				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				`In the \`task\` parameter, describe the structural repair and include these details: ${action.failureDetails}`
+				`Use SDK code or a targeted patch to apply this structural repair: ${action.failureDetails}`
 			);
 		case 'patch':
 			return (
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
+				'Load the `workflow-builder` skill, then call `build-workflow` directly ' +
+				`with \`workflowId: "${action.workflowId}"\` ` +
 				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
 				'(no plan — this is a single-task patch; `workflowId` and `workItemId` are required ' +
 				'so the builder updates the existing workflow instead of creating a duplicate). ' +
-				'In the `task` parameter, describe the targeted fix to apply.'
+				'Use patch mode when the edit is small.'
 			);
 	}
 }

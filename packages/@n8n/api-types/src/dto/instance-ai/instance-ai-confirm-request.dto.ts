@@ -49,6 +49,12 @@ const domainAccessDenySchema = z.object({
 	kind: z.literal('domainAccessDeny'),
 });
 
+/** Plan-review denial — user rejected the proposed plan outright. Distinct from
+ *  `approval` with `approved: false + userInput`, which asks the agent to revise. */
+const planDenySchema = z.object({
+	kind: z.literal('planDeny'),
+});
+
 /** Gateway resource-access decision (inputType='resource-decision'). Approval is implied. */
 const resourceDecisionConfirmSchema = z.object({
 	kind: z.literal('resourceDecision'),
@@ -83,6 +89,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	credentialSelectionConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
+	planDenySchema,
 	resourceDecisionConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,

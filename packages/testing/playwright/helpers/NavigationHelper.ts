@@ -106,6 +106,16 @@ export class NavigationHelper {
 	}
 
 	/**
+	 * Navigate to a specific execution within a workflow
+	 * URLs:
+	 * - Existing workflow: /workflow/{workflowId}/executions/{executionId}
+	 */
+	async toExecution(workflowId: string, executionId: string): Promise<void> {
+		const url = `/workflow/${workflowId}/executions/${executionId}`;
+		await this.page.goto(url);
+	}
+
+	/**
 	 * Navigate to a specific folder
 	 * URL: /projects/{projectId}/folders/{folderId}/workflows or /home/folders/{folderId}/workflows
 	 */

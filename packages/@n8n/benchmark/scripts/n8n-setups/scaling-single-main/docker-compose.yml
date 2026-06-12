@@ -39,6 +39,9 @@ services:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n/worker1
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # For binary data test to work
+      - N8N_RESTRICT_FILE_ACCESS_TO=''
+      - N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES=false
       # Queue mode config
       - EXECUTIONS_MODE=queue
       - QUEUE_BULL_REDIS_HOST=redis
@@ -83,6 +86,9 @@ services:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n/worker2
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # For binary data test to work
+      - N8N_RESTRICT_FILE_ACCESS_TO=''
+      - N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES=false
       # Queue mode config
       - EXECUTIONS_MODE=queue
       - QUEUE_BULL_REDIS_HOST=redis

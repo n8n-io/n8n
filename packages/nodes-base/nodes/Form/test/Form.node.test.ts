@@ -484,6 +484,207 @@ describe('Form Node', () => {
 		);
 	});
 
+	describe('webhook method - n8nUserAuth propagation', () => {
+		const authedUser = {
+			id: 'user-1',
+			email: 'user@example.com',
+			firstName: 'Test',
+			lastName: 'User',
+		};
+
+		const setupParentTriggerWithAuth = (
+			authentication: string,
+			includeUserInOutput: boolean | undefined = undefined,
+		) => {
+			mockWebhookFunctions.getParentNodes.mockReturnValue([
+				{
+					type: 'n8n-nodes-base.formTrigger',
+					name: 'Form Trigger',
+					typeVersion: 2.6,
+					disabled: false,
+				},
+			]);
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expr: string) => {
+				if (expr.includes('params.authentication')) return authentication;
+				if (expr.includes('options?.includeUserInOutput')) return includeUserInOutput;
+				if (expr.includes('formMode')) return 'test';
+				return 'test';
+			});
+		};
+
+		it('redirects to /signin on GET when no cookie is present', async () => {
+			const mockResponseObject = {
+				render: jest.fn(),
+				writeHead: jest.fn(),
+				end: jest.fn(),
+				setHeader: jest.fn(),
+				status: jest.fn().mockReturnValue({ send: jest.fn() }),
+			};
+			mockWebhookFunctions.getResponseObject.mockReturnValue(
+				mockResponseObject as unknown as Response,
+			);
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+				originalUrl: '/form-waiting/exec',
+				headers: {},
+			} as unknown as Request);
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>());
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'page';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+			setupParentTriggerWithAuth('n8nUserAuth');
+
+			const result = await form.webhook(mockWebhookFunctions);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponseObject.writeHead).toHaveBeenCalledWith(
+				302,
+				expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
+			);
+			expect(mockResponseObject.render).not.toHaveBeenCalled();
+		});
+
+		it('renders the page when GET with a valid cookie', async () => {
+			const mockResponseObject = {
+				render: jest.fn(),
+				writeHead: jest.fn(),
+				end: jest.fn(),
+				setHeader: jest.fn(),
+				status: jest.fn().mockReturnValue({ send: jest.fn() }),
+			};
+			mockWebhookFunctions.getResponseObject.mockReturnValue(
+				mockResponseObject as unknown as Response,
+			);
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+				originalUrl: '/form-waiting/exec',
+				headers: { cookie: 'n8n-auth=valid.jwt.token' },
+				query: {},
+			} as unknown as Request);
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ type: 'n8n-nodes-base.form' }));
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'page';
+				if (paramName === 'useJson') return false;
+				if (paramName === 'formFields.values') return [{ fieldLabel: 'test' }];
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+			setupParentTriggerWithAuth('n8nUserAuth');
+			mockWebhookFunctions.validateCookieAuth.mockResolvedValue(authedUser);
+
+			await form.webhook(mockWebhookFunctions);
+
+			expect(mockWebhookFunctions.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
+			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger', expect.any(Object));
+		});
+
+		it('includes user info in POST output when authentication is n8nUserAuth', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'POST',
+				contentType: 'multipart/form-data',
+				originalUrl: '/form-waiting/exec',
+				headers: { cookie: 'n8n-auth=valid.jwt.token' },
+				query: {},
+			} as unknown as Request);
+			mockWebhookFunctions.getNode.mockReturnValue(
+				mock<INode>({ type: 'n8n-nodes-base.form', typeVersion: 2.6 }),
+			);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'page';
+				if (paramName === 'useJson') return false;
+				if (paramName === 'formFields.values') return [{ fieldLabel: 'test' }];
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+			mockWebhookFunctions.getBodyData.mockReturnValue({
+				data: { 'field-0': 'value' },
+				files: {},
+			});
+			setupParentTriggerWithAuth('n8nUserAuth', true);
+			mockWebhookFunctions.validateCookieAuth.mockResolvedValue(authedUser);
+
+			const result = await form.webhook(mockWebhookFunctions);
+
+			expect(result.workflowData).toEqual([
+				[
+					{
+						json: expect.objectContaining({ user: authedUser }),
+					},
+				],
+			]);
+		});
+
+		it('omits user info when trigger has includeUserInOutput=false', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'POST',
+				contentType: 'multipart/form-data',
+				originalUrl: '/form-waiting/exec',
+				headers: { cookie: 'n8n-auth=valid.jwt.token' },
+				query: {},
+			} as unknown as Request);
+			mockWebhookFunctions.getNode.mockReturnValue(
+				mock<INode>({ type: 'n8n-nodes-base.form', typeVersion: 2.6 }),
+			);
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'page';
+				if (paramName === 'useJson') return false;
+				if (paramName === 'formFields.values') return [{ fieldLabel: 'test' }];
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+			mockWebhookFunctions.getBodyData.mockReturnValue({
+				data: { 'field-0': 'value' },
+				files: {},
+			});
+			setupParentTriggerWithAuth('n8nUserAuth', false);
+			mockWebhookFunctions.validateCookieAuth.mockResolvedValue(authedUser);
+
+			const result = await form.webhook(mockWebhookFunctions);
+
+			const json = (result.workflowData?.[0]?.[0] as INodeExecutionData).json as Record<
+				string,
+				unknown
+			>;
+			expect(json.user).toBeUndefined();
+		});
+
+		it('skips auth check when trigger has authentication=none', async () => {
+			const mockResponseObject = {
+				render: jest.fn(),
+				writeHead: jest.fn(),
+				end: jest.fn(),
+				setHeader: jest.fn(),
+				status: jest.fn().mockReturnValue({ send: jest.fn() }),
+			};
+			mockWebhookFunctions.getResponseObject.mockReturnValue(
+				mockResponseObject as unknown as Response,
+			);
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+				originalUrl: '/form-waiting/exec',
+				headers: {},
+				query: {},
+			} as unknown as Request);
+			mockWebhookFunctions.getNode.mockReturnValue(mock<INode>({ type: 'n8n-nodes-base.form' }));
+			mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'page';
+				if (paramName === 'useJson') return false;
+				if (paramName === 'formFields.values') return [{ fieldLabel: 'test' }];
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+			setupParentTriggerWithAuth('none');
+
+			await form.webhook(mockWebhookFunctions);
+
+			expect(mockWebhookFunctions.validateCookieAuth).not.toHaveBeenCalled();
+			expect(mockResponseObject.writeHead).not.toHaveBeenCalled();
+			expect(mockResponseObject.render).toHaveBeenCalled();
+		});
+	});
+
 	describe('webhook method - completion and redirect', () => {
 		it('should handle completion operation and redirect', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'GET' } as Request);

@@ -32,9 +32,14 @@ type Props = {
 	credential?: ICredentialsResponse | ICredentialsDecryptedResponse | null;
 	modalBus: EventBus;
 	isSharedGlobally?: boolean;
+	isResolvable?: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), { credential: null, isSharedGlobally: false });
+const props = withDefaults(defineProps<Props>(), {
+	credential: null,
+	isSharedGlobally: false,
+	isResolvable: false,
+});
 
 const emit = defineEmits<{
 	'update:modelValue': [value: ProjectSharingData[]];
@@ -153,8 +158,11 @@ function goToUpgrade() {
 			/>
 		</div>
 		<div v-else>
+			<N8nInfoTip v-if="isResolvable" :bold="false" class="mb-s">
+				{{ i18n.baseText('credentialEdit.credentialSharing.info.dynamicCredential') }}
+			</N8nInfoTip>
 			<N8nInfoTip
-				v-if="credentialPermissions.share || isPersonalSpaceRestricted"
+				v-else-if="credentialPermissions.share || isPersonalSpaceRestricted"
 				:bold="false"
 				class="mb-s"
 			>
@@ -178,6 +186,7 @@ function goToUpgrade() {
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
+				:hide-add-input="isResolvable"
 				:disabled-tooltip="
 					isPersonalSpaceRestricted
 						? i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted')

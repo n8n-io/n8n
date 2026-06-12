@@ -33,15 +33,13 @@ describe('n8n episodic memory policy', () => {
 		const prompt = buildN8nEpisodicMemoryExtractorPrompt({
 			scope: { resourceId: 'user-1' },
 			observationScope: {
-				scopeKind: 'thread',
-				scopeId: 'thread:thread-1:resource:user-1',
+				observationScopeId: 'thread-1',
 			},
 			now: new Date('2026-05-12T15:00:00.000Z'),
 			observations: [
 				{
 					id: 'obs-1',
-					scopeKind: 'thread',
-					scopeId: 'thread:thread-1:resource:user-1',
+					observationScopeId: 'thread-1',
 					marker: 'critical',
 					text: 'User switched memory store choice to Postgres.',
 					parentId: null,

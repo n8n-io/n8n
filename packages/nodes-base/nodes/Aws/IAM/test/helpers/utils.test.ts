@@ -220,9 +220,9 @@ describe('AWS IAM - Helper Functions', () => {
 				return '';
 			});
 
-			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
-				new NodeOperationError(mockNode.getNode(), 'User name should not contain spaces.'),
-			);
+			const execution = validateName.call(mockNode, requestOptions);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow('User name should not contain spaces.');
 		});
 
 		it('should throw an error if userName contains invalid characters', async () => {
@@ -232,11 +232,10 @@ describe('AWS IAM - Helper Functions', () => {
 				return '';
 			});
 
-			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
-				new NodeOperationError(
-					mockNode.getNode(),
-					'User name can have up to 64 characters. Valid characters: letters, numbers, hyphens (-), and underscores (_).',
-				),
+			const execution = validateName.call(mockNode, requestOptions);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow(
+				'User name can have up to 64 characters. Valid characters: letters, numbers, hyphens (-), and underscores (_).',
 			);
 		});
 
@@ -257,9 +256,9 @@ describe('AWS IAM - Helper Functions', () => {
 				return '';
 			});
 
-			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
-				new NodeOperationError(mockNode.getNode(), 'Group name should not contain spaces.'),
-			);
+			const execution = validateName.call(mockNode, requestOptions);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow('Group name should not contain spaces.');
 		});
 
 		it('should throw an error if groupName contains invalid characters', async () => {
@@ -269,11 +268,10 @@ describe('AWS IAM - Helper Functions', () => {
 				return '';
 			});
 
-			await expect(validateName.call(mockNode, requestOptions)).rejects.toThrowError(
-				new NodeOperationError(
-					mockNode.getNode(),
-					'Group name can have up to 128 characters. Valid characters: letters, numbers, hyphens (-), and underscores (_).',
-				),
+			const execution = validateName.call(mockNode, requestOptions);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow(
+				'Group name can have up to 128 characters. Valid characters: letters, numbers, hyphens (-), and underscores (_).',
 			);
 		});
 

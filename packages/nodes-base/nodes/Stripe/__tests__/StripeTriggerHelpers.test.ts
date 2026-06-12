@@ -7,6 +7,7 @@ describe('StripeTriggerHelpers', () => {
 	describe('verifySignature', () => {
 		let mockWebhookFunctions: IWebhookFunctions;
 		const webhookSecret = 'whsec_test123456789';
+		const credentialSecret = 'whsec_credential123456789';
 		const getCurrentTimestamp = () => Math.floor(Date.now() / 1000).toString();
 		const testBody = { type: 'charge.succeeded', id: 'ch_123' };
 		const rawBody = JSON.stringify(testBody);
@@ -21,7 +22,10 @@ describe('StripeTriggerHelpers', () => {
 			mockWebhookFunctions = {
 				getCredentials: jest.fn().mockResolvedValue({
 					secretKey: 'sk_test_123',
-					signatureSecret: webhookSecret,
+					signatureSecret: credentialSecret,
+				}),
+				getWorkflowStaticData: jest.fn().mockReturnValue({
+					webhookSecret,
 				}),
 				getRequestObject: jest.fn().mockReturnValue({
 					header: jest.fn(),
@@ -31,8 +35,59 @@ describe('StripeTriggerHelpers', () => {
 		});
 
 		it('should return true when no signature secret is provided', async () => {
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
 			(mockWebhookFunctions.getCredentials as jest.Mock).mockResolvedValue({
 				secretKey: 'sk_test_123',
+			});
+
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			expect(result).toBe(true);
+		});
+
+		it('should skip verification when no signature secret is provided and a stale timestamp is present', async () => {
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+			(mockWebhookFunctions.getCredentials as jest.Mock).mockResolvedValue({
+				secretKey: 'sk_test_123',
+			});
+			const oldTimestamp = (Math.floor(Date.now() / 1000) - 360).toString();
+			const staleSignature = generateValidSignature(oldTimestamp, rawBody, webhookSecret);
+			const mockHeader = jest.fn().mockReturnValue(staleSignature);
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				header: mockHeader,
+				rawBody: Buffer.from(rawBody),
+			});
+
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			expect(result).toBe(true);
+		});
+
+		it('should use the stored webhook secret when available', async () => {
+			(mockWebhookFunctions.getCredentials as jest.Mock).mockRejectedValue(
+				new Error('Credential secret should not be read when webhook secret exists'),
+			);
+			const timestamp = getCurrentTimestamp();
+			const validSignature = generateValidSignature(timestamp, rawBody, webhookSecret);
+			const mockHeader = jest.fn().mockReturnValue(validSignature);
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				header: mockHeader,
+				rawBody: Buffer.from(rawBody),
+			});
+
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			expect(result).toBe(true);
+		});
+
+		it('should fall back to credential signature secret when stored webhook secret is missing', async () => {
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
+			const timestamp = getCurrentTimestamp();
+			const validSignature = generateValidSignature(timestamp, rawBody, credentialSecret);
+			const mockHeader = jest.fn().mockReturnValue(validSignature);
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				header: mockHeader,
+				rawBody: Buffer.from(rawBody),
 			});
 
 			const result = await verifySignature.call(mockWebhookFunctions);
@@ -168,22 +223,16 @@ describe('StripeTriggerHelpers', () => {
 			expect(result).toBe(false);
 		});
 
-		it('should return false when signatureSecret is not a string', async () => {
-			const timestamp = getCurrentTimestamp();
-			const validSignature = generateValidSignature(timestamp, rawBody, webhookSecret);
-			const mockHeader = jest.fn().mockReturnValue(validSignature);
-			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
-				header: mockHeader,
-				rawBody: Buffer.from(rawBody),
-			});
+		it('should return true when neither stored nor credential signature secret is usable', async () => {
+			(mockWebhookFunctions.getWorkflowStaticData as jest.Mock).mockReturnValue({});
 			(mockWebhookFunctions.getCredentials as jest.Mock).mockResolvedValue({
 				secretKey: 'sk_test_123',
-				signatureSecret: 123, // Not a string
+				signatureSecret: 123,
 			});
 
 			const result = await verifySignature.call(mockWebhookFunctions);
 
-			expect(result).toBe(false);
+			expect(result).toBe(true);
 		});
 
 		it('should return false when timestamp is older than 5 minutes', async () => {

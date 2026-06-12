@@ -12,6 +12,10 @@ export default {
 				control: 'text',
 			},
 		},
+		size: {
+			control: 'select',
+			options: ['sm', 'md', 'lg'],
+		},
 	},
 	parameters: {
 		docs: {
@@ -34,6 +38,19 @@ const SingleTagTemplate: StoryFn = (args, { argTypes }) => ({
 export const SingleTag = SingleTagTemplate.bind({});
 SingleTag.args = {
 	text: 'tag name',
+	size: 'sm',
+};
+
+export const MediumTag = SingleTagTemplate.bind({});
+MediumTag.args = {
+	text: 'tag name',
+	size: 'md',
+};
+
+export const LargeTag = SingleTagTemplate.bind({});
+LargeTag.args = {
+	text: 'tag name',
+	size: 'lg',
 };
 
 const TagListTemplate: StoryFn = (args) => ({

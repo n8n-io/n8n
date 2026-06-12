@@ -1275,6 +1275,40 @@ describe('WorkflowDataProxy', () => {
 			const data = { name: 'John' };
 			expect(proxy.$jmespath(data, 'name')).toBe(proxy.$jmesPath(data, 'name'));
 		});
+
+		test.each([
+			['constructor'],
+			['__proto__'],
+			['prototype'],
+			['getPrototypeOf'],
+			['user.constructor'],
+			['"constructor"'],
+			['a.b."__proto__"'],
+		])('should reject query "%s"', (query) => {
+			expect(() => proxy.$jmesPath({ a: 1 }, query)).toThrow(ExpressionError);
+			expect(() => proxy.$jmesPath({ a: 1 }, query)).toThrow(/due to security concerns/);
+		});
+
+		test('should reject query containing restricted identifier on aliased function', () => {
+			expect(() => proxy.$jmespath({ a: 1 }, 'constructor')).toThrow(ExpressionError);
+		});
+
+		test('should accept queries with restricted identifiers as substrings', () => {
+			const data = { constructorName: 'Widget', prototypeId: 42 };
+			expect(proxy.$jmesPath(data, 'constructorName')).toBe('Widget');
+			expect(proxy.$jmesPath(data, 'prototypeId')).toBe(42);
+		});
+
+		test.each([
+			['"\\u005f\\u005fproto\\u005f\\u005f"'],
+			['"\\u0063onstructor"'],
+			['"\\u0070rototype"'],
+			['"\\u005f\\u005fproto\\u005f\\u005f"."\\u0063onstructor"'],
+			['"foo\\bar"'],
+		])('should reject query "%s" containing backslash escapes', (query) => {
+			expect(() => proxy.$jmesPath({ a: 1 }, query)).toThrow(ExpressionError);
+			expect(() => proxy.$jmesPath({ a: 1 }, query)).toThrow(/due to security concerns/);
+		});
 	});
 
 	describe('$mode', () => {

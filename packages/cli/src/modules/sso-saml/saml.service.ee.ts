@@ -1,5 +1,6 @@
 import type { SamlPreferences, SamlPreferencesAttributeMapping } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { createHttpProxyAgent, createHttpsProxyAgent } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
 import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
@@ -8,10 +9,14 @@ import { Container, Service } from '@n8n/di';
 import axios from 'axios';
 import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
 import type express from 'express';
-import { Cipher, createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
+import { Cipher, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
-import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
+import type {
+	BindingContext,
+	ESamlHttpRequest,
+	PostBindingContext,
+} from 'samlify/types/src/entity';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -720,10 +725,14 @@ export class SamlService {
 			const idp = metadataOverride
 				? await this.createIdentityProviderFromMetadata(metadataOverride)
 				: this.getIdentityProviderInstance();
+			const samlRequest: ESamlHttpRequest = {
+				body: req.body,
+				query: req.query as Record<string, string | undefined>,
+			};
 			parsedSamlResponse = await this.getServiceProviderInstance().parseLoginResponse(
 				idp,
 				binding,
-				req,
+				samlRequest,
 			);
 		} catch (error) {
 			// throw error;

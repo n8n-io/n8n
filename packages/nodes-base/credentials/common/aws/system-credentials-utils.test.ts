@@ -28,15 +28,17 @@ import * as systemCredentialsUtils from './system-credentials-utils';
 
 const mockEnvGetter = jest.fn();
 
-jest.spyOn(systemCredentialsUtils, 'envGetter').mockImplementation(mockEnvGetter);
-
-const { envGetter, getSystemCredentials, credentialsResolver } = systemCredentialsUtils;
+const { getSystemCredentials, credentialsResolver } = systemCredentialsUtils;
+const envGetter = (...args: Parameters<typeof systemCredentialsUtils.envGetter>) =>
+	systemCredentialsUtils.envGetter(...args);
 
 describe('system-credentials-utils', () => {
 	let mockSecurityConfigInstance: MockSecurityConfig;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+
+		jest.spyOn(systemCredentialsUtils, 'envGetter').mockImplementation(mockEnvGetter);
 
 		mockSecurityConfigInstance = new MockSecurityConfig();
 		mockContainer.get.mockReturnValue(mockSecurityConfigInstance);

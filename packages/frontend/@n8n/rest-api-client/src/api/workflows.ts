@@ -28,6 +28,7 @@ export interface WorkflowData {
 	versionId?: string;
 	activeVersionId?: string | null;
 	meta?: WorkflowMetadata;
+	nodeGroups?: IWorkflowGroup[];
 }
 
 export interface WorkflowDataUpdate {

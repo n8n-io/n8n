@@ -16,7 +16,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import { ChatIntegrationService } from '../chat-integration.service';
-import type { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 /**
  * Test double — exposes the registry without invoking the real Chat SDK
@@ -49,12 +49,13 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		id: 'agent-1',
 		projectId: 'project-1',
 		integrations: [],
-		publishedVersion: null,
+		activeVersionId: null,
+		activeVersion: null,
 		...overrides,
 	} as unknown as Agent;
 }
 
-const slackIntegration: AgentCredentialIntegrationConfig = {
+const slackIntegration: AgentIntegrationConfig = {
 	type: 'slack',
 	credentialId: 'cred-1',
 };
@@ -109,7 +110,7 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	});
 
 	it('skips connect when the agent is not published', async () => {
-		const agent = makeAgent({ publishedVersion: null });
+		const agent = makeAgent({ activeVersionId: null });
 
 		await service.syncToConfig(agent, [], [slackIntegration]);
 
@@ -117,7 +118,7 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	});
 
 	it('still disconnects removed integrations even when the agent is not published', async () => {
-		const agent = makeAgent({ publishedVersion: null });
+		const agent = makeAgent({ activeVersionId: null });
 
 		await service.syncToConfig(agent, [slackIntegration], []);
 
@@ -722,7 +723,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 		it('publishes settings alongside a connect broadcast', async () => {
 			const publisher = mock<Publisher>();
 			const { service } = buildServiceWith({ multiMainEnabled: true, publisher });
-			const integration: AgentCredentialIntegrationConfig = {
+			const integration: AgentIntegrationConfig = {
 				type: 'telegram',
 				credentialId: 'c1',
 				settings: {

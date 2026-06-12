@@ -73,7 +73,7 @@ export function buildModelRecommendationsSection(catalog: ProviderCatalog): stri
 	if (rows.length === 0) return null;
 
 	return `\
-## Recommended LLM models
+### Recommended LLM Models
 
 These recommendations are derived from the live models.dev catalog exposed by the agents SDK.
 The provider lists are selected by newest release_date first, limited to

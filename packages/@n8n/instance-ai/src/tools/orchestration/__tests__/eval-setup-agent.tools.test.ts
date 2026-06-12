@@ -1,6 +1,6 @@
 import type { BuiltTool } from '@n8n/agents';
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { createToolRegistry } from '../../../tool-registry';
 import type { InstanceAiContext, OrchestrationContext } from '../../../types';
@@ -17,11 +17,11 @@ function makeContext(
 ): OrchestrationContext {
 	const domainContext = mock<InstanceAiContext>();
 	domainContext.permissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS, updateWorkflow };
-	domainContext.workflowService.get = jest
+	domainContext.workflowService.get = vi
 		.fn()
 		.mockResolvedValue({ id: 'w1', name: 'Test', nodes: [], connections: {}, active: false });
-	domainContext.workflowService.updateFromWorkflowJSON = jest.fn().mockResolvedValue(undefined);
-	domainContext.workflowService.updateVersion = jest.fn().mockResolvedValue(undefined);
+	domainContext.workflowService.updateFromWorkflowJSON = vi.fn().mockResolvedValue(undefined);
+	domainContext.workflowService.updateVersion = vi.fn().mockResolvedValue(undefined);
 
 	const ctx = mock<OrchestrationContext>();
 	ctx.domainTools = createToolRegistry([
@@ -33,7 +33,7 @@ function makeContext(
 	ctx.runId = 'run-1';
 	ctx.orchestratorAgentId = 'root-agent';
 	ctx.modelId = 'test-model' as OrchestrationContext['modelId'];
-	ctx.eventBus = { publish: jest.fn() } as unknown as OrchestrationContext['eventBus'];
+	ctx.eventBus = { publish: vi.fn() } as unknown as OrchestrationContext['eventBus'];
 	ctx.tracing = undefined;
 	return ctx;
 }
@@ -49,7 +49,7 @@ describe('buildEvalSetupTools', () => {
 	it('allows saving workflow JSON without prompting when parent permission is require_approval', async () => {
 		const ctx = makeContext('require_approval');
 		const tools = buildEvalSetupTools(ctx);
-		const suspend = jest.fn();
+		const suspend = vi.fn();
 		const workflows = tools.get('workflows');
 		const workflow = { name: 'Eval setup', nodes: [], connections: {} };
 
@@ -104,7 +104,7 @@ describe('buildEvalSetupTools', () => {
 describe('startEvalSetupAgentTask', () => {
 	it('deduplicates eval setup background tasks by workflow id', () => {
 		const ctx = makeContext('require_approval');
-		ctx.spawnBackgroundTask = jest.fn().mockReturnValue({
+		ctx.spawnBackgroundTask = vi.fn().mockReturnValue({
 			status: 'started',
 			taskId: 'task-1',
 			agentId: 'agent-1',

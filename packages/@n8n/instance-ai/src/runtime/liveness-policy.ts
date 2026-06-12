@@ -21,8 +21,8 @@ export const INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG = {
 	confirmationTimeoutMs: DAY_MS,
 	backgroundTaskIdleTimeoutMs: 10 * MINUTE_MS,
 	backgroundTaskMaxLifetimeMs: 30 * MINUTE_MS,
-	activeRunIdleTimeoutMs: 10 * MINUTE_MS,
-	activeRunMaxLifetimeMs: 30 * MINUTE_MS,
+	activeRunIdleTimeoutMs: 0,
+	activeRunMaxLifetimeMs: DAY_MS,
 } satisfies InstanceAiLivenessPolicyConfig;
 
 export function createInstanceAiLivenessPolicyConfig(

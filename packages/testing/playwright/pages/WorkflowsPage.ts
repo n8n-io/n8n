@@ -125,10 +125,6 @@ export class WorkflowsPage extends BasePage {
 		return this.getFolderBreadcrumbsActionToggle().getByTestId(`action-${actionName}`);
 	}
 
-	addFolderButton() {
-		return this.page.getByTestId('add-folder-button');
-	}
-
 	// Add region for actions
 
 	/**

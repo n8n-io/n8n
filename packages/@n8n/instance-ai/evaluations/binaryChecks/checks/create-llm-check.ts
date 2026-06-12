@@ -3,13 +3,14 @@ import type { Agent } from '@n8n/agents';
 import { createEvalAgent, extractText } from '../../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../../clients/n8n-client';
 import { parseJudgeVerdict, REASONING_FIRST_SUFFIX } from '../../utils/llm-judge';
-import type { BinaryCheck, BinaryCheckContext } from '../types';
+import type { BinaryCheck, BinaryCheckContext, CheckDimension } from '../types';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 interface LlmCheckOptions {
 	name: string;
 	description: string;
+	dimension: CheckDimension;
 	systemPrompt: string;
 	humanTemplate: string;
 	/**
@@ -47,15 +48,16 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 		name: options.name,
 		description: options.description,
 		kind: 'llm',
+		dimension: options.dimension,
 		async run(workflow: WorkflowResponse, ctx: BinaryCheckContext) {
 			if (!ctx.modelId) {
-				return { pass: true, comment: 'Skipped: no modelId in context' };
+				return { pass: true, applicable: false, comment: 'Skipped: no modelId in context' };
 			}
 
 			if (options.skipIf) {
 				const skipMessage = options.skipIf(workflow, ctx);
 				if (skipMessage) {
-					return { pass: true, comment: skipMessage };
+					return { pass: true, applicable: false, comment: skipMessage };
 				}
 			}
 

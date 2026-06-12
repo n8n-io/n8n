@@ -1,6 +1,6 @@
 {
   "name": "@n8n/extension-sdk",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "type": "module",
   "files": [
     "dist",
@@ -36,9 +36,10 @@
     "typecheck:frontend": "vue-tsc --noEmit --project tsconfig.frontend.json",
     "typecheck:backend": "tsc --noEmit --project tsconfig.backend.json",
     "build": "pnpm \"/^typecheck:.+/\" && pnpm clean && tsdown && pnpm create-json-schema",
+    "build:unchecked": "pnpm run build",
     "create-json-schema": "tsx scripts/create-json-schema.ts",
     "preview": "vite preview",
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "peerDependencies": {
     "vue": "catalog:frontend",
@@ -57,7 +58,7 @@
     "zod-to-json-schema": "catalog:",
     "tsx": "catalog:"
   },
-  "license": "https://docs.n8n.io/sustainable-use-license/",
+  "license": "LicenseRef-n8n-sustainable-use",
   "dependencies": {
     "zod": "catalog:"
   }

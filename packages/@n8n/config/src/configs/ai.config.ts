@@ -1,3 +1,5 @@
+import { Time } from '@n8n/constants';
+
 import { Config, Env } from '../decorators';
 
 @Config
@@ -9,10 +11,10 @@ export class AiConfig {
 	/**
 	 * Maximum time in milliseconds to wait for an HTTP response from an AI service.
 	 * Matches the maximum workflow execution timeout, EXECUTIONS_TIMEOUT_MAX (1 hour) so AI calls do not outlive executions.
-	 * Default: 3600000 (1 hour).
+	 * Default: 1 hour.
 	 */
 	@Env('N8N_AI_TIMEOUT_MAX')
-	timeout: number = 3600000;
+	timeout: number = 1 * Time.hours.toMilliseconds;
 
 	/**
 	 * Whether workflow and node parameter values may be sent to AI providers.

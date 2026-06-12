@@ -19,6 +19,7 @@ import SessionTimelineChart from '@/features/agents/components/SessionTimelineCh
 import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
 import SessionTimelineTable from '@/features/agents/components/SessionTimelineTable.vue';
 import SessionDetailPanel from '@/features/agents/components/SessionDetailPanel.vue';
+import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import {
 	flattenExecutionsToTimelineItems,
 	computeIdleRanges,
@@ -26,18 +27,14 @@ import {
 	itemFilterKey,
 	chartBlockColor,
 	filteredTimelineItemIndexes,
+	isSubAgentTimelineItem,
 } from '@/features/agents/session-timeline.utils';
+import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
+import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
-import {
-	N8nBreadcrumbs,
-	N8nButton,
-	N8nDropdownMenu,
-	N8nIcon,
-	N8nIconButton,
-	N8nInput,
-} from '@n8n/design-system';
+import { N8nIcon, N8nInput } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
@@ -66,7 +63,24 @@ const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
 let loadThreadDetailRequestId = 0;
 
-const items = computed<TimelineItem[]>(() => flattenExecutionsToTimelineItems(executions.value));
+const baseItems = computed<TimelineItem[]>(() =>
+	flattenExecutionsToTimelineItems(executions.value),
+);
+
+// Resolve sub-agent ids to friendly names, loaded lazily and only when the
+// session actually contains delegations (mirrors how the chat resolves the
+// delegate step label).
+const { subAgentNameById } = useSubAgentNames(projectId, () =>
+	baseItems.value.some(isSubAgentTimelineItem),
+);
+
+const items = computed<TimelineItem[]>(() =>
+	baseItems.value.map((item) => {
+		if (!isSubAgentTimelineItem(item)) return item;
+		const name = resolveSubAgentName(item.toolInput, subAgentNameById.value);
+		return name ? { ...item, subAgentName: name } : item;
+	}),
+);
 const idleRanges = computed(() => computeIdleRanges(items.value));
 const bounds = computed(() => sessionBounds(items.value));
 
@@ -86,9 +100,6 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.suspension');
 		case 'suspension-waiting':
 			return i18n.baseText('agentSessions.timeline.waitingForUser');
-		case 'agentSessions.timeline.tool.richInteraction':
-		case 'agentSessions.timeline.tool.richInteractionDisplay':
-			return i18n.baseText(key);
 		default:
 			return key;
 	}
@@ -199,6 +210,14 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string, SessionDropd
 const selectedItem = computed<TimelineItem | null>(() =>
 	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
 );
+
+const totalTokens = computed(() => {
+	if (!thread.value) return 0;
+	return thread.value.totalPromptTokens + thread.value.totalCompletionTokens;
+});
+
+const totalCost = computed(() => thread.value?.totalCost ?? 0);
+const durationLabel = computed(() => formatDuration(thread.value?.totalDuration ?? 0));
 
 const visibleItemIndexes = computed(() =>
 	filteredTimelineItemIndexes(items.value, selectedFilters.value, searchQuery.value, labelForKey),
@@ -341,73 +360,21 @@ function onSessionSelect(nextThreadId: string) {
 
 <template>
 	<div :class="$style.view">
-		<div :class="$style.topBar">
-			<div :class="$style.topBarLeft">
-				<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
-					<template #append>
-						<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
-						<N8nDropdownMenu
-							:items="sessionOptions"
-							placement="bottom-start"
-							:extra-popper-class="$style.sessionDropdownMenu"
-							data-testid="session-header-switcher"
-							@select="onSessionSelect"
-						>
-							<template #trigger>
-								<N8nButton
-									variant="ghost"
-									size="small"
-									:class="$style.switcherButton"
-									:aria-label="i18n.baseText('agentSessions.sessionName')"
-								>
-									<span :class="$style.switcherLabel">{{ sessionTitle }}</span>
-									<N8nIcon icon="chevron-down" :size="14" />
-								</N8nButton>
-							</template>
-							<template #item-label="{ item }">
-								<span :class="$style.sessionDropdownName">
-									{{ item.label }}
-								</span>
-							</template>
-							<template #item-trailing="{ item }">
-								<span v-if="item.data?.date" :class="$style.sessionDropdownDate">
-									{{ item.data.date }}
-								</span>
-							</template>
-						</N8nDropdownMenu>
-					</template>
-				</N8nBreadcrumbs>
-			</div>
-			<div v-if="thread" :class="$style.topBarRight">
-				<span v-if="triggerSource" :class="$style.metricItem">
-					<N8nIcon :icon="triggerIcon" :size="12" />
-					<span>{{ triggerLabel }}</span>
-				</span>
-				<span :class="$style.sep">·</span>
-				<span :class="$style.metricItem">
-					<N8nIcon icon="circle-dollar-sign" :size="12" />
-					<span>
-						{{ (thread.totalPromptTokens + thread.totalCompletionTokens).toLocaleString() }}t (${{
-							thread.totalCost.toFixed(4)
-						}})
-					</span>
-				</span>
-				<span :class="$style.sep">·</span>
-				<span :class="$style.metricItem">
-					<N8nIcon icon="clock" :size="12" />
-					<span>{{ formatDuration(thread.totalDuration) }}</span>
-				</span>
-				<N8nIconButton
-					icon="x"
-					variant="ghost"
-					size="small"
-					:class="$style.closeButton"
-					:aria-label="i18n.baseText('generic.close')"
-					data-test-id="agent-session-timeline-close"
-					@click="closeTimeline"
-				/>
-			</div>
-		</div>
+		<AgentSessionTimelineHeader
+			:breadcrumb-items="breadcrumbItems"
+			:session-title="sessionTitle"
+			:session-options="sessionOptions"
+			:show-metrics="Boolean(thread)"
+			:trigger-source="triggerSource"
+			:trigger-icon="triggerIcon"
+			:trigger-label="triggerLabel"
+			:total-tokens="totalTokens"
+			:total-cost="totalCost"
+			:duration-label="durationLabel"
+			@breadcrumb-select="onBreadcrumbSelect"
+			@session-select="onSessionSelect"
+			@close="closeTimeline"
+		/>
 
 		<div v-if="!loading" :class="$style.subHeader">
 			<div :class="$style.search">
@@ -481,89 +448,6 @@ function onSessionSelect(nextThreadId: string) {
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
-}
-.topBar {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--md);
-	background-color: var(--background--surface);
-	border-bottom: var(--border);
-	flex-shrink: 0;
-	height: var(--height--4xl);
-}
-.topBarLeft {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	min-width: 0;
-}
-.topBarRight {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--medium);
-	user-select: none;
-	color: var(--text-color--subtler);
-	margin-left: auto;
-}
-.sep {
-	color: var(--text-color--subtler);
-}
-.metricItem {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	white-space: nowrap;
-}
-.closeButton {
-	margin-left: var(--spacing--3xs);
-	color: var(--text-color--subtler);
-}
-.crumbSeparator {
-	color: var(--border-color);
-	margin: 0 var(--spacing--4xs);
-	user-select: none;
-}
-.switcherButton {
-	font-size: var(--font-size--sm);
-	gap: var(--spacing--4xs);
-	margin-top: var(--spacing--5xs);
-}
-.switcherLabel {
-	max-width: 200px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.sessionDropdownMenu {
-	min-width: 360px;
-}
-:global(.session-dropdown-item-active),
-:global(.session-dropdown-item-active:hover),
-:global(.session-dropdown-item-active:focus),
-:global(.session-dropdown-item-active[data-highlighted]) {
-	background-color: var(--background--active);
-}
-.sessionDropdownName {
-	display: block;
-	max-width: 60%;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.sessionDropdownDate {
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--3xs);
-	text-align: right;
-	white-space: nowrap;
-	margin-left: auto;
-}
-.sessionTitle {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
 }
 .subHeader {
 	display: flex;

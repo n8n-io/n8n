@@ -4,7 +4,12 @@ import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
-import type { AgentJsonConfig, AgentJsonToolRef, AgentResource } from '../types';
+import type {
+	AgentJsonConfig,
+	AgentJsonMcpServerConfig,
+	AgentJsonToolRef,
+	AgentResource,
+} from '../types';
 import AgentBuilderUnconfiguredEmptyState from './AgentBuilderUnconfiguredEmptyState.vue';
 import AgentChatPanel from './AgentChatPanel.vue';
 import AgentChatQuickActions from './AgentChatQuickActions.vue';
@@ -19,7 +24,6 @@ const props = defineProps<{
 	connectedTriggers: string[];
 	initialPrompt?: string;
 	isBuilderConfigured: boolean;
-	isPublished: boolean;
 	isFullWidth: boolean;
 	canEditAgent: boolean;
 	beforeBuildSend?: () => Promise<void> | void;
@@ -27,12 +31,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'config-updated': [];
+	'build-done': [];
 	'update:streaming': [streaming: boolean];
 	'update:tools': [tools: AgentJsonToolRef[]];
+	'update:mcp-servers': [mcpServers: AgentJsonMcpServerConfig[]];
 	'update:connected-triggers': [triggers: string[]];
 	'update:full-width': [fullWidth: boolean];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'agent-published': [agent: AgentResource];
+	'agent-changed': [];
 }>();
 
 const i18n = useI18n();
@@ -84,21 +91,25 @@ const sharedInputDraft = ref('');
 				:can-edit-agent="canEditAgent"
 				:before-send="beforeBuildSend"
 				@config-updated="emit('config-updated')"
+				@build-done="emit('build-done')"
 				@update:streaming="emit('update:streaming', $event)"
 			>
 				<template v-if="canEditAgent" #above-input>
 					<div :class="$style.quickActionsRow">
 						<AgentChatQuickActions
 							:tools="localConfig?.tools ?? []"
+							:mcp-servers="localConfig?.mcpServers ?? []"
 							:project-id="projectId"
 							:agent-id="agentId"
-							:agent-name="agentName"
-							:is-published="isPublished"
 							:connected-triggers="connectedTriggers"
+							:is-published="
+								agent?.activeVersionId !== null && agent?.activeVersionId !== undefined
+							"
 							@update:tools="emit('update:tools', $event)"
+							@update:mcp-servers="emit('update:mcp-servers', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
-							@agent-published="emit('agent-published', $event)"
+							@agent-changed="emit('agent-changed')"
 						/>
 					</div>
 				</template>

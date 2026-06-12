@@ -145,6 +145,7 @@ describe('Projects in Public API', () => {
 				type: 'team',
 				creatorId: owner.id,
 				description: null,
+				customTelemetryTags: [],
 				id: expect.any(String),
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
