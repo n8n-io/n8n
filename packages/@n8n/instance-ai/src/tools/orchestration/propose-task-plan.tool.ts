@@ -12,7 +12,10 @@ import { desktopAssistantTaskPlanTriggerKinds } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
-import { normalizeDescriptionParts } from '../../desktop-assistant/description-parts';
+import {
+	normalizeDescriptionParts,
+	PARAM_OPTIONS_COUNT_GUIDANCE,
+} from '../../desktop-assistant/description-parts';
 import { patchThread, type PatchableThreadMemory } from '../../storage/thread-patch';
 
 /** Thread-metadata key the proposed plan is persisted under. */
@@ -45,18 +48,18 @@ const inputSchema = sanitizeInputSchema(
 						.string()
 						.optional()
 						.describe(
-							'For param parts: the concrete value the user may want to tweak — a schedule ("every Friday at 9am"), a service (Gmail, Slack), a folder. Short, 1-4 words',
+							'For param parts: the concrete value the user may want to tweak — a schedule ("every Friday at 9am"), a delivery channel, a service, a folder. Short, 1-4 words',
 						),
 					options: z
 						.array(z.string())
 						.optional()
 						.describe(
-							'For param parts: 2-3 realistic alternatives the user could switch to (do not repeat the current value)',
+							`For param parts: realistic alternatives the user could switch to (do not repeat the current value), ${PARAM_OPTIONS_COUNT_GUIDANCE}. Always provide some — each param renders as a dropdown in the draft view`,
 						),
 				}),
 			)
 			.describe(
-				'Segmented one-sentence description of the planned task. Concatenated parts must read as one fluent sentence describing the user\'s intent, not mechanics — e.g. text "Send me a short news brief " + param "every weekday morning" + text ".". Never mention nodes, triggers, or n8n internals. Mark as params ONLY clearly tweakable concrete values; at most 4 params, prefer fewer',
+				'Segmented one-sentence description of the planned task. Concatenated parts must read as one fluent sentence describing the user\'s intent, not mechanics — e.g. text "Send me a short news brief " + param "every weekday morning" + text ".". Never mention nodes, triggers, or n8n internals. Mark as params ONLY clearly tweakable concrete values; at most 4 params, prefer fewer. The channel a result is delivered through counts as one — keep it out of the prose',
 			),
 		trigger: z
 			.enum(desktopAssistantTaskPlanTriggerKinds)

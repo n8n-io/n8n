@@ -3,7 +3,7 @@ import { N8nIcon, N8nLogo, N8nNodeIcon, N8nSpinner, N8nText } from '@n8n/design-
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-import InlineChipPicker from '../components/InlineChipPicker.vue';
+import TaskDescriptionParts from '../components/TaskDescriptionParts.vue';
 import TaskStatusBadge from '../components/TaskStatusBadge.vue';
 
 import type { TaskCardVariant } from '../assistant/use-assistant-screen';
@@ -219,16 +219,12 @@ function connect() {
 				<!-- The description sentence: params render emphasized in read mode and
 				     as inline dropdown chips in edit mode. -->
 				<p :class="$style.sentence">
-					<template v-for="(part, index) in detail.parts" :key="index">
-						<span v-if="part.kind === 'text'">{{ part.text }}</span>
-						<InlineChipPicker
-							v-else-if="editing"
-							:value="pickerValues[part.id] ?? part.value"
-							:options="part.options"
-							@change="setParamValue(part.id, $event)"
-						/>
-						<strong v-else :class="$style.paramValue">{{ part.value }}</strong>
-					</template>
+					<TaskDescriptionParts
+						:parts="detail.parts"
+						:editing="editing"
+						:values="pickerValues"
+						@change="setParamValue"
+					/>
 				</p>
 
 				<p v-if="updateFailed" :class="$style.inlineError" role="alert">
@@ -405,12 +401,6 @@ function connect() {
 	font-weight: 300;
 	line-height: 1.65;
 	color: var(--da-subtler);
-}
-
-/* Read-mode emphasis of an editable value — the same words that become a chip in edit mode. */
-.paramValue {
-	font-weight: 600;
-	color: var(--da-text);
 }
 
 .state {

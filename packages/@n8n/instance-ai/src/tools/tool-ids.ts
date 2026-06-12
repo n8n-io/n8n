@@ -24,6 +24,7 @@ export const ORCHESTRATION_TOOL_IDS = {
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
 	REPORT_DESKTOP_TASK_OUTCOME: 'report-desktop-task-outcome',
 	PROPOSE_TASK_PLAN: 'propose-task-plan',
+	REPORT_PROMOTE_OUTCOME: 'report-promote-outcome',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {
@@ -57,6 +58,8 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// Same desktop one-shot scope; must be callable as the run's FIRST action,
 	// so it can never sit behind search_tools.
 	ORCHESTRATION_TOOL_IDS.PROPOSE_TASK_PLAN,
+	// Same for desktop promote runs; the required FINAL call of the run.
+	ORCHESTRATION_TOOL_IDS.REPORT_PROMOTE_OUTCOME,
 	'web-search',
 	'fetch-url',
 ]);

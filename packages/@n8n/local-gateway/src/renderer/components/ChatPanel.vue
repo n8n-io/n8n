@@ -37,6 +37,11 @@ async function submit() {
 	await messagesRef.value?.send(value);
 }
 
+/** Best-effort: the run's own `run-finish` (status `cancelled`) clears busy. */
+function stop() {
+	if (chatOverlay.threadId) void window.electronAPI.cancelThreadRun(chatOverlay.threadId);
+}
+
 function onTitleChanged(title: string, isFallback?: boolean) {
 	setChatTitle(title, { fallback: isFallback });
 }
@@ -62,7 +67,9 @@ function onTitleChanged(title: string, isFallback?: boolean) {
 				:placeholder="placeholder"
 				:input-aria-label="i18n.baseText('desktopAssistant.chat.inputAriaLabel')"
 				:send-aria-label="i18n.baseText('desktopAssistant.chat.send')"
+				:stop-aria-label="i18n.baseText('desktopAssistant.chat.stop')"
 				@submit="submit"
+				@stop="stop"
 			/>
 		</div>
 	</div>

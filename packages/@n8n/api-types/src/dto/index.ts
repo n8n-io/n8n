@@ -64,6 +64,7 @@ export {
 } from './desktop-assistant/desktop-assistant-recommendations-request.dto';
 export {
 	desktopAssistantDescriptionPartSchema,
+	DESKTOP_ASSISTANT_PART_MAX_OPTIONS,
 	type DesktopAssistantDescriptionPart,
 	type DesktopAssistantTaskDetailResponse,
 } from './desktop-assistant/desktop-assistant-task-detail-response.dto';

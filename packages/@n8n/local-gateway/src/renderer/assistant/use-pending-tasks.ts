@@ -9,6 +9,7 @@ import { reactive, readonly } from 'vue';
 
 import { watchAssistantRun } from './run-watcher';
 import type { PromoteAssistantThreadOptions } from '../../shared/types';
+import { getThreadPromptWatcher } from '../permissions/thread-prompt-watcher';
 
 export interface PendingTask {
 	threadId: string;
@@ -65,12 +66,15 @@ async function runPromotion(
 			notifySaved();
 			return;
 		}
-		if (!result.runId) {
-			// `building` without a run to watch shouldn't happen; fail rather than spin forever.
-			failEntry(threadId);
+		if (result.status === 'failed') {
+			failEntry(threadId, result.reason);
 			return;
 		}
 
+		// The build run can suspend on permission prompts (e.g. research domain
+		// access); track the thread so they surface app-wide. Auto-released on
+		// run-finish.
+		getThreadPromptWatcher().trackTaskThread(threadId, result.runId);
 		const run = await watchAssistantRun(threadId, result.runId);
 		if (isDismissed(threadId)) return;
 		if (!run.ok) {

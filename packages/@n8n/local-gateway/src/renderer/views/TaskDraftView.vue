@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, toRaw } from 'vue';
 
-import InlineChipPicker from '../components/InlineChipPicker.vue';
 import MinutesChip from '../components/MinutesChip.vue';
+import TaskDescriptionParts from '../components/TaskDescriptionParts.vue';
 
 import { usePendingTasks } from '../assistant/use-pending-tasks';
 import { useAssistantScreen } from '../assistant/use-assistant-screen';
@@ -47,11 +47,18 @@ const pickerValues = ref<Record<string, string>>(
 );
 const minutes = ref(props.plan.estimatedMinutesSaved ?? DEFAULT_TIME_SAVED_MIN);
 
-/** The plan's parts with the user's picked values baked in. */
+/** The plan's parts with the user's picked values baked in. A changed param
+ *  keeps the full choice set: the plan's value takes the pick's slot in
+ *  `options`, so it stays selectable in the detail view later.
+ *  Unchanged parts are unwrapped with `toRaw` — these objects cross the IPC
+ *  boundary, and reactive proxies fail structured clone. */
 function buildConfiguredParts(): DesktopAssistantDescriptionPart[] {
-	return props.plan.parts.map((part) =>
-		part.kind === 'param' ? { ...part, value: pickerValues.value[part.id] ?? part.value } : part,
-	);
+	return props.plan.parts.map((part) => {
+		if (part.kind !== 'param') return toRaw(part);
+		const value = pickerValues.value[part.id] ?? part.value;
+		if (value === part.value) return toRaw(part);
+		return { ...part, value, options: [part.value, ...part.options.filter((o) => o !== value)] };
+	});
 }
 
 function setItUp() {
@@ -85,15 +92,12 @@ function setItUp() {
 			</div>
 
 			<p :class="$style.sentence">
-				<template v-for="(part, index) in props.plan.parts" :key="index">
-					<span v-if="part.kind === 'text'">{{ part.text }}</span>
-					<InlineChipPicker
-						v-else
-						:value="pickerValues[part.id]"
-						:options="part.options"
-						@change="pickerValues[part.id] = $event"
-					/>
-				</template>
+				<TaskDescriptionParts
+					:parts="props.plan.parts"
+					:editing="true"
+					:values="pickerValues"
+					@change="(id, value) => (pickerValues[id] = value)"
+				/>
 			</p>
 
 			<div :class="$style.meta">

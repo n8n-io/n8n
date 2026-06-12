@@ -247,12 +247,14 @@ export function registerIpcHandlers({
 			logger.debug('IPC assistant:promote', { threadId });
 			try {
 				const result = await instanceApi.promoteThread(threadId, name, icon, options);
-				return {
-					ok: true,
-					status: result.status,
-					runId: result.status === 'building' ? result.runId : undefined,
-					workflowId: result.status === 'done' ? result.workflowId : undefined,
-				};
+				switch (result.status) {
+					case 'building':
+						return { ok: true, status: 'building', runId: result.runId };
+					case 'done':
+						return { ok: true, status: 'done', workflowId: result.workflowId };
+					case 'failed':
+						return { ok: true, status: 'failed', reason: result.reason };
+				}
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
 				logger.error('IPC assistant:promote failed', { threadId, error: message });
@@ -362,6 +364,21 @@ export function registerIpcHandlers({
 		logger.debug('IPC thread:unlisten', { threadId });
 		threadService.unlisten(threadId);
 	});
+
+	ipcMain.handle(
+		'thread:cancel',
+		async (_event, threadId: string): Promise<{ ok: boolean; error?: string }> => {
+			logger.debug('IPC thread:cancel', { threadId });
+			try {
+				await instanceApi.cancelRun(threadId);
+				return { ok: true };
+			} catch (error) {
+				const message = ipcErrorMessage(error);
+				logger.error('IPC thread:cancel failed', { threadId, error: message });
+				return { ok: false, error: message };
+			}
+		},
+	);
 
 	ipcMain.handle(
 		'thread:confirm',

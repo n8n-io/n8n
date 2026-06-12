@@ -161,11 +161,12 @@ export class InstanceApi {
 
 	/**
 	 * `GET /rest/desktop-assistant/tasks/:id/detail` — the task detail view's
-	 * segmented description (LLM-generated server-side, cached per workflow
-	 * version) plus the credential types still missing.
+	 * segmented description (stored on the workflow at creation) plus the
+	 * credential types still missing.
 	 *
-	 * First-open generation can exceed the default request timeout, so this
-	 * call gets a longer one.
+	 * Normally a simple read, but workflows predating stored descriptions
+	 * generate one on first open, which can exceed the default request
+	 * timeout — so this call gets a longer one.
 	 */
 	async getTaskDetail(workflowId: string): Promise<DesktopAssistantTaskDetailResponse> {
 		const response = await this.authedFetch(
@@ -257,6 +258,9 @@ export class InstanceApi {
 			...(options?.estimatedMinutesSaved
 				? { estimatedMinutesSaved: options.estimatedMinutesSaved }
 				: {}),
+			// The machine's IANA zone, pinned as the new workflow's timezone so
+			// schedules fire in the user's local time, not the instance default.
+			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		};
 		const response = await this.authedFetch('/desktop-assistant/promote-thread', {
 			method: 'POST',
@@ -287,6 +291,20 @@ export class InstanceApi {
 			}),
 		});
 		return await this.unwrap<{ runId: string }>(response);
+	}
+
+	/** `POST /rest/instance-ai/chat/:threadId/cancel` — stop the thread's active run; it finishes with a `cancelled` run-finish event. */
+	async cancelRun(threadId: string): Promise<void> {
+		const response = await this.authedFetch(
+			`/instance-ai/chat/${encodeURIComponent(threadId)}/cancel`,
+			{
+				method: 'POST',
+				// eslint-disable-next-line @typescript-eslint/naming-convention -- HTTP header name
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({}),
+			},
+		);
+		await this.unwrap<{ ok: boolean }>(response);
 	}
 
 	/** `POST /rest/instance-ai/confirm/:requestId` — resolve a pending confirmation; the suspended run resumes. */

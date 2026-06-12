@@ -28,6 +28,14 @@ const inputSchema = sanitizeInputSchema(
 			.string()
 			.optional()
 			.describe('User-readable reason the task was not completed. Required when success is false'),
+		workflowId: z
+			.string()
+			.trim()
+			.min(1)
+			.optional()
+			.describe(
+				'Id of the workflow this run built and saved, when the task produced one (exactly as returned by build-workflow). Omit otherwise',
+			),
 	}),
 );
 

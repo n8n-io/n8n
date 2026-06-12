@@ -9,7 +9,13 @@ import type {
 	DesktopAssistantRecommendationsRequest,
 	DesktopAssistantTaskRequest,
 } from '@n8n/api-types';
-import { renderDescriptionSentence, type StoredEvent } from '@n8n/instance-ai';
+import {
+	CHANNEL_PARAM_GUIDANCE,
+	PARAM_OPTIONS_COUNT_GUIDANCE,
+	PROMOTED_BUILD_METADATA_KEY,
+	renderDescriptionSentence,
+	type StoredEvent,
+} from '@n8n/instance-ai';
 import type { ExecutionError, IConnections, INode, IRunExecutionData } from 'n8n-workflow';
 
 import type { PROMOTED_FROM_THREAD_ID_KEY } from './constants';
@@ -171,10 +177,12 @@ export const TASK_DESCRIPTION_INSTRUCTIONS = [
 	'- Mark as params ONLY clearly tweakable concrete values: a schedule',
 	'  ("weekday at 6am"), a service (Gmail, Slack), a folder, a grouping',
 	'  criterion. At most 4 params; prefer fewer.',
-	'- For each param, provide 2-3 realistic alternatives in "options" (do not',
-	'  repeat the current value). For service params, prefer alternatives from the',
-	'  connected integrations listed in the input when they make sense, but you',
-	'  may include one popular not-yet-connected service as well.',
+	`- ${CHANNEL_PARAM_GUIDANCE}`,
+	'- For each param, provide realistic alternatives in "options" (do not repeat',
+	`  the current value) — ${PARAM_OPTIONS_COUNT_GUIDANCE}.`,
+	'  For service params, prefer alternatives from the connected integrations',
+	'  listed in the input when they make sense, but you may include one popular',
+	'  not-yet-connected service as well.',
 	'- Each alternative must be something the workflow could plausibly be changed',
 	'  to with a small edit. Keep param values short (1-4 words).',
 	'- If the workflow is too complex to render faithfully as one short sentence,',
@@ -332,9 +340,9 @@ function toOneLine(text: string): string {
 export interface StoredDesktopAssistantMeta {
 	icon?: string;
 	[PROMOTED_FROM_THREAD_ID_KEY]?: string;
-	/** Cached detail-view description, valid while `versionId` matches the workflow. */
+	/** The task's durable detail-view description, written at promote time and
+	 *  kept in sync deterministically by apply-edits. */
 	detail?: {
-		versionId: string;
 		parts: DesktopAssistantDescriptionPart[];
 	};
 }
@@ -349,16 +357,13 @@ export function readDesktopAssistantMeta(meta: unknown): StoredDesktopAssistantM
 	return candidate as StoredDesktopAssistantMeta;
 }
 
-/** Return the cached detail-view description parts when they were generated
- *  from the workflow version given, `undefined` otherwise (stale or absent).
- *  Defensive about shape: the meta blob is plain JSON anyone could write. */
-export function readCachedTaskDetail(
-	meta: unknown,
-	versionId: string,
-): DesktopAssistantDescriptionPart[] | undefined {
+/** Return the stored detail-view description parts when present and
+ *  well-formed, `undefined` otherwise. Defensive about shape: the meta blob is
+ *  plain JSON anyone could write. Only `parts` is picked, so legacy rows that
+ *  carry an extra `versionId` key still read fine. */
+export function readCachedTaskDetail(meta: unknown): DesktopAssistantDescriptionPart[] | undefined {
 	const detail = readDesktopAssistantMeta(meta)?.detail;
 	if (!detail || typeof detail !== 'object') return undefined;
-	if (detail.versionId !== versionId) return undefined;
 	if (!Array.isArray(detail.parts) || detail.parts.length === 0) return undefined;
 	const valid = detail.parts.every(
 		(part) =>
@@ -371,74 +376,79 @@ export function readCachedTaskDetail(
 	return valid ? detail.parts : undefined;
 }
 
-// ── Build-outcome extraction (two orchestrator paths) ────────────────────────
+/** Apply chip edits to the stored description parts: each referenced param's
+ *  value becomes its `to`, and its `from` takes the picked value's slot in
+ *  `options` — the full choice set is conserved, so an edit never removes an
+ *  alternative from the dropdown. */
+export function applyChangesToDescriptionParts(
+	parts: DesktopAssistantDescriptionPart[],
+	changes: DesktopAssistantApplyEditsRequest['changes'],
+): DesktopAssistantDescriptionPart[] {
+	const changeByParamId = new Map(changes.map((change) => [change.paramId, change]));
+	return parts.map((part) => {
+		if (part.kind !== 'param') return part;
+		const change = changeByParamId.get(part.id);
+		if (!change) return part;
+		return {
+			...part,
+			value: change.to,
+			options: [change.from, ...part.options.filter((o) => o !== change.to && o !== change.from)],
+		};
+	});
+}
+
+// ── Run-outcome extraction ───────────────────────────────────────────────────
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+export type PromoteOutcomeReport =
+	| { success: true; workflowId: string }
+	| { success: false; failureReason?: string };
 
 /**
- * Inspect a stored SSE event and return the workflow id of a completed
- * build-workflow planned task, or undefined otherwise.
- *
- * The `build-workflow` tool runs in a sub-agent / planned-task context, so
- * its `tool-result` event is published on the sub-agent's thread, NOT on the
- * parent promote thread. The signal that DOES reach the parent thread is
- * `tasks-update`: each carries `planItems[]` where the build-workflow planned
- * task has its `workflowId` populated, and the matching entry in `tasks[]`
- * moves to status `'done'`. We require BOTH — a populated `workflowId` AND
- * a `done` status — to avoid acting on an in-flight task that already has its
- * id slot allocated.
+ * Read the completion report a promote run filed via `report-promote-outcome`
+ * from thread metadata. `undefined` means the given run filed no (valid)
+ * report — the run died or the model skipped the call — which callers treat
+ * as a failure without a reason.
  */
-export function extractBuiltWorkflowId(storedEvent: StoredEvent): string | undefined {
-	const ev = storedEvent.event;
-	if (ev.type !== 'tasks-update') return undefined;
-	const payload = ev.payload as {
-		tasks?: { tasks?: Array<{ id?: unknown; status?: unknown }> };
-		planItems?: Array<{ id?: unknown; kind?: unknown; workflowId?: unknown }>;
-	};
-	const planItems = payload.planItems;
-	const taskList = payload.tasks?.tasks;
-	if (!Array.isArray(planItems) || !Array.isArray(taskList)) return undefined;
-
-	const doneTaskIds = new Set<string>();
-	for (const task of taskList) {
-		if (typeof task.id === 'string' && task.status === 'done') doneTaskIds.add(task.id);
+export function extractPromoteOutcomeReport(
+	metadata: unknown,
+	runId: string,
+): PromoteOutcomeReport | undefined {
+	if (!isRecord(metadata)) return undefined;
+	const report = metadata[PROMOTED_BUILD_METADATA_KEY];
+	if (!isRecord(report) || report.runId !== runId) return undefined;
+	if (report.success === true) {
+		const { workflowId } = report;
+		if (typeof workflowId !== 'string' || workflowId.length === 0) return undefined;
+		return { success: true, workflowId };
 	}
-
-	for (const item of planItems) {
-		if (item.kind !== 'build-workflow') continue;
-		if (typeof item.workflowId !== 'string') continue;
-		if (typeof item.id !== 'string') continue;
-		if (!doneTaskIds.has(item.id)) continue;
-		return item.workflowId;
+	if (report.success === false) {
+		const { failureReason } = report;
+		return {
+			success: false,
+			...(typeof failureReason === 'string' && failureReason.length > 0 ? { failureReason } : {}),
+		};
 	}
 	return undefined;
 }
 
 /**
- * Read the workflow id produced by a workflow-loop build for the given run
- * from `thread.metadata.instanceAiWorkflowLoop`. The workflow loop persists
- * a `lastBuildOutcome` per work item; we pick the one whose `runId` matches
- * the promote run we kicked off and that was successfully submitted.
- *
- * Returns `undefined` when no such outcome exists (e.g. the run finished
- * without ever invoking the workflow builder, the build failed, or the
- * metadata structure changed under us).
+ * Read the workflow id off a `report-desktop-task-outcome` tool-call event from
+ * the given run. The one-shot prompt instructs the agent to include
+ * `workflowId` when the task built a workflow; only a successful outcome
+ * counts — a failed run's leftover workflow must not be published.
  */
-export function extractWorkflowLoopBuildOutcome(
-	metadata: unknown,
+export function extractReportedWorkflowId(
+	storedEvent: StoredEvent,
 	runId: string,
 ): string | undefined {
-	if (!metadata || typeof metadata !== 'object') return undefined;
-	const loop = (metadata as { instanceAiWorkflowLoop?: unknown }).instanceAiWorkflowLoop;
-	if (!loop || typeof loop !== 'object') return undefined;
-	for (const workItem of Object.values(loop as Record<string, unknown>)) {
-		if (!workItem || typeof workItem !== 'object') continue;
-		const outcome = (workItem as { lastBuildOutcome?: unknown }).lastBuildOutcome;
-		if (!outcome || typeof outcome !== 'object') continue;
-		const o = outcome as { runId?: unknown; submitted?: unknown; workflowId?: unknown };
-		if (o.runId !== runId) continue;
-		if (o.submitted !== true) continue;
-		if (typeof o.workflowId === 'string' && o.workflowId.length > 0) {
-			return o.workflowId;
-		}
-	}
-	return undefined;
+	const ev = storedEvent.event;
+	if (ev.type !== 'tool-call' || ev.runId !== runId) return undefined;
+	if (ev.payload.toolName !== 'report-desktop-task-outcome') return undefined;
+	const { success, workflowId } = ev.payload.args;
+	if (success !== true) return undefined;
+	return typeof workflowId === 'string' && workflowId.length > 0 ? workflowId : undefined;
 }

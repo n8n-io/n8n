@@ -161,6 +161,12 @@ const electronApi: ElectronApi = {
 		await ipcRenderer.invoke('thread:unlisten', threadId);
 	},
 
+	cancelThreadRun: async (threadId: string): Promise<{ ok: boolean; error?: string }> =>
+		await (ipcRenderer.invoke('thread:cancel', threadId) as Promise<{
+			ok: boolean;
+			error?: string;
+		}>),
+
 	onThreadEvent: (
 		onEventCallback: (threadId: string, event: InstanceAiEvent) => void,
 	): (() => void) => {
