@@ -19,13 +19,13 @@ import { createReportPromoteOutcomeTool } from '../tools/orchestration/report-pr
  * Optional prompt-mode override used by the desktop-assistant entry points.
  *
  * - `desktop-assistant-one-shot` — ad-hoc task triggered from the desktop app.
- *   The orchestrator runs fire-and-forget: no follow-up questions, no
- *   conversational output, and every run ends with exactly one of two tools:
- *   `propose-task-plan` (first and only call, for requests implying a
- *   non-manual trigger — the task is planned, not executed) or
- *   `report-desktop-task-outcome` (all other runs — success when the task was
- *   done, failure with a reason when declining ambiguous or out-of-scope
- *   requests, or when the task failed).
+ *   Text output reaches the user, so the orchestrator executes clear requests
+ *   directly and asks back when clarification is needed. Requests implying a
+ *   non-manual trigger are not executed — the run ends with a single
+ *   `propose-task-plan` call (first and only tool call) the user configures
+ *   in the desktop app. Every attempted task ends with a
+ *   `report-desktop-task-outcome` call — success when the task was done,
+ *   failure (with a reason) when it failed.
  * - `desktop-assistant-promote` — compilation of a desktop-assistant thread
  *   into a real, editable workflow: either a replay of an already-executed
  *   task, or — when the thread holds a user-configured task plan instead —
@@ -75,14 +75,14 @@ export interface DesktopAssistantProfile {
 	preApproveWorkflowEdits: boolean;
 }
 
-/** Shared preamble: both desktop modes run headless, so text output is waste. */
+/** Shared preamble for the promote and edit modes, which run headless — text output is waste there. */
 const FIRE_AND_FORGET_RULES =
 	"This run is fire-and-forget from the n8n desktop assistant. The user never sees any text you write — only tool calls and the run lifecycle reach the UI. Output tool calls only: no greetings, narration, or progress commentary, and no follow-up questions (the user cannot answer them). If you want to explain what you're about to do, just do it instead.";
 
 const ONE_SHOT_PROMPT_SECTION = `
 ## Desktop Assistant — One-Shot Task
 
-${FIRE_AND_FORGET_RULES}
+This run was triggered from the n8n desktop assistant. Your text output is shown to the user, and they can reply on the same thread.
 
 ### Decide first
 
@@ -93,18 +93,21 @@ ${FIRE_AND_FORGET_RULES}
 
 ### Execution
 
-- Execute unambiguous, in-scope requests with the appropriate tools.
-- Stop without partial work when the request is ambiguous, too complex, or needs context you do not have. Do not build a workflow — the user will open the editor.
+- When the request is clear, execute it with the appropriate tools right away — no preamble, no confirmation questions, no conversation around the work.
+- When the request is ambiguous or missing details you need, ask a short clarifying question instead of guessing; the user's answer arrives as the next message.
+- When the message is conversational rather than a task (a greeting, a question about your capabilities), just answer in text.
+- Never comment on tool calls or their output: no narration, progress commentary, or summaries of what a tool returned.
 
-### Ending the run (required)
+### Reporting the outcome
 
-- Every run MUST end with exactly one of two tools, as the final tool call — never both:
+- A run ends with at most one of two tools, never both:
   - \`propose-task-plan\` — non-manual-trigger requests only; it is the run's first and only tool call.
-  - \`report-desktop-task-outcome\` — all other runs, including declines; it is how you stop.
+  - \`report-desktop-task-outcome\` — whenever you attempted a task, as the final tool call.
 - Success: \`success: true\`, a plain-text \`title\` naming the task as a repeatable action (3–8 words, present tense, no emoji — \`"Sort desktop screenshots"\`, never \`"Sorted 12 screenshots"\`), a one-sentence \`summary\`, and an \`icon\` (a single emoji capturing the task).
-- Deliverable: when the request asks for information — a summary, an answer to a question, extracted data — the outcome card is the only thing the user ever sees, so the full deliverable MUST go in \`details\` as markdown; a deliverable not in \`details\` is lost. Keep it under ~300 words unless the request calls for more. Omit \`details\` when the result is an action on the system (files moved, message sent) rather than information.
-- Decline/failure: \`success: false\` plus \`title\`, \`summary\`, and a user-readable \`failureReason\`.
+- Deliverable: when the request asks for information — a summary, an answer to a question, extracted data — the outcome card is what the user sees and keeps, so the full deliverable MUST go in \`details\` as markdown; a deliverable not in \`details\` is lost. Keep it under ~300 words unless the request calls for more. Omit \`details\` when the result is an action on the system (files moved, message sent) rather than information.
+- Failure: \`success: false\` plus \`title\`, \`summary\`, and a user-readable \`failureReason\`.
 - If the task built and saved a workflow, include its id as \`workflowId\` so the instance can publish it.
+- Skip the report when you did not attempt a task — when you only asked a clarifying question or replied conversationally.
 `;
 
 const PROMOTE_PROMPT_SECTION = `

@@ -5,7 +5,7 @@ import { computed, ref } from 'vue';
 import ChatMessages from './ChatMessages.vue';
 import ComposerField from './ComposerField.vue';
 
-import { hasBlockingPromptForThread } from '../permissions/permission-prompt-store';
+import { hasUnanswerablePromptForThread } from '../permissions/permission-prompt-store';
 
 // Inline chat for one thread, rendered inside the home tab panel (the slide-up
 // overlay flow lives in ChatPanel.vue). Driven entirely by the `threadId` prop —
@@ -17,9 +17,10 @@ const i18n = useI18n();
 const text = ref('');
 const messagesRef = ref<InstanceType<typeof ChatMessages> | null>(null);
 
-// A pending confirmation suspends the run server-side (posting would 409);
-// refuse input and say why via the placeholder.
-const suspended = computed(() => hasBlockingPromptForThread(props.threadId));
+// A pending confirmation suspends the run server-side (posting would 409); refuse
+// input and say why via the placeholder — unless the chat can answer it as text,
+// in which case ChatMessages routes the reply to the confirm endpoint.
+const suspended = computed(() => hasUnanswerablePromptForThread(props.threadId));
 
 const placeholder = computed(() =>
 	i18n.baseText(

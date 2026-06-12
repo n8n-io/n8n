@@ -4,19 +4,32 @@ import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 
 import { createChatThreadState, type ChatMessage, type ChatThreadState } from '../chat/chat-thread';
+import { markChatThreadVisible } from '../chat/visible-chat-threads';
+import {
+	chatAnswerablePromptForThread,
+	externalPromptsForThread,
+	permissionPromptState,
+	respondToPrompt,
+} from '../permissions/permission-prompt-store';
+import type {
+	InstancePermissionPrompt,
+	PromptResponse,
+} from '../permissions/prompt-classification';
 import { getThreadClient, type ThreadListener } from '../services/thread-client';
 
 /**
  * Embeddable chat transcript for one thread.
  *
- * `lastEventId` is the SSE replay cursor (exclusive) to listen from. Pass the event id
- * captured when you started observing the thread (e.g. on composer submit) so a chat
- * opened mid-run replays the run's events and shows the in-flight message from its
- * first word — the snapshot excludes the active run, and without the replay the words
- * streamed before opening would be missing. When omitted, listening starts where the
- * snapshot ends.
+ * The snapshot is re-fetched on every mount — the main-process cache may have been
+ * taken mid-run (empty messages, advanced cursor) and would silently hide the
+ * thread's history. Live events are folded in from where the fresh snapshot ends.
+ *
+ * Pending 'external' confirmations (e.g. the agent's clarifying questions) are
+ * rendered as regular assistant messages from the prompt store; when one is
+ * text-answerable, `send` routes the reply to the confirm endpoint instead of
+ * posting a new chat message, resuming the suspended run.
  */
-const props = defineProps<{ threadId: string; lastEventId?: number }>();
+const props = defineProps<{ threadId: string }>();
 
 /** `isFallback` marks a first-user-message stand-in — don't let it override a known title. */
 const emit = defineEmits<{ titleChanged: [title: string, isFallback?: boolean] }>();
@@ -49,7 +62,7 @@ async function load() {
 	loadError.value = false;
 	client.unlisten(props.threadId, onThreadEvent);
 	try {
-		const snapshot = await client.get(props.threadId);
+		const snapshot = await client.get(props.threadId, { refresh: true });
 		messages.splice(0, messages.length);
 		state = createChatThreadState(messages, snapshot.messages, {
 			onTitle: (title) => emit('titleChanged', title),
@@ -57,10 +70,10 @@ async function load() {
 		// No server title yet — the first user message is the next best label.
 		const firstUserMessage = messages.find((message) => message.role === 'user');
 		if (firstUserMessage) emit('titleChanged', truncateTitle(firstUserMessage.content), true);
-		// The caller's replay cursor wins; otherwise start where the snapshot ends
-		// (its first live event has id `nextEventId`; the SSE cursor is exclusive).
+		// Start where the snapshot ends (its first live event has id `nextEventId`;
+		// the SSE cursor is exclusive).
 		client.listen(props.threadId, onThreadEvent, {
-			lastEventId: props.lastEventId ?? Math.max(0, snapshot.nextEventId - 1),
+			lastEventId: Math.max(0, snapshot.nextEventId - 1),
 		});
 	} catch (error) {
 		// Surface the cause in devtools — the inline state only shows a generic message.
@@ -79,15 +92,84 @@ function truncateTitle(text: string): string {
 	return `${singleLine.slice(0, TITLE_FALLBACK_MAX_LENGTH - 1)}…`;
 }
 
+// Prompts answered from this chat keep their question in the transcript as a real
+// message; the set hides their store-rendered (pending) twin to avoid duplicates.
+const materializedPromptIds = reactive(new Set<string>());
+
+/** Pending agent requests of this thread, rendered as assistant messages. */
+const pendingPrompts = computed(() =>
+	externalPromptsForThread(props.threadId).filter(
+		(prompt) => !materializedPromptIds.has(prompt.id),
+	),
+);
+
+const answerablePrompt = computed(() => chatAnswerablePromptForThread(props.threadId));
+
+/** The prompt's content as assistant-message markdown: intro plus its question(s). */
+function promptContent(prompt: InstancePermissionPrompt): string {
+	const parts: string[] = [];
+	if (prompt.introMessage) parts.push(prompt.introMessage);
+	for (const question of prompt.questions ?? []) {
+		const options = question.options?.length ? ` (${question.options.join(' / ')})` : '';
+		parts.push(`${question.question}${options}`);
+	}
+	if (parts.length === 0) parts.push(prompt.message);
+	return parts.join('\n\n');
+}
+
+function answerResponse(prompt: InstancePermissionPrompt, text: string): PromptResponse {
+	if (prompt.inputType === 'questions') {
+		// One free-text reply answers the whole set — the agent sees each question
+		// paired with the full reply and picks out what applies.
+		return {
+			kind: 'questions',
+			answers: (prompt.questions ?? []).map((question) => ({
+				questionId: question.id,
+				selectedOptions: [],
+				customText: text,
+			})),
+		};
+	}
+	return { kind: 'approval', approved: true, userInput: text };
+}
+
+/** Answer a pending agent question: persist the Q&A in the transcript and resume the run. */
+async function answerPrompt(prompt: InstancePermissionPrompt, text: string) {
+	if (!state) return;
+	// On retry after a failed submit the question is already in the transcript.
+	if (!materializedPromptIds.has(prompt.id)) {
+		messages.push({
+			id: prompt.id,
+			role: 'assistant',
+			content: promptContent(prompt),
+			isStreaming: false,
+		});
+		materializedPromptIds.add(prompt.id);
+	}
+	state.addUserMessage(text);
+	// The suspended run's `run-start` predates this transcript — register it so the
+	// resumed agent's reply streams in.
+	if (prompt.runId && prompt.agentId) state.registerRun(prompt.runId, prompt.agentId);
+	await respondToPrompt(prompt.id, answerResponse(prompt, text));
+	if (permissionPromptState.failedIds.has(prompt.id)) {
+		throw new Error('Failed to submit the answer');
+	}
+}
+
 /** Append the user's message optimistically and post it; the reply streams in via events. */
 async function send(text: string) {
 	if (!state) return;
 	sendError.value = false;
 	sending.value = true;
-	state.addUserMessage(text);
 	pinnedToBottom.value = true;
 	try {
-		await client.post(props.threadId, text);
+		const prompt = answerablePrompt.value;
+		if (prompt) {
+			await answerPrompt(prompt, text);
+		} else {
+			state.addUserMessage(text);
+			await client.post(props.threadId, text);
+		}
 	} catch (error) {
 		console.error('Failed to send chat message', error);
 		sendError.value = true;
@@ -111,12 +193,16 @@ async function scrollToBottom() {
 	if (list) list.scrollTop = list.scrollHeight;
 }
 
-watch(messages, () => {
+watch([messages, pendingPrompts], () => {
 	if (pinnedToBottom.value) void scrollToBottom();
 });
 
+const releaseVisible = markChatThreadVisible(props.threadId);
 onMounted(load);
-onBeforeUnmount(() => client.unlisten(props.threadId, onThreadEvent));
+onBeforeUnmount(() => {
+	client.unlisten(props.threadId, onThreadEvent);
+	releaseVisible();
+});
 </script>
 
 <template>
@@ -138,7 +224,7 @@ onBeforeUnmount(() => client.unlisten(props.threadId, onThreadEvent));
 		</div>
 
 		<div v-else ref="listRef" :class="$style.list" @scroll.passive="onScroll">
-			<div v-if="messages.length === 0" :class="$style.state">
+			<div v-if="messages.length === 0 && pendingPrompts.length === 0" :class="$style.state">
 				<N8nText color="text-light" size="small">{{
 					i18n.baseText('desktopAssistant.chat.empty')
 				}}</N8nText>
@@ -154,6 +240,17 @@ onBeforeUnmount(() => client.unlisten(props.threadId, onThreadEvent));
 					<span v-if="message.isStreaming && !message.content" :class="$style.blinkingCursor" />
 				</div>
 			</template>
+
+			<!-- The agent's pending requests (e.g. clarifying questions), shown as
+			     assistant messages; answering one moves it into the transcript above. -->
+			<div
+				v-for="prompt in pendingPrompts"
+				:key="prompt.id"
+				:class="$style.assistantMessage"
+				data-testid="chat-pending-prompt"
+			>
+				<N8nMarkdown :content="promptContent(prompt)" />
+			</div>
 
 			<div v-if="sendError" :class="$style.sendError" role="alert">
 				{{ i18n.baseText('desktopAssistant.chat.sendFailed') }}

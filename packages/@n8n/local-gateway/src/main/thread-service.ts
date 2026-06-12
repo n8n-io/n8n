@@ -240,6 +240,9 @@ export class ThreadService {
 				logger.warn('Thread events: dropping event without a type', { threadId });
 				return;
 			}
+			// A finished run commits its messages — a snapshot cached before or
+			// during the run no longer reflects the thread.
+			if (parsed.type === 'run-finish') this.cache.delete(threadId);
 			logThreadEvent(threadId, parsed);
 			this.deps.emit(threadId, parsed);
 		};

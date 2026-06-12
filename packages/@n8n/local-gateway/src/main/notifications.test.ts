@@ -100,4 +100,22 @@ describe('createPromptNotifier', () => {
 		notifier.notifyConfirmationRequest({ ...CONFIRMATION, requestId: 'req-2', message: '' });
 		expect(notifications.instances).toHaveLength(0);
 	});
+
+	it('shows a task result notification only while the window is hidden', () => {
+		const { notifier, showWindow } = createNotifier();
+		notifier.notifyTaskResult('Done: Sort screenshots', 'Want me to keep this?');
+
+		expect(notifications.instances).toHaveLength(1);
+		expect(notifications.instances[0].options).toMatchObject({
+			title: 'Done: Sort screenshots',
+			body: 'Want me to keep this?',
+		});
+
+		notifications.instances[0].handlers.get('click')?.();
+		expect(showWindow).toHaveBeenCalled();
+
+		const { notifier: visibleNotifier } = createNotifier({ visible: true });
+		visibleNotifier.notifyTaskResult('Done', 'body');
+		expect(notifications.instances).toHaveLength(1);
+	});
 });

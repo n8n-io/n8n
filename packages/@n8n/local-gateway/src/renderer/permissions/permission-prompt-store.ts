@@ -1,9 +1,11 @@
 import { reactive, readonly } from 'vue';
 
 import {
+	isChatAnswerable,
 	isInstanceGatewayResourceDecision,
 	localPromptId,
 	promptFromLocalRequest,
+	type InstancePermissionPrompt,
 	type PermissionPrompt,
 	type PromptResponse,
 } from './prompt-classification';
@@ -86,10 +88,38 @@ export function hasBlockingPromptForThread(threadId: string): boolean {
 	);
 }
 
+/** Pending prompts the chat composer cannot answer as text — input must stay locked. */
+export function hasUnanswerablePromptForThread(threadId: string): boolean {
+	return state.prompts.some(
+		(prompt) =>
+			prompt.source === 'instance' && prompt.threadId === threadId && !isChatAnswerable(prompt),
+	);
+}
+
+/** The oldest pending prompt the chat composer can answer as free text, if any. */
+export function chatAnswerablePromptForThread(
+	threadId: string,
+): InstancePermissionPrompt | undefined {
+	return state.prompts.find(
+		(prompt): prompt is InstancePermissionPrompt =>
+			prompt.source === 'instance' && prompt.threadId === threadId && isChatAnswerable(prompt),
+	);
+}
+
+/** Pending 'external' prompts of a thread — the chat transcript renders them as assistant messages. */
+export function externalPromptsForThread(threadId: string): InstancePermissionPrompt[] {
+	return state.prompts.filter(
+		(prompt): prompt is InstancePermissionPrompt =>
+			prompt.source === 'instance' && prompt.threadId === threadId && prompt.kind === 'external',
+	);
+}
+
 function confirmBodyFromResponse(response: PromptResponse): InstanceAiConfirmRequest | null {
 	switch (response.kind) {
 		case 'approval':
-			return { kind: 'approval', approved: response.approved };
+			return { kind: 'approval', approved: response.approved, userInput: response.userInput };
+		case 'questions':
+			return { kind: 'questions', answers: response.answers };
 		case 'continue':
 			return { kind: 'approval', approved: true };
 		case 'resourceDecision':

@@ -141,6 +141,7 @@ if (!app.requestSingleInstanceLock()) {
 				threadService,
 				contextDetector,
 				permissionBroker,
+				promptNotifier,
 				// Settings changes re-apply seamlessly: connect() replaces any current
 				// connection, authenticated with a fresh OAuth token.
 				reconnectGateway: () => syncGatewayConnection(oauthFlow.getStatus()),

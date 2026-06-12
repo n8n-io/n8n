@@ -5,7 +5,12 @@ import type { ToolDefinition } from '../types';
 import { buildFilesystemResource, resolveReadablePath, scanDirectory } from './fs-utils';
 
 const inputSchema = z.object({
-	dirPath: z.string().describe('Directory path relative to root'),
+	dirPath: z
+		.string()
+		.optional()
+		.describe(
+			'Directory path relative to the root directory selected by the user. When omitted, the selected root is listed',
+		),
 	type: z
 		.enum(['file', 'directory', 'all'])
 		.optional()
@@ -15,7 +20,8 @@ const inputSchema = z.object({
 
 export const listFilesTool: ToolDefinition<typeof inputSchema> = {
 	name: 'list_files',
-	description: 'List immediate children of a directory',
+	description:
+		'List immediate children of a directory. When you do not know which directory to use, omit dirPath (or pass ".") to list the root directory selected by the user — a path outside that root results in an error',
 	inputSchema,
 	annotations: { readOnlyHint: true },
 	async getAffectedResources({ dirPath }, { dir }) {

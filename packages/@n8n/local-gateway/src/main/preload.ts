@@ -214,6 +214,10 @@ const electronApi: ElectronApi = {
 		await ipcRenderer.invoke('permissions:openSettings', kind);
 	},
 
+	notifyTaskResult: async (title: string, body: string): Promise<void> => {
+		await ipcRenderer.invoke('notifications:taskResult', title, body);
+	},
+
 	listPermissionPrompts: async (): Promise<LocalPermissionPromptRequest[]> =>
 		await (ipcRenderer.invoke('permissionPrompt:list') as Promise<LocalPermissionPromptRequest[]>),
 

@@ -29,6 +29,12 @@ interface RunInfo {
 export interface ChatThreadState {
 	/** Append a locally-sent user message (optimistic — the server stores it on post). */
 	addUserMessage(text: string): void;
+	/**
+	 * Route a run's upcoming `text-delta`s into the transcript. Needed for runs whose
+	 * `run-start` predates this listener (e.g. a suspended run resumed by answering its
+	 * confirmation from the chat). The message is created lazily on the first delta.
+	 */
+	registerRun(runId: string, rootAgentId: string): void;
 	/** Fold one SSE event into the messages array. */
 	apply(event: InstanceAiEvent): void;
 }
@@ -94,6 +100,11 @@ export function createChatThreadState(
 			messages.push({ id: crypto.randomUUID(), role: 'user', content: text, isStreaming: false });
 		},
 
+		registerRun(runId: string, rootAgentId: string) {
+			if (runs.has(runId)) return;
+			runs.set(runId, { messageId: '', rootAgentId });
+		},
+
 		apply(event: InstanceAiEvent) {
 			switch (event.type) {
 				case 'run-start': {
@@ -124,17 +135,21 @@ export function createChatThreadState(
 				case 'text-delta': {
 					const run = runs.get(event.runId);
 					if (!run || run.replayOnly || run.rootAgentId !== event.agentId) break;
-					const message = findMessage(run.messageId);
-					if (message) {
-						// Starting a new text block after a tool call / reasoning — separate it
-						// from the previous block with a paragraph break so sentences across
-						// blocks don't run together.
-						if (!run.textOpen && message.content.length > 0) {
-							message.content = `${message.content.replace(/\s+$/, '')}\n\n`;
-						}
-						message.content += event.payload.text;
-						run.textOpen = true;
+					let message = findMessage(run.messageId);
+					if (!message) {
+						// Run registered without a message (registerRun) — create it on first text.
+						message = { id: event.runId, role: 'assistant', content: '', isStreaming: true };
+						messages.push(message);
+						run.messageId = message.id;
 					}
+					// Starting a new text block after a tool call / reasoning — separate it
+					// from the previous block with a paragraph break so sentences across
+					// blocks don't run together.
+					if (!run.textOpen && message.content.length > 0) {
+						message.content = `${message.content.replace(/\s+$/, '')}\n\n`;
+					}
+					message.content += event.payload.text;
+					run.textOpen = true;
 					break;
 				}
 				case 'tool-call':

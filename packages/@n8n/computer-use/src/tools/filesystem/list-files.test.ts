@@ -47,7 +47,9 @@ describe('listFilesTool', () => {
 		});
 
 		it('has a non-empty description', () => {
-			expect(listFilesTool.description).toBe('List immediate children of a directory');
+			expect(listFilesTool.description).toBe(
+				'List immediate children of a directory. When you do not know which directory to use, omit dirPath (or pass ".") to list the root directory selected by the user — a path outside that root results in an error',
+			);
 		});
 	});
 
@@ -72,8 +74,8 @@ describe('listFilesTool', () => {
 			expect(() => listFilesTool.inputSchema.parse({ dirPath: '.', type: 'all' })).not.toThrow();
 		});
 
-		it('throws when dirPath is missing', () => {
-			expect(() => listFilesTool.inputSchema.parse({})).toThrow();
+		it('accepts a missing dirPath (defaults to the selected root)', () => {
+			expect(() => listFilesTool.inputSchema.parse({})).not.toThrow();
 		});
 
 		it('throws when dirPath is not a string', () => {
@@ -116,6 +118,19 @@ describe('listFilesTool', () => {
 			expect(names).toContain('src');
 			expect(names).toContain('index.ts');
 			expect(names).toContain('utils.ts');
+		});
+
+		it('lists the root directory when dirPath is omitted', async () => {
+			mockReaddir([dirent('src', true), dirent('index.ts', false)]);
+			mockStat();
+
+			const result = await listFilesTool.execute({}, CONTEXT);
+			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
+			const entries = JSON.parse(textOf(result)) as Array<{ path: string }>;
+
+			const names = entries.map((e) => e.path);
+			expect(names).toContain('src');
+			expect(names).toContain('index.ts');
 		});
 
 		it('does not recurse into subdirectories', async () => {

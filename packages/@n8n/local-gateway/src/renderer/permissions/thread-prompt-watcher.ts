@@ -39,6 +39,7 @@ export function createThreadPromptWatcher(client: WatcherClient): ThreadPromptWa
 				const prompt = classifyConfirmation(threadId, event.payload, {
 					toolCallId: event.payload.toolCallId,
 					runId: event.runId,
+					agentId: event.agentId,
 				});
 				if (prompt) addPrompt(prompt);
 				break;
