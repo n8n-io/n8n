@@ -243,14 +243,14 @@ function onWrapperPointerDown(event: PointerEvent) {
 					</N8nTooltip>
 				</div>
 				<div
-					v-if="markStatus"
+					v-if="isCollapsed && markStatus"
 					:class="$style.statusIcons"
 					:data-test-id="`canvas-node-group-status-${markStatus}`"
 				>
 					<CanvasNodeStatusMark :status="markStatus" :iterations="data.maxNodeIterations" />
 				</div>
 				<div
-					v-else-if="executionStatus === 'issues'"
+					v-else-if="isCollapsed && executionStatus === 'issues'"
 					:class="[$style.statusIcons, $style.issues]"
 					data-test-id="canvas-node-group-status-issues"
 				>

@@ -185,6 +185,20 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(icon).toHaveTextContent('3');
 		});
 
+		it('hides the status mark when the group is expanded (member nodes show their own)', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'success', isCollapsed: false }),
+			});
+			expect(wrapper.queryByTestId('canvas-node-group-status-success')).toBeNull();
+		});
+
+		it('hides the validation issues triangle when the group is expanded', () => {
+			const wrapper = render({
+				data: makeData({ executionStatus: 'issues', isCollapsed: false }),
+			});
+			expect(wrapper.queryByTestId('canvas-node-group-status-issues')).toBeNull();
+		});
+
 		it('applies a hashed `running` class when executionStatus is running', () => {
 			const wrapper = render({
 				data: makeData({ executionStatus: 'running' }),
