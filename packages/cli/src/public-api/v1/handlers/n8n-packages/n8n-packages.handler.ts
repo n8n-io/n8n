@@ -79,6 +79,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				folderId: payload.data.folderId,
 				credentialMatchingMode: payload.data.credentialMatchingMode,
 				credentialMissingMode: payload.data.credentialMissingMode,
+				workflowConflictPolicy: payload.data.workflowConflictPolicy,
 				packageBuffer: packageFile.buffer,
 			});
 			return res.status(200).json(result);

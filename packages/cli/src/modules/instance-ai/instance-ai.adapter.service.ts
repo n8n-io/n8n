@@ -63,6 +63,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
+import { SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -99,8 +100,6 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 
-import { InstanceSettings } from 'n8n-core';
-
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -119,7 +118,7 @@ import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import { InstanceSettings } from 'n8n-core';
 import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';

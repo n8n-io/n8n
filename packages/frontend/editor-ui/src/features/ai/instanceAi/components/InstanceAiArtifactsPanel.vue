@@ -3,13 +3,7 @@ import ProjectIcon from '@/features/collaboration/projects/components/ProjectIco
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import {
-	N8nHeading,
-	N8nIcon,
-	N8nIconButton,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
-} from '@n8n/design-system';
+import { N8nHeading, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, ref } from 'vue';
 import { useThread } from '../instanceAi.store';
@@ -18,13 +12,6 @@ import ConnectionsCard from './ConnectionsCard.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const projectsStore = useProjectsStore();
-
-const props = withDefaults(defineProps<{ isPinned?: boolean; isPinningAvailable?: boolean }>(), {
-	isPinned: true,
-	isPinningAvailable: true,
-});
-
-const emit = defineEmits<{ togglePinned: [] }>();
 
 const i18n = useI18n();
 const thread = useThread();
@@ -110,12 +97,6 @@ function artifactHref(artifact: ResourceEntry) {
 function openArtifactLabel(name: string) {
 	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
 }
-
-const pinButtonLabel = computed(() =>
-	i18n.baseText(
-		props.isPinned ? 'instanceAi.artifactsPanel.unpinPanel' : 'instanceAi.artifactsPanel.pinPanel',
-	),
-);
 </script>
 
 <template>
@@ -127,24 +108,6 @@ const pinButtonLabel = computed(() =>
 					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 						{{ i18n.baseText('instanceAi.artifactsPanel.project') }}
 					</N8nHeading>
-					<N8nTooltip
-						v-if="props.isPinningAvailable"
-						:content="pinButtonLabel"
-						placement="left"
-						:show-after="TOOLTIP_DELAY_MS"
-					>
-						<N8nIconButton
-							icon="pin"
-							variant="ghost"
-							size="small"
-							icon-size="medium"
-							:aria-label="pinButtonLabel"
-							:aria-pressed="props.isPinned"
-							:class="[$style.pinButton, { [$style.pinButtonPinned]: props.isPinned }]"
-							data-test-id="instance-ai-artifacts-sidebar-pin"
-							@click="emit('togglePinned')"
-						/>
-					</N8nTooltip>
 				</div>
 
 				<div :class="$style.artifactList">
@@ -240,6 +203,7 @@ const pinButtonLabel = computed(() =>
 	flex-direction: column;
 	padding: 0 var(--spacing--sm) var(--spacing--sm);
 	overflow-y: auto;
+	max-height: 100%;
 }
 
 .group {
@@ -255,6 +219,10 @@ const pinButtonLabel = computed(() =>
 	display: flex;
 	flex-direction: column;
 	padding: var(--spacing--2xs);
+
+	&:first-child {
+		padding-top: calc(var(--spacing--2xs) + var(--spacing--3xs));
+	}
 
 	& + & {
 		padding-top: var(--spacing--sm);
@@ -281,24 +249,6 @@ const pinButtonLabel = computed(() =>
 
 .sectionTitle {
 	color: var(--text-color--subtle);
-}
-
-.pinButton {
-	color: var(--color--text--tint-1);
-
-	&:hover,
-	&:focus-visible {
-		color: var(--color--text--shade-1);
-	}
-}
-
-.pinButtonPinned {
-	color: var(--color--text--shade-1);
-
-	:deep(svg),
-	:deep(path) {
-		fill: currentColor;
-	}
 }
 
 /* Artifact list */

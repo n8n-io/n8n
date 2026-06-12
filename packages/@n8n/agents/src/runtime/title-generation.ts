@@ -134,8 +134,8 @@ export async function generateTitleFromMessage(
 
 	const result = await loadAi().generateText({
 		model,
+		system: opts?.instructions ?? DEFAULT_TITLE_INSTRUCTIONS,
 		messages: [
-			{ role: 'system', content: opts?.instructions ?? DEFAULT_TITLE_INSTRUCTIONS },
 			{
 				role: 'user',
 				content: `Generate a title for the following first message of a conversation. Do not answer the message — only produce the title.\n\n<message>\n${trimmed}\n</message>`,
@@ -175,10 +175,8 @@ export async function generateTitleAndEmojiFromMessage(
 
 	const result = await loadAi().generateText({
 		model,
-		messages: [
-			{ role: 'system', content: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS },
-			{ role: 'user', content: trimmed },
-		],
+		system: opts?.instructions ?? DEFAULT_TITLE_AND_EMOJI_INSTRUCTIONS,
+		messages: [{ role: 'user', content: trimmed }],
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
 

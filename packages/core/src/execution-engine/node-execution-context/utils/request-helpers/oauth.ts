@@ -15,8 +15,6 @@ import { AuthError, ClientOAuth2 } from '@n8n/client-oauth2';
 import type { AxiosError } from 'axios';
 import { createHmac } from 'crypto';
 import get from 'lodash/get';
-import isEmpty from 'lodash/isEmpty';
-import { NodeOperationError, ApplicationError, jsonParse } from 'n8n-workflow';
 import type {
 	IAllExecuteFunctions,
 	ICredentialDataDecryptedObject,
@@ -28,19 +26,13 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Logger as WorkflowLogger,
 } from 'n8n-workflow';
+import { ApplicationError, jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
 import type { IResponseError } from '@/interfaces';
 
-const NoBodyHttpMethods = ['GET', 'HEAD', 'OPTIONS'];
-
-const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOptions) => {
-	const method = requestOptions.method || 'GET';
-	if (NoBodyHttpMethods.includes(method) && isEmpty(requestOptions.body)) {
-		delete requestOptions.body;
-	}
-};
+import { removeEmptyBody } from './http-request';
 
 function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 	// Split and trim scopes; empty scope tokens are not RFC 6749-compliant and may be rejected by authorization servers
@@ -149,6 +141,11 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Revalidating.`,
 	);
 
+	const refreshResource = credentials.oauthTokenData?.resource;
+	if (typeof refreshResource === 'string' && refreshResource.length > 0) {
+		tokenRefreshOptions.resource = refreshResource;
+	}
+
 	let newToken;
 	try {
 		if (credentials.grantType === 'clientCredentials') {
@@ -167,9 +164,20 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 	);
 
+	// Merge old and new token data so fields that the authorization server
+	// does not echo back on refresh (e.g. `resource`) are preserved from the
+	// original token response.
+	const newOAuthTokenData = { ...token.data, ...newToken.data };
+
+	// If the server doesn't echo the resource back, restore it from the
+	// previous token data to ensure it's not lost on refresh.
+	if (!newOAuthTokenData.resource && token.data.resource) {
+		newOAuthTokenData.resource = token.data.resource;
+	}
+
 	const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
 		additionalData,
-		newToken.data,
+		newOAuthTokenData,
 		credentials.jweEnabled === true,
 	);
 

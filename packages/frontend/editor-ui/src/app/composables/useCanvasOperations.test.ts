@@ -5108,6 +5108,35 @@ describe('useCanvasOperations', () => {
 			connections: {},
 		};
 
+		it('should show an error and import nothing when data is not a valid workflow', async () => {
+			const toast = useToast();
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData({ name: 'Not a workflow' }, 'file');
+
+			expect(result).toEqual({});
+			expect(toast.showError).toHaveBeenCalledWith(
+				new Error(
+					"The imported data does not contain valid workflow data ('nodes' and 'connections' are missing)",
+				),
+				'Problem importing workflow',
+			);
+		});
+
+		it('should not show the invalid workflow error when data is a valid workflow', async () => {
+			const toast = useToast();
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(workflowData, 'file');
+
+			expect(toast.showError).not.toHaveBeenCalledWith(
+				new Error(
+					"The imported data does not contain valid workflow data ('nodes' and 'connections' are missing)",
+				),
+				'Problem importing workflow',
+			);
+		});
+
 		it('should track telemetry when trackEvents is true (default)', async () => {
 			const telemetry = useTelemetry();
 

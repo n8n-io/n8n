@@ -1,3 +1,4 @@
+import type { Message, Workspace } from '@n8n/agents';
 import {
 	UNLIMITED_CREDITS,
 	applyBranchReadOnlyOverrides,
@@ -7,20 +8,12 @@ import {
 	type InstanceAiConfirmRequest,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
-	type InstanceAiGatewayCapabilities,
-	type McpToolCallResult,
-	type ToolCategory,
 } from '@n8n/api-types';
-import type { Message, Workspace } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
-import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
-
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
+import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { UrlService } from '@/services/url.service';
 import {
 	MAX_STEPS,
 	createInstanceAgent,
@@ -94,39 +87,39 @@ import {
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
-import { nanoid } from 'nanoid';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { AiService } from '@/services/ai.service';
-import { Push } from '@/push';
-import { Telemetry } from '@/telemetry';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
-import type { LocalGateway } from './filesystem';
-import { LocalGatewayRegistry } from './filesystem';
+import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
+import { resolveOutputRedaction } from './output-redaction-config';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
-import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from './sandbox-provider';
-import { DbSnapshotStorage } from './storage/db-snapshot-storage';
-import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
-import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
-import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
-import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
-import { TraceReplayState } from './trace-replay-state';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
+import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
+import {
+	SuspendedRunRestorer,
+	type RebuildSuspendedRunOutcome,
+	type ResumableOrphan,
+} from './suspended-run-restorer.service';
+import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
 import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
 } from './run-trace-metadata';
+import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from './sandbox-provider';
+import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
+import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
+import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
+import { TraceReplayState } from './trace-replay-state';
 import {
 	parseWorkflowBuildOutcome,
 	WorkflowVerificationObligationService,
@@ -143,6 +136,16 @@ import {
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
+
+import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { Push } from '@/push';
+import { AiService } from '@/services/ai.service';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
+import { SsrfProtectionService } from '@n8n/backend-network';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -448,26 +451,6 @@ type OrchestratorResumeReason =
 	| 'replan'
 	| 'synthesize';
 
-/** A pending-confirmation orphan that's already passed the `canResumeOrphan`
- *  predicate — i.e. has the SDK-side pointers (`toolCallId`, `checkpointKey`)
- *  needed to rebuild a suspended run from the checkpoint blob. */
-type ResumableOrphan = NonNullable<
-	Awaited<ReturnType<InstanceAiPendingConfirmationRepository['claim']>>
-> & {
-	toolCallId: string;
-	checkpointKey: string;
-};
-
-/** Result of `rebuildSuspendedRunFromCheckpoint`. Each failure variant
- *  corresponds to one rebuild step the caller can log distinctly; `ready`
- *  carries the fully-assembled state for `runState.suspendRun`. */
-type RebuildSuspendedRunOutcome =
-	| { kind: 'ready'; state: SuspendedRunState<User> }
-	| { kind: 'no-user' }
-	| { kind: 'no-checkpoint'; error?: unknown }
-	| { kind: 'env-failure'; error: unknown }
-	| { kind: 'agent-failure'; error: unknown };
-
 /** Collapse the frontend's typed confirmation union into the flat payload
  *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
  *  relevant to the submitted kind are populated — everything else stays undefined.
@@ -557,9 +540,6 @@ export class InstanceAiService {
 	/** In-flight runtime workspace creations keyed by thread ID. */
 	private readonly sandboxCreations = new Map<string, Promise<RuntimeSandboxEntry | undefined>>();
 
-	/** Per-user Local Gateway connections. Handles pairing tokens, session keys, and tool dispatch. */
-	private readonly gatewayRegistry = new LocalGatewayRegistry();
-
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
 
@@ -585,6 +565,11 @@ export class InstanceAiService {
 	private terminalOutcomeStorage?: TerminalOutcomeStorage;
 
 	private readonly liveness: InstanceAiLivenessService<SuspendedRunState<User>>;
+
+	/** Owns DB persistence of suspended runs + orphan-confirmation restoration. */
+	private readonly suspendedThreads: SuspendedThreadPersistenceService;
+
+	private readonly suspendedRunRestorer: SuspendedRunRestorer;
 
 	/** In-memory guard to prevent double credit counting within the same process. */
 	private readonly creditedThreads = new Set<string>();
@@ -649,6 +634,7 @@ export class InstanceAiService {
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
+		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
@@ -678,6 +664,23 @@ export class InstanceAiService {
 			this.workflowObligations,
 		);
 		this.instanceAiConfig = globalConfig.instanceAi;
+		this.suspendedThreads = new SuspendedThreadPersistenceService({
+			logger: this.logger,
+			config: this.instanceAiConfig,
+			pendingConfirmationRepo: this.pendingConfirmationRepo,
+			agentMemory: this.agentMemory,
+		});
+		this.suspendedRunRestorer = new SuspendedRunRestorer({
+			logger: this.logger,
+			pendingConfirmationRepo: this.pendingConfirmationRepo,
+			runState: this.runState,
+			dbSnapshotStorage: this.dbSnapshotStorage,
+			eventBus: this.eventBus,
+			rebuilder: {
+				rebuildSuspendedRun: this.rebuildSuspendedRunFromCheckpoint.bind(this),
+				resumeSuspendedRun: this.resumeSuspendedRun.bind(this),
+			},
+		});
 		const livenessPolicyConfig = createInstanceAiLivenessPolicyConfig({
 			confirmationTimeoutMs: this.instanceAiConfig.confirmationTimeout,
 		});
@@ -692,7 +695,7 @@ export class InstanceAiService {
 				void this.finalizeCancelledSuspendedRun(suspended, reason);
 			},
 			onPendingConfirmationRejected: (requestId) => {
-				void this.dropPendingConfirmation(requestId);
+				void this.suspendedThreads.dropPendingConfirmation(requestId);
 			},
 		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
@@ -735,6 +738,10 @@ export class InstanceAiService {
 			sandboxImage,
 			sandboxTimeout,
 			sandboxNamePrefix,
+			sandboxEphemeral,
+			sandboxAutoStopMinutes,
+			sandboxAutoArchiveMinutes,
+			sandboxAutoDeleteMinutes,
 			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
 		const provider = normalizeSandboxProvider(sandboxProvider);
@@ -756,6 +763,12 @@ export class InstanceAiService {
 				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
+				ephemeral: sandboxEphemeral,
+				autoStopInterval: sandboxAutoStopMinutes,
+				autoArchiveInterval: sandboxAutoArchiveMinutes,
+				// Ephemeral sandboxes delete on stop; Daytona forces autoDeleteInterval to 0 and warns
+				// if we also pass a non-zero value, so leave it unset on the ephemeral path.
+				autoDeleteInterval: sandboxEphemeral ? undefined : sandboxAutoDeleteMinutes,
 				refreshSkewMs: daytonaTokenRefreshSkewMs,
 			};
 		}
@@ -1685,7 +1698,7 @@ export class InstanceAiService {
 			// inline-kind rows are dropped via the resolve-callback fired by
 			// runState.cancelThread; suspended-kind rows (no in-memory
 			// resolver) get cleaned up here so the index never outlives the run.
-			void this.dropPendingConfirmationsForThread(threadId);
+			void this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 			return;
 		}
 
@@ -1695,7 +1708,7 @@ export class InstanceAiService {
 			void this.finalizeCancelledSuspendedRun(suspended, reason);
 		}
 
-		void this.dropPendingConfirmationsForThread(threadId);
+		void this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 	}
 
 	/** Send a correction message to a running background task. */
@@ -1909,88 +1922,6 @@ export class InstanceAiService {
 		this.traceReplay.clearEvents(slug);
 	}
 
-	getUserIdForApiKey(key: string): string | undefined {
-		return this.gatewayRegistry.getUserIdForApiKey(key);
-	}
-
-	generatePairingToken(userId: string): string {
-		return this.gatewayRegistry.generatePairingToken(userId);
-	}
-
-	getGatewayApiKeyExpiresAt(userId: string, key: string): Date | null {
-		return this.gatewayRegistry.getApiKeyExpiresAt(userId, key);
-	}
-
-	getPairingToken(userId: string): string | null {
-		return this.gatewayRegistry.getPairingToken(userId);
-	}
-
-	consumePairingToken(userId: string, token: string): string | null {
-		return this.gatewayRegistry.consumePairingToken(userId, token);
-	}
-
-	getActiveSessionKey(userId: string): string | null {
-		return this.gatewayRegistry.getActiveSessionKey(userId);
-	}
-
-	clearActiveSessionKey(userId: string): void {
-		this.gatewayRegistry.clearActiveSessionKey(userId);
-	}
-
-	getLocalGateway(userId: string): LocalGateway {
-		return this.gatewayRegistry.getGateway(userId);
-	}
-
-	initGateway(userId: string, data: InstanceAiGatewayCapabilities): void {
-		this.gatewayRegistry.initGateway(userId, data);
-		this.telemetry.track('User connected to Computer Use', {
-			user_id: userId,
-			tool_groups: data.toolCategories.filter((c) => c.enabled).map((c) => c.name),
-		});
-	}
-
-	resolveGatewayRequest(
-		userId: string,
-		requestId: string,
-		result?: McpToolCallResult,
-		error?: string,
-	): boolean {
-		return this.gatewayRegistry.resolveGatewayRequest(userId, requestId, result, error);
-	}
-
-	disconnectGateway(userId: string): void {
-		this.gatewayRegistry.disconnectGateway(userId);
-	}
-
-	/** Disconnect all connected gateways and return the user IDs that were connected. */
-	disconnectAllGateways(): string[] {
-		const connectedUserIds = this.gatewayRegistry.getConnectedUserIds();
-		this.gatewayRegistry.disconnectAll();
-		return connectedUserIds;
-	}
-
-	isLocalGatewayDisabled(): boolean {
-		return this.settingsService.isLocalGatewayDisabled();
-	}
-
-	getGatewayStatus(userId: string): {
-		connected: boolean;
-		connectedAt: string | null;
-		directory: string | null;
-		hostIdentifier: string | null;
-		toolCategories: ToolCategory[];
-	} {
-		return this.gatewayRegistry.getGatewayStatus(userId);
-	}
-
-	startDisconnectTimer(userId: string, onDisconnect: () => void): void {
-		this.gatewayRegistry.startDisconnectTimer(userId, onDisconnect);
-	}
-
-	clearDisconnectTimer(userId: string): void {
-		this.gatewayRegistry.clearDisconnectTimer(userId);
-	}
-
 	/**
 	 * Remove all in-memory state associated with a thread.
 	 * Must be called when a thread is deleted so the maps don't leak.
@@ -2035,7 +1966,7 @@ export class InstanceAiService {
 		this.deleteTraceContextsForThread(threadId);
 		await this.destroySandbox(threadId);
 		await this.reapAiTemporaryForThreadCleanup(threadId);
-		await this.dropPendingConfirmationsForThread(threadId);
+		await this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 		this.eventBus.clearThread(threadId);
 	}
 
@@ -2120,7 +2051,7 @@ export class InstanceAiService {
 			});
 		}
 
-		this.gatewayRegistry.disconnectAll();
+		this.gatewayService.disconnectAll();
 
 		this.stopSandboxExpiryTimers();
 
@@ -2212,7 +2143,11 @@ export class InstanceAiService {
 	private async persistUserMessageOnFirstSuspend(threadId: string, runId: string): Promise<void> {
 		const entry = this.userMessagePersistenceByRun.get(runId);
 		if (!entry) return;
-		const ok = await this.persistUserMessageOnSuspend(threadId, entry.userId, entry.message);
+		const ok = await this.suspendedThreads.persistUserMessageOnSuspend(
+			threadId,
+			entry.userId,
+			entry.message,
+		);
 		if (ok) this.userMessagePersistenceByRun.delete(runId);
 	}
 
@@ -2250,7 +2185,7 @@ export class InstanceAiService {
 			} else {
 				this.logger.debug('No stale Instance AI checkpoints to expire');
 			}
-			await this.pruneStalePendingConfirmations(now);
+			await this.suspendedThreads.pruneStalePendingConfirmations(now);
 			await this.pruneExpiredThreads();
 			this.scheduleCheckpointPrune();
 		} catch (error: unknown) {
@@ -2276,127 +2211,6 @@ export class InstanceAiService {
 			this.logger.warn('Failed to clean up expired Instance AI conversation threads', {
 				error: getErrorMessage(error),
 			});
-		}
-	}
-
-	private async pruneStalePendingConfirmations(now: number): Promise<void> {
-		try {
-			const count = await this.pendingConfirmationRepo.deleteExpired(new Date(now));
-			if (count === 0) {
-				this.logger.debug('No stale Instance AI pending confirmations to drop');
-				return;
-			}
-			this.logger.info('Dropped stale Instance AI pending confirmations', { count });
-		} catch (error: unknown) {
-			this.logger.warn('Failed to drop stale Instance AI pending confirmations', {
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	private computePendingConfirmationExpiresAt(): Date | null {
-		const timeoutMs = this.instanceAiConfig.confirmationTimeout;
-		return timeoutMs > 0 ? new Date(Date.now() + timeoutMs) : null;
-	}
-
-	/**
-	 * Persist the index for a HITL confirmation so a fresh process can find it
-	 * after the in-memory `pendingConfirmations` / `suspendedRuns` maps are gone.
-	 * Fire-and-forget: a DB write failure must not block the agent flow, which
-	 * still operates correctly via the in-memory state on this main.
-	 */
-	private async persistPendingConfirmation(params: {
-		requestId: string;
-		threadId: string;
-		userId: string;
-		runId: string;
-		messageGroupId?: string;
-		kind: 'inline' | 'suspended';
-		toolCallId?: string;
-		checkpointKey?: string;
-		checkpointTaskId?: string;
-	}): Promise<void> {
-		try {
-			await this.pendingConfirmationRepo.save(
-				this.pendingConfirmationRepo.create({
-					requestId: params.requestId,
-					threadId: params.threadId,
-					userId: params.userId,
-					kind: params.kind,
-					runId: params.runId,
-					messageGroupId: params.messageGroupId ?? null,
-					toolCallId: params.toolCallId ?? null,
-					checkpointKey: params.checkpointKey ?? null,
-					checkpointTaskId: params.checkpointTaskId ?? null,
-					expiresAt: this.computePendingConfirmationExpiresAt(),
-				}),
-			);
-		} catch (error: unknown) {
-			this.logger.warn('Failed to persist pending confirmation', {
-				requestId: params.requestId,
-				threadId: params.threadId,
-				kind: params.kind,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	private async dropPendingConfirmation(requestId: string): Promise<void> {
-		try {
-			await this.pendingConfirmationRepo.deleteByRequestId(requestId);
-		} catch (error: unknown) {
-			this.logger.warn('Failed to drop pending confirmation', {
-				requestId,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	private async dropPendingConfirmationsForThread(threadId: string): Promise<void> {
-		try {
-			await this.pendingConfirmationRepo.deleteByThreadId(threadId);
-		} catch (error: unknown) {
-			this.logger.warn('Failed to drop pending confirmations for thread', {
-				threadId,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	/**
-	 * Persist the original user-typed message to thread memory the first time
-	 * a run hits an inline HITL confirmation, so the message bubble survives
-	 * a restart that happens while the run is suspended. The `id` matches the
-	 * one we pass to the SDK's streamInput, so the SDK's eventual end-of-turn
-	 * save (if the run does resume and complete) upserts the same row instead
-	 * of creating a duplicate.
-	 */
-	private async persistUserMessageOnSuspend(
-		threadId: string,
-		userId: string,
-		message: { id: string; text: string },
-	): Promise<boolean> {
-		try {
-			await this.agentMemory.saveMessages({
-				threadId,
-				resourceId: userId,
-				messages: [
-					{
-						id: message.id,
-						role: 'user',
-						content: [{ type: 'text', text: message.text }],
-						createdAt: new Date(),
-					},
-				],
-			});
-			return true;
-		} catch (error: unknown) {
-			this.logger.warn('Failed to persist user message on HITL suspend', {
-				threadId,
-				userId,
-				error: getErrorMessage(error),
-			});
-			return false;
 		}
 	}
 
@@ -2702,7 +2516,7 @@ export class InstanceAiService {
 		tracing?: InstanceAiTraceContext;
 	}): Promise<MessageTraceFinalization> {
 		this.runState.cancelThread(args.threadId);
-		void this.dropPendingConfirmationsForThread(args.threadId);
+		void this.suspendedThreads.dropPendingConfirmationsForThread(args.threadId);
 		args.abortController.abort();
 		await this.finalizeRunTracing(args.runId, args.tracing, {
 			status: 'error',
@@ -3017,7 +2831,7 @@ export class InstanceAiService {
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
-		const userGateway = this.gatewayRegistry.findGateway(user.id);
+		const userGateway = this.gatewayService.findGateway(user.id);
 
 		// When the proxy is enabled, create a single ProxyTokenManager and
 		// AiAssistantClient that are shared across model, search, and tracing
@@ -3182,6 +2996,7 @@ export class InstanceAiService {
 			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
 			eventBus: this.eventBus,
 			logger: this.logger,
+			outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 			trackTelemetry: (eventName, properties) => {
 				this.telemetry.track(eventName, properties);
 			},
@@ -3213,7 +3028,7 @@ export class InstanceAiService {
 						createdAt: Date.now(),
 					});
 
-					void this.persistPendingConfirmation({
+					void this.suspendedThreads.persistPendingConfirmation({
 						requestId,
 						threadId,
 						userId: user.id,
@@ -4289,6 +4104,7 @@ export class InstanceAiService {
 								eventBus: this.eventBus,
 								logger: this.logger,
 								onActivity: () => this.runState.touchActiveRun(threadId),
+								outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 							},
 						);
 					})
@@ -4314,6 +4130,7 @@ export class InstanceAiService {
 							eventBus: this.eventBus,
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
+							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 						},
 					);
 			if (result.status === 'suspended') {
@@ -4334,7 +4151,7 @@ export class InstanceAiService {
 						checkpoint,
 						plannedBuild,
 					});
-					void this.persistPendingConfirmation({
+					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
 						threadId,
 						userId: user.id,
@@ -4536,10 +4353,14 @@ export class InstanceAiService {
 			const errorMessage = getErrorMessage(error);
 			const userFacingErrorMessage = getUserFacingErrorMessage(error);
 
-			this.logger.error('Instance AI run error', {
+			this.logger.error(`Instance AI run error: ${errorMessage}`, {
 				error: errorMessage,
 				threadId,
 				runId,
+			});
+			this.errorReporter.error(error, {
+				tags: { component: 'instance-ai-run' },
+				extra: { threadId, runId },
 			});
 			this.evaluateTerminalResponse(threadId, runId, 'errored', {
 				messageGroupId,
@@ -4865,7 +4686,7 @@ export class InstanceAiService {
 		}
 
 		if (this.runState.resolvePendingConfirmation(freshUser.id, requestId, data)) {
-			void this.dropPendingConfirmation(requestId);
+			void this.suspendedThreads.dropPendingConfirmation(requestId);
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
 				approved: data.approved,
@@ -4889,136 +4710,11 @@ export class InstanceAiService {
 		// that died with the previous process) or any rebuild failure we
 		// publish a terminal `run-finish` and surface a clear UserError so the
 		// client doesn't sit on a stale confirmation card.
-		return await this.resolveOrphanedConfirmation(requestingUserId, requestId, data);
-	}
-
-	private async resolveOrphanedConfirmation(
-		userId: string,
-		requestId: string,
-		data: ConfirmationData,
-	): Promise<boolean> {
-		let orphan: Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>;
-		try {
-			orphan = await this.pendingConfirmationRepo.claim(requestId, userId);
-		} catch (error: unknown) {
-			this.logger.warn('Failed to claim orphaned pending confirmation', {
-				requestId,
-				error: getErrorMessage(error),
-			});
-			return false;
-		}
-		if (!orphan) return false;
-
-		this.logger.info('Reclaiming pending confirmation orphaned by a process restart', {
+		return await this.suspendedRunRestorer.resolveOrphanedConfirmation(
+			requestingUserId,
 			requestId,
-			threadId: orphan.threadId,
-			runId: orphan.runId,
-			kind: orphan.kind,
-			hasCheckpoint: Boolean(orphan.checkpointKey),
-		});
-
-		if (orphan.kind === 'suspended' && this.canResumeOrphan(orphan)) {
-			const resumed = await this.tryResumeFromOrphan(orphan, data);
-			if (resumed) return true;
-		}
-
-		this.finalizeUnresumableOrphan(orphan);
-		throw new UserError(
-			'This confirmation was lost when the assistant restarted. Send a new message to continue.',
+			data,
 		);
-	}
-
-	private canResumeOrphan(
-		orphan: NonNullable<Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>>,
-	): orphan is ResumableOrphan {
-		return Boolean(orphan.toolCallId && orphan.checkpointKey);
-	}
-
-	private finalizeUnresumableOrphan(
-		orphan: NonNullable<Awaited<ReturnType<typeof this.pendingConfirmationRepo.claim>>>,
-	): void {
-		try {
-			// Live SSE clients use this to drop their interactive card.
-			this.publishRunFinish(
-				orphan.threadId,
-				orphan.runId,
-				'cancelled',
-				'restart_lost_confirmation',
-			);
-			// Terminalise the existing snapshot in place instead of rebuilding
-			// the tree from the in-memory event bus. After a restart the bus
-			// only carries the run-finish we just emitted, so a rebuild would
-			// replace the saved plan/ask card with an empty cancelled tree;
-			// `markRunCancelled` keeps the plan content intact while flipping
-			// all in-flight nodes and confirmation buttons off.
-			void this.dbSnapshotStorage
-				.markRunCancelled(orphan.threadId, orphan.runId)
-				.catch((error: unknown) => {
-					this.logger.warn('Failed to mark orphan snapshot as cancelled', {
-						requestId: orphan.requestId,
-						threadId: orphan.threadId,
-						runId: orphan.runId,
-						error: getErrorMessage(error),
-					});
-				});
-		} catch (error: unknown) {
-			this.logger.warn('Failed to finalize orphaned confirmation snapshot', {
-				requestId: orphan.requestId,
-				error: getErrorMessage(error),
-			});
-		}
-	}
-
-	/**
-	 * Rebuild the orchestration environment + agent for a checkpoint-backed
-	 * suspended run that survived a process restart, register it as a
-	 * `SuspendedRunState` in the in-memory registry, and hand off to the
-	 * existing `resumeSuspendedRun` path. The original `runId` /
-	 * `messageGroupId` are reused so the frontend's SSE correlation
-	 * (`groupIdByRunId`) keeps working.
-	 */
-	private async tryResumeFromOrphan(
-		orphan: ResumableOrphan,
-		data: ConfirmationData,
-	): Promise<boolean> {
-		const outcome = await this.rebuildSuspendedRunFromCheckpoint(orphan);
-		switch (outcome.kind) {
-			case 'ready':
-				// Re-seed the in-memory runState so `resumeSuspendedRun` can find
-				// this confirmation by requestId and the rest of the cancel /
-				// liveness / shutdown paths see the run as live. We deliberately
-				// do NOT call `persistPendingConfirmation` again — the DB row
-				// was already consumed by `claim()` above.
-				this.runState.suspendRun(orphan.threadId, outcome.state);
-				return await this.resumeSuspendedRun(orphan.userId, orphan.requestId, data);
-			case 'no-user':
-				this.logger.warn('Cannot resume orphaned run: user no longer authorized', {
-					requestId: orphan.requestId,
-					userId: orphan.userId,
-				});
-				return false;
-			case 'no-checkpoint':
-				this.logger.warn('Cannot resume orphaned run: checkpoint missing or unavailable', {
-					requestId: orphan.requestId,
-					checkpointKey: orphan.checkpointKey,
-					...(outcome.error ? { error: getErrorMessage(outcome.error) } : {}),
-				});
-				return false;
-			case 'env-failure':
-				this.logger.warn('Cannot resume orphaned run: failed to build execution environment', {
-					requestId: orphan.requestId,
-					threadId: orphan.threadId,
-					error: getErrorMessage(outcome.error),
-				});
-				return false;
-			case 'agent-failure':
-				this.logger.warn('Cannot resume orphaned run: failed to build agent', {
-					requestId: orphan.requestId,
-					threadId: orphan.threadId,
-					error: getErrorMessage(outcome.error),
-				});
-				return false;
-		}
 	}
 
 	/**
@@ -5172,7 +4868,7 @@ export class InstanceAiService {
 		// inline-kind drop is wired into the Promise resolver in
 		// `waitForConfirmation` and fires whether the resolution came from the
 		// user, from `cancelThread`, or from a liveness timeout.
-		void this.dropPendingConfirmation(requestId);
+		void this.suspendedThreads.dropPendingConfirmation(requestId);
 
 		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
 		// other tools use the flat credentials map. Prefer nodeCredentials when present.
@@ -5299,6 +4995,7 @@ export class InstanceAiService {
 								logger: this.logger,
 								agentRunId: opts.agentRunId,
 								onActivity: () => this.runState.touchActiveRun(opts.threadId),
+								outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 							},
 						);
 					})
@@ -5319,6 +5016,7 @@ export class InstanceAiService {
 							logger: this.logger,
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
+							outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 						},
 					);
 
@@ -5341,7 +5039,7 @@ export class InstanceAiService {
 						checkpoint: opts.checkpoint,
 						plannedBuild: opts.plannedBuild,
 					});
-					void this.persistPendingConfirmation({
+					void this.suspendedThreads.persistPendingConfirmation({
 						requestId: result.suspension.requestId,
 						threadId: opts.threadId,
 						userId: opts.user.id,
@@ -5524,10 +5222,14 @@ export class InstanceAiService {
 			const errorMessage = getErrorMessage(error);
 			const userFacingErrorMessage = getUserFacingErrorMessage(error);
 
-			this.logger.error('Instance AI resumed run error', {
+			this.logger.error(`Instance AI resumed run error: ${errorMessage}`, {
 				error: errorMessage,
 				threadId: opts.threadId,
 				runId: opts.runId,
+			});
+			this.errorReporter.error(error, {
+				tags: { component: 'instance-ai-run' },
+				extra: { threadId: opts.threadId, runId: opts.runId },
 			});
 			const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
 			this.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
@@ -5989,7 +5691,7 @@ export class InstanceAiService {
 			}),
 		});
 
-		void this.dropPendingConfirmation(suspended.requestId);
+		void this.suspendedThreads.dropPendingConfirmation(suspended.requestId);
 	}
 
 	private async reapAiTemporaryForThreadCleanup(threadId: string): Promise<void> {

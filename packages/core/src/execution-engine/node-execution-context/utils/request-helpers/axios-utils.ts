@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { SsrfBridge } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
@@ -8,10 +9,10 @@ import type { AgentOptions } from 'https';
 import {
 	assertUrlAllowed,
 	type IHttpRequestOptions,
+	type IRequestOptions,
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
 
-import type { SsrfBridge } from '@/execution-engine';
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 
 export function throwIfDomainNotAllowed(
@@ -309,4 +310,26 @@ export function setAxiosAgents(
 
 	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
 	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
+}
+
+/** Validates a URL against SSRF protection rules. Throws UserError if blocked. */
+export async function validateUrlSsrf(
+	url: string | undefined,
+	ssrfBridge?: SsrfBridge,
+): Promise<void> {
+	if (!ssrfBridge || !url) return;
+
+	const parsed = tryParseUrl(url);
+	if (!parsed) return;
+
+	const result = await ssrfBridge.validateUrl(parsed);
+	if (!result.ok) {
+		throw result.error;
+	}
+}
+
+export function resolveLegacyRequestUrl(requestObject: IRequestOptions): string | undefined {
+	const rawUrl = requestObject.uri?.toString() ?? requestObject.url?.toString();
+	const baseURL = requestObject.baseURL?.toString();
+	return buildTargetUrl(rawUrl, baseURL) ?? rawUrl;
 }

@@ -74,7 +74,7 @@ describe('GlobalConfig', () => {
 		canvasOnly: false,
 		editorBaseUrl: '',
 		dataTable: {
-			maxSize: 50 * 1024 * 1024,
+			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
 			cleanupIntervalMs: 60 * 1000,
 			fileMaxAgeMs: 2 * 60 * 1000,
@@ -212,6 +212,7 @@ describe('GlobalConfig', () => {
 			activationBatchSize: 1,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
+			publicationOutboxPollIntervalMs: 15_000,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -236,6 +237,8 @@ describe('GlobalConfig', () => {
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
 				includeExecutionDataMetrics: false,
+				includeSsrfMetrics: false,
+				includeDnsCacheMetrics: false,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -297,6 +300,10 @@ describe('GlobalConfig', () => {
 			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
+			sandboxEphemeral: false,
+			sandboxAutoStopMinutes: 15,
+			sandboxAutoArchiveMinutes: 10_080,
+			sandboxAutoDeleteMinutes: 43_200,
 			daytonaTokenRefreshSkewMs: 300_000,
 			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',
@@ -306,6 +313,10 @@ describe('GlobalConfig', () => {
 			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
 			confirmationTimeout: 86_400_000,
+			outputRedactionEnabled: true,
+			outputRedactionSecrets: true,
+			outputRedactionPii: 'credit-card',
+			outputRedactionPlaceholder: '[REDACTED]',
 		},
 		queue: {
 			health: {
@@ -566,9 +577,15 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
-			subAgentMaxChildren: 5,
-			subAgentTimeoutMs: 300000,
 			modules: [],
+			sandboxEnabled: false,
+			sandboxProvider: '',
+			sandboxImage: 'daytonaio/sandbox:0.5.0',
+			sandboxTimeout: 300000,
+			sandboxNamePrefix: '',
+			daytonaVolumeId: '',
+			daytonaApiUrl: '',
+			daytonaApiKey: '',
 		},
 	} satisfies GlobalConfigShape;
 
