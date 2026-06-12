@@ -311,6 +311,8 @@ function onWrapperPointerDown(event: PointerEvent) {
 .wrapper.collapsed.waiting .titleBar::after {
 	@include styles.status-waiting-animation;
 }
+
+@include styles.status-animation-definitions;
 /* stylelint-enable */
 
 .content {

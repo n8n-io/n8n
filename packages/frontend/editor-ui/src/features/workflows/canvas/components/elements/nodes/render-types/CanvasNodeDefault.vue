@@ -388,20 +388,7 @@ function onActivate(event: MouseEvent) {
 	@include styles.status-waiting-animation;
 }
 
-@property --node--gradient-angle {
-	syntax: '<angle>';
-	initial-value: 0deg;
-	inherits: false;
-}
-
-@keyframes border-rotate {
-	from {
-		--node--gradient-angle: 0deg;
-	}
-	to {
-		--node--gradient-angle: 360deg;
-	}
-}
+@include styles.status-animation-definitions;
 /* stylelint-enable */
 
 .description {

@@ -72,3 +72,24 @@
 @mixin status-waiting-animation {
 	animation: border-rotate 4.5s linear infinite;
 }
+
+// @keyframes names are scoped per CSS module, so every module that uses the
+// running/waiting animation mixins must include this once at the top level.
+@mixin status-animation-definitions {
+	/* stylelint-disable */
+	@property --node--gradient-angle {
+		syntax: '<angle>';
+		initial-value: 0deg;
+		inherits: false;
+	}
+
+	@keyframes border-rotate {
+		from {
+			--node--gradient-angle: 0deg;
+		}
+		to {
+			--node--gradient-angle: 360deg;
+		}
+	}
+	/* stylelint-enable */
+}
