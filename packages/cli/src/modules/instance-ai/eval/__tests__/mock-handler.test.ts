@@ -394,7 +394,7 @@ describe('createLlmMockHandler', () => {
 			statusCode: 200,
 		});
 		// The fallback is observable: serving a rejected, never-resubmitted spec warns.
-		const logger = Container.get('' as never) as unknown as { warn: jest.Mock };
+		const logger = Container.get('' as never);
 		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
 	});
 
@@ -403,7 +403,7 @@ describe('createLlmMockHandler', () => {
 		const handler = createLlmMockHandler();
 		await callHandler(handler);
 
-		const logger = Container.get('' as never) as unknown as { warn: jest.Mock };
+		const logger = Container.get('' as never);
 		expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('soft-captured'));
 	});
 
