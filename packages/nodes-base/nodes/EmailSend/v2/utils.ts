@@ -15,6 +15,10 @@ export type EmailSendOptions = {
 	ccEmail?: string;
 	bccEmail?: string;
 	replyTo?: string;
+	sendCustomHeaders?: boolean;
+	specifyHeaders?: string;
+	headerParameters?: { parameters: Array<{ name: string; value: string }> };
+	jsonHeaders?: string;
 };
 
 export function configureTransport(credentials: IDataObject, options: EmailSendOptions) {
