@@ -88,6 +88,15 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 
 		const executedNode = computed(() => execution.value?.executedNode);
 
+		/**
+		 * Nodes whose output was simulated (mocked) instead of executed, keyed by
+		 * node name. Set by AI-driven workflow verification runs; empty for
+		 * regular executions. Drives "simulated" labeling in canvas and NDV.
+		 */
+		const executionSimulationByNodeName = computed<Record<string, { reason: string }>>(
+			() => execution.value?.data?.resultData?.simulation ?? {},
+		);
+
 		// Per-node-name execution-issues map with atomic per-name updates.
 		// Each entry is a structuralComputed in its own effectScope, so only
 		// the affected node re-evaluates on runData changes and isEqual
@@ -690,6 +699,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionResultDataLastUpdate: readonly(executionResultDataLastUpdate),
 			executionRunData,
 			executedNode,
+			executionSimulationByNodeName,
 			executionIssuesByNodeName,
 			executionStatusByNodeId,
 			executionRunDataByNodeId,

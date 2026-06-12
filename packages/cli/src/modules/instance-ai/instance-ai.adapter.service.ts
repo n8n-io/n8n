@@ -817,6 +817,7 @@ export class InstanceAiAdapterService {
 			license,
 			roleService,
 			telemetry,
+			logger,
 		} = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
 
@@ -1059,6 +1060,31 @@ export class InstanceAiAdapterService {
 							return result;
 						}
 						throw error;
+					}
+				}
+
+				// Persist the simulation map onto the saved execution so the editor
+				// can label simulated node outputs. Post-completion update: works in
+				// queue mode too (plain DB write), and the final save has already
+				// happened once the post-execute promise resolves. Best-effort — a
+				// failure must not mask the execution result.
+				if (options?.simulation && Object.keys(options.simulation).length > 0) {
+					try {
+						const execution = await executionRepository.findSingleExecution(executionId, {
+							includeData: true,
+							unflattenData: true,
+						});
+						if (execution?.data) {
+							execution.data.resultData.simulation = options.simulation;
+							await executionRepository.updateExistingExecution(executionId, {
+								data: execution.data,
+							});
+						}
+					} catch (error) {
+						logger.warn('Failed to persist simulation metadata on execution', {
+							executionId,
+							error: error instanceof Error ? error.message : String(error),
+						});
 					}
 				}
 

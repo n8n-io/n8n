@@ -22,6 +22,7 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 const pinnedDataByNodeName: IPinData = {};
+const executionSimulationByNodeName: Record<string, { reason: string }> = {};
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>()),
@@ -30,6 +31,7 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => ({
 			nodeInputsByNodeId: new Map(),
 			nodeOutputsByNodeId: new Map(),
 			pinnedDataByNodeName,
+			executionSimulationByNodeName,
 			executionIssuesByNodeName: new Map(),
 		},
 	})),
@@ -49,6 +51,9 @@ describe('CanvasNodeStatusIcons', () => {
 		mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 		for (const key of Object.keys(pinnedDataByNodeName)) {
 			delete pinnedDataByNodeName[key];
+		}
+		for (const key of Object.keys(executionSimulationByNodeName)) {
+			delete executionSimulationByNodeName[key];
 		}
 	});
 
@@ -81,6 +86,43 @@ describe('CanvasNodeStatusIcons', () => {
 			},
 		});
 
+		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
+	});
+
+	it('should render the simulated icon for a node whose output was simulated', () => {
+		executionSimulationByNodeName['Test Node'] = { reason: 'Sends a message' };
+
+		const { getByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({
+						data: {
+							execution: { status: 'success', running: false },
+							runData: { outputMap: {}, iterations: 1, visible: true },
+						},
+					}),
+				},
+			},
+		});
+
+		expect(getByTestId('canvas-node-status-simulated')).toBeInTheDocument();
+	});
+
+	it('should prefer the simulated icon over the pinned icon', () => {
+		executionSimulationByNodeName['Test Node'] = { reason: 'Sends a message' };
+		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide(),
+				},
+			},
+		});
+
+		expect(getByTestId('canvas-node-status-simulated')).toBeInTheDocument();
 		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
 	});
 
