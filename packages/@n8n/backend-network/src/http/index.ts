@@ -4,7 +4,7 @@ export {
 	installGlobalProxyAgent,
 	resolveProxyUrl,
 } from './http-proxy';
-export { configureAxiosDefaults } from './axios-config';
+export { configureGlobalAxiosDefaults } from './axios-config';
 export {
 	createFormDataObject,
 	generateContentLengthHeader,
@@ -30,4 +30,5 @@ export {
 	getDefaultN8nOutboundUserAgent,
 } from './outbound-user-agent';
 export { parseIncomingMessage } from './parse-incoming-message';
+export { binaryToBuffer, streamToBuffer } from './binary-buffer';
 export { binaryToString } from './binary-string';

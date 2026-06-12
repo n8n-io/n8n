@@ -1,4 +1,4 @@
-import { binaryToString } from '@n8n/backend-network';
+import { binaryToBuffer, binaryToString } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import chardet from 'chardet';
 import FileType from 'file-type';
@@ -30,7 +30,6 @@ import { URL } from 'url';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 import type { BinaryData } from '@/binary-data/types';
-import { binaryToBuffer } from '@/binary-data/utils';
 
 function getBinaryPath(binaryDataId: string): string {
 	return Container.get(BinaryDataService).getPath(binaryDataId);

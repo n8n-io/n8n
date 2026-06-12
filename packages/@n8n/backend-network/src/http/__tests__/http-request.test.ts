@@ -7,7 +7,7 @@ import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge } from '../../ssrf';
-import { configureAxiosDefaults } from '../axios-config';
+import { configureGlobalAxiosDefaults } from '../axios-config';
 import {
 	convertN8nRequestToAxios,
 	httpRequest,
@@ -16,7 +16,7 @@ import {
 } from '../http-request';
 
 // Sets axios defaults and registers the vendor-header interceptor.
-configureAxiosDefaults();
+configureGlobalAxiosDefaults();
 
 const TEST_CA_CERT = '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----';
 

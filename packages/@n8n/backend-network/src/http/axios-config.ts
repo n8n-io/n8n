@@ -13,7 +13,7 @@ let configured = false;
  * These are process-wide side effects.
  * Calling it more than once is a no-op.
  */
-export function configureAxiosDefaults(): void {
+export function configureGlobalAxiosDefaults(): void {
 	if (!configured) {
 		configured = true;
 
