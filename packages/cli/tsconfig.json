@@ -12,7 +12,6 @@
 			"@test/*": ["./test/shared/*"],
 			"@test-integration/*": ["./test/integration/shared/*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"strict": true,
 		"strictFunctionTypes": false,
 		"strictPropertyInitialization": false,

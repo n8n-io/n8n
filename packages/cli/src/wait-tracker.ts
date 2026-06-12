@@ -173,6 +173,7 @@ export class WaitTracker {
 			void this.resumeParentExecution(
 				parentExecution,
 				this.activeExecutions.getPostExecutePromise(executionId),
+				{ executionId, workflowId },
 			);
 		}
 	}
@@ -190,6 +191,7 @@ export class WaitTracker {
 	async resumeParentExecution(
 		parentExecution: RelatedExecution,
 		executePromise: Promise<IRun | undefined>,
+		childExecution?: RelatedExecution,
 	): Promise<void> {
 		try {
 			const subworkflowResults = await executePromise;
@@ -201,6 +203,7 @@ export class WaitTracker {
 					await updateParentExecutionWithChildResults(
 						parentExecution.executionId,
 						subworkflowResults,
+						childExecution,
 					);
 				},
 				MAX_PARENT_RESUME_ATTEMPTS,

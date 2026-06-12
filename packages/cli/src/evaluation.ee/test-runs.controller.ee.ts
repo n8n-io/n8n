@@ -99,8 +99,7 @@ export class TestRunsController {
 	async delete(req: TestRunsRequest.Delete) {
 		const { id: testRunId } = req.params;
 
-		// Check test run exist
-		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
 
 		await this.testRunRepository.delete({ id: testRunId });
 
@@ -113,8 +112,9 @@ export class TestRunsController {
 	async cancel(req: TestRunsRequest.Cancel, res: express.Response) {
 		const { id: testRunId } = req.params;
 
-		// Check test definition and test run exist
-		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user, [
+			'workflow:execute',
+		]);
 
 		if (this.testRunnerService.canBeCancelled(testRun)) {
 			const message = `The test run "${testRunId}" cannot be cancelled`;
@@ -162,7 +162,7 @@ export class TestRunsController {
 	) {
 		const { workflowId } = req.params;
 
-		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
+		await this.assertUserHasAccessToWorkflow(workflowId, req.user, ['workflow:execute']);
 
 		const concurrency = payload.concurrency ?? 1;
 

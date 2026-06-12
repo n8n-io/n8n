@@ -10,6 +10,7 @@ import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
+	type ListAgentsQueryDto,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
@@ -297,12 +298,11 @@ export class AgentsService {
 	}
 
 	/**
-	 * Whether the agent knowledge base sub-feature is enabled via
-	 * `N8N_AGENTS_MODULES`. Gates the file endpoints and the `search_knowledge`
-	 * runtime tool. Public so the controller can guard its file endpoints.
+	 * Whether the agent knowledge base is enabled via Daytona sandbox env vars.
+	 * Gates the file endpoints. Public so the controller can guard its file endpoints.
 	 */
-	isKnowledgeBaseModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('knowledge-base');
+	isKnowledgeBaseEnabled(): boolean {
+		return this.agentsConfig.sandboxEnabled && this.agentsConfig.sandboxProvider === 'daytona';
 	}
 
 	/**
@@ -401,6 +401,13 @@ export class AgentsService {
 		return await this.agentRepository.findByProjectId(projectId);
 	}
 
+	async findByProjectIdPaginated(
+		projectId: string,
+		options: ListAgentsQueryDto,
+	): Promise<{ count: number; data: Agent[] }> {
+		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
+	}
+
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 	}
@@ -460,6 +467,15 @@ export class AgentsService {
 			where: { projectId: In(projectIds) },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	async findByUserPaginated(
+		userId: string,
+		options: ListAgentsQueryDto,
+	): Promise<{ count: number; data: Agent[] }> {
+		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
+		const projectIds = projectRelations.map((pr) => pr.projectId);
+		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
 	}
 
 	/**
@@ -749,11 +765,8 @@ export class AgentsService {
 			return false;
 		}
 
-		// Best-effort, non-transactional cleanup: deleteAllFilesForAgent removes
-		// binary blobs from the filesystem/object store, which a DB transaction
-		// can't roll back. The agent_files rows are removed via the agentId FK's
-		// ON DELETE CASCADE when the agent is removed below, so a failure here
-		// only risks orphaned blobs (logged) and must not block agent deletion.
+		// Best-effort cleanup of knowledge files from Daytona volume storage.
+		// Failure here must not block agent deletion.
 		try {
 			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId);
 		} catch (error) {

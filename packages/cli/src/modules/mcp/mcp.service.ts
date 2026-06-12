@@ -38,6 +38,7 @@ import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
+import { createListTagsTool } from './tools/list-tags.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchFoldersTool } from './tools/search-folders.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
@@ -65,6 +66,7 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { TagService } from '@/services/tag.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -128,6 +130,7 @@ export class McpService {
 		private readonly executionService: ExecutionService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
+		private readonly tagService: TagService,
 		private readonly licenseState: LicenseState,
 		private readonly postHogClient: PostHogClient,
 	) {}
@@ -329,6 +332,11 @@ export class McpService {
 			listCredentialsTool.handler,
 		);
 
+		if (!this.globalConfig.tags.disabled) {
+			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
+			server.registerTool(listTagsTool.name, listTagsTool.config, listTagsTool.handler);
+		}
+
 		// Data table tools
 		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
 
@@ -519,6 +527,8 @@ export class McpService {
 			this.sharedWorkflowRepository,
 			this.collaborationService,
 			dataTableOps,
+			this.tagService,
+			this.globalConfig,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

@@ -1,4 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
+import type { DnsResolver, SsrfBridge } from '@n8n/backend-network';
+import { SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type {
 	IHttpRequestOptions,
@@ -13,8 +15,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
-import type { DnsResolver, SsrfBridge } from '@/ssrf';
-import { SsrfProtectionService } from '@/ssrf';
 
 import { getRequestHelperFunctions } from '../request-helper-functions';
 import { httpRequest } from '../request-helpers/http-request';

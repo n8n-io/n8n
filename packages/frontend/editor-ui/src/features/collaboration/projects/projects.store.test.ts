@@ -3,14 +3,24 @@ import { reactive } from 'vue';
 import { vi } from 'vitest';
 import { useProjectsStore } from './projects.store';
 import * as projectsApi from './projects.api';
-import type { Project, ProjectListItem } from './projects.types';
+import type { Project, ProjectListItem, ProjectType } from './projects.types';
 import { ProjectTypes } from './projects.types';
 import type { ProjectRole, Scope } from '@n8n/permissions';
 
+type MockRoute = {
+	params: Record<string, string>;
+	query: Record<string, string>;
+	path: string;
+};
+
 // Minimal router mock to satisfy useRoute usage in the store
+const { mockRoute } = vi.hoisted(() => ({
+	mockRoute: { params: {}, query: {}, path: '' } as MockRoute,
+}));
+
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
-	useRoute: () => reactive({ params: {}, query: {}, path: '' }),
+	useRoute: () => reactive(mockRoute),
 }));
 
 vi.mock('./projects.api', () => ({
@@ -219,5 +229,108 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 		);
 		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'p1');
 		expect(store.currentProject?.relations.length).toBe(0);
+	});
+});
+
+describe('useProjectsStore.setProjectNavActiveIdByWorkflowHomeProject', () => {
+	const route = reactive(mockRoute);
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+		route.params = {};
+		route.query = {};
+		route.path = '';
+	});
+
+	const now = new Date().toISOString();
+	const makeProject = (id: string, type: ProjectType = ProjectTypes.Team): Project => ({
+		id,
+		name: `Project ${id}`,
+		description: null,
+		icon: { type: 'icon', value: 'layers' },
+		type,
+		createdAt: now,
+		updatedAt: now,
+		relations: [],
+		scopes: [] as Scope[],
+	});
+
+	const makeStore = () => {
+		const store = useProjectsStore();
+		store.personalProject = makeProject('personal-1', ProjectTypes.Personal);
+		return store;
+	};
+
+	it('fetches the workflow home project when none is loaded', async () => {
+		const store = makeStore();
+		const teamProject = makeProject('team-1');
+		mockedProjectsApi.getProject.mockResolvedValue(teamProject);
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(teamProject);
+
+		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'team-1');
+		expect(store.currentProject?.id).toBe('team-1');
+		expect(store.projectNavActiveId).toBe('team-1');
+	});
+
+	it('fetches the workflow home project even when the route has a projectId query param', async () => {
+		route.query = { projectId: 'team-1' };
+		const store = makeStore();
+		const teamProject = makeProject('team-1');
+		mockedProjectsApi.getProject.mockResolvedValue(teamProject);
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(teamProject);
+
+		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'team-1');
+		expect(store.currentProject?.id).toBe('team-1');
+	});
+
+	it('replaces a previously loaded project that does not match the workflow home project', async () => {
+		const store = makeStore();
+		store.currentProject = makeProject('team-2');
+		const teamProject = makeProject('team-1');
+		mockedProjectsApi.getProject.mockResolvedValue(teamProject);
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(teamProject);
+
+		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'team-1');
+		expect(store.currentProject?.id).toBe('team-1');
+	});
+
+	it('does not refetch when the workflow home project is already loaded', async () => {
+		const store = makeStore();
+		store.currentProject = makeProject('team-1');
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(makeProject('team-1'));
+
+		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
+		expect(store.currentProject?.id).toBe('team-1');
+	});
+
+	it('sets the personal project as current for own personal workflows', async () => {
+		route.query = { projectId: 'personal-1' };
+		const store = makeStore();
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(
+			makeProject('personal-1', ProjectTypes.Personal),
+		);
+
+		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
+		expect(store.currentProject?.id).toBe('personal-1');
+		expect(store.projectNavActiveId).toBe('personal-1');
+	});
+
+	it('marks workflows shared with the user as shared context', async () => {
+		const store = makeStore();
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(
+			makeProject('other-personal', ProjectTypes.Personal),
+			[makeProject('personal-1', ProjectTypes.Personal)],
+		);
+
+		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
+		expect(store.currentProject).toBeNull();
+		expect(store.projectNavActiveId).toBe('shared');
 	});
 });

@@ -87,7 +87,7 @@ import {
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
-import { ErrorReporter, InstanceSettings, SsrfProtectionService } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import type * as Undici from 'undici';
@@ -139,6 +139,7 @@ import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
+import { SsrfProtectionService } from '@n8n/backend-network';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -730,6 +731,9 @@ export class InstanceAiService {
 			sandboxTimeout,
 			sandboxNamePrefix,
 			sandboxEphemeral,
+			sandboxAutoStopMinutes,
+			sandboxAutoArchiveMinutes,
+			sandboxAutoDeleteMinutes,
 			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
 		const provider = normalizeSandboxProvider(sandboxProvider);
@@ -752,6 +756,11 @@ export class InstanceAiService {
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
 				ephemeral: sandboxEphemeral,
+				autoStopInterval: sandboxAutoStopMinutes,
+				autoArchiveInterval: sandboxAutoArchiveMinutes,
+				// Ephemeral sandboxes delete on stop; Daytona forces autoDeleteInterval to 0 and warns
+				// if we also pass a non-zero value, so leave it unset on the ephemeral path.
+				autoDeleteInterval: sandboxEphemeral ? undefined : sandboxAutoDeleteMinutes,
 				refreshSkewMs: daytonaTokenRefreshSkewMs,
 			};
 		}
@@ -4453,10 +4462,14 @@ export class InstanceAiService {
 			const errorMessage = getErrorMessage(error);
 			const userFacingErrorMessage = getUserFacingErrorMessage(error);
 
-			this.logger.error('Instance AI run error', {
+			this.logger.error(`Instance AI run error: ${errorMessage}`, {
 				error: errorMessage,
 				threadId,
 				runId,
+			});
+			this.errorReporter.error(error, {
+				tags: { component: 'instance-ai-run' },
+				extra: { threadId, runId },
 			});
 			this.evaluateTerminalResponse(threadId, runId, 'errored', {
 				messageGroupId,
@@ -5443,10 +5456,14 @@ export class InstanceAiService {
 			const errorMessage = getErrorMessage(error);
 			const userFacingErrorMessage = getUserFacingErrorMessage(error);
 
-			this.logger.error('Instance AI resumed run error', {
+			this.logger.error(`Instance AI resumed run error: ${errorMessage}`, {
 				error: errorMessage,
 				threadId: opts.threadId,
 				runId: opts.runId,
+			});
+			this.errorReporter.error(error, {
+				tags: { component: 'instance-ai-run' },
+				extra: { threadId: opts.threadId, runId: opts.runId },
 			});
 			const messageGroupId = this.traceContextsByRunId.get(opts.runId)?.messageGroupId;
 			this.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
