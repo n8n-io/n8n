@@ -79,6 +79,12 @@ export const ICON_PICKER_BLOCKLIST: ReadonlySet<string> = new Set([
 	'arrow-down', // Pull from remote button
 	'arrow-up', // Push to remote button
 
+	// --- Shadowed by branded multicolor SVGs ---
+	// N8nIcon resolves the static custom icon set before the Lucide fallback,
+	// so these names render as the brand logo (hardcoded fills), not the
+	// monochrome Lucide glyph shown alongside the rest of the picker grid.
+	'slack',
+
 	// --- Resembles core UI elements ---
 	'cog', // Resembles settings gear icon
 	'bell', // Resembles notifications

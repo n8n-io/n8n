@@ -19,6 +19,8 @@ describe('ICON_PICKER_BLOCKLIST', () => {
 		expect(ICON_PICKER_BLOCKLIST.has('settings')).toBe(true);
 		expect(ICON_PICKER_BLOCKLIST.has('search')).toBe(true);
 		expect(ICON_PICKER_BLOCKLIST.has('git-branch')).toBe(true);
+		// Shadowed by the branded multicolor custom SVG in N8nIcon's static set
+		expect(ICON_PICKER_BLOCKLIST.has('slack')).toBe(true);
 	});
 
 	it('uses kebab-case icon names (Lucide convention)', () => {
