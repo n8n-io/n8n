@@ -360,8 +360,11 @@ export class WorkflowApiHelper {
 		return [];
 	}
 
-	async getExecution(executionId: string): Promise<ExecutionListResponse> {
-		const response = await this.api.request.get(`/rest/executions/${executionId}`);
+	async getExecution(
+		executionId: string,
+		options?: { redactExecutionData?: boolean },
+	): Promise<ExecutionListResponse> {
+		const response = await this.getExecutionRaw(executionId, options);
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to get execution: ${await response.text()}`);
@@ -369,6 +372,22 @@ export class WorkflowApiHelper {
 
 		const result = await response.json();
 		return result.data ?? result;
+	}
+
+	/**
+	 * Like {@link getExecution}, but returns the raw response instead of throwing
+	 * on a non-2xx status — for asserting a specific status code (e.g. the `403`
+	 * from the `execution:reveal` scope guard on `?redactExecutionData=false`).
+	 */
+	async getExecutionRaw(
+		executionId: string,
+		options?: { redactExecutionData?: boolean },
+	): Promise<APIResponse> {
+		const params = new URLSearchParams();
+		if (options?.redactExecutionData !== undefined) {
+			params.set('redactExecutionData', String(options.redactExecutionData));
+		}
+		return await this.api.request.get(`/rest/executions/${executionId}`, { params });
 	}
 
 	async waitForExecution(

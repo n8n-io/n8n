@@ -1,11 +1,12 @@
 import type { Locator } from '@playwright/test';
+import { request } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { DATA_NODE, manualWorkflow, uniqueSecret, webhookWorkflow } from './redaction-helpers';
 import { expect, test } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
-import type { ApiHelpers } from '../../../services/api-helper';
+import { ApiHelpers } from '../../../services/api-helper';
 
 test.use({
 	capability: {
@@ -74,6 +75,17 @@ test.describe(
 			await api.securitySettings.setRedactionFloor('off');
 		});
 
+		// The floor is instance-global: restore the default so executions in other
+		// spec files (which share the server in local runs) aren't redacted after
+		// this suite finishes. The `api` fixture is test-scoped, so build one here.
+		test.afterAll(async ({ backendUrl }) => {
+			const context = await request.newContext({ baseURL: backendUrl });
+			const api = new ApiHelpers(context);
+			await api.signin('owner');
+			await api.securitySettings.setRedactionFloor('off');
+			await context.dispose();
+		});
+
 		test('can be enabled and scoped from the Security & Policies UI', async ({ n8n }) => {
 			await n8n.securitySettings.goto();
 
@@ -133,6 +145,41 @@ test.describe(
 				const output = await openExecutionOutput(memberN8n, execution);
 				await expect(output).toHaveText(/Output data redacted/);
 				await expect(output).toContainText('You do not have the permissions to reveal it');
+			});
+
+			test('enforces the reveal scope on the executions API', async ({ api }) => {
+				await api.enableProjectFeatures();
+				await api.securitySettings.setRedactionFloor('all');
+
+				// A project editor lacks execution:reveal
+				const project = await api.projects.createProject(`Redaction Team ${nanoid()}`);
+				const execution = await runProductionExecution(api, undefined, project.id);
+
+				const member = await api.publicApi.createUser({
+					email: `member-${nanoid()}@test.com`,
+					firstName: 'Red',
+					lastName: 'Action',
+					role: 'global:member',
+				});
+				await api.projects.addUserToProject(project.id, member.id, 'project:editor');
+				const memberApi = await api.createApiForUser(member);
+
+				// The default read is redacted for the editor
+				const redacted = await memberApi.workflows.getExecution(execution.executionId);
+				expect(redacted.data).not.toContain(execution.secret);
+
+				// The reveal query param is rejected without the scope, and leaks nothing
+				const rejected = await memberApi.workflows.getExecutionRaw(execution.executionId, {
+					redactExecutionData: false,
+				});
+				expect(rejected.status()).toBe(403);
+				expect(await rejected.text()).not.toContain(execution.secret);
+
+				// The owner holds execution:reveal: the same param returns the data
+				const revealed = await api.workflows.getExecution(execution.executionId, {
+					redactExecutionData: false,
+				});
+				expect(revealed.data).toContain(execution.secret);
 			});
 
 			test('prevents members without the enable-redaction scope from setting redaction', async ({
@@ -304,6 +351,29 @@ test.describe(
 
 				const executionData = await api.workflows.getExecution(execution.executionId);
 				expect(executionData.data).not.toContain(execution.secret);
+			});
+
+			test('redacts execution data served via the public API', async ({ api }) => {
+				const execution = await runProductionExecution(api);
+
+				// Assert on the execution payload (`data`), not the whole body: the
+				// sentinel legitimately appears in the workflow definition (node
+				// parameters), which is readable with workflow:read.
+				const response = await api.publicApi.getExecutionRaw(execution.executionId, {
+					includeData: true,
+				});
+				expect(response.ok()).toBe(true);
+				const body = await response.json();
+				expect(JSON.stringify(body.data)).not.toContain(execution.secret);
+
+				// Positive control: the owner's reveal returns the data on this channel too
+				const revealed = await api.publicApi.getExecutionRaw(execution.executionId, {
+					includeData: true,
+					redactExecutionData: false,
+				});
+				expect(revealed.ok()).toBe(true);
+				const revealedBody = await revealed.json();
+				expect(JSON.stringify(revealedBody.data)).toContain(execution.secret);
 			});
 		});
 
