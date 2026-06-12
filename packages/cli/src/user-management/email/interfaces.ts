@@ -9,16 +9,6 @@ export type PasswordResetData = {
 	passwordResetUrl: string;
 };
 
-export type ApiKeyRevokedEmailData = {
-	email: string;
-	firstName: string;
-	label: string;
-	suffix: string;
-	revokedBy: string;
-	revokedAt: string;
-	createApiKeyUrl: string;
-};
-
 export type SendEmailResult = {
 	emailSent: boolean;
 	errors?: string[];

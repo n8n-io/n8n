@@ -24,7 +24,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';
-import { UrlService } from './url.service';
 
 export const API_KEY_AUDIENCE: ApiKeyAudience = 'public-api';
 export const API_KEY_ISSUER = 'n8n';
@@ -35,32 +34,12 @@ export const PREFIX_LEGACY_API_KEY = 'n8n_api_';
 // Pair with `ESCAPE '\\'` on the SQL side to keep `%`/`_`/`\` literal in user input.
 const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, '\\$&');
 
-const REVOKED_AT_FORMATTER = new Intl.DateTimeFormat('en-GB', {
-	day: 'numeric',
-	month: 'short',
-	year: 'numeric',
-});
-
-function formatRevokedAt(date: Date): string {
-	return REVOKED_AT_FORMATTER.format(date);
-}
-
-function formatRevokedBy(user: {
-	firstName?: string | null;
-	lastName?: string | null;
-	email: string;
-}): string {
-	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
-	return fullName || user.email;
-}
-
 @Service()
 export class PublicApiKeyService {
 	constructor(
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
 		private readonly mailer: UserManagementMailer,
-		private readonly urlService: UrlService,
 		private readonly logger: Logger,
 	) {}
 
@@ -212,31 +191,18 @@ export class PublicApiKeyService {
 
 		const isOwn = apiKey.userId === caller.id;
 
-		// Fire-and-forget — SMTP latency shouldn't block the DELETE response,
-		// and errors are caught and logged inside.
-		if (!isOwn) void this.notifyOwnerOfRevocation(apiKey, caller);
-
-		return { isOwn };
-	}
-
-	private async notifyOwnerOfRevocation(apiKey: ApiKey, revoker: User) {
-		try {
-			await this.mailer.apiKeyRevoked({
-				email: apiKey.user.email,
-				firstName: apiKey.user.firstName ?? 'there',
-				label: apiKey.label,
-				suffix: apiKey.apiKey.slice(-4),
-				revokedBy: formatRevokedBy(revoker),
-				revokedAt: formatRevokedAt(new Date()),
-				createApiKeyUrl: `${this.urlService.getInstanceBaseUrl()}/settings/api`,
-			});
-		} catch (e) {
-			this.logger.error('Failed to send API key revocation email', {
-				apiKeyId: apiKey.id,
-				ownerId: apiKey.userId,
-				error: e instanceof Error ? e.message : String(e),
+		// Fire-and-forget — SMTP latency shouldn't block the DELETE response.
+		if (!isOwn) {
+			this.mailer.notifyApiKeyRevoked({ apiKey, revoker: caller }).catch((e) => {
+				this.logger.error('Failed to send API key revocation email', {
+					apiKeyId: apiKey.id,
+					ownerId: apiKey.userId,
+					error: e instanceof Error ? e.message : String(e),
+				});
 			});
 		}
+
+		return { isOwn };
 	}
 
 	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {

@@ -25,13 +25,7 @@ describe('PublicApiKeyService', () => {
 	beforeAll(async () => {
 		await testDb.init();
 		apiKeyRepository = Container.get(ApiKeyRepository);
-		publicApiKeyService = new PublicApiKeyService(
-			apiKeyRepository,
-			jwtService,
-			mock(),
-			mock(),
-			mock(),
-		);
+		publicApiKeyService = new PublicApiKeyService(apiKeyRepository, jwtService, mock(), mock());
 	});
 
 	afterAll(async () => {

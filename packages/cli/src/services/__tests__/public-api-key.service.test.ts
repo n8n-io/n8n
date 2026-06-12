@@ -8,7 +8,6 @@ import type { UserManagementMailer } from '@/user-management/email';
 
 import type { JwtService } from '../jwt.service';
 import { PublicApiKeyService } from '../public-api-key.service';
-import type { UrlService } from '../url.service';
 
 jest.mock('@n8n/permissions', () => ({
 	...jest.requireActual('@n8n/permissions'),
@@ -19,39 +18,26 @@ describe('PublicApiKeyService', () => {
 	const apiKeyRepository = mock<ApiKeyRepository>();
 	const jwtService = mock<JwtService>();
 	const mailer = mock<UserManagementMailer>();
-	const urlService = mock<UrlService>();
 	const logger = mock<Logger>();
 
-	const service = new PublicApiKeyService(apiKeyRepository, jwtService, mailer, urlService, logger);
+	const service = new PublicApiKeyService(apiKeyRepository, jwtService, mailer, logger);
 
 	const hasGlobalScopeMock = jest.mocked(hasGlobalScope);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		urlService.getInstanceBaseUrl.mockReturnValue('https://acme.app.n8n.cloud');
+		mailer.notifyApiKeyRevoked.mockResolvedValue({ emailSent: true });
 	});
 
 	describe('deleteApiKey', () => {
 		const apiKey = mock<ApiKey>({
 			id: 'key-1',
-			label: 'Test 123',
-			apiKey: 'n8n_api_xxxxxxxaaa5',
 			userId: 'owner-1',
-			user: mock<User>({
-				id: 'owner-1',
-				email: 'owner@example.com',
-				firstName: 'Maria',
-				lastName: 'Silva',
-			}),
+			user: mock<User>({ id: 'owner-1' }),
 		});
 
 		const owner = mock<User>({ id: 'owner-1' });
-		const admin = mock<User>({
-			id: 'admin-1',
-			firstName: 'Jan',
-			lastName: 'Ostrówka',
-			email: 'jan@acme.test',
-		});
+		const admin = mock<User>({ id: 'admin-1' });
 
 		it('does not send an email when the owner deletes their own key', async () => {
 			hasGlobalScopeMock.mockReturnValue(false);
@@ -61,10 +47,10 @@ describe('PublicApiKeyService', () => {
 			const result = await service.deleteApiKey(owner, 'key-1');
 
 			expect(result).toEqual({ isOwn: true });
-			expect(mailer.apiKeyRevoked).not.toHaveBeenCalled();
+			expect(mailer.notifyApiKeyRevoked).not.toHaveBeenCalled();
 		});
 
-		it('sends a revocation email when an admin revokes another user’s key', async () => {
+		it('delegates the revocation email to the mailer when an admin revokes another user’s key', async () => {
 			hasGlobalScopeMock.mockReturnValue(true);
 			apiKeyRepository.findOne.mockResolvedValue(apiKey);
 			apiKeyRepository.delete.mockResolvedValue({ affected: 1, raw: [] });
@@ -72,22 +58,14 @@ describe('PublicApiKeyService', () => {
 			const result = await service.deleteApiKey(admin, 'key-1');
 
 			expect(result).toEqual({ isOwn: false });
-			expect(mailer.apiKeyRevoked).toHaveBeenCalledWith({
-				email: 'owner@example.com',
-				firstName: 'Maria',
-				label: 'Test 123',
-				suffix: 'aaa5',
-				revokedBy: 'Jan Ostrówka',
-				revokedAt: expect.stringMatching(/^\d{1,2} [A-Z][a-z]{2} \d{4}$/),
-				createApiKeyUrl: 'https://acme.app.n8n.cloud/settings/api',
-			});
+			expect(mailer.notifyApiKeyRevoked).toHaveBeenCalledWith({ apiKey, revoker: admin });
 		});
 
 		it('logs and swallows when the revocation email fails to send', async () => {
 			hasGlobalScopeMock.mockReturnValue(true);
 			apiKeyRepository.findOne.mockResolvedValue(apiKey);
 			apiKeyRepository.delete.mockResolvedValue({ affected: 1, raw: [] });
-			mailer.apiKeyRevoked.mockRejectedValueOnce(new Error('smtp down'));
+			mailer.notifyApiKeyRevoked.mockRejectedValueOnce(new Error('smtp down'));
 
 			const result = await service.deleteApiKey(admin, 'key-1');
 
@@ -109,7 +87,7 @@ describe('PublicApiKeyService', () => {
 			apiKeyRepository.findOne.mockResolvedValue(null);
 
 			await expect(service.deleteApiKey(owner, 'missing')).rejects.toThrow(NotFoundError);
-			expect(mailer.apiKeyRevoked).not.toHaveBeenCalled();
+			expect(mailer.notifyApiKeyRevoked).not.toHaveBeenCalled();
 		});
 	});
 });
