@@ -145,58 +145,53 @@ export interface NodeExecutionSnapshot {
 	iterations: number;
 }
 
+// Highest priority first. `success` is resolved separately.
+const GROUP_STATUS_PRIORITY: readonly GroupExecutionStatus[] = [
+	'waiting',
+	'running',
+	'error',
+	'issues',
+	'warning',
+];
+
+const IDLE_STATUSES: readonly ExecutionStatus[] = ['new', 'unknown', 'canceled'];
+
 /**
- * Reduce a group's per-node state into one dominant status. Priority mirrors
- * the single-node order: waiting > running > error > issues > warning > success > idle.
- * Pre-execution validation issues surface as `issues` (the triangle), never as
- * an execution `error`. `success` requires every node to have succeeded or not run.
+ * Classify a single member for the group rollup by this priority:
+ * waiting > running > error > issues > warning > success > idle.
+ * Validation issues are kept distinct from execution errors.
+ * Other is an active-but-unhandled status that must block a misleading success.
+ * Idle statuses return undefined (they neither paint nor veto).
  */
+function classifyNodeForGroup(
+	snapshot: NodeExecutionSnapshot,
+): GroupExecutionStatus | 'other' | undefined {
+	const { status } = snapshot;
+	if (snapshot.waiting || status === 'waiting') return 'waiting';
+	if (snapshot.running || snapshot.waitingForNext) return 'running';
+	if (snapshot.hasExecutionError) return 'error';
+	if (snapshot.hasValidationError) return 'issues';
+	if (snapshot.dirty) return 'warning';
+	if (status === 'success') return 'success';
+	if (status === undefined || IDLE_STATUSES.includes(status)) return undefined;
+	return 'other';
+}
+
+/** Reduce a group's per-node state into one dominant status. */
 export function aggregateGroupExecution(
 	nodeIds: string[],
 	getNodeExecutionSnapshot: (id: string) => NodeExecutionSnapshot,
 ): GroupExecutionStatus | undefined {
-	let anyWaiting = false;
-	let anyRunning = false;
-	let anyError = false;
-	let anyIssues = false;
-	let anyWarning = false;
-	let anySuccess = false;
-	let anyOther = false;
-
+	const seen = new Set<GroupExecutionStatus | 'other' | undefined>();
 	for (const id of nodeIds) {
-		const snapshot = getNodeExecutionSnapshot(id);
-		const status = snapshot.status;
-
-		if (snapshot.waiting || status === 'waiting') {
-			anyWaiting = true;
-		} else if (snapshot.running || snapshot.waitingForNext) {
-			anyRunning = true;
-		} else if (snapshot.hasExecutionError) {
-			anyError = true;
-		} else if (snapshot.hasValidationError) {
-			anyIssues = true;
-		} else if (snapshot.dirty) {
-			anyWarning = true;
-		} else if (status === 'success') {
-			anySuccess = true;
-		} else if (
-			status !== undefined &&
-			status !== 'unknown' &&
-			status !== 'new' &&
-			status !== 'canceled'
-		) {
-			anyOther = true;
-		}
+		seen.add(classifyNodeForGroup(getNodeExecutionSnapshot(id)));
 	}
 
-	if (anyWaiting) return 'waiting';
-	if (anyRunning) return 'running';
-	if (anyError) return 'error';
-	if (anyIssues) return 'issues';
-	if (anyWarning) return 'warning';
+	for (const status of GROUP_STATUS_PRIORITY) {
+		if (seen.has(status)) return status;
+	}
 	// success is the only status that speaks for every member
-	if (anySuccess && !anyOther) return 'success';
-	return undefined;
+	return seen.has('success') && !seen.has('other') ? 'success' : undefined;
 }
 
 export interface MapGroupsToVueFlowNodesInputs {
