@@ -73,7 +73,7 @@ export const dataLocationOnSheet: INodeProperties = {
 						minValue: 1,
 					},
 					default: 1,
-					description: "Index is relative to the set 'Range', first row index is 1",
+					description: "Index is relative to the set 'Range', first row index is 1. Applied to each sheet individually.",
 					hint: 'Index of the row which contains the column names',
 					displayOptions: {
 						show: {
@@ -89,7 +89,7 @@ export const dataLocationOnSheet: INodeProperties = {
 						minValue: 1,
 					},
 					default: 2,
-					description: "Index is relative to the set 'Range', first row index is 1",
+					description: "Index is relative to the set 'Range', first row index is 1. Applied to each sheet individually.",
 					hint: 'Index of first row which contains the actual data',
 					displayOptions: {
 						show: {
@@ -104,7 +104,7 @@ export const dataLocationOnSheet: INodeProperties = {
 					default: '',
 					placeholder: 'A:Z',
 					description:
-						'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.',
+						'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details. Applied to each sheet individually.',
 					hint: 'You can specify both the rows and the columns, e.g. C4:E7',
 					displayOptions: {
 						show: {
