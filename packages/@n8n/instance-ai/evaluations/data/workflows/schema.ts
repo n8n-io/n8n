@@ -20,7 +20,7 @@ const ExecutionScenarioSchema = z.object({
 	requires: z.string().optional(),
 });
 
-export const WorkflowTestCaseSchema = z.object({
+const workflowTestCaseObjectSchema = z.object({
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 	description: z.string().optional(),
 	conversation: z.array(ConversationTurnSchema).min(1),
@@ -52,6 +52,19 @@ export const WorkflowTestCaseSchema = z.object({
 		)
 		.optional(),
 	/**
+	 * Path to a conversation seed file (relative to the case file), produced by
+	 * the export-thread script. The seed — native message history + referenced
+	 * workflows — is restored into the build thread before `conversation[0]`
+	 * is sent live. The loader resolves the path and validates the file.
+	 */
+	seedFile: z.string().min(1).optional(),
+	/**
+	 * Authored prose turns seeded as plain-text thread history before
+	 * `conversation[0]` is sent live. Use a seed file instead when the case
+	 * needs real tool-call history or restored workflows.
+	 */
+	priorConversation: z.array(ConversationTurnSchema).min(1).optional(),
+	/**
 	 * Logical groupings this case belongs to (e.g. `['pr', 'full']`). Used by
 	 * the eval CLI's `--tier` flag and propagated to LangSmith as example
 	 * splits, so subsets can be evaluated and compared independently. Defaults
@@ -59,5 +72,10 @@ export const WorkflowTestCaseSchema = z.object({
 	 */
 	datasets: z.array(z.string()).min(1).default(['full']),
 });
+
+export const WorkflowTestCaseSchema = workflowTestCaseObjectSchema.refine(
+	(testCase) => !(testCase.seedFile && testCase.priorConversation),
+	{ message: 'seedFile and priorConversation are mutually exclusive — pick one seeding mode' },
+);
 
 export type WorkflowTestCaseInput = z.infer<typeof WorkflowTestCaseSchema>;

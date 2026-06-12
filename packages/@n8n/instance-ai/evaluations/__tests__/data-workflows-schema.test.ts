@@ -56,6 +56,24 @@ describe('WorkflowTestCaseSchema', () => {
 		).toThrow();
 	});
 
+	it('accepts a prose priorConversation prelude', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			priorConversation: [{ role: 'user', text: 'We already agreed on #cosmic-otter-alerts' }],
+		});
+		expect(parsed.priorConversation).toHaveLength(1);
+	});
+
+	it('rejects seedFile combined with priorConversation', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({
+				...validFixture(),
+				seedFile: 'seeds/some-thread.seed.json',
+				priorConversation: [{ role: 'user', text: 'prelude' }],
+			}),
+		).toThrow(/mutually exclusive/);
+	});
+
 	it('accepts the optional triggerType field', () => {
 		const parsed = WorkflowTestCaseSchema.parse({ ...validFixture(), triggerType: 'webhook' });
 		expect(parsed.triggerType).toBe('webhook');

@@ -10,8 +10,28 @@ import type {
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSeedWorkflow,
 } from '@n8n/api-types';
 import { z } from 'zod';
+
+// -- Conversation seeding response shapes -------------------------------------
+
+const RestoreThreadEnvelope = z.object({
+	data: z.object({
+		ok: z.literal(true),
+		threadId: z.string(),
+		restored: z.number(),
+		workflowIds: z.array(z.string()),
+	}),
+});
+
+const ThreadExportEnvelope = z.object({
+	data: z.object({
+		threadId: z.string(),
+		projectId: z.string().optional(),
+		messages: z.array(z.record(z.unknown())),
+	}),
+});
 
 // ---------------------------------------------------------------------------
 // Computer-use gateway response shapes (Zod-validated to keep the client
@@ -477,6 +497,37 @@ export class N8nClient {
 			method: 'POST',
 			body: { threadId, credentialIds },
 		});
+	}
+
+	/**
+	 * Seed an existing thread with a previously exported conversation: the
+	 * referenced workflows are recreated (node credentials stripped server-side)
+	 * and the native message log is written verbatim, so the thread continues
+	 * as if the conversation really happened.
+	 * POST /rest/instance-ai/eval/restore-thread
+	 */
+	async restoreThread(
+		threadId: string,
+		messages: Array<Record<string, unknown>>,
+		workflows: InstanceAiEvalSeedWorkflow[],
+	): Promise<{ restored: number; workflowIds: string[] }> {
+		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
+			method: 'POST',
+			body: { threadId, messages, workflows },
+		});
+		return RestoreThreadEnvelope.parse(result).data;
+	}
+
+	/**
+	 * A thread's complete native message log, exactly as persisted — the
+	 * seedable input of restoreThread().
+	 * GET /rest/instance-ai/eval/export-thread/:threadId
+	 */
+	async exportThread(
+		threadId: string,
+	): Promise<{ threadId: string; projectId?: string; messages: Array<Record<string, unknown>> }> {
+		const result = await this.fetch(`/rest/instance-ai/eval/export-thread/${threadId}`);
+		return ThreadExportEnvelope.parse(result).data;
 	}
 
 	// -- Data tables ---------------------------------------------------------

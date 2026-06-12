@@ -209,6 +209,21 @@ export interface WorkflowTestCase {
 	 * field build with an empty view (everything mocks).
 	 */
 	credentials?: TestCaseCredential[];
+	/**
+	 * Conversation seed file (path resolved at case load), produced by the
+	 * export-thread script from a real conversation. Restored into the build
+	 * thread — messages and referenced workflows — before `conversation[0]` is
+	 * sent live, so the case evaluates the next turn of a real prior history.
+	 * Mutually exclusive with `priorConversation`.
+	 */
+	seedFile?: string;
+	/**
+	 * Authored prose turns seeded as plain-text history (no tool calls, no
+	 * workflows) before `conversation[0]` is sent live. Cheaper than a seed
+	 * file when the case only needs "what was discussed" to exist. Mutually
+	 * exclusive with `seedFile`.
+	 */
+	priorConversation?: ConversationTurn[];
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
@@ -269,6 +284,9 @@ export interface TranscriptTurn {
 	userMessage?: string;
 	/** Agent narration and tool interactions, interleaved in the order they occurred. */
 	steps: TranscriptStep[];
+	/** True for turns restored from a conversation seed — context that predates
+	 *  the evaluated run, as opposed to behaviour captured live. */
+	seeded?: boolean;
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */
