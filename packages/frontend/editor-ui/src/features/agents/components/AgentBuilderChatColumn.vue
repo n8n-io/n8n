@@ -24,7 +24,6 @@ const props = defineProps<{
 	connectedTriggers: string[];
 	initialPrompt?: string;
 	isBuilderConfigured: boolean;
-	isPublished: boolean;
 	isFullWidth: boolean;
 	canEditAgent: boolean;
 	beforeBuildSend?: () => Promise<void> | void;
@@ -32,6 +31,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'config-updated': [];
+	'build-done': [];
 	'update:streaming': [streaming: boolean];
 	'update:tools': [tools: AgentJsonToolRef[]];
 	'update:mcp-servers': [mcpServers: AgentJsonMcpServerConfig[]];
@@ -91,6 +91,7 @@ const sharedInputDraft = ref('');
 				:can-edit-agent="canEditAgent"
 				:before-send="beforeBuildSend"
 				@config-updated="emit('config-updated')"
+				@build-done="emit('build-done')"
 				@update:streaming="emit('update:streaming', $event)"
 			>
 				<template v-if="canEditAgent" #above-input>
@@ -100,14 +101,14 @@ const sharedInputDraft = ref('');
 							:mcp-servers="localConfig?.mcpServers ?? []"
 							:project-id="projectId"
 							:agent-id="agentId"
-							:agent-name="agentName"
-							:is-published="isPublished"
 							:connected-triggers="connectedTriggers"
+							:is-published="
+								agent?.activeVersionId !== null && agent?.activeVersionId !== undefined
+							"
 							@update:tools="emit('update:tools', $event)"
 							@update:mcp-servers="emit('update:mcp-servers', $event)"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
-							@agent-published="emit('agent-published', $event)"
 							@agent-changed="emit('agent-changed')"
 						/>
 					</div>

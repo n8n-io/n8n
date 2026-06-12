@@ -2,6 +2,7 @@ import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { LogsPanel } from './components/LogsPanel';
+import { RunDataPanel } from './components/RunDataPanel';
 
 export class ExecutionsPage extends BasePage {
 	async goto(projectId?: string) {
@@ -10,6 +11,7 @@ export class ExecutionsPage extends BasePage {
 	}
 
 	readonly logsPanel = new LogsPanel(this.getPreviewIframe().getByTestId('logs-panel'));
+	readonly outputPanel = new RunDataPanel(this.getPreviewIframe().getByTestId('output-panel'));
 
 	async clickDebugInEditorButton(): Promise<void> {
 		await this.clickButtonByName('Debug in editor');
@@ -111,6 +113,12 @@ export class ExecutionsPage extends BasePage {
 
 	async openFilter(): Promise<void> {
 		await this.getFilterButton().click();
+	}
+
+	async openNodeExecutionDetails(name: string): Promise<void> {
+		await this.getPreviewIframe()
+			.locator(`[data-test-id="canvas-node"][data-node-name="${name}"]`)
+			.dblclick();
 	}
 
 	getFilterBadge(): Locator {

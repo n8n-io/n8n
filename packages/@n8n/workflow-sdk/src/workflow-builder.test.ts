@@ -746,6 +746,121 @@ describe('Workflow Builder', () => {
 		});
 	});
 
+	describe('NodeChain.onError()', () => {
+		it('binds the error route to the node that declares continueErrorOutput, not the tail', () => {
+			// INS-425 regression: sendGmail.to(markSent).onError(markFailed) attached
+			// the error edge to Mark Sent (tail) instead of Send Gmail, producing a
+			// connection from an output port Mark Sent does not have.
+			const t = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.3,
+				config: { name: 'Daily' },
+			});
+			const sendGmail = node({
+				type: 'n8n-nodes-base.gmail',
+				version: 2.2,
+				config: { name: 'Send Gmail', onError: 'continueErrorOutput' },
+			});
+			const markSent = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Mark Sent' },
+			});
+			const markFailed = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Mark Failed' },
+			});
+
+			const wf = workflow('test-id', 'Test').add(t).to(sendGmail.to(markSent).onError(markFailed));
+
+			const json = wf.toJSON();
+
+			// Error edge originates from the gmail node's error pin
+			expect(json.connections['Send Gmail']?.main[0]?.[0]?.node).toBe('Mark Sent');
+			expect(json.connections['Send Gmail']?.main[1]?.[0]?.node).toBe('Mark Failed');
+			// Mark Sent has no phantom second output
+			expect(json.connections['Mark Sent']?.main[1]).toBeUndefined();
+		});
+
+		it('falls back to the tail and makes its error pin real when no chain node declares continueErrorOutput', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const fetchNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch' },
+			});
+			const writeNode = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Write' },
+			});
+			const failHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Log Failure' },
+			});
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(fetchNode.to(writeNode).onError(failHandler));
+
+			const json = wf.toJSON();
+
+			// Tail keeps the error route, but its error pin must actually exist
+			const writeJson = json.nodes.find((n) => n.name === 'Write');
+			expect(writeJson?.onError).toBe('continueErrorOutput');
+			expect(json.connections['Write']?.main[1]?.[0]?.node).toBe('Log Failure');
+		});
+
+		it('node-level .onError() implies onError: continueErrorOutput on the node', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error Handler' },
+			});
+
+			httpNode.onError(errorHandler);
+
+			const wf = workflow('test-id', 'Test').add(httpNode).add(errorHandler);
+			const json = wf.toJSON();
+
+			const httpJson = json.nodes.find((n) => n.name === 'HTTP');
+			expect(httpJson?.onError).toBe('continueErrorOutput');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Error Handler');
+		});
+
+		it('does not override an explicit onError mode set in config', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueRegularOutput' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error Handler' },
+			});
+
+			httpNode.onError(errorHandler);
+
+			const wf = workflow('test-id', 'Test').add(httpNode).add(errorHandler);
+			const json = wf.toJSON();
+
+			const httpJson = json.nodes.find((n) => n.name === 'HTTP');
+			expect(httpJson?.onError).toBe('continueRegularOutput');
+		});
+	});
+
 	describe('.settings()', () => {
 		it('should update workflow settings', () => {
 			const wf = workflow('test-id', 'Test Workflow').settings({

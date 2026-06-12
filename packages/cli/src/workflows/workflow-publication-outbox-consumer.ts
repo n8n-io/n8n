@@ -12,12 +12,12 @@ import {
 } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { UnexpectedError, ensureError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { computeTriggerDiff } from '@/workflows/trigger-diff';
+import { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
  * Consumes the workflow publication outbox on the leader instance. It polls for
@@ -46,10 +46,17 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly workflowTriggerActivator: WorkflowTriggerActivator,
 		private readonly activationErrorsService: ActivationErrorsService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
+	}
+
+	init() {
+		if (this.instanceSettings.isLeader) {
+			this.startPolling();
+		}
 	}
 
 	@OnLeaderTakeover()
@@ -164,8 +171,8 @@ export class WorkflowPublicationOutboxConsumer {
 		}
 
 		const { toAdd, toRemove } = computeTriggerDiff(
-			this.activeWorkflowManager.getEnabledTriggerNodes(oldVersion),
-			this.activeWorkflowManager.getEnabledTriggerNodes(newVersion),
+			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion),
+			this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion),
 		);
 
 		// No trigger changed: advance the published version and finish. Unchanged
@@ -179,16 +186,16 @@ export class WorkflowPublicationOutboxConsumer {
 		// Must happen BEFORE advancing the version, using the currently
 		// published version so the right webhooks are deregistered.
 		if (toRemove.size > 0 && oldVersion) {
-			await this.activeWorkflowManager.removeTriggerNodes(workflow, oldVersion, toRemove);
+			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
 		}
 
 		await this.advancePublishedVersion(record);
 
 		try {
 			if (toAdd.size > 0) {
-				await this.activeWorkflowManager.addTriggerNodes(workflow, newVersion, toAdd);
+				await this.workflowTriggerActivator.activate(workflow, newVersion, toAdd);
 			} else if (toRemove.size > 0) {
-				await this.activeWorkflowManager.updateWorkflowTriggerCount(workflow, newVersion);
+				await this.workflowTriggerActivator.updateTriggerCount(workflow, newVersion);
 			}
 		} catch (e) {
 			const error = ensureError(e);

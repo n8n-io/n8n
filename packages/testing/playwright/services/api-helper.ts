@@ -24,6 +24,7 @@ import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
+import { SecuritySettingsApiHelper } from './security-settings-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
 import { UserApiHelper, type TestUser } from './user-api-helper';
@@ -78,6 +79,7 @@ export class ApiHelpers {
 	tags: TagApiHelper;
 	roles: RoleApiHelper;
 	sourceControl: SourceControlApiHelper;
+	securitySettings: SecuritySettingsApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -96,6 +98,7 @@ export class ApiHelpers {
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
 		this.sourceControl = new SourceControlApiHelper(this);
+		this.securitySettings = new SecuritySettingsApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}
