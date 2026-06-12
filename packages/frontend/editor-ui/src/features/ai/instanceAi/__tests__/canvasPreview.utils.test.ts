@@ -5,7 +5,9 @@ import {
 	getLatestBuilderTarget,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
+	getLatestWorkflowUpdateResult,
 	getExecutionResultsByWorkflow,
+	isAgentEditingWorkflow,
 } from '../canvasPreview.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
@@ -775,5 +777,202 @@ describe('getExecutionResultsByWorkflow', () => {
 			],
 		});
 		expect(getExecutionResultsByWorkflow(node).size).toBe(0);
+	});
+});
+
+describe('getLatestWorkflowUpdateResult', () => {
+	test('returns undefined for non-mutating workflows actions', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'workflows',
+					args: { action: 'get-json', workflowId: 'wf-1' },
+					result: { workflow: { id: 'wf-1' } },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toBeUndefined();
+	});
+
+	test('returns undefined for a failed update call', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'workflows',
+					args: { action: 'update', workflowId: 'wf-1' },
+					result: { success: false, error: 'invalid workflow' },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toBeUndefined();
+	});
+
+	test('returns workflowId (from args) and toolCallId for a successful update', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-update-1',
+					toolName: 'workflows',
+					args: { action: 'update', workflowId: 'wf-1', workflow: { id: 'wf-1' } },
+					result: { success: true, workflowId: 'wf-1' },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toEqual({
+			workflowId: 'wf-1',
+			toolCallId: 'tc-update-1',
+		});
+	});
+
+	test('returns workflowId from args for restore-version (result omits workflowId)', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-restore-1',
+					toolName: 'workflows',
+					args: { action: 'restore-version', workflowId: 'wf-2', versionId: 'v-1' },
+					result: { success: true },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toEqual({
+			workflowId: 'wf-2',
+			toolCallId: 'tc-restore-1',
+		});
+	});
+
+	test('returns workflowId from args for a successful setup (result omits workflowId)', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-setup-1',
+					toolName: 'workflows',
+					args: { action: 'setup', workflowId: 'wf-3' },
+					result: { success: true, completedNodes: [] },
+				}),
+			],
+		});
+		expect(getLatestWorkflowUpdateResult(node)).toEqual({
+			workflowId: 'wf-3',
+			toolCallId: 'tc-setup-1',
+		});
+	});
+});
+
+describe('isAgentEditingWorkflow', () => {
+	test('locks while a workflow-builder sub-agent is active on the workflow', () => {
+		const node = makeAgentNode({
+			role: 'workflow-builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-1' },
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+	});
+
+	test('locks while a kind-only builder sub-agent is active on the workflow', () => {
+		const node = makeAgentNode({
+			kind: 'builder',
+			status: 'active',
+			targetResource: { type: 'workflow', id: 'wf-1' },
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+	});
+
+	test('does not lock once the builder is no longer active', () => {
+		const node = makeAgentNode({
+			role: 'workflow-builder',
+			status: 'completed',
+			targetResource: { type: 'workflow', id: 'wf-1' },
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+	});
+
+	test('locks while a build/setup tool call is in flight on the workflow', () => {
+		for (const toolName of [
+			'build-workflow',
+			'build-workflow-with-agent',
+			'apply-workflow-credentials',
+			'setup-workflow',
+		]) {
+			const node = makeAgentNode({
+				toolCalls: [makeToolCall({ toolName, isLoading: true, args: { workflowId: 'wf-1' } })],
+			});
+			expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+		}
+	});
+
+	test('locks while a workflows update / restore-version / setup is in flight on the workflow', () => {
+		for (const action of ['update', 'restore-version', 'setup']) {
+			const node = makeAgentNode({
+				toolCalls: [
+					makeToolCall({
+						toolName: 'workflows',
+						isLoading: true,
+						args: { action, workflowId: 'wf-1' },
+					}),
+				],
+			});
+			expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+		}
+	});
+
+	test('does NOT lock for in-flight read-only workflows actions', () => {
+		for (const action of ['get-json', 'get', 'list']) {
+			const node = makeAgentNode({
+				toolCalls: [
+					makeToolCall({
+						toolName: 'workflows',
+						isLoading: true,
+						args: { action, workflowId: 'wf-1' },
+					}),
+				],
+			});
+			expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+		}
+	});
+
+	test('does not lock once the mutating call has finished', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'workflows',
+					isLoading: false,
+					args: { action: 'update', workflowId: 'wf-1' },
+					result: { success: true, workflowId: 'wf-1' },
+				}),
+			],
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+	});
+
+	test('does not lock when the in-flight edit targets a different workflow', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-workflow',
+					isLoading: true,
+					args: { workflowId: 'wf-other' },
+				}),
+			],
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+	});
+
+	test('detects an in-flight edit in a child node', () => {
+		const node = makeAgentNode({
+			children: [
+				makeAgentNode({
+					agentId: 'child-1',
+					toolCalls: [
+						makeToolCall({
+							toolName: 'workflows',
+							isLoading: true,
+							args: { action: 'update', workflowId: 'wf-9' },
+						}),
+					],
+				}),
+			],
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-9')).toBe(true);
 	});
 });

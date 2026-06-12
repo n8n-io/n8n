@@ -18,6 +18,8 @@ import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { getTrustedOAuthOrigins, parseOAuthCallbackMessage } from './oauthCallback';
 
 /**
  * Composable for OAuth credential type detection and authorization.
@@ -27,6 +29,7 @@ export function useCredentialOAuth() {
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const workflowsStore = useWorkflowsStore();
+	const rootStore = useRootStore();
 
 	const toast = useToast();
 	const i18n = useI18n();
@@ -208,36 +211,63 @@ export function useCredentialOAuth() {
 	async function waitForOAuthCallback(popup: Window, signal?: AbortSignal): Promise<boolean> {
 		return await new Promise((resolve) => {
 			const oauthChannel = new BroadcastChannel('oauth-callback');
+			const trustedOrigins = getTrustedOAuthOrigins(rootStore.urlBaseEditor);
 			let settled = false;
 
-			const settle = (result: boolean) => {
+			function settle(result: boolean) {
 				if (settled) return;
 				settled = true;
 				oauthChannel.close();
+				clearInterval(popupClosedPoll);
+				window.removeEventListener('message', onWindowMessage);
 				resolve(result);
-			};
+			}
+
+			function handleResult(result: boolean) {
+				if (settled) return;
+				popup.close();
+
+				if (result) {
+					toast.showMessage({
+						title: i18n.baseText('nodeCredentials.oauth.accountConnected'),
+						type: 'success',
+					});
+				} else {
+					toast.showMessage({
+						title: i18n.baseText('nodeCredentials.oauth.accountConnectionFailed'),
+						type: 'error',
+					});
+				}
+
+				settle(result);
+			}
+
+			// Cross-origin embed fallback: the callback page also posts to the opener.
+			function onWindowMessage(event: MessageEvent) {
+				const result = parseOAuthCallbackMessage(event, trustedOrigins);
+				if (result === null) return;
+				handleResult(result === 'success');
+			}
 
 			signal?.addEventListener('abort', () => {
 				settle(false);
 			});
 
 			oauthChannel.addEventListener('message', (event: MessageEvent) => {
-				popup.close();
+				handleResult(event.data === 'success');
+			});
 
-				if (event.data === 'success') {
-					toast.showMessage({
-						title: i18n.baseText('nodeCredentials.oauth.accountConnected'),
-						type: 'success',
-					});
-					settle(true);
-				} else {
-					toast.showMessage({
-						title: i18n.baseText('nodeCredentials.oauth.accountConnectionFailed'),
-						type: 'error',
-					});
+			window.addEventListener('message', onWindowMessage);
+
+			// Fallback: if the popup is closed without delivering a callback (e.g. the
+			// user closes it manually), no message ever arrives. Poll for the closed
+			// popup so the promise resolves and the listeners above are cleaned up
+			// instead of leaking and hanging indefinitely.
+			const popupClosedPoll = setInterval(() => {
+				if (popup.closed) {
 					settle(false);
 				}
-			});
+			}, 500);
 		});
 	}
 
