@@ -9,9 +9,9 @@ import {
 import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
 import type { ExcelResponse } from '../../helpers/interfaces';
-import { findAppendRange, prepareOutput } from '../../helpers/utils';
+import { findAppendRange, parseWorkbook, prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
-import { workbookRLC, worksheetRLC } from '../common.descriptions';
+import { workbookRLC, workbookSourceOption, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	workbookRLC,
@@ -102,6 +102,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add option',
 		default: {},
 		options: [
+			workbookSourceOption,
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
@@ -145,9 +146,10 @@ export async function execute(
 
 	const nodeVersion = this.getNode().typeVersion;
 
-	const workbookId = this.getNodeParameter('workbook', 0, undefined, {
+	const workbookValue = this.getNodeParameter('workbook', 0, undefined, {
 		extractValue: true,
 	}) as string;
+	const { root, workbookId } = parseWorkbook(workbookValue);
 
 	const worksheetId = this.getNodeParameter('worksheet', 0, undefined, {
 		extractValue: true,
@@ -158,7 +160,7 @@ export async function execute(
 	const worksheetData = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+		`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 	);
 
 	let values: string[][] = [];
@@ -252,7 +254,7 @@ export async function execute(
 	const responseData: ExcelResponse = await microsoftApiRequest.call(
 		this,
 		'PATCH',
-		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+		`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 		{ values },
 	);
 

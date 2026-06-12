@@ -1,0 +1,59 @@
+{
+	"name": "Get Workbooks v2.3 default",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "1b2c3d4e-0000-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [380, 140]
+		},
+		{
+			"parameters": {
+				"limit": 2
+			},
+			"id": "1b2c3d4e-0000-4000-8000-000000000002",
+			"name": "Microsoft Excel 365",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2.3,
+			"position": [860, 140],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Excel 365": [
+			{
+				"json": {
+					"@odata.type": "#microsoft.graph.driveItem",
+					"id": "01EVERYTHING",
+					"name": "Quarterly.xlsx",
+					"webUrl": "https://contoso.sharepoint.com/sites/finance/Quarterly.xlsx",
+					"parentReference": {
+						"driveId": "b!financeDrive"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel 365",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

@@ -7,8 +7,9 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { parseWorkbook } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
-import { workbookRLC, worksheetRLC } from '../common.descriptions';
+import { workbookRLC, workbookSourceCollection, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	workbookRLC,
@@ -52,6 +53,7 @@ const properties: INodeProperties[] = [
 		description:
 			'Whether the range has column labels. When this property set to false Excel will automatically generate header shifting the data down by one row.',
 	},
+	workbookSourceCollection,
 ];
 
 const displayOptions = {
@@ -72,9 +74,10 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
+			const workbookValue = this.getNodeParameter('workbook', i, undefined, {
 				extractValue: true,
 			}) as string;
+			const { root, workbookId } = parseWorkbook(workbookValue);
 
 			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
 				extractValue: true,
@@ -89,7 +92,7 @@ export async function execute(
 				const { address } = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+					`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 					undefined,
 					{
 						select: 'address',
@@ -103,7 +106,7 @@ export async function execute(
 			const responseData = await microsoftApiRequest.call(
 				this,
 				'POST',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/add`,
+				`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/add`,
 				{
 					address: range,
 					hasHeaders,

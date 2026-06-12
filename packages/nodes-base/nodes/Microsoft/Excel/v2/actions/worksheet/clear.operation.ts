@@ -2,8 +2,9 @@ import type { INodeExecutionData, IExecuteFunctions, INodeProperties } from 'n8n
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { parseWorkbook } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
-import { workbookRLC, worksheetRLC } from '../common.descriptions';
+import { workbookRLC, workbookSourceCollection, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	workbookRLC,
@@ -52,6 +53,7 @@ const properties: INodeProperties[] = [
 		description: 'The sheet range that would be cleared, specified using a A1-style notation',
 		hint: 'Leave blank for entire worksheet',
 	},
+	workbookSourceCollection,
 ];
 
 const displayOptions = {
@@ -71,9 +73,10 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
+			const workbookValue = this.getNodeParameter('workbook', i, undefined, {
 				extractValue: true,
 			}) as string;
+			const { root, workbookId } = parseWorkbook(workbookValue);
 
 			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
 				extractValue: true,
@@ -86,7 +89,7 @@ export async function execute(
 				await microsoftApiRequest.call(
 					this,
 					'POST',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range/clear`,
+					`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/range/clear`,
 					{ applyTo },
 				);
 			} else {
@@ -94,7 +97,7 @@ export async function execute(
 				await microsoftApiRequest.call(
 					this,
 					'POST',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')/clear`,
+					`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')/clear`,
 					{ applyTo },
 				);
 			}

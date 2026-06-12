@@ -7,8 +7,9 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { parseWorkbook } from '../../helpers/utils';
 import { microsoftApiRequest, microsoftApiRequestAllItemsSkip } from '../../transport';
-import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
+import { tableRLC, workbookRLC, workbookSourceOption, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	workbookRLC,
@@ -69,6 +70,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 		options: [
+			workbookSourceOption,
 			{
 				displayName: 'Fields',
 				name: 'fields',
@@ -99,9 +101,10 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const qs: IDataObject = {};
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
+			const workbookValue = this.getNodeParameter('workbook', i, undefined, {
 				extractValue: true,
 			}) as string;
+			const { root, workbookId } = parseWorkbook(workbookValue);
 
 			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
 				extractValue: true,
@@ -126,7 +129,7 @@ export async function execute(
 					this,
 					'value',
 					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
+					`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
 					{},
 					qs,
 				);
@@ -135,7 +138,7 @@ export async function execute(
 				responseData = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
+					`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
 					{},
 					qs,
 				);

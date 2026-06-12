@@ -7,10 +7,21 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { parseWorkbook } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
-import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
+import {
+	tableRLC,
+	workbookRLC,
+	workbookSourceCollection,
+	worksheetRLC,
+} from '../common.descriptions';
 
-const properties: INodeProperties[] = [workbookRLC, worksheetRLC, tableRLC];
+const properties: INodeProperties[] = [
+	workbookRLC,
+	worksheetRLC,
+	tableRLC,
+	workbookSourceCollection,
+];
 
 const displayOptions = {
 	show: {
@@ -29,9 +40,10 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
+			const workbookValue = this.getNodeParameter('workbook', i, undefined, {
 				extractValue: true,
 			}) as string;
+			const { root, workbookId } = parseWorkbook(workbookValue);
 
 			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
 				extractValue: true,
@@ -44,7 +56,7 @@ export async function execute(
 			const responseData = await microsoftApiRequest.call(
 				this,
 				'POST',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/convertToRange`,
+				`${root}/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/convertToRange`,
 			);
 
 			const executionData = this.helpers.constructExecutionMetaData(
