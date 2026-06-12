@@ -37,6 +37,7 @@
     "format:check": "biome ci src"
   },
   "dependencies": {
+    "@n8n/telemetry-frontend": "workspace:*",
     "@n8n/utils": "workspace:*"
   },
   "devDependencies": {

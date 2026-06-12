@@ -25,7 +25,7 @@ describe('telemetry', () => {
 
 	describe('identify', () => {
 		it('Rudderstack identify method should be called when proving userId ', () => {
-			const identifyFunction = vi.spyOn(window.rudderanalytics, 'identify');
+			const identifyFunction = vi.spyOn(window.rudderanalytics!, 'identify');
 
 			const userId = '1';
 			const instanceId = '1';
@@ -48,7 +48,7 @@ describe('telemetry', () => {
 		});
 
 		it('Rudderstack identify method should be called when proving userId and versionCli ', () => {
-			const identifyFunction = vi.spyOn(window.rudderanalytics, 'identify');
+			const identifyFunction = vi.spyOn(window.rudderanalytics!, 'identify');
 
 			const userId = '1';
 			const instanceId = '1';
@@ -75,7 +75,7 @@ describe('telemetry', () => {
 		});
 
 		it('Rudderstack identify method should be called when proving userId and versionCli and projectId', () => {
-			const identifyFunction = vi.spyOn(window.rudderanalytics, 'identify');
+			const identifyFunction = vi.spyOn(window.rudderanalytics!, 'identify');
 
 			const userId = '1';
 			const instanceId = '1';
@@ -103,7 +103,7 @@ describe('telemetry', () => {
 		});
 
 		it('Rudderstack identify method should be called when proving userId and deployment type is cloud ', () => {
-			const identifyFunction = vi.spyOn(window.rudderanalytics, 'identify');
+			const identifyFunction = vi.spyOn(window.rudderanalytics!, 'identify');
 
 			const userId = '1';
 			const instanceId = '1';
@@ -135,7 +135,7 @@ describe('telemetry', () => {
 		});
 
 		it('Rudderstack identify method should be called when proving userId and deployment type is cloud', () => {
-			const identifyFunction = vi.spyOn(window.rudderanalytics, 'identify');
+			const identifyFunction = vi.spyOn(window.rudderanalytics!, 'identify');
 
 			const userId = '1';
 			const instanceId = '1';
@@ -167,7 +167,7 @@ describe('telemetry', () => {
 		});
 
 		it('Rudderstack reset method should be called when proving userId and deployment type is cloud', () => {
-			const resetFunction = vi.spyOn(window.rudderanalytics, 'reset');
+			const resetFunction = vi.spyOn(window.rudderanalytics!, 'reset');
 
 			const instanceId = '1';
 
@@ -186,7 +186,7 @@ describe('telemetry', () => {
 
 	describe('track function', () => {
 		it('should call Rudderstack track method with correct parameters', () => {
-			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
+			const trackFunction = vi.spyOn(window.rudderanalytics!, 'track');
 
 			const event = 'testEvent';
 			const properties = { test: '1' };
@@ -205,7 +205,7 @@ describe('telemetry', () => {
 		});
 
 		it('should include the posthog session id in the parameters', () => {
-			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
+			const trackFunction = vi.spyOn(window.rudderanalytics!, 'track');
 			vi.stubGlobal('posthog', {
 				init: vi.fn(),
 				get_session_id: vi.fn().mockReturnValue('test_session_id'),
