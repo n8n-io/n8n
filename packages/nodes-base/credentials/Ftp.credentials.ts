@@ -38,5 +38,17 @@ export class Ftp implements ICredentialType {
 			},
 			default: '',
 		},
+		{
+			displayName: 'Max Concurrent Handshakes',
+			name: 'maxConcurrentHandshakes',
+			type: 'number',
+			default: 5,
+			typeOptions: {
+				minValue: 1,
+				maxValue: 32,
+			},
+			description:
+				'Cap on parallel FTP connections to this server. Lower if you see handshake timeouts under load. Default 5 works for most servers.',
+		},
 	];
 }
