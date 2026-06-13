@@ -17,7 +17,7 @@ export class Sms77 implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Send SMS and make text-to-speech calls',
+		description: 'Send SMS, RCS and make text-to-speech calls',
 		defaults: {
 			name: 'seven',
 		},
@@ -44,6 +44,10 @@ export class Sms77 implements INodeType {
 					{
 						name: 'Voice Call',
 						value: 'voice',
+					},
+					{
+						name: 'RCS',
+						value: 'rcs',
 					},
 				],
 				default: 'sms',
@@ -91,6 +95,26 @@ export class Sms77 implements INodeType {
 				default: 'send',
 			},
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['rcs'],
+					},
+				},
+				options: [
+					{
+						name: 'Send',
+						value: 'send',
+						description: 'Send a RCS message',
+						action: 'Send RCS',
+					},
+				],
+				default: 'send',
+			},
+			{
 				displayName: 'From',
 				name: 'from',
 				type: 'string',
@@ -115,7 +139,7 @@ export class Sms77 implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['send'],
-						resource: ['sms', 'voice'],
+						resource: ['sms', 'voice', 'rcs'],
 					},
 				},
 				description:
@@ -130,10 +154,10 @@ export class Sms77 implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['send'],
-						resource: ['sms', 'voice'],
+						resource: ['sms', 'voice', 'rcs'],
 					},
 				},
-				description: 'The message to send. Max. 1520 characters',
+				description: 'The message to send.',
 			},
 			{
 				displayName: 'Options',
@@ -224,6 +248,29 @@ export class Sms77 implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['send'],
+						resource: ['rcs'],
+					},
+				},
+				options: [
+					{
+						displayName: 'From',
+						name: 'from',
+						type: 'string',
+						default: '',
+						placeholder: 'agent_teqt3qt32j9t',
+						description: 'The unique ID of your agent. You can view this in the Settings of your account. If not specified, the first RCS-capable sender will be used.',
+					},
+				],
+			},
 		],
 	};
 
@@ -262,6 +309,20 @@ export class Sms77 implements INodeType {
 							...options,
 						};
 						responseData = await sms77ApiRequest.call(this, 'POST', '/voice', body);
+					}
+				}
+
+				if (resource === 'rcs') {
+					if (operation === 'send') {
+						const to = this.getNodeParameter('to', i) as string;
+						const text = this.getNodeParameter('message', i) as string;
+						const options = this.getNodeParameter('options', i);
+						const body = {
+							to,
+							text,
+							...options,
+						};
+						responseData = await sms77ApiRequest.call(this, 'POST', '/rcs/messages', body);
 					}
 				}
 
