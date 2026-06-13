@@ -127,6 +127,30 @@ describe('SalesforceTrigger', () => {
 		});
 	});
 
+	describe('Authentication', () => {
+		it('should offer both OAuth2 and JWT credentials', () => {
+			const credentials = trigger.description.credentials ?? [];
+
+			const oAuth2 = credentials.find((c) => c.name === 'salesforceOAuth2Api');
+			const jwt = credentials.find((c) => c.name === 'salesforceJwtApi');
+
+			expect(oAuth2?.displayOptions?.show?.authentication).toEqual(['oAuth2']);
+			expect(jwt?.displayOptions?.show?.authentication).toEqual(['jwt']);
+		});
+
+		it('should expose an authentication selector defaulting to OAuth2', () => {
+			const authentication = trigger.description.properties.find(
+				(p) => p.name === 'authentication',
+			);
+
+			expect(authentication?.default).toBe('oAuth2');
+			expect(authentication?.options).toEqual([
+				{ name: 'OAuth2', value: 'oAuth2' },
+				{ name: 'OAuth2 JWT', value: 'jwt' },
+			]);
+		});
+	});
+
 	describe('Poll Function - Parameter Setup', () => {
 		beforeEach(() => {
 			mockPollFunctions.getNodeParameter.mockImplementation((paramName: string) => {
