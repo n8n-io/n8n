@@ -1,0 +1,60 @@
+{
+	"name": "AWS SQS Send Message Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"operation": "sendMessage",
+				"queue": "https://sqs.us-east-1.amazonaws.com/123456789012/my-queue",
+				"sendInputData": true,
+				"queueType": "standard",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.awsSqs",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "node-id",
+			"name": "Send Message",
+			"credentials": {
+				"aws": {
+					"id": "credential-id",
+					"name": "Test AWS Credentials"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Send Message": [
+			{
+				"json": {
+					"MessageId": "msg-12345",
+					"MD5OfMessageBody": "d41d8cd98f00b204e9800998ecf8427e"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Send Message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
