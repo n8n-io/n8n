@@ -225,6 +225,28 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(Math.abs(out[0].position.x % GRID_SIZE)).toBe(0);
 		expect(Math.abs(out[0].position.y % GRID_SIZE)).toBe(0);
 	});
+
+	it('applies visual offsets without changing nodesRect from store positions', () => {
+		const getById = nodeStore(makeNode('a', 100, 200));
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [{ id: 'g1', name: 'G', nodeIds: ['a'] }],
+			getNodeById: getById,
+			getGroupVisualOffset: () => ({ x: 50, y: 80 }),
+			isGroupCollapsed: () => false,
+			readOnly: false,
+		});
+
+		expect(out[0].position).toEqual({
+			x: snapToGrid(100 - GROUP_PADDING_X) + 50,
+			y: snapToGrid(200 - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT) + 80,
+		});
+		expect(out[0].data?.nodesRect).toEqual({
+			x: 100,
+			y: 200,
+			width: 96,
+			height: 96,
+		});
+	});
 });
 
 describe('buildCollapsedGroupByNodeId', () => {

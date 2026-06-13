@@ -6,6 +6,7 @@ import {
 	CANVAS_NODE_GROUP_HANDLE_RIGHT,
 	CANVAS_NODE_GROUP_ID_PREFIX,
 	CANVAS_NODE_GROUP_TYPE,
+	createCanvasGroupNodeId,
 } from '../canvas.types';
 import {
 	GROUP_HEADER_HEIGHT,
@@ -131,6 +132,7 @@ export interface MapGroupsToVueFlowNodesInputs {
 	allGroups: IWorkflowGroup[];
 	getNodeById: (id: string) => INodeUi | undefined;
 	getNodeDisplaySize?: GetNodeDisplaySize;
+	getGroupVisualOffset?: (id: string) => { x: number; y: number };
 	isGroupCollapsed: (id: string) => boolean;
 	readOnly: boolean;
 }
@@ -143,6 +145,7 @@ export function mapGroupsToVueFlowNodes({
 	allGroups,
 	getNodeById,
 	getNodeDisplaySize,
+	getGroupVisualOffset,
 	isGroupCollapsed,
 	readOnly,
 }: MapGroupsToVueFlowNodesInputs): CanvasGroupNode[] {
@@ -161,11 +164,16 @@ export function mapGroupsToVueFlowNodes({
 			isCollapsed: collapsed,
 		};
 
+		const id = createCanvasGroupNodeId(group.id);
 		const titleBar = titleBarFromNodesRect(nodesRect, collapsed);
+		const offset = getGroupVisualOffset?.(id) ?? { x: 0, y: 0 };
 		out.push({
-			id: `${CANVAS_NODE_GROUP_ID_PREFIX}${group.id}`,
+			id,
 			type: CANVAS_NODE_GROUP_TYPE,
-			position: titleBar.position,
+			position: {
+				x: titleBar.position.x + offset.x,
+				y: titleBar.position.y + offset.y,
+			},
 			width: titleBar.width,
 			height: GROUP_HEADER_HEIGHT,
 			draggable: !readOnly,

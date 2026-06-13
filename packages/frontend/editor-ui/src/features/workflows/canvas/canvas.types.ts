@@ -141,6 +141,16 @@ export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
 export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
 export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
 
+export function createCanvasGroupNodeId(groupId: string): string {
+	return `${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`;
+}
+
+export function parseCanvasGroupNodeId(id: string): string | undefined {
+	return id.startsWith(CANVAS_NODE_GROUP_ID_PREFIX)
+		? id.slice(CANVAS_NODE_GROUP_ID_PREFIX.length)
+		: undefined;
+}
+
 export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
