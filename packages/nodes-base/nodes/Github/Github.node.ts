@@ -3105,10 +3105,12 @@ export class Github implements INodeType {
 						// ----------------------------------
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
 						const uri = `https://api.github.com/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+						const authentication = this.getNodeParameter('authentication', i) as string;
+						const credentialType = authentication === 'oAuth2' ? 'githubOAuth2Api' : 'githubApi';
 						try {
 							const responseText = await this.helpers.requestWithAuthentication.call(
 								this,
-								'githubApi',
+								credentialType,
 								{
 									method: 'GET',
 									uri,
@@ -3134,10 +3136,12 @@ export class Github implements INodeType {
 						// ----------------------------------
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
 						const uri = `https://api.github.com/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+						const authentication = this.getNodeParameter('authentication', i) as string;
+						const credentialType = authentication === 'oAuth2' ? 'githubOAuth2Api' : 'githubApi';
 						try {
 							const responseText = await this.helpers.requestWithAuthentication.call(
 								this,
-								'githubApi',
+								credentialType,
 								{
 									method: 'GET',
 									uri,
