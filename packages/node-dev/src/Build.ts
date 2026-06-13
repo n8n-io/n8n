@@ -92,8 +92,20 @@ export async function buildFiles({
 		// when the main process does
 		process.on('exit', () => buildProcess.kill());
 
-		await new Promise<void>((resolve) => {
-			buildProcess.on('exit', resolve);
+		await new Promise<void>((resolve, reject) => {
+			buildProcess.on('error', reject);
+			buildProcess.on('close', (code, signal) => {
+				if (code === 0) {
+					resolve();
+					return;
+				}
+
+				const processName = watch ? 'TypeScript watch process' : 'TypeScript build';
+				const reason =
+					code === null && signal !== null ? `signal ${signal}` : `exit code ${code ?? 'unknown'}`;
+
+				reject(new Error(`${processName} failed with ${reason}`));
+			});
 		});
 	} catch (error) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
