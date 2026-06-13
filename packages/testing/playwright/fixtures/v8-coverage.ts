@@ -16,20 +16,12 @@ import {
 } from '../coverage-options';
 
 /**
- * Browser-native V8 coverage collection (Chromium `page.coverage`), replacing
- * the previous istanbul-instrumented build + Currents istanbul fixture.
+ * Browser-native V8 coverage (Chromium `page.coverage`): start JS coverage on
+ * every page at creation, and on teardown feed each page's coverage into the
+ * shared shard report AND a per-spec dir (`.by-spec/<slug>/` + a `.spec` marker)
+ * that the impact map keys on for test selection.
  *
- * Wraps the BrowserContext: starts JS coverage on every page at creation
- * (before navigation, so the initial bundle load is captured) and, on test
- * teardown, hands each page's V8 coverage to monocart-coverage-reports.
- *
- * Coverage is accumulated TWICE: into the shared outputDir (the full shard
- * report, frontend + backend) and into a PER-SPEC dir keyed by the spec file
- * (`.by-spec/<slug>/`, with a `.spec` marker naming the spec). The per-spec
- * data is what lets the impact map say "this spec exercised this function" for
- * test selection. The extra cost is a second `add()` of data already in memory.
- *
- * No-op unless COVERAGE_ENABLED — normal runs pay nothing.
+ * No-op unless COVERAGE_ENABLED.
  */
 export const v8CoverageFixtures = {
 	context: async (
@@ -83,11 +75,9 @@ export const v8CoverageFixtures = {
 			const spec = specId(testInfo);
 			const specDir = join(BY_SPEC_DIR, slugify(spec));
 			mkdirSync(specDir, { recursive: true });
-			// Stream one V8 entry per line (JSONL). A whole-array JSON.stringify of a
-			// navigation-heavy spec (signout + signin, resetOnNavigation:false) exceeds
-			// V8's ~512MB single-string cap and throws RangeError; per-entry serialization
-			// stays well under it and the file can grow unbounded.
-			// Unique per test so multiple tests in one spec file accumulate (don't clobber).
+			// One V8 entry per line (JSONL): a whole-array JSON.stringify of a
+			// navigation-heavy spec exceeds V8's ~512MB string cap. Filename is unique
+			// per test so multiple tests in one spec file don't clobber each other.
 			const rawPath = join(specDir, `raw-${slugify(testInfo.testId)}.jsonl`);
 			const toJsonlLines = function* () {
 				for (const entry of perSpecRaw) yield `${JSON.stringify(entry)}\n`;
