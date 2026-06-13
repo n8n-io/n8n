@@ -222,6 +222,7 @@ class TestFilterBuiltins:
             external_allow=set(),
             builtins_deny=set(),
             runner_env_deny=False,
+            runner_env_allow=set(),
         )
 
     def test_supports_item_access(self):
@@ -284,6 +285,7 @@ class TestFilterBuiltins:
             external_allow=set(),
             builtins_deny={"open", "eval"},
             runner_env_deny=False,
+            runner_env_allow=set(),
         )
         result = TaskExecutor._filter_builtins(config)
 

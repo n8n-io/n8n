@@ -308,7 +308,13 @@ class TaskExecutor:
         """Execute a Python code task in all-items mode."""
 
         if security_config.runner_env_deny:
+            kept = {
+                k: os.environ[k]
+                for k in security_config.runner_env_allow
+                if k in os.environ
+            }
             os.environ.clear()
+            os.environ.update(kept)
 
         TaskExecutor._sanitize_sys_modules(security_config)
         TaskExecutor._harden_importlib(security_config)
@@ -350,7 +356,13 @@ class TaskExecutor:
         """Execute a Python code task in per-item mode."""
 
         if security_config.runner_env_deny:
+            kept = {
+                k: os.environ[k]
+                for k in security_config.runner_env_allow
+                if k in os.environ
+            }
             os.environ.clear()
+            os.environ.update(kept)
 
         TaskExecutor._sanitize_sys_modules(security_config)
         TaskExecutor._harden_importlib(security_config)
