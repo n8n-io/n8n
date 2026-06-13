@@ -237,17 +237,10 @@ describe('Github Node - Pull Request Operations', () => {
 			const githubErr = makeGithubError(422, 'Validation Failed');
 			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(githubErr);
 
-			try {
-				await github.execute.call(mock);
-				fail('Expected execute to throw');
-			} catch (error) {
-				expect(error).toBeInstanceOf(NodeApiError);
-				const apiError = error as NodeApiError;
-				// The NodeApiError message should contain the original GitHub message
-				expect(apiError.message).toContain(
-					'Your request is invalid or could not be processed by the service',
-				);
-			}
+			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
+			await expect(github.execute.call(mock)).rejects.toThrow(
+				'Your request is invalid or could not be processed by the service',
+			);
 		});
 
 		it('should register pullRequest:create in overwriteDataOperations and return one item', async () => {
@@ -975,7 +968,7 @@ describe('Github Node - Pull Request Operations', () => {
 
 			try {
 				await github.execute.call(mock);
-				fail('Expected execute to throw');
+				throw new Error('Expected execute to throw');
 			} catch (error) {
 				const apiError = error as NodeApiError;
 				// The serialized NodeApiError must surface the original GitHub
