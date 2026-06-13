@@ -18,6 +18,11 @@ const isCI = process.env.CI === 'true';
 const excludeTestController =
 	process.env.CI === 'true' && process.env.INCLUDE_TEST_CONTROLLER !== 'true';
 
+// Skip the JavaScript task runner deployment. The task runner ships as its own
+// image (n8nio/runners); image builds that only consume `compiled/` (e.g. the
+// in-image n8n build) don't need it, so they set this to skip ~10s of deploy.
+const skipTaskRunnerDeploy = process.env.SKIP_TASK_RUNNER_DEPLOY === 'true';
+
 // Disable verbose output and force color only if not in CI
 $.verbose = !isCI;
 process.env.FORCE_COLOR = isCI ? '0' : '1';
@@ -208,15 +213,19 @@ for (const pattern of phantomDirs) {
 }
 echo(chalk.green('✅ Phantom dirs stripped'));
 
-await fs.ensureDir(config.compiledTaskRunnerDir);
+if (skipTaskRunnerDeploy) {
+	echo(chalk.gray('INFO: Skipping task runner deployment (SKIP_TASK_RUNNER_DEPLOY=true)'));
+} else {
+	await fs.ensureDir(config.compiledTaskRunnerDir);
 
-echo(
-	chalk.yellow(
-		`INFO: Creating JavaScript task runner deployment in '${config.compiledTaskRunnerDir}'...`,
-	),
-);
+	echo(
+		chalk.yellow(
+			`INFO: Creating JavaScript task runner deployment in '${config.compiledTaskRunnerDir}'...`,
+		),
+	);
 
-await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
+	await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
+}
 
 const packageDeployTime = getElapsedTime('package_deploy');
 
@@ -268,9 +277,9 @@ if (process.env.CI !== 'true') {
 
 // Calculate output size
 const compiledAppOutputSize = (await $`du -sh ${config.compiledAppDir} | cut -f1`).stdout.trim();
-const compiledTaskRunnerOutputSize = (
-	await $`du -sh ${config.compiledTaskRunnerDir} | cut -f1`
-).stdout.trim();
+const compiledTaskRunnerOutputSize = skipTaskRunnerDeploy
+	? 'skipped'
+	: (await $`du -sh ${config.compiledTaskRunnerDir} | cut -f1`).stdout.trim();
 
 // Generate build manifests
 const buildManifest = {
@@ -303,13 +312,15 @@ const taskRunnerbuildManifest = {
 	},
 };
 
-await fs.writeJson(
-	path.join(config.compiledTaskRunnerDir, 'build-manifest.json'),
-	taskRunnerbuildManifest,
-	{
-		spaces: 2,
-	},
-);
+if (!skipTaskRunnerDeploy) {
+	await fs.writeJson(
+		path.join(config.compiledTaskRunnerDir, 'build-manifest.json'),
+		taskRunnerbuildManifest,
+		{
+			spaces: 2,
+		},
+	);
+}
 
 echo(chalk.green(`✅ Package deployment completed in ${formatDuration(packageDeployTime)}`));
 echo(`INFO: Size of ${config.compiledAppDir}: ${compiledAppOutputSize}`);

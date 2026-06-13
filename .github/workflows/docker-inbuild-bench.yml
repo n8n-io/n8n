@@ -1,0 +1,134 @@
+name: 'Docker In-Build Cache Bench (branch)'
+
+# Fires on pushes to the DEVP-262 branch. Runs two full in-image docker builds
+# back to back to make the two distinct cache effects legible:
+#
+#   * Build #1 (--no-cache): Docker layer cache OFF. Every layer rebuilds — this
+#     is the "no Blacksmith layer cache" baseline. The Turbo *remote* cache is
+#     still reachable, so `pnpm build` is FULL TURBO even here.
+#   * Build #2 (normal): Blacksmith's persistent Docker layer cache is ON, so
+#     unchanged layers (apk, pnpm install, COPY --parents, …) are served from
+#     the sticky disk instead of re-running.
+#
+# The #1 → #2 wall-time + CACHED-step delta is the Blacksmith layer-cache impact,
+# cleanly separated from build compute (Turbo is warm in both). Builds use
+# --output=type=cacheonly so we measure the build+cache work, not image export.
+
+on:
+  push:
+    branches:
+      - devp-262-local-turbo-cache-inbuild
+  workflow_dispatch:
+
+concurrency:
+  group: docker-inbuild-bench-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    name: 'Layer + Turbo cache bench'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    permissions:
+      contents: read
+    timeout-minutes: 60
+    env:
+      DOCKERFILE: docker/images/n8n/Dockerfile.inbuild
+      B1_LOG: /tmp/bench-build1.log
+      B2_LOG: /tmp/bench-build2.log
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+
+      # Blacksmith's builder is backed by a sticky disk, so its Docker layer
+      # cache persists across runs — that persistence is what Build #2 exercises.
+      - name: Setup Blacksmith Docker Builder (persistent layer cache)
+        uses: useblacksmith/setup-docker-builder@ef12d5b165b596e3aa44ea8198d8fde563eab402 # v1.4.0
+
+      # Turbo remote cache, musl-namespaced. Reachable from inside the build over
+      # the host network; keeps `pnpm build` FULL TURBO in BOTH builds so the
+      # layer-cache delta isn't contaminated by build-compute variance.
+      - name: Configure Turborepo Remote Cache (docker/musl namespace)
+        uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
+        with:
+          cache-prefix: turbogha-n8n-musl_
+
+      - name: Inspect builder
+        run: docker buildx inspect --bootstrap
+
+      - name: 'Build #1 — Docker layer cache OFF (--no-cache) baseline'
+        run: |
+          set -o pipefail
+          start=$SECONDS
+          TURBO_TOKEN="$TURBO_TOKEN" docker buildx build \
+            -f "$DOCKERFILE" \
+            --progress=plain \
+            --no-cache \
+            --network=host \
+            --allow network.host \
+            --provenance=false \
+            --sbom=false \
+            --build-arg TURBO_API="$TURBO_API" \
+            --build-arg TURBO_TEAM="$TURBO_TEAM" \
+            --secret id=TURBO_TOKEN,env=TURBO_TOKEN \
+            --output=type=cacheonly \
+            . 2>&1 | tee "$B1_LOG"
+          echo "B1_WALL=$((SECONDS - start))" >> "$GITHUB_ENV"
+
+      - name: 'Build #2 — Blacksmith layer cache ON'
+        run: |
+          set -o pipefail
+          start=$SECONDS
+          TURBO_TOKEN="$TURBO_TOKEN" docker buildx build \
+            -f "$DOCKERFILE" \
+            --progress=plain \
+            --network=host \
+            --allow network.host \
+            --provenance=false \
+            --sbom=false \
+            --build-arg TURBO_API="$TURBO_API" \
+            --build-arg TURBO_TEAM="$TURBO_TEAM" \
+            --secret id=TURBO_TOKEN,env=TURBO_TOKEN \
+            --output=type=cacheonly \
+            . 2>&1 | tee "$B2_LOG"
+          echo "B2_WALL=$((SECONDS - start))" >> "$GITHUB_ENV"
+
+      - name: Summarize layer + Turbo cache impact
+        run: |
+          set -euo pipefail
+          # A step that hit the layer cache prints `#N CACHED`; one that ran
+          # prints `#N DONE`. Counting both gives the cached/ran split.
+          cached() { grep -cE '^#[0-9]+ CACHED' "$1" || true; }
+          ran()    { grep -cE '^#[0-9]+ DONE' "$1" || true; }
+          # Parse the cached COUNT from Turbo's summary, never the bare `Cached:`
+          # label (printed even at 0 cached — the original spike's false green).
+          turbo()  { grep -oE 'Cached:[[:space:]]+[0-9]+ cached' "$1" | grep -oE '[0-9]+' | head -1 || true; }
+
+          b1c=$(cached "$B1_LOG"); b1r=$(ran "$B1_LOG"); b1t=$(turbo "$B1_LOG"); b1t=${b1t:-0}
+          b2c=$(cached "$B2_LOG"); b2r=$(ran "$B2_LOG"); b2t=$(turbo "$B2_LOG"); b2t=${b2t:-0}
+
+          {
+            echo "## In-build cache bench"
+            echo ""
+            echo "| Build | Docker layers | Wall | Turbo cached |"
+            echo "|-------|---------------|------|--------------|"
+            echo "| #1 (layer cache OFF) | ${b1c} cached / ${b1r} ran | ${B1_WALL:-?}s | ${b1t} |"
+            echo "| #2 (Blacksmith layer cache) | ${b2c} cached / ${b2r} ran | ${B2_WALL:-?}s | ${b2t} |"
+            echo ""
+            echo "Build #1 reflects a full layer rebuild (Turbo still warm); Build #2 reflects Blacksmith's persistent layer cache. The wall-time delta is the layer-cache impact."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "::notice::Layer cache impact: Build #1 ${B1_WALL:-?}s (${b1c} cached) → Build #2 ${B2_WALL:-?}s (${b2c} cached). Turbo cached ${b1t}/${b2t}."
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: docker-inbuild-bench-logs
+          path: |
+            /tmp/bench-build1.log
+            /tmp/bench-build2.log
+          if-no-files-found: warn
+          retention-days: 7

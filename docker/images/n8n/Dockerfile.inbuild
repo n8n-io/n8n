@@ -1,0 +1,139 @@
+# syntax=docker/dockerfile:1
+#
+# In-image n8n build with a Turbo *remote* cache (DEVP-262).
+#
+# The production Dockerfile (docker/images/n8n/Dockerfile) builds n8n on the
+# host (glibc), `COPY ./compiled`s the result in, then rebuilds native addons
+# (sqlite3, isolated-vm) for musl. This variant runs the SAME production build
+# script (scripts/build-n8n.mjs, i.e. `pnpm build:docker` minus the dockerize
+# step) *inside* the alpine/musl builder, so:
+#   * there is no host build step, and
+#   * the glibc→musl native-addon fixup disappears — `pnpm install` here
+#     compiles addons against musl directly.
+#
+# Caching: each `docker build` starts from an empty filesystem, so a local
+# Turbo cache is useless — the build only comes up warm by reading task output
+# back from a *remote* cache over the network. The Dockerfile is host-agnostic;
+# the CALLER passes the cache coordinates as build args, so the same file works
+# locally and in CI:
+#
+#   Local (Docker Desktop reaches the host via host.docker.internal):
+#     node scripts/turbo-cache.mjs up
+#     eval "$(node scripts/turbo-cache.mjs env --docker)"
+#     docker buildx build -f docker/images/n8n/Dockerfile.inbuild \
+#       --add-host=host.docker.internal:host-gateway \
+#       --provenance=false --sbom=false \
+#       --build-arg TURBO_API="$TURBO_API" --build-arg TURBO_TEAM="$TURBO_TEAM" \
+#       --secret id=TURBO_TOKEN,env=TURBO_TOKEN -t n8n:inbuild .
+#
+#   CI (server on the runner, reached over the host network):
+#     docker buildx build -f docker/images/n8n/Dockerfile.inbuild \
+#       --network=host --allow network.host \
+#       --provenance=false --sbom=false \
+#       --build-arg TURBO_API=http://localhost:PORT --build-arg TURBO_TEAM=n8n-musl \
+#       --secret id=TURBO_TOKEN,env=TURBO_TOKEN -t n8n:inbuild .
+#
+# --provenance=false --sbom=false skip the attestation manifest + manifest-list
+# export (faster export, plain single image); drop them when you need the
+# attestations for a published artifact.
+#
+# The TURBO_TOKEN secret is optional (required=false): with no cache configured
+# the build still succeeds, just cold. When verifying a warm build, parse the
+# cached COUNT from Turbo's `Cached: N cached, M total` line — never grep the
+# `Cached:` label, which is printed even at 0 (a false green).
+
+ARG NODE_VERSION=24.16.0
+
+# Builder: digest-pinned to match the production Dockerfile's builder base.
+FROM node:${NODE_VERSION}-alpine3.22@sha256:191c9f0080fcbbc6547a85dc0ff7988072214a355aabdc1d2ec55a7dae5eea8a AS builder
+
+# musl toolchain so native addons compile in-image for the alpine runtime base.
+# bash: zx (used by build-n8n.mjs) requires it. No git: the one github dep
+# (wa-sqlite) resolves to a codeload tarball over HTTP, not a git clone.
+RUN apk add --no-cache python3 make g++ bash
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+
+# CI=true makes build-n8n.mjs skip the local package.json backup/restore dance
+# (immutable build layer) and matches the env hashed into Turbo's cache keys.
+ENV CI=true
+ENV TURBO_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+# Remote Turbo cache coordinates. TURBO_API (server URL) and TURBO_TEAM (slug)
+# are not secret and arrive as build args; TURBO_TOKEN is mounted as a secret
+# on the build RUN so it never lands in an image layer.
+ARG TURBO_API
+ARG TURBO_TEAM
+ENV TURBO_API=${TURBO_API}
+ENV TURBO_TEAM=${TURBO_TEAM}
+
+# Empty by default (normal caching). Set to true to force Turbo to re-run every
+# task and ignore the cache — used by the CI cache pipeline to make build #1 a
+# guaranteed-cold baseline so the cold→warm delta is visible on every run.
+ARG TURBO_FORCE
+ENV TURBO_FORCE=${TURBO_FORCE}
+
+# Align the pnpm store with the cache mount so both the bootstrap install and
+# the script's own install reuse the same (musl-specific) store across builds.
+RUN pnpm config set store-dir /pnpm-store
+
+WORKDIR /n8n
+
+# --- Dependency layer (cached across source-only changes) ---
+# Copy ONLY what determines the dependency graph plus the install lifecycle
+# hooks: the lockfile, workspace config, .npmrc, every package.json (paths
+# preserved via --parents), the patches referenced by pnpm.patchedDependencies,
+# and scripts/ (root preinstall/prepare hooks resolve files there; prepare is a
+# no-op under CI=true but the file must exist). This layer only busts when a
+# manifest/lockfile/patch/script changes — editing packages/*/src no longer
+# re-runs the ~30s install. node_modules isn't in the context, so the later
+# `COPY . .` can't clobber what we install here.
+COPY --parents pnpm-lock.yaml pnpm-workspace.yaml .npmrc package.json **/package.json ./
+COPY patches ./patches
+COPY scripts ./scripts
+RUN --mount=type=cache,id=n8n-pnpm-store-musl,target=/pnpm-store \
+    pnpm install --frozen-lockfile
+
+# --- Source + build ---
+# build-n8n.mjs's own `pnpm install` is now a fast no-op (deps present);
+# `pnpm build` reads the remote Turbo cache over the network; then it prunes to
+# a production deployment in ./compiled. Token exposed only for this RUN.
+# SKIP_TASK_RUNNER_DEPLOY: the task runner ships as its own image (n8nio/runners)
+# and this image only consumes ./compiled, so skip that deploy (~10s).
+COPY . .
+RUN --mount=type=secret,id=TURBO_TOKEN,env=TURBO_TOKEN,required=false \
+    --mount=type=cache,id=n8n-pnpm-store-musl,target=/pnpm-store \
+    SKIP_TASK_RUNNER_DEPLOY=true node scripts/build-n8n.mjs
+
+# Runtime: digest-pinned to match the production Dockerfile's runtime base.
+# n8nio/base is republished separately; bump this digest with the tag when the
+# base image is intentionally updated.
+FROM n8nio/base:24.16.0@sha256:a1aa4005e4faebd6da3ba51ec28180a3fb421243d921fa0efbba2d21395012f0
+
+ARG N8N_VERSION=snapshot
+ARG N8N_RELEASE_TYPE=dev
+ENV NODE_ENV=production
+ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
+ENV SHELL=/bin/sh
+
+WORKDIR /home/node
+
+# The in-image build already compiled native addons for musl, so — unlike the
+# production Dockerfile — there is no `npm rebuild sqlite3` / isolated-vm fixup.
+COPY --from=builder /n8n/compiled /usr/local/lib/node_modules/n8n
+COPY docker/images/n8n/docker-entrypoint.sh /
+
+RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+    mkdir -p /home/node/.n8n && \
+    chown -R node:node /home/node && \
+    rm -rf /root/.npm /tmp/*
+
+EXPOSE 5678/tcp
+USER node
+ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
+
+LABEL org.opencontainers.image.title="n8n" \
+      org.opencontainers.image.description="Workflow Automation Tool" \
+      org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
+      org.opencontainers.image.url="https://n8n.io" \
+      org.opencontainers.image.version=${N8N_VERSION}
