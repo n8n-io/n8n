@@ -223,6 +223,7 @@ export class Code implements INodeType {
 		group: ['transform'],
 		version: 1,
 		description: 'LangChain Code Node',
+		hidden: true,
 		defaults: {
 			name: 'LangChain Code',
 		},

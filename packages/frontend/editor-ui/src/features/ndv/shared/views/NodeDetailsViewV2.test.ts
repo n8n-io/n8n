@@ -70,7 +70,7 @@ describe('NodeDetailsViewV2', () => {
 	const renderComponent = (props: { readOnly?: boolean; activeNodeName?: string | null } = {}) => {
 		const { activeNodeName = null, ...componentProps } = props;
 
-		const ndvStore = useNDVStore();
+		const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 		if (activeNodeName) {
 			ndvStore.setActiveNodeName(activeNodeName, 'other');
 		} else {
@@ -220,7 +220,7 @@ describe('NodeDetailsViewV2', () => {
 			expect(queryByTestId('ndv')).not.toBeInTheDocument();
 
 			// Activate a node
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			ndvStore.setActiveNodeName('Set', 'other');
 
 			// NDV should appear
@@ -247,7 +247,7 @@ describe('NodeDetailsViewV2', () => {
 			const closeButton = getByTestId('ndv-close-button');
 			await user.click(closeButton);
 
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			await waitFor(() => {
 				expect(ndvStore.activeNodeName).toBeNull();
 			});
@@ -262,7 +262,7 @@ describe('NodeDetailsViewV2', () => {
 			const backdrop = getByTestId('ndv-backdrop');
 			await user.click(backdrop);
 
-			const ndvStore = useNDVStore();
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
 			await waitFor(() => {
 				expect(ndvStore.activeNodeName).toBeNull();
 			});

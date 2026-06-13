@@ -7,7 +7,16 @@ import type {
 } from 'n8n-workflow';
 import { Readable } from 'stream';
 
+import { getGoogleAccessToken } from '../../GenericFunctions';
 import { objectOperations } from '../ObjectDescription';
+
+jest.mock('../../GenericFunctions', () => ({
+	getGoogleAccessToken: jest.fn(),
+}));
+
+const getGoogleAccessTokenMock = getGoogleAccessToken as jest.MockedFunction<
+	typeof getGoogleAccessToken
+>;
 
 // Extract the body-creation preSend (index 1 — index 0 handles query params/headers)
 type PreSendFn = (
@@ -207,6 +216,117 @@ describe('Google Cloud Storage - Create object resumable upload (preSend)', () =
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('service account branch', () => {
+		/**
+		 * Mirrors setupParams but injects 'serviceAccount' at the authentication slot
+		 * so the session initiation takes the new code path.
+		 */
+		function setupParamsServiceAccount(objectName = 'my-object', bucketName = 'my-bucket') {
+			ctx.getNodeParameter
+				.mockReturnValueOnce(objectName) //   objectName  → metadata
+				.mockReturnValueOnce({}) //            createData
+				.mockReturnValueOnce(true) //          createFromBinary
+				.mockReturnValueOnce('data') //        createBinaryPropertyName
+				.mockReturnValueOnce(bucketName) //    bucketName  → resumable path
+				.mockReturnValueOnce(objectName) //    objectName  → resumable path
+				.mockReturnValueOnce('serviceAccount') // authentication
+				.mockReturnValueOnce({}); //           encryptionHeaders
+		}
+
+		beforeEach(() => {
+			ctx.getCredentials.mockResolvedValue({
+				email: 'svc@example.iam.gserviceaccount.com',
+				privateKey: 'PRIVATE_KEY',
+			});
+			getGoogleAccessTokenMock.mockResolvedValue({ access_token: 'sa-token' });
+		});
+
+		it('initiates the upload session via httpRequest with a bearer token', async () => {
+			const fileSize = 100;
+			setupParamsServiceAccount();
+			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'image/png' });
+			getBinaryMetadata.mockResolvedValue({ mimeType: 'image/png', fileSize });
+			getBinaryStream.mockResolvedValue(Readable.from([Buffer.alloc(fileSize, 'a')]));
+			httpRequest
+				.mockResolvedValueOnce({
+					headers: { location: 'https://storage.googleapis.com/upload/session' },
+					body: {},
+				})
+				.mockResolvedValue({ statusCode: 200 });
+
+			await bodySend.call(ctx, { ...baseOptions });
+
+			expect(httpRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(ctx.getCredentials).toHaveBeenCalledWith('googleApi');
+			expect(getGoogleAccessTokenMock).toHaveBeenCalledWith(
+				{
+					email: 'svc@example.iam.gserviceaccount.com',
+					privateKey: 'PRIVATE_KEY',
+				},
+				'cloudStorage',
+			);
+			expect(httpRequest).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({
+					method: 'POST',
+					url: '/b/my-bucket/o/',
+					baseURL: 'https://storage.googleapis.com/upload/storage/v1',
+					qs: expect.objectContaining({ uploadType: 'resumable' }),
+					json: true,
+					headers: expect.objectContaining({
+						Authorization: 'Bearer sa-token',
+						'Content-Type': 'application/json',
+						'X-Upload-Content-Type': 'image/png',
+						'X-Upload-Content-Length': fileSize,
+					}),
+				}),
+			);
+		});
+
+		it('throws when the service account session response has no location header', async () => {
+			setupParamsServiceAccount();
+			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'image/png' });
+			getBinaryMetadata.mockResolvedValue({ mimeType: 'image/png', fileSize: 100 });
+			getBinaryStream.mockResolvedValue(Readable.from([Buffer.alloc(100, 'a')]));
+			httpRequest.mockResolvedValueOnce({
+				headers: {}, // no location
+				body: { error: { message: 'Forbidden' } },
+			});
+
+			await expect(bodySend.call(ctx, { ...baseOptions })).rejects.toThrow();
+		});
+
+		it('uploads chunks against the session URL returned by the service account flow', async () => {
+			const fileSize = 256;
+			setupParamsServiceAccount();
+			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'image/png' });
+			getBinaryMetadata.mockResolvedValue({ mimeType: 'image/png', fileSize });
+			getBinaryStream.mockResolvedValue(Readable.from([Buffer.alloc(fileSize, 'a')]));
+			httpRequest
+				.mockResolvedValueOnce({
+					headers: { location: 'https://storage.googleapis.com/upload/session-sa' },
+					body: {},
+				})
+				.mockResolvedValue({ statusCode: 200 });
+
+			const result = await bodySend.call(ctx, { ...baseOptions });
+
+			// First call = session init, second call = chunk upload to the session URL
+			expect(httpRequest).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					method: 'PUT',
+					url: 'https://storage.googleapis.com/upload/session-sa',
+					headers: expect.objectContaining({
+						'Content-Range': `bytes 0-${fileSize - 1}/${fileSize}`,
+					}),
+				}),
+			);
+			expect(result.method).toBe('GET');
+			expect(result.url).toBe('/b/my-bucket/o/my-object');
 		});
 	});
 

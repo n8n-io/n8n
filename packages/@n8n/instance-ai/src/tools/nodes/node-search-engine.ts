@@ -40,7 +40,6 @@ const NODE_SEARCH_KEYS = [
 	{ key: 'displayName', weight: 1.5 },
 	{ key: 'name', weight: 1.3 },
 	{ key: 'codex.alias', weight: 1.0 },
-	{ key: 'description', weight: 0.7 },
 ];
 
 /**
@@ -96,6 +95,38 @@ function dedupeNodes(nodes: SearchableNodeType[]): SearchableNodeType[] {
 	return Object.values(dedupeCache);
 }
 
+function cloneSearchResult(result: NodeSearchResult): NodeSearchResult {
+	return {
+		...result,
+		...(result.subnodeRequirements
+			? {
+					subnodeRequirements: result.subnodeRequirements.map((requirement) => ({
+						...requirement,
+					})),
+				}
+			: {}),
+	};
+}
+
+function cloneSearchResults(results: NodeSearchResult[]): NodeSearchResult[] {
+	return results.map(cloneSearchResult);
+}
+
+function descriptionMatchScore(
+	description: string | undefined,
+	queryLower: string,
+	queryTerms: string[],
+): number {
+	if (!description) return 0;
+	const descriptionLower = description.toLowerCase();
+	if (queryTerms.length === 0) return descriptionLower.includes(queryLower) ? 1 : 0;
+	let matches = 0;
+	for (const term of queryTerms) {
+		if (descriptionLower.includes(term)) matches += 1;
+	}
+	return matches;
+}
+
 // ---------------------------------------------------------------------------
 // Engine
 // ---------------------------------------------------------------------------
@@ -106,6 +137,10 @@ function dedupeNodes(nodes: SearchableNodeType[]): SearchableNodeType[] {
  */
 export class NodeSearchEngine {
 	private readonly nodeTypes: SearchableNodeType[];
+
+	private readonly nameSearchCache = new Map<string, NodeSearchResult[]>();
+
+	private readonly connectionSearchCache = new Map<string, NodeSearchResult[]>();
 
 	constructor(nodeTypes: SearchableNodeType[]) {
 		this.nodeTypes = dedupeNodes(nodeTypes);
@@ -119,6 +154,7 @@ export class NodeSearchEngine {
 	private fuzzySearchNodes(
 		query: string,
 		candidates: SearchableNodeType[],
+		limit?: number,
 	): Array<{ item: SearchableNodeType; score: number }> {
 		const queryLower = query.toLowerCase().trim();
 		const queryTerms = queryLower.split(/\s+/).filter((t) => t.length > 1);
@@ -133,7 +169,11 @@ export class NodeSearchEngine {
 		if (isMultiWord) {
 			const scoreMap = new Map<string, ScoredNode>();
 			for (const term of queryTerms) {
-				const termResults = sublimeSearch<SearchableNodeType>(term, candidates, NODE_SEARCH_KEYS);
+				const termResults = sublimeSearch<SearchableNodeType>(
+					term,
+					candidates,
+					NODE_SEARCH_KEYS,
+				).slice(0, limit);
 				for (const r of termResults) {
 					const existing = scoreMap.get(r.item.name);
 					if (!existing || r.score > existing.score) {
@@ -147,6 +187,20 @@ export class NodeSearchEngine {
 		}
 
 		const fuzzyResultNames = new Set(searchResults.map((r) => r.item.name));
+		const remainingDescriptionMatches =
+			limit === undefined ? Number.POSITIVE_INFINITY : Math.max(0, limit - searchResults.length);
+		if (remainingDescriptionMatches > 0) {
+			const descriptionResults: ScoredNode[] = [];
+			for (const item of candidates) {
+				if (fuzzyResultNames.has(item.name)) continue;
+				const score = descriptionMatchScore(item.description, queryLower, queryTerms);
+				if (score === 0) continue;
+				descriptionResults.push({ item, score });
+				fuzzyResultNames.add(item.name);
+				if (descriptionResults.length >= remainingDescriptionMatches) break;
+			}
+			searchResults = [...searchResults, ...descriptionResults];
+		}
 
 		// Direct type name / display name match — catches nodes fuzzy search missed
 		const typeNameMatches = candidates
@@ -196,7 +250,11 @@ export class NodeSearchEngine {
 	 * @returns Array of matching nodes sorted by relevance
 	 */
 	searchByName(query: string, limit: number = 20): NodeSearchResult[] {
-		return this.fuzzySearchNodes(query, this.nodeTypes)
+		const cacheKey = `${query}\0${limit}`;
+		const cached = this.nameSearchCache.get(cacheKey);
+		if (cached) return cloneSearchResults(cached);
+
+		const results = this.fuzzySearchNodes(query, this.nodeTypes, limit)
 			.slice(0, limit)
 			.map(({ item, score }): NodeSearchResult => {
 				const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
@@ -212,6 +270,8 @@ export class NodeSearchEngine {
 					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 				};
 			});
+		this.nameSearchCache.set(cacheKey, results);
+		return cloneSearchResults(results);
 	}
 
 	/**
@@ -227,6 +287,10 @@ export class NodeSearchEngine {
 		limit: number = 20,
 		nameFilter?: string,
 	): NodeSearchResult[] {
+		const cacheKey = `${connectionType}\0${limit}\0${nameFilter ?? ''}`;
+		const cached = this.connectionSearchCache.get(cacheKey);
+		if (cached) return cloneSearchResults(cached);
+
 		// First, filter by connection type
 		const nodesWithConnectionType = this.nodeTypes
 			.map((nodeType) => {
@@ -239,7 +303,7 @@ export class NodeSearchEngine {
 
 		// If no name filter, return connection matches sorted by score
 		if (!nameFilter) {
-			return nodesWithConnectionType
+			const results = nodesWithConnectionType
 				.sort((a, b) => b.connectionScore - a.connectionScore)
 				.slice(0, limit)
 				.map(({ nodeType, connectionScore }) => {
@@ -258,14 +322,16 @@ export class NodeSearchEngine {
 						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 					};
 				});
+			this.connectionSearchCache.set(cacheKey, results);
+			return cloneSearchResults(results);
 		}
 
 		// Apply name filter using the same multi-word-aware fuzzy search as searchByName
 		const nodeTypesOnly = nodesWithConnectionType.map((result) => result.nodeType);
-		const nameFilteredResults = this.fuzzySearchNodes(nameFilter, nodeTypesOnly);
+		const nameFilteredResults = this.fuzzySearchNodes(nameFilter, nodeTypesOnly, limit);
 
 		// Combine connection score with name score
-		return nameFilteredResults.slice(0, limit).map(({ item, score: nameScore }) => {
+		const results = nameFilteredResults.slice(0, limit).map(({ item, score: nameScore }) => {
 			const connectionResult = nodesWithConnectionType.find(
 				(result) => result.nodeType.name === item.name,
 			);
@@ -284,6 +350,8 @@ export class NodeSearchEngine {
 				...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 			};
 		});
+		this.connectionSearchCache.set(cacheKey, results);
+		return cloneSearchResults(results);
 	}
 
 	/**

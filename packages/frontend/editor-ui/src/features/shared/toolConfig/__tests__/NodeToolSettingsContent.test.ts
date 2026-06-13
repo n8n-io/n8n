@@ -425,8 +425,8 @@ describe('NodeToolSettingsContent', () => {
 	});
 
 	describe('customTelemetryTags', () => {
-		it('should show settings tab when isOtelEnabled is true', () => {
-			settingsStore.isOtelEnabled = true;
+		it('should show settings tab when canUseOtelCustomSpanAttributes is true', () => {
+			settingsStore.isOtelCustomSpanAttributesEnabled = true;
 
 			const { getByText } = renderComponent({
 				props: { initialNode: createMockNode() },
@@ -435,8 +435,8 @@ describe('NodeToolSettingsContent', () => {
 			expect(getByText('nodeSettings.settings')).toBeTruthy();
 		});
 
-		it('should not show settings tab from otel alone when isOtelEnabled is false', () => {
-			settingsStore.isOtelEnabled = false;
+		it('should not show settings tab from otel alone when canUseOtelCustomSpanAttributes is false', () => {
+			settingsStore.isOtelCustomSpanAttributesEnabled = false;
 
 			const { queryByText } = renderComponent({
 				props: { initialNode: createMockNode() },

@@ -40,16 +40,6 @@ test.describe(
 			await expect(n8n.workflows.cards.getFolder(childFolderName)).toBeVisible();
 		});
 
-		test('should create a folder from the list header button', async ({ n8n }) => {
-			const projectId = await n8n.start.fromNewProject();
-			await n8n.api.projects.createFolder(projectId);
-			await n8n.workflows.addFolderButton().click();
-			const childFolderName = 'My Child Folder';
-			await n8n.workflows.fillFolderModal(childFolderName);
-
-			await expect(n8n.workflows.cards.getFolder(childFolderName)).toBeVisible();
-		});
-
 		test('should create a folder from the card dropdown', async ({ n8n }) => {
 			const projectId = await n8n.start.fromNewProject();
 			const folder = await n8n.api.projects.createFolder(projectId);

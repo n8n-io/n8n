@@ -431,6 +431,40 @@ describe('N8nMemory', () => {
 			expect(resourceRepository.existsBy).toHaveBeenCalledWith({ id: 'different-user' });
 			expect(resourceRepository.save).toHaveBeenCalled();
 		});
+
+		it('merges metadata updates instead of replacing existing thread metadata', async () => {
+			const currentMessageContext = {
+				integrationConnectionId: 'slack:cred-1',
+				platform: 'slack',
+				target: { type: 'thread', threadId: 'thread-1' },
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			};
+			const existing = {
+				id: 'thread-1',
+				resourceId: 'original-user',
+				title: null,
+				metadata: JSON.stringify({ currentMessageContext }),
+			} as unknown as AgentThreadEntity;
+			threadRepository.findOneBy.mockResolvedValue(existing);
+			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
+			resourceRepository.existsBy.mockResolvedValue(true);
+
+			await memory.saveThread({
+				id: 'thread-1',
+				resourceId: 'different-user',
+				title: undefined,
+				metadata: { summary: 'Support thread' },
+			});
+
+			expect(threadRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ metadata: expect.any(String) }),
+			);
+			const savedThread = threadRepository.save.mock.calls[0][0] as AgentThreadEntity;
+			expect(JSON.parse(savedThread.metadata ?? '{}')).toEqual({
+				currentMessageContext,
+				summary: 'Support thread',
+			});
+		});
 	});
 
 	describe('deleteMessagesByThread', () => {

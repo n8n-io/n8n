@@ -181,23 +181,26 @@ These only run if specific files changed:
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
 | `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-sync-api-docs.yml`    | master     |
+| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 
 ### On PR Review
 
 | Event                      | Workflow                    | Condition                                            |
 |----------------------------|-----------------------------|------------------------------------------------------|
 | Review approved            | `test-visual-chromatic.yml` | + design files changed                               |
-| Review approved            | `ci-instance-ai-evals.yml`  | + Instance AI source/eval paths changed (see below)  |
 | Comment with `@claude`     | `util-claude.yml`           | mention in any comment                               |
 | Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
 
-**Why Instance AI evals fire on approval, not push:** the workflow eval is the most
-expensive job in PR CI (LLM-bound builds against ~70 unique scenarios). Running it
-on every push made cost untenable. With approval-only triggering, the eval acts as
-a merge gate — fires when the reviewer approves; if it fails, branch protection blocks
-the merge. `dismiss_stale_reviews_on_push: true` on master forces re-approval (and a
-fresh eval) if the author pushes between approval and merge, so the gate stays honest.
-The lighter `test-evals-discovery.yml` still runs on every push as part of ci-pull-requests.yml.
+**Why Instance AI evals fire once per PR state-change, not per push:** the
+workflow eval is the most expensive job in PR CI (LLM-bound builds). Running it
+on every push made cost untenable; firing on every review approval cascaded
+through the dismiss-stale-on-push → re-approve loop, which also blew up.
+The current trigger fires once per `opened` / `reopened` / `ready_for_review`
+on a PR touching the eval surface, and runs the `pr` test-case dataset (~6
+high-reliability, capability-diverse cases) instead of the full ~14. To re-run
+after pushing a fix, use the workflow's manual dispatch button — also lets you
+override `tier` to `full` for broader coverage on a specific PR. The lighter
+`test-evals-discovery.yml` still runs on every push as part of `ci-pull-requests.yml`.
 
 ### On PR Close/Merge
 
@@ -362,8 +365,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.x, 24.15.0, 26.x)
-│   └─ Coverage only on 24.15.0
+├─ unit-test (matrix: Node 22.x, 24.16.0, 26.x)
+│   └─ Coverage only on 24.16.0
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -403,7 +406,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.15.0'
+  node-version:        # default: '24.16.0'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```

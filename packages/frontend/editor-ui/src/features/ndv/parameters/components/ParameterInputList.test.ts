@@ -6,10 +6,11 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
-import { shallowRef } from 'vue';
+import { nextTick, shallowRef } from 'vue';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
@@ -139,7 +140,7 @@ const renderComponent = createComponentRenderer(ParameterInputList, {
 describe('ParameterInputList', () => {
 	beforeEach(() => {
 		createTestingPinia();
-		ndvStore = mockedStore(useNDVStore);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
 		workflowDocumentStoreMock.getChildNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
 		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);
@@ -169,6 +170,40 @@ describe('ParameterInputList', () => {
 			}),
 		).not.toThrow();
 		await flushPromises();
+	});
+
+	it('remounts parameter inputs when navigating between nodes that share a parameter name', async () => {
+		// Same-named fields on two nodes used to reuse the input instance on
+		// navigation, which silently dropped the saved value (#31626).
+		const sharedParameters: INodeProperties[] = [
+			{
+				displayName: 'Category',
+				name: 'category',
+				type: 'options',
+				default: '',
+				options: [],
+				typeOptions: { loadOptionsMethod: 'getCategories' },
+			},
+		];
+		const nodeValues = { parameters: { category: '' } };
+
+		const firstNode: INodeUi = { ...TEST_NODE_NO_ISSUES, id: 'node-a', name: 'Node A' };
+		const secondNode: INodeUi = { ...TEST_NODE_NO_ISSUES, id: 'node-b', name: 'Node B' };
+
+		ndvStore.activeNode = firstNode;
+		const { getByTestId } = renderComponent({
+			props: { parameters: sharedParameters, nodeValues },
+		});
+		await flushPromises();
+
+		const beforeInput = getByTestId('parameter-input');
+
+		ndvStore.activeNode = secondNode;
+		await nextTick();
+		await flushPromises();
+
+		// A fresh DOM node means the input remounted rather than carrying over.
+		expect(getByTestId('parameter-input')).not.toBe(beforeInput);
 	});
 
 	it('renders fixed collection inputs correctly', async () => {

@@ -75,7 +75,7 @@ const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
 const outputRenderMode = ref<'text' | 'html' | 'markdown'>('text');
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode);
 const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;
@@ -113,8 +113,8 @@ watch(
 				segments.value,
 				props.modelValue.toString(),
 				workflowDocumentStore.value.workflowId,
-				ndvStore.pushRef,
-				ndvStore.activeNode?.type ?? '',
+				ndvStore.value.pushRef,
+				ndvStore.value.activeNode?.type ?? '',
 			);
 
 			telemetry.track('User closed Expression Editor', telemetryPayload);

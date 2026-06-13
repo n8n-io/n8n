@@ -91,14 +91,15 @@ test.describe(
 				await n8n.aiAssistant.getAskAssistantCanvasActionButton().click();
 
 				await n8n.aiAssistant.sendMessage('What is wrong with this workflow?', 'enter-key');
-				// Wait for message to be processed
 				await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(1);
+				await n8n.aiAssistant.waitForStreamingComplete();
 
 				await n8n.aiAssistant.sendMessage('And now?', 'enter-key');
 				await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(2);
 				const secondRequest = chatRequests.find((request) => request.payload?.text === 'And now?');
 				const secondContext = secondRequest?.payload?.context;
 				expect(secondContext?.currentWorkflow).toBeUndefined();
+				await n8n.aiAssistant.waitForStreamingComplete();
 
 				await n8n.canvas.openNode(HTTP_REQUEST_NODE_NAME);
 				await n8n.ndv.setParameterInputValue('url', 'https://example.com');

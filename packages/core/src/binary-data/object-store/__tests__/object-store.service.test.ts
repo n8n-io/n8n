@@ -9,16 +9,16 @@ import {
 	PutObjectCommand,
 	type S3Client,
 } from '@aws-sdk/client-s3';
-import { captor, mock } from 'jest-mock-extended';
 import { PassThrough, Readable } from 'stream';
+import { captor, mock } from 'vitest-mock-extended';
 
 import type { ObjectStoreConfig } from '../object-store.config';
 import { ObjectStoreService } from '../object-store.service.ee';
 
-const mockS3Send = jest.fn();
+const mockS3Send = vi.fn();
 const s3Client = mock<S3Client>({ send: mockS3Send });
-jest.mock('@aws-sdk/client-s3', () => ({
-	...jest.requireActual('@aws-sdk/client-s3'),
+vi.mock('@aws-sdk/client-s3', async (importActual) => ({
+	...(await importActual()),
 	S3Client: class {
 		constructor() {
 			return s3Client;
@@ -52,13 +52,13 @@ describe('ObjectStoreService', () => {
 	let objectStoreService: ObjectStoreService;
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
-	jest.useFakeTimers({ now });
+	vi.useFakeTimers({ now });
 
 	beforeEach(async () => {
 		objectStoreService = new ObjectStoreService(mock(), s3Config);
 		await objectStoreService.init();
 		mockS3Send.mockClear();
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('getClientConfig()', () => {
@@ -443,7 +443,7 @@ describe('ObjectStoreService', () => {
 				},
 			];
 
-			objectStoreService.list = jest.fn().mockResolvedValue(mockList);
+			objectStoreService.list = vi.fn().mockResolvedValue(mockList);
 			mockS3Send.mockResolvedValueOnce({});
 
 			await objectStoreService.deleteMany(prefix);
@@ -461,7 +461,7 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should not send a deletion request if no prefix match', async () => {
-			objectStoreService.list = jest.fn().mockResolvedValue([]);
+			objectStoreService.list = vi.fn().mockResolvedValue([]);
 
 			const result = await objectStoreService.deleteMany('non-matching-prefix');
 
@@ -470,7 +470,7 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should throw an error on request failure', async () => {
-			objectStoreService.list = jest.fn().mockResolvedValue([{ key: 'file.txt' }]);
+			objectStoreService.list = vi.fn().mockResolvedValue([{ key: 'file.txt' }]);
 			mockS3Send.mockRejectedValueOnce(mockError);
 
 			const promise = objectStoreService.deleteMany('test-dir/');
@@ -488,7 +488,7 @@ describe('ObjectStoreService', () => {
 				isTruncated: false,
 			};
 
-			objectStoreService.getListPage = jest.fn().mockResolvedValue(mockListPage);
+			objectStoreService.getListPage = vi.fn().mockResolvedValue(mockListPage);
 
 			const result = await objectStoreService.list(prefix);
 
@@ -509,7 +509,7 @@ describe('ObjectStoreService', () => {
 				isTruncated: false,
 			};
 
-			objectStoreService.getListPage = jest
+			objectStoreService.getListPage = vi
 				.fn()
 				.mockResolvedValueOnce(mockFirstListPage)
 				.mockResolvedValueOnce(mockSecondListPage);
@@ -520,7 +520,7 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should throw an error on request failure', async () => {
-			objectStoreService.getListPage = jest.fn().mockRejectedValueOnce(mockError);
+			objectStoreService.getListPage = vi.fn().mockRejectedValueOnce(mockError);
 
 			const promise = objectStoreService.list('test-dir/');
 

@@ -11,6 +11,7 @@
 import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+import ToolApprovalBadge from './ToolApprovalBadge.vue';
 import ToolConnectedBadge from './ToolConnectedBadge.vue';
 
 withDefaults(
@@ -18,10 +19,16 @@ withDefaults(
 		mode: 'configured' | 'available';
 		name: string;
 		description?: string | null;
+		requireApproval?: boolean;
 		rowTestId?: string;
 		configureTestId?: string;
 	}>(),
-	{ description: undefined, rowTestId: undefined, configureTestId: undefined },
+	{
+		description: undefined,
+		requireApproval: false,
+		rowTestId: undefined,
+		configureTestId: undefined,
+	},
 );
 
 defineEmits<{
@@ -50,6 +57,7 @@ const i18n = useI18n();
 
 		<div :class="$style.actions">
 			<template v-if="mode === 'configured'">
+				<ToolApprovalBadge v-if="requireApproval" />
 				<ToolConnectedBadge />
 				<N8nTooltip :content="i18n.baseText('agents.tools.configure')">
 					<N8nIconButton

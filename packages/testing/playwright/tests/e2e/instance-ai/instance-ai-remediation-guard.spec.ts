@@ -3,13 +3,14 @@ import type { TestInfo } from '@playwright/test';
 import { test, expect, instanceAiTestConfig, getInstanceAiTestSlug } from './fixtures';
 import type { ApiHelpers } from '../../../services/api-helper';
 
+const TERMINAL_FALLBACK_TEXT = 'I finished the run, but I did not generate a final response';
+
 test.use({
 	...instanceAiTestConfig,
 	capability: {
 		...instanceAiTestConfig.capability,
 		env: {
 			...instanceAiTestConfig.capability.env,
-			N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN: 'false',
 			N8N_INSTANCE_AI_SANDBOX_ENABLED: 'true',
 			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'local',
 			N8N_INSTANCE_AI_SANDBOX_TIMEOUT: '600000',
@@ -24,15 +25,23 @@ type TraceEvent = {
 	toolName?: string;
 	input?: Record<string, unknown>;
 	output?: Record<string, unknown>;
+	suspendPayload?: Record<string, unknown>;
 };
 
 type RemediationTraceSummary = {
-	submitted: boolean;
+	built: boolean;
 	workflowId?: string;
 	needsUserInput: boolean;
 	mockedSlackCredential: boolean;
-	postSubmitRemediationSubmitsUsed?: number;
-	submitCallsAfterTerminalSetup: number;
+	postBuildRemediationSubmitsUsed?: number;
+	buildCallsAfterTerminalSetup: number;
+	setupRequiredByBuild: boolean;
+	usedLegacyBuilderTool: boolean;
+	openedWorkflowSetup: boolean;
+	workflowSetupAfterBuild: boolean;
+	workflowSetupAfterSetupSignal: boolean;
+	completedCheckpointBeforeWorkflowSetup: boolean;
+	fallbackNarrationSeen: boolean;
 };
 
 async function getTraceEvents(api: ApiHelpers, testInfo: TestInfo): Promise<TraceEvent[]> {
@@ -43,6 +52,23 @@ function getToolCalls(events: TraceEvent[], toolName: string): TraceEvent[] {
 	return events.filter((event) => event.kind === 'tool-call' && event.toolName === toolName);
 }
 
+function getToolEvents(events: TraceEvent[], toolName: string): TraceEvent[] {
+	return events.filter(
+		(event) =>
+			(event.kind === 'tool-call' || event.kind === 'tool-suspend') && event.toolName === toolName,
+	);
+}
+
+function getLatestRecordingEvents(events: TraceEvent[]): TraceEvent[] {
+	const lastHeaderIndex = events.findLastIndex((event) => event.kind === 'header');
+
+	return lastHeaderIndex >= 0 ? events.slice(lastHeaderIndex + 1) : events;
+}
+
+function getFirstIndex(...indexes: number[]): number {
+	return indexes.filter((index) => index >= 0).sort((a, b) => a - b)[0] ?? -1;
+}
+
 function getStringArray(value: unknown): string[] {
 	return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
 }
@@ -51,12 +77,39 @@ function includesMockedSlackSetup(value: unknown): boolean {
 	return typeof value === 'string' && value.includes('slackApi') && value.includes('mocked');
 }
 
+function hasSetupRequestCredential(event: TraceEvent, credentialType: string): boolean {
+	const setupRequests = event.suspendPayload?.setupRequests;
+	if (!Array.isArray(setupRequests)) return false;
+
+	return setupRequests.some(
+		(request) =>
+			typeof request === 'object' &&
+			request !== null &&
+			Reflect.get(request, 'credentialType') === credentialType,
+	);
+}
+
 function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummary {
-	const submitCalls = getToolCalls(events, 'submit-workflow');
-	const firstSuccessfulSubmitIndex = submitCalls.findIndex(
+	const buildCalls = getToolCalls(events, 'build-workflow');
+	const firstSuccessfulBuildEventIndex = events.findIndex(
+		(event) =>
+			event.kind === 'tool-call' &&
+			event.toolName === 'build-workflow' &&
+			event.output?.success === true &&
+			typeof event.output.workflowId === 'string',
+	);
+	const firstSuccessfulBuildIndex = buildCalls.findIndex(
 		(event) => event.output?.success === true && typeof event.output.workflowId === 'string',
 	);
-	const firstSuccessfulSubmit = submitCalls[firstSuccessfulSubmitIndex]?.output;
+	const firstSuccessfulBuild = buildCalls[firstSuccessfulBuildIndex]?.output;
+	const setupRequirement = firstSuccessfulBuild?.setupRequirement as
+		| Record<string, unknown>
+		| undefined;
+	const verificationReadiness = firstSuccessfulBuild?.verificationReadiness as
+		| Record<string, unknown>
+		| undefined;
+	const setupRequiredByBuild =
+		setupRequirement?.status === 'required' || verificationReadiness?.status === 'needs_setup';
 	const terminalSetupVerifyIndex = events.findIndex((event) => {
 		const remediation = event.output?.remediation as Record<string, unknown> | undefined;
 		return (
@@ -78,52 +131,95 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 				includesMockedSlackSetup(event.output?.guidance))
 		);
 	});
-	const terminalWorkflowSetupIndex = events.findIndex((event) => {
+	const buildSetupRequirementIndex = events.findIndex((event) => {
+		const eventSetupRequirement = event.output?.setupRequirement as
+			| Record<string, unknown>
+			| undefined;
+		const eventVerificationReadiness = event.output?.verificationReadiness as
+			| Record<string, unknown>
+			| undefined;
 		return (
 			event.kind === 'tool-call' &&
-			event.toolName === 'workflows' &&
-			event.input?.action === 'setup' &&
-			event.input.workflowId === firstSuccessfulSubmit?.workflowId
+			event.toolName === 'build-workflow' &&
+			event.output?.success === true &&
+			(eventSetupRequirement?.status === 'required' ||
+				eventVerificationReadiness?.status === 'needs_setup')
 		);
 	});
-	const terminalSetupIndex =
-		terminalSetupVerifyIndex >= 0
-			? terminalSetupVerifyIndex
-			: terminalSetupReportIndex >= 0
-				? terminalSetupReportIndex
-				: terminalWorkflowSetupIndex;
+	const terminalWorkflowSetupIndex = events.findIndex((event) => {
+		return (
+			(event.kind === 'tool-call' || event.kind === 'tool-suspend') &&
+			event.toolName === 'workflows' &&
+			event.input?.action === 'setup' &&
+			event.input.workflowId === firstSuccessfulBuild?.workflowId
+		);
+	});
+	const workflowSetupRequestsSlackCredential = getToolEvents(events, 'workflows').some(
+		(event) =>
+			event.input?.action === 'setup' &&
+			event.input.workflowId === firstSuccessfulBuild?.workflowId &&
+			hasSetupRequestCredential(event, 'slackApi'),
+	);
+	const terminalSetupIndex = getFirstIndex(
+		buildSetupRequirementIndex,
+		terminalSetupVerifyIndex,
+		terminalSetupReportIndex,
+		terminalWorkflowSetupIndex,
+	);
+	const terminalSetupSignalIndex = getFirstIndex(
+		buildSetupRequirementIndex,
+		terminalSetupVerifyIndex,
+		terminalSetupReportIndex,
+	);
+	const firstCompleteCheckpointIndex = events.findIndex(
+		(event) =>
+			(event.kind === 'tool-call' || event.kind === 'tool-suspend') &&
+			event.toolName === 'complete-checkpoint',
+	);
 	const remediation =
 		terminalSetupVerifyIndex >= 0
 			? (events[terminalSetupVerifyIndex].output?.remediation as Record<string, unknown>)
 			: undefined;
-	const submitCallsAfterTerminalSetup =
+	const buildCallsAfterTerminalSetup =
 		terminalSetupIndex >= 0
 			? events
 					.slice(terminalSetupIndex + 1)
-					.filter((event) => event.kind === 'tool-call' && event.toolName === 'submit-workflow')
+					.filter((event) => event.kind === 'tool-call' && event.toolName === 'build-workflow')
 					.length
 			: 0;
-
 	return {
-		submitted: firstSuccessfulSubmitIndex >= 0,
+		built: firstSuccessfulBuildIndex >= 0,
 		workflowId:
-			typeof firstSuccessfulSubmit?.workflowId === 'string'
-				? firstSuccessfulSubmit.workflowId
+			typeof firstSuccessfulBuild?.workflowId === 'string'
+				? firstSuccessfulBuild.workflowId
 				: undefined,
 		needsUserInput:
+			setupRequiredByBuild ||
 			(remediation?.category === 'needs_setup' &&
 				remediation.shouldEdit === false &&
 				remediation.reason === 'mocked_credentials_or_placeholders') ||
 			terminalSetupReportIndex >= 0 ||
 			terminalWorkflowSetupIndex >= 0,
-		mockedSlackCredential: getStringArray(firstSuccessfulSubmit?.mockedCredentialTypes).includes(
-			'slackApi',
-		),
-		postSubmitRemediationSubmitsUsed:
-			firstSuccessfulSubmitIndex >= 0
-				? submitCalls.length - firstSuccessfulSubmitIndex - 1
+		mockedSlackCredential:
+			getStringArray(firstSuccessfulBuild?.mockedCredentialTypes).includes('slackApi') ||
+			workflowSetupRequestsSlackCredential,
+		postBuildRemediationSubmitsUsed:
+			firstSuccessfulBuildIndex >= 0
+				? buildCalls.length - firstSuccessfulBuildIndex - 1
 				: undefined,
-		submitCallsAfterTerminalSetup,
+		buildCallsAfterTerminalSetup,
+		setupRequiredByBuild,
+		usedLegacyBuilderTool: getToolEvents(events, 'build-workflow-with-agent').length > 0,
+		openedWorkflowSetup: terminalWorkflowSetupIndex >= 0,
+		workflowSetupAfterBuild:
+			firstSuccessfulBuildEventIndex >= 0 &&
+			terminalWorkflowSetupIndex > firstSuccessfulBuildEventIndex,
+		workflowSetupAfterSetupSignal:
+			terminalSetupSignalIndex >= 0 && terminalWorkflowSetupIndex > terminalSetupSignalIndex,
+		completedCheckpointBeforeWorkflowSetup:
+			firstCompleteCheckpointIndex >= 0 &&
+			(terminalWorkflowSetupIndex < 0 || firstCompleteCheckpointIndex < terminalWorkflowSetupIndex),
+		fallbackNarrationSeen: JSON.stringify(events).includes(TERMINAL_FALLBACK_TEXT),
 	};
 }
 
@@ -157,32 +253,51 @@ test.describe(
 					'Build a workflow named "INS-164 mocked credential guard" with a Manual Trigger ' +
 						'connected to a Slack node that posts a message using a mocked slackApi credential placeholder. ' +
 						'Use the workflow SDK credential placeholder directly; do not call credentials setup or ask for a real Slack credential. ' +
-						'The builder agent must submit it and verify it with verify-built-workflow. ' +
-						'After verification reports the mocked credential setup state, open the workflow setup card with workflows(action="setup") and stop editing.',
+						'Use the workflow-builder skill, create a build plan for approval, and save it with build-workflow. ' +
+						'When the build result reports that setup is required before verification, open the workflow setup card with workflows(action="setup") and stop editing.',
 				);
+				await n8n.instanceAi.approveBuildPlan(180_000);
 
 				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 540_000 });
+				await expect(
+					n8n.instanceAi.getAssistantMessageText('Opening skill: workflow-builder'),
+				).toBeVisible();
+				await expect(n8n.instanceAi.getAssistantMessageText(TERMINAL_FALLBACK_TEXT)).toHaveCount(0);
 
-				const events = await getTraceEvents(api, testInfo);
+				const events = getLatestRecordingEvents(await getTraceEvents(api, testInfo));
 				const summary = summarizeRemediationTrace(events);
-				const submitCalls = getToolCalls(events, 'submit-workflow');
-				const verifyCalls = getToolCalls(events, 'verify-built-workflow');
+				const buildCalls = getToolCalls(events, 'build-workflow');
+				const setupCalls = getToolEvents(events, 'workflows').filter(
+					(event) =>
+						event.input?.action === 'setup' && event.input.workflowId === summary.workflowId,
+				);
 
 				expect(summary).toMatchObject({
-					submitted: true,
+					built: true,
 					workflowId: expect.any(String),
 					needsUserInput: true,
 					mockedSlackCredential: true,
-					submitCallsAfterTerminalSetup: 0,
+					buildCallsAfterTerminalSetup: 0,
+					setupRequiredByBuild: true,
+					usedLegacyBuilderTool: false,
+					openedWorkflowSetup: true,
+					workflowSetupAfterBuild: true,
+					workflowSetupAfterSetupSignal: true,
+					completedCheckpointBeforeWorkflowSetup: false,
+					fallbackNarrationSeen: false,
 				});
-				expect(summary.postSubmitRemediationSubmitsUsed).toBeLessThanOrEqual(2);
-				expect(submitCalls.find((event) => event.agentRole === 'workflow-builder')).toMatchObject({
-					agentRole: 'workflow-builder',
+				expect(summary.postBuildRemediationSubmitsUsed).toBeLessThanOrEqual(2);
+				expect(buildCalls.find((event) => event.agentRole === 'orchestrator')).toMatchObject({
+					agentRole: 'orchestrator',
 					stepId: expect.any(Number),
 				});
-				expect(verifyCalls.find((event) => event.agentRole === 'workflow-builder')).toMatchObject({
-					agentRole: 'workflow-builder',
+				expect(setupCalls.find((event) => event.agentRole === 'orchestrator')).toMatchObject({
+					agentRole: 'orchestrator',
 					stepId: expect.any(Number),
+					suspendPayload: expect.objectContaining({
+						workflowId: summary.workflowId,
+						setupRequests: expect.any(Array),
+					}),
 				});
 			},
 		);

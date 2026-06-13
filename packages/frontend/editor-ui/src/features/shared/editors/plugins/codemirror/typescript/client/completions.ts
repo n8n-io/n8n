@@ -31,6 +31,7 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(typescriptWorkerFacet);
 	const targetNodeParameter = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
+	if (!workflowDocumentId) return null;
 	const word = matchText(context);
 
 	const blockComment = context.matchBefore(/\/\*?\*?/);

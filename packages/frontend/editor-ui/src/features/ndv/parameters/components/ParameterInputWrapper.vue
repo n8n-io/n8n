@@ -99,9 +99,9 @@ const parameterHint = computed(() => {
 	return props.hint;
 });
 
-const targetItem = computed(() => ndvStore.expressionTargetItem);
+const targetItem = computed(() => ndvStore.value.expressionTargetItem);
 
-const isInputParentOfActiveNode = computed(() => ndvStore.isInputParentOfActiveNode);
+const isInputParentOfActiveNode = computed(() => ndvStore.value.isInputParentOfActiveNode);
 
 const expression = computed(() => {
 	if (!isExpression.value) return '';

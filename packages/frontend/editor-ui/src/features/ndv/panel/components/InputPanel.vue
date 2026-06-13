@@ -12,6 +12,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import uniqBy from 'lodash/uniqBy';
@@ -36,7 +37,6 @@ import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
 import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
@@ -108,7 +108,9 @@ const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const workflowState = injectWorkflowState();
+const workflowExecutionStateStore = computed(() =>
+	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
+);
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
@@ -194,16 +196,16 @@ const isMappingEnabled = computed(() => {
 	return true;
 });
 const isExecutingPrevious = computed(() => {
-	if (!workflowsStore.isWorkflowRunning) {
+	if (!workflowExecutionStateStore.value.isWorkflowRunning) {
 		return false;
 	}
 	const triggeredNode = workflowsStore.executedNode;
-	const executingNode = workflowState.executingNode.executingNode;
+	const executingNode = workflowExecutionStateStore.value.executingNode.executingNode;
 
 	if (
 		activeNode.value &&
 		triggeredNode === activeNode.value.name &&
-		workflowState.executingNode.isNodeExecuting(props.currentNodeName)
+		workflowExecutionStateStore.value.executingNode.isNodeExecuting(props.currentNodeName)
 	) {
 		return true;
 	}
@@ -211,7 +213,8 @@ const isExecutingPrevious = computed(() => {
 	if (executingNode.length || triggeredNode) {
 		return !!parentNodes.value.find(
 			(node) =>
-				workflowState.executingNode.isNodeExecuting(node.name) || node.name === triggeredNode,
+				workflowExecutionStateStore.value.executingNode.isNodeExecuting(node.name) ||
+				node.name === triggeredNode,
 		);
 	}
 	return false;

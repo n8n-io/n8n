@@ -1,5 +1,5 @@
 import { datetimeColumnType, JsonColumn, WithTimestamps } from '@n8n/db';
-import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
 export type McpRegistryServerData = {
 	name: string;
@@ -29,11 +29,7 @@ export type McpRegistryServerData = {
 
 @Entity('mcp_registry_server')
 export class McpRegistryServerEntity extends WithTimestamps {
-	@PrimaryColumn('int')
-	id: number;
-
-	@Index({ unique: true })
-	@Column('varchar')
+	@PrimaryColumn('varchar')
 	slug: string;
 
 	@Column('varchar')

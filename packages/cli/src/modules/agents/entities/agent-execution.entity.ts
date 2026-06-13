@@ -25,7 +25,10 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@JoinColumn({ name: 'threadId' })
 	thread: AgentExecutionThread;
 
-	@Column({ type: 'varchar', length: 36 })
+	// Thread ids are scoped with prefixes/user ids on some surfaces (e.g.
+	// `test-<agentId>:<userId>`), so they exceed a bare uuid — widened to 128 in
+	// AddSubAgentLinkageToAgentExecutionThreads1784000000022.
+	@Column({ type: 'varchar', length: 128 })
 	threadId: string;
 
 	@Column({ type: 'varchar', length: 16 })

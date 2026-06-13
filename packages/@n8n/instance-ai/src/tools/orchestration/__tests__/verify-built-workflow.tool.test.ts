@@ -1,3 +1,5 @@
+import type { Mock } from 'vitest';
+
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { createToolRegistry } from '../../../tool-registry';
 import type {
@@ -28,9 +30,9 @@ type VerifyBuiltWorkflowOutput = {
 
 function createContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
 	const workflowTaskService = {
-		reportBuildOutcome: jest.fn(),
-		reportVerificationVerdict: jest.fn(),
-		getBuildOutcome: jest.fn().mockResolvedValue({
+		reportBuildOutcome: vi.fn(),
+		reportVerificationVerdict: vi.fn(),
+		getBuildOutcome: vi.fn().mockResolvedValue({
 			workItemId: 'wi_1',
 			taskId: 'task_1',
 			workflowId: 'wf_1',
@@ -39,8 +41,8 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 			needsUserInput: false,
 			summary: 'Built',
 		}),
-		getWorkflowLoopState: jest.fn(),
-		updateBuildOutcome: jest.fn(),
+		getWorkflowLoopState: vi.fn(),
+		updateBuildOutcome: vi.fn(),
 	};
 
 	return {
@@ -52,10 +54,10 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 		subAgentMaxSteps: 5,
 		eventBus: {} as OrchestrationContext['eventBus'],
 		logger: {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
 		} as unknown as OrchestrationContext['logger'],
 		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
@@ -64,10 +66,10 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 		domainContext: {
 			userId: 'user_1',
 			workflowService: {
-				getAsWorkflowJSON: jest.fn().mockResolvedValue({ nodes: [] }),
+				getAsWorkflowJSON: vi.fn().mockResolvedValue({ nodes: [] }),
 			} as unknown as InstanceAiWorkflowService,
 			executionService: {
-				run: jest.fn().mockResolvedValue({
+				run: vi.fn().mockResolvedValue({
 					executionId: 'exec_1',
 					status: 'success',
 				}),
@@ -75,8 +77,8 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 			credentialService: {} as never,
 			nodeService: {} as never,
 			dataTableService: {
-				queryRows: jest.fn().mockResolvedValue({ count: 0, data: [] }),
-				deleteRows: jest.fn().mockResolvedValue({ deletedCount: 0 }),
+				queryRows: vi.fn().mockResolvedValue({ count: 0, data: [] }),
+				deleteRows: vi.fn().mockResolvedValue({ deletedCount: 0 }),
 			} as unknown as InstanceAiDataTableService,
 		},
 		...overrides,
@@ -86,7 +88,7 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 describe('verify-built-workflow tool — remediation guard', () => {
 	it('routes mocked-credential verification failures to setup and records terminal verdict', async () => {
 		const context = createContext();
-		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+		vi.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
 			workItemId: 'wi_1',
 			taskId: 'task_1',
 			workflowId: 'wf_1',
@@ -97,7 +99,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			mockedNodeNames: ['Gmail'],
 			summary: 'Built',
 		});
-		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+		vi.mocked(context.domainContext!.executionService.run).mockResolvedValue({
 			executionId: 'exec_1',
 			status: 'error',
 			error: 'Gmail credentials are mocked',
@@ -116,14 +118,14 @@ describe('verify-built-workflow tool — remediation guard', () => {
 				verdict: 'needs_user_input',
 			}),
 		);
-		const reported = jest.mocked(context.workflowTaskService!.reportVerificationVerdict).mock
+		const reported = vi.mocked(context.workflowTaskService!.reportVerificationVerdict).mock
 			.calls[0]?.[0] as { remediation?: { category?: string } };
 		expect(reported.remediation).toMatchObject({ category: 'needs_setup' });
 	});
 
 	it('does not treat mocked credentials as setup when the execution error is code-fixable', async () => {
 		const context = createContext();
-		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+		vi.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
 			workItemId: 'wi_1',
 			taskId: 'task_1',
 			workflowId: 'wf_1',
@@ -134,7 +136,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			mockedNodeNames: ['Slack'],
 			summary: 'Built',
 		});
-		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+		vi.mocked(context.domainContext!.executionService.run).mockResolvedValue({
 			executionId: 'exec_1',
 			status: 'error',
 			error: 'Code node failed: Cannot read properties of undefined',
@@ -152,14 +154,14 @@ describe('verify-built-workflow tool — remediation guard', () => {
 	});
 
 	it('returns terminal remediation even when verdict persistence and telemetry fail', async () => {
-		const trackTelemetry = jest.fn(() => {
+		const trackTelemetry = vi.fn(() => {
 			throw new Error('telemetry unavailable');
 		});
 		const context = createContext({ trackTelemetry });
-		jest
-			.mocked(context.workflowTaskService!.reportVerificationVerdict)
-			.mockRejectedValue(new Error('storage unavailable'));
-		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+		vi.mocked(context.workflowTaskService!.reportVerificationVerdict).mockRejectedValue(
+			new Error('storage unavailable'),
+		);
+		vi.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
 			workItemId: 'wi_1',
 			taskId: 'task_1',
 			workflowId: 'wf_1',
@@ -170,7 +172,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 			mockedNodeNames: ['Gmail'],
 			summary: 'Built',
 		});
-		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+		vi.mocked(context.domainContext!.executionService.run).mockResolvedValue({
 			executionId: 'exec_1',
 			status: 'error',
 			error: 'Gmail credentials are mocked',
@@ -199,7 +201,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 
 	it('does not execute or report another verdict when the persisted guard is terminal', async () => {
 		const context = createContext();
-		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
+		vi.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
 			workItemId: 'wi_1',
 			threadId: 'thread_1',
 			runId: 'run_1',
@@ -232,7 +234,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 
 	it('ignores terminal remediation from a previous run', async () => {
 		const context = createContext();
-		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
+		vi.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
 			workItemId: 'wi_1',
 			threadId: 'thread_1',
 			runId: 'run_previous',
@@ -258,7 +260,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 
 	it('still verifies the second allowed post-submit repair before blocking further edits', async () => {
 		const context = createContext();
-		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
+		vi.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
 			workItemId: 'wi_1',
 			threadId: 'thread_1',
 			runId: 'run_1',
@@ -287,7 +289,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 
 	it('blocks a failing verification after the second post-submit repair was already submitted', async () => {
 		const context = createContext();
-		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
+		vi.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
 			workItemId: 'wi_1',
 			threadId: 'thread_1',
 			runId: 'run_1',
@@ -305,7 +307,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 				guidance: 'Verify the latest repair.',
 			}),
 		});
-		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+		vi.mocked(context.domainContext!.executionService.run).mockResolvedValue({
 			executionId: 'exec_1',
 			status: 'error',
 			error: 'Code node still fails',
@@ -332,7 +334,7 @@ describe('verify-built-workflow tool — remediation guard', () => {
 
 	it('returns editable remediation for generic runtime failures without terminal reporting', async () => {
 		const context = createContext();
-		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+		vi.mocked(context.domainContext!.executionService.run).mockResolvedValue({
 			executionId: 'exec_1',
 			status: 'error',
 			error: 'Node parameter value is invalid',
@@ -360,15 +362,20 @@ interface VerifyToolContext {
 	workflowTaskService: WorkflowTaskService;
 	domainContext: {
 		executionService: {
-			run: jest.Mock<
-				Promise<ExecutionRunResult>,
-				[string, Record<string, unknown> | undefined, { timeout?: number; pinData?: unknown }]
+			run: Mock<
+				(
+					...args: [
+						string,
+						Record<string, unknown> | undefined,
+						{ timeout?: number; pinData?: unknown },
+					]
+				) => Promise<ExecutionRunResult>
 			>;
 		};
 		workflowService?: InstanceAiWorkflowService;
 		dataTableService?: InstanceAiDataTableService;
 	};
-	logger: { debug: jest.Mock; info: jest.Mock; warn: jest.Mock; error: jest.Mock };
+	logger: { debug: Mock; info: Mock; warn: Mock; error: Mock };
 }
 
 function makeBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBuildOutcome {
@@ -399,12 +406,12 @@ function makeContext(
 		snapshotErrors?: Record<string, Error>;
 	} = {},
 ) {
-	const updateBuildOutcome = jest.fn(
+	const updateBuildOutcome = vi.fn(
 		async (_workItemId: string, _update: Partial<WorkflowBuildOutcome>) => {
 			await Promise.resolve();
 		},
 	);
-	const run = jest.fn(
+	const run = vi.fn(
 		async (
 			_workflowId: string,
 			_inputData: Record<string, unknown> | undefined,
@@ -421,7 +428,7 @@ function makeContext(
 	 * after the snapshot phase for a given table switches to `queriesAfterRun`.
 	 */
 	const snapshotDone = new Set<string>();
-	const queryRows = jest.fn(
+	const queryRows = vi.fn(
 		async (
 			dataTableId: string,
 			opts?: { limit?: number; offset?: number },
@@ -455,13 +462,13 @@ function makeContext(
 			value: string | number | boolean | null;
 		}>;
 	};
-	const deleteRows = jest.fn(async (_dataTableId: string, _filter: DeleteRowsFilter) => {
+	const deleteRows = vi.fn(async (_dataTableId: string, _filter: DeleteRowsFilter) => {
 		await Promise.resolve();
 		return { deletedCount: 0, dataTableId: '', tableName: '', projectId: '' };
 	});
 
 	const workflowService = {
-		getAsWorkflowJSON: jest.fn(async () => {
+		getAsWorkflowJSON: vi.fn(async () => {
 			await Promise.resolve();
 			return { nodes: overrides.workflowNodes ?? [] };
 		}),
@@ -473,21 +480,21 @@ function makeContext(
 	} as unknown as InstanceAiDataTableService;
 
 	const logger = {
-		debug: jest.fn(),
-		info: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
 	};
 
 	const ctx: VerifyToolContext = {
 		workflowTaskService: {
-			reportBuildOutcome: jest.fn(),
-			reportVerificationVerdict: jest.fn(),
-			getBuildOutcome: jest.fn(async () => {
+			reportBuildOutcome: vi.fn(),
+			reportVerificationVerdict: vi.fn(),
+			getBuildOutcome: vi.fn(async () => {
 				await Promise.resolve();
 				return outcome;
 			}),
-			getWorkflowLoopState: jest.fn(),
+			getWorkflowLoopState: vi.fn(),
 			updateBuildOutcome,
 		} as unknown as WorkflowTaskService,
 		domainContext: {

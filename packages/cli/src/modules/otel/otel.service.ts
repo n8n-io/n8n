@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { DiagLogger } from '@opentelemetry/api';
-import { DiagLogLevel, diag } from '@opentelemetry/api';
+import { DiagLogLevel, diag, context, metrics, propagation, trace } from '@opentelemetry/api';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -10,6 +10,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { N8N_VERSION } from '@/constants';
 
+import { OtelSettingsService } from './otel-settings.service';
 import { OtelConfig } from './otel.config';
 import { ATTR } from './otel.constants';
 
@@ -20,25 +21,56 @@ export class OtelService {
 	private hasLoggedStartupConnectivityFailure = false;
 
 	constructor(
-		private readonly config: OtelConfig,
+		private readonly otelSettingsService: OtelSettingsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 	) {}
 
-	init() {
-		if (!this.config.enabled) return;
+	async init(): Promise<void> {
+		const settings = await this.otelSettingsService.loadSettings();
+		this.start(settings);
+	}
+
+	async restart(): Promise<void> {
+		await this.shutdown();
+		const settings = await this.otelSettingsService.loadSettings();
+		this.start(settings);
+	}
+
+	private start(settings: OtelConfig): void {
+		this.hasLoggedStartupConnectivityFailure = false;
+		if (!settings.enabled) return;
 
 		this.configureDiagnosticsLogger();
-
-		const otlpTracesUrl = this.buildOtlpTracesUrl(
-			this.config.exporterEndpoint,
-			this.config.exporterTracingPath,
+		void this.checkEndpointReachability(
+			this.startSdk(settings),
+			settings.startupConnectivityTimeoutMs,
 		);
-		const otlpHeaders = this.parseOtlpHeaders(this.config.exporterHeaders);
+	}
+
+	async shutdown(): Promise<void> {
+		await this.sdk?.shutdown();
+		this.sdk = undefined;
+
+		// Unregister the global providers so the next NodeSDK.start() can register
+		// new ones. Without this, OTel's allowOverride=false guard blocks
+		// re-registration and the restart silently fails.
+		trace?.disable();
+		context?.disable();
+		propagation?.disable();
+		metrics?.disable();
+	}
+
+	private startSdk(settings: OtelConfig): string {
+		const otlpTracesUrl = this.buildOtlpTracesUrl(
+			settings.exporterEndpoint,
+			settings.exporterTracingPath,
+		);
+		const otlpHeaders = this.parseOtlpHeaders(settings.exporterHeaders);
 
 		this.sdk = new NodeSDK({
 			resource: resourceFromAttributes({
-				[ATTR.OTEL_SERVICE_NAME]: this.config.exporterServiceName,
+				[ATTR.OTEL_SERVICE_NAME]: settings.exporterServiceName,
 				[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
 				[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
 				[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
@@ -47,15 +79,11 @@ export class OtelService {
 				url: otlpTracesUrl,
 				headers: otlpHeaders,
 			}),
-			sampler: new TraceIdRatioBasedSampler(this.config.tracesSampleRate),
+			sampler: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
 		});
 
 		this.sdk.start();
-		void this.checkEndpointReachability(otlpTracesUrl);
-	}
-
-	async shutdown(): Promise<void> {
-		await this.sdk?.shutdown();
+		return otlpTracesUrl;
 	}
 
 	parseOtlpHeaders(headersToSplit: string): Record<string, string> {
@@ -105,14 +133,14 @@ export class OtelService {
 		return `${exporterEndpointWithoutTrailingSlash}${path}`;
 	}
 
-	private async checkEndpointReachability(url: string): Promise<void> {
+	private async checkEndpointReachability(url: string, timeoutMs: number): Promise<void> {
 		try {
 			// HEAD is used for a cheap connectivity check (no request/response body).
 			// OTLP endpoints are POST-only, so this will often return 4xx, but any
 			// HTTP response means the server is reachable. We only catch network errors.
 			await fetch(url, {
 				method: 'HEAD',
-				signal: AbortSignal.timeout(this.config.startupConnectivityTimeoutMs),
+				signal: AbortSignal.timeout(timeoutMs),
 			});
 		} catch (error) {
 			if (this.hasLoggedStartupConnectivityFailure) return;

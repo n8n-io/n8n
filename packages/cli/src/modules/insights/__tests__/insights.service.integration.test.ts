@@ -23,8 +23,6 @@ import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
 
 describe('InsightsService (Integration)', () => {
-	const today = new Date();
-
 	beforeAll(async () => {
 		await testModules.loadModules(['insights']);
 		await testDb.init();
@@ -224,7 +222,10 @@ describe('InsightsService (Integration)', () => {
 			const startDate = now.minus({ days: 7 }).toJSDate();
 
 			// ACT
-			const summary = await insightsService.getInsightsSummary({ startDate, endDate: today });
+			const summary = await insightsService.getInsightsSummary({
+				startDate,
+				endDate: now.toJSDate(),
+			});
 
 			// ASSERT
 			expect(Object.values(summary).map((v) => v.deviation)).toEqual([
@@ -501,7 +502,7 @@ describe('InsightsService (Integration)', () => {
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 				sortBy: 'succeeded:desc',
 				skip: 1,
 				take: 1,
@@ -528,7 +529,7 @@ describe('InsightsService (Integration)', () => {
 
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 				skip: 10,
 				take: 10,
 			});
@@ -579,7 +580,7 @@ describe('InsightsService (Integration)', () => {
 					type: 'success',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).endOf('day'),
+					periodStart: now.minus({ days: 13, hours: 23 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -637,12 +638,13 @@ describe('InsightsService (Integration)', () => {
 
 		test('compacted data are grouped by workflow correctly even with 0 data (check division by 0)', async () => {
 			// ARRANGE
-			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
+			const now = DateTime.utc();
+			const startDate = now.minus({ days: 14 }).toJSDate();
 
 			// ACT
 			const byWorkflow = await insightsService.getInsightsByWorkflow({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 
 			// ASSERT
@@ -673,10 +675,11 @@ describe('InsightsService (Integration)', () => {
 		});
 
 		test('returns empty array when no insights exist', async () => {
-			const startDate = DateTime.utc().minus({ days: 14 }).toJSDate();
+			const now = DateTime.utc();
+			const startDate = now.minus({ days: 14 }).toJSDate();
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 			expect(byTime).toEqual([]);
 		});
@@ -694,7 +697,7 @@ describe('InsightsService (Integration)', () => {
 
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 			expect(byTime).toEqual([]);
 		});
@@ -740,7 +743,7 @@ describe('InsightsService (Integration)', () => {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).endOf('day'),
+					periodStart: now.minus({ days: 13, hours: 23 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -758,7 +761,7 @@ describe('InsightsService (Integration)', () => {
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 			});
 
 			// ASSERT
@@ -836,7 +839,7 @@ describe('InsightsService (Integration)', () => {
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 				insightTypes: ['time_saved_min', 'failure'],
 			});
 
@@ -898,7 +901,7 @@ describe('InsightsService (Integration)', () => {
 					type: workflow === workflow1 ? 'success' : 'failure',
 					value: 1,
 					periodUnit: 'hour',
-					periodStart: now.minus({ days: 14 }).endOf('day'),
+					periodStart: now.minus({ days: 13, hours: 23 }),
 				});
 
 				// Out of date range insight (should not be included)
@@ -916,7 +919,7 @@ describe('InsightsService (Integration)', () => {
 			// ACT
 			const byTime = await insightsService.getInsightsByTime({
 				startDate,
-				endDate: today,
+				endDate: now.toJSDate(),
 				projectId: project.id,
 			});
 
@@ -994,12 +997,13 @@ describe('InsightsService (Integration)', () => {
 			const startDate = DateTime.now().minus({ days: 3 }).startOf('day');
 			const endDate = startDate.plus({ hours: 10 });
 
-			expect(() =>
+			const execution = () =>
 				insightsService.validateDateFiltersLicense({
 					startDate: startDate.toJSDate(),
 					endDate: endDate.toJSDate(),
-				}),
-			).toThrowError(new UserError('Hourly data is not available with your current license'));
+				});
+			expect(execution).toThrow(UserError);
+			expect(execution).toThrow('Hourly data is not available with your current license');
 		});
 
 		test('does not throw if granularity is hour and hourly data is licensed', () => {
@@ -1025,10 +1029,10 @@ describe('InsightsService (Integration)', () => {
 			const startDate = today.minus({ days: 8 }).toJSDate();
 			const endDate = today.toJSDate();
 
-			expect(() => insightsService.validateDateFiltersLicense({ startDate, endDate })).toThrowError(
-				new UserError(
-					'The selected date range exceeds the maximum history allowed by your license',
-				),
+			const execution = () => insightsService.validateDateFiltersLicense({ startDate, endDate });
+			expect(execution).toThrow(UserError);
+			expect(execution).toThrow(
+				'The selected date range exceeds the maximum history allowed by your license',
 			);
 		});
 

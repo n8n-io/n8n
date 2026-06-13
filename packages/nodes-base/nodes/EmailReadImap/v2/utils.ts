@@ -116,6 +116,7 @@ export async function getNewEmails(
 		this.logger.debug(`Process ${results.length} new emails in node "EmailReadImap"`);
 
 		const newEmails: INodeExecutionData[] = [];
+		const processedUids: number[] = [];
 		let newEmail: INodeExecutionData;
 		let attachments: IBinaryData[];
 		let propertyName: string;
@@ -155,6 +156,7 @@ export async function getNewEmails(
 				};
 
 				newEmails.push(parsedEmail);
+				processedUids.push(message.attributes.uid);
 			}
 		} else if (format === 'simple') {
 			const downloadAttachments = this.getNodeParameter('downloadAttachments') as boolean;
@@ -191,6 +193,13 @@ export async function getNewEmails(
 
 				const messageHeader = message.parts.filter((part) => part.which === 'HEADER');
 
+				if (messageHeader.length === 0 || !messageHeader[0].body) {
+					this.logger.warn(
+						`Skipping email UID ${message.attributes.uid}: HEADER part missing or empty`,
+					);
+					continue;
+				}
+
 				const messageBody = messageHeader[0].body as Record<string, string[]>;
 				for (propertyName of Object.keys(messageBody)) {
 					if (messageBody[propertyName].length) {
@@ -214,6 +223,7 @@ export async function getNewEmails(
 				}
 
 				newEmails.push(newEmail);
+				processedUids.push(message.attributes.uid);
 			}
 		} else if (format === 'raw') {
 			for (const message of results) {
@@ -239,22 +249,18 @@ export async function getNewEmails(
 				};
 
 				newEmails.push(newEmail);
+				processedUids.push(message.attributes.uid);
 			}
 		}
 
-		// only mark messages as seen once processing has finished
-		if (postProcessAction === 'read') {
-			const uidList = results.map((e) => e.attributes.uid);
-			if (uidList.length > 0) {
-				await imapConnection.addFlags(uidList, '\\SEEN');
-			}
+		if (postProcessAction === 'read' && processedUids.length > 0) {
+			await imapConnection.addFlags(processedUids, '\\SEEN');
 		}
 
 		await onEmailBatch(newEmails);
-	} while (results.length >= EMAIL_BATCH_SIZE);
 
-	// Update lastMessageUid after processing all messages
-	if (maxUid > ((staticData.lastMessageUid as number) ?? 0)) {
-		this.getWorkflowStaticData('node').lastMessageUid = maxUid;
-	}
+		if (maxUid > ((staticData.lastMessageUid as number) ?? 0)) {
+			staticData.lastMessageUid = maxUid;
+		}
+	} while (results.length >= EMAIL_BATCH_SIZE);
 }

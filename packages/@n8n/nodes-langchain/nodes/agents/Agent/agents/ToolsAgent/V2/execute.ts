@@ -19,6 +19,7 @@ import {
 	getOptionalOutputParser,
 	type N8nOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
@@ -403,7 +404,7 @@ export async function toolsAgentExecute(
 			batchResults.forEach((result, index) => {
 				const itemIndex = i + index;
 				if (result.status === 'rejected') {
-					const error = result.reason as Error;
+					const error = wrapLangChainParserError(result.reason, this.getNode(), itemIndex);
 					failedItems++;
 					if (this.continueOnFail()) {
 						returnData.push({

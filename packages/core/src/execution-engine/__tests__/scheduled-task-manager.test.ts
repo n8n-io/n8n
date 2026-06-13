@@ -1,25 +1,25 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
 import type { CronContext, Workflow } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceSettings } from '@/instance-settings';
 
 import { ScheduledTaskManager } from '../scheduled-task-manager';
 
-const logger = mock<Logger>({ scoped: jest.fn().mockReturnValue(mock<Logger>()) });
+const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) });
 
 describe('ScheduledTaskManager', () => {
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 	const workflow = mock<Workflow>({ timezone: 'GMT' });
 	const everyMinute = '0 * * * * *';
 
-	const onTick = jest.fn();
+	const onTick = vi.fn();
 
 	let scheduledTaskManager: ScheduledTaskManager;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.useFakeTimers();
+		vi.clearAllMocks();
+		vi.useFakeTimers();
 		scheduledTaskManager = new ScheduledTaskManager(instanceSettings, logger, mock(), mock());
 	});
 
@@ -71,14 +71,14 @@ describe('ScheduledTaskManager', () => {
 		);
 
 		expect(onTick).not.toHaveBeenCalled();
-		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
+		vi.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
 		expect(onTick).toHaveBeenCalledTimes(10);
 	});
 
 	it('should invoke onTick with the cron-scheduled fire time, not Date.now()', () => {
 		// Freeze wall clock at an arbitrary instant that is NOT aligned to a minute boundary.
 		const unaligned = new Date('2024-01-01T00:00:30.500Z');
-		jest.setSystemTime(unaligned);
+		vi.setSystemTime(unaligned);
 
 		scheduledTaskManager.registerCron(
 			{
@@ -90,7 +90,7 @@ describe('ScheduledTaskManager', () => {
 			onTick,
 		);
 
-		jest.advanceTimersByTime(60 * 1000);
+		vi.advanceTimersByTime(60 * 1000);
 
 		expect(onTick).toHaveBeenCalledTimes(1);
 		const firstArg = onTick.mock.calls[0][0];
@@ -121,7 +121,7 @@ describe('ScheduledTaskManager', () => {
 		scheduledTaskManager.registerCron(ctx, onTick);
 
 		expect(onTick).not.toHaveBeenCalled();
-		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
+		vi.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
 		expect(onTick).not.toHaveBeenCalled();
 	});
 
@@ -156,8 +156,69 @@ describe('ScheduledTaskManager', () => {
 		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)).toBeUndefined();
 
 		expect(onTick).not.toHaveBeenCalled();
-		jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
+		vi.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
 		expect(onTick).not.toHaveBeenCalled();
+	});
+
+	it('should deregister CronJobs for a single node, leaving other nodes intact', () => {
+		const nodeA = 'node-a';
+		const nodeB = 'node-b';
+
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: nodeA,
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: nodeB,
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+
+		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)?.size).toBe(2);
+
+		scheduledTaskManager.deregisterCron(workflow.id, nodeA);
+
+		const remaining = scheduledTaskManager.cronsByWorkflow.get(workflow.id);
+		expect(remaining?.size).toBe(1);
+		expect([...(remaining?.values() ?? [])][0].ctx.nodeId).toBe(nodeB);
+	});
+
+	it('should drop the workflow entry once its last node cron is deregistered', () => {
+		const nodeId = 'only-node';
+		scheduledTaskManager.registerCron(
+			{ workflowId: workflow.id, nodeId, timezone: workflow.timezone, expression: everyMinute },
+			onTick,
+		);
+
+		scheduledTaskManager.deregisterCron(workflow.id, nodeId);
+
+		expect(scheduledTaskManager.cronsByWorkflow.get(workflow.id)).toBeUndefined();
+		expect(scheduledTaskManager.hasCrons(workflow.id)).toBe(false);
+	});
+
+	it('hasCrons reflects whether a workflow has registered crons', () => {
+		expect(scheduledTaskManager.hasCrons(workflow.id)).toBe(false);
+
+		scheduledTaskManager.registerCron(
+			{
+				workflowId: workflow.id,
+				nodeId: 'n',
+				timezone: workflow.timezone,
+				expression: everyMinute,
+			},
+			onTick,
+		);
+
+		expect(scheduledTaskManager.hasCrons(workflow.id)).toBe(true);
 	});
 
 	it('should not set up log interval when activeInterval is 0', () => {
