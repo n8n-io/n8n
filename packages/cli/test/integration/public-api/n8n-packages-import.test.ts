@@ -166,6 +166,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('folderId', '')
 			.field('credentialMatchingMode', 'id-only')
 			.field('credentialMissingMode', 'must-preexist')
+			.field('credentialBindings', '{}')
 			.field('workflowConflictPolicy', 'fail')
 			.field('workflowIdPolicy', 'new')
 			.attach('package', tarBuffer, 'import.n8np');
