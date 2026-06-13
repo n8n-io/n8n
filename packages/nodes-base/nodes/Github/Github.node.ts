@@ -3104,43 +3104,59 @@ export class Github implements INodeType {
 						//         get pull request diff
 						// ----------------------------------
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
-						const endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
-						const responseText = await githubApiRequest.call(
-							this,
-							'GET',
-							endpoint,
-							{},
-							{},
-							{ Accept: 'application/vnd.github.v3.diff' },
-						);
-						const responseData = { diff: responseText };
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray([responseData]),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-						continue;
+						const uri = `https://api.github.com/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+						try {
+							const responseText = await this.helpers.requestWithAuthentication.call(
+								this,
+								'githubApi',
+								{
+									method: 'GET',
+									uri,
+									headers: {
+										Accept: 'application/vnd.github.v3.diff',
+									},
+									json: false,
+								},
+							);
+							const responseData = { diff: responseText };
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray([responseData]),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
+							continue;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error as JsonObject);
+						}
 					} else if (operation === 'getPatch') {
 						// ----------------------------------
 						//         get pull request patch
 						// ----------------------------------
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
-						const endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
-						const responseText = await githubApiRequest.call(
-							this,
-							'GET',
-							endpoint,
-							{},
-							{},
-							{ Accept: 'application/vnd.github.v3.patch' },
-						);
-						const responseData = { patch: responseText };
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray([responseData]),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
-						continue;
+						const uri = `https://api.github.com/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+						try {
+							const responseText = await this.helpers.requestWithAuthentication.call(
+								this,
+								'githubApi',
+								{
+									method: 'GET',
+									uri,
+									headers: {
+										Accept: 'application/vnd.github.v3.patch',
+									},
+									json: false,
+								},
+							);
+							const responseData = { patch: responseText };
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray([responseData]),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
+							continue;
+						} catch (error) {
+							throw new NodeApiError(this.getNode(), error as JsonObject);
+						}
 					} else if (operation === 'merge') {
 						// ----------------------------------
 						//         merge pull request
