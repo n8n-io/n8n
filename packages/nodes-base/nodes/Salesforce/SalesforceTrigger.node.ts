@@ -37,12 +37,43 @@ export class SalesforceTrigger implements INodeType {
 			{
 				name: 'salesforceOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
+			},
+			{
+				name: 'salesforceJwtApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['jwt'],
+					},
+				},
 			},
 		],
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+					{
+						name: 'OAuth2 JWT',
+						value: 'jwt',
+					},
+				],
+				default: 'oAuth2',
+				description: 'OAuth Authorization Flow',
+			},
 			{
 				displayName: 'Trigger On',
 				name: 'triggerOn',
