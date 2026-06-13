@@ -130,9 +130,9 @@ onUnmounted(() => {
 	<Layout class="chat-wrapper">
 		<template #header>
 			<div class="chat-heading">
-				<h1>
+				<span>
 					{{ t('title') }}
-				</h1>
+				</span>
 				<button
 					v-if="showCloseButton"
 					class="chat-close-button"
