@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import ApiKeyScopes from './ApiKeyScopes.vue';
-import CopyInput from '@/app/components/CopyInput.vue';
 import Modal from '@/app/components/Modal.vue';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { computed, onMounted, ref } from 'vue';
@@ -8,6 +7,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useClipboard } from '@/app/composables/useClipboard';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useApiKeysStore } from '../apiKeys.store';
 import { useToast } from '@/app/composables/useToast';
@@ -19,7 +19,7 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import { ElDatePicker } from 'element-plus';
 import {
 	N8nButton,
-	N8nCard,
+	N8nIconButton,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
@@ -40,6 +40,7 @@ const { showError, showMessage } = useToast();
 
 const uiStore = useUIStore();
 const rootStore = useRootStore();
+const clipboard = useClipboard();
 const { createApiKey, updateApiKey, apiKeysById, availableScopes } = useApiKeysStore();
 const documentTitle = useDocumentTitle();
 
@@ -199,6 +200,29 @@ const onSave = async () => {
 	}
 };
 
+const API_KEY_VISIBLE_CHARS_PER_SIDE = 30;
+
+const isApiKeyTruncated = computed(
+	() => rawApiKey.value.length > API_KEY_VISIBLE_CHARS_PER_SIDE * 2,
+);
+const apiKeyStart = computed(() =>
+	isApiKeyTruncated.value
+		? rawApiKey.value.slice(0, API_KEY_VISIBLE_CHARS_PER_SIDE)
+		: rawApiKey.value,
+);
+const apiKeyEnd = computed(() =>
+	isApiKeyTruncated.value ? rawApiKey.value.slice(-API_KEY_VISIBLE_CHARS_PER_SIDE) : '',
+);
+
+async function copyApiKey() {
+	if (!rawApiKey.value) return;
+	await clipboard.copy(rawApiKey.value);
+	showMessage({
+		title: i18n.baseText('settings.api.view.copy.toast'),
+		type: 'success',
+	});
+}
+
 const modalTitle = computed(() => {
 	let path = 'edit';
 	if (props.mode === 'new') {
@@ -252,16 +276,25 @@ async function handleEnterKey(event: KeyboardEvent) {
 	>
 		<template #content>
 			<div @keyup.enter="handleEnterKey">
-				<N8nCard v-if="newApiKey" class="mb-4xs">
-					<CopyInput
-						:label="newApiKey.label"
-						:value="newApiKey.rawApiKey"
-						:redact-value="true"
-						:copy-button-text="i18n.baseText('generic.clickToCopy')"
-						:toast-title="i18n.baseText('settings.api.view.copy.toast')"
-						:hint="i18n.baseText('settings.api.view.copy')"
-					/>
-				</N8nCard>
+				<div v-if="newApiKey" :class="$style.createdView">
+					<N8nText size="small">{{ i18n.baseText('settings.api.view.copy') }}</N8nText>
+					<div :class="$style.apiKeyField" data-test-id="copy-input">
+						<div :class="[$style.apiKeyValue, 'ph-no-capture']">
+							<span>{{ apiKeyStart }}</span>
+							<template v-if="isApiKeyTruncated">
+								<span>...</span>
+								<span>{{ apiKeyEnd }}</span>
+							</template>
+						</div>
+						<N8nIconButton
+							icon="copy"
+							variant="ghost"
+							size="small"
+							:aria-label="i18n.baseText('generic.copy')"
+							@click="copyApiKey"
+						/>
+					</div>
+				</div>
 
 				<div v-else :class="$style.form">
 					<N8nInputLabel
@@ -359,6 +392,33 @@ async function handleEnterKey(event: KeyboardEvent) {
 <style module lang="scss">
 .notice {
 	margin: 0;
+}
+
+.createdView {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.apiKeyField {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--3xs) var(--spacing--3xs) var(--spacing--xs);
+	background-color: var(--color--background--xlight);
+	border: var(--border);
+	border-radius: var(--radius);
+}
+
+.apiKeyValue {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-align: center;
+	font-family: Monaco, Consolas, monospace;
+	font-size: var(--font-size--xs);
+	color: var(--color--text);
 }
 
 .form {

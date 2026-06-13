@@ -3340,7 +3340,7 @@
 	"settings.api.view.modal.form.expiration.custom": "Custom",
 	"settings.api.view.modal.form.expiration.days": "{numberOfDays} days",
 	"settings.api.view.modal.form.expiration.none": "No Expiration",
-	"settings.api.view.modal.title.created": "API Key Created",
+	"settings.api.view.modal.title.created": "API key created successfully",
 	"settings.api.view.modal.title.create": "Create API Key",
 	"settings.api.view.modal.title.edit": "Edit API Key",
 	"settings.api.view.modal.done.button": "Done",
