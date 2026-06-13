@@ -30,7 +30,7 @@ function createMockExecuteFunction(params: Record<string, any>) {
 			parameters: {},
 		}),
 		helpers: {
-			requestWithAuthentication: jest.fn(), // <-- this is the key mock
+			requestWithAuthentication: jest.fn(),
 			returnJsonArray: jest.fn((data: any) => {
 				if (Array.isArray(data)) {
 					return data.map((item) => ({ json: item }));
