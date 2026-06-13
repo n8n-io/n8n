@@ -1,0 +1,93 @@
+{
+	"name": "Chatbot WhatsApp - Ejemplo Completo",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "start-node",
+			"name": "Inicio",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [100, 300]
+		},
+		{
+			"parameters": {
+				"operation": "processMessage",
+				"apiToken": "{{ $env.WHATSAPP_API_TOKEN }}",
+				"phoneNumberId": "{{ $env.WHATSAPP_PHONE_ID }}",
+				"recipientNumber": "+599xxxxxxxxx",
+				"message": "Hola, este es un mensaje de prueba desde n8n",
+				"useAI": false,
+				"saveToDb": true
+			},
+			"id": "whatsapp-send-msg",
+			"name": "Enviar Mensaje WhatsApp",
+			"type": "n8n-nodes-base.whatsAppChatbot",
+			"typeVersion": 1,
+			"position": [300, 300]
+		},
+		{
+			"parameters": {
+				"operation": "configureRules",
+				"apiToken": "{{ $env.WHATSAPP_API_TOKEN }}",
+				"phoneNumberId": "{{ $env.WHATSAPP_PHONE_ID }}",
+				"keywords": "hola\nayuda\nhorario\ncontacto",
+				"autoResponse": "Gracias por tu mensaje. Un agente te responderá pronto. Atienden de lunes a viernes, 9:00 - 18:00 (UTC-4)",
+				"useAI": false
+			},
+			"id": "whatsapp-rules",
+			"name": "Configurar Respuestas Automáticas",
+			"type": "n8n-nodes-base.whatsAppChatbot",
+			"typeVersion": 1,
+			"position": [300, 500]
+		},
+		{
+			"parameters": {
+				"operation": "getHistory",
+				"apiToken": "{{ $env.WHATSAPP_API_TOKEN }}",
+				"phoneNumberId": "{{ $env.WHATSAPP_PHONE_ID }}"
+			},
+			"id": "whatsapp-history",
+			"name": "Obtener Historial",
+			"type": "n8n-nodes-base.whatsAppChatbot",
+			"typeVersion": 1,
+			"position": [500, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Procesa la respuesta de WhatsApp\nconst resultado = $input.all();\nreturn resultado.map(item => ({\n  success: item.json.success,\n  messageId: item.json.messageId,\n  status: item.json.status,\n  timestamp: item.json.timestamp,\n  error: item.json.error ?? null\n}));"
+			},
+			"id": "code-processor",
+			"name": "Procesar Resultado",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [700, 300]
+		}
+	],
+	"connections": {
+		"start-node": {
+			"main": [
+				[
+					{
+						"node": "whatsapp-send-msg",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"whatsapp-send-msg": {
+			"main": [
+				[
+					{
+						"node": "code-processor",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "1.0"
+}
