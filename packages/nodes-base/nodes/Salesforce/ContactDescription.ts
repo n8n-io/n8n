@@ -139,15 +139,38 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Name or ID',
+				displayName: 'Account',
 				name: 'acconuntId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getAccounts',
-				},
-				default: '',
-				description:
-					'ID of the account that is the parent of this contact. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				description: 'The account that is the parent of this contact',
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an account...',
+						typeOptions: {
+							searchListMethod: 'searchAccounts',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '0011700000QABCDE',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '^[a-zA-Z0-9]{15,18}$',
+									errorMessage: 'Account ID must be 15 or 18 alphanumeric characters',
+								},
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Assistant Name',
@@ -474,15 +497,38 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Account Name or ID',
+				displayName: 'Account',
 				name: 'acconuntId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getAccounts',
-				},
-				default: '',
-				description:
-					'ID of the account that is the parent of this contact. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				description: 'The account that is the parent of this contact',
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an account...',
+						typeOptions: {
+							searchListMethod: 'searchAccounts',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '0011700000QABCDE',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '^[a-zA-Z0-9]{15,18}$',
+									errorMessage: 'Account ID must be 15 or 18 alphanumeric characters',
+								},
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Assistant Name',

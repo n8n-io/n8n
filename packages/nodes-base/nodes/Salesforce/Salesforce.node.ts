@@ -3,6 +3,8 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -26,6 +28,7 @@ import { flowFields, flowOperations } from './FlowDescription';
 import {
 	escapeSoqlString,
 	getQuery,
+	getResourceLocatorValue,
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
 	sortOptions,
@@ -442,24 +445,20 @@ export class Salesforce implements INodeType {
 				sortOptions(returnData);
 				return returnData;
 			},
-			// Get all the accounts to display them to user so that they can
-			// select them easily
+			// Get accounts to display them to user so that they can select them easily.
+			// Capped via SOQL LIMIT so the load-options call stays responsive on orgs
+			// with very large Account tables. Users with more than the cap can switch
+			// the field to expression mode and provide the Account Id directly.
 			async getAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const qs = {
-					q: 'SELECT id, Name FROM Account',
+					q: 'SELECT Id, Name FROM Account ORDER BY Name LIMIT 1000',
 				};
-				const accounts = await salesforceApiRequestAllItems.call(
-					this,
-					'records',
-					'GET',
-					'/query',
-					{},
-					qs,
-				);
+				const response = await salesforceApiRequest.call(this, 'GET', '/query', {}, qs);
+				const accounts = (response.records ?? []) as IDataObject[];
 				for (const account of accounts) {
-					const accountName = account.Name;
-					const accountId = account.Id;
+					const accountName = account.Name as string;
+					const accountId = account.Id as string;
 					returnData.push({
 						name: accountName,
 						value: accountId,
@@ -1040,6 +1039,54 @@ export class Salesforce implements INodeType {
 			// 	return returnData;
 			// },
 		},
+		listSearch: {
+			// Server-side typeahead for Accounts. Used by the Contact node's Account
+			// resourceLocator so orgs with very large Account tables stay responsive:
+			// each keystroke runs a SOQL `WHERE Name LIKE` against the first
+			// `SEARCH_ACCOUNTS_PAGE_SIZE` matches, and Salesforce's `nextRecordsUrl`
+			// cursor is bubbled back as the pagination token.
+			async searchAccounts(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const SEARCH_ACCOUNTS_PAGE_SIZE = 50;
+				let response: { records?: IDataObject[]; nextRecordsUrl?: string };
+
+				if (paginationToken) {
+					// `nextRecordsUrl` is a full Salesforce path like
+					// `/services/data/v59.0/query/01g4o00000abcdef-2000`. salesforceApiRequest
+					// re-prefixes the API base itself, so we pass only the `/query/<locator>`
+					// suffix.
+					const locator = paginationToken.split('/').pop();
+					response = (await salesforceApiRequest.call(this, 'GET', `/query/${locator}`)) as {
+						records?: IDataObject[];
+						nextRecordsUrl?: string;
+					};
+				} else {
+					const escapedFilter = filter ? escapeSoqlString(filter) : '';
+					const whereClause = escapedFilter ? `WHERE Name LIKE '%${escapedFilter}%' ` : '';
+					const qs = {
+						q: `SELECT Id, Name FROM Account ${whereClause}ORDER BY Name LIMIT ${SEARCH_ACCOUNTS_PAGE_SIZE}`,
+					};
+					response = (await salesforceApiRequest.call(this, 'GET', '/query', {}, qs)) as {
+						records?: IDataObject[];
+						nextRecordsUrl?: string;
+					};
+				}
+
+				const accounts = (response.records ?? []) as Array<{ Id: string; Name: string }>;
+				const results: INodeListSearchItems[] = accounts.map((account) => ({
+					name: account.Name,
+					value: account.Id,
+				}));
+
+				return {
+					results,
+					paginationToken: response.nextRecordsUrl,
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -1401,8 +1448,11 @@ export class Salesforce implements INodeType {
 						if (additionalFields.owner !== undefined) {
 							body.OwnerId = additionalFields.owner as string;
 						}
-						if (additionalFields.acconuntId !== undefined) {
-							body.AccountId = additionalFields.acconuntId as string;
+						{
+							const acconuntId = getResourceLocatorValue(additionalFields.acconuntId);
+							if (acconuntId !== undefined) {
+								body.AccountId = acconuntId;
+							}
 						}
 						if (additionalFields.birthdate !== undefined) {
 							body.Birthdate = additionalFields.birthdate as string;
@@ -1546,8 +1596,11 @@ export class Salesforce implements INodeType {
 						if (updateFields.owner !== undefined) {
 							body.OwnerId = updateFields.owner as string;
 						}
-						if (updateFields.acconuntId !== undefined) {
-							body.AccountId = updateFields.acconuntId as string;
+						{
+							const acconuntId = getResourceLocatorValue(updateFields.acconuntId);
+							if (acconuntId !== undefined) {
+								body.AccountId = acconuntId;
+							}
 						}
 						if (updateFields.birthdate !== undefined) {
 							body.Birthdate = updateFields.birthdate as string;
