@@ -820,6 +820,65 @@ describe('buildSteps', () => {
 			});
 		});
 
+		it('should reconstruct thinking blocks with empty thinking text (display "omitted")', () => {
+			// Models with thinking display "omitted" (the default on Claude Fable 5 and
+			// Opus 4.7+) return thinking blocks with empty text but a real signature.
+			// The rebuilt assistant turn must contain the thinking block, not degrade
+			// to plain string content (which loses the signature and breaks the replay).
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_omitted_1',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_omitted_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: '',
+									thinkingType: 'thinking',
+									thinkingSignature: 'encrypted_signature_abc',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			const content = message.content;
+			expect(Array.isArray(content)).toBe(true);
+			expect(content).toHaveLength(2);
+			expect(content[0]).toEqual({
+				type: 'thinking',
+				thinking: '',
+				signature: 'encrypted_signature_abc',
+			});
+			expect(content[1]).toMatchObject({
+				type: 'tool_use',
+				id: 'call_omitted_1',
+				name: 'Calculator',
+			});
+		});
+
 		it('should reconstruct AIMessage with redacted_thinking content blocks', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
