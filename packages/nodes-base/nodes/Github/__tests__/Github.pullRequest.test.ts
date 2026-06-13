@@ -702,6 +702,88 @@ describe('Github Node - Pull Request Operations', () => {
 	});
 
 	// -----------------------------------------------------------
+	// getDiff
+	// -----------------------------------------------------------
+	describe('pullRequest:getDiff', () => {
+		it('should GET the raw diff and return it as { diff }', async () => {
+			const mock = createMockExecuteFunction({
+				operation: 'getDiff',
+				pullRequestNumber: 42,
+			});
+			const rawDiff = 'diff --git a/file b/file\n+added line\n';
+			// Mock the raw response from githubApiRequest (which calls requestWithAuthentication internally)
+			// For diff, it returns a string, not an object.
+			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(rawDiff);
+
+			const result = await github.execute.call(mock);
+
+			expect(mock.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubApi',
+				expect.objectContaining({
+					method: 'GET',
+					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls/42',
+					headers: { Accept: 'application/vnd.github.v3.diff' },
+					json: false,
+				}),
+			);
+			// The node manually wraps the diff into an object { diff: rawDiff }
+			expect(result[0][0].json).toEqual({ diff: rawDiff });
+		});
+
+		it('should throw NodeApiError on 404 PR not found', async () => {
+			const mock = createMockExecuteFunction({
+				operation: 'getDiff',
+				pullRequestNumber: 9999,
+			});
+			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+				makeGithubError(404, 'Not Found'),
+			);
+
+			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
+		});
+	});
+
+	// -----------------------------------------------------------
+	// getPatch
+	// -----------------------------------------------------------
+	describe('pullRequest:getPatch', () => {
+		it('should GET the raw patch and return it as { patch }', async () => {
+			const mock = createMockExecuteFunction({
+				operation: 'getPatch',
+				pullRequestNumber: 7,
+			});
+			const rawPatch =
+				'From abc123 Mon Sep 17 00:00:00 2001\n--- a/file\n+++ b/file\n@@ -1 +1,2 @@\n+new line';
+			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(rawPatch);
+
+			const result = await github.execute.call(mock);
+
+			expect(mock.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubApi',
+				expect.objectContaining({
+					method: 'GET',
+					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls/7',
+					headers: { Accept: 'application/vnd.github.v3.patch' },
+					json: false,
+				}),
+			);
+			expect(result[0][0].json).toEqual({ patch: rawPatch });
+		});
+
+		it('should throw NodeApiError on 404 PR not found', async () => {
+			const mock = createMockExecuteFunction({
+				operation: 'getPatch',
+				pullRequestNumber: 9999,
+			});
+			(mock.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+				makeGithubError(404, 'Not Found'),
+			);
+
+			await expect(github.execute.call(mock)).rejects.toBeInstanceOf(NodeApiError);
+		});
+	});
+
+	// -----------------------------------------------------------
 	// merge
 	// -----------------------------------------------------------
 	describe('pullRequest:merge', () => {
@@ -913,12 +995,20 @@ describe('Github Node - Pull Request Operations', () => {
 		])('should register %s in overwriteDataOperations', async (fullOp) => {
 			const [, op] = fullOp.split(':');
 			const mock = createMockExecuteFunction({ operation: op });
-			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue({ ok: true });
+			(mock.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				op === 'getDiff' ? 'diff' : op === 'getPatch' ? 'patch' : { ok: true },
+			);
 
 			const result = await github.execute.call(mock);
 			// Overwrite operations replace the input items
 			expect(result[0]).toHaveLength(1);
-			expect(result[0][0].json).toEqual({ ok: true });
+			if (op === 'getDiff') {
+				expect(result[0][0].json).toEqual({ diff: 'diff' });
+			} else if (op === 'getPatch') {
+				expect(result[0][0].json).toEqual({ patch: 'patch' });
+			} else {
+				expect(result[0][0].json).toEqual({ ok: true });
+			}
 		});
 
 		it('should treat the resource as string (not narrow to union and drop "pullRequest")', async () => {

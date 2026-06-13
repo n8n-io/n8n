@@ -233,6 +233,18 @@ export class Github implements INodeType {
 						action: 'Edit a comment on a pull request',
 					},
 					{
+						name: 'Get Diff',
+						value: 'getDiff',
+						description: 'Get the raw diff of a pull request',
+						action: 'Get a pull request diff',
+					},
+					{
+						name: 'Get Patch',
+						value: 'getPatch',
+						description: 'Get the raw patch of a pull request',
+						action: 'Get a pull request patch',
+					},
+					{
 						name: 'Merge',
 						value: 'merge',
 						description: 'Merge a pull request',
@@ -1624,6 +1636,32 @@ export class Github implements INodeType {
 				required: true,
 				description: 'The body of the comment',
 			},
+
+			// ----------------------------------
+			//         pullRequest:getDiff
+			// ----------------------------------
+			{
+				displayName: 'PR Number',
+				name: 'pullRequestNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				description: 'The number of the pull request to get the diff for',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['getDiff'] } },
+			},
+
+			// ----------------------------------
+			//         pullRequest:getPatch
+			// ----------------------------------
+			{
+				displayName: 'PR Number',
+				name: 'pullRequestNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				description: 'The number of the pull request to get the patch for',
+				displayOptions: { show: { resource: ['pullRequest'], operation: ['getPatch'] } },
+			},
 			// ----------------------------------
 			//         pullRequest:merge
 			// ----------------------------------
@@ -2673,6 +2711,8 @@ export class Github implements INodeType {
 			'pullRequest:create',
 			'pullRequest:createComment',
 			'pullRequest:editComment',
+			'pullRequest:getDiff',
+			'pullRequest:getPatch',
 			'pullRequest:get',
 			'pullRequest:merge',
 			'pullRequest:reopen',
@@ -3059,6 +3099,48 @@ export class Github implements INodeType {
 						const commentId = this.getNodeParameter('commentId', i) as string;
 						body.body = this.getNodeParameter('body', i) as string;
 						endpoint = `/repos/${owner}/${repository}/issues/comments/${commentId}`;
+					} else if (operation === 'getDiff') {
+						// ----------------------------------
+						//         get pull request diff
+						// ----------------------------------
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+						const responseText = await githubApiRequest.call(
+							this,
+							'GET',
+							endpoint,
+							{},
+							{},
+							{ Accept: 'application/vnd.github.v3.diff' },
+						);
+						const responseData = { diff: responseText };
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray([responseData]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+						continue;
+					} else if (operation === 'getPatch') {
+						// ----------------------------------
+						//         get pull request patch
+						// ----------------------------------
+						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+						const endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}`;
+						const responseText = await githubApiRequest.call(
+							this,
+							'GET',
+							endpoint,
+							{},
+							{},
+							{ Accept: 'application/vnd.github.v3.patch' },
+						);
+						const responseData = { patch: responseText };
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray([responseData]),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+						continue;
 					} else if (operation === 'merge') {
 						// ----------------------------------
 						//         merge pull request
