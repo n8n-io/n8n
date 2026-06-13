@@ -39,6 +39,8 @@ pnpm --filter=n8n-playwright janitor
 
 Janitor flags dead helpers, unused page objects, and architecture violations. Fix what it finds before opening the PR.
 
+
+
 ## When to use this skill
 
 - You added a new user-visible flow that warrants regression coverage.
