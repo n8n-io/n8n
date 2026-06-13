@@ -9,6 +9,8 @@ import {
 	BY_SPEC_DIR,
 	coverageOptions,
 	COVERAGE_ENABLED,
+	mergeV8CoverageByUrl,
+	type V8CoverageEntry,
 	slugify,
 	specId,
 } from '../coverage-options';
@@ -67,8 +69,11 @@ export const v8CoverageFixtures = {
 			try {
 				const coverage = await page.coverage.stopJSCoverage();
 				if (coverage?.length) {
-					perSpecRaw.push(...coverage.map((entry) => structuredClone(entry)));
-					await addV8CoverageInBatches(sharedReport, coverage);
+					// Collapse the per-navigation duplicate scripts (resetOnNavigation:false)
+					// before they accumulate, so the worker heap / per-spec raw stay bounded.
+					const merged = mergeV8CoverageByUrl(coverage as V8CoverageEntry[]);
+					perSpecRaw.push(...merged.map((entry) => structuredClone(entry)));
+					await addV8CoverageInBatches(sharedReport, merged);
 				}
 			} catch {
 				// Page closed before collection — ignore.

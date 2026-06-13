@@ -115,3 +115,62 @@ export async function addV8CoverageInBatches(
 	}
 	if (batch.length) await report.add(batch as never);
 }
+
+interface V8Range {
+	startOffset: number;
+	endOffset: number;
+	count: number;
+}
+interface V8Function {
+	functionName: string;
+	isBlockCoverage: boolean;
+	ranges: V8Range[];
+}
+export interface V8CoverageEntry {
+	url: string;
+	scriptId?: string;
+	source?: string;
+	functions: V8Function[];
+}
+
+/** Sum `source`'s function-range counts into `target` (same script, re-executed). */
+function mergeFunctionCounts(target: V8Function[], source: V8Function[]): void {
+	const fnKey = (f: V8Function) => `${f.functionName}@${f.ranges[0]?.startOffset ?? 0}`;
+	const fnMap = new Map(target.map((f) => [fnKey(f), f]));
+	for (const sf of source) {
+		const tf = fnMap.get(fnKey(sf));
+		if (!tf) {
+			target.push(sf);
+			fnMap.set(fnKey(sf), sf);
+			continue;
+		}
+		const rKey = (r: V8Range) => `${r.startOffset}:${r.endOffset}`;
+		const rMap = new Map(tf.ranges.map((r) => [rKey(r), r]));
+		for (const sr of sf.ranges) {
+			const tr = rMap.get(rKey(sr));
+			if (tr) tr.count += sr.count;
+			else {
+				tf.ranges.push(sr);
+				rMap.set(rKey(sr), sr);
+			}
+		}
+	}
+}
+
+/**
+ * Collapse V8 coverage entries that share a URL into one. With
+ * resetOnNavigation:false the same bundle is re-loaded under a fresh scriptId on
+ * every navigation, so a navigation-heavy test ends up holding N full copies of
+ * each script's source — enough to OOM the worker heap or blow V8's ~512MB
+ * string cap. Keep one source per URL and sum execution counts per range — the
+ * same union MCR computes at generate(), done early so the raw never bloats.
+ */
+export function mergeV8CoverageByUrl(entries: V8CoverageEntry[]): V8CoverageEntry[] {
+	const byUrl = new Map<string, V8CoverageEntry>();
+	for (const entry of entries) {
+		const existing = byUrl.get(entry.url);
+		if (existing) mergeFunctionCounts(existing.functions, entry.functions);
+		else byUrl.set(entry.url, entry);
+	}
+	return [...byUrl.values()];
+}
