@@ -26,14 +26,15 @@ const getRadioInput = (element: HTMLElement) =>
 	element.querySelector<HTMLInputElement>('input[type="radio"]') as HTMLInputElement;
 
 describe('ApiKeyScopes', () => {
-	it('selects "All" when every scope is selected and still shows the scope tree', () => {
-		const { getByTestId } = renderComponent({
+	it('selects "All" when every scope is selected and collapses the scope tree by default', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
 			props: { modelValue: availableScopes, availableScopes },
 		});
 
 		expect(getRadioInput(getByTestId('scopes-mode-all'))).toBeChecked();
-		expect(getByTestId('scopes-search')).toBeInTheDocument();
-		expect(getByTestId('scope-group-workflowsAndExecutions')).toBeInTheDocument();
+		expect(getByTestId('scopes-count')).toBeInTheDocument();
+		expect(queryByTestId('scopes-search')).not.toBeInTheDocument();
+		expect(queryByTestId('scope-group-workflowsAndExecutions')).not.toBeInTheDocument();
 	});
 
 	it('selects "Read only" when exactly the read scopes are selected', () => {
@@ -164,8 +165,9 @@ describe('ApiKeyScopes', () => {
 	});
 
 	it('collapses the tree via the tree-header toggle', async () => {
+		// A partial selection starts in Custom, which opens the tree by default.
 		const { getByTestId, queryByTestId } = renderComponent({
-			props: { modelValue: availableScopes, availableScopes },
+			props: { modelValue: ['workflow:read'] as ApiKeyScope[], availableScopes },
 		});
 
 		expect(getByTestId('scopes-search')).toBeInTheDocument();
