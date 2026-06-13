@@ -17,6 +17,8 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { FlushingSSEServerTransport } from './FlushingSSEServerTransport';
 import type { CompressionResponse } from './FlushingSSEServerTransport';
+import { DirectExecutionStrategy } from './execution/DirectExecutionStrategy';
+import type { QueuedExecutionStrategy } from './execution/QueuedExecutionStrategy';
 
 /**
  * Parses the JSONRPC message and checks whether the method used was a tool
@@ -65,15 +67,19 @@ export class McpServerManager {
 
 	transports: { [sessionId: string]: FlushingSSEServerTransport } = {};
 
-	private tools: { [sessionId: string]: Tool[] } = {};
+	// Public to allow ToolExecutionCoordinator access
+	tools: { [sessionId: string]: Tool[] } = {};
 
 	private resolveFunctions: { [callId: string]: CallableFunction } = {};
+
+	private executionStrategy: DirectExecutionStrategy | QueuedExecutionStrategy;
 
 	logger: Logger;
 
 	private constructor(logger: Logger) {
 		this.logger = logger;
-		this.logger.debug('MCP Server created');
+		this.executionStrategy = new DirectExecutionStrategy();
+		this.logger.debug('MCP Server created with DirectExecutionStrategy');
 	}
 
 	static instance(logger: Logger): McpServerManager {
@@ -83,6 +89,17 @@ export class McpServerManager {
 		}
 
 		return McpServerManager.#instance;
+	}
+
+	/**
+	 * Sets the execution strategy for MCP tool invocations.
+	 * Use DirectExecutionStrategy for single-instance mode.
+	 * Use QueuedExecutionStrategy for distributed queue mode.
+	 */
+	setExecutionStrategy(strategy: DirectExecutionStrategy | QueuedExecutionStrategy): void {
+		this.executionStrategy = strategy;
+		const strategyName = strategy.constructor.name;
+		this.logger.info(`MCP Server execution strategy set to ${strategyName}`);
 	}
 
 	async createServerAndTransport(
@@ -133,7 +150,9 @@ export class McpServerManager {
 
 			// Use session & message ID if available, otherwise fall back to sessionId
 			const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
-			this.tools[sessionId] = connectedTools;
+
+			// Prepare tools using execution strategy (Direct or Queued mode)
+			this.tools[sessionId] = this.executionStrategy.prepareTools(connectedTools);
 
 			try {
 				await new Promise(async (resolve) => {

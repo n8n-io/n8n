@@ -19,6 +19,8 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
 import { EventService } from '@/events/event.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
@@ -34,6 +36,27 @@ import type {
 	JobMessage,
 	JobFailedMessage,
 } from './scaling.types';
+
+// MCP Queue Mode Support - Dynamic imports to avoid hard dependency
+type McpServerManager = {
+	instance(logger: Logger): McpServerManager;
+	setExecutionStrategy(strategy: unknown): void;
+	tools: { [sessionId: string]: Array<{ name: string; invoke(args: unknown): Promise<unknown> }> };
+};
+
+type ToolInvocationRequest = {
+	callId: string;
+	toolName: string;
+	args: Record<string, unknown>;
+	sessionId?: string;
+};
+
+type ToolInvocationResponse = {
+	callId: string;
+	success: boolean;
+	result?: string;
+	error?: string;
+};
 
 @Service()
 export class ScalingService {
@@ -74,10 +97,12 @@ export class ScalingService {
 
 		this.scheduleQueueMetrics();
 
+		await this.configureMcpDistributedNetwork();
+
 		this.logger.debug('Queue setup completed');
 	}
 
-	setupWorker(concurrency: number) {
+	async setupWorker(concurrency: number) {
 		this.assertWorker();
 		this.assertQueue();
 
@@ -94,6 +119,8 @@ export class ScalingService {
 				await this.reportJobProcessingError(ensureError(error), job);
 			}
 		});
+
+		await this.configureMcpDistributedNetwork();
 
 		this.logger.debug('Worker setup completed');
 	}
@@ -134,6 +161,173 @@ export class ScalingService {
 		await this.queue.pause(true, true); // no more jobs will be enqueued or picked up
 		this.logger.debug('Paused queue');
 	}
+
+	// #region MCP Queue Mode Support
+
+	/**
+	 * Configures MCP tool execution for worker instances in queue mode.
+	 * Workers create proxy tools that send RPC requests to the main instance.
+	 */
+	private async configureMcpForWorker(): Promise<void> {
+		try {
+			// Dynamically import MCP classes (only available if nodes-langchain is present)
+			const { McpServerManager } = await import(
+				'@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer' as any
+			);
+			const { QueuedExecutionStrategy } = await import(
+				'@n8n/nodes-langchain/nodes/mcp/McpTrigger/execution/QueuedExecutionStrategy' as any
+			);
+
+			const publisher = Container.get(Publisher);
+			const subscriber = Container.get(Subscriber);
+			const mcpServerManager = McpServerManager.instance(this.logger);
+
+			// Create callback that publishes tool invocation requests to main instance
+			const sendToolInvocation = async (request: ToolInvocationRequest): Promise<void> => {
+				await publisher.getClient().publish('mcp:tool-invocation:request', JSON.stringify(request));
+				this.logger.debug(`Worker published tool invocation request: ${request.callId}`);
+			};
+
+			// Create queued execution strategy with RPC callback
+			const queuedStrategy = new QueuedExecutionStrategy(
+				this.logger,
+				sendToolInvocation,
+				undefined,
+				30000,
+			);
+
+			// Set strategy on MCP server manager
+			mcpServerManager.setExecutionStrategy(queuedStrategy);
+
+			// Subscribe to tool invocation responses from main instance
+			const subClient = subscriber.getClient();
+			const messageHandler = (channel: string, message: string) => {
+				if (channel === 'mcp:tool-invocation:response') {
+					const response: ToolInvocationResponse = JSON.parse(message);
+					this.logger.debug(`Worker received tool invocation response: ${response.callId}`);
+					queuedStrategy.handleResponse(response);
+				}
+			};
+			subClient.on('message', messageHandler);
+			await subClient.subscribe('mcp:tool-invocation:response');
+
+			this.logger.info('MCP configured for worker with queued execution strategy');
+		} catch (error) {
+			// MCP not available or not installed - this is fine, just skip configuration
+			this.logger.debug('MCP queue mode configuration skipped (MCP not available)');
+		}
+	}
+
+	/**
+	 * Configures MCP tool execution for main instances in queue mode.
+	 * Main instances receive RPC requests from workers and execute tools.
+	 */
+	private async configureMcpForMain(): Promise<void> {
+		try {
+			// Dynamically import MCP classes
+			const { McpServerManager } = await import(
+				'@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer' as any
+			);
+
+			const publisher = Container.get(Publisher);
+			const subscriber = Container.get(Subscriber);
+			const mcpServerManager = McpServerManager.instance(this.logger);
+
+			// Subscribe to tool invocation requests from workers
+			const subClient = subscriber.getClient();
+			const messageHandler = async (channel: string, message: string) => {
+				if (channel !== 'mcp:tool-invocation:request') return;
+
+				const request: ToolInvocationRequest = JSON.parse(message);
+				const { callId, toolName, args, sessionId } = request;
+
+				this.logger.debug(`Main received tool invocation request: ${callId} (tool: ${toolName})`);
+
+				try {
+					// Get tools from MCP server manager for this session
+					const tools = sessionId ? mcpServerManager.tools[sessionId] : undefined;
+
+					if (!tools || tools.length === 0) {
+						throw new Error(`No tools found for session ${sessionId || 'default'}`);
+					}
+
+					// Find the requested tool by name
+					const tool = tools.find(
+						(t: { name: string; invoke(args: unknown): Promise<unknown> }) => t.name === toolName,
+					);
+
+					if (!tool) {
+						throw new Error(`Tool '${toolName}' not found in session ${sessionId || 'default'}`);
+					}
+
+					// Execute the tool on the main instance (which has the MCP connection)
+					this.logger.debug(`Main executing tool ${toolName} with args:`, args);
+					const result = await tool.invoke(args);
+
+					// Convert result to string for transport
+					let resultString: string;
+					if (typeof result === 'object' && result !== null) {
+						resultString = JSON.stringify(result);
+					} else if (typeof result === 'string') {
+						resultString = result;
+					} else {
+						resultString = String(result);
+					}
+
+					// Publish success response back to worker
+					const response: ToolInvocationResponse = {
+						callId,
+						success: true,
+						result: resultString,
+					};
+
+					await publisher
+						.getClient()
+						.publish('mcp:tool-invocation:response', JSON.stringify(response));
+					this.logger.debug(`Main published success response: ${callId}`);
+				} catch (error) {
+					// Publish error response back to worker
+					const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+					this.logger.error(`Main tool invocation failed: ${callId}`, { error: errorMessage });
+
+					const response: ToolInvocationResponse = {
+						callId,
+						success: false,
+						error: errorMessage,
+					};
+
+					await publisher
+						.getClient()
+						.publish('mcp:tool-invocation:response', JSON.stringify(response));
+				}
+			};
+			subClient.on('message', messageHandler);
+			await subClient.subscribe('mcp:tool-invocation:request');
+
+			this.logger.info('MCP configured for main instance with request handler');
+		} catch (error) {
+			// MCP not available or not installed - this is fine, just skip configuration
+			this.logger.debug('MCP queue mode configuration skipped (MCP not available)');
+		}
+	}
+
+	/**
+	 * Configures MCP tool execution for distributed queue mode.
+	 * Routes to appropriate configuration based on instance type.
+	 */
+	private async configureMcpDistributedNetwork(): Promise<void> {
+		const { instanceType } = this.instanceSettings;
+
+		if (instanceType === 'worker') {
+			await this.configureMcpForWorker();
+		} else if (instanceType === 'main') {
+			await this.configureMcpForMain();
+		}
+		// webhook instances don't need MCP configuration
+	}
+
+	// #endregion
 
 	private async stopMain() {
 		if (this.instanceSettings.isSingleMain) await this.pauseQueue();
