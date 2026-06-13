@@ -66,6 +66,7 @@
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@redocly/cli": "^1.28.5",
+    "fast-check": "catalog:",
     "@types/aws4": "^1.5.1",
     "@types/bcryptjs": "^2.4.2",
     "@types/compression": "^1.7.5",
