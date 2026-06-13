@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { InternalAxiosRequestConfig } from 'axios';
 import axios, { AxiosHeaders } from 'axios';
 
-import { configureGlobalAxiosDefaults } from '../axios-config';
+import { configureGlobalAxiosDefaults } from '../config';
 
 // Registers the axios defaults and the vendor-header interceptor under test.
 configureGlobalAxiosDefaults();

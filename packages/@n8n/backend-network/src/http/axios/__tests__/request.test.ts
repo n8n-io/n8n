@@ -6,14 +6,9 @@ import type { IHttpRequestMethods, IHttpRequestOptions, IRequestOptions } from '
 import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfBridge } from '../../ssrf';
-import { configureGlobalAxiosDefaults } from '../axios-config';
-import {
-	convertN8nRequestToAxios,
-	httpRequest,
-	invokeAxios,
-	removeEmptyBody,
-} from '../http-request';
+import type { SsrfBridge } from '../../../ssrf';
+import { configureGlobalAxiosDefaults } from '../config';
+import { convertN8nRequestToAxios, httpRequest, invokeAxios, removeEmptyBody } from '../request';
 
 // Sets axios defaults and registers the vendor-header interceptor.
 configureGlobalAxiosDefaults();

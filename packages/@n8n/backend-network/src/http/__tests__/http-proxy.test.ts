@@ -5,6 +5,7 @@ import nock from 'nock';
 import { promisify } from 'util';
 
 import { installGlobalProxyAgent, resolveProxyUrl, uninstallGlobalProxyAgent } from '../http-proxy';
+import { EnvProxyHttpAgent, EnvProxyHttpsAgent } from '../node-agents';
 
 interface TestResponse {
 	message: string;
@@ -255,6 +256,35 @@ describe('HTTP Proxy Tests', () => {
 			process.env.ALL_PROXY = proxyServer.url;
 
 			expect(resolveProxyUrl('http://api.example.com:8080/test')).toBe(proxyServer.url);
+		});
+	});
+
+	describe('global agent lifecycle', () => {
+		test('installs env-proxy agents when a proxy env var is set', () => {
+			process.env.HTTP_PROXY = proxyServer.url;
+
+			installGlobalProxyAgent();
+
+			expect(http.globalAgent).toBeInstanceOf(EnvProxyHttpAgent);
+			expect(https.globalAgent).toBeInstanceOf(EnvProxyHttpsAgent);
+		});
+
+		test('is a no-op when no proxy env var is set', () => {
+			installGlobalProxyAgent();
+
+			expect(http.globalAgent).not.toBeInstanceOf(EnvProxyHttpAgent);
+			expect(https.globalAgent).not.toBeInstanceOf(EnvProxyHttpsAgent);
+		});
+
+		test('uninstall restores plain agents', () => {
+			process.env.HTTP_PROXY = proxyServer.url;
+			installGlobalProxyAgent();
+
+			uninstallGlobalProxyAgent();
+
+			expect(http.globalAgent).toBeInstanceOf(http.Agent);
+			expect(http.globalAgent).not.toBeInstanceOf(EnvProxyHttpAgent);
+			expect(https.globalAgent).not.toBeInstanceOf(EnvProxyHttpsAgent);
 		});
 	});
 

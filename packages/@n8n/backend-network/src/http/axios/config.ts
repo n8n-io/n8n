@@ -4,7 +4,7 @@ import axios from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 import { stringify } from 'qs';
 
-import { setAxiosAgents } from './axios-utils';
+import { setAxiosAgents } from './utils';
 
 let configured = false;
 
