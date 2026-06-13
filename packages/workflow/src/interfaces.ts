@@ -704,6 +704,20 @@ namespace ExecuteFunctions {
 		export type NodeParameter = 'additionalFields' | 'filters' | 'options' | 'updateFields';
 	}
 
+	type NodeParamMap = {
+		[K in StringReturning.NodeParameter]: string;
+	} & {
+		[K in RecordReturning.NodeParameter]: IDataObject;
+	} & {
+		[K in BooleanReturning.NodeParameter]: boolean;
+	} & {
+		[K in NumberReturning.NodeParameter]: number;
+	};
+
+	type NodeParamToReturn<P, Fallback = any> = P extends keyof NodeParamMap
+		? NodeParamMap[P]
+		: Fallback;
+
 	export type GetNodeParameterFn = {
 		// @TECH_DEBT: Refactor to remove this barely used overload - N8N-5632
 		getNodeParameter<T extends { resource: string }>(
@@ -711,36 +725,12 @@ namespace ExecuteFunctions {
 			itemIndex?: number,
 		): T['resource'];
 
-		getNodeParameter(
-			parameterName: StringReturning.NodeParameter,
+		getNodeParameter<P extends string>(
+			parameterName: P,
 			itemIndex: number,
-			fallbackValue?: string,
+			fallbackValue?: NodeParamToReturn<P>,
 			options?: IGetNodeParameterOptions,
-		): string;
-		getNodeParameter(
-			parameterName: RecordReturning.NodeParameter,
-			itemIndex: number,
-			fallbackValue?: IDataObject,
-			options?: IGetNodeParameterOptions,
-		): IDataObject;
-		getNodeParameter(
-			parameterName: BooleanReturning.NodeParameter,
-			itemIndex: number,
-			fallbackValue?: boolean,
-			options?: IGetNodeParameterOptions,
-		): boolean;
-		getNodeParameter(
-			parameterName: NumberReturning.NodeParameter,
-			itemIndex: number,
-			fallbackValue?: number,
-			options?: IGetNodeParameterOptions,
-		): number;
-		getNodeParameter(
-			parameterName: string,
-			itemIndex: number,
-			fallbackValue?: any,
-			options?: IGetNodeParameterOptions,
-		): NodeParameterValueType | object;
+		): NodeParamToReturn<P, NodeParameterValueType | object>;
 	};
 }
 
@@ -1192,14 +1182,17 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getRunnerStatus(taskType: string): { available: true } | { available: false; reason?: string };
 	};
 
-export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
-	getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData;
-	getItemIndex(): number;
+interface BaseGetNodeParameter {
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+}
+
+export interface IExecuteSingleFunctions extends BaseExecutionFunctions, BaseGetNodeParameter {
+	getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData;
+	getItemIndex(): number;
 	getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
 
 	helpers: RequestHelperFunctions &
@@ -1247,12 +1240,7 @@ export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	): Promise<INodeExecutionData[]>;
 }
 
-export interface ILoadOptionsFunctions extends FunctionsBase {
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
+export interface ILoadOptionsFunctions extends FunctionsBase, BaseGetNodeParameter {
 	getCurrentNodeParameter(
 		parameterName: string,
 		options?: IGetNodeParameterOptions,
@@ -1279,18 +1267,14 @@ export interface IWorkflowLoader {
 }
 
 export interface IPollFunctions
-	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'>,
+		BaseGetNodeParameter {
 	__emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun | undefined>,
 	): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
@@ -1298,7 +1282,8 @@ export interface IPollFunctions
 }
 
 export interface ITriggerFunctions
-	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'>,
+		BaseGetNodeParameter {
 	emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
@@ -1323,11 +1308,6 @@ export interface ITriggerFunctions
 	 * @param responsePromise - Optional. When provided (e.g. in manual trigger mode), used to signal the error to the caller
 	 */
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
@@ -1336,19 +1316,17 @@ export interface ITriggerFunctions
 }
 
 export interface IHookFunctions
-	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'>,
+		BaseGetNodeParameter {
 	getWebhookName(): string;
 	getWebhookDescription(name: WebhookType): IWebhookDescription | undefined;
 	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 	helpers: RequestHelperFunctions;
 }
 
-export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
+export interface IWebhookFunctions
+	extends FunctionsBaseWithRequiredKeys<'getMode'>,
+		BaseGetNodeParameter {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 	getInputConnectionData(
@@ -1356,11 +1334,6 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		itemIndex: number,
 		inputIndex?: number,
 	): Promise<unknown>;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
 	evaluateExpression(expression: string, itemIndex?: number): NodeParameterValueType;
 	getParamsData(): object;
