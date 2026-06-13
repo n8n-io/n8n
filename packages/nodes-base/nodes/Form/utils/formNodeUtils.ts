@@ -26,9 +26,13 @@ export const renderFormNode = async (
 		customCss?: string;
 	};
 
+	// JSON.stringify produces a properly-escaped JS string literal so a trigger
+	// name containing `'`, `\`, or `${}` can't break out of the expression.
+	const triggerRef = `$(${JSON.stringify(trigger?.name ?? '')})`;
+
 	let title = options.formTitle;
 	if (!title) {
-		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
+		title = context.evaluateExpression(`{{ ${triggerRef}.params.formTitle }}`) as string;
 	}
 
 	const description = handleNewlines(sanitizeHtml(options.formDescription ?? ''));
@@ -36,13 +40,12 @@ export const renderFormNode = async (
 	let buttonLabel = options.buttonLabel;
 	if (!buttonLabel) {
 		buttonLabel =
-			(context.evaluateExpression(
-				`{{ $('${trigger?.name}').params.options?.buttonLabel }}`,
-			) as string) || 'Submit';
+			(context.evaluateExpression(`{{ ${triggerRef}.params.options?.buttonLabel }}`) as string) ||
+			'Submit';
 	}
 
 	const appendAttribution = context.evaluateExpression(
-		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
+		`{{ ${triggerRef}.params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
 	// Embed the form auth token so subsequent POSTs can re-authenticate the
@@ -95,7 +98,8 @@ export function getFormTriggerNode(context: IWebhookFunctions): NodeTypeAndVersi
 
 	for (const trigger of formTriggers) {
 		try {
-			context.evaluateExpression(`{{ $('${trigger.name}').first() }}`);
+			const triggerRef = `$(${JSON.stringify(trigger.name)})`;
+			context.evaluateExpression(`{{ ${triggerRef}.first() }}`);
 		} catch (error) {
 			continue;
 		}
