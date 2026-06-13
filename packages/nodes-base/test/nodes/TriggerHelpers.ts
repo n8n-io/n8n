@@ -92,6 +92,7 @@ export async function testTriggerNode(
 		logger as any,
 		mock(),
 		mock(),
+		mock(),
 	);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		createDeferredPromise,
@@ -178,6 +179,7 @@ export async function testWebhookTriggerNode(
 	const scheduledTaskManager = new ScheduledTaskManager(
 		mock<InstanceSettings>(),
 		logger as any,
+		mock(),
 		mock(),
 		mock(),
 	);

@@ -215,6 +215,7 @@ describe('GlobalConfig', () => {
 			useWorkflowPublicationService: false,
 			publicationOutboxPollIntervalMs: 15_000,
 			autosaveDisabled: false,
+			minScheduleIntervalSeconds: 0,
 		},
 		endpoints: {
 			metrics: {
