@@ -1,8 +1,11 @@
 import { createLlmCheck } from './create-llm-check';
 
+// Scores agent communication honesty rather than workflow craft; revisit
+// its dimension when conversation-side rubric checks land.
 export const responseMatchesWorkflowChanges = createLlmCheck({
 	name: 'response_matches_workflow_changes',
 	description: "Agent's text response accurately describes the actual workflow changes",
+	dimension: 'nodes_craftsmanship',
 	systemPrompt: `You are a strict evaluator checking whether an AI assistant's text response accurately describes the changes it made to an n8n workflow.
 
 You are given:
@@ -21,6 +24,7 @@ Rules:
 - If the agent claims a specific configuration change, verify it differs between before and after.
 - If the agent claims connections between nodes, verify those connections exist in the AFTER workflow.
 - Ignore general/vague statements that don't make specific claims (e.g., "I built a workflow for you").
+- Treat SDK helper claims such as \`nodeJson(sourceNode, 'field.path')\` as equivalent to the generated workflow expression \`$('Source Node').item.json.field.path\` when the referenced node and JSON path match semantically.
 - If the agent's response contains NO specific claims about workflow changes, pass (nothing to verify).
 - A single verifiably false claim means fail.`,
 	humanTemplate: `User Request: {userPrompt}

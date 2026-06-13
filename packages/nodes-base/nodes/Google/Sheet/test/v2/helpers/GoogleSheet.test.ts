@@ -239,6 +239,38 @@ describe('GoogleSheet', () => {
 			expect(result).toEqual([{ name: 'John', age: '30', city: 'NY' }]);
 		});
 
+		it('should ignore undefined lookup values without throwing (OR)', async () => {
+			const lookupValues = [{ lookupColumn: 'age', lookupValue: undefined }];
+
+			const result = await googleSheet.lookupValues({
+				inputData,
+				keyRowIndex: 0,
+				dataStartRowIndex: 1,
+				lookupValues,
+				returnAllMatches: true,
+				combineFilters: 'OR',
+				nodeVersion: 4.5,
+			});
+
+			expect(result).toEqual([]);
+		});
+
+		it('should ignore undefined lookup values without throwing (AND)', async () => {
+			const lookupValues = [{ lookupColumn: 'age', lookupValue: undefined }];
+
+			const result = await googleSheet.lookupValues({
+				inputData,
+				keyRowIndex: 0,
+				dataStartRowIndex: 1,
+				lookupValues,
+				returnAllMatches: true,
+				combineFilters: 'AND',
+				nodeVersion: 4.5,
+			});
+
+			expect(result).toEqual([]);
+		});
+
 		it('should throw error for invalid key row', async () => {
 			const lookupValues = [{ lookupColumn: 'age', lookupValue: '30' }];
 

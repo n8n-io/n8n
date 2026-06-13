@@ -25,12 +25,10 @@ import {
 import type { McpToolIncludeMode } from '../McpClientTool/types';
 import type { McpAuthenticationOption, McpServerTransport } from './types';
 import {
-	connectMcpClient,
+	connectMcpClientForCredential,
 	getAllTools,
-	getAuthHeaders,
 	isStructuredContent,
 	mapToNodeOperationError,
-	tryRefreshOAuth2Token,
 } from './utils';
 
 /**
@@ -58,20 +56,28 @@ export type ResolvedMcpConfig = McpConnectionConfig & {
 	};
 };
 
+/**
+ * Connects to an MCP server, retrieves available tools, and returns the connected client along with the filtered tools.
+ *
+ * Attempts to obtain authentication headers from the provided context, open an MCP client, and fetch all tools from the server.
+ * On success returns the connected client and the tools filtered according to `config.toolFilter`. If the connection attempt fails,
+ * returns the connection result with `mcpTools` set to `null` and `error` populated. If tool retrieval or filtering throws, the opened
+ * client is closed before the error is rethrown.
+ *
+ * @param ctx - The n8n supply/execute context used to obtain node identity, authentication helpers, and an optional execution cancellation signal.
+ * @param config - Resolved MCP connection configuration including transport, endpoint, authentication, timeout, and `toolFilter`.
+ * @returns An object with `client` (the connected MCP client on success or the connection result on failure), `mcpTools` (the filtered tool list or `null` if connection failed), and `error` (`null` on success or the connection error on failure).
+ */
 async function connectAndGetTools(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	config: ResolvedMcpConfig,
 ) {
-	const node = ctx.getNode();
-	const { headers } = await getAuthHeaders(ctx, config.authentication);
-
-	const client = await connectMcpClient({
+	const client = await connectMcpClientForCredential(ctx, {
+		authentication: config.authentication,
 		serverTransport: config.transport,
 		endpointUrl: config.endpointUrl,
-		headers,
-		name: node.type,
-		version: node.typeVersion,
-		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
+		surface: 'MCP Client Tool',
+		signal: ctx.getExecutionCancelSignal?.(),
 	});
 
 	if (!client.ok) {
@@ -267,15 +273,11 @@ export async function loadMcpToolOptions(
 	config: McpConnectionConfig,
 ): Promise<INodePropertyOptions[]> {
 	const node = ctx.getNode();
-	const { headers } = await getAuthHeaders(ctx, config.authentication);
-
-	const client = await connectMcpClient({
+	const client = await connectMcpClientForCredential(ctx, {
+		authentication: config.authentication,
 		serverTransport: config.transport,
 		endpointUrl: config.endpointUrl,
-		headers,
-		name: node.type,
-		version: node.typeVersion,
-		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
+		surface: 'MCP Client Tool',
 	});
 
 	if (!client.ok) {

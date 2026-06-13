@@ -1,4 +1,5 @@
 import { uniqueStrings } from './memory-lifecycle';
+import type { AgentExecutionCounter } from '../types/sdk/agent';
 import type {
 	BuiltObservationLogStore,
 	ObservationLogEntry,
@@ -41,6 +42,7 @@ export interface RunObservationLogReflectorOpts {
 	tokenCounter?: TokenCounter;
 	now?: Date;
 	onWarning?: (warning: ObservationLogReflectorWarning) => void;
+	executionCounter?: AgentExecutionCounter;
 }
 
 export type RunObservationLogReflectorResult =
@@ -179,6 +181,7 @@ export async function runObservationLogReflector(
 		renderedObservationLog,
 		tokenCount,
 		tokenBudget: reflectorThresholdTokens,
+		executionCounter: opts.executionCounter,
 	});
 	const reflection = normalizeObservationLogReflection(
 		activeObservationLog,

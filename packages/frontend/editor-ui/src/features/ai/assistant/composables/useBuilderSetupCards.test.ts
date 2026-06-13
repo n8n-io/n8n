@@ -65,13 +65,6 @@ vi.mock('@/app/stores/ui.store', () => ({
 	}),
 }));
 
-const mockUpdateNodeProperties = vi.fn();
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: () => ({
-		updateNodeProperties: mockUpdateNodeProperties,
-	}),
-}));
-
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: () => ({
 		updateNodesParameterIssues: vi.fn(),

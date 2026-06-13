@@ -248,11 +248,15 @@ export class AuthService {
 	 * Validate a cookie auth token: checks revocation, JWT signature/expiry,
 	 * user existence, and hash consistency. Skips browser-id and MFA checks
 	 * since those are not applicable to webhook cookie validation.
+	 *
+	 * @returns the authenticated `User` on success
+	 * @throws `AuthError('Unauthorized')` if the token is revoked or invalid
 	 */
-	async validateCookieToken(token: string): Promise<void> {
+	async validateCookieToken(token: string): Promise<User> {
 		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
 		if (isInvalid) throw new AuthError('Unauthorized');
-		await this.validateToken(token);
+		const { user } = await this.validateToken(token);
+		return user;
 	}
 
 	async authenticateUserBasedOnToken(

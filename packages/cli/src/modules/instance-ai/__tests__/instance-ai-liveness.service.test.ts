@@ -75,6 +75,7 @@ function createLivenessService() {
 	const finalizeCancelledSuspendedRun = jest.fn(
 		(_suspended: TestSuspendedRun, _reason: string) => {},
 	);
+	const onPendingConfirmationRejected = jest.fn((_requestId: string) => {});
 	const logger = {
 		debug: jest.fn(),
 		warn: jest.fn(),
@@ -87,6 +88,7 @@ function createLivenessService() {
 		backgroundTasks,
 		eventBus,
 		finalizeCancelledSuspendedRun,
+		onPendingConfirmationRejected,
 		logger,
 	});
 
@@ -97,14 +99,22 @@ function createLivenessService() {
 		backgroundTasks,
 		eventBus,
 		finalizeCancelledSuspendedRun,
+		onPendingConfirmationRejected,
 		logger,
 	};
 }
 
 describe('InstanceAiLivenessService', () => {
 	it('cancels timed-out run surfaces without cascading into background tasks', async () => {
-		const { service, policy, runState, backgroundTasks, eventBus, finalizeCancelledSuspendedRun } =
-			createLivenessService();
+		const {
+			service,
+			policy,
+			runState,
+			backgroundTasks,
+			eventBus,
+			finalizeCancelledSuspendedRun,
+			onPendingConfirmationRejected,
+		} = createLivenessService();
 		const activeAbortController = new AbortController();
 		const suspendedAbortController = new AbortController();
 		const suspended = {
@@ -162,6 +172,7 @@ describe('InstanceAiLivenessService', () => {
 			INSTANCE_AI_RUN_TIMEOUT_REASON,
 		);
 		expect(runState.rejectPendingConfirmation).toHaveBeenCalledWith('request-1');
+		expect(onPendingConfirmationRejected).toHaveBeenCalledWith('request-1');
 		expect(backgroundTasks.timeoutTimedOutTasks).toHaveBeenCalledWith(
 			policy,
 			123_456,

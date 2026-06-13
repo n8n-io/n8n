@@ -26,6 +26,8 @@ const {
 		getNodeByName: vi.fn(),
 		getChildNodes: vi.fn().mockReturnValue([]),
 		getExpressionHandler: vi.fn().mockReturnValue({}),
+		getGroupForNode: vi.fn(),
+		addNodesToGroup: vi.fn(),
 	},
 	mockNodeTypesStore: {
 		getNodeType: vi.fn().mockReturnValue({
@@ -127,6 +129,8 @@ describe('useWorkflowExtraction', () => {
 		mockCanvasOperations.replaceNodeParameters.mockClear();
 		mockTelemetry.track.mockClear();
 		mockWorkflowDocumentStore.getChildNodes.mockReturnValue([]);
+		mockWorkflowDocumentStore.getGroupForNode.mockReset();
+		mockWorkflowDocumentStore.addNodesToGroup.mockReset();
 		mockWorkflowDocumentStore.allNodes = [];
 		mockWorkflowDocumentStore.connectionsBySourceNode = {};
 	});

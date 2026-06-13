@@ -111,7 +111,7 @@ const { resolvedExpressionString, isExpression } = useResolvedExpression({
 
 const hint = computed(() => resolvedExpressionString.value);
 
-const highlightHint = computed(() => Boolean(hint.value && ndvStore.getHoveringItem));
+const highlightHint = computed(() => Boolean(hint.value && ndvStore.value.getHoveringItem));
 
 const onAssignmentNameChange = (update: IUpdateInformation): void => {
 	assignment.value.name = update.value as string;

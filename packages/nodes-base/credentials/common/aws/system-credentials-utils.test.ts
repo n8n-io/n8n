@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 global.fetch = jest.fn();
 
@@ -28,15 +28,17 @@ import * as systemCredentialsUtils from './system-credentials-utils';
 
 const mockEnvGetter = jest.fn();
 
-jest.spyOn(systemCredentialsUtils, 'envGetter').mockImplementation(mockEnvGetter);
-
-const { envGetter, getSystemCredentials, credentialsResolver } = systemCredentialsUtils;
+const { getSystemCredentials, credentialsResolver } = systemCredentialsUtils;
+const envGetter = (...args: Parameters<typeof systemCredentialsUtils.envGetter>) =>
+	systemCredentialsUtils.envGetter(...args);
 
 describe('system-credentials-utils', () => {
 	let mockSecurityConfigInstance: MockSecurityConfig;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+
+		jest.spyOn(systemCredentialsUtils, 'envGetter').mockImplementation(mockEnvGetter);
 
 		mockSecurityConfigInstance = new MockSecurityConfig();
 		mockContainer.get.mockReturnValue(mockSecurityConfigInstance);
@@ -58,10 +60,10 @@ describe('system-credentials-utils', () => {
 	});
 
 	describe('getSystemCredentials', () => {
-		it('should throw ApplicationError when AWS system credentials access is disabled', async () => {
+		it('should throw UserError when AWS system credentials access is disabled', async () => {
 			mockSecurityConfigInstance.awsSystemCredentialsAccess = false;
 
-			await expect(getSystemCredentials()).rejects.toThrow(ApplicationError);
+			await expect(getSystemCredentials()).rejects.toThrow(UserError);
 			await expect(getSystemCredentials()).rejects.toThrow(
 				'Access to AWS system credentials disabled, contact your administrator.',
 			);

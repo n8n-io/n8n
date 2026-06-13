@@ -64,16 +64,9 @@ export const QUEUE_JOBS_COMPLETED_QUERY = 'n8n_scaling_mode_queue_jobs_completed
 
 /**
  * Returns the completion metric for the current Playwright project.
- *
- * `n8n_workflow_success_total` is emitted by both main and workers; in queue mode
- * each instance produces its own time series. The query wraps the metric in
- * `sum(last_over_time(...[5m]))` so VictoriaMetrics aggregates across instances
- * server-side, and the wide lookback tolerates transient scrape misses that
- * would otherwise drop a series and make the summed counter appear to regress.
- *
- * `n8n_scaling_mode_queue_jobs_completed` is the designed queue-mode metric but
- * it depends on ScalingService.scheduleQueueMetrics() emitting `job-counts-updated`
- * events at regular intervals — currently observed as 0 in CI.
+ * `n8n_workflow_success_total` is per-receiver-instance; summed via
+ * `sum(last_over_time(...[5m]))` for the system-wide total. The wide lookback
+ * tolerates transient scrape misses.
  */
 export function resolveMetricQuery(_testInfo: TestInfo): string {
 	return WORKFLOW_SUCCESS_QUERY;
@@ -196,8 +189,8 @@ export async function waitForThroughput(
 }
 
 /**
- * Reads the current value of the workflow success counter from VictoriaMetrics.
- * Returns 0 if the metric hasn't been scraped yet.
+ * Reads the current value of the workflow completion counter from
+ * VictoriaMetrics. Returns 0 if the metric hasn't been scraped yet.
  */
 export async function getBaselineCounter(
 	metrics: MetricsHelper,

@@ -70,8 +70,8 @@ describe('Vector Store Utilities', () => {
 					operationModes: ['load', 'insert', 'update'] as NodeOperationMode[],
 				},
 				sharedFields: [],
-				getVectorStoreClient: jest.fn(),
-				populateVectorStore: jest.fn(),
+				getVectorStoreClient: vi.fn(),
+				populateVectorStore: vi.fn(),
 			} as unknown as VectorStoreNodeConstructorArgs<VectorStore>;
 
 			expect(isUpdateSupported(args)).toBe(true);
@@ -88,8 +88,8 @@ describe('Vector Store Utilities', () => {
 					operationModes: ['load', 'insert'] as NodeOperationMode[],
 				},
 				sharedFields: [],
-				getVectorStoreClient: jest.fn(),
-				populateVectorStore: jest.fn(),
+				getVectorStoreClient: vi.fn(),
+				populateVectorStore: vi.fn(),
 			} as unknown as VectorStoreNodeConstructorArgs<VectorStore>;
 
 			expect(isUpdateSupported(args)).toBe(false);
@@ -105,8 +105,8 @@ describe('Vector Store Utilities', () => {
 					icon: 'file:test.svg',
 				},
 				sharedFields: [],
-				getVectorStoreClient: jest.fn(),
-				populateVectorStore: jest.fn(),
+				getVectorStoreClient: vi.fn(),
+				populateVectorStore: vi.fn(),
 			} as unknown as VectorStoreNodeConstructorArgs<VectorStore>;
 
 			expect(isUpdateSupported(args)).toBe(false);
@@ -125,8 +125,8 @@ describe('Vector Store Utilities', () => {
 					operationModes: ['load', 'insert'] as NodeOperationMode[],
 				},
 				sharedFields: [],
-				getVectorStoreClient: jest.fn(),
-				populateVectorStore: jest.fn(),
+				getVectorStoreClient: vi.fn(),
+				populateVectorStore: vi.fn(),
 			} as unknown as VectorStoreNodeConstructorArgs<VectorStore>;
 
 			const result = getOperationModeOptions(args);
@@ -146,8 +146,8 @@ describe('Vector Store Utilities', () => {
 					icon: 'file:test.svg',
 				},
 				sharedFields: [],
-				getVectorStoreClient: jest.fn(),
-				populateVectorStore: jest.fn(),
+				getVectorStoreClient: vi.fn(),
+				populateVectorStore: vi.fn(),
 			} as unknown as VectorStoreNodeConstructorArgs<VectorStore>;
 
 			const result = getOperationModeOptions(args);
@@ -169,8 +169,8 @@ describe('Vector Store Utilities', () => {
 					operationModes: ['retrieve', 'retrieve-as-tool'] as NodeOperationMode[],
 				},
 				sharedFields: [],
-				getVectorStoreClient: jest.fn(),
-				populateVectorStore: jest.fn(),
+				getVectorStoreClient: vi.fn(),
+				populateVectorStore: vi.fn(),
 			} as unknown as VectorStoreNodeConstructorArgs<VectorStore>;
 
 			const result = getOperationModeOptions(args);

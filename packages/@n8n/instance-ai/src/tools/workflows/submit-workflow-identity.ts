@@ -268,6 +268,7 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 		async (attempt) => {
 			await args.onAttempt(budgetTracker.recordAttempt(attempt));
 		},
+		{ root: args.root, defaultFilePath: args.defaultFilePath },
 	);
 
 	const underlyingExecute = underlying.handler as SubmitExecute | undefined;

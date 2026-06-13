@@ -15,13 +15,13 @@ import {
 } from '../episodic-memory';
 import { InMemoryMemory } from '../memory-store';
 
-jest.mock('ai', () => ({
-	embed: jest.fn(),
-	embedMany: jest.fn(),
+vi.mock('ai', () => ({
+	embed: vi.fn(),
+	embedMany: vi.fn(),
 }));
 
-const mockedEmbed = jest.mocked(embed);
-const mockedEmbedMany = jest.mocked(embedMany);
+const mockedEmbed = vi.mocked(embed);
+const mockedEmbedMany = vi.mocked(embedMany);
 const fakeEmbedder = { specificationVersion: 'v2' } as never;
 
 function entry(overrides: Partial<EpisodicMemoryEntry> = {}): EpisodicMemoryEntry {
@@ -215,6 +215,29 @@ describe('createRecallMemoryTool', () => {
 			],
 		});
 	});
+
+	it('counts recall query embedding tokens when usage is available', async () => {
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 7 } } as never);
+		const counter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+		const memory = new InMemoryMemory();
+		const tool = createRecallMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+			executionCounter: counter,
+		});
+		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
+
+		await tool.handler({ query: 'what did we decide?' }, {});
+
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(7);
+		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
+	});
 });
 
 describe('getEpisodicMemoryScope', () => {
@@ -283,7 +306,7 @@ describe('InMemoryMemory episodic source cleanup', () => {
 
 describe('runEpisodicMemoryIndexer', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockedEmbedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } } as never);
 		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
 	});
@@ -353,7 +376,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			},
 		]);
 		const sourceError = new Error('entry/source write failed');
-		jest.spyOn(memory.episodic, 'saveEntryWithSources').mockRejectedValueOnce(sourceError);
+		vi.spyOn(memory.episodic, 'saveEntryWithSources').mockRejectedValueOnce(sourceError);
 		const extract: EpisodicMemoryExtractFn = async () =>
 			await Promise.resolve({
 				entries: [
@@ -383,6 +406,45 @@ describe('runEpisodicMemoryIndexer', () => {
 				observationScopeId: 'thread-1',
 			}),
 		).resolves.toBeNull();
+	});
+
+	it('counts episodic entry embedding tokens when usage is available', async () => {
+		mockedEmbedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 23 } } as never);
+		const counter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+		const memory = new InMemoryMemory();
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User chose Postgres for cross-session memory.',
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'User chose Postgres for cross-session memory.',
+						sources: [{ observationId: observation.id, evidence: 'User chose Postgres' }],
+					},
+				],
+			});
+
+		await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+			executionCounter: counter,
+		});
+
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(23);
+		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
+		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
 	});
 
 	it('stores exact evidence for each source observation', async () => {
@@ -675,6 +737,11 @@ describe('runEpisodicMemoryIndexer', () => {
 			],
 			usage: { tokens: 2 },
 		} as never);
+		const counter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
 
 		await runEpisodicMemoryIndexer({
 			memory,
@@ -682,6 +749,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			scope: { resourceId: 'user-1' },
 			observationScope: { observationScopeId: 'thread-1' },
 			threadId: 'thread-1',
+			executionCounter: counter,
 		});
 
 		const active = await memory.episodic.searchEntries(
@@ -719,6 +787,7 @@ describe('runEpisodicMemoryIndexer', () => {
 				}),
 			]),
 		);
+		expect(counter.incrementTokenCount).toHaveBeenCalledWith(2);
 	});
 
 	it('stores reflection merge replacements longer than 800 characters without truncating them', async () => {

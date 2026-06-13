@@ -325,10 +325,28 @@ export async function execute(
 
 	const newColumns = new Set<string>();
 
-	const columnsToMatchOn: string[] =
-		nodeVersion < 4
-			? [this.getNodeParameter('columnToMatchOn', 0) as string]
-			: (this.getNodeParameter('columns.matchingColumns', 0) as string[]);
+	let columnsToMatchOn: string[];
+	if (nodeVersion < 4) {
+		columnsToMatchOn = [this.getNodeParameter('columnToMatchOn', 0) as string];
+	} else {
+		// Use a fallback so the missing upsert key gets an operation-specific error.
+		const matchingColumns = this.getNodeParameter(
+			'columns.matchingColumns',
+			0,
+			[] as string[],
+		) as string[];
+		if (!Array.isArray(matchingColumns) || matchingColumns.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'`columns.matchingColumns` is required for the Append or Update Row operation',
+				{
+					description:
+						'Set `columns.matchingColumns` to a non-empty `string[]` of header names that uniquely identify the row to update (e.g. `["id"]` or `["email"]`). If there is no key column to match on, use the `append` operation instead.',
+				},
+			);
+		}
+		columnsToMatchOn = matchingColumns;
+	}
 
 	// TODO: Add support for multiple columns to match on in the next overhaul
 	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);

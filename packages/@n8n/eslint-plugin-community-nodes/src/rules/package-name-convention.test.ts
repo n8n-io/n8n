@@ -27,11 +27,6 @@ ruleTester.run('package-name-convention', PackageNameConventionRule, {
 			code: '{ "name": "@author/n8n-nodes-service", "version": "1.0.0" }',
 		},
 		{
-			name: 'object without name property',
-			filename: 'package.json',
-			code: '{ "version": "1.0.0", "description": "test" }',
-		},
-		{
 			name: 'non-package.json file ignored',
 			filename: 'some-config.json',
 			code: '{ "name": "my-config", "type": "config" }',
@@ -182,6 +177,38 @@ ruleTester.run('package-name-convention', PackageNameConventionRule, {
 					messageId: 'invalidPackageName',
 					data: { packageName: '@company/n8n-nodes-' },
 					suggestions: [],
+				},
+			],
+		},
+		{
+			name: 'missing name property',
+			filename: 'package.json',
+			code: '{ "version": "1.0.0", "description": "test" }',
+			errors: [
+				{
+					messageId: 'missingName',
+				},
+			],
+		},
+		{
+			name: 'default placeholder name',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-<...>", "version": "1.0.0" }',
+			errors: [
+				{
+					messageId: 'defaultPlaceholderName',
+					data: { packageName: 'n8n-nodes-<...>' },
+				},
+			],
+		},
+		{
+			name: 'name containing default placeholder',
+			filename: 'package.json',
+			code: '{ "name": "@company/n8n-nodes-<...>", "version": "1.0.0" }',
+			errors: [
+				{
+					messageId: 'defaultPlaceholderName',
+					data: { packageName: '@company/n8n-nodes-<...>' },
 				},
 			],
 		},

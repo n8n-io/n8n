@@ -425,6 +425,7 @@ export class WorkflowExecutionService {
 							executionId: workflowErrorData.execution.id,
 							workflowId: workflowErrorData.workflow.id,
 							executionContext: workflowErrorData.execution.executionContext,
+							shouldResume: false, // Error workflows must not resume the failed parent workflow
 						}
 					: undefined;
 
@@ -454,6 +455,7 @@ export class WorkflowExecutionService {
 				executionData: {
 					nodeExecutionStack,
 				},
+				parentExecution,
 			});
 
 			const runData: IWorkflowExecutionDataProcess = {

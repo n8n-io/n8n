@@ -235,7 +235,7 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 export async function validateWebhookAuthentication(
 	ctx: IWebhookFunctions,
 	authPropertyName: string,
-) {
+): Promise<IDataObject | undefined> {
 	const authentication = ctx.getNodeParameter(authPropertyName) as string;
 	if (authentication === 'none') return;
 

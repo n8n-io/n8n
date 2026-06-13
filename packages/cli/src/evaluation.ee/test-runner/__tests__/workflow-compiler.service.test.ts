@@ -180,6 +180,108 @@ describe('WorkflowCompilerService', () => {
 		});
 	});
 
+	it('omits prompt from the compiled llm_judge node when not overridden in the config', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-judge',
+				name: 'Correctness',
+				type: 'llm_judge',
+				config: {
+					preset: 'correctness',
+					// prompt intentionally omitted — node should fall back to the
+					// canned prompt declared on the Set Metrics node schema.
+					provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					credentialId: 'cred',
+					model: 'gpt-4o-mini',
+					outputType: 'numeric',
+					inputs: { actualAnswer: '={{ $json }}', expectedAnswer: '={{ $json.expected }}' },
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-judge')!;
+		expect(metric.parameters).not.toHaveProperty('prompt');
+		expect(metric.parameters.metric).toBe('correctness');
+	});
+
+	it('compiles a string_similarity metric to a setMetrics node with metric=stringSimilarity', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-ss',
+				name: 'Edit-distance score',
+				type: 'string_similarity',
+				config: {
+					inputs: {
+						actualAnswer: '={{ $json.output }}',
+						expectedAnswer: '={{ $json.expected }}',
+					},
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-ss')!;
+		expect(metric.parameters.operation).toBe('setMetrics');
+		expect(metric.parameters.metric).toBe('stringSimilarity');
+		expect(metric.parameters.actualAnswer).toBe('={{ $json.output }}');
+		expect(metric.parameters.expectedAnswer).toBe('={{ $json.expected }}');
+		expect(metric.parameters.options).toEqual({ metricName: 'Edit-distance score' });
+
+		// No chat-model sub-node for deterministic scorers.
+		expect(compiled.nodes.find((n) => n.name === '__eval_model_m-ss')).toBeUndefined();
+	});
+
+	it('compiles a categorization metric to a setMetrics node with metric=categorization', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-cat',
+				name: 'Exact-match category',
+				type: 'categorization',
+				config: {
+					inputs: {
+						actualAnswer: '={{ $json.label }}',
+						expectedAnswer: '={{ $json.expectedLabel }}',
+					},
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-cat')!;
+		expect(metric.parameters.metric).toBe('categorization');
+		expect(metric.parameters.actualAnswer).toBe('={{ $json.label }}');
+		expect(metric.parameters.expectedAnswer).toBe('={{ $json.expectedLabel }}');
+	});
+
+	it('compiles a tools_used metric to a setMetrics node with metric=toolsUsed', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-tools',
+				name: 'Tools coverage',
+				type: 'tools_used',
+				config: {
+					inputs: {
+						expectedTools: 'Search, Calculator',
+						intermediateSteps: '={{ $("Agent").item.json.intermediateSteps }}',
+					},
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-tools')!;
+		expect(metric.parameters.metric).toBe('toolsUsed');
+		expect(metric.parameters.expectedTools).toBe('Search, Calculator');
+		expect(metric.parameters.intermediateSteps).toBe(
+			'={{ $("Agent").item.json.intermediateSteps }}',
+		);
+	});
+
 	it('supports startNodeName != endNodeName (middle slice)', () => {
 		const wf = baseWorkflow();
 		wf.nodes.push({
