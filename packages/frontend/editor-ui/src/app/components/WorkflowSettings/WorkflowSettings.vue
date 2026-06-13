@@ -8,6 +8,7 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
+	EXECUTION_DATA_REDACTION_DOCS_URL,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
@@ -62,7 +63,6 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { useRedactionEnforcementFeatureFlag } from '@/features/redaction-enforcement/composables/useRedactionEnforcementFeatureFlag';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -80,7 +80,6 @@ const { trackMcpAccessEnabledForWorkflow } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
-const { isEnabled: isRedactionEnforcementFlagEnabled } = useRedactionEnforcementFeatureFlag();
 const instanceRedactionFloor = ref<RedactionFloor>('off');
 // Stored redaction policy captured on open, before the floor-coercion watch can mutate it. (ENT-35)
 const originalRedactionPolicy = ref<WorkflowSettings.RedactionPolicy | undefined>(undefined);
@@ -254,14 +253,10 @@ const isDataRedactionLicensed = computed(
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
 const isProductionRedactionLockedByFloor = computed(
-	() =>
-		isRedactionEnforcementFlagEnabled.value &&
-		(instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all'),
+	() => instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all',
 );
 
-const isManualRedactionLockedByFloor = computed(
-	() => isRedactionEnforcementFlagEnabled.value && instanceRedactionFloor.value === 'all',
-);
+const isManualRedactionLockedByFloor = computed(() => instanceRedactionFloor.value === 'all');
 
 type RedactionLockReason = 'floor' | 'permission' | null;
 
@@ -944,7 +939,11 @@ onMounted(async () => {
 
 	// Fetch the instance redaction floor AFTER workflowSettings has been assigned, so
 	// the floor-coercion watch sees the loaded settings (not the initial empty object).
-	if (isRedactionEnforcementFlagEnabled.value) {
+	// The FE gates this fetch on the `DataRedaction` license, while the endpoint itself is
+	// gated by `feat:personalSpacePolicy` + `securitySettings:manage`. A license mismatch
+	// (one licensed, the other not) is intentionally absorbed by the try/catch fail-open
+	// below: the floor stays `'off'` and no enforcement is applied client-side.
+	if (isDataRedactionLicensed.value) {
 		try {
 			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
 			instanceRedactionFloor.value = response.redactionEnforcement?.floor ?? 'off';
@@ -1374,7 +1373,17 @@ onBeforeUnmount(() => {
 							</N8nBadge>
 							<N8nTooltip placement="top">
 								<template #content>
-									<div v-text="helpTexts.redactProductionData"></div>
+									<div>
+										{{ helpTexts.redactProductionData }}
+										<N8nLink
+											:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+											size="small"
+											new-window
+											data-test-id="redact-production-data-docs-link"
+										>
+											{{ i18n.baseText('generic.learnMore') }}
+										</N8nLink>
+									</div>
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
@@ -1470,7 +1479,17 @@ onBeforeUnmount(() => {
 							</N8nBadge>
 							<N8nTooltip placement="top">
 								<template #content>
-									<div v-text="helpTexts.redactManualData"></div>
+									<div>
+										{{ helpTexts.redactManualData }}
+										<N8nLink
+											:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+											size="small"
+											new-window
+											data-test-id="redact-manual-data-docs-link"
+										>
+											{{ i18n.baseText('generic.learnMore') }}
+										</N8nLink>
+									</div>
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>

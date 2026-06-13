@@ -249,7 +249,11 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { otel: { enabled: true } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
 
 			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
 		});
@@ -263,7 +267,11 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { otel: { enabled: false } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: false,
+				},
+			};
 
 			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
 		});
@@ -277,7 +285,11 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { otel: { enabled: true } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
 
 			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
 		});
@@ -291,7 +303,11 @@ describe('settings.store', () => {
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
-			settingsStore.moduleSettings = { otel: { enabled: true } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
 
 			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(true);
 		});

@@ -199,6 +199,7 @@ export function reshapeLangSmithRuns(
 				: undefined;
 			runResults.push({
 				testCase,
+				fileSlug,
 				workflowBuildSuccess,
 				workflowId,
 				executionScenarioResults,

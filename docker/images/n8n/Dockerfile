@@ -1,10 +1,11 @@
-ARG NODE_VERSION=24.15.0
+ARG NODE_VERSION=24.16.0
 ARG N8N_VERSION=snapshot
 
 # Builder stage exists because the runtime base image has no toolchain.
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the digest together with the tag when updating the base image.
-FROM node:24.15.0-alpine3.22@sha256:b689d4005875ae167178471a7a622ec2909459a3bbb32277260be1971af7a99f AS builder
+# Digest pins to node:24.16.0-alpine3.22 (Node 24.16.0, Alpine 3.22).
+FROM node:24.16.0-alpine3.22@sha256:191c9f0080fcbbc6547a85dc0ff7988072214a355aabdc1d2ec55a7dae5eea8a AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
 RUN apk add --no-cache python3 make g++ && \
     cd /usr/local/lib/node_modules/n8n && \
@@ -15,16 +16,20 @@ RUN apk add --no-cache python3 make g++ && \
     # Removing prebuilds and invoking node-gyp directly avoids npm rebuild's
     # double-build behavior (built-in node-gyp + install-script node-gyp)
     # which races on dep-file state.
+    # Use npm's bundled node-gyp rather than `npx node-gyp` so the toolchain
+    # version is fixed by the pinned image digest instead of being fetched
+    # from the registry at build time.
     rm -rf node_modules/isolated-vm/prebuilds && \
     cd node_modules/isolated-vm && \
-    npx --yes node-gyp rebuild --release -j max
+    node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release -j max
 
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # n8nio/base is republished by a separate workflow (docker/images/n8n-base) on every
 # base change, so a base rebuild does not reach this image until the digest is
 # manually re-pinned here. Bump the digest together with the tag whenever the base
 # image is intentionally updated.
-FROM n8nio/base:24.15.0@sha256:dade45d8a974e72bccbf57c13bc684b5dbb2f73e0ca7c837739e439de7b91aa9
+# Digest pins to n8nio/base:24.16.0 (Node 24.16.0, Alpine 3.22).
+FROM n8nio/base:24.16.0@sha256:a1aa4005e4faebd6da3ba51ec28180a3fb421243d921fa0efbba2d21395012f0
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev

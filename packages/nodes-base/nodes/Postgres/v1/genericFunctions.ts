@@ -7,6 +7,16 @@ import { getResolvables } from '@utils/utilities';
 
 import type { PgpDatabase } from '../v2/helpers/interfaces';
 
+const POSTGRES_TYPE_PATTERN =
+	/^[a-zA-Z_][a-zA-Z0-9_ ]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?(\([a-zA-Z0-9_, ]+\)( [a-zA-Z_][a-zA-Z0-9_ ]*)?)?(\[\])*$/;
+
+function assertValidCast(cast: string | undefined): void {
+	if (cast === undefined || cast === '') return;
+	if (!POSTGRES_TYPE_PATTERN.test(cast)) {
+		throw new ApplicationError(`Invalid column type: "${cast}"`);
+	}
+}
+
 /**
  * Returns of a shallow copy of the items which only contains the json data and
  * of that only the define properties
@@ -296,6 +306,7 @@ export async function pgInsert(
 		.split(',')
 		.map((column) => column.trim().split(':'))
 		.map(([name, cast], i) => {
+			assertValidCast(cast);
 			guardedColumns[`column${i}`] = name;
 			return { name, cast, prop: `column${i}` };
 		});
@@ -386,6 +397,7 @@ export async function pgInsertV2(
 		.split(',')
 		.map((column) => column.trim().split(':'))
 		.map(([name, cast], i) => {
+			assertValidCast(cast);
 			guardedColumns[`column${i}`] = name;
 			return { name, cast, prop: `column${i}` };
 		});
@@ -497,12 +509,14 @@ export async function pgUpdate(
 		.split(',')
 		.map((column) => column.trim().split(':'))
 		.map(([name, cast], i) => {
+			assertValidCast(cast);
 			guardedColumns[`column${i}`] = name;
 			return { name, cast, prop: `column${i}` };
 		});
 
 	const updateKeys = updateKey.split(',').map((key, i) => {
 		const [name, cast] = key.trim().split(':');
+		assertValidCast(cast);
 		const targetCol = columns.find((column) => column.name === name);
 		const updateColumn = { name, cast, prop: targetCol ? targetCol.prop : `updateColumn${i}` };
 		if (!targetCol) {
@@ -626,12 +640,14 @@ export async function pgUpdateV2(
 		.split(',')
 		.map((column) => column.trim().split(':'))
 		.map(([name, cast], i) => {
+			assertValidCast(cast);
 			guardedColumns[`column${i}`] = name;
 			return { name, cast, prop: `column${i}` };
 		});
 
 	const updateKeys = updateKey.split(',').map((key, i) => {
 		const [name, cast] = key.trim().split(':');
+		assertValidCast(cast);
 		const targetCol = columns.find((column) => column.name === name);
 		const updateColumn = { name, cast, prop: targetCol ? targetCol.prop : `updateColumn${i}` };
 		if (!targetCol) {
