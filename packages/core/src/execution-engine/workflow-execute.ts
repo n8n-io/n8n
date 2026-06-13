@@ -425,6 +425,11 @@ export class WorkflowExecute {
 		let stillDataMissing = false;
 		const enqueueFn = workflow.settings.executionOrder === 'v1' ? 'unshift' : 'push';
 		let waitingNodeIndex: number | undefined;
+		// Tool executions and resumed agents (and any node resumed via EngineRequest) store
+		// their synthetic input data at index 0. outputIndex still holds the real branch index
+		// for source/pairedItem provenance. This is correct for Wait nodes as well.
+		const sourceDataIndex =
+			metadata?.nodeWasResumed || metadata?.preserveSourceOverwrite ? 0 : outputIndex;
 
 		// Check if node has multiple inputs as then we have to wait for all input data
 		// to be present before we can add it to the node-execution-stack
@@ -501,7 +506,7 @@ export class WorkflowExecute {
 			} else {
 				this.runExecutionData.executionData!.waitingExecution[connectionData.node][
 					waitingNodeIndex
-				].main[connectionData.index] = nodeSuccessData[outputIndex];
+				].main[connectionData.index] = nodeSuccessData[sourceDataIndex];
 
 				this.runExecutionData.executionData!.waitingExecutionSource[connectionData.node][
 					waitingNodeIndex
@@ -696,7 +701,7 @@ export class WorkflowExecute {
 						const parentNodesNodeToAdd = workflow.getParentNodes(nodeToAdd as string);
 						if (
 							parentNodesNodeToAdd.includes(parentNodeName) &&
-							nodeSuccessData[outputIndex].length === 0
+							nodeSuccessData[sourceDataIndex].length === 0
 						) {
 							// We do not add the node if there is no input data and the node that should be connected
 							// is a child of the parent node. Because else it would run a node even though it should be
@@ -778,7 +783,7 @@ export class WorkflowExecute {
 		if (nodeSuccessData === null) {
 			connectionDataArray[connectionData.index] = null;
 		} else {
-			connectionDataArray[connectionData.index] = nodeSuccessData[outputIndex];
+			connectionDataArray[connectionData.index] = nodeSuccessData[sourceDataIndex];
 		}
 
 		if (stillDataMissing) {
@@ -1668,10 +1673,30 @@ export class WorkflowExecute {
 					this.additionalData.currentNodeUsedDynamicCredentials = false;
 					this.additionalData.currentNodeAttemptedDynamicCredentials = false;
 
+					const taskSource = !executionData.source
+						? []
+						: executionData.source.main.map((sourceData) =>
+								sourceData
+									? {
+											previousNode: sourceData.previousNode,
+											previousNodeOutput: sourceData.previousNodeOutput,
+											previousNodeRun: sourceData.previousNodeRun,
+										}
+									: null,
+							);
+
+					if (
+						executionData.metadata?.nodeWasResumed &&
+						taskSource[0] &&
+						executionData.source?.main[0]
+					) {
+						taskSource[0].previousNodeOutput = executionData.source.main[0].previousNodeOutput;
+					}
+
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
 						executionIndex: this.additionalData.currentNodeExecutionIndex++,
-						source: !executionData.source ? [] : executionData.source.main,
+						source: taskSource,
 						hints: [],
 					};
 
@@ -1684,7 +1709,16 @@ export class WorkflowExecute {
 									return input;
 								}
 
+								const pairedItemInputIndex = executionData.metadata?.nodeWasResumed
+									? (executionData.source?.main?.[0]?.previousNodeOutput ?? inputIndex)
+									: inputIndex;
+
 								return input.map((item, itemIndex) => {
+									const inputItemIndex =
+										executionData.metadata?.originalPairedItemIndices?.[itemIndex] ??
+										executionData.metadata?.originalPairedItemIndex ??
+										itemIndex;
+
 									// Preserve any existing sourceOverwrite from the pairedItem
 									// for tool executions. Tool calls don't have a main
 									// connection to the agent's input, so the data proxy needs
@@ -1697,8 +1731,8 @@ export class WorkflowExecute {
 										return {
 											...item,
 											pairedItem: {
-												item: itemIndex,
-												input: inputIndex || undefined,
+												item: inputItemIndex,
+												input: pairedItemInputIndex || undefined,
 												sourceOverwrite,
 											},
 										};
@@ -1707,8 +1741,8 @@ export class WorkflowExecute {
 									return {
 										...item,
 										pairedItem: {
-											item: itemIndex,
-											input: inputIndex || undefined,
+											item: inputItemIndex,
+											input: pairedItemInputIndex || undefined,
 										},
 									};
 								});

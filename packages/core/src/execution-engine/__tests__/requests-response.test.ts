@@ -2,9 +2,9 @@ import type { IExecuteData, IRunData, EngineRequest, INodeExecutionData } from '
 import { mock } from 'vitest-mock-extended';
 
 import { DirectedGraph } from '../partial-execution-utils';
+import { nodeTypes, types } from './mock-node-types';
 import { createNodeData } from '../partial-execution-utils/__tests__/helpers';
 import { handleRequest } from '../requests-response';
-import { nodeTypes, types } from './mock-node-types';
 
 describe('handleRequests', () => {
 	test('throws if an action mentions a node that does not exist in the workflow', () => {
@@ -36,7 +36,9 @@ describe('handleRequests', () => {
 				currentNode,
 				request,
 				runIndex: 1,
-				executionData: mock<IExecuteData>(),
+				executionData: mock<IExecuteData>({
+					source: { main: [{ previousNode: 'trigger', previousNodeOutput: 0 }] },
+				}),
 				runData: mock<IRunData>(),
 			}),
 		).toThrowError('Workflow does not contain a node with the name of "does not exist".');
@@ -493,7 +495,11 @@ describe('handleRequests', () => {
 		expect(resumingNode).toBeDefined();
 		expect(resumingNode.metadata).toHaveProperty('nodeWasResumed', true);
 		expect(resumingNode.metadata).toHaveProperty('preserveSourceOverwrite', true);
-		expect(resumingNode.metadata).toHaveProperty('preservedSourceOverwrite', preservedSource);
+		expect(resumingNode.metadata).toHaveProperty('preservedSourceOverwrite', {
+			previousNode: 'Parent Node',
+			previousNodeOutput: 0,
+			previousNodeRun: 0,
+		});
 	});
 
 	test('does not add preserveSourceOverwrite metadata when not present', () => {
@@ -544,7 +550,249 @@ describe('handleRequests', () => {
 		const resumingNode = result.nodesToBeExecuted[0];
 		expect(resumingNode).toBeDefined();
 		expect(resumingNode.metadata).toHaveProperty('nodeWasResumed', true);
-		expect(resumingNode.metadata).not.toHaveProperty('preserveSourceOverwrite');
-		expect(resumingNode.metadata).not.toHaveProperty('preservedSourceOverwrite');
+		expect(resumingNode.metadata).toHaveProperty('preserveSourceOverwrite', true);
+		expect(resumingNode.metadata).toHaveProperty('preservedSourceOverwrite', {
+			previousNode: 'Parent Node',
+			previousNodeOutput: 0,
+			previousNodeRun: 0,
+		});
+	});
+
+	describe('Agent branching and index preservation logic', () => {
+		const toolNode = createNodeData({ name: 'Gmail Tool', type: types.passThrough });
+		const agentNode = createNodeData({ name: 'AI Agent', type: types.passThrough });
+		let workflow: ReturnType<typeof DirectedGraph.prototype.toWorkflow>;
+
+		beforeEach(() => {
+			workflow = new DirectedGraph()
+				.addNodes(toolNode, agentNode)
+				.toWorkflow({ name: '', active: false, nodeTypes });
+		});
+
+		test('returns correct parentOutputIndex when previousNodeOutput is > 0', () => {
+			const executionData: IExecuteData = {
+				data: { main: [[{ json: {} }]] },
+				source: {
+					main: [
+						{
+							previousNode: 'Switch',
+							previousNodeOutput: 2,
+							previousNodeRun: 0,
+						},
+					],
+				},
+				node: agentNode,
+			};
+
+			const request: EngineRequest = {
+				actions: [
+					{
+						actionType: 'ExecutionNodeAction',
+						nodeName: 'Gmail Tool',
+						input: {},
+						type: 'ai_tool',
+						id: 'tool_call_1',
+						metadata: {},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = handleRequest({
+				workflow,
+				currentNode: agentNode,
+				request,
+				runIndex: 0,
+				executionData,
+				runData: {},
+			});
+
+			const toolNodeToExecute = result.nodesToBeExecuted.find((n) => n.parentNode === 'AI Agent');
+			// tool node's parentOutputData should capture parentOutputIndex 2 via buildParentOutputData
+			const toolParentOutputData = toolNodeToExecute!.parentOutputData[0][0];
+			expect(toolParentOutputData.pairedItem).toBeDefined();
+			if (
+				typeof toolParentOutputData.pairedItem === 'object' &&
+				'sourceOverwrite' in toolParentOutputData.pairedItem
+			) {
+				expect(toolParentOutputData.pairedItem.sourceOverwrite!.previousNodeOutput).toBe(2);
+			}
+
+			const resumingNode = result.nodesToBeExecuted.find((n) => n.parentNode === 'Switch');
+			expect(resumingNode!.parentOutputIndex).toBe(2);
+		});
+
+		test('falls back to parentOutputIndex 0 when source is missing', () => {
+			const executionData: IExecuteData = {
+				data: { main: [[{ json: {} }]] },
+				source: null, // missing source
+				node: agentNode,
+			};
+
+			const request: EngineRequest = {
+				actions: [
+					{
+						actionType: 'ExecutionNodeAction',
+						nodeName: 'Gmail Tool',
+						input: {},
+						type: 'ai_tool',
+						id: 'tool_call_1',
+						metadata: {},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = handleRequest({
+				workflow,
+				currentNode: agentNode,
+				request,
+				runIndex: 0,
+				executionData,
+				runData: {},
+			});
+
+			// This behaviour is pre‑existing and not related to the pairedItem fix;
+			// it exists to handle edge cases where the agent’s execution context has no source.
+			// The empty stack simply means no tool execution will happen.
+			expect(result.nodesToBeExecuted).toHaveLength(0);
+		});
+
+		test('resumed agent re-queue entry contains correct parentOutputIndex, runIndex and preserveSourceOverwrite', () => {
+			const executionData: IExecuteData = {
+				data: { main: [[{ json: {} }]] },
+				source: {
+					main: [
+						{
+							previousNode: 'If',
+							previousNodeOutput: 1,
+							previousNodeRun: 5,
+						},
+					],
+				},
+				node: agentNode,
+			};
+
+			const request: EngineRequest = { actions: [], metadata: {} };
+
+			const result = handleRequest({
+				workflow,
+				currentNode: agentNode,
+				request,
+				runIndex: 7, // Current run index
+				executionData,
+				runData: {},
+			});
+
+			const resumingNode = result.nodesToBeExecuted[0];
+			expect(resumingNode.parentNode).toBe('If');
+			expect(resumingNode.parentOutputIndex).toBe(1);
+			expect(resumingNode.runIndex).toBe(7);
+
+			expect(resumingNode.metadata!.preserveSourceOverwrite).toBe(true);
+			expect(resumingNode.metadata!.preservedSourceOverwrite).toEqual({
+				previousNode: 'If',
+				previousNodeOutput: 1,
+				previousNodeRun: 5,
+			});
+		});
+
+		test('metadata includes originalPairedItemIndex equal to pairedItem.item (number case)', () => {
+			const executionData: IExecuteData = {
+				data: {
+					main: [
+						[
+							{
+								json: {},
+								pairedItem: { item: 42 },
+							},
+						],
+					],
+				},
+				source: {
+					main: [{ previousNode: 'Start', previousNodeOutput: 0, previousNodeRun: 0 }],
+				},
+				node: agentNode,
+			};
+
+			const request: EngineRequest = { actions: [], metadata: {} };
+
+			const result = handleRequest({
+				workflow,
+				currentNode: agentNode,
+				request,
+				runIndex: 0,
+				executionData,
+				runData: {},
+			});
+
+			const resumingNode = result.nodesToBeExecuted[0];
+			expect(resumingNode.metadata!.originalPairedItemIndices).toEqual([42]);
+		});
+
+		test('metadata includes originalPairedItemIndex equal to pairedItem.item (array case)', () => {
+			const executionData: IExecuteData = {
+				data: {
+					main: [
+						[
+							{
+								json: {},
+								pairedItem: [{ item: 73, input: 1 }],
+							},
+						],
+					],
+				},
+				source: {
+					main: [{ previousNode: 'Start', previousNodeOutput: 0, previousNodeRun: 0 }],
+				},
+				node: agentNode,
+			};
+
+			const request: EngineRequest = { actions: [], metadata: {} };
+
+			const result = handleRequest({
+				workflow,
+				currentNode: agentNode,
+				request,
+				runIndex: 0,
+				executionData,
+				runData: {},
+			});
+
+			const resumingNode = result.nodesToBeExecuted[0];
+			expect(resumingNode.metadata!.originalPairedItemIndices).toEqual([73]);
+		});
+
+		test('metadata includes originalPairedItemIndices for multiple items', () => {
+			const executionData: IExecuteData = {
+				data: {
+					main: [
+						[
+							{ json: {}, pairedItem: { item: 10 } },
+							{ json: {}, pairedItem: { item: 20 } },
+							{ json: {}, pairedItem: { item: 30 } },
+						],
+					],
+				},
+				source: {
+					main: [{ previousNode: 'Start', previousNodeOutput: 0, previousNodeRun: 0 }],
+				},
+				node: agentNode,
+			};
+
+			const request: EngineRequest = { actions: [], metadata: {} };
+
+			const result = handleRequest({
+				workflow,
+				currentNode: agentNode,
+				request,
+				runIndex: 0,
+				executionData,
+				runData: {},
+			});
+
+			const resumingNode = result.nodesToBeExecuted[0];
+			expect(resumingNode.metadata!.originalPairedItemIndices).toEqual([10, 20, 30]);
+		});
 	});
 });

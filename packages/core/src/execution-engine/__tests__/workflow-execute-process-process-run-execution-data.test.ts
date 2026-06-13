@@ -25,8 +25,6 @@ vi.mock('node:fs', async (importActual) => ({
 }));
 
 import { DirectedGraph } from '../partial-execution-utils';
-import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
-import { WorkflowExecute } from '../workflow-execute';
 import {
 	types,
 	nodeTypes,
@@ -34,6 +32,8 @@ import {
 	nodeTypeArguments,
 	modifyNode,
 } from './mock-node-types';
+import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
+import { WorkflowExecute } from '../workflow-execute';
 
 describe('processRunExecutionData', () => {
 	const runHook = vi.fn().mockResolvedValue(undefined);
@@ -608,35 +608,11 @@ describe('processRunExecutionData', () => {
 			// ASSERT
 			const runData = result.data.resultData.runData;
 
-			// When parent node cannot be found (line 2038-2044), the execution loop continues
-			// which means the waiting tools processing is skipped entirely:
-
-			// 1. The agent node never gets re-executed with the Response callback
+			// 1. The agent node never gets re-executed because the resume context is missing
 			expect(runData[nodeWithRequests.name]).toBeUndefined();
 
-			// 2. Tool nodes get added to runData with inputOverride but are never actually executed
-			expect(runData[tool1Node.name]).toHaveLength(1);
-			expect(runData[tool1Node.name][0].inputOverride).toEqual({
-				ai_tool: [
-					[
-						{
-							json: { query: 'test input' },
-							pairedItem: {
-								input: 0,
-								item: 0,
-								sourceOverwrite: {
-									previousNode: 'nodeWithRequests',
-									previousNodeOutput: 0,
-									previousNodeRun: 0,
-								},
-							},
-						},
-					],
-				],
-			});
-			// The tool node should not have execution data since it was never run
-			expect(runData[tool1Node.name][0].data).toBeUndefined();
-			expect(runData[tool1Node.name][0].executionStatus).toBeUndefined();
+			// 2. Tool nodes are NOT added to runData — the early return prevents their scheduling
+			expect(runData[tool1Node.name]).toBeUndefined();
 
 			// 3. The response callback is never called since the agent's second execution is skipped
 			expect(response).toBeUndefined();
