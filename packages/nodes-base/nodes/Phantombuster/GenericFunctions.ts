@@ -1,12 +1,15 @@
 import type {
-	JsonObject,
 	IDataObject,
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
 	IRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { StringDecoder } from 'node:string_decoder';
+import type { Readable } from 'stream';
 
 export async function phantombusterApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -43,4 +46,146 @@ export function validateJSON(self: IExecuteFunctions, json: string | undefined, 
 		throw new NodeOperationError(self.getNode(), `${name} must provide a valid JSON`);
 	}
 	return result;
+}
+
+/**
+ * Phantombuster streams have ndjson format
+ * fhe first message of the stream has this format { type: "start", data: unknown}
+ * the last message of the stream has this format { type: "summary", data: unknown}
+ * if there is an error, the last message has this format { type: "error", data: string }
+ * if the stream ends without a summary or an error, we assume there has been a disconnnection
+ */
+export async function phantombusterStreamingRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	options: {
+		method: IHttpRequestMethods;
+		path: string;
+		body?: IDataObject;
+		qs?: IDataObject;
+	},
+	onMessage?: (message: { type?: string; data?: unknown }) => void | Promise<void>,
+): Promise<IDataObject | null> {
+	let stream: AsyncIterable<string>;
+	try {
+		stream = await streamingRequest.call(this, 'phantombusterApi', {
+			method: options.method,
+			url: `https://api.phantombuster.com/api/v2${options.path}`,
+			body: options.body,
+			qs: options.qs,
+			timeout: 30_000, // socket inactivity — server heartbeats every 10s keep this reset
+		});
+	} catch (error) {
+		// Transport-level failure (auth, routing, 5xx) before any data arrived —
+		// terminal, surface immediately rather than asking the caller to retry.
+		if (error instanceof NodeApiError) throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+
+	try {
+		for await (const line of stream) {
+			if (line.length === 0) continue;
+
+			let parsed: unknown;
+			try {
+				parsed = JSON.parse(line);
+			} catch {
+				throw new NodeApiError(this.getNode(), {
+					message: 'Phantombuster sent a malformed NDJSON line',
+					description: line.slice(0, 200),
+				});
+			}
+
+			if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+				throw new NodeApiError(this.getNode(), {
+					message: 'Phantombuster sent a non-object NDJSON record',
+					description: line.slice(0, 200),
+				});
+			}
+
+			const message = parsed as { type?: string; data?: unknown };
+
+			if (message.type === 'error') {
+				throw new NodeApiError(this.getNode(), {
+					message: 'Phantombuster agent reported an error',
+					description:
+						typeof message.data === 'string' ? message.data : JSON.stringify(message.data),
+				});
+			}
+
+			if (message.type === 'summary') {
+				return (message.data ?? {}) as IDataObject;
+			}
+
+			await onMessage?.(message);
+		}
+	} catch (error) {
+		// Stream disconnection errors are not thrown so the caller can retry
+		if (error instanceof NodeApiError) throw error;
+	}
+
+	return null;
+}
+
+/**
+ * Generic streaming function.
+ * Yields line by line
+ */
+async function streamingRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	credentialsType: string,
+	options: {
+		method: IHttpRequestMethods;
+		url: string;
+		body?: IHttpRequestOptions['body'];
+		qs?: IDataObject;
+		timeout?: number;
+	},
+): Promise<AsyncIterable<string>> {
+	const MAX_BUFFER_SIZE = 1_048_576; // 1 Mb
+
+	const node = this.getNode();
+	const stream = (await this.helpers.httpRequestWithAuthentication.call(this, credentialsType, {
+		...options,
+		encoding: 'stream',
+	})) as Readable;
+
+	async function* iterate(): AsyncGenerator<string> {
+		// StringDecoder buffers partial multi-byte UTF-8 sequences across chunk
+		// boundaries so codepoints split mid-byte aren't mangled into U+FFFD.
+		const decoder = new StringDecoder('utf8');
+		let buffer = '';
+		try {
+			for await (const chunk of stream) {
+				buffer += Buffer.isBuffer(chunk) ? decoder.write(chunk) : String(chunk);
+
+				const lines = buffer.split('\n');
+				buffer = lines.pop() ?? '';
+
+				// Guard against an unbounded unterminated line. Checked against the
+				// residual (post-split) so a chunk carrying many small complete
+				// records doesn't trip it — only the still-open trailing line matters.
+				if (buffer.length > MAX_BUFFER_SIZE) {
+					throw new NodeApiError(node, {
+						message: `Streaming line exceeded ${MAX_BUFFER_SIZE} bytes without a newline terminator`,
+					});
+				}
+
+				for (const rawLine of lines) {
+					yield rawLine.replace(/\r$/, '');
+				}
+			}
+
+			// Flush any final bytes still held by the decoder and any trailing data
+			// that didn't end with a newline.
+			buffer += decoder.end();
+			const tail = buffer.replace(/\r$/, '');
+			if (tail.length > 0) {
+				yield tail;
+			}
+		} finally {
+			stream.destroy();
+		}
+	}
+
+	return iterate();
 }
