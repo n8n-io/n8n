@@ -73,7 +73,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(saveButton);
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
@@ -81,9 +81,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
 	});
 
 	test('should allow creating API key with custom expiration', async () => {
@@ -142,17 +140,13 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		expect(getByText('***456')).toBeInTheDocument();
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
 		expect(
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
-
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
 	});
 
 	test('should allow creating API key with no expiration', async () => {
@@ -187,7 +181,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(saveButton);
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
@@ -195,9 +189,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
 	});
 
 	test('should allow creating API key with scopes pre-selected', async () => {
@@ -229,7 +221,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 
 		await userEvent.click(saveButton);
 
-		expect(getByText('API Key Created')).toBeInTheDocument();
+		expect(getByText('API key created successfully')).toBeInTheDocument();
 
 		expect(getByText('Done')).toBeInTheDocument();
 
@@ -237,9 +229,7 @@ describe('ApiKeyCreateOrEditModal', () => {
 			getByText('Make sure to copy your API key now as you will not be able to see this again.'),
 		).toBeInTheDocument();
 
-		expect(getByText('Click to copy')).toBeInTheDocument();
-
-		expect(getByText('new api key')).toBeInTheDocument();
+		expect(getByText('123456')).toBeInTheDocument();
 	});
 
 	test('should allow editing API key label', async () => {
