@@ -52,17 +52,15 @@ export async function pgTriggerFunction(
 	const firesOn = this.getNodeParameter('firesOn', 0) as string;
 
 	const functionReplace =
-		"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json($3:raw)::text); return null; end; $BODY$;";
+		"CREATE OR REPLACE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', json_build_object('old', old, 'new', new)::text); return null; end; $BODY$;";
 
 	const dropIfExist = 'DROP TRIGGER IF EXISTS $1:raw ON $2:raw';
 
 	const functionExists =
-		"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', row_to_json($3:raw)::text); return null; end; $BODY$";
+		"CREATE FUNCTION $1:raw RETURNS trigger LANGUAGE 'plpgsql' COST 100 VOLATILE NOT LEAKPROOF AS $BODY$ begin perform pg_notify('$2:raw', json_build_object('old', old, 'new', new)::text); return null; end; $BODY$";
 
 	const trigger =
 		'CREATE TRIGGER $4:raw AFTER $3:raw ON $1:raw FOR EACH ROW EXECUTE FUNCTION $2:raw';
-
-	const whichData = firesOn === 'DELETE' ? 'old' : 'new';
 
 	if (channelName.includes('-')) {
 		throw new ApplicationError('Channel name cannot contain hyphens (-)', { level: 'warning' });
@@ -72,10 +70,10 @@ export async function pgTriggerFunction(
 
 	try {
 		if (replaceIfExists || !(additionalFields.triggerName ?? additionalFields.functionName)) {
-			await db.any(functionReplace, [functionName, channelName, whichData]);
-			await db.any(dropIfExist, [triggerName, target, whichData]);
+			await db.any(functionReplace, [functionName, channelName]);
+			await db.any(dropIfExist, [triggerName, target]);
 		} else {
-			await db.any(functionExists, [functionName, channelName, whichData]);
+			await db.any(functionExists, [functionName, channelName]);
 		}
 		await db.any(trigger, [target, functionName, firesOn, triggerName]);
 	} catch (error) {
