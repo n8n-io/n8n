@@ -6683,6 +6683,70 @@ describe('NodeHelpers', () => {
 			// When undefined, the default value (empty string) is used
 			expect(result?.resource).toBe('');
 		});
+
+		describe('$fromAI placeholder carve-out', () => {
+			const resolveQuery = (query: string) => {
+				const properties: INodeProperties[] = [
+					{
+						name: 'query',
+						displayName: 'Query',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+					},
+				];
+
+				const nodeValues: Record<string, string> = { query };
+
+				const node: INode = {
+					id: 'test-123',
+					name: 'Test',
+					type: 'n8n-nodes-base.test',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: nodeValues,
+					credentials: {},
+				};
+
+				const description: INodeTypeDescription = {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties,
+				};
+
+				return getNodeParameters(properties, nodeValues, true, false, node, description)?.query;
+			};
+
+			it('keeps a lone $fromAI() placeholder intact', () => {
+				const query = "=$fromAI('sqlQuery', 'The SQL query to execute', 'string')";
+				expect(resolveQuery(query)).toBe(query);
+			});
+
+			it('keeps a $fromAI() placeholder wrapped in {{ }} intact', () => {
+				const query = "={{ $fromAI('sqlQuery') }}";
+				expect(resolveQuery(query)).toBe(query);
+			});
+
+			it('still strips a plain expression that is not a $fromAI() call', () => {
+				expect(resolveQuery('=$env.SECRET')).toBe('$env.SECRET');
+			});
+
+			it('still strips $fromAI() concatenated with another expression', () => {
+				expect(resolveQuery("=$fromAI('x') + $env.SECRET")).toBe("$fromAI('x') + $env.SECRET");
+			});
+
+			it('still strips $fromAI() with an interpolated value in its argument', () => {
+				// Split the `${` token so the lint rule doesn't read it as interpolation.
+				const interpolated = '`$' + '{$env.SECRET}`';
+				expect(resolveQuery(`=$fromAI(${interpolated})`)).toBe(`$fromAI(${interpolated})`);
+			});
+		});
 	});
 
 	describe('getNodeParameters filter defaults', () => {
