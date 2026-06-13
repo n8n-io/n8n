@@ -5,6 +5,7 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import { ensureWebhookIds } from './submit-workflow.tool';
@@ -132,13 +133,22 @@ function hasMockedCredentials(
 	);
 }
 
+/**
+ * True when every mocked-credential node is covered by a `simulate` verdict in
+ * the node simulation plan — verification can run because those nodes will be
+ * pinned with generated fixtures instead of executing without credentials.
+ */
 function hasCredentialVerificationData(
-	outcome: Pick<WorkflowBuildOutcome, 'verificationPinData' | 'usesWorkflowPinDataForVerification'>,
+	outcome: Pick<WorkflowBuildOutcome, 'mockedNodeNames' | 'nodeSimulationPlan'>,
 ): boolean {
-	return (
-		Object.keys(outcome.verificationPinData ?? {}).length > 0 ||
-		outcome.usesWorkflowPinDataForVerification === true
+	const mocked = outcome.mockedNodeNames ?? [];
+	if (mocked.length === 0) return false;
+	const simulated = new Set(
+		(outcome.nodeSimulationPlan ?? [])
+			.filter((verdict) => verdict.verdict === 'simulate')
+			.map((verdict) => verdict.nodeName),
 	);
+	return mocked.every((name) => simulated.has(name));
 }
 
 function getBuildFailureTrackingKey({
@@ -183,8 +193,8 @@ function determineVerificationReadiness(
 		| 'triggerNodes'
 		| 'mockedCredentialTypes'
 		| 'mockedCredentialsByNode'
-		| 'verificationPinData'
-		| 'usesWorkflowPinDataForVerification'
+		| 'mockedNodeNames'
+		| 'nodeSimulationPlan'
 		| 'hasUnresolvedPlaceholders'
 	>,
 ): WorkflowVerificationReadiness {
@@ -381,8 +391,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				mockedNodeNames: z.array(z.string()).optional(),
 				mockedCredentialTypes: z.array(z.string()).optional(),
 				mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
-				verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
-				usesWorkflowPinDataForVerification: z.boolean().optional(),
 				referencedWorkflowIds: z.array(z.string()).optional(),
 				hasUnresolvedPlaceholders: z.boolean().optional(),
 				denied: z.boolean().optional(),
@@ -599,6 +607,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						(context.runId ? `build-${context.runId}` : `build-${nanoid(8)}`));
 
 				const createSuccessResponse = async (savedId: string) => {
+					const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
+						workflow: json,
+						mockedNodeNames: mockResult.mockedNodeNames,
+						workflowId: savedId,
+						logger: context.logger,
+					});
+
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${workflowId ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${savedId}).`;
@@ -630,12 +645,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						mockedCredentialsByNode: hasMockedCredentialNodes
 							? mockResult.mockedCredentialsByNode
 							: undefined,
-						verificationPinData:
-							hasMockedCredentialNodes && Object.keys(mockResult.verificationPinData).length > 0
-								? mockResult.verificationPinData
-								: undefined,
-						usesWorkflowPinDataForVerification:
-							mockResult.usesWorkflowPinDataForVerification || undefined,
+						nodeSimulationPlan,
+						simulationFixtures,
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
@@ -667,12 +678,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						mockedCredentialsByNode: hasMockedCredentialNodes
 							? mockResult.mockedCredentialsByNode
 							: undefined,
-						verificationPinData:
-							hasMockedCredentialNodes && Object.keys(mockResult.verificationPinData).length > 0
-								? mockResult.verificationPinData
-								: undefined,
-						usesWorkflowPinDataForVerification:
-							mockResult.usesWorkflowPinDataForVerification || undefined,
 						referencedWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,

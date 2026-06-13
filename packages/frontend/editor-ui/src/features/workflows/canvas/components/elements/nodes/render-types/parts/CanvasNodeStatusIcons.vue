@@ -41,6 +41,9 @@ const executionErrors = computed(
 );
 const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
 const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
+const executionSimulation = computed(
+	() => renderData.value.executionSimulationByNodeName[name.value],
+);
 const route = useRoute();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
@@ -112,6 +115,22 @@ const groupedExecutionErrors = computed(() => {
 		<!-- Do nothing, unknown means the node never executed -->
 	</div>
 	<div
+		v-else-if="executionSimulation"
+		data-test-id="canvas-node-status-simulated"
+		:class="[...commonClasses, $style.simulated]"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				{{
+					i18n.baseText('node.simulatedOutput.tooltip', {
+						interpolate: { reason: executionSimulation.reason },
+					})
+				}}
+			</template>
+			<N8nIcon icon="flask-conical" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
 		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value"
 		data-test-id="canvas-node-status-pinned"
 		:class="[...commonClasses, $style.pinnedData]"
@@ -163,6 +182,11 @@ const groupedExecutionErrors = computed(() => {
 
 .pinnedData {
 	color: var(--color--secondary);
+}
+
+.simulated {
+	color: var(--color--secondary);
+	cursor: default;
 }
 
 .running {
