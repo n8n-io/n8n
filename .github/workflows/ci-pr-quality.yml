@@ -44,39 +44,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node .github/scripts/quality/handle-size-override.mjs
 
-  check-ownership-checkbox:
-    name: Ownership Acknowledgement
-    # Checks that the author has acknowledged the ownership of their code
-    # by checking the checkbox in the PR summary.
-    # Skipped for bot-authored PRs (Dependabot, Renovate, github-actions, Aikido, etc.).
-    # The required aggregator `required-pr-quality-checks` treats skipped as success.
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
-      !contains(github.event.pull_request.title, '(backport to') &&
-      github.event.pull_request.user.type != 'Bot'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
-          cache-dependency-path: .github/scripts/pnpm-lock.yaml
-
-      - name: Check ownership checkbox
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node .github/scripts/quality/check-ownership-checkbox.mjs
-
   check-pr-size:
     name: PR Size Limit
     # Checks that the PR size doesn't exceed the limit (currently 1000 lines)
@@ -160,7 +127,7 @@ jobs:
 
   required-pr-quality-checks:
     name: Required PR Quality Checks
-    needs: [check-ownership-checkbox, check-pr-size, check-static-analysis]
+    needs: [check-pr-size, check-static-analysis]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -2,6 +2,7 @@ import {
 	createManyWorkflows,
 	createTeamProject,
 	createWorkflow,
+	linkUserToProject,
 	mockInstance,
 	shareWorkflowWithUsers,
 	testDb,
@@ -316,6 +317,48 @@ describe('POST /executions/:id/retry', () => {
 		expect(response.body.message).toBe(
 			'The execution was aborted before starting, so it cannot be retried',
 		);
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should return 404 when user only has read access to the workflow via project viewer role', async () => {
+		testServer.license.enable('feat:sharing');
+
+		const executionServiceSpy = jest.spyOn(Container.get(ExecutionService), 'retry');
+
+		const project = await createTeamProject('project with viewer', owner);
+		await linkUserToProject(user1, project, 'project:viewer');
+
+		const workflow = await createWorkflow({}, project);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Not Found');
+		expect(executionServiceSpy).not.toHaveBeenCalled();
+
+		executionServiceSpy.mockRestore();
+	});
+
+	test('should retry an execution when user has execute access via project editor role', async () => {
+		testServer.license.enable('feat:sharing');
+
+		const mockedExecutionResponse = { status: 'waiting' } as any;
+		const executionServiceSpy = jest
+			.spyOn(Container.get(ExecutionService), 'retry')
+			.mockResolvedValue(mockedExecutionResponse);
+
+		const project = await createTeamProject('project with editor', owner);
+		await linkUserToProject(user1, project, 'project:editor');
+
+		const workflow = await createWorkflow({}, project);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual(mockedExecutionResponse);
 
 		executionServiceSpy.mockRestore();
 	});

@@ -7,6 +7,7 @@ import { N8nIcon, N8nTabs } from '@n8n/design-system';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
+import { useAiRootNodes } from '@/features/ai/evaluation.ee/composables/useAiRootNodes';
 
 const i18n = useI18n();
 const focusPanelStore = useFocusPanelStore();
@@ -14,6 +15,8 @@ const setupPanelStore = useSetupPanelStore();
 const isSetupPanelEnabled = computed(() => setupPanelStore.isFeatureEnabled);
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
+const aiRootNodes = useAiRootNodes();
+const hasAiRootNode = computed(() => aiRootNodes.value.length > 0);
 
 const props = withDefaults(
 	defineProps<{
@@ -48,7 +51,7 @@ const tabs = computed<Array<TabOptions<FocusSidebarTabs>>>(() => {
 		label: props.tabLabels?.focus ?? i18n.baseText('setupPanel.tabs.focus'),
 		value: 'focus',
 	});
-	if (isEvaluationsWizardSidepanelEnabled.value) {
+	if (isEvaluationsWizardSidepanelEnabled.value && hasAiRootNode.value) {
 		opts.push({
 			label: props.tabLabels?.evaluations ?? i18n.baseText('setupPanel.tabs.evaluations'),
 			value: 'evaluations',

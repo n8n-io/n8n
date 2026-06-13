@@ -8,6 +8,7 @@ import { CredClassOAuth2NamingRule } from './cred-class-oauth2-naming.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
+import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
 import { N8nObjectValidationRule } from './n8n-object-validation.js';
@@ -23,6 +24,7 @@ import { NoRuntimeDependenciesRule } from './no-runtime-dependencies.js';
 import { NoTemplatePlaceholdersRule } from './no-template-placeholders.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
+import { NodeFilenameAgainstConventionRule } from './node-filename-against-convention.js';
 import { NodeOperationErrorItemIndexRule } from './node-operation-error-itemindex.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OptionsSortedAlphabeticallyRule } from './options-sorted-alphabetically.js';
@@ -54,6 +56,7 @@ export const rules = {
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
 	'no-template-placeholders': NoTemplatePlaceholdersRule,
 	'icon-validation': IconValidationRule,
+	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
@@ -62,6 +65,7 @@ export const rules = {
 	'cred-class-name-suffix': CredClassNameSuffixRule,
 	'cred-class-oauth2-naming': CredClassOAuth2NamingRule,
 	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
+	'node-filename-against-convention': NodeFilenameAgainstConventionRule,
 	'node-operation-error-itemindex': NodeOperationErrorItemIndexRule,
 	'missing-paired-item': MissingPairedItemRule,
 	'no-builder-hint-leakage': NoBuilderHintLeakageRule,

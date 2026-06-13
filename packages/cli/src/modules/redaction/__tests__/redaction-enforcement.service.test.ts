@@ -93,4 +93,41 @@ describe('RedactionEnforcementService', () => {
 			await expect(service.assertPolicyChangeAllowed(undefined, 'all')).resolves.toBeUndefined();
 		});
 	});
+
+	describe('assertNewPolicyAllowed()', () => {
+		test('allows when no policy is supplied (left for the create service to seed)', async () => {
+			const service = createService('production');
+			await expect(service.assertNewPolicyAllowed(undefined)).resolves.toBeUndefined();
+		});
+
+		test.each<WorkflowSettings.RedactionPolicy>(['non-manual', 'all'])(
+			'allows %s which meets the production floor',
+			async (incoming) => {
+				const service = createService('production');
+				await expect(service.assertNewPolicyAllowed(incoming)).resolves.toBeUndefined();
+			},
+		);
+
+		test.each<WorkflowSettings.RedactionPolicy>(['none', 'manual-only'])(
+			'rejects %s which is weaker than the production floor',
+			async (incoming) => {
+				const service = createService('production');
+				await expect(service.assertNewPolicyAllowed(incoming)).rejects.toThrow(
+					UnprocessableRequestError,
+				);
+			},
+		);
+
+		test('allows a below-floor policy when the floor is off', async () => {
+			const service = createService('off');
+			await expect(service.assertNewPolicyAllowed('none')).resolves.toBeUndefined();
+		});
+
+		test('error message names the floor as the reason', async () => {
+			const service = createService('production');
+			await expect(service.assertNewPolicyAllowed('none')).rejects.toThrow(
+				'Workflow redaction policy cannot be weaker than the instance floor.',
+			);
+		});
+	});
 });

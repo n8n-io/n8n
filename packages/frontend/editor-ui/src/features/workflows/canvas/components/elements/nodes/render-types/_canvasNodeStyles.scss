@@ -1,0 +1,15 @@
+// Shared visual contract for canvas-node-like elements (nodes, group title bars).
+
+@mixin canvas-node-border-defaults {
+	--canvas-node--border-width: 1.5px;
+	--canvas-node--border-color: light-dark(
+		oklch(from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity-light, 0.1)),
+		oklch(from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity-dark, 0.15))
+	);
+}
+
+@mixin canvas-node-selected-ring {
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
+		var(--canvas--color--selected-transparent);
+}

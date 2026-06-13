@@ -10,6 +10,8 @@ import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
+	type ListAgentsQueryDto,
+	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
 	AgentModelSchema,
@@ -30,6 +32,7 @@ import { In, ProjectRelationRepository, User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
+import type { JSONSchema7 } from 'json-schema';
 import {
 	deepCopy,
 	OperationalError,
@@ -54,6 +57,7 @@ import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 import { streamAgentChunks } from './utils/agent-stream';
+import { describeStructuredOutputError } from './utils/structured-output-error';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
@@ -66,6 +70,7 @@ import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { getProviderPrefix } from './json-config/model-id';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
@@ -115,9 +120,13 @@ export interface ResumeForChatConfig {
 	runId: string;
 	toolCallId: string;
 	resumeData: unknown;
+	/** n8n user ID for in-app preview chat resumes. */
+	userId?: string;
+	/** Defaults to true for external integrations; preview chat passes false. */
+	usePublishedVersion?: boolean;
 	/**
 	 * Required when the suspended turn invoked a platform-injected tool
-	 * (e.g. `rich_interaction`). Without it, `getRuntime` rebuilds the agent
+	 * (e.g. an integration action). Without it, `getRuntime` rebuilds the agent
 	 * with only its configured tools, and `runtime.resume` throws because the
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
@@ -289,12 +298,11 @@ export class AgentsService {
 	}
 
 	/**
-	 * Whether the agent knowledge base sub-feature is enabled via
-	 * `N8N_AGENTS_MODULES`. Gates the file endpoints and the `search_knowledge`
-	 * runtime tool. Public so the controller can guard its file endpoints.
+	 * Whether the agent knowledge base is enabled via Daytona sandbox env vars.
+	 * Gates the file endpoints. Public so the controller can guard its file endpoints.
 	 */
-	isKnowledgeBaseModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('knowledge-base');
+	isKnowledgeBaseEnabled(): boolean {
+		return this.agentsConfig.sandboxEnabled && this.agentsConfig.sandboxProvider === 'daytona';
 	}
 
 	/**
@@ -393,6 +401,13 @@ export class AgentsService {
 		return await this.agentRepository.findByProjectId(projectId);
 	}
 
+	async findByProjectIdPaginated(
+		projectId: string,
+		options: ListAgentsQueryDto,
+	): Promise<{ count: number; data: Agent[] }> {
+		return await this.agentRepository.findByProjectIdsPaginated([projectId], options);
+	}
+
 	async findById(agentId: string, projectId: string): Promise<Agent | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 	}
@@ -452,6 +467,15 @@ export class AgentsService {
 			where: { projectId: In(projectIds) },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	async findByUserPaginated(
+		userId: string,
+		options: ListAgentsQueryDto,
+	): Promise<{ count: number; data: Agent[] }> {
+		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
+		const projectIds = projectRelations.map((pr) => pr.projectId);
+		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
 	}
 
 	/**
@@ -741,11 +765,8 @@ export class AgentsService {
 			return false;
 		}
 
-		// Best-effort, non-transactional cleanup: deleteAllFilesForAgent removes
-		// binary blobs from the filesystem/object store, which a DB transaction
-		// can't roll back. The agent_files rows are removed via the agentId FK's
-		// ON DELETE CASCADE when the agent is removed below, so a failure here
-		// only risks orphaned blobs (logged) and must not block agent deletion.
+		// Best-effort cleanup of knowledge files from Daytona volume storage.
+		// Failure here must not block agent deletion.
 		try {
 			await this.agentKnowledgeService.deleteAllFilesForAgent(agentId);
 		} catch (error) {
@@ -863,7 +884,16 @@ export class AgentsService {
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, runId, toolCallId, resumeData, integrationType } = config;
+		const {
+			agentId,
+			projectId,
+			runId,
+			toolCallId,
+			resumeData,
+			integrationType,
+			userId,
+			usePublishedVersion = true,
+		} = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -884,44 +914,52 @@ export class AgentsService {
 		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
-			usePublishedVersion: true,
+			...(userId ? { n8nUserId: userId } : {}),
+			usePublishedVersion,
 			integrationType,
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
 		const recorder = new ExecutionRecorder(toolRegistry);
 
-		const resultStream = await agentInstance.resume('stream', resumeData, {
-			runId,
-			toolCallId,
-			executionCounter: this.createAgentExecutionCounter({ agentId }),
-		});
-
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
-			yield value;
-		}
-
-		// Always record resumed executions — even if they suspend again (chained HITL).
-		// Don't repeat the original user message — the pre-suspension execution already has it.
-		const messageRecord = recorder.getMessageRecord();
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: '',
-				record: messageRecord,
-				hitlStatus: 'resumed',
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record resumed agent execution', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
+		try {
+			const resultStream = await agentInstance.resume('stream', resumeData, {
+				runId,
+				toolCallId,
+				executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 			});
+
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
+				yield value;
+			}
+		} catch (error) {
+			recorder.record({ type: 'error', error });
+			recorder.record({ type: 'finish', finishReason: 'error' });
+			throw error;
+		} finally {
+			// Always record resumed executions — even if they suspend again (chained HITL)
+			// or fail while streaming. Don't repeat the original user message — the
+			// pre-suspension execution already has it.
+			const messageRecord = recorder.getMessageRecord();
+			void this.agentExecutionService
+				.recordMessage({
+					threadId,
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userMessage: '',
+					record: messageRecord,
+					hitlStatus: 'resumed',
+				})
+				.catch((error) => {
+					this.logger.warn('Failed to record resumed agent execution', {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+		}
 	}
 
 	/**
@@ -1041,6 +1079,23 @@ export class AgentsService {
 					// surfaces list/permission failures with the concrete error.
 				}
 			}
+		}
+
+		try {
+			const modelsByDifficulty = config.subAgents?.modelsByDifficulty;
+			if (modelsByDifficulty) {
+				for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
+					await this.validateMemoryWorkerModel(
+						modelsByDifficulty[difficulty],
+						`subAgents.modelsByDifficulty.${difficulty}`,
+						findCredential,
+						missing,
+					);
+				}
+			}
+		} catch {
+			// Same behavior as other credential checks: runtime reconstruction surfaces
+			// permission/listing failures with the concrete error.
 		}
 
 		missing.push(
@@ -1247,51 +1302,57 @@ export class AgentsService {
 
 		const recorder = new ExecutionRecorder(toolRegistry);
 
-		const resultStream = await agentInstance.stream(message, {
-			persistence: { threadId, resourceId },
-			executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
-		});
-
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
-			if (value.type === 'tool-call-suspended') {
-				this.logger.info('Chat: tool-call-suspended chunk received', {
-					agentId,
-					toolCallId: value.toolCallId,
-					toolName: value.toolName,
-				});
-			}
-			if (value.type === 'finish' && value.finishReason === 'max-iterations') {
-				for (const chunk of getMaxIterationsChunks()) {
-					yield chunk;
-				}
-			}
-			yield value;
-		}
-
-		// Always record — even if suspended, the pre-suspension response text
-		// and tool calls are valuable. Usage/model will be null for suspended runs.
-		const messageRecord = recorder.getMessageRecord();
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: message,
-				record: messageRecord,
-				hitlStatus: recorder.suspended ? 'suspended' : undefined,
-				source,
-				taskId,
-				taskVersionId,
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record agent execution', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
+		try {
+			const resultStream = await agentInstance.stream(message, {
+				persistence: { threadId, resourceId },
+				executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
 			});
+
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
+				if (value.type === 'tool-call-suspended') {
+					this.logger.info('Chat: tool-call-suspended chunk received', {
+						agentId,
+						toolCallId: value.toolCallId,
+						toolName: value.toolName,
+					});
+				}
+				if (value.type === 'finish' && value.finishReason === 'max-iterations') {
+					for (const chunk of getMaxIterationsChunks()) {
+						yield chunk;
+					}
+				}
+				yield value;
+			}
+		} catch (error) {
+			recorder.record({ type: 'error', error });
+			recorder.record({ type: 'finish', finishReason: 'error' });
+			throw error;
+		} finally {
+			// Always record — even if suspended or failed, the pre-suspension/error
+			// response text and tool calls are valuable.
+			const messageRecord = recorder.getMessageRecord();
+			void this.agentExecutionService
+				.recordMessage({
+					threadId,
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userMessage: message,
+					record: messageRecord,
+					hitlStatus: recorder.suspended ? 'suspended' : undefined,
+					source,
+					taskId,
+					taskVersionId,
+				})
+				.catch((error) => {
+					this.logger.warn('Failed to record agent execution', {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+		}
 	}
 
 	/**
@@ -1303,6 +1364,7 @@ export class AgentsService {
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		userId: string,
+		outputSchema?: JSONSchema7,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -1314,6 +1376,13 @@ export class AgentsService {
 				credentialProvider,
 				userId,
 			);
+			// Apply a per-call structured-output schema (e.g. supplied by a
+			// workflow node) before the builder is cast to its runtime view. The
+			// isolated agent is freshly built and uncached, so this never leaks
+			// into concurrent chat / integration executions.
+			if (outputSchema) {
+				reconstructed.structuredOutput(outputSchema);
+			}
 			return { ok: true, agent: reconstructed as BuiltAgent };
 		} catch (e) {
 			return {
@@ -1348,6 +1417,7 @@ export class AgentsService {
 		projectId: string,
 		telemetryUserId?: string,
 		useDraftVersion?: boolean,
+		outputSchema?: JSONSchema7,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -1365,7 +1435,12 @@ export class AgentsService {
 			agentData = this.getPublishedAgent(agentEntity);
 		}
 
-		const compiled = await this.compileIsolated(agentData, credentialProvider, userId);
+		const compiled = await this.compileIsolated(
+			agentData,
+			credentialProvider,
+			userId,
+			outputSchema,
+		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
 		}
@@ -1376,31 +1451,38 @@ export class AgentsService {
 		// `structuredOutput` and `toolCalls` aren't surfaced by the recorder —
 		// pull them off the `finish` chunk and the discrete `tool-result` chunks
 		// directly so the workflow node receives the same shape as before.
-		let structuredOutput: unknown | null = null;
+		let structuredOutput: unknown = null;
 		const toolCalls: ExecuteAgentData['toolCalls'] = [];
 		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
+		let streamError: Error | undefined;
 
-		const resultStream = await agentInstance.stream(message, {
-			persistence: { resourceId: executionId, threadId },
-			executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
-		});
+		try {
+			const resultStream = await agentInstance.stream(message, {
+				persistence: { resourceId: executionId, threadId },
+				executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
+			});
 
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
 
-			if (value.type === 'tool-call') {
-				toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
-			} else if (value.type === 'tool-result') {
-				const pending = toolInputs.get(value.toolCallId);
-				toolCalls.push({
-					toolName: value.toolName,
-					input: pending?.input ?? null,
-					result: value.output,
-				});
-				toolInputs.delete(value.toolCallId);
-			} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
-				structuredOutput = value.structuredOutput;
+				if (value.type === 'tool-call') {
+					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
+				} else if (value.type === 'tool-result') {
+					const pending = toolInputs.get(value.toolCallId);
+					toolCalls.push({
+						toolName: value.toolName,
+						input: pending?.input ?? null,
+						result: value.output,
+					});
+					toolInputs.delete(value.toolCallId);
+				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
+					structuredOutput = value.structuredOutput;
+				}
 			}
+		} catch (error) {
+			recorder.record({ type: 'error', error });
+			recorder.record({ type: 'finish', finishReason: 'error' });
+			streamError = error instanceof Error ? error : new Error(String(error));
 		}
 
 		const messageRecord = recorder.getMessageRecord();
@@ -1427,6 +1509,10 @@ export class AgentsService {
 				});
 			});
 
+		if (streamError !== undefined) {
+			throw streamError;
+		}
+
 		if (recorder.suspended) {
 			throw new OperationalError(
 				'Agent execution suspended waiting for tool approval. ' +
@@ -1435,11 +1521,22 @@ export class AgentsService {
 		}
 
 		if (messageRecord.error) {
+			if (outputSchema) {
+				const structuredOutputError = describeStructuredOutputError(messageRecord.error);
+				if (structuredOutputError) {
+					throw new OperationalError(structuredOutputError);
+				}
+			}
 			throw new OperationalError(`Agent execution failed: ${messageRecord.error}`);
 		}
 
 		if (messageRecord.finishReason === 'error') {
-			throw new OperationalError('Agent execution finished with an error.');
+			throw new OperationalError(
+				outputSchema
+					? 'Agent execution finished with an error while producing structured output. ' +
+							"The agent's model or provider may not support JSON Schema structured output."
+					: 'Agent execution finished with an error.',
+			);
 		}
 
 		return {
@@ -1485,6 +1582,10 @@ export class AgentsService {
 	async validateConfig(
 		raw: unknown,
 	): Promise<{ valid: true; config: AgentJsonConfig } | { valid: false; error: string }> {
+		if (hasNodeToolInputSchema(raw)) {
+			return { valid: false, error: 'Node tool configs must not include inputSchema.' };
+		}
+
 		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(raw));
 		if (!parsed.success) {
 			return { valid: false, error: parsed.error.message };
@@ -1551,24 +1652,20 @@ export class AgentsService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
-		await this.validateSubAgentRefs(result.config, entity);
-		this.validateConfigRefs(result.config, entity);
-
 		// Task refs resolve against task definition bodies (a separate table), so
-		// validate them here where the DB is reachable. Orphan bodies are pruned
+		// load them here where the DB is reachable. Orphan bodies are pruned
 		// after the save below. `tasksProvided` also gates the schema overlay.
 		const tasksProvided = result.config.tasks !== undefined;
 		const existingTaskIds = tasksProvided
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
-		if (tasksProvided) {
-			const existingTaskIdSet = new Set(existingTaskIds);
-			for (const ref of result.config.tasks ?? []) {
-				if (!existingTaskIdSet.has(ref.id)) {
-					throw new UserError(`Invalid agent config: Missing task body: ${ref.id}`);
-				}
-			}
-		}
+
+		const resolvedSubAgents = await this.removeMissingConfigRefs(
+			result.config,
+			entity,
+			new Set(existingTaskIds),
+		);
+		this.validateSubAgentRefs(resolvedSubAgents, entity);
 
 		// All optional fields on `AgentJsonConfigSchema` are treated as
 		// "preserve when omitted, replace when provided." A missing key on the
@@ -1620,7 +1717,6 @@ export class AgentsService {
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 		};
-		nextSchema.subAgents = normalizeSubAgentsConfig(nextSchema.subAgents);
 
 		entity.schema = nextSchema;
 		entity.name = result.config.name;
@@ -1906,20 +2002,40 @@ export class AgentsService {
 		return errors.length > 0 ? errors.join('\n') : null;
 	}
 
-	private validateConfigRefs(config: AgentJsonConfig, entity: Agent) {
-		const missingSkillIds = this.agentSkillsService.getMissingSkillIds(config, entity.skills ?? {});
-		if (missingSkillIds.length > 0) {
-			throw new UserError(
-				`Invalid agent config: Missing skill bodies: ${missingSkillIds.join(', ')}`,
-			);
+	private async removeMissingConfigRefs(
+		config: AgentJsonConfig,
+		entity: Agent,
+		existingTaskIds: ReadonlySet<string>,
+	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
+		if (config.skills !== undefined) {
+			const skills = entity.skills ?? {};
+			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
 		}
 
-		const missingToolIds = this.getMissingCustomToolIds(config, entity.tools ?? {});
-		if (missingToolIds.length > 0) {
-			throw new UserError(
-				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
-			);
+		if (config.tools !== undefined) {
+			const tools = entity.tools ?? {};
+			config.tools = config.tools.filter((ref) => ref.type !== 'custom' || Boolean(tools[ref.id]));
 		}
+
+		if (config.tasks !== undefined) {
+			config.tasks = config.tasks.filter((ref) => existingTaskIds.has(ref.id));
+		}
+
+		if (config.subAgents?.agents !== undefined) {
+			const resolvedSubAgents = await this.fetchUniqueSubAgents(
+				config.subAgents.agents,
+				entity.projectId,
+			);
+			const existingSubAgentIds = new Set(
+				resolvedSubAgents.filter(({ agent }) => agent !== null).map(({ agentId }) => agentId),
+			);
+			config.subAgents.agents = config.subAgents.agents.filter(({ agentId }) =>
+				existingSubAgentIds.has(agentId),
+			);
+			return resolvedSubAgents;
+		}
+
+		return [];
 	}
 
 	/**
@@ -1945,16 +2061,14 @@ export class AgentsService {
 		return resolved;
 	}
 
-	private async validateSubAgentRefs(config: AgentJsonConfig, entity: Agent) {
-		const refs = config.subAgents?.agents ?? [];
-		if (refs.length === 0) return;
-
-		for (const { agentId, agent } of await this.fetchUniqueSubAgents(refs, entity.projectId)) {
+	private validateSubAgentRefs(
+		resolvedSubAgents: Array<{ agentId: string; agent: Agent | null }>,
+		entity: Agent,
+	) {
+		for (const { agentId, agent } of resolvedSubAgents) {
+			if (!agent) continue;
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
-			}
-			if (!agent) {
-				throw new UserError(`Invalid agent config: Subagent "${agentId}" was not found`);
 			}
 			if (!agent.activeVersionId) {
 				throw new UserError(`Invalid agent config: Subagent "${agentId}" must be published`);
@@ -2100,15 +2214,12 @@ export class AgentsService {
 	}
 }
 
-function getProviderPrefix(modelId: string): string {
-	const slashIdx = modelId.indexOf('/');
-	return slashIdx === -1 ? '' : modelId.slice(0, slashIdx);
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function normalizeSubAgentsConfig(
-	subAgents: AgentJsonConfig['subAgents'],
-): AgentJsonConfig['subAgents'] {
-	if (!subAgents) return undefined;
-	const agents = subAgents.agents ?? [];
-	return { agents };
+function hasNodeToolInputSchema(raw: unknown): boolean {
+	if (!isRecord(raw) || !Array.isArray(raw.tools)) return false;
+
+	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
 }

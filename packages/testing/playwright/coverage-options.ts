@@ -1,4 +1,6 @@
+import type { TestInfo } from '@playwright/test';
 import type { CoverageReportOptions } from 'monocart-coverage-reports';
+import { relative } from 'node:path';
 
 /**
  * Frontend E2E coverage via browser-native V8 (Playwright `page.coverage`),
@@ -25,9 +27,16 @@ export const coverageOptions: CoverageReportOptions = {
 		entry.url.includes('/assets/') || /\/packages\/[^/]+(?:\/[^/]+)?\/dist\//.test(entry.url),
 	// Keep first-party application source after source-map expansion; drop deps
 	// and any unmapped dist files. NB nodes-base sources live under `nodes/`,
-	// `credentials/` etc — not `src/` — so don't require `/src/`.
+	// `credentials/` etc — not `src/` — so don't require `/src/`. The test/mock
+	// exclusions mirror jest.coverage-excludes.js — keep them in sync.
 	sourceFilter: (sourcePath) =>
-		!sourcePath.includes('node_modules') && !sourcePath.includes('/dist/'),
+		!sourcePath.includes('node_modules') &&
+		!sourcePath.includes('/dist/') &&
+		!sourcePath.endsWith('.d.ts') &&
+		!sourcePath.endsWith('.spec.ts') &&
+		!sourcePath.endsWith('.test.ts') &&
+		!sourcePath.includes('/__tests__/') &&
+		!sourcePath.includes('/__mocks__/'),
 	// Key Codecov + the impact map on repo-relative `packages/.../src/...`.
 	// Backend map-sources resolve to absolute repo paths (package-qualified);
 	// the frontend bundle resolves relative, so its `src/...` sources have no
@@ -55,3 +64,27 @@ export function bySpecDir(outputDir: string = coverageOptions.outputDir ?? './co
 }
 
 export const BY_SPEC_DIR = bySpecDir();
+
+/**
+ * Per-spec BACKEND raw coverage (DEVP-370), written by the backend coverage
+ * fixture and read by emit-spec-backend-lcovs. Separate from BY_SPEC_DIR so the
+ * frontend (browser `page.coverage`) and backend (n8n server V8 via the e2e
+ * coverage hook) raws never collide. Like BY_SPEC_DIR it MUST be a sibling of
+ * `outputDir`, never inside it (the shard report's generate() cleans outputDir).
+ */
+export function backendBySpecDir(
+	outputDir: string = coverageOptions.outputDir ?? './coverage',
+): string {
+	return `${outputDir.replace(/\/+$/, '')}-by-spec-backend`;
+}
+
+export const BACKEND_BY_SPEC_DIR = backendBySpecDir();
+
+/** Spec id = project-relative path — the id the runner and impact map key on.
+ *  Shared by the frontend and backend per-spec coverage fixtures. */
+export function specId(testInfo: TestInfo): string {
+	return relative(process.cwd(), testInfo.file).split('\\').join('/');
+}
+
+/** Filesystem-safe slug for a spec id (per-spec coverage directory name). */
+export const slugify = (spec: string): string => spec.replace(/[^a-zA-Z0-9]+/g, '_');

@@ -36,6 +36,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
@@ -173,7 +174,9 @@ describe('AI Builder store', () => {
 		);
 		workflowDocumentStore.setNodes([]);
 		workflowDocumentStore.setConnections({});
-		workflowsStore.setWorkflowExecutionData(null);
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData(null);
 
 		getNodeTypeSpy = vi.fn();
 		vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(getNodeTypeSpy);

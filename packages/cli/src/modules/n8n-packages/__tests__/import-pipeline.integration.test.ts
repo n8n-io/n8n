@@ -1,8 +1,22 @@
 import { LicenseState } from '@n8n/backend-common';
-import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import {
+	createActiveWorkflow,
+	createTeamProject,
+	createWorkflow,
+	mockInstance,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
+import type { Folder, Project } from '@n8n/db';
+import {
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
@@ -10,9 +24,17 @@ import { affixRoleToSaveCredential, saveCredential } from '@test-integration/db/
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
+import { initNodeTypes } from '@test-integration/utils';
 
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
+import {
+	WorkflowConflictPolicy,
+	WorkflowIdPolicy,
+	WorkflowPublishingPolicy,
+	type ImportPackageRequest,
+} from '../n8n-packages.types';
+import type { WorkflowPublishingPolicy as WorkflowPublishingPolicyValue } from '../entities/workflow/workflow-publishing-policy.types';
 import { FORMAT_VERSION } from '../spec/constants';
 import {
 	buildImportPackageBuffer,
@@ -21,19 +43,34 @@ import {
 	serializedWorkflowWithCredential,
 } from './fixtures/package-fixtures';
 import { streamToBuffer } from './utils/tar-support';
-import type { ImportPackageRequest } from '../n8n-packages.types';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
 type ImportPackageParams = Omit<
 	ImportPackageRequest,
-	'credentialMatchingMode' | 'credentialMissingMode'
+	| 'credentialMatchingMode'
+	| 'credentialMissingMode'
+	| 'workflowConflictPolicy'
+	| 'workflowPublishingPolicy'
+	| 'workflowIdPolicy'
 > &
-	Partial<Pick<ImportPackageRequest, 'credentialMatchingMode' | 'credentialMissingMode'>>;
+	Partial<
+		Pick<
+			ImportPackageRequest,
+			| 'credentialMatchingMode'
+			| 'credentialMissingMode'
+			| 'workflowConflictPolicy'
+			| 'workflowPublishingPolicy'
+			| 'workflowIdPolicy'
+		>
+	>;
 
 async function importPackage(params: ImportPackageParams) {
 	return await Container.get(N8nPackagesService).importPackage({
 		credentialMatchingMode: 'id-only',
 		credentialMissingMode: 'must-preexist',
+		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
+		workflowIdPolicy: WorkflowIdPolicy.New,
 		...params,
 	});
 }
@@ -54,12 +91,39 @@ const brokenWorkflow = (id: string, name: string): SerializedWorkflow =>
 		},
 	});
 
+/**
+ * Seeds an owned workflow in a project with a given `sourceWorkflowId` (the
+ * `createWorkflow` helper's `Partial<IWorkflowDb>` param doesn't expose that
+ * column, so it's set directly after creation).
+ */
+async function seedExistingWorkflow(
+	project: Project,
+	name: string,
+	sourceWorkflowId: string,
+	parentFolder?: Folder,
+) {
+	const workflow = await createWorkflow({ name }, project);
+	await Container.get(WorkflowRepository).update(workflow.id, {
+		sourceWorkflowId,
+		...(parentFolder ? { parentFolder } : {}),
+	});
+	workflow.sourceWorkflowId = sourceWorkflowId;
+	return workflow;
+}
+
 const licenseMocker = new LicenseMocker();
 const saveOwnedCredential = affixRoleToSaveCredential('credential:owner');
+
+// Reactivating an active workflow on new-version import calls into the active
+// workflow manager; mock it so trigger registration succeeds without real infra.
+const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
+	// Register node types so the reactivation path's webhook-conflict check can
+	// resolve the trigger nodes used by the seeded/imported workflows.
+	await initNodeTypes();
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 
 	const credentialTypesMock = mockInstance(CredentialTypes);
@@ -75,6 +139,7 @@ afterAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate([
 		'WorkflowEntity',
+		'WorkflowHistory',
 		'SharedWorkflow',
 		'Folder',
 		'Project',
@@ -133,7 +198,7 @@ describe('ImportPipeline batch validation', () => {
 		});
 
 		expect(result.workflows).toHaveLength(2);
-		expect(result.credentials).toEqual({ matched: [] });
+		expect(result.bindings.credentials).toEqual({});
 
 		const workflowRepo = Container.get(WorkflowRepository);
 		const sharedRepo = Container.get(SharedWorkflowRepository);
@@ -142,10 +207,7 @@ describe('ImportPipeline batch validation', () => {
 		expect(await sharedRepo.count({ where: { projectId: personalProject.id } })).toBe(2);
 
 		const allWorkflows = await workflowRepo.find({ order: { name: 'ASC' } });
-		expect(allWorkflows.map((w) => w.sourceWorkflowId).sort()).toEqual([
-			'wf-source-1',
-			'wf-source-2',
-		]);
+		expect(allWorkflows.map((w) => w.sourceWorkflowId)).toEqual(['wf-source-1', 'wf-source-2']);
 	});
 });
 
@@ -162,7 +224,7 @@ describe('ImportPipeline routing matrix', () => {
 			owner.id,
 		);
 
-		await importPackage({
+		const result = await importPackage({
 			user: owner,
 			packageBuffer: await singleWorkflowPackage(),
 		});
@@ -173,10 +235,13 @@ describe('ImportPipeline routing matrix', () => {
 		expect(shared.role).toBe('workflow:owner');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder).toBeNull();
+
+		// The response carries the source→target workflow id binding.
+		expect(result.bindings.workflows).toEqual({ 'wf-routed': workflow.id });
 	});
 
 	it('lands in the requested folder of the personal project when only folderId is given', async () => {
@@ -193,7 +258,7 @@ describe('ImportPipeline routing matrix', () => {
 		});
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder?.id).toBe(folder.id);
@@ -215,7 +280,7 @@ describe('ImportPipeline routing matrix', () => {
 		expect(shared.role).toBe('workflow:owner');
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder).toBeNull();
@@ -234,10 +299,630 @@ describe('ImportPipeline routing matrix', () => {
 		});
 
 		const workflow = await Container.get(WorkflowRepository).findOneOrFail({
-			where: { sourceWorkflowId: 'wf-routed' },
+			where: { name: 'Routed Workflow' },
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder?.id).toBe(folder.id);
+	});
+});
+
+describe('ImportPipeline workflowIdPolicy: new', () => {
+	it('mints a fresh id and records the package id as sourceWorkflowId', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Cheese workflow' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.New,
+		});
+
+		const [summary] = result.workflows;
+		expect(summary.sourceWorkflowId).toBe('STILTON');
+		expect(summary.localId).not.toBe('STILTON');
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: summary.localId });
+		expect(stored.sourceWorkflowId).toBe('STILTON');
+	});
+
+	it('imports the same package into two projects as independent workflows', async () => {
+		const owner = await createOwner();
+		const projectA = await createTeamProject('Project A', owner);
+		const projectB = await createTeamProject('Project B', owner);
+
+		const packageBuffer = await buildImportPackageBuffer([
+			serializedWorkflow({ id: 'STILTON', name: 'Cheese workflow' }),
+		]);
+
+		const resultA = await importPackage({
+			user: owner,
+			projectId: projectA.id,
+			packageBuffer,
+			workflowIdPolicy: WorkflowIdPolicy.New,
+		});
+		const resultB = await importPackage({
+			user: owner,
+			projectId: projectB.id,
+			packageBuffer,
+			workflowIdPolicy: WorkflowIdPolicy.New,
+		});
+
+		const [summaryA] = resultA.workflows;
+		const [summaryB] = resultB.workflows;
+
+		// Distinct fresh ids, but both link back to the same package workflow.
+		expect(summaryA.localId).not.toBe(summaryB.localId);
+		expect(summaryA.sourceWorkflowId).toBe('STILTON');
+		expect(summaryB.sourceWorkflowId).toBe('STILTON');
+		expect(summaryA.projectId).toBe(projectA.id);
+		expect(summaryB.projectId).toBe(projectB.id);
+		expect(await Container.get(WorkflowRepository).count()).toBe(2);
+	});
+
+	it('re-import updates the matched project copy and leaves the other untouched', async () => {
+		const owner = await createOwner();
+		const projectA = await createTeamProject('Project A', owner);
+		const projectB = await createTeamProject('Project B', owner);
+
+		const firstPackage = await buildImportPackageBuffer([
+			serializedWorkflow({ id: 'STILTON', name: 'Cheese v1' }),
+		]);
+		const workflowIdA = (
+			await importPackage({
+				user: owner,
+				projectId: projectA.id,
+				packageBuffer: firstPackage,
+				workflowIdPolicy: WorkflowIdPolicy.New,
+			})
+		).workflows[0].localId;
+		const workflowIdB = (
+			await importPackage({
+				user: owner,
+				projectId: projectB.id,
+				packageBuffer: firstPackage,
+				workflowIdPolicy: WorkflowIdPolicy.New,
+			})
+		).workflows[0].localId;
+
+		// Re-import an updated package into project B only.
+		const reimport = await importPackage({
+			user: owner,
+			projectId: projectB.id,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Cheese v2' }),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowIdPolicy: WorkflowIdPolicy.New,
+		});
+
+		// B's workflow is updated in place — no duplicate, same id, new name.
+		expect(reimport.workflows[0]).toMatchObject({ localId: workflowIdB, status: 'updated' });
+		expect(await Container.get(WorkflowRepository).count()).toBe(2);
+
+		const workflowRepo = Container.get(WorkflowRepository);
+		expect((await workflowRepo.findOneByOrFail({ id: workflowIdB })).name).toBe('Cheese v2');
+		// Project A's workflow is untouched by the re-import into B.
+		expect((await workflowRepo.findOneByOrFail({ id: workflowIdA })).name).toBe('Cheese v1');
+	});
+});
+
+describe('ImportPipeline workflowIdPolicy: source', () => {
+	it('creates with the source id and records it as sourceWorkflowId when the id is free', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'BRIE', name: 'Brie workflow' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		expect(result.workflows[0]).toMatchObject({ localId: 'BRIE', sourceWorkflowId: 'BRIE' });
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: 'BRIE' });
+		expect(stored.sourceWorkflowId).toBe('BRIE');
+	});
+
+	it('updates the existing workflow in place on re-import, without duplicating', async () => {
+		const owner = await createOwner();
+
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton v1' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		const reimport = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton v2' }),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		expect(reimport.workflows[0]).toMatchObject({ localId: 'STILTON', status: 'updated' });
+		const workflowRepo = Container.get(WorkflowRepository);
+		expect(await workflowRepo.count()).toBe(1);
+		expect((await workflowRepo.findOneByOrFail({ id: 'STILTON' })).name).toBe('Stilton v2');
+	});
+
+	it('keeps the matched workflow id when updating a workflow first imported under `new`', async () => {
+		const owner = await createOwner();
+
+		// First import under `new` policy: the workflow lives under a fresh id.
+		const firstImport = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton v1' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.New,
+		});
+		const mintedId = firstImport.workflows[0].localId;
+		expect(mintedId).not.toBe('STILTON');
+
+		// Switching to `source` policy matches by sourceWorkflowId and updates in
+		// place — the package id only applies to newly created workflows, so
+		// STILTON never materialises as an id. The summary exposes the mismatch.
+		const reimport = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton v2' }),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		expect(reimport.workflows[0]).toMatchObject({
+			localId: mintedId,
+			sourceWorkflowId: 'STILTON',
+			status: 'updated',
+		});
+		expect(await Container.get(WorkflowRepository).findOneBy({ id: 'STILTON' })).toBeNull();
+	});
+
+	it('updates in place without moving folders when re-imported into a different folder', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const folderA = await createFolder(personalProject, { name: 'Folder A' });
+		const folderB = await createFolder(personalProject, { name: 'Folder B' });
+
+		// Initial import lands STILTON in folder A.
+		await importPackage({
+			user: owner,
+			folderId: folderA.id,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton v1' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		// Re-import targets folder B, but the matched workflow must stay in folder A.
+		const reimport = await importPackage({
+			user: owner,
+			folderId: folderB.id,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton v2' }),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		expect(reimport.workflows[0]).toMatchObject({ localId: 'STILTON', status: 'updated' });
+
+		const stored = await Container.get(WorkflowRepository).findOneOrFail({
+			where: { id: 'STILTON' },
+			relations: ['parentFolder'],
+		});
+		expect(stored.name).toBe('Stilton v2');
+		expect(stored.parentFolder?.id).toBe(folderA.id);
+	});
+
+	it('blocks the import when the source id already exists in a different project', async () => {
+		const owner = await createOwner();
+		const projectP1 = await createTeamProject('P1', owner);
+		const projectP2 = await createTeamProject('P2', owner);
+
+		// STILTON already lives in P1.
+		await importPackage({
+			user: owner,
+			projectId: projectP1.id,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		const workflowRepo = Container.get(WorkflowRepository);
+		const countBefore = await workflowRepo.count();
+
+		// Importing the same id into P2 must fail with an id-conflict issue naming P1.
+		await expect(
+			importPackage({
+				user: owner,
+				projectId: projectP2.id,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'STILTON', name: 'Stilton clone' }),
+				]),
+				workflowIdPolicy: WorkflowIdPolicy.Source,
+			}),
+		).rejects.toMatchObject({
+			message: expect.stringContaining('Import blocked'),
+			meta: {
+				issues: [
+					{
+						type: 'workflow-id-conflict',
+						sourceWorkflowId: 'STILTON',
+						existingWorkflowId: 'STILTON',
+						existingProjectId: projectP1.id,
+						isArchived: false,
+						name: 'Stilton',
+					},
+				],
+			},
+		});
+
+		// Nothing written, and P1's workflow is untouched (still owned by P1).
+		expect(await workflowRepo.count()).toBe(countBefore);
+		const p1Share = await Container.get(SharedWorkflowRepository).findOneByOrFail({
+			workflowId: 'STILTON',
+		});
+		expect(p1Share.projectId).toBe(projectP1.id);
+	});
+
+	it('blocks re-import when the previously imported workflow was archived, reporting the archived state', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		// Archived workflows are excluded from conflict matching but still occupy
+		// their id, so the re-import lands on the id check — the issue must point
+		// at the user's own project and flag the archived state.
+		await Container.get(WorkflowRepository).update({ id: 'STILTON' }, { isArchived: true });
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'STILTON', name: 'Stilton v2' }),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+				workflowIdPolicy: WorkflowIdPolicy.Source,
+			}),
+		).rejects.toMatchObject({
+			meta: {
+				issues: [
+					{
+						type: 'workflow-id-conflict',
+						sourceWorkflowId: 'STILTON',
+						existingWorkflowId: 'STILTON',
+						existingProjectId: personalProject.id,
+						isArchived: true,
+						name: 'Stilton',
+					},
+				],
+			},
+		});
+	});
+
+	it('blocks the whole package when one source id collides, writing nothing', async () => {
+		const owner = await createOwner();
+		const projectP1 = await createTeamProject('P1', owner);
+		const projectP2 = await createTeamProject('P2', owner);
+
+		// CHEDDAR already lives in P1.
+		await importPackage({
+			user: owner,
+			projectId: projectP1.id,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'CHEDDAR', name: 'Cheddar' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		const workflowRepo = Container.get(WorkflowRepository);
+		const countBefore = await workflowRepo.count();
+
+		// A package mixing a free id (GOUDA) with the colliding one must abort wholesale.
+		await expect(
+			importPackage({
+				user: owner,
+				projectId: projectP2.id,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'GOUDA', name: 'Gouda' }),
+					serializedWorkflow({ id: 'CHEDDAR', name: 'Cheddar clone' }),
+				]),
+				workflowIdPolicy: WorkflowIdPolicy.Source,
+			}),
+		).rejects.toThrow('Import blocked');
+
+		// All-or-nothing: the free workflow was not written either.
+		expect(await workflowRepo.count()).toBe(countBefore);
+		expect(await workflowRepo.findOneBy({ id: 'GOUDA' })).toBeNull();
+	});
+
+	it('reports a single workflow-conflict (no id-conflict) when source + fail matches in the same project', async () => {
+		const owner = await createOwner();
+
+		// STILTON imported into the project under source policy → id STILTON exists here.
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'STILTON', name: 'Stilton' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		// Re-importing the same id under `fail` blocks as a conflict — and must NOT
+		// also raise an id-conflict for the same workflow (the blocked create is
+		// excluded from the global id check).
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'STILTON', name: 'Stilton again' }),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+				workflowIdPolicy: WorkflowIdPolicy.Source,
+			}),
+		).rejects.toMatchObject({
+			meta: {
+				issues: [
+					{
+						type: 'workflow-conflict',
+						sourceWorkflowId: 'STILTON',
+						existingWorkflowId: 'STILTON',
+					},
+				],
+			},
+		});
+	});
+});
+
+describe('ImportPipeline workflow conflict policy', () => {
+	it.each<WorkflowConflictPolicy>([WorkflowConflictPolicy.NewVersion, WorkflowConflictPolicy.Skip])(
+		'%s handles matched and fresh workflows in one package',
+		async (workflowConflictPolicy) => {
+			const owner = await createOwner();
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(owner.id);
+			const folder = await createFolder(personalProject, { name: 'Existing folder' });
+			const existing = await seedExistingWorkflow(
+				personalProject,
+				'Existing workflow',
+				'wf-existing',
+				folder,
+			);
+
+			const baseNodes = serializedWorkflow({
+				id: 'wf-existing',
+				name: 'Imported replacement',
+			}).nodes;
+
+			const result = await importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({
+						id: 'wf-existing',
+						name: 'Imported replacement',
+						nodes: [
+							...baseNodes,
+							{
+								id: 'set-node',
+								name: 'Set Data',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 3,
+								position: [200, 0],
+								parameters: {},
+							},
+						],
+					}),
+					serializedWorkflow({ id: 'wf-fresh', name: 'Fresh workflow' }),
+				]),
+				workflowConflictPolicy,
+			});
+
+			const matchedSummary = result.workflows.find(
+				({ sourceWorkflowId }) => sourceWorkflowId === 'wf-existing',
+			);
+			const freshSummary = result.workflows.find(
+				({ sourceWorkflowId }) => sourceWorkflowId === 'wf-fresh',
+			);
+
+			expect(matchedSummary).toMatchObject({
+				localId: existing.id,
+				status:
+					workflowConflictPolicy === WorkflowConflictPolicy.NewVersion ? 'updated' : 'skipped',
+			});
+			expect(freshSummary).toMatchObject({ status: 'created', name: 'Fresh workflow' });
+
+			const workflows = await Container.get(WorkflowRepository).find();
+			expect(workflows).toHaveLength(2);
+
+			const storedExisting = await Container.get(WorkflowRepository).findOneOrFail({
+				where: { id: existing.id },
+				relations: ['parentFolder'],
+			});
+			expect(storedExisting.name).toBe(
+				workflowConflictPolicy === WorkflowConflictPolicy.NewVersion
+					? 'Imported replacement'
+					: 'Existing workflow',
+			);
+			// The update path must leave the workflow in its original folder; the
+			// handler only patches the response object's `parentFolder`, so assert
+			// the persisted row directly rather than trusting that field.
+			expect(storedExisting.parentFolder?.id).toBe(folder.id);
+		},
+	);
+
+	it('new-version reactivates an active workflow and advances its active version', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+
+		const active = await createActiveWorkflow({ name: 'Active workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+		const originalActiveVersionId = active.activeVersionId;
+		expect(originalActiveVersionId).not.toBeNull();
+
+		const historyRepo = Container.get(WorkflowHistoryRepository);
+		const historyBefore = await historyRepo.count({ where: { workflowId: active.id } });
+
+		const result = await importPackage({
+			user: owner,
+			// Different nodes than the seeded workflow → saves a new version → republishes.
+			// Uses a real trigger node so the reactivation validation passes.
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-active',
+					name: 'Active updated',
+					// Published in the package and in the target project so preserve-published-state should publish the new version.
+					isPublished: true,
+					nodes: [
+						{
+							id: 'schedule-trigger',
+							name: 'Schedule Trigger',
+							type: 'n8n-nodes-base.scheduleTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				}),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
+		);
+		expect(summary).toMatchObject({
+			localId: active.id,
+			status: 'updated',
+		});
+		// A non-null activeVersionId is how the response signals the workflow is published.
+		expect(summary?.activeVersionId).toEqual(expect.any(String));
+		expect(summary?.activeVersionId).not.toBe(originalActiveVersionId);
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.active).toBe(true);
+		expect(stored.activeVersionId).toBe(summary?.activeVersionId);
+		expect(stored.activeVersionId).not.toBe(originalActiveVersionId);
+
+		// A new history version was written for the imported content.
+		const historyAfter = await historyRepo.count({ where: { workflowId: active.id } });
+		expect(historyAfter).toBe(historyBefore + 1);
+
+		// Reactivation went through the active workflow manager.
+		expect(activeWorkflowManager.add).toHaveBeenCalled();
+	});
+
+	it('fails before writing any workflows when conflicts exist under fail policy', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const existing = await seedExistingWorkflow(
+			personalProject,
+			'Existing workflow',
+			'wf-existing',
+		);
+		const workflowRepo = Container.get(WorkflowRepository);
+		const workflowsBefore = await workflowRepo.count();
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-existing', name: 'Conflicting workflow' }),
+					serializedWorkflow({ id: 'wf-fresh', name: 'Fresh workflow' }),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+			}),
+		).rejects.toMatchObject({
+			message: expect.stringContaining('Import blocked'),
+			meta: {
+				issues: [
+					{
+						type: 'workflow-conflict',
+						sourceWorkflowId: 'wf-existing',
+						existingWorkflowId: existing.id,
+						name: 'Existing workflow',
+					},
+				],
+			},
+		});
+
+		expect(await workflowRepo.count()).toBe(workflowsBefore);
+	});
+
+	it('fails fast when duplicate sourceWorkflowId matches exist in the target project', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		await seedExistingWorkflow(personalProject, 'First match', 'wf-ambiguous');
+		await seedExistingWorkflow(personalProject, 'Second match', 'wf-ambiguous');
+
+		await expect(
+			importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-ambiguous', name: 'Incoming' }),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.Skip,
+			}),
+		).rejects.toMatchObject({
+			message: 'Multiple workflows in the target project share the same sourceWorkflowId',
+			extra: { projectId: personalProject.id, sourceWorkflowId: 'wf-ambiguous' },
+		});
+	});
+
+	it('matches a workflow authored on this instance when re-importing the package it exported', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+
+		const original = await createWorkflow({ name: 'Authored here' }, personalProject);
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: original.id, name: 'Updated via re-import' }),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+		});
+
+		expect(result.workflows).toEqual([
+			expect.objectContaining({
+				sourceWorkflowId: original.id,
+				localId: original.id,
+				status: 'updated',
+			}),
+		]);
+		expect(result.bindings.workflows).toEqual({ [original.id]: original.id });
+
+		// Updated in place — no duplicate created.
+		const workflows = await Container.get(WorkflowRepository).find();
+		expect(workflows).toHaveLength(1);
+		expect(workflows[0].name).toBe('Updated via re-import');
 	});
 });
 
@@ -465,13 +1150,10 @@ describe('ImportPipeline credential resolution', () => {
 			),
 		});
 
-		expect(result.credentials.matched).toHaveLength(2);
-		expect(result.credentials.matched).toEqual(
-			expect.arrayContaining([
-				{ sourceId: ownedCredential.id, targetId: ownedCredential.id },
-				{ sourceId: globalCredential.id, targetId: globalCredential.id },
-			]),
-		);
+		expect(result.bindings.credentials).toEqual({
+			[ownedCredential.id]: ownedCredential.id,
+			[globalCredential.id]: globalCredential.id,
+		});
 		expect(await Container.get(WorkflowRepository).count()).toBe(2);
 	});
 
@@ -502,13 +1184,217 @@ describe('ImportPipeline credential resolution', () => {
 			}),
 		).rejects.toMatchObject({
 			meta: {
-				failures: expect.arrayContaining([
-					expect.objectContaining({ kind: 'unknown_type', sourceId: 'cred-unknown' }),
-					expect.objectContaining({ kind: 'not_found', sourceId: 'missing-a' }),
+				issues: expect.arrayContaining([
+					expect.objectContaining({
+						type: 'credential-unresolved',
+						kind: 'unknown_type',
+						sourceId: 'cred-unknown',
+					}),
+					expect.objectContaining({
+						type: 'credential-unresolved',
+						kind: 'not_found',
+						sourceId: 'missing-a',
+					}),
 				]),
 			},
 		});
 
 		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+});
+
+describe('ImportPipeline workflow publishing policy', () => {
+	// Trigger needed to be able to publish workflows
+	const scheduleTriggerNodes = () => [
+		{
+			id: 'schedule-trigger',
+			name: 'Schedule Trigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		},
+	];
+
+	it.each<WorkflowPublishingPolicyValue>([
+		WorkflowPublishingPolicy.PreservePublishedState,
+		WorkflowPublishingPolicy.MatchSource,
+		WorkflowPublishingPolicy.PublishAll,
+		WorkflowPublishingPolicy.UnpublishAll,
+	])('returns published state for every workflow under "%s"', async (workflowPublishingPolicy) => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-fresh',
+					name: 'Fresh workflow',
+					isPublished: false,
+					nodes: scheduleTriggerNodes(),
+				}),
+			]),
+			workflowConflictPolicy: 'fail',
+			workflowPublishingPolicy,
+		});
+
+		expect(result.workflows).toHaveLength(1);
+		// activeVersionId is non-null exactly when the workflow ends up published.
+		expect(result.workflows[0]?.activeVersionId !== null).toBe(
+			workflowPublishingPolicy === WorkflowPublishingPolicy.PublishAll,
+		);
+	});
+
+	it('"match-source" publishes only workflows that were active in the package', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-published',
+					name: 'Published in package',
+					isPublished: true,
+					nodes: scheduleTriggerNodes(),
+				}),
+				serializedWorkflow({
+					id: 'wf-unpublished',
+					name: 'Unpublished in package',
+					isPublished: false,
+				}),
+			]),
+			workflowConflictPolicy: 'fail',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
+		});
+
+		const publishedSummary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-published',
+		);
+		const unpublishedSummary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-unpublished',
+		);
+
+		expect(publishedSummary?.activeVersionId).toEqual(expect.any(String));
+		expect(unpublishedSummary?.activeVersionId).toBeNull();
+	});
+
+	it('"unpublish-all" unpublishes a previously published matched workflow', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow({ name: 'Active workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-active',
+					name: 'Active updated',
+					isPublished: true,
+					nodes: [
+						{
+							id: 'schedule-trigger',
+							name: 'Schedule Trigger',
+							type: 'n8n-nodes-base.scheduleTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				}),
+			]),
+			workflowConflictPolicy: 'new-version',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.UnpublishAll,
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
+		);
+		expect(summary?.activeVersionId).toBeNull();
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.active).toBe(false);
+		expect(stored.activeVersionId).toBeNull();
+	});
+
+	it('"preserve-published-state" republishes on settings-only updates to published workflows', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow(
+			{ name: 'Active workflow', settings: { executionOrder: 'v0' } },
+			personalProject,
+		);
+		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+
+		const baseWorkflow = serializedWorkflow({
+			id: 'wf-active',
+			name: 'Active workflow',
+			isPublished: true,
+			settings: { executionOrder: 'v1' },
+		});
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([baseWorkflow]),
+			workflowConflictPolicy: 'new-version',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
+		);
+		expect(summary?.activeVersionId).toEqual(expect.any(String));
+		expect(activeWorkflowManager.add).toHaveBeenCalled();
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.active).toBe(true);
+		expect(stored.activeVersionId).toEqual(expect.any(String));
+	});
+
+	it('"preserve-published-state" does not publish a draft update to a previously published workflow', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const active = await createActiveWorkflow({ name: 'Active workflow' }, personalProject);
+		await Container.get(WorkflowRepository).update(active.id, { sourceWorkflowId: 'wf-active' });
+		const originalActiveVersionId = active.activeVersionId;
+		expect(originalActiveVersionId).not.toBeNull();
+
+		activeWorkflowManager.add.mockClear();
+
+		const result = await importPackage({
+			user: owner,
+			// New content marked as a draft in the package (isPublished: false) → saves a
+			// new version that preserve-published-state should not bring live.
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-active',
+					name: 'Active updated',
+					isPublished: false,
+					nodes: scheduleTriggerNodes(),
+				}),
+			]),
+			workflowConflictPolicy: 'new-version',
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
+		});
+
+		const summary = result.workflows.find(
+			({ sourceWorkflowId }) => sourceWorkflowId === 'wf-active',
+		);
+		// The previously published version keeps running; the imported draft version
+		// is persisted but never published, so the active version is left untouched.
+		expect(summary?.activeVersionId).toBe(originalActiveVersionId);
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
+		expect(stored.active).toBe(true);
+		expect(stored.activeVersionId).toBe(originalActiveVersionId);
+
+		// No (re)activation was triggered for the imported draft.
+		expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 	});
 });

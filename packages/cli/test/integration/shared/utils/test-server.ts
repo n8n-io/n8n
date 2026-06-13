@@ -1,4 +1,4 @@
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { APIRequest, User } from '@n8n/db';
@@ -110,7 +110,7 @@ export const setupTestServer = ({
 	});
 
 	// Mock all telemetry and logging
-	mockLogger();
+	Container.set(Logger, mockLogger());
 	mockInstance(PostHogClient);
 	mockInstance(Push);
 	mockInstance(Telemetry);
@@ -208,10 +208,13 @@ export const setupTestServer = ({
 						break;
 
 					case 'metrics': {
-						const { PrometheusMetricsService } = await import(
-							'@/metrics/prometheus-metrics.service'
-						);
-						await Container.get(PrometheusMetricsService).init(app);
+						// CacheService must be initialized before PrometheusMetricsService
+						// because cache-metrics.service calls isRedis() during init, which
+						// reads this.cache.kind — only set after CacheService.init() resolves.
+						const { CacheService } = await import('@/services/cache/cache.service');
+						await Container.get(CacheService).init();
+						const { PrometheusMetricsService } = await import('@/metrics/prometheus');
+						Container.get(PrometheusMetricsService).init(app);
 						break;
 					}
 
@@ -369,8 +372,21 @@ export const setupTestServer = ({
 	});
 
 	afterAll(async () => {
+		// Close the HTTP server first so any in-flight requests can't reach the
+		// DI container after testDb.terminate() resets it. Await the close so
+		// pending handlers drain before the next file's beforeAll runs in
+		// persistent Jest workers — otherwise stale handlers call
+		// Container.get(Logger), construct a fresh Logger, and trip Jest's
+		// "environment torn down" guard when winston is imported.
+		// Skip when the server never started listening (some suites bail in
+		// beforeAll); calling close() on a non-listening server throws
+		// "Server is not running" and would mask the real beforeAll failure.
+		if (testServer.httpServer.listening) {
+			await new Promise<void>((resolve, reject) => {
+				testServer.httpServer.close((err) => (err ? reject(err) : resolve()));
+			});
+		}
 		await testDb.terminate();
-		testServer.httpServer.close();
 	});
 
 	beforeEach(() => {

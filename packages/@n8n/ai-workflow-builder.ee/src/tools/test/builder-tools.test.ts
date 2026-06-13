@@ -11,13 +11,6 @@ vi.mock('../get-documentation.tool', () => ({
 	},
 }));
 
-vi.mock('../get-workflow-examples.tool', () => ({
-	GET_WORKFLOW_EXAMPLES_TOOL: {
-		toolName: 'get_workflow_examples',
-		displayTitle: 'Retrieving workflow examples',
-	},
-}));
-
 vi.mock('../add-node.tool', () => ({
 	getAddNodeToolBase: vi.fn().mockReturnValue({
 		toolName: 'add_node',
@@ -182,20 +175,8 @@ describe('builder-tools', () => {
 			});
 
 			expect(tools).toHaveLength(BASE_TOOL_COUNT);
-			expect(tools.map((t) => t.toolName)).not.toContain('get_workflow_examples');
 			expect(tools.map((t) => t.toolName)).not.toContain('introspect');
 			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
-		});
-
-		it('should include workflow examples tool when templateExamples flag is enabled', () => {
-			const tools = getBuilderToolsForDisplay({
-				nodeTypes: parsedNodeTypes,
-				featureFlags: { templateExamples: true },
-			});
-
-			expect(tools).toHaveLength(BASE_TOOL_COUNT + 1);
-			expect(tools.map((t) => t.toolName)).toContain('get_workflow_examples');
-			expect(tools.map((t) => t.toolName)).not.toContain('introspect');
 		});
 
 		it('should include introspect tool when enableIntrospection flag is enabled', () => {
@@ -205,18 +186,6 @@ describe('builder-tools', () => {
 			});
 
 			expect(tools).toHaveLength(BASE_TOOL_COUNT + 1);
-			expect(tools.map((t) => t.toolName)).toContain('introspect');
-			expect(tools.map((t) => t.toolName)).not.toContain('get_workflow_examples');
-		});
-
-		it('should include both conditional tools when both flags are enabled', () => {
-			const tools = getBuilderToolsForDisplay({
-				nodeTypes: parsedNodeTypes,
-				featureFlags: { templateExamples: true, enableIntrospection: true },
-			});
-
-			expect(tools).toHaveLength(BASE_TOOL_COUNT + 2);
-			expect(tools.map((t) => t.toolName)).toContain('get_workflow_examples');
 			expect(tools.map((t) => t.toolName)).toContain('introspect');
 		});
 

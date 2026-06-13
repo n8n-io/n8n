@@ -20,7 +20,6 @@ type SuggestionSelectionPayload = {
 	suggestionKind: 'prompt' | 'quick_example';
 	position: number;
 };
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 type SelectedSuggestionDraft = SuggestionSelectionPayload & {
 	originalPrompt: string;
 };
@@ -72,7 +71,6 @@ const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 const previewPromptKey = ref<BaseTextKey | null>(null);
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
 
 function focus() {
@@ -157,7 +155,6 @@ watch(
 	{ immediate: true },
 );
 
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 watch(inputText, (text) => {
 	if (text.length === 0) {
 		selectedSuggestionDraft.value = null;
@@ -245,7 +242,6 @@ function getTelemetryContext() {
 	};
 }
 
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 function trackSelectedSuggestionSubmitted(message: string) {
 	const selectedSuggestion = selectedSuggestionDraft.value;
 	if (!selectedSuggestion) {
@@ -291,12 +287,6 @@ function handleSuggestionsCycled(payload: SuggestionsCyclePayload) {
 	});
 }
 
-function handleSuggestionSubmit(payload: SuggestionSelectionPayload) {
-	trackSuggestionSelected(payload);
-	submitComposerMessage(i18n.baseText(payload.promptKey));
-}
-
-// Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 	trackSuggestionSelected(payload);
 	previewPromptKey.value = null;
@@ -324,7 +314,7 @@ const resizable = computed(() => {
 		<ChatInputBase
 			ref="chatInputRef"
 			v-model="inputText"
-			:class="props.isPlanEditMode && $style.planEditInput"
+			:class="{ [$style.planEditInput]: props.isPlanEditMode, [$style.inputWrapper]: true }"
 			:placeholder="placeholder"
 			:is-streaming="props.isPlanEditMode ? false : props.isStreaming"
 			:can-submit="canSubmit"
@@ -379,17 +369,18 @@ const resizable = computed(() => {
 				</div>
 			</template>
 		</ChatInputBase>
+		<slot name="footer"></slot>
 		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
 			<component
 				:is="resolvedSuggestionsComponent"
 				v-if="canShowSuggestions && props.suggestions"
+				:class="$style.suggestions"
 				:suggestions="props.suggestions"
 				:disabled="isBusy || isGatedBySetup"
 				@preview-change="previewPromptKey = $event"
 				@quick-examples-opened="handleQuickExamplesOpened"
 				@cycle-suggestions="handleSuggestionsCycled"
 				@insert-suggestion="handleSuggestionInsert"
-				@submit-suggestion="handleSuggestionSubmit"
 				@workflow-preview="emit('workflow-preview', $event)"
 			/>
 		</Transition>
@@ -400,7 +391,17 @@ const resizable = computed(() => {
 .composer {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	> * + * {
+		margin-top: var(--spacing--xs);
+	}
+}
+
+.inputWrapper {
+	z-index: 1;
+}
+
+.suggestions {
+	margin-top: var(--spacing--lg);
 }
 
 .attachments {

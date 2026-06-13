@@ -1,4 +1,4 @@
-import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -12,6 +12,7 @@ import {
 
 import type { WaitingWebhookRequest } from '../webhook.types';
 
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 
 class TestWaitingForms extends WaitingForms {
@@ -28,12 +29,12 @@ class TestWaitingForms extends WaitingForms {
 }
 
 describe('WaitingForms', () => {
-	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 	const mockInstanceSettings = mock<InstanceSettings>();
 	const waitingForms = new TestWaitingForms(
 		mock(),
 		mock(),
-		executionRepository,
+		executionPersistence,
 		mock(),
 		mockInstanceSettings,
 		mock(),
@@ -231,7 +232,7 @@ describe('WaitingForms', () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: {},
@@ -253,7 +254,7 @@ describe('WaitingForms', () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { origin: 'null' },
@@ -274,7 +275,7 @@ describe('WaitingForms', () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { origin: 'null' },
@@ -296,7 +297,7 @@ describe('WaitingForms', () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { origin: undefined },
@@ -347,7 +348,7 @@ describe('WaitingForms', () => {
 					updatedAt: new Date(),
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { origin: 'null', host: 'localhost:5678' },
@@ -492,7 +493,7 @@ describe('WaitingForms', () => {
 					updatedAt: new Date(),
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { host: 'localhost:5678' },
@@ -550,7 +551,7 @@ describe('WaitingForms', () => {
 					updatedAt: new Date(),
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { host: 'localhost:5678' },
@@ -599,7 +600,7 @@ describe('WaitingForms', () => {
 					updatedAt: new Date(),
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { host: 'localhost:5678' },
@@ -657,7 +658,7 @@ describe('WaitingForms', () => {
 					updatedAt: new Date(),
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { host: 'localhost:5678' },
@@ -779,7 +780,7 @@ describe('WaitingForms', () => {
 			}) as unknown as WaitingWebhookRequest;
 
 		it('preserves the n8n-auth cookie when the resume node is a Form node', async () => {
-			executionRepository.findSingleExecution.mockResolvedValue(
+			executionPersistence.findSingleExecution.mockResolvedValue(
 				buildExecutionWithResumeNode(FORM_NODE_TYPE),
 			);
 
@@ -793,7 +794,7 @@ describe('WaitingForms', () => {
 		});
 
 		it('strips the n8n-auth cookie when the resume node is not allowlisted', async () => {
-			executionRepository.findSingleExecution.mockResolvedValue(
+			executionPersistence.findSingleExecution.mockResolvedValue(
 				buildExecutionWithResumeNode('other-node-type'),
 			);
 
@@ -808,7 +809,7 @@ describe('WaitingForms', () => {
 		});
 
 		it('strips the n8n-auth cookie when the execution cannot be resolved', async () => {
-			executionRepository.findSingleExecution.mockResolvedValue(undefined);
+			executionPersistence.findSingleExecution.mockResolvedValue(undefined);
 
 			const req = buildReqWithAuthCookie();
 			const res = mock<express.Response>();

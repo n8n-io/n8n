@@ -85,7 +85,7 @@ describe('UpdateWorkflowDto', () => {
 			expect(result.data?.tags).toEqual(['tag1', 'tag2']);
 		});
 
-		test('should preserve workflow custom telemetry tag settings', () => {
+		test('should preserve workflow custom span attribute settings', () => {
 			const settings = {
 				customTelemetryTags: [
 					{ key: 'env', value: 'production' },
@@ -99,7 +99,7 @@ describe('UpdateWorkflowDto', () => {
 			expect(result.data?.settings).toEqual(settings);
 		});
 
-		test('should preserve workflow custom telemetry tag settings with keys that are unique after trim', () => {
+		test('should preserve workflow custom span attribute settings with keys that are unique after trim', () => {
 			const settings = {
 				customTelemetryTags: [
 					{ key: '  env  ', value: 'production' },
@@ -147,7 +147,7 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['settings'],
 			},
 			{
-				name: 'workflow custom telemetry tags as fixed collection object',
+				name: 'workflow custom span attributes as fixed collection object',
 				request: {
 					settings: {
 						customTelemetryTags: {
@@ -158,7 +158,7 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags'],
 			},
 			{
-				name: 'workflow custom telemetry tag with extra field',
+				name: 'workflow custom span attribute with extra field',
 				request: {
 					settings: {
 						customTelemetryTags: [{ key: 'env', value: 'production', extra: 'field' }],
@@ -167,7 +167,7 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags', 0],
 			},
 			{
-				name: 'duplicate workflow custom telemetry tag keys',
+				name: 'duplicate workflow custom span attribute keys',
 				request: {
 					settings: {
 						customTelemetryTags: [
@@ -179,7 +179,7 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags'],
 			},
 			{
-				name: 'duplicate workflow custom telemetry tag keys after trim',
+				name: 'duplicate workflow custom span attribute keys after trim',
 				request: {
 					settings: {
 						customTelemetryTags: [
@@ -191,7 +191,7 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags'],
 			},
 			{
-				name: 'empty workflow custom telemetry tag key',
+				name: 'empty workflow custom span attribute key',
 				request: {
 					settings: {
 						customTelemetryTags: [{ key: '', value: 'production' }],
@@ -200,7 +200,7 @@ describe('UpdateWorkflowDto', () => {
 				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
 			},
 			{
-				name: 'whitespace-only workflow custom telemetry tag key',
+				name: 'whitespace-only workflow custom span attribute key',
 				request: {
 					settings: {
 						customTelemetryTags: [{ key: '   ', value: 'production' }],
