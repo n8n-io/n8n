@@ -87,6 +87,35 @@ describe('CredentialIcon', () => {
 		expect(getByRole('img')).toHaveAttribute('src', useRootStore().baseUrl + testIconUrl);
 	});
 
+	it('uses the requested theme when credential icon references a node icon', () => {
+		const lightIconUrl = 'icons/n8n-nodes-base/dist/nodes/Test/test.svg';
+		const darkIconUrl = 'icons/n8n-nodes-base/dist/nodes/Test/test.dark.svg';
+		useCredentialsStore().setCredentialTypes([
+			mock<ICredentialType>({
+				name: 'test',
+				icon: 'node:n8n-nodes-base.test',
+			}),
+		]);
+
+		useNodeTypesStore().setNodeTypes([
+			mock<INodeTypeDescription>({
+				version: 1,
+				name: 'n8n-nodes-base.test',
+				iconUrl: { light: lightIconUrl, dark: darkIconUrl },
+			}),
+		]);
+
+		const { getByRole } = renderComponent({
+			pinia,
+			props: {
+				credentialTypeName: 'test',
+				theme: 'light',
+			},
+		});
+
+		expect(getByRole('img')).toHaveAttribute('src', useRootStore().baseUrl + lightIconUrl);
+	});
+
 	it('shows named icon when referenced node uses a named icon (e.g. HTTP Request)', () => {
 		useCredentialsStore().setCredentialTypes([
 			mock<ICredentialType>({

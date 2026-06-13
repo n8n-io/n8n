@@ -10,6 +10,12 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+import {
+	getOpenAiApiKey,
+	getOpenAiCredentialType,
+	OPEN_AI_API_CREDENTIAL_TYPE,
+	OPEN_AI_OAUTH2_CREDENTIAL_TYPE,
+} from 'n8n-nodes-base/dist/credentials/OpenAiApi.credentials';
 
 import { mergeCustomHeaders } from '@utils/helpers';
 
@@ -22,9 +28,13 @@ import {
 } from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
+import { OpenAiAccountChatModel } from './OpenAiAccountChatModel';
 import type { ModelOptions } from './types';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
+
+const OPENAI_API_DEFAULT_MODEL = 'gpt-5-mini';
+const OPENAI_ACCOUNT_DEFAULT_MODEL = 'gpt-5.4-mini';
 
 const INCLUDE_JSON_WARNING: INodeProperties = {
 	displayName:
@@ -38,6 +48,30 @@ const OPENAI_MODEL_BUILDER_HINT = {
 	propertyHint:
 		'Prefer the GPT-5.4 family: the flagship variant (e.g. `gpt-5.4`) for general use, a `-mini` / `-nano` variant when the task explicitly calls for cost-efficiency, or `-pro` only when the user asks for maximum capability. Never use gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5, or earlier — those are superseded by the GPT-5 family and are not valid choices.',
 };
+
+function isOpenAiAccountReasoningEffort(value: unknown): value is 'low' | 'medium' | 'high' {
+	return value === 'low' || value === 'medium' || value === 'high';
+}
+
+function hideForOpenAiAccountAuth(
+	displayOptions: INodeProperties['displayOptions'] = {},
+): INodeProperties['displayOptions'] {
+	return {
+		...displayOptions,
+		hide: {
+			...displayOptions.hide,
+			'/authentication': ['oAuth2'],
+		},
+	};
+}
+
+function normalizeOpenAiAccountMaxOutputTokens(value: unknown): number | undefined {
+	return typeof value === 'number' && value > 0 ? value : undefined;
+}
+
+function normalizeModelName(value: unknown): string | undefined {
+	return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
 
 const completionsResponseFormat: INodeProperties = {
 	displayName: 'Response Format',
@@ -109,8 +143,22 @@ export class LmChatOpenAi implements INodeType {
 		outputNames: ['Model'],
 		credentials: [
 			{
-				name: 'openAiApi',
+				name: OPEN_AI_API_CREDENTIAL_TYPE,
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['apiKey'],
+					},
+				},
+			},
+			{
+				name: OPEN_AI_OAUTH2_CREDENTIAL_TYPE,
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		requestDefaults: {
@@ -120,6 +168,23 @@ export class LmChatOpenAi implements INodeType {
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				default: 'apiKey',
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+					},
+					{
+						name: 'OpenAI Account',
+						value: 'oAuth2',
+						description: 'Connect a ChatGPT/OpenAI account without an API key',
+					},
+				],
+			},
 			{
 				...INCLUDE_JSON_WARNING,
 				displayOptions: {
@@ -195,11 +260,12 @@ export class LmChatOpenAi implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'gpt-5-mini',
+				default: OPENAI_API_DEFAULT_MODEL,
 				builderHint: OPENAI_MODEL_BUILDER_HINT,
 				displayOptions: {
-					hide: {
-						'@version': [{ _cnd: { gte: 1.2 } }],
+					show: {
+						'@version': [{ _cnd: { lte: 1.1 } }],
+						'/authentication': ['apiKey'],
 					},
 				},
 			},
@@ -207,7 +273,7 @@ export class LmChatOpenAi implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: 'gpt-5-mini' },
+				default: { mode: 'list', value: OPENAI_API_DEFAULT_MODEL },
 				builderHint: OPENAI_MODEL_BUILDER_HINT,
 				required: true,
 				modes: [
@@ -225,13 +291,46 @@ export class LmChatOpenAi implements INodeType {
 						displayName: 'ID',
 						name: 'id',
 						type: 'string',
-						placeholder: 'gpt-5-mini',
+						placeholder: OPENAI_API_DEFAULT_MODEL,
 					},
 				],
 				description: 'The model. Choose from the list, or specify an ID.',
 				displayOptions: {
-					hide: {
-						'@version': [{ _cnd: { lte: 1.1 } }],
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+						'/authentication': ['apiKey'],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'openAiAccountModel',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: OPENAI_ACCOUNT_DEFAULT_MODEL },
+				builderHint: OPENAI_MODEL_BUILDER_HINT,
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a model...',
+						typeOptions: {
+							searchListMethod: 'searchModels',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: OPENAI_ACCOUNT_DEFAULT_MODEL,
+					},
+				],
+				description: 'The OpenAI account model. Choose from the list, or specify an ID.',
+				displayOptions: {
+					show: {
+						'/authentication': ['oAuth2'],
 					},
 				},
 			},
@@ -356,12 +455,12 @@ export class LmChatOpenAi implements INodeType {
 						description: 'Whether to allow the model to execute code in a sandboxed environment',
 					},
 				],
-				displayOptions: {
+				displayOptions: hideForOpenAiAccountAuth({
 					show: {
 						'@version': [{ _cnd: { gte: 1.3 } }],
 						'/responsesApiEnabled': [true],
 					},
-				},
+				}),
 			},
 			{
 				displayName: 'Options',
@@ -377,11 +476,11 @@ export class LmChatOpenAi implements INodeType {
 						default: 'https://api.openai.com/v1',
 						description: 'Override the default base URL for the API',
 						type: 'string',
-						displayOptions: {
+						displayOptions: hideForOpenAiAccountAuth({
 							hide: {
 								'@version': [{ _cnd: { gte: 1.1 } }],
 							},
-						},
+						}),
 					},
 					{
 						displayName: 'Frequency Penalty',
@@ -391,6 +490,7 @@ export class LmChatOpenAi implements INodeType {
 						description:
 							"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
 						type: 'number',
+						displayOptions: hideForOpenAiAccountAuth(),
 					},
 					{
 						displayName: 'Maximum Number of Tokens',
@@ -405,20 +505,20 @@ export class LmChatOpenAi implements INodeType {
 					},
 					{
 						...completionsResponseFormat,
-						displayOptions: {
+						displayOptions: hideForOpenAiAccountAuth({
 							show: {
 								'@version': [{ _cnd: { lt: 1.3 } }],
 							},
-						},
+						}),
 					},
 					{
 						...completionsResponseFormat,
-						displayOptions: {
+						displayOptions: hideForOpenAiAccountAuth({
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
 								'/responsesApiEnabled': [false],
 							},
-						},
+						}),
 					},
 					{
 						displayName: 'Response Format',
@@ -518,12 +618,12 @@ export class LmChatOpenAi implements INodeType {
 								],
 							},
 						],
-						displayOptions: {
+						displayOptions: hideForOpenAiAccountAuth({
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
 								'/responsesApiEnabled': [true],
 							},
-						},
+						}),
 					},
 					{
 						displayName: 'Presence Penalty',
@@ -533,6 +633,7 @@ export class LmChatOpenAi implements INodeType {
 						description:
 							"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
 						type: 'number',
+						displayOptions: hideForOpenAiAccountAuth(),
 					},
 					{
 						displayName: 'Sampling Temperature',
@@ -542,6 +643,7 @@ export class LmChatOpenAi implements INodeType {
 						description:
 							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
 						type: 'number',
+						displayOptions: hideForOpenAiAccountAuth(),
 					},
 					{
 						displayName: 'Reasoning Effort',
@@ -588,6 +690,7 @@ export class LmChatOpenAi implements INodeType {
 						default: 2,
 						description: 'Maximum number of retries to attempt',
 						type: 'number',
+						displayOptions: hideForOpenAiAccountAuth(),
 					},
 					{
 						displayName: 'Top P',
@@ -597,6 +700,7 @@ export class LmChatOpenAi implements INodeType {
 						description:
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
+						displayOptions: hideForOpenAiAccountAuth(),
 					},
 					{
 						displayName: 'Conversation ID',
@@ -605,12 +709,12 @@ export class LmChatOpenAi implements INodeType {
 						description:
 							'The conversation that this response belongs to. Input items and output items from this response are automatically added to this conversation after this response completes.',
 						type: 'string',
-						displayOptions: {
+						displayOptions: hideForOpenAiAccountAuth({
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
 								'/responsesApiEnabled': [true],
 							},
-						},
+						}),
 					},
 					{
 						displayName: 'Prompt Cache Key',
@@ -619,12 +723,12 @@ export class LmChatOpenAi implements INodeType {
 						default: '',
 						description:
 							'Used by OpenAI to cache responses for similar requests to optimize your cache hit rates',
-						displayOptions: {
+						displayOptions: hideForOpenAiAccountAuth({
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
 								'/responsesApiEnabled': [true],
 							},
-						},
+						}),
 					},
 					{
 						displayName: 'Safety Identifier',
@@ -633,12 +737,12 @@ export class LmChatOpenAi implements INodeType {
 						default: '',
 						description:
 							"A stable identifier used to help detect users of your application that may be violating OpenAI's usage policies. The IDs should be a string that uniquely identifies each user.",
-						displayOptions: {
+						displayOptions: hideForOpenAiAccountAuth({
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
 								'/responsesApiEnabled': [true],
 							},
-						},
+						}),
 					},
 					{
 						displayName: 'Service Tier',
@@ -652,12 +756,12 @@ export class LmChatOpenAi implements INodeType {
 							{ name: 'Default', value: 'default' },
 							{ name: 'Priority', value: 'priority' },
 						],
-						displayOptions: {
+						displayOptions: hideForOpenAiAccountAuth({
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
 								'/responsesApiEnabled': [true],
 							},
-						},
+						}),
 					},
 					{
 						displayName: 'Metadata',
@@ -666,12 +770,12 @@ export class LmChatOpenAi implements INodeType {
 						description:
 							'Set of 16 key-value pairs that can be attached to an object. This can be useful for storing additional information about the object in a structured format, and querying for objects via API or the dashboard. Keys are strings with a maximum length of 64 characters. Values are strings with a maximum length of 512 characters.',
 						default: '{}',
-						displayOptions: {
+						displayOptions: hideForOpenAiAccountAuth({
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
 								'/responsesApiEnabled': [true],
 							},
-						},
+						}),
 					},
 					{
 						displayName: 'Top Logprobs',
@@ -684,12 +788,12 @@ export class LmChatOpenAi implements INodeType {
 							minValue: 0,
 							maxValue: 20,
 						},
-						displayOptions: {
+						displayOptions: hideForOpenAiAccountAuth({
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
 								'/responsesApiEnabled': [true],
 							},
-						},
+						}),
 					},
 					{
 						displayName: 'Prompt',
@@ -727,12 +831,12 @@ export class LmChatOpenAi implements INodeType {
 								],
 							},
 						],
-						displayOptions: {
+						displayOptions: hideForOpenAiAccountAuth({
 							show: {
 								'@version': [{ _cnd: { gte: 1.3 } }],
 								'/responsesApiEnabled': [true],
 							},
-						},
+						}),
 					},
 				],
 			},
@@ -740,13 +844,22 @@ export class LmChatOpenAi implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('openAiApi');
+		const authentication = this.getNodeParameter('authentication', itemIndex, 'apiKey');
+		const credentials = await this.getCredentials(getOpenAiCredentialType(authentication));
 
 		const version = this.getNode().typeVersion;
 		const modelName =
-			version >= 1.2
-				? (this.getNodeParameter('model.value', itemIndex) as string)
-				: (this.getNodeParameter('model', itemIndex) as string);
+			authentication === 'oAuth2'
+				? (normalizeModelName(
+						this.getNodeParameter(
+							'openAiAccountModel.value',
+							itemIndex,
+							OPENAI_ACCOUNT_DEFAULT_MODEL,
+						),
+					) ?? OPENAI_ACCOUNT_DEFAULT_MODEL)
+				: version >= 1.2
+					? (this.getNodeParameter('model.value', itemIndex) as string)
+					: (this.getNodeParameter('model', itemIndex) as string);
 
 		const responsesApiEnabled = this.getNodeParameter('responsesApiEnabled', itemIndex, false);
 
@@ -757,6 +870,26 @@ export class LmChatOpenAi implements INodeType {
 		const configuration: ClientOptions = {
 			defaultHeaders,
 		};
+		const timeout = options.timeout;
+
+		if (authentication === 'oAuth2') {
+			return {
+				response: new OpenAiAccountChatModel({
+					accessToken: getOpenAiApiKey(credentials),
+					model: modelName,
+					timeout,
+					dispatcher: getProxyAgent('https://chatgpt.com/backend-api', {
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					}),
+					maxOutputTokens: normalizeOpenAiAccountMaxOutputTokens(options.maxTokens),
+					reasoningEffort: isOpenAiAccountReasoningEffort(options.reasoningEffort)
+						? options.reasoningEffort
+						: undefined,
+					callbacks: [new N8nLlmTracing(this)],
+				}),
+			};
+		}
 
 		if (options.baseURL) {
 			assertCredentialAllowsUrl({
@@ -771,7 +904,6 @@ export class LmChatOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		const timeout = options.timeout;
 		configuration.fetchOptions = {
 			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
 				headersTimeout: timeout,
@@ -805,7 +937,7 @@ export class LmChatOpenAi implements INodeType {
 		]);
 
 		const fields: ChatOpenAIFields = {
-			apiKey: credentials.apiKey as string,
+			apiKey: getOpenAiApiKey(credentials),
 			model: modelName,
 			...includedOptions,
 			timeout,

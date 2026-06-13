@@ -32,6 +32,12 @@ const referencedNodeIconSource = computed(() => {
 	if (!icon?.startsWith('node:')) return undefined;
 	const nodeType = nodeTypesStore.getNodeType(icon.replace('node:', ''));
 	if (!nodeType) return undefined;
+
+	const themeIconUrl = getThemedValue(nodeType.iconUrl, theme.value);
+	if (themeIconUrl) {
+		return { type: 'file' as const, src: rootStore.baseUrl + themeIconUrl };
+	}
+
 	return getNodeIconSource(nodeType, null, null);
 });
 
