@@ -18,7 +18,7 @@ export class LoneScale implements INodeType {
 		group: ['transform'],
 		icon: { light: 'file:loneScale.svg', dark: 'file:loneScale.dark.svg' },
 		version: 1,
-		description: 'Create List, add / delete items',
+		description: 'Enrich and source contacts, search companies, and manage lists',
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		defaults: {
 			name: 'LoneScale',
@@ -39,14 +39,24 @@ export class LoneScale implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'List',
-						value: 'list',
-						description: 'Manipulate list',
+						name: 'Company',
+						value: 'company',
+						description: 'Search for a company',
+					},
+					{
+						name: 'Contact',
+						value: 'contact',
+						description: 'Enrich or source contacts',
 					},
 					{
 						name: 'Item',
 						value: 'item',
 						description: 'Manipulate item',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'Manipulate list',
 					},
 				],
 				default: 'list',
@@ -342,6 +352,456 @@ export class LoneScale implements INodeType {
 				description: 'Type of your list',
 				noDataExpression: true,
 			},
+
+			/* -------------------------------------------------------------------------- */
+			/*                                contact                                      */
+			/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+					},
+				},
+				options: [
+					{
+						name: 'Enrich',
+						value: 'enrich',
+						description: 'Enrich a contact with email, phone and/or profile data',
+						action: 'Enrich a contact',
+					},
+					{
+						name: 'Source',
+						value: 'source',
+						description: 'Source contacts from a company matching personas',
+						action: 'Source contacts from a company',
+					},
+				],
+				default: 'enrich',
+				noDataExpression: true,
+			},
+			{
+				displayName: 'Enrichment Type',
+				name: 'enrichmentType',
+				type: 'multiOptions',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['enrich'],
+					},
+				},
+				options: [
+					{
+						name: 'Email',
+						value: 'email',
+					},
+					{
+						name: 'Phone',
+						value: 'phone',
+					},
+					{
+						name: 'Profile',
+						value: 'profile',
+					},
+				],
+				default: ['email'],
+				description: 'Types of enrichment to perform',
+			},
+			{
+				displayName: 'First Name',
+				name: 'firstName',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['enrich'],
+					},
+				},
+				default: '',
+				description: 'Contact first name',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['enrich'],
+					},
+				},
+				default: '',
+				description: 'Contact last name',
+			},
+			{
+				displayName: 'Company Name',
+				name: 'enrichCompanyName',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['enrich'],
+					},
+				},
+				default: '',
+				description: 'Contact company name, improves matching accuracy',
+			},
+			{
+				displayName: 'Company Domain',
+				name: 'enrichCompanyDomain',
+				type: 'string',
+				placeholder: 'acme.com',
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['enrich'],
+					},
+				},
+				default: '',
+				description: 'Contact company domain, improves matching accuracy',
+			},
+			{
+				displayName: 'Detect Job Change',
+				name: 'detectJobChange',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['enrich'],
+					},
+				},
+				default: false,
+				description:
+					'Whether to flag if the contact changed company since the input data. Only effective when Enrichment Type includes Profile.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'enrichAdditionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['enrich'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Contact Email',
+						name: 'email',
+						type: 'string',
+						placeholder: 'name@email.com',
+						default: '',
+						description: 'Known contact email to improve matching',
+					},
+					{
+						displayName: 'Contact ID',
+						name: 'contactId',
+						type: 'string',
+						default: '',
+						description: 'Your CRM record ID, echoed back in the response',
+					},
+					{
+						displayName: 'Job Title',
+						name: 'jobTitle',
+						type: 'string',
+						default: '',
+						description: 'Contact job title',
+					},
+					{
+						displayName: 'Linkedin URL',
+						name: 'linkedinUrl',
+						type: 'string',
+						default: '',
+						description: 'Contact Linkedin URL',
+					},
+				],
+			},
+			{
+				displayName: 'Company Domain',
+				name: 'sourceCompanyDomain',
+				type: 'string',
+				placeholder: 'acme.com',
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['source'],
+					},
+				},
+				default: '',
+				description:
+					'Company domain to source contacts from. Provide at least one of domain, name or Linkedin URL.',
+			},
+			{
+				displayName: 'Company Name',
+				name: 'sourceCompanyName',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['source'],
+					},
+				},
+				default: '',
+				description: 'Company name to source contacts from',
+			},
+			{
+				displayName: 'Company Linkedin URL',
+				name: 'sourceCompanyLinkedinUrl',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['source'],
+					},
+				},
+				default: '',
+				description: 'Company Linkedin URL, increases coverage and accuracy by 25%',
+			},
+			{
+				displayName: 'Personas',
+				name: 'personas',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['source'],
+					},
+				},
+				default: {},
+				placeholder: 'Add Persona',
+				options: [
+					{
+						name: 'persona',
+						displayName: 'Persona',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'A label for this persona',
+								required: true,
+							},
+							{
+								displayName: 'Job Titles',
+								name: 'jobTitles',
+								type: 'string',
+								default: '',
+								placeholder: 'CEO, Head of Sales, VP Marketing',
+								description: 'Comma-separated job titles to match',
+								required: true,
+							},
+							{
+								displayName: 'Exclude Job Titles',
+								name: 'excludeJobTitles',
+								type: 'string',
+								default: '',
+								placeholder: 'Assistant, Intern',
+								description: 'Comma-separated job titles to exclude',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'sourceAdditionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['source'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Disable Company Info',
+						name: 'disableCompanyInfo',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to skip enrichment of company information (industry, size, etc.) for each contact',
+					},
+					{
+						displayName: 'Included Locations',
+						name: 'includedLocations',
+						type: 'string',
+						default: '',
+						placeholder: 'US, FR, GB',
+						description: 'Comma-separated ISO 3166-1 alpha-2 country codes to include',
+					},
+					{
+						displayName: 'Max Results',
+						name: 'maxResults',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+							maxValue: 10,
+						},
+						default: 10,
+						description: 'Maximum number of contacts to retrieve (capped at 10)',
+					},
+					{
+						displayName: 'Seniority Levels',
+						name: 'seniorityLevels',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'C-Suite',
+								value: 'c-suite',
+							},
+							{
+								name: 'Director',
+								value: 'director',
+							},
+							{
+								name: 'Entry',
+								value: 'entry',
+							},
+							{
+								name: 'Founder',
+								value: 'founder',
+							},
+							{
+								name: 'Head',
+								value: 'head',
+							},
+							{
+								name: 'Intern',
+								value: 'intern',
+							},
+							{
+								name: 'Manager',
+								value: 'manager',
+							},
+							{
+								name: 'Owner',
+								value: 'owner',
+							},
+							{
+								name: 'Partner',
+								value: 'partner',
+							},
+							{
+								name: 'Senior',
+								value: 'senior',
+							},
+							{
+								name: 'VP',
+								value: 'vp',
+							},
+						],
+						default: [],
+						description: 'Filter contacts by seniority level',
+					},
+				],
+			},
+
+			/* -------------------------------------------------------------------------- */
+			/*                                company                                      */
+			/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: ['company'],
+					},
+				},
+				options: [
+					{
+						name: 'Search',
+						value: 'search',
+						description: 'Look up a company by domain, Linkedin or name',
+						action: 'Search a company',
+					},
+				],
+				default: 'search',
+				noDataExpression: true,
+			},
+			{
+				displayName: 'Company Domain',
+				name: 'searchDomain',
+				type: 'string',
+				placeholder: 'stripe.com',
+				displayOptions: {
+					show: {
+						resource: ['company'],
+						operation: ['search'],
+					},
+				},
+				default: '',
+				description:
+					'Company domain to look up. Provide at least one of domain, Linkedin ID, slug or name.',
+			},
+			{
+				displayName: 'Linkedin ID',
+				name: 'searchLinkedinId',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['company'],
+						operation: ['search'],
+					},
+				},
+				default: '',
+				description: 'Numeric Linkedin company ID (the digits in the linkedin.com/company/ URL)',
+			},
+			{
+				displayName: 'Slug',
+				name: 'searchSlug',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['company'],
+						operation: ['search'],
+					},
+				},
+				default: '',
+				description: 'Linkedin universal name / slug (the trailing segment of the company URL)',
+			},
+			{
+				displayName: 'Company Name',
+				name: 'searchName',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['company'],
+						operation: ['search'],
+					},
+				},
+				default: '',
+				description:
+					'Company name. Best-effort match — prefer domain, Linkedin ID or slug for a deterministic result.',
+			},
+			{
+				displayName: 'Enrich',
+				name: 'searchEnrich',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['company'],
+						operation: ['search'],
+					},
+				},
+				default: false,
+				description:
+					'Whether to fall back to on-demand enrichment when no cached match is found, and attach a headcount breakdown when possible',
+			},
 		],
 	};
 
@@ -461,6 +921,146 @@ export class LoneScale implements INodeType {
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
+				}
+				if (resource === 'contact') {
+					if (operation === 'enrich') {
+						const enrichmentType = this.getNodeParameter('enrichmentType', i) as string[];
+						const firstName = this.getNodeParameter('firstName', i) as string;
+						const lastName = this.getNodeParameter('lastName', i) as string;
+						const companyName = this.getNodeParameter('enrichCompanyName', i) as string;
+						const companyDomain = this.getNodeParameter('enrichCompanyDomain', i) as string;
+						const detectJobChange = this.getNodeParameter('detectJobChange', i) as boolean;
+						const additionalFields = this.getNodeParameter('enrichAdditionalFields', i) as {
+							email?: string;
+							jobTitle?: string;
+							linkedinUrl?: string;
+							contactId?: string;
+						};
+
+						const contact: IDataObject = {
+							firstname: firstName,
+							lastname: lastName,
+							...(companyName && { company_name: companyName }),
+							...(companyDomain && { domain: companyDomain }),
+							...(additionalFields.email && { email: additionalFields.email }),
+							...(additionalFields.jobTitle && { job_title: additionalFields.jobTitle }),
+							...(additionalFields.linkedinUrl && { linkedin_url: additionalFields.linkedinUrl }),
+							...(additionalFields.contactId && {
+								custom: { contact_id: additionalFields.contactId },
+							}),
+						};
+
+						const body: IDataObject = {
+							enrichment_type: enrichmentType,
+							contacts: [contact],
+							...(detectJobChange && { detect_job_change: true }),
+						};
+
+						responseData = await lonescaleApiRequest.call(
+							this,
+							'POST',
+							'/trigger/enrich/sync',
+							body,
+						);
+						const contacts = (responseData as { contacts?: IDataObject[] })?.contacts ?? [];
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(contacts),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
+					if (operation === 'source') {
+						const companyDomain = this.getNodeParameter('sourceCompanyDomain', i) as string;
+						const companyName = this.getNodeParameter('sourceCompanyName', i) as string;
+						const companyLinkedinUrl = this.getNodeParameter(
+							'sourceCompanyLinkedinUrl',
+							i,
+						) as string;
+						const additionalFields = this.getNodeParameter('sourceAdditionalFields', i) as {
+							disableCompanyInfo?: boolean;
+							includedLocations?: string;
+							maxResults?: number;
+							seniorityLevels?: string[];
+						};
+
+						const rawPersonas =
+							((this.getNodeParameter('personas', i, {}) as IDataObject)
+								.persona as IDataObject[]) ?? [];
+
+						const toList = (value: string) =>
+							(value || '')
+								.split(',')
+								.map((v) => v.trim())
+								.filter((v) => v.length > 0);
+
+						const personas = rawPersonas.map((p) => ({
+							name: p.name as string,
+							job_titles: toList(p.jobTitles as string),
+							...(toList(p.excludeJobTitles as string).length && {
+								exclude_job_titles: toList(p.excludeJobTitles as string),
+							}),
+						}));
+
+						const includedLocations = toList(additionalFields.includedLocations ?? '');
+
+						const body: IDataObject = {
+							...(companyDomain && { company_domain: companyDomain }),
+							...(companyName && { company_name: companyName }),
+							...(companyLinkedinUrl && { company_linkedin_url: companyLinkedinUrl }),
+							personas,
+							...(additionalFields.maxResults && { limit: additionalFields.maxResults }),
+							...(includedLocations.length && { included_locations: includedLocations }),
+							...(additionalFields.seniorityLevels?.length && {
+								seniority_levels: additionalFields.seniorityLevels,
+							}),
+							...(additionalFields.disableCompanyInfo && { disable_company_info: true }),
+						};
+
+						responseData = await lonescaleApiRequest.call(
+							this,
+							'POST',
+							'/trigger/contact-sourcing/sync',
+							body,
+						);
+						const contacts =
+							(responseData as { contacts?: IDataObject[] })?.contacts ?? [];
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(contacts),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
+				}
+				if (resource === 'company') {
+					if (operation === 'search') {
+						const domain = this.getNodeParameter('searchDomain', i) as string;
+						const linkedinId = this.getNodeParameter('searchLinkedinId', i) as string;
+						const slug = this.getNodeParameter('searchSlug', i) as string;
+						const name = this.getNodeParameter('searchName', i) as string;
+						const enrich = this.getNodeParameter('searchEnrich', i) as boolean;
+
+						const qs: IDataObject = {
+							...(domain && { domain }),
+							...(linkedinId && { linkedin_id: linkedinId }),
+							...(slug && { slug }),
+							...(name && { name }),
+							...(enrich && { enrich: true }),
+						};
+
+						responseData = await lonescaleApiRequest.call(
+							this,
+							'GET',
+							'/companies/search',
+							{},
+							qs,
+						);
+						const results = (responseData as { results?: IDataObject[] })?.results ?? [];
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(results),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
