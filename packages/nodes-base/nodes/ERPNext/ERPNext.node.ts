@@ -92,18 +92,19 @@ export class ERPNext implements INodeType {
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const docType = this.getCurrentNodeParameter('docType') as string;
-				const { data } = await erpNextApiRequest.call(
+				const response = await erpNextApiRequest.call(
 					this,
 					'GET',
-					`/api/resource/DocType/${docType}`,
+					`/api/method/frappe.desk.form.load.getdoctype?doctype=${docType}`,
 					{},
 				);
 
-				const docFields = data.fields.map(
-					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
-					},
-				);
+				const docFields = response.docs
+					.flatMap((doc: { fields: { label: string; fieldname: string }[] }) => doc.fields)
+					.map(({ label, fieldname }: { label: string; fieldname: string }) => ({
+						name: label,
+						value: fieldname,
+					}));
 
 				return processNames(docFields);
 			},
