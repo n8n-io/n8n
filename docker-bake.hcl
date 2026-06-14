@@ -56,3 +56,7 @@ target "benchmark" {
 
 group "default" { targets = ["n8n", "runner-alpine", "runner-distroless"] }
 group "all"     { targets = ["base", "n8n", "runner-alpine", "runner-distroless", "benchmark"] }
+
+# CI test images (prepare-docker): n8n + runner-alpine, built in one parallel
+# bake solve. No distroless (release-only) and no base (only built on :clean).
+group "ci" { targets = ["n8n", "runner-alpine"] }

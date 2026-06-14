@@ -57,8 +57,10 @@ runs:
         meta="/tmp/bake-${target}-meta.json"
         rawlog="/tmp/bake-${target}.jsonl"
 
+        # `*.` so overrides apply whether target is a single image or a GROUP
+        # (e.g. the `ci` group builds n8n + runner-alpine in one parallel solve).
         set_args=()
-        [ -n '${{ inputs.platform }}' ] && set_args+=(--set "${target}.platform=${{ inputs.platform }}")
+        [ -n '${{ inputs.platform }}' ] && set_args+=(--set "*.platform=${{ inputs.platform }}")
 
         case '${{ inputs.output }}' in
           load)      out='--load' ;;
@@ -71,7 +73,7 @@ runs:
         # Only when a server URL is provided — otherwise build cold.
         net_args=()
         if [ -n "${TURBO_API}" ]; then
-          net_args+=(--set "${target}.network=host" --allow network.host)
+          net_args+=(--set "*.network=host" --allow network.host)
         fi
 
         echo "::group::docker buildx bake ${target}"
