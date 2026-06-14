@@ -1,12 +1,27 @@
 import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
 import { uploadFilePreSend } from '../../helpers/utils';
-import { folderRLC, siteRLC, untilSiteSelected } from '../common.descriptions';
+import {
+	driveRLC,
+	folderRLC,
+	siteRLC,
+	untilDriveSelected,
+	untilSiteSelected,
+} from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
 		...siteRLC,
-		description: 'Select the site to retrieve folders from',
+		description: 'Select the site to retrieve document libraries from',
+	},
+	{
+		...driveRLC,
+		description: 'Select the document library to upload to',
+		displayOptions: {
+			hide: {
+				...untilSiteSelected,
+			},
+		},
 	},
 	{
 		...folderRLC,
@@ -14,6 +29,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			hide: {
 				...untilSiteSelected,
+				...untilDriveSelected,
 			},
 		},
 	},

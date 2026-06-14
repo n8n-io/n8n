@@ -17,6 +17,12 @@
 					"mode": "list",
 					"cachedResultName": "site1"
 				},
+				"drive": {
+					"__rl": true,
+					"value": "drive1",
+					"mode": "list",
+					"cachedResultName": "Documents"
+				},
 				"folder": {
 					"__rl": true,
 					"value": "folder1",

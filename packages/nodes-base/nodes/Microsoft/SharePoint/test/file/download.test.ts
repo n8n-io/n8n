@@ -13,7 +13,7 @@ describe('Microsoft SharePoint Node', () => {
 			mocks: [
 				{
 					method: 'get',
-					path: '/sites/site1/drive/items/item1/content',
+					path: '/sites/site1/drives/drive1/items/item1/content',
 					statusCode: 200,
 					responseBody: {},
 					responseHeaders: {

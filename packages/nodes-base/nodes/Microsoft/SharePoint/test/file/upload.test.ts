@@ -12,7 +12,7 @@ describe('Microsoft SharePoint Node', () => {
 			mocks: [
 				{
 					method: 'put',
-					path: '/sites/site1/drive/items/folder1:/file1.json:/content',
+					path: '/sites/site1/drives/drive1/items/folder1:/file1.json:/content',
 					statusCode: 201,
 					responseBody: {
 						'@odata.context':

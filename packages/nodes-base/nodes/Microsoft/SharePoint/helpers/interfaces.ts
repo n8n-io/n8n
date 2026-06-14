@@ -38,6 +38,13 @@ export interface ISite {
 	title: string;
 }
 
+export interface IDrive {
+	id: string;
+	name?: string;
+	webUrl?: string;
+	driveType?: string;
+}
+
 export interface IErrorResponse {
 	error: {
 		code: string;
