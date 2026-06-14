@@ -268,7 +268,7 @@ describe('WorkflowTriggerActivator', () => {
 		]);
 	});
 
-	test('cleans already registered webhooks when a later webhook registration fails', async () => {
+	test('isolates a failing webhook node, leaving other webhook nodes running', async () => {
 		jest
 			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
 			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
@@ -280,8 +280,9 @@ describe('WorkflowTriggerActivator', () => {
 		webhookTriggerRegistrar.register
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('registration failed'));
-		webhookTriggerRegistrar.deregister.mockResolvedValueOnce('Webhook A');
+		webhookTriggerRegistrar.deregister.mockResolvedValueOnce('Webhook B');
 		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
 
 		const activator = new WorkflowTriggerActivator(
 			logger,
@@ -296,32 +297,128 @@ describe('WorkflowTriggerActivator', () => {
 			mock<TriggerCountService>(),
 		);
 
-		await expect(
-			activator.activate(
-				mock<WorkflowEntity>({
-					id: 'wf-1',
-					name: 'Test workflow',
-					staticData: {},
-					settings: {},
-				}),
-				{
-					nodes: [
-						node('webhook-a', 'webhook', { name: 'Webhook A' }),
-						node('webhook-b', 'webhook', { name: 'Webhook B' }),
-					],
-					connections: {},
-				},
-				new Set(['webhook-a', 'webhook-b']),
-			),
-		).rejects.toThrow('registration failed');
+		const outcome = await activator.activate(
+			mock<WorkflowEntity>({
+				id: 'wf-1',
+				name: 'Test workflow',
+				staticData: {},
+				settings: {},
+			}),
+			{
+				nodes: [
+					node('webhook-a', 'webhook', { name: 'Webhook A' }),
+					node('webhook-b', 'webhook', { name: 'Webhook B' }),
+				],
+				connections: {},
+			},
+			new Set(['webhook-a', 'webhook-b']),
+		);
 
-		expect(webhookTriggerRegistrar.deregister).toHaveBeenCalledWith({
-			workflow: expect.anything(),
-			webhookData: webhookA,
-		});
-		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
-			'Webhook A',
+		expect(outcome.activated).toEqual(['webhook-a']);
+		expect(outcome.failures).toEqual([
+			{
+				nodeId: 'webhook-b',
+				nodeName: 'Webhook B',
+				error: expect.objectContaining({ message: 'registration failed' }),
+			},
 		]);
-		expect(nonWebhookTriggerRegistrar.register).not.toHaveBeenCalled();
+
+		// The surviving node's webhook is never torn down by the failing node.
+		expect(webhookTriggerRegistrar.deregister).not.toHaveBeenCalled();
+		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).not.toHaveBeenCalled();
+	});
+
+	test('rolls back a webhook node atomically when one of its webhooks fails', async () => {
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		const firstWebhook = mock<IWebhookData>({ node: 'Webhook' });
+		const secondWebhook = mock<IWebhookData>({ node: 'Webhook' });
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([firstWebhook, secondWebhook]);
+		webhookTriggerRegistrar.register
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('second webhook failed'));
+		webhookTriggerRegistrar.deregister.mockResolvedValueOnce('Webhook');
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
+
+		const activator = new WorkflowTriggerActivator(
+			logger,
+			mock<ErrorReporter>(),
+			createNodeTypes(),
+			mock<WorkflowRepository>(),
+			mock<WorkflowStaticDataService>(),
+			enabledWorkflowsConfig(),
+			mock<TriggerExecutionContextFactory>(),
+			webhookTriggerRegistrar,
+			nonWebhookTriggerRegistrar,
+			mock<TriggerCountService>(),
+		);
+
+		const outcome = await activator.activate(
+			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+			{ nodes: [node('webhook-node', 'webhook', { name: 'Webhook' })], connections: {} },
+			new Set(['webhook-node']),
+		);
+
+		expect(outcome.activated).toEqual([]);
+		expect(outcome.failures).toEqual([
+			{
+				nodeId: 'webhook-node',
+				nodeName: 'Webhook',
+				error: expect.objectContaining({ message: 'second webhook failed' }),
+			},
+		]);
+		// The first (already-registered) webhook of the node is rolled back.
+		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+			'Webhook',
+		]);
+	});
+
+	test('isolates a failing non-webhook trigger, leaving the others running', async () => {
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+		nonWebhookTriggerRegistrar.createRegistrationContext.mockReturnValue(
+			mock<PreparedNonWebhookTriggerRegistration>(),
+		);
+		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['t', 'p']);
+		nonWebhookTriggerRegistrar.register.mockImplementation(async (_workflow, _registration, id) => {
+			if (id === 'p') throw new Error('poll failed');
+		});
+
+		const activator = new WorkflowTriggerActivator(
+			logger,
+			mock<ErrorReporter>(),
+			createNodeTypes(),
+			mock<WorkflowRepository>(),
+			mock<WorkflowStaticDataService>(),
+			enabledWorkflowsConfig(),
+			mock<TriggerExecutionContextFactory>(),
+			webhookTriggerRegistrar,
+			nonWebhookTriggerRegistrar,
+			mock<TriggerCountService>(),
+		);
+
+		const outcome = await activator.activate(
+			mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+			{ nodes: [node('t', 'trigger'), node('p', 'poll')], connections: {} },
+			new Set(['t', 'p']),
+		);
+
+		expect(outcome.activated).toEqual(['t']);
+		expect(outcome.failures).toEqual([
+			{
+				nodeId: 'p',
+				nodeName: 'p',
+				error: expect.objectContaining({ message: 'poll failed' }),
+			},
+		]);
 	});
 });
