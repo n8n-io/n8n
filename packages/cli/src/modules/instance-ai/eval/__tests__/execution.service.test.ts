@@ -94,6 +94,7 @@ jest.mock('n8n-workflow', () => {
 import { EvalExecutionService } from '../execution.service';
 import { createLlmMockHandler } from '../mock-handler';
 import {
+	detectBinaryDependencies,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
@@ -106,6 +107,7 @@ import type { MockHints } from '../workflow-analysis';
 // ---------------------------------------------------------------------------
 
 const generateMockHintsMock = jest.mocked(generateMockHints);
+const detectBinaryDependenciesMock = jest.mocked(detectBinaryDependencies);
 const identifyNodesForHintsMock = jest.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = jest.mocked(identifyNodesForPinData);
 const partitionAiRootsMock = jest.mocked(partitionAiRoots);
@@ -1170,6 +1172,104 @@ describe('EvalExecutionService', () => {
 
 			expect(result.nodeResults['Webhook']).toBeDefined();
 			expect(result.nodeResults['Webhook'].executionMode).toBe('pinned');
+		});
+
+		it('mirrors an LLM-embedded binary map as real item.binary while keeping json intact', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: { subject: 'invoice' },
+				binary: { image: { mimeType: 'image/png', fileName: 'chart.png', data: 'bm90LWEtcG5n' } },
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			// json stays untouched so $json.binary.* references keep resolving
+			expect(item?.json).toEqual(hints.triggerContent);
+			expect(item?.binary?.image).toMatchObject({
+				mimeType: 'image/png',
+				fileName: 'chart.png',
+			});
+			// Real synthesized bytes back the item-level binary, not the LLM's fake base64
+			expect(item?.binary?.image.data).not.toBe('bm90LWEtcG5n');
+			expect(Buffer.from(item?.binary?.image.data ?? '', 'base64').length).toBeGreaterThan(0);
+		});
+
+		it('does not treat name-only object maps under a binary json key as file metadata', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: {},
+				binary: { probe: { name: 'Temp Sensor', value: 23 } },
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			expect(item?.json).toEqual(hints.triggerContent);
+			expect(item?.binary).toBeUndefined();
+		});
+
+		it('prefers richer embedded metadata when the consumer requirement is the generic fallback', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: {},
+				binary: { Document: { mimeType: 'application/pdf', fileName: 'contract.pdf' } },
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+			detectBinaryDependenciesMock.mockReturnValueOnce({
+				propertyName: 'Document',
+				contentType: 'application/octet-stream',
+				filename: 'input.bin',
+			});
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			expect(item?.binary?.Document).toMatchObject({
+				mimeType: 'application/pdf',
+				fileName: 'contract.pdf',
+			});
+		});
+
+		it('keeps a non-binary-shaped "binary" json field untouched', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = { binary: true, body: { mode: 'fast' } };
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			expect(item?.json).toEqual({ binary: true, body: { mode: 'fast' } });
+			expect(item?.binary).toBeUndefined();
+		});
+
+		it('lets a consumer-derived binary requirement override an embedded entry with the same key', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = {
+				body: {},
+				binary: { upload: { mimeType: 'image/png', fileName: 'wrong.png' } },
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+			detectBinaryDependenciesMock.mockReturnValueOnce({
+				propertyName: 'upload',
+				contentType: 'application/pdf',
+				filename: 'input.pdf',
+			});
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			const item = runData.pinData?.['Webhook']?.[0];
+			expect(item?.binary?.upload).toMatchObject({
+				mimeType: 'application/pdf',
+				fileName: 'input.pdf',
+			});
 		});
 
 		it('does not create pin data when triggerContent is empty', async () => {
