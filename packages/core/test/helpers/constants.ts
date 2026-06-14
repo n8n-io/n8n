@@ -5071,12 +5071,14 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							{
 								name: 'foo',
 								value: 'bar',
+								execution_status: 'success',
 							},
 						],
 						[
 							{
 								name: 'bar',
 								value: 'baz',
+								execution_status: 'success',
 							},
 						],
 						[],
