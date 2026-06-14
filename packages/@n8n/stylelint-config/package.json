@@ -44,5 +44,6 @@
   },
   "peerDependencies": {
     "stylelint": ">= 16"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

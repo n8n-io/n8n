@@ -36,6 +36,7 @@ export type {
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,
+	SmoothStreamOptions,
 	AgentExecutionCounter,
 	PersistedExecutionOptions,
 	ResumeOptions,

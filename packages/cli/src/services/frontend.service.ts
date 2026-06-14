@@ -348,6 +348,7 @@ export class FrontendService {
 				customRoles: false,
 				personalSpacePolicy: false,
 				dataRedaction: false,
+				otelCustomSpanAttributes: false,
 			},
 			mfa: {
 				enabled: false,
@@ -506,6 +507,7 @@ export class FrontendService {
 			customRoles: this.licenseState.isCustomRolesLicensed(),
 			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
 			dataRedaction: this.licenseState.isDataRedactionLicensed(),
+			otelCustomSpanAttributes: this.licenseState.isOtelCustomSpanAttributesLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {

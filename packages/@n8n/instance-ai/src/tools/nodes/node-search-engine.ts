@@ -173,8 +173,7 @@ export class NodeSearchEngine {
 					term,
 					candidates,
 					NODE_SEARCH_KEYS,
-					limit,
-				);
+				).slice(0, limit);
 				for (const r of termResults) {
 					const existing = scoreMap.get(r.item.name);
 					if (!existing || r.score > existing.score) {
@@ -184,7 +183,7 @@ export class NodeSearchEngine {
 			}
 			searchResults = [...scoreMap.values()];
 		} else {
-			searchResults = sublimeSearch<SearchableNodeType>(query, candidates, NODE_SEARCH_KEYS, limit);
+			searchResults = sublimeSearch<SearchableNodeType>(query, candidates, NODE_SEARCH_KEYS);
 		}
 
 		const fuzzyResultNames = new Set(searchResults.map((r) => r.item.name));

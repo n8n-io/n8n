@@ -29,6 +29,23 @@ See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
 ## Essential Commands
 
+### Fresh checkout / agent setup
+
+For a fresh checkout (cat-bot, a new hire, any agent verifying the repo
+builds), prefer `pnpm agent:setup` over running install + build + tests by
+hand. It chains them in one process, caps per-process memory and turbo
+concurrency so a 6GB box doesn't OOM, streams all output to
+`.agent-setup/<step>.log` (gitignored), and surfaces only a one-line summary
+per step plus the tail of the failing log. A machine-readable
+`.agent-setup/summary.json` is always written so a backgrounded run is
+readable in a single shot — no polling, no scrolling logs.
+
+```bash
+pnpm agent:setup                 # install → build → test (full suite)
+pnpm agent:setup install         # one step at a time
+pnpm agent:setup --json          # JSON summary on stdout (for scripts/agents)
+```
+
 ### Building
 Use `pnpm build` to build all packages. ALWAYS redirect the output of the
 build command to a file:
@@ -41,6 +58,13 @@ You can inspect the last few lines of the build log file to check for errors:
 ```bash
 tail -n 20 build.log
 ```
+
+If build outputs or the turbo cache are stale (e.g. after switching branches
+or worktrees) but dependencies haven't changed, use `pnpm reset` (lightweight
+by default) for a fast recovery: it cleans build outputs and force-rebuilds
+(keeping `node_modules` and untracked files). If that doesn't fix your issue,
+use `pnpm reset --full`, which also wipes untracked files and reinstalls
+dependencies.
 
 ### Testing
 - `pnpm test` - Run all tests

@@ -108,10 +108,8 @@ export interface ExpressionValue {
 }
 
 export interface BuilderFeatureFlags {
-	templateExamples?: boolean;
 	/** Enable pin data generation in code builder (default: true). */
 	pinData?: boolean;
-	planMode?: boolean;
 	/** Enable introspection tool for diagnostic data collection. Disabled by default. */
 	enableIntrospection?: boolean;
 	/** Enable merged ask/build experience with assistant subgraph (default: false). */
@@ -240,8 +238,6 @@ export class WorkflowBuilderAgent {
 		externalCallbacks: Callbacks | undefined,
 		historicalMessages: BaseMessage[] | undefined,
 	) {
-		const usePlanMode = payload.featureFlags?.planMode === true;
-
 		// web_fetch_approval resumes always go through multi-agent (where the interrupt lives)
 		if (payload.resumeData && payload.resumeInterrupt?.type === 'web_fetch_approval') {
 			this.logger?.debug('web_fetch_approval resume, routing to multi-agent system', {
@@ -292,7 +288,7 @@ export class WorkflowBuilderAgent {
 		}
 
 		// Initial plan request: route to multi-agent for discovery + planning
-		if (usePlanMode && payload.mode === 'plan') {
+		if (payload.mode === 'plan') {
 			this.logger?.debug('Plan mode with code builder, routing to multi-agent for planning', {
 				userId,
 			});

@@ -305,7 +305,7 @@ export function buildMetrics(events: CapturedEvent[], startTime: number): Instan
 // Per-turn conversation metrics
 // ---------------------------------------------------------------------------
 
-const PLAN_RECOVERY_TOOL_NAMES = new Set(['plan', 'planWithAgent', 'plan-with-agent']);
+const PLAN_RECOVERY_TOOL_NAMES = new Set(['create-tasks']);
 
 export function buildConversationMetrics(events: CapturedEvent[]): ConversationMetrics {
 	const turns = splitEventsIntoTurns(events);

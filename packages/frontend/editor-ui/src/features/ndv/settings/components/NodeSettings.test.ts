@@ -11,13 +11,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import NodeSettings from './NodeSettings.vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
@@ -54,7 +54,6 @@ const renderNodeSettings = (runData?: IRunData) => {
 
 	const workflow = createTestWorkflow({ nodes: [httpNode], connections: {} });
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = useWorkflowState();
 	const nodeTypesStore = useNodeTypesStore();
 	workflowsStore.setWorkflowId(workflow.id);
 	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
@@ -65,7 +64,7 @@ const renderNodeSettings = (runData?: IRunData) => {
 	ndvStore.activeNodeName = httpNode.name;
 
 	if (runData) {
-		workflowState.setWorkflowExecutionData({
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
 			id: 'exec-1',
 			workflowData: {
 				...workflow,

@@ -93,6 +93,63 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(toolCallPart.providerMetadata).toEqual(providerMetadata);
 	});
 
+	it('coerces replayed tool-call inputs to objects for provider requests', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-json',
+						toolName: 'search',
+						input: '{"query":"n8n"}',
+						state: 'resolved',
+						output: {},
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-array',
+						toolName: 'batch',
+						input: '["a","b"]',
+						state: 'resolved',
+						output: {},
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-null',
+						toolName: 'noop',
+						input: null,
+						state: 'resolved',
+						output: {},
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-string',
+						toolName: 'legacy',
+						input: 'plain-text',
+						state: 'resolved',
+						output: {},
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const assistantParts = (
+			aiMessages[0] as {
+				role: string;
+				content: Array<{ type: string; input: unknown }>;
+			}
+		).content;
+
+		expect(assistantParts.map((part) => part.input)).toEqual([
+			{ query: 'n8n' },
+			{ value: ['a', 'b'] },
+			{},
+			{ value: 'plain-text' },
+		]);
+	});
+
 	it('preserves content tool outputs when building tool ModelMessages', () => {
 		const contentOutput = {
 			type: 'content' as const,

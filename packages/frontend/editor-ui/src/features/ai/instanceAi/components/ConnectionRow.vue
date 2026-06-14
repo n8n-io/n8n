@@ -90,6 +90,7 @@ function handleSelect(action: RowAction) {
 	align-items: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xs) 0;
+	margin-left: var(--spacing--2xs);
 }
 
 .iconWrap {

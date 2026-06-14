@@ -119,6 +119,12 @@ export class ProjectService {
 		);
 	}
 
+	private get connectionStatusProxy() {
+		return import('@/credentials/credential-connection-status-proxy').then(
+			({ CredentialConnectionStatusProxy }) => Container.get(CredentialConnectionStatusProxy),
+		);
+	}
+
 	async deleteProject(
 		user: User,
 		projectId: string,
@@ -232,11 +238,22 @@ export class ProjectService {
 			}
 		}
 
+		// Capture member user IDs before the project (and its relations) are removed,
+		// so we can clean up orphaned per-user credential entries afterward.
+		const projectMembers = await this.projectRelationRepository.findBy({ projectId: project.id });
+		const memberUserIds = projectMembers.map((pr) => pr.userId);
+
 		// 9. delete project
 		await this.projectRepository.remove(project);
 
 		// 10. delete project relations
 		// Cascading deletes take care of this.
+
+		// 11. delete orphaned per-user credential entries for former members
+		if (memberUserIds.length > 0) {
+			const proxy = await this.connectionStatusProxy;
+			await proxy.cleanupOrphanedEntriesForUsers(memberUserIds);
+		}
 	}
 
 	/**
@@ -400,9 +417,32 @@ export class ProjectService {
 			'project',
 		);
 
+		const incomingByUserId = new Map(relations.map((r) => [r.userId, r.role]));
+
+		const removedUserIds = project.projectRelations
+			.filter((r) => !incomingByUserId.has(r.userId))
+			.map((r) => r.userId);
+
+		// Users whose role slug changed — a downgrade may strip credential:update,
+		// so their per-user credential entries must be re-evaluated too.
+		const roleChangedUserIds = project.projectRelations
+			.filter((r) => {
+				const newRole = incomingByUserId.get(r.userId);
+				return newRole !== undefined && newRole !== r.role.slug;
+			})
+			.map((r) => r.userId);
+
+		const affectedUserIds = [...new Set([...removedUserIds, ...roleChangedUserIds])];
+
+		const proxy = await this.connectionStatusProxy;
+
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await this.pruneRelations(em, project);
 			await this.addManyRelations(em, project, relations);
+
+			if (affectedUserIds.length > 0) {
+				await proxy.cleanupOrphanedEntriesForUsers(affectedUserIds, em);
+			}
 		});
 
 		const newRelations = relations.filter(
@@ -547,7 +587,12 @@ export class ProjectService {
 			throw new ForbiddenError('Project owner cannot be removed from the project');
 		}
 
-		await this.projectRelationRepository.delete({ projectId: project.id, userId });
+		const proxy = await this.connectionStatusProxy;
+
+		await this.projectRelationRepository.manager.transaction(async (em) => {
+			await em.delete(ProjectRelation, { projectId: project.id, userId });
+			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+		});
 	}
 
 	async changeUserRoleInProject(projectId: string, userId: string, role: AssignableProjectRole) {
@@ -574,7 +619,12 @@ export class ProjectService {
 			throw new UnlicensedProjectRoleError(role);
 		}
 
-		await this.projectRelationRepository.update({ projectId, userId }, { role: { slug: role } });
+		const proxy = await this.connectionStatusProxy;
+
+		await this.projectRelationRepository.manager.transaction(async (em) => {
+			await em.update(ProjectRelation, { projectId, userId }, { role: { slug: role } });
+			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+		});
 	}
 
 	async pruneRelations(em: EntityManager, project: Project) {

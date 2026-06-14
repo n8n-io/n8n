@@ -2,7 +2,9 @@ import { useStorage } from '@/app/composables/useStorage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import { STORES } from '@n8n/stores';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed } from 'vue';
 import type { MCPOnboardingClient as SurfaceMcpOnboardingClient } from '../components/onboarding/types';
@@ -46,10 +48,12 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 		const hasSeenFirstEligibleOpen = computed(() => firstOpenSeenStorage.value === 'true');
 		const hasDismissedFirstOpenModal = computed(() => firstOpenDismissedStorage.value === 'true');
 
-		const getTelemetryPayload = (payload: Record<string, unknown> = {}) => ({
-			...payload,
-			variant: currentVariant.value,
-		});
+		const getTelemetryPayload = (payload: ITelemetryTrackProperties = {}) =>
+			getExperimentTelemetryPayload(
+				SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT,
+				currentVariant.value,
+				payload,
+			);
 
 		function markFirstEligibleOpenSeen() {
 			firstOpenSeenStorage.value = 'true';

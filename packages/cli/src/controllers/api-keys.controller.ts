@@ -1,4 +1,8 @@
-import { CreateApiKeyRequestDto, PaginationDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import {
+	CreateApiKeyRequestDto,
+	ListApiKeysQueryDto,
+	UpdateApiKeyRequestDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -34,9 +38,6 @@ export class ApiKeysController {
 		private readonly publicApiKeyService: PublicApiKeyService,
 	) {}
 
-	/**
-	 * Create an API Key
-	 */
 	@GlobalScope('apiKey:create')
 	@Post('/', { middlewares: [isApiEnabledMiddleware] })
 	async createApiKey(
@@ -60,38 +61,35 @@ export class ApiKeysController {
 		};
 	}
 
-	/**
-	 * Get API keys. The service returns every key on the instance for callers
-	 * with `apiKey:manage` (owners and admins) and the caller's own keys for
-	 * everyone else.
-	 */
+	// `apiKey:manage` callers see every key by default; `ownership=mine` narrows to own.
 	@GlobalScope('apiKey:list')
 	@Get('/', { middlewares: [isApiEnabledMiddleware] })
-	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: PaginationDto) {
+	async getApiKeys(req: AuthenticatedRequest, _res: Response, @Query query: ListApiKeysQueryDto) {
 		return await this.publicApiKeyService.getRedactedApiKeys(req.user, {
 			take: query.take,
 			skip: query.skip,
+			ownership: query.ownership,
+			label: query.label,
+			sortBy: query.sortBy,
 		});
 	}
 
-	/**
-	 * Delete an API Key. Callers can always delete their own keys; admins
-	 * (holders of `apiKey:manage`) can also revoke other users' keys.
-	 */
+	// Members can delete their own keys; `apiKey:manage` holders can revoke anyone's.
 	@GlobalScope('apiKey:delete')
 	@Delete('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async deleteApiKey(req: AuthenticatedRequest, _res: Response, @Param('id') apiKeyId: string) {
-		await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
+		const { isOwn } = await this.publicApiKeyService.deleteApiKey(req.user, apiKeyId);
 
-		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
+		this.eventService.emit('public-api-key-deleted', {
+			user: req.user,
+			publicApi: false,
+			isOwn,
+		});
 
 		return { success: true };
 	}
 
-	/**
-	 * Patch an API Key. Owner-only — admins cannot edit another user's
-	 * label or scopes.
-	 */
+	// Owner-only — `apiKey:manage` doesn't extend to editing someone else's key.
 	@GlobalScope('apiKey:update')
 	@Patch('/:id', { middlewares: [isApiEnabledMiddleware] })
 	async updateApiKey(

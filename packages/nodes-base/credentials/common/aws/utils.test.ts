@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType, AWSRegion } from './types';
 
 global.fetch = jest.fn();
@@ -43,6 +43,7 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: true,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
 				roleSessionName: 'test-session',
 			};
 
@@ -119,6 +120,7 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: true,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
 				roleSessionName: 'test-session',
 			};
 
@@ -195,11 +197,13 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: true,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 			};
 
 			jest.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(null);
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'System AWS credentials are required for role assumption',
 			);
@@ -264,6 +268,7 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
 				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
@@ -319,6 +324,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -359,10 +366,12 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Access Key ID is required when not using system credentials',
 			);
@@ -374,11 +383,13 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: '   ',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Access Key ID is required when not using system credentials',
 			);
@@ -390,10 +401,12 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Secret Access Key is required when not using system credentials',
 			);
@@ -405,11 +418,13 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: '   ',
 			};
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS Secret Access Key is required when not using system credentials',
 			);
@@ -421,6 +436,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: '  sts-access-key  ',
 				stsSecretAccessKey: '  sts-secret-key  ',
 				stsSessionToken: '  sts-session-token  ',
@@ -464,6 +481,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws-cn:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -503,6 +522,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -544,6 +565,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -552,7 +575,7 @@ describe('assumeRole', () => {
 				throw new Error('Signing failed');
 			});
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'Failed to sign STS request',
 			);
@@ -564,6 +587,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -577,7 +602,7 @@ describe('assumeRole', () => {
 
 			mockFetch.mockResolvedValue(mockResponse as any);
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'STS AssumeRole failed: 403 Forbidden - Access denied',
 			);
@@ -589,6 +614,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -613,6 +640,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -632,7 +661,7 @@ describe('assumeRole', () => {
 				});
 			});
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'Invalid response from STS AssumeRole',
 			);
@@ -644,6 +673,8 @@ describe('assumeRole', () => {
 				customEndpoints: false,
 				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -661,7 +692,7 @@ describe('assumeRole', () => {
 				});
 			});
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
 			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
 				'Invalid response from STS AssumeRole',
 			);
@@ -669,52 +700,13 @@ describe('assumeRole', () => {
 	});
 
 	describe('default values', () => {
-		it('should use default role session name when not provided', async () => {
-			const credentials: AwsAssumeRoleCredentialsType = {
-				region: 'us-east-1',
-				customEndpoints: false,
-				useSystemCredentialsForRole: false,
-				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
-				stsAccessKeyId: 'sts-access-key',
-				stsSecretAccessKey: 'sts-secret-key',
-			};
-
-			const mockResponse = {
-				ok: true,
-				text: jest.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
-			});
-
-			await assumeRole(credentials, 'us-east-1');
-
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://sts.us-east-1.amazonaws.com',
-				expect.objectContaining({
-					body: expect.stringContaining('RoleSessionName=n8n-session'),
-				}),
-			);
-		});
-
 		it('should default useSystemCredentialsForRole to false when not provided', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
 				stsAccessKeyId: 'sts-access-key',
 				stsSecretAccessKey: 'sts-secret-key',
 			};
@@ -780,14 +772,14 @@ describe('assertSupportedAwsRegion', () => {
 		['169.254.169.254'],
 		['localhost'],
 	])('rejects unsupported region value %s', (region) => {
-		expect(() => assertSupportedAwsRegion(region)).toThrow(ApplicationError);
+		expect(() => assertSupportedAwsRegion(region)).toThrow(UserError);
 		expect(() => assertSupportedAwsRegion(region)).toThrow('Unsupported AWS region');
 	});
 
 	it.each([[undefined], [null], [0], [true], [{}], [['us-east-1']]])(
 		'rejects non-string region value %s',
 		(region) => {
-			expect(() => assertSupportedAwsRegion(region)).toThrow(ApplicationError);
+			expect(() => assertSupportedAwsRegion(region)).toThrow(UserError);
 		},
 	);
 });
@@ -847,7 +839,7 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 				'lambda',
 				region as any,
 			),
-		).toThrow(ApplicationError);
+		).toThrow(UserError);
 	});
 });
 
@@ -880,7 +872,7 @@ describe('assumeRole region validation', () => {
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			await expect(assumeRole(credentials, region as any)).rejects.toThrow(ApplicationError);
+			await expect(assumeRole(credentials, region as any)).rejects.toThrow(UserError);
 			await expect(assumeRole(credentials, region as any)).rejects.toThrow(
 				'Unsupported AWS region',
 			);

@@ -1,6 +1,6 @@
-import type { AgentRuntime } from '../../runtime/agent-runtime';
+import type { AgentRuntimeConfig } from '../../runtime/agent-runtime';
 import { InMemoryMemory } from '../../runtime/memory-store';
-import type { BuiltMemory, MemoryConfig, ObservationalMemoryConfig } from '../../types';
+import type { BuiltMemory, MemoryConfig } from '../../types';
 import { Agent } from '../agent';
 import {
 	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
@@ -137,15 +137,9 @@ describe('Memory builder — observation log memory', () => {
 			.instructions('You are a test assistant.')
 			.memory(memory);
 
-		const runtime = await (agent as unknown as { build(): Promise<AgentRuntime> }).build();
-		const runtimeConfig = (
-			runtime as unknown as {
-				config: {
-					observationLog?: { renderTokenBudget?: number };
-					observationalMemory?: ObservationalMemoryConfig;
-				};
-			}
-		).config;
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
 
 		expect(runtimeConfig.observationLog).toEqual({
 			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,

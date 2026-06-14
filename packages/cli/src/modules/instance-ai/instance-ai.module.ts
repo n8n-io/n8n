@@ -24,14 +24,6 @@ export class InstanceAiModule implements ModuleInterface {
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller');
 		}
-
-		// Fire-and-forget: clean up expired conversation threads on startup
-		const { InstanceAiMemoryService } = await import('./instance-ai-memory.service');
-		const { InstanceAiService } = await import('./instance-ai.service');
-		const aiService = Container.get(InstanceAiService);
-		void Container.get(InstanceAiMemoryService)
-			.cleanupExpiredThreads(async (threadId) => await aiService.clearThreadState(threadId))
-			.catch(() => undefined);
 	}
 
 	async settings() {
@@ -43,11 +35,15 @@ export class InstanceAiModule implements ModuleInterface {
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = settingsService.isAgentEnabled();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
+		const sandboxStatus = settingsService.getSandboxStatus();
 		return {
 			enabled,
 			localGatewayDisabled,
 			proxyEnabled: service.isProxyEnabled(),
 			cloudManaged: globalConfig.deployment.type === 'cloud',
+			sandboxEnabled: sandboxStatus.enabled,
+			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
+			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 		};
 	}
 

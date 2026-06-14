@@ -2,38 +2,39 @@
 import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
 import type { DataSource } from '@n8n/typeorm';
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type TimersPromises from 'timers/promises';
 import { setTimeout as setTimeoutP } from 'timers/promises';
+import type { Mock, MockedFunction } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { DbConnectionMonitor } from '../db-connection-monitor';
 
 // The monitor uses `setTimeout` from `timers/promises` for recovery backoff.
 // Mocking it lets us drive the recovery loop deterministically without juggling
-// jest fake timers against async/await microtask ordering.
-jest.mock('timers/promises', () => {
-	const actual = jest.requireActual<typeof TimersPromises>('timers/promises');
-	return { ...actual, setTimeout: jest.fn() };
+// fake timers against async/await microtask ordering.
+vi.mock('timers/promises', async () => {
+	const actual = await vi.importActual<typeof TimersPromises>('timers/promises');
+	return { ...actual, setTimeout: vi.fn() };
 });
-const mockedSetTimeoutP = setTimeoutP as jest.MockedFunction<typeof setTimeoutP>;
+const mockedSetTimeoutP = setTimeoutP as MockedFunction<typeof setTimeoutP>;
 
 const flushMicrotasks = async () => await new Promise((resolve) => setImmediate(resolve));
 
 describe('DbConnectionMonitor', () => {
 	let monitor: DbConnectionMonitor;
-	let onConnectedChange: jest.MockedFunction<(connected: boolean) => void>;
+	let onConnectedChange: MockedFunction<(connected: boolean) => void>;
 	const errorReporter = mock<ErrorReporter>();
 	const databaseConfig = mock<DatabaseConfig>({ pingTimeoutMs: 5_000 });
 	const logger = mock<Logger>();
 	const dataSource = mockDeep<DataSource>({ options: { type: 'postgres' } });
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		// Default: never resolves, so query wins the ping timeout race and
 		// recovery backoff stays suspended unless a test overrides it.
 		mockedSetTimeoutP.mockImplementation(async () => await new Promise(() => {}));
-		onConnectedChange = jest.fn();
+		onConnectedChange = vi.fn();
 		monitor = new DbConnectionMonitor(
 			dataSource,
 			onConnectedChange,
@@ -110,7 +111,7 @@ describe('DbConnectionMonitor', () => {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			dataSource.query.mockResolvedValue([{ '1': 1 }]);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const scheduleNextPingSpy = jest.spyOn(monitor as any, 'scheduleNextPing');
+			const scheduleNextPingSpy = vi.spyOn(monitor as any, 'scheduleNextPing');
 
 			// @ts-expect-error private property
 			await monitor.ping();
@@ -150,7 +151,7 @@ describe('DbConnectionMonitor', () => {
 				.mockRejectedValueOnce(
 					new Error('Client has encountered a connection error and is not queryable'),
 				);
-			const recoverSpy = jest
+			const recoverSpy = vi
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				.spyOn(monitor as any, 'recoverDataSource')
 				.mockResolvedValue(undefined);
@@ -171,7 +172,7 @@ describe('DbConnectionMonitor', () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
 			dataSource.query.mockRejectedValue(new Error('pool poisoned'));
-			const recoverSpy = jest
+			const recoverSpy = vi
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				.spyOn(monitor as any, 'recoverDataSource')
 				.mockResolvedValue(undefined);
@@ -234,7 +235,7 @@ describe('DbConnectionMonitor', () => {
 		});
 
 		it('should execute ping on schedule', () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			try {
 				const scheduledMonitor = new DbConnectionMonitor(
 					dataSource,
@@ -244,20 +245,20 @@ describe('DbConnectionMonitor', () => {
 					errorReporter,
 				);
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const pingSpy = jest.spyOn(scheduledMonitor as any, 'ping');
+				const pingSpy = vi.spyOn(scheduledMonitor as any, 'ping');
 
 				// @ts-expect-error private property
 				scheduledMonitor.scheduleNextPing();
-				jest.advanceTimersByTime(1000);
+				vi.advanceTimersByTime(1000);
 
 				expect(pingSpy).toHaveBeenCalled();
 			} finally {
-				jest.useRealTimers();
+				vi.useRealTimers();
 			}
 		});
 
 		it('should not schedule another ping after stop', () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			try {
 				const scheduledMonitor = new DbConnectionMonitor(
 					dataSource,
@@ -267,16 +268,16 @@ describe('DbConnectionMonitor', () => {
 					errorReporter,
 				);
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const pingSpy = jest.spyOn(scheduledMonitor as any, 'ping');
+				const pingSpy = vi.spyOn(scheduledMonitor as any, 'ping');
 
 				scheduledMonitor.stop();
 				// @ts-expect-error private property
 				scheduledMonitor.scheduleNextPing();
-				jest.advanceTimersByTime(1000);
+				vi.advanceTimersByTime(1000);
 
 				expect(pingSpy).not.toHaveBeenCalled();
 			} finally {
-				jest.useRealTimers();
+				vi.useRealTimers();
 			}
 		});
 	});
@@ -487,8 +488,8 @@ describe('DbConnectionMonitor', () => {
 			dataSource.isInitialized = true;
 			dataSource.destroy.mockResolvedValue();
 			dataSource.initialize.mockResolvedValue(dataSource);
-			const on = jest.fn();
-			(dataSource as unknown as { driver: { master: { on: jest.Mock } } }).driver = {
+			const on = vi.fn();
+			(dataSource as unknown as { driver: { master: { on: Mock } } }).driver = {
 				master: { on },
 			};
 
@@ -531,7 +532,7 @@ describe('DbConnectionMonitor', () => {
 		};
 
 		it('should attach an error listener to the Postgres driver pool', () => {
-			const on = jest.fn();
+			const on = vi.fn();
 			setDriver({ master: { on } });
 
 			monitor.start();
@@ -541,7 +542,7 @@ describe('DbConnectionMonitor', () => {
 
 		it('should mark the connection unhealthy when the pool emits an error', () => {
 			let handler: ((cause: unknown) => void) | undefined;
-			const on = jest.fn((_event: string, h: (cause: unknown) => void) => {
+			const on = vi.fn((_event: string, h: (cause: unknown) => void) => {
 				handler = h;
 			});
 			setDriver({ master: { on } });
@@ -590,7 +591,7 @@ describe('DbConnectionMonitor', () => {
 
 	describe('stop', () => {
 		it('should clear the ping timer', () => {
-			const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+			const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
 			// @ts-expect-error private property
 			monitor.pingTimer = setTimeout(() => {}, 1000);
 
@@ -615,7 +616,7 @@ describe('DbConnectionMonitor', () => {
 			// initial state is "connected". If the default flipped to false, the first failed
 			// ping would be a no-op transition (false → false) and the owner's state machine
 			// would stay stuck at the manually-set `true` while reality is `false`.
-			const freshOnConnectedChange = jest.fn();
+			const freshOnConnectedChange = vi.fn();
 			const freshMonitor = new DbConnectionMonitor(
 				dataSource,
 				freshOnConnectedChange,

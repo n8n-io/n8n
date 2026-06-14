@@ -2500,20 +2500,23 @@ export default workflow('same-name-agents', 'Same Name Agents')
 });
 
 describe('Codegen Roundtrip with Real Workflows', () => {
-	// Download fixtures if needed (runs once before all tests in this file)
+	// Extract fixtures from the committed zip if needed (runs once before all
+	// tests in this file). Unpacking ~2000 workflow files is IO-bound and can
+	// take well over the default 10s hook timeout on a contended CI runner, so
+	// give it a generous budget to avoid flaky "Hook timed out" failures.
 	beforeAll(() => {
 		try {
 			ensureFixtures();
 		} catch (error) {
 			if (error instanceof FixtureDownloadError) {
 				throw new Error(
-					`Failed to download test fixtures from n8n.io API: ${error.message}. ` +
-						'Check your network connection and ensure the API is accessible.',
+					`Failed to prepare test fixtures: ${error.message}. ` +
+						'Ensure public_published_templates.zip is committed to test-fixtures/real-workflows/.',
 				);
 			}
 			throw error;
 		}
-	});
+	}, 60_000);
 
 	if (workflows.length === 0) {
 		it('should have fixtures available (run tests again after download)', () => {

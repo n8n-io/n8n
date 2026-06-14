@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nButton, N8nDropdownMenu, N8nHeading, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nDropdownMenu, N8nHeading, N8nIconButton } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -53,6 +53,7 @@ const addItems = computed(() => {
 });
 
 const hasAddableConnection = computed(() => addItems.value.length > 0);
+const addConnectionLabel = computed(() => i18n.baseText('instanceAi.connections.add.label'));
 
 function getRowActions(type: ConnectionType, status: ConnectionStatus): RowAction[] {
 	if (type === 'browser-use') return ['settings'];
@@ -101,12 +102,21 @@ async function handleRemove(type: ConnectionType) {
 			<div v-if="hasAddableConnection" :class="$style.headerActions">
 				<N8nDropdownMenu
 					:items="addItems"
-					:activator-icon="{ type: 'icon', value: 'plus' }"
 					placement="bottom-end"
 					:portal-target="props.dropdownPortalTarget"
 					data-test-id="instance-ai-connections-add"
 					@select="openModal"
-				/>
+				>
+					<template #trigger>
+						<N8nIconButton
+							icon="plus"
+							variant="ghost"
+							size="small"
+							icon-size="medium"
+							:aria-label="addConnectionLabel"
+						/>
+					</template>
+				</N8nDropdownMenu>
 			</div>
 		</div>
 
@@ -128,7 +138,6 @@ async function handleRemove(type: ConnectionType) {
 		</div>
 
 		<div v-else :class="$style.empty">
-			<N8nIcon icon="link" :size="30" :class="$style.emptyIcon" />
 			<span>{{ i18n.baseText('instanceAi.connections.empty.title') }}</span>
 			<N8nButton
 				:label="i18n.baseText('instanceAi.connections.empty.cta')"
@@ -196,12 +205,5 @@ async function handleRemove(type: ConnectionType) {
 	> button {
 		margin-top: var(--spacing--2xs);
 	}
-}
-
-.emptyIcon {
-	color: var(--color--text--tint-1);
-	padding: var(--spacing--4xs);
-	background: var(--color--foreground--tint-1);
-	border-radius: var(--radius--lg);
 }
 </style>
