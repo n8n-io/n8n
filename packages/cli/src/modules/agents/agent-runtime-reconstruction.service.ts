@@ -6,10 +6,12 @@ import {
 	ModelConfig,
 	ToolDescriptor,
 } from '@n8n/agents';
+import { proxyFetch } from '@n8n/ai-utilities/http-proxy-agent';
 import {
 	isNodeToolsEnabled,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_TASK_DIFFICULTIES,
+	buildProxyHeaders,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonMcpServerConfig,
@@ -25,11 +27,15 @@ import { AgentsConfig } from '@n8n/config';
 import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
+import { N8N_VERSION } from '@/constants';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
+import { AiService } from '@/services/ai.service';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -50,6 +56,7 @@ import {
 	buildFromJson,
 	buildProviderToolsForModel,
 	type MemoryFactory,
+	type ManagedEmbeddingProviderOptions,
 	type ToolResolver,
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
@@ -104,6 +111,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly aiService: AiService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -214,6 +222,8 @@ export class AgentRuntimeReconstructionService {
 			skills,
 			memoryFactory: this.getMemoryFactory(memoryOwnerAgentId),
 			buildMcpClient,
+			resolveManagedEmbeddingProviderOptions: async () =>
+				await this.resolveManagedEmbeddingProviderOptions(userId),
 		});
 
 		await this.injectRuntimeDependencies({
@@ -275,6 +285,39 @@ export class AgentRuntimeReconstructionService {
 
 	private getMemoryFactory(agentId: string): MemoryFactory {
 		return (_params: AgentJsonMemoryConfig) => this.n8nMemory.getImplementation(agentId);
+	}
+
+	private async resolveManagedEmbeddingProviderOptions(
+		userId: string,
+	): Promise<ManagedEmbeddingProviderOptions | null> {
+		if (!this.aiService.isProxyEnabled()) return null;
+		// TODO: switch to n8n connect endpoints, don't use ai-proxy endpoints
+		const client = await this.aiService.getClient();
+		const baseURL = client.getApiProxyBaseUrl().replace(/\/$/, '') + '/openai/';
+		const tokenManager = new ProxyTokenManager(async () => {
+			return await client.getBuilderApiProxyToken({ id: userId }, { userMessageId: nanoid() });
+		});
+
+		return {
+			baseURL,
+			apiKey: 'proxy-managed',
+			fetch: async (
+				input: Parameters<typeof globalThis.fetch>[0],
+				init?: Parameters<typeof globalThis.fetch>[1],
+			) => {
+				const headers = new Headers(init?.headers);
+				const auth = await tokenManager.getAuthHeaders();
+				for (const [key, value] of Object.entries(auth)) {
+					headers.set(key, value);
+				}
+				for (const [key, value] of Object.entries(
+					buildProxyHeaders({ feature: 'agent-builder', n8nVersion: N8N_VERSION }),
+				)) {
+					headers.set(key, value);
+				}
+				return await proxyFetch(input as string, { ...init, headers });
+			},
+		};
 	}
 
 	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {

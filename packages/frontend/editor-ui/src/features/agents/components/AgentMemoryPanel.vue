@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { N8nTooltip, N8nIconButton, N8nText, N8nSwitch } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import {
@@ -42,8 +43,15 @@ const { credentialsByProvider, selectCredential } = useAgentModelCredentials(
 );
 const episodicMemory = computed(() => props.config?.memory?.episodicMemory ?? null);
 const episodicMemoryEnabled = computed(() => episodicMemory.value?.enabled === true);
+const isManagedEpisodicMemory = computed(
+	() =>
+		episodicMemory.value?.enabled && episodicMemory.value.credential === MANAGED_CREDENTIAL_TOKEN,
+);
 const episodicMemoryCredential = computed(() =>
 	episodicMemory.value?.enabled === true ? episodicMemory.value.credential : null,
+);
+const isManagedEpisodicMemoryCredential = computed(
+	() => episodicMemoryCredential.value === MANAGED_CREDENTIAL_TOKEN,
 );
 const configuredMemoryModel = computed(() => {
 	if (episodicMemory.value?.enabled !== true) return null;
@@ -172,7 +180,7 @@ function openEpisodicMemoryCredentialModal() {
 		data: {
 			credentialType: AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
 			displayName: 'OpenAI',
-			initialValue: episodicMemoryCredential.value,
+			initialValue: isManagedEpisodicMemoryCredential.value ? null : episodicMemoryCredential.value,
 			title: i18n.baseText('agents.builder.episodicMemoryCredentialModal.title'),
 			description: i18n.baseText('agents.builder.episodicMemoryCredentialModal.description'),
 			cancelLabel: i18n.baseText('generic.cancel'),
@@ -240,7 +248,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 						{{ i18n.baseText('agents.builder.memory.episodicMemory.changeCredential') }}
 					</template>
 					<N8nIconButton
-						v-if="episodicMemoryEnabled"
+						v-if="episodicMemoryEnabled && !isManagedEpisodicMemory"
 						variant="ghost"
 						size="small"
 						icon-size="medium"

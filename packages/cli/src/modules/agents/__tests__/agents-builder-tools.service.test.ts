@@ -21,6 +21,7 @@ import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { AiService } from '@/services/ai.service';
 
 const ctx = {
 	resumeData: undefined,
@@ -38,6 +39,8 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentRepository = mock<AgentRepository>();
+	const aiService = mock<AiService>();
+	aiService.isProxyEnabled.mockReturnValue(false);
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
 	agentsToolsService.getSharedTools.mockReturnValue([]);
@@ -54,6 +57,7 @@ function makeService() {
 		credentialTypes,
 		agentTaskService,
 		agentRepository,
+		aiService,
 	);
 
 	return { service, agentsService, secureRuntime, agentTaskService, agentRepository };

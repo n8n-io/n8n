@@ -1,10 +1,12 @@
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
 	askCredentialInputSchema,
 	askCredentialResumeSchema,
+	askEmbeddingCredentialResumeSchema,
 	askLlmInputSchema,
 	askLlmResumeSchema,
 	askQuestionInputSchema,
@@ -13,6 +15,7 @@ import {
 	type AgentPersistedMessageDto,
 	type AskCredentialInput,
 	type AskCredentialResume,
+	type AskEmbeddingCredentialResume,
 	type AskLlmInput,
 	type AskLlmResume,
 	type AskQuestionInput,
@@ -97,6 +100,11 @@ export type InteractivePayload =
 			resolvedValue?: AskCredentialResume;
 	  })
 	| (InteractivePayloadBase & {
+			toolName: typeof ASK_EMBEDDING_CREDENTIAL_TOOL_NAME;
+			input: AskCredentialInput;
+			resolvedValue?: AskEmbeddingCredentialResume;
+	  })
+	| (InteractivePayloadBase & {
 			toolName: typeof ASK_LLM_TOOL_NAME;
 			input: AskLlmInput;
 			resolvedValue?: AskLlmResume;
@@ -109,6 +117,7 @@ export type InteractivePayload =
 
 const INTERACTIVE_TOOL_NAMES = [
 	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 ] as readonly InteractiveToolName[];
@@ -132,6 +141,11 @@ function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 			value.displayName.length > 0 && { displayName: value.displayName }),
 		args: value.args,
 	};
+}
+
+function parseAskEmbeddingCredentialOutput(value: unknown): AskEmbeddingCredentialResume | null {
+	const result = askEmbeddingCredentialResumeSchema.safeParse(value);
+	return result.success ? result.data : null;
 }
 
 function isDeclinedToolOutput(value: unknown): boolean {
@@ -331,6 +345,18 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 			toolName: ASK_CREDENTIAL_TOOL_NAME,
 			input: input.data,
 			...(resolved?.success && { resolvedValue: resolved.data }),
+		};
+	}
+
+	if (tc.tool === ASK_EMBEDDING_CREDENTIAL_TOOL_NAME) {
+		const input = askCredentialInputSchema.safeParse(tc.input);
+		if (!input.success) return undefined;
+		const resolved = tc.output !== undefined ? parseAskEmbeddingCredentialOutput(tc.output) : null;
+		return {
+			...base,
+			toolName: ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
+			input: input.data,
+			...(resolved && { resolvedValue: resolved }),
 		};
 	}
 

@@ -10,11 +10,13 @@ import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
+	AgentModelSchema,
+	AgentPersistedMessageDto,
+	MANAGED_CREDENTIAL_TOKEN,
 	type ListAgentsQueryDto,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
 	sanitizeAgentJsonConfig,
-	AgentModelSchema,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
@@ -22,7 +24,6 @@ import {
 	type AgentSkillMutationResponse,
 	type AgentVersionListItemDto,
 	type ChatIntegrationDescriptor,
-	AgentPersistedMessageDto,
 } from '@n8n/api-types';
 import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import { Logger } from '@n8n/backend-common';
@@ -48,6 +49,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { AiService } from '@/services/ai.service';
 import { Telemetry } from '@/telemetry';
 import { TtlMap } from '@/utils/ttl-map';
 
@@ -291,6 +293,7 @@ export class AgentsService {
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
+		private readonly aiService: AiService,
 	) {}
 
 	private isNodeToolsModuleEnabled(): boolean {
@@ -1039,7 +1042,10 @@ export class AgentsService {
 					missing,
 				);
 				if (episodicMemory?.enabled === true) {
-					if (!(await credentialExists(episodicMemory.credential.trim()))) {
+					const embeddingCredential = episodicMemory.credential.trim();
+					const isManagedEmbeddingCredential =
+						embeddingCredential === MANAGED_CREDENTIAL_TOKEN && this.aiService.isProxyEnabled();
+					if (!isManagedEmbeddingCredential && !(await credentialExists(embeddingCredential))) {
 						missing.push('episodicMemory.credential');
 					}
 					await this.validateMemoryWorkerModel(

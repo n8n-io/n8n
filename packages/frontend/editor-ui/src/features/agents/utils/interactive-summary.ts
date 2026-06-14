@@ -1,8 +1,10 @@
 import {
 	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
 	type AskCredentialResume,
+	type AskEmbeddingCredentialResume,
 	type AskLlmResume,
 	type AskQuestionInput,
 	type AskQuestionResume,
@@ -42,6 +44,14 @@ export function summariseInteractiveOutput(
 	if (toolName === ASK_CREDENTIAL_TOOL_NAME) {
 		const resume = output as AskCredentialResume;
 		if ('skipped' in resume && resume.skipped) return 'Skipped';
+		if ('credentialName' in resume && resume.credentialName) return resume.credentialName;
+		return undefined;
+	}
+
+	if (toolName === ASK_EMBEDDING_CREDENTIAL_TOOL_NAME) {
+		const resume = output as AskEmbeddingCredentialResume;
+		if ('skipped' in resume && resume.skipped) return 'Skipped';
+		if ('credential' in resume && resume.credential === 'managed') return 'Managed by n8n';
 		if ('credentialName' in resume && resume.credentialName) return resume.credentialName;
 		return undefined;
 	}
