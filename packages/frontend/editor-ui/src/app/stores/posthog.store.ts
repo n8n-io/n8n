@@ -185,6 +185,9 @@ export const usePostHog = defineStore('posthog', () => {
 			session_recording: {
 				maskAllInputs: false,
 			},
+			// Attach session/distinct ID tracing headers to same-origin API calls so
+			// backend-captured events can be linked to and filtered by session recordings.
+			tracing_headers: [window.location.hostname],
 		};
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
