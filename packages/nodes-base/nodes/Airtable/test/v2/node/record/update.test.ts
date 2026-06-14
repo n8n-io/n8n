@@ -48,7 +48,7 @@ describe('Test AirtableV2, update operation', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should skip validation if typecast option is true', async () => {
+	it('should not skip validation when typecast option is true', async () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
 		mockExecuteFunctions.helpers.constructExecutionMetaData = jest.fn(() => []);
 		mockExecuteFunctions.getNode.mockReturnValue({
@@ -78,9 +78,46 @@ describe('Test AirtableV2, update operation', () => {
 
 		await update.execute.call(mockExecuteFunctions, [{ json: {} }], 'base', 'table');
 
-		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('columns.value', 0, [], {
-			skipValidation: true,
+		// Verify that skipValidation is NOT passed, so binary data can be processed
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('columns.value', 0, []);
+	});
+
+	it('should not pass skipValidation when typecast option is false', async () => {
+		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockExecuteFunctions.helpers.constructExecutionMetaData = jest.fn(() => []);
+		mockExecuteFunctions.getNode.mockReturnValue({
+			parameters: { columns: { schema: [] } },
+		} as any);
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			if (key === 'columns.mappingMode') {
+				return 'defineBelow';
+			}
+			if (key === 'columns.matchingColumns') {
+				return ['id'];
+			}
+			if (key === 'options') {
+				return {
+					typecast: false,
+				};
+			}
+			if (key === 'columns.value') {
+				return {
+					id: 'recXXX',
+					field1: 'foo 1',
+					field2: 'bar 1',
+				};
+			}
+			return undefined;
 		});
+
+		await update.execute.call(mockExecuteFunctions, [{ json: {} }], 'base', 'table');
+
+		expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith(
+			'columns.value',
+			0,
+			[],
+			undefined,
+		);
 	});
 
 	it('should coerce attachment JSON string to array and allow new single-select option when typecast is true', async () => {
