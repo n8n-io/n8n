@@ -479,6 +479,66 @@ describe('ObjectStoreService', () => {
 		});
 	});
 
+	describe('deleteByKeys()', () => {
+		it('should send a DELETE request for the given keys', async () => {
+			mockS3Send.mockResolvedValueOnce({});
+
+			await objectStoreService.deleteByKeys(['file-1.txt', 'file-2.txt']);
+
+			const commandCaptor = captor<DeleteObjectsCommand>();
+			expect(mockS3Send).toHaveBeenCalledTimes(1);
+			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			const command = commandCaptor.value;
+			expect(command).toBeInstanceOf(DeleteObjectsCommand);
+			expect(command.input).toEqual({
+				Bucket: 'test-bucket',
+				Delete: {
+					Objects: [{ Key: 'file-1.txt' }, { Key: 'file-2.txt' }],
+				},
+			});
+		});
+
+		it('should batch requests of more than 1000 keys', async () => {
+			mockS3Send.mockResolvedValue({});
+			const keys = Array.from({ length: 1500 }, (_, i) => `file-${i}.txt`);
+
+			await objectStoreService.deleteByKeys(keys);
+
+			expect(mockS3Send).toHaveBeenCalledTimes(2);
+			const [first, second] = mockS3Send.mock.calls.map(
+				(call) => (call[0] as DeleteObjectsCommand).input.Delete?.Objects?.length,
+			);
+			expect(first).toBe(1000);
+			expect(second).toBe(500);
+		});
+
+		it('should not send a request for an empty array', async () => {
+			await objectStoreService.deleteByKeys([]);
+
+			expect(mockS3Send).not.toHaveBeenCalled();
+		});
+
+		it('should throw an error on request failure', async () => {
+			mockS3Send.mockRejectedValueOnce(mockError);
+
+			const promise = objectStoreService.deleteByKeys(['file.txt']);
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+		});
+
+		it('should throw an error when the response reports per-key failures', async () => {
+			mockS3Send.mockResolvedValueOnce({
+				Errors: [{ Key: 'file-1.txt', Code: 'AccessDenied', Message: 'Access Denied' }],
+			});
+
+			const promise = objectStoreService.deleteByKeys(['file-1.txt', 'file-2.txt']);
+
+			await expect(promise).rejects.toThrowError(
+				'Failed to delete 1 of 2 objects: file-1.txt (AccessDenied: Access Denied)',
+			);
+		});
+	});
+
 	describe('list()', () => {
 		it('should list objects with a common prefix', async () => {
 			const prefix = 'test-dir/';

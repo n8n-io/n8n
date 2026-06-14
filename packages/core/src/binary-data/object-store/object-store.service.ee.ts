@@ -17,6 +17,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { streamToBuffer } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
+import chunk from 'lodash/chunk';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { PassThrough, Readable, pipeline } from 'node:stream';
@@ -254,25 +255,45 @@ export class ObjectStoreService {
 	 * Delete objects with a common prefix in the configured bucket.
 	 */
 	async deleteMany(prefix: string) {
+		const objects = await this.list(prefix);
+
+		await this.deleteByKeys(objects.map(({ key }) => key));
+	}
+
+	/**
+	 * Delete objects by exact key in the configured bucket, in batches of up
+	 * to 1000 keys, the `DeleteObjects` limit.
+	 */
+	async deleteByKeys(keys: string[]) {
+		if (keys.length === 0) return;
+
 		try {
-			const objects = await this.list(prefix);
+			for (const batch of chunk(keys, 1000)) {
+				const params: DeleteObjectsCommandInput = {
+					Bucket: this.bucket,
+					Delete: {
+						Objects: batch.map((key) => ({ Key: key })),
+					},
+				};
 
-			if (objects.length === 0) return;
+				this.logger.debug('Sending DELETE MANY request to S3', {
+					bucket: this.bucket,
+					objectCount: batch.length,
+				});
 
-			const params: DeleteObjectsCommandInput = {
-				Bucket: this.bucket,
-				Delete: {
-					Objects: objects.map(({ key }) => ({ Key: key })),
-				},
-			};
+				// `DeleteObjects` reports per-key failures in the response rather than failing the request
+				const { Errors: errors } = await this.s3Client.send(new DeleteObjectsCommand(params));
 
-			this.logger.debug('Sending DELETE MANY request to S3', {
-				bucket: this.bucket,
-				objectCount: objects.length,
-			});
-
-			const command = new DeleteObjectsCommand(params);
-			return await this.s3Client.send(command);
+				if (errors && errors.length > 0) {
+					const details = errors
+						.slice(0, 5)
+						.map((e) => `${e.Key ?? '<unknown key>'} (${e.Code ?? '?'}: ${e.Message ?? '?'})`)
+						.join(', ');
+					throw new UnexpectedError(
+						`Failed to delete ${errors.length} of ${batch.length} objects: ${details}`,
+					);
+				}
+			}
 		} catch (e) {
 			this.handleS3Error(e);
 		}
