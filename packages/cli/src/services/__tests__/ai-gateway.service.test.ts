@@ -375,6 +375,137 @@ describe('AiGatewayService', () => {
 			).rejects.toThrow('Failed to resolve user for AI Gateway attribution.');
 		});
 
+		it('embeds executionId and workflowId in gateway URL when both are provided', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google`,
+			});
+		});
+
+		it('uses standard gateway URL when executionId is absent', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/google`,
+			});
+		});
+
+		it('uses standard gateway URL when workflowId is absent', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/google`,
+			});
+		});
+
+		it('URL-encodes executionId and workflowId in the gateway URL', async () => {
+			mockConfigThenToken(fetchMock);
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: 'exec/with/slashes',
+				workflowId: 'wf with spaces',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/v1/gateway/exec/exec%2Fwith%2Fslashes/wf%20with%20spaces/google`,
+			});
+		});
+
+		it('uses standard gateway URL when gatewayPath does not start with the gateway prefix', async () => {
+			const customConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				providerConfig: {
+					googlePalmApi: {
+						...MOCK_GATEWAY_CONFIG.providerConfig.googlePalmApi,
+						gatewayPath: '/other/v1/gateway/google',
+					},
+				},
+			};
+			fetchMock
+				.mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue(customConfig) })
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
+				});
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/other/v1/gateway/google`,
+			});
+		});
+
+		it('does not strip gateway prefix appearing mid-path when building exec URL', async () => {
+			// gatewayPath contains the prefix string but NOT at the start —
+			// the old .replace() would have corrupted the URL by stripping it from the middle.
+			const customConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				providerConfig: {
+					googlePalmApi: {
+						...MOCK_GATEWAY_CONFIG.providerConfig.googlePalmApi,
+						gatewayPath: '/proxy/v1/gateway/google',
+					},
+				},
+			};
+			fetchMock
+				.mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue(customConfig) })
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
+				});
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'googlePalmApi',
+				userId: USER_ID,
+				executionId: '29021',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+			});
+
+			// Path does not start with prefix → falls back to standard URL, prefix untouched
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				host: `${BASE_URL}/proxy/v1/gateway/google`,
+			});
+		});
+
 		it('throws UserError when gateway token response is missing token field', async () => {
 			fetchMock
 				.mockResolvedValueOnce({

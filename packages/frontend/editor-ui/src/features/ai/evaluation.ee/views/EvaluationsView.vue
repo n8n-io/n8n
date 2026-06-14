@@ -2,35 +2,65 @@
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
+import ConcurrencySlider from '../components/ConcurrencySlider';
 import RunsSection from '../components/ListRuns/RunsSection.vue';
+// TODO(TRUST-70 follow-up): wire `RunComparison.vue` from `../components/RunDetail/`
+// here once the feature is built. The placeholder lives next to the run-detail
+// components since comparison reuses the delta/tone helpers.
 import { useEvaluationStore } from '../evaluation.store';
+import { useParallelEvalStore } from '../parallelEval.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';
 
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nPopover } from '@n8n/design-system';
+
 const props = defineProps<{
-	name: string;
+	workflowId: string;
 }>();
 
 const locale = useI18n();
 const toast = useToast();
 
 const evaluationStore = useEvaluationStore();
+const parallelEvalStore = useParallelEvalStore();
 
 const selectedMetric = ref<string>('');
 const cancellingTestRun = ref<boolean>(false);
+const popoverOpen = ref(false);
 
 const runningTestRun = computed(() => runs.value.find((run) => run.status === 'running'));
 
+const concurrencyModel = computed({
+	get: () => parallelEvalStore.concurrencyValue(props.workflowId),
+	set: (value: number) => parallelEvalStore.setConcurrencyValue(props.workflowId, value),
+});
+
+// Slider value 1 = sequential, > 1 = concurrent. The current value is
+// surfaced as a pill in the popover header ("N of M") rather than a
+// separate text label, mirroring the Figma spec.
+const valuePillLabel = computed(() =>
+	locale.baseText('evaluation.runInParallel.popover.valuePill', {
+		interpolate: {
+			count: String(concurrencyModel.value),
+			max: String(parallelEvalStore.maxConcurrency),
+		},
+	}),
+);
+
 async function runTest() {
 	try {
-		await evaluationStore.startTestRun(props.name);
+		// `effectiveConcurrency` already returns 1 when concurrency is
+		// unavailable on this instance, so the BE clamp is a no-op there.
+		const options = parallelEvalStore.isConcurrencyAvailable
+			? { concurrency: concurrencyModel.value }
+			: undefined;
+		await evaluationStore.startTestRun(props.workflowId, options);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 	}
 
 	try {
-		await evaluationStore.fetchTestRuns(props.name);
+		await evaluationStore.fetchTestRuns(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
 	}
@@ -54,7 +84,7 @@ async function stopTest() {
 
 const runs = computed(() => {
 	const testRuns = Object.values(evaluationStore.testRunsById ?? {}).filter(
-		({ workflowId }) => workflowId === props.name,
+		({ workflowId }) => workflowId === props.workflowId,
 	);
 
 	return orderBy(testRuns, (record) => new Date(record.runAt), ['asc']).map((record, index) => ({
@@ -74,25 +104,90 @@ watch(runningTestRun, (run) => {
 <template>
 	<div :class="$style.evaluationsView">
 		<div :class="$style.header">
-			<N8nButton
-				variant="subtle"
-				v-if="runningTestRun"
-				:disabled="cancellingTestRun"
-				:class="$style.runOrStopTestButton"
-				size="small"
-				data-test-id="stop-test-button"
-				:label="locale.baseText('evaluation.stopTest')"
-				@click="stopTest"
-			/>
-			<N8nButton
-				variant="solid"
-				v-else
-				:class="$style.runOrStopTestButton"
-				size="small"
-				data-test-id="run-test-button"
-				:label="locale.baseText('evaluation.runTest')"
-				@click="runTest"
-			/>
+			<div :class="$style.headerInner">
+				<N8nButton
+					variant="subtle"
+					v-if="runningTestRun"
+					:disabled="cancellingTestRun"
+					:class="$style.runOrStopTestButton"
+					size="small"
+					data-test-id="stop-test-button"
+					:label="locale.baseText('evaluation.stopTest')"
+					@click="stopTest"
+				/>
+				<div v-else :class="$style.runTestGroup">
+					<!--
+						Split-button: solid "Run Test" on the left, caret toggle on the
+						right that opens a popover containing the concurrency slider.
+						The caret + popover are hidden entirely when the effective
+						evaluation concurrency limit resolves to 1 (Community/Pro tier
+						or explicit env override), collapsing the group back to a
+						single Run Test button — byte-identical to the legacy flow.
+					-->
+					<N8nButton
+						variant="solid"
+						size="small"
+						:class="[
+							$style.runTestButton,
+							parallelEvalStore.isConcurrencyAvailable ? $style.runTestButtonWithCaret : null,
+						]"
+						data-test-id="run-test-button"
+						:label="locale.baseText('evaluation.runTest')"
+						@click="runTest"
+					/>
+					<N8nPopover
+						v-if="parallelEvalStore.isConcurrencyAvailable"
+						v-model:open="popoverOpen"
+						side="bottom"
+						align="end"
+						:side-offset="6"
+						:enable-scrolling="false"
+					>
+						<template #trigger>
+							<button
+								type="button"
+								:class="[$style.caretButton, popoverOpen ? $style.caretButtonOpen : null]"
+								:aria-label="locale.baseText('evaluation.runInParallel.popover.ariaLabel')"
+								:aria-expanded="popoverOpen"
+								data-test-id="parallel-eval-toggle"
+							>
+								<N8nIcon icon="chevron-down" size="xsmall" />
+							</button>
+						</template>
+						<template #content>
+							<div :class="$style.popoverBody" data-test-id="parallel-eval-controls">
+								<div :class="$style.popoverHeader">
+									<span :class="$style.popoverTitle">
+										{{ locale.baseText('evaluation.runInParallel.popover.title') }}
+									</span>
+									<span :class="$style.valuePill" data-test-id="run-in-parallel-mode-label">
+										{{ valuePillLabel }}
+									</span>
+								</div>
+								<ConcurrencySlider
+									v-model="concurrencyModel"
+									:min="1"
+									:max="parallelEvalStore.maxConcurrency"
+									:step="1"
+									show-stops
+									:show-tooltip="false"
+									:class="$style.concurrencySlider"
+									data-test-id="run-in-parallel-concurrency"
+								/>
+								<div :class="$style.scaleLabels">
+									<span>{{
+										locale.baseText('evaluation.runInParallel.popover.scaleSequential')
+									}}</span>
+									<span>{{ locale.baseText('evaluation.runInParallel.popover.scaleFaster') }}</span>
+								</div>
+								<p :class="$style.popoverHelper">
+									{{ locale.baseText('evaluation.runInParallel.popover.helper') }}
+								</p>
+							</div>
+						</template>
+					</N8nPopover>
+				</div>
+			</div>
 		</div>
 		<div :class="$style.wrapper">
 			<div :class="$style.content">
@@ -100,7 +195,7 @@ watch(runningTestRun, (run) => {
 					v-model:selected-metric="selectedMetric"
 					:class="$style.runs"
 					:runs="runs"
-					:workflow-id="props.name"
+					:workflow-id="props.workflowId"
 				/>
 			</div>
 		</div>
@@ -121,10 +216,12 @@ watch(runningTestRun, (run) => {
 
 .header {
 	display: flex;
-	justify-content: end;
-	align-items: center;
+	justify-content: center;
 	padding: var(--spacing--md) var(--spacing--lg);
-	padding-left: 27px;
+	// Match `.wrapper` so the inner 1024px box anchors at the same left
+	// origin as the runs section below (the 58px reserves space for the
+	// editor's collapsed sidebar in the wrapper layout).
+	padding-left: 58px;
 	padding-bottom: 8px;
 	position: sticky;
 	top: 0;
@@ -133,13 +230,161 @@ watch(runningTestRun, (run) => {
 	z-index: 2;
 }
 
-.wrapper {
-	padding: 0 var(--spacing--lg);
-	padding-left: 58px;
+// Inner container: width-capped at the same 1024px as `.runs` and
+// horizontally centred via the parent's `justify-content: center`. This
+// makes the controls + Run button hug the same horizontal bounds as the
+// chart and table below, instead of floating against the viewport edges.
+.headerInner {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	max-width: 1024px;
 }
 
 .runOrStopTestButton {
 	white-space: nowrap;
+	// Anchor to the right edge of `.headerInner` so the button sits flush
+	// with the right edge regardless of which siblings render.
+	margin-left: auto;
+}
+
+// Split-button container: the Run Test button and the caret toggle live
+// inside this wrapper so they visually read as one control. The caret
+// borrows the brand colour from the solid button via a thin inset shadow
+// rather than a real border, which keeps the seam between the two visually
+// soft.
+.runTestGroup {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: stretch;
+}
+
+.runTestButton {
+	white-space: nowrap;
+}
+
+// When the caret is present, square off the right edge of the Run Test
+// button so the two halves meet cleanly. Hidden state (no caret) falls back
+// to the default fully-rounded button.
+.runTestButtonWithCaret {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+// Match the left-side radius to the Figma split-button (6px) so both halves
+// share an identical curve. Only the standalone caret-less variant inherits
+// the design-system's default radius.
+.runTestGroup .runTestButtonWithCaret {
+	border-top-left-radius: 6px;
+	border-bottom-left-radius: 6px;
+}
+
+.caretButton {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: auto;
+	padding: 0;
+	border: none;
+	border-top-right-radius: 6px;
+	border-bottom-right-radius: 6px;
+	background-color: var(--background--brand);
+	color: #fff;
+	cursor: pointer;
+	transition:
+		background-color var(--duration--snappy) ease,
+		transform var(--duration--snappy) ease;
+	// Soft separator between the Run Test button and the caret — matches the
+	// 1px × 20px white-translucent divider in the Figma spec. Inset shadow
+	// rather than a 1px border so the two halves stay visually flush at any
+	// zoom level.
+	box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.35);
+
+	&:hover {
+		background-color: var(--background--brand--hover);
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--background--brand--focus);
+		outline-offset: 2px;
+	}
+
+	svg {
+		transition: transform var(--duration--snappy) ease;
+	}
+}
+
+// Open state: rotate the caret 180° for an unmistakable open/closed cue.
+// The N8nPopover handles the slide-in animation on the content itself.
+.caretButtonOpen {
+	svg {
+		transform: rotate(180deg);
+	}
+}
+
+.popoverBody {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding: 16px;
+	width: 300px;
+	box-sizing: border-box;
+	// Override N8nPopover's default 8px radius — Figma calls for 10px on
+	// this specific popover. Targets the portaled content node directly so
+	// the inherited radius wins.
+	border-radius: 10px;
+	background-color: var(--background--surface);
+}
+
+.popoverHeader {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.popoverTitle {
+	font-size: 13px;
+	font-weight: var(--font-weight--semibold, 600);
+	color: var(--color--text);
+}
+
+.valuePill {
+	margin-left: auto;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background-color: var(--color--orange-50, #f7ede8);
+	color: var(--color--orange-700, #c73d21);
+	font-size: 11px;
+	font-weight: var(--font-weight--semibold, 600);
+	// Tabular numerals so the pill width doesn't jitter as the user drags
+	// the slider through different digits.
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+
+.concurrencySlider {
+	width: 100%;
+}
+
+.scaleLabels {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 10px;
+	color: var(--color--text--tint-1);
+}
+
+.popoverHelper {
+	margin: 0;
+	font-size: 11px;
+	line-height: 1.4;
+	color: var(--color--text--tint-1);
+}
+
+.wrapper {
+	padding: 0 var(--spacing--lg);
+	padding-left: 58px;
 }
 
 .runs {

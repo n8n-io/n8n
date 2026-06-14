@@ -1,33 +1,34 @@
-import type { RequestResponseMetadata } from '@utils/agent-execution';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { mock } from 'jest-mock-extended';
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
 import type { Tool } from '@langchain/classic/tools';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { RequestResponseMetadata } from '@utils/agent-execution';
 import * as agentExecution from '@utils/agent-execution';
 import * as tracing from '@utils/tracing';
 
 import type { ItemContext } from '../prepareItemContext';
 import { runAgent } from '../runAgent';
 
-jest.mock('@utils/agent-execution', () => {
-	const originalModule = jest.requireActual('@utils/agent-execution');
+vi.mock('@utils/agent-execution', async () => {
+	const originalModule = await vi.importActual('@utils/agent-execution');
 	return {
 		...originalModule,
-		loadMemory: jest.fn(),
-		processEventStream: jest.fn(),
-		buildSteps: jest.fn(),
-		createEngineRequests: jest.fn(),
-		saveToMemory: jest.fn(),
+		loadMemory: vi.fn(),
+		processEventStream: vi.fn(),
+		buildSteps: vi.fn(),
+		createEngineRequests: vi.fn(),
+		saveToMemory: vi.fn(),
 	};
 });
 
-jest.mock('@utils/tracing', () => {
-	const originalModule = jest.requireActual('@utils/tracing');
+vi.mock('@utils/tracing', async () => {
+	const originalModule = await vi.importActual('@utils/tracing');
 	return {
 		...originalModule,
-		getTracingConfig: jest.fn(),
+		getTracingConfig: vi.fn(),
 	};
 });
 
@@ -35,11 +36,11 @@ const mockContext = mock<IExecuteFunctions>();
 const mockNode = mock<INode>();
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	mockContext.getNode.mockReturnValue(mockNode);
 	mockNode.typeVersion = 3;
-	mockContext.getExecuteData = jest.fn() as any;
-	(tracing.getTracingConfig as jest.Mock).mockReturnValue({
+	mockContext.getExecuteData = vi.fn() as any;
+	(tracing.getTracingConfig as Mock).mockReturnValue({
 		runName: '[Test Workflow] Test Node',
 		metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
 	});
@@ -47,7 +48,7 @@ beforeEach(() => {
 
 describe('runAgent - iteration count tracking', () => {
 	it('should set iteration count to 1 on first call (no response)', async () => {
-		const mockInvoke = jest.fn().mockResolvedValue([
+		const mockInvoke = vi.fn().mockResolvedValue([
 			{
 				toolCalls: [
 					{
@@ -60,7 +61,7 @@ describe('runAgent - iteration count tracking', () => {
 			},
 		]);
 		const mockExecutor = mock<AgentRunnableSequence>({
-			withConfig: jest.fn().mockReturnValue({ invoke: mockInvoke }),
+			withConfig: vi.fn().mockReturnValue({ invoke: mockInvoke }),
 		});
 		const mockModel = mock<BaseChatModel>();
 		const mockTool = mock<Tool>();
@@ -80,9 +81,9 @@ describe('runAgent - iteration count tracking', () => {
 			outputParser: undefined,
 		};
 
-		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
-		jest.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
-		jest.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
+		vi.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
 			{
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName: 'Test Tool',
@@ -103,7 +104,7 @@ describe('runAgent - iteration count tracking', () => {
 	});
 
 	it('should increment iteration count when response is provided', async () => {
-		const mockInvoke = jest.fn().mockResolvedValue([
+		const mockInvoke = vi.fn().mockResolvedValue([
 			{
 				toolCalls: [
 					{
@@ -116,7 +117,7 @@ describe('runAgent - iteration count tracking', () => {
 			},
 		]);
 		const mockExecutor = mock<AgentRunnableSequence>({
-			withConfig: jest.fn().mockReturnValue({ invoke: mockInvoke }),
+			withConfig: vi.fn().mockReturnValue({ invoke: mockInvoke }),
 		});
 		const mockModel = mock<BaseChatModel>();
 		const mockTool = mock<Tool>();
@@ -141,9 +142,9 @@ describe('runAgent - iteration count tracking', () => {
 			metadata: { itemIndex: 0, previousRequests: [], iterationCount: 2 },
 		};
 
-		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
-		jest.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
-		jest.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
+		vi.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
 			{
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName: 'Test Tool',
@@ -172,9 +173,9 @@ describe('runAgent - iteration count tracking', () => {
 
 	it('should set iteration count to 1 in streaming mode on first call', async () => {
 		const mockEventStream = (async function* () {})();
-		const mockStreamEvents = jest.fn().mockReturnValue(mockEventStream);
+		const mockStreamEvents = vi.fn().mockReturnValue(mockEventStream);
 		const mockExecutor = mock<AgentRunnableSequence>({
-			withConfig: jest.fn().mockReturnValue({ streamEvents: mockStreamEvents }),
+			withConfig: vi.fn().mockReturnValue({ streamEvents: mockStreamEvents }),
 		});
 		const mockModel = mock<BaseChatModel>();
 		const mockTool = mock<Tool>();
@@ -196,15 +197,15 @@ describe('runAgent - iteration count tracking', () => {
 		};
 
 		const mockContext = mock<IExecuteFunctions>({
-			getNode: jest.fn().mockReturnValue(mockNode),
-			isStreaming: jest.fn().mockReturnValue(true),
-			getExecutionCancelSignal: jest.fn().mockReturnValue(new AbortController().signal),
+			getNode: vi.fn().mockReturnValue(mockNode),
+			isStreaming: vi.fn().mockReturnValue(true),
+			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
 		});
 		mockNode.typeVersion = 2.1;
 
 		// Mock streaming to return tool calls
-		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
-		jest.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
 			output: '',
 			toolCalls: [
 				{
@@ -215,8 +216,8 @@ describe('runAgent - iteration count tracking', () => {
 				},
 			],
 		});
-		jest.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
-		jest.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
+		vi.spyOn(agentExecution, 'buildSteps').mockReturnValue([]);
+		vi.spyOn(agentExecution, 'createEngineRequests').mockReturnValue([
 			{
 				actionType: 'ExecutionNodeAction' as const,
 				nodeName: 'Test Tool',
@@ -235,13 +236,13 @@ describe('runAgent - iteration count tracking', () => {
 	});
 
 	it('should not include iteration count when returning final result', async () => {
-		const mockInvoke = jest.fn().mockResolvedValue({
+		const mockInvoke = vi.fn().mockResolvedValue({
 			returnValues: {
 				output: 'Final answer',
 			},
 		});
 		const mockExecutor = mock<AgentRunnableSequence>({
-			withConfig: jest.fn().mockReturnValue({ invoke: mockInvoke }),
+			withConfig: vi.fn().mockReturnValue({ invoke: mockInvoke }),
 		});
 		const mockModel = mock<BaseChatModel>();
 
@@ -259,8 +260,8 @@ describe('runAgent - iteration count tracking', () => {
 		};
 
 		// Mock the agent to return a final result (no tool calls)
-		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
-		jest.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
 
 		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
 
@@ -278,12 +279,12 @@ describe('runAgent - tracing configuration', () => {
 			runName: '[Test Workflow] Test Node',
 			metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
 		};
-		jest.spyOn(tracing, 'getTracingConfig').mockReturnValue(mockTracingConfig);
+		vi.spyOn(tracing, 'getTracingConfig').mockReturnValue(mockTracingConfig);
 
-		const mockInvoke = jest.fn().mockResolvedValue({
+		const mockInvoke = vi.fn().mockResolvedValue({
 			returnValues: { output: 'Final answer' },
 		});
-		const mockWithConfig = jest.fn().mockReturnValue({ invoke: mockInvoke });
+		const mockWithConfig = vi.fn().mockReturnValue({ invoke: mockInvoke });
 		const mockExecutor = mock<AgentRunnableSequence>({
 			withConfig: mockWithConfig,
 		});
@@ -302,8 +303,8 @@ describe('runAgent - tracing configuration', () => {
 			outputParser: undefined,
 		};
 
-		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
-		jest.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
 		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
 
 		await runAgent(mockContext, mockExecutor, itemContext, mockModel, undefined);
@@ -321,18 +322,18 @@ describe('runAgent - tracing configuration', () => {
 	it('should include tracing metadata when provided', async () => {
 		// Use real implementations instead of mocks
 		const { getTracingConfig: realGetTracingConfig } =
-			jest.requireActual<typeof tracing>('@utils/tracing');
-		(tracing.getTracingConfig as jest.Mock).mockImplementation(realGetTracingConfig);
+			await vi.importActual<typeof tracing>('@utils/tracing');
+		(tracing.getTracingConfig as Mock).mockImplementation(realGetTracingConfig);
 
 		const { loadMemory: realLoadMemory, saveToMemory: realSaveToMemory } =
-			jest.requireActual<typeof agentExecution>('@utils/agent-execution');
-		(agentExecution.loadMemory as jest.Mock).mockImplementation(realLoadMemory);
-		(agentExecution.saveToMemory as jest.Mock).mockImplementation(realSaveToMemory);
+			await vi.importActual<typeof agentExecution>('@utils/agent-execution');
+		(agentExecution.loadMemory as Mock).mockImplementation(realLoadMemory);
+		(agentExecution.saveToMemory as Mock).mockImplementation(realSaveToMemory);
 
-		const mockInvoke = jest.fn().mockResolvedValue({
+		const mockInvoke = vi.fn().mockResolvedValue({
 			returnValues: { output: 'Final answer' },
 		});
-		const mockWithConfig = jest.fn().mockReturnValue({ invoke: mockInvoke });
+		const mockWithConfig = vi.fn().mockReturnValue({ invoke: mockInvoke });
 		const mockExecutor = mock<AgentRunnableSequence>({
 			withConfig: mockWithConfig,
 		});
@@ -386,11 +387,11 @@ describe('runAgent - tracing configuration', () => {
 			runName: '[Test Workflow] Test Node',
 			metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
 		};
-		jest.spyOn(tracing, 'getTracingConfig').mockReturnValue(mockTracingConfig);
+		vi.spyOn(tracing, 'getTracingConfig').mockReturnValue(mockTracingConfig);
 
 		const mockEventStream = (async function* () {})();
-		const mockStreamEvents = jest.fn().mockReturnValue(mockEventStream);
-		const mockWithConfig = jest.fn().mockReturnValue({ streamEvents: mockStreamEvents });
+		const mockStreamEvents = vi.fn().mockReturnValue(mockEventStream);
+		const mockWithConfig = vi.fn().mockReturnValue({ streamEvents: mockStreamEvents });
 		const mockExecutor = mock<AgentRunnableSequence>({
 			withConfig: mockWithConfig,
 		});
@@ -411,14 +412,14 @@ describe('runAgent - tracing configuration', () => {
 		};
 
 		const streamingContext = mock<IExecuteFunctions>({
-			getNode: jest.fn().mockReturnValue({ ...mockNode, typeVersion: 2.1 }),
-			isStreaming: jest.fn().mockReturnValue(true),
-			getExecutionCancelSignal: jest.fn().mockReturnValue(new AbortController().signal),
+			getNode: vi.fn().mockReturnValue({ ...mockNode, typeVersion: 2.1 }),
+			isStreaming: vi.fn().mockReturnValue(true),
+			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
 		});
-		streamingContext.getExecuteData = jest.fn() as any;
+		streamingContext.getExecuteData = vi.fn() as any;
 
-		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
-		jest.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
 			output: 'Streamed answer',
 		});
 

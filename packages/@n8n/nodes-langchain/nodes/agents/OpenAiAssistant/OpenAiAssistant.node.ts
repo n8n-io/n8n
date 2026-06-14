@@ -1,7 +1,7 @@
 import { AgentExecutor } from '@langchain/classic/agents';
 import type { OpenAIToolType } from '@langchain/classic/dist/experimental/openai_assistant/schema';
 import { OpenAIAssistantRunnable } from '@langchain/classic/experimental/openai_assistant';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { assertCredentialAllowsUrl, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -16,7 +16,6 @@ import { getTracingConfig } from '@utils/tracing';
 import { formatToOpenAIAssistantTool } from './utils';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
-import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {
@@ -351,7 +350,13 @@ export class OpenAiAssistant implements INodeType {
 				const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 
 				if (options.baseURL) {
-					checkDomainRestrictions(this, credentials, options.baseURL);
+					assertCredentialAllowsUrl({
+						node: this.getNode(),
+						credentialData: credentials,
+						url: options.baseURL,
+						pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
+						surface: 'OpenAI',
+					});
 				}
 
 				const client = new OpenAIClient({

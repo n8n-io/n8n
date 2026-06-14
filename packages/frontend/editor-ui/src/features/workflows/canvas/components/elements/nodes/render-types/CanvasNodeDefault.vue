@@ -4,6 +4,7 @@ import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
+import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
@@ -32,24 +33,28 @@ const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
 const route = useRoute();
 const {
 	id,
+	name,
 	label,
 	subtitle,
-	inputs,
-	outputs,
 	connections,
 	isDisabled,
 	isReadOnly,
 	isSelected,
-	hasPinnedData,
 	executionStatus,
 	executionWaiting,
 	executionWaitingForNext,
 	executionRunning,
 	hasRunData,
-	hasExecutionErrors,
 	render,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
+const renderData = injectCanvasRenderData();
+const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
+const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
+const hasExecutionErrors = computed(
+	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
+);
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,
@@ -219,6 +224,8 @@ function onActivate(event: MouseEvent) {
 </template>
 
 <style lang="scss" module>
+@use './_canvasNodeStyles.scss' as styles;
+
 .node {
 	--canvas-node--border-width: 1.5px;
 	--trigger-node--radius: 36px;
@@ -325,9 +332,7 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.selected {
-		/* stylelint-disable-next-line @n8n/css-var-naming */
-		box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
-			var(--canvas--color--selected-transparent);
+		@include styles.canvas-node-selected-ring;
 	}
 
 	&.success {

@@ -196,6 +196,35 @@ catalog: {}
 		expect(violations[0].message).toContain('2 different versions');
 	});
 
+	it('ignores package.json under src/template (scaffolding templates)', async () => {
+		writeFile(
+			tmpDir,
+			'pnpm-workspace.yaml',
+			`
+packages:
+  - packages/*
+catalog:
+  typescript: 5.9.2
+`,
+		);
+		writeFile(
+			tmpDir,
+			'packages/node-cli/src/template/templates/example/template/package.json',
+			JSON.stringify(
+				{
+					name: '{{nodePackageName}}',
+					devDependencies: { typescript: '5.9.2' },
+				},
+				null,
+				2,
+			),
+		);
+
+		const violations = await rule.analyze(context());
+
+		expect(violations).toHaveLength(0);
+	});
+
 	it('does not flag cross-package when versions match', async () => {
 		writeFile(
 			tmpDir,

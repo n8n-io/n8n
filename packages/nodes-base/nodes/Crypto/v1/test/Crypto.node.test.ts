@@ -38,8 +38,9 @@ describe('Test Crypto Node', () => {
 		}
 		throw Object.assign(new Error('File not found'), { code: 'ENOENT' });
 	}) as unknown as typeof fsPromises.open;
-	const realpathSpy = jest.spyOn(fsPromises, 'realpath');
-	realpathSpy.mockImplementation(async (path) => path as string);
+	beforeEach(() => {
+		jest.spyOn(fsPromises, 'realpath').mockImplementation(async (path) => path as string);
+	});
 
 	new NodeTestHarness().setupTests();
 });

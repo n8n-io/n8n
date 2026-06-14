@@ -9,6 +9,7 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type {
 	AddedNodesAndConnections,
@@ -22,11 +23,11 @@ import { useNodeCreatorShortcutCoachmark } from '../composables/useNodeCreatorSh
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
 type Props = {
 	nodeViewScale: number;
@@ -55,8 +56,8 @@ const setupPanelStore = useSetupPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
-const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
+const workflowId = useWorkflowId();
 
 const { getAddedNodesAndConnections } = useActions();
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
@@ -113,9 +114,11 @@ function toggleFocusPanel() {
 	);
 }
 
+const { aiAssistant, aiBuilder } = useEditorContext();
+
 async function onAskAssistantButtonClick() {
-	// Start builder mode if enabled; privacy setting is respected at payload creation level
-	if (builderStore.isAIBuilderEnabled) {
+	// Open builder when available in this editor, otherwise the assistant.
+	if (aiBuilder.value) {
 		await chatPanelStore.toggle({ mode: 'builder' });
 	} else {
 		await chatPanelStore.toggle({ mode: 'assistant' });
@@ -125,6 +128,7 @@ async function onAskAssistantButtonClick() {
 			source: 'canvas',
 			task: 'placeholder',
 			has_existing_session: !assistantStore.isSessionEnded,
+			workflowId: workflowId.value,
 		});
 	}
 }
@@ -206,7 +210,10 @@ function openCommandBar(event: MouseEvent) {
 				@click="toggleFocusPanel"
 			/>
 		</KeyboardShortcutTooltip>
-		<N8nTooltip v-if="chatPanelStore.canShowAiButtonOnCanvas" placement="left">
+		<N8nTooltip
+			v-if="chatPanelStore.isEditableCanvasView && (aiAssistant || aiBuilder)"
+			placement="left"
+		>
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
 				variant="subtle"

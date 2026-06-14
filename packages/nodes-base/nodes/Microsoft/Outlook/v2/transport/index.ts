@@ -206,21 +206,20 @@ export async function getSubfolders(
 	const returnData: IDataObject[] = [...folders];
 	for (const folder of folders) {
 		if ((folder.childFolderCount as number) > 0) {
-			let subfolders = await microsoftApiRequest.call(
+			let subfolders = await microsoftApiRequestAllItems.call(
 				this,
+				'value',
 				'GET',
 				`/mailFolders/${folder.id}/childFolders`,
 			);
 
 			if (addPathToDisplayName) {
-				subfolders = subfolders.value.map((subfolder: IDataObject) => {
+				subfolders = subfolders.map((subfolder: IDataObject) => {
 					return {
 						...subfolder,
 						displayName: `${folder.displayName}/${subfolder.displayName}`,
 					};
 				});
-			} else {
-				subfolders = subfolders.value;
 			}
 
 			returnData.push(

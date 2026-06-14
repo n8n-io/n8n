@@ -39,7 +39,7 @@ export class LRUCache<T> {
 
 		// Evict oldest if at capacity
 		if (this.map.size >= this.maxEntries) {
-			const oldest = this.map.keys().next().value as string | undefined;
+			const oldest = this.map.keys().next().value;
 			if (oldest !== undefined) {
 				this.map.delete(oldest);
 			}

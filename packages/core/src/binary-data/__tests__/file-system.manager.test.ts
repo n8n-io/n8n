@@ -1,9 +1,9 @@
-import { mock } from 'jest-mock-extended';
-import fs from 'node:fs';
-import fsp from 'node:fs/promises';
+import * as fs from 'node:fs';
+import * as fsp from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
 
 import { FileSystemManager } from '@/binary-data/file-system.manager';
 import type { ErrorReporter } from '@/errors';
@@ -11,8 +11,42 @@ import { toFileId, toStream } from '@test/utils';
 
 import type { BinaryData } from '../types';
 
-jest.mock('fs');
-jest.mock('fs/promises');
+vi.mock('node:fs', async () => {
+	const { mock: hoistedMock } = await import('vitest-mock-extended');
+	const proxy = hoistedMock<typeof fs>();
+	// Provide both `default` (for `import fs from`) and the proxy itself (for `import { x } from`).
+	return new Proxy(proxy, {
+		get: (target, prop, receiver) =>
+			prop === 'default' ? receiver : Reflect.get(target, prop, receiver),
+		has: (target, prop) => prop === 'default' || Reflect.has(target, prop),
+	});
+});
+vi.mock('node:fs/promises', async () => {
+	const { mock: hoistedMock } = await import('vitest-mock-extended');
+	const proxy = hoistedMock<typeof fsp>();
+	return new Proxy(proxy, {
+		get: (target, prop, receiver) =>
+			prop === 'default' ? receiver : Reflect.get(target, prop, receiver),
+		has: (target, prop) => prop === 'default' || Reflect.has(target, prop),
+	});
+});
+
+// @n8n/backend-common is loaded as compiled CJS and its `fs` references are not
+// intercepted by our `vi.mock('node:fs/promises')`. Mock its `exists`/`assertDir`
+// helpers directly so tests can control their behavior.
+vi.mock('@n8n/backend-common', async (importOriginal) => {
+	const actual =
+		// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+		await importOriginal<typeof import('@n8n/backend-common')>();
+	return {
+		...actual,
+		assertDir: vi.fn().mockResolvedValue(undefined),
+		exists: vi.fn().mockResolvedValue(true),
+	};
+});
+
+const mockFs = mock(fs);
+const mockFsp = mock(fsp);
 
 const storagePath = tmpdir();
 const errorReporter = mock<ErrorReporter>();
@@ -34,13 +68,18 @@ const otherFileId = toFileId(otherWorkflowId, otherExecutionId, otherFileUuid);
 const mockBuffer = Buffer.from('Test data');
 const mockStream = toStream(mockBuffer);
 
+beforeEach(() => {
+	vi.clearAllMocks();
+});
+
 afterAll(() => {
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 describe('store()', () => {
 	it('should store a buffer', async () => {
 		const metadata = { mimeType: 'text/plain' };
+		mockFsp.stat.mockResolvedValue({ size: mockBuffer.length } as fs.Stats);
 
 		const result = await fsManager.store(
 			{ type: 'execution', workflowId, executionId },
@@ -62,25 +101,26 @@ describe('getPath()', () => {
 
 describe('getAsBuffer()', () => {
 	it('should return a buffer', async () => {
-		fsp.readFile = jest.fn().mockResolvedValue(mockBuffer);
-		fsp.access = jest.fn().mockImplementation(async () => {});
+		mockFsp.readFile.mockResolvedValue(mockBuffer);
+		mockFsp.access.mockImplementation(async () => {});
 
 		const result = await fsManager.getAsBuffer(fileId);
 
 		expect(Buffer.isBuffer(result)).toBe(true);
-		expect(fsp.readFile).toHaveBeenCalledWith(toFullFilePath(fileId));
+		expect(mockFsp.readFile).toHaveBeenCalledWith(toFullFilePath(fileId));
 	});
 });
 
 describe('getAsStream()', () => {
 	it('should return a stream', async () => {
-		fs.createReadStream = jest.fn().mockReturnValue(mockStream);
-		fsp.access = jest.fn().mockImplementation(async () => {});
+		// @ts-expect-error - Mocking
+		mockFs.createReadStream.mockReturnValue(mockStream);
+		mockFsp.access.mockImplementation(async () => {});
 
 		const stream = await fsManager.getAsStream(fileId);
 
 		expect(stream).toBeInstanceOf(Readable);
-		expect(fs.createReadStream).toHaveBeenCalledWith(toFullFilePath(fileId), {
+		expect(mockFs.createReadStream).toHaveBeenCalledWith(toFullFilePath(fileId), {
 			highWaterMark: undefined,
 		});
 	});
@@ -91,7 +131,7 @@ describe('getMetadata()', () => {
 		const mimeType = 'text/plain';
 		const fileName = 'file.txt';
 
-		fsp.readFile = jest.fn().mockResolvedValue(
+		mockFsp.readFile.mockResolvedValue(
 			JSON.stringify({
 				fileSize: 1,
 				mimeType,
@@ -107,11 +147,11 @@ describe('getMetadata()', () => {
 
 describe('copyByFileId()', () => {
 	it('should copy by file ID and return the file ID', async () => {
-		fsp.copyFile = jest.fn().mockResolvedValue(undefined);
-		fsp.writeFile = jest.fn().mockResolvedValue(undefined);
+		mockFsp.copyFile.mockResolvedValue(undefined);
+		mockFsp.writeFile.mockResolvedValue(undefined);
 
 		// @ts-expect-error - private method
-		jest.spyOn(fsManager, 'toFileId').mockReturnValue(otherFileId);
+		vi.spyOn(fsManager, 'toFileId').mockReturnValue(otherFileId);
 
 		const targetFileId = await fsManager.copyByFileId(
 			{ type: 'execution', workflowId, executionId },
@@ -121,10 +161,10 @@ describe('copyByFileId()', () => {
 		const sourcePath = toFullFilePath(fileId);
 		const targetPath = toFullFilePath(targetFileId);
 
-		expect(fsp.copyFile).toHaveBeenCalledWith(sourcePath, targetPath);
+		expect(mockFsp.copyFile).toHaveBeenCalledWith(sourcePath, targetPath);
 
 		// Make sure metadata file was written
-		expect(fsp.writeFile).toBeCalledTimes(1);
+		expect(mockFsp.writeFile).toBeCalledTimes(1);
 	});
 });
 
@@ -134,15 +174,15 @@ describe('copyByFilePath()', () => {
 		const metadata = { mimeType: 'text/plain' };
 
 		// @ts-expect-error - private method
-		jest.spyOn(fsManager, 'toFileId').mockReturnValue(otherFileId);
+		vi.spyOn(fsManager, 'toFileId').mockReturnValue(otherFileId);
 
 		// @ts-expect-error - private method
-		jest.spyOn(fsManager, 'getSize').mockReturnValue(mockBuffer.length);
+		vi.spyOn(fsManager, 'getSize').mockReturnValue(mockBuffer.length);
 
 		const targetPath = toFullFilePath(otherFileId);
 
-		fsp.cp = jest.fn().mockResolvedValue(undefined);
-		fsp.writeFile = jest.fn().mockResolvedValue(undefined);
+		mockFsp.cp.mockResolvedValue(undefined);
+		mockFsp.writeFile.mockResolvedValue(undefined);
 
 		const result = await fsManager.copyByFilePath(
 			{ type: 'execution', workflowId, executionId },
@@ -150,8 +190,8 @@ describe('copyByFilePath()', () => {
 			metadata,
 		);
 
-		expect(fsp.cp).toHaveBeenCalledWith(sourceFilePath, targetPath);
-		expect(fsp.writeFile).toHaveBeenCalledWith(
+		expect(mockFsp.cp).toHaveBeenCalledWith(sourceFilePath, targetPath);
+		expect(mockFsp.writeFile).toHaveBeenCalledWith(
 			`${toFullFilePath(otherFileId)}.metadata`,
 			JSON.stringify({ ...metadata, fileSize: mockBuffer.length }),
 			{ encoding: 'utf-8' },
@@ -172,19 +212,19 @@ describe('deleteMany()', () => {
 			{ type: 'execution', workflowId: otherWorkflowId, executionId: otherExecutionId },
 		];
 
-		fsp.rm = jest.fn().mockResolvedValue(undefined);
+		mockFsp.rm.mockResolvedValue(undefined);
 
 		const promise = fsManager.deleteMany(ids);
 
 		await expect(promise).resolves.not.toThrow();
 
-		expect(fsp.rm).toHaveBeenCalledTimes(2);
-		expect(fsp.rm).toHaveBeenNthCalledWith(
+		expect(mockFsp.rm).toHaveBeenCalledTimes(2);
+		expect(mockFsp.rm).toHaveBeenNthCalledWith(
 			1,
 			`${storagePath}/workflows/${workflowId}/executions/${executionId}`,
 			rmOptions,
 		);
-		expect(fsp.rm).toHaveBeenNthCalledWith(
+		expect(mockFsp.rm).toHaveBeenNthCalledWith(
 			2,
 			`${storagePath}/workflows/${otherWorkflowId}/executions/${otherExecutionId}`,
 			rmOptions,
@@ -196,20 +236,20 @@ describe('deleteMany()', () => {
 			{ type: 'execution', workflowId: 'does-not-exist', executionId: 'does-not-exist' },
 		];
 
-		fsp.rm = jest.fn().mockResolvedValue(undefined);
+		mockFsp.rm.mockResolvedValue(undefined);
 
 		const promise = fsManager.deleteMany(ids);
 
 		await expect(promise).resolves.not.toThrow();
 
-		expect(fsp.rm).toHaveBeenCalledTimes(1);
+		expect(mockFsp.rm).toHaveBeenCalledTimes(1);
 	});
 });
 
 describe('rename()', () => {
 	it('should rename a file', async () => {
-		fsp.rename = jest.fn().mockResolvedValue(undefined);
-		fsp.rm = jest.fn().mockResolvedValue(undefined);
+		mockFsp.rename.mockResolvedValue(undefined);
+		mockFsp.rm.mockResolvedValue(undefined);
 
 		const promise = fsManager.rename(fileId, otherFileId);
 
@@ -218,8 +258,9 @@ describe('rename()', () => {
 
 		await expect(promise).resolves.not.toThrow();
 
-		expect(fsp.rename).toHaveBeenCalledTimes(2);
-		expect(fsp.rename).toHaveBeenCalledWith(oldPath, newPath);
-		expect(fsp.rename).toHaveBeenCalledWith(`${oldPath}.metadata`, `${newPath}.metadata`);
+		expect(mockFsp.rename).toHaveBeenCalledTimes(2);
+		expect(mockFsp.rename).toHaveBeenCalledWith(oldPath, newPath);
+		expect(mockFsp.rename).toHaveBeenCalledWith(`${oldPath}.metadata`, `${newPath}.metadata`);
+		expect(mockFsp.rm).not.toHaveBeenCalled();
 	});
 });

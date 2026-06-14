@@ -13,11 +13,18 @@ import { useI18n } from '@n8n/i18n';
 import { computed, useTemplateRef, watch, ref } from 'vue';
 import { useChatStore } from '../chat.store';
 
-const { selectedModel, credentials, readyToShowModelSelector, showArtifactIcon } = defineProps<{
+const {
+	selectedModel,
+	credentials,
+	readyToShowModelSelector,
+	showArtifactIcon,
+	hasDynamicCredentials,
+} = defineProps<{
 	selectedModel: ChatModelDto | null;
 	credentials: CredentialsMap | null;
 	readyToShowModelSelector: boolean;
 	showArtifactIcon: boolean;
+	hasDynamicCredentials: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -28,6 +35,7 @@ const emit = defineEmits<{
 	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
 	openWorkflow: [workflowId: string];
 	reopenArtifact: [];
+	toggleDynamicCredentials: [];
 }>();
 
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
@@ -109,6 +117,16 @@ defineExpose({
 				size="small"
 				icon="panel-right"
 				@click="emit('reopenArtifact')"
+			/>
+			<N8nIconButton
+				v-if="hasDynamicCredentials"
+				variant="subtle"
+				size="small"
+				icon="key-round"
+				:title="i18n.baseText('chatHub.chat.header.button.manageConnections')"
+				:aria-label="i18n.baseText('chatHub.chat.header.button.manageConnections')"
+				data-testid="manage-dynamic-credentials-button"
+				@click="emit('toggleDynamicCredentials')"
 			/>
 			<N8nButton
 				v-if="showOpenWorkflow"

@@ -21,7 +21,9 @@ export function useToast() {
 	const { APP_Z_INDEXES } = useStyles();
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
-		if (uiStore.areNotificationsSuppressed) {
+		const suppressed = uiStore.areNotificationsSuppressed;
+		const allowErrors = uiStore.allowErrorNotificationsWhenSuppressed;
+		if (suppressed && !(allowErrors && messageData.type === 'error')) {
 			return { close: () => {} } as NotificationHandle;
 		}
 

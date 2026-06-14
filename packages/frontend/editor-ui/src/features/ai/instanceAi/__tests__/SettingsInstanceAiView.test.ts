@@ -56,9 +56,7 @@ const renderComponent = createComponentRenderer(SettingsInstanceAiView, {
 	global: {
 		stubs: {
 			ModelSection: makeStub('ModelSection'),
-			LocalGatewaySection: makeStub('LocalGatewaySection'),
 			SandboxSection: makeStub('SandboxSection'),
-			MemorySection: makeStub('MemorySection'),
 			SearchSection: makeStub('SearchSection'),
 			AdvancedSection: makeStub('AdvancedSection'),
 		},
@@ -76,8 +74,10 @@ const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> 
 	enabled: true,
 	localGatewayDisabled: false,
 	proxyEnabled: false,
-	optinModalDismissed: true,
 	cloudManaged: false,
+	sandboxEnabled: true,
+	workflowBuilderAvailable: true,
+	sandboxUnavailableReason: null,
 };
 
 describe('SettingsInstanceAiView', () => {
@@ -94,22 +94,17 @@ describe('SettingsInstanceAiView', () => {
 		store.$patch({
 			settings: {
 				enabled: true,
-				lastMessages: 20,
-				embedderModel: '',
-				semanticRecallTopK: 5,
 				subAgentMaxSteps: 10,
-				browserMcp: false,
 				permissions: {},
 				mcpServers: '',
 				sandboxEnabled: false,
-				sandboxProvider: '',
+				sandboxProvider: 'n8n-sandbox',
 				sandboxImage: '',
 				sandboxTimeout: 60,
 				daytonaCredentialId: null,
 				n8nSandboxCredentialId: null,
 				searchCredentialId: null,
 				localGatewayDisabled: false,
-				optinModalDismissed: true,
 			},
 		});
 	});
@@ -127,11 +122,6 @@ describe('SettingsInstanceAiView', () => {
 		it('shows Sandbox section', () => {
 			const { container } = renderComponent();
 			expect(queryStub(container, 'SandboxSection')).not.toBeNull();
-		});
-
-		it('shows Memory section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'MemorySection')).not.toBeNull();
 		});
 
 		it('shows Search section', () => {
@@ -160,11 +150,6 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryStub(container, 'SandboxSection')).toBeNull();
 		});
 
-		it('shows Memory section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'MemorySection')).not.toBeNull();
-		});
-
 		it('hides Search section', () => {
 			const { container } = renderComponent();
 			expect(queryStub(container, 'SearchSection')).toBeNull();
@@ -173,6 +158,31 @@ describe('SettingsInstanceAiView', () => {
 		it('shows Advanced section', () => {
 			const { container } = renderComponent();
 			expect(queryStub(container, 'AdvancedSection')).not.toBeNull();
+		});
+	});
+
+	describe('section visibility — cloud managed (proxy disabled)', () => {
+		beforeEach(() => {
+			setModuleSettings(settingsStore, {
+				...defaultModuleSettings,
+				proxyEnabled: false,
+				cloudManaged: true,
+			});
+		});
+
+		it('hides Model section', () => {
+			const { container } = renderComponent();
+			expect(queryStub(container, 'ModelSection')).toBeNull();
+		});
+
+		it('hides Sandbox section', () => {
+			const { container } = renderComponent();
+			expect(queryStub(container, 'SandboxSection')).toBeNull();
+		});
+
+		it('hides Advanced section', () => {
+			const { container } = renderComponent();
+			expect(queryStub(container, 'AdvancedSection')).toBeNull();
 		});
 	});
 
@@ -193,11 +203,6 @@ describe('SettingsInstanceAiView', () => {
 		it('hides Sandbox section', () => {
 			const { container } = renderComponent();
 			expect(queryStub(container, 'SandboxSection')).toBeNull();
-		});
-
-		it('hides Memory section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'MemorySection')).toBeNull();
 		});
 
 		it('hides Search section', () => {

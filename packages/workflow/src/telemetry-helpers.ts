@@ -1,5 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
-
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
@@ -30,6 +28,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
+import { UnexpectedError } from './errors';
 import type { NodeApiError } from './errors/node-api.error';
 import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 import type {
@@ -277,7 +276,7 @@ export function getDomainPath(raw: string, urlParts = URL_PARTS_REGEX): string {
 	try {
 		const url = new URL(raw);
 
-		if (!url.hostname) throw new ApplicationError('Malformed URL');
+		if (!url.hostname) throw new UnexpectedError('Malformed URL');
 
 		return sanitizeRoute(url.pathname);
 	} catch {

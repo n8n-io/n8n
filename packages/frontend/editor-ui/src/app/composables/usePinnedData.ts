@@ -1,7 +1,13 @@
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import type { IDataObject, INodeExecutionData, IPinData } from 'n8n-workflow';
-import { jsonParse, jsonStringify, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import {
+	isTrimmedNodeExecutionData,
+	jsonParse,
+	jsonStringify,
+	NodeConnectionTypes,
+	NodeHelpers,
+} from 'n8n-workflow';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
 	MAX_PINNED_DATA_SIZE,
@@ -13,8 +19,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	injectWorkflowDocumentStore,
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
 	getPinDataSize,
 	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
@@ -22,7 +26,7 @@ import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { MaybeRef } from 'vue';
-import { computed, shallowRef, unref } from 'vue';
+import { computed, unref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeType } from '@/app/composables/useNodeType';
 import { useDataSchema } from './useDataSchema';
@@ -54,9 +58,7 @@ export function usePinnedData(
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
-	const workflowDocumentStore =
-		injectWorkflowDocumentStore() ??
-		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)));
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
@@ -70,7 +72,9 @@ export function usePinnedData(
 	const data = computed<IDataObject[] | undefined>(() => {
 		const targetNode = unref(node);
 		if (!targetNode || !workflowDocumentStore.value) return undefined;
-		return pinDataToExecutionData(workflowDocumentStore.value.pinData)[targetNode.name];
+		return pinDataToExecutionData(workflowDocumentStore.value.pinnedDataByNodeName)[
+			targetNode.name
+		];
 	});
 
 	const hasData = computed<boolean>(() => {
@@ -178,8 +182,9 @@ export function usePinnedData(
 
 		if (typeof data === 'object') data = JSON.stringify(data);
 
-		const { pinData: _pinData, ...workflowObjectWithoutPinData } = workflowsStore.workflow;
-		const currentPinData = (workflowDocumentStore.value?.pinData ?? {}) as IPinData;
+		const { pinData: _pinData, ...workflowObjectWithoutPinData } =
+			workflowDocumentStore.value?.getSnapshot() ?? {};
+		const currentPinData = (workflowDocumentStore.value?.pinnedDataByNodeName ?? {}) as IPinData;
 		const workflowJson = jsonStringify(workflowObjectWithoutPinData, { replaceCircularRefs: true });
 
 		const newPinData = { ...currentPinData, [targetNode.name]: data };
@@ -242,7 +247,7 @@ export function usePinnedData(
 		errorType,
 		source,
 	}: {
-		errorType: 'data-too-large' | 'invalid-json';
+		errorType: 'data-too-large' | 'invalid-json' | 'trimmed-data';
 		source: PinDataSource;
 	}) {
 		const targetNode = unref(node);
@@ -280,10 +285,15 @@ export function usePinnedData(
 			throw new Error('Data too large');
 		}
 
+		if (Array.isArray(data) && isTrimmedNodeExecutionData(data as INodeExecutionData[])) {
+			onSetDataError({ errorType: 'trimmed-data', source });
+			throw new Error('Cannot pin trimmed execution data');
+		}
+
 		if (workflowDocumentStore.value) {
 			const nodeName = targetNode.name;
 			// Update metadata timestamp for existing pinned data
-			if ((workflowDocumentStore.value.pinData[nodeName] ?? []).length > 0) {
+			if ((workflowDocumentStore.value.pinnedDataByNodeName[nodeName] ?? []).length > 0) {
 				workflowDocumentStore.value.touchPinnedDataLastUpdatedAt(nodeName);
 			}
 			workflowDocumentStore.value.pinNodeData(nodeName, data as INodeExecutionData[]);

@@ -9,9 +9,9 @@ Conventions for the `@n8n/agents` package.
 - **Builder pattern with lazy build** — all public primitives use a fluent
   builder API. **User code never calls `.build()`**. Builders are passed
   directly to the consuming method (e.g. `agent.tool(myTool)`) which calls
-  `.build()` internally. Agent and Network have `run()`/`stream()` directly
-  on the class, which lazy-build via `ensureBuilt()` on first call. `build()`
-  is `protected` on Agent and Network to keep it out of the public API.
+  `.build()` internally. Agent has `generate()`/`stream()` directly on the
+  class, which lazy-build via `ensureBuilt()` on first call. `build()` is
+  `protected` on Agent to keep it out of the public API.
 - **Zod for schemas** — all input/output schemas use Zod.
 
 ## Package Structure
@@ -34,7 +34,6 @@ src/
     mcp-client.ts       # MCP client integration
     memory.ts           # Memory builder
     message.ts          # LLM/DB message helpers
-    network.ts          # Network builder
     provider-tools.ts   # Provider-defined tool factories
     telemetry.ts        # Telemetry builder (OTel, redaction)
     tool.ts             # Tool builder
@@ -44,8 +43,11 @@ src/
     tool-adapter.ts     # Tool execution, branded suspend detection
     stream.ts           # Streaming helpers
     model-factory.ts    # Model instantiation
-    memory-store.ts     # Conversation / working-memory persistence hooks
-    working-memory.ts   # In-run working memory
+    memory-store.ts     # In-memory conversation and observation-log storage
+    observation-log-observer.ts
+    observation-log-reflector.ts
+    observation-log-renderer.ts
+    scoped-memory-task-runner.ts
     message-list.ts     # Message list + serialization for agent loop
     messages.ts         # Message normalization
     mcp-connection.ts   # MCP connection lifecycle
@@ -56,9 +58,8 @@ src/
     title-generation.ts
     strip-orphaned-tool-messages.ts
     logger.ts
-  storage/              # Optional persisted memory backends (exported)
-    sqlite-memory.ts
-    postgres-memory.ts
+  storage/              # Shared memory backend base class (exported)
+    base-memory.ts
   workspace/            # Workspace, sandbox, filesystem, built-in tools (exported)
   integrations/         # Optional integrations (exported where applicable)
     langsmith.ts        # LangSmith telemetry adapter (peer `langsmith`)
@@ -70,8 +71,7 @@ docs/
 ```
 
 The **`index.ts`** surface also exports `Workspace` / sandbox / filesystem types,
-`SqliteMemory` / `PostgresMemory`, `LangSmithTelemetry`, and `evals` alongside the
-core SDK builders.
+`InMemoryMemory`, `LangSmithTelemetry`, and `evals` alongside the core SDK builders.
 
 Optional **peer dependencies** (telemetry): `langsmith`, `@opentelemetry/sdk-trace-node`,
 `@opentelemetry/sdk-trace-base`, `@opentelemetry/exporter-trace-otlp-http` — all
@@ -111,13 +111,12 @@ class EngineAgent extends Agent {
 ## Testing
 
 - Unit tests live in `src/__tests__/`, integration tests in `src/__tests__/integration/`
-- Unit tests use Jest (`pnpm test`)
+- Unit tests use Vitest (`pnpm test`)
 - Integration tests use Vitest (`pnpm test:integration`) with real LLM calls
   - A `.env` file at the package root is loaded automatically by the vitest config.
     Always assume it exists when running integration tests. Never commit it.
   - Required keys:
     - `ANTHROPIC_API_KEY` — all integration tests
-    - `OPENAI_API_KEY` — semantic recall tests (embeddings)
   - Tests skip automatically when the required API key is not set
 - Run from the package directory: `cd packages/@n8n/agents && pnpm test`
 
@@ -133,5 +132,9 @@ class EngineAgent extends Agent {
 cd packages/@n8n/agents
 pnpm build       # rimraf dist && tsc -p tsconfig.build.json → dist/
 pnpm typecheck   # tsc --noEmit
-pnpm test        # jest (unit)
+pnpm test        # vitest (unit)
 ```
+
+## PR naming convention
+
+The Agents feature is not generally available yet, so any PRs related to the Agents package should have (no-changelog) in the title to avoid generating a changelog entry.

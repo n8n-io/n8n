@@ -6,7 +6,8 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
@@ -52,7 +53,7 @@ const assistantHelpers = useAIAssistantHelpers();
 
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
@@ -66,7 +67,7 @@ const displayCause = computed(() => {
 });
 
 const node = computed(() => {
-	return props.error.node || ndvStore.activeNode;
+	return props.error.node || ndvStore.value.activeNode;
 });
 
 const parameters = computed<INodeProperties[]>(() => {
@@ -94,7 +95,7 @@ const n8nVersion = computed(() => {
 });
 
 const hasManyInputItems = computed(() => {
-	return ndvStore.ndvInputData.length > 1;
+	return ndvStore.value.ndvInputData.length > 1;
 });
 
 const nodeDefaultName = computed(() => {
@@ -134,19 +135,23 @@ const prepareRawMessages = computed(() => {
 	return returnData;
 });
 
+const { aiAssistant } = useEditorContext();
+
 const isAskAssistantAvailable = computed(() => {
 	if (!node.value || isSubNodeError.value) {
 		return false;
 	}
 	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
 
-	return chatPanelStore.canShowAiButtonOnCanvas && !isCustomNode && !nodeIsHidden();
+	return (
+		chatPanelStore.isEditableCanvasView && !isCustomNode && !nodeIsHidden() && aiAssistant.value
+	);
 });
 
 const assistantAlreadyAsked = computed(() => {
 	return assistantStore.isNodeErrorActive({
 		error: assistantHelpers.simplifyErrorForAssistant(props.error),
-		node: props.error.node || ndvStore.activeNode,
+		node: props.error.node || ndvStore.value.activeNode,
 	});
 });
 
@@ -417,14 +422,14 @@ const onOpenErrorNodeDetailClick = () => {
 		const link = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
-				name: props.error.workflowId,
+				workflowId: props.error.workflowId,
 				executionId: props.error.executionId,
 				nodeId: props.error.node.id,
 			},
 		});
 		window.open(link.href, '_blank');
 	} else {
-		ndvStore.setActiveNodeName(props.error.node.name, 'other');
+		ndvStore.value.setActiveNodeName(props.error.node.name, 'other');
 	}
 };
 
@@ -453,6 +458,7 @@ async function onAskAssistantClick() {
 		source: 'error',
 		task: 'error',
 		has_existing_session: false,
+		workflowId: workflowId.value,
 	});
 }
 </script>

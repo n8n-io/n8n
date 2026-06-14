@@ -1,0 +1,19 @@
+{
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow that handles a Telegram voice message. The trigger is a Telegram Trigger node configured for `message` updates. When a voice message arrives, use the Telegram node's `file:get` operation with `download = true`, reading the file id from `={{ $json.message.voice.file_id }}` — this single operation handles both getFile and the binary download internally using the node's credentials, so you do NOT need a separate HTTP Request node and you do NOT reference `$credentials` anywhere. Then call the OpenAI node (the Core `n8n-nodes-base.openAi` node, NOT the LangChain one): resource = `audio`, operation = `transcribe`, with the binary input read from the default binary property `data` (set `binaryPropertyName: \"data\"`). Finally, reply to the original chat with the transcribed text via the Telegram `message:sendMessage` operation, using `chatId = ={{ $('Telegram Trigger').item.json.message.chat.id }}` and `text` from the OpenAI transcription output. No `$credentials` access in URLs or expressions."
+		}
+	],
+	"complexity": "complex",
+	"tags": ["telegram", "binary", "audio", "openai", "whisper", "webhook"],
+	"triggerType": "webhook",
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Voice message arrives; Telegram file:get downloads OGG bytes; Whisper returns a transcript; bot replies",
+			"dataSetup": "The Telegram trigger emits a message with chat.id=98765 and voice={ file_id: 'AwACAgIAAxk', file_unique_id: 'AgADxyz', duration: 3, mime_type: 'audio/ogg', file_size: 18432 }. The Telegram file:get operation downloads an audio/ogg payload internally (no separate HTTP request shows up in the trace — the node uses its built-in download). OpenAI /v1/audio/transcriptions returns { text: 'Hello, this is a test voice message for the eval mock layer.' }. The final Telegram sendMessage returns { ok: true, result: { message_id: 1234 } }.",
+			"successCriteria": "The workflow executes without errors. The Telegram file:get node produces a binary output whose mimeType is 'audio/ogg'. The OpenAI transcribe node receives a redacted multipart body (no raw bytes in the LLM prompt for the transcribe call) and returns a JSON envelope containing a non-empty `text` field. The bot replies via Telegram sendMessage with the transcript text."
+		}
+	]
+}

@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { CronLoggingConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { CronJob } from 'cron';
+import { CronJob, CronTime } from 'cron';
 import type { CronContext, Workflow } from 'n8n-workflow';
 
 import { ErrorReporter } from '@/errors';
@@ -47,7 +47,10 @@ export class ScheduledTaskManager {
 		}, activeInterval * Time.minutes.toMilliseconds);
 	}
 
-	registerCron(ctx: CronContext, onTick: () => void) {
+	/**
+	 * @param onTick - Callback invoked when the cron fires.
+	 */
+	registerCron(ctx: CronContext, onTick: (scheduledTime: Date) => void) {
 		const { workflowId, timezone, nodeId, expression, recurrence } = ctx;
 
 		const summary = recurrence?.activated
@@ -72,22 +75,36 @@ export class ScheduledTaskManager {
 			return;
 		}
 
-		const job = new CronJob(
+		// `scheduledTime` always holds the canonical time of the upcoming
+		// fire. We use it as a unique key to identify the cron execution.
+		// It gets updated on each tick.
+		const cronTime = new CronTime(expression, timezone);
+		const computeNext = (): Date => cronTime.sendAt().toJSDate();
+		let scheduledTime: Date = computeNext();
+
+		const handleTick = () => {
+			if (!this.instanceSettings.isLeader) return;
+
+			// Capture the time this firing was scheduled for, then advance
+			// `scheduledTime` to the next upcoming fire.
+			const firedFor = scheduledTime;
+			scheduledTime = computeNext();
+
+			this.logger.debug('Executing cron for workflow', {
+				workflowId,
+				nodeId,
+				cron: summary,
+				instanceRole: this.instanceSettings.instanceRole,
+			});
+
+			onTick(firedFor);
+		};
+
+		const job: CronJob = new CronJob(
 			expression,
-			() => {
-				if (!this.instanceSettings.isLeader) return;
-
-				this.logger.debug('Executing cron for workflow', {
-					workflowId,
-					nodeId,
-					cron: summary,
-					instanceRole: this.instanceSettings.instanceRole,
-				});
-
-				onTick();
-			},
-			undefined,
-			true,
+			handleTick,
+			/* onComplete= */ undefined,
+			/* start= */ true,
 			timezone,
 		);
 
@@ -106,10 +123,11 @@ export class ScheduledTaskManager {
 		});
 	}
 
-	deregisterCrons(workflowId: string) {
+	/** Returns whether any crons were registered for the workflow and got stopped. */
+	deregisterCrons(workflowId: string): boolean {
 		const workflowCrons = this.cronsByWorkflow.get(workflowId);
 
-		if (!workflowCrons || workflowCrons.size === 0) return;
+		if (!workflowCrons || workflowCrons.size === 0) return false;
 
 		const summaries: string[] = [];
 
@@ -125,6 +143,46 @@ export class ScheduledTaskManager {
 			crons: summaries,
 			instanceRole: this.instanceSettings.instanceRole,
 		});
+
+		return true;
+	}
+
+	/** Ids of workflows that currently have crons registered. */
+	getWorkflowIdsWithCrons(): string[] {
+		return Array.from(this.cronsByWorkflow.keys());
+	}
+
+	/** Deregister the crons registered for a single node of a workflow. */
+	deregisterCron(workflowId: string, nodeId: string) {
+		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+
+		if (!workflowCrons || workflowCrons.size === 0) return;
+
+		const summaries: string[] = [];
+
+		for (const [key, cron] of workflowCrons) {
+			if (cron.ctx.nodeId !== nodeId) continue;
+			summaries.push(cron.summary);
+			void cron.job.stop();
+			workflowCrons.delete(key);
+		}
+
+		if (workflowCrons.size === 0) this.cronsByWorkflow.delete(workflowId);
+
+		if (summaries.length === 0) return;
+
+		this.logger.info('Deregistered crons for node', {
+			workflowId,
+			nodeId,
+			crons: summaries,
+			instanceRole: this.instanceSettings.instanceRole,
+		});
+	}
+
+	/** Whether any crons are currently registered for the workflow. */
+	hasCrons(workflowId: string) {
+		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+		return workflowCrons !== undefined && workflowCrons.size > 0;
 	}
 
 	deregisterAllCrons() {

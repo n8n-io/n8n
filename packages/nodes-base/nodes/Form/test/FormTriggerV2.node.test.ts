@@ -1,14 +1,81 @@
 import crypto from 'crypto';
 import { mock } from 'jest-mock-extended';
-import { NodeOperationError, type INode } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type INode,
+	type INodeProperties,
+	type INodePropertyOptions,
+} from 'n8n-workflow';
+
+type VersionCnd = { lte?: number; gte?: number };
+type VersionedAuthParam = Omit<INodeProperties, 'options'> & {
+	displayOptions?: { show?: { '@version'?: Array<{ _cnd?: VersionCnd }> } };
+	options?: INodePropertyOptions[];
+};
 
 import { testVersionedWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { FormTrigger } from '../FormTrigger.node';
+import { FormTriggerV2 } from '../v2/FormTriggerV2.node';
+
+const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
+	"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.";
 
 describe('FormTrigger', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+	});
+
+	it('should tell builders to keep inbound authentication disabled unless requested', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.5,
+		});
+
+		const authParams = formTriggerV2.description.properties.filter(
+			(property) => property.name === FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+		);
+
+		expect(authParams.length).toBeGreaterThan(0);
+		for (const param of authParams) {
+			expect(param).toMatchObject({
+				default: 'none',
+				builderHint: {
+					propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+				},
+			});
+		}
+	});
+
+	it('should expose n8nUserAuth option only on typeVersion >= 2.6', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.6,
+		});
+
+		const authParams = formTriggerV2.description.properties.filter(
+			(property) => property.name === FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+		) as VersionedAuthParam[];
+
+		expect(authParams).toHaveLength(2);
+
+		const versionCnd = (param: VersionedAuthParam) =>
+			param.displayOptions?.show?.['@version']?.[0]?._cnd;
+		const legacyAuth = authParams.find((p) => versionCnd(p)?.lte === 2.5);
+		const v26Auth = authParams.find((p) => versionCnd(p)?.gte === 2.6);
+
+		const legacyValues = (legacyAuth?.options ?? []).map((o) => o.value).sort();
+		const v26Values = (v26Auth?.options ?? []).map((o) => o.value).sort();
+
+		expect(legacyValues).toEqual(['basicAuth', 'none']);
+		expect(v26Values).toEqual(['basicAuth', 'n8nUserAuth', 'none']);
 	});
 
 	it('should render a form template with correct fields', async () => {

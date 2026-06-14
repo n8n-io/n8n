@@ -13,6 +13,3 @@ properties:
       - `all`: Publish all imported workflows
       - `published`: Publish only workflows that were published locally before import
     example: published
-  variables:
-    type: object
-    example: { 'foo': 'bar' }

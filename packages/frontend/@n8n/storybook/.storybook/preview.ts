@@ -79,7 +79,6 @@ export const parameters = {
 			order: [
 				'Docs',
 				'Styleguide',
-				['Colors Primitives', 'Colors Tokens', 'Font', 'Spacing', 'Border'],
 				'Core',
 				'Assistant',
 				'Chat',

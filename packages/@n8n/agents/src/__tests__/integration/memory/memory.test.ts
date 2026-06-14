@@ -8,7 +8,7 @@ const describe = describeIf('anthropic');
 
 describe('memory integration', () => {
 	it('recalls previous messages within the same thread', async () => {
-		const memory = new Memory().storage('memory').lastMessages(10);
+		const memory = new Memory().storage('memory');
 
 		const agent = new Agent('memory-test')
 			.model(getModel('anthropic'))
@@ -30,7 +30,7 @@ describe('memory integration', () => {
 	});
 
 	it('isolates separate threads', async () => {
-		const memory = new Memory().storage('memory').lastMessages(10);
+		const memory = new Memory().storage('memory');
 
 		const agent = new Agent('thread-isolation-test')
 			.model(getModel('anthropic'))
@@ -54,7 +54,7 @@ describe('memory integration', () => {
 	});
 
 	it('recalls tool results with generate()', async () => {
-		const memory = new Memory().storage('memory').lastMessages(20);
+		const memory = new Memory().storage('memory');
 
 		const lookupTool = new Tool('lookup_inventory')
 			.description('Look up the current inventory count for a product')
@@ -96,7 +96,7 @@ describe('memory integration', () => {
 	});
 
 	it('recalls tool results with stream()', async () => {
-		const memory = new Memory().storage('memory').lastMessages(20);
+		const memory = new Memory().storage('memory');
 
 		const lookupTool = new Tool('lookup_inventory')
 			.description('Look up the current inventory count for a product')

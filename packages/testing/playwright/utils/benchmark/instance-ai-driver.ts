@@ -1,14 +1,7 @@
-import type { Page, TestInfo } from '@playwright/test';
-import type { MetricsHelper } from 'n8n-containers';
+import type { Page } from '@playwright/test';
 
 import { InstanceAiPage } from '../../pages/InstanceAiPage';
 import type { n8nPage } from '../../pages/n8nPage';
-import {
-	getStableHeap,
-	takeHeapSnapshot,
-	type StableHeapOptions,
-	type StableHeapResult,
-} from '../performance-helper';
 
 /** Lightweight prompt for warmup — exercises the instance-ai path without building a workflow. */
 export const WARMUP_PROMPT = 'List my current credentials.';
@@ -42,8 +35,6 @@ export interface InstanceAiDriverConfig {
 	n8n: n8nPage;
 	/** Backend base URL for REST API calls (GC, snapshots, thread management) */
 	baseUrl: string;
-	/** VictoriaMetrics helper for heap queries */
-	metrics: MetricsHelper;
 }
 
 export interface RunParallelOptions {
@@ -74,14 +65,12 @@ export interface TabRunResult {
 export class InstanceAiDriver {
 	private readonly n8n: n8nPage;
 	private readonly baseUrl: string;
-	private readonly metrics: MetricsHelper;
 	private createdThreadIds: string[] = [];
 	private openedPages: Page[] = [];
 
 	constructor(config: InstanceAiDriverConfig) {
 		this.n8n = config.n8n;
 		this.baseUrl = config.baseUrl;
-		this.metrics = config.metrics;
 	}
 
 	/**
@@ -259,14 +248,6 @@ export class InstanceAiDriver {
 		this.createdThreadIds = this.createdThreadIds.filter((id) => id !== threadId);
 	}
 
-	/** Delete all threads created by this driver instance. */
-	async deleteAllThreads(): Promise<void> {
-		const threadIds = [...this.createdThreadIds];
-		for (const threadId of threadIds) {
-			await this.deleteThread(threadId);
-		}
-	}
-
 	/** Delete all workflows via the REST API to prevent cross-round interference. */
 	async deleteAllWorkflows(): Promise<void> {
 		const cookies = await this.n8n.page.context().cookies();
@@ -296,16 +277,6 @@ export class InstanceAiDriver {
 	async cleanup(): Promise<void> {
 		await this.closeAllTabs();
 		await this.deleteAllWorkflows();
-	}
-
-	/** Take a stable server-side heap measurement (triggers GC + polls VictoriaMetrics). */
-	async measureHeap(options?: StableHeapOptions): Promise<StableHeapResult> {
-		return await getStableHeap(this.baseUrl, this.metrics, options);
-	}
-
-	/** Trigger a V8 heap snapshot on the server. */
-	async snapshot(testInfo: TestInfo, label: string): Promise<void> {
-		await takeHeapSnapshot(this.baseUrl, testInfo, label);
 	}
 
 	private extractThreadId(page: Page): string {

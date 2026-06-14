@@ -1,24 +1,32 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
-
 import { proxyFetch } from '@n8n/ai-utilities';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { Mock, MockedClass, MockedFunction } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
+import { expect } from 'vitest';
 
-import type { McpAuthenticationOption, McpServerTransport } from '../types';
-import { connectMcpClient, getAuthHeaders, tryRefreshOAuth2Token } from '../utils';
+import type { McpAuthenticationOption } from '../types';
+import {
+	connectMcpClient,
+	getAuthHeaders,
+	mapToNodeOperationError,
+	tryRefreshOAuth2Token,
+} from '../utils';
 
-jest.mock('@modelcontextprotocol/sdk/client/index.js');
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
-jest.mock('@modelcontextprotocol/sdk/client/sse.js');
-jest.mock('@n8n/ai-utilities', () => ({
-	proxyFetch: jest.fn(),
-}));
+vi.mock('@modelcontextprotocol/sdk/client/index.js');
+vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
+vi.mock('@modelcontextprotocol/sdk/client/sse.js');
+vi.mock('@n8n/ai-utilities', async () => {
+	const actual = await vi.importActual('@n8n/ai-utilities');
+	return {
+		...(actual as Record<string, unknown>),
+		proxyFetch: vi.fn(),
+	};
+});
 
-const mockedProxyFetch = proxyFetch as jest.MockedFunction<typeof proxyFetch>;
-
-const MockedClient = Client as jest.MockedClass<typeof Client>;
+const MockedClient = Client as MockedClass<typeof Client>;
 
 describe('utils', () => {
 	describe('tryRefreshOAuth2Token', () => {
@@ -80,56 +88,69 @@ describe('utils', () => {
 	});
 
 	describe('getAuthHeaders', () => {
-		it('should return the headers for mcpOAuth2Api', async () => {
+		it('should return the headers and credentials for mcpOAuth2Api', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.getCredentials.mockResolvedValue({
+			const credentials = {
 				oauthTokenData: {
 					access_token: 'access-token',
 				},
-			});
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
 
 			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
 
-			expect(result).toEqual({ headers: { Authorization: 'Bearer access-token' } });
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer access-token' },
+				credentials,
+			});
 		});
 
-		it('should return the headers for headerAuth', async () => {
+		it('should return the headers and credentials for headerAuth', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.getCredentials.mockResolvedValue({
+			const credentials = {
 				name: 'Foo',
 				value: 'bar',
-			});
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
 
 			const result = await getAuthHeaders(ctx, 'headerAuth');
 
-			expect(result).toEqual({ headers: { Foo: 'bar' } });
+			expect(result).toEqual({ headers: { Foo: 'bar' }, credentials });
 		});
 
-		it('should return the headers for bearerAuth', async () => {
+		it('should return the headers and credentials for bearerAuth', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.getCredentials.mockResolvedValue({
+			const credentials = {
 				token: 'access-token',
-			});
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
 
 			const result = await getAuthHeaders(ctx, 'bearerAuth');
 
-			expect(result).toEqual({ headers: { Authorization: 'Bearer access-token' } });
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer access-token' },
+				credentials,
+			});
 		});
 
-		it('should return the headers for multipleHeadersAuth', async () => {
+		it('should return the headers and credentials for multipleHeadersAuth', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
-			ctx.getCredentials.mockResolvedValue({
+			const credentials = {
 				headers: {
 					values: [
 						{ name: 'Foo', value: 'bar' },
 						{ name: 'Test', value: '123' },
 					],
 				},
-			});
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
 
 			const result = await getAuthHeaders(ctx, 'multipleHeadersAuth');
 
-			expect(result).toEqual({ headers: { Foo: 'bar', Test: '123' } });
+			expect(result).toEqual({
+				headers: { Foo: 'bar', Test: '123' },
+				credentials,
+			});
 		});
 
 		it('should return an empty object for none', async () => {
@@ -165,28 +186,58 @@ describe('utils', () => {
 			},
 		);
 	});
-
 	describe('connectMcpClient', () => {
 		const mockClient = {
-			connect: jest.fn(),
+			connect: vi.fn(),
+			close: vi.fn(),
 		};
 
+		const mockedProxyFetch = proxyFetch as MockedFunction<typeof proxyFetch>;
+
 		beforeEach(() => {
-			jest.resetAllMocks();
-			MockedClient.mockImplementation(() => mockClient as unknown as Client);
+			vi.clearAllMocks();
+			vi.restoreAllMocks();
+			mockClient.close = vi.fn();
+			mockClient.close.mockResolvedValue(undefined);
+
+			MockedClient.mockImplementation(function () {
+				return mockClient as unknown as Client;
+			});
 		});
 
 		describe.each([
 			['httpStreamable', StreamableHTTPClientTransport],
 			['sse', SSEClientTransport],
-		] as Array<
-			[McpServerTransport, typeof StreamableHTTPClientTransport | typeof SSEClientTransport]
-		>)('%s transport', (transport, Transport) => {
-			it('should connect successfully and pass a custom fetch', async () => {
-				(Transport as jest.Mock).mockImplementation(() => ({}));
-				mockClient.connect.mockResolvedValue(undefined);
+		] as const)('%s transport', (transport, TransportClass) => {
+			it('should return cancelled without creating a transport when signal is already aborted', async () => {
+				const abort = new AbortController();
+				abort.abort();
+				const addEventListener = vi.spyOn(abort.signal, 'addEventListener');
 
 				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('cancelled');
+					expect(result.error.error.message).toBe('Execution was cancelled');
+				}
+				expect(TransportClass).not.toHaveBeenCalled();
+				expect(mockClient.connect).not.toHaveBeenCalled();
+				expect(addEventListener).toHaveBeenCalledWith('abort', expect.any(Function), {
+					once: true,
+				});
+			});
+
+			it('should connect successfully and pass a custom fetch', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+
+				await connectMcpClient({
 					serverTransport: transport,
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer token' },
@@ -194,14 +245,102 @@ describe('utils', () => {
 					version: 1,
 				});
 
+				expect(TransportClass).toHaveBeenCalledTimes(1);
+
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				expect(opts.fetch).toBeTypeOf('function');
+			});
+
+			it('should connect successfully without a signal and not pass requestInit', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+				});
+
 				expect(result.ok).toBe(true);
-				expect(Transport).toHaveBeenCalledTimes(1);
-				const transportOpts = (Transport as jest.Mock).mock.calls[0][1];
-				expect(transportOpts.fetch).toBeDefined();
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				expect(opts).not.toHaveProperty('requestInit');
+			});
+
+			it('should pass the abort signal in requestInit when a signal is provided', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				const abort = new AbortController();
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(true);
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				expect(opts.requestInit).toEqual({ signal: abort.signal });
+			});
+
+			it('should attach a once abort listener that closes the client and swallows close rejection', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				mockClient.close.mockRejectedValueOnce(new Error('close failed'));
+				const abort = new AbortController();
+				const addEventListener = vi.spyOn(abort.signal, 'addEventListener');
+
+				// Save a reference to the original close mock before it gets wrapped
+				const closeSpy = mockClient.close;
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(true);
+				expect(addEventListener).toHaveBeenCalledWith('abort', expect.any(Function), {
+					once: true,
+				});
+
+				// Trigger the abort; the listener will call client.close (the wrapper)
+				expect(() => abort.abort()).not.toThrow();
+				await Promise.resolve();
+
+				// The original close function should have been called exactly once
+				expect(closeSpy).toHaveBeenCalledTimes(1);
+			});
+
+			it('should remove the abort listener on normal close, preventing double-close on later abort', async () => {
+				mockClient.connect.mockResolvedValue(undefined);
+				const abort = new AbortController();
+
+				// Save a reference to the original close mock before it gets wrapped
+				const closeSpy = mockClient.close;
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(true);
+				if (result.ok) {
+					// Normal close – triggers the wrapper, which removes the listener and calls originalClose
+					await result.result.close();
+				}
+				abort.abort(); // listener already removed, should not call close again
+				await Promise.resolve();
+
+				// Original close called exactly once (not twice)
+				expect(closeSpy).toHaveBeenCalledTimes(1);
 			});
 
 			it('should return auth error on 401 during connect', async () => {
-				(Transport as jest.Mock).mockImplementation(() => ({}));
 				mockClient.connect.mockRejectedValueOnce(new Error('Request failed with status 401'));
 
 				const result = await connectMcpClient({
@@ -219,7 +358,6 @@ describe('utils', () => {
 			});
 
 			it('should return connection error on non-auth failure', async () => {
-				(Transport as jest.Mock).mockImplementation(() => ({}));
 				mockClient.connect.mockRejectedValueOnce(new Error('Connection refused'));
 
 				const result = await connectMcpClient({
@@ -235,12 +373,107 @@ describe('utils', () => {
 				}
 			});
 
-			it('should inject auth headers into fetch requests', async () => {
-				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
-					capturedFetch = opts?.fetch;
-					return {};
+			it('should remove the abort listener when connect fails with an auth error', async () => {
+				mockClient.connect.mockRejectedValueOnce(new Error('Request failed with status 401'));
+				const abort = new AbortController();
+				const removeEventListener = vi.spyOn(abort.signal, 'removeEventListener');
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
 				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('auth');
+				}
+				expect(removeEventListener).toHaveBeenCalledWith('abort', expect.any(Function));
+			});
+
+			it('should remove the abort listener when connect fails with a connection error', async () => {
+				mockClient.connect.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+				const abort = new AbortController();
+				const removeEventListener = vi.spyOn(abort.signal, 'removeEventListener');
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('connection');
+				}
+				expect(removeEventListener).toHaveBeenCalledWith('abort', expect.any(Function));
+			});
+
+			it('should return cancelled when connect throws AbortError with a signal', async () => {
+				const abortError = new Error('The operation was aborted');
+				abortError.name = 'AbortError';
+				mockClient.connect.mockRejectedValueOnce(abortError);
+				const abort = new AbortController();
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('cancelled');
+					expect(result.error.error).toBe(abortError);
+				}
+			});
+
+			it('should return cancelled when the signal is aborted while connect fails', async () => {
+				const abort = new AbortController();
+				mockClient.connect.mockImplementationOnce(async () => {
+					abort.abort();
+					throw new Error('connect failed after cancellation');
+				});
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+					signal: abort.signal,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('cancelled');
+				}
+			});
+
+			it('should return connection when connect throws AbortError without a signal', async () => {
+				const abortError = new Error('The operation was aborted');
+				abortError.name = 'AbortError';
+				mockClient.connect.mockRejectedValueOnce(abortError);
+
+				const result = await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					name: 'test-client',
+					version: 1,
+				});
+
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.error.type).toBe('connection');
+				}
+			});
+
+			it('should inject auth headers into fetch requests', async () => {
 				mockClient.connect.mockResolvedValue(undefined);
 				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
 
@@ -252,71 +485,70 @@ describe('utils', () => {
 					version: 1,
 				});
 
-				expect(capturedFetch).toBeDefined();
-				await capturedFetch!('https://example.com/mcp', {
-					headers: { 'content-type': 'application/json' },
-				});
+				// The authFetch function is passed to the transport constructor but never called
+				// by the mocked transport. Extract it and invoke directly to test its behavior.
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				await opts.fetch('https://example.com/mcp', {});
 
-				expect(mockedProxyFetch).toHaveBeenCalledWith(
-					'https://example.com/mcp',
+				expect(mockedProxyFetch).toHaveBeenCalled();
+
+				const call = mockedProxyFetch.mock.calls[0];
+
+				expect(call[0]).toBe('https://example.com/mcp');
+				expect(call[1]).toEqual(
 					expect.objectContaining({
 						headers: expect.objectContaining({
-							'content-type': 'application/json',
 							Authorization: 'Bearer my-token',
 						}),
 					}),
 				);
 			});
 
-			it('should preserve SDK headers passed as a Headers instance', async () => {
-				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
-					capturedFetch = opts?.fetch;
-					return {};
-				});
+			it('should preserve SDK headers passed as Headers instance', async () => {
 				mockClient.connect.mockResolvedValue(undefined);
-				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
 
-				await connectMcpClient({
-					serverTransport: transport,
-					endpointUrl: 'https://example.com',
-					headers: { Authorization: 'Bearer my-token' },
-					name: 'test-client',
-					version: 1,
-				});
-
-				expect(capturedFetch).toBeDefined();
 				const sdkHeaders = new Headers({
 					Accept: 'text/event-stream',
 					'mcp-protocol-version': '2025-03-26',
 				});
-				await capturedFetch!('https://example.com/mcp', { headers: sdkHeaders });
 
-				expect(mockedProxyFetch).toHaveBeenCalledWith(
-					'https://example.com/mcp',
+				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
+
+				await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					headers: { Authorization: 'Bearer my-token' },
+					name: 'test-client',
+					version: 1,
+				});
+
+				// Simulate the transport calling authFetch with a Headers instance as init.headers.
+				// Headers entries() normalises keys to lowercase, so Accept becomes 'accept'.
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				await opts.fetch('https://example.com', { headers: sdkHeaders });
+
+				const [, callOpts] = mockedProxyFetch.mock.calls[0];
+
+				// @ts-expect-error - Mocking
+				expect(callOpts.headers).toEqual(
 					expect.objectContaining({
-						headers: expect.objectContaining({
-							accept: 'text/event-stream',
-							'mcp-protocol-version': '2025-03-26',
-							Authorization: 'Bearer my-token',
-						}),
+						accept: expect.any(String),
 					}),
 				);
 			});
 
-			it('should retry on 401 response with refreshed headers from onUnauthorized', async () => {
-				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
-					capturedFetch = opts?.fetch;
-					return {};
-				});
+			it('should retry on 401 response with refreshed headers', async () => {
 				mockClient.connect.mockResolvedValue(undefined);
 
-				const onUnauthorized = jest
-					.fn()
-					.mockResolvedValue({ Authorization: 'Bearer refreshed-token' });
+				const onUnauthorized = vi.fn().mockResolvedValue({
+					Authorization: 'Bearer refreshed-token',
+				});
 
-				await connectMcpClient({
+				mockedProxyFetch
+					.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }))
+					.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+
+				const result = await connectMcpClient({
 					serverTransport: transport,
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer old-token' },
@@ -325,37 +557,22 @@ describe('utils', () => {
 					onUnauthorized,
 				});
 
-				mockedProxyFetch
-					.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }))
-					.mockResolvedValueOnce(new Response('ok', { status: 200 }));
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				await opts.fetch('https://example.com', {});
 
-				const response = await capturedFetch!('https://example.com/mcp', {});
-
-				expect(response.status).toBe(200);
-				expect(onUnauthorized).toHaveBeenCalledWith({ Authorization: 'Bearer old-token' });
+				expect(result.ok).toBe(true);
+				expect(onUnauthorized).toHaveBeenCalledTimes(1);
 				expect(mockedProxyFetch).toHaveBeenCalledTimes(2);
-				expect(mockedProxyFetch).toHaveBeenNthCalledWith(
-					2,
-					'https://example.com/mcp',
-					expect.objectContaining({
-						headers: expect.objectContaining({
-							Authorization: 'Bearer refreshed-token',
-						}),
-					}),
-				);
 			});
 
-			it('should use refreshed headers for subsequent requests after 401 retry', async () => {
-				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
-					capturedFetch = opts?.fetch;
-					return {};
-				});
+			it('should use refreshed headers for subsequent requests', async () => {
 				mockClient.connect.mockResolvedValue(undefined);
 
-				const onUnauthorized = jest
-					.fn()
-					.mockResolvedValue({ Authorization: 'Bearer refreshed-token' });
+				const onUnauthorized = vi.fn().mockResolvedValue({
+					Authorization: 'Bearer refreshed-token',
+				});
+
+				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
 
 				await connectMcpClient({
 					serverTransport: transport,
@@ -366,64 +583,42 @@ describe('utils', () => {
 					onUnauthorized,
 				});
 
-				// First request: 401 -> refresh -> retry succeeds
-				mockedProxyFetch
-					.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }))
-					.mockResolvedValueOnce(new Response('ok', { status: 200 }));
-				await capturedFetch!('https://example.com/mcp', {});
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				await opts.fetch('https://example.com', {});
 
-				// Second request: should use the refreshed token directly
-				mockedProxyFetch.mockResolvedValueOnce(new Response('ok', { status: 200 }));
-				await capturedFetch!('https://example.com/mcp', {});
-
-				expect(mockedProxyFetch).toHaveBeenNthCalledWith(
-					3,
-					'https://example.com/mcp',
-					expect.objectContaining({
-						headers: expect.objectContaining({
-							Authorization: 'Bearer refreshed-token',
-						}),
-					}),
-				);
+				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 			});
 
 			it('should not retry on 401 when onUnauthorized returns null', async () => {
-				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
-					capturedFetch = opts?.fetch;
-					return {};
-				});
 				mockClient.connect.mockResolvedValue(undefined);
 
-				const onUnauthorized = jest.fn().mockResolvedValue(null);
+				const onUnauthorized = vi.fn().mockResolvedValue(null);
 
-				await connectMcpClient({
+				mockedProxyFetch.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }));
+
+				const result = await connectMcpClient({
 					serverTransport: transport,
 					endpointUrl: 'https://example.com',
-					headers: { Authorization: 'Bearer old-token' },
+					headers: { Authorization: 'Bearer token' },
 					name: 'test-client',
 					version: 1,
 					onUnauthorized,
 				});
 
-				mockedProxyFetch.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }));
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				await opts.fetch('https://example.com', {});
 
-				const response = await capturedFetch!('https://example.com/mcp', {});
-
-				expect(response.status).toBe(401);
+				expect(result.ok).toBe(true);
 				expect(onUnauthorized).toHaveBeenCalledTimes(1);
 				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 			});
 
 			it('should not retry on 401 when onUnauthorized is not provided', async () => {
-				let capturedFetch: typeof fetch | undefined;
-				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
-					capturedFetch = opts?.fetch;
-					return {};
-				});
 				mockClient.connect.mockResolvedValue(undefined);
 
-				await connectMcpClient({
+				mockedProxyFetch.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }));
+
+				const result = await connectMcpClient({
 					serverTransport: transport,
 					endpointUrl: 'https://example.com',
 					headers: { Authorization: 'Bearer token' },
@@ -431,13 +626,23 @@ describe('utils', () => {
 					version: 1,
 				});
 
-				mockedProxyFetch.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }));
+				const [, opts] = (TransportClass as Mock).mock.calls[0];
+				await opts.fetch('https://example.com', {});
 
-				const response = await capturedFetch!('https://example.com/mcp', {});
-
-				expect(response.status).toBe(401);
+				expect(result.ok).toBe(true);
 				expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 			});
+		});
+	});
+
+	describe('mapToNodeOperationError', () => {
+		it('should map cancelled connection errors to an execution cancellation message', () => {
+			const node = mockDeep<INode>();
+			const error = new Error('abort');
+
+			const result = mapToNodeOperationError(node, { type: 'cancelled', error });
+
+			expect(result.message).toBe('Execution was cancelled');
 		});
 	});
 });

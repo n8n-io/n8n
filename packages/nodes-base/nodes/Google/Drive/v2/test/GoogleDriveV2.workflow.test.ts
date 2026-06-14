@@ -100,6 +100,25 @@ describe('Google Drive V2', () => {
 				})
 				.persist();
 
+			// Mock Google Docs metadata fetch for Markdown export test
+			mock
+				.get('/drive/v3/files/docs123')
+				.query({ fields: 'mimeType,name', supportsTeamDrives: true, supportsAllDrives: true })
+				.reply(200, {
+					id: 'docs123',
+					name: 'Test Doc',
+					mimeType: 'application/vnd.google-apps.document',
+				})
+				.persist();
+
+			// Mock Google Docs export as Markdown
+			mock
+				.get('/drive/v3/files/docs123/export')
+				.query({ mimeType: 'text/markdown', supportsAllDrives: true })
+				.reply(200, '# Hello World', {
+					'Content-Type': 'text/markdown',
+				});
+
 			// Mock file download for file that doesn't exist
 			mock
 				.get('/drive/v3/files/does-not-exist')
@@ -150,6 +169,7 @@ describe('Google Drive V2', () => {
 				'file-createFromText.workflow.json',
 				'file-delete.workflow.json',
 				'file-download.workflow.json',
+				'file-download-docs-markdown.workflow.json',
 				'file-download-error.workflow.json',
 				'file-move.workflow.json',
 				'file-share.workflow.json',

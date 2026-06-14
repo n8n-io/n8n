@@ -1,9 +1,10 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import { searchModels, type AnthropicModel } from '../searchModels';
 
 describe('searchModels', () => {
-	let mockContext: jest.Mocked<ILoadOptionsFunctions>;
+	let mockContext: Mocked<ILoadOptionsFunctions>;
 
 	const mockModels: AnthropicModel[] = [
 		{
@@ -40,19 +41,19 @@ describe('searchModels', () => {
 
 	beforeEach(() => {
 		mockContext = {
-			getCredentials: jest.fn().mockResolvedValue({}),
+			getCredentials: vi.fn().mockResolvedValue({}),
 			helpers: {
-				httpRequestWithAuthentication: jest.fn().mockResolvedValue({
+				httpRequestWithAuthentication: vi.fn().mockResolvedValue({
 					data: mockModels,
 				}),
 			},
-		} as unknown as jest.Mocked<ILoadOptionsFunctions>;
+		} as unknown as Mocked<ILoadOptionsFunctions>;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Reset the getCredentials mock to its default value
-		mockContext.getCredentials = jest.fn().mockResolvedValue({});
+		mockContext.getCredentials = vi.fn().mockResolvedValue({});
 	});
 
 	it('should fetch models from default Anthropic API URL when no custom URL is provided', async () => {
@@ -71,7 +72,7 @@ describe('searchModels', () => {
 	it('should fetch models from custom Anthropic API URL when provided in credentials', async () => {
 		const customUrl = 'https://custom-anthropic-api.example.com';
 		// Override the default mock to return credentials with a custom URL
-		mockContext.getCredentials = jest.fn().mockResolvedValue({ url: customUrl });
+		mockContext.getCredentials = vi.fn().mockResolvedValue({ url: customUrl });
 
 		const result = await searchModels.call(mockContext);
 
@@ -87,7 +88,7 @@ describe('searchModels', () => {
 
 	it('should use default URL when empty URL is provided in credentials', async () => {
 		// Override the default mock to return credentials with an empty URL
-		mockContext.getCredentials = jest.fn().mockResolvedValue({ url: null });
+		mockContext.getCredentials = vi.fn().mockResolvedValue({ url: null });
 
 		const result = await searchModels.call(mockContext);
 

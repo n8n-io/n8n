@@ -26,6 +26,20 @@ describe('Workflow Builder', () => {
 			expect(json.settings?.timezone).toBe('America/New_York');
 			expect(json.settings?.executionOrder).toBe('v1');
 		});
+
+		it('should throw a clear TypeError when id is not a string', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow({ id: 'test-id' }, 'Test Workflow');
+			}).toThrow(/workflow\(\) requires a string id as first argument/);
+		});
+
+		it('should throw a clear TypeError when name is not a string', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				workflow('test-id', { name: 'Test Workflow' });
+			}).toThrow(/workflow\(\) requires a string name as second argument/);
+		});
 	});
 
 	describe('.add()', () => {
@@ -281,6 +295,82 @@ describe('Workflow Builder', () => {
 			expect(() => (wf as unknown as { input: (n: number) => void }).input(1)).toThrow(
 				'Cannot call .input() on the workflow builder',
 			);
+		});
+
+		it('should throw a clear error when an OutputSelector is passed to .add()', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+			const target = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Set' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t);
+			const misuse = source.output(0) as unknown as NodeInstance<string, string, unknown>;
+			expect(() => wf.add(misuse).to(target)).toThrow(TypeError);
+			expect(() => wf.add(misuse).to(target)).toThrow(/Cannot pass an OutputSelector to \.add\(\)/);
+			expect(() => wf.add(misuse).to(target)).toThrow(/Branch\.output\(0\)\.to\(/);
+		});
+
+		it('should throw a clear error when an OutputSelector is passed to .to()', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t);
+			const misuse = source.output(1) as unknown as NodeInstance<string, string, unknown>;
+			expect(() => wf.to(misuse)).toThrow(/Cannot pass an OutputSelector to \.to\(\)/);
+		});
+
+		it('should throw a clear error when an OutputSelector is inside an array passed to .add()', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+			const sibling = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Sibling' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t);
+			const misuse = [sibling, source.output(0)] as unknown as NodeInstance<
+				string,
+				string,
+				unknown
+			>;
+			expect(() => wf.add(misuse)).toThrow(/Cannot pass an OutputSelector to \.add\(\)/);
+		});
+
+		it('should accept node.output(n).to(target) inside .add() — the documented form', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const source = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'Branch' },
+			});
+			const target = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Set' },
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t).add(source.output(0).to(target));
+			const json = wf.toJSON();
+			const branchConns = json.connections[source.name]?.main[0];
+			expect(branchConns).toBeDefined();
+			expect(branchConns).toHaveLength(1);
+			expect(branchConns?.[0]?.node).toBe(target.name);
 		});
 	});
 
@@ -653,6 +743,121 @@ describe('Workflow Builder', () => {
 			expect(json.connections['Log']?.main[0]?.[0]?.node).toBe('IF');
 			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
 			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
+		});
+	});
+
+	describe('NodeChain.onError()', () => {
+		it('binds the error route to the node that declares continueErrorOutput, not the tail', () => {
+			// INS-425 regression: sendGmail.to(markSent).onError(markFailed) attached
+			// the error edge to Mark Sent (tail) instead of Send Gmail, producing a
+			// connection from an output port Mark Sent does not have.
+			const t = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.3,
+				config: { name: 'Daily' },
+			});
+			const sendGmail = node({
+				type: 'n8n-nodes-base.gmail',
+				version: 2.2,
+				config: { name: 'Send Gmail', onError: 'continueErrorOutput' },
+			});
+			const markSent = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Mark Sent' },
+			});
+			const markFailed = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Mark Failed' },
+			});
+
+			const wf = workflow('test-id', 'Test').add(t).to(sendGmail.to(markSent).onError(markFailed));
+
+			const json = wf.toJSON();
+
+			// Error edge originates from the gmail node's error pin
+			expect(json.connections['Send Gmail']?.main[0]?.[0]?.node).toBe('Mark Sent');
+			expect(json.connections['Send Gmail']?.main[1]?.[0]?.node).toBe('Mark Failed');
+			// Mark Sent has no phantom second output
+			expect(json.connections['Mark Sent']?.main[1]).toBeUndefined();
+		});
+
+		it('falls back to the tail and makes its error pin real when no chain node declares continueErrorOutput', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const fetchNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch' },
+			});
+			const writeNode = node({
+				type: 'n8n-nodes-base.dataTable',
+				version: 1.1,
+				config: { name: 'Write' },
+			});
+			const failHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Log Failure' },
+			});
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.to(fetchNode.to(writeNode).onError(failHandler));
+
+			const json = wf.toJSON();
+
+			// Tail keeps the error route, but its error pin must actually exist
+			const writeJson = json.nodes.find((n) => n.name === 'Write');
+			expect(writeJson?.onError).toBe('continueErrorOutput');
+			expect(json.connections['Write']?.main[1]?.[0]?.node).toBe('Log Failure');
+		});
+
+		it('node-level .onError() implies onError: continueErrorOutput on the node', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error Handler' },
+			});
+
+			httpNode.onError(errorHandler);
+
+			const wf = workflow('test-id', 'Test').add(httpNode).add(errorHandler);
+			const json = wf.toJSON();
+
+			const httpJson = json.nodes.find((n) => n.name === 'HTTP');
+			expect(httpJson?.onError).toBe('continueErrorOutput');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Error Handler');
+		});
+
+		it('does not override an explicit onError mode set in config', () => {
+			const httpNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', onError: 'continueRegularOutput' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Error Handler' },
+			});
+
+			httpNode.onError(errorHandler);
+
+			const wf = workflow('test-id', 'Test').add(httpNode).add(errorHandler);
+			const json = wf.toJSON();
+
+			const httpJson = json.nodes.find((n) => n.name === 'HTTP');
+			expect(httpJson?.onError).toBe('continueRegularOutput');
 		});
 	});
 

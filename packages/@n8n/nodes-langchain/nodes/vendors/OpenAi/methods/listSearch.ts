@@ -93,9 +93,29 @@ export async function imageModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	return await getModelSearch(
-		(model) => model.id.includes('vision') || model.id.includes('gpt-4o'),
-	)(this, filter);
+	return await getModelSearch((model) => {
+		if (
+			model.id.includes('-transcribe') ||
+			model.id.includes('-diarize') ||
+			model.id.includes('-search') ||
+			model.id.includes('-audio') ||
+			model.id.includes('-realtime')
+		) {
+			return false;
+		}
+
+		return (
+			model.id.includes('gpt-5') ||
+			model.id.includes('gpt-4o') ||
+			model.id.includes('gpt-4.1') ||
+			model.id.includes('gpt-4-turbo') ||
+			model.id.includes('vision') ||
+			model.id.startsWith('o1') ||
+			model.id.startsWith('o3') ||
+			model.id.startsWith('o4-mini') ||
+			model.id.startsWith('chatgpt-4o')
+		);
+	})(this, filter);
 }
 
 export async function imageGenerateModelSearch(

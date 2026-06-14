@@ -258,6 +258,34 @@ describe('OwnershipService', () => {
 		});
 	});
 
+	describe('invalidateWorkflowProjectCacheForProject()', () => {
+		test('should delete cache entry for each workflow in the project', async () => {
+			const workflowIds = ['wf1', 'wf2', 'wf3'];
+			sharedWorkflowRepository.find.mockResolvedValueOnce(
+				workflowIds.map((workflowId) => Object.assign(new SharedWorkflow(), { workflowId })),
+			);
+
+			await ownershipService.invalidateWorkflowProjectCacheForProject('project-123');
+
+			expect(sharedWorkflowRepository.find).toHaveBeenCalledWith({
+				where: { projectId: 'project-123', role: 'workflow:owner' },
+				select: ['workflowId'],
+			});
+			for (const workflowId of workflowIds) {
+				expect(cacheService.deleteFromHash).toHaveBeenCalledWith('workflow-project', workflowId);
+			}
+			expect(cacheService.deleteFromHash).toHaveBeenCalledTimes(workflowIds.length);
+		});
+
+		test('should not call deleteFromHash if project has no workflows', async () => {
+			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+
+			await ownershipService.invalidateWorkflowProjectCacheForProject('empty-project');
+
+			expect(cacheService.deleteFromHash).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getInstanceOwner()', () => {
 		test('should find owner using global owner role ID', async () => {
 			await ownershipService.getInstanceOwner();
@@ -272,9 +300,9 @@ describe('OwnershipService', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
 			jest.spyOn(userRepository, 'exists').mockResolvedValueOnce(true);
 
-			await expect(ownershipService.setupOwner(mock())).rejects.toThrowError(
-				new BadRequestError('Instance owner already setup'),
-			);
+			const execution = ownershipService.setupOwner(mock());
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Instance owner already setup');
 
 			expect(userRepository.save).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
@@ -287,9 +315,9 @@ describe('OwnershipService', () => {
 			userRepository.exists.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(null);
 
-			await expect(ownershipService.setupOwner(mock())).rejects.toThrowError(
-				new BadRequestError('Instance owner shell user not found'),
-			);
+			const execution = ownershipService.setupOwner(mock());
+			await expect(execution).rejects.toThrow(BadRequestError);
+			await expect(execution).rejects.toThrow('Instance owner shell user not found');
 
 			expect(userRepository.save).not.toHaveBeenCalled();
 		});

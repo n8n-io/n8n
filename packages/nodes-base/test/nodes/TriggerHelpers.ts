@@ -4,8 +4,9 @@ import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
+import type { SsrfBridge } from '@n8n/backend-network';
 import { PollContext, returnJsonArray } from 'n8n-core';
-import type { InstanceSettings, ExecutionLifecycleHooks, SsrfBridge } from 'n8n-core';
+import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
 import {
 	createDeferredPromise,
@@ -19,6 +20,7 @@ import {
 	type ITriggerFunctions,
 	type IWebhookFunctions,
 	type IWorkflowExecuteAdditionalData,
+	type Logger,
 	type NodeTypeAndVersion,
 	type VersionedNodeType,
 	type Workflow,
@@ -45,7 +47,9 @@ type TestTriggerNodeOptions = {
 	timezone?: string;
 	workflowStaticData?: IDataObject;
 	credential?: ICredentialDataDecryptedObject;
+	credentials?: Record<string, ICredentialDataDecryptedObject>;
 	helpers?: Partial<ITriggerFunctions['helpers']>;
+	workflow?: { id?: string; name?: string; active?: boolean };
 };
 
 type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
@@ -104,19 +108,26 @@ export async function testTriggerNode(
 		},
 	});
 
+	const workflowMetadata = {
+		id: options.workflow?.id,
+		name: options.workflow?.name,
+		active: options.workflow?.active ?? false,
+	};
+	const triggerLogger = mock<Logger>({
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+	});
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers,
 		emit,
-		logger: mock({
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		}),
+		logger: triggerLogger,
 		getTimezone: () => timezone,
 		getNode: () => node,
-		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
-			(options.credential ?? {}) as T,
+		getWorkflow: () => workflowMetadata,
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>(type: string) =>
+			(options.credentials?.[type] ?? options.credential ?? {}) as T,
 		getMode: () => options.mode ?? 'trigger',
 		getWorkflowStaticData: () => options.workflowStaticData ?? {},
 		getWorkflowSettings: () => ({}),
@@ -133,6 +144,7 @@ export async function testTriggerNode(
 		close: jest.fn(response?.closeFunction),
 		manualTriggerFunction: options.mode === 'manual' ? response?.manualTriggerFunction : undefined,
 		emit,
+		logger: triggerLogger,
 	};
 }
 
@@ -212,8 +224,8 @@ export async function testWebhookTriggerNode(
 		getWorkflowSettings: () => ({}),
 		getNodeParameter: (parameterName, fallback) => get(node.parameters, parameterName) ?? fallback,
 		getChildNodes: () => options.childNodes ?? [],
-		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
-			(options.credential ?? {}) as T,
+		getCredentials: async <T extends object = ICredentialDataDecryptedObject>(type: string) =>
+			(options.credentials?.[type] ?? options.credential ?? {}) as T,
 	});
 
 	const responseData = await trigger.webhook?.call(webhookFunctions);

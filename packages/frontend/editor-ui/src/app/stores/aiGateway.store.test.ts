@@ -24,6 +24,22 @@ const MOCK_CONFIG = {
 	providerConfig: {
 		googlePalmApi: { gatewayPath: '/v1/gateway/google', urlField: 'host', apiKeyField: 'apiKey' },
 	},
+	supportedActions: {
+		'@n8n/n8n-nodes-langchain.openAi': {
+			text: ['message', 'response', 'classify'],
+			image: ['analyze', 'generate', 'edit'],
+			audio: ['generate', 'transcribe', 'translate'],
+		},
+		'@n8n/n8n-nodes-langchain.googleGemini': {
+			text: ['message'],
+			image: ['generate'],
+		},
+		'@n8n/n8n-nodes-langchain.anthropic': {
+			text: ['message'],
+			image: ['analyze'],
+			document: ['analyze'],
+		},
+	},
 };
 
 const MOCK_USAGE_PAGE_1 = [
@@ -255,6 +271,67 @@ describe('aiGateway.store', () => {
 			const store = useAiGatewayStore();
 
 			expect(store.isCredentialTypeSupported('googlePalmApi')).toBe(false);
+		});
+	});
+
+	describe('isActionSupported()', () => {
+		it('should return true for a supported resource/operation', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'text', 'message')).toBe(
+				true,
+			);
+		});
+
+		it('should return false for an unsupported operation', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'text', 'unknownOp')).toBe(
+				false,
+			);
+		});
+
+		it('should return false for an unsupported resource', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'file', 'upload')).toBe(
+				false,
+			);
+		});
+
+		it('should return true when node has no supportedActions entry', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(
+				store.isActionSupported('@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 'text', 'message'),
+			).toBe(true);
+		});
+
+		it('should return true when config has no supportedActions field', async () => {
+			const configWithout = { ...MOCK_CONFIG, supportedActions: undefined };
+			mockGetGatewayConfig.mockResolvedValue(configWithout);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'text', 'message')).toBe(
+				true,
+			);
+		});
+
+		it('should return true when config has not been loaded', () => {
+			const store = useAiGatewayStore();
+
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAi', 'file', 'upload')).toBe(
+				true,
+			);
 		});
 	});
 });

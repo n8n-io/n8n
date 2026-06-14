@@ -5,11 +5,11 @@ import { VIEWS } from '@/app/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
-import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 
 export function useWorkflowImport(
-	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>,
+	currentWorkflowDocumentStore: ShallowRef<WorkflowDocumentStore | null>,
 ) {
 	const route = useRoute();
 	const { resetWorkspace, initializeWorkspace, fitView } = useCanvasOperations();

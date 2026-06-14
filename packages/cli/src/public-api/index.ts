@@ -12,10 +12,11 @@ import { Logger } from '@n8n/backend-common';
 
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
+
+import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
 
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
@@ -76,18 +77,19 @@ function createLazyValidatorMiddleware(
 					'express-openapi-validator'
 				);
 
+				const authStrategyRegistry = Container.get(AuthStrategyRegistry);
+				const eventService = Container.get(EventService);
+				const lastActiveAtService = Container.get(LastActiveAtService);
+				const logger = Container.get(Logger);
+
 				const authenticate = async (req: AuthenticatedRequest) => {
-					const authenticated = await Container.get(AuthStrategyRegistry).authenticate(req);
+					const authenticated = await authStrategyRegistry.authenticate(req);
 
 					if (authenticated) {
-						Container.get(LastActiveAtService)
-							.updateLastActiveIfStale(req.user.id)
-							.catch((error: unknown) => {
-								Container.get(Logger).error('Failed to update last active timestamp', {
-									error,
-								});
-							});
-						Container.get(EventService).emit('public-api-invoked', {
+						lastActiveAtService.updateLastActiveIfStale(req.user.id).catch((error: unknown) => {
+							logger.error('Failed to update last active timestamp', { error });
+						});
+						eventService.emit('public-api-invoked', {
 							userId: req.user.id,
 							path: req.path,
 							method: req.method,
@@ -99,6 +101,7 @@ function createLazyValidatorMiddleware(
 					return authenticated;
 				};
 
+				const globalConfig = Container.get(GlobalConfig);
 				const router = express.Router();
 				router.use(
 					openApiValidatorMiddleware({
@@ -106,6 +109,7 @@ function createLazyValidatorMiddleware(
 						operationHandlers: handlersDirectory,
 						validateRequests: true,
 						validateApiSpec: true,
+						fileUploader: createN8nPackageMulterOptions(globalConfig),
 						formats: {
 							email: {
 								type: 'string',
@@ -157,6 +161,7 @@ function createApiRouter(
 	publicApiEndpoint: string,
 ): Router {
 	const globalConfig = Container.get(GlobalConfig);
+	const payloadLimit = `${globalConfig.endpoints.payloadSizeMax}mb`;
 	const apiController = express.Router();
 
 	if (!globalConfig.publicApi.swaggerUiDisabled) {
@@ -183,7 +188,7 @@ function createApiRouter(
 
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
-		express.json(),
+		express.json({ limit: payloadLimit }),
 		jsonParseErrorHandler,
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);
@@ -205,14 +210,6 @@ function createApiRouter(
 export const loadPublicApiVersions = async (
 	publicApiEndpoint: string,
 ): Promise<{ apiRouters: express.Router[]; apiLatestVersion: number }> => {
-	// Register auth strategies in priority order. The registry evaluates them
-	// sequentially — the first strategy that returns a non-null result wins.
-	// API key auth is registered first so existing behavior is preserved.
-	// Additional strategies (e.g. scoped JWT from the token-exchange module)
-	// can be appended later during their own module initialization.
-	const registry = Container.get(AuthStrategyRegistry);
-	registry.register(Container.get(ApiKeyAuthStrategy));
-
 	const folders = await fs.readdir(__dirname);
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
 

@@ -12,7 +12,7 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	user: { id: 'user-1' } as RedactionContext['user'],
 	redactExecutionData: undefined,
 	userCanReveal: false,
-	hasDynamicCredentials: false,
+	enforceDynCredRedaction: false,
 	memo: new Map(),
 	...overrides,
 });

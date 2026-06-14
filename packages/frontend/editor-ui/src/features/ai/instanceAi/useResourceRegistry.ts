@@ -12,6 +12,13 @@ export interface ResourceEntry {
 	createdAt?: string;
 	updatedAt?: string;
 	projectId?: string;
+	/**
+	 * Set to true when the run-finish reap archived this workflow — a
+	 * stepping-stone the agent created but never promoted to the main
+	 * deliverable. The artifacts panel renders these as dimmed with an
+	 * "Archived" label.
+	 */
+	archived?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +91,6 @@ const ARTIFACT_TOOLS = new Set([
 	'workflows',
 	'credentials',
 	'data-tables',
-	'data-table-agent',
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
@@ -175,12 +181,16 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// Data table mutation results (insert/update/delete-data-table-rows):
-	// { dataTableId, projectId, tableName? } — produced. Preserves an
-	// existing name if the mutation result doesn't carry `tableName`.
+	// Data table metadata results (schema/query and row mutations):
+	// { dataTableId, projectId, tableName? | dataTableName? } — produced.
+	// Preserves an existing name if the result doesn't carry a name.
 	if (typeof result.dataTableId === 'string' && typeof result.projectId === 'string') {
 		const existing = col.produced.get(result.dataTableId);
-		const name = optionalString(result.tableName) ?? existing?.name ?? result.dataTableId;
+		const name =
+			optionalString(result.tableName) ??
+			optionalString(result.dataTableName) ??
+			existing?.name ??
+			result.dataTableId;
 		recordProduced(col, {
 			type: 'data-table',
 			id: result.dataTableId,
@@ -190,7 +200,25 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 }
 
+/**
+ * Register the agent's `targetResource` as a produced artifact when it carries
+ * a concrete resource id (e.g. a workflow-builder spawned to edit an existing
+ * workflow). Surfacing this at spawn time — before the first build-workflow
+ * tool result arrives — lets the artifacts panel show the workflow as soon as
+ * the sub-agent starts, instead of waiting for the first edit.
+ */
+function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections): void {
+	const target = node.targetResource;
+	if (!target?.id) return;
+	if (target.type !== 'workflow' && target.type !== 'data-table') return;
+
+	const existing = col.produced.get(target.id);
+	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
+	recordProduced(col, { type: target.type, id: target.id, name });
+}
+
 function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void {
+	extractFromTargetResource(node, col);
 	for (const tc of node.toolCalls) {
 		extractFromToolCall(tc, col);
 	}
@@ -234,6 +262,7 @@ function enrichWorkflowNames(
 export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
 	workflowNameLookup?: (id: string) => string | undefined,
+	archivedWorkflowIds?: () => ReadonlySet<string>,
 ) {
 	const collections = computed((): Collections => {
 		const col: Collections = {
@@ -248,6 +277,15 @@ export function useResourceRegistry(
 
 		if (workflowNameLookup) {
 			enrichWorkflowNames(col, workflowNameLookup);
+		}
+
+		const archived = archivedWorkflowIds?.();
+		if (archived && archived.size > 0) {
+			for (const entry of col.produced.values()) {
+				if (entry.type === 'workflow' && archived.has(entry.id)) {
+					entry.archived = true;
+				}
+			}
 		}
 
 		return col;

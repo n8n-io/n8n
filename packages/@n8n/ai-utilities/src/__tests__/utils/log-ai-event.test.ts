@@ -1,24 +1,25 @@
 import type { AiEvent, IDataObject, IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
 
 import { logAiEvent } from 'src/utils/log-ai-event';
 
 describe('logAiEvent', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions | ISupplyDataFunctions>;
-	let mockLogger: { debug: jest.Mock };
+	let mockExecuteFunctions: Mocked<IExecuteFunctions | ISupplyDataFunctions>;
+	let mockLogger: { debug: Mock };
 
 	beforeEach(() => {
 		mockLogger = {
-			debug: jest.fn(),
+			debug: vi.fn(),
 		};
 
 		mockExecuteFunctions = {
-			logAiEvent: jest.fn(),
+			logAiEvent: vi.fn(),
 			logger: mockLogger,
-		} as unknown as jest.Mocked<IExecuteFunctions | ISupplyDataFunctions>;
+		} as unknown as Mocked<IExecuteFunctions | ISupplyDataFunctions>;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('successful logging', () => {

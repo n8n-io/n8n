@@ -1,4 +1,5 @@
 ---
+name: n8n:loom-transcript
 description: Fetch and display the full transcript from a Loom video URL. Use when the user wants to get or read a Loom transcript.
 argument-hint: [loom-url]
 ---

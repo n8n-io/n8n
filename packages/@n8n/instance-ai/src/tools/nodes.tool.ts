@@ -1,16 +1,20 @@
 /**
  * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { NodeSearchEngine } from './nodes/node-search-engine';
-import { AI_CONNECTION_TYPES } from './nodes/node-search-engine.types';
+import { AI_CONNECTION_TYPES, type SearchableNodeType } from './nodes/node-search-engine.types';
 import { categoryList, suggestedNodesData } from './nodes/suggested-nodes-data';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
+
+const NODE_TYPE_ID_DESCRIPTION = 'Node type ID, e.g. "n8n-nodes-base.httpRequest"';
+const NODE_TYPES_ARRAY_DESCRIPTION =
+	'Node type IDs for node-level lookups (max 5). Entries may be plain strings or objects with action-specific options.';
 
 const listAction = z.object({
 	action: z.literal('list').describe('List available node types'),
@@ -39,29 +43,25 @@ const searchAction = z.object({
 
 const describeAction = z.object({
 	action: z.literal('describe').describe('Get detailed description of a node type'),
-	nodeType: z.string().describe('Node type ID, e.g. "n8n-nodes-base.httpRequest"'),
+	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
+});
+
+const nodeRequestObjectSchema = z.object({
+	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
+	version: z.string().optional().describe('Version, e.g. "4.3" or "v43"'),
+	resource: z.string().optional().describe('Resource discriminator for split nodes'),
+	operation: z.string().optional().describe('Operation discriminator for split nodes'),
+	mode: z.string().optional().describe('Mode discriminator for split nodes'),
 });
 
 const nodeRequestSchema = z.union([
-	z.string().describe('Simple node type ID, e.g. "n8n-nodes-base.httpRequest"'),
-	z.object({
-		nodeType: z.string().describe('Node type ID, e.g. "n8n-nodes-base.httpRequest"'),
-		version: z.string().optional().describe('Version, e.g. "4.3" or "v43"'),
-		resource: z.string().optional().describe('Resource discriminator for split nodes'),
-		operation: z.string().optional().describe('Operation discriminator for split nodes'),
-		mode: z.string().optional().describe('Mode discriminator for split nodes'),
-	}),
+	z.string().describe(NODE_TYPE_ID_DESCRIPTION),
+	nodeRequestObjectSchema,
 ]);
 
 const typeDefinitionAction = z.object({
 	action: z.literal('type-definition').describe('Get TypeScript type definitions for nodes'),
-	nodeTypes: z
-		.array(nodeRequestSchema)
-		.min(1)
-		.max(5)
-		.describe(
-			'Node type IDs to get definitions for (max 5). Each entry may be a plain node type string (e.g. "n8n-nodes-base.slack") or an object with `nodeType` plus optional `resource`/`operation`/`mode`/`version` discriminators.',
-		),
+	nodeTypes: z.array(nodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
 const suggestedAction = z.object({
@@ -77,19 +77,21 @@ const exploreResourcesAction = z.object({
 	action: z
 		.literal('explore-resources')
 		.describe("Query real resources for a node's RLC parameters"),
-	nodeType: z.string().describe('Node type ID, e.g. "n8n-nodes-base.httpRequest"'),
+	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
 	version: z.number().describe('Node version, e.g. 4.7'),
 	methodName: z
 		.string()
 		.describe(
-			'The method name from the node type definition JSDoc annotation, ' +
-				'e.g. "spreadSheetsSearch" from @searchListMethod, "getModels" from @loadOptionsMethod',
+			"The exact method name from the node's @searchListMethod or @loadOptionsMethod annotation. " +
+				'Call `action: "type-definition"` first to read the real method name from the type definition — ' +
+				'do not invent or guess method names; they must match the annotation exactly.',
 		),
 	methodType: z
 		.enum(['listSearch', 'loadOptions'])
 		.describe(
-			'The method type: "listSearch" for @searchListMethod annotations (supports filter/pagination), ' +
-				'"loadOptions" for @loadOptionsMethod annotations',
+			'"listSearch" for @searchListMethod annotations (supports filter/pagination); ' +
+				'"loadOptions" for @loadOptionsMethod annotations. ' +
+				'Pick the one matching the annotation you found in the type definition.',
 		),
 	credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
 	credentialId: z.string().describe('Credential ID from list-credentials'),
@@ -121,6 +123,12 @@ const fullInputSchema = sanitizeInputSchema(
 
 type FullInput = z.infer<typeof fullInputSchema>;
 
+interface SearchEngineCache {
+	nodeTypes?: SearchableNodeType[];
+	nodeCount?: number;
+	engine?: NodeSearchEngine;
+}
+
 // ── Handlers ────────────────────────────────────────────────────────────────
 
 async function handleList(
@@ -136,9 +144,16 @@ async function handleList(
 async function handleSearch(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'search' }>,
+	cache: SearchEngineCache,
 ) {
 	const nodeTypes = await context.nodeService.listSearchable();
-	const engine = new NodeSearchEngine(nodeTypes);
+	let engine = cache.engine;
+	if (!engine || cache.nodeTypes !== nodeTypes || cache.nodeCount !== nodeTypes.length) {
+		cache.nodeTypes = nodeTypes;
+		cache.nodeCount = nodeTypes.length;
+		engine = new NodeSearchEngine(nodeTypes);
+		cache.engine = engine;
+	}
 
 	let results;
 	if (input.connectionType) {
@@ -190,7 +205,7 @@ async function handleTypeDefinition(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'type-definition' }>,
 ) {
-	// Mastra validates against the flattened top-level schema (required for
+	// Native tool validation uses the flattened top-level schema (required for
 	// Anthropic's `type: "object"` constraint), which makes every variant field
 	// optional. Re-assert the variant contract so missing/invalid inputs return
 	// a structured error the model can self-correct from, instead of crashing
@@ -243,6 +258,7 @@ async function handleTypeDefinition(
 				nodeType,
 				version: result.version,
 				content: result.content,
+				...(result.builderHint ? { builderHint: result.builderHint } : {}),
 			};
 		}),
 	);
@@ -293,6 +309,7 @@ async function handleExploreResources(
 		return {
 			results: result.results,
 			paginationToken: result.paginationToken,
+			...(result.builderHint ? { builderHint: result.builderHint } : {}),
 		};
 	} catch (error) {
 		return {
@@ -308,8 +325,10 @@ export function createNodesTool(
 	context: InstanceAiContext,
 	surface: 'full' | 'orchestrator' = 'full',
 ) {
+	const searchEngineCache: SearchEngineCache = {};
+
 	if (surface === 'orchestrator') {
-		const orchestratorInputSchema = z.object({
+		const orchestratorExploreAction = z.object({
 			action: z
 				.literal('explore-resources')
 				.describe("Query real resources for a node's RLC parameters"),
@@ -318,14 +337,16 @@ export function createNodesTool(
 			methodName: z
 				.string()
 				.describe(
-					'The method name from the node type definition JSDoc annotation, ' +
-						'e.g. "spreadSheetsSearch" from @searchListMethod, "getModels" from @loadOptionsMethod',
+					"The exact method name from the node's @searchListMethod or @loadOptionsMethod annotation. " +
+						'Call `action: "type-definition"` first to read the real method name from the type definition — ' +
+						'do not invent or guess method names; they must match the annotation exactly.',
 				),
 			methodType: z
 				.enum(['listSearch', 'loadOptions'])
 				.describe(
-					'The method type: "listSearch" for @searchListMethod annotations (supports filter/pagination), ' +
-						'"loadOptions" for @loadOptionsMethod annotations',
+					'"listSearch" for @searchListMethod annotations (supports filter/pagination); ' +
+						'"loadOptions" for @loadOptionsMethod annotations. ' +
+						'Pick the one matching the annotation you found in the type definition.',
 				),
 			credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
 			credentialId: z.string().describe('Credential ID from list-credentials'),
@@ -344,30 +365,42 @@ export function createNodesTool(
 				),
 		});
 
-		return createTool({
-			id: 'nodes',
-			description:
-				"Query real resources for a node's RLC parameters (e.g., list Google Sheets, " +
-				"OpenAI models, Slack channels). Uses the node's built-in search/load methods " +
-				'with your credentials.',
-			inputSchema: orchestratorInputSchema,
-			execute: async (input: z.infer<typeof orchestratorInputSchema>) => {
-				return await handleExploreResources(context, input);
-			},
-		});
+		const orchestratorInputSchema = sanitizeInputSchema(
+			z.discriminatedUnion('action', [typeDefinitionAction, orchestratorExploreAction]),
+		);
+
+		type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
+
+		return new Tool('nodes')
+			.description(
+				"Read node type definitions or query real resources for a node's RLC parameters " +
+					'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
+					'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
+					'`explore-resources` with the real method name and a credential.',
+			)
+			.input(orchestratorInputSchema)
+			.handler(async (input: OrchestratorInput) => {
+				switch (input.action) {
+					case 'type-definition':
+						return await handleTypeDefinition(context, input);
+					case 'explore-resources':
+						return await handleExploreResources(context, input);
+				}
+			})
+			.build();
 	}
 
-	return createTool({
-		id: 'nodes',
-		description:
+	return new Tool('nodes')
+		.description(
 			'Work with n8n node types — discover, search, describe, get type definitions, and explore real resources.',
-		inputSchema: fullInputSchema,
-		execute: async (input: FullInput) => {
+		)
+		.input(fullInputSchema)
+		.handler(async (input: FullInput) => {
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);
 				case 'search':
-					return await handleSearch(context, input);
+					return await handleSearch(context, input, searchEngineCache);
 				case 'describe':
 					return await handleDescribe(context, input);
 				case 'type-definition':
@@ -377,6 +410,6 @@ export function createNodesTool(
 				case 'explore-resources':
 					return await handleExploreResources(context, input);
 			}
-		},
-	});
+		})
+		.build();
 }

@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import type { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
@@ -23,6 +24,7 @@ describe('DynamicCredentialStorageService', () => {
 	let mockLoadNodesAndCredentials: jest.Mocked<LoadNodesAndCredentials>;
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockLogger: jest.Mocked<Logger>;
+	let mockDynamicCredentialsProxy: jest.Mocked<DynamicCredentialsProxy>;
 
 	const createMockCredentialMetadata = (
 		overrides: Partial<CredentialStoreMetadata> = {},
@@ -97,8 +99,15 @@ describe('DynamicCredentialStorageService', () => {
 		});
 
 		mockCipher = {
-			decrypt: jest.fn(),
+			decryptV2: jest.fn(),
 		} as unknown as jest.Mocked<Cipher>;
+
+		mockDynamicCredentialsProxy = {
+			getSystemResolverId: jest.fn().mockReturnValue(null),
+			// Default to the real semantics with no system resolver seeded:
+			// pass through the workflow override if any, otherwise null.
+			getEffectiveResolverId: jest.fn((settings) => settings?.credentialResolverId ?? null),
+		} as unknown as jest.Mocked<DynamicCredentialsProxy>;
 
 		service = new DynamicCredentialStorageService(
 			mockResolverRegistry,
@@ -106,6 +115,7 @@ describe('DynamicCredentialStorageService', () => {
 			mockLoadNodesAndCredentials,
 			mockCipher,
 			mockLogger,
+			mockDynamicCredentialsProxy,
 		);
 	});
 
@@ -173,7 +183,7 @@ describe('DynamicCredentialStorageService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify({ prefix: 'test' }));
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
 				mockResolver.setSecret.mockRejectedValue(new Error('Storage failed'));
 
 				await expect(
@@ -193,7 +203,7 @@ describe('DynamicCredentialStorageService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify({ prefix: 'test' }));
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ prefix: 'test' }));
 
 				await service.storeIfNeeded(metadata, dynamicData, credentialContext, staticData);
 
@@ -271,7 +281,7 @@ describe('DynamicCredentialStorageService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify({}));
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({}));
 
 				await service.storeIfNeeded(metadata, dataWithSharedFields, credentialContext);
 
@@ -281,6 +291,23 @@ describe('DynamicCredentialStorageService', () => {
 				expect(storedData).not.toHaveProperty('scopes');
 				expect(storedData).toHaveProperty('accessToken', 'keep-this');
 				expect(storedData).toHaveProperty('refreshToken', 'keep-this');
+			});
+
+			it('falls back to the system resolver from the proxy when no override is set', async () => {
+				const metadata = createMockCredentialMetadata({ resolverId: undefined });
+				const resolverEntity = createMockResolverEntity({ id: 'system-resolver' });
+				const mockResolver = createMockResolver();
+
+				mockDynamicCredentialsProxy.getEffectiveResolverId.mockReturnValue('system-resolver');
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({}));
+
+				await service.storeIfNeeded(metadata, dynamicData, credentialContext, undefined, {});
+
+				expect(mockResolverRepository.findOneBy).toHaveBeenCalledWith({
+					id: 'system-resolver',
+				});
 			});
 
 			it('uses workflow resolver when credential has no resolver', async () => {
@@ -293,7 +320,7 @@ describe('DynamicCredentialStorageService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify({}));
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({}));
 
 				await service.storeIfNeeded(
 					metadata,
@@ -324,7 +351,7 @@ describe('DynamicCredentialStorageService', () => {
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
-				mockCipher.decrypt.mockReturnValue(JSON.stringify({}));
+				mockCipher.decryptV2.mockResolvedValue(JSON.stringify({}));
 
 				await service.storeIfNeeded(
 					metadata,

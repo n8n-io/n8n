@@ -90,7 +90,11 @@ function toPlaceholder(name: string): string {
 export function buildEvalMockCredentials(properties: INodeProperties[]): Record<string, unknown> {
 	const mockCredentials: Record<string, unknown> = {};
 	for (const prop of properties) {
-		if (isSecretCredentialProperty(prop)) {
+		if (prop.type === 'json') {
+			// Nodes `jsonParse` these before the request — must be valid JSON.
+			mockCredentials[prop.name] =
+				typeof prop.default === 'string' && prop.default.trim() ? prop.default : '{}';
+		} else if (isSecretCredentialProperty(prop)) {
 			mockCredentials[prop.name] = toPlaceholder(prop.name);
 		} else {
 			mockCredentials[prop.name] = prop.default ?? toPlaceholder(prop.name);

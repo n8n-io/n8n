@@ -7,6 +7,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ChatExecutionManager } from '@/chat/chat-execution-manager';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
@@ -23,6 +24,7 @@ describe('ChatHubExecutionService', () => {
 	const executionService = mock<ExecutionService>();
 	const workflowExecutionService = mock<WorkflowExecutionService>();
 	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 	const executionManager = mock<ChatExecutionManager>();
 	const activeExecutions = mock<ActiveExecutions>();
 	const instanceSettings = mock<InstanceSettings>();
@@ -41,6 +43,7 @@ describe('ChatHubExecutionService', () => {
 			executionService,
 			workflowExecutionService,
 			executionRepository,
+			executionPersistence,
 			executionManager,
 			activeExecutions,
 			instanceSettings,
