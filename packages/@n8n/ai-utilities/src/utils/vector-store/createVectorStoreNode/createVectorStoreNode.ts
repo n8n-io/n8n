@@ -421,11 +421,11 @@ const store = vectorStore({
 			// Handle each operation mode with dedicated modules
 			if (mode === 'load') {
 				const items = this.getInputData(0);
-				const resultData = [];
+				const resultData: INodeExecutionData[] = [];
 
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 					const docs = await handleLoadOperation(this, args, embeddings, itemIndex);
-					resultData.push(...docs);
+					resultData.push.apply(resultData, docs);
 				}
 
 				return [resultData];
@@ -443,7 +443,7 @@ const store = vectorStore({
 
 			if (mode === 'retrieve-as-tool') {
 				const items = this.getInputData(0);
-				const resultData = [];
+				const resultData: INodeExecutionData[] = [];
 
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 					const docs = await handleRetrieveAsToolExecuteOperation(
@@ -452,7 +452,7 @@ const store = vectorStore({
 						embeddings,
 						itemIndex,
 					);
-					resultData.push(...docs);
+					resultData.push.apply(resultData, docs);
 				}
 
 				return [resultData];
