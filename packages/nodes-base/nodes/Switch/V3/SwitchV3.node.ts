@@ -180,7 +180,7 @@ export default workflow('id', 'name')
 					type: 'fixedCollection',
 					builderHint: {
 						propertyHint:
-							"Use `rules.values` (NOT `rules.rules`). Each rule needs `outputKey` and a complete `conditions` object with these three sibling keys: `combinator` ('and' | 'or'), `conditions` (array of condition objects), `options` (`{ caseSensitive, leftValue, typeValidation }`). Same shape as IF. Wire rule outputs by zero-based index with `.onCase(index, target)`; `outputKey` is the visible output label, not the `.onCase()` argument. Unwired cases silently drop their items. Default `caseSensitive: false` for string equality, only set `true` when specifically requested or confirmed by the user.",
+							"Use `rules.values` (NOT `rules.rules`). Each rule needs `outputKey` and a complete `conditions` object with these three sibling keys: `combinator` ('and' | 'or'), `conditions` (array of condition objects), `options` (`{ caseSensitive, leftValue, typeValidation, version: 3 }`). Same shape as IF. Wire rule outputs by zero-based index with `.onCase(index, target)`; `outputKey` is the visible output label, not the `.onCase()` argument. Unwired cases silently drop their items. Default `caseSensitive: false` for string equality, only set `true` when specifically requested or confirmed by the user.",
 					},
 					typeOptions: {
 						multipleValues: true,

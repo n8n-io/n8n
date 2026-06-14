@@ -6693,6 +6693,15 @@ describe('NodeHelpers', () => {
 			default: {},
 		};
 
+		const filterPropertyWithVersionExpr: INodeProperties = {
+			...filterProperty,
+			typeOptions: {
+				filter: {
+					version: '={{ $nodeVersion >= 2.3 ? 3 : $nodeVersion >= 2.2 ? 2 : 1 }}',
+				},
+			},
+		};
+
 		it('should add missing combinator and options to a filter parameter', () => {
 			const result = getNodeParameters(
 				[filterProperty],
@@ -6731,6 +6740,64 @@ describe('NodeHelpers', () => {
 					],
 				},
 			});
+		});
+
+		it('should resolve filter version from typeOptions expression and node typeVersion', () => {
+			const result = getNodeParameters(
+				[filterPropertyWithVersionExpr],
+				{ conditions: { conditions: [] } },
+				true,
+				false,
+				{ typeVersion: 2.3 },
+				null,
+			);
+			expect(result?.conditions).toMatchObject({ options: { version: 3 } });
+		});
+
+		it('should resolve filter version 2 for intermediate typeVersion', () => {
+			const result = getNodeParameters(
+				[filterPropertyWithVersionExpr],
+				{ conditions: { conditions: [] } },
+				true,
+				false,
+				{ typeVersion: 2.2 },
+				null,
+			);
+			expect(result?.conditions).toMatchObject({ options: { version: 2 } });
+		});
+
+		it('should resolve filter version 1 for old typeVersion', () => {
+			const result = getNodeParameters(
+				[filterPropertyWithVersionExpr],
+				{ conditions: { conditions: [] } },
+				true,
+				false,
+				{ typeVersion: 2.0 },
+				null,
+			);
+			expect(result?.conditions).toMatchObject({ options: { version: 1 } });
+		});
+
+		it('should not overwrite explicit options.version set by builder', () => {
+			const result = getNodeParameters(
+				[filterPropertyWithVersionExpr],
+				{
+					conditions: {
+						conditions: [],
+						options: {
+							caseSensitive: true,
+							leftValue: '',
+							typeValidation: 'strict',
+							version: 2,
+						},
+					},
+				},
+				true,
+				false,
+				{ typeVersion: 2.3 },
+				null,
+			);
+			expect(result?.conditions).toMatchObject({ options: { version: 2 } });
 		});
 
 		it('should preserve existing combinator and options', () => {

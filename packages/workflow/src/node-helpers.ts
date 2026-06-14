@@ -12,6 +12,7 @@ import { isExpression } from './expressions/expression-helpers';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
+	FilterTypeOptions,
 	IContextObject,
 	INode,
 	INodeCredentialDescription,
@@ -663,6 +664,38 @@ type GetNodeParametersOptions = {
  * @param {boolean} returnNoneDisplayed If also values which should not be displayed should be returned
  * @param {GetNodeParametersOptions} options Optional properties
  */
+/**
+ * Resolves the filter options version from a node's typeOptions.filter.version spec and its
+ * typeVersion. The spec may be a static number or an n8n expression string like
+ * '={{ $nodeVersion >= 2.3 ? 3 : 1 }}'. Falls back to 1 when the spec is absent or cannot be
+ * evaluated.
+ */
+function resolveFilterVersion(
+	versionSpec: FilterTypeOptions['version'] | undefined,
+	nodeTypeVersion: number,
+): 1 | 2 | 3 {
+	if (typeof versionSpec === 'number') {
+		const v = versionSpec as number;
+		if (v === 1 || v === 2 || v === 3) return v;
+	}
+	if (
+		typeof versionSpec === 'string' &&
+		versionSpec.startsWith('={{') &&
+		versionSpec.endsWith('}}')
+	) {
+		const expr = versionSpec.slice(3, -2).trim();
+		try {
+			// Expression only references $nodeVersion — safe to evaluate against trusted node definitions
+			// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+			const result = new Function('$nodeVersion', `return ${expr}`)(nodeTypeVersion) as unknown;
+			if (result === 1 || result === 2 || result === 3) return result;
+		} catch {
+			// fall through to default
+		}
+	}
+	return 1;
+}
+
 // eslint-disable-next-line complexity
 export function getNodeParameters(
 	nodePropertiesArray: INodeProperties[],
@@ -796,7 +829,10 @@ export function getNodeParameters(
 						caseSensitive: true,
 						leftValue: '',
 						typeValidation: 'strict',
-						version: 1,
+						version: resolveFilterVersion(
+							nodeProperties.typeOptions?.filter?.version,
+							node?.typeVersion ?? 1,
+						),
 					};
 					const filter = deepCopy(nodeValues[nodeProperties.name]) as Record<string, unknown>;
 					filter.combinator ??= 'and';
