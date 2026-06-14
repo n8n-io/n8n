@@ -107,6 +107,16 @@ interface ThreadStatus {
 // Client
 // ---------------------------------------------------------------------------
 
+/** Non-2xx API response; `status` lets callers branch on e.g. 404 (missing endpoint). */
+export class N8nApiError extends Error {
+	constructor(
+		message: string,
+		readonly status: number,
+	) {
+		super(message);
+	}
+}
+
 export class N8nClient {
 	private sessionCookie?: string;
 
@@ -457,6 +467,18 @@ export class N8nClient {
 		await this.fetch(`/rest/credentials/${id}`, { method: 'DELETE' });
 	}
 
+	/**
+	 * Pin a build thread's credential view to exactly these IDs (empty array =
+	 * the thread sees no credentials).
+	 * POST /rest/instance-ai/eval/thread-credential-allowlist
+	 */
+	async setThreadCredentialAllowlist(threadId: string, credentialIds: string[]): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/thread-credential-allowlist', {
+			method: 'POST',
+			body: { threadId, credentialIds },
+		});
+	}
+
 	// -- Data tables ---------------------------------------------------------
 
 	/**
@@ -573,7 +595,10 @@ export class N8nClient {
 
 		if (!res.ok) {
 			const text = await res.text();
-			throw new Error(`n8n API ${method} ${path} failed (${res.status}): ${text}`);
+			throw new N8nApiError(
+				`n8n API ${method} ${path} failed (${res.status}): ${text}`,
+				res.status,
+			);
 		}
 
 		// Capture auth cookie from login response

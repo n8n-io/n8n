@@ -163,6 +163,7 @@ import {
 
 import { UserError } from 'n8n-workflow';
 
+import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
 
 type ServiceInternals = {
@@ -416,6 +417,7 @@ type TemporaryCleanupService = {
 	aiBuilderTemporaryWorkflowRepository: {
 		findByThread: jest.MockedFunction<(threadId: string) => Promise<MarkedWorkflow[]>>;
 	};
+	evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 	adapterService: {
 		createContext: jest.MockedFunction<
 			(
@@ -525,6 +527,7 @@ function createTemporaryCleanupService({
 	service.aiBuilderTemporaryWorkflowRepository = {
 		findByThread: jest.fn(async (_threadId: string) => markedWorkflows),
 	};
+	service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	service.adapterService = {
 		createContext: jest.fn((_user: User, _options: { threadId: string }) => ({
 			workflowService: { archiveIfAiTemporary },
@@ -1118,6 +1121,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			sandboxCreations: Map<string, Promise<unknown>>;
 			domainAccessTrackersByThread: Map<string, unknown>;
 			resolveSandboxConfig: jest.Mock;
+			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 		};
 		service.settingsService = {
 			getAdminSettings: jest.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -1166,6 +1170,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sandboxCreations = new Map();
 		service.domainAccessTrackersByThread = new Map();
 		service.resolveSandboxConfig = jest.fn(async (_user: User) => daytonaSandboxConfig);
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		(createAllTools as jest.Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {

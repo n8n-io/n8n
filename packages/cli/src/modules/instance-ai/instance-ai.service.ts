@@ -93,6 +93,7 @@ import { nanoid } from 'nanoid';
 import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
+import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
@@ -654,6 +655,7 @@ export class InstanceAiService {
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
 		private readonly eventService: EventService,
+		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.workflowObligations = new WorkflowVerificationObligationService(this.agentMemory);
@@ -1961,6 +1963,7 @@ export class InstanceAiService {
 		this.creditedThreads.delete(threadId);
 		this.schedulerLocks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
+		this.evalCredentialAllowlists.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
@@ -2873,6 +2876,7 @@ export class InstanceAiService {
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
+			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
 		});
 		if (!localGatewayDisabledForUser && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
@@ -5627,7 +5631,10 @@ export class InstanceAiService {
 		user: User,
 		workflowIds: Set<string>,
 	): Promise<string[]> {
-		const adapter = this.adapterService.createContext(user, { threadId });
+		const adapter = this.adapterService.createContext(user, {
+			threadId,
+			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
+		});
 		const archived: string[] = [];
 		for (const workflowId of workflowIds) {
 			try {
