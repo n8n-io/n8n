@@ -64,9 +64,11 @@ export namespace PubSub {
 			ToCommand<'reload-sso-provisioning-configuration'>;
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
+		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type CancelCollection = ToCommand<'cancel-collection'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
+		export type AgentChatSubscriptionChanged = ToCommand<'agent-chat-subscription-changed'>;
 		export type AgentConfigChanged = ToCommand<'agent-config-changed'>;
 		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
 		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
@@ -98,9 +100,11 @@ export namespace PubSub {
 		| Commands.ReloadSsoProvisioningConfiguration
 		| Commands.ReloadSourceControlConfiguration
 		| Commands.ReloadMcpRegistry
+		| Commands.ReloadOtelConfig
 		| Commands.CancelTestRun
 		| Commands.CancelCollection
 		| Commands.AgentChatIntegrationChanged
+		| Commands.AgentChatSubscriptionChanged
 		| Commands.AgentConfigChanged
 		| Commands.AgentTasksChanged
 		| Commands.RedactionFloorChanged;

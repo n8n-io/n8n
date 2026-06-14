@@ -78,6 +78,6 @@ export class N8nPackageParser {
 
 		WorkflowHelpers.validateWorkflowStructure(entity);
 
-		return { entity, sourceWorkflowId: entry.id };
+		return { entity, sourceWorkflowId: entry.id, sourcePublished: wire.isPublished };
 	}
 }

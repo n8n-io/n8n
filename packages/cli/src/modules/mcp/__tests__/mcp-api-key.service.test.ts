@@ -1,10 +1,9 @@
-import type { ApiKeyRepository, UserRepository, User, TokenGrant } from '@n8n/db';
+import type { ApiKeyRepository, User, TokenGrant } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { JwtService } from '@/services/jwt.service';
 
-import type { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 
 const makeUser = (id: string): User => ({ ...mock<User>(), id });
@@ -18,8 +17,6 @@ describe('McpServerApiKeyService', () => {
 		service = new McpServerApiKeyService(
 			mock<ApiKeyRepository>(),
 			mock<JwtService>(),
-			mock<UserRepository>(),
-			mock<AccessTokenRepository>(),
 			authStrategyRegistry,
 		);
 	});

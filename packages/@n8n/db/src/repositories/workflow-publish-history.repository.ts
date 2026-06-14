@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 
 import { WorkflowPublishHistory } from '../entities';
 
@@ -9,13 +10,17 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 		super(WorkflowPublishHistory, dataSource.manager);
 	}
 
-	async addRecord({
-		workflowId,
-		versionId,
-		event,
-		userId,
-	}: Pick<WorkflowPublishHistory, 'event' | 'workflowId' | 'versionId' | 'userId'>) {
-		await this.insert({
+	async addRecord(
+		{
+			workflowId,
+			versionId,
+			event,
+			userId,
+		}: Pick<WorkflowPublishHistory, 'event' | 'workflowId' | 'versionId' | 'userId'>,
+		trx?: EntityManager,
+	) {
+		const repository = trx ? trx.getRepository(WorkflowPublishHistory) : this;
+		await repository.insert({
 			workflowId,
 			versionId,
 			event,

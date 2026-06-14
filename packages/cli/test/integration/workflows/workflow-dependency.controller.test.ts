@@ -333,6 +333,69 @@ describe('POST /workflow-dependencies/details', () => {
 		});
 	});
 
+	it('should drop dependencies referencing deleted resources instead of counting them as inaccessible', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		const memberWorkflow = await createWorkflow({}, member);
+		const memberCred = await saveCredential(randomCredentialPayload(), {
+			user: member,
+			role: 'credential:owner',
+		});
+		const ownerCred = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		// One accessible credential, one existing but inaccessible credential,
+		// and one index entry left behind by a deleted credential
+		await seedDep(memberWorkflow.id, 'credentialId', memberCred.id);
+		await seedDep(memberWorkflow.id, 'credentialId', ownerCred.id);
+		await seedDep(memberWorkflow.id, 'credentialId', 'deleted-cred-id');
+
+		const resp = await testServer
+			.authAgentFor(member)
+			.post('/workflow-dependencies/details')
+			.send({
+				resourceIds: [memberWorkflow.id],
+				resourceType: 'workflow',
+			});
+
+		expect(resp.statusCode).toBe(200);
+		const result = resp.body.data[memberWorkflow.id];
+		expect(result.dependencies).toHaveLength(1);
+		expect(result.dependencies[0]).toMatchObject({ id: memberCred.id, type: 'credentialId' });
+		expect(result.inaccessibleCount).toBe(1);
+	});
+
+	it('should drop workflow call dependencies referencing deleted workflows', async () => {
+		const owner = await createOwner();
+
+		const workflow = await createWorkflow({ name: 'Main WF' }, owner);
+		const subWorkflow = await createWorkflow({ name: 'Sub WF' }, owner);
+
+		await seedDep(workflow.id, 'workflowCall', subWorkflow.id);
+		await seedDep(workflow.id, 'workflowCall', 'deleted-wf-id');
+
+		const resp = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/details')
+			.send({
+				resourceIds: [workflow.id],
+				resourceType: 'workflow',
+			});
+
+		expect(resp.statusCode).toBe(200);
+		const result = resp.body.data[workflow.id];
+		expect(result.dependencies).toHaveLength(1);
+		expect(result.dependencies[0]).toMatchObject({
+			id: subWorkflow.id,
+			name: 'Sub WF',
+			type: 'workflowCall',
+		});
+		expect(result.inaccessibleCount).toBe(0);
+	});
+
 	it('should return details for a shared workflow', async () => {
 		const owner = await createOwner();
 		const member = await createMember();

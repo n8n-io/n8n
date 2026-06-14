@@ -1,8 +1,18 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, readonly, ref, type ComputedRef } from 'vue';
+import {
+	computed,
+	effectScope,
+	inject,
+	onScopeDispose,
+	readonly,
+	ref,
+	shallowReactive,
+	type ComputedRef,
+} from 'vue';
 import { createEventHook } from '@vueuse/core';
-import type { ExecutionSummary, IRunExecutionData } from 'n8n-workflow';
+import { structuralComputed } from '@n8n/composables/structuralComputed';
+import type { ExecutionStatus, ExecutionSummary, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import type {
 	IExecutionResponse,
@@ -22,8 +32,19 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
+import type {
+	NodeAddedPayload,
+	NodeRemovedPayload,
+	NodesChangeEvent,
+	NodesSetPayload,
+} from './workflowDocument/useWorkflowDocumentNodes';
+import type { ExecutionOutputMap } from '@/app/types/executionData';
 
 const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
+const EMPTY_EXECUTION_STATUS_BY_NODE_ID = new Map<string, ComputedRef<ExecutionStatus>>();
+const EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID = new Map<string, ComputedRef<ITaskData[] | null>>();
+const EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID = new Map<string, ExecutionOutputMap>();
+const EMPTY_EXECUTION_WAITING_BY_NODE_ID = new Map<string, ComputedRef<string | undefined>>();
 
 export type WorkflowExecutionStateChangePayload = {
 	documentId: WorkflowDocumentId;
@@ -236,6 +257,38 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			return EMPTY_EXECUTION_ISSUES_BY_NODE_NAME;
 		});
 
+		// Active/displayed/pending fallback for the per-node-id execution data
+		// projections. Resolves the backing execution id via
+		// `getResolvedActiveExecutionId()` (string id → that execution, pending
+		// `null` → IN_PROGRESS scaffold, else displayed id) so these stay
+		// consistent with `activeExecutionRunData`; falls back to an empty Map
+		// sentinel only when no execution is being tracked.
+
+		const activeExecutionStatusByNodeId = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_STATUS_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionStatusByNodeId;
+		});
+
+		const activeExecutionRunDataByNodeId = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionRunDataByNodeId;
+		});
+
+		const activeExecutionRunDataOutputMapByNodeId = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId))
+				.executionRunDataOutputMapByNodeId;
+		});
+
+		const activeExecutionWaitingByNodeId = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_WAITING_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionWaitingByNodeId;
+		});
+
 		const lastSuccessfulExecution = computed(() => {
 			const lid = lastSuccessfulExecutionId.value;
 			if (!lid) return null;
@@ -253,6 +306,121 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				}
 			}
 			return false;
+		});
+
+		// ---------------------------------------------------------------------
+		// Per-node-id "is this node mid-execution?" projections.
+		//
+		// Reconciled against the matching workflowDocument store's `onNodesChange`.
+		// Each per-entry structuralComputed reads the `executingNode` refs
+		// reactively, so add/remove calls invalidate only that entry — and only
+		// when the *value* changes (gated by structural equality).
+		// ---------------------------------------------------------------------
+
+		const documentStore = useWorkflowDocumentStore(documentId);
+
+		const executionRunningByNodeId = shallowReactive(new Map<string, ComputedRef<boolean>>());
+		const executionWaitingForNextByNodeId = shallowReactive(
+			new Map<string, ComputedRef<boolean>>(),
+		);
+		const runningScopes = new Map<string, () => void>();
+
+		function computeExecutionRunning(nodeId: string): boolean {
+			// `nodesById` is a top-level shallowRef inside useWorkflowDocumentNodes;
+			// Pinia unwraps it to a Map at the store boundary.
+			const node = documentStore.nodesById.get(nodeId);
+			if (!node) return false;
+			return executingNode.isNodeExecuting(node.name);
+		}
+
+		function computeExecutionWaitingForNext(nodeId: string): boolean {
+			const node = documentStore.nodesById.get(nodeId);
+			if (!node) return false;
+			return (
+				node.name === executingNode.lastAddedExecutingNode.value &&
+				executingNode.executingNode.value.length === 0 &&
+				isWorkflowRunning.value
+			);
+		}
+
+		function applyAddRunningEntry(nodeId: string) {
+			if (runningScopes.has(nodeId)) return;
+			const scope = effectScope();
+			scope.run(() => {
+				executionRunningByNodeId.set(
+					nodeId,
+					structuralComputed(() => computeExecutionRunning(nodeId)),
+				);
+				executionWaitingForNextByNodeId.set(
+					nodeId,
+					structuralComputed(() => computeExecutionWaitingForNext(nodeId)),
+				);
+			});
+			runningScopes.set(nodeId, () => scope.stop());
+		}
+
+		function applyRemoveRunningEntry(nodeId: string) {
+			runningScopes.get(nodeId)?.();
+			runningScopes.delete(nodeId);
+			executionRunningByNodeId.delete(nodeId);
+			executionWaitingForNextByNodeId.delete(nodeId);
+		}
+
+		function applyReconcileRunningEntries(nodeIds: string[]) {
+			const next = new Set(nodeIds);
+			for (const old of runningScopes.keys()) {
+				if (!next.has(old)) applyRemoveRunningEntry(old);
+			}
+			for (const id of nodeIds) applyAddRunningEntry(id);
+		}
+
+		// Subscribe lazily and defensively. Some test files mock
+		// `useWorkflowDocumentStore` with a partial object that lacks
+		// `onNodesChange` / `nodesById`. The guard keeps the dependency soft for
+		// tests that don't exercise the running maps; in production the document
+		// store always provides the full surface.
+		if (typeof documentStore.onNodesChange === 'function') {
+			documentStore.onNodesChange((event: NodesChangeEvent) => {
+				switch (event.action) {
+					case CHANGE_ACTION.ADD: {
+						const { node } = event.payload as NodeAddedPayload;
+						applyAddRunningEntry(node.id);
+						break;
+					}
+					case CHANGE_ACTION.DELETE: {
+						const payload = event.payload as NodeRemovedPayload;
+						if (payload.id) {
+							applyRemoveRunningEntry(payload.id);
+						} else {
+							applyReconcileRunningEntries([]);
+						}
+						break;
+					}
+					case CHANGE_ACTION.SET: {
+						const { nodeIds } = event.payload as NodesSetPayload;
+						applyReconcileRunningEntries(nodeIds);
+						break;
+					}
+				}
+			});
+		}
+
+		const initialNodesById = documentStore.nodesById;
+		if (initialNodesById && typeof initialNodesById.keys === 'function') {
+			applyReconcileRunningEntries(Array.from(initialNodesById.keys()));
+		}
+
+		// Scopes created from `onNodesChange` callbacks have no active parent
+		// (event dispatch runs outside any scope), so `$dispose()` never
+		// reaches them. Vue 3.5 computeds are not scope-owned and detach from
+		// deps once unsubscribed, so this is deterministic cleanup hygiene
+		// rather than leak prevention: stop the scopes and drop the per-node
+		// entries when the store is disposed.
+		onScopeDispose(() => {
+			for (const stop of runningScopes.values()) stop();
+			runningScopes.clear();
+			executionRunningByNodeId.clear();
+			executionWaitingForNextByNodeId.clear();
 		});
 
 		/**
@@ -669,6 +837,12 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			getPastChatMessages,
 			getActiveExecutionRunDataByNodeName,
 			activeExecutionIssuesByNodeName,
+			activeExecutionStatusByNodeId,
+			activeExecutionRunDataByNodeId,
+			activeExecutionRunDataOutputMapByNodeId,
+			activeExecutionWaitingByNodeId,
+			executionRunningByNodeId,
+			executionWaitingForNextByNodeId,
 			resolveExecutionTriggerNodeName,
 			// Write API
 			trackExecutionId,

@@ -442,9 +442,11 @@ export function shouldRestartParentExecution(
 export async function updateParentExecutionWithChildResults(
 	parentExecutionId: string,
 	subworkflowResults: IRun,
+	childExecution?: RelatedExecution,
 ): Promise<void> {
+	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
-	if (!lastExecutedNodeData?.data) return;
+	if (!subworkflowError && !lastExecutedNodeData?.data) return;
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
@@ -462,10 +464,21 @@ export async function updateParentExecutionWithChildResults(
 		return;
 	}
 
-	// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
-	// so that the Execute Workflow node returns the correct data when parent execution is resumed
-	// and the Execute Workflow node is executed again in disabled mode.
-	nodeExecutionStack[0].data = lastExecutedNodeData.data;
+	if (subworkflowError) {
+		// Record the error on the waiting parent's Execute Workflow node so the node
+		// fails with error on resume instead of appearing as successful. `subExecution`
+		// links the parent's node run to the failed child execution in the UI.
+		nodeExecutionStack[0].metadata = {
+			...nodeExecutionStack[0].metadata,
+			resumeError: subworkflowError,
+			...(childExecution && { subExecution: childExecution }),
+		};
+	} else if (lastExecutedNodeData?.data) {
+		// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
+		// so that the Execute Workflow node returns the correct data when parent execution is resumed
+		// and the Execute Workflow node is executed again in disabled mode.
+		nodeExecutionStack[0].data = lastExecutedNodeData.data;
+	}
 
 	await executionPersistence.updateExistingExecution(
 		parentExecutionId,

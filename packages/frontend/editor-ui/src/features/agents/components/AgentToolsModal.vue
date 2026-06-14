@@ -11,7 +11,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getWorkflow } from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { AI_SECTION_RECOMMENDED_TOOLS, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
-import { N8nCollapsiblePanel, N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import {
@@ -30,6 +30,7 @@ import {
 import nodePopularity from 'virtual:node-popularity-data';
 
 import AgentToolItem from './AgentToolItem.vue';
+import AgentToolsSection from './AgentToolsSection.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
 
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -134,6 +135,7 @@ const workingMcpServers = computed(() => workingMcpServerEntries.value.map(({ se
 const searchQuery = ref('');
 const debouncedSearchQuery = ref('');
 const isConnectedSectionExpanded = ref(true);
+const isAvailableMcpToolsSectionExpanded = ref(true);
 const isAvailableWorkflowsSectionExpanded = ref(true);
 const isAvailableAiToolsSectionExpanded = ref(true);
 const isAvailableN8nToolsSectionExpanded = ref(true);
@@ -242,6 +244,10 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 		});
 });
 
+const availableMcpTypes = computed(() =>
+	availableToolTypes.value.filter((nodeType) => isMcpRelatedNodeType(nodeType.name)),
+);
+
 const availableAiToolTypes = computed(() =>
 	availableToolTypes.value.filter(
 		(nodeType) => !isMcpRelatedNodeType(nodeType.name) && isAvailableAiToolType(nodeType),
@@ -260,8 +266,9 @@ const availableN8nToolTypes = computed(() =>
 const availableExternalToolTypes = computed(() =>
 	availableToolTypes.value.filter(
 		(nodeType) =>
-			isMcpRelatedNodeType(nodeType.name) ||
-			(!isAvailableAiToolType(nodeType) && !isAvailableN8nToolType(nodeType)),
+			!isMcpRelatedNodeType(nodeType.name) &&
+			!isAvailableAiToolType(nodeType) &&
+			!isAvailableN8nToolType(nodeType),
 	),
 );
 
@@ -339,6 +346,7 @@ interface ConfiguredMcpServerView {
 	node: INode;
 	nodeType: INodeTypeDescription;
 	missingCredentials: boolean;
+	requireApproval: boolean;
 }
 
 const configuredTools = computed<ConfiguredToolView[]>(() => {
@@ -386,6 +394,9 @@ const configuredMcpServers = computed<ConfiguredMcpServerView[]>(() => {
 			node,
 			nodeType,
 			missingCredentials: !!issues?.credentials && Object.keys(issues.credentials).length > 0,
+			requireApproval:
+				server.approval?.mode === 'global' ||
+				(server.approval?.mode === 'selected' && server.approval.tools.length > 0),
 		});
 	}
 	return out;
@@ -462,6 +473,8 @@ function filterAvailableToolTypes(nodeTypes: INodeTypeDescription[]): INodeTypeD
 const filteredAvailableAiTools = computed(() =>
 	filterAvailableToolTypes(availableAiToolTypes.value),
 );
+
+const filteredAvailableMcpTools = computed(() => filterAvailableToolTypes(availableMcpTypes.value));
 
 const filteredAvailableN8nTools = computed(() =>
 	filterAvailableToolTypes(availableN8nToolTypes.value),
@@ -709,173 +722,155 @@ function commit() {
 							filteredConfiguredWorkflows.length >
 						0
 					"
-					:class="$style.section"
 				>
-					<N8nCollapsiblePanel
+					<AgentToolsSection
 						v-model="isConnectedSectionExpanded"
-						:class="$style.sectionPanel"
-						:disable-animation="true"
+						:title="i18n.baseText('agents.tools.connected')"
+						list-test-id="agent-tools-connected-list"
 					>
-						<template #title>
-							<N8nHeading size="small" color="text-light" tag="h3">
-								{{ i18n.baseText('agents.tools.connected') }}
-							</N8nHeading>
-						</template>
-						<div :class="$style.toolsList" data-test-id="agent-tools-connected-list">
-							<AgentToolItem
-								v-for="server in filteredConfiguredMcpServers"
-								:key="server.localId"
-								:node-type="server.nodeType"
-								:configured-node="server.node"
-								:missing-credentials="server.missingCredentials"
-								mode="configured"
-								:class="$style.toolsListItem"
-								@configure="handleConfigureMcpServer(server)"
-							/>
-							<AgentToolItem
-								v-for="tool in filteredConfiguredTools"
-								:key="tool.localId"
-								:node-type="tool.nodeType"
-								:configured-node="tool.node"
-								:missing-credentials="tool.missingCredentials"
-								:require-approval="tool.requireApproval"
-								mode="configured"
-								:class="$style.toolsListItem"
-								@configure="handleConfigureTool(tool)"
-							/>
-							<WorkflowToolRow
-								v-for="wf in filteredConfiguredWorkflows"
-								:key="wf.localId"
-								mode="configured"
-								:name="wf.name"
-								:description="wf.description"
-								:require-approval="wf.requireApproval"
-								row-test-id="agent-tools-connected-workflow-row"
-								configure-test-id="agent-tools-connected-workflow-configure"
-								@configure="handleConfigureTool(wf)"
-							/>
-						</div>
-					</N8nCollapsiblePanel>
+						<AgentToolItem
+							v-for="server in filteredConfiguredMcpServers"
+							:key="server.localId"
+							:node-type="server.nodeType"
+							:configured-node="server.node"
+							:missing-credentials="server.missingCredentials"
+							:require-approval="server.requireApproval"
+							mode="configured"
+							:class="$style.toolsListItem"
+							@configure="handleConfigureMcpServer(server)"
+						/>
+						<AgentToolItem
+							v-for="tool in filteredConfiguredTools"
+							:key="tool.localId"
+							:node-type="tool.nodeType"
+							:configured-node="tool.node"
+							:missing-credentials="tool.missingCredentials"
+							:require-approval="tool.requireApproval"
+							mode="configured"
+							:class="$style.toolsListItem"
+							@configure="handleConfigureTool(tool)"
+						/>
+						<WorkflowToolRow
+							v-for="wf in filteredConfiguredWorkflows"
+							:key="wf.localId"
+							mode="configured"
+							:name="wf.name"
+							:description="wf.description"
+							:require-approval="wf.requireApproval"
+							row-test-id="agent-tools-connected-workflow-row"
+							configure-test-id="agent-tools-connected-workflow-configure"
+							@configure="handleConfigureTool(wf)"
+						/>
+					</AgentToolsSection>
 				</div>
 
-				<div v-if="filteredAvailableWorkflows.length > 0" :class="$style.section">
-					<N8nCollapsiblePanel
-						v-model="isAvailableWorkflowsSectionExpanded"
-						:class="$style.sectionPanel"
-						:disable-animation="true"
-					>
-						<template #title>
-							<N8nHeading size="small" color="text-light" tag="h3">
-								{{
-									i18n.baseText('agents.tools.availableWorkflows', {
-										interpolate: { count: filteredAvailableWorkflows.length },
-									})
-								}}
-							</N8nHeading>
-						</template>
-						<div :class="$style.toolsList" data-test-id="agent-tools-available-workflows-list">
-							<WorkflowToolRow
-								v-for="workflow in filteredAvailableWorkflows"
-								:key="workflow.id"
-								mode="available"
-								:name="workflow.name"
-								:description="workflow.description"
-								row-test-id="agent-tools-available-workflow-row"
-								@add="handleAddWorkflow(workflow)"
-							/>
-						</div>
-					</N8nCollapsiblePanel>
-				</div>
+				<AgentToolsSection
+					v-if="filteredAvailableMcpTools.length > 0"
+					v-model="isAvailableMcpToolsSectionExpanded"
+					:title="
+						i18n.baseText('agents.tools.availableMcpServers', {
+							interpolate: { count: filteredAvailableMcpTools.length },
+						})
+					"
+					list-test-id="agent-tools-available-mcp-list"
+				>
+					<AgentToolItem
+						v-for="nodeType in filteredAvailableMcpTools"
+						:key="nodeType.name"
+						:node-type="nodeType"
+						mode="available"
+						:class="$style.toolsListItem"
+						@add="handleAddTool(nodeType)"
+					/>
+				</AgentToolsSection>
 
-				<div v-if="filteredAvailableAiTools.length > 0" :class="$style.section">
-					<N8nCollapsiblePanel
-						v-model="isAvailableAiToolsSectionExpanded"
-						:class="$style.sectionPanel"
-						:disable-animation="true"
-					>
-						<template #title>
-							<N8nHeading size="small" color="text-light" tag="h3">
-								{{
-									i18n.baseText('agents.tools.availableAiTools', {
-										interpolate: { count: filteredAvailableAiTools.length },
-									})
-								}}
-							</N8nHeading>
-						</template>
-						<div :class="$style.toolsList" data-test-id="agent-tools-available-ai-list">
-							<AgentToolItem
-								v-for="nodeType in filteredAvailableAiTools"
-								:key="nodeType.name"
-								:node-type="nodeType"
-								mode="available"
-								:class="$style.toolsListItem"
-								@add="handleAddTool(nodeType)"
-							/>
-						</div>
-					</N8nCollapsiblePanel>
-				</div>
+				<AgentToolsSection
+					v-if="filteredAvailableAiTools.length > 0"
+					v-model="isAvailableAiToolsSectionExpanded"
+					:title="
+						i18n.baseText('agents.tools.availableAiTools', {
+							interpolate: { count: filteredAvailableAiTools.length },
+						})
+					"
+					list-test-id="agent-tools-available-ai-list"
+				>
+					<AgentToolItem
+						v-for="nodeType in filteredAvailableAiTools"
+						:key="nodeType.name"
+						:node-type="nodeType"
+						mode="available"
+						:class="$style.toolsListItem"
+						@add="handleAddTool(nodeType)"
+					/>
+				</AgentToolsSection>
 
-				<div v-if="filteredAvailableN8nTools.length > 0" :class="$style.section">
-					<N8nCollapsiblePanel
-						v-model="isAvailableN8nToolsSectionExpanded"
-						:class="$style.sectionPanel"
-						:disable-animation="true"
-					>
-						<template #title>
-							<N8nHeading size="small" color="text-light" tag="h3">
-								{{
-									i18n.baseText('agents.tools.availableN8nTools', {
-										interpolate: { count: filteredAvailableN8nTools.length },
-									})
-								}}
-							</N8nHeading>
-						</template>
-						<div :class="$style.toolsList" data-test-id="agent-tools-available-n8n-list">
-							<AgentToolItem
-								v-for="nodeType in filteredAvailableN8nTools"
-								:key="nodeType.name"
-								:node-type="nodeType"
-								mode="available"
-								:class="$style.toolsListItem"
-								@add="handleAddTool(nodeType)"
-							/>
-						</div>
-					</N8nCollapsiblePanel>
-				</div>
+				<AgentToolsSection
+					v-if="filteredAvailableN8nTools.length > 0"
+					v-model="isAvailableN8nToolsSectionExpanded"
+					:title="
+						i18n.baseText('agents.tools.availableN8nTools', {
+							interpolate: { count: filteredAvailableN8nTools.length },
+						})
+					"
+					list-test-id="agent-tools-available-n8n-list"
+				>
+					<AgentToolItem
+						v-for="nodeType in filteredAvailableN8nTools"
+						:key="nodeType.name"
+						:node-type="nodeType"
+						mode="available"
+						:class="$style.toolsListItem"
+						@add="handleAddTool(nodeType)"
+					/>
+				</AgentToolsSection>
 
-				<div v-if="filteredAvailableExternalTools.length > 0" :class="$style.section">
-					<N8nCollapsiblePanel
-						v-model="isAvailableExternalToolsSectionExpanded"
-						:class="$style.sectionPanel"
-						:disable-animation="true"
-					>
-						<template #title>
-							<N8nHeading size="small" color="text-light" tag="h3">
-								{{
-									i18n.baseText('agents.tools.availableExternalTools', {
-										interpolate: { count: filteredAvailableExternalTools.length },
-									})
-								}}
-							</N8nHeading>
-						</template>
-						<div :class="$style.toolsList" data-test-id="agent-tools-available-external-list">
-							<AgentToolItem
-								v-for="nodeType in filteredAvailableExternalTools"
-								:key="nodeType.name"
-								:node-type="nodeType"
-								mode="available"
-								:class="$style.toolsListItem"
-								@add="handleAddTool(nodeType)"
-							/>
-						</div>
-					</N8nCollapsiblePanel>
-				</div>
+				<AgentToolsSection
+					v-if="filteredAvailableExternalTools.length > 0"
+					v-model="isAvailableExternalToolsSectionExpanded"
+					:title="
+						i18n.baseText('agents.tools.availableExternalTools', {
+							interpolate: { count: filteredAvailableExternalTools.length },
+						})
+					"
+					list-test-id="agent-tools-available-external-list"
+				>
+					<AgentToolItem
+						v-for="nodeType in filteredAvailableExternalTools"
+						:key="nodeType.name"
+						:node-type="nodeType"
+						mode="available"
+						:class="$style.toolsListItem"
+						@add="handleAddTool(nodeType)"
+					/>
+				</AgentToolsSection>
+
+				<AgentToolsSection
+					v-if="filteredAvailableWorkflows.length > 0"
+					v-model="isAvailableWorkflowsSectionExpanded"
+					:title="
+						i18n.baseText('agents.tools.availableWorkflows', {
+							interpolate: { count: filteredAvailableWorkflows.length },
+						})
+					"
+					list-test-id="agent-tools-available-workflows-list"
+				>
+					<WorkflowToolRow
+						v-for="workflow in filteredAvailableWorkflows"
+						:key="workflow.id"
+						mode="available"
+						:name="workflow.name"
+						:description="workflow.description"
+						row-test-id="agent-tools-available-workflow-row"
+						@add="handleAddWorkflow(workflow)"
+					/>
+				</AgentToolsSection>
 
 				<div
 					v-if="
 						filteredConfiguredMcpServers.length === 0 &&
 						filteredConfiguredTools.length === 0 &&
 						filteredConfiguredWorkflows.length === 0 &&
+						filteredAvailableMcpTools.length === 0 &&
 						filteredAvailableWorkflows.length === 0 &&
 						filteredAvailableAiTools.length === 0 &&
 						filteredAvailableN8nTools.length === 0 &&
@@ -922,22 +917,6 @@ function commit() {
 	margin-right: calc(-1 * var(--spacing--lg));
 	padding-right: var(--spacing--lg);
 	padding-top: var(--spacing--sm);
-}
-
-.section {
-	display: flex;
-	flex-direction: column;
-}
-
-.sectionPanel.sectionPanel {
-	border: 0;
-	border-radius: 0;
-	background-color: transparent;
-}
-
-.toolsList {
-	display: flex;
-	flex-direction: column;
 }
 
 .toolsListItem {

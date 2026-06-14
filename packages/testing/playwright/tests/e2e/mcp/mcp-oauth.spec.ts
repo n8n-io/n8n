@@ -19,6 +19,14 @@ import { test, expect } from '../../../fixtures/base';
  * instance-global state, same as mcp-service.spec.ts.
  */
 
+// Both this spec and mcp-service.spec.ts toggle the instance-global MCP access
+// setting; in parallel workers against a shared instance, one file's
+// disabled-state test can break the other's OAuth flow mid-request. In
+// container runs this gives the OAuth spec its own worker/container. (Local
+// runs against a shared N8N_BASE_URL ignore this — run the two files
+// sequentially.)
+test.use({ capability: { env: { TEST_ISOLATION: 'mcp-oauth' } } });
+
 const CALLBACK_PATH = 'mcp-oauth-e2e-callback';
 
 test.describe(
@@ -326,6 +334,51 @@ test.describe(
 				});
 
 				expect(response.ok()).toBe(true);
+			});
+		});
+
+		test.describe('Neutral /oauth/* endpoint aliases', () => {
+			// The OAuth endpoints are also mounted under neutral /oauth/* paths
+			// (next to the /mcp-oauth/* paths advertised in discovery), which
+			// future, non-MCP protected resources will advertise. The aliases must
+			// serve the identical flow.
+			test('should serve the full authorization code flow on the /oauth/* aliases', async ({
+				api,
+			}) => {
+				const { client, tokens } = await api.mcpOauth.completeAuthorizationCodeFlow({
+					clientName: `e2e alias client ${nanoid(8)}`,
+					basePath: '/oauth',
+				});
+
+				// The access token minted via the aliases authenticates against the MCP server
+				const message = api.mcp.createMessage('tools/list');
+				const mcpResponse = await api.mcp.internalMcpSendMessageNoAuth(message, {
+					Authorization: `Bearer ${tokens.access_token}`,
+				});
+				expect(mcpResponse.status()).toBeLessThan(300);
+
+				// Refresh rotation works through the alias token endpoint
+				const refreshResponse = await api.mcpOauth.refreshToken({
+					refreshToken: tokens.refresh_token,
+					clientId: client.client_id,
+					basePath: '/oauth',
+				});
+				expect(refreshResponse.ok()).toBe(true);
+				const rotatedTokens = await refreshResponse.json();
+
+				// Revocation through the alias endpoint invalidates the token at the MCP server
+				const revokeResponse = await api.mcpOauth.revokeToken({
+					token: rotatedTokens.access_token,
+					clientId: client.client_id,
+					tokenTypeHint: 'access_token',
+					basePath: '/oauth',
+				});
+				expect(revokeResponse.ok()).toBe(true);
+
+				const afterRevoke = await api.mcp.internalMcpSendMessageNoAuth(message, {
+					Authorization: `Bearer ${rotatedTokens.access_token}`,
+				});
+				expect(afterRevoke.status()).toBe(401);
 			});
 		});
 
