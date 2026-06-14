@@ -396,6 +396,10 @@ export interface BuildResult {
 	workflowChecks?: CheckOutcome[];
 	/** False when the backend lacks the credential-pin endpoint and the build ran unpinned. */
 	credentialViewPinned?: boolean;
+	/** True when the build failed while setting up the conversation seed (trace
+	 *  gone, reconstruction drift, restore failed) — a harness/framework problem,
+	 *  not an agent build failure. Routed to `framework_issue`. */
+	seedingFailed?: boolean;
 }
 
 export interface BuildWorkflowConfig {
@@ -475,6 +479,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let credentialViewPinned = true;
 	let restoredWorkflowIds: string[] = [];
 	let seededTranscript: TranscriptTurn[] = [];
+	let seedingFailed = false;
 
 	try {
 		const buildStart = Date.now();
@@ -485,17 +490,24 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// any) is a file or prose prelude and the conversation is hand-authored.
 		let seed: ConversationSeed | undefined;
 		let conversation = config.conversation ?? [];
-		if (config.seedThread) {
-			const reconstructed = await reconstructSeedFromThread(config.seedThread);
-			seed = reconstructed.seed;
-			conversation = [{ role: 'user', text: reconstructed.liveTurn }];
-			logger.info(
-				`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s) [project ${reconstructed.sourceProject}]${config.laneTag ?? ''}`,
-			);
-		} else if (config.seedFile) {
-			seed = loadConversationSeed(config.seedFile);
-		} else if (config.priorConversation && config.priorConversation.length > 0) {
-			seed = seedFromProse(config.priorConversation);
+		try {
+			if (config.seedThread) {
+				const reconstructed = await reconstructSeedFromThread(config.seedThread);
+				seed = reconstructed.seed;
+				conversation = [{ role: 'user', text: reconstructed.liveTurn }];
+				logger.info(
+					`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s) [project ${reconstructed.sourceProject}]${config.laneTag ?? ''}`,
+				);
+			} else if (config.seedFile) {
+				seed = loadConversationSeed(config.seedFile);
+			} else if (config.priorConversation && config.priorConversation.length > 0) {
+				seed = seedFromProse(config.priorConversation);
+			}
+		} catch (error: unknown) {
+			// A seed that can't be resolved is a harness/framework problem, not an
+			// agent build failure — tag it and fail before spending a live turn.
+			seedingFailed = true;
+			throw new Error(`Seeding failed: ${error instanceof Error ? error.message : String(error)}`);
 		}
 
 		const openingMessage = conversation[0]?.text ?? '';
@@ -538,17 +550,24 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// credential pin there is no degraded mode: a seeded case cannot
 		// meaningfully run unseeded, so any restore failure fails the build.
 		if (seed) {
-			const remapped = remapSeedWorkflowIds(seed);
-			const restoreResult = await client.restoreThread(
-				threadId,
-				remapped.messages,
-				remapped.workflows,
-			);
-			restoredWorkflowIds = restoreResult.workflowIds;
-			seededTranscript = transcriptPrefixFromSeed(remapped.messages);
-			logger.info(
-				`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${config.laneTag ?? ''}`,
-			);
+			try {
+				const remapped = remapSeedWorkflowIds(seed);
+				const restoreResult = await client.restoreThread(
+					threadId,
+					remapped.messages,
+					remapped.workflows,
+				);
+				restoredWorkflowIds = restoreResult.workflowIds;
+				seededTranscript = transcriptPrefixFromSeed(remapped.messages);
+				logger.info(
+					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${config.laneTag ?? ''}`,
+				);
+			} catch (error: unknown) {
+				seedingFailed = true;
+				throw new Error(
+					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
 		}
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
@@ -677,6 +696,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				proxyDecisionStats,
 				transcript,
 				credentialViewPinned,
+				seedingFailed,
 			};
 		}
 
@@ -724,6 +744,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			events,
 			threadId,
 			credentialViewPinned,
+			seedingFailed,
 		};
 	}
 }

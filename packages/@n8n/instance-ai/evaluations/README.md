@@ -615,6 +615,16 @@ The case carries only a **thread id**. At run time the harness pulls that thread
 
 No `conversation` field — the live turn comes from the trace. `project` is optional (defaults to `instance-ai`, override with `SEED_LANGSMITH_PROJECT`). No conversation content lands in the repo — only the opaque thread id.
 
+**Reading from a different workspace (e.g. prod traces, staging eval).** The trace is *read* with a client separate from the eval's own tracing, so the source can live in another workspace than the eval writes to. To seed from a prod conversation while the eval still traces to staging:
+
+```bash
+SEED_LANGSMITH_API_KEY=<read key for the source workspace>   # reads only; eval keeps using LANGSMITH_API_KEY
+SEED_LANGSMITH_ENDPOINT=<url>                                 # only if that workspace is a different LangSmith deployment/region
+# + seedThread.project (or SEED_LANGSMITH_PROJECT) = the source project name
+```
+
+The eval's own traces/datasets still go to `LANGSMITH_API_KEY`, so **nothing is ever written to the source (prod) workspace**. ⚠️ Reconstructing a prod conversation pulls its content (incl. any PII) into the staging eval instance, the model, the staging traces and local report artifacts — gate this behind the redaction pass and team data-handling policy before using real customer threads.
+
 > **Transient.** LangSmith base-tier traces retain ~14 days, so a `seedThread` case is runnable only while its trace lives. Keep these out of CI datasets (tag them `["seeded"]`, not `full`/`pr`) until durable seed snapshots land; the resolver fails loudly when a trace has aged out. Durable snapshotting (e.g. materialising the reconstructed seed into a private LangSmith dataset on first resolve) is a planned follow-up.
 
 To find the thread id, drive the conversation on an instance you control and read its id, or use `pnpm eval:export-thread <threadId>` to print/inspect it.

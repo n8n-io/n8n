@@ -27,6 +27,23 @@ const DEFAULT_SOURCE_PROJECT = process.env.SEED_LANGSMITH_PROJECT ?? 'instance-a
 
 const WORKFLOW_BUILD_TOOLS = new Set(['build-workflow', 'patch-workflow', 'submit-workflow']);
 
+/**
+ * LangSmith client for READING the source trace. Deliberately separate from the
+ * eval's own (ambient) tracing client: a source thread can live in a different
+ * workspace than the eval writes to — e.g. seeding from a **prod** conversation
+ * while the eval traces to **staging**. Set `SEED_LANGSMITH_API_KEY` (and, only
+ * if that workspace is on a different LangSmith deployment/region,
+ * `SEED_LANGSMITH_ENDPOINT`) to point reads at prod; the eval keeps using
+ * `LANGSMITH_API_KEY` for its own traces/datasets, so nothing is ever written
+ * to the source workspace. Falls back to the ambient client when unset.
+ */
+function createSeedReadClient(): Client {
+	const apiKey = process.env.SEED_LANGSMITH_API_KEY;
+	if (!apiKey) return new Client();
+	const apiUrl = process.env.SEED_LANGSMITH_ENDPOINT;
+	return new Client({ apiKey, ...(apiUrl ? { apiUrl } : {}) });
+}
+
 export interface SeedThreadRef {
 	threadId: string;
 	/** Override the LangSmith project to read the source trace from. */
@@ -84,7 +101,7 @@ interface ToolCallBlock {
  */
 export async function reconstructSeedFromThread(
 	ref: SeedThreadRef,
-	client: Client = new Client(),
+	client: Client = createSeedReadClient(),
 ): Promise<ReconstructedSeed> {
 	const sourceProject = ref.project ?? DEFAULT_SOURCE_PROJECT;
 	const runs: Run[] = [];
@@ -96,7 +113,7 @@ export async function reconstructSeedFromThread(
 	}
 	if (runs.length === 0) {
 		throw new Error(
-			`No runs for thread ${ref.threadId} in LangSmith project "${sourceProject}" — the trace may have aged out (base-tier retention is ~14 days) or the project is wrong (set seedThread.project or SEED_LANGSMITH_PROJECT)`,
+			`No runs for thread ${ref.threadId} in LangSmith project "${sourceProject}". Causes: trace aged out (~14-day base retention); wrong project (set seedThread.project or SEED_LANGSMITH_PROJECT); or wrong workspace — if the thread is in another workspace (e.g. prod while this key is staging), set SEED_LANGSMITH_API_KEY to a read key for that workspace.`,
 		);
 	}
 
@@ -118,7 +135,12 @@ export async function reconstructSeedFromThread(
 	const liveTurn = userMessageOf(liveTurnRun)!;
 
 	const messages = buildSeedMessages(rootRuns, toolRuns, boundaryMs);
-	const workflows = buildSeedWorkflows(toolRuns, boundaryMs);
+	if (messages.length === 0) {
+		throw new Error(
+			`Thread ${ref.threadId} reconstructed to zero seed messages before the live turn — the trace shape may have drifted (expected root runs named 'turn' with inputs.message / outputs.response).`,
+		);
+	}
+	const workflows = buildSeedWorkflows(toolRuns, boundaryMs, ref.threadId);
 
 	return {
 		seed: {
@@ -211,17 +233,33 @@ function buildSeedMessages(
  * captured SDK code, taking the latest successful build per workflow id before
  * the boundary — i.e. each workflow exactly as the live turn first saw it.
  */
-function buildSeedWorkflows(toolRuns: Run[], boundaryMs: number): ConversationSeed['workflows'] {
+function buildSeedWorkflows(
+	toolRuns: Run[],
+	boundaryMs: number,
+	threadId: string,
+): ConversationSeed['workflows'] {
 	const latestBuildByWorkflowId = new Map<string, Run>();
+	// Name-independent "this was a build" signal: a tool run that takes SDK
+	// `code` and returns a `workflowId` on success is unmistakably a build/patch,
+	// whatever it's called. Lets us detect a renamed build tool instead of
+	// silently producing a workflow-less seed.
+	let sawBuildLikeRun = false;
 	for (const tool of toolRuns) {
 		if (new Date(tool.start_time).getTime() >= boundaryMs) continue;
-		if (!WORKFLOW_BUILD_TOOLS.has(tool.name)) continue;
 		const out = (tool.outputs ?? {}) as Record<string, unknown>;
 		const workflowId = asString(out.workflowId);
-		if (out.success !== true || !workflowId) continue;
-		if (!asString(tool.inputs?.code)) continue;
+		const buildLike = out.success === true && !!workflowId && !!asString(tool.inputs?.code);
+		if (buildLike) sawBuildLikeRun = true;
+		if (!WORKFLOW_BUILD_TOOLS.has(tool.name)) continue;
+		if (!buildLike || !workflowId) continue;
 		// Sorted ascending, so a later run overwrites — last successful build wins.
 		latestBuildByWorkflowId.set(workflowId, tool);
+	}
+
+	if (latestBuildByWorkflowId.size === 0 && sawBuildLikeRun) {
+		throw new Error(
+			`Thread ${threadId}: a tool run built a workflow (SDK code in, workflowId out) but its name isn't in the known build set {${[...WORKFLOW_BUILD_TOOLS].join(', ')}} — the build tool was likely renamed; update WORKFLOW_BUILD_TOOLS.`,
+		);
 	}
 
 	const workflows: ConversationSeed['workflows'] = [];

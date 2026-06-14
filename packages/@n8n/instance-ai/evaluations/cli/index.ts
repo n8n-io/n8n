@@ -493,7 +493,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				passed: false,
 				score: 0,
 				reasoning: `Build failed: ${build.error ?? 'unknown'}`,
-				failureCategory: 'build_failure',
+				// Seeding failures are a harness setup problem, not an agent build
+				// failure — keep them out of the agent's build_failure bucket.
+				failureCategory: build.seedingFailed ? 'framework_issue' : 'build_failure',
 				execErrors: build.error ? [build.error] : [],
 				buildDurationMs,
 				execDurationMs: 0,

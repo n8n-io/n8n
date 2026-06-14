@@ -148,6 +148,49 @@ describe('reconstructSeedFromThread', () => {
 		);
 	});
 
+	it('throws when a renamed build tool produced a workflow we did not recognize', async () => {
+		// SDK code in + workflowId out + success = unmistakably a build, but the
+		// tool name isn't in the known set → drift detector fires.
+		const renamedBuild: FakeRun = {
+			id: 'tool1',
+			run_type: 'tool',
+			name: 'compose-workflow', // not in WORKFLOW_BUILD_TOOLS
+			start_time: t(5),
+			inputs: { code: 'workflow()...' },
+			outputs: { success: true, workflowId: 'WF1' },
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Done.' } },
+			renamedBuild,
+			turn('r2', 30, 'Change'),
+		];
+		await expect(reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs))).rejects.toThrow(
+			/likely renamed/,
+		);
+	});
+
+	it('does not false-positive on a read-only tool that returns a workflowId', async () => {
+		// get-workflow returns a workflowId but takes no `code` — not build-like,
+		// so the drift detector stays quiet and the seed simply has no workflow.
+		const readOnly: FakeRun = {
+			id: 'tool1',
+			run_type: 'tool',
+			name: 'get-workflow',
+			start_time: t(5),
+			inputs: { workflowId: 'WF1' },
+			outputs: { success: true, workflowId: 'WF1' },
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Look at it'), outputs: { response: 'Here.' } },
+			readOnly,
+			turn('r2', 30, 'Change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows).toHaveLength(0);
+	});
+
 	it('skips internal resume turns when finding the split point', async () => {
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Done.' } },
