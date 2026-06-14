@@ -45,6 +45,14 @@ export const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
+		displayName: 'Application Key',
+		name: 'appKey',
+		type: 'string',
+		default: '',
+		description:
+			'The application key to identify the application. This will be used as json object in request headers.',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',
