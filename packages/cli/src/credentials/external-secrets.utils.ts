@@ -4,6 +4,8 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { getAllKeyPaths } from '@/utils';
 
+const BRACKET_SECRETS_PROVIDER_KEY_PATTERN = `[^'"\\]]+`;
+
 /**
  * Checks if a string value contains an external secret expression.
  * Detects both dot notation ($secrets.vault.key) and bracket notation ($secrets['vault']['key']).
@@ -48,7 +50,7 @@ export function extractProviderKeysFromExpression(expression: string): string[] 
 		// - $secrets['providerKey']
 		// - $secrets["providerKey"]
 		const bracketMatches = expressionContent.matchAll(
-			new RegExp(`\\$secrets\\[['"](${SECRETS_PROVIDER_KEY_PATTERN})['"]\\]`, 'g'),
+			new RegExp(`\\$secrets\\[['"](${BRACKET_SECRETS_PROVIDER_KEY_PATTERN})['"]\\]`, 'g'),
 		);
 		for (const match of bracketMatches) {
 			providerKeys.add(match[1]);
