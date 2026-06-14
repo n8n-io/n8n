@@ -158,12 +158,6 @@ checked out and set up:
    cd n8n
    ```
 
-4. Add the original n8n repository as `upstream` to your forked repository:
-
-   ```
-   git remote add upstream https://github.com/n8n-io/n8n.git
-   ```
-
 #### For everyone
 
 1. Go into the cloned repository folder
