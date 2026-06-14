@@ -24,3 +24,7 @@ node_modules
 .github/.cache
 *.log
 .agent-setup
+
+# Build-metrics harness output — must not enter the build context (self-busts COPY . .)
+docker-build-metrics.json
+*.jsonl

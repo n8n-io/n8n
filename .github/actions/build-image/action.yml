@@ -1,0 +1,99 @@
+name: 'Build image'
+description: 'Build one docker-bake target for one platform, wiring the Turbo remote cache and capturing build metrics. Single source of truth for the buildx invocation (local dev runs the same `docker buildx bake`).'
+
+inputs:
+  target:
+    description: 'docker-bake.hcl target to build (e.g. n8n, runner-alpine).'
+    required: true
+  platform:
+    description: 'Target platform, e.g. linux/amd64. Empty = bake file default.'
+    required: false
+    default: ''
+  output:
+    description: 'Output mode: cacheonly | load | push.'
+    required: false
+    default: 'cacheonly'
+  tag:
+    description: 'Override TAG bake variable.'
+    required: false
+    default: 'local'
+  registry:
+    description: 'Override REGISTRY bake variable (e.g. ghcr.io/n8n-io/). Empty = local.'
+    required: false
+    default: ''
+  turbo-api:
+    description: 'Turbo remote cache server URL. When set, the build reaches it over the host network (CI: http://localhost:PORT). Empty = build cold.'
+    required: false
+    default: ''
+  turbo-team:
+    description: 'Turbo team/namespace (keep musl separate from glibc).'
+    required: false
+    default: 'n8n-musl'
+  turbo-token:
+    description: 'Turbo cache token. Mounted as a buildx secret, never a build-arg.'
+    required: false
+    default: ''
+
+outputs:
+  metrics-file:
+    description: 'Path to docker-build-metrics.json'
+    value: ${{ steps.build.outputs.metrics-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build ${{ inputs.target }} (${{ inputs.platform || 'default' }})
+      id: build
+      shell: bash
+      env:
+        TURBO_API: ${{ inputs.turbo-api }}
+        TURBO_TEAM: ${{ inputs.turbo-team }}
+        TURBO_TOKEN: ${{ inputs.turbo-token }}
+        TAG: ${{ inputs.tag }}
+        REGISTRY: ${{ inputs.registry }}
+      run: |
+        set -euo pipefail
+        target='${{ inputs.target }}'
+        meta="/tmp/bake-${target}-meta.json"
+        rawlog="/tmp/bake-${target}.jsonl"
+
+        set_args=()
+        [ -n '${{ inputs.platform }}' ] && set_args+=(--set "${target}.platform=${{ inputs.platform }}")
+
+        case '${{ inputs.output }}' in
+          load)      out='--load' ;;
+          push)      out='--push' ;;
+          cacheonly) out='--set *.output=type=cacheonly' ;;
+          *) echo "::error::unknown output ${{ inputs.output }}"; exit 1 ;;
+        esac
+
+        # Reach the on-runner Turbo cache server over the host network (CI: localhost).
+        # Only when a server URL is provided — otherwise build cold.
+        net_args=()
+        if [ -n "${TURBO_API}" ]; then
+          net_args+=(--set "${target}.network=host" --allow network.host)
+        fi
+
+        echo "::group::docker buildx bake ${target}"
+        docker buildx bake "${target}" \
+          "${set_args[@]}" ${out} \
+          "${net_args[@]}" \
+          --metadata-file "${meta}" \
+          --progress=rawjson > "${rawlog}" 2>&1 || { tail -40 "${rawlog}"; exit 1; }
+        echo "::endgroup::"
+
+        node scripts/build-metrics.mjs "${rawlog}" "${meta}" >> "$GITHUB_STEP_SUMMARY" 2>&1 || \
+          node scripts/build-metrics.mjs "${rawlog}" "${meta}"
+        echo "metrics-file=docker-build-metrics.json" >> "$GITHUB_OUTPUT"
+
+    - name: Upload build metrics
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: build-metrics-${{ inputs.target }}-${{ inputs.platform && 'arch' || 'default' }}
+        path: |
+          docker-build-metrics.json
+          /tmp/bake-${{ inputs.target }}.jsonl
+          /tmp/bake-${{ inputs.target }}-meta.json
+        if-no-files-found: warn
+        retention-days: 7

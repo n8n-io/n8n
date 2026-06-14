@@ -1,0 +1,78 @@
+name: 'Build Images'
+
+# Phase-1 consolidation: one bake-backed builder, callable per image.
+# - workflow_call: the reusable entry the real pipelines (CI/release) will use.
+# - push (this branch): verification — proves bake + build-image + the Turbo
+#   remote cache + metrics work identically on Blacksmith, not just locally.
+
+on:
+  push:
+    branches:
+      - devp-262-local-turbo-cache-inbuild
+    paths:
+      - 'docker-bake.hcl'
+      - 'docker/images/n8n/Dockerfile.inbuild'
+      - 'docker/images/n8n/Dockerfile.inbuild.dockerignore'
+      - 'scripts/build-n8n.mjs'
+      - 'scripts/build-metrics.mjs'
+      - '.github/actions/build-image/action.yml'
+      - '.github/workflows/build-images.yml'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      target:
+        description: 'docker-bake.hcl target to build.'
+        type: string
+        default: 'n8n'
+      platform:
+        description: 'Target platform.'
+        type: string
+        default: 'linux/amd64'
+      output:
+        description: 'cacheonly | load | push.'
+        type: string
+        default: 'cacheonly'
+
+concurrency:
+  group: build-images-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: 'Bake ${{ inputs.target || ''n8n'' }}'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    permissions:
+      contents: read
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+
+      # build-metrics.mjs is plain Node (no deps); ensure a node is present.
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '24.16.0'
+
+      - name: Setup Blacksmith Docker Builder
+        uses: useblacksmith/setup-docker-builder@ef12d5b165b596e3aa44ea8198d8fde563eab402 # v1.4.0
+
+      # On-runner Turbo remote cache, musl-namespaced. Exports TURBO_API /
+      # TURBO_TOKEN / TURBO_TEAM into the job env for the build below.
+      - name: Configure Turborepo Remote Cache (docker/musl namespace)
+        uses: rharkor/caching-for-turbo@5d14fba18e450c09393333cfd4242e8b3cb455a6 # v2.4.2
+        with:
+          cache-prefix: turbogha-n8n-musl_
+
+      - name: Build image
+        uses: ./.github/actions/build-image
+        with:
+          target: ${{ inputs.target || 'n8n' }}
+          platform: ${{ inputs.platform || 'linux/amd64' }}
+          output: ${{ inputs.output || 'cacheonly' }}
+          turbo-api: ${{ env.TURBO_API }}
+          turbo-team: ${{ env.TURBO_TEAM }}
+          turbo-token: ${{ env.TURBO_TOKEN }}
