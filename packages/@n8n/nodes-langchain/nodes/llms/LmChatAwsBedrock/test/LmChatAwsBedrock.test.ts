@@ -184,6 +184,42 @@ describe('LmChatAwsBedrock', () => {
 			);
 		});
 
+		it('enables prompt caching without leaking the flag to ChatBedrockConverse', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'anthropic.claude-sonnet-4-5-20250929-v1:0';
+				if (paramName === 'options') return { enablePromptCaching: true };
+				return undefined;
+			});
+
+			const result = await node.supplyData.call(ctx, 0);
+
+			// The model is still produced...
+			expect(result.response).toBeDefined();
+			// ...and `enableCaching` is consumed by the caching subclass, never passed
+			// through to the underlying ChatBedrockConverse constructor.
+			const constructorArg = MockedChatBedrockConverse.mock.calls.at(-1)?.[0];
+			expect(constructorArg).toEqual(
+				expect.objectContaining({ model: 'anthropic.claude-sonnet-4-5-20250929-v1:0' }),
+			);
+			expect(constructorArg).not.toHaveProperty('enableCaching');
+		});
+
+		it('leaves prompt caching off by default', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			const result = await node.supplyData.call(ctx, 0);
+
+			expect(result.response).toBeDefined();
+			const constructorArg = MockedChatBedrockConverse.mock.calls.at(-1)?.[0];
+			expect(constructorArg).not.toHaveProperty('enableCaching');
+		});
+
 		describe('AssumeRole wiring', () => {
 			it('constructs BedrockRuntimeClient with the provider returned by resolveAwsCredentials', async () => {
 				const ctx = setupMockContext();
