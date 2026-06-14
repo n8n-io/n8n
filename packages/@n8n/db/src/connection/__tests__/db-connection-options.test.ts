@@ -119,6 +119,7 @@ describe('DbConnectionOptions', () => {
 					ssl: false,
 					extra: {
 						idleTimeoutMillis: 25_000,
+						connectionTimeoutMillis: 15_000,
 						keepAlive: false,
 						keepAliveInitialDelayMillis: 5_000,
 						maxLifetimeSeconds: 1800,

@@ -9,6 +9,19 @@ import { setTimeout as setTimeoutP } from 'timers/promises';
 const MAX_PING_FAILURES_BEFORE_RECOVERY = 3;
 const MIN_RECOVERY_BACKOFF_MS = 1_000;
 const MAX_RECOVERY_BACKOFF_MS = 30_000;
+const PING_QUERY = 'SELECT 1';
+
+// Minimal structural views of the pg pool/client reached via `driver.master`.
+// Mirrors the inline-shape + defensive-cast approach already used by
+// attachPoolErrorHandler, and avoids adding a `pg` dependency edge to this package.
+interface PgPoolClient {
+	query: (config: { text: string; query_timeout?: number }) => Promise<unknown>;
+	// pg destroys (removes from the pool) the client when release is called with a truthy error.
+	release: (error?: Error | boolean) => void;
+}
+interface PgPool {
+	connect: () => Promise<PgPoolClient>;
+}
 
 /**
  * Watches a DataSource and recovers it when the connection goes bad.
@@ -81,17 +94,8 @@ export class DbConnectionMonitor {
 			return;
 		}
 
-		const abortController = new AbortController();
-
 		try {
-			await Promise.race([
-				this.dataSource.query('SELECT 1'),
-				setTimeoutP(this.databaseConfig.pingTimeoutMs, undefined, {
-					signal: abortController.signal,
-				}).then(() => {
-					throw new OperationalError('Database connection timed out');
-				}),
-			]);
+			await this.runPing();
 
 			if (!this.connected) {
 				this.logger.info('Database connection recovered');
@@ -118,9 +122,119 @@ export class DbConnectionMonitor {
 				void this.recoverDataSource();
 			}
 		} finally {
-			abortController.abort();
 			this.scheduleNextPing();
 		}
+	}
+
+	/**
+	 * Runs the health-check query, bounded by `pingTimeoutMs`.
+	 *
+	 * For Postgres we go straight to the pg pool (`driver.master`) so that, when the
+	 * ping times out, we can DESTROY the specific pool client (`release(err)`) and
+	 * reclaim its slot immediately — instead of leaking it until the query settles on
+	 * its own (which, on a connection stalled mid-response behind a proxy, may be
+	 * effectively forever). `dataSource.query('SELECT 1')` offers no such handle.
+	 *
+	 * Non-Postgres drivers (sqlite-pooled) have no such pool and don't suffer the
+	 * cross-network stall, so they keep the original `dataSource.query` path.
+	 *
+	 * Throws OperationalError on timeout (not reported to Sentry) and rethrows any
+	 * other driver error verbatim, preserving the error-handling semantics in `ping()`.
+	 */
+	private async runPing(): Promise<void> {
+		const pool = this.getPgPool();
+		if (!pool) {
+			await this.raceTimeout(this.dataSource.query(PING_QUERY));
+			return;
+		}
+
+		let bailed = false;
+		// If the timeout wins the connect race, a client may still resolve afterwards.
+		// Destroy that late arrival rather than silently parking it back in the pool.
+		const connectPromise = pool.connect().then((client) => {
+			if (bailed) {
+				this.safeDestroy(client);
+			}
+			return client;
+		});
+
+		let client: PgPoolClient;
+		try {
+			client = await this.raceTimeout(connectPromise);
+		} catch (error) {
+			bailed = true;
+			throw error;
+		}
+
+		// The ping timeout is enforced by raceTimeout (throws OperationalError, not reported to
+		// Sentry). We deliberately do NOT set pg's `query_timeout`: it rejects with a generic
+		// "Query read timeout" Error that would be reported as an unexpected failure on every
+		// outage. On timeout we abandon this query promise and destroy the connection below, so
+		// attach a no-op catch to swallow its eventual rejection (avoids an unhandled rejection).
+		const queryPromise = client.query({ text: PING_QUERY });
+		queryPromise.catch(() => {});
+
+		try {
+			await this.raceTimeout(queryPromise);
+			client.release(); // success: return the connection to the pool
+		} catch (error) {
+			this.safeDestroy(client); // timeout or error: destroy the connection to free the slot now
+			throw error;
+		}
+	}
+
+	/**
+	 * Races `work` against the ping timeout. The timeout branch throws the same
+	 * OperationalError sentinel the original ping used, so the "don't report timeouts
+	 * to Sentry" rule in `ping()` still applies. The timer is always cancelled in
+	 * `finally` so it never leaks when `work` wins.
+	 */
+	private async raceTimeout<T>(work: Promise<T>): Promise<T> {
+		const abortController = new AbortController();
+		try {
+			return await Promise.race([
+				work,
+				setTimeoutP(this.databaseConfig.pingTimeoutMs, undefined, {
+					signal: abortController.signal,
+				}).then(() => {
+					throw new OperationalError('Database connection timed out');
+				}),
+			]);
+		} finally {
+			abortController.abort();
+		}
+	}
+
+	/** Destroy a pg pool client, removing it from the pool. Never throws. */
+	private safeDestroy(client: PgPoolClient): void {
+		try {
+			client.release(new Error('n8n ping timed out; destroying connection to free pool slot'));
+		} catch (error) {
+			this.logger.warn(
+				`Failed to release timed-out ping connection: ${ensureError(error).message}`,
+			);
+		}
+	}
+
+	/**
+	 * Returns the pg pool (`driver.master`) for a Postgres datasource, or undefined for
+	 * non-postgres OR if TypeORM internals have shifted. Mirrors the defensive checks in
+	 * attachPoolErrorHandler so a renamed internal degrades to the legacy
+	 * `dataSource.query` path instead of crashing.
+	 */
+	private getPgPool(): PgPool | undefined {
+		if (this.dataSource.options.type !== 'postgres') {
+			return undefined;
+		}
+		const driver = this.dataSource.driver as unknown as { master?: PgPool };
+		const pool = driver.master;
+		if (!pool || typeof pool.connect !== 'function') {
+			this.logger.warn(
+				'Falling back to dataSource.query for ping: driver.master is unavailable (TypeORM internals may have changed)',
+			);
+			return undefined;
+		}
+		return pool;
 	}
 
 	private async recoverDataSource() {
