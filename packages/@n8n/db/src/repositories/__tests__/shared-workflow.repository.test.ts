@@ -86,5 +86,29 @@ describe('SharedWorkflowRepository', () => {
 				}),
 			);
 		});
+
+		it('loads workflowPublishHistory when includeActiveVersionPublishHistory is true', async () => {
+			entityManager.findOne.mockResolvedValue(null);
+
+			await sharedWorkflowRepository.findWorkflowWithOptions('wf-1', {
+				includeActiveVersion: true,
+				includeActiveVersionPublishHistory: true,
+				em: entityManager,
+			});
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(
+				SharedWorkflow,
+				expect.objectContaining({
+					relations: {
+						workflow: {
+							shared: { project: true },
+							tags: false,
+							parentFolder: false,
+							activeVersion: { workflowPublishHistory: true },
+						},
+					},
+				}),
+			);
+		});
 	});
 });
