@@ -15,6 +15,7 @@ describe('TrelloTriggerHelpers', () => {
 		jest.clearAllMocks();
 
 		mockWebhookFunctions = {
+			getNodeParameter: jest.fn().mockReturnValue('apiKey'),
 			getCredentials: jest.fn().mockResolvedValue({
 				oauthSecret: testSecret,
 			}),
@@ -109,6 +110,32 @@ describe('TrelloTriggerHelpers', () => {
 			const result = await verifySignature.call(mockWebhookFunctions);
 
 			expect(result).toBe(false);
+		});
+
+		describe('OAuth1 authentication', () => {
+			beforeEach(() => {
+				mockWebhookFunctions.getNodeParameter.mockReturnValue('oAuth1');
+				mockWebhookFunctions.getCredentials.mockResolvedValue({
+					consumerSecret: testSecret,
+				});
+			});
+
+			it('should read the OAuth1 credential and accept a valid signature', async () => {
+				const result = await verifySignature.call(mockWebhookFunctions);
+
+				expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('trelloOAuth1Api');
+				expect(result).toBe(true);
+			});
+
+			it('should reject when consumer secret does not match', async () => {
+				mockWebhookFunctions.getCredentials.mockResolvedValue({
+					consumerSecret: 'wrong-secret',
+				});
+
+				const result = await verifySignature.call(mockWebhookFunctions);
+
+				expect(result).toBe(false);
+			});
 		});
 	});
 });

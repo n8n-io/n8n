@@ -13,6 +13,7 @@ import AgentChatPanel from '../components/AgentChatPanel.vue';
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
 const loadHistoryMock = vi.fn();
+const cancelAndSteerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
 
@@ -54,6 +55,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 		sendMessage: sendMessageMock,
 		stopGenerating: stopGeneratingMock,
 		resume: vi.fn(),
+		cancelAndSteer: cancelAndSteerMock,
 		dismissFatalError: vi.fn(),
 	}),
 }));
@@ -241,21 +243,28 @@ describe('AgentChatPanel', () => {
 		expect(loadHistoryMock).toHaveBeenCalledTimes(1);
 	});
 
-	it('disables chat and blocks sending while an interactive question is unresolved', async () => {
+	it('enables chat input and shows answer-question placeholder while an interactive question is unresolved', () => {
 		messagesMock.value = [openInteractiveMessage()];
 
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-		expect(chatInput.props('disabled')).toBe(true);
-		expect(chatInput.props('canSubmit')).toBe(false);
+		// Input should be ENABLED so the user can cancel and steer
+		expect(chatInput.props('disabled')).toBe(false);
 		expect(chatInput.props('placeholder')).toBe('agents.chat.answerQuestionPlaceholder');
+	});
+
+	it('calls cancelAndSteer (not sendMessage) when the user submits while an interactive question is open', async () => {
+		messagesMock.value = [openInteractiveMessage()];
+
+		const wrapper = mountPanel();
 
 		(
 			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
-		).sendMessageFromOutside('answer through chat');
+		).sendMessageFromOutside('go another direction');
 		await flushPromises();
 
+		expect(cancelAndSteerMock).toHaveBeenCalledWith('go another direction');
 		expect(sendMessageMock).not.toHaveBeenCalled();
 	});
 
@@ -285,15 +294,15 @@ describe('AgentChatPanel', () => {
 	});
 
 	it.each([ASK_LLM_TOOL_NAME, ASK_CREDENTIAL_TOOL_NAME])(
-		'disables chat while %s is unresolved',
+		'enables chat input while %s is unresolved (cancel-and-steer mode)',
 		(toolName) => {
 			messagesMock.value = [openInteractiveMessage(toolName)];
 
 			const wrapper = mountPanel();
 			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-			expect(chatInput.props('disabled')).toBe(true);
-			expect(chatInput.props('canSubmit')).toBe(false);
+			// Input should be enabled — the user can cancel and steer
+			expect(chatInput.props('disabled')).toBe(false);
 		},
 	);
 });

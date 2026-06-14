@@ -23,7 +23,6 @@ import type {
 	EpisodicMemoryConfig,
 	MemoryConfig,
 	ObservationalMemoryConfig,
-	SemanticRecallConfig,
 	TitleGenerationConfig,
 } from '../types';
 import type { ModelConfig } from '../types/sdk/agent';
@@ -165,8 +164,6 @@ export function normalizeMemoryConfig(config: MemoryConfig): MemoryConfig {
  * ```
  */
 export class Memory {
-	private semanticRecallConfig?: SemanticRecallConfig;
-
 	private episodicMemoryConfig?: EpisodicMemoryConfig;
 
 	private memoryBackend?: BuiltMemory;
@@ -187,12 +184,6 @@ export class Memory {
 		} else {
 			this.memoryBackend = backend;
 		}
-		return this;
-	}
-
-	/** Enable semantic recall (RAG-based retrieval of relevant past messages). */
-	semanticRecall(config: SemanticRecallConfig): this {
-		this.semanticRecallConfig = config;
 		return this;
 	}
 
@@ -233,25 +224,9 @@ export class Memory {
 
 	/**
 	 * Validate configuration and produce a `MemoryConfig`.
-	 *
-	 * @throws if `.semanticRecall()` is used with a backend that doesn't support search()
 	 */
 	build(): MemoryConfig {
 		const memory: BuiltMemory = this.memoryBackend ?? new InMemoryMemory();
-
-		if (this.semanticRecallConfig) {
-			if (!memory.queryEmbeddings && !memory.search) {
-				throw new Error(
-					'Semantic recall requires a storage backend with queryEmbeddings() or search() support.',
-				);
-			}
-			if (!memory.search && !this.semanticRecallConfig.embedder) {
-				throw new Error(
-					'Semantic recall requires an embedder when using queryEmbeddings(). Add embedder to your semanticRecall config: ' +
-						".semanticRecall({ topK: 5, embedder: 'openai/text-embedding-3-small' })",
-				);
-			}
-		}
 
 		if (isEpisodicMemoryEnabled(this.episodicMemoryConfig)) {
 			if (!hasEpisodicMemoryStore(memory)) {
@@ -263,7 +238,6 @@ export class Memory {
 
 		const baseConfig = {
 			memory,
-			semanticRecall: this.semanticRecallConfig,
 			episodicMemory: this.episodicMemoryConfig,
 			titleGeneration: this.titleGenerationConfig,
 		};

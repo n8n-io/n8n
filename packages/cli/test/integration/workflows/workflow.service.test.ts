@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import {
 	createWorkflowWithHistory,
 	testDb,
@@ -13,6 +14,7 @@ import {
 	type WorkflowEntity,
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
+	WorkflowPublicationOutboxRepository,
 	WorkflowRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -43,7 +45,9 @@ let workflowRepository: WorkflowRepository;
 let workflowService: WorkflowService;
 let workflowPublishedVersionRepository: WorkflowPublishedVersionRepository;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
+let outboxRepository: WorkflowPublicationOutboxRepository;
 let workflowHistoryService: WorkflowHistoryService;
+const loggerMock = mock<Logger>();
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
 const nodeTypes = mockInstance(NodeTypes);
@@ -58,9 +62,10 @@ beforeAll(async () => {
 	workflowRepository = Container.get(WorkflowRepository);
 	workflowPublishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
+	outboxRepository = Container.get(WorkflowPublicationOutboxRepository);
 	workflowHistoryService = Container.get(WorkflowHistoryService);
 	workflowService = new WorkflowService(
-		mock(),
+		loggerMock,
 		Container.get(SharedWorkflowRepository),
 		workflowRepository,
 		mock(),
@@ -79,6 +84,7 @@ beforeAll(async () => {
 		Container.get(WorkflowFinderService),
 		workflowPublishedVersionRepository,
 		workflowPublishHistoryRepository,
+		outboxRepository,
 		workflowValidationService,
 		nodeTypes,
 		webhookServiceMock,
@@ -102,6 +108,7 @@ afterEach(async () => {
 		'SharedWorkflow',
 		'ProjectRelation',
 		'WorkflowPublishedVersion',
+		'WorkflowPublicationOutbox',
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
@@ -513,7 +520,7 @@ describe('deactivateWorkflow()', () => {
 	});
 });
 
-describe('workflow_published_version table population', () => {
+describe('workflow publication outbox', () => {
 	describe('when feature flag is enabled', () => {
 		beforeEach(() => {
 			globalConfig.workflows.useWorkflowPublicationService = true;
@@ -523,19 +530,31 @@ describe('workflow_published_version table population', () => {
 			globalConfig.workflows.useWorkflowPublicationService = false;
 		});
 
-		test('should write to workflow_published_version on activation', async () => {
+		test('should set the active version and enqueue a pending outbox record on activation', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
 			await workflowService.activateWorkflow(owner, workflow.id);
 
+			const updated = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(updated?.active).toBe(true);
+			expect(updated?.activeVersionId).toBe(workflow.versionId);
+
+			const outboxRecord = await outboxRepository.findOne({
+				where: { workflowId: workflow.id },
+			});
+			expect(outboxRecord?.publishedVersionId).toBe(workflow.versionId);
+			expect(outboxRecord?.status).toBe('pending');
+
+			// Publication is async: the published version is advanced by the
+			// outbox consumer, not synchronously by the service.
 			const publishedVersion = await workflowPublishedVersionRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(publishedVersion?.publishedVersionId).toBe(workflow.versionId);
+			expect(publishedVersion).toBeNull();
 		});
 
-		test('should update workflow_published_version when activating a new version', async () => {
+		test('should supersede the pending outbox record when activating a new version', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
@@ -548,10 +567,13 @@ describe('workflow_published_version table population', () => {
 				versionId: newVersionId,
 			});
 
-			const publishedVersion = await workflowPublishedVersionRepository.findOne({
-				where: { workflowId: workflow.id },
-			});
-			expect(publishedVersion?.publishedVersionId).toBe(newVersionId);
+			const outboxRecords = await outboxRepository.find({ where: { workflowId: workflow.id } });
+			expect(outboxRecords).toHaveLength(1);
+			expect(outboxRecords[0].publishedVersionId).toBe(newVersionId);
+			expect(outboxRecords[0].status).toBe('pending');
+
+			const updated = await workflowRepository.findOne({ where: { id: workflow.id } });
+			expect(updated?.activeVersionId).toBe(newVersionId);
 		});
 
 		test('should remove workflow_published_version on deactivation', async () => {
@@ -559,6 +581,8 @@ describe('workflow_published_version table population', () => {
 			const workflow = await createWorkflowWithHistory({}, owner);
 
 			await workflowService.activateWorkflow(owner, workflow.id);
+			// Simulate the outbox consumer having advanced the published version.
+			await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
 
 			await workflowService.deactivateWorkflow(owner, workflow.id);
 
@@ -573,11 +597,8 @@ describe('workflow_published_version table population', () => {
 			const workflow = await createWorkflowWithHistory({}, owner);
 
 			await workflowService.activateWorkflow(owner, workflow.id);
-
-			const publishedVersionBefore = await workflowPublishedVersionRepository.findOne({
-				where: { workflowId: workflow.id },
-			});
-			expect(publishedVersionBefore).not.toBeNull();
+			// Simulate the outbox consumer having advanced the published version.
+			await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
 
 			await workflowService.archive(owner, workflow.id);
 
@@ -589,11 +610,14 @@ describe('workflow_published_version table population', () => {
 	});
 
 	describe('when feature flag is disabled', () => {
-		test('should not write to workflow_published_version on activation', async () => {
+		test('should not enqueue an outbox record on activation', async () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({}, owner);
 
 			await workflowService.activateWorkflow(owner, workflow.id);
+
+			const outboxCount = await outboxRepository.count();
+			expect(outboxCount).toBe(0);
 
 			const publishedVersion = await workflowPublishedVersionRepository.findOne({
 				where: { workflowId: workflow.id },
@@ -611,6 +635,64 @@ describe('workflow_published_version table population', () => {
 			const count = await workflowPublishedVersionRepository.count();
 			expect(count).toBe(0);
 		});
+	});
+});
+
+describe('activateWorkflow trigger cleanup', () => {
+	test('should tear down triggers before the rollback and surface the original activation error', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		// Capture state at the moment cleanup runs. The rollback must happen
+		// after remove(), so the workflow is still active here; that ordering is what
+		// lets clearWebhooks resolve the active version before it becomes null
+		let activeWhenRemoved: boolean | undefined;
+		activeWorkflowManager.remove.mockImplementationOnce(async () => {
+			activeWhenRemoved = (await workflowRepository.findById(workflow.id))?.active;
+		});
+		activeWorkflowManager.add.mockRejectedValueOnce(
+			new Error('activation failed mid registration'),
+		);
+
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+			'activation failed mid registration',
+		);
+
+		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWhenRemoved).toBe(true);
+		expect(loggerMock.warn).toHaveBeenCalledWith(
+			expect.stringContaining('Rolled back partial activation'),
+			{ workflowId: workflow.id },
+		);
+
+		const reloaded = await workflowRepository.findById(workflow.id);
+		expect(reloaded?.active).toBe(false);
+		expect(reloaded?.activeVersionId).toBeNull();
+	});
+
+	test('should rollback and surface the original error when cleanup itself fails', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		activeWorkflowManager.add.mockRejectedValueOnce(
+			new Error('activation failed mid registration'),
+		);
+		activeWorkflowManager.remove.mockRejectedValueOnce(new Error('cleanup blew up'));
+
+		// A failing cleanup is logged but must not hide the original error
+		// nor block the rollback
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+			'activation failed mid registration',
+		);
+
+		expect(loggerMock.error).toHaveBeenCalledWith(
+			expect.stringContaining('Failed to roll back partial activation'),
+			expect.objectContaining({ workflowId: workflow.id }),
+		);
+
+		const reloaded = await workflowRepository.findById(workflow.id);
+		expect(reloaded?.active).toBe(false);
+		expect(reloaded?.activeVersionId).toBeNull();
 	});
 });
 

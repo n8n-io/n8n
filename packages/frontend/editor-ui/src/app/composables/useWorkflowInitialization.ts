@@ -7,6 +7,8 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
+import * as workflowsApi from '@/app/api/workflows';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -24,7 +26,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useExecutionDebugging } from '@/features/execution/executions/composables/useExecutionDebugging';
 import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/utils/workflowSamples';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IWorkflowDb } from '@/Interface';
 import {
 	useWorkflowDocumentStore,
@@ -36,7 +37,7 @@ import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
-export function useWorkflowInitialization(workflowState: WorkflowState) {
+export function useWorkflowInitialization() {
 	const route = useRoute();
 	const router = useRouter();
 	const i18n = useI18n();
@@ -44,6 +45,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const documentTitle = useDocumentTitle();
 	const externalHooks = useExternalHooks();
 
+	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
@@ -69,9 +71,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		openWorkflowTemplate,
 		openWorkflowTemplateFromJSON,
 	} = useCanvasOperations();
-	// Pass workflowState to useExecutionDebugging since we're in the same component
-	// that provides WorkflowStateKey (WorkflowLayout), so inject won't work
-	const { applyExecutionData } = useExecutionDebugging(workflowState);
+	const { applyExecutionData } = useExecutionDebugging();
 
 	const isLoading = ref(true);
 	const initializedWorkflowId = ref<string | undefined>();
@@ -308,7 +308,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			workflowsListStore.updateWorkflowInCache(workflowId.value, { name: payload.name });
 		});
 
-		const workflowData = await workflowState.getNewWorkflowData(
+		const workflowData = await workflowsApi.getNewWorkflowData(
+			rootStore.restApiContext,
 			undefined,
 			projectsStore.currentProjectId,
 			parentFolderId,

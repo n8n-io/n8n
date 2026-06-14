@@ -20,7 +20,7 @@ import type {
 	EngineResponse,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	createDeferredPromise,
 	jsonParse,
 	NodeConnectionTypes,
@@ -234,12 +234,12 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	/** @deprecated use ISupplyDataFunctions.addInputData */
 	addInputData(): { index: number } {
-		throw new ApplicationError('addInputData should not be called on IExecuteFunctions');
+		throw new UnexpectedError('addInputData should not be called on IExecuteFunctions');
 	}
 
 	/** @deprecated use ISupplyDataFunctions.addOutputData */
 	addOutputData(): void {
-		throw new ApplicationError('addOutputData should not be called on IExecuteFunctions');
+		throw new UnexpectedError('addOutputData should not be called on IExecuteFunctions');
 	}
 
 	getParentCallbackManager(): CallbackManager | undefined {

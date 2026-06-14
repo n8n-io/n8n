@@ -10,6 +10,7 @@ import { deleteAgent } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
+import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 
 const props = defineProps<{
@@ -85,6 +86,7 @@ async function onAction(action: string) {
 		});
 		if (confirmed !== MODAL_CONFIRM) return;
 		await deleteAgent(rootStore.restApiContext, props.projectId, props.agent.id);
+		removeProjectAgentFromListCache(props.projectId, props.agent.id);
 		emit('deleted', props.agent.id);
 	}
 }

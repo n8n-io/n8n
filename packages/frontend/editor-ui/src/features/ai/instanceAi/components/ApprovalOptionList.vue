@@ -94,12 +94,14 @@ function onKeydown(event: KeyboardEvent) {
 					<span :class="$style.labelStrong">{{ option.label }}</span>
 					<span v-if="option.suffix" :class="$style.labelMuted">{{ option.suffix }}</span>
 				</span>
-				<N8nIcon
-					v-if="option.withArrow !== false"
-					:class="$style.trailingIcon"
-					icon="arrow-right"
-					size="large"
-				/>
+				<span v-if="option.withArrow !== false" :class="$style.trailingIndicator">
+					<N8nIcon
+						:class="$style.trailingIcon"
+						icon="arrow-right"
+						size="large"
+						:stroke-width="2.5"
+					/>
+				</span>
 			</button>
 		</div>
 	</ConfirmationFooter>
@@ -138,7 +140,7 @@ function onKeydown(event: KeyboardEvent) {
 .highlighted {
 	background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 
-	.trailingIcon {
+	.trailingIndicator {
 		visibility: visible;
 	}
 }
@@ -153,9 +155,9 @@ function onKeydown(event: KeyboardEvent) {
 		color: light-dark(var(--color--red-800), var(--color--red-250));
 	}
 
-	.trailingIcon {
-		color: light-dark(var(--color--red-800), var(--color--red-250));
-		opacity: 0.6;
+	.trailingIndicator {
+		color: var(--color--neutral-white);
+		opacity: 1;
 	}
 }
 
@@ -182,11 +184,22 @@ function onKeydown(event: KeyboardEvent) {
 	font-weight: var(--font-weight--regular);
 }
 
-.trailingIcon {
+.trailingIndicator {
 	margin-left: auto;
 	visibility: hidden;
-	color: var(--icon--color);
-	opacity: 0.7;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius--full);
+	background-color: var(--color--primary);
+	color: var(--color--neutral-white);
 	flex-shrink: 0;
+}
+
+.trailingIcon {
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 }
 </style>

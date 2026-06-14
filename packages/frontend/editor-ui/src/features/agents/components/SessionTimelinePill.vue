@@ -6,7 +6,7 @@ import { pillColors } from '../session-timeline.styles';
 
 const props = withDefaults(
 	defineProps<{
-		kind: EventKind | 'idle';
+		kind: EventKind | 'idle' | 'subagent';
 		label?: string;
 		showLabel?: boolean;
 	}>(),
@@ -21,6 +21,7 @@ const icon = computed((): IconName => {
 		case 'user':
 			return 'user';
 		case 'agent':
+		case 'subagent':
 			return 'bot';
 		case 'tool':
 			return 'wrench';

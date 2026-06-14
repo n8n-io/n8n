@@ -44,7 +44,6 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
-import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 import type { QuickReplyType } from '@n8n/api-types';
 import {
 	isVersionCardMessage,
@@ -374,11 +373,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return { id: last.data.versionId, createdAt: last.data.createdAt };
 	});
 
-	const isPlanModeAvailable = computed(() => {
-		const variant = posthogStore.getVariant(AI_BUILDER_PLAN_MODE_EXPERIMENT.name);
-		return variant === true || variant === AI_BUILDER_PLAN_MODE_EXPERIMENT.variant;
-	});
-
 	/**
 	 * Finds the last interrupt message (questions or plan) by searching backwards.
 	 * This is more robust than checking only the last message, because error messages
@@ -454,7 +448,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function setBuilderMode(mode: 'build' | 'plan') {
-		if (mode === 'plan' && !isPlanModeAvailable.value) return;
 		builderMode.value = mode;
 		trackWorkflowBuilderJourney('user_switched_builder_mode', { mode });
 	}
@@ -1008,7 +1001,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowDocumentStore.value.nodesByName),
 			mode: modeForPayload,
-			isPlanModeEnabled: isPlanModeAvailable.value,
 			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,
 		});
 		if (resumeData !== undefined) {
@@ -1521,7 +1513,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		[() => workflowsStore.workflowId, () => workflowDocumentStore.value.allNodes.length],
 		([, nodesCount]) => {
 			if (chatMessages.value.length > 0) return;
-			if (!isPlanModeAvailable.value) return;
 			builderMode.value = nodesCount === 0 ? 'plan' : 'build';
 		},
 	);
@@ -1673,7 +1664,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		isAIBuilderEnabled,
 		isCodeBuilder,
 		builderMode,
-		isPlanModeAvailable,
 		isInterrupted,
 		hasPendingPlan,
 		shouldDisableChatInput,

@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
 
-import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import { AgentIntegrationConfig } from '@n8n/api-types';
 import type { ChatInstance } from './chat-integration.service';
 import type { SuspendComponent } from './component-mapper';
 import type {
@@ -38,7 +38,7 @@ export interface AgentChatIntegrationBuilderGuidance {
  * A chat platform (Slack, Telegram, …) that an agent can be connected to.
  *
  * Encapsulates everything platform-specific in one place: adapter construction,
- * credential extraction, capability metadata used by the rich_interaction tool,
+ * credential extraction, capability metadata used by interactive integration cards,
  * component normalization before rendering, and optional lifecycle hooks.
  *
  * The concrete subclasses live under `./platforms/`.
@@ -70,9 +70,8 @@ export abstract class AgentChatIntegration {
 	readonly builderGuidance?: AgentChatIntegrationBuilderGuidance;
 
 	/**
-	 * Component types this platform supports in rich_interaction cards.
-	 * Omit to signal that the platform has no rich_interaction surface — the
-	 * tool won't be injected into agents targeting this platform.
+	 * Component types this platform supports in integration action cards.
+	 * Omit to signal that the platform has no rich card surface.
 	 */
 	readonly supportedComponents?: string[];
 
@@ -176,7 +175,7 @@ export abstract class AgentChatIntegration {
 	 * Default (no implementation): allow. Telegram uses this to enforce the
 	 * Private-mode allowlist.
 	 */
-	isUserAllowed?(author: Author, settings: AgentCredentialIntegrationConfig | undefined): boolean;
+	isUserAllowed?(author: Author, settings: AgentIntegrationConfig | undefined): boolean;
 
 	/**
 	 * Execute a context query that this platform owns (e.g. Linear `get_issue`,
@@ -220,7 +219,7 @@ export interface PlatformActionParams {
  * Singleton registry of AgentChatIntegration implementations.
  *
  * Platforms register themselves during module init (`agents.module.ts`).
- * Consumers (ChatIntegrationService, ComponentMapper, createRichInteractionTool,
+ * Consumers (ChatIntegrationService, ComponentMapper,
  * AgentChatBridge) look up integrations by type.
  */
 @Service()

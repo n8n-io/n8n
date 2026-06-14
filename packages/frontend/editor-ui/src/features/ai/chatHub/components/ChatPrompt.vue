@@ -83,15 +83,6 @@ const showMissingCredentialsCallout = computed(
 	() => props.messagingState === 'missingCredentials' && !!llmProvider.value,
 );
 
-const calloutVisible = computed(() => {
-	return (
-		showMissingAgentCallout.value ||
-		showMissingCredentialsCallout.value ||
-		props.showDynamicCredentialsMissingCallout ||
-		props.showCreditsClaimedCallout
-	);
-});
-
 function onMic() {
 	committedSpokenMessage.value = message.value;
 
@@ -149,7 +140,7 @@ function handleFileSelect(e: Event) {
 		target.value = '';
 	}
 
-	activePromptRef.value?.inputRef?.focus();
+	activePromptRef.value?.inputRef?.focusInput();
 }
 
 function removeAttachment(removed: File) {
@@ -160,19 +151,6 @@ function handleSubmitForm() {
 	const trimmed = message.value.trim();
 
 	if (trimmed) {
-		speechInput.stop();
-		emit('submit', trimmed, attachments.value);
-	}
-}
-
-function handleKeydownTextarea(e: KeyboardEvent) {
-	const trimmed = message.value.trim();
-
-	speechInput.stop();
-
-	if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && trimmed) {
-		e.preventDefault();
-		e.stopPropagation();
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
 	}
@@ -227,7 +205,7 @@ async function handleToolToggle(toolId: string) {
 }
 
 defineExpose({
-	focus: () => activePromptRef.value?.inputRef?.focus(),
+	focus: () => activePromptRef.value?.inputRef?.focusInput(),
 	reset: () => {
 		message.value = '';
 		committedSpokenMessage.value = '';
@@ -241,7 +219,7 @@ defineExpose({
 	},
 	addAttachments: (files: File[]) => {
 		attachments.value.push(...files);
-		activePromptRef.value?.inputRef?.focus();
+		activePromptRef.value?.inputRef?.focusInput();
 	},
 });
 </script>
@@ -256,11 +234,9 @@ defineExpose({
 		:messaging-state="messagingState"
 		:accepted-mime-types="acceptedMimeTypes"
 		:can-upload-files="canUploadFiles"
-		:callout-visible="calloutVisible"
 		:is-speech-supported="speechInput.isSupported.value"
 		:is-listening="speechInput.isListening.value"
 		@submit="handleSubmitForm"
-		@keydown="handleKeydownTextarea"
 		@file-select="handleFileSelect"
 		@attach="onAttach"
 		@mic="onMic"
@@ -293,7 +269,6 @@ defineExpose({
 		:messaging-state="messagingState"
 		:accepted-mime-types="acceptedMimeTypes"
 		:can-upload-files="canUploadFiles"
-		:callout-visible="calloutVisible"
 		:is-speech-supported="speechInput.isSupported.value"
 		:is-listening="speechInput.isListening.value"
 		:checked-tool-ids="checkedToolIds"
@@ -301,7 +276,6 @@ defineExpose({
 		:is-tools-selectable="isToolsSelectable"
 		:selected-model="selectedModel"
 		@submit="handleSubmitForm"
-		@keydown="handleKeydownTextarea"
 		@file-select="handleFileSelect"
 		@attach="onAttach"
 		@mic="onMic"

@@ -467,11 +467,21 @@ XMLHttpRequest.prototype.send = function (this: XMLHttpRequest) {
 // broad filter would mask that signal. Sibling to the rAF polyfill (DEVP-201,
 // DEVP-206) and the XHR short-circuit above — both narrow harness defences
 // against Vitest 4's post-teardown rejection promotion.
+//
+// Match BOTH module and non-module SCSS style blocks. `@vitejs/plugin-vue`
+// emits `<style lang="scss">` as `...?vue&type=style&index=N&lang.scss` and
+// `<style module lang="scss">` as `...&lang.module.scss` (the CSS-modules
+// codegen rewrites the request via `.replace(/\.(\w+)$/, '.module.$1')`). A
+// component can ship both kinds (e.g. design-system's `Button.vue`), so the
+// `.module.` segment must stay optional or the non-module block's teardown
+// rejection slips through and gets re-thrown. The `?vue&type=style` anchor
+// keeps this scoped to Vue SFC style virtual modules, so DEVP-206 timer
+// errors (not style URLs) are still surfaced.
 process.on('unhandledRejection', (reason) => {
 	if (
 		reason instanceof Error &&
 		reason.name === 'EnvironmentTeardownError' &&
-		/\?vue&type=style.*lang\.module\.scss/.test(reason.message)
+		/\?vue&type=style.*lang(\.module)?\.scss/.test(reason.message)
 	) {
 		return;
 	}

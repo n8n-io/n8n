@@ -1,3 +1,5 @@
+import { chmodSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import type { PortWithOptionalBinding, StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer } from 'testcontainers';
 
@@ -12,6 +14,10 @@ import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { FileToMount } from './types';
 
 const N8N_IMAGE = TEST_CONTAINER_IMAGES.n8n;
+
+// In-container path that NODE_V8_COVERAGE writes to when coverage collection is
+// enabled (via StackConfig.coverageHostDir); bind-mounted to a host subdir.
+const CONTAINER_COVERAGE_DIR = '/cov';
 // Must match N8N_PORT / QUEUE_HEALTH_CHECK_PORT defaults.
 const N8N_READINESS_PORT = 5678;
 const N8N_STARTUP_TIMEOUT_MS = 60_000;
@@ -59,6 +65,8 @@ const BASE_ENV: Record<string, string> = {
 export interface N8NInstancesOptions {
 	mains: number;
 	workers: number;
+	/** Dedicated `n8n webhook` procs. Forces queue mode when > 0. */
+	webhooks?: number;
 	projectName: string;
 	network: StartedNetwork;
 	serviceEnvironment: Record<string, string>;
@@ -68,7 +76,10 @@ export interface N8NInstancesOptions {
 	allocatedPort?: number;
 	resourceQuota?: { memory?: number; cpu?: number };
 	workerResourceQuota?: { memory?: number; cpu?: number };
+	/** Resource quota for webhook procs. Falls back to `resourceQuota` if omitted. */
+	webhookResourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
+	coverageHostDir?: string;
 }
 
 export interface N8NInstancesResult {
@@ -81,13 +92,14 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 	const {
 		mains,
 		workers,
+		webhooks = 0,
 		usePostgres,
 		baseUrl,
 		serviceEnvironment,
 		userEnvironment = {},
 	} = options;
 
-	const isQueueMode = mains > 1 || workers > 0;
+	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
 
 	const env: Record<string, string> = {
 		...BASE_ENV,
@@ -121,9 +133,11 @@ function computeEnvironment(options: N8NInstancesOptions): Record<string, string
 	return env;
 }
 
+type InstanceRole = 'main' | 'webhook' | 'worker';
+
 interface InstanceConfig {
 	name: string;
-	isWorker: boolean;
+	role: InstanceRole;
 	instanceNumber: number;
 	networkAlias?: string;
 	hostPort?: number;
@@ -135,6 +149,7 @@ interface SharedConfig {
 	network: StartedNetwork;
 	resourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
+	coverageHostDir?: string;
 }
 
 interface ContainerStartResult {
@@ -143,13 +158,20 @@ interface ContainerStartResult {
 	getLastReadinessBody: () => string | null;
 }
 
+const SERVICE_LABEL: Record<InstanceRole, string> = {
+	main: 'n8n-main',
+	webhook: 'n8n-webhook',
+	worker: 'n8n-worker',
+};
+
 async function createContainer(
 	instance: InstanceConfig,
 	shared: SharedConfig,
 	diagnostics: N8NStartupDiagnostics,
 ): Promise<ContainerStartResult> {
-	const { name, isWorker, instanceNumber, networkAlias, hostPort } = instance;
-	const { projectName, environment, network, resourceQuota, filesToMount } = shared;
+	const { name, role, instanceNumber, networkAlias, hostPort } = instance;
+	const { projectName, environment, network, resourceQuota, filesToMount, coverageHostDir } =
+		shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
 		'/healthz/readiness',
@@ -157,18 +179,37 @@ async function createContainer(
 		{ startupTimeoutMs: N8N_STARTUP_TIMEOUT_MS, readTimeoutMs: N8N_READ_TIMEOUT_MS },
 	);
 
+	const containerEnvironment = coverageHostDir
+		? { ...environment, NODE_V8_COVERAGE: CONTAINER_COVERAGE_DIR }
+		: environment;
+
 	let container = new GenericContainer(N8N_IMAGE)
-		.withEnvironment(environment)
+		.withEnvironment(containerEnvironment)
 		.withLabels({
 			'com.docker.compose.project': projectName,
-			'com.docker.compose.service': isWorker ? 'n8n-worker' : 'n8n-main',
+			'com.docker.compose.service': SERVICE_LABEL[role],
 			instance: instanceNumber.toString(),
 		})
 		.withPullPolicy(new N8nImagePullPolicy(N8N_IMAGE))
 		.withName(name)
 		.withLogConsumer(consumer)
-		.withReuse()
 		.withNetwork(network);
+
+	if (coverageHostDir) {
+		// Per-container host dir → /cov; n8n flushes V8 here on graceful stop.
+		// Reuse must stay off so the process actually exits and flushes.
+		const hostCoverageDir = join(coverageHostDir, name);
+		mkdirSync(hostCoverageDir, { recursive: true });
+		// The n8n container runs as `node` (uid 1000); on Linux CI the bind mount
+		// is direct (no Docker Desktop uid mapping), so make the dir writable by
+		// the container or NODE_V8_COVERAGE silently fails to flush.
+		chmodSync(hostCoverageDir, 0o777);
+		container = container.withBindMounts([
+			{ source: hostCoverageDir, target: CONTAINER_COVERAGE_DIR, mode: 'rw' },
+		]);
+	} else {
+		container = container.withReuse();
+	}
 
 	if (filesToMount?.length) {
 		container = container.withCopyContentToContainer(filesToMount);
@@ -185,14 +226,16 @@ async function createContainer(
 	const ports: PortWithOptionalBinding[] = hostPort
 		? [{ container: N8N_READINESS_PORT, host: hostPort }]
 		: [N8N_READINESS_PORT];
-	if (isWorker) {
+	if (role === 'worker') {
 		ports.push(5679);
 	}
 
 	container = container.withExposedPorts(...ports).withWaitStrategy(waitStrategy);
 
-	if (isWorker) {
+	if (role === 'worker') {
 		container = container.withCommand(['worker']);
+	} else if (role === 'webhook') {
+		container = container.withCommand(['webhook']);
 	}
 
 	try {
@@ -219,12 +262,15 @@ export async function createN8NInstances(
 	const {
 		mains,
 		workers,
+		webhooks = 0,
 		projectName,
 		network,
 		allocatedPort,
 		resourceQuota,
 		workerResourceQuota,
+		webhookResourceQuota,
 		filesToMount,
+		coverageHostDir,
 	} = options;
 
 	const log = createElapsedLogger('n8n-instances');
@@ -238,6 +284,7 @@ export async function createN8NInstances(
 		network,
 		resourceQuota,
 		filesToMount,
+		coverageHostDir,
 	};
 
 	const workerShared: SharedConfig = {
@@ -246,28 +293,55 @@ export async function createN8NInstances(
 		network,
 		resourceQuota: workerResourceQuota ?? resourceQuota,
 		filesToMount,
+		coverageHostDir,
+	};
+
+	const webhookShared: SharedConfig = {
+		projectName,
+		environment,
+		network,
+		resourceQuota: webhookResourceQuota ?? resourceQuota,
+		filesToMount,
+	};
+
+	const sharedByRole: Record<InstanceRole, SharedConfig> = {
+		main: mainShared,
+		webhook: webhookShared,
+		worker: workerShared,
 	};
 
 	const instances: InstanceConfig[] = [
-		...Array.from({ length: mains }, (_, i) => {
+		...Array.from({ length: mains }, (_, i): InstanceConfig => {
 			const num = i + 1;
 			const name = mains > 1 ? `${projectName}-n8n-main-${num}` : `${projectName}-n8n`;
 			return {
 				name,
-				isWorker: false,
+				role: 'main',
 				instanceNumber: num,
 				networkAlias: name,
 				hostPort: num === 1 ? allocatedPort : undefined,
 			};
 		}),
-		...Array.from({ length: workers }, (_, i) => ({
-			name: `${projectName}-n8n-worker-${i + 1}`,
-			isWorker: true,
-			instanceNumber: i + 1,
-		})),
+		...Array.from({ length: webhooks }, (_, i): InstanceConfig => {
+			const num = i + 1;
+			const name = `${projectName}-n8n-webhook-${num}`;
+			return {
+				name,
+				role: 'webhook',
+				instanceNumber: num,
+				networkAlias: name,
+			};
+		}),
+		...Array.from(
+			{ length: workers },
+			(_, i): InstanceConfig => ({
+				name: `${projectName}-n8n-worker-${i + 1}`,
+				role: 'worker',
+				instanceNumber: i + 1,
+			}),
+		),
 	];
 
-	// Service-only mode: no n8n containers needed
 	if (instances.length === 0) {
 		log('No n8n instances requested (service-only mode)');
 		return { containers, environment, diagnostics };
@@ -284,12 +358,12 @@ export async function createN8NInstances(
 		throw new N8NStartupError(message, diagnostics, error);
 	};
 
-	// Start main 1 first (handles DB migrations/setup)
+	// Main 1 handles DB migrations and must finish before parallel starts.
 	const [main1, ...remaining] = instances;
 	log(`Starting main 1: ${main1.name} (DB setup)`);
 	let main1Result: ContainerStartResult;
 	try {
-		main1Result = await createContainer(main1, mainShared, diagnostics);
+		main1Result = await createContainer(main1, sharedByRole[main1.role], diagnostics);
 	} catch (error) {
 		return rethrowWithDiagnostics(error);
 	}
@@ -297,20 +371,14 @@ export async function createN8NInstances(
 	containers.push(main1Result.container);
 	log('main 1 ready');
 
-	// Start remaining instances in parallel
 	if (remaining.length > 0) {
 		log(`Starting ${remaining.length} remaining instances in parallel...`);
 		try {
 			const parallelResults = await Promise.all(
 				remaining.map(async (instance) => {
-					const type = instance.isWorker ? 'worker' : 'main';
-					log(`Starting ${type} ${instance.instanceNumber}: ${instance.name}`);
-					const result = await createContainer(
-						instance,
-						instance.isWorker ? workerShared : mainShared,
-						diagnostics,
-					);
-					log(`${type} ${instance.instanceNumber} ready`);
+					log(`Starting ${instance.role} ${instance.instanceNumber}: ${instance.name}`);
+					const result = await createContainer(instance, sharedByRole[instance.role], diagnostics);
+					log(`${instance.role} ${instance.instanceNumber} ready`);
 					return { instance, result };
 				}),
 			);

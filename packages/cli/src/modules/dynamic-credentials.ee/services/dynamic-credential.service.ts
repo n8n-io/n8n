@@ -116,15 +116,17 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// Resolve expressions in resolver configuration using global data only
 			const resolverConfig = await this.expressionService.resolve(parsedConfig);
 
+			const handle = {
+				resolverId: resolverEntity.id,
+				resolverName: resolverEntity.type,
+				configuration: resolverConfig,
+			};
+
 			// Attempt dynamic resolution
 			const dynamicData = await resolver.getSecret(
 				credentialsResolveMetadata.id,
 				credentialContext,
-				{
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-					configuration: resolverConfig,
-				},
+				handle,
 			);
 
 			this.logger.debug('Successfully resolved dynamic credentials', {
@@ -141,8 +143,22 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				}
 			}
 
+			// Capture the n8n user the credentials resolved to (only resolvers
+			// keyed on n8n identities implement this). Best-effort: a failure to
+			// resolve the owning user must not fail credential resolution — the
+			// execution simply stays unattributed (redacted for everyone).
+			let resolvedUserId: string | undefined;
+			try {
+				resolvedUserId = await resolver.resolveOwningUserId?.(credentialContext, handle);
+			} catch (error) {
+				this.logger.debug('Could not resolve owning user for dynamic credentials', {
+					credentialId: credentialsResolveMetadata.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+
 			// Adds and override static data with dynamically resolved data
-			return { data: { ...staticData, ...dynamicData }, isDynamic: true };
+			return { data: { ...staticData, ...dynamicData }, isDynamic: true, resolvedUserId };
 		} catch (error) {
 			return this.handleResolutionError(
 				credentialsResolveMetadata,

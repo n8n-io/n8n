@@ -194,6 +194,10 @@ export class LicenseState {
 		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}
 
+	isOtelCustomSpanAttributesLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES);
+	}
+
 	// --------------------
 	//      integers
 	// --------------------
@@ -232,6 +236,11 @@ export class LicenseState {
 
 	getMaxTeamProjects() {
 		return this.getValue('quota:maxTeamProjects') ?? 0;
+	}
+
+	isTeamProjectsLicensed() {
+		const quota = this.getMaxTeamProjects();
+		return quota === UNLIMITED_LICENSE_QUOTA || quota > 0;
 	}
 
 	getMaxWorkflowsWithEvaluations() {

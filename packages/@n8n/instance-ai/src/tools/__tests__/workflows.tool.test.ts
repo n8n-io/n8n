@@ -1,4 +1,5 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
@@ -6,17 +7,17 @@ import { analyzeWorkflow, applyNodeChanges } from '../workflows/setup-workflow.s
 import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
-jest.mock('../workflows/setup-workflow.service', () => ({
-	analyzeWorkflow: jest.fn().mockResolvedValue([]),
-	applyNodeCredentials: jest.fn().mockResolvedValue({ failed: [] }),
-	applyNodeParameters: jest.fn().mockResolvedValue({ failed: [] }),
-	applyNodeChanges: jest.fn().mockResolvedValue({ failed: [] }),
-	buildCompletedReport: jest.fn().mockReturnValue([]),
+vi.mock('../workflows/setup-workflow.service', () => ({
+	analyzeWorkflow: vi.fn().mockResolvedValue([]),
+	applyNodeCredentials: vi.fn().mockResolvedValue({ failed: [] }),
+	applyNodeParameters: vi.fn().mockResolvedValue({ failed: [] }),
+	applyNodeChanges: vi.fn().mockResolvedValue({ failed: [] }),
+	buildCompletedReport: vi.fn().mockReturnValue([]),
 }));
 
 // Mock the dynamic import of @n8n/workflow-sdk used by get-as-code
-jest.mock('@n8n/workflow-sdk', () => ({
-	generateWorkflowCode: jest.fn().mockReturnValue('// generated code'),
+vi.mock('@n8n/workflow-sdk', () => ({
+	generateWorkflowCode: vi.fn().mockReturnValue('// generated code'),
 }));
 
 function createMockContext(
@@ -27,8 +28,8 @@ function createMockContext(
 	return {
 		userId: 'user-1',
 		workflowService: {
-			list: jest.fn(),
-			get: jest.fn().mockResolvedValue({
+			list: vi.fn(),
+			get: vi.fn().mockResolvedValue({
 				id: 'wf1',
 				name: 'Test WF',
 				versionId: 'v1',
@@ -39,50 +40,50 @@ function createMockContext(
 				nodes: [],
 				connections: {},
 			}),
-			getAsWorkflowJSON: jest.fn().mockResolvedValue({
+			getAsWorkflowJSON: vi.fn().mockResolvedValue({
 				name: 'Test WF',
 				nodes: [],
 				connections: {},
 			}),
-			createFromWorkflowJSON: jest.fn(),
-			updateFromWorkflowJSON: jest.fn(),
-			archive: jest.fn(),
-			unarchive: jest.fn(),
-			publish: jest.fn().mockResolvedValue({ activeVersionId: 'v1' }),
-			unpublish: jest.fn(),
+			createFromWorkflowJSON: vi.fn(),
+			updateFromWorkflowJSON: vi.fn(),
+			archive: vi.fn(),
+			unarchive: vi.fn(),
+			publish: vi.fn().mockResolvedValue({ activeVersionId: 'v1' }),
+			unpublish: vi.fn(),
 		},
 		executionService: {
-			list: jest.fn(),
-			run: jest.fn(),
-			getStatus: jest.fn(),
-			getResult: jest.fn(),
-			stop: jest.fn(),
-			getDebugInfo: jest.fn(),
-			getNodeOutput: jest.fn(),
+			list: vi.fn(),
+			run: vi.fn(),
+			getStatus: vi.fn(),
+			getResult: vi.fn(),
+			stop: vi.fn(),
+			getDebugInfo: vi.fn(),
+			getNodeOutput: vi.fn(),
 		},
 		credentialService: {
-			list: jest.fn(),
-			get: jest.fn(),
-			delete: jest.fn(),
-			test: jest.fn(),
+			list: vi.fn(),
+			get: vi.fn(),
+			delete: vi.fn(),
+			test: vi.fn(),
 		},
 		nodeService: {
-			listAvailable: jest.fn(),
-			getDescription: jest.fn(),
-			listSearchable: jest.fn(),
+			listAvailable: vi.fn(),
+			getDescription: vi.fn(),
+			listSearchable: vi.fn(),
 		},
 		dataTableService: {
-			list: jest.fn(),
-			create: jest.fn(),
-			delete: jest.fn(),
-			getSchema: jest.fn(),
-			addColumn: jest.fn(),
-			deleteColumn: jest.fn(),
-			renameColumn: jest.fn(),
-			queryRows: jest.fn(),
-			insertRows: jest.fn(),
-			updateRows: jest.fn(),
-			deleteRows: jest.fn(),
+			list: vi.fn(),
+			create: vi.fn(),
+			delete: vi.fn(),
+			getSchema: vi.fn(),
+			addColumn: vi.fn(),
+			deleteColumn: vi.fn(),
+			renameColumn: vi.fn(),
+			queryRows: vi.fn(),
+			insertRows: vi.fn(),
+			updateRows: vi.fn(),
+			deleteRows: vi.fn(),
 		},
 		permissions: {},
 		...overrides,
@@ -100,7 +101,7 @@ function getDescription(tool: unknown): string {
 
 describe('workflows tool', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('surface filtering', () => {
@@ -166,10 +167,10 @@ describe('workflows tool', () => {
 			[{ action: 'update-version', workflowId: 'w1', versionId: 'v1', name: 'v1' }],
 		])('should reject action %p when it is not explicitly allowed', (input) => {
 			const context = createMockContext();
-			context.workflowService.listVersions = jest.fn();
-			context.workflowService.getVersion = jest.fn();
-			context.workflowService.restoreVersion = jest.fn();
-			context.workflowService.updateVersion = jest.fn();
+			context.workflowService.listVersions = vi.fn();
+			context.workflowService.getVersion = vi.fn();
+			context.workflowService.restoreVersion = vi.fn();
+			context.workflowService.updateVersion = vi.fn();
 			const tool = createWorkflowsTool(context, {
 				allowedActions: builderWorkflowActions,
 			});
@@ -194,9 +195,9 @@ describe('workflows tool', () => {
 		it('should support version actions when listVersions exists', async () => {
 			const context = createMockContext();
 			const versions = [{ id: 'v1', versionId: 1 }];
-			context.workflowService.listVersions = jest.fn().mockResolvedValue(versions);
-			context.workflowService.getVersion = jest.fn();
-			context.workflowService.restoreVersion = jest.fn();
+			context.workflowService.listVersions = vi.fn().mockResolvedValue(versions);
+			context.workflowService.getVersion = vi.fn();
+			context.workflowService.restoreVersion = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(
@@ -212,10 +213,10 @@ describe('workflows tool', () => {
 			const context = createMockContext({
 				permissions: { updateWorkflow: 'always_allow' },
 			});
-			context.workflowService.listVersions = jest.fn();
-			context.workflowService.getVersion = jest.fn();
-			context.workflowService.restoreVersion = jest.fn();
-			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
+			context.workflowService.listVersions = vi.fn();
+			context.workflowService.getVersion = vi.fn();
+			context.workflowService.restoreVersion = vi.fn();
+			context.workflowService.updateVersion = vi.fn().mockResolvedValue({ success: true });
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(
@@ -236,7 +237,7 @@ describe('workflows tool', () => {
 			const context = createMockContext({
 				permissions: { updateWorkflow: 'blocked' },
 			});
-			context.workflowService.updateVersion = jest.fn();
+			context.workflowService.updateVersion = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(
@@ -260,8 +261,8 @@ describe('workflows tool', () => {
 
 		it('should suspend update-version for approval by default', async () => {
 			const context = createMockContext();
-			context.workflowService.updateVersion = jest.fn();
-			const suspend = jest.fn();
+			context.workflowService.updateVersion = vi.fn();
+			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(
@@ -287,7 +288,7 @@ describe('workflows tool', () => {
 
 		it('should update-version when approval resumes approved', async () => {
 			const context = createMockContext();
-			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
+			context.workflowService.updateVersion = vi.fn().mockResolvedValue({ success: true });
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(
@@ -310,7 +311,7 @@ describe('workflows tool', () => {
 
 		it('should not update-version when approval resumes denied', async () => {
 			const context = createMockContext();
-			context.workflowService.updateVersion = jest.fn();
+			context.workflowService.updateVersion = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(
@@ -347,7 +348,7 @@ describe('workflows tool', () => {
 				},
 			];
 			const context = createMockContext();
-			(context.workflowService.list as jest.Mock).mockResolvedValue(workflows);
+			(context.workflowService.list as Mock).mockResolvedValue(workflows);
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(
@@ -362,7 +363,7 @@ describe('workflows tool', () => {
 
 		it('should pass archived status when listing archived workflows', async () => {
 			const context = createMockContext();
-			(context.workflowService.list as jest.Mock).mockResolvedValue([]);
+			(context.workflowService.list as Mock).mockResolvedValue([]);
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'list', status: 'archived' }, {} as never);
@@ -372,7 +373,7 @@ describe('workflows tool', () => {
 
 		it('should pass all status when listing all workflows', async () => {
 			const context = createMockContext();
-			(context.workflowService.list as jest.Mock).mockResolvedValue([]);
+			(context.workflowService.list as Mock).mockResolvedValue([]);
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'list', status: 'all' }, {} as never);
@@ -395,7 +396,7 @@ describe('workflows tool', () => {
 				updatedAt: '2024-01-01',
 			};
 			const context = createMockContext();
-			(context.workflowService.get as jest.Mock).mockResolvedValue(detail);
+			(context.workflowService.get as Mock).mockResolvedValue(detail);
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
@@ -425,7 +426,7 @@ describe('workflows tool', () => {
 				connections: {},
 			};
 			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(workflow);
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(workflow);
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(
@@ -457,11 +458,11 @@ describe('workflows tool', () => {
 
 		it('should suspend for confirmation using the looked-up workflow name', async () => {
 			const context = createMockContext();
-			(context.workflowService.get as jest.Mock).mockResolvedValue({
+			(context.workflowService.get as Mock).mockResolvedValue({
 				id: 'wf1',
 				name: 'My WF',
 			});
-			const suspend = jest.fn();
+			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
@@ -479,8 +480,8 @@ describe('workflows tool', () => {
 
 		it('should fall back to workflowId in message when lookup fails', async () => {
 			const context = createMockContext();
-			(context.workflowService.get as jest.Mock).mockRejectedValue(new Error('not found'));
-			const suspend = jest.fn();
+			(context.workflowService.get as Mock).mockRejectedValue(new Error('not found'));
+			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
@@ -545,11 +546,11 @@ describe('workflows tool', () => {
 
 		it('should suspend for confirmation using the looked-up workflow name', async () => {
 			const context = createMockContext();
-			(context.workflowService.get as jest.Mock).mockResolvedValue({
+			(context.workflowService.get as Mock).mockResolvedValue({
 				id: 'wf1',
 				name: 'Archived WF',
 			});
-			const suspend = jest.fn();
+			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
@@ -567,12 +568,12 @@ describe('workflows tool', () => {
 
 		it('should return the suspension result when approval is pending', async () => {
 			const context = createMockContext();
-			(context.workflowService.get as jest.Mock).mockResolvedValue({
+			(context.workflowService.get as Mock).mockResolvedValue({
 				id: 'wf1',
 				name: 'Archived WF',
 			});
 			const suspension = { suspended: true };
-			const suspend = jest.fn().mockResolvedValue(suspension);
+			const suspend = vi.fn().mockResolvedValue(suspension);
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
@@ -631,7 +632,7 @@ describe('workflows tool', () => {
 
 		it('should suspend for confirmation and then publish when approved', async () => {
 			const context = createMockContext();
-			(context.workflowService.publish as jest.Mock).mockResolvedValue({
+			(context.workflowService.publish as Mock).mockResolvedValue({
 				activeVersionId: 'v2',
 			});
 
@@ -652,7 +653,7 @@ describe('workflows tool', () => {
 
 		it('should publish direct Execute Workflow dependencies before the main workflow', async () => {
 			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
 				name: 'Parent',
 				nodes: [
 					{
@@ -673,7 +674,7 @@ describe('workflows tool', () => {
 				],
 				connections: {},
 			});
-			(context.workflowService.publish as jest.Mock).mockResolvedValue({
+			(context.workflowService.publish as Mock).mockResolvedValue({
 				activeVersionId: 'v-main',
 			});
 
@@ -697,7 +698,7 @@ describe('workflows tool', () => {
 
 		it('should roll back direct Execute Workflow dependencies when the main workflow publish fails', async () => {
 			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
 				name: 'Parent',
 				nodes: [
 					{
@@ -713,7 +714,7 @@ describe('workflows tool', () => {
 				],
 				connections: {},
 			});
-			(context.workflowService.get as jest.Mock).mockImplementation((workflowId: string) => ({
+			(context.workflowService.get as Mock).mockImplementation((workflowId: string) => ({
 				id: workflowId,
 				name: workflowId,
 				versionId: `${workflowId}-draft`,
@@ -724,7 +725,7 @@ describe('workflows tool', () => {
 				nodes: [],
 				connections: {},
 			}));
-			(context.workflowService.publish as jest.Mock).mockImplementation((workflowId: string) => {
+			(context.workflowService.publish as Mock).mockImplementation((workflowId: string) => {
 				if (workflowId === 'wf1') throw new Error('Main publish failed');
 				return { activeVersionId: `${workflowId}-active` };
 			});
@@ -752,11 +753,11 @@ describe('workflows tool', () => {
 
 		it('should suspend for confirmation using the looked-up workflow name', async () => {
 			const context = createMockContext();
-			(context.workflowService.get as jest.Mock).mockResolvedValue({
+			(context.workflowService.get as Mock).mockResolvedValue({
 				id: 'wf1',
 				name: 'My WF',
 			});
-			const suspend = jest.fn();
+			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
@@ -774,11 +775,11 @@ describe('workflows tool', () => {
 
 		it('should include direct Execute Workflow dependencies in publish confirmation', async () => {
 			const context = createMockContext();
-			(context.workflowService.get as jest.Mock).mockResolvedValue({
+			(context.workflowService.get as Mock).mockResolvedValue({
 				id: 'wf1',
 				name: 'My WF',
 			});
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
 				name: 'Parent',
 				nodes: [
 					{
@@ -789,7 +790,7 @@ describe('workflows tool', () => {
 				],
 				connections: {},
 			});
-			const suspend = jest.fn();
+			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
@@ -855,10 +856,10 @@ describe('workflows tool', () => {
 					needsAction: true,
 				},
 			];
-			(analyzeWorkflow as jest.Mock).mockResolvedValue(setupRequests);
+			(analyzeWorkflow as Mock).mockResolvedValue(setupRequests);
 
 			const context = createMockContext();
-			const suspend = jest.fn();
+			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
@@ -877,7 +878,7 @@ describe('workflows tool', () => {
 		});
 
 		it('should return success when no nodes need setup', async () => {
-			(analyzeWorkflow as jest.Mock).mockResolvedValue([]);
+			(analyzeWorkflow as Mock).mockResolvedValue([]);
 
 			const context = createMockContext();
 
@@ -894,11 +895,11 @@ describe('workflows tool', () => {
 			// POST, the e2e test showed the workflow's parameter was empty after
 			// apply. This pins down the tool-layer contract between the resume
 			// payload and the service call — if this ever drifts we catch it here.
-			(analyzeWorkflow as jest.Mock).mockResolvedValue([]);
-			(applyNodeChanges as jest.Mock).mockResolvedValue({ applied: ['HTTP Request'], failed: [] });
+			(analyzeWorkflow as Mock).mockResolvedValue([]);
+			(applyNodeChanges as Mock).mockResolvedValue({ applied: ['HTTP Request'], failed: [] });
 
 			const context = createMockContext();
-			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
 				name: 'Test WF',
 				nodes: [
 					{
@@ -943,11 +944,11 @@ describe('workflows tool', () => {
 
 		it('should suspend for confirmation using the looked-up workflow name', async () => {
 			const context = createMockContext();
-			(context.workflowService.get as jest.Mock).mockResolvedValue({
+			(context.workflowService.get as Mock).mockResolvedValue({
 				id: 'wf1',
 				name: 'My WF',
 			});
-			const suspend = jest.fn();
+			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(tool, { action: 'unpublish', workflowId: 'wf1' }, {
