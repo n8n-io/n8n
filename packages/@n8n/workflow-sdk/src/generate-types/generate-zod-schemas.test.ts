@@ -331,6 +331,58 @@ describe('generateConditionalSchemaLine', () => {
 	});
 });
 
+describe('duplicate property declarations in Zod schemas', () => {
+	const baseNodeProps = {
+		group: ['transform'] as string[],
+		inputs: ['main'] as string[],
+		outputs: ['main'] as string[],
+	};
+
+	it('emits resolveOneOfSchemas for same-name top-level conditional variants', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.promptFork',
+			displayName: 'Prompt Fork',
+			version: 1,
+			properties: [
+				{
+					displayName: 'Prompt Type',
+					name: 'promptType',
+					type: 'options',
+					default: 'auto',
+					options: [
+						{ name: 'Connected Chat Trigger Node', value: 'auto' },
+						{ name: 'Define below', value: 'define' },
+					],
+				},
+				{
+					displayName: 'Prompt',
+					name: 'text',
+					type: 'string',
+					required: true,
+					default: '={{ $json.chatInput }}',
+					displayOptions: { show: { promptType: ['auto'] } },
+				},
+				{
+					displayName: 'Prompt',
+					name: 'text',
+					type: 'string',
+					required: true,
+					default: '',
+					displayOptions: { show: { promptType: ['define'] } },
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('resolveOneOfSchemas({');
+		expect(code.match(/\btext:/g)).toHaveLength(1);
+		expect(code).toContain('"promptType":["auto"]');
+		expect(code).toContain('"promptType":["define"]');
+	});
+});
+
 describe('extractDefaultsForDisplayOptions', () => {
 	it('extracts defaults for properties referenced in show conditions', () => {
 		const displayOptions = { show: { multipleMethods: [false, true] } };
@@ -1796,6 +1848,85 @@ describe('mapPropertyToZodSchema for fixedCollection with field-count constraint
 		const schema = mapPropertyToZodSchema(buildFilters({ minRequiredFields: 1 }));
 		expect(schema).not.toContain('z.array(');
 		expect(schema).not.toContain('.min(');
+	});
+});
+
+describe('mapPropertyToZodSchema for duplicate nested collection fields', () => {
+	it('unions same-name fixedCollection fields instead of emitting duplicate object keys', () => {
+		const prop: NodeProperty = {
+			name: 'actionsUi',
+			displayName: 'Actions',
+			type: 'fixedCollection',
+			default: {},
+			typeOptions: { multipleValues: true },
+			options: [
+				{
+					name: 'actionFields',
+					displayName: 'Action Fields',
+					values: [
+						{
+							displayName: 'Action',
+							name: 'action',
+							type: 'options',
+							default: '',
+							options: [
+								{ name: 'Find and Replace Text', value: 'replaceAll' },
+								{ name: 'Insert', value: 'insert' },
+							],
+							displayOptions: { show: { object: ['text'] } },
+						},
+						{
+							displayName: 'Action',
+							name: 'action',
+							type: 'options',
+							default: '',
+							options: [{ name: 'Delete', value: 'delete' }],
+							displayOptions: { show: { object: ['positionedObject'] } },
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema.match(/\baction:/g)).toHaveLength(1);
+		expect(schema).toContain("z.literal('replaceAll')");
+		expect(schema).toContain("z.literal('insert')");
+		expect(schema).toContain("z.literal('delete')");
+	});
+
+	it('unions same-name collection fields instead of emitting duplicate object keys', () => {
+		const prop: NodeProperty = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					default: '',
+					options: [{ name: 'List', value: 'list' }],
+					displayOptions: { show: { resource: ['file'] } },
+				},
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					default: '',
+					options: [{ name: 'Search', value: 'search' }],
+					displayOptions: { show: { resource: ['folder'] } },
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema.match(/\bmode:/g)).toHaveLength(1);
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('search')");
 	});
 });
 
