@@ -54,10 +54,11 @@ const workflowTestCaseObjectSchema = z.object({
 		)
 		.optional(),
 	/**
-	 * Path to a conversation seed file (relative to the case file), produced by
-	 * the export-thread script. The seed — native message history + referenced
-	 * workflows — is restored into the build thread before `conversation[0]`
-	 * is sent live. The loader resolves the path and validates the file.
+	 * Path to a hand-authored synthetic seed file (relative to the case file).
+	 * The seed — native message history + referenced workflows — is restored
+	 * into the build thread before `conversation[0]` is sent live. The loader
+	 * resolves the path and validates the file. Real conversations use
+	 * `seedThread`; this is for synthetic fixtures only.
 	 */
 	seedFile: z.string().min(1).optional(),
 	/**

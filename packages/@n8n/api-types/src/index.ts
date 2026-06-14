@@ -420,7 +420,6 @@ export type {
 	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
 	InstanceAiEvalSeedWorkflow,
-	InstanceAiEvalThreadExportResponse,
 } from './schemas/instance-ai.schema';
 
 export type {

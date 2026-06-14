@@ -602,29 +602,6 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('exportEvalThread', () => {
-		it('should require instanceAi:eval scope', () => {
-			expect(scopeOf('exportEvalThread')).toEqual({ scope: 'instanceAi:eval', globalOnly: true });
-		});
-
-		it('should return the native message log with the thread project', async () => {
-			const messages = [{ id: 'm1', role: 'user' }];
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			memoryService.exportThreadMessages.mockResolvedValue(messages as never);
-			memoryService.getThreadProjectId.mockResolvedValue('project-1');
-
-			const result = await controller.exportEvalThread(req, res, THREAD_ID);
-
-			expect(result).toEqual({ threadId: THREAD_ID, projectId: 'project-1', messages });
-		});
-
-		it('should reject a thread that does not exist', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-
-			await expect(controller.exportEvalThread(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
-		});
-	});
-
 	describe('cancelTask', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('cancelTask')).toEqual({ scope: 'instanceAi:message', globalOnly: true });

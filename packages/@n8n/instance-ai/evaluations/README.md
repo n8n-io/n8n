@@ -642,7 +642,7 @@ Paired with a normal `conversation` for the live turn. Plain text only — no to
 
 #### `seedFile` — durable synthetic fixture
 
-For a **synthetic, sanitized** fixture you want pinned in git (never a real user's conversation). `pnpm eval:export-thread <threadId> --name my-case` writes `data/workflows/seeds/<name>.seed.json` + a case skeleton, but **only commit the seed if it contains no real conversation data** — real threads belong in `seedThread`. Paired with a normal `conversation` for the live turn.
+For a **synthetic, sanitized** fixture you want pinned in git (never a real user's conversation): hand-author a `data/workflows/seeds/<name>.seed.json` (schema in `harness/conversation-seed.ts` — `messages` + optional `workflows`) and point `seedFile` at it. Real conversations belong in `seedThread`, which keeps their content out of the repo entirely. Paired with a normal `conversation` for the live turn.
 
 #### How restore works (all paths)
 

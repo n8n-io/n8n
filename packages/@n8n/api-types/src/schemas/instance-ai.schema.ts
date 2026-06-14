@@ -1337,12 +1337,3 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	 */
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(10).optional(),
 }) {}
-
-/** Response of `GET /instance-ai/eval/export-thread/:threadId` — a thread's
- *  native message log, exactly as persisted (seedable via restore-thread). */
-export interface InstanceAiEvalThreadExportResponse {
-	threadId: string;
-	projectId?: string;
-	/** Native agent messages, opaque to this layer (`createdAt` serializes to ISO). */
-	messages: unknown[];
-}

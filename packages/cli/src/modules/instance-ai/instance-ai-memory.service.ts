@@ -174,15 +174,6 @@ export class InstanceAiMemoryService {
 		return { restored: restorable.length };
 	}
 
-	/**
-	 * Eval-only: a thread's complete native message log, exactly as persisted
-	 * (ascending by createdAt, no pagination). The seedable counterpart of
-	 * `restoreThreadMessages`.
-	 */
-	async exportThreadMessages(threadId: string): Promise<AgentDbMessage[]> {
-		return await this.agentMemory.getMessages(threadId);
-	}
-
 	/** Project a thread is bound to (undefined for legacy unbound threads). */
 	async getThreadProjectId(threadId: string): Promise<string | undefined> {
 		return (await this.agentMemory.getThreadProjectId(threadId)) ?? undefined;

@@ -11,7 +11,6 @@ const mockListThreads = jest.fn();
 const mockSaveThreadWithProject = jest.fn();
 const mockGetThreadProjectId = jest.fn();
 const mockSaveMessages = jest.fn();
-const mockGetMessages = jest.fn();
 const mockAgentMemory = {
 	listMessages: mockListMessages,
 	getThread: mockGetThread,
@@ -22,7 +21,6 @@ const mockAgentMemory = {
 	saveThreadWithProject: mockSaveThreadWithProject,
 	getThreadProjectId: mockGetThreadProjectId,
 	saveMessages: mockSaveMessages,
-	getMessages: mockGetMessages,
 };
 
 // Mock GlobalConfig
@@ -425,21 +423,6 @@ describe('InstanceAiMemoryService.restoreThreadMessages', () => {
 			expect(mockSaveMessages).not.toHaveBeenCalled();
 		},
 	);
-});
-
-describe('InstanceAiMemoryService.exportThreadMessages', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
-	});
-
-	it('returns the complete unpaginated native log', async () => {
-		const messages = [{ id: 'm1' }, { id: 'm2' }];
-		mockGetMessages.mockResolvedValue(messages);
-		const service = createService();
-
-		await expect(service.exportThreadMessages('thread-1')).resolves.toBe(messages);
-		expect(mockGetMessages).toHaveBeenCalledWith('thread-1');
-	});
 });
 
 describe('InstanceAiMemoryService.deleteThread', () => {

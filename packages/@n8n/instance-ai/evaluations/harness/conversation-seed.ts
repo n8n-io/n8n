@@ -1,12 +1,11 @@
 // ---------------------------------------------------------------------------
 // Conversation seeding for evaluation builds
 //
-// A seeded test case starts mid-conversation: the prior history (native agent
-// messages exported from a real thread, or prose turns authored in the case)
-// is restored into the build thread before the first live message, so the
-// eval drives only the turn under test. Seed files are produced by the
-// export-thread script (`pnpm eval:export-thread <threadId>`) — authors never
-// hand-write message history.
+// A seeded test case starts mid-conversation: the prior history is restored
+// into the build thread before the first live message, so the eval drives only
+// the turn under test. This module backs the `seedFile` (hand-authored
+// synthetic fixture) and `priorConversation` (prose) paths; real conversations
+// use `seedThread`, reconstructed from a LangSmith trace (see langsmith-seed.ts).
 // ---------------------------------------------------------------------------
 
 import { jsonParse } from 'n8n-workflow';
@@ -30,7 +29,7 @@ const SeedWorkflowSchema = z.object({
 export const ConversationSeedSchema = z.object({
 	/** Provenance (thread id, instance, export time) — informational only. */
 	source: z.record(z.unknown()).optional(),
-	/** Native agent message log (the shape `export-thread` returns), verbatim. */
+	/** Native agent message log (user/assistant turns with resolved tool-call blocks). */
 	messages: z.array(z.record(z.unknown())).min(1),
 	/** Workflows the history references, recreated on restore. */
 	workflows: z.array(SeedWorkflowSchema).default([]),

@@ -28,14 +28,6 @@ const RestoreThreadEnvelope = z.object({
 	}),
 });
 
-const ThreadExportEnvelope = z.object({
-	data: z.object({
-		threadId: z.string(),
-		projectId: z.string().optional(),
-		messages: z.array(z.record(z.unknown())),
-	}),
-});
-
 // ---------------------------------------------------------------------------
 // Computer-use gateway response shapes (Zod-validated to keep the client
 // honest about API drift instead of trusting `as` casts)
@@ -527,18 +519,6 @@ export class N8nClient {
 			body: { threadId, messages, workflows },
 		});
 		return RestoreThreadEnvelope.parse(result).data;
-	}
-
-	/**
-	 * A thread's complete native message log, exactly as persisted — the
-	 * seedable input of restoreThread().
-	 * GET /rest/instance-ai/eval/export-thread/:threadId
-	 */
-	async exportThread(
-		threadId: string,
-	): Promise<{ threadId: string; projectId?: string; messages: Array<Record<string, unknown>> }> {
-		const result = await this.fetch(`/rest/instance-ai/eval/export-thread/${threadId}`);
-		return ThreadExportEnvelope.parse(result).data;
 	}
 
 	// -- Data tables ---------------------------------------------------------

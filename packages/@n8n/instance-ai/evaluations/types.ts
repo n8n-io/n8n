@@ -211,11 +211,10 @@ export interface WorkflowTestCase {
 	 */
 	credentials?: TestCaseCredential[];
 	/**
-	 * Conversation seed file (path resolved at case load), produced by the
-	 * export-thread script from a real conversation. Restored into the build
-	 * thread — messages and referenced workflows — before `conversation[0]` is
-	 * sent live, so the case evaluates the next turn of a real prior history.
-	 * Mutually exclusive with `priorConversation`.
+	 * Hand-authored synthetic seed file (path resolved at case load). Restored
+	 * into the build thread — messages and referenced workflows — before
+	 * `conversation[0]` is sent live. For synthetic fixtures only; real
+	 * conversations use `seedThread`. Mutually exclusive with the other seeds.
 	 */
 	seedFile?: string;
 	/**

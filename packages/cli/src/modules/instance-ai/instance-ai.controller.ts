@@ -17,7 +17,7 @@ import {
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode, InstanceAiEvalThreadExportResponse } from '@n8n/api-types';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -737,25 +737,6 @@ export class InstanceAiController {
 			restored,
 			workflowIds: workflows.map((workflow) => workflow.id),
 		};
-	}
-
-	/**
-	 * A thread's complete native message log, exactly as persisted. The output
-	 * is the seedable input of `restore-thread` — the eval export script turns
-	 * a real conversation into a test-case seed with it.
-	 */
-	@Get('/eval/export-thread/:threadId')
-	@GlobalScope('instanceAi:eval')
-	async exportEvalThread(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-	): Promise<InstanceAiEvalThreadExportResponse> {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-		const messages = await this.memoryService.exportThreadMessages(threadId);
-		const projectId = await this.memoryService.getThreadProjectId(threadId);
-		return { threadId, projectId, messages };
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
