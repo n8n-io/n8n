@@ -33,10 +33,24 @@ export async function supabaseTableNameSearch(this: ILoadOptionsFunctions) {
 		throw new ApplicationError('Expected Supabase credentials host to be a string');
 	}
 
+	const headers: IDataObject = {
+		Prefer: 'return=representation',
+	};
+
+	let useCustomSchema = false;
+	try {
+		useCustomSchema = this.getNodeParameter('useCustomSchema', false) as boolean;
+	} catch {
+		// Parameter may not exist on older node versions
+	}
+
+	if (useCustomSchema) {
+		const schema = this.getNodeParameter('schema', 'public') as string;
+		headers['Accept-Profile'] = schema;
+	}
+
 	const { paths } = (await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', {
-		headers: {
-			Prefer: 'return=representation',
-		},
+		headers,
 		method: 'GET',
 		uri: `${credentials.host}/rest/v1/`,
 		json: true,
