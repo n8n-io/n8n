@@ -1085,14 +1085,30 @@
 								form.style.display = 'none';
 								document.querySelector('#submitted-form').style.display = 'block';
 								document.querySelector('#submitted-header').textContent = 'Problem submitting response';
-								document.querySelector('#submitted-content').textContent =
-									'Please try again or contact support if the problem persists';
+								let errorMessage = 'Please try again or contact support if the problem persists';
+								if (response.status === 413) {
+									errorMessage = 'The files you are trying to upload are too large.';
+								}
+								document.querySelector('#submitted-content').textContent = errorMessage;
+								
+								// Stop polling for execution status
+								clearTimeout(timeoutId);
+								interval = 0;
 							}
 
 							return;
 						})
 						.catch(function (error) {
 							console.error('Error:', error);
+							form.style.display = 'none';
+							document.querySelector('#submitted-form').style.display = 'block';
+							document.querySelector('#submitted-header').textContent = 'Problem submitting response';
+							document.querySelector('#submitted-content').textContent =
+								'A network error occurred. The files you are trying to upload might be too large, or there is a network issue. Please try again or contact support.';
+							
+							// Stop polling for execution status
+							clearTimeout(timeoutId);
+							interval = 0;
 						})
 						.finally(() => {
 							if (window.location.href.includes('form-waiting')) {
