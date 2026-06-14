@@ -18,7 +18,7 @@ jest.mock('xlsx', () => ({
 
 jest.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
 	getDocument: jest.fn(),
-	version: '5.3.31',
+	version: '5.4.296',
 }));
 
 describe('convertJsonToSpreadsheetBinary', () => {
