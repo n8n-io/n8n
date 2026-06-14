@@ -435,7 +435,7 @@ toDateTime.doc = {
 	examples: [
 		{
 			example: "jsDate = new Date('2024-03-30T18:49')\njsDate.toDateTime().plus(5, 'days')",
-			evaluated: '[DateTime: 2024-03-05T18:49:00.000Z]',
+			evaluated: '[DateTime: 2024-04-05T18:49:00.000Z]',
 		},
 	],
 	returnType: 'DateTime',
