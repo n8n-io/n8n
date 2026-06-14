@@ -211,6 +211,52 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		});
 	});
 
+	describe('credential type selection', () => {
+		beforeEach(() => {
+			mockRequestOAuth2.mockResolvedValue({ data: 'test' });
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: { access_token: 'test-access-token' },
+			});
+		});
+
+		it('should use the generic microsoftOAuth2Api credential when selected', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+			expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
+		});
+
+		it('should use the microsoftOneDriveOAuth2Api credential when selected', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOneDriveOAuth2Api');
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+				'microsoftOneDriveOAuth2Api',
+			);
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftOneDriveOAuth2Api',
+				expect.anything(),
+			);
+		});
+
+		it('should fall back to microsoftOneDriveOAuth2Api when authentication is not set', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+				'microsoftOneDriveOAuth2Api',
+			);
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftOneDriveOAuth2Api',
+				expect.anything(),
+			);
+		});
+	});
+
 	describe('getPath', () => {
 		describe('graphApiBaseUrl from credentials', () => {
 			it('should use base URL from credentials', async () => {
