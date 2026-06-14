@@ -44,6 +44,55 @@ export async function googleApiRequest(
 	}
 }
 
+/**
+ * Maps the shared writable User attributes (defined in `userExtraFields` in
+ * UserDescription.ts) from a create/update collection onto the request body.
+ * See https://developers.google.com/workspace/admin/directory/reference/rest/v1/users
+ */
+export function mapUserExtraFields(fields: IDataObject, body: IDataObject): void {
+	if (fields.orgUnitPath) {
+		body.orgUnitPath = fields.orgUnitPath;
+	}
+	if (fields.recoveryEmail) {
+		body.recoveryEmail = fields.recoveryEmail;
+	}
+	if (fields.recoveryPhone) {
+		body.recoveryPhone = fields.recoveryPhone;
+	}
+	if (fields.includeInGlobalAddressList !== undefined) {
+		body.includeInGlobalAddressList = fields.includeInGlobalAddressList;
+	}
+	if (fields.ipWhitelisted !== undefined) {
+		body.ipWhitelisted = fields.ipWhitelisted;
+	}
+
+	// Single-object fixedCollections
+	if (fields.genderUi) {
+		body.gender = (fields.genderUi as IDataObject).genderValues;
+	}
+	if (fields.notesUi) {
+		body.notes = (fields.notesUi as IDataObject).notesValues;
+	}
+
+	// Array fixedCollections: unwrap the `*Values` wrapper into the API array
+	const arrayMappings: Array<[string, string, string]> = [
+		['organizationUi', 'organizationValues', 'organizations'],
+		['addressesUi', 'addressesValues', 'addresses'],
+		['relationsUi', 'relationsValues', 'relations'],
+		['externalIdsUi', 'externalIdsValues', 'externalIds'],
+		['languagesUi', 'languagesValues', 'languages'],
+		['websitesUi', 'websitesValues', 'websites'],
+		['imsUi', 'imsValues', 'ims'],
+		['keywordsUi', 'keywordsValues', 'keywords'],
+		['locationsUi', 'locationsValues', 'locations'],
+	];
+	for (const [uiKey, valuesKey, bodyKey] of arrayMappings) {
+		if (fields[uiKey]) {
+			body[bodyKey] = (fields[uiKey] as IDataObject)[valuesKey];
+		}
+	}
+}
+
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
