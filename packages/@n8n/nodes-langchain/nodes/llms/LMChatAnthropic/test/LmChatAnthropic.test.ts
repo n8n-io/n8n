@@ -225,6 +225,50 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
+		it('should configure a proxy agent with default timeouts when timeout option is not set', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(mockedGetProxyAgent).toHaveBeenCalledWith('https://api.anthropic.com', {
+				headersTimeout: undefined,
+				bodyTimeout: undefined,
+			});
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					clientOptions: expect.not.objectContaining({ timeout: expect.anything() }),
+				}),
+			);
+		});
+
+		it('should pass the timeout option to the proxy agent and client options', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
+				if (paramName === 'options') return { timeout: 600000 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(mockedGetProxyAgent).toHaveBeenCalledWith('https://api.anthropic.com', {
+				headersTimeout: 600000,
+				bodyTimeout: 600000,
+			});
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					clientOptions: expect.objectContaining({ timeout: 600000 }),
+				}),
+			);
+		});
+
 		it('should default streaming to false when option is omitted', async () => {
 			const mockContext = setupMockContext();
 
