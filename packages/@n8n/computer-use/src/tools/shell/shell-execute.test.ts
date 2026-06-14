@@ -231,6 +231,21 @@ describe('shell_execute tool', () => {
 		expect(spawnOptions?.cwd).toBe('/custom/path');
 	});
 
+	it('binds an explicit cwd into the permission resource', async () => {
+		const resources = await shellExecuteTool.getAffectedResources(
+			{ command: 'ls', cwd: '/custom/path' },
+			DUMMY_CONTEXT,
+		);
+
+		expect(resources).toEqual([
+			{
+				toolGroup: 'shell',
+				resource: 'ls (cwd: /custom/path)',
+				description: 'Execute shell command: ls (cwd: /custom/path)',
+			},
+		]);
+	});
+
 	describe('cross-platform shell selection', () => {
 		it('uses cmd.exe /C on win32', async () => {
 			Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });

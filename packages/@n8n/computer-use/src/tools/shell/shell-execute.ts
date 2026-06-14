@@ -38,12 +38,17 @@ export const shellExecuteTool: ToolDefinition<typeof inputSchema> = {
 	description: 'Execute a shell command and return stdout, stderr, and exit code',
 	inputSchema,
 	annotations: { destructiveHint: true },
-	getAffectedResources({ command }) {
+	getAffectedResources({ command, cwd }) {
+		const commandResource = buildShellResource(command);
+		const resource = cwd ? `${commandResource} (cwd: ${cwd})` : commandResource;
+		const description = cwd
+			? `Execute shell command: ${command} (cwd: ${cwd})`
+			: `Execute shell command: ${command}`;
 		return [
 			{
 				toolGroup: 'shell' as const,
-				resource: buildShellResource(command),
-				description: `Execute shell command: ${command}`,
+				resource,
+				description,
 			},
 		];
 	},
