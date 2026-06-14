@@ -507,19 +507,32 @@ export class FacebookGraphApi implements INodeType {
 					// Unknown Graph API response, we'll dump everything in the response item
 					errorItem = error;
 				}
-				returnItems.push({ json: { ...errorItem } });
+				// Attach the error and pairedItem so the engine can route this item to
+				// the error output when "Continue (using error output)" is selected.
+				returnItems.push({
+					json: { ...errorItem },
+					error: new NodeApiError(this.getNode(), error as JsonObject),
+					pairedItem: { item: itemIndex },
+				});
 
 				continue;
 			}
 
 			if (typeof response === 'string') {
+				const invalidJsonError = new NodeOperationError(
+					this.getNode(),
+					'Response body is not valid JSON.',
+					{ itemIndex },
+				);
 				if (!this.continueOnFail()) {
-					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON.', {
-						itemIndex,
-					});
+					throw invalidJsonError;
 				}
 
-				returnItems.push({ json: { message: response } });
+				returnItems.push({
+					json: { message: response },
+					error: invalidJsonError,
+					pairedItem: { item: itemIndex },
+				});
 				continue;
 			}
 
