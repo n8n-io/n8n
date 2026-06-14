@@ -1,8 +1,13 @@
 import { Tool, type InterruptibleToolContext, type ToolContext } from '@n8n/agents';
+import { N8N_CHAT_INTEGRATION_TYPE, richMessageSchema } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	RichCardComponent,
+	RICH_CARD_BUTTON_STYLES,
+} from '@n8n/api-types';
+import type { ButtonStyle } from 'chat';
 import { z } from 'zod';
 
-import type { AgentIntegrationConfig } from '@n8n/api-types';
-import type { ButtonStyle } from 'chat';
 import { INTEGRATION_ERROR_CODES, type IntegrationErrorCode } from './integration-error-codes';
 
 export type IntegrationMessageTarget =
@@ -51,9 +56,18 @@ export interface IntegrationSubjectPerson {
 	name: string;
 }
 
+/**
+ * Source of a tool connection: a persisted credential integration, or the
+ * implicit credential-less in-app chat channel (injected per-run, never
+ * stored on the agent).
+ */
+export type IntegrationToolConnectionSource =
+	| AgentIntegrationConfig
+	| { type: typeof N8N_CHAT_INTEGRATION_TYPE; credentialId?: undefined };
+
 export interface IntegrationToolConnectionDescriptor {
 	agentId?: string;
-	integration: AgentIntegrationConfig;
+	integration: IntegrationToolConnectionSource;
 	integrationConnectionId: string;
 	contextToolName: string;
 	actionToolName: string;
@@ -149,114 +163,21 @@ export const DEFAULT_INTEGRATION_ACTIONS: IntegrationAction[] = [
 	'send_channel_message',
 ];
 
-const fieldPairSchema = z
-	.object({
-		label: z.string(),
-		value: z.string(),
-	})
-	.strict();
+// Compile-time: the shared button styles must remain valid Chat SDK
+// `ButtonStyle` values (api-types cannot depend on the chat package).
+export const richCardButtonStylesAreChatSdkStyles: (typeof RICH_CARD_BUTTON_STYLES)[number] extends ButtonStyle
+	? true
+	: never = true;
 
-const selectOptionSchema = z
-	.object({
-		label: z.string(),
-		value: z.string(),
-		description: z.string().optional(),
-	})
-	.strict();
+/**
+ * Wire schemas for rich-card messages live in `@n8n/api-types`
+ * (`rich-card.schema.ts`) and are shared verbatim with the editor-ui chat
+ * renderer — the contract cannot drift between backend and frontend.
+ */
+const messageSchema = richMessageSchema;
 
-const buttonStyles = ['primary', 'danger', 'default'] as const satisfies readonly [
-	ButtonStyle,
-	...ButtonStyle[],
-];
-const buttonStyleSchema = z.enum(buttonStyles);
-
-const cardButtonSchema = z
-	.object({
-		label: z.string().optional(),
-		text: z.string().optional(),
-		value: z.string(),
-		style: buttonStyleSchema.optional(),
-	})
-	.strict();
-
-const cardComponentSchema = z.union([
-	z
-		.object({
-			type: z.literal('section'),
-			text: z.string(),
-			button: cardButtonSchema.optional(),
-		})
-		.strict(),
-	z
-		.object({
-			type: z.literal('fields'),
-			fields: z.array(fieldPairSchema).min(1).optional(),
-			items: z.array(fieldPairSchema).min(1).optional(),
-		})
-		.strict()
-		.refine((component) => component.fields !== undefined || component.items !== undefined, {
-			message: 'Provide fields or items.',
-		}),
-	z
-		.object({
-			type: z.literal('image'),
-			url: z.string(),
-			alt: z.string().optional(),
-			altText: z.string().optional(),
-		})
-		.strict(),
-	z
-		.object({
-			type: z.literal('divider'),
-		})
-		.strict(),
-	z
-		.object({
-			type: z.literal('button'),
-			label: z.string().optional(),
-			text: z.string().optional(),
-			value: z.string(),
-			style: buttonStyleSchema.optional(),
-		})
-		.strict(),
-	z
-		.object({
-			type: z.literal('select'),
-			id: z.string().optional(),
-			label: z.string().optional(),
-			placeholder: z.string().optional(),
-			options: z.array(selectOptionSchema).min(1),
-		})
-		.strict(),
-	z
-		.object({
-			type: z.literal('radio_select'),
-			id: z.string().optional(),
-			label: z.string().optional(),
-			placeholder: z.string().optional(),
-			options: z.array(selectOptionSchema).min(1),
-		})
-		.strict(),
-]);
-
-const messageSchema = z
-	.object({
-		text: z.string().optional().describe('Plain-text fallback or summary for the message.'),
-		card: z
-			.object({
-				awaitResponse: z.boolean().optional(),
-				title: z.string().optional(),
-				message: z.string().optional(),
-				components: z.array(cardComponentSchema).min(1),
-			})
-			.strict()
-			.describe(
-				'Generic card payload rendered by the integration. Use generic components only, not platform-native message payloads.',
-			)
-			.optional(),
-	})
-	.strict()
-	.describe('Generic message payload. Use message.text plus optional message.card only.');
+/** Wire shape of a single rich-card component. */
+export type IntegrationCardComponent = RichCardComponent;
 
 const noInputSchema = z.object({}).strict();
 
@@ -893,10 +814,10 @@ export function getIntegrationToolConnectionDescriptors(
 	});
 }
 
-export function buildIntegrationConnectionId(
-	integration: Pick<AgentIntegrationConfig, 'type' | 'credentialId'>,
-): string {
-	return `${integration.type}:${integration.credentialId}`;
+export function buildIntegrationConnectionId(integration: IntegrationToolConnectionSource): string {
+	return integration.credentialId === undefined
+		? integration.type
+		: `${integration.type}:${integration.credentialId}`;
 }
 
 export function createIntegrationContextTool(params: {
@@ -992,9 +913,18 @@ function buildContextToolDescription(descriptor: IntegrationToolConnectionDescri
 }
 
 function buildActionToolDescription(descriptor: IntegrationToolConnectionDescriptor): string {
+	// The in-app chat is the one channel where the agent's normal reply already
+	// reaches the user, so plain-text responds are redundant there.
+	const n8nChatGuidance =
+		descriptor.integration.type === N8N_CHAT_INTEGRATION_TYPE
+			? [
+					'This is the built-in n8n chat: your normal assistant reply already reaches the user. NEVER call respond with only message.text — write that text directly in your reply instead. Call this tool only with message.card, to render a rich card or collect structured input.',
+				]
+			: [];
 	return [
 		`Take actions in the ${descriptor.integration.type} integration connection.`,
 		`Available actions: ${descriptor.actions.join(', ')}.`,
+		...n8nChatGuidance,
 		'Action inputs:',
 		...descriptor.actions.map((action) => `- ${ACTION_DESCRIPTIONS[action]}`),
 		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include cards that wait for a user response.`,
@@ -1395,7 +1325,7 @@ function shouldAwaitResponse(message: z.infer<typeof messageSchema> | undefined)
 	return card?.components.some(isInteractiveCardComponent) ?? false;
 }
 
-function isInteractiveCardComponent(component: z.infer<typeof cardComponentSchema>): boolean {
+function isInteractiveCardComponent(component: RichCardComponent): boolean {
 	switch (component.type) {
 		case 'button':
 		case 'select':

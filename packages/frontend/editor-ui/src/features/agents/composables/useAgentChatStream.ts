@@ -1,6 +1,7 @@
 import { ref, reactive, computed, nextTick, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentPersistedMessageDto,
@@ -19,6 +20,8 @@ import {
 import {
 	applyOpenSuspensions,
 	convertDbMessages,
+	isApprovalSuspendInput,
+	isInteractiveToolName,
 	rebuildInteractiveFromHistory,
 	type ChatMessage,
 	type ToolCall,
@@ -100,18 +103,22 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 			} else if (continueId) {
-				dbMessages = await getChatMessages(
+				const envelope = await getChatMessages(
 					rootStore.restApiContext,
 					params.projectId.value,
 					params.agentId.value,
 					continueId,
 				);
+				dbMessages = envelope.messages;
+				openSuspensions = envelope.openSuspensions;
 			} else {
-				dbMessages = await getTestChatMessages(
+				const envelope = await getTestChatMessages(
 					rootStore.restApiContext,
 					params.projectId.value,
 					params.agentId.value,
 				);
+				dbMessages = envelope.messages;
+				openSuspensions = envelope.openSuspensions;
 			}
 			if (dbMessages.length > 0) {
 				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
@@ -341,6 +348,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					if (found.msg.interactive) {
 						const updated = rebuildInteractiveFromHistory(found.tc);
 						if (updated) found.msg.interactive = updated;
+					} else if (found.tc.tool === N8N_CHAT_ACTION_TOOL_NAME) {
+						// Display-only n8n chat cards never suspend, so no interactive
+						// was attached earlier — build the resolved card now so it
+						// renders as soon as the tool settles.
+						const rebuilt = rebuildInteractiveFromHistory(found.tc);
+						if (rebuilt) found.msg.interactive = rebuilt;
 					}
 					if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
 						found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
@@ -350,20 +363,31 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-call-suspended': {
 				const { payload } = event;
 				const found = findToolCallById(payload.toolCallId);
+				// Builder interactive tools (ask_* / approval) suspend with their
+				// renderable input; integration actions suspend with a sidecar —
+				// keep the card-bearing tool input and store the sidecar separately.
+				const suspendIsRenderableInput =
+					isInteractiveToolName(payload.toolName) || isApprovalSuspendInput(payload.input);
 				let msg: ChatMessage;
 				let tc: ToolCall;
 				if (found) {
 					msg = found.msg;
 					tc = found.tc;
 					tc.state = TOOL_CALL_STATE.SUSPENDED;
-					tc.input = payload.input;
+					if (suspendIsRenderableInput) {
+						tc.input = payload.input;
+					} else {
+						tc.suspendPayload = payload.input;
+					}
 				} else {
 					msg = ensureCurrent(session);
 					tc = {
 						tool: payload.toolName,
 						toolCallId: payload.toolCallId,
-						input: payload.input,
 						state: TOOL_CALL_STATE.SUSPENDED,
+						...(suspendIsRenderableInput
+							? { input: payload.input }
+							: { suspendPayload: payload.input }),
 					};
 					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
 				}

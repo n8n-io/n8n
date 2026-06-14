@@ -10,6 +10,7 @@ import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	AgentIntegrationSchema,
 	AgentJsonConfigSchema,
+	N8N_CHAT_INTEGRATION_TYPE,
 	type ListAgentsQueryDto,
 	SUB_AGENT_TASK_DIFFICULTIES,
 	isNodeToolsEnabled,
@@ -66,6 +67,7 @@ import { Agent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
@@ -226,6 +228,7 @@ export class AgentsService {
 		}
 		const parts = [params.agentId, 'draft'];
 		if (params.n8nUserId) parts.push(params.n8nUserId);
+		if (params.integrationType) parts.push(params.integrationType);
 		return parts.join(':');
 	}
 
@@ -291,6 +294,7 @@ export class AgentsService {
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
+		private readonly integrationMessageContextService: IntegrationMessageContextService,
 	) {}
 
 	private isNodeToolsModuleEnabled(): boolean {
@@ -355,7 +359,7 @@ export class AgentsService {
 	 */
 	listChatIntegrations(): ChatIntegrationDescriptor[] {
 		return Container.get(ChatIntegrationRegistry)
-			.list()
+			.listPublic()
 			.map((i) => ({
 				type: i.type,
 				label: i.displayLabel,
@@ -938,9 +942,12 @@ export class AgentsService {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
-			// Always record resumed executions — even if they suspend again (chained HITL)
-			// or fail while streaming. Don't repeat the original user message — the
-			// pre-suspension execution already has it.
+			// Always record resumed executions — even if they suspend again
+			// (chained HITL: the SSE pump abandons this generator mid-yield at
+			// the suspension event) or fail while streaming. Segments that
+			// suspend again are recorded as 'suspended' so the usage backfill
+			// picks them up when the chain finally completes. Don't repeat the
+			// original user message — the pre-suspension execution already has it.
 			const messageRecord = recorder.getMessageRecord();
 			void this.agentExecutionService
 				.recordMessage({
@@ -950,7 +957,7 @@ export class AgentsService {
 					projectId,
 					userMessage: '',
 					record: messageRecord,
-					hitlStatus: 'resumed',
+					hitlStatus: recorder.suspended ? 'suspended' : 'resumed',
 				})
 				.catch((error) => {
 					this.logger.warn('Failed to record resumed agent execution', {
@@ -1156,7 +1163,26 @@ export class AgentsService {
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, userId, memory } = config;
 
-		const runtime = await this.getRuntime({ agentId, projectId, n8nUserId: userId });
+		const runtime = await this.getRuntime({
+			agentId,
+			projectId,
+			n8nUserId: userId,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+		});
+
+		// Seed the integration message context under memory.threadId — the same
+		// value streamChatResponse hands to agentInstance.stream() as
+		// ctx.persistence.threadId, which is the key the n8n_chat tools use to
+		// read it back. Gives `respond` its target and powers the
+		// get_current_* context queries. Seeded once per send; resumeForChat
+		// intentionally does not re-seed (the context persists from this turn).
+		await this.integrationMessageContextService.setLatest(memory.threadId, memory.resourceId, {
+			integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+			platform: N8N_CHAT_INTEGRATION_TYPE,
+			target: { type: 'dm', userId, threadId: memory.threadId },
+			interactingUserId: userId,
+			updatedAt: new Date().toISOString(),
+		});
 
 		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
@@ -1329,8 +1355,11 @@ export class AgentsService {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
-			// Always record — even if suspended or failed, the pre-suspension/error
-			// response text and tool calls are valuable.
+			// Always record — even if suspended (the SSE pump abandons this
+			// generator mid-yield at the suspension event) or failed: the
+			// pre-suspension/error response text and tool calls are valuable.
+			// Usage/model will be null for suspended runs (backfilled when the
+			// resumed execution completes).
 			const messageRecord = recorder.getMessageRecord();
 			void this.agentExecutionService
 				.recordMessage({

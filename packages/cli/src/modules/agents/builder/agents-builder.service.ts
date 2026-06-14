@@ -250,6 +250,34 @@ export class AgentsBuilderService {
 	 * don't need a separate runId from this helper.
 	 */
 	async findOpenCheckpoint(agentId: string): Promise<SerializableAgentState | null> {
+		return await this.findSuspendedCheckpoint(agentId);
+	}
+
+	/**
+	 * Like {@link findOpenCheckpoint}, but scoped to one chat thread. Used by
+	 * the chat history endpoints to rebuild open interactive cards (with
+	 * runIds) after a page refresh.
+	 */
+	async findOpenCheckpointForThread(
+		agentId: string,
+		threadId: string,
+	): Promise<SerializableAgentState | null> {
+		return await this.findSuspendedCheckpoint(agentId, threadId);
+	}
+
+	/**
+	 * Like {@link findOpenCheckpointForThread}, scoped to the builder thread for
+	 * this agent. Prevents preview-chat suspensions from bleeding into builder
+	 * history.
+	 */
+	async findOpenBuilderCheckpoint(agentId: string): Promise<SerializableAgentState | null> {
+		return await this.findSuspendedCheckpoint(agentId, builderThreadId(agentId));
+	}
+
+	private async findSuspendedCheckpoint(
+		agentId: string,
+		threadId?: string,
+	): Promise<SerializableAgentState | null> {
 		const rows = await this.agentCheckpointRepository.find({
 			where: { agentId, expired: false },
 			order: { updatedAt: 'DESC' },
@@ -263,9 +291,9 @@ export class AgentsBuilderService {
 			} catch {
 				continue;
 			}
-			if (parsed.status === 'suspended') {
-				return parsed;
-			}
+			if (parsed.status !== 'suspended') continue;
+			if (threadId !== undefined && parsed.persistence?.threadId !== threadId) continue;
+			return parsed;
 		}
 		return null;
 	}

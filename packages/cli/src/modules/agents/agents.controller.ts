@@ -3,7 +3,9 @@ import {
 	AgentChatMessageDto,
 	AgentChatResumeDto,
 	AgentIntegrationSchema,
+	N8N_CHAT_INTEGRATION_TYPE,
 	type AgentBuilderMessagesResponse,
+	type AgentChatMessagesResponse,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
 	type AgentSkill,
@@ -61,7 +63,8 @@ import {
 	type ToolEventCallbacks,
 } from './agent-sse-stream';
 import { AgentTaskService } from './agent-task.service';
-import { AgentsService } from './agents.service';
+import { AgentsService, chatThreadId } from './agents.service';
+import { withOpenSuspensions } from './utils/messages-envelope';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -660,6 +663,7 @@ export class AgentsController {
 					resumeData,
 					userId: req.user.id,
 					usePublishedVersion: false,
+					integrationType: N8N_CHAT_INTEGRATION_TYPE,
 				}),
 				send,
 			);
@@ -678,7 +682,7 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async getChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
-	) {
+	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId, threadId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -693,7 +697,11 @@ export class AgentsController {
 		if (!history) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		return history;
+		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
+			agentId,
+			threadId,
+		);
+		return withOpenSuspensions(history, checkpoint);
 	}
 
 	@Get('/:agentId/build/messages')
@@ -708,8 +716,9 @@ export class AgentsController {
 		// Merge persisted thread memory with any open suspension's checkpoint
 		// so a refresh during a suspended turn still returns the suspended
 		// assistant message (the SDK only saveToMemory's on completion).
+		// Scoped to the builder thread so preview-chat suspensions don't bleed in.
 		const memory = await this.agentsBuilderService.getBuilderMessages(agentId);
-		const checkpoint = await this.agentsBuilderService.findOpenCheckpoint(agentId);
+		const checkpoint = await this.agentsBuilderService.findOpenBuilderCheckpoint(agentId);
 		const openSuspensions = Object.values(checkpoint?.pendingToolCalls ?? {})
 			.filter((tc) => tc.suspended)
 			.map((tc) => ({
@@ -743,12 +752,16 @@ export class AgentsController {
 	@ProjectScope('agent:read')
 	async getTestChatMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
-	): Promise<AgentPersistedMessageDto[]> {
+	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const messages = await this.agentsService.getTestChatMessages(agentId, req.user.id);
-		return messagesToDto(messages);
+		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
+			agentId,
+			chatThreadId(agentId, req.user.id),
+		);
+		return withOpenSuspensions(messagesToDto(messages), checkpoint);
 	}
 
 	@Delete('/:agentId/chat/messages')

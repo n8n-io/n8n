@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
+import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
+import { useI18n } from '@n8n/i18n';
 import {
 	buildDisplayGroups,
+	isRecord,
 	type ChatMessage,
 	type DisplayGroup,
 	type InteractivePayload,
+	type ToolCall,
 } from '../composables/agentChatMessages';
 import AgentChatMemoryUsed from './AgentChatMemoryUsed.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
@@ -14,7 +19,7 @@ import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
-import { CHAT_MESSAGE_STATUS } from '../constants';
+import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
 const props = defineProps<{
 	messages: ChatMessage[];
@@ -27,11 +32,45 @@ const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
 }>();
 
+const i18n = useI18n();
+
 function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
 	// Cards without a runId are disabled at the card level (see InteractiveCard).
 	// This guard is a defensive belt-and-braces for the type narrowing.
 	if (!payload.runId) return;
 	emit('resume', { runId: payload.runId, toolCallId: payload.toolCallId, resumeData });
+}
+
+function isIntegrationActionSuspend(value: unknown): value is { type: 'integration_action' } {
+	return isRecord(value) && value.type === 'integration_action';
+}
+
+/**
+ * Returns a display name for the external platform a tool call is waiting on,
+ * or `undefined` when the tool call either isn't suspended or renders its own
+ * interactive card. Builder tools never match (their suspend payload is their
+ * renderable input, not an integration_action sidecar); n8n_chat_action DOES
+ * carry the sidecar but is excluded explicitly because it renders its own
+ * interactive card in the chat.
+ */
+function externalWaitPlatform(tc: ToolCall): string | undefined {
+	if (tc.state !== TOOL_CALL_STATE.SUSPENDED) return undefined;
+	if (tc.tool === N8N_CHAT_ACTION_TOOL_NAME) return undefined;
+	if (!isIntegrationActionSuspend(tc.suspendPayload)) return undefined;
+	const base = tc.tool.replace(/_action$/, '').replace(/_\d+$/, '');
+	return base.charAt(0).toUpperCase() + base.slice(1);
+}
+
+/**
+ * Open cards always render. Once resolved, answered interactive cards clear
+ * from the chat (builder cards collapse into their tool-step summary; n8n
+ * chat cards leave the picked answer there too) — but display-only n8n chat
+ * cards persist: they are content, and being born resolved they would
+ * otherwise never render at all.
+ */
+function shouldRenderInteractive(payload: InteractivePayload): boolean {
+	if (!payload.resolvedAt) return true;
+	return payload.toolName === N8N_CHAT_ACTION_TOOL_NAME && !isAwaitingCard(payload.input.card);
 }
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
@@ -328,9 +367,23 @@ onBeforeUnmount(() => {
 						:tool-calls="group.toolCalls"
 						:project-id="projectId"
 					/>
-					<div v-if="group.interactives.some((p) => !p.resolvedAt)" :class="$style.interactives">
+					<template v-for="tc in group.toolCalls" :key="`wait-${tc.toolCallId}`">
+						<N8nText
+							v-if="externalWaitPlatform(tc)"
+							size="small"
+							color="text-light"
+							data-testid="agent-chat-external-wait"
+						>
+							{{
+								i18n.baseText('agents.chat.waitingExternal', {
+									interpolate: { platform: externalWaitPlatform(tc)! },
+								})
+							}}
+						</N8nText>
+					</template>
+					<div v-if="group.interactives.some(shouldRenderInteractive)" :class="$style.interactives">
 						<InteractiveCard
-							v-for="payload in group.interactives.filter((p) => !p.resolvedAt)"
+							v-for="payload in group.interactives.filter(shouldRenderInteractive)"
 							:key="payload.toolCallId"
 							:payload="payload"
 							:project-id="projectId"
@@ -395,6 +448,20 @@ onBeforeUnmount(() => {
 						:tool-calls="group.message.toolCalls"
 						:project-id="projectId"
 					/>
+					<template v-for="tc in group.message.toolCalls ?? []" :key="`wait-${tc.toolCallId}`">
+						<N8nText
+							v-if="externalWaitPlatform(tc)"
+							size="small"
+							color="text-light"
+							data-testid="agent-chat-external-wait"
+						>
+							{{
+								i18n.baseText('agents.chat.waitingExternal', {
+									interpolate: { platform: externalWaitPlatform(tc)! },
+								})
+							}}
+						</N8nText>
+					</template>
 
 					<div
 						v-if="group.message.role === 'user'"
@@ -434,7 +501,7 @@ onBeforeUnmount(() => {
 					</div>
 
 					<div
-						v-if="group.message.interactive && !group.message.interactive.resolvedAt"
+						v-if="group.message.interactive && shouldRenderInteractive(group.message.interactive)"
 						:class="$style.interactives"
 					>
 						<InteractiveCard
@@ -518,13 +585,15 @@ onBeforeUnmount(() => {
 /**
  * Vertical stack for one or more interactive cards inside an assistant message.
  * Adds a small gap between adjacent cards (when a tool run produced several)
- * and a top margin so the cards don't sit flush against the tool-step list.
+ * and vertical margins so the cards sit flush against neither the tool-step
+ * list above nor any message text that follows (e.g. after a display-only card).
  */
 .interactives {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .chatMessage {

@@ -37,10 +37,12 @@ export class AgentsModule implements ModuleInterface {
 		const { SlackIntegration } = await import('./integrations/platforms/slack-integration');
 		const { TelegramIntegration } = await import('./integrations/platforms/telegram-integration');
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration');
+		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
+		registry.register(Container.get(N8nChatIntegration));
 
 		// Register Chat and Task services. Importing the services here also
 		// registers any @OnLeaderTakeover/@OnLeaderStepdown decorators with

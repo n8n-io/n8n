@@ -5,6 +5,7 @@ import {
 	APPROVAL_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
 	type AgentSseEvent,
 } from '@n8n/api-types';
 
@@ -19,6 +20,18 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn() }),
 }));
+
+const getChatMessagesMock = vi.fn();
+const getTestChatMessagesMock = vi.fn();
+
+vi.mock('../composables/useAgentApi', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../composables/useAgentApi')>();
+	return {
+		...actual,
+		getChatMessages: (...args: unknown[]) => getChatMessagesMock(...args),
+		getTestChatMessages: (...args: unknown[]) => getTestChatMessagesMock(...args),
+	};
+});
 
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 
@@ -674,5 +687,194 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		const tc = hook.messages.value[1].toolCalls?.[0];
 		expect(tc?.startTime).toBe(1_000);
 		expect(tc?.endTime).toBe(1_014);
+	});
+
+	it('preserves tool input and stores the suspend payload for integration actions', async () => {
+		const cardInput = {
+			action: 'respond',
+			input: { message: { card: { components: [{ type: 'button', value: 'yes' }] } } },
+		};
+		const sidecar = {
+			type: 'integration_action',
+			action: 'respond',
+			integrationConnectionId: 'n8n_chat',
+			messageContext: null,
+		};
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: cardInput,
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-1',
+					runId: 'run-1',
+					toolName: N8N_CHAT_ACTION_TOOL_NAME,
+					input: sidecar,
+				},
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('hello');
+		await nextTick();
+
+		const msg = hook.messages.value.at(-1)!;
+		const tc = msg.toolCalls!.find((t) => t.toolCallId === 'tc-1')!;
+		expect(tc.input).toEqual(cardInput); // NOT clobbered by the sidecar
+		expect(tc.suspendPayload).toEqual(sidecar);
+		expect(tc.state).toBe('suspended');
+		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(msg.interactive?.runId).toBe('run-1');
+		expect(msg.status).toBe('awaitingUser');
+	});
+
+	it('renders a resolved display-only n8n_chat card when its tool result arrives', async () => {
+		// Display-only cards (no interactive components) never suspend — the
+		// card must still attach to the message when the tool resolves.
+		const cardInput = {
+			action: 'respond',
+			input: {
+				message: {
+					text: 'Snapshot:',
+					card: {
+						title: 'Account Snapshot',
+						components: [{ type: 'fields', fields: [{ label: 'ARR', value: '$1m' }] }],
+					},
+				},
+			},
+		};
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: cardInput,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				output: { ok: true },
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('show me a snapshot');
+		await nextTick();
+
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(msg.interactive?.resolvedAt).toBeDefined();
+		expect(msg.status).not.toBe('awaitingUser');
+	});
+
+	it('builder tool (ask_question) still sets tc.input from suspend payload and builds card', async () => {
+		const askInput = {
+			question: 'What is your preferred language?',
+			options: [
+				{ label: 'TypeScript', value: 'ts' },
+				{ label: 'Python', value: 'py' },
+			],
+		};
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-ask',
+				toolName: 'ask_question',
+				input: { question: 'placeholder' },
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-ask',
+					runId: 'run-ask',
+					toolName: 'ask_question',
+					input: askInput,
+				},
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('set language');
+		await nextTick();
+
+		const msg = hook.messages.value.at(-1)!;
+		const tc = msg.toolCalls!.find((t) => t.toolCallId === 'tc-ask')!;
+		expect(tc.input).toEqual(askInput); // overwritten from suspend payload (builder behaviour)
+		expect(tc.suspendPayload).toBeUndefined();
+		expect(tc.state).toBe('suspended');
+		expect(msg.interactive?.toolName).toBe('ask_question');
+		expect(msg.interactive?.runId).toBe('run-ask');
+		expect(msg.status).toBe('awaitingUser');
+	});
+});
+
+describe('useAgentChatStream — loadHistory', () => {
+	let originalFetch: typeof fetch;
+	let originalLocalStorage: typeof globalThis.localStorage | undefined;
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
+		originalLocalStorage = globalThis.localStorage;
+		vi.stubGlobal('localStorage', {
+			getItem: vi.fn(() => ''),
+		});
+		getChatMessagesMock.mockReset();
+		getTestChatMessagesMock.mockReset();
+	});
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		vi.stubGlobal('localStorage', originalLocalStorage);
+		vi.restoreAllMocks();
+	});
+
+	it('re-arms a suspended n8n_chat_action card from the chat history sidecar', async () => {
+		const cardInput = {
+			action: 'respond',
+			input: { message: { card: { components: [{ type: 'button', value: 'ok' }] } } },
+		};
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'm1',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: N8N_CHAT_ACTION_TOOL_NAME,
+							toolCallId: 'tc-1',
+							input: cardInput,
+							state: 'pending',
+						},
+					],
+				},
+			],
+			openSuspensions: [{ toolCallId: 'tc-1', runId: 'run-9' }],
+		});
+
+		// loadHistory is triggered on mount; we need a hook with endpoint='chat'
+		// (no continueId → getTestChatMessages path)
+		const hook = useAgentChatStream({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			endpoint: ref<'build' | 'chat'>('chat'),
+		});
+		await hook.loadHistory();
+
+		const msg = hook.messages.value.at(-1)!;
+		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
+		expect(msg.interactive?.runId).toBe('run-9');
+		expect(msg.status).toBe('awaitingUser');
 	});
 });

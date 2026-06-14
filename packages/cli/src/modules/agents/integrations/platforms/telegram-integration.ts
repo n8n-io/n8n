@@ -1,4 +1,5 @@
 import { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
@@ -57,7 +58,12 @@ export class TelegramIntegration extends AgentChatIntegration {
 		],
 	};
 
-	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
+	readonly supportedComponents: readonly RichCardComponentType[] = [
+		'section',
+		'button',
+		'divider',
+		'fields',
+	];
 
 	readonly actions: IntegrationAction[] = ['respond', 'send_dm'];
 

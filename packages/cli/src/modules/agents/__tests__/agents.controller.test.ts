@@ -1091,9 +1091,10 @@ describe('AgentsController agent resource', () => {
 describe('AgentsController chat message history', () => {
 	function makeController() {
 		const agentsService = mock<AgentsService>();
+		const agentsBuilderService = mock<AgentsBuilderService>();
 		const controller = new AgentsController(
 			agentsService,
-			mock<AgentsBuilderService>(),
+			agentsBuilderService,
 			mock<CredentialsService>(),
 			mock<ChatIntegrationService>(),
 			mock<AgentRepository>(),
@@ -1104,11 +1105,11 @@ describe('AgentsController chat message history', () => {
 			mock<AgentKnowledgeService>(),
 		);
 
-		return { controller, agentsService };
+		return { controller, agentsService, agentsBuilderService };
 	}
 
-	it('returns conversation history from the agents service', async () => {
-		const { controller, agentsService } = makeController();
+	it('returns conversation history envelope from the agents service', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
 		agentsService.getConversationHistory.mockResolvedValue([
 			{
@@ -1122,23 +1123,27 @@ describe('AgentsController chat message history', () => {
 				content: [{ type: 'text', text: 'Hi there' }],
 			},
 		]);
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue(null);
 
-		const messages = await controller.getChatMessages({
+		const result = await controller.getChatMessages({
 			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 		} as never);
 
-		expect(messages).toEqual([
-			{
-				id: 'execution-1:user',
-				role: 'user',
-				content: [{ type: 'text', text: 'Hello' }],
-			},
-			{
-				id: 'execution-1:assistant',
-				role: 'assistant',
-				content: [{ type: 'text', text: 'Hi there' }],
-			},
-		]);
+		expect(result).toEqual({
+			messages: [
+				{
+					id: 'execution-1:user',
+					role: 'user',
+					content: [{ type: 'text', text: 'Hello' }],
+				},
+				{
+					id: 'execution-1:assistant',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Hi there' }],
+				},
+			],
+			openSuspensions: [],
+		});
 		expect(agentsService.getConversationHistory).toHaveBeenCalledWith({
 			threadId: 'thread-1',
 			projectId: 'project-1',
@@ -1156,5 +1161,95 @@ describe('AgentsController chat message history', () => {
 				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
 			} as never),
 		).rejects.toThrow(NotFoundError);
+	});
+
+	it('returns open suspensions and merged messages for the test-chat endpoint', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsService.getTestChatMessages.mockResolvedValue([
+			{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'ping' }] },
+		] as never);
+		agentsBuilderService.findOpenCheckpointForThread.mockResolvedValue({
+			status: 'suspended',
+			pendingToolCalls: {
+				'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+			},
+			messageList: {
+				messages: [
+					{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'ping' }] },
+					{ id: 'm2', role: 'assistant', content: [{ type: 'text', text: 'pong' }] },
+				],
+			},
+		} as unknown as never);
+
+		const result = await controller.getTestChatMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+			user: { id: 'user-1' },
+		} as never);
+
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
+	});
+});
+
+describe('AgentsController builder message history', () => {
+	function makeController() {
+		const agentsService = mock<AgentsService>();
+		const agentsBuilderService = mock<AgentsBuilderService>();
+		const controller = new AgentsController(
+			agentsService,
+			agentsBuilderService,
+			mock<CredentialsService>(),
+			mock<ChatIntegrationService>(),
+			mock<AgentRepository>(),
+			mock<AgentExecutionService>(),
+			mock<ChatIntegrationRegistry>(),
+			mock<SlackAppSetupService>(),
+			mock<AgentTaskService>(),
+			mock<AgentKnowledgeService>(),
+		);
+
+		return { controller, agentsService, agentsBuilderService };
+	}
+
+	it('uses findOpenBuilderCheckpoint (builder-thread-scoped) not findOpenCheckpoint', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsBuilderService.getBuilderMessages.mockResolvedValue([]);
+		agentsBuilderService.findOpenBuilderCheckpoint.mockResolvedValue(null);
+
+		await controller.getBuilderMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+		} as never);
+
+		expect(agentsBuilderService.findOpenBuilderCheckpoint).toHaveBeenCalledWith('agent-1');
+		expect(agentsBuilderService.findOpenCheckpoint).not.toHaveBeenCalled();
+	});
+
+	it('merges checkpoint messages not yet in memory and surfaces open suspensions', async () => {
+		const { controller, agentsService, agentsBuilderService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentsBuilderService.getBuilderMessages.mockResolvedValue([
+			{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'build me something' }] },
+		] as never);
+		agentsBuilderService.findOpenBuilderCheckpoint.mockResolvedValue({
+			status: 'suspended',
+			pendingToolCalls: {
+				'tc-1': { toolCallId: 'tc-1', runId: 'run-1', suspended: true },
+			},
+			messageList: {
+				messages: [
+					{ id: 'm1', role: 'user', content: [{ type: 'text', text: 'build me something' }] },
+					{ id: 'm2', role: 'assistant', content: [{ type: 'text', text: 'on it' }] },
+				],
+			},
+		} as unknown as never);
+
+		const result = await controller.getBuilderMessages({
+			params: { projectId: 'project-1', agentId: 'agent-1' },
+		} as never);
+
+		expect(result.openSuspensions).toEqual([{ toolCallId: 'tc-1', runId: 'run-1' }]);
+		expect(result.messages.map((m) => m.id)).toEqual(['m1', 'm2']);
 	});
 });
