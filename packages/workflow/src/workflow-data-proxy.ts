@@ -100,14 +100,14 @@ export class WorkflowDataProxy {
 	 * @returns The full execution data or only the json property, depending on workflow 'binaryMode' setting
 	 */
 	private returnExecutionData(data: INodeExecutionData | INodeExecutionData[], fullItem = false) {
-		if (fullItem) return data;
-		if (this.workflow.settings?.binaryMode !== BINARY_MODE_COMBINED) return data;
+		if (fullItem) return deepCopy(data);
+		if (this.workflow.settings?.binaryMode !== BINARY_MODE_COMBINED) return deepCopy(data);
 
 		if (Array.isArray(data)) {
-			return data.map((i) => i.json);
+			return data.map((i) => deepCopy(i.json));
 		}
 
-		return data.json;
+		return deepCopy(data.json);
 	}
 
 	/**
@@ -588,7 +588,7 @@ export class WorkflowDataProxy {
 
 						if (['data', 'json'].includes(name)) {
 							// JSON-Data
-							return executionData[that.itemIndex].json;
+							return deepCopy(executionData[that.itemIndex].json);
 						}
 						if (name === 'binary') {
 							// Binary-Data

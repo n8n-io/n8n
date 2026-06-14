@@ -92,6 +92,30 @@ describe('test Set2, composeReturnItem', () => {
 		});
 	});
 
+	it('should clone object fields assigned to the return item', () => {
+		const fakeExecuteFunction = createMockExecuteFunction({});
+		const inputItem = { json: {}, pairedItem: { item: 0 } };
+		const sourceObject = {
+			string_one: 'value_1',
+			nested: {
+				string_two: 'value_2',
+			},
+		};
+
+		const result = composeReturnItem.call(
+			fakeExecuteFunction,
+			0,
+			inputItem,
+			{ object: sourceObject },
+			{ include: 'none' },
+			3.4,
+		);
+
+		((result.json.object as IDataObject).nested as IDataObject).string_two = 'new_value';
+
+		expect(sourceObject.nested.string_two).toBe('value_2');
+	});
+
 	it('should compose return item including selected fields', () => {
 		const fakeExecuteFunction = createMockExecuteFunction({ includeFields: 'input1, input2' });
 
@@ -137,6 +161,36 @@ describe('test Set2, composeReturnItem', () => {
 				item: 0,
 			},
 		});
+	});
+
+	it('should clone selected object fields from the input item', () => {
+		const fakeExecuteFunction = createMockExecuteFunction({ includeFields: 'object' });
+		const inputItem = {
+			json: {
+				object: {
+					string_one: 'value_1',
+					nested: {
+						string_two: 'value_2',
+					},
+				},
+			},
+			pairedItem: { item: 0 },
+		};
+
+		const result = composeReturnItem.call(
+			fakeExecuteFunction,
+			0,
+			inputItem,
+			{},
+			{ include: 'selected' },
+			3.4,
+		);
+
+		((result.json.object as IDataObject).nested as IDataObject).string_two = 'new_value';
+
+		expect(((inputItem.json.object as IDataObject).nested as IDataObject).string_two).toBe(
+			'value_2',
+		);
 	});
 
 	it('should include binary when expected in version <3.4', () => {
