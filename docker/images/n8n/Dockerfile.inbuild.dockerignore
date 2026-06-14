@@ -28,3 +28,10 @@ node_modules
 # Build-metrics harness output — must not enter the build context (self-busts COPY . .)
 docker-build-metrics.json
 *.jsonl
+
+# Not build inputs — keep them out of the context so editing CI/bake/docs
+# does not bust the build cache (COPY . .).
+.github
+docker-bake.hcl
+*.draft.md
+docker-build-consolidation-spec.draft.md

@@ -31,7 +31,7 @@ on:
       output:
         description: 'cacheonly | load | push.'
         type: string
-        default: 'cacheonly'
+        default: 'load'
 
 concurrency:
   group: build-images-${{ github.ref }}
@@ -72,7 +72,7 @@ jobs:
         with:
           target: ${{ inputs.target || 'n8n-inbuild' }}
           platform: ${{ inputs.platform || 'linux/amd64' }}
-          output: ${{ inputs.output || 'cacheonly' }}
+          output: ${{ inputs.output || 'load' }}
           turbo-api: ${{ env.TURBO_API }}
           turbo-team: ${{ env.TURBO_TEAM }}
           turbo-token: ${{ env.TURBO_TOKEN }}
