@@ -153,6 +153,54 @@ describe('createBuildWorkflowTool', () => {
 		expect(errorText).not.toContain('Code node');
 	});
 
+	it('adds HTTP raw-body guidance to repeated specifyBody validation errors', async () => {
+		const context = {
+			userId: 'user-1',
+			runId: 'run-1',
+			workflowService: {},
+			credentialService: {},
+			permissions: { createWorkflow: 'always_allow' },
+			logger: { warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+		const validationResult = {
+			workflow: { name: 'Generated workflow', nodes: [], connections: {} },
+			warnings: [
+				{
+					code: 'INVALID_PARAMETER',
+					nodeName: 'HTTP Request',
+					message:
+						'Node "EWS FindItem": parameters.specifyBody: This field is only allowed when one of: (sendBody=true, contentType="json") or (sendBody=true, contentType="form-urlencoded")',
+				},
+			],
+		};
+		const partitionedWarnings = {
+			errors: validationResult.warnings,
+			informational: [],
+		};
+		vi.mocked(parseAndValidate)
+			.mockReturnValueOnce(validationResult)
+			.mockReturnValueOnce(validationResult);
+		vi.mocked(partitionWarnings)
+			.mockReturnValueOnce(partitionedWarnings)
+			.mockReturnValueOnce(partitionedWarnings);
+
+		const tool = createBuildWorkflowTool(context);
+
+		await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'workflow code',
+			workItemId: 'wi-1',
+		});
+		const second = await executeTool<{ success: boolean; errors?: string[] }>(tool, {
+			code: 'workflow code',
+			workItemId: 'wi-1',
+		});
+		const errorText = (second.errors ?? []).join('\n');
+		expect(errorText).toContain('contentType="raw"');
+		expect(errorText).toContain('omit specifyBody');
+		expect(errorText).toContain('rawContentType');
+		expect(errorText).not.toContain('workflow-sdk-language.md');
+	});
+
 	it('uses workflowBuildContext work item as the repeat-failure key', async () => {
 		const workflowBuildContext = {
 			threadId: 'thread-1',

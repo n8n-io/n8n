@@ -1,0 +1,41 @@
+{
+	"description": "The builder should configure HTTP Request raw SOAP/XML bodies without setting specifyBody, so repeated validation failures do not block Exchange EWS workflows.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning, read all emails received in the last 24 hours from Gmail, use OpenAI to extract action items and prioritize them, then send me a structured daily digest email summarizing what needs my attention."
+		},
+		{
+			"role": "assistant",
+			"text": "Got it. Should I send the digest via Gmail, or do you use another mail system?"
+		},
+		{
+			"role": "user",
+			"text": "Actually replace Gmail with our Exchange server over EWS - fetch and send mail via SOAP requests to https://mail.example.com/EWS/Exchange.asmx using HTTP Request nodes with raw XML bodies."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["build", "schedule", "http-request", "raw-body", "soap", "parameter-validation"],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"messageBudget": 4,
+	"buildExpectations": [
+		"The final workflow uses HTTP Request nodes for the Exchange EWS mail fetch and digest delivery, not Gmail nodes.",
+		"The Exchange EWS HTTP Request nodes use contentType='raw', put SOAP XML directly in the body field, set rawContentType to an XML media type, and omit specifyBody instead of using expr() to bypass validation."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path-raw-soap-body",
+			"description": "The HTTP Request node is built with a raw XML body and executes a successful EWS SOAP fetch.",
+			"dataSetup": "Assume OpenAI credentials are present and the user has swapped the mail backend to Exchange EWS at https://mail.example.com/EWS/Exchange.asmx. The Schedule trigger fires once each morning. The EWS HTTP Request node for the FindItem SOAP call is mocked to return HTTP 200 with a SOAP XML envelope containing two messages: subject 'Q3 budget sign-off needed' from 'jordan@example.com', and subject 'Contract renewal - action required' from 'taylor@example.com'. The OpenAI Chat Model node returns a prioritized action-item summary mentioning both 'Q3 budget sign-off' and 'Contract renewal'. The EWS HTTP Request node for the SendItem SOAP call is mocked to return HTTP 200.",
+			"successCriteria": "The workflow contains HTTP Request nodes for EWS fetch and send. Each EWS node that sends SOAP XML is configured with sendBody=true, contentType='raw', rawContentType set to an XML media type such as 'text/xml' or 'application/xml', and the SOAP XML placed directly in the body field. These nodes do NOT have specifyBody set. The workflow executes without any INVALID_PARAMETER validation error, the FindItem HTTP Request returns the mocked SOAP response, and the final digest content references both 'Q3 budget sign-off' and 'Contract renewal'.",
+			"requires": "mock-server"
+		},
+		{
+			"name": "raw-body-param-validation-isolated",
+			"description": "Load-bearing: the built HTTP Request node must be parameter-valid for a raw content type.",
+			"dataSetup": "Assume the user has requested the Exchange EWS SOAP call described above. The submit/validation layer enforces n8n's HTTP Request parameter rules: specifyBody is only a valid parameter when contentType is 'json' or 'form-urlencoded', and is rejected with INVALID_PARAMETER when contentType='raw'. No external call needs to succeed for this assertion; the focus is the persisted node configuration. The EWS endpoint is https://mail.example.com/EWS/Exchange.asmx with raw SOAP XML bodies.",
+			"successCriteria": "The persisted HTTP Request nodes for EWS SOAP calls pass parameter validation: contentType is 'raw', sendBody=true, rawContentType is an XML media type, XML lives directly in the body field, and specifyBody is absent/unset. The workflow submits successfully with no INVALID_PARAMETER error on these nodes, confirming the builder produced valid raw-body configuration without an expr() hack to bypass enum constraints."
+		}
+	]
+}
