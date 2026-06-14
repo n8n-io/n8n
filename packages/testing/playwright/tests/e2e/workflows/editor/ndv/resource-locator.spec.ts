@@ -35,7 +35,7 @@ test.describe(
 
 			await expect(n8n.ndv.getResourceLocator('documentId')).toBeVisible();
 
-			await n8n.ndv.getResourceLocatorInput('documentId').click();
+			await n8n.ndv.openResourceLocator('documentId');
 
 			await expect(n8n.ndv.getResourceLocatorErrorMessage('documentId')).toContainText(
 				NO_CREDENTIALS_MESSAGE,
@@ -50,7 +50,7 @@ test.describe(
 
 			await expect(n8n.ndv.getResourceLocator('documentId')).toBeVisible();
 
-			await n8n.ndv.getResourceLocatorInput('documentId').click();
+			await n8n.ndv.openResourceLocator('documentId');
 
 			await expect(n8n.ndv.getResourceLocatorErrorMessage('documentId')).toContainText(
 				NO_CREDENTIALS_MESSAGE,
@@ -90,7 +90,7 @@ test.describe(
 			const closeButton = n8n.page.locator('.el-message-box').locator('button:has-text("Close")');
 			await closeButton.click();
 
-			await n8n.ndv.getResourceLocatorInput('documentId').click();
+			await n8n.ndv.openResourceLocator('documentId');
 
 			await expect(n8n.ndv.getResourceLocatorErrorMessage('documentId')).toContainText(
 				INVALID_CREDENTIALS_MESSAGE,
@@ -101,7 +101,7 @@ test.describe(
 			await n8n.canvas.addNode('GitHub', { closeNDV: false, trigger: 'On pull request' });
 
 			await expect(n8n.ndv.getResourceLocator('owner')).toBeVisible();
-			await n8n.ndv.getResourceLocatorInput('owner').click();
+			await n8n.ndv.openResourceLocator('owner');
 
 			await expect(n8n.ndv.getResourceLocatorErrorMessage('owner')).toContainText(
 				NO_CREDENTIALS_MESSAGE,
@@ -123,12 +123,8 @@ test.describe(
 		test('should retrieve list options when other params throw errors', async ({ n8n }) => {
 			await n8n.canvas.addNode(E2E_TEST_NODE_NAME, { closeNDV: false, action: 'Resource Locator' });
 
-			await n8n.ndv.getResourceLocatorInput('rlc').click();
-
-			await expect(n8n.ndv.getResourceLocatorItems().first()).toBeVisible();
-			const visiblePopper = n8n.ndv.getVisiblePopper();
-			await expect(visiblePopper).toHaveCount(1);
-			await expect(visiblePopper.getByTestId('rlc-item')).toHaveCount(5);
+			await n8n.ndv.openResourceLocator('rlc');
+			await expect(n8n.ndv.getResourceLocatorItems()).toHaveCount(5);
 
 			await n8n.ndv.setInvalidExpression({ fieldName: 'fieldId' });
 
@@ -137,12 +133,9 @@ test.describe(
 			// wait for the expression to be evaluated and show the error
 			await expect(n8n.ndv.getParameterInputHint()).toContainText('ERROR');
 
-			await n8n.ndv.getResourceLocatorInput('rlc').click();
-
-			await expect(n8n.ndv.getResourceLocatorItems().first()).toBeVisible();
-			const visiblePopperAfter = n8n.ndv.getVisiblePopper();
-			await expect(visiblePopperAfter).toHaveCount(1);
-			await expect(visiblePopperAfter.getByTestId('rlc-item')).toHaveCount(5);
+			// The list options must still load despite the sibling parameter error.
+			await n8n.ndv.openResourceLocator('rlc');
+			await expect(n8n.ndv.getResourceLocatorItems()).toHaveCount(5);
 		});
 	},
 );
