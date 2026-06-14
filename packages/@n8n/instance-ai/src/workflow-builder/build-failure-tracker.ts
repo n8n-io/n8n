@@ -37,8 +37,15 @@ function repeatedFailureGuidance(errors: string[]): string | undefined {
 	const text = errors.join('\n').toLowerCase();
 	if (
 		text.includes('invalid_parameter') &&
-		(text.includes('http request') || text.includes('httprequest')) &&
-		text.includes('specifybody')
+		(text.includes('http request') ||
+			text.includes('httprequest') ||
+			(text.includes('raw') && text.includes('body') && text.includes('xml'))) &&
+		(text.includes('specifybody') ||
+			text.includes('jsonbody') ||
+			text.includes('body field') ||
+			text.includes('body') ||
+			text.includes('json body') ||
+			(text.includes('xml') && text.includes('json')))
 	) {
 		return HTTP_REQUEST_RAW_BODY_GUIDANCE;
 	}

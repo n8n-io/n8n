@@ -833,6 +833,11 @@ type MergeableDisplayOptions = {
 	hide?: Record<string, unknown[]>;
 };
 
+type SchemaPropertyGroup = {
+	name: string;
+	variants: NodeProperty[];
+};
+
 /**
  * Merge two displayOptions objects by combining their show/hide conditions.
  * Used when multiple properties share the same name but have different visibility conditions.
@@ -940,6 +945,97 @@ export function mergePropertiesByName(properties: NodeProperty[]): Map<string, N
 	return propsByName;
 }
 
+function sameDisplayOptions(
+	a: NodeProperty['displayOptions'] | undefined,
+	b: NodeProperty['displayOptions'] | undefined,
+): boolean {
+	return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+}
+
+function cloneProperty(prop: NodeProperty): NodeProperty {
+	return {
+		...prop,
+		options: prop.options ? [...prop.options] : undefined,
+	};
+}
+
+function mergeNestedOptions(target: NodeProperty, source: NodeProperty): void {
+	if (
+		(source.type !== 'collection' && source.type !== 'fixedCollection') ||
+		!source.options ||
+		!target.options
+	) {
+		return;
+	}
+
+	const existingOptionNames = new Set(target.options.map((option) => option.name));
+	for (const option of source.options) {
+		if (!existingOptionNames.has(option.name)) {
+			target.options.push(option);
+		}
+	}
+}
+
+function groupPropertiesForSchema(
+	properties: NodeProperty[],
+	discriminatorKeys: string[],
+): SchemaPropertyGroup[] {
+	const groupsByName = new Map<string, SchemaPropertyGroup>();
+
+	for (const prop of properties) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
+			continue;
+		}
+
+		const strippedDisplayOptions = prop.displayOptions
+			? stripDiscriminatorKeysFromDisplayOptions(prop.displayOptions, discriminatorKeys)
+			: undefined;
+		const normalized = cloneProperty({
+			...prop,
+			displayOptions: strippedDisplayOptions,
+		});
+
+		const group = groupsByName.get(normalized.name);
+		if (!group) {
+			groupsByName.set(normalized.name, {
+				name: normalized.name,
+				variants: [normalized],
+			});
+			continue;
+		}
+
+		const matchingVariant = group.variants.find(
+			(variant) =>
+				variant.type === normalized.type &&
+				sameDisplayOptions(variant.displayOptions, normalized.displayOptions),
+		);
+		if (matchingVariant) {
+			mergeNestedOptions(matchingVariant, normalized);
+			continue;
+		}
+
+		group.variants.push(normalized);
+	}
+
+	return [...groupsByName.values()].map((group) => {
+		const unconditional = group.variants.find((variant) => !variant.displayOptions);
+		if (!unconditional || group.variants.length === 1) {
+			return group;
+		}
+
+		for (const variant of group.variants) {
+			if (variant !== unconditional) {
+				mergeNestedOptions(unconditional, variant);
+			}
+		}
+
+		return {
+			name: group.name,
+			variants: [unconditional],
+		};
+	});
+}
+
 /**
  * Generate a conditional schema property line using resolveSchema helper.
  * Used for properties that have displayOptions (conditionally shown/hidden fields).
@@ -969,6 +1065,48 @@ export function generateConditionalSchemaLine(
 		Object.keys(defaults).length > 0 ? `, defaults: ${JSON.stringify(defaults)}` : '';
 
 	return `${INDENT}${propName}: resolveSchema({ parameters, schema: ${zodSchema}, required: ${required}, displayOptions: ${displayOptionsStr}${defaultsStr} }),`;
+}
+
+function generateSchemaLineForProperty(prop: NodeProperty, allProperties: NodeProperty[]): string {
+	if (prop.displayOptions) {
+		return generateConditionalSchemaLine(prop, allProperties);
+	}
+
+	const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
+	return propLine ? `${INDENT}${propLine}` : '';
+}
+
+function generateOneOfSchemaLine(variants: NodeProperty[], allProperties: NodeProperty[]): string {
+	const renderedVariants = variants
+		.map((variant) => {
+			const zodSchema = mapPropertyToZodSchema(variant);
+			if (!zodSchema || !variant.displayOptions) return undefined;
+
+			const defaults = extractDefaultsForDisplayOptions(variant.displayOptions, allProperties);
+			const defaultsStr =
+				Object.keys(defaults).length > 0 ? `, defaults: ${JSON.stringify(defaults)}` : '';
+
+			return `{ schema: ${zodSchema}, required: ${!isPropertyOptional(variant)}, displayOptions: ${JSON.stringify(variant.displayOptions)}${defaultsStr} }`;
+		})
+		.filter((variant): variant is string => variant !== undefined);
+
+	if (renderedVariants.length === 0) {
+		return '';
+	}
+
+	const propName = quotePropertyName(variants[0].name);
+	return `${INDENT}${propName}: resolveOneOfSchemas({ parameters, variants: [${renderedVariants.join(', ')}] }),`;
+}
+
+function generateSchemaLineForGroup(
+	group: SchemaPropertyGroup,
+	allProperties: NodeProperty[],
+): string {
+	if (group.variants.length === 1) {
+		return generateSchemaLineForProperty(group.variants[0], allProperties);
+	}
+
+	return generateOneOfSchemaLine(group.variants, allProperties);
 }
 
 // =============================================================================
@@ -1141,6 +1279,9 @@ export function generateSingleVersionSchemaFile(
 	const aiInputTypes = extractAIInputTypesFromBuilderHint(filteredNode);
 	const subnodeSchemaImports = getSubnodeSchemaImports(aiInputTypes);
 	const hasAiInputs = aiInputTypes.length > 0;
+	const propertyGroups = groupPropertiesForSchema(filteredProperties, ['@version']);
+	const allPropsArray = propertyGroups.flatMap((group) => group.variants);
+	const needsResolveOneOfSchemas = propertyGroups.some((group) => group.variants.length > 1);
 
 	// Check if we need resolveSchema (properties with displayOptions or conditional AI inputs)
 	const needsResolveSchema =
@@ -1166,6 +1307,9 @@ export function generateSingleVersionSchemaFile(
 	// Add resolveSchema if we need it
 	if (needsResolveSchema) {
 		helpers.push('resolveSchema');
+	}
+	if (needsResolveOneOfSchemas) {
+		helpers.push('resolveOneOfSchemas');
 	}
 
 	// Add subnode schema imports if this is an AI node
@@ -1262,37 +1406,10 @@ export function generateSingleVersionSchemaFile(
 	lines.push(`${INDENT}// Parameters schema`);
 	lines.push(`${INDENT}const parametersSchema = z.object({`);
 
-	// Group properties by name, merging displayOptions and nested options for duplicates
-	const propsByName = mergePropertiesByName(filteredProperties);
-	const allPropsArray = Array.from(propsByName.values());
-
-	for (const prop of allPropsArray) {
-		if (prop.displayOptions) {
-			// Strip @version since it's implicit in the file path
-			const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(prop.displayOptions, [
-				'@version',
-			]);
-			if (strippedDisplayOptions) {
-				const propWithStripped: NodeProperty = {
-					...prop,
-					displayOptions: strippedDisplayOptions,
-				};
-				const propLine = generateConditionalSchemaLine(propWithStripped, allPropsArray);
-				if (propLine) {
-					lines.push(INDENT + propLine);
-				}
-			} else {
-				// No remaining conditions after stripping @version - use static schema
-				const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-				if (propLine) {
-					lines.push(INDENT + propLine);
-				}
-			}
-		} else {
-			const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-			if (propLine) {
-				lines.push(INDENT + propLine);
-			}
+	for (const group of propertyGroups) {
+		const propLine = generateSchemaLineForGroup(group, allPropsArray);
+		if (propLine) {
+			lines.push(INDENT + propLine);
 		}
 	}
 
@@ -1384,6 +1501,9 @@ export function generateDiscriminatorSchemaFile(
 		...Object.keys(combo).filter((k) => combo[k] !== undefined),
 		'@version',
 	];
+	const propertyGroups = groupPropertiesForSchema(props, discriminatorKeys);
+	const allPropsArray = propertyGroups.flatMap((group) => group.variants);
+	const needsResolveOneOfSchemas = propertyGroups.some((group) => group.variants.length > 1);
 
 	// Check if any properties have remaining displayOptions after stripping discriminators
 	const hasRemainingDisplayOptions = props.some((prop) => {
@@ -1423,6 +1543,9 @@ export function generateDiscriminatorSchemaFile(
 	// Add resolveSchema if properties have displayOptions OR AI inputs have displayOptions
 	if (hasRemainingDisplayOptions || hasConditionalAiInputs) {
 		helpers.push('resolveSchema');
+	}
+	if (needsResolveOneOfSchemas) {
+		helpers.push('resolveOneOfSchemas');
 	}
 
 	// Add subnode schema imports if this combo has AI inputs
@@ -1536,38 +1659,10 @@ export function generateDiscriminatorSchemaFile(
 		}
 	}
 
-	// Group properties by name, merging displayOptions and nested options for duplicates
-	const propsByName = mergePropertiesByName(props);
-
-	// Generate schema for each merged property
-	// Convert propsByName to array for extractDefaultsForDisplayOptions
-	const allPropsArray = Array.from(propsByName.values());
-	for (const prop of allPropsArray) {
-		if (prop.displayOptions) {
-			const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(
-				prop.displayOptions,
-				discriminatorKeys,
-			);
-			if (strippedDisplayOptions) {
-				const propWithStrippedOptions: NodeProperty = {
-					...prop,
-					displayOptions: strippedDisplayOptions,
-				};
-				const propLine = generateConditionalSchemaLine(propWithStrippedOptions, allPropsArray);
-				if (propLine) {
-					lines.push(INDENT.repeat(2) + propLine);
-				}
-			} else {
-				const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-				if (propLine) {
-					lines.push(INDENT.repeat(2) + propLine);
-				}
-			}
-		} else {
-			const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-			if (propLine) {
-				lines.push(INDENT.repeat(2) + propLine);
-			}
+	for (const group of propertyGroups) {
+		const propLine = generateSchemaLineForGroup(group, allPropsArray);
+		if (propLine) {
+			lines.push(INDENT.repeat(2) + propLine);
 		}
 	}
 
