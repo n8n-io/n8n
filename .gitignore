@@ -77,5 +77,6 @@ packages/cli/src/commands/export/outputs
 .conductor
 .n8n
 lefthook-local.yml
+IMPROVEMENTS.md
 .playwright-mcp
 stryker.log
