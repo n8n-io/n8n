@@ -6,7 +6,7 @@
     "clean": "rimraf dist .turbo",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "build": "cm-buildhelper src/html.ts",
+    "build": "pnpm grammar:build && cm-buildhelper src/html.ts",
     "build:unchecked": "pnpm run build",
     "grammar:build": "lezer-generator src/grammar/html.grammar -o src/grammar/parser && rollup -c src/grammar/rollup.config.js",
     "grammar:build-debug": "lezer-generator src/grammar/html.grammar --names -o src/grammar/parser && rollup -c src/grammar/rollup.config.js",
