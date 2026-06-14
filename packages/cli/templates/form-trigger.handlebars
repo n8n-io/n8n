@@ -1024,6 +1024,22 @@
 						headers,
 					})
 						.then(async function (response) {
+							if (response.status !== 200) {
+								form.style.display = 'none';
+								document.querySelector('#submitted-form').style.display = 'block';
+								document.querySelector('#submitted-header').textContent = 'Problem submitting response';
+								let errorMessage = 'Please try again or contact support if the problem persists';
+								if (response.status === 413) {
+									errorMessage = 'The files you are trying to upload are too large.';
+								}
+								document.querySelector('#submitted-content').textContent = errorMessage;
+								
+								// Stop polling for execution status
+								clearTimeout(timeoutId);
+								interval = 0;
+								return;
+							}
+
 							const useResponseData = document.getElementById("useResponseData").value;
 
 							if (useResponseData === "true") {
@@ -1081,19 +1097,6 @@
 									form.style.display = 'none';
 									document.querySelector('#submitted-form').style.display = 'block';
 								}
-							} else {
-								form.style.display = 'none';
-								document.querySelector('#submitted-form').style.display = 'block';
-								document.querySelector('#submitted-header').textContent = 'Problem submitting response';
-								let errorMessage = 'Please try again or contact support if the problem persists';
-								if (response.status === 413) {
-									errorMessage = 'The files you are trying to upload are too large.';
-								}
-								document.querySelector('#submitted-content').textContent = errorMessage;
-								
-								// Stop polling for execution status
-								clearTimeout(timeoutId);
-								interval = 0;
 							}
 
 							return;
