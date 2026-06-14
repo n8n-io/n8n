@@ -2,24 +2,33 @@ import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } fr
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
-import type {
-	ExecutionError,
-	IRun,
-	ITaskData,
-	IWorkflowBase,
-	IWorkflowSettings,
-	RelatedExecution,
+import {
+	NodeConnectionTypes,
+	UnexpectedError,
+	type ExecutionError,
+	type IConnections,
+	type INode,
+	type INodeType,
+	type INodeTypes,
+	type INodeTypeDescription,
+	type IRun,
+	type ITaskData,
+	type IWorkflowBase,
+	type IWorkflowSettings,
+	type RelatedExecution,
 } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
 import {
+	extendWorkflowNodeGroups,
 	getLastExecutedNodeData,
 	getLastExecutedNodeRuns,
 	getVariables,
 	preserveInputOverride,
 	removeDefaultValues,
+	repairWorkflowNodeGroups,
 	replaceInvalidCredentials,
 	shouldRestartParentExecution,
 	updateParentExecutionWithChildResults,
@@ -447,71 +456,421 @@ describe('validateWorkflowStructure', () => {
 	});
 });
 
+const makeGroupNode = (id: string, type = 'test') =>
+	({ id, name: id, type, typeVersion: 1, position: [0, 0], parameters: {} }) as INode;
+
+const makeNodeTypes = (descriptions: Record<string, Partial<INodeTypeDescription>>): INodeTypes =>
+	({
+		getByNameAndVersion(type: string) {
+			const description = descriptions[type];
+			if (!description) throw new UnexpectedError(`Unknown node type "${type}"`);
+			return { description } as INodeType;
+		},
+	}) as INodeTypes;
+
+const mainConnections = (...pairs: Array<[string, string]>): IConnections =>
+	pairs.reduce<IConnections>((connections, [from, to]) => {
+		const existing = connections[from]?.main?.[0] ?? [];
+		return {
+			...connections,
+			[from]: {
+				main: [[...existing, { node: to, type: NodeConnectionTypes.Main, index: 0 }]],
+			},
+		};
+	}, {});
+
 describe('validateWorkflowNodeGroups', () => {
-	const makeNode = (id: string) =>
-		({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+	const makeNode = makeGroupNode;
+
+	const nodeTypeDescriptions: Record<string, Partial<INodeTypeDescription>> = {
+		test: {
+			group: ['transform'],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+		},
+		testTrigger: { group: ['trigger'], inputs: [], outputs: [NodeConnectionTypes.Main] },
+	};
+
+	const nodeTypes = makeNodeTypes(nodeTypeDescriptions);
 
 	it('should pass when nodeGroups is undefined', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }),
+			validateWorkflowNodeGroups(
+				{ nodes: [makeNode('n1')], connections: {}, nodeGroups: undefined },
+				nodeTypes,
+			),
 		).not.toThrow();
 	});
 
 	it('should pass when nodeGroups is empty', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }),
+			validateWorkflowNodeGroups(
+				{ nodes: [makeNode('n1')], connections: {}, nodeGroups: [] },
+				nodeTypes,
+			),
 		).not.toThrow();
 	});
 
-	it('should pass when all nodeIds reference existing nodes', () => {
+	it('should pass when all nodeIds reference connected existing nodes', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1'), makeNode('n2')],
-				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2')],
+					connections: mainConnections(['n1', 'n2']),
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
+				},
+				nodeTypes,
+			),
+		).not.toThrow();
+	});
+
+	it('should pass for a single-node group', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }],
+				},
+				nodeTypes,
+			),
 		).not.toThrow();
 	});
 
 	it('should throw when a nodeId does not reference an existing node', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1')],
-				nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
+				},
+				nodeTypes,
+			),
 		).toThrow('Group "My Group" references node ID "n999" that does not exist in the workflow.');
 	});
 
 	it('should throw for the first invalid nodeId found', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [],
-				nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
+				},
+				nodeTypes,
+			),
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});
 
 	it('should throw when a node belongs to multiple groups', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1'), makeNode('n2')],
-				nodeGroups: [
-					{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
-					{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
-				],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2')],
+					connections: mainConnections(['n1', 'n2']),
+					nodeGroups: [
+						{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
+						{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
+					],
+				},
+				nodeTypes,
+			),
 		).toThrow('Node "n1" belongs to multiple groups: "Group A" and "Group B".');
 	});
 
 	it('should throw when group names are not unique', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					connections: {},
+					nodeGroups: [
+						{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
+						{ id: 'g2', name: 'Duplicate', nodeIds: [] },
+					],
+				},
+				nodeTypes,
+			),
+		).toThrow('Duplicate node group name "Duplicate".');
+	});
+
+	it('should throw when a group has no nodes', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: [] }],
+				},
+				nodeTypes,
+			),
+		).toThrow('Group "Empty Group" must contain at least one node.');
+	});
+
+	it('should throw when grouped nodes are not connected to each other', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2'), makeNode('n3')],
+					connections: mainConnections(['n1', 'n2'], ['n2', 'n3']),
+					nodeGroups: [{ id: 'g1', name: 'Split Group', nodeIds: ['n1', 'n3'] }],
+				},
+				nodeTypes,
+			),
+		).toThrow('The nodes in group "Split Group" are not all connected to each other.');
+	});
+
+	it('should throw when a group contains a trigger node', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('t1', 'testTrigger'), makeNode('n2')],
+					connections: mainConnections(['t1', 'n2']),
+					nodeGroups: [{ id: 'g1', name: 'Trigger Group', nodeIds: ['t1', 'n2'] }],
+				},
+				nodeTypes,
+			),
+		).toThrow('Group "Trigger Group" contains trigger node(s) "t1".');
+	});
+
+	it('should throw when a non-main connection crosses the group boundary', () => {
+		const connections: IConnections = {
+			...mainConnections(['n1', 'n2']),
+			a1: { ai_tool: [[{ node: 'n1', type: NodeConnectionTypes.AiTool, index: 0 }]] },
+		};
+
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('a1'), makeNode('n1'), makeNode('n2')],
+					connections,
+					nodeGroups: [{ id: 'g1', name: 'Tool Group', nodeIds: ['n1', 'n2'] }],
+				},
+				nodeTypes,
+			),
+		).toThrow(
+			'The "ai_tool" connection between "a1" and "n1" crosses the boundary of group "Tool Group".',
+		);
+	});
+
+	it('should throw when a group has multiple entry points', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('o1'), makeNode('o2'), makeNode('x'), makeNode('y')],
+					connections: mainConnections(['o1', 'x'], ['o2', 'y']),
+					nodeGroups: [{ id: 'g1', name: 'Wide Group', nodeIds: ['x', 'y'] }],
+				},
+				nodeTypes,
+			),
+		).toThrow('Group "Wide Group" has multiple entry points');
+	});
+
+	it('should throw when a connection from outside goes to a non-entry node', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('o1'), makeNode('x'), makeNode('y')],
+					connections: mainConnections(['x', 'y'], ['o1', 'y']),
+					nodeGroups: [{ id: 'g1', name: 'Side Group', nodeIds: ['x', 'y'] }],
+				},
+				nodeTypes,
+			),
+		).toThrow('Node "y" in group "Side Group" receives a connection from outside the group.');
+	});
+
+	it('should tolerate unknown node types and still validate connectivity', () => {
+		const nodes = [makeNode('u1', 'unknown-type'), makeNode('u2', 'unknown-type')];
+
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes,
+					connections: mainConnections(['u1', 'u2']),
+					nodeGroups: [{ id: 'g1', name: 'Unknown Group', nodeIds: ['u1', 'u2'] }],
+				},
+				nodeTypes,
+			),
+		).not.toThrow();
+
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes,
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Unknown Group', nodeIds: ['u1', 'u2'] }],
+				},
+				nodeTypes,
+			),
+		).toThrow('The nodes in group "Unknown Group" are not all connected to each other.');
+	});
+});
+
+describe('repairWorkflowNodeGroups', () => {
+	const makeNode = makeGroupNode;
+
+	it('should return undefined when nodeGroups is undefined', () => {
+		expect(
+			repairWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }),
+		).toBeUndefined();
+	});
+
+	it('should return undefined when nodeGroups is empty', () => {
+		expect(repairWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] })).toBeUndefined();
+	});
+
+	it('should return undefined when all grouped nodes exist', () => {
+		expect(
+			repairWorkflowNodeGroups({
+				nodes: [makeNode('n1'), makeNode('n2')],
+				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
+			}),
+		).toBeUndefined();
+	});
+
+	it('should drop node IDs that no longer exist from a group', () => {
+		expect(
+			repairWorkflowNodeGroups({
+				nodes: [makeNode('n1')],
+				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
+			}),
+		).toEqual([{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }]);
+	});
+
+	it('should dissolve a group whose nodes are all gone', () => {
+		expect(
+			repairWorkflowNodeGroups({
 				nodes: [makeNode('n1')],
 				nodeGroups: [
-					{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
-					{ id: 'g2', name: 'Duplicate', nodeIds: [] },
+					{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
+					{ id: 'g2', name: 'Group B', nodeIds: ['n2'] },
 				],
 			}),
-		).toThrow('Duplicate node group name "Duplicate".');
+		).toEqual([{ id: 'g1', name: 'Group A', nodeIds: ['n1'] }]);
+	});
+
+	it('should dissolve a group that is already empty', () => {
+		expect(
+			repairWorkflowNodeGroups({
+				nodes: [makeNode('n1')],
+				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [] }],
+			}),
+		).toEqual([]);
+	});
+});
+
+describe('extendWorkflowNodeGroups', () => {
+	const makeNode = makeGroupNode;
+
+	const nodeTypes = makeNodeTypes({
+		test: {
+			group: ['transform'],
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+		},
+	});
+
+	it('should return undefined when there are no candidate nodes', () => {
+		expect(
+			extendWorkflowNodeGroups(
+				{
+					nodes: [makeNode('A'), makeNode('B')],
+					connections: {},
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['A', 'B'] }],
+				},
+				new Set(),
+				nodeTypes,
+			),
+		).toBeUndefined();
+	});
+
+	it('should return undefined when all groups are already valid', () => {
+		expect(
+			extendWorkflowNodeGroups(
+				{
+					nodes: [makeNode('A'), makeNode('B'), makeNode('M')],
+					connections: mainConnections(['A', 'B'], ['B', 'M']),
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['A', 'B'] }],
+				},
+				new Set(['M']),
+				nodeTypes,
+			),
+		).toBeUndefined();
+	});
+
+	it('should absorb a node inserted between two grouped nodes', () => {
+		expect(
+			extendWorkflowNodeGroups(
+				{
+					nodes: [makeNode('A'), makeNode('M'), makeNode('B')],
+					connections: mainConnections(['A', 'M'], ['M', 'B']),
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['A', 'B'] }],
+				},
+				new Set(['M']),
+				nodeTypes,
+			),
+		).toEqual([{ id: 'g1', name: 'Group 1', nodeIds: ['A', 'B', 'M'] }]);
+	});
+
+	it('should absorb a chain of inserted nodes', () => {
+		expect(
+			extendWorkflowNodeGroups(
+				{
+					nodes: [makeNode('A'), makeNode('M1'), makeNode('M2'), makeNode('B')],
+					connections: mainConnections(['A', 'M1'], ['M1', 'M2'], ['M2', 'B']),
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['A', 'B'] }],
+				},
+				new Set(['M1', 'M2']),
+				nodeTypes,
+			),
+		).toEqual([{ id: 'g1', name: 'Group 1', nodeIds: ['A', 'B', 'M1', 'M2'] }]);
+	});
+
+	it('should not absorb new nodes that are not needed to keep the group valid', () => {
+		// N hangs off B and is tried first (node order), but the shrink pass drops it
+		expect(
+			extendWorkflowNodeGroups(
+				{
+					nodes: [makeNode('A'), makeNode('N'), makeNode('M'), makeNode('B')],
+					connections: mainConnections(['A', 'M'], ['M', 'B'], ['B', 'N']),
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['A', 'B'] }],
+				},
+				new Set(['N', 'M']),
+				nodeTypes,
+			),
+		).toEqual([{ id: 'g1', name: 'Group 1', nodeIds: ['A', 'B', 'M'] }]);
+	});
+
+	it('should leave a group unchanged when extension cannot make it valid', () => {
+		expect(
+			extendWorkflowNodeGroups(
+				{
+					nodes: [makeNode('A'), makeNode('M'), makeNode('B')],
+					connections: mainConnections(['A', 'M']),
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['A', 'B'] }],
+				},
+				new Set(['M']),
+				nodeTypes,
+			),
+		).toBeUndefined();
+	});
+
+	it('should not absorb nodes that belong to another group', () => {
+		expect(
+			extendWorkflowNodeGroups(
+				{
+					nodes: [makeNode('A'), makeNode('M'), makeNode('B')],
+					connections: mainConnections(['A', 'M'], ['M', 'B']),
+					nodeGroups: [
+						{ id: 'g1', name: 'Group 1', nodeIds: ['A', 'B'] },
+						{ id: 'g2', name: 'Group 2', nodeIds: ['M'] },
+					],
+				},
+				new Set(['M']),
+				nodeTypes,
+			),
+		).toBeUndefined();
 	});
 });
 

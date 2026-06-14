@@ -7,6 +7,7 @@ import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workf
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
 import { TagService } from '@/services/tag.service';
@@ -418,6 +419,78 @@ describe('update-workflow MCP tool', () => {
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
 			expect(response.error).toBe("Workflow not found or you don't have permission to access it.");
+		});
+
+		test('returns a recoverable error when the update would leave a node group invalid', async () => {
+			updateMock.mockRejectedValueOnce(
+				new BadRequestError(
+					'The nodes in group "My Group" are not all connected to each other. Grouped nodes must form a single connected sequence.',
+				),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'removeConnection', source: 'A', target: 'B' }],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain('group "My Group"');
+		});
+
+		test('dissolves a node group via removeNodeGroup', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [
+						{ id: 'g1', name: 'My Group', nodeIds: ['a'] },
+						{ id: 'g2', name: 'Other Group', nodeIds: ['b'] },
+					],
+				}),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'removeNodeGroup', groupName: 'My Group' }],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toEqual([{ id: 'g2', name: 'Other Group', nodeIds: ['b'] }]);
+		});
+
+		test('returns an error for removeNodeGroup with an unknown group name', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['a'] }],
+				}),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'removeNodeGroup', groupName: 'Missing' }],
+			});
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain("node group 'Missing' not found");
+			expect(updateMock).not.toHaveBeenCalled();
+		});
+
+		test('does not touch nodeGroups when no group operations run', async () => {
+			findWorkflowMock.mockResolvedValue(
+				Object.assign(buildExistingWorkflow(), {
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['a'] }],
+				}),
+			);
+
+			const result = await callHandler({
+				workflowId: 'wf-1',
+				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+			});
+
+			expect(result.isError).toBeUndefined();
+			const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(saved.nodeGroups).toBeUndefined();
 		});
 
 		test('tracks telemetry on success with op metadata', async () => {

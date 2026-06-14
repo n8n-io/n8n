@@ -88,6 +88,14 @@ export const buildWorkflowInputSchema = z.object({
 			'Set true when saving a supporting sub-workflow that will be referenced by the main workflow. ' +
 				'In a planned build task, this completes the task only when the task itself is marked isSupportingWorkflow; otherwise save the main workflow later.',
 		),
+	removeNodeGroups: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Names of node groups to dissolve when updating an existing workflow. Use only when a save was ' +
+				'rejected because your change would break a node group and the change is intended. Dissolving ' +
+				'removes the grouping only — the nodes stay in the workflow.',
+		),
 });
 
 const triggerNodeOutputSchema = z.object({
@@ -684,10 +692,15 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 
 				if (workflowId) {
+					const removeNodeGroups = input.removeNodeGroups;
+					const updateOptions = {
+						...(projectId ? { projectId } : {}),
+						...(removeNodeGroups && removeNodeGroups.length > 0 ? { removeNodeGroups } : {}),
+					};
 					const updated = await context.workflowService.updateFromWorkflowJSON(
 						workflowId,
 						json,
-						projectId ? { projectId } : undefined,
+						Object.keys(updateOptions).length > 0 ? updateOptions : undefined,
 					);
 					lastCodeVersionId = updated.versionId;
 					return await createSuccessResponse(updated.id);

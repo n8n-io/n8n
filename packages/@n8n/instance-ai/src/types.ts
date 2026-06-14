@@ -269,11 +269,13 @@ export interface InstanceAiWorkflowService {
 		json: WorkflowJSON,
 		options?: { projectId?: string; markAsAiTemporary?: boolean },
 	): Promise<WorkflowDetail>;
-	/** Update a workflow from SDK-produced WorkflowJSON. */
+	/** Update a workflow from SDK-produced WorkflowJSON. `removeNodeGroups`
+	 *  dissolves the named node groups as part of the save — the grouping is
+	 *  removed while the grouped nodes stay in the workflow. */
 	updateFromWorkflowJSON(
 		workflowId: string,
 		json: WorkflowJSON,
-		options?: { projectId?: string },
+		options?: { projectId?: string; removeNodeGroups?: string[] },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	unarchive(workflowId: string): Promise<void>;

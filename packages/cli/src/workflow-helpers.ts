@@ -6,13 +6,19 @@ import {
 	formatWorkflowStructureIssuePath,
 	resolveNodeWebhookId,
 	safeParseWorkflowStructure,
+	validateNodeSelectionForGrouping,
+	type ExtractableErrorResult,
+	type IConnections,
 	type IDataObject,
+	type INode,
 	type INodeCredentialsDetails,
 	type INodeTypes,
 	type IRun,
 	type ITaskData,
 	type IWorkflowBase,
+	type IWorkflowGroup,
 	type IWorkflowSettings,
+	type NodeGroupValidationResult,
 	type RelatedExecution,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
@@ -138,13 +144,49 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 }
 
 /**
+ * Reconciles nodeGroups with the workflow's current node set: node IDs that no
+ * longer exist are removed from their groups and groups left without any nodes
+ * are dissolved, mirroring the canvas behavior when nodes are deleted.
+ * Returns the repaired groups, or `undefined` when no repair was needed.
+ */
+export function repairWorkflowNodeGroups(
+	workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'>,
+): IWorkflowGroup[] | undefined {
+	const { nodeGroups, nodes } = workflow;
+	if (!nodeGroups || nodeGroups.length === 0) return undefined;
+
+	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
+	let changed = false;
+	const repairedGroups: IWorkflowGroup[] = [];
+
+	for (const group of nodeGroups) {
+		const remainingNodeIds = group.nodeIds.filter((nodeId) => nodeIds.has(nodeId));
+		if (remainingNodeIds.length === 0) {
+			changed = true;
+		} else if (remainingNodeIds.length === group.nodeIds.length) {
+			repairedGroups.push(group);
+		} else {
+			changed = true;
+			repairedGroups.push({ ...group, nodeIds: remainingNodeIds });
+		}
+	}
+
+	return changed ? repairedGroups : undefined;
+}
+
+/**
  * Validates nodeGroups: unique group names, all referenced node IDs exist,
- * and each node belongs to at most one group.
+ * each node belongs to at most one group, and each group satisfies the
+ * grouping rules enforced on the canvas (connected nodes, single main
+ * entry/exit, no triggers, no non-main connections crossing the boundary).
  * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
  * may not have IDs until that step assigns them.
  */
-export function validateWorkflowNodeGroups(workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'>) {
-	const { nodeGroups, nodes } = workflow;
+export function validateWorkflowNodeGroups(
+	workflow: Pick<IWorkflowBase, 'nodes' | 'connections' | 'nodeGroups'>,
+	nodeTypes: INodeTypes,
+) {
+	const { nodeGroups, nodes, connections } = workflow;
 	if (!nodeGroups || nodeGroups.length === 0) return;
 
 	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
@@ -157,6 +199,10 @@ export function validateWorkflowNodeGroups(workflow: Pick<IWorkflowBase, 'nodes'
 			throw new BadRequestError(`Duplicate node group name "${group.name}".`);
 		}
 		seenGroupNames.add(group.name);
+
+		if (group.nodeIds.length === 0) {
+			throw new BadRequestError(`Group "${group.name}" must contain at least one node.`);
+		}
 
 		for (const nodeId of group.nodeIds) {
 			// All referenced nodes must exist
@@ -175,6 +221,178 @@ export function validateWorkflowNodeGroups(workflow: Pick<IWorkflowBase, 'nodes'
 			nodeToGroup.set(nodeId, group.name);
 		}
 	}
+
+	// Same graph rules the canvas enforces when creating a group
+	const nodesById = new Map(nodes.map((node) => [node.id, node]));
+	const getNodeType = buildGetNodeType(nodeTypes);
+
+	for (const group of nodeGroups) {
+		const memberNodes = group.nodeIds
+			.map((nodeId) => nodesById.get(nodeId))
+			.filter((node): node is INode => node !== undefined);
+
+		const result = validateNodeSelectionForGrouping({
+			nodes: memberNodes,
+			connectionsBySourceNode: connections,
+			getNodeType,
+		});
+
+		if (!result.valid) {
+			throw new BadRequestError(formatNodeGroupValidationError(group.name, result));
+		}
+	}
+}
+
+/**
+ * Extends node groups with newly added nodes when that restores a group's
+ * validity — the backend counterpart of the canvas auto-extend behavior when
+ * a node is inserted between grouped nodes. Groups that are already valid, or
+ * that cannot be made valid by absorbing candidate nodes, are left untouched.
+ * Returns the extended groups, or `undefined` when no group was extended.
+ */
+export function extendWorkflowNodeGroups(
+	workflow: Pick<IWorkflowBase, 'nodes' | 'connections' | 'nodeGroups'>,
+	candidateNodeIds: Set<string>,
+	nodeTypes: INodeTypes,
+): IWorkflowGroup[] | undefined {
+	const { nodeGroups, nodes, connections } = workflow;
+	if (!nodeGroups || nodeGroups.length === 0 || candidateNodeIds.size === 0) return undefined;
+
+	const getNodeType = buildGetNodeType(nodeTypes);
+	const nodesById = new Map(nodes.map((node) => [node.id, node]));
+	const neighborsByNodeName = buildUndirectedNeighborsByNodeName(connections);
+	const groupedNodeIds = new Set(nodeGroups.flatMap((group) => group.nodeIds));
+
+	const isValidSelection = (memberIds: Set<string>) => {
+		const memberNodes = [...memberIds]
+			.map((nodeId) => nodesById.get(nodeId))
+			.filter((node): node is INode => node !== undefined);
+		return validateNodeSelectionForGrouping({
+			nodes: memberNodes,
+			connectionsBySourceNode: connections,
+			getNodeType,
+		}).valid;
+	};
+
+	// Candidates in workflow node order, excluding nodes that belong to a group
+	const availableCandidateIds = nodes
+		.map((node) => node.id)
+		.filter((nodeId) => candidateNodeIds.has(nodeId) && !groupedNodeIds.has(nodeId));
+
+	let changed = false;
+	const extendedGroups = nodeGroups.map((group) => {
+		const memberIds = new Set(group.nodeIds);
+		if (memberIds.size === 0 || isValidSelection(memberIds)) return group;
+
+		const isAdjacentToMember = (nodeId: string) => {
+			const neighbors = neighborsByNodeName.get(nodesById.get(nodeId)?.name ?? '');
+			if (!neighbors) return false;
+			return [...memberIds].some((memberId) => {
+				const member = nodesById.get(memberId);
+				return member !== undefined && neighbors.has(member.name);
+			});
+		};
+
+		// Grow: absorb adjacent candidates one at a time until the group is valid
+		const absorbedNodeIds: string[] = [];
+		while (!isValidSelection(memberIds)) {
+			const next = availableCandidateIds.find(
+				(nodeId) => !memberIds.has(nodeId) && isAdjacentToMember(nodeId),
+			);
+			if (next === undefined) return group; // extension cannot make this group valid
+			memberIds.add(next);
+			absorbedNodeIds.push(next);
+		}
+
+		// Shrink: drop absorbed nodes that turn out to be unnecessary
+		for (const nodeId of absorbedNodeIds) {
+			const withoutNode = new Set(memberIds);
+			withoutNode.delete(nodeId);
+			if (isValidSelection(withoutNode)) memberIds.delete(nodeId);
+		}
+
+		changed = true;
+		return {
+			...group,
+			nodeIds: [...group.nodeIds, ...absorbedNodeIds.filter((nodeId) => memberIds.has(nodeId))],
+		};
+	});
+
+	return changed ? extendedGroups : undefined;
+}
+
+function buildGetNodeType(nodeTypes: INodeTypes) {
+	return (node: INode) => {
+		try {
+			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			// Unknown node type (e.g. not installed): skip type-dependent rules
+			return null;
+		}
+	};
+}
+
+function buildUndirectedNeighborsByNodeName(connections: IConnections): Map<string, Set<string>> {
+	const neighbors = new Map<string, Set<string>>();
+	const link = (from: string, to: string) => {
+		const set = neighbors.get(from) ?? new Set<string>();
+		set.add(to);
+		neighbors.set(from, set);
+	};
+
+	for (const [sourceNodeName, connectionsByType] of Object.entries(connections)) {
+		for (const connectionsByOutputIndex of Object.values(connectionsByType)) {
+			for (const outputConnections of connectionsByOutputIndex) {
+				for (const connection of outputConnections ?? []) {
+					link(sourceNodeName, connection.node);
+					link(connection.node, sourceNodeName);
+				}
+			}
+		}
+	}
+
+	return neighbors;
+}
+
+function formatNodeGroupValidationError(
+	groupName: string,
+	result: Exclude<NodeGroupValidationResult, { valid: true }>,
+): string {
+	switch (result.reason) {
+		case 'trigger-selected':
+			return `Group "${groupName}" contains trigger node(s) ${formatNodeNames(result.triggers)}. Trigger nodes cannot be part of a group.`;
+		case 'node-already-grouped':
+			return `Group "${groupName}" contains nodes that already belong to another group.`;
+		case 'multiple-input-branches':
+			return `Node "${result.node}" cannot be the first node of group "${groupName}" because it has more than one main input.`;
+		case 'multiple-output-branches':
+			return `Node "${result.node}" cannot be the last node of group "${groupName}" because it has more than one main output.`;
+		case 'non-main-boundary':
+			return `The "${result.connection.type}" connection between "${result.connection.source}" and "${result.connection.target}" crosses the boundary of group "${groupName}". Non-main connections must stay fully inside or outside a group.`;
+		case 'invalid-subgraph':
+			return formatInvalidSubgraphError(groupName, result.errors[0]);
+	}
+}
+
+function formatInvalidSubgraphError(groupName: string, error?: ExtractableErrorResult): string {
+	switch (error?.errorCode) {
+		case 'Multiple Input Nodes':
+			return `Group "${groupName}" has multiple entry points (${formatNodeNames([...error.nodes])}). A group can have only one entry node.`;
+		case 'Multiple Output Nodes':
+			return `Group "${groupName}" has multiple exit points (${formatNodeNames([...error.nodes])}). A group can have only one exit node.`;
+		case 'Input Edge To Non-Root Node':
+			return `Node "${error.node}" in group "${groupName}" receives a connection from outside the group. Connections into a group must go to its first node.`;
+		case 'Output Edge From Non-Leaf Node':
+			return `Node "${error.node}" in group "${groupName}" sends a connection outside the group. Connections out of a group must come from its last node.`;
+		case 'No Continuous Path From Root To Leaf In Selection':
+			return `The nodes in group "${groupName}" are not all connected to each other. Grouped nodes must form a single connected sequence.`;
+		default:
+			return `Group "${groupName}" is not a valid selection of nodes.`;
+	}
+}
+
+function formatNodeNames(names: string[]): string {
+	return names.map((name) => `"${name}"`).join(', ');
 }
 
 /**

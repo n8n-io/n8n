@@ -76,6 +76,7 @@ import {
 	type INodeProperties,
 	type INodeTypeDescription,
 	type IConnections,
+	type IWorkflowGroup,
 	type IWorkflowSettings,
 	type IPinData,
 	type IWorkflowExecutionDataProcess,
@@ -94,6 +95,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
+	UserError,
 	jsonParse,
 } from 'n8n-workflow';
 
@@ -641,7 +643,7 @@ export class InstanceAiAdapterService {
 			async updateFromWorkflowJSON(
 				workflowId: string,
 				json: WorkflowJSON,
-				_options?: { projectId?: string },
+				options?: { projectId?: string; removeNodeGroups?: string[] },
 			) {
 				assertNotReadOnly();
 				// Strip redactionPolicy if the user lacks the required directional scope —
@@ -671,6 +673,31 @@ export class InstanceAiAdapterService {
 					}
 				}
 
+				// Dissolve the requested node groups: keep the stored groups except the
+				// named ones, so the rest of the save is validated against the result.
+				let nodeGroupsUpdate: IWorkflowGroup[] | undefined;
+				const removeNodeGroups = options?.removeNodeGroups ?? [];
+				if (removeNodeGroups.length > 0) {
+					const storedWorkflow = await workflowRepository.findOne({
+						where: { id: workflowId },
+						select: ['id', 'nodeGroups'],
+					});
+					const storedGroups = storedWorkflow?.nodeGroups ?? [];
+					const storedNames = new Set(storedGroups.map((group) => group.name));
+					const missing = removeNodeGroups.filter((name) => !storedNames.has(name));
+					if (missing.length > 0) {
+						throw new UserError(
+							`Cannot remove node group(s) ${missing.map((name) => `"${name}"`).join(', ')}: not found in this workflow. Existing groups: ${
+								storedGroups.length > 0
+									? storedGroups.map((group) => `"${group.name}"`).join(', ')
+									: 'none'
+							}.`,
+						);
+					}
+					const namesToRemove = new Set(removeNodeGroups);
+					nodeGroupsUpdate = storedGroups.filter((group) => !namesToRemove.has(group.name));
+				}
+
 				const nodes = sanitizeCredentialReferencesForSave(json.nodes);
 				let updateData = workflowRepository.create({
 					name: json.name,
@@ -678,6 +705,7 @@ export class InstanceAiAdapterService {
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
+					...(nodeGroupsUpdate !== undefined ? { nodeGroups: nodeGroupsUpdate } : {}),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;

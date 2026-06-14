@@ -1115,6 +1115,7 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -1518,6 +1519,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		create: jest.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: jest.fn().mockResolvedValue(savedWorkflow),
 		update: jest.fn().mockResolvedValue(undefined),
+		findOne: jest.fn().mockResolvedValue(null),
 		manager: {
 			transaction: jest.fn(
 				async (
@@ -1985,6 +1987,60 @@ describe('createWorkflowAdapter', () => {
 
 		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as { nodes: INode[] };
 		expect(updateData.nodes[0].credentials).toBeUndefined();
+	});
+
+	it('propagates node group validation errors from workflowService.update so the agent can recover', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+		mockWorkflowService.update.mockRejectedValueOnce(
+			new BadRequestError(
+				'The nodes in group "My Group" are not all connected to each other. Grouped nodes must form a single connected sequence.',
+			),
+		);
+
+		const workflow = {
+			name: 'Test',
+			nodes: [],
+			connections: {},
+		} as unknown as WorkflowJSON;
+
+		await expect(adapter.updateFromWorkflowJSON('wf-new', workflow)).rejects.toThrow(
+			'The nodes in group "My Group" are not all connected to each other.',
+		);
+	});
+
+	it('dissolves the requested node groups when updating', async () => {
+		const { adapter, mockWorkflowService, mockWorkflowRepository } =
+			createWorkflowAdapterForTests();
+		mockWorkflowRepository.findOne.mockResolvedValue({
+			id: 'wf-new',
+			nodeGroups: [
+				{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] },
+				{ id: 'g2', name: 'Group 2', nodeIds: ['n2'] },
+			],
+		});
+
+		const workflow = { name: 'Test', nodes: [], connections: {} } as unknown as WorkflowJSON;
+		await adapter.updateFromWorkflowJSON('wf-new', workflow, { removeNodeGroups: ['Group 1'] });
+
+		const updateData = mockWorkflowService.update.mock.calls[0]?.[1] as {
+			nodeGroups?: unknown;
+		};
+		expect(updateData.nodeGroups).toEqual([{ id: 'g2', name: 'Group 2', nodeIds: ['n2'] }]);
+	});
+
+	it('rejects removal of a node group that does not exist', async () => {
+		const { adapter, mockWorkflowService, mockWorkflowRepository } =
+			createWorkflowAdapterForTests();
+		mockWorkflowRepository.findOne.mockResolvedValue({
+			id: 'wf-new',
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }],
+		});
+
+		const workflow = { name: 'Test', nodes: [], connections: {} } as unknown as WorkflowJSON;
+		await expect(
+			adapter.updateFromWorkflowJSON('wf-new', workflow, { removeNodeGroups: ['Missing'] }),
+		).rejects.toThrow('Cannot remove node group(s) "Missing": not found in this workflow.');
+		expect(mockWorkflowService.update).not.toHaveBeenCalled();
 	});
 
 	it('clears the AI-builder temporary marker when promoting the main workflow', async () => {

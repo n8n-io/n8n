@@ -334,10 +334,52 @@ describe('WorkflowService', () => {
 				forceSave: true,
 			});
 
-			expect(WorkflowHelpers.validateWorkflowNodeGroups).toHaveBeenCalledWith({
-				nodes: [],
-				nodeGroups: existingNodeGroups,
+			// `existingWorkflow.connections` is a jest-mock-extended deep proxy, which breaks
+			// toHaveBeenCalledWith's structural equality, so assert by reference instead.
+			const [validatedWorkflow, nodeTypesArg] = jest.mocked(
+				WorkflowHelpers.validateWorkflowNodeGroups,
+			).mock.calls[0];
+			expect(validatedWorkflow).toMatchObject({ nodes: [], nodeGroups: existingNodeGroups });
+			expect(validatedWorkflow.connections).toBe(existingWorkflow.connections);
+			expect(nodeTypesArg).toBeDefined();
+		});
+
+		test('should persist repaired nodeGroups when repair changes them', async () => {
+			setupExistingWorkflow();
+			const repairedNodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1'] }];
+			jest.mocked(WorkflowHelpers.repairWorkflowNodeGroups).mockReturnValueOnce(repairedNodeGroups);
+
+			const user = mock<User>();
+			await workflowService.update(user, { nodes: [] } as unknown as WorkflowEntity, 'workflow-1', {
+				forceSave: true,
 			});
+
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					nodeGroups: repairedNodeGroups,
+					versionId: expect.not.stringMatching('v1'),
+				}),
+			);
+		});
+
+		test('should persist extended nodeGroups when auto-extend changes them', async () => {
+			setupExistingWorkflow();
+			const extendedNodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }];
+			jest.mocked(WorkflowHelpers.extendWorkflowNodeGroups).mockReturnValueOnce(extendedNodeGroups);
+
+			const user = mock<User>();
+			await workflowService.update(user, { nodes: [] } as unknown as WorkflowEntity, 'workflow-1', {
+				forceSave: true,
+			});
+
+			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					nodeGroups: extendedNodeGroups,
+					versionId: expect.not.stringMatching('v1'),
+				}),
+			);
 		});
 
 		test('should throw BadRequestError for invalid workflow structure', async () => {

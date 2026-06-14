@@ -372,6 +372,38 @@ export class WorkflowService {
 			);
 		}
 
+		// Reconcile node groups with the effective node set, mirroring the canvas
+		// behavior: nodes removed by this update are dropped from their groups
+		// (emptied groups are dissolved), and newly added nodes are absorbed into
+		// a group when that is what keeps the group valid (e.g. a node inserted
+		// between two grouped nodes).
+		const effectiveNodes = workflowUpdateData.nodes ?? workflow.nodes;
+		const repairedNodeGroups = WorkflowHelpers.repairWorkflowNodeGroups({
+			nodes: effectiveNodes,
+			nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
+		});
+		if (repairedNodeGroups) {
+			workflowUpdateData.nodeGroups = repairedNodeGroups;
+		}
+		const storedNodeIds = new Set(workflow.nodes.map((node) => node.id));
+		const newNodeIds = new Set(
+			effectiveNodes
+				.map((node) => node.id)
+				.filter((nodeId) => Boolean(nodeId) && !storedNodeIds.has(nodeId)),
+		);
+		const extendedNodeGroups = WorkflowHelpers.extendWorkflowNodeGroups(
+			{
+				nodes: effectiveNodes,
+				connections: workflowUpdateData.connections ?? workflow.connections,
+				nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
+			},
+			newNodeIds,
+			this.nodeTypes,
+		);
+		if (extendedNodeGroups) {
+			workflowUpdateData.nodeGroups = extendedNodeGroups;
+		}
+
 		// Update the workflow's version when changing nodes, connections, or nodeGroups
 		const hasNodesKey = 'nodes' in workflowUpdateData;
 		const hasConnectionsKey = 'connections' in workflowUpdateData;
@@ -407,10 +439,14 @@ export class WorkflowService {
 			nodes: workflowUpdateData.nodes ?? workflow.nodes,
 			connections: workflowUpdateData.connections ?? workflow.connections,
 		});
-		WorkflowHelpers.validateWorkflowNodeGroups({
-			nodes: workflowUpdateData.nodes ?? workflow.nodes,
-			nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
-		});
+		WorkflowHelpers.validateWorkflowNodeGroups(
+			{
+				nodes: workflowUpdateData.nodes ?? workflow.nodes,
+				connections: workflowUpdateData.connections ?? workflow.connections,
+				nodeGroups: workflowUpdateData.nodeGroups ?? workflow.nodeGroups,
+			},
+			this.nodeTypes,
+		);
 
 		// Strip redactionPolicy if instance lacks data-redaction license
 		if (
