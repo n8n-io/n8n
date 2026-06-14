@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -33,6 +34,7 @@ import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 export { type FoundWorkflow };
 
@@ -202,7 +204,7 @@ export const executeWorkflow = async (
 		user,
 		['workflow:execute'],
 		workflowFinderService,
-		{ includeActiveVersion: true },
+		{ includeProductionVersion: true },
 	);
 	const runData = await buildRunData(
 		workflow,
@@ -226,21 +228,20 @@ const getVersionDataForExecution = (
 	workflowId: string,
 	executionMode: z.infer<typeof inputSchema>['executionMode'],
 ) => {
-	if (executionMode === 'production' && !workflow.activeVersionId) {
+	if (executionMode !== 'production') {
+		return { nodes: workflow.nodes ?? [], connections: workflow.connections ?? {} };
+	}
+
+	// The workflow was loaded with its production version joined (see
+	// getMcpWorkflow); read it here. A null result means there is none to execute.
+	const version = Container.get(WorkflowPublishedDataService).extractProductionVersion(workflow);
+	if (version === null) {
 		throw new WorkflowAccessError(
 			`Workflow '${workflowId}' has no published (active) version to execute`,
 			'workflow_not_active',
 		);
 	}
-
-	const nodes =
-		executionMode === 'production' ? (workflow.activeVersion?.nodes ?? []) : (workflow.nodes ?? []);
-	const connections =
-		executionMode === 'production'
-			? (workflow.activeVersion?.connections ?? {})
-			: (workflow.connections ?? {});
-
-	return { nodes, connections };
+	return version;
 };
 
 const buildRunData = async (

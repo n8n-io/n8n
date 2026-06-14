@@ -1,4 +1,12 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, Relation } from '@n8n/typeorm';
+import {
+	Column,
+	Entity,
+	JoinColumn,
+	ManyToOne,
+	OneToOne,
+	PrimaryColumn,
+	Relation,
+} from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
 import type { WorkflowEntity } from './workflow-entity';
@@ -12,7 +20,7 @@ export class WorkflowPublishedVersion extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36 })
 	publishedVersionId: string;
 
-	@ManyToOne('WorkflowEntity', {
+	@OneToOne('WorkflowEntity', 'publishedVersionMapping', {
 		onDelete: 'RESTRICT',
 	})
 	@JoinColumn({ name: 'workflowId' })

@@ -20,6 +20,7 @@ import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { toITaskData } from '@test/helpers';
 
 import type { WorkflowRequest } from '../workflow.request';
@@ -100,6 +101,7 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		mockOwnershipService(),
+		mock(),
 		mock(),
 	);
 
@@ -462,6 +464,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mockOwnershipService(),
 				mock(),
+				mock(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -531,6 +534,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mockOwnershipService(),
+				mock(),
 				mock(),
 			);
 
@@ -701,6 +705,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mockOwnershipService(),
 				mock(),
+				mock(),
 			);
 		});
 
@@ -790,6 +795,29 @@ describe('WorkflowExecutionService', () => {
 	});
 
 	describe('executeErrorWorkflow()', () => {
+		const buildService = (
+			workflowRepositoryMock: ReturnType<typeof mock<WorkflowRepository>>,
+			workflowRunnerMock: ReturnType<typeof mock<WorkflowRunner>>,
+			globalConfig: ReturnType<typeof mock<GlobalConfig>>,
+			workflowPublishedDataService: ReturnType<typeof mock<WorkflowPublishedDataService>>,
+		) =>
+			new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				workflowRepositoryMock,
+				nodeTypes,
+				mock(),
+				workflowRunnerMock,
+				globalConfig,
+				mock(),
+				mock(),
+				mock(),
+				mockOwnershipService(),
+				mock(),
+				workflowPublishedDataService,
+			);
+
 		test('should call `WorkflowRunner.run()` with correct parameters', async () => {
 			const workflowErrorData: IWorkflowErrorData = {
 				workflow: { id: 'workflow-id', name: 'Test Workflow' },
@@ -831,29 +859,22 @@ describe('WorkflowExecutionService', () => {
 				connections: {},
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				activeVersion: {
-					nodes: [errorTriggerNode],
-					connections: {},
-				},
 			});
 
 			const workflowRepositoryMock = mock<WorkflowRepository>();
-			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
 
-			const service = new WorkflowExecutionService(
-				mock(),
-				mock(),
-				mock(),
+			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+			workflowPublishedDataService.loadProductionWorkflow.mockResolvedValue(errorWorkflow);
+			workflowPublishedDataService.extractProductionVersion.mockReturnValue({
+				nodes: [errorTriggerNode],
+				connections: {},
+			});
+
+			const service = buildService(
 				workflowRepositoryMock,
-				nodeTypes,
-				mock(),
 				workflowRunnerMock,
 				globalConfig,
-				mock(),
-				mock(),
-				mock(),
-				mockOwnershipService(),
-				mock(),
+				workflowPublishedDataService,
 			);
 
 			await service.executeErrorWorkflow(
@@ -913,7 +934,7 @@ describe('WorkflowExecutionService', () => {
 			});
 		});
 
-		test('should use published (activeVersion) nodes, not draft nodes', async () => {
+		test('runs the resolved production version nodes, not the draft nodes', async () => {
 			const workflowErrorData: IWorkflowErrorData = {
 				workflow: { id: 'workflow-id', name: 'Test Workflow' },
 				execution: {
@@ -971,29 +992,22 @@ describe('WorkflowExecutionService', () => {
 				connections: draftConnections,
 				createdAt: new Date(),
 				updatedAt: new Date(),
-				activeVersion: {
-					nodes: publishedNodes,
-					connections: publishedConnections,
-				},
 			});
 
 			const workflowRepositoryMock = mock<WorkflowRepository>();
-			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
 
-			const service = new WorkflowExecutionService(
-				mock(),
-				mock(),
-				mock(),
+			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+			workflowPublishedDataService.loadProductionWorkflow.mockResolvedValue(errorWorkflow);
+			workflowPublishedDataService.extractProductionVersion.mockReturnValue({
+				nodes: publishedNodes,
+				connections: publishedConnections,
+			});
+
+			const service = buildService(
 				workflowRepositoryMock,
-				nodeTypes,
-				mock(),
 				workflowRunnerMock,
 				globalConfig,
-				mock(),
-				mock(),
-				mock(),
-				mock(),
-				mock(),
+				workflowPublishedDataService,
 			);
 
 			await service.executeErrorWorkflow(
@@ -1002,16 +1016,62 @@ describe('WorkflowExecutionService', () => {
 				mock<Project>({ id: 'project-id' }),
 			);
 
+			expect(workflowPublishedDataService.extractProductionVersion).toHaveBeenCalledTimes(1);
 			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
 			const runCall = workflowRunnerMock.run.mock.calls[0][0];
 
-			// The workflowData passed to the runner should use published nodes,
-			// not the draft nodes that include the unpublished node
+			// The workflowData passed to the runner should use the resolved
+			// (published) nodes, not the draft nodes with the unpublished node.
 			expect(runCall.workflowData.nodes).toEqual(publishedNodes);
 			expect(runCall.workflowData.connections).toEqual(publishedConnections);
 			expect(runCall.workflowData.nodes).not.toContainEqual(
 				expect.objectContaining({ name: 'Unpublished Node' }),
 			);
+		});
+
+		test('does not run the error workflow when the resolver reports it is not active', async () => {
+			const workflowErrorData: IWorkflowErrorData = {
+				workflow: { id: 'workflow-id', name: 'Test Workflow' },
+				execution: {
+					id: 'execution-id',
+					mode: 'manual',
+					error: new Error('Test error') as ExecutionError,
+					lastNodeExecuted: 'Node with error',
+				},
+			};
+
+			const workflowRunnerMock = mock<WorkflowRunner>();
+			const globalConfig = mock<GlobalConfig>({
+				nodes: { errorTriggerType: 'n8n-nodes-base.errorTrigger' },
+			});
+
+			const errorWorkflow = mock<WorkflowEntity>({
+				id: 'error-workflow-id',
+				name: 'Error Workflow',
+				active: false,
+				activeVersionId: null,
+			});
+
+			const workflowRepositoryMock = mock<WorkflowRepository>();
+
+			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+			workflowPublishedDataService.loadProductionWorkflow.mockResolvedValue(errorWorkflow);
+			workflowPublishedDataService.extractProductionVersion.mockReturnValue(null);
+
+			const service = buildService(
+				workflowRepositoryMock,
+				workflowRunnerMock,
+				globalConfig,
+				workflowPublishedDataService,
+			);
+
+			await service.executeErrorWorkflow(
+				'error-workflow-id',
+				workflowErrorData,
+				mock<Project>({ id: 'project-id' }),
+			);
+
+			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
+import type { MockProxy } from 'jest-mock-extended';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -18,6 +19,7 @@ import { McpService } from '@/modules/mcp/mcp.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -25,6 +27,7 @@ describe('execute-workflow MCP tool', () => {
 	let workflowRunner: WorkflowRunner;
 	let telemetry: Telemetry;
 	let mcpService: McpService;
+	let workflowPublishedDataService: MockProxy<WorkflowPublishedDataService>;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
@@ -35,6 +38,17 @@ describe('execute-workflow MCP tool', () => {
 		mcpService = mockInstance(McpService, {
 			isQueueMode: false,
 		});
+		workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
+		// Default to the flag-off behavior (read from the activeVersion relation);
+		// individual tests override extractProductionVersion.
+		workflowPublishedDataService.extractProductionVersion.mockImplementation((workflow) =>
+			workflow.activeVersionId
+				? {
+						nodes: workflow.activeVersion?.nodes ?? [],
+						connections: workflow.activeVersion?.connections ?? {},
+					}
+				: null,
+		);
 	});
 
 	describe('smoke tests', () => {
@@ -910,6 +924,61 @@ describe('execute-workflow MCP tool', () => {
 				// determines whether queue mode MCP handling is applied
 				expect(runCall.isMcpExecution).toBe(false);
 			});
+		});
+	});
+
+	describe('production version resolution', () => {
+		test('production uses the nodes from the resolved production version', async () => {
+			const mappingTrigger = {
+				id: 'mapping-node',
+				name: 'MappingWebhook',
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+
+			const workflow = createWorkflow({ activeVersionId: uuid() });
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+			(workflowRunner.run as jest.Mock).mockResolvedValue('exec-1');
+			workflowPublishedDataService.extractProductionVersion.mockReturnValue({
+				nodes: [mappingTrigger],
+				connections: {},
+			});
+
+			await executeWorkflow(
+				user,
+				workflowFinderService,
+				workflowRunner,
+				mcpService,
+				'wf-1',
+				{ type: 'webhook', webhookData: { method: 'POST', headers: {}, query: {}, body: {} } },
+				'production',
+			);
+
+			expect(workflowPublishedDataService.extractProductionVersion).toHaveBeenCalledTimes(1);
+			const runCall = (workflowRunner.run as jest.Mock).mock
+				.calls[0][0] as IWorkflowExecutionDataProcess;
+			expect(runCall.startNodes).toEqual([{ name: 'MappingWebhook', sourceData: null }]);
+		});
+
+		test('production throws when the resolver reports no published version', async () => {
+			const workflow = createWorkflow({ activeVersionId: uuid() });
+			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+			workflowPublishedDataService.extractProductionVersion.mockReturnValue(null);
+
+			await expect(
+				executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					'wf-1',
+					undefined,
+					'production',
+				),
+			).rejects.toThrow(WorkflowAccessError);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 	});
 });

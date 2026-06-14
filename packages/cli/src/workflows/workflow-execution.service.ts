@@ -40,6 +40,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 @Service()
@@ -58,6 +59,7 @@ export class WorkflowExecutionService {
 		private readonly eventService: EventService,
 		private readonly ownershipService: OwnershipService,
 		private readonly executionContextService: ExecutionContextService,
+		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 	) {}
 
 	async runWorkflow(
@@ -319,10 +321,9 @@ export class WorkflowExecutionService {
 	): Promise<void> {
 		// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 		try {
-			const workflowData = await this.workflowRepository.get(
-				{ id: workflowId },
-				{ relations: ['activeVersion'] },
-			);
+			// Load the workflow and its production version in a single query.
+			const workflowData =
+				await this.workflowPublishedDataService.loadProductionWorkflow(workflowId);
 			if (workflowData === null) {
 				// The workflow could not be found
 				this.logger.error(
@@ -332,20 +333,20 @@ export class WorkflowExecutionService {
 				return;
 			}
 
-			if (workflowData.activeVersion === null) {
-				// The workflow is not active
+			const executionMode = 'error';
+
+			// Use the published (production) version's nodes/connections, not the
+			// draft. A null result means the workflow is not active.
+			const version = this.workflowPublishedDataService.extractProductionVersion(workflowData);
+			if (version === null) {
 				this.logger.error(
 					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Workflow "${workflowId}" is not active and cannot be executed`,
 					{ workflowId },
 				);
 				return;
 			}
-
-			const executionMode = 'error';
-
-			// Use published nodes/connections for execution, not the draft.
-			workflowData.nodes = workflowData.activeVersion.nodes;
-			workflowData.connections = workflowData.activeVersion.connections;
+			workflowData.nodes = version.nodes;
+			workflowData.connections = version.connections;
 
 			const workflowInstance = new Workflow({
 				id: workflowId,
