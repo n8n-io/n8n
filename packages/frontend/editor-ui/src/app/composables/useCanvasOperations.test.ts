@@ -139,6 +139,11 @@ vi.mock('@/app/composables/useTelemetry', () => {
 	};
 });
 
+// Run idle-deferred work (e.g. node-graph telemetry payloads) synchronously
+vi.mock('@/app/utils/idleUtils', () => ({
+	runWhenIdle: (fn: () => void) => fn(),
+}));
+
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
