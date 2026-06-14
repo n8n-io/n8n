@@ -170,6 +170,9 @@
                 },
                 "raw": {
                     "type": "string"
+                },
+                "rendered": {
+                    "type": "string"
                 }
             }
         },
@@ -269,5 +272,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

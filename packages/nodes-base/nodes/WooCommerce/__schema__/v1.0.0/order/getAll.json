@@ -15,6 +15,20 @@
                         }
                     }
                 },
+                "email_templates": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "self": {
                     "type": "array",
                     "items": {
@@ -114,10 +128,16 @@
                                 "display_key": {
                                     "type": "string"
                                 },
+                                "display_value": {
+                                    "type": "string"
+                                },
                                 "id": {
                                     "type": "integer"
                                 },
                                 "key": {
+                                    "type": "string"
+                                },
+                                "value": {
                                     "type": "string"
                                 }
                             }
@@ -175,6 +195,29 @@
                     },
                     "id": {
                         "type": "integer"
+                    },
+                    "meta_data": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "display_key": {
+                                    "type": "string"
+                                },
+                                "display_value": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "key": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     },
                     "name": {
                         "type": "string"
@@ -311,6 +354,9 @@
                 }
             }
         },
+        "needs_payment": {
+            "type": "boolean"
+        },
         "needs_processing": {
             "type": "boolean"
         },
@@ -427,6 +473,9 @@
                     "method_title": {
                         "type": "string"
                     },
+                    "tax_status": {
+                        "type": "string"
+                    },
                     "taxes": {
                         "type": "array",
                         "items": {
@@ -502,6 +551,9 @@
                     "rate_code": {
                         "type": "string"
                     },
+                    "rate_id": {
+                        "type": "integer"
+                    },
                     "shipping_tax_total": {
                         "type": "string"
                     },
@@ -524,5 +576,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

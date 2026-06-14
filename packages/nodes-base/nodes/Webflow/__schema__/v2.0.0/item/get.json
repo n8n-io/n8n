@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "cmsLocaleId": {
+            "type": "string"
+        },
         "createdOn": {
             "type": "string"
         },
@@ -21,9 +24,12 @@
         "isArchived": {
             "type": "boolean"
         },
+        "isDraft": {
+            "type": "boolean"
+        },
         "lastUpdated": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
