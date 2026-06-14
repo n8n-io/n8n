@@ -133,6 +133,21 @@ describe('Worker', () => {
 	});
 
 	describe('run', () => {
+		// `run()` registers the job processor, so it needs a scaling service and
+		// concurrency in place (normally set during `init()`).
+		const mockScalingService = { setupWorker: jest.fn() };
+		const createWorkerForRun = () => {
+			const worker = new Worker();
+
+			// Assign private properties
+			Object.assign(worker, {
+				scalingService: mockScalingService,
+				concurrency: 10,
+			});
+
+			return worker;
+		};
+
 		afterEach(() => {
 			Container.get(GlobalConfig).queue.health.active = false;
 		});
@@ -140,14 +155,14 @@ describe('Worker', () => {
 		it('should initialize WorkerServer and mark as ready when health endpoint is enabled', async () => {
 			Container.get(GlobalConfig).queue.health.active = true;
 
-			await new Worker().run();
+			await createWorkerForRun().run();
 
 			expect(mockWorkerServer.init).toHaveBeenCalledWith(expect.objectContaining({ health: true }));
 			expect(mockWorkerServer.markAsReady).toHaveBeenCalled();
 		});
 
 		it('should not initialize WorkerServer when no endpoints are enabled', async () => {
-			await new Worker().run();
+			await createWorkerForRun().run();
 
 			expect(mockWorkerServer.init).not.toHaveBeenCalled();
 			expect(mockWorkerServer.markAsReady).not.toHaveBeenCalled();
