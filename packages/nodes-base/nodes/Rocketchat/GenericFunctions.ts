@@ -13,6 +13,7 @@ export async function rocketchatApiRequest(
 	operation: string,
 
 	body: any = {},
+	queryParams?: IDataObject,
 	headers?: IDataObject,
 ): Promise<any> {
 	const credentials = await this.getCredentials('rocketchatApi');
@@ -22,6 +23,7 @@ export async function rocketchatApiRequest(
 		method,
 		body,
 		uri: `${credentials.domain}/api/v1${resource}.${operation}`,
+		qs: queryParams,
 		json: true,
 	};
 	if (Object.keys(options.body as IDataObject).length === 0) {
