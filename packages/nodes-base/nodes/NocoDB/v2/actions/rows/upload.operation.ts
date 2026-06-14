@@ -6,7 +6,7 @@ import type {
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { JSONSafeParse } from '../../helpers';
 import { apiRequest } from '../../transport';
@@ -233,7 +233,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				if (field && typeof field === 'string') {
 					field = JSONSafeParse<IDataObject[]>(field);
 					if (field && !Array.isArray(field)) {
-						throw new Error('Attachment value need to be an array');
+						throw new NodeOperationError(this.getNode(), 'Attachment value needs to be an array');
 					}
 				}
 

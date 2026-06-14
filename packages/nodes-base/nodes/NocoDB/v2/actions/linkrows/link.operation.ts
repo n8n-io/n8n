@@ -6,7 +6,7 @@ import type {
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../transport';
 
@@ -100,7 +100,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			body = [];
 
 			if (!linkIds?.length) {
-				throw new Error('Linked Row ID Value cannot be empty');
+				throw new NodeOperationError(this.getNode(), 'Linked Row ID Value cannot be empty');
 			}
 			for (const linkId of linkIds) {
 				// if it comes from expression (input)
