@@ -113,6 +113,38 @@ exports[`N8nDropdownMenuItem > rendering > should render highlighted item 1`] = 
 </div>
 `;
 
+exports[`N8nDropdownMenuItem > rendering > should render highlighted item 2`] = `
+<div
+  aria-selected="true"
+  class="item"
+  data-reka-collection-item=""
+  role="menuitem"
+  tabindex="-1"
+>
+  
+  
+  
+  
+  <!--v-if-->
+  
+  
+  <span
+    class="n8n-text text-dark size-medium regular item-label item-label"
+  >
+    
+    Highlighted Item
+    
+  </span>
+  
+  
+  
+  <!--v-if-->
+  
+  
+  
+</div>
+`;
+
 exports[`N8nDropdownMenuItem > rendering > should render item with emoji 1`] = `
 <div
   class="item"

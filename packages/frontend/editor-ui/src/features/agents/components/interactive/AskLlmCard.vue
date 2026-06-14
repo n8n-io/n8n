@@ -103,7 +103,6 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 				:is-loading="isLoading"
 				:project-id="projectId"
 				:warn-missing-credentials="true"
-				horizontal
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
 			/>

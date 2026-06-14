@@ -7,75 +7,44 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuPortal,
 } from 'reka-ui';
-import { computed, inject, ref, useCssModule, watch, toRef } from 'vue';
+import { computed, inject, ref, useCssModule, watch } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nLoading from '@n8n/design-system/components/N8nLoading';
 import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 
-import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
 import {
 	DropdownMenuPortalTargetKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
 } from './DropdownMenu.types';
-import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
-
-const SUBMENU_FOCUS_DELAY = 100;
+import DropdownMenuSearchableContent from './DropdownMenuSearchableContent.vue';
 
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
-const props = withDefaults(defineProps<DropdownMenuItemProps<T, D>>(), {
-	loadingItemCount: 3,
-});
+const props = withDefaults(
+	defineProps<DropdownMenuItemProps<T, D> & { htmlId?: string; disablePointerFocus?: boolean }>(),
+	{
+		loadingItemCount: 3,
+		disablePointerFocus: false,
+	},
+);
 defineSlots<DropdownMenuItemSlots<T, D>>();
 
 const emit = defineEmits<{
 	select: [value: T];
 	search: [searchTerm: string, itemId: T];
 	'update:subMenuOpen': [open: boolean];
+	pointermove: [event: PointerEvent];
 }>();
 
 const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 
-const searchTerm = ref('');
 const internalSubMenuOpen = ref(false);
-
-const searchRef = ref<{ focus: () => void } | null>(null);
-
-const childHasSubMenu = (child: NonNullable<typeof props.children>[number]): boolean => {
-	return (child.children && child.children.length > 0) || !!child.loading || !!child.searchable;
-};
-
-// Keyboard navigation for sub-menu
-const subMenuNavigation = useMenuKeyboardNavigation({
-	items: toRef(() => props.children ?? []),
-	hasSubMenu: childHasSubMenu,
-	onSelect: (_index, child) => {
-		emit('select', child.id);
-		closeSubMenu();
-	},
-	onCloseSubMenu: () => {
-		closeSubMenu();
-	},
-});
-
-const { highlightedIndex: subMenuHighlightedIndex } = subMenuNavigation;
-
-const handleSearchUpdate = (value: string) => {
-	searchTerm.value = value;
-	emit('search', value, props.id);
-};
 
 const handleChildSearch = (term: string, itemId: T) => {
 	emit('search', term, itemId);
-};
-
-const handleSubContentKeydown = (event: KeyboardEvent) => {
-	if (!props.searchable) return;
-
-	subMenuNavigation.handleKeydown(event);
 };
 
 const hasChildren = computed(() => props.children && props.children.length > 0);
@@ -84,27 +53,11 @@ const hasSubMenu = computed(() => hasChildren.value || props.loading || props.se
 const handleSubMenuOpenChange = (open: boolean) => {
 	internalSubMenuOpen.value = open;
 	emit('update:subMenuOpen', open);
-
-	if (open && props.searchable) {
-		subMenuNavigation.highlightFirst();
-		setTimeout(() => searchRef.value?.focus(), SUBMENU_FOCUS_DELAY);
-	} else {
-		subMenuNavigation.reset();
-	}
-
-	if (!open && props.searchable) {
-		searchTerm.value = '';
-		emit('search', '', props.id);
-	}
 };
 
 const closeSubMenu = () => {
 	internalSubMenuOpen.value = false;
 	emit('update:subMenuOpen', false);
-	if (props.searchable) {
-		searchTerm.value = '';
-		emit('search', '', props.id);
-	}
 };
 
 const leadingProps = computed(() => ({
@@ -131,13 +84,15 @@ const handleItemSelect = () => {
 	}
 };
 
-// Reset sub-menu highlighted index when children change
-watch(
-	() => props.children,
-	() => {
-		subMenuNavigation.reset();
-	},
-);
+const handlePointerMove = (event: PointerEvent) => {
+	emit('pointermove', event);
+};
+
+const handleSubContentFocusOutside = (event: Event) => {
+	if (props.disablePointerFocus) {
+		event.preventDefault();
+	}
+};
 
 // Sync internal state with prop when prop changes (controlled mode)
 watch(
@@ -161,15 +116,12 @@ watch(
 			@update:open="handleSubMenuOpenChange"
 		>
 			<DropdownMenuSubTrigger
+				:id="htmlId"
+				:aria-selected="highlighted || undefined"
+				@pointermove.capture="handlePointerMove"
 				:disabled="disabled"
 				:data-test-id="testId"
-				:class="[
-					$style.item,
-					$style['sub-trigger'],
-					props.class,
-					{ 'is-disabled': !!disabled },
-					{ [$style.highlighted]: highlighted },
-				]"
+				:class="[$style.item, $style['sub-trigger'], props.class, { 'is-disabled': !!disabled }]"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
 					<Icon
@@ -208,59 +160,89 @@ watch(
 					:side-offset="1"
 					:prioritize-position="true"
 					sticky="partial"
-					@keydown="handleSubContentKeydown"
+					@focus-outside="handleSubContentFocusOutside"
 				>
-					<N8nDropdownMenuSearch
-						v-if="searchable && !loading"
-						ref="searchRef"
-						:model-value="searchTerm"
-						:placeholder="searchPlaceholder ?? 'Search...'"
-						@update:model-value="handleSearchUpdate"
-						@key:escape="closeSubMenu"
-						@key:navigate="subMenuNavigation.navigate"
-						@key:arrow-left="subMenuNavigation.handleArrowLeft"
-						@key:enter="subMenuNavigation.handleEnter"
-					/>
-
-					<div v-if="loading" :class="$style['loading-container']">
-						<N8nLoading
-							v-for="i in loadingItemCount"
-							:key="i"
-							:rows="1"
-							:class="$style['loading-item']"
-							variant="p"
-						/>
-					</div>
-					<template v-else-if="hasChildren">
-						<div
-							:class="$style['children-container']"
-							data-menu-items
-							@mouseenter="subMenuNavigation.reset"
-						>
-							<template v-for="(child, childIndex) in props.children" :key="child.id">
-								<N8nDropdownMenuItem
-									v-bind="child"
-									:highlighted="searchable && subMenuHighlightedIndex === childIndex"
-									:divided="child.divided && childIndex > 0"
-									@select="handleSelect"
-									@search="handleChildSearch"
-								>
-									<template #item-leading="leadingProps">
-										<slot name="item-leading" v-bind="leadingProps" />
+					<DropdownMenuSearchableContent
+						v-if="searchable"
+						:open="internalSubMenuOpen"
+						:items="children ?? []"
+						:search-placeholder="searchPlaceholder"
+						@select="handleSelect"
+						@search="(term: string, itemId?: T) => emit('search', term, itemId ?? props.id)"
+						@close="closeSubMenu"
+					>
+						<template #default="searchableContent">
+							<div v-if="loading" :class="$style['loading-container']">
+								<N8nLoading
+									v-for="i in loadingItemCount"
+									:key="i"
+									:rows="1"
+									:class="$style['loading-item']"
+									variant="p"
+								/>
+							</div>
+							<template v-else-if="hasChildren">
+								<div :class="$style['children-container']" data-menu-items>
+									<template v-for="(child, childIndex) in props.children" :key="child.id">
+										<N8nDropdownMenuItem
+											v-bind="child"
+											:html-id="searchableContent.getItemDomId(childIndex)"
+											:highlighted="searchableContent.highlightedIndex === childIndex"
+											:disable-pointer-focus="true"
+											:divided="child.divided && childIndex > 0"
+											@select="handleSelect"
+											@search="handleChildSearch"
+											@pointermove="searchableContent.onItemHover(childIndex)"
+										>
+											<template #item-leading="leadingProps">
+												<slot name="item-leading" v-bind="leadingProps" />
+											</template>
+											<template #item-label="bodyProps">
+												<slot name="item-label" v-bind="bodyProps" />
+											</template>
+											<template #item-trailing="trailingProps">
+												<slot name="item-trailing" v-bind="trailingProps" />
+											</template>
+										</N8nDropdownMenuItem>
 									</template>
-									<template #item-label="bodyProps">
-										<slot name="item-label" v-bind="bodyProps" />
-									</template>
-									<template #item-trailing="trailingProps">
-										<slot name="item-trailing" v-bind="trailingProps" />
-									</template>
-								</N8nDropdownMenuItem>
+								</div>
 							</template>
-						</div>
-					</template>
+						</template>
+					</DropdownMenuSearchableContent>
 
-					<!-- Empty state when search returns no results -->
-					<div v-else-if="searchable && searchTerm" :class="$style['empty-state']">No results</div>
+					<template v-else>
+						<div v-if="loading" :class="$style['loading-container']">
+							<N8nLoading
+								v-for="i in loadingItemCount"
+								:key="i"
+								:rows="1"
+								:class="$style['loading-item']"
+								variant="p"
+							/>
+						</div>
+						<template v-else-if="hasChildren">
+							<div :class="$style['children-container']" data-menu-items>
+								<template v-for="(child, childIndex) in props.children" :key="child.id">
+									<N8nDropdownMenuItem
+										v-bind="child"
+										:divided="child.divided && childIndex > 0"
+										@select="handleSelect"
+										@search="handleChildSearch"
+									>
+										<template #item-leading="leadingProps">
+											<slot name="item-leading" v-bind="leadingProps" />
+										</template>
+										<template #item-label="bodyProps">
+											<slot name="item-label" v-bind="bodyProps" />
+										</template>
+										<template #item-trailing="trailingProps">
+											<slot name="item-trailing" v-bind="trailingProps" />
+										</template>
+									</N8nDropdownMenuItem>
+								</template>
+							</div>
+						</template>
+					</template>
 				</DropdownMenuSubContent>
 			</DropdownMenuPortal>
 		</DropdownMenuSub>
@@ -268,14 +250,12 @@ watch(
 		<!-- Regular item without children -->
 		<DropdownMenuItem
 			v-else
+			:id="htmlId"
+			:aria-selected="highlighted || undefined"
+			@pointermove.capture="handlePointerMove"
 			:disabled="disabled"
 			:data-test-id="testId"
-			:class="[
-				$style.item,
-				props.class,
-				{ 'is-disabled': !!disabled },
-				{ [$style.highlighted]: highlighted },
-			]"
+			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
@@ -319,8 +299,13 @@ watch(
 
 .children-container {
 	padding: var(--spacing--4xs);
-	max-height: var(--reka-dropdown-menu-content-available-height);
+	max-height: inherit;
 	overflow-y: auto;
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
 }
 
 .item {
@@ -340,7 +325,7 @@ watch(
 	&:not([data-disabled]) {
 		&:hover,
 		&[data-highlighted],
-		&.highlighted {
+		&[aria-selected='true'] {
 			background-color: var(--background--hover);
 			cursor: pointer;
 		}
@@ -351,15 +336,25 @@ watch(
 		cursor: not-allowed;
 	}
 
-	:global([data-menu-content]:hover) &.highlighted:not(:hover),
-	:global([data-menu-items]:hover) &.highlighted:not(:hover) {
-		background-color: transparent;
+	:global([data-menu-items]:has([aria-selected='true'])) &:not([aria-selected='true']) {
+		&:hover,
+		&[data-highlighted] {
+			background-color: transparent;
+		}
 	}
 }
 
 .sub-trigger {
-	&[data-state='open'] {
-		background-color: var(--background--active);
+	& &:not([data-disabled]) {
+		&:hover,
+		&[data-highlighted],
+		&[aria-selected='true'] {
+			background-color: transparent;
+			cursor: pointer;
+		}
+		&[data-state='open'] {
+			background-color: var(--background--hover);
+		}
 	}
 }
 
@@ -370,11 +365,21 @@ watch(
 }
 
 .sub-content {
-	min-width: 160px;
 	border-radius: var(--radius--xs);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	background-color: var(--background--surface);
 	z-index: 999999;
+	width: fit-content;
+	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
+	max-width: var(--n8n--dropdown-menu-width);
+	max-height: min(var(--reka-dropdown-menu-content-available-height), var(--spacing--5xl));
+	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
+	overflow: hidden;
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
 }
 
 .item-leading {

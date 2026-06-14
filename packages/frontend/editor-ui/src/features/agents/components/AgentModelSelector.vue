@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { computed, useTemplateRef } from 'vue';
+import {
+	N8nAiModelSelectorDropdown,
+	N8nIcon,
+	useDropdownSearch,
+	type AiModelSelectorMenuItem,
+	type AiModelSelectorMenuItemData,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { truncateBeforeLast } from '@n8n/utils';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -8,11 +14,6 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import AiModelSelectorDropdown from '@/features/ai/modelSelector/AiModelSelectorDropdown.vue';
-import type {
-	AiModelSelectorMenuItem,
-	AiModelSelectorMenuItemData,
-} from '@/features/ai/modelSelector/types';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	AGENT_MODEL_PROVIDERS,
@@ -42,18 +43,18 @@ const {
 	modelsByProvider,
 	isLoading,
 	projectId,
-	horizontal = false,
 	warnMissingCredentials = false,
 	disabled = false,
+	horizontal = false,
 } = defineProps<{
 	selectedModel: AgentModelOption | null;
 	credentials: AgentCredentialsByProvider | null;
 	modelsByProvider: AgentModelsByProvider;
 	isLoading: boolean;
 	projectId?: string;
-	horizontal?: boolean;
 	warnMissingCredentials?: boolean;
 	disabled?: boolean;
+	horizontal?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -66,8 +67,6 @@ const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const searchQuery = ref('');
-
 const selectedCredentialId = computed(() =>
 	selectedModel ? credentials?.[selectedModel.provider] : undefined,
 );
@@ -257,40 +256,28 @@ function isSearchableModelItem(item: MenuItem): boolean {
 	return item.id.includes('::model::') && !item.disabled;
 }
 
-function collectMatchingModelItems(
-	item: MenuItem,
-	query: string,
-	parts: string[],
-	parentMatched = false,
-): MenuItem[] {
-	const children = item.children ?? [];
-	const currentParts = [...parts, item.label];
-	const labelMatched = item.label.toLowerCase().includes(query);
-	const isMatched = parentMatched || labelMatched;
-
-	if (children.length === 0) {
-		const searchText = `${item.data?.fullName ?? item.label}`.toLowerCase();
-		if (!isSearchableModelItem(item) || (!isMatched && !searchText.includes(query))) return [];
-		return [
-			{
-				...item,
-				divided: false,
-				data: item.data ? { ...item.data, parts: currentParts } : undefined,
-			},
-		];
-	}
-
-	return children.flatMap((child) =>
-		collectMatchingModelItems(child, query, currentParts, isMatched),
-	);
-}
+const {
+	search: searchQuery,
+	filteredItems: matchingModelItems,
+	handleSearch,
+} = useDropdownSearch(menu, {
+	flatList: true,
+	isSearchable: isSearchableModelItem,
+	searchFields: (item) => [item.label, item.data?.fullName],
+	mapResult: (item, path) => ({
+		...item,
+		divided: false,
+		data: item.data ? { ...item.data, parts: path.map((pathItem) => pathItem.label) } : undefined,
+	}),
+});
 
 const filteredMenu = computed(() => {
-	const query = searchQuery.value.trim().toLowerCase();
-	if (!query) return menu.value;
+	if (!searchQuery.value.trim()) return menu.value;
 
 	return menu.value.flatMap<MenuItem>((providerItem) => {
-		const results = collectMatchingModelItems(providerItem, query, []);
+		const results = matchingModelItems.value.filter(
+			(item) => item.data?.provider === providerItem.id,
+		);
 		if (results.length <= MAX_SEARCH_RESULTS_PER_PROVIDER) return results;
 
 		return [
@@ -335,11 +322,6 @@ function onSelect(id: string) {
 	}
 }
 
-function handleSearch(query: string) {
-	if (disabled) return;
-	searchQuery.value = query;
-}
-
 defineExpose({
 	open: () => {
 		if (!disabled) dropdownRef.value?.open();
@@ -348,7 +330,7 @@ defineExpose({
 </script>
 
 <template>
-	<AiModelSelectorDropdown
+	<N8nAiModelSelectorDropdown
 		ref="dropdownRef"
 		:items="filteredMenu"
 		:selected-label="selectedLabel"
@@ -390,5 +372,5 @@ defineExpose({
 				:class="ui.class"
 			/>
 		</template>
-	</AiModelSelectorDropdown>
+	</N8nAiModelSelectorDropdown>
 </template>
