@@ -401,6 +401,11 @@ column names.
   later referenced by `$json` expressions, including optional trigger fields
   used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
   `channel`). Missing optional fields make expression-path validation fail.
+- Match real cardinality in mock `output`. When a node's real response is a
+  collection (HTTP list endpoints, search results, a top-level array such as
+  Binance klines), declare at least two items so single-item assumptions like
+  `$input.first()` break during verification instead of on the user's first
+  run. A single-item mock hides array-vs-single bugs.
 
 Use this import shape unless the task needs fewer symbols:
 
