@@ -74,6 +74,38 @@ describe('WorkflowTestCaseSchema', () => {
 		).toThrow(/mutually exclusive/);
 	});
 
+	it('accepts a seedThread case with no conversation (live turn from the trace)', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		const parsed = WorkflowTestCaseSchema.parse({
+			...rest,
+			seedThread: { threadId: '3ca4fc6f-6848-40d8-9b0e-662aa7532cbc' },
+		});
+		expect(parsed.seedThread?.threadId).toBe('3ca4fc6f-6848-40d8-9b0e-662aa7532cbc');
+		expect(parsed.conversation).toBeUndefined();
+	});
+
+	it('rejects seedThread combined with a conversation', () => {
+		expect(() =>
+			WorkflowTestCaseSchema.parse({ ...validFixture(), seedThread: { threadId: 't1' } }),
+		).toThrow(/conversation must be omitted/);
+	});
+
+	it('rejects seedThread combined with another seeding mode', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		expect(() =>
+			WorkflowTestCaseSchema.parse({
+				...rest,
+				seedThread: { threadId: 't1' },
+				seedFile: 'seeds/x.seed.json',
+			}),
+		).toThrow(/mutually exclusive/);
+	});
+
+	it('rejects a non-seedThread case that omits conversation', () => {
+		const { conversation: _omit, ...rest } = validFixture();
+		expect(() => WorkflowTestCaseSchema.parse(rest)).toThrow(/requires conversation/);
+	});
+
 	it('accepts the optional triggerType field', () => {
 		const parsed = WorkflowTestCaseSchema.parse({ ...validFixture(), triggerType: 'webhook' });
 		expect(parsed.triggerType).toBe('webhook');

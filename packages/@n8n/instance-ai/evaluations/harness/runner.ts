@@ -26,7 +26,9 @@ import {
 	remapSeedWorkflowIds,
 	seedFromProse,
 	transcriptPrefixFromSeed,
+	type ConversationSeed,
 } from './conversation-seed';
+import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import { buildWorkflowContextBlock } from './workflow-context';
@@ -197,6 +199,7 @@ export async function runWorkflowTestCase(
 				credentials: testCase.credentials,
 				seedFile: testCase.seedFile,
 				priorConversation: testCase.priorConversation,
+				seedThread: testCase.seedThread,
 				createdCredentialIds: config.createdCredentialIds,
 				timeoutMs,
 				preRunWorkflowIds: config.preRunWorkflowIds,
@@ -398,12 +401,14 @@ export interface BuildResult {
 export interface BuildWorkflowConfig {
 	client: N8nClient;
 	/**
-	 * Hand-authored conversation. ≥1 turn, first turn must be `user`.
+	 * Hand-authored conversation. ≥1 turn, first turn must be `user`. Optional
+	 * only when `seedThread` is set (the live turn is then derived from the
+	 * trace).
 	 *
 	 * - One user turn, no assistant turns → auto-approve all confirmations.
 	 * - Anything else → UserProxyLlm engages.
 	 */
-	conversation: ConversationTurn[];
+	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
 	/** Credentials this build should see (created for real, view pinned to them). */
@@ -420,6 +425,14 @@ export interface BuildWorkflowConfig {
 	/** Prose turns seeded as plain-text thread history before the first live
 	 *  message. Mutually exclusive with `seedFile` (enforced at case load). */
 	priorConversation?: ConversationTurn[];
+	/**
+	 * Reproduce a real conversation: its LangSmith trace is fetched and
+	 * reconstructed at build time into the seed (everything before the last
+	 * user message) + the live turn (that last message). Mutually exclusive
+	 * with seedFile/priorConversation/conversation. Restore failures fail the
+	 * build.
+	 */
+	seedThread?: SeedThreadRef;
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
@@ -449,8 +462,7 @@ function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
  * executeScenario(). Call cleanupBuild() when done.
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
-	const { client, conversation, logger } = config;
-	const openingMessage = conversation[0]?.text ?? '';
+	const { client, logger } = config;
 	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -466,6 +478,27 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 	try {
 		const buildStart = Date.now();
+
+		// Resolve the seed and the conversation that drives the build. A
+		// `seedThread` derives BOTH from a reconstructed LangSmith trace (the
+		// live turn is the thread's last user message); otherwise the seed (if
+		// any) is a file or prose prelude and the conversation is hand-authored.
+		let seed: ConversationSeed | undefined;
+		let conversation = config.conversation ?? [];
+		if (config.seedThread) {
+			const reconstructed = await reconstructSeedFromThread(config.seedThread);
+			seed = reconstructed.seed;
+			conversation = [{ role: 'user', text: reconstructed.liveTurn }];
+			logger.info(
+				`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s) [project ${reconstructed.sourceProject}]${config.laneTag ?? ''}`,
+			);
+		} else if (config.seedFile) {
+			seed = loadConversationSeed(config.seedFile);
+		} else if (config.priorConversation && config.priorConversation.length > 0) {
+			seed = seedFromProse(config.priorConversation);
+		}
+
+		const openingMessage = conversation[0]?.text ?? '';
 		const isMultiTurn = isMultiTurnConversation(conversation);
 		logger.info(
 			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
@@ -500,15 +533,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			);
 		}
 
-		// Restore the case's conversation seed before the first live message, so
-		// the thread continues a real prior history instead of starting cold.
-		// Unlike the credential pin there is no degraded mode: a seeded case
-		// cannot meaningfully run unseeded, so any restore failure fails the build.
-		const seed = config.seedFile
-			? loadConversationSeed(config.seedFile)
-			: config.priorConversation && config.priorConversation.length > 0
-				? seedFromProse(config.priorConversation)
-				: undefined;
+		// Restore the resolved seed before the first live message, so the thread
+		// continues a real prior history instead of starting cold. Unlike the
+		// credential pin there is no degraded mode: a seeded case cannot
+		// meaningfully run unseeded, so any restore failure fails the build.
 		if (seed) {
 			const remapped = remapSeedWorkflowIds(seed);
 			const restoreResult = await client.restoreThread(

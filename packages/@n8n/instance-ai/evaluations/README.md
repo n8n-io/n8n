@@ -594,29 +594,32 @@ Each type needs a data template in `credentials/seeder.ts`; declaring an unknown
 
 ### Seeded cases (conversation pre-seeding)
 
-A seeded case starts **mid-conversation**: prior history is restored into the build thread before `conversation[0]` is sent live, so the eval drives only the turn under test. Use it to replicate a real misbehaviour — restore the conversation up to the moment it went wrong, re-drive that turn, and assert what should happen instead.
+A seeded case starts **mid-conversation**: prior history is restored into the build thread before the live turn, so the eval drives only the turn under test. Use it to replicate a real misbehaviour — restore the conversation up to the moment it went wrong, re-drive that turn, and assert what should happen instead.
 
 Pick the lightest path that fits:
 
 | Situation | Path |
 |---|---|
-| Misbehaviour on an instance we control (the common case) | `seedFile` — export the real thread, zero reconstruction |
+| Reproduce a real conversation (the common case) | `seedThread` — fetch + reconstruct its LangSmith trace at run time; nothing committed |
 | Prelude is just "what was discussed" (no tool calls, no workflows) | `priorConversation` — prose turns, authored inline |
+| A synthetic/sanitized fixture you want durable | `seedFile` — a committed seed JSON (no real conversation data) |
 | Shallow 2–3 turn prelude where the agent's live replies matter | Neither — a plain multi-turn `conversation` script re-drives it live |
 
-Authors never hand-write message history. Export a real thread:
+#### `seedThread` — reproduce a real conversation (no repo content)
 
-```bash
-N8N_BASE_URL=http://localhost:5678 pnpm eval:export-thread <threadId> --name my-case
-```
-
-This writes `data/workflows/seeds/<name>.seed.json` (native message log + every workflow the history references) and a case skeleton with the thread's **last user message** as `conversation[0]` — everything before it becomes the seed; the original response to it is dropped, because that's the turn the eval re-drives. Then trim the seed if early history is irrelevant, fill the TODOs, and review the seed before committing (it contains the conversation verbatim).
+The case carries only a **thread id**. At run time the harness pulls that thread's runs from LangSmith, reconstructs the message log (user/assistant text + resolved tool-call blocks, deduped across suspend/resume), and splits at the **last user message**: everything before it is restored as the seed, that last message is sent live. The seed workflow is compiled from the build/patch tool's captured SDK code **as of the seed boundary**, so it matches what the live turn first saw.
 
 ```json
-"seedFile": "seeds/my-case.seed.json"
+"seedThread": { "threadId": "3ca4fc6f-…", "project": "instance-ai" }
 ```
 
-or, for a prose-only prelude:
+No `conversation` field — the live turn comes from the trace. `project` is optional (defaults to `instance-ai`, override with `SEED_LANGSMITH_PROJECT`). No conversation content lands in the repo — only the opaque thread id.
+
+> **Transient.** LangSmith base-tier traces retain ~14 days, so a `seedThread` case is runnable only while its trace lives. Keep these out of CI datasets (tag them `["seeded"]`, not `full`/`pr`) until durable seed snapshots land; the resolver fails loudly when a trace has aged out. Durable snapshotting (e.g. materialising the reconstructed seed into a private LangSmith dataset on first resolve) is a planned follow-up.
+
+To find the thread id, drive the conversation on an instance you control and read its id, or use `pnpm eval:export-thread <threadId>` to print/inspect it.
+
+#### `priorConversation` — prose prelude
 
 ```json
 "priorConversation": [
@@ -625,13 +628,20 @@ or, for a prose-only prelude:
 ]
 ```
 
+Paired with a normal `conversation` for the live turn. Plain text only — no tool calls, no restored workflows.
+
+#### `seedFile` — durable synthetic fixture
+
+For a **synthetic, sanitized** fixture you want pinned in git (never a real user's conversation). `pnpm eval:export-thread <threadId> --name my-case` writes `data/workflows/seeds/<name>.seed.json` + a case skeleton, but **only commit the seed if it contains no real conversation data** — real threads belong in `seedThread`. Paired with a normal `conversation` for the live turn.
+
+#### How restore works (all paths)
+
 At build time the seed is restored right after the credential pin: seeded workflows are recreated under **fresh ids** (every reference in the history is remapped, so parallel iterations never share a workflow row) with node credentials stripped, and the message log is written verbatim. Restore failures fail the build — a seeded case cannot meaningfully run unseeded. Seeded turns join the transcript marked as *seeded prior context*, visible to the expectations judge and prompt-aware checks but distinguishable from live behaviour.
 
 Rules of thumb:
 
 - **A seeded case is only worth shipping with `buildExpectations` that detect the misbehaviour recurring** — without them it passes vacuously. Sanity-check by running the case once with the seed removed: it should fail.
-- The export captures each workflow's **current** state. If turns after the seed point edited the workflow, revert it (or re-export sooner next time) so the seed reflects the state the live turn actually saw.
-- `seedFile` and `priorConversation` are mutually exclusive; both order strictly before the live turn.
+- `seedThread`, `priorConversation` and `seedFile` are mutually exclusive; all order strictly before the live turn. `seedThread` provides its own live turn (omit `conversation`); the other two pair with `conversation`.
 
 ## Failure categories
 

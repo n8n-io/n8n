@@ -23,6 +23,7 @@ import type {
 	TurnCounter,
 	WorkflowTestCaseResult,
 } from '../types';
+import { caseDisplayPrompt } from '../utils/conversation-text';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -287,7 +288,7 @@ function renderStageReview(stage: StageReview): string {
 }
 
 function firstPromptText(result: WorkflowTestCaseResult): string {
-	return result.testCase.conversation[0]?.text ?? '';
+	return caseDisplayPrompt(result.testCase, result.transcript);
 }
 
 function promptReview(result: WorkflowTestCaseResult, sr: ExecutionScenarioResult): StageReview {
@@ -1167,7 +1168,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			? `<span class="badge badge-${allPass ? 'pass' : 'fail'}">${String(passCount)}/${String(totalCount)}</span>`
 			: '';
 
-	const prompt = result.testCase.conversation[0].text;
+	const prompt = caseDisplayPrompt(result.testCase, result.transcript);
 	const truncatedPrompt = prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt;
 	// Header label = the source-file slug (the same identifier the PR comment
 	// uses), falling back to the description then the prompt. The full prompt
