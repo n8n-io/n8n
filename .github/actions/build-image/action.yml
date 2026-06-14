@@ -18,9 +18,9 @@ inputs:
     required: false
     default: 'local'
   registry:
-    description: 'Override REGISTRY bake variable (e.g. ghcr.io/n8n-io/). Empty = local.'
+    description: 'Image namespace prefix (REGISTRY bake variable). Local default n8nio/; CI sets e.g. ghcr.io/n8n-io/.'
     required: false
-    default: ''
+    default: 'n8nio/'
   turbo-api:
     description: 'Turbo remote cache server URL. When set, the build reaches it over the host network (CI: http://localhost:PORT). Empty = build cold.'
     required: false

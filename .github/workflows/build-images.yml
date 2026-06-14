@@ -23,7 +23,7 @@ on:
       target:
         description: 'docker-bake.hcl target to build.'
         type: string
-        default: 'n8n'
+        default: 'n8n-inbuild'
       platform:
         description: 'Target platform.'
         type: string
@@ -39,7 +39,7 @@ concurrency:
 
 jobs:
   build:
-    name: 'Bake ${{ inputs.target || ''n8n'' }}'
+    name: 'Bake ${{ inputs.target || ''n8n-inbuild'' }}'
     runs-on: blacksmith-4vcpu-ubuntu-2204
     if: ${{ !github.event.pull_request.head.repo.fork }}
     permissions:
@@ -70,7 +70,7 @@ jobs:
       - name: Build image
         uses: ./.github/actions/build-image
         with:
-          target: ${{ inputs.target || 'n8n' }}
+          target: ${{ inputs.target || 'n8n-inbuild' }}
           platform: ${{ inputs.platform || 'linux/amd64' }}
           output: ${{ inputs.output || 'cacheonly' }}
           turbo-api: ${{ env.TURBO_API }}
