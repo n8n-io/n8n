@@ -75,6 +75,12 @@ function extractSubnodeRequirements(inputs?: BuilderHintInputs): SubnodeRequirem
 		}));
 }
 
+function getBuilderHintMessage(
+	builderHint?: SearchableNodeType['builderHint'],
+): string | undefined {
+	return builderHint?.message ?? builderHint?.searchHint;
+}
+
 function dedupeNodes(nodes: SearchableNodeType[]): SearchableNodeType[] {
 	const dedupeCache: Record<string, SearchableNodeType> = {};
 	nodes.forEach((node) => {
@@ -258,6 +264,7 @@ export class NodeSearchEngine {
 			.slice(0, limit)
 			.map(({ item, score }): NodeSearchResult => {
 				const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
+				const builderHintMessage = getBuilderHintMessage(item.builderHint);
 				return {
 					name: item.name,
 					displayName: item.displayName,
@@ -266,7 +273,7 @@ export class NodeSearchEngine {
 					inputs: item.inputs,
 					outputs: item.outputs,
 					score,
-					...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
+					...(builderHintMessage && { builderHintMessage }),
 					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 				};
 			});
@@ -308,6 +315,7 @@ export class NodeSearchEngine {
 				.slice(0, limit)
 				.map(({ nodeType, connectionScore }) => {
 					const subnodeRequirements = extractSubnodeRequirements(nodeType.builderHint?.inputs);
+					const builderHintMessage = getBuilderHintMessage(nodeType.builderHint);
 					return {
 						name: nodeType.name,
 						displayName: nodeType.displayName,
@@ -316,9 +324,7 @@ export class NodeSearchEngine {
 						inputs: nodeType.inputs,
 						outputs: nodeType.outputs,
 						score: connectionScore,
-						...(nodeType.builderHint?.message && {
-							builderHintMessage: nodeType.builderHint.message,
-						}),
+						...(builderHintMessage && { builderHintMessage }),
 						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 					};
 				});
@@ -337,6 +343,7 @@ export class NodeSearchEngine {
 			);
 			const connectionScore = connectionResult?.connectionScore ?? 0;
 			const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
+			const builderHintMessage = getBuilderHintMessage(item.builderHint);
 
 			return {
 				name: item.name,
@@ -346,7 +353,7 @@ export class NodeSearchEngine {
 				inputs: item.inputs,
 				outputs: item.outputs,
 				score: connectionScore + nameScore,
-				...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
+				...(builderHintMessage && { builderHintMessage }),
 				...(subnodeRequirements.length > 0 && { subnodeRequirements }),
 			};
 		});

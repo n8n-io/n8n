@@ -57,7 +57,7 @@ import { loadAi } from './lazy-ai';
 import { createFilteredLogger } from './logger';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
-import { fromAiFinishReason, fromAiMessages } from './messages';
+import { fromAiFinishReason, fromAiMessages, normalizeToolInputForModel } from './messages';
 import { createModel } from './model-factory';
 import {
 	runObservationLogObserver,
@@ -2324,6 +2324,12 @@ export class AgentRuntime {
 		if (countToolCall) {
 			this.incrementToolCallCount(executionCounter);
 		}
+
+		const normalizedToolInput = normalizeToolInputForModel(toolInput);
+		if (!normalizedToolInput.ok) {
+			return makeToolError(new Error(normalizedToolInput.error));
+		}
+		toolInput = normalizedToolInput.input;
 
 		if (builtTool.inputSchema) {
 			const result = await parseWithSchema(builtTool.inputSchema, toolInput);
