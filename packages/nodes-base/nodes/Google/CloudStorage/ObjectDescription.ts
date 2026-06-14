@@ -215,7 +215,7 @@ export const objectOperations: INodeProperties[] = [
 									const binaryData = this.helpers.assertBinaryData(binaryPropertyName);
 									if (binaryData.id) {
 										const binaryMetadata = await this.helpers.getBinaryMetadata(binaryData.id);
-										contentType = binaryMetadata.mimeType ?? 'application/octet-stream';
+										contentType = binaryData.mimeType ?? binaryMetadata.mimeType ?? 'application/octet-stream';
 										contentLength = binaryMetadata.fileSize;
 										content =
 											Number.isFinite(contentLength) && contentLength === 0
