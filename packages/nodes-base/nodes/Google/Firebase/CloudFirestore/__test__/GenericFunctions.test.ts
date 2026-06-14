@@ -368,6 +368,22 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 				},
 			});
 		});
+
+		it('should convert objects with an own hasOwnProperty field', () => {
+			const result = jsonToDocument({
+				hasOwnProperty: 'shadowed',
+				safeProperty: 'safe',
+			});
+
+			expect(result).toEqual({
+				mapValue: {
+					fields: {
+						hasOwnProperty: { stringValue: 'shadowed' },
+						safeProperty: { stringValue: 'safe' },
+					},
+				},
+			});
+		});
 	});
 
 	describe('documentToJson', () => {

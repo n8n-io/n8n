@@ -110,7 +110,7 @@ export function jsonToDocument(
 	} else if (typeof value === 'object') {
 		const obj: IDataObject = {};
 		for (const key of Object.keys(value)) {
-			if (value.hasOwnProperty(key) && isSafeObjectProperty(key)) {
+			if (Object.prototype.hasOwnProperty.call(value, key) && isSafeObjectProperty(key)) {
 				obj[key] = jsonToDocument((value as IDataObject)[key] as IDataObject);
 			}
 		}
