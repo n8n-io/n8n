@@ -1,8 +1,12 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
+import isPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
 import {
 	assertCredentialAllowsUrl,
+	ensureError,
+	jsonParse,
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeProperties,
 	type IDataObject,
 	type INodeType,
@@ -599,6 +603,14 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
+						displayName: 'Extra Body',
+						name: 'extraBody',
+						type: 'json',
+						default: '{}',
+						description:
+							'Optional additional JSON properties to include in the request body when making requests to OpenAI-compatible APIs',
+					},
+					{
 						displayName: 'Conversation ID',
 						name: 'conversationId',
 						default: '',
@@ -793,6 +805,27 @@ export class LmChatOpenAi implements INodeType {
 			if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort)) {
 				modelKwargs.reasoning_effort = options.reasoningEffort;
 			}
+		}
+
+		if (options.extraBody) {
+			let extraBody: Record<string, unknown>;
+			try {
+				extraBody = jsonParse<Record<string, unknown>>(options.extraBody);
+			} catch (error) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'The value in the "Extra Body" field is not valid JSON',
+					{ itemIndex, description: ensureError(error).message },
+				);
+			}
+			if (!isPlainObject(extraBody)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'The value in the "Extra Body" field must be a JSON object',
+					{ itemIndex },
+				);
+			}
+			Object.assign(modelKwargs, extraBody);
 		}
 
 		const includedOptions = pick(options, [
