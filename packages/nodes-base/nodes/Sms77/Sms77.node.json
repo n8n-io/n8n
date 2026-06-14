@@ -1,6 +1,6 @@
 {
 	"node": "n8n-nodes-base.sms77",
-	"nodeVersion": "1.0",
+	"nodeVersion": "2.0",
 	"codexVersion": "1.0",
 	"categories": ["Communication"],
 	"resources": {
@@ -15,5 +15,5 @@
 			}
 		]
 	},
-	"alias": ["SMS", "Sms77"]
+	"alias": ["SMS", "Sms77", "Seven", "RCS", "WhatsApp", "Voice"]
 }
