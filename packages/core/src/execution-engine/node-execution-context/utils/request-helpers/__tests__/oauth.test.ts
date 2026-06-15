@@ -1,5 +1,5 @@
 import type { IAllExecuteFunctions, INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 import nock from 'nock';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -661,7 +661,7 @@ describe('requestOAuth2 - client credentials initial token fetch', () => {
 		);
 	});
 
-	test('should throw ApplicationError with clear message when token acquisition fails', async () => {
+	test('should throw OperationalError with clear message when token acquisition fails', async () => {
 		mockThis.getCredentials.mockResolvedValue({
 			clientId: 'client-id',
 			clientSecret: 'wrong-secret',
@@ -680,17 +680,18 @@ describe('requestOAuth2 - client credentials initial token fetch', () => {
 				{ 'content-type': 'application/json' },
 			);
 
-		await expect(
-			requestOAuth2.call(
-				mockThis,
-				'testOAuth2',
-				{ method: 'GET', url: `${baseUrl}/data` },
-				mockNode,
-				mockAdditionalData,
-				undefined,
-				true,
-			),
-		).rejects.toThrow('Failed to acquire OAuth2 access token');
+		const promise = requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data` },
+			mockNode,
+			mockAdditionalData,
+			undefined,
+			true,
+		);
+
+		await expect(promise).rejects.toThrow(OperationalError);
+		await expect(promise).rejects.toThrow('Failed to acquire OAuth2 access token');
 	});
 });
 

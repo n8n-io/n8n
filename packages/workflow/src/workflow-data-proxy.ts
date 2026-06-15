@@ -52,6 +52,26 @@ const PAIRED_ITEM_METHOD = {
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
 
+/**
+ * Whether the runtime can compile expressions. The expression engine compiles
+ * expressions via `new Function`, which throws when the process is started with
+ * `--disallow-code-generation-from-strings` — as the secure-mode task runner is.
+ * This is a process-wide invariant, so we probe once and cache the result.
+ */
+let codeGenerationAllowed: boolean | undefined;
+const isCodeGenerationAllowed = (): boolean => {
+	if (codeGenerationAllowed === undefined) {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
+			new Function('return 1');
+			codeGenerationAllowed = true;
+		} catch {
+			codeGenerationAllowed = false;
+		}
+	}
+	return codeGenerationAllowed;
+};
+
 export class WorkflowDataProxy {
 	private runExecutionData: IRunExecutionData | null;
 
@@ -1496,6 +1516,15 @@ export class WorkflowDataProxy {
 				that.envProviderState ?? createEnvProviderState(),
 			),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
+				if (!isCodeGenerationAllowed()) {
+					throw new ExpressionError(
+						"$evaluateExpression can't be used in the Code node while task runners run in secure mode",
+						{
+							description:
+								'Secure-mode task runners disable evaluating strings as code, which expressions rely on. Evaluate the expression in a node field instead, for example an Edit Fields (Set) node before the Code node.',
+						},
+					);
+				}
 				itemIndex = itemIndex || that.itemIndex;
 				return that.workflow.expression.getParameterValue(
 					`=${expression}`,

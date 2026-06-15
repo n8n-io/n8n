@@ -34,13 +34,14 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => toast,
 }));
 
+// The modal is mounted globally, so it can be opened from views whose route has no
+// `workflowId` param (e.g. the AI artifact view). The whole suite runs under that
+// condition: the workflow id must always come from the document store, never the route.
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),
 	useRoute: () =>
 		reactive({
-			params: {
-				workflowId: '1',
-			},
+			params: {},
 			query: {},
 		}),
 	RouterLink: {
@@ -239,7 +240,11 @@ describe('WorkflowSettingsVue', () => {
 		beforeEach(() => {
 			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];
 			settingsStore.settings.enterprise.otelCustomSpanAttributes = true;
-			settingsStore.moduleSettings = { otel: { enabled: true } };
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
 		});
 
 		it('should show custom span attribute settings when OTel custom span attributes are enabled', async () => {
@@ -250,8 +255,12 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-custom-telemetry-tags')).toBeVisible();
 		});
 
-		it('should hide custom span attribute settings when OTel is disabled', async () => {
-			settingsStore.moduleSettings = { otel: { enabled: false } };
+		it('should hide custom telemetry tag settings when OTel is disabled', async () => {
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: false,
+				},
+			};
 			const { queryByTestId } = createComponentWithCustomTelemetryTagsStub({ pinia });
 
 			await flushPromises();
@@ -276,7 +285,7 @@ describe('WorkflowSettingsVue', () => {
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				expect.any(String),
+				'1',
 				expect.objectContaining({
 					settings: expect.objectContaining({
 						customTelemetryTags: [{ key: 'env', value: 'production' }],
@@ -1596,16 +1605,11 @@ describe('WorkflowSettingsVue', () => {
 		describe('instance floor', () => {
 			const setUpFloor = (params: {
 				floor: 'off' | 'production' | 'all';
-				flagEnabled: boolean;
 				hasUpdatePermission?: boolean;
 				redactionPolicy?: 'none' | 'non-manual' | 'manual-only' | 'all';
 			}) => {
 				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = true;
-				settingsStore.settings.envFeatureFlags = {
-					...settingsStore.settings.envFeatureFlags,
-					N8N_ENV_FEAT_REDACTION_ENFORCEMENT: params.flagEnabled ? 'true' : 'false',
-				};
 				getSecuritySettings.mockResolvedValue({
 					...DEFAULT_SECURITY_SETTINGS,
 					redactionEnforcement: { floor: params.floor },
@@ -1635,7 +1639,7 @@ describe('WorkflowSettingsVue', () => {
 			};
 
 			it('locks production select with floor copy under floor "production"; manual stays editable', async () => {
-				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'none' });
+				setUpFloor({ floor: 'production', redactionPolicy: 'none' });
 
 				const { getByTestId, getAllByTestId } = createComponent({ pinia });
 				await flushPromises();
@@ -1659,7 +1663,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			it('locks both selects with floor copy under floor "all"', async () => {
-				setUpFloor({ floor: 'all', flagEnabled: true, redactionPolicy: 'none' });
+				setUpFloor({ floor: 'all', redactionPolicy: 'none' });
 
 				const { getByTestId, getAllByTestId } = createComponent({ pinia });
 				await flushPromises();
@@ -1684,7 +1688,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			it('leaves both selects editable under floor "off"', async () => {
-				setUpFloor({ floor: 'off', flagEnabled: true, redactionPolicy: 'non-manual' });
+				setUpFloor({ floor: 'off', redactionPolicy: 'non-manual' });
 
 				const { getByTestId, queryByTestId } = createComponent({ pinia });
 				await flushPromises();
@@ -1701,26 +1705,20 @@ describe('WorkflowSettingsVue', () => {
 				expect(getSecuritySettings).toHaveBeenCalled();
 			});
 
-			it('does not apply the floor lock when the feature flag is off', async () => {
-				setUpFloor({ floor: 'all', flagEnabled: false, redactionPolicy: 'non-manual' });
+			it('does not fetch the instance floor when DataRedaction is not licensed', async () => {
+				setUpFloor({ floor: 'all', redactionPolicy: 'non-manual' });
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] = false;
 
-				const { getByTestId, queryByTestId } = createComponent({ pinia });
+				createComponent({ pinia });
 				await flushPromises();
 
-				const productionInput = within(
-					getByTestId('workflow-settings-redact-production-select'),
-				).getByRole('combobox');
-				const manualInput = within(getByTestId('workflow-settings-redact-manual-select')).getByRole(
-					'combobox',
-				);
-				expect(productionInput).not.toBeDisabled();
-				expect(manualInput).not.toBeDisabled();
-				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();
+				// Gating the fetch on the license avoids a guaranteed-403 request for
+				// non-enterprise instances.
 				expect(getSecuritySettings).not.toHaveBeenCalled();
 			});
 
 			it('keeps manual select enabled under floor "production" (production coerced to redact)', async () => {
-				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'none' });
+				setUpFloor({ floor: 'production', redactionPolicy: 'none' });
 
 				const { getByTestId, queryByText } = createComponent({ pinia });
 				await flushPromises();
@@ -1738,7 +1736,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			it('shows the floor lock on manual (not the IAM-697 hint) when floor "all" and policy "none"', async () => {
-				setUpFloor({ floor: 'all', flagEnabled: true, redactionPolicy: 'none' });
+				setUpFloor({ floor: 'all', redactionPolicy: 'none' });
 
 				const { getAllByTestId, queryByText } = createComponent({ pinia });
 				await flushPromises();
@@ -1752,7 +1750,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			it('does not persist the floor-coerced production value when the user made no redaction change under floor "production"', async () => {
-				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'none' });
+				setUpFloor({ floor: 'production', redactionPolicy: 'none' });
 
 				const { getByRole } = createComponent({ pinia });
 				await flushPromises();
@@ -1772,7 +1770,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			it('does not persist the floor-coerced values when the user made no redaction change under floor "all"', async () => {
-				setUpFloor({ floor: 'all', flagEnabled: true, redactionPolicy: 'none' });
+				setUpFloor({ floor: 'all', redactionPolicy: 'none' });
 
 				const { getByRole } = createComponent({ pinia });
 				await flushPromises();
@@ -1790,7 +1788,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			it('persists "all" when the user genuinely enables manual redaction under floor "production"', async () => {
-				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'none' });
+				setUpFloor({ floor: 'production', redactionPolicy: 'none' });
 
 				const { getByTestId, getByRole } = createComponent({ pinia });
 				await flushPromises();
@@ -1820,7 +1818,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			it('preserves an existing stricter stored policy on save under floor "production"', async () => {
-				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'non-manual' });
+				setUpFloor({ floor: 'production', redactionPolicy: 'non-manual' });
 
 				const { getByRole } = createComponent({ pinia });
 				await flushPromises();
@@ -1838,7 +1836,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			it('fails open when getSecuritySettings rejects (no floor lock, selects editable)', async () => {
-				setUpFloor({ floor: 'production', flagEnabled: true, redactionPolicy: 'non-manual' });
+				setUpFloor({ floor: 'production', redactionPolicy: 'non-manual' });
 				// Override the resolved mock with a rejection — the component must swallow the error
 				// and leave instanceRedactionFloor at its default 'off'.
 				getSecuritySettings.mockRejectedValueOnce(new Error('Network error'));
@@ -1857,10 +1855,9 @@ describe('WorkflowSettingsVue', () => {
 				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();
 			});
 
-			it('keeps the permission lock active when the flag is off (no floor lock applies)', async () => {
+			it('keeps the permission lock active under floor "off" (no floor lock applies)', async () => {
 				setUpFloor({
-					floor: 'all',
-					flagEnabled: false,
+					floor: 'off',
 					hasUpdatePermission: false,
 					redactionPolicy: 'all',
 				});
@@ -1877,7 +1874,7 @@ describe('WorkflowSettingsVue', () => {
 				expect(productionInput).toBeDisabled();
 				expect(manualInput).toBeDisabled();
 
-				// No floor-lock indicator under flag-off (the lock comes from missing permission).
+				// No floor-lock indicator under floor "off" (the lock comes from missing permission).
 				expect(queryByTestId('workflow-settings-redaction-floor-lock')).not.toBeInTheDocument();
 			});
 		});

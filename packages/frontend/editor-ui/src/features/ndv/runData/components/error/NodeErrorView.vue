@@ -7,7 +7,8 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useEditorContext } from '@/app/composables/useEditorContext';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	IDataObject,
@@ -53,13 +54,13 @@ const assistantHelpers = useAIAssistantHelpers();
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 
-const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
+const executionId = computed(() => workflowExecutionStateStore.value.activeExecution?.id);
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
@@ -134,13 +135,17 @@ const prepareRawMessages = computed(() => {
 	return returnData;
 });
 
+const { aiAssistant } = useEditorContext();
+
 const isAskAssistantAvailable = computed(() => {
 	if (!node.value || isSubNodeError.value) {
 		return false;
 	}
 	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
 
-	return chatPanelStore.canShowAiButtonOnCanvas && !isCustomNode && !nodeIsHidden();
+	return (
+		chatPanelStore.isEditableCanvasView && !isCustomNode && !nodeIsHidden() && aiAssistant.value
+	);
 });
 
 const assistantAlreadyAsked = computed(() => {

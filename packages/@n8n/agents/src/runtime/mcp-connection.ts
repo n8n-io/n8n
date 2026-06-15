@@ -127,7 +127,7 @@ export class McpConnection {
 		const resolver = new McpToolResolver();
 		const tools = resolver.resolve(this, result.tools);
 		return tools.map((t) =>
-			t.suspendSchema || !this.needsApproval(t)
+			t.suspendSchema || !this.shouldRequireToolApproval(t)
 				? t
 				: wrapToolForApproval(t, { requireApproval: true }),
 		);
@@ -140,7 +140,7 @@ export class McpConnection {
 	 * - `config.requireApproval` is `true` (all tools on this server), OR
 	 * - `config.requireApproval` is a string array that includes the tool's original (un-prefixed) name.
 	 */
-	private needsApproval(tool: BuiltTool): boolean {
+	private shouldRequireToolApproval(tool: BuiltTool): boolean {
 		const { requireApproval } = this.config;
 		if (requireApproval === true) return true;
 
