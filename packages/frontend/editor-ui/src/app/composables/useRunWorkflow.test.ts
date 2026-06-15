@@ -653,7 +653,7 @@ describe('useRunWorkflow({ router })', () => {
 					? { main: [[{ node: parentName, type: NodeConnectionTypes.Main, index: 0 }]] }
 					: ({} as INodeConnections),
 			);
-			vi.mocked(workflowsStore).getWorkflowRunData = {
+			const runData = {
 				[parentName]: [
 					{
 						startTime: 1,
@@ -675,6 +675,19 @@ describe('useRunWorkflow({ router })', () => {
 					},
 				],
 			};
+			vi.mocked(workflowsStore).getWorkflowRunData = runData;
+			// Node dirtiness resolves run data through the execution-state store
+			// keyed by the document id, so seed the real store as well.
+			executionStateStore.setWorkflowExecutionData({
+				id: 'previous-execution',
+				workflowData: { id: '123', nodes: [], connections: {} },
+				finished: true,
+				mode: 'manual',
+				status: 'success',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				data: { resultData: { runData } },
+			} as unknown as IExecutionResponse);
 			mockDocumentStore.serialize.mockReturnValue({
 				nodes: [],
 			} as unknown as WorkflowData);

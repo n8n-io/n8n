@@ -38,7 +38,7 @@ describe('OAuthServerService', () => {
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
 
-		const resourceRegistry = new ProtectedResourceRegistry();
+		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 		resourceRegistry.register({
 			id: 'instance-mcp',
 			getResourceUrl: () => TEST_RESOURCE_URL,
@@ -862,7 +862,7 @@ describe('OAuthServerService', () => {
 
 	describe('resource indicator validation across multiple resources', () => {
 		it('should accept any registered resource and reject unregistered ones', async () => {
-			const multiRegistry = new ProtectedResourceRegistry();
+			const multiRegistry = new ProtectedResourceRegistry(mock<Logger>());
 			multiRegistry.register({
 				id: 'instance-mcp',
 				getResourceUrl: () => TEST_RESOURCE_URL,
@@ -890,16 +890,16 @@ describe('OAuthServerService', () => {
 			);
 
 			expect(
-				(multiResourceService as any).resolveAndValidateResourceIndicator(TEST_RESOURCE_URL),
+				await (multiResourceService as any).resolveAndValidateResourceIndicator(TEST_RESOURCE_URL),
 			).toBe(TEST_RESOURCE_URL);
 			expect(
-				(multiResourceService as any).resolveAndValidateResourceIndicator(secondResourceUrl),
+				await (multiResourceService as any).resolveAndValidateResourceIndicator(secondResourceUrl),
 			).toBe(secondResourceUrl);
-			expect(() =>
+			await expect(
 				(multiResourceService as any).resolveAndValidateResourceIndicator(
 					'https://n8n.example.com/webhook/wf-2/mcp',
 				),
-			).toThrow(InvalidTargetError);
+			).rejects.toThrow(InvalidTargetError);
 		});
 	});
 });
