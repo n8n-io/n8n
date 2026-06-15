@@ -97,7 +97,7 @@ function slugifyArtifactSegment(value: string, fallback: string): string {
 }
 
 function deriveTestCaseArtifactName(testCase: WorkflowTestCase): string {
-	return slugifyArtifactSegment(testCase.conversation[0]?.text ?? '', 'workflow');
+	return slugifyArtifactSegment(testCase.conversation?.[0]?.text ?? '', 'workflow');
 }
 
 async function writeScenarioVerificationSnapshot(input: {

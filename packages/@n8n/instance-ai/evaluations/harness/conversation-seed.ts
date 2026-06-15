@@ -8,8 +8,9 @@
 // use `seedThread`, reconstructed from a LangSmith trace (see langsmith-seed.ts).
 // ---------------------------------------------------------------------------
 
+import { generateNanoId } from '@n8n/utils';
 import { jsonParse } from 'n8n-workflow';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
@@ -21,6 +22,7 @@ import {
 	extractSetupWizardOutcome,
 } from '../outcome/transcript-from-events';
 import type { ConversationTurn, TranscriptStep, TranscriptTurn } from '../types';
+import { isRecord } from '../utils/safe-extract';
 
 // ---------------------------------------------------------------------------
 // Seed file schema
@@ -91,24 +93,17 @@ export function seedFromProse(turns: ConversationTurn[]): ConversationSeed {
 // Workflow id remapping
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_ID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-
-function generateWorkflowId(): string {
-	const bytes = randomBytes(16);
-	let id = '';
-	for (const byte of bytes) id += WORKFLOW_ID_ALPHABET[byte % WORKFLOW_ID_ALPHABET.length];
-	return id;
-}
-
 /**
- * Give every seeded workflow a fresh id, rewriting all references across the
- * seed (message tool-call inputs/outputs, canvas URLs, the workflow records
- * themselves). Without this, parallel iterations of the same case would
- * restore — and then edit — one shared workflow row.
+ * Give every seeded workflow a fresh id (the same 16-char nanoid shape real
+ * workflow rows get), rewriting all references across the seed (message
+ * tool-call inputs/outputs, canvas URLs, the workflow records themselves).
+ * Without this, parallel iterations of the same case would restore — and then
+ * edit — one shared workflow row.
  */
 export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 	if (seed.workflows.length === 0) return seed;
 
+	const originalIds = new Set(seed.workflows.map((workflow) => workflow.id));
 	let serialized = JSON.stringify({ messages: seed.messages, workflows: seed.workflows });
 	for (const workflow of seed.workflows) {
 		// Workflow ids are long random tokens; a short id would risk rewriting
@@ -118,7 +113,11 @@ export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 				`Seed workflow id "${workflow.id}" is too short to remap safely (need ≥8 chars)`,
 			);
 		}
-		serialized = serialized.replaceAll(workflow.id, generateWorkflowId());
+		// Keep the fresh id disjoint from every original id so this sequential
+		// replace can't rewrite a not-yet-processed workflow's id.
+		let newId = generateNanoId();
+		while (originalIds.has(newId)) newId = generateNanoId();
+		serialized = serialized.replaceAll(workflow.id, newId);
 	}
 
 	const remapped = ConversationSeedSchema.parse(jsonParse(serialized));
@@ -134,10 +133,6 @@ export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 // live turn should do. Turns carry `seeded: true` so consumers can tell
 // restored context from evaluated behaviour.
 // ---------------------------------------------------------------------------
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function textOf(blocks: unknown[]): string {
 	return blocks

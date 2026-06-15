@@ -21,6 +21,7 @@ import type { Run } from 'langsmith/schemas';
 
 import type { ConversationSeed } from './conversation-seed';
 import { parseAndValidate } from '../../src/workflow-builder/parse-validate';
+import { isRecord } from '../utils/safe-extract';
 
 /** Default project that instance-ai conversations are traced to (same name in
  *  every workspace). Override per case with `seedThread.project` if it differs. */
@@ -129,10 +130,6 @@ function unredactCode(code: string): string {
 	return code.replace(/\[REDACTED\]/g, 'credentials: {');
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 /**
  * A human-in-the-loop tool spans a SUSPEND run (the pending request, no answer)
  * and a RESUME run (the answer). The suspend's output is a re-statement of the
@@ -143,9 +140,9 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * tools also wrap output in `payload`, but without `inputType`.
  */
 function isSuspendArtifact(output: unknown): boolean {
-	if (!isObject(output)) return false;
+	if (!isRecord(output)) return false;
 	if (output.deferred === true) return true;
-	return isObject(output.payload) && typeof output.payload.inputType === 'string';
+	return isRecord(output.payload) && typeof output.payload.inputType === 'string';
 }
 
 /** A HITL request envelope: `{ payload: { requestId, … } }` — emitted by both the
@@ -153,7 +150,7 @@ function isSuspendArtifact(output: unknown): boolean {
  *  a pending id) to identify the suspend half to drop. */
 function isHitlRequestEnvelope(output: unknown): boolean {
 	return (
-		isObject(output) && isObject(output.payload) && typeof output.payload.requestId === 'string'
+		isRecord(output) && isRecord(output.payload) && typeof output.payload.requestId === 'string'
 	);
 }
 
