@@ -137,19 +137,18 @@ brew install actionlint
 
 #### tbls (for database schema docs)
 
-The database schema docs under [`docs/generated/`](docs/generated) are generated from the migrations with [tbls](https://github.com/k1LoW/tbls). You only need it if you intend to
-add or change DB migrations. It runs automatically via git hooks when migration files are changed.
-
-You only need **either** tbls installed **or** Docker available.
+The database schema docs under [`docs/generated/`](docs/generated) are generated from the migrations with [tbls](https://github.com/k1LoW/tbls). If you plan to modify DB migrations, you'll need **either** tbls installed **or** Docker available.
 
 **macOS (Homebrew):**
 ```bash
 brew install tbls
 ```
 
+For other platforms, see the [tbls install guide](https://github.com/k1LoW/tbls#install).
+
 > **Note:** tbls is only required if you're modifying DB migrations. It runs automatically via git hooks when migration files are changed.
 
-For other platforms, see the [tbls install guide](https://github.com/k1LoW/tbls#install). Then:
+---
 
 ### Actual n8n setup
 
