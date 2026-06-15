@@ -6,7 +6,6 @@
 	"compilerOptions": {
 		"outDir": "dist",
 		"preserveSymlinks": true,
-		"tsBuildInfoFile": "dist/build.tsbuildinfo",
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},

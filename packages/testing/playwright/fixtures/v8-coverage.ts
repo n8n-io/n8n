@@ -1,17 +1,15 @@
 import type { BrowserContext, Page, TestInfo } from '@playwright/test';
 import { CoverageReport } from 'monocart-coverage-reports';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 
-import { BY_SPEC_DIR, coverageOptions, COVERAGE_ENABLED } from '../coverage-options';
-
-/** Spec id = project-relative path (e.g. tests/e2e/nodes/if-node.spec.ts) — the
- *  same id the runner uses, so the impact map keys match runnable specs. */
-function specId(testInfo: TestInfo): string {
-	return relative(process.cwd(), testInfo.file).split('\\').join('/');
-}
-
-const slugify = (spec: string) => spec.replace(/[^a-zA-Z0-9]+/g, '_');
+import {
+	BY_SPEC_DIR,
+	coverageOptions,
+	COVERAGE_ENABLED,
+	slugify,
+	specId,
+} from '../coverage-options';
 
 /**
  * Browser-native V8 coverage collection (Chromium `page.coverage`), replacing
@@ -79,11 +77,25 @@ export const v8CoverageFixtures = {
 			const specDir = join(BY_SPEC_DIR, slugify(spec));
 			mkdirSync(specDir, { recursive: true });
 			// Unique per test so multiple tests in one spec file accumulate (don't clobber).
-			writeFileSync(
-				join(specDir, `raw-${slugify(testInfo.testId)}.json`),
-				JSON.stringify(perSpecRaw),
-			);
-			writeFileSync(join(specDir, '.spec'), spec);
+			try {
+				writeFileSync(
+					join(specDir, `raw-${slugify(testInfo.testId)}.json`),
+					JSON.stringify(perSpecRaw),
+				);
+				writeFileSync(join(specDir, '.spec'), spec);
+			} catch (error) {
+				// V8 coverage entries include full script source text. Tests that navigate
+				// extensively (e.g. signout + signin in one test with resetOnNavigation:false)
+				// accumulate enough script entries that JSON.stringify hits V8's ~536MB string
+				// limit (RangeError: Invalid string length). The shard-level sharedReport
+				// already received the data above, so aggregate coverage is unaffected — only
+				// this test's per-spec impact map entry is dropped. Re-throw anything else: a
+				// real write failure (disk full, permissions) must not silently lose attribution.
+				if (!(error instanceof RangeError)) throw error;
+				console.warn(
+					`[coverage] per-spec raw write skipped for ${testInfo.titlePath.join(' > ')}: ${error.message}`,
+				);
+			}
 		}
 	},
 };

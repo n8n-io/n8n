@@ -1,4 +1,5 @@
 import { inDevelopment, inProduction } from '@n8n/backend-common';
+import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
@@ -8,7 +9,7 @@ import express from 'express';
 import { access as fsAccess } from 'fs/promises';
 import helmet from 'helmet';
 import isEmpty from 'lodash/isEmpty';
-import { InstanceSettings, installGlobalProxyAgent } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
@@ -158,8 +159,8 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (this.globalConfig.endpoints.metrics.enable) {
-			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
-			await Container.get(PrometheusMetricsService).init(this.app);
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus');
+			Container.get(PrometheusMetricsService).init(this.app);
 		}
 
 		const { frontendService } = this;

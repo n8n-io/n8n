@@ -4,6 +4,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import * as mcpApi from './mcp.api';
 import { useMCPStore } from './mcp.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { createWorkflow } from './mcp.test.utils';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -35,6 +36,32 @@ describe('mcp.store', () => {
 		setActivePinia(createPinia());
 		store = useMCPStore();
 		workflowsListStore = useWorkflowsListStore();
+	});
+
+	describe('fetchWorkflowsAvailableForMCP', () => {
+		it('returns paginated workflows and total count', async () => {
+			const workflow = createWorkflow({ id: 'wf-1' });
+			const fetchSpy = vi
+				.spyOn(workflowsListStore, 'fetchWorkflowsPageWithCount')
+				.mockResolvedValue({
+					data: [workflow],
+					count: 11,
+				});
+
+			await expect(store.fetchWorkflowsAvailableForMCP(2, 25)).resolves.toEqual({
+				data: [workflow],
+				count: 11,
+			});
+			expect(fetchSpy).toHaveBeenCalledWith(
+				undefined,
+				2,
+				25,
+				'updatedAt:desc',
+				{ isArchived: false, availableInMCP: true },
+				false,
+				false,
+			);
+		});
 	});
 
 	describe('toggleWorkflowMcpAccess', () => {

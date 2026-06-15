@@ -19,11 +19,13 @@ test.describe(
 			// New builds route through the planner and pause for user approval.
 			await n8n.instanceAi.approveBuildPlan();
 
-			// Wait for build to complete (no confirmation for simple builds)
-			await n8n.instanceAi.waitForResponseComplete(120_000);
-
-			// An artifact card should appear in the timeline
-			await expect(n8n.instanceAi.getArtifactCards().first()).toBeVisible({ timeout: 30_000 });
+			await expect(n8n.instanceAi.getPreviewTabByName(/artifact display test/i)).toBeVisible({
+				timeout: 120_000,
+			});
+			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
+				timeout: 30_000,
+			});
+			await n8n.instanceAi.waitForResponseComplete();
 		});
 
 		test('should open workflow preview when clicking artifact card', async ({ n8n }) => {
@@ -41,13 +43,14 @@ test.describe(
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 30_000,
 			});
+			await n8n.instanceAi.waitForResponseComplete();
 
 			// Hide the preview first
 			await n8n.instanceAi.getPreviewToggleButton().click();
 			await expect(n8n.instanceAi.getPreviewIframeLocator()).toBeHidden();
 
-			// Click the artifact card to re-open the preview
-			await n8n.instanceAi.getArtifactCards().first().click();
+			// Click the artifact entry to re-open the preview
+			await n8n.instanceAi.getArtifactPanelLinkByName(/Open artifact click test/i).click();
 
 			// Preview should open again with canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({

@@ -46,7 +46,9 @@ export class CreateAgentFilesTable1784000000018 implements ReversibleMigration {
 		{ schemaBuilder: { addEnumCheck, dropEnumCheck } }: MigrationContext,
 		sourceTypes: string[],
 	) {
-		await dropEnumCheck(binaryDataTableName, sourceTypeColumn);
-		await addEnumCheck(binaryDataTableName, sourceTypeColumn, sourceTypes);
+		await dropEnumCheck(binaryDataTableName, sourceTypeColumn, { recreatesOnSqlite: true });
+		await addEnumCheck(binaryDataTableName, sourceTypeColumn, sourceTypes, {
+			recreatesOnSqlite: true,
+		});
 	}
 }

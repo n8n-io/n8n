@@ -1,0 +1,78 @@
+oneOf:
+  - type: object
+    description: >
+      A workflow whose source id already matches one in the target project, under
+      the `fail` conflict policy.
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-conflict
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      name:
+        type: string
+  - type: object
+    description: >
+      A `source`-policy workflow whose id is already taken on the instance.
+      Workflow ids are globally unique, so the id cannot be created in the
+      target project. The existing workflow may live in any project — including
+      the target project itself — and may be archived (archived workflows keep
+      their id but are never matched for updates).
+    required:
+      - type
+      - sourceWorkflowId
+      - existingWorkflowId
+      - existingProjectId
+      - isArchived
+      - name
+    properties:
+      type:
+        type: string
+        enum:
+          - workflow-id-conflict
+      sourceWorkflowId:
+        type: string
+      existingWorkflowId:
+        type: string
+      existingProjectId:
+        type: string
+        nullable: true
+        description: >
+          Project that owns the existing workflow, or null when no owning
+          project could be determined.
+      isArchived:
+        type: boolean
+        description: Whether the existing workflow is archived.
+      name:
+        type: string
+  - type: object
+    description: A credential reference that could not be resolved in the target project.
+    required:
+      - type
+      - kind
+      - sourceId
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - credential-unresolved
+      kind:
+        type: string
+        enum:
+          - not_found
+          - unknown_type
+      sourceId:
+        type: string
+      usedByWorkflows:
+        type: array
+        items:
+          type: string

@@ -1,11 +1,11 @@
 /**
  * Task paths for sub-agent delegation.
  *
- * A "task path" is a filesystem-like address that gives each delegated run a
- * stable, human-readable identity, e.g.:
+ * A "task path" is a filesystem-like address that gives every agent run a
+ * stable, human-readable position in the delegation flow, e.g.:
  *
- *   /root                    ← the top-level (orchestrating) agent
- *   /root/research_api_0     ← a first-level delegated child
+ *   /root                ← the top-level (orchestrating) agent
+ *   /root/research_api_0 ← a direct child delegation from the orchestrator
  *
  * Each child segment carries the parent's 0-based child index (`_0`, `_1`, …) so
  * that delegations with the same task name stay distinct.
@@ -14,13 +14,6 @@
  *  - Identity: each delegated unit of work gets a unique, traceable name we can
  *    log and surface in the timeline — without the parent having to invent ids.
  *    (Memory/session ids are independent — a run gets its own thread id.)
- *  - Policy enforcement: together with {@link SubAgentTaskPathPolicy}, the path
- *    supports per-parent fan-out limits so a misbehaving agent cannot spawn
- *    hundreds of parallel children, which would blow up cost, latency, and
- *    resources.
- *
- * Nesting is not supported: only `/root` and single-segment child paths under
- * `/root` are valid. Sub-agents cannot spawn other sub-agents.
  *
  * Everything in this file is pure (no I/O, no n8n-specific concepts), which is
  * why it lives in the runtime SDK: it is shared verbatim by both the generic
@@ -28,29 +21,30 @@
  */
 
 /**
- * A delegation task path: `/root` or `/root/<segment>` only. Modeled as a
- * template-literal type so a plain string can be narrowed to a validated path
- * via {@link assertSubAgentTaskPath}.
+ * A delegation task path: `/root` or a single direct-child segment under `/root`.
+ * Modeled as a template-literal type so a plain string can be narrowed to a
+ * validated path via {@link assertSubAgentTaskPath}.
  */
-export type SubAgentTaskPath = `/root${'' | `/${string}`}`;
+export type SubAgentTaskPath = '/root' | `/root/${string}`;
 
 /**
- * Guardrails applied when a parent tries to spawn a child sub-agent. Every limit
- * is optional; an undefined field means "no limit for that dimension".
+ * Policy fields related to sub-agent task paths and delegation parallelism.
+ * Every limit is optional at the call site; undefined fields use runtime defaults.
  */
 export interface SubAgentTaskPathPolicy {
-	/** Maximum number of children a single parent may spawn. Bounds fan-out width. */
+	/** Maximum number of child sub-agent runs that may execute in parallel. Defaults to {@link DEFAULT_SUB_AGENT_MAX_CHILDREN}. */
 	maxChildren?: number;
-	/** Hard on/off switch: when false the parent may not delegate at all. */
-	canSpawnSubAgents?: boolean;
 }
 
-/** Top-level orchestrating agent path. */
+/** Default parallel delegate batch width when none is configured. */
+export const DEFAULT_SUB_AGENT_MAX_CHILDREN = 10;
+
+/** Path of the initiating (orchestrating) agent. */
 export const ROOT_SUB_AGENT_TASK_PATH = '/root' satisfies SubAgentTaskPath;
 
 /** Upper bound on a single path segment, so paths stay bounded and readable. */
 const MAX_TASK_NAME_LENGTH = 64;
-/** Valid paths: `/root` or `/root/<one segment>` — no nested delegation. */
+/** A valid path is `/root` or `/root` plus one lowercase alphanumeric/underscore segment. */
 const SUB_AGENT_TASK_PATH_PATTERN = /^\/root(?:\/[a-z0-9_]+)?$/;
 
 /**
@@ -82,7 +76,7 @@ export function sanitizeSubAgentTaskName(taskName: string): string {
 	return sanitized;
 }
 
-/** Type guard: does this string match the flat `/root[/segment]?` shape? */
+/** Type guard: does this string match `/root` or `/root/<segment>`? */
 export function isSubAgentTaskPath(value: string): value is SubAgentTaskPath {
 	return SUB_AGENT_TASK_PATH_PATTERN.test(value);
 }
@@ -113,37 +107,4 @@ export function createChildSubAgentTaskPath(
 	assertSubAgentTaskPath(childPath);
 
 	return childPath;
-}
-
-/**
- * Spawn gate, checked BEFORE a child is spawned.
- *
- * Rejects when delegation is switched off outright (`canSpawnSubAgents === false`).
- */
-export function assertSubAgentPolicyAllowsChild(policy: SubAgentTaskPathPolicy | undefined): void {
-	if (policy?.canSpawnSubAgents === false) {
-		throw new Error('Sub-agent policy does not allow spawning child sub-agents');
-	}
-}
-
-/**
- * Fan-out-dimension gate, checked BEFORE a child is spawned.
- *
- * `childCount` is how many children the parent has ALREADY spawned. If that has
- * reached `maxChildren`, spawning one more (the `+ 1` in the message is the
- * would-be new total) exceeds the limit, so we reject. This stops a single agent
- * from fanning out to an unbounded number of parallel sub-agents. When
- * `maxChildren` is undefined, fan-out is unbounded.
- */
-export function assertSubAgentPolicyAllowsChildCount(
-	childCount: number,
-	policy: SubAgentTaskPathPolicy | undefined,
-): void {
-	if (policy?.maxChildren === undefined) return;
-
-	if (childCount >= policy.maxChildren) {
-		throw new Error(
-			`Sub-agent child count ${childCount + 1} exceeds maxChildren ${policy.maxChildren}`,
-		);
-	}
 }

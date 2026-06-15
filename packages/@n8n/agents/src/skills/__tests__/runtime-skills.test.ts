@@ -13,6 +13,7 @@ import {
 	parseRuntimeSkillMarkdown,
 	renderSkillCatalogPrompt,
 } from '..';
+import type { AgentRuntimeConfig } from '../../runtime/agent-runtime';
 import { Agent } from '../../sdk/agent';
 import { isZodSchema } from '../../utils/zod';
 
@@ -474,8 +475,10 @@ Use the workflow SDK.`,
 			.model('anthropic/claude-sonnet-4-5')
 			.instructions('Base instructions.')
 			.skills(source);
-		const runtime = await (agent as unknown as { build(): Promise<unknown> }).build();
-		const instructions = (runtime as { config: { instructions: string } }).config.instructions;
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
+		const { instructions } = runtimeConfig;
 
 		expect(prepare).toHaveBeenCalledTimes(1);
 		expect(instructions).toContain('name: "Summarize notes"');

@@ -168,6 +168,22 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 		name: z.string().max(128).optional(),
 		description: z.string().max(255).optional(),
 	}),
+	z.object({
+		type: z.literal('addTags'),
+		names: z
+			.array(z.string().trim().min(1).max(24))
+			.min(1)
+			.max(50)
+			.describe('Tag names to attach. Unknown names are auto-created. Idempotent.'),
+	}),
+	z.object({
+		type: z.literal('removeTags'),
+		names: z
+			.array(z.string().trim().min(1).max(24))
+			.min(1)
+			.max(50)
+			.describe('Tag names to detach from the workflow. Unknown names are ignored.'),
+	}),
 ]);
 
 export type PartialUpdateOperation = z.infer<typeof partialUpdateOperationSchema>;
@@ -177,12 +193,16 @@ interface WorkflowSlice {
 	description?: string;
 	nodes: INode[];
 	connections: IConnections;
+	/** Existing tag names on the workflow. Undefined when not loaded; tag ops require this. */
+	tagNames?: string[];
 }
 
 export interface ApplyOperationsSuccess {
 	success: true;
 	workflow: WorkflowSlice;
 	addedNodeNames: string[];
+	/** Final tag set after applying tag ops. Undefined means "leave unchanged". */
+	tagNames?: string[];
 }
 
 export interface ApplyOperationsFailure {
@@ -198,6 +218,7 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	description: workflow.description,
 	nodes: workflow.nodes.map((node) => structuredClone(node)),
 	connections: structuredClone(workflow.connections),
+	tagNames: workflow.tagNames ? [...workflow.tagNames] : undefined,
 });
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -380,6 +401,9 @@ export function applyOperations(
 	const workflow = cloneWorkflow(input);
 	const nodeByName = new Map(workflow.nodes.map((n) => [n.name, n]));
 	const addedNodeNames = new Set<string>();
+	// Tag set is null until the first tag op runs; that keeps "no tag ops"
+	// distinguishable from "tag ops applied to an empty set" at return time.
+	let tagSet: Set<string> | null = null;
 
 	for (let i = 0; i < operations.length; i++) {
 		const op = operations[i];
@@ -566,6 +590,20 @@ export function applyOperations(
 				break;
 			}
 
+			case 'addTags':
+			case 'removeTags': {
+				if (workflow.tagNames === undefined) {
+					return fail(i, 'tag operations require existing tags to be loaded');
+				}
+				if (tagSet === null) tagSet = new Set(workflow.tagNames);
+				if (op.type === 'addTags') {
+					for (const name of op.names) tagSet.add(name);
+				} else {
+					for (const name of op.names) tagSet.delete(name);
+				}
+				break;
+			}
+
 			default: {
 				op satisfies never;
 				return fail(i, 'unknown operation type');
@@ -573,18 +611,39 @@ export function applyOperations(
 		}
 	}
 
-	return { success: true, workflow, addedNodeNames: [...addedNodeNames] };
+	if (tagSet !== null) {
+		workflow.tagNames = [...tagSet];
+	}
+
+	return {
+		success: true,
+		workflow,
+		addedNodeNames: [...addedNodeNames],
+		tagNames: tagSet !== null ? [...tagSet] : undefined,
+	};
 }
 
 /**
  * Pick only the fields the partial-update path needs from a workflow entity.
  * Keeps the surface explicit and avoids mutating the loaded entity.
  */
-export function toWorkflowSlice(workflow: IWorkflowBase): WorkflowSlice {
+export function toWorkflowSlice(
+	workflow: IWorkflowBase,
+	options: { includeTags?: boolean } = {},
+): WorkflowSlice {
+	let tagNames: string[] | undefined;
+	if (options.includeTags) {
+		const tags = (workflow as { tags?: Array<{ name: string }> }).tags;
+		if (tags === undefined) {
+			throw new Error('toWorkflowSlice: includeTags=true requires the tags relation to be loaded.');
+		}
+		tagNames = tags.map((t) => t.name);
+	}
 	return {
 		name: workflow.name ?? '',
 		description: (workflow as { description?: string }).description,
 		nodes: workflow.nodes,
 		connections: workflow.connections,
+		tagNames,
 	};
 }

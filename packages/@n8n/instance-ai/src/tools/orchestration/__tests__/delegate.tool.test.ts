@@ -83,14 +83,18 @@ describe('delegateInputSchema', () => {
 // ---------------------------------------------------------------------------
 
 describe('createDelegateTool', () => {
-	it('rejects "plan" in tools array', async () => {
+	it('rejects "create-tasks" in tools array', async () => {
 		const context = createMockContext({ 'tool-a': {} });
 		const tool = createDelegateTool(context);
 
-		const output = await executeTool(tool, { ...makeValidInput(), tools: ['plan'] }, {} as never);
+		const output = await executeTool(
+			tool,
+			{ ...makeValidInput(), tools: ['create-tasks'] },
+			{} as never,
+		);
 
 		expect('result' in output).toBe(true);
-		expect((output as { result: string }).result).toContain('plan');
+		expect((output as { result: string }).result).toContain('create-tasks');
 		expect((output as { result: string }).result).toContain('cannot be delegated');
 	});
 
