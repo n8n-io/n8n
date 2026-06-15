@@ -29,11 +29,11 @@
  *         *.ts                        # SDK workflow examples
  */
 
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { createRequire } from 'node:module';
 
 import type { Logger } from '../logger';
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
-import type { SandboxProvider } from './create-workspace';
 import {
 	isLinkWorkspaceSdkEnabled,
 	packWorkspaceSdk,
@@ -55,6 +55,7 @@ const NOOP_LOGGER: Logger = {
 	error: () => {},
 	debug: () => {},
 };
+
 type SandboxWorkspaceSetupStep =
 	| 'resolve-workspace-root'
 	| 'read-initialization-marker'
@@ -84,34 +85,6 @@ async function setupStep<T>(step: SandboxWorkspaceSetupStep, action: () => Promi
 		return await action();
 	} catch (error) {
 		throw new SandboxWorkspaceSetupError(step, error);
-	}
-}
-
-export const WORKSPACE_DIR = 'workspace';
-
-/** Default home directory inside the Daytona sandbox container. */
-export const DAYTONA_HOME = '/home/daytona';
-
-/** Absolute workspace root inside the Daytona sandbox container. */
-export const DAYTONA_WORKSPACE_ROOT = `${DAYTONA_HOME}/${WORKSPACE_DIR}`;
-
-/** Default home directory inside the n8n sandbox service container. */
-export const N8N_SANDBOX_HOME = '/home/user';
-
-/** Absolute workspace root inside the n8n sandbox service container. */
-export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
-
-/** Resolve the `<workspace_root>` path shown in agent system prompts for a sandbox provider. */
-export function getPromptWorkspaceRoot(provider: SandboxProvider): string {
-	switch (provider) {
-		case 'daytona':
-			return DAYTONA_WORKSPACE_ROOT;
-		case 'n8n-sandbox':
-			return N8N_SANDBOX_WORKSPACE_ROOT;
-		case 'local':
-			// Local workspaces are already scoped to the resolved root; use `.` so
-			// paths like `./knowledge-base/...` resolve under `<root>/`, not `<root>/workspace/`.
-			return '.';
 	}
 }
 
@@ -234,42 +207,6 @@ export const PACKAGE_JSON = buildPackageJson(
 	isLinkWorkspaceSdkEnabled() ? null : SANDBOX_SDK_VERSION,
 );
 
-/**
- * Return the absolute on-disk path of a host-installed package, or `null`
- * if it can't be resolved. Used by the local provider to point the sandbox
- * at the workspace SDK via a `file:` reference instead of the npm registry.
- */
-function resolveHostDepPath(name: string): string | null {
-	try {
-		const pkgPath = hostRequire.resolve(`${name}/package.json`);
-		return pkgPath.slice(0, pkgPath.length - '/package.json'.length);
-	} catch {
-		return null;
-	}
-}
-
-/**
- * Build a PACKAGE_JSON that points `@n8n/workflow-sdk` at its host-resolved
- * location via `file:` — so the local provider picks up workspace SDK
- * changes after `pnpm build` without needing a publish.
- *
- * Falls back to the registry-pinned PACKAGE_JSON if the SDK can't be
- * resolved on disk (e.g. a stripped-down test harness).
- */
-function buildLocalProviderPackageJson(): string {
-	const sdkPath = resolveHostDepPath('@n8n/workflow-sdk');
-	if (!sdkPath) return PACKAGE_JSON;
-	return buildPackageJson(`file:${sdkPath}`);
-}
-
-function getSandboxProvider(workspace: SandboxWorkspace): string | undefined {
-	return workspace.filesystem?.provider ?? workspace.sandbox?.provider;
-}
-
-function buildWorkspacePackageJson(workspace: SandboxWorkspace): string {
-	return getSandboxProvider(workspace) === 'local' ? buildLocalProviderPackageJson() : PACKAGE_JSON;
-}
-
 let sdkTarballPromise: Promise<WorkspaceSdkTarball | null> | null = null;
 
 export async function linkWorkspaceSdkIfEnabled(
@@ -277,7 +214,7 @@ export async function linkWorkspaceSdkIfEnabled(
 	root: string,
 	logger?: Logger,
 ): Promise<void> {
-	if (!isLinkWorkspaceSdkEnabled() || getSandboxProvider(workspace) === 'local') return;
+	if (!isLinkWorkspaceSdkEnabled()) return;
 
 	sdkTarballPromise ??= packWorkspaceSdk(logger ?? NOOP_LOGGER).catch((error: unknown) => {
 		sdkTarballPromise = null;
@@ -463,28 +400,21 @@ async function writeWorkspaceFile(
 	}
 }
 
-/**
- * Resolve the absolute workspace root by querying $HOME from the sandbox.
- * Caches per workspace instance (WeakMap) so parallel sandboxes don't collide.
- */
-const workspaceRootCache = new WeakMap<SandboxWorkspace, string>();
-
-function getLocalFilesystemRoot(workspace: SandboxWorkspace): string | null {
+async function readWorkspaceFile(
+	workspace: SandboxWorkspace,
+	path: string,
+): Promise<string | null> {
 	const filesystem = workspace.filesystem;
-	if (!filesystem) return null;
+	if (filesystem?.readFile) {
+		try {
+			const content = await filesystem.readFile(path, { encoding: 'utf-8' });
+			return typeof content === 'string' ? content : content.toString('utf-8');
+		} catch {
+			if (!workspace.sandbox) return null;
+		}
+	}
 
-	const provider = filesystem.provider;
-	if (provider !== 'local' && provider !== 'lazy') return null;
-
-	const basePath = Reflect.get(filesystem, 'basePath');
-	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
-}
-
-async function initializeLazyFilesystem(workspace: SandboxWorkspace): Promise<void> {
-	const filesystem = workspace.filesystem;
-	if (filesystem?.provider !== 'lazy') return;
-
-	await filesystem.init?.();
+	return await readFileViaSandbox(workspace, path);
 }
 
 async function materializeKnowledgeBaseStep(
@@ -501,30 +431,6 @@ async function materializeKnowledgeBaseStep(
 			templatesArchive: templatesBundle?.archive ?? null,
 		});
 	});
-}
-
-export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<string> {
-	const cached = workspaceRootCache.get(workspace);
-	if (cached) return cached;
-
-	const localRoot = getLocalFilesystemRoot(workspace);
-	if (localRoot) {
-		workspaceRootCache.set(workspace, localRoot);
-		return localRoot;
-	}
-
-	await initializeLazyFilesystem(workspace);
-	const initializedLocalRoot = getLocalFilesystemRoot(workspace);
-	if (initializedLocalRoot) {
-		workspaceRootCache.set(workspace, initializedLocalRoot);
-		return initializedLocalRoot;
-	}
-
-	const result = await runInSandbox(workspace, 'echo $HOME');
-	const home = result.stdout.trim() || DAYTONA_HOME;
-	const root = `${home}/${WORKSPACE_DIR}`;
-	workspaceRootCache.set(workspace, root);
-	return root;
 }
 
 /**
@@ -548,7 +454,7 @@ export async function setupSandboxWorkspace(
 	// Check marker file for idempotency
 	const marker = await setupStep(
 		'read-initialization-marker',
-		async () => await readFileViaSandbox(workspace, markerFile),
+		async () => await readWorkspaceFile(workspace, markerFile),
 	);
 	if (marker !== null) {
 		await materializeKnowledgeBaseStep(workspace, root, context);
@@ -559,11 +465,7 @@ export async function setupSandboxWorkspace(
 
 	const files = new Map<string, string>();
 
-	// Config files. Local provider runs on the dev host, so point the SDK at
-	// its workspace location via `file:` — this makes SDK changes visible in
-	// the sandbox after `pnpm build`, without a publish. Daytona/n8n-sandbox
-	// stay on the registry-pinned PACKAGE_JSON (they can't see the host FS).
-	files.set('package.json', buildWorkspacePackageJson(workspace));
+	files.set('package.json', PACKAGE_JSON);
 	files.set('tsconfig.json', TSCONFIG_JSON);
 	files.set('build.mjs', BUILD_MJS);
 

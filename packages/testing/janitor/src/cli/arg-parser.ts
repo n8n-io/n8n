@@ -14,13 +14,13 @@ export type Command =
 	| 'baseline'
 	| 'rules'
 	| 'discover'
-	| 'orchestrate'
+	| 'distribute'
 	| 'affected-packages'
 	| 'scope'
 	| 'test-scoped'
 	| 'filter-shard'
 	| 'merge-coverage'
-	| 'select-e2e';
+	| 'select';
 
 export interface CliOptions {
 	command: Command;
@@ -29,8 +29,6 @@ export interface CliOptions {
 	files?: string[];
 	json: boolean;
 	verbose: boolean;
-	fix: boolean;
-	write: boolean;
 	help: boolean;
 	list: boolean;
 	// TCR-specific options
@@ -65,12 +63,14 @@ export interface CliOptions {
 	passthroughArgs: string[];
 	// filter-shard-specific options
 	url?: string;
-	// coverage map options (merge-coverage / select-e2e)
+	// coverage map options (merge-coverage / select)
 	inputsDir?: string;
 	outLcov?: string;
 	outMap?: string;
 	mapFile?: string;
 	allSpecsFile?: string;
+	/** Path to a newline-separated allowlist of spec paths (distribute). */
+	includeSpecsFile?: string;
 }
 
 const SUBCOMMANDS: Record<string, Command> = {
@@ -81,13 +81,13 @@ const SUBCOMMANDS: Record<string, Command> = {
 	baseline: 'baseline',
 	rules: 'rules',
 	discover: 'discover',
-	orchestrate: 'orchestrate',
+	distribute: 'distribute',
 	'affected-packages': 'affected-packages',
 	scope: 'scope',
 	'test-scoped': 'test-scoped',
 	'filter-shard': 'filter-shard',
 	'merge-coverage': 'merge-coverage',
-	'select-e2e': 'select-e2e',
+	select: 'select',
 };
 
 interface FlagHandler {
@@ -109,12 +109,6 @@ const FLAG_HANDLERS: Record<string, FlagHandler> = {
 	},
 	'-v': (opts) => {
 		opts.verbose = true;
-	},
-	'--fix': (opts) => {
-		opts.fix = true;
-	},
-	'--write': (opts) => {
-		opts.write = true;
 	},
 	'--list': (opts) => {
 		opts.list = true;
@@ -232,6 +226,9 @@ const VALUE_FLAG_HANDLERS: Record<string, (options: CliOptions, value: string) =
 	'--all-specs=': (opts, value) => {
 		opts.allSpecsFile = value;
 	},
+	'--include-specs-file=': (opts, value) => {
+		opts.includeSpecsFile = value;
+	},
 };
 
 function createDefaultOptions(): CliOptions {
@@ -242,8 +239,6 @@ function createDefaultOptions(): CliOptions {
 		files: [],
 		json: false,
 		verbose: false,
-		fix: false,
-		write: false,
 		help: false,
 		list: false,
 		execute: false,

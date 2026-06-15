@@ -8,6 +8,11 @@ import { retryUntil } from '@test-integration/retry-until';
 import { setupBrokerTestServer } from '@test-integration/utils/task-broker-test-server';
 
 describe('TaskRunnerProcess', () => {
+	// Restarting the runner spawns a fresh `node` child process and waits for the
+	// full WebSocket handshake. Under CI load this can take longer than the default
+	// per-test timeout, so give this spawn-heavy suite extra headroom.
+	jest.setTimeout(30_000);
+
 	const { config, server: taskRunnerServer } = setupBrokerTestServer({
 		mode: 'internal',
 	});
@@ -79,8 +84,10 @@ describe('TaskRunnerProcess', () => {
 		await runnerProcess.runPromise;
 
 		// Assert
-		// Wait until the runner has connected again
-		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1));
+		// Wait until the runner has connected again. Restarting spawns a fresh
+		// child process and re-runs the WebSocket handshake, which is slower and
+		// more load-sensitive than the initial connect, so allow a longer window.
+		await retryUntil(() => expect(getNumConnectedRunners()).toBe(1), { timeoutMs: 15_000 });
 		expect(getNumConnectedRunners()).toBe(1);
 		expect(getNumRegisteredRunners()).toBe(1);
 		expect(runnerProcess.pid).not.toBe(processId);

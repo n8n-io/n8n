@@ -39,7 +39,6 @@ export interface AgentSchema {
 		structuredOutput: { enabled: boolean; schemaSource: string | null };
 		thinking: ThinkingSchema | null;
 		toolCallConcurrency: number | null;
-		requireToolApproval: boolean;
 	};
 }
 

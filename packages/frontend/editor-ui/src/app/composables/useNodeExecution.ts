@@ -12,7 +12,7 @@ import {
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -24,7 +24,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
@@ -94,17 +94,15 @@ export function useNodeExecution(
 	const toast = useToast();
 	const message = useMessage();
 	const externalHooks = useExternalHooks();
+	const { askAi } = useEditorContext();
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const ndvStore = injectNDVStore();
 	const uiStore = useUIStore();
-	const workflowState = injectWorkflowState();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const workflowExecutionStateStore = computed(() =>
-		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
-	);
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 	const nodeHelpers = useNodeHelpers();
@@ -146,16 +144,16 @@ export function useNodeExecution(
 	const isNodeRunning = computed(() => {
 		if (!workflowExecutionStateStore.value.isWorkflowRunning || codeGenerationInProgress.value)
 			return false;
-		const triggeredNode = workflowsStore.executedNode;
+		const triggeredNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 		return (
-			workflowState.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
+			workflowExecutionStateStore.value.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
 			triggeredNode === nodeRef.value?.name
 		);
 	});
 
 	const isListening = computed(() => {
 		const waitingOnWebhook = workflowExecutionStateStore.value.executionWaitingForWebhook;
-		const executedNode = workflowsStore.executedNode;
+		const executedNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 
 		return (
 			!!nodeRef.value &&
@@ -293,6 +291,7 @@ export function useNodeExecution(
 				workflowDocumentStore.value.documentId,
 				ndvStore.value.activeNode,
 				ndvStore.value.pushRef,
+				askAi.value,
 				5,
 			);
 

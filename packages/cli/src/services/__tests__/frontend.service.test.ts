@@ -158,6 +158,7 @@ describe('FrontendService', () => {
 	const licenseState = mock<LicenseState>({
 		isOidcLicensed: jest.fn().mockReturnValue(false),
 		isMFAEnforcementLicensed: jest.fn().mockReturnValue(false),
+		isOtelCustomSpanAttributesLicensed: jest.fn().mockReturnValue(false),
 		getMaxWorkflowsWithEvaluations: jest.fn().mockReturnValue(0),
 	});
 
@@ -327,6 +328,15 @@ describe('FrontendService', () => {
 			// Community tier would otherwise be 1; the license override lifts
 			// it to 4.
 			expect(settings.evaluationConcurrencyLimit).toBe(4);
+		});
+
+		it('should surface whether custom OpenTelemetry span attributes are licensed', async () => {
+			licenseState.isOtelCustomSpanAttributesLicensed.mockReturnValue(true);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.enterprise.otelCustomSpanAttributes).toBe(true);
 		});
 	});
 

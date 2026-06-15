@@ -6,7 +6,7 @@ import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
 import type { setupSandboxWorkspace as setupSandboxWorkspaceFunction } from '../sandbox-setup';
-import { formatNodeCatalogLine, getPromptWorkspaceRoot, getWorkspaceRoot } from '../sandbox-setup';
+import { formatNodeCatalogLine } from '../sandbox-setup';
 
 type SetupSandboxWorkspace = typeof setupSandboxWorkspaceFunction;
 type LinkWorkspaceSdkIfEnabled = (
@@ -43,18 +43,46 @@ function createSetupContext(
 	} as unknown as InstanceAiContext;
 }
 
-function createLocalWorkspace(
+function createFilesystemWorkspace(
 	writeFile: Mock<(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>>,
 	mkdir?: Mock<(...args: [string, { recursive?: boolean }?]) => Promise<void>>,
 ): SandboxWorkspace {
 	return {
 		filesystem: {
-			provider: 'local',
-			basePath: '/sandbox',
+			provider: 'daytona',
 			writeFile,
 			mkdir:
 				mkdir ??
 				vi.fn<(...args: [string, { recursive?: boolean }?]) => Promise<void>>(async () => {}),
+		},
+		sandbox: {
+			executeCommand: vi.fn().mockResolvedValue({
+				exitCode: 0,
+				stdout: '/home/daytona\n',
+				stderr: '',
+			}),
+		},
+	};
+}
+
+function createLocalWorkspace(
+	writeFile: Mock<(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>>,
+	mkdir?: Mock<(...args: [string, { recursive?: boolean }?]) => Promise<void>>,
+	readFile: Mock<(...args: [string]) => Promise<string | Buffer>> = vi.fn(
+		async () => await Promise.reject(new Error('ENOENT')),
+	),
+): SandboxWorkspace {
+	return {
+		filesystem: {
+			provider: 'local',
+			basePath: '/sandbox',
+			readFile,
+			writeFile,
+			mkdir:
+				mkdir ??
+				vi.fn<(...args: [string, { recursive?: boolean }?]) => Promise<void>>(
+					async () => await Promise.resolve(),
+				),
 		},
 	};
 }
@@ -157,7 +185,6 @@ describe('PACKAGE_JSON', () => {
 		expect(packageJson.dependencies.tsx).toBeDefined();
 	});
 });
-
 describe('setupSandboxWorkspace', () => {
 	afterEach(() => {
 		vi.doUnmock('../sandbox-fs');
@@ -181,12 +208,12 @@ describe('setupSandboxWorkspace', () => {
 		);
 		const writeFile = vi.fn<
 			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
-		>(async () => {});
+		>(async () => await Promise.resolve());
 
-		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext());
+		await setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext());
 
 		const markerCallIndex = writeFile.mock.calls.findIndex(
-			([path]) => path === '/sandbox/.sandbox-initialized',
+			([path]) => path === '/home/daytona/workspace/.sandbox-initialized',
 		);
 		expect(markerCallIndex).toBeGreaterThan(-1);
 		expect(writeFile.mock.invocationCallOrder[markerCallIndex]).toBeGreaterThan(
@@ -217,11 +244,15 @@ describe('setupSandboxWorkspace', () => {
 		);
 
 		// Setup context defaults to an empty workflow list, mirroring a fresh DB.
-		await setupSandboxWorkspace(createLocalWorkspace(writeFile, mkdir), createSetupContext());
+		await setupSandboxWorkspace(createFilesystemWorkspace(writeFile, mkdir), createSetupContext());
 
 		const mkdirPaths = mkdir.mock.calls.map(([path]) => path);
 		expect(mkdirPaths).toEqual(
-			expect.arrayContaining(['/sandbox/src', '/sandbox/chunks', '/sandbox/workflows']),
+			expect.arrayContaining([
+				'/home/daytona/workspace/src',
+				'/home/daytona/workspace/chunks',
+				'/home/daytona/workspace/workflows',
+			]),
 		);
 	});
 
@@ -248,14 +279,20 @@ describe('setupSandboxWorkspace', () => {
 		);
 		const writeFile = vi.fn<
 			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
-		>(async () => {});
+		>(async () => await Promise.resolve());
+		const readFile = vi.fn(async (path: string) => {
+			if (path === '/sandbox/.sandbox-initialized') {
+				return await Promise.resolve('2024-01-01T00:00:00.000Z');
+			}
+			return await Promise.reject(new Error(`ENOENT: ${path}`));
+		});
 
 		const bundle: BuilderTemplatesBundle = {
 			archive: makeBuilderTemplatesTarGz([{ name: 'example-workflow.ts', content: 'export {}' }]),
 			version: 'test-sha',
 		};
 		const initialized = await setupSandboxWorkspace(
-			createLocalWorkspace(writeFile),
+			createLocalWorkspace(writeFile, undefined, readFile),
 			createSetupContext(bundle),
 		);
 
@@ -305,7 +342,13 @@ describe('setupSandboxWorkspace', () => {
 					...args: [SandboxWorkspace, string, string?]
 				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
 			>();
-		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		runInSandbox.mockImplementation(async (_workspace, command) => {
+			await Promise.resolve();
+			if (command.startsWith('cat ')) {
+				return { exitCode: 1, stdout: '', stderr: '' };
+			}
+			return { exitCode: 0, stdout: '/home/daytona\n', stderr: '' };
+		});
 		const readFileViaSandbox: ReadFileViaSandboxMock =
 			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
 		readFileViaSandbox.mockResolvedValue(null);
@@ -324,9 +367,9 @@ describe('setupSandboxWorkspace', () => {
 		workflowService.list.mockResolvedValue([{ id: '../escape' }]);
 		workflowService.get.mockResolvedValue({ id: '../escape' });
 
-		await expect(setupSandboxWorkspace(createLocalWorkspace(writeFile), context)).rejects.toThrow(
-			'Sandbox workspace setup failed during write-workspace-files',
-		);
+		await expect(
+			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), context),
+		).rejects.toThrow('Sandbox workspace setup failed during write-workspace-files');
 	});
 
 	it('does not write the initialized marker when npm install fails', async () => {
@@ -349,11 +392,11 @@ describe('setupSandboxWorkspace', () => {
 		>(async () => {});
 
 		await expect(
-			setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext()),
+			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext()),
 		).rejects.toThrow('Sandbox npm install failed');
 
 		expect(writeFile.mock.calls).not.toContainEqual([
-			'/sandbox/.sandbox-initialized',
+			'/home/daytona/workspace/.sandbox-initialized',
 			expect.any(String),
 			{ recursive: true },
 		]);
@@ -378,13 +421,13 @@ describe('setupSandboxWorkspace', () => {
 			.fn<(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>>()
 			.mockImplementation(async (path) => {
 				await Promise.resolve();
-				if (path === '/sandbox/.sandbox-initialized') {
+				if (path === '/home/daytona/workspace/.sandbox-initialized') {
 					throw new Error('primary write failed');
 				}
 			});
 
 		await expect(
-			setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext()),
+			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext()),
 		).resolves.toBe(true);
 
 		expect(
@@ -416,13 +459,13 @@ describe('setupSandboxWorkspace', () => {
 			.fn<(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>>()
 			.mockImplementation(async (path) => {
 				await Promise.resolve();
-				if (path === '/sandbox/.sandbox-initialized') {
+				if (path === '/home/daytona/workspace/.sandbox-initialized') {
 					throw new Error('primary write failed');
 				}
 			});
 
 		const error = await setupSandboxWorkspace(
-			createLocalWorkspace(writeFile),
+			createFilesystemWorkspace(writeFile),
 			createSetupContext(),
 		).catch((caught: unknown) => caught);
 
@@ -431,7 +474,7 @@ describe('setupSandboxWorkspace', () => {
 			'Sandbox workspace setup failed during write-initialization-marker',
 		);
 		expect((error as Error).message).toContain(
-			'Failed to write sandbox workspace file "/sandbox/.sandbox-initialized"',
+			'Failed to write sandbox workspace file "/home/daytona/workspace/.sandbox-initialized"',
 		);
 		expect((error as Error).message).toContain('primary write failed');
 		expect((error as Error).message).toContain('command fallback failed');
@@ -466,6 +509,13 @@ describe('setupSandboxWorkspace', () => {
 				provider: 'daytona',
 				writeFile,
 			},
+			sandbox: {
+				executeCommand: vi.fn().mockResolvedValue({
+					exitCode: 0,
+					stdout: '',
+					stderr: '',
+				}),
+			},
 		} as unknown as SandboxWorkspace;
 
 		try {
@@ -487,37 +537,6 @@ describe('setupSandboxWorkspace', () => {
 		});
 	});
 });
-
-describe('getWorkspaceRoot', () => {
-	it('uses the resolved filesystem base path for lazy local workspaces', async () => {
-		let initialized = false;
-		const executeCommand = vi.fn();
-		const init = vi.fn<(...args: []) => Promise<void>>(async () => {
-			await Promise.resolve();
-			initialized = true;
-		});
-		const workspace = {
-			filesystem: {
-				provider: 'lazy',
-				get basePath() {
-					return initialized ? '/sandbox' : undefined;
-				},
-				init,
-				writeFile: vi.fn(),
-				mkdir: vi.fn(),
-			},
-			sandbox: {
-				executeCommand,
-			},
-		} as unknown as SandboxWorkspace;
-
-		await expect(getWorkspaceRoot(workspace)).resolves.toBe('/sandbox');
-
-		expect(init).toHaveBeenCalledTimes(1);
-		expect(executeCommand).not.toHaveBeenCalled();
-	});
-});
-
 describe('formatNodeCatalogLine', () => {
 	it('should format a basic node with a string version', () => {
 		const node: SearchableNodeDescription = {
@@ -638,13 +657,5 @@ describe('formatNodeCatalogLine', () => {
 		const result = formatNodeCatalogLine(node);
 
 		expect(result).toBe('n8n-nodes-base.code | Code | Run custom JavaScript code | v2');
-	});
-});
-
-describe('getPromptWorkspaceRoot', () => {
-	it('returns the provider-specific workspace root used in agent prompts', () => {
-		expect(getPromptWorkspaceRoot('daytona')).toBe('/home/daytona/workspace');
-		expect(getPromptWorkspaceRoot('n8n-sandbox')).toBe('/home/user/workspace');
-		expect(getPromptWorkspaceRoot('local')).toBe('.');
 	});
 });

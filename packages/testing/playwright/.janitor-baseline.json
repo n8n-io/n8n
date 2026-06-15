@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"generated": "2026-05-25T15:20:35.251Z",
-	"totalViolations": 412,
+	"totalViolations": 435,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -491,6 +491,24 @@
 				"line": 126,
 				"message": "Raw API call detected: fetch(",
 				"hash": "eb977c9c5bb7"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 24,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "994c98dcd129"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 102,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "994c98dcd129"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 150,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "994c98dcd129"
 			}
 		],
 		"tests/e2e/ai/hitl-for-tools.spec.ts": [
@@ -577,6 +595,36 @@
 				"line": 119,
 				"message": "Direct page locator call: n8n.page.getByText('Task aborted')",
 				"hash": "6ee85a61151a"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 48,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "a499a217bb1e"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 56,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "a499a217bb1e"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 74,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "a499a217bb1e"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 93,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "a499a217bb1e"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 107,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "a499a217bb1e"
 			}
 		],
 		"tests/e2e/api/wait-form-resume.spec.ts": [
@@ -887,6 +935,18 @@
 				"line": 326,
 				"message": "Chained locator call in test: formPage.getByText('This worked')",
 				"hash": "28200563c463"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 190,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto(`/workflow/${workflowId}`)",
+				"hash": "6720dfdb4c5d"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 304,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto(`/workflow/${workflowId}`)",
+				"hash": "6720dfdb4c5d"
 			}
 		],
 		"tests/e2e/nodes/send-and-wait.spec.ts": [
@@ -2639,6 +2699,100 @@
 				"line": 44,
 				"message": "Direct page instantiation: new InstanceAiPage(threadPage)",
 				"hash": "99e5606866b2"
+			}
+		],
+		"tests/e2e/ai/assistant-basic.spec.ts": [
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 33,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "e6d03454a502"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 43,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "e6d03454a502"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 66,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "e6d03454a502"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 199,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "e6d03454a502"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 257,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "e6d03454a502"
+			},
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 278,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "e6d03454a502"
+			}
+		],
+		"tests/e2e/ai/assistant-support-chat.spec.ts": [
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 27,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto('/workflow/new')",
+				"hash": "b027466aeb23"
+			}
+		],
+		"tests/e2e/nodes/email-send-node.spec.ts": [
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 77,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto(`/workflow/${workflowId}`)",
+				"hash": "888bc0a82e21"
+			}
+		],
+		"tests/e2e/nodes/kafka-nodes.spec.ts": [
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 94,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto(`/workflow/${workflowId}`)",
+				"hash": "fda6b212bcdb"
+			}
+		],
+		"tests/performance/canvas/canvas-execution.spec.ts": [
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 112,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto(`/workflow/${workflowId}`)",
+				"hash": "8abdbe84c922"
+			}
+		],
+		"tests/performance/canvas/canvas-interactions.spec.ts": [
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 52,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto(`/workflow/${workflowId}`)",
+				"hash": "66d9fb632834"
+			}
+		],
+		"tests/performance/canvas/canvas-load.spec.ts": [
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 48,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto(`/workflow/${workflowId}`)",
+				"hash": "9c2ed8cbab2a"
+			}
+		],
+		"tests/e2e/workflows/editor/routing.spec.ts": [
+			{
+				"rule": "no-raw-editor-navigation",
+				"line": 110,
+				"message": "Raw navigation to the workflow editor: n8n.page.goto(`/workflow/${workflowId}?new=true`)",
+				"hash": "c42880a071b0"
 			}
 		]
 	}

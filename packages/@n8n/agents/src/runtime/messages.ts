@@ -68,6 +68,13 @@ function parseJsonValue(value: JSONValue): unknown {
 	return value;
 }
 
+function toToolInputObject(value: JSONValue): Record<string, unknown> {
+	const parsed = parseJsonValue(value);
+	if (isRecord(parsed)) return parsed;
+	if (parsed === null || parsed === undefined) return {};
+	return { value: parsed };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -98,7 +105,7 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 			type: 'tool-call',
 			toolCallId: block.toolCallId ?? '',
 			toolName: block.toolName,
-			input: parseJsonValue(block.input),
+			input: toToolInputObject(block.input),
 			providerExecuted: block.providerExecuted,
 		};
 	} else if (isReasoning(block)) {
@@ -253,7 +260,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 						type: 'tool-call',
 						toolCallId: block.toolCallId,
 						toolName: block.toolName,
-						input: parseJsonValue(block.input),
+						input: toToolInputObject(block.input),
 						providerExecuted: block.providerExecuted,
 					};
 					// Replayed settled tool calls still need their original provider

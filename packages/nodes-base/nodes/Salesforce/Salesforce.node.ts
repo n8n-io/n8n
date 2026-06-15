@@ -3101,7 +3101,13 @@ export class Salesforce implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ error: error.message }),
+						this.helpers.returnJsonArray({
+							error: error.message,
+							description: (error as NodeApiError).description ?? null,
+							httpCode: (error as NodeApiError).httpCode ?? null,
+							errorCode: (error as NodeApiError).context?.errorCode ?? null,
+							fields: (error as NodeApiError).context?.fields ?? null,
+						}),
 						{ itemData: { item: i } },
 					);
 					returnData.push.apply(returnData, executionErrorData);

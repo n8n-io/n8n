@@ -25,9 +25,11 @@ describe('InstanceAiSettingsService', () => {
 			subAgentMaxSteps: 10,
 			mcpServers: '',
 			sandboxEnabled: false,
-			sandboxProvider: '',
+			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: '',
 			sandboxTimeout: 60,
+			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			n8nSandboxServiceApiKey: '',
 			localGatewayDisabled: false,
 		} as unknown as InstanceAiConfig,
 		deployment: { type: 'default' },
@@ -44,6 +46,15 @@ describe('InstanceAiSettingsService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		Object.assign(globalConfig.instanceAi, {
+			sandboxEnabled: false,
+			sandboxProvider: 'n8n-sandbox',
+			n8nSandboxServiceUrl: 'http://sandbox-api:8080',
+			n8nSandboxServiceApiKey: '',
+			mcpServers: '',
+			browserMcp: false,
+		});
+		globalConfig.deployment.type = 'default';
 		service = new InstanceAiSettingsService(
 			globalConfig as never,
 			settingsRepository,
@@ -90,6 +101,66 @@ describe('InstanceAiSettingsService', () => {
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
 
 			await expect(service.updateAdminSettings({ sandboxEnabled: true })).resolves.toBeDefined();
+		});
+
+		it('should require a service URL when enabling n8n sandbox', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+
+			await expect(service.updateAdminSettings({ sandboxEnabled: true })).rejects.toThrow(
+				/N8N_SANDBOX_SERVICE_URL/,
+			);
+		});
+
+		it('should allow unrelated admin updates when existing n8n sandbox URL is missing', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+			globalConfig.instanceAi.sandboxEnabled = true;
+			globalConfig.instanceAi.sandboxProvider = 'n8n-sandbox';
+			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+
+			await expect(
+				service.updateAdminSettings({ localGatewayDisabled: true }),
+			).resolves.toMatchObject({
+				localGatewayDisabled: true,
+			});
+		});
+
+		it('should allow disabling n8n sandbox when the service URL is missing', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+			globalConfig.instanceAi.sandboxEnabled = true;
+			globalConfig.instanceAi.sandboxProvider = 'n8n-sandbox';
+			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+
+			await expect(service.updateAdminSettings({ sandboxEnabled: false })).resolves.toMatchObject({
+				sandboxEnabled: false,
+			});
+		});
+
+		it('should reject switching an enabled sandbox to n8n-sandbox without a service URL', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			globalConfig.instanceAi.sandboxEnabled = true;
+			globalConfig.instanceAi.sandboxProvider = 'daytona';
+			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+
+			await expect(service.updateAdminSettings({ sandboxProvider: 'n8n-sandbox' })).rejects.toThrow(
+				/N8N_SANDBOX_SERVICE_URL/,
+			);
+		});
+
+		it('should expose workflow builder as unavailable when n8n sandbox URL is missing', () => {
+			globalConfig.instanceAi.sandboxEnabled = true;
+			globalConfig.instanceAi.sandboxProvider = 'n8n-sandbox';
+			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+
+			expect(service.getSandboxStatus()).toEqual({
+				enabled: true,
+				provider: 'n8n-sandbox',
+				workflowBuilderAvailable: false,
+				unavailableReason:
+					'N8N_SANDBOX_SERVICE_URL is required when Instance AI sandbox provider is n8n-sandbox.',
+			});
 		});
 	});
 

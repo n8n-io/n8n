@@ -960,21 +960,13 @@ function classifyToolCategory(name: string): string {
 	if (name.includes('credential')) return 'credential';
 	if (name.includes('browser')) return 'browser';
 	if (name.includes('data-table')) return 'data-table';
-	if (
-		name.includes('workflow') ||
-		name === DOMAIN_TOOL_IDS.BUILD_WORKFLOW ||
-		name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW
-	) {
+	if (name.includes('workflow') || name === WORKSPACE_TOOL_IDS.SUBMIT_WORKFLOW) {
 		return 'workflow';
 	}
 	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
 	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
 	if (name.includes('research')) return 'research';
-	if (
-		name === ORCHESTRATION_TOOL_IDS.PLAN ||
-		name.includes('plan') ||
-		name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS
-	) {
+	if (name.includes('plan') || name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) {
 		return 'planning';
 	}
 	if (name.startsWith('workspace_')) return 'workspace';

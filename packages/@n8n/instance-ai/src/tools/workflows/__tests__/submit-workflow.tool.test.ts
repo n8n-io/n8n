@@ -286,7 +286,9 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 					},
 				},
 			],
-			connections: {},
+			connections: {
+				Slack: { main: [[{ node: 'Call Sub', type: 'main', index: 0 }]] },
+			},
 			pinData: {
 				Slack: [{ ok: true }],
 			},
@@ -313,6 +315,7 @@ describe('createSubmitWorkflowTool — successful submit metadata', () => {
 			usesWorkflowPinDataForVerification: true,
 			referencedWorkflowIds: ['sub-workflow-id'],
 		});
+		expect(output.verificationGuidance).toContain('Call verify-built-workflow next');
 		expect(attempts).toHaveLength(1);
 		expect(attempts[0]).toMatchObject({
 			success: true,

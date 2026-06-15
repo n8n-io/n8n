@@ -34,6 +34,8 @@ const mockBaseText = vi.fn((key: string, options?: { interpolate?: Record<string
 		'credentialEdit.credentialSharing.info.sharee.personal': 'Shared by personal project',
 		'credentialEdit.credentialSharing.info.personalSpaceRestricted':
 			"You don't have permission to share personal credentials",
+		'credentialEdit.credentialSharing.info.dynamicCredential':
+			'Sharing of private credentials is not supported.',
 		'credentialEdit.credentialSharing.role.user': 'User',
 		'auth.roles.owner': 'Owner',
 		'contextual.credentials.sharing.unavailable.title': 'Upgrade to collaborate',
@@ -146,6 +148,7 @@ describe('CredentialSharing.ee', () => {
 				customRoles: false,
 				personalSpacePolicy: false,
 				dataRedaction: false,
+				otelCustomSpanAttributes: false,
 			});
 	});
 
@@ -394,6 +397,56 @@ describe('CredentialSharing.ee', () => {
 
 			// Team project shows the team sharee message
 			expect(getByText(/shared by team project/i)).toBeInTheDocument();
+		});
+	});
+
+	describe('dynamic credentials', () => {
+		it('should explain why sharing is disabled for a dynamic credential', () => {
+			const credential = createCredential();
+			const { getByText, queryByTestId } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: true },
+					credential,
+					isResolvable: true,
+					modalBus: createEventBus(),
+				},
+			});
+
+			// The reason sharing is unavailable is surfaced to the user
+			expect(getByText(/not supported/i)).toBeInTheDocument();
+			// The add-share input is hidden entirely, not just disabled
+			expect(queryByTestId('project-sharing-select')).not.toBeInTheDocument();
+		});
+
+		it('should still allow removing existing shares for a private credential', () => {
+			const credential = createCredential({
+				sharedWithProjects: [
+					{
+						id: 'shared-project-1',
+						name: 'Shared Project',
+						type: 'team',
+						icon: null,
+						createdAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString(),
+					},
+				],
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: true },
+					credential,
+					isResolvable: true,
+					modalBus: createEventBus(),
+				},
+			});
+
+			// Adding new shares is blocked, but cleaning up existing ones stays possible
+			expect(getByTestId('project-sharing-remove')).toBeEnabled();
 		});
 	});
 });

@@ -91,8 +91,41 @@ export class WorkflowSettingsModal extends BasePage {
 		await this.getUnpublishModal().getByRole('button', { name: 'Unpublish' }).click();
 	}
 
+	getRedactProductionSelect(): Locator {
+		return this.container.getByTestId('workflow-settings-redact-production-select');
+	}
+
+	getRedactManualSelect(): Locator {
+		return this.container.getByTestId('workflow-settings-redact-manual-select');
+	}
+
+	getRedactProductionInput(): Locator {
+		return this.getRedactProductionSelect().locator('input');
+	}
+
+	getRedactManualInput(): Locator {
+		return this.getRedactManualSelect().locator('input');
+	}
+
+	async hoverRedactProductionSelect(): Promise<void> {
+		await this.getRedactProductionSelect().hover();
+	}
+
+	async hoverRedactManualSelect(): Promise<void> {
+		await this.getRedactManualSelect().hover();
+	}
+
+	async selectManualRedactMode(mode: string): Promise<void> {
+		await this.getRedactManualSelect().click();
+		await this.page.getByRole('option', { name: mode, exact: true }).click();
+	}
+
+	getTooltip(): Locator {
+		return this.page.getByTestId('tooltip-content').filter({ visible: true });
+	}
+
 	getSaveButton(): Locator {
-		return this.container.getByRole('button', { name: 'Save' });
+		return this.page.getByTestId('workflow-settings-save-button').getByRole('button');
 	}
 
 	getDuplicateModal(): Locator {
@@ -114,6 +147,12 @@ export class WorkflowSettingsModal extends BasePage {
 	async open(): Promise<void> {
 		await this.getWorkflowMenu().click();
 		await this.getSettingsMenuItem().click();
+		await this.waitUntilLoaded();
+	}
+
+	private async waitUntilLoaded(): Promise<void> {
+		// `v-loading` directive's class
+		await this.container.locator('.el-loading-mask').waitFor({ state: 'detached' });
 	}
 
 	async clickSave(): Promise<void> {
