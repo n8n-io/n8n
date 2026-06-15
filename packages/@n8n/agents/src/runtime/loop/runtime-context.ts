@@ -1,4 +1,5 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from './agent-runtime';
 import type {
@@ -6,6 +7,7 @@ import type {
 	AnthropicThinkingConfig,
 	BuiltTool,
 	GoogleThinkingConfig,
+	JSONObject,
 	OpenAIThinkingConfig,
 	XaiThinkingConfig,
 } from '../../types';
@@ -36,6 +38,13 @@ export function getModelIdString(model: ModelConfig): string {
 	return 'unknown';
 }
 
+export interface StaticLoopContext {
+	model: LanguageModel;
+	aiProviderTools: ReturnType<typeof toAiSdkProviderTools>;
+	providerOptions?: Record<string, JSONObject>;
+	outputSpec?: ReturnType<typeof Output.object>;
+}
+
 /**
  * Builds the per-run and per-iteration dependencies the agentic loop hands to
  * the LLM call: the model instance, provider/thinking options, structured
@@ -55,7 +64,7 @@ export class RuntimeContextBuilder {
 	/** Build run-stable LLM call dependencies shared by all iterations. */
 	buildStaticLoopContext(
 		execOptions?: ExecutionOptions & { persistence?: AgentPersistenceOptions },
-	) {
+	): StaticLoopContext {
 		const { Output, jsonSchema } = loadAi();
 		const aiProviderTools = toAiSdkProviderTools(this.config.providerTools);
 		const model = createModel(this.config.model);
@@ -80,7 +89,7 @@ export class RuntimeContextBuilder {
 		return {
 			model,
 			aiProviderTools,
-			providerOptions,
+			providerOptions: providerOptions as Record<string, JSONObject> | undefined,
 			outputSpec,
 		};
 	}
