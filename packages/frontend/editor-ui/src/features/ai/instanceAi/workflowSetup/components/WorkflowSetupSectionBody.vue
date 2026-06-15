@@ -17,6 +17,7 @@ import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
+import { AI_GATEWAY_SENTINEL } from '../../constants';
 
 const props = defineProps<{
 	section: WorkflowSetupSection;
@@ -38,6 +39,10 @@ const selectedCredentialId = computed(() =>
 const selectedCredentials = computed<INodeUi['credentials']>(() => {
 	const type = credentialType.value;
 	if (!type) return undefined;
+
+	if (selectedCredentialId.value === AI_GATEWAY_SENTINEL) {
+		return { [type]: { id: null, name: '', __aiGatewayManaged: true } };
+	}
 
 	const cred = selectedCredentialId.value
 		? credentialsStore.getCredentialById(selectedCredentialId.value)
@@ -128,7 +133,8 @@ provide(WorkflowDocumentStoreKey, workflowDocumentStore);
 function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	if (!credentialType.value) return;
 	const data = update.properties.credentials?.[credentialType.value];
-	ctx.setCredential(props.section, data?.id ?? null);
+	const credId = data?.__aiGatewayManaged === true ? AI_GATEWAY_SENTINEL : (data?.id ?? null);
+	ctx.setCredential(props.section, credId);
 }
 
 function onParameterValueChanged(update: IUpdateInformation) {

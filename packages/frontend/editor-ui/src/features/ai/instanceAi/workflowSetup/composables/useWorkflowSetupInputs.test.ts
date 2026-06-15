@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupInputs } from './useWorkflowSetupInputs';
+import { AI_GATEWAY_SENTINEL } from '../../constants';
 
 interface TestCredential {
 	id: string;
@@ -466,6 +467,75 @@ describe('useWorkflowSetupInputs', () => {
 
 		expect(h.inputs.credentialSelections.value).toEqual({
 			Params: { httpBasicAuth: 'cred-params' },
+		});
+	});
+
+	describe('n8n Connect sentinel', () => {
+		it('marks section complete for sentinel regardless of credential testability', () => {
+			credentialTest.testableTypes.add('openAiApi');
+			const section = makeWorkflowSetupSection({
+				credentialType: 'openAiApi',
+				targetNodeName: 'OpenAI',
+			});
+			const h = setupHarness([section]);
+
+			h.inputs.setCredential(section, AI_GATEWAY_SENTINEL);
+
+			expect(h.inputs.isSectionComplete(section)).toBe(true);
+		});
+
+		it('does not call testCredential for sentinel', () => {
+			const section = makeWorkflowSetupSection({
+				credentialType: 'openAiApi',
+				targetNodeName: 'OpenAI',
+			});
+			const h = setupHarness([section]);
+
+			h.inputs.setCredential(section, AI_GATEWAY_SENTINEL);
+
+			expect(credentialTest.testCredentialInBackground).not.toHaveBeenCalled();
+		});
+
+		it('clears a skip when sentinel is set', () => {
+			const section = makeWorkflowSetupSection({
+				credentialType: 'openAiApi',
+				targetNodeName: 'OpenAI',
+			});
+			const h = setupHarness([section]);
+			h.inputs.markSectionSkipped(section);
+
+			h.inputs.setCredential(section, AI_GATEWAY_SENTINEL);
+
+			expect(h.inputs.isSectionSkipped(section)).toBe(false);
+		});
+
+		it('does not add sentinel to credentialsToTest during seeding', async () => {
+			const section = makeWorkflowSetupSection({
+				targetNodeName: 'OpenAI',
+				credentialType: 'openAiApi',
+				currentCredentialId: AI_GATEWAY_SENTINEL,
+			});
+
+			setupHarness([section]);
+			await nextTick();
+
+			expect(credentialTest.testCredentialInBackground).not.toHaveBeenCalled();
+		});
+
+		it('includes sentinel in the apply payload', () => {
+			const section = makeWorkflowSetupSection({
+				credentialType: 'openAiApi',
+				targetNodeName: 'OpenAI',
+			});
+			const h = setupHarness([section]);
+
+			h.inputs.setCredential(section, AI_GATEWAY_SENTINEL);
+
+			expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+				nodeCredentials: {
+					OpenAI: { openAiApi: AI_GATEWAY_SENTINEL },
+				},
+			});
 		});
 	});
 

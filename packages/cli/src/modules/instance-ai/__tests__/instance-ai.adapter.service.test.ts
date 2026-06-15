@@ -38,6 +38,7 @@ import {
 	extractNodeOutput,
 	formatExecutionError,
 	resolveDataTableByIdOrName,
+	sanitizeCredentialReferencesForSave,
 	truncateNodeOutput,
 	truncateResultData,
 } from '../instance-ai.adapter.service';
@@ -1167,6 +1168,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	(
@@ -1300,6 +1302,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -1620,6 +1623,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const boundProjectId =
@@ -2237,6 +2241,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -2509,6 +2514,7 @@ function createRunAdapterForTests(
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -2669,5 +2675,68 @@ describe('createExecutionAdapter run()', () => {
 				status: 'error',
 			}),
 		);
+	});
+});
+
+describe('sanitizeCredentialReferencesForSave', () => {
+	const baseNode = {
+		id: 'node-1',
+		name: 'Test',
+		type: 'n8n-nodes-base.httpRequest',
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters: {},
+	};
+
+	it('preserves credentials with a non-empty string id', () => {
+		const nodes = [
+			{ ...baseNode, credentials: { httpBasicAuth: { id: 'cred-1', name: 'My Cred' } } },
+		];
+		const result = sanitizeCredentialReferencesForSave(nodes);
+		expect(result[0].credentials?.httpBasicAuth).toEqual({ id: 'cred-1', name: 'My Cred' });
+	});
+
+	it('strips credentials with an empty string id', () => {
+		const nodes = [{ ...baseNode, credentials: { httpBasicAuth: { id: '', name: '' } } }];
+		const result = sanitizeCredentialReferencesForSave(nodes);
+		expect(result[0].credentials).toBeUndefined();
+	});
+
+	it('strips credentials with id: null and no __aiGatewayManaged flag', () => {
+		const nodes = [{ ...baseNode, credentials: { googlePalmApi: { id: null, name: '' } } }];
+		const result = sanitizeCredentialReferencesForSave(nodes as never);
+		expect(result[0].credentials).toBeUndefined();
+	});
+
+	it('preserves n8n Connect credentials: { id: null, __aiGatewayManaged: true }', () => {
+		const nodes = [
+			{
+				...baseNode,
+				credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+			},
+		];
+		const result = sanitizeCredentialReferencesForSave(nodes as never);
+		expect(result[0].credentials?.googlePalmApi).toEqual({
+			id: null,
+			name: '',
+			__aiGatewayManaged: true,
+		});
+	});
+
+	it('does not treat __aiGatewayManaged: true with a non-null id as n8n Connect', () => {
+		// Malformed object — the flag alone is not enough; id must be null
+		const nodes = [
+			{
+				...baseNode,
+				credentials: { googlePalmApi: { id: 'some-id', name: '', __aiGatewayManaged: true } },
+			},
+		];
+		const result = sanitizeCredentialReferencesForSave(nodes as never);
+		// id is a non-empty string → kept by the real-credential branch
+		expect(result[0].credentials?.googlePalmApi).toEqual({
+			id: 'some-id',
+			name: '',
+			__aiGatewayManaged: true,
+		});
 	});
 });

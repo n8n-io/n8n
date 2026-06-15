@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
@@ -8,6 +9,7 @@ import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.v
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { AI_GATEWAY_SENTINEL } from '../constants';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -31,11 +33,25 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 	},
 }));
 
+const nodeCredentialsMock = vi.hoisted(() => ({
+	getNodeProp: () => null as unknown,
+	emitGatewayCredential: null as ((credType: string) => void) | null,
+}));
+
 vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	default: {
 		props: ['node', 'overrideCredType', 'projectId', 'standalone', 'hideIssues'],
 		emits: ['credentialSelected'],
-		setup(props: { overrideCredType: string }, { emit }: { emit: Function }) {
+		setup(props: { overrideCredType: string; node: unknown }, { emit }: { emit: Function }) {
+			// Store getter so tests can read the reactive node prop after re-renders
+			nodeCredentialsMock.getNodeProp = () => props.node;
+			nodeCredentialsMock.emitGatewayCredential = (credType: string) => {
+				emit('credentialSelected', {
+					properties: {
+						credentials: { [credType]: { id: null, name: '', __aiGatewayManaged: true } },
+					},
+				});
+			};
 			const onClick = () => {
 				emit('credentialSelected', {
 					properties: {
@@ -350,6 +366,91 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(resolveSpy).not.toHaveBeenCalled();
 			// Should show the form again (not deferred state)
 			expect(getByText('instanceAi.credential.deny')).toBeTruthy();
+		});
+	});
+
+	describe('n8n Connect (AI Gateway sentinel)', () => {
+		// Two existing credentials so initSelections doesn't auto-select (auto-select only fires for length === 1)
+		function makeGatewayRequests(): InstanceAiCredentialRequest[] {
+			return [
+				{
+					credentialType: 'openAiApi',
+					reason: 'Need OpenAI',
+					existingCredentials: [
+						{ id: 'existing-1', name: 'My OpenAI' },
+						{ id: 'existing-2', name: 'My OpenAI 2' },
+					],
+				},
+			];
+		}
+
+		it('stores sentinel and enables Continue when n8n Connect credential is selected', async () => {
+			const requests = makeGatewayRequests();
+			const { getByTestId } = renderComponent({
+				props: { requestId: 'req-1', credentialRequests: requests, message: 'Set up' },
+			});
+
+			expect(getByTestId('instance-ai-credential-continue-button')).toBeDisabled();
+
+			nodeCredentialsMock.emitGatewayCredential?.('openAiApi');
+			await nextTick();
+
+			expect(getByTestId('instance-ai-credential-continue-button')).not.toBeDisabled();
+		});
+
+		it('passes sentinel to confirmAction on continue', async () => {
+			// Two requests, each with 2 existing credentials — prevents initSelections auto-select
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'openAiApi',
+					reason: 'Need OpenAI',
+					existingCredentials: [
+						{ id: 'existing-1a', name: 'My OpenAI 1' },
+						{ id: 'existing-1b', name: 'My OpenAI 2' },
+					],
+				},
+				{
+					credentialType: 'googlePalmApi',
+					reason: 'Need Google',
+					existingCredentials: [
+						{ id: 'existing-2a', name: 'My Google 1' },
+						{ id: 'existing-2b', name: 'My Google 2' },
+					],
+				},
+			];
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderComponent({
+				props: { requestId: 'req-1', credentialRequests: requests, message: 'Set up' },
+			});
+
+			nodeCredentialsMock.emitGatewayCredential?.('openAiApi');
+			await nextTick();
+			await userEvent.click(getByTestId('instance-ai-credential-next'));
+			await userEvent.click(getByTestId('credential-picker'));
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: {
+					openAiApi: AI_GATEWAY_SENTINEL,
+					googlePalmApi: 'cred-123',
+				},
+			});
+		});
+
+		it('passes gateway credential object to NodeCredentials node prop after sentinel is stored', async () => {
+			const requests = makeGatewayRequests();
+			renderComponent({
+				props: { requestId: 'req-1', credentialRequests: requests, message: 'Set up' },
+			});
+
+			nodeCredentialsMock.emitGatewayCredential?.('openAiApi');
+			await nextTick();
+
+			const nodeProp = nodeCredentialsMock.getNodeProp() as { credentials?: unknown };
+			expect(nodeProp?.credentials).toEqual({
+				openAiApi: { id: null, name: '', __aiGatewayManaged: true },
+			});
 		});
 	});
 

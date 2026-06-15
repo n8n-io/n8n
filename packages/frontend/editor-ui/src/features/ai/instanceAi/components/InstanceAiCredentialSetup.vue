@@ -14,6 +14,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
+import { AI_GATEWAY_SENTINEL } from '../constants';
 
 const props = defineProps<{
 	requestId: string;
@@ -221,18 +222,29 @@ function openNewCredentialModal() {
 /** Build a minimal synthetic INodeUi so NodeCredentials can render in standalone mode. */
 function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
 	const selectedId = selections.value[req.credentialType];
+	const base = {
+		id: req.credentialType,
+		name: req.credentialType,
+		type: 'n8n-nodes-base.noOp',
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters: {},
+	};
+
+	if (selectedId === AI_GATEWAY_SENTINEL) {
+		return {
+			...base,
+			credentials: { [req.credentialType]: { id: null, name: '', __aiGatewayManaged: true } },
+		} as INodeUi;
+	}
+
 	const selectedCred = selectedId
 		? (req.existingCredentials?.find((c) => c.id === selectedId) ??
 			credentialsStore.getCredentialById(selectedId))
 		: undefined;
 
 	return {
-		id: req.credentialType,
-		name: req.credentialType,
-		type: 'n8n-nodes-base.noOp',
-		typeVersion: 1,
-		position: [0, 0],
-		parameters: {},
+		...base,
 		credentials: selectedCred
 			? { [req.credentialType]: { id: selectedCred.id, name: selectedCred.name } }
 			: {},
@@ -248,6 +260,10 @@ function onCredentialSelected(
 	updateInfo: INodeUpdatePropertiesInformation,
 ) {
 	const credentialData = updateInfo.properties.credentials?.[credentialType];
+	if (credentialData && typeof credentialData !== 'string' && credentialData.__aiGatewayManaged) {
+		selections.value[credentialType] = AI_GATEWAY_SENTINEL;
+		return;
+	}
 	const credentialId = typeof credentialData === 'string' ? undefined : credentialData?.id;
 	if (credentialId) {
 		selections.value[credentialType] = credentialId;

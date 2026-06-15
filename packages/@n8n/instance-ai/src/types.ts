@@ -775,6 +775,12 @@ export interface InstanceAiContext {
 	 * Used to register `parse-file` and supply data to the parser.
 	 */
 	currentUserAttachments?: InstanceAiAttachment[];
+	/**
+	 * Returns true when the given credential type is supported by the n8n AI Gateway.
+	 * Optional — when absent, the sentinel is applied without a support check (safe for
+	 * package-only / test contexts where no gateway service is reachable).
+	 */
+	isAiGatewayCredentialTypeSupported?: (credentialType: string) => Promise<boolean>;
 	/** Optional logger for diagnostics from domain tools. */
 	logger?: Logger;
 	/** Synchronous node-types provider used by host-side schema validation

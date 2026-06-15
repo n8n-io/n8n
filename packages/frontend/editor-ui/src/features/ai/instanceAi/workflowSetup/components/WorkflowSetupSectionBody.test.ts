@@ -9,6 +9,7 @@ import WorkflowSetupSectionBody from './WorkflowSetupSectionBody.vue';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
 import type { WorkflowSetupContext } from '../composables/useWorkflowSetupContext';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
+import { AI_GATEWAY_SENTINEL } from '../../constants';
 
 const workflowSetupContext = vi.hoisted(() => ({
 	current: undefined as unknown as WorkflowSetupContext,
@@ -27,6 +28,10 @@ const renderedCredentials = vi.hoisted(() => [] as unknown[]);
 const workflowDocumentStoreRef = vi.hoisted(() => ({
 	current: null as WorkflowDocumentStore | null,
 }));
+const nodeCredentialsTrigger = vi.hoisted(() => ({
+	emitCredentialSelected: null as ((update: unknown) => void) | null,
+	lastNodeProp: null as unknown,
+}));
 
 vi.mock('../composables/useWorkflowSetupContext', () => ({
 	useWorkflowSetupContext: () => workflowSetupContext.current,
@@ -40,12 +45,21 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => nodeTypesStore,
 }));
 
-vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
-	default: {
-		props: ['node'],
-		template: '<div data-test-id="node-credentials"><slot name="label-postfix" /></div>',
-	},
-}));
+vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
+	const { defineComponent, h } = await import('vue');
+	return {
+		default: defineComponent({
+			props: ['node'],
+			emits: ['credential-selected'],
+			setup(props, { emit }) {
+				nodeCredentialsTrigger.emitCredentialSelected = (update) =>
+					emit('credential-selected', update);
+				nodeCredentialsTrigger.lastNodeProp = props.node;
+				return () => h('div', { 'data-test-id': 'node-credentials' });
+			},
+		}),
+	};
+});
 
 vi.mock('@/app/components/FreeAiCreditsCallout.vue', () => ({
 	default: { template: '<div />' },
@@ -177,6 +191,67 @@ describe('WorkflowSetupSectionBody', () => {
 		await nextTick();
 
 		expect(renderedCredentials.at(-1)).toBe(credentialsBeforeParameterChange);
+	});
+
+	describe('n8n Connect credential handling', () => {
+		function makeGatewaySection() {
+			return makeWorkflowSetupSection({
+				id: 'OpenAI:openAiApi',
+				targetNodeName: 'OpenAI',
+				credentialType: 'openAiApi',
+			});
+		}
+
+		it('passes sentinel to setCredential when credential-selected carries __aiGatewayManaged', async () => {
+			const section = makeGatewaySection();
+			workflowSetupContext.current = makeContext(section);
+
+			renderComponent({ props: { section } });
+			await nextTick();
+
+			nodeCredentialsTrigger.emitCredentialSelected?.({
+				name: 'OpenAI',
+				properties: {
+					credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+				},
+			});
+
+			expect(workflowSetupContext.current.setCredential).toHaveBeenCalledWith(
+				section,
+				AI_GATEWAY_SENTINEL,
+			);
+		});
+
+		it('passes real id to setCredential when credential-selected carries a string id', async () => {
+			const section = makeGatewaySection();
+			workflowSetupContext.current = makeContext(section);
+
+			renderComponent({ props: { section } });
+			await nextTick();
+
+			nodeCredentialsTrigger.emitCredentialSelected?.({
+				name: 'OpenAI',
+				properties: { credentials: { openAiApi: { id: 'cred-42', name: 'My Key' } } },
+			});
+
+			expect(workflowSetupContext.current.setCredential).toHaveBeenCalledWith(section, 'cred-42');
+		});
+
+		it('passes the gateway credential object to NodeCredentials when sentinel is selected', async () => {
+			const section = makeGatewaySection();
+			const ctx = makeContext(section);
+			ctx.credentialSelections = ref({
+				OpenAI: { openAiApi: AI_GATEWAY_SENTINEL },
+			});
+			workflowSetupContext.current = ctx;
+
+			renderComponent({ props: { section } });
+			await nextTick();
+
+			expect((nodeCredentialsTrigger.lastNodeProp as INodeUi)?.credentials).toEqual({
+				openAiApi: { id: null, name: '', __aiGatewayManaged: true },
+			});
+		});
 	});
 
 	it('provides a scoped workflow document store with the display node', async () => {

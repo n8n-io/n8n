@@ -3,6 +3,7 @@ import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	InstanceAiAdminSettingsUpdateRequest,
 	isDisplayableConfirmationRequest,
+	workflowSetupNodeSchema,
 	isInstanceAiSandboxProvider,
 	type InstanceAiConfirmationInputType,
 	type InstanceAiConfirmationRequestPayload,
@@ -254,5 +255,52 @@ describe('isDisplayableConfirmationRequest', () => {
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
 		expect(Object.keys(handled)).toHaveLength(6);
+	});
+});
+
+describe('workflowSetupNodeSchema credentials', () => {
+	const baseNode = {
+		name: 'Gemini',
+		type: 'n8n-nodes-base.lmChatGoogleGemini',
+		typeVersion: 1,
+		parameters: {},
+		position: [0, 0] as [number, number],
+		id: 'node-1',
+	};
+
+	it('accepts id: null without __aiGatewayManaged (schema does not enforce the distinction)', () => {
+		const result = workflowSetupNodeSchema.safeParse({
+			node: { ...baseNode, credentials: { googlePalmApi: { id: null, name: '' } } },
+			isTrigger: false,
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts n8n Connect credential shape and preserves __aiGatewayManaged', () => {
+		const result = workflowSetupNodeSchema.safeParse({
+			node: {
+				...baseNode,
+				credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+			},
+			isTrigger: false,
+		});
+		expect(result.success).toBe(true);
+		expect(result.data?.node.credentials?.googlePalmApi).toEqual({
+			id: null,
+			name: '',
+			__aiGatewayManaged: true,
+		});
+	});
+
+	it('accepts a real credential with a string id', () => {
+		const result = workflowSetupNodeSchema.safeParse({
+			node: {
+				...baseNode,
+				credentials: { googlePalmApi: { id: 'cred-123', name: 'My Key' } },
+			},
+			isTrigger: false,
+		});
+		expect(result.success).toBe(true);
+		expect(result.data?.node.credentials?.googlePalmApi?.id).toBe('cred-123');
 	});
 });
