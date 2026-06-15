@@ -1,7 +1,7 @@
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import FormData from 'form-data';
 
-import type { SsrfBridge } from '../../../ssrf';
+import { makeSsrfBridge } from '../../../ssrf/__tests__/mock-ssrf-bridge';
 import { buildNodeAgents } from '../../node-agents';
 import {
 	buildTargetUrl,
@@ -26,14 +26,6 @@ vi.mock('../../node-agents', () => ({
 		httpsAgent: { type: 'https', ...opts },
 	})),
 }));
-
-const makeSsrfBridge = (): SsrfBridge =>
-	({
-		validateUrl: vi.fn(),
-		validateIp: vi.fn(),
-		validateRedirectSync: vi.fn(),
-		createSecureLookup: vi.fn(),
-	}) as unknown as SsrfBridge;
 
 describe('isIgnoreStatusErrorConfig', () => {
 	test('should return true for valid IgnoreStatusErrorConfig', () => {

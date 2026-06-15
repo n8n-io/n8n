@@ -2,24 +2,9 @@ import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import http from 'node:http';
 import https from 'node:https';
-import type { LookupFunction } from 'node:net';
 
-import type { SsrfBridge } from '../../ssrf';
+import { makeLookupFn, makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
 import { buildNodeAgents, EnvProxyHttpAgent, EnvProxyHttpsAgent } from '../node-agents';
-
-function makeLookupFn(): LookupFunction {
-	return vi.fn() as unknown as LookupFunction;
-}
-
-function makeSsrfBridge(overrides?: Partial<SsrfBridge>): SsrfBridge {
-	return {
-		validateUrl: vi.fn().mockResolvedValue({ ok: true, result: undefined }),
-		validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
-		validateRedirectSync: vi.fn(),
-		createSecureLookup: vi.fn().mockReturnValue(makeLookupFn()),
-		...overrides,
-	};
-}
 
 // HttpsProxyAgent stores `lookup` in `connectOpts` rather than `options`
 // (unlike http.Agent and HttpProxyAgent which use `options`).

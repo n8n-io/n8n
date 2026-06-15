@@ -2,10 +2,10 @@ import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import dns from 'node:dns';
 import http from 'node:http';
-import type { AddressInfo } from 'node:net';
+import type { AddressInfo, LookupFunction } from 'node:net';
 import { promisify } from 'node:util';
 
-import type { SsrfBridge } from '../../ssrf';
+import { makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
 import { getBeforeRedirectFn, setAxiosAgents } from '../axios/utils';
 import { buildNodeAgents } from '../node-agents';
 
@@ -42,15 +42,6 @@ async function startServer(handler: http.RequestListener): Promise<LocalServer> 
 		clear: () => (captured.length = 0),
 		close: async () => await promisify(server.close.bind(server))(),
 	};
-}
-
-function makeSsrfBridge(lookup: unknown): SsrfBridge {
-	return {
-		validateUrl: vi.fn().mockResolvedValue({ ok: true, result: undefined }),
-		validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
-		validateRedirectSync: vi.fn(),
-		createSecureLookup: vi.fn().mockReturnValue(lookup),
-	} as unknown as SsrfBridge;
 }
 
 async function httpGetWithAgent(url: string, agent: http.Agent): Promise<string> {
@@ -163,7 +154,9 @@ describe('outbound transport integration', () => {
 			const lookupSpy = vi.fn((hostname: string, options: dns.LookupOptions, onResult: unknown) =>
 				dns.lookup(hostname, options, onResult as never),
 			);
-			const bridge = makeSsrfBridge(lookupSpy as never);
+			const bridge = makeSsrfBridge({
+				createSecureLookup: () => lookupSpy as unknown as LookupFunction,
+			});
 
 			const config: AxiosRequestConfig = {
 				url: `http://localhost:${target.hostWithPort.split(':')[1]}/x`,
@@ -183,7 +176,9 @@ describe('outbound transport integration', () => {
 			const lookupSpy = vi.fn((hostname: string, options: dns.LookupOptions, onResult: unknown) =>
 				dns.lookup(hostname, options, onResult as never),
 			);
-			const bridge = makeSsrfBridge(lookupSpy as never);
+			const bridge = makeSsrfBridge({
+				createSecureLookup: () => lookupSpy as unknown as LookupFunction,
+			});
 
 			const config: AxiosRequestConfig = {
 				url: 'http://proxied-target.invalid/x',
