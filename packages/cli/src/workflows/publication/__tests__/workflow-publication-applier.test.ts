@@ -9,6 +9,7 @@ import type {
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
+import { WebhookPathTakenError } from 'n8n-workflow';
 
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
@@ -100,7 +101,7 @@ describe('WorkflowPublicationApplier', () => {
 		workflowHistoryRepository.findOneBy.mockResolvedValue(newVersion);
 		workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([]);
 		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(new Set());
-		workflowTriggerActivator.activate.mockResolvedValue(undefined);
+		workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures: [] });
 		workflowTriggerActivator.deactivate.mockResolvedValue(undefined);
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
 	});
@@ -244,6 +245,7 @@ describe('WorkflowPublicationApplier', () => {
 		});
 		workflowTriggerActivator.activate.mockImplementation(async () => {
 			callOrder.push('add');
+			return { activated: ['a'], failures: [] };
 		});
 
 		const result = await applier.apply(makeRecord());
@@ -275,7 +277,7 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
 	});
 
-	test('returns failed (after advancing) when adding triggers throws', async () => {
+	test('returns failed (after advancing) when adding triggers throws unexpectedly', async () => {
 		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
 		workflowTriggerActivator.activate.mockRejectedValue(new Error('registration failed'));
 
@@ -284,6 +286,50 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toEqual({
 			type: 'failed',
 			error: expect.objectContaining({ message: 'registration failed' }),
+		});
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
+	});
+
+	test('returns partial when some added triggers fail, advancing and keeping survivors', async () => {
+		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
+		const error = new Error('third-party unavailable');
+		workflowTriggerActivator.activate.mockResolvedValue({
+			activated: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+		});
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({
+			type: 'partial',
+			activatedNodeIds: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+		});
+		// The new version is published despite the partial activation; no deactivation.
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
+		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+	});
+
+	test('returns partial when a deterministic WebhookPathTakenError surfaces as a node failure', async () => {
+		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
+		const error = new WebhookPathTakenError('b');
+		workflowTriggerActivator.activate.mockResolvedValue({
+			activated: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+		});
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({
+			type: 'partial',
+			activatedNodeIds: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
 		});
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
