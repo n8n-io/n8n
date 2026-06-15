@@ -18,7 +18,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { UpdateNodeGroupCommand } from '@/app/models/history';
+import { RemoveNodeGroupCommand, UpdateNodeGroupCommand } from '@/app/models/history';
 
 type ConnectionChangeAction = 'add' | 'remove';
 type InvalidGroupValidationResult = Extract<GroupValidationResult, { valid: false }>;
@@ -186,7 +186,9 @@ export function useCanvasNodeGroupOperationGuards() {
 				onClick: (event: MouseEvent) => {
 					event.preventDefault();
 					event.stopPropagation();
+					const snapshot = { ...group, nodeIds: [...group.nodeIds] };
 					workflowDocumentStore.value.deleteGroup(group.id);
+					historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(snapshot, Date.now()));
 					notification?.close();
 				},
 			},
