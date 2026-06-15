@@ -271,6 +271,7 @@ export async function testPollingTriggerNode(
 		ssrfBridge: {
 			validateIp: jest.fn().mockReturnValue({ ok: true, result: undefined }),
 			validateUrl: jest.fn().mockResolvedValue({ ok: true, result: undefined }),
+			validateConnectionHost: jest.fn().mockReturnValue({ ok: true, result: undefined }),
 			validateRedirectSync: jest.fn(),
 			createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
 		} as SsrfBridge,
