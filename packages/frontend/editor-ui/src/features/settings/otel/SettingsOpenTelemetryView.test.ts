@@ -40,10 +40,12 @@ vi.mock('vue-router', async (importOriginal) => {
 
 const getOtelSettingsMock = vi.fn();
 const updateOtelSettingsMock = vi.fn();
+const sendOtelTestTraceMock = vi.fn();
 
 vi.mock('./otel.api', () => ({
 	getOtelSettings: (...args: unknown[]) => getOtelSettingsMock(...args),
 	updateOtelSettings: (...args: unknown[]) => updateOtelSettingsMock(...args),
+	sendOtelTestTrace: (...args: unknown[]) => sendOtelTestTraceMock(...args),
 }));
 
 const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettingsResponse => ({
@@ -91,6 +93,7 @@ describe('SettingsOpenTelemetryView', () => {
 		capturedRouteLeaveGuard = null;
 		getOtelSettingsMock.mockResolvedValue(makeSettings());
 		updateOtelSettingsMock.mockResolvedValue(makeSettings());
+		sendOtelTestTraceMock.mockResolvedValue({ success: true });
 	});
 
 	// ── initial render ────────────────────────────────────────────────────────
@@ -419,6 +422,82 @@ describe('SettingsOpenTelemetryView', () => {
 
 		await waitFor(() => {
 			expect(getAllByTestId('otel-header-key').length).toBe(2);
+		});
+	});
+
+	// ── test trace ────────────────────────────────────────────────────────────
+
+	it('renders the test trace button after fetch', async () => {
+		const { getByTestId } = render();
+
+		await waitFor(() => {
+			expect(getByTestId('otel-test-trace-button')).toBeInTheDocument();
+		});
+	});
+
+	it('sends a test trace and shows the success result when clicking the button', async () => {
+		const { getByTestId, getByText } = render();
+		await waitFor(() => expect(getByTestId('otel-test-trace-button')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-test-trace-button'));
+
+		await waitFor(() => {
+			expect(sendOtelTestTraceMock).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ exporterEndpoint: 'http://localhost:4318' }),
+			);
+			expect(getByText(/span sent to collector at/)).toBeInTheDocument();
+		});
+	});
+
+	it('surfaces the collector error when the test trace fails', async () => {
+		sendOtelTestTraceMock.mockResolvedValue({ success: false, error: '401 Unauthorized' });
+
+		const { getByTestId, getByText } = render();
+		await waitFor(() => expect(getByTestId('otel-test-trace-button')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-test-trace-button'));
+
+		await waitFor(() => {
+			expect(getByText(/401 Unauthorized/)).toBeInTheDocument();
+		});
+	});
+
+	it('disables the test trace button when the endpoint is empty', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ exporterEndpoint: '' }));
+
+		const { getByTestId } = render();
+
+		await waitFor(() => {
+			expect(getByTestId('otel-test-trace-button')).toBeDisabled();
+		});
+	});
+
+	it('invalidates a previous test result when a connection field changes', async () => {
+		const { getByTestId, getByText, queryByText } = render();
+		await waitFor(() => expect(getByTestId('otel-test-trace-button')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-test-trace-button'));
+		await waitFor(() => expect(getByText(/span sent to collector at/)).toBeInTheDocument());
+
+		await userEvent.type(getByTestId('otel-service-name'), 'x');
+
+		await waitFor(() => {
+			expect(queryByText(/span sent to collector at/)).not.toBeInTheDocument();
+		});
+	});
+
+	it('invalidates a previous test result when the connectivity timeout changes', async () => {
+		const { getByTestId, getByText, queryByText } = render();
+		await waitFor(() => expect(getByTestId('otel-test-trace-button')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-test-trace-button'));
+		await waitFor(() => expect(getByText(/span sent to collector at/)).toBeInTheDocument());
+
+		await typeIntoNumberInput(getByTestId('otel-connectivity-timeout'), '5000');
+
+		await waitFor(() => {
+			expect(queryByText(/span sent to collector at/)).not.toBeInTheDocument();
 		});
 	});
 
