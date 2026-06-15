@@ -49,6 +49,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 describe('McpService', () => {
@@ -99,6 +100,7 @@ describe('McpService', () => {
 			mockInstance(TagService),
 			mockInstance(LicenseState),
 			mockInstance(PostHogClient),
+			mockInstance(WorkflowHistoryService),
 		);
 	});
 
@@ -143,6 +145,7 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowHistoryService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -340,6 +343,7 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				opts.postHogClient,
+				mockInstance(WorkflowHistoryService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -445,6 +449,7 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowHistoryService),
 			);
 
 			const server = await service.getServer(user, false);
@@ -491,6 +496,7 @@ describe('McpService', () => {
 				mockInstance(TagService),
 				mockInstance(LicenseState),
 				mockInstance(PostHogClient),
+				mockInstance(WorkflowHistoryService),
 			);
 
 			const server = await service.getServer(user, false);
@@ -561,6 +567,7 @@ describe('McpService', () => {
 					mockInstance(TagService),
 					mockInstance(LicenseState),
 					postHogClient,
+					mockInstance(WorkflowHistoryService),
 				);
 			};
 
