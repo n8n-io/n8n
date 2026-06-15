@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Google/GenericFunctions.ts
+  s_88ca00a986dc30::t_ec1df9878a699e 49-54
+  s_88ca00a986dc30::t_c940a70d877425 72,74
+  s_88ca00a986dc30::t_2869710d1f32ca 17
+packages/nodes-base/nodes/Google/Sheet/GoogleSheetsTrigger.utils.ts
+  s_88ca00a986dc30::t_e99ac83768256a 34
+packages/nodes-base/nodes/Google/Sheet/v2/transport/index.ts
+  s_88ca00a986dc30::t_c09395f779c5f8 54
+  s_88ca00a986dc30::t_c3cb67db111d2d 13,25
+packages/nodes-base/nodes/Google/Sheet/GoogleSheetsTrigger.node.ts
+  s_88ca00a986dc30::t_e7bbd3b79591d3 21
+  s_88ca00a986dc30::t_570f0a7fd3ffe1 149-157
+  s_88ca00a986dc30::t_5400aed382b775 174,176-179
+  s_88ca00a986dc30::t_38ef716082f7aa 411
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "5cc2db67066ab9def12e3f4a942a27c5a459b756",
+  "prompts": {},
+  "sessions": {
+    "s_88ca00a986dc30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86e4073c-e3f7-4347-b37a-6b31f92de827",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
