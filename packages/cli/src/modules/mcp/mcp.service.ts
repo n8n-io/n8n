@@ -46,6 +46,7 @@ import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
+import { createExploreNodeResourcesTool } from './tools/workflow-builder/explore-node-resources.tool';
 import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
 import { createGetWorkflowBestPracticesTool } from './tools/workflow-builder/get-workflow-best-practices.tool';
 import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
@@ -64,6 +65,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
@@ -130,6 +132,7 @@ export class McpService {
 		private readonly executionService: ExecutionService,
 		private readonly dataTableProxyService: DataTableProxyService,
 		private readonly collaborationService: CollaborationService,
+		private readonly nodeResourceExplorerService: NodeResourceExplorerService,
 		private readonly tagService: TagService,
 		private readonly licenseState: LicenseState,
 		private readonly postHogClient: PostHogClient,
@@ -433,6 +436,17 @@ export class McpService {
 			bestPracticesTool.name,
 			bestPracticesTool.config,
 			bestPracticesTool.handler,
+		);
+
+		const exploreNodeResourcesTool = createExploreNodeResourcesTool(
+			user,
+			this.nodeResourceExplorerService,
+			this.telemetry,
+		);
+		server.registerTool(
+			exploreNodeResourcesTool.name,
+			exploreNodeResourcesTool.config,
+			exploreNodeResourcesTool.handler,
 		);
 
 		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);

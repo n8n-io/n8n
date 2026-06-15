@@ -26,6 +26,7 @@ import {
 	createWorkflowDocumentId,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { computed, inject, ref, type ShallowRef } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
@@ -104,14 +105,17 @@ function defineNDVStore(id: NDVStoreId) {
 		const highlightDraggables = ref(false);
 		const lastSetActiveNodeSource = ref<TelemetryNdvSource>();
 
-		const workflowsStore = useWorkflowsStore();
 		const workflowDocumentStore = useWorkflowDocumentStore(id);
+		const executionStateStore = useWorkflowExecutionStateStore(id);
 		const activeNode = computed(() => {
 			return workflowDocumentStore.getNodeByName(activeNodeName.value || '') ?? null;
 		});
 
 		const ndvInputData = computed(() => {
-			const executionData = workflowsStore.getWorkflowExecution;
+			// Touch the timestamp so in-place runData mutations (which keep the
+			// execution object reference) still propagate.
+			void executionStateStore.activeExecutionResultDataLastUpdate;
+			const executionData = executionStateStore.activeExecution;
 			const inputNodeName: string | undefined = input.value.nodeName;
 			const inputRunIndex: number = input.value.run ?? 0;
 			const inputBranchIndex: number = input.value.branch ?? 0;

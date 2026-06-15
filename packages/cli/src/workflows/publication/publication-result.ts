@@ -1,3 +1,5 @@
+import type { TriggerActivationFailure } from '@/workflows/triggers/workflow-trigger-activator';
+
 /**
  * Why a publication did no trigger work and was completed without advancing any
  * triggers. The outcome is still a success (the record is marked completed); the
@@ -24,9 +26,10 @@ export type PublicationResult =
 	/** The history row for the published version is gone; the record is failed. */
 	| { type: 'version-missing' }
 	/**
-	 * The published version advanced but some triggers failed to (de)register.
-	 * Unused until partial-activation handling is introduced (CAT-3398).
+	 * The published version advanced and some triggers are running, but others
+	 * failed to register. The record is marked `partial_success` and the workflow
+	 * stays published (no auto-unpublish); the failures carry per-node detail.
 	 */
-	| { type: 'partial'; error: Error }
+	| { type: 'partial'; activatedNodeIds: Array<string>; failures: TriggerActivationFailure[] }
 	/** The publication failed; the record is failed and the error is reported. */
 	| { type: 'failed'; error: Error };
