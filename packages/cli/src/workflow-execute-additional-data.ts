@@ -6,40 +6,40 @@ import { SsrfProtectionService } from '@n8n/backend-network';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
-import { Container } from '@n8n/di';
 import type { ServiceIdentifier } from '@n8n/di';
+import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
+import type {
+	AiEvent,
+	EnvProviderState,
+	ExecuteAgentData,
+	ExecuteWorkflowData,
+	ExecuteWorkflowOptions,
+	ExecutionError,
+	ExecutionStatus,
+	IDataObject,
+	IExecuteData,
+	IExecuteFunctions,
+	IExecuteWorkflowInfo,
+	INode,
+	INodeExecutionData,
+	INodeParameters,
+	IRun,
+	IRunExecutionData,
+	ITaskDataConnections,
+	IWorkflowBase,
+	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionDataProcess,
+	IWorkflowSettings,
+	RelatedExecution,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 import {
 	UnexpectedError,
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
-} from 'n8n-workflow';
-import type {
-	AiEvent,
-	IDataObject,
-	IExecuteData,
-	IExecuteWorkflowInfo,
-	INode,
-	INodeExecutionData,
-	INodeParameters,
-	IWorkflowBase,
-	IWorkflowExecuteAdditionalData,
-	IWorkflowSettings,
-	WorkflowExecuteMode,
-	ExecutionStatus,
-	ExecutionError,
-	IExecuteFunctions,
-	ITaskDataConnections,
-	ExecuteWorkflowOptions,
-	IWorkflowExecutionDataProcess,
-	EnvProviderState,
-	ExecuteWorkflowData,
-	ExecuteAgentData,
-	RelatedExecution,
-	IRun,
-	IRunExecutionData,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
