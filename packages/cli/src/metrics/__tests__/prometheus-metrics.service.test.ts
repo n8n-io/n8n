@@ -1,1077 +1,209 @@
-import { readFileSync } from 'node:fs';
-
-import { mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
-import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
+/* eslint-disable @typescript-eslint/unbound-method -- jest mocks */
+import type { Logger } from '@n8n/backend-common';
 import type express from 'express';
-import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings, StorageConfig } from 'n8n-core';
-import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
-import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { EventService } from '@/events/event.service';
+import type { PrometheusActiveWorkflowMetricsService } from '../prometheus/active-workflow-metrics.service';
+import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.service';
+import type { PrometheusDefaultMetricsService } from '../prometheus/default-metrics.service';
+import type { PrometheusDnsCacheMetricsService } from '../prometheus/dns-cache-metrics.service';
+import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-metrics.service';
+import type { PrometheusExecutionDataMetricsService } from '../prometheus/execution-data-metrics.service';
+import type { PrometheusInstanceRoleMetricsService } from '../prometheus/instance-role-metrics.service';
+import { PrometheusMetricsService } from '../prometheus/prometheus.service';
+import type { PrometheusPssMetricsService } from '../prometheus/pss-metrics.service';
+import type { PrometheusQueueMetricsService } from '../prometheus/queue-metrics.service';
+import type { PrometheusRouteMetricsService } from '../prometheus/route-metrics.service';
+import type { PrometheusSsrfMetricsService } from '../prometheus/ssrf-metrics.service';
+import type { PrometheusTokenExchangeMetricsService } from '../prometheus/token-exchange-metrics.service';
+import type { PrometheusVersionMetricsService } from '../prometheus/version-metrics.service';
+import type { PrometheusWorkflowExecutionDurationMetricsService } from '../prometheus/workflow-execution-duration-metrics.service';
+import type { PrometheusWorkflowStatisticsMetricsService } from '../prometheus/workflow-statistics-metrics.service';
 
-import { PrometheusMetricsService } from '../prometheus-metrics.service';
-
-const mockMiddleware = (
-	_req: express.Request,
-	_res: express.Response,
-	next: express.NextFunction,
-) => next();
-
-jest.mock('node:fs', () => ({ readFileSync: jest.fn() }));
 jest.mock('prom-client');
-jest.mock('express-prom-bundle', () => jest.fn(() => mockMiddleware));
-
-const mockedReadFileSync = jest.mocked(readFileSync);
 
 describe('PrometheusMetricsService', () => {
-	let globalConfig: GlobalConfig;
-	let app: express.Application;
-	let eventBus: MessageEventBus;
-	let eventService: EventService;
-	let instanceSettings: InstanceSettings;
-	let workflowRepository: WorkflowRepository;
-	let licenseMetricsRepository: LicenseMetricsRepository;
-	let storageConfig: StorageConfig;
-	let prometheusMetricsService: PrometheusMetricsService;
+	let logger: jest.Mocked<Logger>;
+	let app: jest.Mocked<express.Application>;
 
-	beforeEach(() => {
-		globalConfig = mockInstance(GlobalConfig, {
-			endpoints: {
-				metrics: {
-					prefix: 'n8n_',
-					includeDefaultMetrics: false,
-					includeApiEndpoints: false,
-					includeCacheMetrics: false,
-					includeMessageEventBusMetrics: false,
-					includeCredentialTypeLabel: false,
-					includeNodeTypeLabel: false,
-					includeWorkflowIdLabel: false,
-					includeApiPathLabel: false,
-					includeApiMethodLabel: false,
-					includeApiStatusCodeLabel: false,
-					includeQueueMetrics: false,
-					includeWorkflowExecutionDuration: false,
-					includeWorkflowNameLabel: false,
-					includeWorkflowStatistics: false,
-					includeExecutionDataMetrics: false,
-					activeWorkflowCountInterval: 30,
-					workflowStatisticsInterval: 30,
-				},
-				rest: 'rest',
-				form: 'form',
-				formTest: 'form-test',
-				formWaiting: 'form-waiting',
-				webhook: 'webhook',
-				webhookTest: 'webhook-test',
-				webhookWaiting: 'webhook-waiting',
-			},
-			executions: {
-				mode: 'regular',
-			},
-		});
+	let cache: jest.Mocked<PrometheusCacheMetricsService>;
+	let eventBus: jest.Mocked<PrometheusEventBusMetricsService>;
+	let queue: jest.Mocked<PrometheusQueueMetricsService>;
+	let route: jest.Mocked<PrometheusRouteMetricsService>;
+	let roleInstance: jest.Mocked<PrometheusInstanceRoleMetricsService>;
+	let activeWorkflow: jest.Mocked<PrometheusActiveWorkflowMetricsService>;
+	let workflowExecutionDuration: jest.Mocked<PrometheusWorkflowExecutionDurationMetricsService>;
+	let workflowStatistics: jest.Mocked<PrometheusWorkflowStatisticsMetricsService>;
+	let executionData: jest.Mocked<PrometheusExecutionDataMetricsService>;
+	let pss: jest.Mocked<PrometheusPssMetricsService>;
+	let version: jest.Mocked<PrometheusVersionMetricsService>;
+	let defaultMetrics: jest.Mocked<PrometheusDefaultMetricsService>;
+	let tokenExchange: jest.Mocked<PrometheusTokenExchangeMetricsService>;
+	let ssrf: jest.Mocked<PrometheusSsrfMetricsService>;
+	let dnsCache: jest.Mocked<PrometheusDnsCacheMetricsService>;
 
-		app = mock<express.Application>();
-		eventBus = mock<MessageEventBus>();
-		eventService = mock<EventService>();
-		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
-		workflowRepository = mock<WorkflowRepository>();
-		licenseMetricsRepository = mock<LicenseMetricsRepository>();
-		storageConfig = mock<StorageConfig>({ modeTag: 'db' });
+	let service: PrometheusMetricsService;
 
-		prometheusMetricsService = new PrometheusMetricsService(
-			mock(),
+	const buildService = () =>
+		new PrometheusMetricsService(
+			logger,
+			cache,
 			eventBus,
-			globalConfig,
-			eventService,
-			instanceSettings,
-			workflowRepository,
-			licenseMetricsRepository,
-			storageConfig,
+			queue,
+			route,
+			roleInstance,
+			activeWorkflow,
+			workflowExecutionDuration,
+			workflowStatistics,
+			executionData,
+			pss,
+			version,
+			defaultMetrics,
+			tokenExchange,
+			ssrf,
+			dnsCache,
 		);
 
-		promClient.Counter.prototype.inc = jest.fn();
-		(promClient.validateMetricName as jest.Mock).mockReturnValue(true);
+	beforeEach(() => {
+		// Logger: scoped() must return a logger that also has warn/debug
+		const scopedLogger = mock<Logger>();
+		logger = mock<Logger>();
+		logger.scoped.mockReturnValue(scopedLogger);
 
-		mockedReadFileSync.mockImplementation(() => {
-			throw new Error('ENOENT: no such file or directory');
+		app = mock<express.Application>();
+
+		// All collectors enabled by default
+		cache = mock<PrometheusCacheMetricsService>({ enabled: true });
+		eventBus = mock<PrometheusEventBusMetricsService>({ enabled: true });
+		queue = mock<PrometheusQueueMetricsService>({ enabled: true });
+		route = mock<PrometheusRouteMetricsService>({ enabled: true });
+		roleInstance = mock<PrometheusInstanceRoleMetricsService>({ enabled: true });
+		activeWorkflow = mock<PrometheusActiveWorkflowMetricsService>({ enabled: true });
+		workflowExecutionDuration = mock<PrometheusWorkflowExecutionDurationMetricsService>({
+			enabled: true,
 		});
+		workflowStatistics = mock<PrometheusWorkflowStatisticsMetricsService>({ enabled: true });
+		executionData = mock<PrometheusExecutionDataMetricsService>({ enabled: true });
+		pss = mock<PrometheusPssMetricsService>({ enabled: true });
+		version = mock<PrometheusVersionMetricsService>({ enabled: true });
+		defaultMetrics = mock<PrometheusDefaultMetricsService>({ enabled: true });
+		tokenExchange = mock<PrometheusTokenExchangeMetricsService>({ enabled: true });
+		ssrf = mock<PrometheusSsrfMetricsService>({ enabled: true });
+		dnsCache = mock<PrometheusDnsCacheMetricsService>({ enabled: true });
+
+		service = buildService();
 	});
 
 	afterEach(() => {
 		jest.clearAllMocks();
-		prometheusMetricsService.disableAllMetrics();
-		prometheusMetricsService.disableAllLabels();
-	});
-
-	/** Capture the handler registered via `eventService.on(eventName, handler)`. */
-	const getEventServiceHandler = (eventName: string) => {
-		const call = (eventService.on as jest.Mock).mock.calls.find((c) => c[0] === eventName);
-		return call ? call[1] : undefined;
-	};
-
-	describe('constructor', () => {
-		it('should enable metrics based on global config', async () => {
-			const customGlobalConfig = { ...globalConfig };
-			customGlobalConfig.endpoints.metrics.includeCacheMetrics = true;
-			const customPrometheusMetricsService = new PrometheusMetricsService(
-				mock(),
-				mock(),
-				customGlobalConfig,
-				mock(),
-				instanceSettings,
-				mock(),
-				mock(),
-				mock(),
-			);
-
-			await customPrometheusMetricsService.init(app);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_cache_hits_total',
-				help: 'Total number of cache hits.',
-				labelNames: ['cache'],
-			});
-		});
 	});
 
 	describe('init', () => {
-		it('should set up `n8n_version_info`', async () => {
-			await prometheusMetricsService.init(app);
+		it('should call init on all enabled collectors', () => {
+			service.init(app);
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(1, {
-				name: 'n8n_version_info',
-				help: 'n8n version info.',
-				labelNames: ['version', 'major', 'minor', 'patch'],
-			});
+			expect(cache.init).toHaveBeenCalledWith(app);
+			expect(eventBus.init).toHaveBeenCalledWith(app);
+			expect(queue.init).toHaveBeenCalledWith(app);
+			expect(route.init).toHaveBeenCalledWith(app);
+			expect(roleInstance.init).toHaveBeenCalledWith(app);
+			expect(activeWorkflow.init).toHaveBeenCalledWith(app);
+			expect(workflowExecutionDuration.init).toHaveBeenCalledWith(app);
+			expect(workflowStatistics.init).toHaveBeenCalledWith(app);
+			expect(executionData.init).toHaveBeenCalledWith(app);
+			expect(pss.init).toHaveBeenCalledWith(app);
+			expect(version.init).toHaveBeenCalledWith(app);
+			expect(defaultMetrics.init).toHaveBeenCalledWith(app);
+			expect(tokenExchange.init).toHaveBeenCalledWith(app);
+			expect(ssrf.init).toHaveBeenCalledWith(app);
+			expect(dnsCache.init).toHaveBeenCalledWith(app);
 		});
 
-		it('should set up default metrics collection with `prom-client`', async () => {
-			prometheusMetricsService.enableMetric('default');
-			await prometheusMetricsService.init(app);
+		it('should NOT call init on disabled collectors', () => {
+			jest.replaceProperty(cache, 'enabled', false);
+			jest.replaceProperty(queue, 'enabled', false);
+			jest.replaceProperty(pss, 'enabled', false);
 
-			expect(promClient.collectDefaultMetrics).toHaveBeenCalled();
+			service.init(app);
+
+			expect(cache.init).not.toHaveBeenCalled();
+			expect(queue.init).not.toHaveBeenCalled();
+			expect(pss.init).not.toHaveBeenCalled();
+
+			// Still call enabled ones
+			expect(version.init).toHaveBeenCalledWith(app);
+			expect(eventBus.init).toHaveBeenCalledWith(app);
 		});
 
-		it('should set up `n8n_cache_hits_total`', async () => {
-			prometheusMetricsService.enableMetric('cache');
-			await prometheusMetricsService.init(app);
+		it('should mount GET /metrics endpoint', () => {
+			service.init(app);
 
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_cache_hits_total',
-				help: 'Total number of cache hits.',
-				labelNames: ['cache'],
-			});
+			expect(app.get).toHaveBeenCalledWith('/metrics', expect.any(Function));
 		});
 
-		it('should set up `n8n_cache_misses_total`', async () => {
-			prometheusMetricsService.enableMetric('cache');
-			await prometheusMetricsService.init(app);
+		it('should return metrics string with correct content-type when /metrics handler is called', async () => {
+			const metricsString = '# HELP n8n_version_info\nn8n_version_info 1';
+			(promClient.register.metrics as jest.Mock).mockResolvedValue(metricsString);
+			(promClient.register as unknown as { contentType: string }).contentType =
+				'text/plain; version=0.0.4; charset=utf-8';
 
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_cache_misses_total',
-				help: 'Total number of cache misses.',
-				labelNames: ['cache'],
-			});
+			service.init(app);
+
+			const handler = (app.get as jest.Mock).mock.calls.find((c) => c[0] === '/metrics')?.[1];
+			expect(handler).toBeDefined();
+
+			const req = mock<express.Request>();
+			const res = mock<express.Response>();
+			res.send.mockReturnValue(res);
+
+			await handler(req, res);
+
+			expect(promClient.register.metrics).toHaveBeenCalled();
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Type', promClient.register.contentType);
+			expect(res.send).toHaveBeenCalledWith(metricsString);
 		});
 
-		it('should set up `n8n_cache_updates_total`', async () => {
-			prometheusMetricsService.enableMetric('cache');
-			await prometheusMetricsService.init(app);
+		it('should warn and skip re-initialization when called a second time', () => {
+			const scopedLogger = logger.scoped('metrics');
 
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_cache_updates_total',
-				help: 'Total number of cache updates.',
-				labelNames: ['cache'],
-			});
-			// @ts-expect-error private field
-			expect(prometheusMetricsService.counters.cacheUpdatesTotal?.inc).toHaveBeenCalledWith(0);
-		});
+			service.init(app);
 
-		it('should set up route metrics with `express-prom-bundle`', async () => {
-			prometheusMetricsService.enableMetric('routes');
-			await prometheusMetricsService.init(app);
+			// Reset init call counts
+			jest.clearAllMocks();
+			app.get.mockClear();
 
-			expect(promBundle).toHaveBeenCalledWith({
-				httpDurationMetricName: 'n8n_http_request_duration_seconds',
-				autoregister: false,
-				includeUp: false,
-				includePath: false,
-				includeMethod: false,
-				includeStatusCode: false,
-			});
+			service.init(app);
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
-				name: 'n8n_last_activity',
-				help: 'last instance activity (backend request) in Unix time (seconds).',
-			});
+			// Collectors should NOT be re-initialized
+			expect(cache.init).not.toHaveBeenCalled();
+			expect(version.init).not.toHaveBeenCalled();
 
-			expect(app.use).toHaveBeenCalledWith(
-				[
-					'/api/',
-					'/rest/',
-					'/webhook/',
-					'/webhook-waiting/',
-					'/webhook-test/',
-					'/form/',
-					'/form-waiting/',
-					'/form-test/',
-				],
-				expect.any(Function),
+			// Logger warn should be called
+			expect((scopedLogger as jest.Mocked<Logger>).warn).toHaveBeenCalledWith(
+				'The prometheus initialization should not be called twice.',
 			);
 		});
 
-		it('should set up event bus metrics', async () => {
-			prometheusMetricsService.enableMetric('logs');
-			await prometheusMetricsService.init(app);
-
-			expect(eventBus.on).toHaveBeenCalledWith('metrics.eventBus.event', expect.any(Function));
-		});
-
-		it('should set up queue metrics if enabled', async () => {
-			globalConfig.executions.mode = 'queue';
-			prometheusMetricsService.enableMetric('queue');
-
-			await prometheusMetricsService.init(app);
-
-			// call 1 is for `n8n_version_info` (always enabled)
-
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
-				name: 'n8n_scaling_mode_queue_jobs_waiting',
-				help: 'Current number of enqueued jobs waiting for pickup in scaling mode.',
-			});
-
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(4, {
-				name: 'n8n_scaling_mode_queue_jobs_active',
-				help: 'Current number of jobs being processed across all workers in scaling mode.',
-			});
-
-			expect(promClient.Counter).toHaveBeenNthCalledWith(1, {
-				name: 'n8n_scaling_mode_queue_jobs_completed',
-				help: 'Total number of jobs completed across all workers in scaling mode since instance start.',
-			});
-
-			expect(promClient.Counter).toHaveBeenNthCalledWith(2, {
-				name: 'n8n_scaling_mode_queue_jobs_failed',
-				help: 'Total number of jobs failed across all workers in scaling mode since instance start.',
-			});
-
-			expect(eventService.on).toHaveBeenCalledWith('job-counts-updated', expect.any(Function));
-		});
-
-		it('should not set up queue metrics if enabled but not on scaling mode', async () => {
-			globalConfig.executions.mode = 'regular';
-			prometheusMetricsService.enableMetric('queue');
-
-			await prometheusMetricsService.init(app);
-
-			expect(promClient.Gauge).toHaveBeenCalledTimes(3); // version metric + active workflow count metric + instance role metric
-			expect(promClient.Counter).toHaveBeenCalledTimes(6); // token exchange metrics (always registered)
-			expect(eventService.on).toHaveBeenCalledTimes(6); // token exchange event listeners
-		});
-
-		it('should not set up queue metrics if enabled and on scaling mode but instance is not main', async () => {
-			globalConfig.executions.mode = 'queue';
-			prometheusMetricsService.enableMetric('queue');
-			// @ts-expect-error private field
-			instanceSettings.instanceType = 'worker';
-
-			await prometheusMetricsService.init(app);
-
-			expect(promClient.Gauge).toHaveBeenCalledTimes(2); // version metric + active workflow count metric
-			expect(promClient.Counter).toHaveBeenCalledTimes(6); // token exchange metrics (always registered)
-			expect(eventService.on).toHaveBeenCalledTimes(6); // token exchange event listeners
-		});
-
-		it('should setup active workflow count metric', async () => {
-			await prometheusMetricsService.init(app);
-
-			// First call is n8n version metric
-			expect(promClient.Gauge).toHaveBeenCalledTimes(3);
-
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
-				name: 'n8n_active_workflow_count',
-				help: 'Total number of active workflows.',
-				collect: expect.any(Function),
-			});
-		});
-	});
-
-	describe('when event bus events are sent', () => {
-		// Helper to find the event handler function registered by initEventBusMetrics
-		const getEventHandler = () => {
-			const eventBusOnCall = (eventBus.on as jest.Mock).mock.calls.find(
-				(call) => call[0] === 'metrics.eventBus.event',
-			);
-			// The handler is the second argument in the .on(eventName, handler) call
-			return eventBusOnCall ? eventBusOnCall[1] : undefined;
-		};
-
-		it('should create a counter with `credential_type` label for user credentials audit events', async () => {
-			prometheusMetricsService.enableMetric('logs');
-			prometheusMetricsService.enableLabels(['credentialsType']);
-
-			await prometheusMetricsService.init(app);
-
-			const eventHandler = getEventHandler();
-			const mockEvent = {
-				__type: EventMessageTypeNames.audit,
-				eventName: 'n8n.audit.user.credentials.created',
-				payload: { credentialType: 'n8n-nodes-base.googleApi' },
-			};
-
-			eventHandler(mockEvent);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_audit_user_credentials_created_total',
-				help: 'Total number of n8n.audit.user.credentials.created events.',
-				labelNames: ['credential_type'],
-			});
-
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith(
-				{ credential_type: 'n8n-nodes-base_googleApi' },
-				1,
-			);
-		});
-
-		it('should create a counter with `workflow_id` label for workflow audit events', async () => {
-			prometheusMetricsService.enableMetric('logs');
-			prometheusMetricsService.enableLabels(['workflowId']);
-
-			await prometheusMetricsService.init(app);
-
-			const eventHandler = getEventHandler();
-			const mockEvent = {
-				__type: EventMessageTypeNames.audit,
-				eventName: 'n8n.audit.workflow.created',
-				payload: { workflowId: 'wf_123' },
-			};
-			eventHandler(mockEvent);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_audit_workflow_created_total',
-				help: 'Total number of n8n.audit.workflow.created events.',
-				labelNames: ['workflow_id'],
-			});
-
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ workflow_id: 'wf_123' }, 1);
-		});
-
-		it('should create a counter with `workflow_name` label for workflow audit events', async () => {
-			prometheusMetricsService.enableMetric('logs');
-			prometheusMetricsService.enableLabels(['workflowName']);
-
-			await prometheusMetricsService.init(app);
-
-			const eventHandler = getEventHandler();
-			const mockEvent = {
-				__type: EventMessageTypeNames.audit,
-				eventName: 'n8n.audit.workflow.created',
-				payload: { workflowName: 'Fake Workflow Name' },
-			};
-			eventHandler(mockEvent);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_audit_workflow_created_total',
-				help: 'Total number of n8n.audit.workflow.created events.',
-				labelNames: ['workflow_name'],
-			});
-
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith(
-				{ workflow_name: 'Fake Workflow Name' },
-				1,
-			);
-		});
-
-		it('should create a counter with `node_type` label for node events', async () => {
-			prometheusMetricsService.enableMetric('logs');
-			prometheusMetricsService.enableLabels(['nodeType']);
-			await prometheusMetricsService.init(app);
-
-			const eventHandler = getEventHandler();
-			const mockEvent = {
-				__type: EventMessageTypeNames.node,
-				eventName: 'n8n.node.execution.started',
-				payload: { nodeType: 'n8n-nodes-base.if' },
-			};
-
-			eventHandler(mockEvent);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_node_execution_started_total',
-				help: 'Total number of n8n.node.execution.started events.',
-				labelNames: ['node_type'],
-			});
-
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ node_type: 'base_if' }, 1);
-		});
-
-		it('should create a counter with `workflow_id` label for node events', async () => {
-			prometheusMetricsService.enableMetric('logs');
-			prometheusMetricsService.enableLabels(['workflowId']);
-			await prometheusMetricsService.init(app);
-
-			const eventHandler = getEventHandler();
-			const mockEvent = {
-				__type: EventMessageTypeNames.node,
-				eventName: 'n8n.node.execution.started',
-				payload: { workflowId: 'wf_123' },
-			};
-
-			eventHandler(mockEvent);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_node_execution_started_total',
-				help: 'Total number of n8n.node.execution.started events.',
-				labelNames: ['workflow_id'],
-			});
-
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ workflow_id: 'wf_123' }, 1);
-		});
-
-		it('should create a counter with `workflow_name` label for node events', async () => {
-			prometheusMetricsService.enableMetric('logs');
-			prometheusMetricsService.enableLabels(['workflowName']);
-			await prometheusMetricsService.init(app);
-
-			const eventHandler = getEventHandler();
-			const mockEvent = {
-				__type: EventMessageTypeNames.node,
-				eventName: 'n8n.node.execution.started',
-				payload: { workflowName: 'Fake Workflow Name' },
-			};
-
-			eventHandler(mockEvent);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_node_execution_started_total',
-				help: 'Total number of n8n.node.execution.started events.',
-				labelNames: ['workflow_name'],
-			});
-
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith(
-				{ workflow_name: 'Fake Workflow Name' },
-				1,
-			);
-		});
-
-		it('should create a counter with workflow and node type labels for node events', async () => {
-			prometheusMetricsService.enableMetric('logs');
-			prometheusMetricsService.enableLabels(['workflowId', 'workflowName', 'nodeType']);
-			await prometheusMetricsService.init(app);
-
-			const eventHandler = getEventHandler();
-			const mockEvent = {
-				__type: EventMessageTypeNames.node,
-				eventName: 'n8n.node.execution.started',
-				payload: {
-					workflowId: 'wf_123',
-					workflowName: 'Fake Workflow Name',
-					nodeType: 'n8n-nodes-base.if',
-				},
-			};
-
-			eventHandler(mockEvent);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_node_execution_started_total',
-				help: 'Total number of n8n.node.execution.started events.',
-				labelNames: ['workflow_id', 'workflow_name', 'node_type'],
-			});
-
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith(
-				{
-					workflow_id: 'wf_123',
-					workflow_name: 'Fake Workflow Name',
-					node_type: 'base_if',
-				},
-				1,
-			);
-		});
-
-		it('should create a counter with `workflow_id` label for workflow events', async () => {
-			prometheusMetricsService.enableMetric('logs');
-			prometheusMetricsService.enableLabels(['workflowId']);
-			await prometheusMetricsService.init(app);
-
-			const eventHandler = getEventHandler();
-			const mockEvent = {
-				__type: EventMessageTypeNames.workflow,
-				eventName: 'n8n.workflow.execution.finished',
-				payload: { workflowId: 'wf_456' },
-			};
-			eventHandler(mockEvent);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_workflow_execution_finished_total',
-				help: 'Total number of n8n.workflow.execution.finished events.',
-				labelNames: ['workflow_id'],
-			});
-
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ workflow_id: 'wf_456' }, 1);
-		});
-
-		it('should create a counter with `workflow_name` label for workflow events', async () => {
-			prometheusMetricsService.enableMetric('logs');
-			prometheusMetricsService.enableLabels(['workflowName']);
-			await prometheusMetricsService.init(app);
-
-			const eventHandler = getEventHandler();
-			const mockEvent = {
-				__type: EventMessageTypeNames.workflow,
-				eventName: 'n8n.workflow.execution.finished',
-				payload: { workflowName: 'Fake Workflow Name' },
-			};
-			eventHandler(mockEvent);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_workflow_execution_finished_total',
-				help: 'Total number of n8n.workflow.execution.finished events.',
-				labelNames: ['workflow_name'],
-			});
-
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith(
-				{ workflow_name: 'Fake Workflow Name' },
-				1,
-			);
-		});
-
-		it('should create a counter with no labels if the corresponding config is disabled', async () => {
-			prometheusMetricsService.enableMetric('logs');
-			await prometheusMetricsService.init(app);
-
-			const eventHandler = getEventHandler();
-			const mockEvent = {
-				__type: EventMessageTypeNames.workflow,
-				eventName: 'n8n.workflow.execution.finished',
-				payload: { workflowId: 'wf_789' },
-			};
-			eventHandler(mockEvent);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_workflow_execution_finished_total',
-				help: 'Total number of n8n.workflow.execution.finished events.',
-				labelNames: [], // Expecting no labels
-			});
-
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({}, 1);
-		});
-	});
-
-	describe('instance role metric', () => {
-		it('should set up instance role metric for main instance', async () => {
-			// @ts-expect-error Private field
-			instanceSettings.instanceType = 'main';
-
-			await prometheusMetricsService.init(app);
-
-			expect(promClient.Gauge).toHaveBeenCalledWith({
-				name: 'n8n_instance_role_leader',
-				help: 'Whether this main instance is the leader (1) or not (0).',
-			});
-		});
-
-		it('should not set up instance role metric for worker instance', async () => {
-			// @ts-expect-error Private field
-			instanceSettings.instanceType = 'worker';
-
-			await prometheusMetricsService.init(app);
-
-			// Only version and active workflow count metrics should be created
-			expect(promClient.Gauge).toHaveBeenCalledTimes(2);
-
-			// Verify instance role metric was not created
-			const calls = (promClient.Gauge as jest.Mock).mock.calls;
-			const hasInstanceRoleMetric = calls.some(
-				(call) => call[0]?.name === 'n8n_instance_role_leader',
-			);
-			expect(hasInstanceRoleMetric).toBe(false);
-		});
-	});
-
-	describe('workflow execution duration metric', () => {
-		const getEventHandler = () => {
-			const call = (eventService.on as jest.Mock).mock.calls.find(
-				(c) => c[0] === 'workflow-post-execute',
-			);
-			return call ? call[1] : undefined;
-		};
-
-		it('should register histogram when enabled', async () => {
-			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			await prometheusMetricsService.init(app);
-
-			expect(promClient.Histogram).toHaveBeenCalledWith({
-				name: 'n8n_workflow_execution_duration_seconds',
-				help: 'Workflow execution duration in seconds.',
-				labelNames: ['status', 'mode'],
-				buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 120, 300, 600],
-			});
-
-			expect(eventService.on).toHaveBeenCalledWith('workflow-post-execute', expect.any(Function));
-		});
-
-		it('should not register histogram when disabled', async () => {
-			await prometheusMetricsService.init(app);
-
-			expect(promClient.Histogram).not.toHaveBeenCalled();
-		});
-
-		it('should include workflow_id label when enabled', async () => {
-			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			prometheusMetricsService.enableLabels(['workflowId']);
-			await prometheusMetricsService.init(app);
-
-			expect(promClient.Histogram).toHaveBeenCalledWith(
-				expect.objectContaining({
-					labelNames: ['status', 'mode', 'workflow_id'],
-				}),
-			);
-		});
-
-		it('should observe duration on successful workflow execution', async () => {
-			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			promClient.Histogram.prototype.observe = jest.fn();
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventHandler();
-			handler({
-				runData: {
-					startedAt: new Date('2026-01-01T00:00:00Z'),
-					stoppedAt: new Date('2026-01-01T00:00:05Z'),
-					status: 'success',
-					mode: 'trigger',
-				},
-				workflow: { id: 'wf_123', name: 'Test Workflow' },
-			});
-
-			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
-				{ status: 'success', mode: 'trigger' },
-				5,
-			);
-		});
-
-		it('should observe duration on failed workflow execution', async () => {
-			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			promClient.Histogram.prototype.observe = jest.fn();
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventHandler();
-			handler({
-				runData: {
-					startedAt: new Date('2026-01-01T00:00:00Z'),
-					stoppedAt: new Date('2026-01-01T00:00:02.5Z'),
-					status: 'error',
-					mode: 'webhook',
-				},
-				workflow: { id: 'wf_456', name: 'Failed Workflow' },
-			});
-
-			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
-				{ status: 'failed', mode: 'webhook' },
-				2.5,
-			);
-		});
-
-		it('should map crashed status to failed', async () => {
-			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			promClient.Histogram.prototype.observe = jest.fn();
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventHandler();
-			handler({
-				runData: {
-					startedAt: new Date('2026-01-01T00:00:00Z'),
-					stoppedAt: new Date('2026-01-01T00:00:03Z'),
-					status: 'crashed',
-					mode: 'trigger',
-				},
-				workflow: { id: 'wf_789', name: 'Crashed Workflow' },
-			});
-
-			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
-				{ status: 'failed', mode: 'trigger' },
-				3,
-			);
-		});
-
-		it('should include workflow_id in observation labels when enabled', async () => {
-			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			prometheusMetricsService.enableLabels(['workflowId']);
-			promClient.Histogram.prototype.observe = jest.fn();
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventHandler();
-			handler({
-				runData: {
-					startedAt: new Date('2026-01-01T00:00:00Z'),
-					stoppedAt: new Date('2026-01-01T00:00:01Z'),
-					status: 'success',
-					mode: 'manual',
-				},
-				workflow: { id: 'wf_789', name: 'My Workflow' },
-			});
-
-			expect(promClient.Histogram.prototype.observe).toHaveBeenCalledWith(
-				{ status: 'success', mode: 'manual', workflow_id: 'wf_789' },
-				1,
-			);
-		});
-
-		it('should skip observation when stoppedAt is missing', async () => {
-			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			promClient.Histogram.prototype.observe = jest.fn();
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventHandler();
-			handler({
-				runData: {
-					startedAt: new Date('2026-01-01T00:00:00Z'),
-					stoppedAt: undefined,
-					status: 'success',
-					mode: 'manual',
-				},
-				workflow: { id: 'wf_123', name: 'Test' },
-			});
-
-			expect(promClient.Histogram.prototype.observe).not.toHaveBeenCalled();
-		});
-
-		it('should skip observation when runData is missing', async () => {
-			prometheusMetricsService.enableMetric('workflowExecutionDuration');
-			promClient.Histogram.prototype.observe = jest.fn();
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventHandler();
-			handler({
-				runData: undefined,
-				workflow: { id: 'wf_123', name: 'Test' },
-			});
-
-			expect(promClient.Histogram.prototype.observe).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('PSS metric', () => {
-		const findPssGaugeConfig = () => {
-			const calls = (promClient.Gauge as jest.Mock).mock.calls;
-			return calls.find((call) => call[0]?.name === 'n8n_process_pss_bytes')?.[0];
-		};
-
-		it('should not set up PSS metric when default metrics are disabled', async () => {
-			await prometheusMetricsService.init(app);
-
-			expect(findPssGaugeConfig()).toBeUndefined();
-		});
-
-		it('should not set up PSS metric when smaps_rollup is not readable', async () => {
-			prometheusMetricsService.enableMetric('default');
-
-			await prometheusMetricsService.init(app);
-
-			expect(findPssGaugeConfig()).toBeUndefined();
-		});
-
-		it('should set up PSS metric when default metrics enabled and smaps_rollup is readable', async () => {
-			prometheusMetricsService.enableMetric('default');
-			mockedReadFileSync.mockReturnValue('Pss:    12345 kB' as never);
-
-			await prometheusMetricsService.init(app);
-
-			const config = findPssGaugeConfig();
-			expect(config).toMatchObject({
-				name: 'n8n_process_pss_bytes',
-				help: 'Proportional Set Size of the process in bytes.',
-			});
-			expect(config.collect).toBeDefined();
-		});
-
-		it('should parse Pss value and convert kB to bytes in collect callback', async () => {
-			prometheusMetricsService.enableMetric('default');
-			mockedReadFileSync.mockReturnValue(
-				'Rss:   100000 kB\nPss:    12345 kB\nShared_Clean:  5000 kB' as never,
-			);
-
-			await prometheusMetricsService.init(app);
-
-			const config = findPssGaugeConfig();
-			const mockSet = jest.fn();
-			config.collect.call({ set: mockSet });
-
-			expect(mockSet).toHaveBeenCalledWith(12345 * 1024);
-		});
-
-		it('should not set gauge value when Pss line is not found in smaps_rollup', async () => {
-			prometheusMetricsService.enableMetric('default');
-			mockedReadFileSync.mockReturnValue('some content without pss' as never);
-
-			await prometheusMetricsService.init(app);
-
-			const config = findPssGaugeConfig();
-			const mockSet = jest.fn();
-			config.collect.call({ set: mockSet });
-
-			expect(mockSet).not.toHaveBeenCalled();
-		});
-
-		it('should silently handle readFileSync failure in collect callback', async () => {
-			prometheusMetricsService.enableMetric('default');
-			// Availability check succeeds
-			mockedReadFileSync.mockReturnValueOnce('Pss:    1 kB' as never);
-
-			await prometheusMetricsService.init(app);
-
-			// Subsequent reads in collect callback fail
-			mockedReadFileSync.mockImplementation(() => {
-				throw new Error('EACCES: permission denied');
-			});
-
-			const config = findPssGaugeConfig();
-			const mockSet = jest.fn();
-			expect(() => config.collect.call({ set: mockSet })).not.toThrow();
-			expect(mockSet).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('token exchange metrics', () => {
-		it('should register all 6 token exchange counters on init', async () => {
-			await prometheusMetricsService.init(app);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_token_exchange_requests_total',
-				help: 'Total number of token exchange requests.',
-				labelNames: ['result'],
-			});
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_token_exchange_failures_total',
-				help: 'Total number of token exchange failures broken down by reason.',
-				labelNames: ['reason'],
-			});
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_embed_login_requests_total',
-				help: 'Total number of embed login requests.',
-				labelNames: ['result'],
-			});
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_embed_login_failures_total',
-				help: 'Total number of embed login failures broken down by reason.',
-				labelNames: ['reason'],
-			});
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_token_exchange_jit_provisioning_total',
-				help: 'Total number of users JIT-provisioned via token exchange.',
-			});
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_token_exchange_identity_linked_total',
-				help: 'Total number of external identities linked to existing users via token exchange.',
-			});
-		});
-
-		it('should pre-seed result label combos on request counters', async () => {
-			await prometheusMetricsService.init(app);
-
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ result: 'success' }, 0);
-			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({ result: 'failure' }, 0);
-		});
-
-		it('should increment token exchange success counter on token-exchange-succeeded', async () => {
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventServiceHandler('token-exchange-succeeded');
-			handler({});
-
-			// @ts-expect-error private field
-			const succeedReqCounter = prometheusMetricsService.counters.tokenExchangeRequestsTotal;
-			expect(succeedReqCounter?.inc).toHaveBeenCalledWith({ result: 'success' }, 1);
-		});
-
-		it('should increment token exchange failure counter on token-exchange-failed', async () => {
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventServiceHandler('token-exchange-failed');
-			handler({ failureReason: 'unknown_key' });
-
-			// @ts-expect-error private field
-			const failReqCounter = prometheusMetricsService.counters.tokenExchangeRequestsTotal;
-			expect(failReqCounter?.inc).toHaveBeenCalledWith({ result: 'failure' }, 1);
-			// @ts-expect-error private field
-			const failuresCounter = prometheusMetricsService.counters.tokenExchangeFailuresTotal;
-			expect(failuresCounter?.inc).toHaveBeenCalledWith({ reason: 'unknown_key' }, 1);
-		});
-
-		it('should pass through "other" failure reason', async () => {
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventServiceHandler('token-exchange-failed');
-			handler({ failureReason: 'other' });
-
-			// @ts-expect-error private field
-			const otherCounter = prometheusMetricsService.counters.tokenExchangeFailuresTotal;
-			expect(otherCounter?.inc).toHaveBeenCalledWith({ reason: 'other' }, 1);
-		});
-
-		it('should pass through "role_not_allowed" failure reason', async () => {
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventServiceHandler('token-exchange-failed');
-			// @ts-expect-error private field
-			const roleCounter = prometheusMetricsService.counters.tokenExchangeFailuresTotal;
-
-			handler({ failureReason: 'role_not_allowed' });
-			expect(roleCounter?.inc).toHaveBeenCalledWith({ reason: 'role_not_allowed' }, 1);
-		});
-
-		it('should increment embed login success counter on embed-login', async () => {
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventServiceHandler('embed-login');
-			handler({});
-
-			// @ts-expect-error private field
-			expect(prometheusMetricsService.counters.embedLoginRequestsTotal?.inc).toHaveBeenCalledWith(
-				{ result: 'success' },
-				1,
-			);
-		});
-
-		it('should increment embed login failure counter on embed-login-failed', async () => {
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventServiceHandler('embed-login-failed');
-			handler({ failureReason: 'invalid_signature' });
-
-			// @ts-expect-error private field
-			expect(prometheusMetricsService.counters.embedLoginRequestsTotal?.inc).toHaveBeenCalledWith(
-				{ result: 'failure' },
-				1,
-			);
-			// @ts-expect-error private field
-			expect(prometheusMetricsService.counters.embedLoginFailuresTotal?.inc).toHaveBeenCalledWith(
-				{ reason: 'invalid_signature' },
-				1,
-			);
-		});
-
-		it('should increment JIT provisioning counter on token-exchange-user-provisioned', async () => {
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventServiceHandler('token-exchange-user-provisioned');
-			handler({});
-
-			// @ts-expect-error private field
-			const jitCounter = prometheusMetricsService.counters.tokenExchangeJitProvisioningTotal;
-			expect(jitCounter?.inc).toHaveBeenCalledWith(1);
-		});
-
-		it('should increment identity linked counter on token-exchange-identity-linked', async () => {
-			await prometheusMetricsService.init(app);
-
-			const handler = getEventServiceHandler('token-exchange-identity-linked');
-			handler({});
-
-			// @ts-expect-error private field
-			const linkedCounter = prometheusMetricsService.counters.tokenExchangeIdentityLinkedTotal;
-			expect(linkedCounter?.inc).toHaveBeenCalledWith(1);
-		});
-	});
-
-	describe('execution data metrics', () => {
-		it('should register execution data metrics and set a storage-mode gauge when enabled', async () => {
-			prometheusMetricsService.enableMetric('executionData');
-			await prometheusMetricsService.init(app);
-
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_execution_data_reads_total',
-				help: 'Total number of execution data reads.',
-				labelNames: ['mode', 'result'],
-			});
-			expect(promClient.Counter).toHaveBeenCalledWith({
-				name: 'n8n_execution_data_writes_total',
-				help: 'Total number of execution data writes.',
-				labelNames: ['mode', 'result'],
-			});
-			expect(promClient.Counter).toHaveBeenCalledWith(
-				expect.objectContaining({ name: 'n8n_execution_data_unreadable_bundles_total' }),
-			);
-			expect(promClient.Histogram).toHaveBeenCalledWith(
-				expect.objectContaining({ name: 'n8n_execution_data_read_duration_seconds' }),
-			);
-			expect(promClient.Histogram).toHaveBeenCalledWith(
-				expect.objectContaining({ name: 'n8n_execution_data_write_duration_seconds' }),
-			);
-			expect(promClient.Gauge).toHaveBeenCalledWith(
-				expect.objectContaining({ name: 'n8n_execution_data_storage_mode', labelNames: ['mode'] }),
-			);
-
-			// @ts-expect-error private field
-			const gauge = prometheusMetricsService.gauges.executionDataStorageMode;
-			expect(gauge.set).toHaveBeenCalledWith({ mode: 'db' }, 0);
-			expect(gauge.set).toHaveBeenCalledWith({ mode: 'fs' }, 0);
-			expect(gauge.set).toHaveBeenCalledWith({ mode: 'db' }, 1); // configured mode (storageConfig.modeTag)
-		});
-
-		it('should not register execution data metrics when disabled', async () => {
-			await prometheusMetricsService.init(app);
-
-			expect(promClient.Counter).not.toHaveBeenCalledWith(
-				expect.objectContaining({ name: 'n8n_execution_data_reads_total' }),
-			);
-		});
-
-		it('should count a read and observe its duration (seconds) on a successful read event', async () => {
-			prometheusMetricsService.enableMetric('executionData');
-			await prometheusMetricsService.init(app);
-
-			getEventServiceHandler('execution-data-read')({
-				mode: 'db',
-				durationMs: 200,
-				success: true,
-				unreadableBundles: 0,
-			});
-
-			// @ts-expect-error private field
-			const reads = prometheusMetricsService.counters.executionDataReadsTotal;
-			expect(reads?.inc).toHaveBeenCalledWith({ mode: 'db', result: 'success' }, 1);
-			// @ts-expect-error private field
-			const histogram = prometheusMetricsService.histograms.executionDataReadDuration;
-			expect(histogram.observe).toHaveBeenCalledWith({ mode: 'db' }, 0.2);
-		});
-
-		it('should count unreadable bundles reported by a read event', async () => {
-			prometheusMetricsService.enableMetric('executionData');
-			await prometheusMetricsService.init(app);
-
-			getEventServiceHandler('execution-data-read')({
-				mode: 'fs',
-				durationMs: 5,
-				success: true,
-				unreadableBundles: 3,
-			});
-
-			// @ts-expect-error private field
-			const unreadable = prometheusMetricsService.counters.executionDataUnreadableBundlesTotal;
-			expect(unreadable?.inc).toHaveBeenCalledWith({ mode: 'fs' }, 3);
-		});
-
-		it('should count a failed write without observing its duration', async () => {
-			prometheusMetricsService.enableMetric('executionData');
-			await prometheusMetricsService.init(app);
-
-			getEventServiceHandler('execution-data-write')({
-				mode: 'db',
-				durationMs: 10,
-				success: false,
-			});
-
-			// @ts-expect-error private field
-			const writes = prometheusMetricsService.counters.executionDataWritesTotal;
-			expect(writes?.inc).toHaveBeenCalledWith({ mode: 'db', result: 'failure' }, 1);
-			// @ts-expect-error private field
-			const histogram = prometheusMetricsService.histograms.executionDataWriteDuration;
-			expect(histogram.observe).not.toHaveBeenCalled();
+		it('should handle a mix of enabled and disabled collectors correctly', () => {
+			jest.replaceProperty(cache, 'enabled', false);
+			jest.replaceProperty(queue, 'enabled', false);
+			jest.replaceProperty(defaultMetrics, 'enabled', false);
+			jest.replaceProperty(pss, 'enabled', false);
+			jest.replaceProperty(eventBus, 'enabled', false);
+
+			service.init(app);
+
+			expect(cache.init).not.toHaveBeenCalled();
+			expect(queue.init).not.toHaveBeenCalled();
+			expect(defaultMetrics.init).not.toHaveBeenCalled();
+			expect(pss.init).not.toHaveBeenCalled();
+			expect(eventBus.init).not.toHaveBeenCalled();
+
+			expect(route.init).toHaveBeenCalled();
+			expect(version.init).toHaveBeenCalled();
+			expect(tokenExchange.init).toHaveBeenCalled();
+			expect(activeWorkflow.init).toHaveBeenCalled();
 		});
 	});
 });

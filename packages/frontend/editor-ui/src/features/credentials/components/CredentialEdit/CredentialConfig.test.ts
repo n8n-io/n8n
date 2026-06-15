@@ -336,6 +336,34 @@ describe('CredentialConfig', () => {
 			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
 			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
 		});
+
+		it('should disable the dynamic credentials toggle when the credential is already shared', async () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isDynamicCredentialsEnabled: true,
+					isOAuthType: true,
+					isNewCredential: false,
+					isResolvable: false,
+					isShared: true,
+					credentialPermissions: {
+						create: false,
+						update: true,
+						read: true,
+						delete: false,
+						share: true,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.getByTestId('dynamic-credentials-toggle')).toHaveClass('is-disabled');
+		});
 	});
 
 	describe('Disconnect button on success banner', () => {

@@ -1,23 +1,27 @@
 <script setup lang="ts">
 import {
+	TooltipContent,
+	TooltipPortal,
 	TooltipProvider,
 	TooltipRoot,
 	TooltipTrigger,
-	TooltipContent,
-	TooltipPortal,
 } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useAttrs, watch } from 'vue';
 
-import type { N8nTooltipProps } from './Tooltip.types';
 import { useInjectTooltipAppendTo } from '../../composables/useTooltipAppendTo';
 import { n8nHtml as vN8nHtml } from '../../directives';
 import N8nButton from '../N8nButton';
+import type { N8nTooltipProps } from './Tooltip.types';
 
 defineOptions({
 	name: 'N8nTooltip',
+	inheritAttrs: false,
 });
 
+const attrs = useAttrs();
+
 const props = withDefaults(defineProps<N8nTooltipProps>(), {
+	asChild: false,
 	placement: 'top',
 	showAfter: 0,
 	enterable: true,
@@ -82,7 +86,15 @@ const handleOpenChange = (open: boolean) => {
 			:disable-hoverable-content="disableHoverableContent"
 			@update:open="handleOpenChange"
 		>
-			<TooltipTrigger as="span" :class="{ [$style.disabledTrigger]: disabled }">
+			<TooltipTrigger
+				v-if="asChild"
+				as-child
+				v-bind="attrs"
+				:class="{ [$style.disabledTrigger]: disabled && !asChild }"
+			>
+				<slot />
+			</TooltipTrigger>
+			<TooltipTrigger v-else as="span" :class="{ [$style.disabledTrigger]: disabled }">
 				<slot />
 			</TooltipTrigger>
 			<TooltipPortal :to="teleported ? appendTo : undefined" :disabled="!teleported">

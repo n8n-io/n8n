@@ -7,7 +7,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { CredentialMatcher, type CredentialMatcherContext } from './credential-matcher';
-import { createSuccessBinding, type CredentialBinding } from './credential.types';
+import type { ImportBindingMap } from '../../n8n-packages.types';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 @Service()
@@ -24,27 +24,30 @@ export class IdBasedCredentialMatcher extends CredentialMatcher {
 	protected async resolve(
 		known: PackageCredentialRequirement[],
 		context: CredentialMatcherContext,
-	): Promise<CredentialBinding[]> {
+	): Promise<ImportBindingMap> {
+		const bindings = context.credentialBindings;
+		const targetIds = known.map((reference) => bindings?.get(reference.id) ?? reference.id);
 		const resolvableIds = await this.findResolvableCredentialIds(
-			known.map((reference) => reference.id),
+			targetIds,
 			context.targetProject,
 			context.user,
 		);
 
-		return (
-			known
-				.filter((reference) => resolvableIds.has(reference.id))
-				// id-only matching: the target credential id is the source id.
-				.map((reference) => createSuccessBinding(reference.id, reference.id))
+		return new Map(
+			known.flatMap((reference) => {
+				const targetId = bindings?.get(reference.id) ?? reference.id;
+				if (!resolvableIds.has(targetId)) return [];
+				return [[reference.id, targetId] as const];
+			}),
 		);
 	}
 
 	private async findResolvableCredentialIds(
-		sourceIds: string[],
+		candidateIds: string[],
 		targetProject: Project,
 		user: User,
 	): Promise<Set<string>> {
-		const uniqueIds = new Set(sourceIds);
+		const uniqueIds = new Set(candidateIds);
 		if (uniqueIds.size === 0) {
 			return new Set();
 		}

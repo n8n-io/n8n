@@ -56,7 +56,7 @@ describe('runWorkflowBuildEval', () => {
 			workflowJsons: [workflow],
 			createdWorkflowIds: [workflow.id],
 			createdDataTableIds: [],
-			transcript: [{ agentText: 'Built the workflow.', toolInteractions: [] }],
+			transcript: [{ steps: [{ kind: 'agent-text', text: 'Built the workflow.' }] }],
 		};
 		mockedBuildWorkflow.mockResolvedValue(build);
 

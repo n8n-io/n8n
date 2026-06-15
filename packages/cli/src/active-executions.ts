@@ -124,7 +124,7 @@ export class ActiveExecutions {
 					// this is resuming, so keep `startedAt` as it was
 				};
 
-				const updateSucceeded = await this.executionRepository.updateExistingExecution(
+				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
 					maybeExecutionId,
 					execution,
 					{ requireStatus: 'waiting' }, // Only update if status is 'waiting'

@@ -8,6 +8,11 @@ on:
         description: 'Release Track'
         required: true
         type: string
+      force:
+        description: 'Create the PR even when there are no actionable commits'
+        required: false
+        type: boolean
+        default: false
 
   workflow_dispatch:
     inputs:
@@ -16,6 +21,11 @@ on:
         required: true
         type: choice
         options: [stable, beta, v1]
+      force:
+        description: 'Create the PR even when there are no actionable commits'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   determine-version-info:
@@ -46,7 +56,7 @@ jobs:
   skip-release-pr:
     name: Skip release PR (no new commits)
     needs: [determine-version-info]
-    if: needs.determine-version-info.outputs.should_update != 'true'
+    if: needs.determine-version-info.outputs.should_update != 'true' && !inputs.force
     runs-on: ubuntu-latest
     steps:
       - name: Log skip reason
@@ -55,7 +65,7 @@ jobs:
   create-release-pr:
     name: Create release PR
     needs: [determine-version-info]
-    if: needs.determine-version-info.outputs.should_update == 'true'
+    if: needs.determine-version-info.outputs.should_update == 'true' || inputs.force
     uses: ./.github/workflows/release-create-pr.yml
     secrets: inherit
     with:

@@ -32,6 +32,7 @@ import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks } from '@/external-hooks';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
@@ -114,6 +115,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	Container.set(CredentialsHelper, credentialsHelper);
 	Container.set(ExternalSecretsProxy, externalSecretsProxy);
 	const executionRepository = mockInstance(ExecutionRepository);
+	mockInstance(ExecutionPersistence);
 	mockInstance(ExecutionDataRepository);
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
@@ -1007,6 +1009,42 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'project-1',
 				'user-1',
 				true,
+				undefined,
+			);
+		});
+
+		it('forwards the outputSchema to executeForWorkflow', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+			const outputSchema = {
+				type: 'object' as const,
+				properties: { answer: { type: 'string' as const } },
+				required: ['answer'],
+			};
+
+			await executeAgent(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				additionalData,
+				'manual',
+				outputSchema,
+			);
+
+			expect(agentsService.executeForWorkflow).toHaveBeenCalledWith(
+				AGENT_ID,
+				MESSAGE,
+				EXEC_ID,
+				THREAD_ID,
+				'user-1',
+				'project-1',
+				'user-1',
+				true,
+				outputSchema,
 			);
 		});
 
@@ -1036,6 +1074,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'project-1',
 				undefined,
 				true,
+				undefined,
 			);
 		});
 
@@ -1090,6 +1129,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					'project-1',
 					'user-1',
 					true,
+					undefined,
 				);
 			},
 		);
@@ -1123,6 +1163,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				'project-1',
 				'user-1',
 				false,
+				undefined,
 			);
 		});
 	});

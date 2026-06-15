@@ -35,9 +35,10 @@ export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
 ${pathHint}
 A thread-scoped sandbox workspace is available via \`workspace_read_file\`, \`workspace_list_files\`, and \`workspace_execute_command\` (use \`grep\` or \`rg\` to search). The workspace is created on first use and includes baked-in reference material:
 
-- \`<workspace_root>/knowledge-base/index.json\` — combined catalog of technique guides and curated workflow templates
+- \`<workspace_root>/knowledge-base/index.json\` — combined catalog of technique guides, curated workflow templates, and orchestration reference docs
 - \`<workspace_root>/knowledge-base/best-practices/index.json\` — workflow technique guides (read the linked \`.md\` files)
 - \`<workspace_root>/knowledge-base/templates/index.json\` — curated SDK workflow examples (read the linked \`.ts\` source files)
+- \`<workspace_root>/knowledge-base/reference/index.json\` — orchestration reference docs (e.g. trigger \`inputData\` shapes for verification)
 - \`<workspace_root>/node-types/index.txt\` — searchable catalog of available n8n nodes
 - \`<workspace_root>/workflows/*.json\` — existing workflows on this instance (when synced)
 
@@ -51,4 +52,5 @@ Use \`placeholder('descriptive hint')\` for values that cannot be safely picked 
 - **User-provided values that cannot be discovered** — email recipients, phone numbers, custom URLs, notification targets.
 - **Resource IDs with more than one candidate** — when \`nodes(action="explore-resources")\` returns multiple matches (e.g. several calendars, spreadsheets, channels, folders) and the user did not name a specific one, use \`placeholder('Select <resource>')\` rather than guessing. When there is exactly one match, use it directly.
 
-Never hardcode fake values like \`user@example.com\` or \`YOUR_API_KEY\`. When the user says "send me" / "email me" / "notify me" and their address isn't known, use \`placeholder('Your email address')\` rather than any hardcoded address. After the build, \`workflows(action="setup")\` opens an inline setup card in the AI Assistant panel so the user can fill placeholder values.`;
+Never hardcode fake values like \`user@example.com\` or \`YOUR_API_KEY\`. When the user says "send me" / "email me" / "notify me" and their address isn't known, use \`placeholder('Your email address')\` rather than any hardcoded address. After the build, \`workflows(action="setup")\` opens an inline setup card in the AI Assistant panel so the user can fill placeholder values.
+Do not replace concrete user-provided or discoverable values with placeholders. If the prompt gives a real URL, channel name, table name, label, folder, database, or other literal selector, preserve that value and only use a placeholder for the unknown part.`;

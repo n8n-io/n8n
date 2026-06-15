@@ -10,10 +10,17 @@ import {
 	type DelegateSubAgentRunner,
 	type DelegateSubAgentRunnerHelpers,
 } from '../../runtime/delegate-sub-agent-tool';
-import type { BuiltTool, GenerateResult, SerializableAgentState } from '../../types';
+import type {
+	BuiltTool,
+	GenerateResult,
+	InterruptibleToolContext,
+	SerializableAgentState,
+} from '../../types';
 import { Agent } from '../agent';
+import { wrapToolForApproval } from '../tool';
 
 const runtimeConfigs: Array<Record<string, unknown>> = [];
+const runtimeGenerateOptions: Array<Record<string, unknown> | undefined> = [];
 let inlineChildGenerateResult: GenerateResult | undefined;
 
 const mockState = (): SerializableAgentState => ({
@@ -31,7 +38,8 @@ vi.mock('../../runtime/agent-runtime', async (importOriginal) => {
 				runtimeConfigs.push(config);
 			}
 
-			async generate() {
+			async generate(_input: unknown, options?: Record<string, unknown>) {
+				runtimeGenerateOptions.push(options);
 				if (inlineChildGenerateResult !== undefined) {
 					return await Promise.resolve(inlineChildGenerateResult);
 				}
@@ -81,6 +89,7 @@ async function buildAgentConfig(agent: Agent): Promise<AgentRuntimeModule.AgentR
 describe('delegate sub-agent routing', () => {
 	beforeEach(() => {
 		runtimeConfigs.length = 0;
+		runtimeGenerateOptions.length = 0;
 		inlineChildGenerateResult = undefined;
 	});
 
@@ -143,6 +152,122 @@ describe('delegate sub-agent routing', () => {
 		});
 
 		expect(runtimeConfigs).toHaveLength(1);
+	});
+
+	it('uses a mapped inline model when difficulty is configured', async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.tool(
+				createDelegateSubAgentTool({
+					inlineSubAgentModelsByDifficulty: {
+						high: 'anthropic/claude-sonnet-4-5',
+					},
+				}),
+			)
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		expect(delegateTool).toBeDefined();
+
+		await delegateTool?.handler?.(
+			{ ...delegateInput, difficulty: 'high' },
+			{ runId: 'parent-run-1' },
+		);
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-4-5');
+	});
+
+	it('falls back to the parent model when difficulty is omitted or unmapped', async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.tool(
+				createDelegateSubAgentTool({
+					inlineSubAgentModelsByDifficulty: {
+						high: 'anthropic/claude-sonnet-4-5',
+					},
+				}),
+			)
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		expect(delegateTool).toBeDefined();
+
+		await delegateTool?.handler?.(delegateInput, { runId: 'parent-run-1' });
+		expect(runtimeConfigs[0]?.model).toBe('openai/gpt-4o-mini');
+
+		runtimeConfigs.length = 0;
+		await delegateTool?.handler?.(
+			{ ...delegateInput, difficulty: 'low' },
+			{ runId: 'parent-run-1' },
+		);
+		expect(runtimeConfigs[0]?.model).toBe('openai/gpt-4o-mini');
+	});
+
+	it('passes the parent execution counter to inline child generate options', async () => {
+		const executionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.tool(createDelegateSubAgentTool())
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+		const delegateTool = runtimeConfig.tools?.find(
+			(tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME,
+		);
+		expect(delegateTool).toBeDefined();
+
+		await delegateTool?.handler?.(delegateInput, {
+			runId: 'parent-run-1',
+			executionCounter,
+		});
+
+		expect(runtimeGenerateOptions[0]).toEqual(expect.objectContaining({ executionCounter }));
+	});
+
+	it('preserves required approval when completing inline delegate tools', async () => {
+		const agent = new Agent('parent')
+			.model('openai', 'gpt-4o-mini')
+			.instructions('Delegate when needed.')
+			.checkpoint('memory')
+			.tool(wrapToolForApproval(createDelegateSubAgentTool(), { requireApproval: true }))
+			.tool(makeTool('lookup'));
+
+		const runtimeConfig = await buildAgentConfig(agent);
+
+		expect(runtimeConfigs).toHaveLength(0);
+		const builtTools = runtimeConfig.tools;
+		const delegateTool = builtTools?.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
+		expect(delegateTool?.approval?.required).toBe(true);
+
+		const suspend = vi.fn(async (payload: unknown) => {
+			return await Promise.resolve({ suspended: payload });
+		});
+		await delegateTool?.handler?.(delegateInput, {
+			suspend: suspend as unknown as InterruptibleToolContext['suspend'],
+			resumeData: undefined,
+			runId: 'parent-run-1',
+		});
+
+		expect(suspend).toHaveBeenCalledWith({
+			type: 'approval',
+			toolName: DELEGATE_SUB_AGENT_TOOL_NAME,
+			args: delegateInput,
+		});
+		expect(runtimeConfigs).toHaveLength(0);
 	});
 
 	it('lets a host-style runner delegate inline through helpers from tool metadata', async () => {

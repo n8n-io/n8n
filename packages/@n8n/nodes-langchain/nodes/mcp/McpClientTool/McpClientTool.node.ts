@@ -231,7 +231,7 @@ export class McpClientTool implements INodeType {
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTools',
-					loadOptionsDependsOn: ['sseEndpoint'],
+					loadOptionsDependsOn: ['sseEndpoint', 'endpointUrl'],
 				},
 				displayOptions: {
 					show: {

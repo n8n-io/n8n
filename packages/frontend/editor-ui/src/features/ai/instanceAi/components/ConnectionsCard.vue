@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted } from 'vue';
-import { N8nButton, N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system';
+import { N8nButton, N8nDropdownMenu, N8nHeading, N8nIconButton } from '@n8n/design-system';
+import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import type { McpRegistryServerIconResponse } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -19,6 +19,7 @@ import ConnectionRow from './ConnectionRow.vue';
 type SingletonConnectionType = 'computer-use' | 'browser-use';
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
 type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
+type AddConnectionType = SingletonConnectionType | 'mcp';
 
 type SidebarRowIcon = SingletonConnectionType | 'mcp';
 
@@ -47,6 +48,26 @@ const ICON_MAP: Record<SidebarRowIcon, IconName> = {
 	mcp: 'server',
 };
 
+const baseAddItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>(() => {
+	const items: Array<DropdownMenuItemProps<AddConnectionType>> = [
+		{
+			id: 'computer-use',
+			label: i18n.baseText('instanceAi.connections.add.computerUse'),
+			icon: { type: 'icon', value: ICON_MAP['computer-use'] },
+		},
+	];
+
+	if (isMcpFeatureEnabled.value) {
+		items.push({
+			id: 'mcp',
+			label: i18n.baseText('instanceAi.connections.add.mcp'),
+			icon: { type: 'icon', value: ICON_MAP.mcp },
+		});
+	}
+
+	return items;
+});
+
 /**
  * Pick the icon variant that best matches the current applied theme. Prefer
  * a theme-tagged match, then an untagged icon, then any icon. Returns null if
@@ -62,6 +83,18 @@ function pickIconForTheme(
 	const untagged = icons.find((i) => i.theme === undefined);
 	return (untagged ?? icons[0]).src;
 }
+
+const addItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>(() => {
+	const addedSingletonConnections = new Set(singletonConnections.value.map((connection) => connection.type));
+	return baseAddItems.value.filter((item) => {
+		if (store.isLocalGatewayDisabledByAdmin) return false;
+		if (item.id === 'computer-use' && addedSingletonConnections.has(item.id)) return false;
+		return true;
+	});
+});
+
+const hasAddableConnection = computed(() => addItems.value.length > 0);
+const addConnectionLabel = computed(() => i18n.baseText('instanceAi.connections.add.label'));
 
 function getSingletonRowActions(
 	type: SingletonConnectionType,
@@ -101,6 +134,15 @@ function openToolsConnectionModal() {
 	mcpTelemetry.trackAddMenuMcpSelected();
 	mcpTelemetry.trackModalOpened();
 	uiStore.openModal(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
+}
+
+function handleAddSelect(type: AddConnectionType) {
+	if (type === 'mcp') {
+		openToolsConnectionModal();
+		return;
+	}
+
+	void openSingletonModal(type);
 }
 
 async function handleSingletonDisconnect(type: SingletonConnectionType) {
@@ -143,14 +185,24 @@ onMounted(() => {
 			<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 				{{ i18n.baseText('instanceAi.connections.title') }}
 			</N8nHeading>
-			<div v-if="isMcpFeatureEnabled" :class="$style.headerActions">
-				<N8nIconButton
-					icon="plus"
-					type="tertiary"
-					size="mini"
+			<div v-if="hasAddableConnection" :class="$style.headerActions">
+				<N8nDropdownMenu
+					:items="addItems"
+					placement="bottom-end"
+					:portal-target="props.dropdownPortalTarget"
 					data-test-id="instance-ai-connections-add"
-					@click="openToolsConnectionModal"
-				/>
+					@select="handleAddSelect"
+				>
+					<template #trigger>
+						<N8nIconButton
+							icon="plus"
+							variant="ghost"
+							size="small"
+							icon-size="medium"
+							:aria-label="addConnectionLabel"
+						/>
+					</template>
+				</N8nDropdownMenu>
 			</div>
 		</div>
 
@@ -184,7 +236,6 @@ onMounted(() => {
 		</div>
 
 		<div v-else :class="$style.empty">
-			<N8nIcon icon="link" :size="30" :class="$style.emptyIcon" />
 			<span>{{ i18n.baseText('instanceAi.connections.empty.title') }}</span>
 			<N8nButton
 				:label="i18n.baseText('instanceAi.connections.empty.cta')"
@@ -252,12 +303,5 @@ onMounted(() => {
 	> button {
 		margin-top: var(--spacing--2xs);
 	}
-}
-
-.emptyIcon {
-	color: var(--color--text--tint-1);
-	padding: var(--spacing--4xs);
-	background: var(--color--foreground--tint-1);
-	border-radius: var(--radius--lg);
 }
 </style>

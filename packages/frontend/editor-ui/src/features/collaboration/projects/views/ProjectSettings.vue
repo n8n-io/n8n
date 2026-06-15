@@ -725,13 +725,14 @@ onMounted(async () => {
 							:can-edit-role="!isProjectRoleProvisioningEnabled && !isExpressionMappingEnabled"
 							@update:options="onUpdateMembersTableOptions"
 							@update:role="onUpdateMemberRole"
+							@show-role-upgrade-dialog="upgradeDialogVisible = true"
 							@action="onMembersListAction"
 						/>
 					</div>
 				</fieldset>
 				<fieldset v-if="settingsStore.isOtelCustomSpanAttributesEnabled">
 					<h3>
-						<label>{{ i18n.baseText('projects.settings.telemetryTags.label') }}</label>
+						<label>{{ i18n.baseText('projects.settings.customSpanAttributes.label') }}</label>
 					</h3>
 					<ProjectSettingsCustomTelemetryTags
 						ref="telemetryTagsRef"

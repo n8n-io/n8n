@@ -469,8 +469,14 @@ import InstanceAiToolsConnectionModalWrapper from '@/features/ai/instanceAi/comp
 		</ModalRoot>
 
 		<ModalRoot :name="VARIABLE_MODAL_KEY">
-			<template #default="{ data }: { data: { mode: 'new' | 'edit'; variable?: any } }">
-				<VariableModal :mode="data?.mode ?? 'new'" :variable="data?.variable" />
+			<template
+				#default="{ data }: { data: { mode: 'new' | 'edit'; variable?: any; projectId?: string } }"
+			>
+				<VariableModal
+					:mode="data?.mode ?? 'new'"
+					:variable="data?.variable"
+					:project-id="data?.projectId"
+				/>
 			</template>
 		</ModalRoot>
 

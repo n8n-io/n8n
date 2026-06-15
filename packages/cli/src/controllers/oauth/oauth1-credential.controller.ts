@@ -45,25 +45,17 @@ export class OAuth1CredentialController {
 				);
 			}
 
-			const [credential, decryptedData, oauthCredentials, state] =
+			const [credential, , oauthCredentials, state, flowState] =
 				await this.oauthService.resolveCredential<OAuth1CredentialData>(req);
-
-			const oauthTokenSecret =
-				typeof decryptedData.oauth_token_secret === 'string'
-					? decryptedData.oauth_token_secret
-					: '';
 
 			const oauthTokenData = await this.oauthService.getOAuth1AccessToken(oauthCredentials, {
 				oauthToken: oauth_token,
 				oauthVerifier: oauth_verifier,
-				oauthTokenSecret,
+				oauthTokenSecret: flowState.oauthTokenSecret ?? '',
 			});
 
 			if (!state.origin || state.origin === 'static-credential') {
-				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, [
-					'csrfSecret',
-					'oauth_token_secret',
-				]);
+				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData });
 
 				this.logger.debug('OAuth1 callback successful for new credential', {
 					credentialId: credential.id,
