@@ -98,12 +98,6 @@ export interface OutboundHttpClient {
 	getNodeAgent(agentOptions?: NodeAgentOptions): { httpAgent: http.Agent; httpsAgent: https.Agent };
 }
 
-/** A client's resolved proxy + SSRF policy (after factory defaults are applied). */
-interface ResolvedClientConfig {
-	proxy: ProxyOption;
-	ssrf: SsrfOption;
-}
-
 /**
  * Factory for outbound HTTP clients.
  *
@@ -122,25 +116,20 @@ export class OutboundHttpFactory {
 	 * Pass `{ ssrf: 'disabled' }` to opt out.
 	 */
 	create(options?: OutboundHttpClientOptions): OutboundHttpClient {
-		return this.buildClient({
-			proxy: options?.proxy ?? 'env',
-			ssrf: options?.ssrf ?? this.ssrfProtection,
-		});
+		return this.buildClient(options?.proxy ?? 'env', options?.ssrf ?? this.ssrfProtection);
 	}
 
-	private buildClient(config: ResolvedClientConfig): OutboundHttpClient {
+	private buildClient(proxy: ProxyOption, ssrf: SsrfOption): OutboundHttpClient {
 		// Built lazily: a client used only for node agents (e.g. AWS SDK v3) never needs a dispatcher, etc.
-		const lazyDispatcher = lazy(() => buildDispatcher(config));
-		const lazyNodeAgents = lazy(() => buildNodeAgents(config.proxy, config.ssrf));
+		const lazyDispatcher = lazy(() => buildDispatcher(proxy, ssrf));
+		const lazyNodeAgents = lazy(() => buildNodeAgents(proxy, ssrf));
 
 		return {
 			asCustomFetch: () => async (input, init) =>
 				await dispatchedFetch(lazyDispatcher(), input, init),
 			getDispatcher: () => lazyDispatcher(),
 			getNodeAgent: (agentOptions) =>
-				agentOptions !== undefined
-					? buildNodeAgents(config.proxy, config.ssrf, agentOptions)
-					: lazyNodeAgents(),
+				agentOptions !== undefined ? buildNodeAgents(proxy, ssrf, agentOptions) : lazyNodeAgents(),
 		};
 	}
 }
@@ -150,11 +139,9 @@ function lazy<T>(factory: () => T): () => T {
 	return () => (cached ??= { value: factory() }).value;
 }
 
-function buildDispatcher(config: ResolvedClientConfig): Dispatcher {
-	const dispatcher = buildDispatcherFromProxy(config.proxy);
-	return config.ssrf === 'disabled'
-		? dispatcher
-		: dispatcher.compose(createSsrfInterceptor(config.ssrf));
+function buildDispatcher(proxy: ProxyOption, ssrf: SsrfOption): Dispatcher {
+	const dispatcher = buildDispatcherFromProxy(proxy);
+	return ssrf === 'disabled' ? dispatcher : dispatcher.compose(createSsrfInterceptor(ssrf));
 }
 
 function buildDispatcherFromProxy(proxy: ProxyOption): Dispatcher {
@@ -179,28 +166,26 @@ function buildDispatcherFromProxy(proxy: ProxyOption): Dispatcher {
  */
 export function createSsrfInterceptor(bridge: SsrfBridge): Dispatcher.DispatcherComposeInterceptor {
 	return (dispatch) => (opts, handler) => {
-		let targetUrl: string;
+		let targetUrl: URL;
 		try {
-			// `opts.path` is the request target. Behind a forward proxy it can be an
-			// absolute URI, otherwise it is path-only and resolved against the
-			// origin. Either form yields the final target URL.
-			targetUrl = new URL(opts.path, opts.origin?.toString()).href;
+			// `opts.path` is the request target.
+			// Behind a forward proxy it can be an absolute URI, otherwise it is path-only and resolved against the origin.
+			// Either form yields the final target URL.
+			targetUrl = new URL(opts.path, opts.origin?.toString());
+			bridge.validateUrl(targetUrl).then(
+				(result) => {
+					if (result.ok) {
+						dispatch(opts, handler);
+					} else {
+						failDispatch(handler, result.error);
+					}
+				},
+				(error: unknown) => failDispatch(handler, ensureError(error)),
+			);
 		} catch (error: unknown) {
 			// Fail closed: if we cannot derive a target URL we cannot validate it
 			failDispatch(handler, ensureError(error));
-			return true;
 		}
-
-		bridge.validateUrl(targetUrl).then(
-			(result) => {
-				if (result.ok) {
-					dispatch(opts, handler);
-				} else {
-					failDispatch(handler, result.error);
-				}
-			},
-			(error: unknown) => failDispatch(handler, ensureError(error)),
-		);
 
 		return true;
 	};

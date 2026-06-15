@@ -18,6 +18,10 @@ import { createSsrfInterceptor, OutboundHttpFactory } from '../factory';
 // has settled before we assert.
 const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
 
+// The interceptor hands `validateUrl` a `URL` object (not a string), so we match
+// on its `href` rather than comparing against a raw string.
+const validatedUrl = (href: string) => expect.objectContaining({ href }) as unknown as URL;
+
 // ---------------------------------------------------------------------------
 // (a) createSsrfInterceptor — unit
 // ---------------------------------------------------------------------------
@@ -51,7 +55,7 @@ describe('createSsrfInterceptor', () => {
 		await flush();
 
 		expect(ret).toBe(true);
-		expect(bridge.validateUrl).toHaveBeenCalledWith('https://api.example.com/data');
+		expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl('https://api.example.com/data'));
 		expect(innerDispatch).toHaveBeenCalledTimes(1);
 		expect(handler.onResponseError).not.toHaveBeenCalled();
 	});
@@ -175,7 +179,7 @@ describe('SSRF end-to-end', () => {
 
 			expect(rejection).toBeInstanceOf(Error);
 			expect(rootCauseMessage(rejection)).toBe(error.message);
-			expect(bridge.validateUrl).toHaveBeenCalledWith(`${server.url}/start`);
+			expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl(`${server.url}/start`));
 			expect(server.captured).not.toContain('/start');
 		});
 
@@ -185,8 +189,8 @@ describe('SSRF end-to-end', () => {
 
 			await expect(fetchFn(`${server.url}/start`)).rejects.toThrow();
 
-			expect(bridge.validateUrl).toHaveBeenCalledWith(`${server.url}/start`);
-			expect(bridge.validateUrl).toHaveBeenCalledWith(`${server.url}/internal`);
+			expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl(`${server.url}/start`));
+			expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl(`${server.url}/internal`));
 			expect(server.captured).toContain('/start');
 			expect(server.captured).not.toContain('/internal');
 		});
@@ -224,8 +228,8 @@ describe('SSRF end-to-end', () => {
 			const { fetch: undiciFetch } = await import('undici');
 			await expect(undiciFetch(`${server.url}/start`, { dispatcher })).rejects.toThrow();
 
-			expect(bridge.validateUrl).toHaveBeenCalledWith(`${server.url}/start`);
-			expect(bridge.validateUrl).toHaveBeenCalledWith(`${server.url}/internal`);
+			expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl(`${server.url}/start`));
+			expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl(`${server.url}/internal`));
 			expect(server.captured).toContain('/start');
 			expect(server.captured).not.toContain('/internal');
 
