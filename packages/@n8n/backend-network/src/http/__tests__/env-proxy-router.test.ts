@@ -1,4 +1,7 @@
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import type http from 'node:http';
+import { mock } from 'vitest-mock-extended';
 
 import { EnvProxyRouter } from '../env-proxy-router';
 
@@ -26,6 +29,7 @@ describe('EnvProxyRouter', () => {
 			{ scheme: 'http', defaultPort: 80, opts: { port: 80 }, url: 'http://localhost' },
 			{ scheme: 'https', defaultPort: 443, opts: { host: 'h', port: 443 }, url: 'https://h' },
 			{ scheme: 'https', defaultPort: 443, opts: { host: 'h', port: 8443 }, url: 'https://h:8443' },
+			{ scheme: 'http', defaultPort: 80, opts: { host: 'h', port: 'abc' }, url: 'http://h' },
 		] as const)('resolves $opts against $url', ({ scheme, defaultPort, opts, url }) => {
 			getProxyForUrl.mockReturnValue('');
 
@@ -33,6 +37,17 @@ describe('EnvProxyRouter', () => {
 
 			expect(getProxyForUrl).toHaveBeenCalledWith(url);
 		});
+	});
+
+	it('warns and falls back to the default port when the port is unparseable', () => {
+		const logger = mock<Logger>();
+		Container.set(Logger, logger);
+		getProxyForUrl.mockReturnValue('');
+
+		new EnvProxyRouter('http', 80, createAgent()).resolve(options({ host: 'h', port: 'abc' }));
+
+		expect(getProxyForUrl).toHaveBeenCalledWith('http://h');
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('abc'));
 	});
 
 	it('returns undefined when no proxy applies', () => {

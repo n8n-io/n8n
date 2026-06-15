@@ -1,3 +1,5 @@
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import type http from 'node:http';
 import { getProxyForUrl } from 'proxy-from-env';
 
@@ -23,9 +25,7 @@ export class EnvProxyRouter<TProxyAgent> {
 	 */
 	resolve(options: http.RequestOptions): TProxyAgent | undefined {
 		const hostname = String(options.hostname ?? options.host ?? 'localhost');
-		const rawPort = options.port;
-		const port =
-			typeof rawPort === 'string' ? parseInt(rawPort, 10) : (rawPort ?? this.defaultPort);
+		const port = this.resolvePort(options.port);
 		const portSuffix = port === this.defaultPort ? '' : `:${port}`;
 		const proxyUrl = getProxyForUrl(`${this.scheme}://${hostname}${portSuffix}`);
 
@@ -39,5 +39,18 @@ export class EnvProxyRouter<TProxyAgent> {
 			this.proxyCache.set(proxyUrl, agent);
 		}
 		return agent;
+	}
+
+	private resolvePort(rawPort: http.RequestOptions['port']): number {
+		const parsed = typeof rawPort === 'string' ? parseInt(rawPort, 10) : rawPort;
+		if (Number.isInteger(parsed)) {
+			return parsed as number;
+		}
+		if (rawPort !== undefined && rawPort !== null) {
+			Container.get(Logger).warn(
+				`Unparseable port "${String(rawPort)}" for ${this.scheme} proxy routing, falling back to default port ${this.defaultPort}`,
+			);
+		}
+		return this.defaultPort;
 	}
 }
