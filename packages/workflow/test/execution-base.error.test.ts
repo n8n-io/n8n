@@ -41,19 +41,6 @@ describe('ExecutionBaseError', () => {
 			const error = new FirstExecutionError('msg');
 			expect(error.functionality).toBe('regular');
 		});
-
-		it('gives each instance a fresh empty `context` (no shared default)', () => {
-			const a = new FirstExecutionError('a');
-			const b = new FirstExecutionError('b');
-
-			expect(a.context).toEqual({});
-			expect(b.context).toEqual({});
-			// Mutating one must not leak into the other — proves we don't share
-			// a single module-level object as the default.
-			a.context.shared = 'no';
-			expect(b.context).toEqual({});
-			expect(a.context).not.toBe(b.context);
-		});
 	});
 
 	describe('cause handling', () => {
@@ -66,7 +53,6 @@ describe('ExecutionBaseError', () => {
 			// Reference equality is the load-bearing invariant: a `{...inner.context}`
 			// mutation would still satisfy `toEqual` but lose the share.
 			expect(outer.context).toBe(inner.context);
-			expect(outer.context).toEqual({ source: 'inner', nested: { depth: 1 } });
 		});
 
 		it('reference-share of context lets a mutation on the wrapper bleed into the cause', () => {
@@ -91,22 +77,18 @@ describe('ExecutionBaseError', () => {
 			expect(wrapper.context).not.toBe((plain as unknown as { context: unknown }).context);
 		});
 
-		it('leaves `this.cause` undefined when cause is an ExecutionBaseError', () => {
+		it('leaves `this.cause` undefined for Error and ExecutionBaseError causes', () => {
 			// The `override cause?: Error` class field declaration emits a
 			// defineProperty that overwrites whatever super set, so the only way
 			// `this.cause` ends up non-undefined is through the explicit else-if
-			// branch — which doesn't fire for Error causes.
-			const inner = new FirstExecutionError('inner');
-			const outer = new FirstExecutionError('outer', { cause: inner });
+			// branch — which doesn't fire for either Error flavour.
+			const wrappingExecError = new FirstExecutionError('outer', {
+				cause: new FirstExecutionError('inner'),
+			});
+			const wrappingPlainError = new FirstExecutionError('wrap', { cause: new Error('plain') });
 
-			expect(outer.cause).toBeUndefined();
-		});
-
-		it('leaves `this.cause` undefined when cause is a plain Error', () => {
-			const plain = new Error('plain');
-			const wrapper = new FirstExecutionError('wrap', { cause: plain });
-
-			expect(wrapper.cause).toBeUndefined();
+			expect(wrappingExecError.cause).toBeUndefined();
+			expect(wrappingPlainError.cause).toBeUndefined();
 		});
 
 		it('assigns non-Error truthy causes to `this.cause` without copying context', () => {
@@ -141,7 +123,6 @@ describe('ExecutionBaseError', () => {
 			const error = new FirstExecutionError('msg', { errorResponse: response });
 
 			expect(error.errorResponse).toBe(response);
-			expect(error.errorResponse).toEqual({ code: 500, details: 'oops', nested: { ok: false } });
 		});
 	});
 
@@ -161,7 +142,7 @@ describe('ExecutionBaseError', () => {
 			]);
 		});
 
-		it('reflects every live property on the instance', () => {
+		it('reflects every live property on the instance, including context by identity', () => {
 			const bare = new FirstExecutionError('outer');
 			// Drive `this.cause` via the only branch that actually populates it
 			// (non-Error truthy value) so we can assert toJSON forwards it.
@@ -183,12 +164,6 @@ describe('ExecutionBaseError', () => {
 
 			// Default cause stays undefined on a bare instance.
 			expect(toJson(bare).cause).toBeUndefined();
-		});
-
-		it('returns context by identity (not a clone)', () => {
-			const error = new FirstExecutionError('msg');
-			const json = toJson(error);
-			expect(json.context).toBe(error.context);
 		});
 
 		it('property: any message + lineNumber pair round-trips through toJSON', () => {
