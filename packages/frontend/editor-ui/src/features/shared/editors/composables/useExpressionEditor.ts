@@ -45,7 +45,7 @@ import { EditorView, type ViewUpdate } from '@codemirror/view';
 import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useAutocompleteTelemetry } from '@/app/composables/useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import {
@@ -83,7 +83,7 @@ export const useExpressionEditor = ({
 }) => {
 	const ndvStore = injectNDVStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 	const workflowHelpers = useWorkflowHelpers();
 	const { isMacOs } = useDeviceSupport();
 	const i18n = useI18n();
@@ -419,7 +419,7 @@ export const useExpressionEditor = ({
 			}
 		} catch (error) {
 			const hasRunData =
-				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
+				!!workflowExecutionStateStore.value.activeExecutionRunData?.[
 					ndvStore.value.activeNode?.name ?? ''
 				];
 			result.resolved = `[${getExpressionErrorMessage(error, workflowDocumentStore.value.getPinDataSnapshot(), hasRunData)}]`;
@@ -524,7 +524,10 @@ export const useExpressionEditor = ({
 	});
 
 	watch(
-		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
+		[
+			() => workflowExecutionStateStore.value.activeExecution,
+			() => workflowExecutionStateStore.value.activeExecutionRunData,
+		],
 		debouncedUpdateSegments,
 	);
 

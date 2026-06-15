@@ -98,6 +98,8 @@ const isCanvasNodeGroupingEnabled = computed(() =>
 );
 
 const nodeGroupView = useCanvasNodeGroupView({
+	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
+	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
 	isGroupingEnabled: () => isCanvasNodeGroupingEnabled.value,
 });
@@ -112,6 +114,7 @@ const {
 	nodes: mappedWorkflowNodes,
 	connections: mappedConnections,
 	nodeDisplaySizeById,
+	getNodeExecutionSnapshot,
 } = useCanvasMapping({
 	nodes,
 	connections,
@@ -128,6 +131,7 @@ const mappedGroupVueFlowNodes = computed(() =>
 		getNodeDisplaySize: (id) => nodeDisplaySizeById.value[id],
 		isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
 		readOnly: readOnlyRef.value || suppressInteractionRef.value,
+		getNodeExecutionSnapshot,
 	}),
 );
 

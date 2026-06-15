@@ -1300,31 +1300,38 @@ export class AgentsService {
 		// `structuredOutput` and `toolCalls` aren't surfaced by the recorder —
 		// pull them off the `finish` chunk and the discrete `tool-result` chunks
 		// directly so the workflow node receives the same shape as before.
-		let structuredOutput: unknown | null = null;
+		let structuredOutput: unknown = null;
 		const toolCalls: ExecuteAgentData['toolCalls'] = [];
 		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
+		let streamError: Error | undefined;
 
-		const resultStream = await agentInstance.stream(message, {
-			persistence: { resourceId: executionId, threadId },
-			executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
-		});
+		try {
+			const resultStream = await agentInstance.stream(message, {
+				persistence: { resourceId: executionId, threadId },
+				executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
+			});
 
-		for await (const value of streamAgentChunks(resultStream.stream)) {
-			recorder.record(value);
+			for await (const value of streamAgentChunks(resultStream.stream)) {
+				recorder.record(value);
 
-			if (value.type === 'tool-call') {
-				toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
-			} else if (value.type === 'tool-result') {
-				const pending = toolInputs.get(value.toolCallId);
-				toolCalls.push({
-					toolName: value.toolName,
-					input: pending?.input ?? null,
-					result: value.output,
-				});
-				toolInputs.delete(value.toolCallId);
-			} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
-				structuredOutput = value.structuredOutput;
+				if (value.type === 'tool-call') {
+					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
+				} else if (value.type === 'tool-result') {
+					const pending = toolInputs.get(value.toolCallId);
+					toolCalls.push({
+						toolName: value.toolName,
+						input: pending?.input ?? null,
+						result: value.output,
+					});
+					toolInputs.delete(value.toolCallId);
+				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
+					structuredOutput = value.structuredOutput;
+				}
 			}
+		} catch (error) {
+			recorder.record({ type: 'error', error });
+			recorder.record({ type: 'finish', finishReason: 'error' });
+			streamError = error instanceof Error ? error : new Error(String(error));
 		}
 
 		const messageRecord = recorder.getMessageRecord();
@@ -1350,6 +1357,10 @@ export class AgentsService {
 					error: error instanceof Error ? error.message : String(error),
 				});
 			});
+
+		if (streamError !== undefined) {
+			throw streamError;
+		}
 
 		if (recorder.suspended) {
 			throw new OperationalError(

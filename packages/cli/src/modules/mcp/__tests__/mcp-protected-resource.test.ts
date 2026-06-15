@@ -3,12 +3,10 @@ import { mock } from 'jest-mock-extended';
 import type { UrlService } from '@/services/url.service';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
-import type { McpSettingsService } from '../mcp.settings.service';
 
 describe('McpProtectedResource', () => {
 	const urlService = mock<UrlService>();
-	const mcpSettingsService = mock<McpSettingsService>();
-	const resource = new McpProtectedResource(urlService, mcpSettingsService);
+	const resource = new McpProtectedResource(urlService);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -38,16 +36,6 @@ describe('McpProtectedResource', () => {
 				'https://n8n.example.com/mcp-server/http',
 				'mcp-server-api',
 			]);
-		});
-	});
-
-	describe('isEnabled', () => {
-		it('should reflect the MCP access setting', async () => {
-			mcpSettingsService.getEnabled.mockResolvedValue(true);
-			await expect(resource.isEnabled()).resolves.toBe(true);
-
-			mcpSettingsService.getEnabled.mockResolvedValue(false);
-			await expect(resource.isEnabled()).resolves.toBe(false);
 		});
 	});
 

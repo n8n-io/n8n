@@ -890,16 +890,16 @@ describe('OAuthServerService', () => {
 			);
 
 			expect(
-				(multiResourceService as any).resolveAndValidateResourceIndicator(TEST_RESOURCE_URL),
+				await (multiResourceService as any).resolveAndValidateResourceIndicator(TEST_RESOURCE_URL),
 			).toBe(TEST_RESOURCE_URL);
 			expect(
-				(multiResourceService as any).resolveAndValidateResourceIndicator(secondResourceUrl),
+				await (multiResourceService as any).resolveAndValidateResourceIndicator(secondResourceUrl),
 			).toBe(secondResourceUrl);
-			expect(() =>
+			await expect(
 				(multiResourceService as any).resolveAndValidateResourceIndicator(
 					'https://n8n.example.com/webhook/wf-2/mcp',
 				),
-			).toThrow(InvalidTargetError);
+			).rejects.toThrow(InvalidTargetError);
 		});
 	});
 });

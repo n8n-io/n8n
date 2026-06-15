@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
 import { Handle, Position, useVueFlow } from '@vue-flow/core';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
 import {
 	GROUP_HEADER_HEIGHT as HEADER_HEIGHT,
 	GROUP_PADDING_Y_BOTTOM as PADDING_Y_BOTTOM,
@@ -45,6 +46,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 const titleEdit = useTemplateRef<InstanceType<typeof N8nInlineTextEdit>>('titleEdit');
 const titleText = useTemplateRef<HTMLElement>('titleText');
 
@@ -53,6 +55,24 @@ const isAutofocusReady = computed(
 	() => !props.dimensions || (props.dimensions.width > 0 && props.dimensions.height > 0),
 );
 const isCollapsed = computed(() => props.data.isCollapsed);
+const executionStatus = computed(() => props.data.executionStatus);
+
+// Statuses rendered as a status mark; running/waiting render as the animated border.
+const MARK_STATUSES = ['success', 'error', 'warning'] as const;
+const markStatus = computed(() => MARK_STATUSES.find((status) => status === executionStatus.value));
+
+const wrapperClasses = computed(() => [
+	$style.wrapper,
+	{
+		[$style.collapsed]: isCollapsed.value,
+		[$style.selected]: props.selected,
+		[$style.success]: executionStatus.value === 'success',
+		[$style.error]: executionStatus.value === 'error',
+		[$style.warning]: executionStatus.value === 'warning',
+		[$style.running]: executionStatus.value === 'running',
+		[$style.waiting]: executionStatus.value === 'waiting',
+	},
+]);
 
 const frameStyle = computed(() => ({
 	top: `${HEADER_HEIGHT}px`,
@@ -141,7 +161,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 <template>
 	<div
-		:class="[$style.wrapper, { [$style.collapsed]: isCollapsed, [$style.selected]: selected }]"
+		:class="wrapperClasses"
 		:style="{
 			width: '100%',
 			height: `${HEADER_HEIGHT}px`,
@@ -222,6 +242,20 @@ function onWrapperPointerDown(event: PointerEvent) {
 						</div>
 					</N8nTooltip>
 				</div>
+				<div
+					v-if="isCollapsed && markStatus"
+					:class="$style.statusIcons"
+					:data-test-id="`canvas-node-group-status-${markStatus}`"
+				>
+					<CanvasNodeStatusMark :status="markStatus" />
+				</div>
+				<div
+					v-else-if="isCollapsed && executionStatus === 'issues'"
+					:class="[$style.statusIcons, $style.issues]"
+					data-test-id="canvas-node-group-status-issues"
+				>
+					<N8nIcon icon="node-validation-error" size="large" />
+				</div>
 			</div>
 		</div>
 
@@ -250,7 +284,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	height: 100%;
 	background: var(--background--surface);
 	background-clip: padding-box;
-	border: var(--canvas-node--border-width) solid var(--canvas-node--border-color);
+	@include styles.canvas-node-border;
 	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	box-sizing: border-box;
 	.wrapper.collapsed & {
@@ -260,7 +294,41 @@ function onWrapperPointerDown(event: PointerEvent) {
 	.wrapper.selected & {
 		@include styles.canvas-node-selected-ring;
 	}
+
+	// Status only manifests when the group is collapsed — when expanded
+	// the nodes render their own outlines.
+	.wrapper.collapsed.success & {
+		@include styles.status-success;
+	}
+	.wrapper.collapsed.error & {
+		@include styles.status-error;
+	}
+	.wrapper.collapsed.warning & {
+		@include styles.status-warning;
+	}
+	.wrapper.collapsed.running & {
+		@include styles.status-running-border;
+	}
+	.wrapper.collapsed.waiting & {
+		@include styles.status-waiting-border;
+	}
 }
+
+/* stylelint-disable */
+.wrapper.collapsed.running .titleBar::after,
+.wrapper.collapsed.waiting .titleBar::after {
+	@include styles.status-animated-after;
+	border-radius: var(--radius--lg);
+}
+.wrapper.collapsed.running .titleBar::after {
+	@include styles.status-running-animation;
+}
+.wrapper.collapsed.waiting .titleBar::after {
+	@include styles.status-waiting-animation;
+}
+
+@include styles.status-animation-definitions;
+/* stylelint-enable */
 
 .content {
 	display: flex;
@@ -294,6 +362,18 @@ function onWrapperPointerDown(event: PointerEvent) {
 	overflow-clip-margin: var(--spacing--2xs);
 }
 
+.statusIcons {
+	display: flex;
+	align-items: center;
+	margin-left: var(--spacing--xs);
+	flex-shrink: 0;
+}
+
+// Validation issues mirror the single node: red triangle, no status border.
+.issues {
+	color: var(--color--danger);
+}
+
 .toolbar {
 	position: absolute;
 	bottom: 100%;
@@ -322,7 +402,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	left: 0;
 	width: 100%;
 	background: transparent;
-	border: var(--canvas-node--border-width, 1.5px) dashed var(--canvas-node--border-color);
+	@include styles.canvas-node-border(dashed);
 	border-top: none;
 	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
 	pointer-events: none;

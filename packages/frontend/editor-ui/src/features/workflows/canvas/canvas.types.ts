@@ -141,10 +141,36 @@ export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
 export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
 export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
 
+/**
+ * The only execution states a group can surface — node-level statuses like
+ * `crashed` are folded into these during aggregation.
+ */
+export type GroupExecutionStatus =
+	| 'waiting'
+	| 'running'
+	| 'error'
+	| 'issues'
+	| 'warning'
+	| 'success';
+
+/** Per-node execution state used to roll a group up into one status. */
+export interface NodeExecutionSnapshot {
+	running: boolean;
+	waitingForNext: boolean;
+	waiting: string | undefined;
+	hasExecutionError: boolean;
+	hasValidationError: boolean;
+	status: ExecutionStatus | undefined;
+	/** Parameters changed since the last run — the single-node "dirty" warning. */
+	dirty: boolean;
+	iterations: number;
+}
+
 export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
 	isCollapsed: boolean;
+	executionStatus?: GroupExecutionStatus;
 }
 
 export type CanvasGroupNode = Node<CanvasGroupNodeData>;

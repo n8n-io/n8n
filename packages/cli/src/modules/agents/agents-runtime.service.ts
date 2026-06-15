@@ -344,44 +344,50 @@ export class AgentsRuntimeService {
 			streamKey,
 			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
 				const recorder = new ExecutionRecorder(toolRegistry);
-				const resultStream = await agentInstance.stream(turnMessage, {
-					persistence: { threadId, resourceId },
-					executionCounter,
-					abortSignal: control?.signal,
-				});
-
-				yield* processAgentStream(resultStream.stream, recorder, control, (value) => {
-					if (value.type === 'tool-call-suspended') {
-						logger.info('Chat: tool-call-suspended chunk received', {
-							agentId,
-							toolCallId: value.toolCallId,
-							toolName: value.toolName,
-						});
-					}
-				});
-
-				if (control?.wasAborted()) return;
-
-				void agentExecutionService
-					.recordMessage({
-						threadId,
-						agentId,
-						agentName: agentInstance.name,
-						projectId,
-						userMessage: turnMessage,
-						record: recorder.getMessageRecord(),
-						hitlStatus: recorder.suspended ? 'suspended' : undefined,
-						source,
-						taskId,
-						taskVersionId,
-					})
-					.catch((error) => {
-						logger.warn('Failed to record agent execution', {
-							agentId,
-							threadId,
-							error: error instanceof Error ? error.message : String(error),
-						});
+				try {
+					const resultStream = await agentInstance.stream(turnMessage, {
+						persistence: { threadId, resourceId },
+						executionCounter,
+						abortSignal: control?.signal,
 					});
+
+					yield* processAgentStream(resultStream.stream, recorder, control, (value) => {
+						if (value.type === 'tool-call-suspended') {
+							logger.info('Chat: tool-call-suspended chunk received', {
+								agentId,
+								toolCallId: value.toolCallId,
+								toolName: value.toolName,
+							});
+						}
+					});
+				} catch (error) {
+					recorder.record({ type: 'error', error });
+					recorder.record({ type: 'finish', finishReason: 'error' });
+					throw error;
+				} finally {
+					if (!control?.wasAborted()) {
+						void agentExecutionService
+							.recordMessage({
+								threadId,
+								agentId,
+								agentName: agentInstance.name,
+								projectId,
+								userMessage: turnMessage,
+								record: recorder.getMessageRecord(),
+								hitlStatus: recorder.suspended ? 'suspended' : undefined,
+								source,
+								taskId,
+								taskVersionId,
+							})
+							.catch((error) => {
+								logger.warn('Failed to record agent execution', {
+									agentId,
+									threadId,
+									error: error instanceof Error ? error.message : String(error),
+								});
+							});
+					}
+				}
 			},
 		});
 	}
@@ -427,27 +433,33 @@ export class AgentsRuntimeService {
 			warningMessage: string;
 		}): AsyncGenerator<StreamChunk> {
 			const recorder = new ExecutionRecorder(toolRegistry);
-			yield* processAgentStream(stream, recorder, control);
-
-			if (control?.wasAborted()) return;
-
-			void agentExecutionService
-				.recordMessage({
-					threadId,
-					agentId,
-					agentName: agentInstance.name,
-					projectId,
-					userMessage,
-					record: recorder.getMessageRecord(),
-					hitlStatus: typeof hitlStatus === 'function' ? hitlStatus(recorder) : hitlStatus,
-				})
-				.catch((error) => {
-					logger.warn(warningMessage, {
-						agentId,
-						threadId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				});
+			try {
+				yield* processAgentStream(stream, recorder, control);
+			} catch (error) {
+				recorder.record({ type: 'error', error });
+				recorder.record({ type: 'finish', finishReason: 'error' });
+				throw error;
+			} finally {
+				if (!control?.wasAborted()) {
+					void agentExecutionService
+						.recordMessage({
+							threadId,
+							agentId,
+							agentName: agentInstance.name,
+							projectId,
+							userMessage,
+							record: recorder.getMessageRecord(),
+							hitlStatus: typeof hitlStatus === 'function' ? hitlStatus(recorder) : hitlStatus,
+						})
+						.catch((error) => {
+							logger.warn(warningMessage, {
+								agentId,
+								threadId,
+								error: error instanceof Error ? error.message : String(error),
+							});
+						});
+				}
+			}
 		};
 
 		yield* this.streamSteerableTurns({

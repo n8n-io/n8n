@@ -32,17 +32,25 @@ describe('ProtectedResourceRegistry', () => {
 			expect(registry.getById('unknown')).toBeUndefined();
 		});
 
-		it('should resolve resources by resource URL, ignoring trailing slashes', () => {
-			expect(registry.getByResourceUrl('https://n8n.example.com/mcp-server/http')).toBe(resourceA);
-			expect(registry.getByResourceUrl('https://n8n.example.com/mcp-server/http/')).toBe(resourceA);
-			expect(registry.getByResourceUrl('https://n8n.example.com/webhook/wf-1/mcp')).toBe(resourceB);
-			expect(registry.getByResourceUrl('https://evil.example.com/mcp-server/http')).toBeUndefined();
+		it('should resolve resources by resource URL, ignoring trailing slashes', async () => {
+			expect(await registry.getByResourceUrl('https://n8n.example.com/mcp-server/http')).toBe(
+				resourceA,
+			);
+			expect(await registry.getByResourceUrl('https://n8n.example.com/mcp-server/http/')).toBe(
+				resourceA,
+			);
+			expect(await registry.getByResourceUrl('https://n8n.example.com/webhook/wf-1/mcp')).toBe(
+				resourceB,
+			);
+			expect(
+				await registry.getByResourceUrl('https://evil.example.com/mcp-server/http'),
+			).toBeUndefined();
 		});
 
-		it('should resolve resources by URL path', () => {
-			expect(registry.getByResourcePath('/mcp-server/http')).toBe(resourceA);
-			expect(registry.getByResourcePath('/webhook/wf-1/mcp')).toBe(resourceB);
-			expect(registry.getByResourcePath('/unknown')).toBeUndefined();
+		it('should resolve resources by URL path', async () => {
+			expect(await registry.getByResourcePath('/mcp-server/http')).toBe(resourceA);
+			expect(await registry.getByResourcePath('/webhook/wf-1/mcp')).toBe(resourceB);
+			expect(await registry.getByResourcePath('/unknown')).toBeUndefined();
 		});
 
 		it('should resolve the default resource', () => {
@@ -72,12 +80,12 @@ describe('ProtectedResourceRegistry', () => {
 			]);
 		});
 
-		it('should keep per-resource audiences isolated', () => {
+		it('should keep per-resource audiences isolated', async () => {
 			// The legacy audience belongs to the instance resource only — resolving
 			// audiences through a specific resource must not leak it to others.
-			expect(registry.getByResourceUrl(resourceB.getResourceUrl())?.getAudiences()).toEqual([
-				'https://n8n.example.com/webhook/wf-1/mcp',
-			]);
+			expect((await registry.getByResourceUrl(resourceB.getResourceUrl()))?.getAudiences()).toEqual(
+				['https://n8n.example.com/webhook/wf-1/mcp'],
+			);
 		});
 
 		it('should union scopes across all registered resources, deduplicated', () => {
@@ -86,30 +94,6 @@ describe('ProtectedResourceRegistry', () => {
 				'tool:getWorkflowDetails',
 				'workflow:execute',
 			]);
-		});
-	});
-
-	describe('isAnyResourceEnabled', () => {
-		it('should return false when no resources are registered', async () => {
-			expect(await new ProtectedResourceRegistry().isAnyResourceEnabled()).toBe(false);
-		});
-
-		it('should treat resources without an isEnabled hook as enabled', async () => {
-			expect(await registry.isAnyResourceEnabled()).toBe(true);
-		});
-
-		it('should return false when every resource reports disabled', async () => {
-			const gated = new ProtectedResourceRegistry();
-			gated.register({ ...resourceA, isEnabled: async () => false });
-			gated.register({ ...resourceB, isEnabled: async () => false });
-			expect(await gated.isAnyResourceEnabled()).toBe(false);
-		});
-
-		it('should return true when at least one resource reports enabled', async () => {
-			const gated = new ProtectedResourceRegistry();
-			gated.register({ ...resourceA, isEnabled: async () => false });
-			gated.register({ ...resourceB, isEnabled: async () => true });
-			expect(await gated.isAnyResourceEnabled()).toBe(true);
 		});
 	});
 });

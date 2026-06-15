@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
 
 import { HttpRequestV3 } from '../../V3/HttpRequestV3.node';
@@ -138,6 +139,116 @@ describe('HttpRequestV3', () => {
 				},
 			}),
 		);
+	});
+
+	it('should pass multipart binary uploads as FormData', async () => {
+		(executeFunctions.getNode as jest.Mock).mockReturnValue({
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+		});
+		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'POST';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'none';
+				case 'sendBody':
+					return true;
+				case 'contentType':
+					return 'multipart-form-data';
+				case 'specifyBody':
+					return 'keypair';
+				case 'bodyParameters.parameters':
+					return [
+						{
+							parameterType: 'formBinaryData',
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+							name: 'file',
+							value: '',
+							inputDataFieldName: 'data0',
+						},
+					];
+				case 'options':
+					return options;
+				default:
+					return undefined;
+			}
+		});
+		(executeFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue({
+			data: Buffer.from('test file').toString('base64'),
+			fileName: 'invoice.pdf',
+			mimeType: 'application/pdf',
+		});
+		const response = {
+			headers: { 'content-type': 'application/json' },
+			body: Buffer.from(JSON.stringify({ success: true })),
+		};
+		(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+		await node.execute.call(executeFunctions);
+
+		expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				formData: expect.any(FormData),
+			}),
+		);
+	});
+
+	it('should include a fallback filename for multipart binary uploads without fileName', async () => {
+		(executeFunctions.getNode as jest.Mock).mockReturnValue({
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+		});
+		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'POST';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'none';
+				case 'sendBody':
+					return true;
+				case 'contentType':
+					return 'multipart-form-data';
+				case 'specifyBody':
+					return 'keypair';
+				case 'bodyParameters.parameters':
+					return [
+						{
+							parameterType: 'formBinaryData',
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+							name: 'file',
+							value: '',
+							inputDataFieldName: 'data0',
+						},
+					];
+				case 'options':
+					return options;
+				default:
+					return undefined;
+			}
+		});
+		(executeFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue({
+			data: Buffer.from('test file').toString('base64'),
+			mimeType: 'application/pdf',
+		});
+		const response = {
+			headers: { 'content-type': 'application/json' },
+			body: Buffer.from(JSON.stringify({ success: true })),
+		};
+		(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+		await node.execute.call(executeFunctions);
+
+		const requestOptions = (executeFunctions.helpers.request as jest.Mock).mock.calls[0][0];
+		const body = (requestOptions.formData as FormData).getBuffer().toString('utf8');
+
+		expect(body).toContain('filename="file"');
 	});
 
 	describe('Authentication Handling', () => {
