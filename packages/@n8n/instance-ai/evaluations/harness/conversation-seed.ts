@@ -177,52 +177,87 @@ export function transcriptPrefixFromSeed(
 	return turns;
 }
 
+/** A seeded tool-call block, normalized for the interpreters below. */
+interface SeedToolCall {
+	toolName: string;
+	input?: Record<string, unknown>;
+	output?: Record<string, unknown>;
+}
+
 /**
- * Map a seeded tool-call block to a transcript step, mirroring the special
- * rendering the live event transcript gives `ask-user` / plan tools — otherwise
- * they'd all flatten to generic tool calls. Note: a seeded `ask-user` carries
- * the questions but not the user's answers (those arrived via resume runs the
- * reconstruction drops), so answers render as absent.
+ * Maps a seeded tool-call to its special transcript step, mirroring the live SSE
+ * transcript so the report renders ask-user / plan / setup the same from both
+ * sources. Returns null to fall through to the next interpreter (or the generic
+ * tool-call). Add a new interaction type by adding an interpreter to the list.
+ */
+type SeedStepInterpreter = (call: SeedToolCall) => TranscriptStep | null;
+
+const interpretAskUser: SeedStepInterpreter = (call) => {
+	const questions = call.input?.questions;
+	if (call.toolName !== 'ask-user' || !Array.isArray(questions)) return null;
+	const parsed = extractAskUserQuestions(questions);
+	if (parsed.length === 0) return null;
+	// The kept (resume) block carries the user's answers in its output.
+	const answers = Array.isArray(call.output?.answers)
+		? extractAskUserAnswers(call.output.answers)
+		: undefined;
+	return { kind: 'ask-user', questions: parsed, answers };
+};
+
+const interpretPlan: SeedStepInterpreter = (call) => {
+	const tasks = call.input?.tasks;
+	if (call.toolName !== 'create-tasks' || !Array.isArray(tasks)) return null;
+	const parsed = extractPlanTasks(tasks);
+	return parsed.length > 0 ? { kind: 'plan', tasks: parsed } : null;
+};
+
+// The applied setup outcome: which nodes were configured / skipped (same
+// rendering as the live `workflows` result).
+const interpretSetupWizard: SeedStepInterpreter = (call) => {
+	const { output } = call;
+	if (!output || !(Array.isArray(output.completedNodes) || Array.isArray(output.skippedNodes))) {
+		return null;
+	}
+	return extractSetupWizardOutcome(output);
+};
+
+// The setup-card prompt: its asks live in output.payload.setupRequests. The fill
+// outcome isn't in the trace (only SSE proxy responses capture it), so it
+// renders as 'pending'.
+const interpretSetupCard: SeedStepInterpreter = (call) => {
+	const payload = isRecord(call.output?.payload) ? call.output.payload : undefined;
+	const setupRequests = payload?.setupRequests;
+	if (!Array.isArray(setupRequests)) return null;
+	const requests = extractSetupCardRequests(setupRequests);
+	return requests.length > 0 ? { kind: 'setup-card', requests, outcome: 'pending' } : null;
+};
+
+const SEED_STEP_INTERPRETERS: SeedStepInterpreter[] = [
+	interpretAskUser,
+	interpretPlan,
+	interpretSetupWizard,
+	interpretSetupCard,
+];
+
+/**
+ * Map a seeded tool-call block to a transcript step. Known interaction types get
+ * their special rendering via the interpreters above; everything else falls
+ * through to a generic tool-call.
  */
 function toTranscriptStep(block: Record<string, unknown>): TranscriptStep {
-	const toolName = typeof block.toolName === 'string' ? block.toolName : 'unknown-tool';
-	const input = isRecord(block.input) ? block.input : undefined;
-
-	if (toolName === 'ask-user' && Array.isArray(input?.questions)) {
-		const questions = extractAskUserQuestions(input.questions);
-		if (questions.length > 0) {
-			// The kept (resume) block carries the user's answers in its output.
-			const output = isRecord(block.output) ? block.output : undefined;
-			const answers = Array.isArray(output?.answers)
-				? extractAskUserAnswers(output.answers)
-				: undefined;
-			return { kind: 'ask-user', questions, answers };
-		}
+	const call: SeedToolCall = {
+		toolName: typeof block.toolName === 'string' ? block.toolName : 'unknown-tool',
+		input: isRecord(block.input) ? block.input : undefined,
+		output: isRecord(block.output) ? block.output : undefined,
+	};
+	for (const interpret of SEED_STEP_INTERPRETERS) {
+		const step = interpret(call);
+		if (step) return step;
 	}
-	if (toolName === 'create-tasks' && Array.isArray(input?.tasks)) {
-		const tasks = extractPlanTasks(input.tasks);
-		if (tasks.length > 0) return { kind: 'plan', tasks };
-	}
-	const output = isRecord(block.output) ? block.output : undefined;
-	// Setup-wizard outcome: which nodes were configured / skipped (the applied
-	// result of a setup card). Same rendering as the live `workflows` result.
-	if (output && (Array.isArray(output.completedNodes) || Array.isArray(output.skippedNodes))) {
-		const wizard = extractSetupWizardOutcome(output);
-		if (wizard) return wizard;
-	}
-	// Setup card (the prompt): its asks live in output.payload.setupRequests. The
-	// fill outcome isn't in the trace (only SSE proxy responses capture it), so
-	// it renders as 'pending'.
-	const payload = isRecord(output?.payload) ? output.payload : undefined;
-	if (Array.isArray(payload?.setupRequests)) {
-		const requests = extractSetupCardRequests(payload.setupRequests);
-		if (requests.length > 0) return { kind: 'setup-card', requests, outcome: 'pending' };
-	}
-
 	return {
 		kind: 'tool-call',
-		toolName,
-		args: input,
+		toolName: call.toolName,
+		args: call.input,
 		result: 'output' in block ? block.output : undefined,
 	};
 }
