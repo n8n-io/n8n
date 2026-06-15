@@ -16,7 +16,6 @@ import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.servi
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
 import { OAuthTokenService } from '../oauth-token.service';
-import { McpSettingsService } from '../../mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
@@ -29,7 +28,7 @@ let tokenService: jest.Mocked<OAuthTokenService>;
 let authorizationCodeService: jest.Mocked<OAuthAuthorizationCodeService>;
 let service: OAuthServerService;
 let userConsentRepository: jest.Mocked<UserConsentRepository>;
-let mcpSettingsService: jest.Mocked<McpSettingsService>;
+let getAllowedRedirectUris: jest.Mock<Promise<string[]>>;
 
 describe('OAuthServerService', () => {
 	beforeAll(() => {
@@ -39,7 +38,7 @@ describe('OAuthServerService', () => {
 		tokenService = mockInstance(OAuthTokenService);
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
-		mcpSettingsService = mockInstance(McpSettingsService);
+		getAllowedRedirectUris = jest.fn<Promise<string[]>, []>().mockResolvedValue([]);
 
 		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 		resourceRegistry.register({
@@ -48,6 +47,7 @@ describe('OAuthServerService', () => {
 			getAudiences: () => [TEST_RESOURCE_URL, 'mcp-server-api'],
 			scopes: SUPPORTED_SCOPES,
 			isDefault: true,
+			getAllowedRedirectUris,
 		});
 
 		service = new OAuthServerService(
@@ -59,13 +59,12 @@ describe('OAuthServerService', () => {
 			authorizationCodeService,
 			userConsentRepository,
 			resourceRegistry,
-			mcpSettingsService,
 		);
 	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mcpSettingsService.getAllowedRedirectUris.mockResolvedValue([]);
+		getAllowedRedirectUris.mockResolvedValue([]);
 	});
 
 	describe('clientsStore', () => {
@@ -234,7 +233,7 @@ describe('OAuthServerService', () => {
 
 			const res = mock<Response>();
 
-			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+			getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
 
 			await service.authorize(client, params, res);
 
@@ -268,7 +267,7 @@ describe('OAuthServerService', () => {
 
 			const res = mock<Response>();
 
-			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+			getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
 
 			await service.authorize(client, params, res);
 
@@ -303,7 +302,7 @@ describe('OAuthServerService', () => {
 			res.status.mockReturnThis();
 			res.json.mockReturnThis();
 
-			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+			getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
 
 			await service.authorize(client, params, res);
 
@@ -340,7 +339,7 @@ describe('OAuthServerService', () => {
 
 			const res = mock<Response>();
 
-			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue([]);
+			getAllowedRedirectUris.mockResolvedValue([]);
 
 			await service.authorize(client, params, res);
 
@@ -446,7 +445,7 @@ describe('OAuthServerService', () => {
 			res.status.mockReturnThis();
 			res.json.mockReturnThis();
 
-			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+			getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
 
 			const error = new Error('Session creation failed');
 			oauthSessionService.createSession.mockImplementation(() => {
@@ -972,7 +971,6 @@ describe('OAuthServerService', () => {
 				authorizationCodeService,
 				userConsentRepository,
 				multiRegistry,
-				mcpSettingsService,
 			);
 
 			expect(

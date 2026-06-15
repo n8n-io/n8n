@@ -25,7 +25,6 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
-import { McpSettingsService } from '../mcp/mcp.settings.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 /** Maximum number of redirect URIs per client */
@@ -49,7 +48,6 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
 		private readonly userConsentRepository: UserConsentRepository,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
-		private readonly mcpSettingsService: McpSettingsService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -59,6 +57,11 @@ export class OAuthServerService implements OAuthServerProvider {
 				if (!client) {
 					return undefined;
 				}
+
+				// Some clients echo back the `scope` they saw on registration and
+				// reject responses that include `scope: ''`. Omit the field
+				// entirely when no scopes are advertised.
+				const supportedScopes = this.resourceRegistry.getAllScopes();
 
 				return {
 					client_id: client.id,
@@ -71,7 +74,7 @@ export class OAuthServerService implements OAuthServerProvider {
 						client_secret_expires_at: client.clientSecretExpiresAt,
 					}),
 					response_types: ['code'],
-					scope: this.resourceRegistry.getAllScopes().join(' '),
+					...(supportedScopes.length > 0 && { scope: supportedScopes.join(' ') }),
 					logo_uri: undefined,
 					tos_uri: undefined,
 				};
@@ -169,7 +172,12 @@ export class OAuthServerService implements OAuthServerProvider {
 		this.logger.debug('Starting OAuth authorization', { clientId: client.client_id });
 
 		try {
-			const allowedUris = await this.mcpSettingsService.getAllowedRedirectUris();
+			const resource = await this.resolveAndValidateResourceIndicator(params.resource?.toString());
+
+			const targetResource = resource
+				? await this.resourceRegistry.getByResourceUrl(resource)
+				: this.resourceRegistry.getDefaultResource();
+			const allowedUris = (await targetResource?.getAllowedRedirectUris?.()) ?? [];
 			if (allowedUris.length > 0 && !allowedUris.includes(params.redirectUri)) {
 				this.logger.warn('Invalid redirect URI attempted', {
 					clientId: client.client_id,
@@ -181,8 +189,6 @@ export class OAuthServerService implements OAuthServerProvider {
 				});
 				return;
 			}
-
-			const resource = await this.resolveAndValidateResourceIndicator(params.resource?.toString());
 
 			this.oauthSessionService.createSession(res, {
 				clientId: client.client_id,
