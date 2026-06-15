@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router';
 import { ElDialog } from 'element-plus';
 import {
@@ -20,7 +20,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useOtelStore, headersStringToPairs, headersPairsToString } from './otel.store';
-import { OTEL_FIELD_ENV_VARS } from './otel.constants';
+import { OTEL_FIELD_ENV_VARS, OTEL_TEST_SPAN_NAME } from './otel.constants';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -151,6 +151,43 @@ watch(
 		const currentString = headersPairsToString(headerPairs.value);
 		if (newVal !== currentString) {
 			headerPairs.value = headersStringToPairs(newVal ?? '');
+		}
+	},
+);
+
+const canTestTrace = computed(
+	() => !!otelStore.settings.exporterEndpoint && otelStore.testState !== 'sending',
+);
+
+const testTraceSubtitle = computed(() => {
+	if (otelStore.testState === 'sent') {
+		return i18n.baseText('settings.opentelemetry.testTrace.success', {
+			interpolate: { spanName: OTEL_TEST_SPAN_NAME, time: otelStore.testTimestamp },
+		});
+	}
+	if (otelStore.testState === 'error') {
+		return i18n.baseText('settings.opentelemetry.testTrace.error', {
+			interpolate: { error: otelStore.testError },
+		});
+	}
+	return i18n.baseText('settings.opentelemetry.testTrace.description');
+});
+
+async function onSendTestTrace() {
+	await otelStore.sendTestTrace();
+}
+
+// Connection changes invalidate the previous test result.
+watch(
+	() => [
+		otelStore.settings.exporterEndpoint,
+		otelStore.settings.exporterTracingPath,
+		otelStore.settings.exporterServiceName,
+		otelStore.settings.exporterHeaders,
+	],
+	() => {
+		if (otelStore.testState !== 'idle' && otelStore.testState !== 'sending') {
+			otelStore.resetTestState();
 		}
 	},
 );
@@ -477,6 +514,45 @@ watch(
 								}}</span>
 							</div>
 						</component>
+					</div>
+				</div>
+
+				<!-- Verify configuration / send test trace -->
+				<div :class="$style.settingsItem">
+					<div :class="$style.settingsItemLabel">
+						<div :class="$style.labelRow">
+							<label>{{ i18n.baseText('settings.opentelemetry.testTrace.label') }}</label>
+						</div>
+						<small :class="{ [$style.testError]: otelStore.testState === 'error' }">{{
+							testTraceSubtitle
+						}}</small>
+					</div>
+					<div :class="$style.settingsItemControl">
+						<N8nButton
+							v-if="otelStore.testState === 'sent'"
+							variant="outline"
+							icon="check"
+							native-type="button"
+							data-test-id="otel-test-trace-button"
+							@click.stop.prevent="onSendTestTrace"
+						>
+							{{ i18n.baseText('settings.opentelemetry.testTrace.sent') }}
+						</N8nButton>
+						<N8nButton
+							v-else
+							variant="outline"
+							:loading="otelStore.testState === 'sending'"
+							:disabled="!canTestTrace"
+							native-type="button"
+							data-test-id="otel-test-trace-button"
+							@click.stop.prevent="onSendTestTrace"
+						>
+							{{
+								otelStore.testState === 'sending'
+									? i18n.baseText('settings.opentelemetry.testTrace.sending')
+									: i18n.baseText('settings.opentelemetry.testTrace.send')
+							}}
+						</N8nButton>
 					</div>
 				</div>
 			</div>
@@ -844,6 +920,10 @@ watch(
 	align-items: center;
 	justify-content: center;
 	height: var(--height--lg);
+}
+
+.settingsItemLabel small.testError {
+	color: var(--color--danger);
 }
 
 .greenDot {
