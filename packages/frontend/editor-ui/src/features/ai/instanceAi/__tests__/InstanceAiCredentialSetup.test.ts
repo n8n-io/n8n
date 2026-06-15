@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { nextTick } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
@@ -8,6 +9,8 @@ import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AI_GATEWAY_SENTINEL } from '../constants';
 
@@ -450,6 +453,82 @@ describe('InstanceAiCredentialSetup', () => {
 			const nodeProp = nodeCredentialsMock.getNodeProp() as { credentials?: unknown };
 			expect(nodeProp?.credentials).toEqual({
 				openAiApi: { id: null, name: '', __aiGatewayManaged: true },
+			});
+		});
+	});
+
+	describe('gateway auto-select (initSelections)', () => {
+		function makeGatewayOnlyRequest(): InstanceAiCredentialRequest[] {
+			return [{ credentialType: 'openAiApi', reason: 'Need OpenAI', existingCredentials: [] }];
+		}
+
+		function enableGateway(credType: string) {
+			const settingsStore = useSettingsStore();
+			const aiGatewayStore = useAiGatewayStore();
+			vi.spyOn(settingsStore, 'isAiGatewayEnabled', 'get').mockReturnValue(true);
+			vi.spyOn(aiGatewayStore, 'isCredentialTypeSupported').mockImplementation(
+				(type) => type === credType,
+			);
+		}
+
+		it('auto-selects sentinel when gateway is enabled and supports the credential type', async () => {
+			enableGateway('openAiApi');
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: makeGatewayOnlyRequest(),
+					message: 'Set up',
+				},
+			});
+
+			// Auto-continue fires from onMounted after allSelected starts true
+			await flushPromises();
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { openAiApi: AI_GATEWAY_SENTINEL },
+			});
+		});
+
+		it('shows NodeCredentials picker (not setup button) when gateway supports the type', () => {
+			enableGateway('openAiApi');
+			vi.spyOn(thread, 'confirmAction').mockResolvedValue(false);
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: makeGatewayOnlyRequest(),
+					message: 'Set up',
+				},
+			});
+
+			// Check synchronously — onMounted hasn't fired yet, so the card is still visible
+			expect(getByTestId('credential-picker')).toBeTruthy();
+			expect(queryByTestId('instance-ai-credential-setup-button')).toBeNull();
+		});
+
+		it('falls through to single-credential auto-select when gateway is disabled', async () => {
+			const requests: InstanceAiCredentialRequest[] = [
+				{
+					credentialType: 'openAiApi',
+					reason: 'Need OpenAI',
+					existingCredentials: [{ id: 'cred-1', name: 'My Key' }],
+				},
+			];
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			renderComponent({
+				props: { requestId: 'req-1', credentialRequests: requests, message: 'Set up' },
+			});
+
+			// Auto-continue fires from onMounted after single-cred auto-select
+			await flushPromises();
+
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { openAiApi: 'cred-1' },
 			});
 		});
 	});

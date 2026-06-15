@@ -5,6 +5,8 @@ import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardN
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
@@ -29,6 +31,8 @@ const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const thread = useThread();
 const credentialsStore = useCredentialsStore();
+const settingsStore = useSettingsStore();
+const aiGatewayStore = useAiGatewayStore();
 const uiStore = useUIStore();
 
 // ---------------------------------------------------------------------------
@@ -61,7 +65,13 @@ function initSelections() {
 	for (const req of props.credentialRequests) {
 		if (selections.value[req.credentialType] !== undefined) continue;
 
-		if (req.existingCredentials?.length === 1) {
+		if (
+			settingsStore.isAiGatewayEnabled &&
+			aiGatewayStore.isCredentialTypeSupported(req.credentialType)
+		) {
+			// Auto-select n8n Connect when the gateway supports this credential type
+			selections.value[req.credentialType] = AI_GATEWAY_SENTINEL;
+		} else if (req.existingCredentials?.length === 1) {
 			// Auto-select when exactly one credential available
 			selections.value[req.credentialType] = req.existingCredentials[0].id;
 		} else {
@@ -180,6 +190,13 @@ onMounted(async () => {
 	if (firstIncomplete > 0) {
 		goToStep(firstIncomplete);
 	}
+
+	// If all credentials were pre-selected during init (e.g. n8n Connect auto-select),
+	// the allSelected watch won't fire (no false→true transition), so auto-continue here.
+	if (allSelected.value) {
+		await nextTick();
+		await handleContinue();
+	}
 });
 
 // ---------------------------------------------------------------------------
@@ -198,7 +215,8 @@ const hasExistingCredentials = computed(() => {
 	const credType = currentRequest.value.credentialType;
 	return (
 		(currentRequest.value.existingCredentials?.length ?? 0) > 0 ||
-		(credentialsStore.getUsableCredentialByType(credType)?.length ?? 0) > 0
+		(credentialsStore.getUsableCredentialByType(credType)?.length ?? 0) > 0 ||
+		(settingsStore.isAiGatewayEnabled && aiGatewayStore.isCredentialTypeSupported(credType))
 	);
 });
 
