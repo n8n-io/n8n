@@ -26,7 +26,6 @@ const outputSchema = {
 	updatedAt: z.string().describe('ISO timestamp when the version metadata was last updated'),
 	nodes: z.array(nodeSchema).describe('The workflow nodes captured in this version'),
 	connections: z.record(z.unknown()).describe('The node connections captured in this version'),
-	nodeGroups: z.array(z.unknown()).describe('Node groups captured in this version'),
 } satisfies z.ZodRawShape;
 
 type GetWorkflowVersionParams = { workflowId: string; versionId: string };
@@ -40,13 +39,12 @@ type GetWorkflowVersionResult = {
 	updatedAt: string;
 	nodes: Array<Record<string, unknown>>;
 	connections: Record<string, unknown>;
-	nodeGroups: unknown[];
 };
 
 /**
  * Creates the MCP tool definition for retrieving a single workflow version's
- * full content (nodes, connections, node groups). Credentials are stripped from
- * nodes before returning, mirroring get_workflow_details.
+ * full content (nodes, connections). Credentials are stripped from nodes before
+ * returning, mirroring get_workflow_details.
  */
 export const createGetWorkflowVersionTool = (
 	user: User,
@@ -57,7 +55,7 @@ export const createGetWorkflowVersionTool = (
 	name: 'get_workflow_version',
 	config: {
 		description:
-			'Retrieve the full content (nodes, connections, node groups) of a specific workflow version from its history. Use the versionId from get_workflow_history.',
+			'Retrieve the full content (nodes, connections) of a specific workflow version from its history. Use the versionId from get_workflow_history.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -127,6 +125,5 @@ export async function getWorkflowVersion(
 		updatedAt: version.updatedAt.toISOString(),
 		nodes,
 		connections: version.connections ?? {},
-		nodeGroups: version.nodeGroups ?? [],
 	};
 }

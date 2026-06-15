@@ -76,7 +76,6 @@ describe('restore-workflow-version MCP tool', () => {
 					versionId: 'v1',
 					nodes: versionNodes,
 					connections: { Set: { main: [] } },
-					nodeGroups: [{ id: 'group-1' }] as never,
 				}),
 			);
 			(workflowService.update as jest.Mock).mockResolvedValue({
@@ -97,7 +96,6 @@ describe('restore-workflow-version MCP tool', () => {
 			expect(updateEntity).toMatchObject({
 				nodes: versionNodes,
 				connections: { Set: { main: [] } },
-				nodeGroups: [{ id: 'group-1' }],
 			});
 			expect(updateOptions).toMatchObject({ forceSave: true, source: 'n8n-mcp' });
 
