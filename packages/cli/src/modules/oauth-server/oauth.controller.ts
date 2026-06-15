@@ -132,7 +132,8 @@ export class OAuthController {
 		this.setCorsHeaders(res);
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
-		const metadata = {
+		const allScopes = this.resourceRegistry.getAllScopes();
+		const metadata: Record<string, unknown> = {
 			issuer: baseUrl,
 			authorization_endpoint: `${baseUrl}/mcp-oauth/authorize`,
 			token_endpoint: `${baseUrl}/mcp-oauth/token`,
@@ -142,8 +143,11 @@ export class OAuthController {
 			grant_types_supported: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
 			code_challenge_methods_supported: ['S256'],
-			scopes_supported: this.resourceRegistry.getAllScopes(),
 		};
+
+		if (allScopes.length > 0) {
+			metadata.scopes_supported = allScopes;
+		}
 
 		res.json(metadata);
 	}
@@ -183,12 +187,15 @@ export class OAuthController {
 		}
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
-		const metadata = {
+		const metadata: Record<string, unknown> = {
 			resource: resource.getResourceUrl(),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [baseUrl],
-			scopes_supported: resource.scopes,
 		};
+
+		if (resource.scopes.length > 0) {
+			metadata.scopes_supported = resource.scopes;
+		}
 
 		res.json(metadata);
 	}
