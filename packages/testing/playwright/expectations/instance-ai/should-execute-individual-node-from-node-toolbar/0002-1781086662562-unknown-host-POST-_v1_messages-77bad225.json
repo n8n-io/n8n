@@ -1,0 +1,108 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*\"role\"\\s*:\\s*\"user\"[\\s\\S]{0,1500}\"type\"\\s*:\\s*\"tool_result\"[\\s\\S]{0,2000}\\\\\"success\\\\\":true[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-6fb1f167444408cbf3971a423512a7b9-72e2e3b3d86c0ca1-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=Z57Mp4doeFb9cplEgO0IjVeHEC8XXpzb_TeFAi8CxyA-1781086652.6702938-1.0.1.1-irpwhninPy06OL.B.31AfdBqUvz8M8vXvbdc9w2KXXk; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "request-id": [
+        "req_011CbuQZyuYxJjFTszijd1Tt"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-06-10T10:17:33Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "26973000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "27000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-06-10T10:17:33Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19998"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-06-10T10:17:33Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-06-10T10:17:33Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "22473000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "22500000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Wed, 10 Jun 2026 10:17:35 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a097a07b2c2bc783-HEL"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "Z57Mp4doeFb9cplEgO0IjVeHEC8XXpzb_TeFAi8CxyA-1781086652.6702938-1.0.1.1-irpwhninPy06OL.B.31AfdBqUvz8M8vXvbdc9w2KXXk"
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_019AAcEfNNdeKuNY85LPLCry\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":15465,\"cache_read_input_tokens\":15251,\"cache_creation\":{\"ephemeral_5m_input_tokens\":15465,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":33,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}       }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01G42niibXSz4ewmMNcwznAp\",\"name\":\"build-workflow\",\"input\":{},\"caller\":{\"type\":\"direct\"}}           }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}             }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"name\\\": \\\"Node Execution\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\" Test\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\", \\\"code\\\": \\\"\\\\nimport { workflow, node, trigger, expr } from '@n8n/workflow-\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"sdk';\\\\n\\\\nconst manualTrigger = trigger({\\\\n  type: 'n8n-nodes-base.manualTrigger',\\\\n  version: 1,\\\\n  config: { name\"} }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": 'When clicking \\\\\\\"Execute workflow\\\\\\\"' },\\\\n});\\\\n\\\\nconst setNode = node({\\\\n  type: \"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"'n8n-nodes-base.set',\\\\n  version: 3.4,\\\\n  config: {\\\\n    name: 'node execution test',\\\\n    parameters: {\\\\n      mode\"}              }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": 'manual',\\\\n      fields: {\\\\n        values: [],\\\\n      },\\\\n    },\\\\n  },\\\\n});\\\\n\\\\nexport default workflow('id', 'Node Execution Test')\\\\n  .add\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"(manualTrigger)\\\\n  .to(setNode);\\\\n\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"}\"}               }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":15465,\"cache_read_input_tokens\":15251,\"output_tokens\":264}         }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxOUFBY0VmTk5kZUt1Tlk4NUxQTENyeSIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MTU0NjUsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjoxNTI1MSwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MTU0NjUsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjozMywic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoiZ2xvYmFsIn19ICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MCwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxRzQybmlpYlhTejRld21NTmN3em5BcCIsIm5hbWUiOiJidWlsZC13b3JrZmxvdyIsImlucHV0Ijp7fSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX0gICAgICAgICAgIH0KCmV2ZW50OiBwaW5nCmRhdGE6IHsidHlwZSI6ICJwaW5nIn0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiIifSAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoie1wibmFtZVwiOiBcIk5vZGUgRXhlY3V0aW9uIn0gICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiIFRlc3QifSAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IlwiLCBcImNvZGVcIjogXCJcXG5pbXBvcnQgeyB3b3JrZmxvdywgbm9kZSwgdHJpZ2dlciwgZXhwciB9IGZyb20gJ0BuOG4vd29ya2Zsb3ctIn0gICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoic2RrJztcXG5cXG5jb25zdCBtYW51YWxUcmlnZ2VyID0gdHJpZ2dlcih7XFxuICB0eXBlOiAnbjhuLW5vZGVzLWJhc2UubWFudWFsVHJpZ2dlcicsXFxuICB2ZXJzaW9uOiAxLFxcbiAgY29uZmlnOiB7IG5hbWUifSB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiOiAnV2hlbiBjbGlja2luZyBcXFwiRXhlY3V0ZSB3b3JrZmxvd1xcXCInIH0sXFxufSk7XFxuXFxuY29uc3Qgc2V0Tm9kZSA9IG5vZGUoe1xcbiAgdHlwZTogIn0gICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiJ244bi1ub2Rlcy1iYXNlLnNldCcsXFxuICB2ZXJzaW9uOiAzLjQsXFxuICBjb25maWc6IHtcXG4gICAgbmFtZTogJ25vZGUgZXhlY3V0aW9uIHRlc3QnLFxcbiAgICBwYXJhbWV0ZXJzOiB7XFxuICAgICAgbW9kZSJ9ICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiOiAnbWFudWFsJyxcXG4gICAgICBmaWVsZHM6IHtcXG4gICAgICAgIHZhbHVlczogW10sXFxuICAgICAgfSxcXG4gICAgfSxcXG4gIH0sXFxufSk7XFxuXFxuZXhwb3J0IGRlZmF1bHQgd29ya2Zsb3coJ2lkJywgJ05vZGUgRXhlY3V0aW9uIFRlc3QnKVxcbiAgLmFkZCJ9ICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IihtYW51YWxUcmlnZ2VyKVxcbiAgLnRvKHNldE5vZGUpO1xcbiJ9ICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IlwifSJ9ICAgICAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MH0KCmV2ZW50OiBtZXNzYWdlX2RlbHRhCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2VfZGVsdGEiLCJkZWx0YSI6eyJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsfSwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjE1NDY1LCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MTUyNTEsIm91dHB1dF90b2tlbnMiOjI2NH0gICAgICAgICB9CgpldmVudDogbWVzc2FnZV9zdG9wCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2Vfc3RvcCJ9Cgo=",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0002-1781086662562-unknown-host-POST-_v1_messages-77bad225.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

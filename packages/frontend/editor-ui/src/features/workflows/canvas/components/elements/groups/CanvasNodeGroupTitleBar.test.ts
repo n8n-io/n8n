@@ -25,6 +25,7 @@ vi.mock('@vue-flow/core', () => ({
 	useVueFlow: () => ({
 		getSelectedNodes: selectedNodesRef,
 		removeSelectedNodes: removeSelectedNodesMock,
+		viewport: { value: { x: 0, y: 0, zoom: 1 } },
 	}),
 }));
 

@@ -3007,7 +3007,13 @@ export function useCanvasOperations() {
 				? workflowDocumentStore.value.getNextDefaultName(group.name)
 				: group.name;
 
-			workflowDocumentStore.value.createGroup(group.nodeIds, name, { markDirty: setStateDirty });
+			// Imported groups start collapsed: their stored positions describe the
+			// collapsed layout (push offsets are view-only and not serialized), so
+			// expanding them without a live push would overlap surrounding nodes.
+			workflowDocumentStore.value.createGroup(group.nodeIds, name, {
+				markDirty: setStateDirty,
+				startCollapsed: true,
+			});
 			existingGroupNames.add(name);
 		}
 	}

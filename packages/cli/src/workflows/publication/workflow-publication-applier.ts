@@ -11,7 +11,10 @@ import { ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
-import { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
+import {
+	WorkflowTriggerActivator,
+	type TriggerActivationOutcome,
+} from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
  * Reconciles a workflow's triggers to a published version, one outbox record at
@@ -98,8 +101,11 @@ export class WorkflowPublicationApplier {
 
 		try {
 			if (toAdd.size > 0) {
-				await this.workflowTriggerActivator.activate(workflow, newVersion, toAdd);
-			} else if (toRemove.size > 0) {
+				const outcome = await this.workflowTriggerActivator.activate(workflow, newVersion, toAdd);
+				return this.classifyActivationOutcome(outcome);
+			}
+
+			if (toRemove.size > 0) {
 				await this.workflowTriggerActivator.updateTriggerCount(workflow, newVersion);
 			}
 		} catch (e) {
@@ -107,6 +113,22 @@ export class WorkflowPublicationApplier {
 		}
 
 		return { type: 'completed' };
+	}
+
+	/**
+	 * Maps a per-node activation outcome to a publication result. With every node
+	 * activated it is a full success. Any returned failure — including a webhook
+	 * path conflict — leaves the surviving triggers running and is reported as
+	 * `partial`: the new version stays published and re-publishing can recover it.
+	 */
+	private classifyActivationOutcome(outcome: TriggerActivationOutcome): PublicationResult {
+		if (outcome.failures.length === 0) return { type: 'completed' };
+
+		return {
+			type: 'partial',
+			activatedNodeIds: outcome.activated,
+			failures: outcome.failures,
+		};
 	}
 
 	/**
