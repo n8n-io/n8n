@@ -1,7 +1,6 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialTypes } from '@/credential-types';
 import { GlobalConfig } from '@n8n/config';
-import { LICENSE_FEATURES } from '@n8n/constants';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
