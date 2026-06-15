@@ -115,6 +115,7 @@ const {
 	nodes: mappedWorkflowNodes,
 	connections: mappedConnections,
 	nodeDisplaySizeById,
+	getNodeExecutionSnapshot,
 } = useCanvasMapping({
 	nodes,
 	connections,
@@ -150,6 +151,7 @@ const mappedGroupVueFlowNodes = computed(() =>
 		getGroupVisualOffset: (id) => nodeGroupView.getVisualOffsetForComponent(id),
 		isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
 		readOnly: readOnlyRef.value || suppressInteractionRef.value,
+		getNodeExecutionSnapshot,
 	}),
 );
 

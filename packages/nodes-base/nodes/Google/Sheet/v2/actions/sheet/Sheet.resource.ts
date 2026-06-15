@@ -83,7 +83,7 @@ export const descriptions: INodeProperties[] = [
 		required: true,
 		builderHint: {
 			propertyHint:
-				"Default to mode: 'list' which is easier for users to set up. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper.",
+				"Default to mode: 'list' which is easier for users to set up. Never invent a spreadsheet ID: when no credential or explored resource provides a real one, use mode: 'id' with an empty value and a cachedResultName placeholder. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper.",
 		},
 		modes: [
 			{
@@ -144,7 +144,7 @@ export const descriptions: INodeProperties[] = [
 		required: true,
 		builderHint: {
 			propertyHint:
-				"Default to mode: 'list' which is easier for users to set up. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper.",
+				"Default to mode: 'list' when you have a real numeric sheet ID (gid) from explored resources. If you only know the sheet by its name, use mode: 'name' with that name — a title placed in list or id mode cannot resolve. Resource locator value must be `{ __rl: true, mode, value }` — never a plain string or `expr()` wrapper.",
 		},
 		typeOptions: {
 			loadOptionsDependsOn: ['documentId.value'],

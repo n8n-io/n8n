@@ -78,7 +78,13 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, Node, createRunExecutionData } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	Node,
+	createRunExecutionData,
+	UnexpectedError,
+} from 'n8n-workflow';
 import type { Mock, Mocked, MockedClass } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -532,7 +538,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(closeFunction2).toHaveBeenCalled();
 		});
 
-		it('should throw ApplicationError when close function throws non-Error object', async () => {
+		it('should throw UnexpectedError when close function throws non-Error object', async () => {
 			const mockData = [[{ json: { result: 'test' } }]];
 			const closeFunction1 = vi.fn().mockResolvedValue(undefined);
 			const closeFunction2 = vi.fn().mockRejectedValue('String error'); // Non-Error object to trigger line 1247
@@ -565,16 +571,17 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				),
 			);
 
-			await expect(
-				workflowExecute.runNode(
-					mockWorkflow,
-					mockExecutionData,
-					mockRunExecutionData,
-					0,
-					mockAdditionalData,
-					'manual',
-				),
-			).rejects.toThrow("Error on execution node's close function(s)");
+			const promise = workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			await expect(promise).rejects.toThrow(UnexpectedError);
+			await expect(promise).rejects.toThrow("Error on execution node's close function(s)");
 
 			expect(closeFunction1).toHaveBeenCalled();
 			expect(closeFunction2).toHaveBeenCalled();

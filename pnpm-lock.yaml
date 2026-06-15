@@ -124,8 +124,8 @@ catalogs:
       specifier: 0.3.20-17
       version: 0.3.20-17
     '@n8n_io/ai-assistant-sdk':
-      specifier: 1.21.0
-      version: 1.21.0
+      specifier: 1.21.1
+      version: 1.21.1
     '@openrouter/ai-sdk-provider':
       specifier: ^2.8.0
       version: 2.9.0
@@ -207,6 +207,9 @@ catalogs:
     '@types/mime-types':
       specifier: 3.0.1
       version: 3.0.1
+    '@types/proxy-from-env':
+      specifier: ^1.0.4
+      version: 1.0.4
     '@types/uuid':
       specifier: ^11.0.0
       version: 11.0.0
@@ -327,6 +330,9 @@ catalogs:
     posthog-node:
       specifier: 5.33.4
       version: 5.33.4
+    proxy-from-env:
+      specifier: ^1.1.0
+      version: 1.1.0
     reflect-metadata:
       specifier: 0.2.2
       version: 0.2.2
@@ -539,7 +545,7 @@ overrides:
   glob@7: 7.2.3
   jws@3: 3.2.2
   jws@4: 4.0.1
-  qs@6: 6.15.2
+  qs: 6.15.2
   '@smithy/config-resolver': '>=4.4.0'
   '@rudderstack/rudder-sdk-node@<=3.0.0': 3.0.0
   diff: 8.0.3
@@ -572,7 +578,6 @@ overrides:
   yaml@<=2.8.3: 2.8.3
   axios: 1.16.1
   fast-xml-parser: 5.7.2
-  hono: 4.12.21
   postcss@<=8.5.9: 8.5.10
   '@anthropic-ai/sdk@<=0.91.1': 0.91.1
   uuid@<=13.0.1: 13.0.1
@@ -585,6 +590,7 @@ overrides:
   '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
   langsmith: 0.6.0
+  hono: 4.12.25
 
 patchedDependencies:
   '@lezer/highlight':
@@ -889,7 +895,7 @@ importers:
         specifier: 2.4.5
         version: 2.4.5
       proxy-from-env:
-        specifier: ^1.1.0
+        specifier: 'catalog:'
         version: 1.1.0
       tmp-promise:
         specifier: 3.0.3
@@ -972,7 +978,7 @@ importers:
         version: link:../workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.21.0
+        version: 1.21.1
       axios:
         specifier: 1.16.1
         version: 1.16.1(debug@4.4.3)
@@ -1150,12 +1156,33 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      axios:
+        specifier: 1.16.1
+        version: 1.16.1(debug@4.4.3)
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
+      form-data:
+        specifier: 4.0.4
+        version: 4.0.4
+      http-proxy-agent:
+        specifier: 'catalog:'
+        version: 7.0.2
+      https-proxy-agent:
+        specifier: 'catalog:'
+        version: 7.0.6
+      iconv-lite:
+        specifier: 'catalog:'
+        version: 0.6.3
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      proxy-from-env:
+        specifier: 'catalog:'
+        version: 1.1.0
+      qs:
+        specifier: 6.15.2
+        version: 6.15.2
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
@@ -1169,9 +1196,15 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/proxy-from-env':
+        specifier: 'catalog:'
+        version: 1.0.4
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.1(vitest@4.1.1)
+      nock:
+        specifier: ^14.0.14
+        version: 14.0.14
       vitest:
         specifier: 'catalog:'
         version: 4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.0.16)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.25.10)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -1620,6 +1653,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@testcontainers/postgresql':
+        specifier: 'catalog:'
+        version: 11.13.0
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
@@ -3160,7 +3196,7 @@ importers:
         version: link:../@n8n/workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.21.0
+        version: 1.21.1
       '@n8n_io/license-sdk':
         specifier: 2.25.0
         version: 2.25.0
@@ -3609,9 +3645,6 @@ importers:
       axios:
         specifier: 1.16.1
         version: 1.16.1(debug@4.4.3)
-      cache-manager:
-        specifier: 'catalog:'
-        version: 5.2.3
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -3633,15 +3666,6 @@ importers:
       htmlparser2:
         specifier: ^10.0.0
         version: 10.0.0
-      http-proxy-agent:
-        specifier: 'catalog:'
-        version: 7.0.2
-      https-proxy-agent:
-        specifier: 'catalog:'
-        version: 7.0.6
-      iconv-lite:
-        specifier: 'catalog:'
-        version: 0.6.3
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.3
@@ -3672,12 +3696,6 @@ importers:
       pretty-bytes:
         specifier: 5.6.0
         version: 5.6.0
-      proxy-from-env:
-        specifier: ^1.1.0
-        version: 1.1.0
-      qs:
-        specifier: 6.15.2
-        version: 6.15.2
       ssh2:
         specifier: 1.15.0
         version: 1.15.0
@@ -3715,9 +3733,6 @@ importers:
       '@types/mime-types':
         specifier: 'catalog:'
         version: 3.0.1
-      '@types/proxy-from-env':
-        specifier: ^1.0.4
-        version: 1.0.4
       '@types/uuid':
         specifier: 'catalog:'
         version: 11.0.0
@@ -4789,6 +4804,9 @@ importers:
       '@mozilla/readability':
         specifier: 0.6.0
         version: 0.6.0
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../@n8n/backend-network
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
@@ -4954,9 +4972,6 @@ importers:
       promise-ftp:
         specifier: 1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
-      proxy-from-env:
-        specifier: ^1.1.0
-        version: 1.1.0
       redis:
         specifier: 4.6.14
         version: 4.6.14
@@ -5015,9 +5030,6 @@ importers:
         specifier: 3.1.0
         version: 3.1.0
     devDependencies:
-      '@n8n/backend-network':
-        specifier: workspace:*
-        version: link:../@n8n/backend-network
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -7289,8 +7301,8 @@ packages:
     peerDependencies:
       graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
 
-  '@grpc/grpc-js@1.14.3':
-    resolution: {integrity: sha512-Iq8QQQ/7X3Sac15oB6p0FmUg/klxQvXLeileoqrTRGJYLV+/9tubbr9ipz0GKHjmXVsgFPo/+W+2cA8eNcR+XA==}
+  '@grpc/grpc-js@1.14.4':
+    resolution: {integrity: sha512-k9Dj3DV/itK9D06Y8f190Qgop7/Ui+D0njFV3LHMPwPT75DpXLQohE9Wmz0QElrJnzsjB7KPWiKJbOl7IPDArQ==}
     engines: {node: '>=12.10.0'}
 
   '@grpc/proto-loader@0.7.13':
@@ -7307,7 +7319,7 @@ packages:
     resolution: {integrity: sha512-TsQLe4i2gvoTtrHje625ngThGBySOgSK3Xo2XRYOdqGN1teR8+I7vchQC46uLJi8OF62YTYA3AhSpumtkhsaKQ==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      hono: 4.12.21
+      hono: 4.12.25
 
   '@huggingface/inference@4.0.5':
     resolution: {integrity: sha512-/Qc45BGrN+FBA3JfdeoHfafxfNShH/dxvOsXbBdcxyxIRIYOyefeiXSlShZGVCaiqYpm+10na28D0YtvjKPTlw==}
@@ -8532,8 +8544,8 @@ packages:
       sqlite3:
         optional: true
 
-  '@n8n_io/ai-assistant-sdk@1.21.0':
-    resolution: {integrity: sha512-reF4A3CvGw4hr61xss0gO9YXOs/c5O8nwmoL91Neu2j6aENtuqmYeZ7UT4v0IvjuiO/IJJtUsASWkVQJNCpN6A==}
+  '@n8n_io/ai-assistant-sdk@1.21.1':
+    resolution: {integrity: sha512-Bb18Cv6VeX3eqPF1DLN48ZqjTzUoWuskO0opVOwCrDESZUAQWWhG54enKsggXzhAdYh8XnqmO7RphN4t8ZwxHQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.25.0':
@@ -15075,8 +15087,8 @@ packages:
     resolution: {integrity: sha512-eSmmWE5bZTK2Nou4g0AI3zZ9rswp7GRKoKXS1BLUkvPviOqs4YTN1djQIqrXy9k5gEtdLPy86JjRwsNM9tnDcA==}
     engines: {node: '>=0.10.0'}
 
-  hono@4.12.21:
-    resolution: {integrity: sha512-uV63apnb0kyPtAUwoWgaGh9HyIFcv8lgmzPZSiTBQAFOFGIzka5EZ1dZocmGnn0XdX0+XTqJ6Tqv7selMuGLRQ==}
+  hono@4.12.25:
+    resolution: {integrity: sha512-2NFaIyNVgJmBs/ecmtGzlmluTFs5cHEWGTdu0t1HBwYzoGXOL5nUQBRMXsXWla5i4KkG//QMzVP88m1+I3fdAQ==}
     engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
@@ -21161,7 +21173,7 @@ packages:
     engines: {node: '>=18'}
 
   xlsx@https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz:
-    resolution: {integrity: sha512-+nKZ39+nvK7Qq6i0PvWWRA4j/EkfWOtkP/YhMtupm+lJIiHxUrgTr1CcKv1nBk1rHtkRRQ3O2+Ih/q/sA+FXZA==, tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
+    resolution: {tarball: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz}
     version: 0.20.2
     engines: {node: '>=0.8'}
     hasBin: true
@@ -24511,7 +24523,7 @@ snapshots:
     dependencies:
       graphql: 16.11.0
 
-  '@grpc/grpc-js@1.14.3':
+  '@grpc/grpc-js@1.14.4':
     dependencies:
       '@grpc/proto-loader': 0.8.0
       '@js-sdsl/ordered-map': 4.4.2
@@ -24530,9 +24542,9 @@ snapshots:
       protobufjs: 7.5.8
       yargs: 17.7.2
 
-  '@hono/node-server@1.19.13(hono@4.12.21)':
+  '@hono/node-server@1.19.13(hono@4.12.25)':
     dependencies:
-      hono: 4.12.21
+      hono: 4.12.25
 
   '@huggingface/inference@4.0.5':
     dependencies:
@@ -25643,7 +25655,7 @@ snapshots:
       '@microsoft/agents-a365-runtime': 0.1.0-preview.113
       '@microsoft/agents-a365-tooling': 0.1.0-preview.113(zod@3.25.67)
       '@microsoft/agents-hosting': 1.2.3
-      hono: 4.12.21
+      hono: 4.12.25
       langchain: 1.2.30(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(vue@3.5.26(typescript@6.0.2))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod-to-json-schema@3.23.3(zod@3.25.67))
       uuid: 13.0.1
     optionalDependencies:
@@ -25671,7 +25683,7 @@ snapshots:
       '@microsoft/agents-hosting': 1.2.3
       '@modelcontextprotocol/sdk': 1.26.0(zod@3.25.67)
       express: 5.2.1
-      hono: 4.12.21
+      hono: 4.12.25
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - debug
@@ -25758,7 +25770,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.26.0(zod@3.25.67)':
     dependencies:
-      '@hono/node-server': 1.19.13(hono@4.12.21)
+      '@hono/node-server': 1.19.13(hono@4.12.25)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -25768,7 +25780,7 @@ snapshots:
       eventsource-parser: 3.0.8
       express: 5.2.1
       express-rate-limit: 8.2.2(express@5.2.1)
-      hono: 4.12.21
+      hono: 4.12.25
       jose: 6.2.2
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
@@ -25863,7 +25875,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n_io/ai-assistant-sdk@1.21.0': {}
+  '@n8n_io/ai-assistant-sdk@1.21.1': {}
 
   '@n8n_io/license-sdk@2.25.0':
     dependencies:
@@ -26199,7 +26211,7 @@ snapshots:
 
   '@opentelemetry/exporter-logs-otlp-grpc@0.217.0(@opentelemetry/api@1.9.0)':
     dependencies:
-      '@grpc/grpc-js': 1.14.3
+      '@grpc/grpc-js': 1.14.4
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.7.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/otlp-exporter-base': 0.217.0(@opentelemetry/api@1.9.0)
@@ -26229,7 +26241,7 @@ snapshots:
 
   '@opentelemetry/exporter-metrics-otlp-grpc@0.217.0(@opentelemetry/api@1.9.0)':
     dependencies:
-      '@grpc/grpc-js': 1.14.3
+      '@grpc/grpc-js': 1.14.4
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.7.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/exporter-metrics-otlp-http': 0.217.0(@opentelemetry/api@1.9.0)
@@ -26268,7 +26280,7 @@ snapshots:
 
   '@opentelemetry/exporter-trace-otlp-grpc@0.217.0(@opentelemetry/api@1.9.0)':
     dependencies:
-      '@grpc/grpc-js': 1.14.3
+      '@grpc/grpc-js': 1.14.4
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.7.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/otlp-exporter-base': 0.217.0(@opentelemetry/api@1.9.0)
@@ -26363,7 +26375,7 @@ snapshots:
 
   '@opentelemetry/otlp-grpc-exporter-base@0.217.0(@opentelemetry/api@1.9.0)':
     dependencies:
-      '@grpc/grpc-js': 1.14.3
+      '@grpc/grpc-js': 1.14.4
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.7.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/otlp-exporter-base': 0.217.0(@opentelemetry/api@1.9.0)
@@ -29571,7 +29583,7 @@ snapshots:
 
   '@zilliz/milvus2-sdk-node@2.5.7':
     dependencies:
-      '@grpc/grpc-js': 1.14.3
+      '@grpc/grpc-js': 1.14.4
       '@grpc/proto-loader': 0.7.13
       '@opentelemetry/api': 1.9.0
       '@petamoriken/float16': 3.9.2
@@ -31684,7 +31696,7 @@ snapshots:
   dockerode@4.0.9:
     dependencies:
       '@balena/dockerignore': 1.0.2
-      '@grpc/grpc-js': 1.14.3
+      '@grpc/grpc-js': 1.14.4
       '@grpc/proto-loader': 0.7.13
       docker-modem: 5.0.6
       protobufjs: 7.5.8
@@ -33312,7 +33324,7 @@ snapshots:
 
   google-gax@4.6.1(encoding@0.1.13):
     dependencies:
-      '@grpc/grpc-js': 1.14.3
+      '@grpc/grpc-js': 1.14.4
       '@grpc/proto-loader': 0.7.13
       '@types/long': 4.0.2
       abort-controller: 3.0.0
@@ -33475,7 +33487,7 @@ snapshots:
     dependencies:
       parse-passwd: 1.0.0
 
-  hono@4.12.21: {}
+  hono@4.12.25: {}
 
   hookable@5.5.3: {}
 
@@ -36337,7 +36349,7 @@ snapshots:
 
   nice-grpc@2.1.12:
     dependencies:
-      '@grpc/grpc-js': 1.14.3
+      '@grpc/grpc-js': 1.14.4
       abort-controller-x: 0.4.3
       nice-grpc-common: 2.0.2
 

@@ -234,7 +234,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			const { WorkflowPublicationOutboxConsumer } = await import(
-				'@/workflows/workflow-publication-outbox-consumer'
+				'@/workflows/publication/workflow-publication-outbox-consumer'
 			);
 			Container.get(WorkflowPublicationOutboxConsumer).init();
 		}
@@ -264,12 +264,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			this.logger.debug('Instance settings loader init complete');
 		}
 
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
-		await this.initBinaryDataService();
-		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
