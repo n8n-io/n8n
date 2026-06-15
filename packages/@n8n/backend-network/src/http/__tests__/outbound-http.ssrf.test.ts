@@ -1,10 +1,12 @@
+import type { Logger } from '@n8n/backend-common';
 import type { Dispatcher } from 'undici';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfBridge, SsrfProtectionService } from '../../../ssrf';
-import { makeSsrfBridge } from '../../../ssrf/__tests__/mock-ssrf-bridge';
-import { type LocalServer, startServer } from '../../__tests__/local-server';
-import { createSsrfInterceptor, OutboundHttpFactory } from '../factory';
+import { type LocalServer, startServer } from './local-server';
+import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
+import { makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
+import { OutboundHttp } from '../outbound-http';
+import { createSsrfInterceptor } from '../undici/transport';
 
 // SSRF enforcement lives in a single place: the dispatcher interceptor.
 // This file proves it at two levels:
@@ -137,8 +139,8 @@ function makeBridge(blockedPath: string): { bridge: SsrfBridge; error: Error } {
 	return { bridge, error };
 }
 
-function makeFactory(): OutboundHttpFactory {
-	return new OutboundHttpFactory(mock<SsrfProtectionService>());
+function makeTransport(options?: Parameters<OutboundHttp['transport']>[0]) {
+	return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).transport(options);
 }
 
 // Walk the `cause` chain to the deepest error message. undici wraps a
@@ -173,7 +175,7 @@ describe('SSRF end-to-end', () => {
 	describe('asCustomFetch', () => {
 		it('blocks the initial request when SSRF rejects its URL', async () => {
 			const { bridge, error } = makeBridge('/start');
-			const fetchFn = makeFactory().create({ ssrf: bridge, proxy: false }).asCustomFetch();
+			const fetchFn = makeTransport({ ssrf: bridge, proxy: false }).asCustomFetch();
 
 			const rejection = await fetchFn(`${server.url}/start`).catch((e: unknown) => e);
 
@@ -185,7 +187,7 @@ describe('SSRF end-to-end', () => {
 
 		it('blocks a redirect to a target that SSRF rejects, even though the initial URL is allowed', async () => {
 			const { bridge } = makeBridge('/internal');
-			const fetchFn = makeFactory().create({ ssrf: bridge, proxy: false }).asCustomFetch();
+			const fetchFn = makeTransport({ ssrf: bridge, proxy: false }).asCustomFetch();
 
 			await expect(fetchFn(`${server.url}/start`)).rejects.toThrow();
 
@@ -197,7 +199,7 @@ describe('SSRF end-to-end', () => {
 
 		it('follows a redirect when every hop passes SSRF validation', async () => {
 			const { bridge } = makeBridge('/never-matches');
-			const fetchFn = makeFactory().create({ ssrf: bridge, proxy: false }).asCustomFetch();
+			const fetchFn = makeTransport({ ssrf: bridge, proxy: false }).asCustomFetch();
 
 			const res = await fetchFn(`${server.url}/start`);
 
@@ -208,7 +210,7 @@ describe('SSRF end-to-end', () => {
 
 		it('follows the redirect without validation when SSRF is disabled', async () => {
 			const { bridge } = makeBridge('/internal');
-			const fetchFn = makeFactory().create({ ssrf: 'disabled', proxy: false }).asCustomFetch();
+			const fetchFn = makeTransport({ ssrf: 'disabled', proxy: false }).asCustomFetch();
 
 			const res = await fetchFn(`${server.url}/start`);
 
@@ -222,7 +224,7 @@ describe('SSRF end-to-end', () => {
 	describe('getDispatcher', () => {
 		it('enforces SSRF on the dispatcher: a redirect to a rejected target is blocked', async () => {
 			const { bridge } = makeBridge('/internal');
-			const client = makeFactory().create({ ssrf: bridge, proxy: false });
+			const client = makeTransport({ ssrf: bridge, proxy: false });
 			const dispatcher = client.getDispatcher();
 
 			const { fetch: undiciFetch } = await import('undici');
@@ -238,7 +240,7 @@ describe('SSRF end-to-end', () => {
 
 		it('does not validate when SSRF is disabled (bare dispatcher)', async () => {
 			const { bridge } = makeBridge('/internal');
-			const client = makeFactory().create({ ssrf: 'disabled', proxy: false });
+			const client = makeTransport({ ssrf: 'disabled', proxy: false });
 			const dispatcher = client.getDispatcher();
 
 			const { fetch: undiciFetch } = await import('undici');

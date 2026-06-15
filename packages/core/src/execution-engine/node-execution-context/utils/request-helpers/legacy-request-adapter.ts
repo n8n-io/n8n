@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { NodeHttpClientFactory } from '@n8n/backend-network';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type {
 	INode,
@@ -24,7 +24,7 @@ export async function proxyRequestToAxios(
 
 	// The legacy path only enforces SSRF when the execution provides a bridge;
 	// otherwise it connects directly (no protection), so default to `'disabled'`.
-	const client = Container.get(NodeHttpClientFactory).create({
+	const client = Container.get(OutboundHttp).requests({
 		ssrf: additionalData?.ssrfBridge ?? 'disabled',
 	});
 

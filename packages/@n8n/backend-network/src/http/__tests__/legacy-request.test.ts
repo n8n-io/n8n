@@ -3,13 +3,13 @@ import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
-import { NodeHttpClientFactory } from '../node-http-client';
+import { OutboundHttp } from '../outbound-http';
 
-function makeFactory(): NodeHttpClientFactory {
-	return new NodeHttpClientFactory(mock<SsrfProtectionService>(), mock<Logger>());
+function makeFacade(): OutboundHttp {
+	return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>());
 }
 
-describe('NodeHttpClient.requestLegacy', () => {
+describe('OutboundHttp.requests requestLegacy', () => {
 	beforeEach(() => {
 		nock.cleanAll();
 	});
@@ -20,7 +20,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 		it('returns the body and fires onFetched on success', async () => {
 			nock(baseUrl).get('/ok').reply(200, 'hello');
 			const onFetched = vi.fn();
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			const body = await client.requestLegacy({ url: `${baseUrl}/ok` }, { onFetched });
 
@@ -30,7 +30,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 
 		it('returns the full response when resolveWithFullResponse is set', async () => {
 			nock(baseUrl).get('/ok').reply(200, 'hello');
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			const response = await client.requestLegacy({
 				url: `${baseUrl}/ok`,
@@ -43,7 +43,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 		it('rethrows an enriched error carrying the status, without firing onFetched', async () => {
 			nock(baseUrl).get('/bad').reply(403, 'Forbidden', { 'content-type': 'text/plain' });
 			const onFetched = vi.fn();
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			await expect(
 				client.requestLegacy({ url: `${baseUrl}/bad` }, { onFetched }),
@@ -62,7 +62,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 		it('returns the error body and fires onFetched when simple is false', async () => {
 			nock(baseUrl).get('/missing').reply(404, 'Not Found');
 			const onFetched = vi.fn();
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			const body = await client.requestLegacy(
 				{ url: `${baseUrl}/missing`, simple: false },
@@ -75,7 +75,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 
 		it('returns the full error response when simple is false and resolveWithFullResponse is set', async () => {
 			nock(baseUrl).get('/missing').reply(404, 'Not Found');
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			const response = await client.requestLegacy({
 				url: `${baseUrl}/missing`,
@@ -107,7 +107,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 					.get('/redirect')
 					.reply(301, '', { Location: `${otherOrigin}/test` });
 				nock(otherOrigin).get('/test').reply(200, reflectHeaders);
-				const client = makeFactory().create({ ssrf: 'disabled' });
+				const client = makeFacade().requests({ ssrf: 'disabled' });
 
 				const response = (await client.requestLegacy({
 					url: `${baseUrl}/redirect`,
@@ -129,7 +129,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 				.get('/redirect')
 				.reply(301, '', { Location: `${otherOrigin}/test` });
 			nock(otherOrigin).get('/test').reply(200, reflectHeaders);
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			const response = (await client.requestLegacy({
 				url: `${baseUrl}/redirect`,
@@ -152,7 +152,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 					.get('/redirect')
 					.reply(301, '', { Location: `${baseUrl}/test` });
 				nock(baseUrl).get('/test').reply(200, reflectHeaders);
-				const client = makeFactory().create({ ssrf: 'disabled' });
+				const client = makeFacade().requests({ ssrf: 'disabled' });
 
 				const response = (await client.requestLegacy({
 					url: `${baseUrl}/redirect`,
@@ -174,7 +174,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 				.get('/redirect')
 				.reply(301, '', { Location: `${baseUrl}/test` });
 			nock(baseUrl).get('/test').reply(200, 'Redirected');
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			const response = await client.requestLegacy({
 				url: `${baseUrl}/redirect`,
@@ -189,7 +189,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 				.get('/redirect')
 				.reply(301, '', { Location: `${baseUrl}/test` });
 			nock(baseUrl).get('/test').reply(200, 'Redirected');
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			await expect(
 				client.requestLegacy({
@@ -213,7 +213,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 				validateRedirectSync: vi.fn(),
 				createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
 			} as unknown as SsrfBridge;
-			const client = makeFactory().create({ ssrf: bridge });
+			const client = makeFacade().requests({ ssrf: bridge });
 
 			await client.requestLegacy({ baseURL: baseUrl, url: '/ok' });
 
@@ -225,7 +225,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 		const baseUrl = 'https://example.com';
 
 		it('blocks requests to disallowed domains', async () => {
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			await expect(
 				client.requestLegacy({ url: `${baseUrl}/data`, allowedDomains: 'other.com' }),
@@ -236,7 +236,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 			'allows requests to allowed domains when allowedDomains is %s',
 			async (allowedDomains) => {
 				nock(baseUrl).get('/data').reply(200, 'ok');
-				const client = makeFactory().create({ ssrf: 'disabled' });
+				const client = makeFacade().requests({ ssrf: 'disabled' });
 
 				const body = await client.requestLegacy({ url: `${baseUrl}/data`, allowedDomains });
 
@@ -247,7 +247,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 		it('blocks redirects to disallowed domains', async () => {
 			nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://not-allowed.com/data' });
 			nock('https://not-allowed.com').get('/data').reply(200, 'not-ok');
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			await expect(
 				client.requestLegacy({
@@ -263,7 +263,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 			async (allowedDomains) => {
 				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://allowed.com/data' });
 				nock('https://allowed.com').get('/data').reply(200, 'ok');
-				const client = makeFactory().create({ ssrf: 'disabled' });
+				const client = makeFacade().requests({ ssrf: 'disabled' });
 
 				const body = await client.requestLegacy({
 					url: `${baseUrl}/redirect`,
@@ -277,7 +277,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 
 		it('supports wildcard domains in allowedDomains', async () => {
 			nock('https://api.example.com').get('/data').reply(200, 'ok');
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			const body = await client.requestLegacy({
 				url: 'https://api.example.com/data',
@@ -288,7 +288,7 @@ describe('NodeHttpClient.requestLegacy', () => {
 		});
 
 		it('blocks wildcard domains that do not match', async () => {
-			const client = makeFactory().create({ ssrf: 'disabled' });
+			const client = makeFacade().requests({ ssrf: 'disabled' });
 
 			await expect(
 				client.requestLegacy({ url: 'https://blocked.com/data', allowedDomains: '*.example.com' }),

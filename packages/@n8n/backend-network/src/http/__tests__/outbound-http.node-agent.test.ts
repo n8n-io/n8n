@@ -1,17 +1,18 @@
+import type { Logger } from '@n8n/backend-common';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import http from 'node:http';
 import https from 'node:https';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfProtectionService } from '../../../ssrf';
-import { makeLookupFn, makeSsrfBridge } from '../../../ssrf/__tests__/mock-ssrf-bridge';
-import { OutboundHttpFactory } from '../factory';
+import type { SsrfProtectionService } from '../../ssrf';
+import { makeLookupFn, makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
+import { OutboundHttp } from '../outbound-http';
 
-function makeFactory(): OutboundHttpFactory {
+function makeFacade(): OutboundHttp {
 	const service = mock<SsrfProtectionService>();
 	vi.mocked(service.createSecureLookup).mockReturnValue(makeLookupFn());
-	return new OutboundHttpFactory(service);
+	return new OutboundHttp(service, mock<Logger>());
 }
 
 // HttpsProxyAgent stores `lookup` in `connectOpts` rather than `options`
@@ -30,7 +31,7 @@ function getAgentLookup(agent: http.Agent | https.Agent): unknown {
 
 describe('getNodeAgent', () => {
 	it('proxy: false → plain http/https.Agent (no proxy class)', () => {
-		const { httpAgent, httpsAgent } = makeFactory().create({ proxy: false }).getNodeAgent();
+		const { httpAgent, httpsAgent } = makeFacade().transport({ proxy: false }).getNodeAgent();
 
 		expect(httpAgent).toBeInstanceOf(http.Agent);
 		expect(httpsAgent).toBeInstanceOf(https.Agent);
@@ -39,8 +40,8 @@ describe('getNodeAgent', () => {
 	});
 
 	it('proxy: explicit URL → HttpProxyAgent / HttpsProxyAgent', () => {
-		const { httpAgent, httpsAgent } = makeFactory()
-			.create({ proxy: 'http://proxy.internal:3128' })
+		const { httpAgent, httpsAgent } = makeFacade()
+			.transport({ proxy: 'http://proxy.internal:3128' })
 			.getNodeAgent();
 
 		expect(httpAgent).toBeInstanceOf(HttpProxyAgent);
@@ -48,14 +49,14 @@ describe('getNodeAgent', () => {
 	});
 
 	it('proxy: env → custom env-routing agents (http/https.Agent subclasses)', () => {
-		const { httpAgent, httpsAgent } = makeFactory().create({ proxy: 'env' }).getNodeAgent();
+		const { httpAgent, httpsAgent } = makeFacade().transport({ proxy: 'env' }).getNodeAgent();
 
 		expect(httpAgent).toBeInstanceOf(http.Agent);
 		expect(httpsAgent).toBeInstanceOf(https.Agent);
 	});
 
 	it('returns the same agent instances on repeated calls', () => {
-		const client = makeFactory().create();
+		const client = makeFacade().transport();
 		const a1 = client.getNodeAgent();
 		const a2 = client.getNodeAgent();
 
@@ -64,7 +65,7 @@ describe('getNodeAgent', () => {
 	});
 
 	it('builds fresh agents that forward per-call agent options', () => {
-		const client = makeFactory().create({ proxy: false });
+		const client = makeFacade().transport({ proxy: false });
 		const cached = client.getNodeAgent();
 		const custom = client.getNodeAgent({ rejectUnauthorized: false });
 
@@ -84,8 +85,8 @@ describe('getNodeAgent SSRF lookup injection', () => {
 			const bridge = makeSsrfBridge({
 				createSecureLookup: vi.fn().mockReturnValue(lookupFn),
 			});
-			const { httpAgent, httpsAgent } = makeFactory()
-				.create({ ssrf: bridge, proxy: false })
+			const { httpAgent, httpsAgent } = makeFacade()
+				.transport({ ssrf: bridge, proxy: false })
 				.getNodeAgent();
 
 			expect(bridge.createSecureLookup).toHaveBeenCalledTimes(1);
@@ -94,8 +95,8 @@ describe('getNodeAgent SSRF lookup injection', () => {
 		});
 
 		it('does NOT inject lookup when SSRF is disabled', () => {
-			const { httpAgent, httpsAgent } = makeFactory()
-				.create({ ssrf: 'disabled', proxy: false })
+			const { httpAgent, httpsAgent } = makeFacade()
+				.transport({ ssrf: 'disabled', proxy: false })
 				.getNodeAgent();
 
 			expect(getAgentLookup(httpAgent)).toBeUndefined();
@@ -109,8 +110,8 @@ describe('getNodeAgent SSRF lookup injection', () => {
 			const bridge = makeSsrfBridge({
 				createSecureLookup: vi.fn().mockReturnValue(lookupFn),
 			});
-			const { httpAgent, httpsAgent } = makeFactory()
-				.create({ ssrf: bridge, proxy: 'http://proxy.internal:3128' })
+			const { httpAgent, httpsAgent } = makeFacade()
+				.transport({ ssrf: bridge, proxy: 'http://proxy.internal:3128' })
 				.getNodeAgent();
 
 			// SSRF lookup is applied to direct connections only. Behind a proxy it
@@ -126,8 +127,8 @@ describe('getNodeAgent SSRF lookup injection', () => {
 			const bridge = makeSsrfBridge({
 				createSecureLookup: vi.fn().mockReturnValue(lookupFn),
 			});
-			const { httpAgent, httpsAgent } = makeFactory()
-				.create({ ssrf: bridge, proxy: 'env' })
+			const { httpAgent, httpsAgent } = makeFacade()
+				.transport({ ssrf: bridge, proxy: 'env' })
 				.getNodeAgent();
 
 			expect(bridge.createSecureLookup).toHaveBeenCalledTimes(1);

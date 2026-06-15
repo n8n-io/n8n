@@ -32,7 +32,7 @@ export interface LegacyRequestCallbacks {
  * translation, SSRF pre-flight, domain allowlist enforcement, response
  * normalisation and axios error massaging.
  *
- * Exposed to callers as {@link NodeHttpClient.requestLegacy}; kept in its own
+ * Exposed to callers as {@link HttpRequestClient.requestLegacy}; kept in its own
  * module so the whole legacy path can be removed in one go once the deprecated
  * request helpers are gone.
  *
