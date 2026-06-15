@@ -671,7 +671,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return condition;
 	}
 
-	private getFindExecutionsForPublicApiCondition(params: {
+	getFindExecutionsForPublicApiCondition(params: {
 		lastId?: string;
 		workflowIds?: string[];
 		status?: ExecutionStatus;
@@ -687,41 +687,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		};
 
 		return where;
-	}
-
-	async getExecutionsForPublicApi(params: {
-		limit: number;
-		includeData?: boolean;
-		lastId?: string;
-		workflowIds?: string[];
-		status?: ExecutionStatus;
-		excludedExecutionsIds?: string[];
-	}): Promise<IExecutionBase[]> {
-		const where = this.getFindExecutionsForPublicApiCondition(params);
-
-		return await this.findMultipleExecutions(
-			{
-				select: [
-					'id',
-					'mode',
-					'retryOf',
-					'retrySuccessId',
-					'startedAt',
-					'stoppedAt',
-					'workflowId',
-					'waitTill',
-					'finished',
-					'status',
-				],
-				where,
-				order: { id: 'DESC' },
-				take: params.limit,
-			},
-			{
-				includeData: params.includeData,
-				unflattenData: true,
-			},
-		);
 	}
 
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {

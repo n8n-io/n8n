@@ -14,7 +14,6 @@ import { setActivePinia } from 'pinia';
 import { computed, shallowRef } from 'vue';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
@@ -67,7 +66,6 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	setActivePinia(pinia);
 
 	const workflow = createTestWorkflow({ nodes, connections });
-	const workflowsStore = useWorkflowsStore();
 
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.hydrate(workflow);
@@ -79,11 +77,10 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	}
 
 	if (runData) {
-		// The component reads run data via `workflowsStore.getWorkflowExecution`, which
-		// resolves through the execution-state store keyed by `workflowsStore.workflowId`.
-		useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		).setWorkflowExecutionData({
+		// The component reads run data via `injectWorkflowExecutionStateStore()`,
+		// which resolves through the execution-state store keyed by the injected
+		// workflow document's id.
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
 			id: '',
 			workflowData: {
 				id: '',

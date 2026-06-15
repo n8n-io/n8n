@@ -1,3 +1,4 @@
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -25,6 +26,20 @@ export class OAuthServerModule implements ModuleInterface {
 		);
 		const { OAuthTokenService } = await import('./oauth-token.service');
 		Container.get(OAuthTokenVerifierProxy).registerProvider(Container.get(OAuthTokenService));
+
+		const { WorkflowMcpTriggerResourceResolver } = await import(
+			'./protected-resource-resolvers/workflow-mcp-trigger-resource.resolver'
+		);
+		Container.get(ProtectedResourceRegistry).registerResolver(
+			Container.get(WorkflowMcpTriggerResourceResolver),
+		);
+
+		const { WorkflowMcpTestTriggerResourceResolver } = await import(
+			'./protected-resource-resolvers/workflow-mcp-test-trigger-resource.resolver'
+		);
+		Container.get(ProtectedResourceRegistry).registerResolver(
+			Container.get(WorkflowMcpTestTriggerResourceResolver),
+		);
 	}
 
 	async entities() {

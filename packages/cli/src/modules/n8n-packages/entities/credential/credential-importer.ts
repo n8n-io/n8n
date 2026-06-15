@@ -23,6 +23,7 @@ export class CredentialImporter {
 			.match(request.requirements, {
 				targetProject: request.targetProject,
 				user: request.user,
+				credentialBindings: request.credentialBindings,
 			});
 	}
 

@@ -291,9 +291,11 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	/**
-	 * Wait for the plan-review panel to appear and approve it. New workflow
-	 * builds now route through the planner and pause at `awaiting_approval`
-	 * until the user approves — without this step the build never starts.
+	 * Wait for the plan-review panel to appear and approve it. Since the
+	 * planning guardrails (#31984), the planner only engages for coordinated
+	 * multi-artifact work or when the prompt explicitly asks to review a plan
+	 * first — single-workflow builds skip plan review entirely, so only call
+	 * this from tests whose prompt requests a plan.
 	 */
 	async approveBuildPlan(timeout = 120_000): Promise<void> {
 		await this.getPlanApproveButton().waitFor({ state: 'visible', timeout });
