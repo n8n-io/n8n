@@ -175,7 +175,8 @@ describe('outbound transport integration', () => {
 			await httpGetWithAgent('http://host-a.invalid/x', httpAgent);
 			await httpGetWithAgent('http://host-b.invalid/x', httpAgent);
 
-			const proxyCache = (httpAgent as unknown as { proxyCache: Map<string, unknown> }).proxyCache;
+			const proxyCache = (httpAgent as unknown as { router: { proxyCache: Map<string, unknown> } })
+				.router.proxyCache;
 			expect(proxyCache.size).toBe(1);
 			expect(proxy.captured.length).toBeGreaterThanOrEqual(2);
 		});

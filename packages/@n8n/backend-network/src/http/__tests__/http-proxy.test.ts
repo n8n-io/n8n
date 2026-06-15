@@ -4,8 +4,9 @@ import type { AddressInfo } from 'net';
 import nock from 'nock';
 import { promisify } from 'util';
 
+import { EnvProxyHttpAgent } from '../env-proxy-http-agent';
+import { EnvProxyHttpsAgent } from '../env-proxy-https-agent';
 import { installGlobalProxyAgent, resolveProxyUrl, uninstallGlobalProxyAgent } from '../http-proxy';
-import { EnvProxyHttpAgent, EnvProxyHttpsAgent } from '../node-agents';
 
 interface TestResponse {
 	message: string;

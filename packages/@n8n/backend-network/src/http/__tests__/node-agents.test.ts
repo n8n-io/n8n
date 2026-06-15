@@ -4,7 +4,9 @@ import http from 'node:http';
 import https from 'node:https';
 
 import { makeLookupFn, makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
-import { buildNodeAgents, EnvProxyHttpAgent, EnvProxyHttpsAgent } from '../node-agents';
+import { EnvProxyHttpAgent } from '../env-proxy-http-agent';
+import { EnvProxyHttpsAgent } from '../env-proxy-https-agent';
+import { buildNodeAgents } from '../node-agents';
 
 // HttpsProxyAgent stores `lookup` in `connectOpts` rather than `options`
 // (unlike http.Agent and HttpProxyAgent which use `options`).

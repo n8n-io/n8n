@@ -5,7 +5,8 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { LoggerProxy } from 'n8n-workflow';
 import { getProxyForUrl } from 'proxy-from-env';
 
-import { EnvProxyHttpAgent, EnvProxyHttpsAgent } from './node-agents';
+import { EnvProxyHttpAgent } from './env-proxy-http-agent';
+import { EnvProxyHttpsAgent } from './env-proxy-https-agent';
 
 /**
  * Resolves the proxy URL configured via environment variables
