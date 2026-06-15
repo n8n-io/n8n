@@ -135,6 +135,34 @@ export class MessageAnAgent implements INodeType {
 				},
 			},
 			{
+				displayName: 'Invoke Agent',
+				name: 'invokeMode',
+				type: 'options',
+				noDataExpression: true,
+				default: 'perItem',
+				description: 'Whether to call the agent once per input item or a single time for all items',
+				options: [
+					{
+						name: 'Once Per Item',
+						value: 'perItem',
+						description: 'Call the agent separately for each input item',
+					},
+					{
+						name: 'Once for All Items',
+						value: 'allItems',
+						description: 'Call the agent a single time; it can read all input items',
+					},
+				],
+			},
+			{
+				displayName: "Allow Agent to Access Other Nodes' Data",
+				name: 'allowOtherNodesData',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether to give the agent a tool to read other workflow nodes' execution data, beyond its own input",
+			},
+			{
 				displayName: 'Require Specific Output Format',
 				name: 'useStructuredOutput',
 				type: 'boolean',
@@ -233,8 +261,12 @@ export class MessageAnAgent implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const executionId = this.getExecutionId() ?? crypto.randomUUID();
+		const invokeMode = this.getNodeParameter('invokeMode', 0, 'perItem') as string;
+		const allowOtherNodesData = this.getNodeParameter('allowOtherNodesData', 0, false) as boolean;
+		const runOnceForAll = invokeMode === 'allItems';
+		const loopCount = runOnceForAll ? Math.min(1, items.length) : items.length;
 
-		for (let i = 0; i < items.length; i++) {
+		for (let i = 0; i < loopCount; i++) {
 			try {
 				const agentIdRlc = this.getNodeParameter('agentId', i) as {
 					mode: string;
@@ -254,7 +286,13 @@ export class MessageAnAgent implements INodeType {
 				const outputSchema = getStructuredOutputSchema(this, i);
 
 				const result = await this.executeAgent(
-					{ agentId, sessionId: sessionIdOverride || undefined, outputSchema },
+					{
+						agentId,
+						sessionId: sessionIdOverride || undefined,
+						outputSchema,
+						inputDataScope: runOnceForAll ? 'all' : 'item',
+						exposeWorkflowData: allowOtherNodesData,
+					},
 					message,
 					executionId,
 					i,
