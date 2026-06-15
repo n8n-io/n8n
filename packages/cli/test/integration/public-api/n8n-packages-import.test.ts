@@ -40,7 +40,6 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
-	testServer.license.enable(LICENSE_FEATURES.N8N_PACKAGES);
 	Container.get(GlobalConfig).publicApi.packagesEnabled = true;
 });
 

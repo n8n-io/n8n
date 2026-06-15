@@ -1,6 +1,6 @@
 import { ExportWorkflowsRequestDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Licensed, Post, RestController } from '@n8n/decorators';
+import { Body, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 import type { Readable } from 'node:stream';
 
@@ -11,7 +11,6 @@ export class N8nPackagesController {
 	constructor(private readonly packagesService: N8nPackagesService) {}
 
 	@Post('/export')
-	@Licensed('feat:n8nPackages')
 	async exportWorkflows(
 		req: AuthenticatedRequest,
 		res: Response,
