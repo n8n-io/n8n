@@ -1,5 +1,5 @@
-import { ApplicationError } from '@n8n/errors';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
+import { NodeOperationError, UserError } from 'n8n-workflow';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
 
@@ -13,7 +13,7 @@ const POSTGRES_TYPE_PATTERN =
 function assertValidCast(cast: string | undefined): void {
 	if (cast === undefined || cast === '') return;
 	if (!POSTGRES_TYPE_PATTERN.test(cast)) {
-		throw new ApplicationError(`Invalid column type: "${cast}"`);
+		throw new UserError(`Invalid column type: "${cast}"`);
 	}
 }
 
@@ -174,7 +174,7 @@ export async function pgQuery(
 			return result;
 		});
 	}
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
+	throw new UserError('multiple, independently or transaction are valid options', {
 		level: 'warning',
 	});
 }
@@ -275,9 +275,10 @@ export async function pgQueryV2(
 			return result;
 		});
 	}
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
-		level: 'warning',
-	});
+	throw new NodeOperationError(
+		this.getNode(),
+		'multiple, independently or transaction are valid options',
+	);
 }
 
 /**
@@ -367,7 +368,7 @@ export async function pgInsert(
 		});
 	}
 
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
+	throw new UserError('multiple, independently or transaction are valid options', {
 		level: 'warning',
 	});
 }
@@ -478,9 +479,10 @@ export async function pgInsertV2(
 		});
 	}
 
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
-		level: 'warning',
-	});
+	throw new NodeOperationError(
+		this.getNode(),
+		'multiple, independently or transaction are valid options',
+	);
 }
 
 /**
@@ -610,7 +612,7 @@ export async function pgUpdate(
 			});
 		}
 	}
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
+	throw new UserError('multiple, independently or transaction are valid options', {
 		level: 'warning',
 	});
 }
@@ -747,7 +749,8 @@ export async function pgUpdateV2(
 			});
 		}
 	}
-	throw new ApplicationError('multiple, independently or transaction are valid options', {
-		level: 'warning',
-	});
+	throw new NodeOperationError(
+		this.getNode(),
+		'multiple, independently or transaction are valid options',
+	);
 }
