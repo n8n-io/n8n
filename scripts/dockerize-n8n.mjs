@@ -213,6 +213,12 @@ async function main() {
 
 	const n8nBuildArgs = [...nodeVersionArgs];
 	if (turboApi) n8nBuildArgs.push(`TURBO_API=${turboApi}`, `TURBO_TEAM=${turboTeam}`);
+	// The in-image build runs build-n8n.mjs itself, so env the host build relied
+	// on must cross the boundary as a build arg. INCLUDE_TEST_CONTROLLER keeps the
+	// e2e controller in CI test images (the D1 COPY path got it for free).
+	if (process.env.INCLUDE_TEST_CONTROLLER) {
+		n8nBuildArgs.push(`INCLUDE_TEST_CONTROLLER=${process.env.INCLUDE_TEST_CONTROLLER}`);
+	}
 
 	const n8nBuildTime = await buildDockerImage({
 		name: 'n8n',

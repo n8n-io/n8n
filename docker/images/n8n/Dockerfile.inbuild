@@ -19,11 +19,17 @@ FROM node:${NODE_VERSION}-alpine3.22@sha256:191c9f0080fcbbc6547a85dc0ff798807221
 RUN apk add --no-cache python3 make g++ bash
 RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 
-# CI=true makes build-n8n.mjs skip the local package.json backup/restore dance
-# (immutable build layer) and matches the env hashed into Turbo's cache keys.
+# CI=true matches the env hashed into Turbo's cache keys (so in-image hits the
+# same entries as a CI host build) and selects build-n8n.mjs's CI code paths.
 ENV CI=true
 ENV TURBO_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+
+# Propagated from the caller (dockerize-n8n.mjs). The e2e test controller is
+# pruned unless INCLUDE_TEST_CONTROLLER=true — CI test images opt in (the
+# playwright harness loads it); production/release builds leave it unset.
+ARG INCLUDE_TEST_CONTROLLER
+ENV INCLUDE_TEST_CONTROLLER=${INCLUDE_TEST_CONTROLLER}
 
 # Remote Turbo cache coordinates. TURBO_API (server URL) and TURBO_TEAM (slug)
 # are not secret and arrive as build args; TURBO_TOKEN is mounted as a secret
