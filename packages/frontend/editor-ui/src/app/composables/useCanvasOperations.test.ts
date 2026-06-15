@@ -3776,7 +3776,8 @@ describe('useCanvasOperations', () => {
 			expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledWith({ connection });
 		});
 
-		it('replays group auto-extension when redoing a connection add', () => {
+		it('re-adds the connection without re-running group validation', () => {
+			// Undo restores an already-valid state, so the connection re-adds without validation.
 			const toast = useToast();
 			const nodeA = createGroupedNode('a', 'A');
 			const nodeB = createGroupedNode('b', 'B');
@@ -3798,7 +3799,7 @@ describe('useCanvasOperations', () => {
 			const { revertDeleteConnection } = useCanvasOperations();
 			revertDeleteConnection(connection);
 
-			expect(addNodesToGroupSpy).toHaveBeenCalledWith(group.id, [nodeA.id]);
+			expect(addNodesToGroupSpy).not.toHaveBeenCalled();
 			expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledWith({ connection });
 			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 		});
