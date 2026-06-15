@@ -2269,7 +2269,10 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		createConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection));
+		// Undo restores an already-valid state, so don't re-gate it on group validation.
+		createConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection), {
+			validateNodeGroups: false,
+		});
 	}
 
 	function revalidateNodeConnections(id: string, connectionMode: CanvasConnectionMode) {
