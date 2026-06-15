@@ -268,11 +268,10 @@ export class WorkflowTriggerActivator {
 	}
 
 	/**
-	 * Registers the webhook triggers of the given node set one node at a time. A
-	 * node's webhooks are registered atomically: if any of them fail, that node's
-	 * already-registered webhooks are rolled back and the node is recorded as a
-	 * failure, but other nodes are left running. Successful nodes are added to
-	 * `outcome.activated`.
+	 * Registers the webhook triggers of the given node set one node at a time. If a
+	 * node fails to register one of its webhooks, the node is recorded as a failure
+	 * but any webhooks it already registered are left in place, and the remaining
+	 * nodes are still attempted. Successful nodes are added to `outcome.activated`.
 	 */
 	private async registerWebhookTriggers(
 		workflow: Workflow,
@@ -283,8 +282,6 @@ export class WorkflowTriggerActivator {
 		const webhooksByNode = this.groupWebhookTriggersByNode(workflow, additionalData, nodeIds);
 
 		for (const [nodeId, { nodeName, webhooks }] of webhooksByNode) {
-			const registeredWebhooks: IWebhookData[] = [];
-
 			try {
 				for (const webhookData of webhooks) {
 					await this.webhookTriggerRegistrar.register({
@@ -293,11 +290,9 @@ export class WorkflowTriggerActivator {
 						mode: 'trigger',
 						activation: 'update',
 					});
-					registeredWebhooks.push(webhookData);
 				}
 				outcome.activated.push(nodeId);
 			} catch (error) {
-				await this.clearRegisteredWebhookTriggers(workflow, registeredWebhooks);
 				outcome.failures.push({ nodeId, nodeName, error: ensureError(error) });
 			}
 		}
@@ -366,35 +361,6 @@ export class WorkflowTriggerActivator {
 		return this.webhookTriggerRegistrar
 			.getWebhookTriggers(workflow, additionalData)
 			.filter((webhookData) => nodeIds.has(workflow.getNode(webhookData.node)?.id ?? ''));
-	}
-
-	private async clearRegisteredWebhookTriggers(workflow: Workflow, webhooks: IWebhookData[]) {
-		if (webhooks.length === 0) return;
-
-		try {
-			const removedNodeNames: string[] = [];
-
-			for (const webhookData of webhooks) {
-				const nodeName = await this.webhookTriggerRegistrar.deregister({
-					workflow,
-					webhookData,
-				});
-				removedNodeNames.push(nodeName);
-			}
-
-			await this.workflowStaticDataService.saveStaticData(workflow);
-
-			await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
-				workflow.id,
-				removedNodeNames,
-			);
-		} catch (clearError) {
-			const error = ensureError(clearError);
-			this.errorReporter.error(error);
-			this.logger.error(
-				`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error.message}"`,
-			);
-		}
 	}
 
 	/**

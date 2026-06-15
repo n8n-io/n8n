@@ -387,7 +387,7 @@ describe('WorkflowTriggerActivator', () => {
 		expect(workflowRepository.updateWorkflowTriggerCount).toHaveBeenCalled();
 	});
 
-	test('rolls back a webhook node atomically when one of its webhooks fails', async () => {
+	test('records a node failure without tearing down its already-registered webhooks when one fails', async () => {
 		jest
 			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
 			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
@@ -399,7 +399,6 @@ describe('WorkflowTriggerActivator', () => {
 		webhookTriggerRegistrar.register
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('second webhook failed'));
-		webhookTriggerRegistrar.deregister.mockResolvedValueOnce('Webhook');
 		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
 		nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
 
@@ -430,10 +429,9 @@ describe('WorkflowTriggerActivator', () => {
 				error: expect.objectContaining({ message: 'second webhook failed' }),
 			},
 		]);
-		// The first (already-registered) webhook of the node is rolled back.
-		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
-			'Webhook',
-		]);
+		// The first (already-registered) webhook of the node is left in place.
+		expect(webhookTriggerRegistrar.deregister).not.toHaveBeenCalled();
+		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).not.toHaveBeenCalled();
 	});
 
 	test('isolates a failing non-webhook trigger, leaving the others running', async () => {
