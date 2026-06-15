@@ -4,7 +4,7 @@ import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { WorkflowExpression } from 'n8n-workflow';
+import { WebhookPathTakenError, WorkflowExpression } from 'n8n-workflow';
 
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type {
@@ -326,6 +326,68 @@ describe('WorkflowTriggerActivator', () => {
 		// The surviving node's webhook is never torn down by the failing node.
 		expect(webhookTriggerRegistrar.deregister).not.toHaveBeenCalled();
 		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).not.toHaveBeenCalled();
+	});
+
+	test('rolls back successful webhook nodes and rejects on deterministic webhook conflicts', async () => {
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+
+		const workflowRepository = mock<WorkflowRepository>();
+		const workflowStaticDataService = mock<WorkflowStaticDataService>();
+		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+		const webhookA = mock<IWebhookData>({ node: 'Webhook A' });
+		const webhookB = mock<IWebhookData>({ node: 'Webhook B' });
+		const conflict = new WebhookPathTakenError('Webhook B');
+		webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookA, webhookB]);
+		webhookTriggerRegistrar.register
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(conflict);
+		webhookTriggerRegistrar.deregister.mockResolvedValueOnce('Webhook A');
+		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+
+		const activator = new WorkflowTriggerActivator(
+			logger,
+			mock<ErrorReporter>(),
+			createNodeTypes(),
+			workflowRepository,
+			workflowStaticDataService,
+			enabledWorkflowsConfig(),
+			mock<TriggerExecutionContextFactory>(),
+			webhookTriggerRegistrar,
+			nonWebhookTriggerRegistrar,
+			mock<TriggerCountService>(),
+		);
+
+		await expect(
+			activator.activate(
+				mock<WorkflowEntity>({
+					id: 'wf-1',
+					name: 'Test workflow',
+					staticData: {},
+					settings: {},
+				}),
+				{
+					nodes: [
+						node('webhook-a', 'webhook', { name: 'Webhook A' }),
+						node('webhook-b', 'webhook', { name: 'Webhook B' }),
+					],
+					connections: {},
+				},
+				new Set(['webhook-a', 'webhook-b']),
+			),
+		).rejects.toBe(conflict);
+
+		expect(webhookTriggerRegistrar.deregister).toHaveBeenCalledWith({
+			workflow: expect.anything(),
+			webhookData: webhookA,
+		});
+		expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+			'Webhook A',
+		]);
+		expect(nonWebhookTriggerRegistrar.register).not.toHaveBeenCalled();
+		expect(workflowRepository.updateWorkflowTriggerCount).not.toHaveBeenCalled();
+		expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledTimes(1);
 	});
 
 	test('rolls back a webhook node atomically when one of its webhooks fails', async () => {

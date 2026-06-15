@@ -7,7 +7,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { WebhookPathTakenError, ensureError } from 'n8n-workflow';
+import { ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
@@ -117,22 +117,13 @@ export class WorkflowPublicationApplier {
 
 	/**
 	 * Maps a per-node activation outcome to a publication result. With every node
-	 * activated it is a full success. A deterministic failure
-	 * (`WebhookPathTakenError`, i.e. a webhook path already owned by another
-	 * workflow) will recur on retry, so it is reported as `failed` rather than
-	 * `partial`. Any other failure leaves the surviving triggers running and is
-	 * reported as `partial`: the new version stays published and re-publishing can
-	 * recover it.
+	 * activated it is a full success. Any returned failure leaves the surviving
+	 * triggers running and is reported as `partial`: the new version stays
+	 * published and re-publishing can recover it. Activation errors that must fail
+	 * the whole publication are thrown by the activator after rollback.
 	 */
 	private classifyActivationOutcome(outcome: TriggerActivationOutcome): PublicationResult {
 		if (outcome.failures.length === 0) return { type: 'completed' };
-
-		const deterministicFailure = outcome.failures.find(
-			(failure) => failure.error instanceof WebhookPathTakenError,
-		);
-		if (deterministicFailure) {
-			return { type: 'failed', error: deterministicFailure.error };
-		}
 
 		return {
 			type: 'partial',
