@@ -213,11 +213,13 @@ async function main() {
 
 	const n8nBuildArgs = [...nodeVersionArgs];
 	if (turboApi) n8nBuildArgs.push(`TURBO_API=${turboApi}`, `TURBO_TEAM=${turboTeam}`);
-	// The in-image build runs build-n8n.mjs itself, so env the host build relied
-	// on must cross the boundary as a build arg. INCLUDE_TEST_CONTROLLER keeps the
-	// e2e controller in CI test images (the D1 COPY path got it for free).
-	if (process.env.INCLUDE_TEST_CONTROLLER) {
-		n8nBuildArgs.push(`INCLUDE_TEST_CONTROLLER=${process.env.INCLUDE_TEST_CONTROLLER}`);
+	// The in-image build runs build-n8n.mjs itself, so build env the host build
+	// received must cross the boundary as a build arg (the D1 COPY path got the
+	// host's already-built compiled/ for free). INCLUDE_TEST_CONTROLLER keeps the
+	// e2e controller in CI test images; BUILD_WITH_COVERAGE instruments the build
+	// (it's in turbo's globalEnv, so it also keys the cache).
+	for (const name of ['INCLUDE_TEST_CONTROLLER', 'BUILD_WITH_COVERAGE']) {
+		if (process.env[name]) n8nBuildArgs.push(`${name}=${process.env[name]}`);
 	}
 
 	const n8nBuildTime = await buildDockerImage({

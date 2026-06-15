@@ -28,8 +28,12 @@ ENV NODE_ENV=production
 # Propagated from the caller (dockerize-n8n.mjs). The e2e test controller is
 # pruned unless INCLUDE_TEST_CONTROLLER=true — CI test images opt in (the
 # playwright harness loads it); production/release builds leave it unset.
+# BUILD_WITH_COVERAGE instruments the build for the coverage image variant; it's
+# in turbo's globalEnv so it also keys the cache (must be set before the build).
 ARG INCLUDE_TEST_CONTROLLER
 ENV INCLUDE_TEST_CONTROLLER=${INCLUDE_TEST_CONTROLLER}
+ARG BUILD_WITH_COVERAGE
+ENV BUILD_WITH_COVERAGE=${BUILD_WITH_COVERAGE}
 
 # Remote Turbo cache coordinates. TURBO_API (server URL) and TURBO_TEAM (slug)
 # are not secret and arrive as build args; TURBO_TOKEN is mounted as a secret
