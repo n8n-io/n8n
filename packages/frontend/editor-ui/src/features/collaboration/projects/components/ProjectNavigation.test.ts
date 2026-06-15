@@ -176,6 +176,23 @@ describe('ProjectsNavigation', () => {
 		expect(getByText('Projects')).toBeVisible();
 	});
 
+	it('should render a fallback icon for projects with no icon set', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		const projectWithoutIcon = createProjectListItem('team');
+		projectWithoutIcon.icon = null;
+		projectsStore.myProjects = [projectWithoutIcon];
+
+		const { getAllByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		const items = getAllByTestId('project-menu-item');
+		expect(items).toHaveLength(1);
+		expect(items[0].querySelector('svg')).toBeInTheDocument();
+	});
+
 	it('should not render shared menu item when only one verified user', async () => {
 		// Only one verified user
 		usersStore.allUsers = [

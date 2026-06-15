@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nButton, N8nDropdownMenu, N8nHeading, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nDropdownMenu, N8nHeading, N8nIconButton } from '@n8n/design-system';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -19,8 +19,11 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const store = useInstanceAiSettingsStore();
 
-const connections = computed(() => store.connections);
+const props = defineProps<{
+	dropdownPortalTarget?: HTMLElement;
+}>();
 
+const connections = computed(() => store.connections);
 const isVisible = computed(
 	() =>
 		!store.isLocalGatewayDisabledByAdmin &&
@@ -50,6 +53,7 @@ const addItems = computed(() => {
 });
 
 const hasAddableConnection = computed(() => addItems.value.length > 0);
+const addConnectionLabel = computed(() => i18n.baseText('instanceAi.connections.add.label'));
 
 function getRowActions(type: ConnectionType, status: ConnectionStatus): RowAction[] {
 	if (type === 'browser-use') return ['settings'];
@@ -90,19 +94,30 @@ async function handleRemove(type: ConnectionType) {
 </script>
 
 <template>
-	<div v-if="isVisible" :class="[$style.section, $style.card]">
+	<div v-if="isVisible" :class="$style.section">
 		<div :class="$style.header">
-			<N8nHeading tag="h3" size="small" bold>
+			<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 				{{ i18n.baseText('instanceAi.connections.title') }}
 			</N8nHeading>
-			<N8nDropdownMenu
-				v-if="hasAddableConnection"
-				:items="addItems"
-				:activator-icon="{ type: 'icon', value: 'plus' }"
-				placement="bottom-end"
-				data-test-id="instance-ai-connections-add"
-				@select="openModal"
-			/>
+			<div v-if="hasAddableConnection" :class="$style.headerActions">
+				<N8nDropdownMenu
+					:items="addItems"
+					placement="bottom-end"
+					:portal-target="props.dropdownPortalTarget"
+					data-test-id="instance-ai-connections-add"
+					@select="openModal"
+				>
+					<template #trigger>
+						<N8nIconButton
+							icon="plus"
+							variant="ghost"
+							size="small"
+							icon-size="medium"
+							:aria-label="addConnectionLabel"
+						/>
+					</template>
+				</N8nDropdownMenu>
+			</div>
 		</div>
 
 		<div v-if="connections.length > 0" :class="$style.list">
@@ -114,6 +129,7 @@ async function handleRemove(type: ConnectionType) {
 				:icon="ICON_MAP[conn.type]"
 				:status="conn.status"
 				:actions="getRowActions(conn.type, conn.status)"
+				:dropdown-portal-target="props.dropdownPortalTarget"
 				@connect="openModal(conn.type)"
 				@disconnect="handleDisconnect(conn.type)"
 				@open-settings="openModal(conn.type)"
@@ -122,7 +138,6 @@ async function handleRemove(type: ConnectionType) {
 		</div>
 
 		<div v-else :class="$style.empty">
-			<N8nIcon icon="link" :size="30" :class="$style.emptyIcon" />
 			<span>{{ i18n.baseText('instanceAi.connections.empty.title') }}</span>
 			<N8nButton
 				:label="i18n.baseText('instanceAi.connections.empty.cta')"
@@ -138,15 +153,20 @@ async function handleRemove(type: ConnectionType) {
 
 <style lang="scss" module>
 .section {
+	position: relative;
 	display: flex;
 	flex-direction: column;
-}
+	padding: var(--spacing--2xs);
+	padding-top: var(--spacing--sm);
 
-.card {
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--sm);
-	background: var(--color--background--light-2);
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: var(--spacing--sm);
+		right: var(--spacing--sm);
+		border-top: var(--border);
+	}
 }
 
 .header {
@@ -155,6 +175,17 @@ async function handleRemove(type: ConnectionType) {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--2xs);
+	padding: 0 var(--spacing--2xs);
+}
+
+.sectionTitle {
+	color: var(--text-color--subtle);
+}
+
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .list {
@@ -174,12 +205,5 @@ async function handleRemove(type: ConnectionType) {
 	> button {
 		margin-top: var(--spacing--2xs);
 	}
-}
-
-.emptyIcon {
-	color: var(--color--text--tint-1);
-	padding: var(--spacing--4xs);
-	background: var(--color--foreground--tint-1);
-	border-radius: var(--radius--lg);
 }
 </style>

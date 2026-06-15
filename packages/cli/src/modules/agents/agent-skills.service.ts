@@ -1,4 +1,9 @@
-import { agentSkillSchema, type AgentSkill, type AgentSkillMutationResponse } from '@n8n/api-types';
+import {
+	agentSkillSchema,
+	type AgentJsonConfig,
+	type AgentSkill,
+	type AgentSkillMutationResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -7,7 +12,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
-import type { AgentJsonConfig } from './json-config/agent-json-config';
 import { AgentRepository } from './repositories/agent.repository';
 import { generateAgentResourceId } from './utils/agent-resource-id';
 

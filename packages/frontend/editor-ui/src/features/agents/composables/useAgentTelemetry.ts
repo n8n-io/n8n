@@ -4,6 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
 export type AgentChatMode = 'build' | 'test';
+export type AgentCreateSource = 'button' | 'dropdown' | 'card';
 export type AgentConfigPart =
 	| 'instructions'
 	| 'model'
@@ -31,7 +32,7 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackClickedNewAgent(source: 'button' | 'dropdown') {
+	function trackClickedNewAgent(source: AgentCreateSource) {
 		safeTrack('User clicked new agent', { source, ...common() });
 	}
 
@@ -116,6 +117,40 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackAddedTasks(params: {
+		agentId: string;
+		taskAdded: string;
+		tasks: string[];
+		configVersion: string;
+		status: AgentTelemetryStatus;
+	}) {
+		safeTrack('User added tasks to agent', {
+			agent_id: params.agentId,
+			task_added: params.taskAdded,
+			tasks: params.tasks,
+			config_version: params.configVersion,
+			status: params.status,
+			...common(),
+		});
+	}
+
+	function trackRemovedTasks(params: {
+		agentId: string;
+		taskRemoved: string;
+		tasks: string[];
+		configVersion: string;
+		status: AgentTelemetryStatus;
+	}) {
+		safeTrack('User removed tasks from agent', {
+			agent_id: params.agentId,
+			task_removed: params.taskRemoved,
+			tasks: params.tasks,
+			config_version: params.configVersion,
+			status: params.status,
+			...common(),
+		});
+	}
+
 	function trackPublishedAgent(params: { agentId: string; configVersion: string }) {
 		safeTrack('User published agent', {
 			agent_id: params.agentId,
@@ -133,6 +168,29 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackOpenedToolFromList(params: { agentId: string; toolType: string }) {
+		safeTrack('User opened agent tool', {
+			agent_id: params.agentId,
+			tool_type: params.toolType,
+			...common(),
+		});
+	}
+
+	function trackOpenedSkillFromList(params: { agentId: string; skillId: string }) {
+		safeTrack('User opened agent skill', {
+			agent_id: params.agentId,
+			skill_id: params.skillId,
+			...common(),
+		});
+	}
+
+	function trackOpenedAddSkillModal(params: { agentId: string }) {
+		safeTrack('User opened add skill modal', {
+			agent_id: params.agentId,
+			...common(),
+		});
+	}
+
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
@@ -140,7 +198,12 @@ export function useAgentTelemetry() {
 		trackAddedTrigger,
 		trackAddedTools,
 		trackAddedSkills,
+		trackAddedTasks,
+		trackRemovedTasks,
 		trackPublishedAgent,
 		trackUnpublishedAgent,
+		trackOpenedToolFromList,
+		trackOpenedSkillFromList,
+		trackOpenedAddSkillModal,
 	};
 }

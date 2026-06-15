@@ -17,31 +17,30 @@ export interface CredentialEntry {
 }
 
 /**
- * Paired credential snapshot produced from a single `credentialService.list()`
- * call. The flat list validates raw credential ids without losing duplicates
- * of the same type.
+ * Credential map passed from the orchestrator.
+ * Keyed by credential type (e.g., "openAiApi", "gmailOAuth2", "slackApi").
  */
-export interface CredentialSnapshot {
-	list: CredentialEntry[];
-}
+export type CredentialMap = Map<string, CredentialEntry[]>;
 
 /**
- * Build a paired credential snapshot from all available credentials.
- * Non-fatal — returns empty structures if listing fails.
+ * Build a credential map from all available credentials.
+ * Non-fatal — returns an empty map if listing fails.
  */
-export async function buildCredentialSnapshot(
+export async function buildCredentialMap(
 	credentialService: Pick<InstanceAiContext['credentialService'], 'list'>,
-): Promise<CredentialSnapshot> {
-	const list: CredentialEntry[] = [];
+): Promise<CredentialMap> {
+	const map: CredentialMap = new Map();
 	try {
 		const allCreds = await credentialService.list();
 		for (const cred of allCreds) {
-			list.push({ id: cred.id, name: cred.name, type: cred.type });
+			const entries = map.get(cred.type) ?? [];
+			entries.push({ id: cred.id, name: cred.name, type: cred.type });
+			map.set(cred.type, entries);
 		}
 	} catch {
 		// Non-fatal — credentials will be unresolved
 	}
-	return { list };
+	return map;
 }
 
 /** Result of credential resolution — includes mock metadata and sidecar verification data. */
@@ -74,7 +73,7 @@ export async function resolveCredentials(
 	json: WorkflowJSON,
 	workflowId: string | undefined,
 	ctx: InstanceAiContext,
-	availableCredentials?: CredentialEntry[],
+	availableCredentials?: CredentialMap,
 ): Promise<CredentialResolutionResult> {
 	const mockedNodeNames: string[] = [];
 	const mockedCredentialTypesSet = new Set<string>();
@@ -158,6 +157,14 @@ export async function resolveCredentials(
 				continue;
 			}
 
+			const credentialsForType = availableCredentials?.get(key);
+			if (credentialsForType?.length === 1) {
+				const [credential] = credentialsForType;
+				creds[key] = { id: credential.id, name: credential.name };
+				cleanupMockPinData(json, node.name);
+				continue;
+			}
+
 			// Mock — remove the credential key and produce sidecar verification data.
 			// The credential key is deleted so the saved workflow doesn't reference a
 			// non-existent credential. Verification pin data is produced so the execution
@@ -191,15 +198,15 @@ function getCredentialId(value: unknown): string | undefined {
 function isKnownCredentialForType(
 	value: unknown,
 	credentialType: string,
-	availableCredentials: CredentialEntry[] | undefined,
+	availableCredentials: CredentialMap | undefined,
 ): boolean {
 	if (!availableCredentials) return true;
 
 	const id = getCredentialId(value);
 	if (!id) return false;
 
-	return availableCredentials.some(
-		(credential) => credential.id === id && credential.type === credentialType,
+	return (
+		availableCredentials.get(credentialType)?.some((credential) => credential.id === id) ?? false
 	);
 }
 

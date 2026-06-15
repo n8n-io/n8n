@@ -2,7 +2,7 @@
  * Pure utility functions used by AgentRuntime that require no class context.
  * These are extracted here to keep agent-runtime.ts focused on orchestration logic.
  */
-import type { GenerateResult, StreamChunk, TokenUsage } from '../types';
+import type { StreamChunk, TokenUsage } from '../types';
 import { toTokenUsage } from './stream';
 import type { AgentMessage, ContentToolCall } from '../types/sdk/message';
 
@@ -94,14 +94,4 @@ export function accumulateUsage(
 ): TokenUsage | undefined {
 	if (!raw) return current;
 	return mergeUsage(current, toTokenUsage(raw));
-}
-
-/** Compute totalCost from sub-agent usage already present on the result. */
-export function applySubAgentUsage(result: GenerateResult): GenerateResult {
-	if (!result.subAgentUsage || result.subAgentUsage.length === 0) return result;
-
-	const parentCost = result.usage?.cost ?? 0;
-	const subCost = result.subAgentUsage.reduce((sum, s) => sum + (s.usage.cost ?? 0), 0);
-
-	return { ...result, totalCost: parentCost + subCost };
 }

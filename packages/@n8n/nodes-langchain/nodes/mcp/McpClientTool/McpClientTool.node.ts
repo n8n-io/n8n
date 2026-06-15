@@ -58,7 +58,8 @@ export class McpClientTool implements INodeType {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['output'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
+		defaultVersion: 1.3,
 		description: 'Connect tools from an MCP Server',
 		defaults: {
 			name: 'MCP Client',
@@ -66,8 +67,7 @@ export class McpClientTool implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Tools'],
-				Tools: ['Recommended Tools'],
+				AI: ['Model Context Protocol'],
 			},
 			alias: ['Model Context Protocol', 'MCP Client'],
 			resources: {
@@ -231,7 +231,7 @@ export class McpClientTool implements INodeType {
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTools',
-					loadOptionsDependsOn: ['sseEndpoint'],
+					loadOptionsDependsOn: ['sseEndpoint', 'endpointUrl'],
 				},
 				displayOptions: {
 					show: {

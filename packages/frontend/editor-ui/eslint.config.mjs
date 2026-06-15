@@ -116,6 +116,17 @@ export default defineConfig(
 					message:
 						'Use workflowDocumentStore.setLastNodeParameters() instead of workflowsStore.setLastNodeParameters()',
 				},
+				{
+					selector: "MemberExpression[property.name='workflowId'][object.name='workflowsStore']",
+					message:
+						'Use the workflow document store instead of workflowsStore.workflowId: workflowDocumentStore.workflowId (components/composables via injectWorkflowDocumentStore(); stores via useWorkflowId()) or the documentId from the handler options in push handlers',
+				},
+				{
+					selector:
+						"CallExpression[callee.property.name='setWorkflowId'][callee.object.name='workflowsStore']",
+					message:
+						'Do not call workflowsStore.setWorkflowId() — the current workflow id is derived from the route (useWorkflowId())',
+				},
 			],
 			// TODO: Remove these
 			'n8n-local-rules/no-internal-package-import': 'warn',
@@ -179,6 +190,11 @@ export default defineConfig(
 		rules: {
 			'no-restricted-syntax': 'off',
 		},
+	},
+	{
+		// Mirrors the `*.stories.ts` exclusion in tsconfig.json — typescript-eslint
+		// can't parse files outside the TS project.
+		ignores: ['src/**/*.stories.ts'],
 	},
 	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 );

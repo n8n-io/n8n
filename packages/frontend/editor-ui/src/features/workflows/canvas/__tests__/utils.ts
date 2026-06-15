@@ -1,6 +1,8 @@
 import { CanvasKey, CanvasNodeHandleKey, CanvasNodeKey } from '@/app/constants';
 import { computed, ref } from 'vue';
 import type {
+	CanvasGroupNode,
+	CanvasGroupNodeData,
 	CanvasInjectionData,
 	CanvasNode,
 	CanvasNodeData,
@@ -8,9 +10,11 @@ import type {
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
 	ConnectStartEvent,
-	ExecutionOutputMapData,
 } from '@/features/workflows/canvas/canvas.types';
+import type { ExecutionOutputMapData } from '@/app/types/executionData';
 import {
+	CANVAS_NODE_GROUP_ID_PREFIX,
+	CANVAS_NODE_GROUP_TYPE,
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
 } from '@/features/workflows/canvas/canvas.types';
@@ -27,12 +31,9 @@ export function createCanvasNodeData({
 	type = 'test',
 	typeVersion = 1,
 	disabled = false,
-	inputs = [],
-	outputs = [],
 	connections = { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 	execution = { running: false },
-	issues = { execution: [], validation: [], visible: false },
-	pinnedData = { count: 0, visible: false },
+	issues = { validation: [], visible: false },
 	runData = { outputMap: {}, iterations: 0, visible: false },
 	render = {
 		type: CanvasNodeRenderType.Default,
@@ -47,11 +48,8 @@ export function createCanvasNodeData({
 		typeVersion,
 		execution,
 		issues,
-		pinnedData,
 		runData,
 		disabled,
-		inputs,
-		outputs,
 		connections,
 		render,
 	};
@@ -70,6 +68,33 @@ export function createCanvasNodeElement({
 		label,
 		position,
 		data: createCanvasNodeData({ id, type, ...data }),
+	};
+}
+
+export function createCanvasGroupElement({
+	id = 'g1',
+	name = 'Test Group',
+	nodeIds = [],
+	position = { x: 0, y: 0 },
+	isCollapsed = true,
+	nodesRect = { x: 0, y: 0, width: 200, height: 100 },
+}: Partial<{
+	id: string;
+	name: string;
+	nodeIds: string[];
+	position: { x: number; y: number };
+	isCollapsed: boolean;
+	nodesRect: CanvasGroupNodeData['nodesRect'];
+}> = {}): CanvasGroupNode {
+	return {
+		id: `${CANVAS_NODE_GROUP_ID_PREFIX}${id}`,
+		type: CANVAS_NODE_GROUP_TYPE,
+		position,
+		data: {
+			group: { id, name, nodeIds },
+			nodesRect,
+			isCollapsed,
+		},
 	};
 }
 
@@ -223,28 +248,32 @@ export function createCanvasHandleProvide({
 export function createCanvasConnection(
 	nodeA: CanvasNode,
 	nodeB: CanvasNode,
-	{ sourceIndex = 0, targetIndex = 0 } = {},
+	{
+		sourceIndex = 0,
+		targetIndex = 0,
+		sourceType = NodeConnectionTypes.Main as NodeConnectionType,
+		targetType = NodeConnectionTypes.Main as NodeConnectionType,
+	} = {},
 ) {
-	const nodeAOutput = nodeA.data?.outputs[sourceIndex];
-	const nodeBInput = nodeA.data?.inputs[targetIndex];
-
 	return {
 		id: `${nodeA.id}-${nodeB.id}`,
 		source: nodeA.id,
 		target: nodeB.id,
-		...(nodeAOutput ? { sourceHandle: `outputs/${nodeAOutput.type}/${nodeAOutput.index}` } : {}),
-		...(nodeBInput ? { targetHandle: `inputs/${nodeBInput.type}/${nodeBInput.index}` } : {}),
+		sourceHandle: `outputs/${sourceType}/${sourceIndex}`,
+		targetHandle: `inputs/${targetType}/${targetIndex}`,
 	};
 }
 
 export function createCanvasGraphEdge(
 	nodeA: GraphNode,
 	nodeB: GraphNode,
-	{ sourceIndex = 0, targetIndex = 0 } = {},
+	{
+		sourceIndex = 0,
+		targetIndex = 0,
+		sourceType = NodeConnectionTypes.Main as NodeConnectionType,
+		targetType = NodeConnectionTypes.Main as NodeConnectionType,
+	} = {},
 ): GraphEdge {
-	const nodeAOutput = nodeA.data?.outputs[sourceIndex];
-	const nodeBInput = nodeA.data?.inputs[targetIndex];
-
 	return {
 		id: `${nodeA.id}-${nodeB.id}`,
 		source: nodeA.id,
@@ -259,7 +288,7 @@ export function createCanvasGraphEdge(
 		targetNode: nodeB,
 		data: {},
 		events: {},
-		...(nodeAOutput ? { sourceHandle: `outputs/${nodeAOutput.type}/${nodeAOutput.index}` } : {}),
-		...(nodeBInput ? { targetHandle: `inputs/${nodeBInput.type}/${nodeBInput.index}` } : {}),
+		sourceHandle: `outputs/${sourceType}/${sourceIndex}`,
+		targetHandle: `inputs/${targetType}/${targetIndex}`,
 	};
 }

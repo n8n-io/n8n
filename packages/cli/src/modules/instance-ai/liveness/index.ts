@@ -2,6 +2,7 @@ export {
 	INSTANCE_AI_RUN_TIMEOUT_REASON,
 	InstanceAiLivenessService,
 	type InstanceAiLivenessBackgroundTasks,
+	type InstanceAiConsumedRunTimeout,
 	type InstanceAiLivenessEventBus,
 	type InstanceAiLivenessLogger,
 	type InstanceAiLivenessPendingConfirmation,

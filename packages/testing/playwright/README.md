@@ -10,8 +10,55 @@ pnpm build:docker # from root first to test against local changes
 ```bash
 pnpm test:all                 									# Run all tests (fresh containers, pnpm build:docker from root first to ensure local containers)
 pnpm test:local           											# Starts a local server and runs the E2E tests
-N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the E2E tests against the instance running
+N8N_BASE_URL=localhost:5068 pnpm test:local			# Runs the E2E tests against the running instance
 ```
+
+## Develop against running containers (avoid docker rebuilds)
+
+Iterating on a feature that needs postgres/redis/SMTP/an HTTP proxy? You don't
+need `pnpm build:docker` each time. Boot only the services your local `pnpm dev`
+needs, and let dev mode pick them up.
+
+**Two-terminal workflow:**
+
+```bash
+# Terminal 1 — boot only the services. Writes packages/cli/bin/.env with the
+# host:port + credentials. Containers stay running in the background.
+pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy
+
+# Terminal 2 — run n8n locally as usual. It picks up the .env automatically.
+pnpm dev
+```
+
+Scope the `--services` list to what you actually need — booting fewer
+containers makes startup faster.
+
+| Service | What `pnpm dev` gets | Use when… |
+|---------|----------------------|-----------|
+| `postgres` | `DB_*` vars → PostgreSQL backend | testing migrations or PG-specific queries |
+| `redis` | `QUEUE_*`/`N8N_CACHE_*` → queue mode + cache | testing queue mode or distributed cache |
+| `mailpit` | `N8N_SMTP_*` → captured SMTP at `http://localhost:<mapped-port>` | testing email flows |
+| `proxy` | `HTTP_PROXY`/`HTTPS_PROXY`/`N8N_PROXY_*` → MockServer | testing outbound HTTP via the proxy |
+
+Other available services: `kafka`, `gitea`, `keycloak`, `kent`, `victoriaLogs`,
+`victoriaMetrics`, `vector`, `tracing`, `localstack`, `cloudflared`, `ngrok`.
+See `packages/testing/containers/README.md` for the full list.
+
+**Tear down when you're done:**
+
+```bash
+pnpm --filter n8n-containers services:clean
+```
+
+This stops the containers and removes `packages/cli/bin/.env`.
+
+**Running capability tests against this setup.** The `@capability:*` tags are
+gated to container mode by default. To exercise them against your local n8n
+(useful for fast iteration on proxy/email/SSO flows), use the
+`PLAYWRIGHT_ALLOW_CONTAINER_ONLY=true` escape hatch documented under
+[`test:local:isolated`](#test-local-isolated--local-run-with-full-isolation)
+below. Capability fixtures must detect the no-container case and fall back —
+some do, some don't yet.
 
 ## Separate Backend and Frontend URLs
 

@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IHttpRequestMethods,
+	JsonObject,
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
@@ -1833,7 +1834,14 @@ export class Telegram implements INodeType {
 		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
 			body = createSendAndWaitMessageBody(this);
 
-			await apiRequest.call(this, 'POST', 'sendMessage', body);
+			try {
+				await apiRequest.call(this, 'POST', 'sendMessage', body);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					return [[{ json: { error: (error as JsonObject).message } }]];
+				}
+				throw error;
+			}
 
 			const waitTill = configureWaitTillDate(this);
 

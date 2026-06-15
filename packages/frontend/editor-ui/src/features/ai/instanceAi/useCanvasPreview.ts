@@ -2,7 +2,9 @@ import { computed, ref, watch } from 'vue';
 import type { IconName } from '@n8n/design-system';
 import {
 	getLatestBuildResult,
+	getLatestBuilderTarget,
 	getLatestWorkflowSetupResult,
+	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 } from './canvasPreview.utils';
@@ -162,6 +164,35 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		{ flush: 'sync' },
 	);
 
+	// --- Auto-open canvas when an edit-mode builder spawns ---
+	// The workflow-builder carries the existing workflow id in
+	// `targetResource.id` from the moment it is spawned. Opening the preview
+	// then — instead of waiting for the first build-workflow result — lets the
+	// user see what is being edited as soon as the sub-agent is called.
+	// Keyed by agentId so a fresh builder spawn re-triggers the preview.
+
+	const latestBuilderTarget = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const target = getLatestBuilderTarget(msg.agentTree);
+				if (target) return target;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestBuilderTarget.value?.agentId,
+		(agentId) => {
+			if (!agentId || !latestBuilderTarget.value) return;
+			if (thread.isHydratingThread) return;
+
+			activeTabId.value = latestBuilderTarget.value.workflowId;
+		},
+		{ flush: 'sync' },
+	);
+
 	// --- Refresh preview when setup-workflow / apply-workflow-credentials completes ---
 	// These tools modify the workflow (credentials, parameters) but aren't detected
 	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
@@ -185,6 +216,37 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 			const targetId = latestSetupResult.value.workflowId;
 
 			// Only refresh if the setup targeted the currently active workflow tab
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
+			}
+		},
+	);
+
+	// --- Refresh preview when a `workflows` update / restore-version / setup completes ---
+	// The `workflows` tool's update / restore-version / setup actions mutate the
+	// workflow definition but surface under tool name 'workflows', so
+	// getLatestBuildResult doesn't detect them. Refresh the preview so the canvas
+	// shows the latest state.
+
+	const latestUpdateResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestWorkflowUpdateResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestUpdateResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestUpdateResult.value) return;
+
+			const targetId = latestUpdateResult.value.workflowId;
+
+			// Only refresh if the update targeted the currently active workflow tab
 			if (activeTabId.value === targetId) {
 				workflowRefreshKey.value++;
 			}

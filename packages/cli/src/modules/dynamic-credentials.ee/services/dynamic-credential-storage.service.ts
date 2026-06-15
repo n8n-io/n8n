@@ -17,6 +17,7 @@ import type {
 	CredentialStoreMetadata,
 	IDynamicCredentialStorageProvider,
 } from '@/credentials/dynamic-credential-storage.interface';
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 @Service()
@@ -27,6 +28,7 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	async storeIfNeeded(
@@ -43,8 +45,10 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 			}
 
 			// Determine which resolver ID to use: credential's own resolver or workflow's fallback
+			// (explicit workflow override, or the seeded system resolver looked up via the proxy).
 			const resolverId =
-				credentialStoreMetadata.resolverId ?? workflowSettings?.credentialResolverId;
+				credentialStoreMetadata.resolverId ??
+				this.dynamicCredentialsProxy.getEffectiveResolverId(workflowSettings);
 
 			// Not resolvable - return static credentials
 			if (!resolverId) {

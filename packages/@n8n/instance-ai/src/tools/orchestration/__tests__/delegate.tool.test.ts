@@ -1,20 +1,13 @@
+/* eslint-disable import-x/order */
+import { executeTool } from '../../../__tests__/tool-test-utils';
+import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext, TaskStorage } from '../../../types';
 import { delegateInputSchema } from '../delegate.schemas';
 
-// Mock heavy Mastra dependencies to avoid ESM issues in Jest
-jest.mock('@mastra/core/agent', () => ({ Agent: jest.fn() }));
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
-}));
-jest.mock('@mastra/core/mastra', () => ({ Mastra: jest.fn() }));
-jest.mock('@mastra/memory', () => ({ Memory: jest.fn() }));
-jest.mock('../../../stream/consume-with-hitl', () => ({ consumeStreamWithHitl: jest.fn() }));
-jest.mock('../../../stream/map-chunk', () => ({ mapMastraChunkToEvent: jest.fn() }));
-jest.mock('../../../storage/iteration-log', () => ({ formatPreviousAttempts: jest.fn() }));
+vi.mock('../../../stream/consume-with-hitl', () => ({ consumeStreamWithHitl: vi.fn() }));
+vi.mock('../../../storage/iteration-log', () => ({ formatPreviousAttempts: vi.fn() }));
 
-const { createDelegateTool } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
-	require('../delegate.tool') as typeof import('../delegate.tool');
+import { createDelegateTool } from '../delegate.tool';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -27,22 +20,26 @@ function createMockContext(domainTools: Record<string, unknown> = {}): Orchestra
 		userId: 'test-user',
 		orchestratorAgentId: 'test-agent',
 		modelId: 'test-model',
-		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 5,
 		eventBus: {
-			publish: jest.fn(),
-			subscribe: jest.fn(),
-			getEventsAfter: jest.fn(),
-			getNextEventId: jest.fn(),
-			getEventsForRun: jest.fn().mockReturnValue([]),
-			getEventsForRuns: jest.fn().mockReturnValue([]),
+			publish: vi.fn(),
+			subscribe: vi.fn(),
+			getEventsAfter: vi.fn(),
+			getNextEventId: vi.fn(),
+			getEventsForRun: vi.fn().mockReturnValue([]),
+			getEventsForRuns: vi.fn().mockReturnValue([]),
 		},
-		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
-		domainTools: domainTools as OrchestrationContext['domainTools'],
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+		domainTools: createToolRegistry(
+			Object.entries(domainTools).map(([name, tool]) => [
+				name,
+				{ name, description: name, ...(tool as object) },
+			]),
+		),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
-			get: jest.fn(),
-			save: jest.fn(),
+			get: vi.fn(),
+			save: vi.fn(),
 		} as TaskStorage,
 	};
 }
@@ -86,17 +83,18 @@ describe('delegateInputSchema', () => {
 // ---------------------------------------------------------------------------
 
 describe('createDelegateTool', () => {
-	it('rejects "plan" in tools array', async () => {
+	it('rejects "create-tasks" in tools array', async () => {
 		const context = createMockContext({ 'tool-a': {} });
 		const tool = createDelegateTool(context);
 
-		const output = (await tool.execute!(
-			{ ...makeValidInput(), tools: ['plan'] },
+		const output = await executeTool(
+			tool,
+			{ ...makeValidInput(), tools: ['create-tasks'] },
 			{} as never,
-		)) as Record<string, unknown>;
+		);
 
 		expect('result' in output).toBe(true);
-		expect((output as { result: string }).result).toContain('plan');
+		expect((output as { result: string }).result).toContain('create-tasks');
 		expect((output as { result: string }).result).toContain('cannot be delegated');
 	});
 
@@ -104,10 +102,11 @@ describe('createDelegateTool', () => {
 		const context = createMockContext({ 'tool-a': {} });
 		const tool = createDelegateTool(context);
 
-		const output = (await tool.execute!(
+		const output = await executeTool(
+			tool,
 			{ ...makeValidInput(), tools: ['delegate'] },
 			{} as never,
-		)) as Record<string, unknown>;
+		);
 
 		expect('result' in output).toBe(true);
 		expect((output as { result: string }).result).toContain('delegate');
@@ -118,10 +117,11 @@ describe('createDelegateTool', () => {
 		const context = createMockContext({ 'tool-a': {} });
 		const tool = createDelegateTool(context);
 
-		const output = (await tool.execute!(
+		const output = await executeTool(
+			tool,
 			{ ...makeValidInput(), tools: ['nonexistent'] },
 			{} as never,
-		)) as Record<string, unknown>;
+		);
 
 		expect('result' in output).toBe(true);
 		expect((output as { result: string }).result).toContain('nonexistent');

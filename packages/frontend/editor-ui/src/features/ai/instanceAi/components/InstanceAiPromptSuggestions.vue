@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { onClickOutside } from '@vueuse/core';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { onClickOutside } from '@vueuse/core';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
 	isMenuSuggestion,
 	isPromptSuggestion,
@@ -14,7 +14,7 @@ const props = defineProps<{
 	disabled: boolean;
 }>();
 
-interface SubmitSuggestionPayload {
+interface InsertSuggestionPayload {
 	promptKey: BaseTextKey;
 	suggestionId: string;
 	suggestionKind: 'prompt' | 'quick_example';
@@ -24,7 +24,7 @@ interface SubmitSuggestionPayload {
 const emit = defineEmits<{
 	'preview-change': [promptKey: BaseTextKey | null];
 	'quick-examples-opened': [payload: { suggestionId: string; position: number }];
-	'submit-suggestion': [payload: SubmitSuggestionPayload];
+	'insert-suggestion': [payload: InsertSuggestionPayload];
 }>();
 
 const i18n = useI18n();
@@ -33,6 +33,16 @@ const quickExamplesSuggestion = computed(() => props.suggestions.find(isMenuSugg
 const activePreviewPromptKey = ref<BaseTextKey | null>(null);
 const isQuickExamplesOpen = ref(false);
 const rootRef = ref<HTMLElement | null>(null);
+let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearHoverTimer() {
+	if (!hoverTimer) {
+		return;
+	}
+
+	clearTimeout(hoverTimer);
+	hoverTimer = null;
+}
 
 function setPreview(promptKey: BaseTextKey | null) {
 	activePreviewPromptKey.value = promptKey;
@@ -40,6 +50,7 @@ function setPreview(promptKey: BaseTextKey | null) {
 }
 
 function closeQuickExamples() {
+	clearHoverTimer();
 	isQuickExamplesOpen.value = false;
 	setPreview(null);
 }
@@ -59,13 +70,13 @@ function getQuickExamplePosition(exampleId: string) {
 	return index >= 0 ? index + 1 : 0;
 }
 
-function submitSuggestion(payload: SubmitSuggestionPayload) {
+function insertSuggestion(payload: InsertSuggestionPayload) {
 	if (props.disabled) {
 		return;
 	}
 
 	closeQuickExamples();
-	emit('submit-suggestion', payload);
+	emit('insert-suggestion', payload);
 }
 
 function handleDocumentKeydown(event: KeyboardEvent) {
@@ -80,6 +91,7 @@ onMounted(() => {
 
 onUnmounted(() => {
 	document.removeEventListener('keydown', handleDocumentKeydown);
+	clearHoverTimer();
 });
 
 onClickOutside(rootRef, closeQuickExamples);
@@ -89,10 +101,16 @@ function handleSuggestionEnter(suggestion: InstanceAiEmptyStateSuggestion) {
 		return;
 	}
 
-	setPreview(suggestion.promptKey);
+	clearHoverTimer();
+	hoverTimer = setTimeout(() => {
+		hoverTimer = null;
+		setPreview(suggestion.promptKey);
+	}, 300);
 }
 
 function handleSuggestionLeave(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
@@ -101,6 +119,8 @@ function handleSuggestionLeave(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionFocus(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
@@ -109,6 +129,8 @@ function handleSuggestionFocus(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionBlur(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (props.disabled || !isPromptSuggestion(suggestion)) {
 		return;
 	}
@@ -117,8 +139,10 @@ function handleSuggestionBlur(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function handleSuggestionClick(suggestion: InstanceAiEmptyStateSuggestion) {
+	clearHoverTimer();
+
 	if (isPromptSuggestion(suggestion)) {
-		submitSuggestion({
+		insertSuggestion({
 			promptKey: suggestion.promptKey,
 			suggestionId: suggestion.id,
 			suggestionKind: 'prompt',
@@ -227,7 +251,7 @@ function handleQuickExampleLeave() {
 						:data-test-id="`instance-ai-quick-example-${example.id}`"
 						:disabled="props.disabled"
 						@click="
-							submitSuggestion({
+							insertSuggestion({
 								promptKey: example.promptKey,
 								suggestionId: example.id,
 								suggestionKind: 'quick_example',

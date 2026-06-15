@@ -127,6 +127,51 @@ describe('toolsAgentExecute', () => {
 		expect(result[0][1].json).toEqual({ error: 'Test error' });
 	});
 
+	it('should not expose raw model output in parser error messages', async () => {
+		const mockNode = mock<INode>();
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		const mockTools = [mock<Tool>()];
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'text') return 'test input';
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		mockContext.continueOnFail.mockReturnValue(true);
+		const rawModelOutput = 'customer payload in agent output';
+		const mockExecutor = {
+			invoke: vi
+				.fn()
+				.mockRejectedValue(new Error(`Unable to parse JSON response: Thought: ${rawModelOutput}`)),
+		};
+
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		expect(result[0]).toEqual([
+			{ json: { error: "Model output doesn't fit required format" }, pairedItem: { item: 0 } },
+		]);
+		expect(result[0][0].json.error).not.toContain(rawModelOutput);
+	});
+
 	it('should throw error in when continueOnFail is false', async () => {
 		const mockNode = mock<INode>();
 		mockContext.getNode.mockReturnValue(mockNode);

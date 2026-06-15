@@ -7,6 +7,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
 import { DEFAULT_MODEL, getApiKeyEnvVar, MODEL_FACTORIES, type ModelId } from '@/llm-config';
+import { createPassthroughSsrfGuard } from '@/tools/utils/ssrf-guard';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 import { WorkflowBuilderAgent } from '@/workflow-builder-agent';
 
@@ -295,6 +296,7 @@ export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
 			featureFlags: featureFlags ?? {},
 			experimentName,
 		},
+		ssrf: createPassthroughSsrfGuard(),
 	});
 }
 

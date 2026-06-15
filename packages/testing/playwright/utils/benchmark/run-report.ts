@@ -36,6 +36,9 @@ export interface ThroughputInfo {
 	tailExecPerSec?: number;
 	/** HTTP round-trip for webhook scenarios; per-execution duration otherwise. */
 	p50Ms?: number;
+	/** p97.5 — closest standard autocannon percentile to p95. Mirrors autocannon's `p97_5` field. */
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	p97_5Ms?: number;
 	p99Ms?: number;
 	totalRequests?: number;
 	totalCompleted?: number;

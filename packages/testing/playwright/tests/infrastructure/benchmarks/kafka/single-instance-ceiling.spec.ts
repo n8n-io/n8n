@@ -8,6 +8,7 @@ test.use({ capability: benchConfig('single-instance-ceiling', { kafka: true }) }
 test.describe(
 	'How much can we process on a single instance?',
 	{
+		tag: '@bench:kafka',
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
 			{ type: 'question', description: 'single-instance-throughput-ceiling' },

@@ -1,5 +1,6 @@
 import type { UpsertEvaluationConfigDto } from '@n8n/api-types';
 import { Container } from '@n8n/di';
+import type { Mock } from 'vitest';
 
 import { EvaluationConfig } from '../../entities/evaluation-config.ee';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -33,7 +34,7 @@ describe('EvaluationConfigRepository', () => {
 		}) as UpsertEvaluationConfigDto;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('listByWorkflowId', () => {
@@ -78,7 +79,7 @@ describe('EvaluationConfigRepository', () => {
 	describe('createForWorkflow', () => {
 		it('persists a new config with the supplied id and workflow id', async () => {
 			const payload = buildPayload();
-			(entityManager.create as jest.Mock).mockImplementation(
+			(entityManager.create as Mock).mockImplementation(
 				(_target: unknown, entityLike: unknown) => entityLike as EvaluationConfig,
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
@@ -169,13 +170,13 @@ describe('EvaluationConfigRepository', () => {
 	describe('countDistinctWorkflowsWithConfigs', () => {
 		it('returns the count of distinct workflowIds that have at least one config', async () => {
 			const qbMock = {
-				select: jest.fn().mockReturnThis(),
-				distinct: jest.fn().mockReturnThis(),
-				getCount: jest.fn().mockResolvedValueOnce(7),
+				select: vi.fn().mockReturnThis(),
+				distinct: vi.fn().mockReturnThis(),
+				getCount: vi.fn().mockResolvedValueOnce(7),
 			};
-			jest
-				.spyOn(repo, 'createQueryBuilder')
-				.mockReturnValueOnce(qbMock as unknown as ReturnType<typeof repo.createQueryBuilder>);
+			vi.spyOn(repo, 'createQueryBuilder').mockReturnValueOnce(
+				qbMock as unknown as ReturnType<typeof repo.createQueryBuilder>,
+			);
 
 			expect(await repo.countDistinctWorkflowsWithConfigs()).toBe(7);
 			expect(qbMock.select).toHaveBeenCalledWith('evaluation_config.workflowId');

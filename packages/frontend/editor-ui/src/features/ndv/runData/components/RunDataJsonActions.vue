@@ -49,7 +49,7 @@ const clipboard = useClipboard();
 
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const { activeNode } = ndvStore;
+const activeNode = computed(() => ndvStore.value.activeNode);
 const pinnedData = usePinnedData(activeNode);
 const { showToast } = useToast();
 const telemetry = useTelemetry();
@@ -179,7 +179,7 @@ function handleCopyClick(commandData: { command: string }) {
 	}[commandData.command];
 
 	telemetry.track('User copied ndv data', {
-		node_type: activeNode?.type,
+		node_type: activeNode.value?.type,
 		push_ref: props.pushRef,
 		run_index: props.runIndex,
 		view: 'json',

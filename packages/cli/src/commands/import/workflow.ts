@@ -131,6 +131,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const project = await this.getProject(flags.userId, flags.projectId);
 
+		const ownerUser = await Container.get(UserRepository).findOneByOrFail({
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		});
+		// This userId will be used as the actor for publish/unpublish workflow actions
+		const userId = flags.userId ?? ownerUser.id;
+
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
 		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
@@ -141,7 +147,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id, {
+		await Container.get(ImportService).importWorkflows(workflows, project.id, userId, {
 			activeState: flags.activeState,
 		});
 

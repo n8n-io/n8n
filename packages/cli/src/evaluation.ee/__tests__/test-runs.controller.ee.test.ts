@@ -1,4 +1,3 @@
-import type { Logger } from '@n8n/backend-common';
 import type { TestCaseExecutionRepository, TestRun, TestRunRepository, User } from '@n8n/db';
 import type express from 'express';
 
@@ -7,7 +6,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsController } from '@/evaluation.ee/test-runs.controller.ee';
 import type { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
-import type { PostHogClient } from '@/posthog';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -20,8 +18,6 @@ describe('TestRunsController', () => {
 	let mockTestCaseExecutionRepository: jest.Mocked<TestCaseExecutionRepository>;
 	let mockTestRunnerService: jest.Mocked<TestRunnerService>;
 	let mockTelemetry: jest.Mocked<Telemetry>;
-	let mockPostHogClient: jest.Mocked<PostHogClient>;
-	let mockLogger: jest.Mocked<Logger>;
 	let mockUser: User;
 	let mockWorkflowId: string;
 	let mockTestRunId: string;
@@ -61,25 +57,12 @@ describe('TestRunsController', () => {
 			track: jest.fn(),
 		} as unknown as jest.Mocked<Telemetry>;
 
-		mockPostHogClient = {
-			getFeatureFlags: jest.fn().mockResolvedValue({}),
-		} as unknown as jest.Mocked<PostHogClient>;
-
-		mockLogger = {
-			warn: jest.fn(),
-			debug: jest.fn(),
-			error: jest.fn(),
-			info: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
-
 		testRunsController = new TestRunsController(
 			mockTestRunRepository,
 			mockWorkflowFinderService,
 			mockTestCaseExecutionRepository,
 			mockTestRunnerService,
 			mockTelemetry,
-			mockPostHogClient,
-			mockLogger,
 		);
 
 		mockUser = { id: 'user123', createdAt: new Date('2024-01-01T00:00:00Z') } as User;
@@ -185,6 +168,98 @@ describe('TestRunsController', () => {
 		});
 	});
 
+	describe('delete', () => {
+		const buildReq = () =>
+			({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId },
+				user: mockUser,
+			}) as TestRunsRequest.Delete;
+
+		it('deletes a test run', async () => {
+			const result = await testRunsController.delete(buildReq());
+
+			expect(mockTestRunRepository.delete).toHaveBeenCalledWith({ id: mockTestRunId });
+
+			expect(result).toEqual({ success: true });
+		});
+
+		it('requires workflow:execute so a read-only user cannot delete', async () => {
+			const result = await testRunsController.delete(buildReq());
+
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:execute'],
+			);
+
+			expect(result).toEqual({ success: true });
+		});
+
+		it('returns NotFoundError without mutating state when read-only user lacks execute scope', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(testRunsController.delete(buildReq())).rejects.toThrow(NotFoundError);
+			expect(mockTestRunRepository.delete).not.toHaveBeenCalled();
+			expect(mockTelemetry.track).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('cancel', () => {
+		const buildReq = () =>
+			({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId },
+				user: mockUser,
+			}) as TestRunsRequest.Cancel;
+
+		const mockResponse = () => {
+			const res = { status: jest.fn(), json: jest.fn() } as unknown as express.Response;
+			(res.status as jest.Mock).mockReturnValue(res);
+			(res.json as jest.Mock).mockReturnValue(res);
+			return res;
+		};
+
+		it('cancels a running test run and returns 202', async () => {
+			mockTestRunnerService.canBeCancelled.mockReturnValue(false);
+
+			const res = mockResponse();
+			await testRunsController.cancel(buildReq(), res as any);
+
+			expect(mockTestRunnerService.cancelTestRun).toHaveBeenCalledWith(mockTestRunId);
+			expect(res.status).toHaveBeenCalledWith(202);
+			expect(res.json).toHaveBeenCalledWith({ success: true });
+		});
+
+		it('requires workflow:execute (not just workflow:read) so a read-only user cannot cancel', async () => {
+			mockTestRunnerService.canBeCancelled.mockReturnValue(false);
+
+			await testRunsController.cancel(buildReq(), mockResponse() as any);
+
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:execute'],
+			);
+		});
+
+		it('returns NotFoundError without mutating state when read-only user lacks execute scope', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(testRunsController.cancel(buildReq(), mockResponse() as any)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(mockTestRunnerService.cancelTestRun).not.toHaveBeenCalled();
+		});
+
+		it('throws ConflictError when the test run is not cancellable', async () => {
+			mockTestRunnerService.canBeCancelled.mockReturnValue(true);
+
+			await expect(testRunsController.cancel(buildReq(), mockResponse() as any)).rejects.toThrow(
+				ConflictError,
+			);
+			expect(mockTestRunnerService.cancelTestRun).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('cancelCase', () => {
 		const caseId = 'case-1';
 
@@ -278,70 +353,64 @@ describe('TestRunsController', () => {
 			return res;
 		};
 
-		it('flag-on user with concurrency=5 → service called with concurrency=5 and flagEnabledForUser=true', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({ '080_eval_parallel_execution': true });
-
+		it('forwards the requested concurrency to the service unchanged', async () => {
 			await testRunsController.create(
 				buildCreateRequest(),
 				mockResponse() as any,
 				{ concurrency: 5 } as any,
 			);
 
-			expect(mockPostHogClient.getFeatureFlags).toHaveBeenCalledWith(mockUser);
 			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
 				mockUser,
 				mockWorkflowId,
 				5,
-				true,
+				undefined,
 			);
 		});
 
-		it('flag-off user with concurrency=5 → service called with concurrency=1 and flagEnabledForUser=false (cohort wall)', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({});
+		it('omitted concurrency body → service called with concurrency=1 (sequential default)', async () => {
+			await testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any);
 
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
+				mockUser,
+				mockWorkflowId,
+				1,
+				undefined,
+			);
+		});
+
+		it('forwards evaluationConfigId from the request body to the service', async () => {
 			await testRunsController.create(
 				buildCreateRequest(),
 				mockResponse() as any,
-				{ concurrency: 5 } as any,
+				{
+					evaluationConfigId: 'config-1',
+				} as any,
 			);
 
-			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
-				mockUser,
-				mockWorkflowId,
-				1,
-				false,
-			);
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(mockUser, mockWorkflowId, 1, {
+				evaluationConfigId: 'config-1',
+				compileFromConfig: false,
+			});
 		});
 
-		it('flag-on user with no concurrency body → service called with concurrency=1', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({ '080_eval_parallel_execution': true });
-
-			await testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any);
-
-			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
-				mockUser,
-				mockWorkflowId,
-				1,
-				true,
+		it('forwards compileFromConfig when set', async () => {
+			await testRunsController.create(
+				buildCreateRequest(),
+				mockResponse() as any,
+				{
+					evaluationConfigId: 'config-1',
+					compileFromConfig: true,
+				} as any,
 			);
+
+			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(mockUser, mockWorkflowId, 1, {
+				evaluationConfigId: 'config-1',
+				compileFromConfig: true,
+			});
 		});
 
-		it('flag-off user with no concurrency body → service called with concurrency=1', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({});
-
-			await testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any);
-
-			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
-				mockUser,
-				mockWorkflowId,
-				1,
-				false,
-			);
-		});
-
-		it('always returns 202 success with the new testRunId regardless of flag state (no flag-id leak)', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({});
-
+		it('returns 202 with the new testRunId', async () => {
 			const res = mockResponse();
 			await testRunsController.create(buildCreateRequest(), res as any, { concurrency: 7 } as any);
 
@@ -353,35 +422,29 @@ describe('TestRunsController', () => {
 			expect(res.json).toHaveBeenCalledWith({ success: true, testRunId: 'testrun123' });
 		});
 
-		it('resolves the feature flag exactly once per request', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({ '080_eval_parallel_execution': true });
+		it('requires workflow:execute so a read-only user cannot start a test run', async () => {
+			await testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any);
 
-			await testRunsController.create(
-				buildCreateRequest(),
-				mockResponse() as any,
-				{ concurrency: 3 } as any,
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				mockWorkflowId,
+				mockUser,
+				['workflow:execute'],
 			);
-
-			expect(mockPostHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 		});
 
-		it('fails open to sequential when PostHog throws (rollout gate is non-critical)', async () => {
-			mockPostHogClient.getFeatureFlags.mockRejectedValue(new Error('posthog timeout'));
-
-			const res = mockResponse();
-			await testRunsController.create(buildCreateRequest(), res as any, { concurrency: 5 } as any);
-
-			expect(mockTestRunnerService.startTestRun).toHaveBeenCalledWith(
-				mockUser,
-				mockWorkflowId,
-				1,
-				false,
+		it('returns NotFoundError without starting execution when user has read but not execute scope', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockImplementation(
+				async (_workflowId, _user, scopes) => {
+					if (scopes.includes('workflow:execute')) return null;
+					return { id: mockWorkflowId } as any;
+				},
 			);
-			expect(res.status).toHaveBeenCalledWith(202);
-			expect(mockLogger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('Failed to resolve eval parallel-execution flag'),
-				expect.any(Object),
-			);
+
+			await expect(
+				testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any),
+			).rejects.toThrow(NotFoundError);
+
+			expect(mockTestRunnerService.startTestRun).not.toHaveBeenCalled();
 		});
 	});
 });

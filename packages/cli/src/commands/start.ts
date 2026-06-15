@@ -100,7 +100,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			await this.externalHooks?.run('n8n.stop');
 
-			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
+			await this.activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
 
 			if (this.instanceSettings.isMultiMain) {
 				await Container.get(MultiMainSetup).shutdown();
@@ -232,6 +232,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const { WorkflowPublicationOutboxConsumer } = await import(
+				'@/workflows/publication/workflow-publication-outbox-consumer'
+			);
+			Container.get(WorkflowPublicationOutboxConsumer).init();
+		}
+
 		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
 		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
@@ -288,7 +295,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (this.instanceSettings.isMultiMain) {
 			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
 			if (this.globalConfig.endpoints.metrics.enable) {
-				const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
+				const { PrometheusMetricsService } = await import('@/metrics/prometheus');
 				Container.get(PrometheusMetricsService);
 			}
 
@@ -358,7 +365,27 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}
 		}
 
-		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES, {
+			extra: {
+				instance: {
+					type: this.instanceSettings.instanceType,
+					isLeader: this.instanceSettings.isLeader,
+				},
+				config: {
+					autoRenewalEnabled: this.globalConfig.license?.autoRenewalEnabled,
+					activationKeySet: !!this.globalConfig.license?.activationKey,
+					usingEphemeralCert: !!this.globalConfig.license?.cert,
+				},
+				cert: {
+					exists: (await this.license.loadCertStr()).length > 0,
+					isValid: this.license.isCertValid(),
+					hasMultiMain: this.license.hasFeatureInCert(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES),
+					expiresAt: this.license.getExpiryDate()?.toISOString() ?? null,
+					terminatesAt: this.license.getTerminationDate()?.toISOString() ?? null,
+					consumerId: this.license.getConsumerId(),
+				},
+			},
+		});
 	}
 
 	async run() {

@@ -1,36 +1,47 @@
 <script setup lang="ts">
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { EVALUATIONS_DOCS_URL } from '@/app/constants';
+import { EVALUATIONS_DOCS_URL, VIEWS } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import { computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import EvaluationsPaywall from '../components/Paywall/EvaluationsPaywall.vue';
 import SetupWizard from '../components/SetupWizard/SetupWizard.vue';
+import EvaluationsEmptyState from '../components/EvaluationsEmptyState/EvaluationsEmptyState.vue';
 
 import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
+import { useWorkflowEvaluationState } from '../composables/useWorkflowEvaluationState';
+import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
+import { useEvaluationsLicense } from '../composables/useEvaluationsLicense';
 const props = defineProps<{
 	workflowId: string;
 }>();
 
 const usageStore = useUsageStore();
 const evaluationStore = useEvaluationStore();
+const evaluationState = useWorkflowEvaluationState();
+const workflowsStore = useWorkflowsStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
+const router = useRouter();
+const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
+	useEvaluationsWizardSidepanelExperiment();
 
-const evaluationsLicensed = computed(() => {
-	return usageStore.workflowsWithEvaluationsLimit !== 0;
-});
+const { isLicensed } = useEvaluationsLicense();
 
 const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
+
+const workflowIsSaved = computed(() => workflowsStore.isWorkflowSaved[props.workflowId] === true);
 
 const runs = computed(() => {
 	return Object.values(evaluationStore.testRunsById ?? {}).filter(
@@ -46,6 +57,8 @@ const showWizard = computed(() => !hasRuns.value);
 
 // Method to run a test - will be used by the SetupWizard component
 async function runTest() {
+	if (!workflowIsSaved.value) return;
+
 	try {
 		await evaluationStore.startTestRun(props.workflowId);
 	} catch (error) {
@@ -67,14 +80,39 @@ const evaluationsQuotaExceeded = computed(() => {
 	);
 });
 
-const { isReady } = useAsyncState(async () => {
+function openWizardOnCanvas() {
+	void router.push({
+		name: VIEWS.WORKFLOW,
+		params: { workflowId: props.workflowId },
+		query: { action: 'openEvaluationsWizard' },
+	});
+}
+
+async function fetchTestRuns() {
+	if (!workflowIsSaved.value) return;
+
 	try {
-		await usageStore.getLicenseInfo();
 		await evaluationStore.fetchTestRuns(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
 	}
+}
+
+const { isReady } = useAsyncState(async () => {
+	try {
+		await usageStore.getLicenseInfo();
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
+	}
+
+	await fetchTestRuns();
 }, undefined);
+
+watch(workflowIsSaved, async (isSaved) => {
+	if (isSaved) {
+		await fetchTestRuns();
+	}
+});
 
 watch(
 	isReady,
@@ -85,9 +123,9 @@ watch(
 					workflow_id: props.workflowId,
 					test_type: 'evaluation',
 					view: 'setup',
-					trigger_set_up: evaluationStore.evaluationTriggerExists,
-					output_set_up: evaluationStore.evaluationSetOutputsNodeExist,
-					metrics_set_up: evaluationStore.evaluationSetMetricsNodeExist,
+					trigger_set_up: evaluationState.evaluationTriggerExists.value,
+					output_set_up: evaluationState.evaluationSetOutputsNodeExist.value,
+					metrics_set_up: evaluationState.evaluationSetMetricsNodeExist.value,
 					quota_reached: evaluationsQuotaExceeded.value,
 				});
 			} else {
@@ -106,7 +144,21 @@ watch(
 
 <template>
 	<div :class="$style.evaluationsView">
-		<template v-if="isReady && showWizard">
+		<!--
+			With the wizard-sidepanel experiment on we replace the long-form
+			setup screen (video + step list) with a focused empty-state card.
+			The "Get started" CTA navigates to the canvas with the wizard auto-
+			opened — same destination the floating CTA above already targets.
+		-->
+		<template v-if="isReady && showWizard && isEvaluationsWizardSidepanelEnabled">
+			<EvaluationsPaywall v-if="!isLicensed" />
+			<EvaluationsEmptyState
+				v-else
+				:disabled="isProtectedEnvironment"
+				@get-started="openWizardOnCanvas"
+			/>
+		</template>
+		<template v-else-if="isReady && showWizard">
 			<div :class="$style.setupContent">
 				<div>
 					<N8nText size="large" color="text-dark" tag="h3" bold>
@@ -135,7 +187,7 @@ watch(
 						referrerpolicy="strict-origin-when-cross-origin"
 						allowfullscreen
 					></iframe>
-					<SetupWizard v-if="evaluationsLicensed" @run-test="runTest" />
+					<SetupWizard v-if="isLicensed" @run-test="runTest" />
 					<EvaluationsPaywall v-else />
 				</div>
 			</div>
@@ -150,6 +202,7 @@ watch(
 	height: 100%;
 	display: flex;
 	justify-content: center;
+	position: relative;
 }
 
 .setupContent {

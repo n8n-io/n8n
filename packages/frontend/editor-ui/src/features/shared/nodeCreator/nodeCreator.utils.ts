@@ -15,6 +15,7 @@ import {
 	AI_CATEGORY_HUMAN_IN_THE_LOOP,
 	AI_CATEGORY_MCP_NODES,
 	AI_CATEGORY_OTHER_TOOLS,
+	AI_CATEGORY_ROOT_NODES,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
@@ -288,7 +289,17 @@ export const removePreviewToken = (key: string) =>
 export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
 
 function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
-	if (element.type !== 'node' || element.properties.tag) return element;
+	if (element.type !== 'node') return element;
+
+	const aiSubcategories = element.properties.codex?.subcategories?.[AI_SUBCATEGORY] ?? [];
+	if (
+		aiSubcategories.includes(AI_CATEGORY_MCP_NODES) &&
+		!aiSubcategories.includes(AI_CATEGORY_ROOT_NODES)
+	) {
+		element.properties.isNew = true;
+	}
+
+	if (element.properties.tag) return element;
 
 	if (RECOMMENDED_NODES.includes(element.properties.name)) {
 		element.properties.tag = {

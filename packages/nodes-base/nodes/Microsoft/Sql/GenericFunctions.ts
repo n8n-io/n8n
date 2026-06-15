@@ -16,7 +16,7 @@ import type { ITables, OperationInputData } from './interfaces';
  */
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
-	const newItem: IDataObject = {};
+	const newItem: IDataObject = Object.create(null);
 	for (const property of properties) {
 		if (item.json[property] === undefined) {
 			newItem[property] = null;
@@ -44,20 +44,21 @@ export function createTableStruct(
 		const table = getNodeParam('table', index) as string;
 		const columnString = getNodeParam('columns', index) as string;
 		const columns = columnString.split(',').map((column) => column.trim());
+
 		const itemCopy = copyInputItem(item, columns.concat(additionalProperties));
 		const keyParam = keyName ? (getNodeParam(keyName, index) as string) : undefined;
-		if (tables[table] === undefined) {
-			tables[table] = {};
+		if (!Object.hasOwn(tables, table)) {
+			tables[table] = Object.create(null);
 		}
-		if (tables[table][columnString] === undefined) {
+		if (!Object.hasOwn(tables[table], columnString)) {
 			tables[table][columnString] = [];
 		}
 		if (keyName) {
 			itemCopy[keyName] = keyParam;
 		}
-		tables[table][columnString].push(itemCopy);
+		(tables[table][columnString] as IDataObject[]).push(itemCopy);
 		return tables;
-	}, {} as ITables);
+	}, Object.create(null) as ITables);
 }
 
 /**

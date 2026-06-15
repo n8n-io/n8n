@@ -13,6 +13,7 @@ import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
 import {
+	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
@@ -182,6 +183,8 @@ export class SourceControlService {
 				connected: false,
 				branchName: '',
 				repositoryUrl: '',
+				branchReadOnly: false,
+				branchColor: SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
 				connectionType: preferences.connectionType,
 			});
 			await this.sourceControlExportService.deleteRepositoryFolder();

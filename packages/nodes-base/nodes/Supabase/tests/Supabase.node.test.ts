@@ -62,6 +62,109 @@ describe('Test Supabase Node', () => {
 		return fakeExecuteFunction;
 	};
 
+	describe('getAll pagination', () => {
+		it('should make exactly one request when limit is less than 1000', async () => {
+			const supabaseApiRequest = jest
+				.spyOn(utils, 'supabaseApiRequest')
+				.mockResolvedValueOnce(Array.from({ length: 50 }, (_, i) => ({ id: i })));
+
+			const fakeExecuteFunction = createMockExecuteFunction({
+				resource: 'row',
+				operation: 'getAll',
+				returnAll: false,
+				limit: 50,
+				tableId: 'my_table',
+				filterType: 'none',
+				orderBy: '',
+			});
+
+			await node.execute.call(fakeExecuteFunction);
+
+			expect(supabaseApiRequest).toHaveBeenCalledTimes(1);
+
+			supabaseApiRequest.mockRestore();
+		});
+
+		it('should make exactly one request when limit equals 1000', async () => {
+			const supabaseApiRequest = jest
+				.spyOn(utils, 'supabaseApiRequest')
+				.mockResolvedValueOnce(Array.from({ length: 1000 }, (_, i) => ({ id: i })));
+
+			const fakeExecuteFunction = createMockExecuteFunction({
+				resource: 'row',
+				operation: 'getAll',
+				returnAll: false,
+				limit: 1000,
+				tableId: 'my_table',
+				filterType: 'none',
+				orderBy: '',
+			});
+
+			await node.execute.call(fakeExecuteFunction);
+
+			expect(supabaseApiRequest).toHaveBeenCalledTimes(1);
+
+			supabaseApiRequest.mockRestore();
+		});
+
+		it('should paginate and request only remaining rows on the last page when limit > 1000', async () => {
+			const capturedQs: IDataObject[] = [];
+			const supabaseApiRequest = jest
+				.spyOn(utils, 'supabaseApiRequest')
+				.mockImplementation(async (_method, _endpoint, _body, qs) => {
+					capturedQs.push({ ...qs });
+					return capturedQs.length === 1
+						? Array.from({ length: 1000 }, (_, i) => ({ id: i }))
+						: Array.from({ length: 500 }, (_, i) => ({ id: i + 1000 }));
+				});
+
+			const fakeExecuteFunction = createMockExecuteFunction({
+				resource: 'row',
+				operation: 'getAll',
+				returnAll: false,
+				limit: 1500,
+				tableId: 'my_table',
+				filterType: 'none',
+				orderBy: '',
+			});
+
+			await node.execute.call(fakeExecuteFunction);
+
+			expect(supabaseApiRequest).toHaveBeenCalledTimes(2);
+			expect(capturedQs[0]).toMatchObject({ limit: 1000 });
+			expect(capturedQs[0]).not.toHaveProperty('offset');
+			expect(capturedQs[1]).toMatchObject({ limit: 500, offset: 1000 });
+
+			supabaseApiRequest.mockRestore();
+		});
+
+		it('should include order parameter in the request when orderBy is set', async () => {
+			const supabaseApiRequest = jest.spyOn(utils, 'supabaseApiRequest').mockResolvedValueOnce([]);
+
+			const fakeExecuteFunction = createMockExecuteFunction({
+				resource: 'row',
+				operation: 'getAll',
+				returnAll: true,
+				tableId: 'my_table',
+				filterType: 'none',
+				orderBy: 'id',
+			});
+
+			await node.execute.call(fakeExecuteFunction);
+
+			expect(supabaseApiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/my_table',
+				{},
+				expect.objectContaining({ order: 'id' }),
+				undefined,
+				{},
+			);
+
+			supabaseApiRequest.mockRestore();
+		});
+	});
+
 	it('should allow filtering on the same field multiple times', async () => {
 		const supabaseApiRequest = jest
 			.spyOn(utils, 'supabaseApiRequest')

@@ -39,6 +39,7 @@ export type FoundWorkflow = NonNullable<
 
 export type GetMcpWorkflowOptions = {
 	includeActiveVersion?: boolean;
+	includeTags?: boolean;
 };
 
 /**
@@ -56,6 +57,7 @@ export async function getMcpWorkflow(
 ): Promise<FoundWorkflow> {
 	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, scopes, {
 		includeActiveVersion: options?.includeActiveVersion,
+		includeTags: options?.includeTags,
 	});
 
 	if (!workflow) {
@@ -74,7 +76,7 @@ export async function getMcpWorkflow(
 
 	if (!workflow.settings?.availableInMCP) {
 		throw new WorkflowAccessError(
-			'Workflow is not available in MCP. Enable MCP access in workflow settings.',
+			'Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list, or from the workflow settings.',
 			'not_available_in_mcp',
 		);
 	}

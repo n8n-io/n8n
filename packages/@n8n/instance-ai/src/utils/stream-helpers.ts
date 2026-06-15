@@ -13,16 +13,15 @@ export interface SuspensionInfo {
 	toolCallId: string;
 	requestId: string;
 	toolName?: string;
+	/** The raw suspend payload as passed to `ctx.suspend()` by the inner tool. */
+	suspendPayload: Record<string, unknown>;
 }
 
-/**
- * Extract suspension info from a Mastra stream chunk.
- * Returns null if the chunk is not a suspension.
- */
+/** Extract suspension info from a stream chunk. */
 export function parseSuspension(chunk: unknown): SuspensionInfo | null {
 	if (!isRecord(chunk) || chunk.type !== 'tool-call-suspended') return null;
 
-	const sp = isRecord(chunk.payload) ? chunk.payload : {};
+	const sp = isRecord(chunk.payload) ? chunk.payload : chunk;
 	const suspPayload = isRecord(sp.suspendPayload) ? sp.suspendPayload : {};
 	const tcId = typeof sp.toolCallId === 'string' ? sp.toolCallId : '';
 	const reqId =
@@ -32,18 +31,36 @@ export function parseSuspension(chunk: unknown): SuspensionInfo | null {
 	const toolName = typeof sp.toolName === 'string' ? sp.toolName : undefined;
 
 	if (!reqId || !tcId) return null;
-	return { toolCallId: tcId, requestId: reqId, toolName };
+	return { toolCallId: tcId, requestId: reqId, toolName, suspendPayload: suspPayload };
 }
 
-/** Type for Mastra's resumeStream method (not exported by the framework). */
 export interface Resumable {
-	resumeStream: (
+	resume?: (
+		method: 'stream',
 		data: Record<string, unknown>,
 		options: Record<string, unknown>,
-	) => Promise<{ runId?: string; fullStream: AsyncIterable<unknown>; text: Promise<string> }>;
+	) => Promise<unknown>;
 }
 
 /** Cast an agent to Resumable for suspend/resume operations. */
 export function asResumable(agent: unknown): Resumable {
 	return agent as Resumable;
+}
+
+export async function resumeAgentStream(
+	agent: unknown,
+	data: Record<string, unknown>,
+	options: Record<string, unknown>,
+): Promise<unknown> {
+	if (!isRecord(agent)) {
+		throw new Error('Agent does not support stream resume');
+	}
+
+	const resumable = asResumable(agent);
+
+	if (typeof resumable.resume === 'function') {
+		return await resumable.resume('stream', data, options);
+	}
+
+	throw new Error('Agent does not support stream resume');
 }
