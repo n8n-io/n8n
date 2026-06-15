@@ -1,5 +1,6 @@
 import type { User } from '@n8n/db';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { INode, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -19,10 +20,41 @@ export interface CredentialValidationSuccess {
 
 export type CredentialValidationResult = CredentialValidationSuccess | CredentialValidationFailure;
 
+export interface WorkflowCredentialValidationFailure {
+	ok: false;
+	error: string;
+}
+
+export type WorkflowCredentialValidationResult =
+	| CredentialValidationSuccess
+	| WorkflowCredentialValidationFailure;
+
 interface NodeMeta {
 	type: string;
 	typeVersion: number;
 }
+
+/**
+ * Scope used to determine which credentials are reachable from a workflow.
+ * For an existing workflow we scope by `workflowId` (covering every project the
+ * workflow is shared into); for a not-yet-saved workflow we scope by the target
+ * `projectId`.
+ */
+export type CredentialProjectScope = { workflowId: string } | { projectId: string };
+
+/**
+ * Classification of a credential id relative to the workflow's project scope:
+ * - `usable`: reachable from the workflow's project (mirrors the runtime gate).
+ * - `cross-project`: the user can see it, but it lives in a project the
+ *   workflow can't use, so execution would reject it.
+ * - `not-found`: the credential doesn't exist or the user can't access it.
+ */
+type CredentialClassification =
+	| { status: 'usable'; type: string }
+	| { status: 'cross-project'; type: string }
+	| { status: 'not-found' };
+
+type CredentialClassifier = (credentialId: string) => Promise<CredentialClassification>;
 
 const fail = (opIndex: number, message: string): CredentialValidationFailure => ({
 	ok: false,
@@ -31,13 +63,144 @@ const fail = (opIndex: number, message: string): CredentialValidationFailure => 
 });
 
 /**
+ * Build a classifier that mirrors the runtime credential permission gate
+ * (`CredentialsPermissionChecker`): a credential is only "usable" if it is
+ * reachable from the workflow's project(s), not merely accessible to the
+ * calling user.
+ *
+ * The user-scoped `getOne` lookup is used purely as a fallback to tell a
+ * genuinely missing credential apart from one that exists but belongs to a
+ * different project, so we can return an actionable error message.
+ */
+async function buildProjectCredentialClassifier(
+	user: User,
+	scope: CredentialProjectScope,
+	credentialsService: CredentialsService,
+): Promise<CredentialClassifier> {
+	const usable = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, scope);
+	const usableTypeById = new Map<string, string>();
+	for (const credential of usable) {
+		usableTypeById.set(credential.id, credential.type);
+	}
+
+	const fallbackCache = new Map<string, CredentialClassification>();
+
+	return async (credentialId: string): Promise<CredentialClassification> => {
+		const usableType = usableTypeById.get(credentialId);
+		if (usableType !== undefined) {
+			return { status: 'usable', type: usableType };
+		}
+
+		const cached = fallbackCache.get(credentialId);
+		if (cached) return cached;
+
+		let classification: CredentialClassification;
+		try {
+			const credential = await credentialsService.getOne(user, credentialId, false);
+			classification = { status: 'cross-project', type: credential.type };
+		} catch (error) {
+			if (error instanceof NotFoundError) {
+				classification = { status: 'not-found' };
+			} else {
+				throw error;
+			}
+		}
+		fallbackCache.set(credentialId, classification);
+		return classification;
+	};
+}
+
+/**
+ * Lazily build the project credential classifier so callers that never touch a
+ * credential reference don't pay for the (potentially expensive) credential
+ * lookup. The classifier is memoised on first use.
+ */
+function createLazyClassifier(
+	user: User,
+	scope: CredentialProjectScope,
+	credentialsService: CredentialsService,
+): () => Promise<CredentialClassifier> {
+	let classifierPromise: Promise<CredentialClassifier> | undefined;
+	return async () => {
+		classifierPromise ??= buildProjectCredentialClassifier(user, scope, credentialsService);
+		return await classifierPromise;
+	};
+}
+
+/**
+ * Turn a credential classification into a human-readable reason, or `null` when
+ * the reference is valid. Shared between the create and update validation paths
+ * so both surface identical wording.
+ */
+function describeCredentialProblem(
+	classification: CredentialClassification,
+	credentialId: string,
+	credentialKey: string,
+): string | null {
+	if (classification.status === 'not-found') {
+		return `credential '${credentialId}' not found or not accessible`;
+	}
+	if (classification.status === 'cross-project') {
+		return `credential '${credentialId}' is not usable in this workflow's project. Omit it so a credential from the project is auto-assigned, share the credential with the project, or use a credential that belongs to the project`;
+	}
+	if (classification.type !== credentialKey) {
+		return `credential '${credentialId}' is type '${classification.type}' but '${credentialKey}' is expected`;
+	}
+	return null;
+}
+
+/**
+ * Determine which credential types a node actively uses, mirroring the runtime
+ * `CredentialsPermissionChecker.getActiveCredentialTypes`. Returns `null` when
+ * the node type can't be resolved, signalling that every credential reference
+ * should be checked as a safe fallback.
+ */
+function computeActiveCredentialTypes(node: INode, nodeTypes: NodeTypes): Set<string> | null {
+	let description: INodeTypeDescription;
+	try {
+		description = nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+	} catch {
+		return null;
+	}
+
+	const activeTypes = new Set<string>();
+
+	for (const credDef of description.credentials ?? []) {
+		if (NodeHelpers.displayParameter(node.parameters, credDef, node, description)) {
+			activeTypes.add(credDef.name);
+		}
+	}
+
+	// Nodes using a predefined credential type (e.g. HTTP Request) declare the
+	// active credential via the nodeCredentialType parameter rather than the
+	// static credentials array.
+	const { nodeCredentialType } = node.parameters;
+	if (typeof nodeCredentialType === 'string' && nodeCredentialType) {
+		activeTypes.add(nodeCredentialType);
+	}
+
+	// Generic credential types (e.g. HTTP Request with
+	// authentication=genericCredentialType) live in genericAuthType.
+	const { genericAuthType } = node.parameters;
+	if (typeof genericAuthType === 'string' && genericAuthType) {
+		activeTypes.add(genericAuthType);
+	}
+
+	return activeTypes;
+}
+
+/**
  * Validate every credential reference introduced by the batch against the
- * caller's accessible credentials and against the target node-type's declared
- * credential keys.
+ * credentials reachable from the workflow's project and against the target
+ * node-type's declared credential keys.
  *
  * Only credentials touched by ops in this batch are checked — pre-existing
  * credential references on nodes the agent didn't touch are left alone, so a
  * pre-existing invalid reference can't block an unrelated edit.
+ *
+ * The check is project-scoped to match the runtime permission gate, so a
+ * credential that is accessible to the user but not reachable from the
+ * workflow's project is rejected here instead of failing only at execution.
  *
  * The check is non-destructive: it only does DB reads and node-type lookups.
  * On the first failure we stop and return the offending op index so the
@@ -49,30 +212,14 @@ export async function validateCredentialReferences(
 	user: User,
 	credentialsService: CredentialsService,
 	nodeTypes: NodeTypes,
+	scope: CredentialProjectScope,
 ): Promise<CredentialValidationResult> {
 	const nameToNodeMeta = new Map<string, NodeMeta>();
 	for (const node of existingWorkflow.nodes) {
 		nameToNodeMeta.set(node.name, { type: node.type, typeVersion: node.typeVersion });
 	}
 
-	const credentialCache = new Map<string, { type: string } | 'not-found'>();
-
-	const lookupCredential = async (credentialId: string) => {
-		const cached = credentialCache.get(credentialId);
-		if (cached) return cached;
-		try {
-			const credential = await credentialsService.getOne(user, credentialId, false);
-			const result = { type: credential.type };
-			credentialCache.set(credentialId, result);
-			return result;
-		} catch (error) {
-			if (error instanceof NotFoundError) {
-				credentialCache.set(credentialId, 'not-found');
-				return 'not-found' as const;
-			}
-			throw error;
-		}
-	};
+	const getClassifier = createLazyClassifier(user, scope, credentialsService);
 
 	const checkCredentialReference = async (
 		opIndex: number,
@@ -95,17 +242,10 @@ export async function validateCredentialReferences(
 			);
 		}
 
-		const credential = await lookupCredential(credentialId);
-		if (credential === 'not-found') {
-			return fail(opIndex, `credential '${credentialId}' not found or not accessible`);
-		}
-
-		if (credential.type !== credentialKey) {
-			return fail(
-				opIndex,
-				`credential '${credentialId}' is type '${credential.type}' but '${credentialKey}' is expected`,
-			);
-		}
+		const classify = await getClassifier();
+		const classification = await classify(credentialId);
+		const problem = describeCredentialProblem(classification, credentialId, credentialKey);
+		if (problem) return fail(opIndex, problem);
 
 		return null;
 	};
@@ -136,6 +276,51 @@ export async function validateCredentialReferences(
 			if (!meta) continue;
 			const failure = await checkCredentialReference(i, meta, op.credentialKey, op.credentialId);
 			if (failure) return failure;
+		}
+	}
+
+	return { ok: true };
+}
+
+/**
+ * Validate every credential reference already present on a set of workflow
+ * nodes against the credentials reachable from the target project.
+ *
+ * Used by the create-from-code path, where explicit credential ids baked into
+ * the generated SDK code bypass auto-assignment (which only fills *missing*
+ * credentials). Without this check, an id pointing at a credential in another
+ * project would be written verbatim and only fail at execution time.
+ *
+ * Mirrors the runtime permission gate: disabled nodes are skipped, and only
+ * credential types the node actively uses are checked, so we don't block on a
+ * binding the node wouldn't actually load.
+ */
+export async function validateWorkflowCredentialReferences(
+	nodes: INode[],
+	user: User,
+	credentialsService: CredentialsService,
+	nodeTypes: NodeTypes,
+	projectId: string,
+): Promise<WorkflowCredentialValidationResult> {
+	const getClassifier = createLazyClassifier(user, { projectId }, credentialsService);
+
+	for (const node of nodes) {
+		if (node.disabled || !node.credentials) continue;
+
+		const activeTypes = computeActiveCredentialTypes(node, nodeTypes);
+
+		for (const [credentialKey, ref] of Object.entries(node.credentials)) {
+			const credentialId = ref?.id;
+			if (!credentialId) continue;
+			// Skip credentials the node's current configuration doesn't load.
+			if (activeTypes !== null && !activeTypes.has(credentialKey)) continue;
+
+			const classify = await getClassifier();
+			const classification = await classify(credentialId);
+			const problem = describeCredentialProblem(classification, credentialId, credentialKey);
+			if (problem) {
+				return { ok: false, error: `Node "${node.name}": ${problem}` };
+			}
 		}
 	}
 

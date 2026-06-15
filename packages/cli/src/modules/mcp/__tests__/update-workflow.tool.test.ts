@@ -645,9 +645,21 @@ describe('update-workflow MCP tool', () => {
 					return { description: {} };
 				}) as typeof nodeTypes.getByNameAndVersion);
 
+				// Credentials reachable from the workflow's project (mirrors the
+				// runtime permission gate).
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-slack', name: 'My Slack', type: 'slackApi' },
+					{ id: 'cred-wrong-type', name: 'Wrong', type: 'discordApi' },
+				]);
+
+				// getOne is the user-scoped fallback used only to tell a missing
+				// credential apart from a cross-project one.
 				(credentialsService.getOne as jest.Mock).mockImplementation(async (_user, id: string) => {
 					if (id === 'cred-slack') return { id, name: 'My Slack', type: 'slackApi' };
 					if (id === 'cred-wrong-type') return { id, name: 'Wrong', type: 'discordApi' };
+					if (id === 'cred-other-project') {
+						return { id, name: 'Other Project Slack', type: 'slackApi' };
+					}
 					throw new NotFoundError(`Credential with ID "${id}" could not be found.`);
 				});
 			});
@@ -757,6 +769,58 @@ describe('update-workflow MCP tool', () => {
 
 				expect(result.isError).toBeUndefined();
 				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('rejects setNodeCredential with a credential from another project', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [makeNode({ id: 's', name: 'Slack', type: 'n8n-nodes-base.slack' })],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'Slack',
+							credentialKey: 'slackApi',
+							credentialId: 'cred-other-project',
+							credentialName: 'Other Project Slack',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("credential 'cred-other-project' is not usable");
+				expect(response.error).toContain("this workflow's project");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects addNode whose credential belongs to another project', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: {
+								name: 'Slack',
+								type: 'n8n-nodes-base.slack',
+								typeVersion: 1,
+								credentials: {
+									slackApi: { id: 'cred-other-project', name: 'Other Project Slack' },
+								},
+							},
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("credential 'cred-other-project' is not usable");
+				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
 			test('rejects addNode with an unknown credential id', async () => {
