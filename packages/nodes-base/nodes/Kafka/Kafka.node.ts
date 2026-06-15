@@ -40,6 +40,7 @@ export class Kafka implements INodeType {
 			{
 				name: 'schemaRegistryApi',
 				required: false,
+				displayName: 'Schema Registry',
 			},
 		],
 		properties: [
