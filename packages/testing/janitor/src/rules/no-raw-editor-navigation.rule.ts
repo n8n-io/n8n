@@ -1,3 +1,4 @@
+import { isSuppressed } from '@n8n/rules-engine';
 import { AstRule } from '@n8n/rules-engine/ast';
 import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
@@ -5,7 +6,6 @@ import { SyntaxKind, type Project, type SourceFile, type CallExpression } from '
 import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
 import { truncateText } from '../utils/ast-helpers.js';
-import { isSuppressed } from '../utils/supress.js';
 
 /**
  * No Raw Editor Navigation Rule

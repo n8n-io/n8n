@@ -1,5 +1,6 @@
-import type { AstRule } from '@n8n/rules-engine/ast';
 import type { CallExpression } from 'ts-morph';
+
+import type { AstRule } from './ast';
 
 /**
  * Is the current expression call being supressed by the `// janitor-disable-next-line` -directive?
