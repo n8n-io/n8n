@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
+import type { dataTableColumnTypeSchema } from '../../schemas/data-table.schema';
 
 /**
  * Where a data table column's value is sourced from when turning an execution
