@@ -20,6 +20,7 @@ import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-cli
 import {
 	AddConnectionCommand,
 	RemoveNodeCommand,
+	RemoveNodeGroupCommand,
 	ReplaceNodeParametersCommand,
 	UpdateNodeGroupCommand,
 } from '@/app/models/history';
@@ -1480,6 +1481,76 @@ describe('useCanvasOperations', () => {
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
 				new RemoveNodeCommand(node, expect.any(Number)),
 			);
+		});
+
+		it('records the group membership change when deleting a grouped node', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'b', name: 'B' });
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+
+			const group = { id: 'g1', name: 'Group 1', nodeIds: ['a', 'b', 'c'] };
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockReturnValue(group);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue({
+				...group,
+				nodeIds: ['a', 'c'],
+			});
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('b', { trackHistory: true });
+
+			const groupCommand = historyStore.pushCommandToUndo.mock.calls
+				.map(([command]) => command)
+				.find((command) => command instanceof UpdateNodeGroupCommand) as
+				| UpdateNodeGroupCommand
+				| undefined;
+			expect(groupCommand).toBeInstanceOf(UpdateNodeGroupCommand);
+			expect(groupCommand?.before.nodeIds).toEqual(['a', 'b', 'c']);
+			expect(groupCommand?.after.nodeIds).toEqual(['a', 'c']);
+		});
+
+		it('records a group removal when deleting the last grouped node', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'b', name: 'B' });
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+
+			const group = { id: 'g1', name: 'Group 1', nodeIds: ['b'] };
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockReturnValue(group);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue(undefined);
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('b', { trackHistory: true });
+
+			const groupCommand = historyStore.pushCommandToUndo.mock.calls
+				.map(([command]) => command)
+				.find((command) => command instanceof RemoveNodeGroupCommand) as
+				| RemoveNodeGroupCommand
+				| undefined;
+			expect(groupCommand).toBeInstanceOf(RemoveNodeGroupCommand);
+			expect(groupCommand?.group.nodeIds).toEqual(['b']);
+		});
+
+		it('does not record any group command when the deleted node is ungrouped', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'b', name: 'B' });
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockReturnValue(undefined);
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('b', { trackHistory: true });
+
+			const groupCommand = historyStore.pushCommandToUndo.mock.calls
+				.map(([command]) => command)
+				.find(
+					(command) =>
+						command instanceof UpdateNodeGroupCommand || command instanceof RemoveNodeGroupCommand,
+				);
+			expect(groupCommand).toBeUndefined();
 		});
 
 		it('re-evaluates all credential issues when the deleted node is a trigger', () => {
