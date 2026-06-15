@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, h } from 'vue';
-import { useRoute } from 'vue-router';
 import { useToast } from '@/app/composables/useToast';
 import { usePostHog } from '@/app/stores/posthog.store';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
@@ -8,6 +7,7 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
 import {
 	EnterpriseEditionFeature,
+	EXECUTION_DATA_REDACTION_DOCS_URL,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
@@ -69,7 +69,6 @@ import WorkflowCustomTelemetryTags from '@/app/components/WorkflowSettings/Workf
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
-const route = useRoute();
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
 const toast = useToast();
@@ -658,7 +657,7 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 
 const saveCustomTelemetryTags = async (customTelemetryTags: ICustomTelemetryTag[]) => {
 	try {
-		await workflowsStore.updateWorkflow(String(route.params.workflowId), {
+		await workflowsStore.updateWorkflow(workflowId.value, {
 			settings: { customTelemetryTags },
 			expectedChecksum: workflowDocumentStore.value.checksum,
 		});
@@ -746,7 +745,7 @@ const saveSettings = async () => {
 	data.expectedChecksum = workflowDocumentStore.value.checksum;
 
 	try {
-		await workflowsStore.updateWorkflow(String(route.params.workflowId), data);
+		await workflowsStore.updateWorkflow(workflowId.value, data);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
 		isLoading.value = false;
@@ -1372,7 +1371,17 @@ onBeforeUnmount(() => {
 							</N8nBadge>
 							<N8nTooltip placement="top">
 								<template #content>
-									<div v-text="helpTexts.redactProductionData"></div>
+									<div>
+										{{ helpTexts.redactProductionData }}
+										<N8nLink
+											:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+											size="small"
+											new-window
+											data-test-id="redact-production-data-docs-link"
+										>
+											{{ i18n.baseText('generic.learnMore') }}
+										</N8nLink>
+									</div>
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
@@ -1468,7 +1477,17 @@ onBeforeUnmount(() => {
 							</N8nBadge>
 							<N8nTooltip placement="top">
 								<template #content>
-									<div v-text="helpTexts.redactManualData"></div>
+									<div>
+										{{ helpTexts.redactManualData }}
+										<N8nLink
+											:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+											size="small"
+											new-window
+											data-test-id="redact-manual-data-docs-link"
+										>
+											{{ i18n.baseText('generic.learnMore') }}
+										</N8nLink>
+									</div>
 								</template>
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>

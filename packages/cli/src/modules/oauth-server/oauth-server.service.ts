@@ -167,7 +167,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		this.logger.debug('Starting OAuth authorization', { clientId: client.client_id });
 
 		try {
-			const resource = this.resolveAndValidateResourceIndicator(params.resource?.toString());
+			const resource = await this.resolveAndValidateResourceIndicator(params.resource?.toString());
 
 			this.oauthSessionService.createSession(res, {
 				clientId: client.client_id,
@@ -227,7 +227,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		}
 
 		const resourceStr = resource?.toString();
-		const tokenResource = this.resolveAndValidateResourceIndicator(resourceStr);
+		const tokenResource = await this.resolveAndValidateResourceIndicator(resourceStr);
 
 		// RFC 8707: if both the token request and the auth code specify a resource, they must match
 		// (token substitution defense). Otherwise either supplies the other, falling back to the
@@ -280,7 +280,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		return await this.tokenService.validateAndRotateRefreshToken(
 			refreshToken,
 			client.client_id,
-			this.resolveAndValidateResourceIndicator(resourceStr),
+			await this.resolveAndValidateResourceIndicator(resourceStr),
 		);
 	}
 
@@ -291,13 +291,15 @@ export class OAuthServerService implements OAuthServerProvider {
 	// Exact-match against a registered resource, as required by RFC 8707 §2.1.
 	// Prefix/wildcard matching would open the door to malicious-host or
 	// path-traversal indicators like ".../mcp-server/http/../admin".
-	private resolveAndValidateResourceIndicator(resource: string | undefined): string | undefined {
+	private async resolveAndValidateResourceIndicator(
+		resource: string | undefined,
+	): Promise<string | undefined> {
 		if (resource === undefined) {
 			return undefined;
 		}
 
 		const normalizedResource = resource.replace(/\/$/, '');
-		const match = this.resourceRegistry.getByResourceUrl(normalizedResource);
+		const match = await this.resourceRegistry.getByResourceUrl(normalizedResource);
 		if (!match) {
 			const knownResources = this.resourceRegistry
 				.getAll()

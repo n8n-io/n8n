@@ -1623,6 +1623,26 @@ describe('AgentsService', () => {
 			});
 		}
 
+		function makeFailingStream(error: Error): ReadableStream {
+			let readCount = 0;
+			return {
+				getReader: () => ({
+					read: jest.fn().mockImplementation(async () => {
+						readCount++;
+						if (readCount === 1) {
+							return {
+								done: false,
+								value: { type: 'text-delta', id: 't1', delta: 'partial answer' },
+							};
+						}
+						throw error;
+					}),
+					cancel: jest.fn(),
+					releaseLock: jest.fn(),
+				}),
+			} as unknown as ReadableStream;
+		}
+
 		async function collectChunks(
 			config: object,
 		): Promise<Array<{ type: string; [k: string]: unknown }>> {
@@ -1684,6 +1704,78 @@ describe('AgentsService', () => {
 			});
 
 			expect(chunks.every((c) => c.type !== 'text-delta')).toBe(true);
+		});
+
+		it('records the first user message when the stream is stopped after suspension', async () => {
+			const agentInstance = {
+				name: 'test',
+				stream: jest.fn().mockResolvedValue({
+					runId: 'run-1',
+					stream: makeStream([
+						{
+							type: 'tool-call-suspended',
+							toolCallId: 'tool-call-1',
+							toolName: 'approve',
+						},
+					]),
+				}),
+			};
+
+			const stream = (service as unknown as StreamChatResponse).streamChatResponse({
+				agentInstance,
+				toolRegistry: new Map(),
+				agentId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'user-1' },
+				projectId,
+			});
+
+			const first = await stream.next();
+			expect(first.value.type).toBe('tool-call-suspended');
+			await stream.return(undefined);
+
+			expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'thread-1',
+					userMessage: 'hello',
+					hitlStatus: 'suspended',
+				}),
+			);
+		});
+
+		it('records a failed execution when the stream reader errors before finish', async () => {
+			const streamError = new Error('reader failed while consuming stream');
+			const agentInstance = {
+				name: 'test',
+				stream: jest.fn().mockResolvedValue({
+					runId: 'run-1',
+					stream: makeFailingStream(streamError),
+				}),
+			};
+
+			await expect(
+				collectChunks({
+					agentInstance,
+					toolRegistry: new Map(),
+					agentId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'user-1' },
+					projectId,
+				}),
+			).rejects.toThrow('reader failed while consuming stream');
+
+			expect(agentExecutionService.recordMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'thread-1',
+					agentId,
+					userMessage: 'hello',
+					record: expect.objectContaining({
+						assistantResponse: 'partial answer',
+						finishReason: 'error',
+						error: 'reader failed while consuming stream',
+					}),
+				}),
+			);
 		});
 	});
 	describe('executeForWorkflow', () => {

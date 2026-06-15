@@ -1,4 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { ensureError } from 'n8n-workflow';
 
 /**
  * Descriptor for an OAuth 2.1 protected resource served by this instance.
@@ -11,6 +13,9 @@ import { Service } from '@n8n/di';
 export interface ProtectedResource {
 	/** Stable identifier, e.g. `'instance-mcp'`. */
 	id: string;
+
+	/** Human readable name, for consent screen */
+	displayName?: string;
 
 	/**
 	 * Canonical RFC 8707 resource URL used as the JWT `aud` claim and advertised
@@ -30,18 +35,45 @@ export interface ProtectedResource {
 	scopes: string[];
 
 	/**
-	 * Whether the fully registered resource is currently available. When every
-	 * registered resource reports `false`, the shared OAuth endpoints reject
-	 * requests with 403. Omit for resources that are always available.
-	 */
-	isEnabled?(): Promise<boolean>;
-
-	/**
 	 * Fallback audience for token requests that omit an RFC 8707 `resource`
 	 * parameter (pre-8707 clients). At most one registered resource may be the
 	 * default.
 	 */
 	isDefault?: boolean;
+}
+
+/**
+ * On-demand resolver for protected resources that aren't held in the registry's
+ * static map. Registered via {@link ProtectedResourceRegistry.registerResolver},
+ * resolvers are consulted only after the static map misses — letting a resource
+ * be resolved lazily (e.g. from the database) instead of being materialized up
+ * front. A resolver that throws is treated as a non-match (the registry logs and
+ * continues), so a backing-store outage fails closed rather than surfacing a 500.
+ */
+export interface ProtectedResourceResolver {
+	/** Stable identifier for the resolver, e.g. `'workflow-trigger'`. */
+	readonly id: string;
+
+	/**
+	 * Scopes contributed to discovery documents via
+	 * {@link ProtectedResourceRegistry.getAllScopes}, unioned with the static
+	 * resources' scopes.
+	 */
+	readonly scopes: string[];
+
+	/**
+	 * Resolve a resource by its canonical URL, or `undefined` if this resolver
+	 * owns no such resource. The input is pre-normalized (trailing slash
+	 * trimmed) by the registry.
+	 */
+	resolveByUrl(resourceUrl: string): Promise<ProtectedResource | undefined>;
+
+	/**
+	 * Resolve a resource by its URL path (e.g. `/webhook/wf-1/mcp`), or
+	 * `undefined` if this resolver owns no such resource. The input is
+	 * pre-normalized (trailing slash trimmed) by the registry.
+	 */
+	resolveByPath(pathname: string): Promise<ProtectedResource | undefined>;
 }
 
 const trimTrailingSlash = (url: string): string => url.replace(/\/$/, '');
@@ -55,9 +87,16 @@ const trimTrailingSlash = (url: string): string => url.replace(/\/$/, '');
 @Service()
 export class ProtectedResourceRegistry {
 	private readonly resources = new Map<string, ProtectedResource>();
+	private readonly resolvers = new Set<ProtectedResourceResolver>();
+
+	constructor(private readonly logger: Logger) {}
 
 	register(resource: ProtectedResource): void {
 		this.resources.set(resource.id, resource);
+	}
+
+	registerResolver(resolver: ProtectedResourceResolver) {
+		this.resolvers.add(resolver);
 	}
 
 	getById(id: string): ProtectedResource | undefined {
@@ -65,16 +104,24 @@ export class ProtectedResourceRegistry {
 	}
 
 	/** Look up a resource by its canonical URL (trailing slashes ignored). */
-	getByResourceUrl(resourceUrl: string): ProtectedResource | undefined {
+	async getByResourceUrl(resourceUrl: string): Promise<ProtectedResource | undefined> {
 		const normalized = trimTrailingSlash(resourceUrl);
 		for (const resource of this.resources.values()) {
 			if (trimTrailingSlash(resource.getResourceUrl()) === normalized) return resource;
+		}
+		for (const resolver of this.resolvers) {
+			try {
+				const resource = await resolver.resolveByUrl(normalized);
+				if (resource) return resource;
+			} catch (error) {
+				this.logResolverFailure(resolver, error);
+			}
 		}
 		return undefined;
 	}
 
 	/** Look up a resource by its URL path (e.g. `/mcp-server/http`). */
-	getByResourcePath(pathname: string): ProtectedResource | undefined {
+	async getByResourcePath(pathname: string): Promise<ProtectedResource | undefined> {
 		const normalized = trimTrailingSlash(pathname);
 		for (const resource of this.resources.values()) {
 			try {
@@ -85,7 +132,29 @@ export class ProtectedResourceRegistry {
 				continue;
 			}
 		}
+
+		for (const resolver of this.resolvers) {
+			try {
+				const resource = await resolver.resolveByPath(normalized);
+				if (resource) return resource;
+			} catch (error) {
+				this.logResolverFailure(resolver, error);
+			}
+		}
 		return undefined;
+	}
+
+	/**
+	 * A resolver that throws (e.g. its backing database or cache is unavailable) is
+	 * treated as a non-match rather than propagating the error. Resolution is a
+	 * lookup, so a failure is indistinguishable to the caller from "no such
+	 * resource" — failing closed yields a 404 / `invalid_target` on the
+	 * (unauthenticated) discovery and authorize paths instead of a 500.
+	 */
+	private logResolverFailure(resolver: ProtectedResourceResolver, error: unknown): void {
+		this.logger.warn(`Protected resource resolver "${resolver.id}" failed to resolve`, {
+			error: ensureError(error).message,
+		});
 	}
 
 	getAll(): ProtectedResource[] {
@@ -123,17 +192,9 @@ export class ProtectedResourceRegistry {
 		for (const resource of this.resources.values()) {
 			for (const scope of resource.scopes) scopes.add(scope);
 		}
-		return [...scopes];
-	}
-
-	/**
-	 * Whether at least one registered resource is currently enabled. Drives the
-	 * availability guard on the shared OAuth endpoints.
-	 */
-	async isAnyResourceEnabled(): Promise<boolean> {
-		for (const resource of this.resources.values()) {
-			if (!resource.isEnabled || (await resource.isEnabled())) return true;
+		for (const resolver of this.resolvers) {
+			for (const scope of resolver.scopes) scopes.add(scope);
 		}
-		return false;
+		return [...scopes];
 	}
 }

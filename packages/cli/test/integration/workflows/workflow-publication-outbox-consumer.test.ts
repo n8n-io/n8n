@@ -4,6 +4,7 @@ import {
 	setActiveVersion,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowPublicationOutboxRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
@@ -17,7 +18,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowPublicationOutboxConsumer } from '@/workflows/workflow-publication-outbox-consumer';
+import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createOwner } from '../shared/db/users';
@@ -40,6 +41,7 @@ let activeWorkflowManager: ActiveWorkflowManager;
 let activeWorkflowTriggers: ActiveWorkflowTriggers;
 let outboxRepository: WorkflowPublicationOutboxRepository;
 let publishedVersionRepository: WorkflowPublishedVersionRepository;
+let originalUseWorkflowPublicationService: boolean;
 
 const scheduleNode = (suffix: string): INode => ({
 	id: `node-${suffix}`,
@@ -59,6 +61,9 @@ beforeAll(async () => {
 	await utils.initNodeTypes(nodes);
 
 	Container.get(InstanceSettings).markAsLeader();
+	const workflowsConfig = Container.get(WorkflowsConfig);
+	originalUseWorkflowPublicationService = workflowsConfig.useWorkflowPublicationService;
+	workflowsConfig.useWorkflowPublicationService = true;
 
 	consumer = Container.get(WorkflowPublicationOutboxConsumer);
 	activeWorkflowManager = Container.get(ActiveWorkflowManager);
@@ -81,6 +86,8 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+	Container.get(WorkflowsConfig).useWorkflowPublicationService =
+		originalUseWorkflowPublicationService;
 	await testDb.terminate();
 });
 
@@ -129,6 +136,71 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			workflow.id,
 		);
 		expect(published?.publishedVersionId).toBe(newVersionId);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('re-registers only the non-webhook triggers missing from memory after a crash mid-add', async () => {
+		const owner = await createOwner();
+
+		const present = scheduleNode('present');
+		const missing = scheduleNode('missing');
+
+		const workflow = await createWorkflowWithHistory(
+			{ active: true, nodes: [present, missing] },
+			owner,
+		);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await activeWorkflowManager.add(workflow.id, 'activate');
+
+		// Simulate a crash mid-add that left `missing` unregistered while `present`
+		// stayed live, then re-enqueue the SAME version (startup/retry/recovery).
+		await activeWorkflowTriggers.removeTriggers(workflow.id, new Set([missing.id]));
+		const presentResponse = activeWorkflowTriggers.get(workflow.id)?.get(present.id);
+		expect(presentResponse).toBeDefined();
+		expect(activeWorkflowTriggers.get(workflow.id)?.has(missing.id)).toBe(false);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		await consumer.processRecord(record!);
+
+		// `missing` got re-registered; `present` was left untouched (same response object).
+		const state = activeWorkflowTriggers.get(workflow.id);
+		expect(state?.has(missing.id)).toBe(true);
+		expect(state?.get(present.id)).toBe(presentResponse);
+
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('completed');
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('re-enqueueing an already fully-published version is a no-op marked completed', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('only');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await activeWorkflowManager.add(workflow.id, 'activate');
+
+		const responseBefore = activeWorkflowTriggers.get(workflow.id)?.get(trigger.id);
+		expect(responseBefore).toBeDefined();
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+
+		await consumer.processRecord(record!);
+
+		// Nothing re-registered (same response object) and the version is unchanged.
+		expect(activeWorkflowTriggers.get(workflow.id)?.get(trigger.id)).toBe(responseBefore);
+		const published = await publishedVersionRepository.getPublishedVersionWithRelations(
+			workflow.id,
+		);
+		expect(published?.publishedVersionId).toBe(workflow.versionId);
+
+		const row = await outboxRepository.findOneBy({ id: record!.id });
+		expect(row?.status).toBe('completed');
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
