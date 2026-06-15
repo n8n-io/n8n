@@ -131,14 +131,16 @@ const packageJsonFiles = await $`cd ${config.rootDir} && find . -name "package.j
 -not -path "./compiled/*" \
 -type f`.lines();
 
-// Backup all package.json files
-// This is only needed locally, not in CI
-if (process.env.CI !== 'true') {
-	for (const file of packageJsonFiles) {
-		if (file) {
-			const fullPath = path.join(config.rootDir, file);
-			await fs.copy(fullPath, `${fullPath}.bak`);
-		}
+// Backup all package.json files. The deploy prep below mutates them in place
+// (patch trim, FE trim) to produce a clean `compiled/`; we restore them after so
+// the working tree is left pristine. This now matters in CI too: the in-image
+// docker build (Dockerfile.inbuild) COPYs the tree and runs `pnpm install
+// --frozen-lockfile`, which fails if the trimmed patchedDependencies no longer
+// matches the lockfile.
+for (const file of packageJsonFiles) {
+	if (file) {
+		const fullPath = path.join(config.rootDir, file);
+		await fs.copy(fullPath, `${fullPath}.bak`);
 	}
 }
 // Run FE trim script
@@ -261,16 +263,14 @@ if (process.env.N8N_GENERATE_LICENSES === 'true') {
 	echo(chalk.gray('INFO: Skipping SBOM/license generation (set N8N_GENERATE_LICENSES=true to enable)'));
 }
 
-// Restore package.json files
-// This is only needed locally, not in CI
-if (process.env.CI !== 'true') {
-	for (const file of packageJsonFiles) {
-		if (file) {
-			const fullPath = path.join(config.rootDir, file);
-			const backupPath = `${fullPath}.bak`;
-			if (await fs.pathExists(backupPath)) {
-				await fs.move(backupPath, fullPath, { overwrite: true });
-			}
+// Restore package.json files so the working tree is left pristine (see backup
+// above — the in-image docker build reads the tree after this script runs).
+for (const file of packageJsonFiles) {
+	if (file) {
+		const fullPath = path.join(config.rootDir, file);
+		const backupPath = `${fullPath}.bak`;
+		if (await fs.pathExists(backupPath)) {
+			await fs.move(backupPath, fullPath, { overwrite: true });
 		}
 	}
 }
