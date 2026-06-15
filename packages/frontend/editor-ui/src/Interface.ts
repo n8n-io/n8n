@@ -475,7 +475,7 @@ export interface SubcategoryItemProps {
 	subcategory?: string;
 	defaults?: INodeParameters;
 	forceIncludeNodes?: string[];
-	sections?: string[];
+	sections?: string[] | Array<{ key: string; title: string; items: string[] }>;
 	items?: INodeCreateElement[];
 	new?: boolean;
 	hideActions?: boolean;
