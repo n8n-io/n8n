@@ -349,6 +349,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 	flex-shrink: 0;
 }
 
+/*  Don't render the aria-expanded toggle as "pressed" while inactive */
+.toggle[aria-expanded='true']:not(:hover):not(:active) {
+	background-color: transparent;
+}
+
 .title {
 	display: flex;
 	align-items: center;
