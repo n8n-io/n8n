@@ -45,7 +45,7 @@ const isVisible = computed(
 const ICON_MAP: Record<SidebarRowIcon, IconName> = {
 	'computer-use': 'mouse-pointer',
 	'browser-use': 'globe',
-	mcp: 'server',
+	mcp: 'mcp',
 };
 
 const baseAddItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>(() => {
