@@ -5,6 +5,7 @@ import { SyntaxKind, type Project, type SourceFile, type CallExpression } from '
 import { getConfig, ruleAllows } from '../config.js';
 import type { Violation } from '../types.js';
 import { truncateText } from '../utils/ast-helpers.js';
+import { isSuppressed } from '../utils/supress.js';
 
 /**
  * No Raw Editor Navigation Rule
@@ -86,7 +87,7 @@ export class NoRawEditorNavigationRule extends AstRule<{ rootDir: string }> {
 					continue;
 				}
 
-				if (this.isSuppressed(lines, call.getStartLineNumber())) {
+				if (isSuppressed(this, lines, call)) {
 					continue;
 				}
 
@@ -126,21 +127,5 @@ export class NoRawEditorNavigationRule extends AstRule<{ rootDir: string }> {
 			NoRawEditorNavigationRule.EDITOR_ROUTE.test(argText) ||
 			NoRawEditorNavigationRule.NEW_WORKFLOW_CONSTANT.test(argText)
 		);
-	}
-
-	/** True when the line above the call carries a disable directive for this rule. */
-	private isSuppressed(lines: string[], lineNumber: number): boolean {
-		const previousLine = lines[lineNumber - 2] ?? '';
-		const directive = /\/\/\s*janitor-disable-next-line\s+([^\s].*)?$/.exec(previousLine);
-		if (!directive) {
-			return false;
-		}
-		const ruleList = (directive[1] ?? '').split('--')[0];
-		const rules = ruleList
-			.split(/[\s,]+/)
-			.map((r) => r.trim())
-			.filter(Boolean);
-		// A bare directive (no rule ids) suppresses everything; otherwise it must name this rule.
-		return rules.length === 0 || rules.includes(this.id);
 	}
 }
