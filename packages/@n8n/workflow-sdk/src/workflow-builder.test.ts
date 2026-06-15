@@ -8,6 +8,7 @@ import {
 	tool,
 	outputParser,
 } from './workflow-builder/node-builders/subnode-builders';
+import { findStructureArg } from './workflow-builder/normalize-args';
 
 describe('Workflow Builder', () => {
 	describe('workflow()', () => {
@@ -3193,6 +3194,24 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 			expect(json.settings?.executionOrder).toBe('v1');
 			expect(json.settings?.settings).toBeUndefined();
+		});
+
+		it('findStructureArg locates the first structure object in args', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const args = [null, 'Name', { nodes: [t, n] }];
+			const result = findStructureArg(args);
+			expect(result).not.toBeNull();
+			expect(result!.index).toBe(2);
+			expect(result!.value.nodes).toEqual([t, n]);
+		});
+
+		it('should support null id, no name, structure as second arg', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: {} });
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const wf = workflow(null, { nodes: [t, n] });
+			expect(wf.name).toBe('AI Generated Workflow');
+			expect(wf.toJSON().nodes).toHaveLength(2);
 		});
 	});
 

@@ -1127,6 +1127,21 @@ export interface WorkflowBuilderOptions {
  */
 export interface WorkflowBuilderStatic {
 	/**
+	 * Creates a workflow builder with a null/undefined id and a name string
+	 * or a structure options object as the second argument.
+	 *
+	 * @param id null or undefined — the workflow id will be auto-generated.
+	 * @param nameOrOptions Either the workflow name or a structure options object
+	 *   supporting `nodes`, `connections`, `pinData`, `variables`, `settings`, `registry`.
+	 * @param options Optional workflow settings (only when second arg is a string name).
+	 */
+	(
+		id: null | undefined,
+		nameOrOptions: string | Record<string, unknown>,
+		options?: WorkflowSettings,
+	): WorkflowBuilder;
+
+	/**
 	 * Creates a workflow builder with an ID and name, supporting legacy calls,
 	 * AI structures, or null IDs/names.
 	 */

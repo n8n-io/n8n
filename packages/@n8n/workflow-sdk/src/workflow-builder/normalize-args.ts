@@ -101,22 +101,16 @@ export const WORKFLOW_STRUCTURE_KEYS: ReadonlySet<string> = new Set([
 	'variables',
 ]);
 
-const STRUCTURE_KEYS_WITH_SETTINGS_AND_REGISTRY: ReadonlySet<string> = new Set([
-	...WORKFLOW_STRUCTURE_KEYS,
-	'settings',
-	'registry',
-]);
-
 /** Reserved keys that should never reach `WorkflowSettings`. */
-const RESERVED_SETTINGS_KEYS: ReadonlySet<string> = new Set([
+export const RESERVED_STRUCTURE_KEYS: ReadonlySet<string> = new Set([
 	'nodes',
 	'trigger',
 	'steps',
 	'connections',
 	'pinData',
 	'variables',
-	'registry',
 	'settings',
+	'registry',
 ]);
 
 const DEFAULT_AI_WORKFLOW_NAME = 'AI Generated Workflow';
@@ -170,7 +164,7 @@ function isStructureOptionsObject(val: unknown): val is StructureOptions {
 function sanitizeSettings(settings: Record<string, unknown>): Record<string, unknown> {
 	const out: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(settings)) {
-		if (RESERVED_SETTINGS_KEYS.has(key)) continue;
+		if (RESERVED_STRUCTURE_KEYS.has(key)) continue;
 		out[key] = value;
 	}
 	return out;
@@ -253,7 +247,7 @@ export function extractStructureFromArg(arg: unknown): {
 	// 5. Remaining keys (excluding the reserved set) form the base settings.
 	const baseSettings: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(obj)) {
-		if (RESERVED_SETTINGS_KEYS.has(key)) continue;
+		if (RESERVED_STRUCTURE_KEYS.has(key)) continue;
 		baseSettings[key] = value;
 	}
 
@@ -361,6 +355,10 @@ export function convertRawToNodeInstance(
 	const nodeName = typeof obj.name === 'string' ? obj.name : undefined;
 
 	// 6. Build the instance directly with id/name if provided.
+	// _isTrigger is set by extractStructureFromArg when the object
+	// came from a { trigger, steps } pattern. It ensures we create a
+	// TriggerInstance so downstream code (e.g. pin-data generation)
+	// treats it correctly.
 	const instance: NodeInstance<string, string, unknown> | TriggerInstance<string, string, unknown> =
 		obj._isTrigger === true
 			? new TriggerInstanceImpl(obj.type, versionStr, config, nodeId, nodeName)
@@ -397,8 +395,9 @@ export function applyConnections(
 		}
 
 		for (const [connType, outputs] of Object.entries(nodeConns as Record<string, unknown>)) {
-			// Only `main` is currently supported by the builder. Other types
-			// are silently ignored to keep the surface stable.
+			// TODO: support non-main connection types (ai_tool, ai_agent, error).
+			// Silently ignoring these means AI-generated agent workflows can
+			// appear valid while missing edges. Tracked in issue #XXXX.
 			if (connType !== 'main') continue;
 			if (!Array.isArray(outputs)) continue;
 
@@ -429,10 +428,15 @@ export function applyConnections(
 // =============================================================================
 
 /**
- * Find the index of the first structure-bearing options object in `args`.
- * Used by the dispatch helpers to locate the options arg positionally.
+ * Locates the first structure-bearing options object in an argument list.
+ *
+ * Currently unused internally but exported for testing and for callers
+ * that need to introspect workflow() arguments programmatically (e.g.,
+ * future AI tooling that inspects call signatures before evaluation).
  */
-function findStructureArg(args: unknown[]): { index: number; value: StructureOptions } | null {
+export function findStructureArg(
+	args: unknown[],
+): { index: number; value: StructureOptions } | null {
 	for (let i = 0; i < args.length; i++) {
 		const candidate = args[i];
 		if (isStructureOptionsObject(candidate)) {
@@ -445,7 +449,7 @@ function findStructureArg(args: unknown[]): { index: number; value: StructureOpt
 function isPlainSettingsObject(arg: unknown): arg is Record<string, unknown> {
 	if (!isPlainObject(arg) || Array.isArray(arg)) return false;
 	// Settings objects don't contain any of the structure keys.
-	for (const key of RESERVED_SETTINGS_KEYS) {
+	for (const key of RESERVED_STRUCTURE_KEYS) {
 		if (key in arg) return false;
 	}
 	return true;
@@ -517,6 +521,9 @@ function handlePositionalName(args: unknown[]): NormalizedWorkflowArgs {
 			return {
 				id,
 				name,
+				// Note: nodes from the third arg are merged into the second-arg
+				// array. If the same node is passed in both positions it will be
+				// added twice. Callers should avoid overlap.
 				nodes: nodes.concat(extracted.nodes),
 				connections: extracted.connections,
 				pinData: extracted.pinData,
@@ -659,10 +666,3 @@ export function normalizeArgs(args: unknown[]): NormalizedWorkflowArgs {
 
 	throw invalidArgsError(args);
 }
-
-// Re-export the structure-key constant so other modules (e.g. tests) can
-// iterate it without re-deriving the list.
-export { STRUCTURE_KEYS_WITH_SETTINGS_AND_REGISTRY };
-// `findStructureArg` is currently unused but kept for future use by callers
-// that want to locate a structure arg positionally.
-void findStructureArg;
