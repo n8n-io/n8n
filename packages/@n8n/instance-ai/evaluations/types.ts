@@ -186,12 +186,15 @@ export interface WorkflowTestCase {
 	description?: string;
 	/**
 	 * Hand-authored conversation that drives the build. ≥1 turn, first turn
-	 * `user` — required unless `seedThread` is set (which derives the live turn
-	 * from the trace).
+	 * `user`. Required unless `seedThread` is set.
 	 *
 	 * - One user turn, no assistant turns → auto-approve mode (single-prompt build).
 	 * - Anything else → multi-turn UserProxyLlm engages (answers clarifications,
 	 *   sends follow-ups consuming `messageBudget`).
+	 *
+	 * With `seedThread`: optional, and treated as the **continuation** after the
+	 * trace's last user message is sent live — i.e. the effective conversation is
+	 * `[<trace live turn>, ...conversation]`. Omit it to just send the live turn.
 	 */
 	conversation?: ConversationTurn[];
 	complexity: 'simple' | 'medium' | 'complex';
@@ -228,8 +231,9 @@ export interface WorkflowTestCase {
 	 * Reproduce a real conversation: the harness fetches this thread's trace
 	 * from LangSmith at run time, restores everything up to the last user
 	 * message as the seed, and sends that last message live. The case commits
-	 * only the thread id — no conversation content lives in the repo. Provides
-	 * its own live turn, so `conversation` must be omitted. Transient: runnable
+	 * only the thread id — no conversation content lives in the repo. Supplies
+	 * the live turn itself, so `conversation` is optional — when present it
+	 * continues from the live turn (see `conversation`). Transient: runnable
 	 * only while the trace lives (~14-day base retention).
 	 */
 	seedThread?: { threadId: string; project?: string };

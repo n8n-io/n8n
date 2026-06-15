@@ -84,10 +84,14 @@ describe('WorkflowTestCaseSchema', () => {
 		expect(parsed.conversation).toBeUndefined();
 	});
 
-	it('rejects seedThread combined with a conversation', () => {
-		expect(() =>
-			WorkflowTestCaseSchema.parse({ ...validFixture(), seedThread: { threadId: 't1' } }),
-		).toThrow(/conversation must be omitted/);
+	it('accepts seedThread WITH a conversation (continuation after the live turn)', () => {
+		const parsed = WorkflowTestCaseSchema.parse({
+			...validFixture(),
+			seedThread: { threadId: 't1' },
+			conversation: [{ role: 'user', text: 'now also add error handling' }],
+		});
+		expect(parsed.seedThread?.threadId).toBe('t1');
+		expect(parsed.conversation).toHaveLength(1);
 	});
 
 	it('rejects seedThread combined with another seeding mode', () => {
@@ -103,7 +107,9 @@ describe('WorkflowTestCaseSchema', () => {
 
 	it('rejects a non-seedThread case that omits conversation', () => {
 		const { conversation: _omit, ...rest } = validFixture();
-		expect(() => WorkflowTestCaseSchema.parse(rest)).toThrow(/requires conversation/);
+		expect(() => WorkflowTestCaseSchema.parse(rest)).toThrow(
+			/needs a conversation, or a seedThread/,
+		);
 	});
 
 	it('accepts the optional triggerType field', () => {

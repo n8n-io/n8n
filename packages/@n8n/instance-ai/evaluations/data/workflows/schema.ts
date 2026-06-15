@@ -87,15 +87,15 @@ const workflowTestCaseObjectSchema = z.object({
 	datasets: z.array(z.string()).min(1).default(['full']),
 });
 
-// At most one seeding mode, and exactly one source of the live turn.
+// At most one seeding mode, and a source for the live turn.
 export const WorkflowTestCaseSchema = workflowTestCaseObjectSchema
 	.refine((c) => [c.seedFile, c.priorConversation, c.seedThread].filter(Boolean).length <= 1, {
 		message:
 			'seedFile, priorConversation and seedThread are mutually exclusive — pick one seeding mode',
 	})
-	.refine((c) => (c.seedThread ? c.conversation === undefined : c.conversation !== undefined), {
+	.refine((c) => c.seedThread !== undefined || c.conversation !== undefined, {
 		message:
-			'seedThread derives the live turn from the trace, so conversation must be omitted; every other case requires conversation',
+			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',
 	});
 
 export type WorkflowTestCaseInput = z.infer<typeof WorkflowTestCaseSchema>;

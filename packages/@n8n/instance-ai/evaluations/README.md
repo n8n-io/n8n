@@ -613,7 +613,19 @@ The case carries only a **thread id**. At run time the harness pulls that thread
 "seedThread": { "threadId": "3ca4fc6f-…", "project": "instance-ai" }
 ```
 
-No `conversation` field — the live turn comes from the trace. `project` is optional (defaults to `instance-ai`, override with `SEED_LANGSMITH_PROJECT`). No conversation content lands in the repo — only the opaque thread id.
+No `conversation` field needed — the live turn comes from the trace. `project` is optional (defaults to `instance-ai`, override with `SEED_LANGSMITH_PROJECT`). No conversation content lands in the repo — only the opaque thread id.
+
+**Continuing past the live turn.** Add a `conversation` to keep driving *after* the trace's last message is replayed — the effective conversation becomes `[<trace live turn>, ...conversation]`, so the live turn is sent for real and your authored turns become proxy-driven follow-ups (multi-turn). Use it to push a reproduced conversation further (e.g. "now also add error handling", or pressure-test the next decision):
+
+```json
+"seedThread": { "threadId": "…", "project": "instance-ai" },
+"conversation": [
+  { "role": "assistant", "text": "Updated the schedule to every 30 minutes." },
+  { "role": "user", "text": "Now also send a copy to #ops." }
+]
+```
+
+(The first authored turn is typically the expected assistant reply as proxy reference; subsequent `user` turns are sent as follow-ups. Omit `conversation` to just send the live turn and stop.)
 
 **Reading from a different workspace (e.g. prod traces, staging eval).** The trace is *read* with a client separate from the eval's own tracing, so the source can live in another workspace than the eval writes to. To seed from a prod conversation while the eval still traces to staging:
 

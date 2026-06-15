@@ -494,9 +494,18 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			if (config.seedThread) {
 				const reconstructed = await reconstructSeedFromThread(config.seedThread);
 				seed = reconstructed.seed;
-				conversation = [{ role: 'user', text: reconstructed.liveTurn }];
+				// The trace's last user message is the live opening; any authored
+				// `conversation` continues from there (proxy-driven follow-ups).
+				conversation = [
+					{ role: 'user', text: reconstructed.liveTurn },
+					...(config.conversation ?? []),
+				];
+				const contSuffix =
+					(config.conversation?.length ?? 0) > 0
+						? ` + ${String(config.conversation!.length)} continuation turn(s)`
+						: '';
 				logger.info(
-					`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s) [project ${reconstructed.sourceProject}]${config.laneTag ?? ''}`,
+					`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s)${contSuffix} [project ${reconstructed.sourceProject}]${config.laneTag ?? ''}`,
 				);
 			} else if (config.seedFile) {
 				seed = loadConversationSeed(config.seedFile);
