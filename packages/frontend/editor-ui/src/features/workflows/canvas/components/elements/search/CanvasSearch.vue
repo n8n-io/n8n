@@ -50,8 +50,8 @@ const countLabel = computed(() => {
 		return '';
 	}
 
-	// Always "{current} of {total}" (e.g. "0 of 5" before navigating) to keep it compact.
-	const current = props.activeMatchIndex >= 0 ? props.activeMatchIndex + 1 : 0;
+	// Always "{current} of {total}" (e.g. "1 of 5") to keep it compact.
+	const current = props.matchCount > 0 ? props.activeMatchIndex + 1 : 0;
 	return i18n.baseText('nodeView.search.matchCount', {
 		interpolate: { current, total: props.matchCount },
 	});

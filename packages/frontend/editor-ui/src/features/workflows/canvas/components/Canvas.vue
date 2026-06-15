@@ -721,15 +721,12 @@ function onSelectNodes({ ids, panIntoView }: CanvasEventBusEvents['nodes:select'
 	}
 }
 
-/** Selects a node and pans the viewport so the node is centered (keeping the current zoom). */
+/** Pans the viewport so the given node is centered, keeping the current zoom. */
 function onCenterNode(id: string) {
 	const node = findNode(id);
 	if (!node) {
 		return;
 	}
-
-	clearSelectedNodes();
-	addSelectedNodes([node]);
 
 	const rect = getRectOfNodes([node]);
 	void setCenter(rect.x + rect.width / 2, rect.y + rect.height / 2, {
@@ -1385,6 +1382,7 @@ defineExpose({
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
 					:highlighted="setupPanelStore.highlightedNodeIds.has(nodeProps.id)"
 					:search-match="canvasSearch.matchingNodeIds.value.has(nodeProps.id)"
+					:search-active-match="canvasSearch.activeMatchNodeId.value === nodeProps.id"
 					@delete="onDeleteNode"
 					@run="onRunNode"
 					@select="onSelectNode"
@@ -1562,12 +1560,18 @@ defineExpose({
 	}
 }
 
+// Matches get a light outline; the current match gets a bold, high-contrast ring + glow.
 :deep(.vue-flow__node:has(.searchMatch)) {
 	border-radius: var(--radius--lg);
-	box-shadow:
-		0 0 0 2px var(--color--primary),
-		0 0 10px 2px var(--color--primary--tint-3);
+	box-shadow: 0 0 0 2px var(--color--primary--tint-3);
 	transition: box-shadow var(--duration--snappy) ease;
+}
+
+:deep(.vue-flow__node:has(.searchActiveMatch)) {
+	z-index: 1;
+	box-shadow:
+		0 0 0 3px var(--color--primary),
+		0 0 16px 4px var(--color--primary--tint-3);
 }
 
 // Approximate rendered height of the search widget (small input + padding + border).

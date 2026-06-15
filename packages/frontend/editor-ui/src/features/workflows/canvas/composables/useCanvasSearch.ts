@@ -66,8 +66,10 @@ export function useCanvasSearch(options: UseCanvasSearchOptions) {
 	const query = ref('');
 	const caseSensitive = ref(false);
 	const useRegex = ref(false);
-	/** Index of the currently focused match, or -1 when navigation hasn't started. */
-	const activeMatchIndex = ref(-1);
+	/** Index of the current match. Starts at 0 so the first match is auto-selected. */
+	const activeMatchIndex = ref(0);
+	/** Whether the viewport has been moved to a match yet for the current query. */
+	let hasNavigated = false;
 
 	const regexError = computed<string | null>(() => {
 		if (!useRegex.value || query.value.length === 0) {
@@ -138,22 +140,23 @@ export function useCanvasSearch(options: UseCanvasSearchOptions) {
 		isOpen.value ? new Set(matches.value.map((node) => node.id)) : new Set<string>(),
 	);
 	const matchCount = computed(() => matches.value.length);
-	const activeMatchNodeId = computed<string | undefined>(
-		() => matches.value[activeMatchIndex.value]?.id,
+	const activeMatchNodeId = computed<string | undefined>(() =>
+		isOpen.value ? matches.value[activeMatchIndex.value]?.id : undefined,
 	);
 
 	/** Whether matches should be highlighted/dimmed on the canvas. */
 	const isSearchActive = computed(() => isOpen.value && matchCount.value > 0);
 
-	// Reset navigation whenever the query or matching options change.
+	// Re-select the first match whenever the query or matching options change.
 	watch([query, caseSensitive, useRegex], () => {
-		activeMatchIndex.value = -1;
+		activeMatchIndex.value = 0;
+		hasNavigated = false;
 	});
 
 	// Keep the active index valid if the set of matches shrinks (e.g. node removed).
 	watch(matchCount, (count) => {
 		if (activeMatchIndex.value >= count) {
-			activeMatchIndex.value = count > 0 ? count - 1 : -1;
+			activeMatchIndex.value = count > 0 ? count - 1 : 0;
 		}
 	});
 
@@ -168,8 +171,12 @@ export function useCanvasSearch(options: UseCanvasSearchOptions) {
 		if (matchCount.value === 0) {
 			return;
 		}
-		activeMatchIndex.value =
-			activeMatchIndex.value >= matchCount.value - 1 ? 0 : activeMatchIndex.value + 1;
+		// The first navigation only centers the auto-selected match; later ones advance.
+		if (hasNavigated) {
+			activeMatchIndex.value =
+				activeMatchIndex.value >= matchCount.value - 1 ? 0 : activeMatchIndex.value + 1;
+		}
+		hasNavigated = true;
 		navigateToActive();
 	}
 
@@ -177,8 +184,11 @@ export function useCanvasSearch(options: UseCanvasSearchOptions) {
 		if (matchCount.value === 0) {
 			return;
 		}
-		activeMatchIndex.value =
-			activeMatchIndex.value <= 0 ? matchCount.value - 1 : activeMatchIndex.value - 1;
+		if (hasNavigated) {
+			activeMatchIndex.value =
+				activeMatchIndex.value <= 0 ? matchCount.value - 1 : activeMatchIndex.value - 1;
+		}
+		hasNavigated = true;
 		navigateToActive();
 	}
 
@@ -188,7 +198,8 @@ export function useCanvasSearch(options: UseCanvasSearchOptions) {
 
 	function close() {
 		isOpen.value = false;
-		activeMatchIndex.value = -1;
+		activeMatchIndex.value = 0;
+		hasNavigated = false;
 	}
 
 	return {

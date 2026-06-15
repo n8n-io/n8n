@@ -86,11 +86,11 @@ describe('CanvasSearch', () => {
 		expect(queryByTestId('canvas-search-count')).toBeNull();
 	});
 
-	it('shows "0 of N" before navigation has started', () => {
+	it('shows the auto-selected first match as "1 of N"', () => {
 		const { getByTestId } = renderComponent({
-			props: { modelValue: 'http', matchCount: 3, activeMatchIndex: -1 },
+			props: { modelValue: 'http', matchCount: 3, activeMatchIndex: 0 },
 		});
-		expect(getByTestId('canvas-search-count')).toHaveTextContent('0 of 3');
+		expect(getByTestId('canvas-search-count')).toHaveTextContent('1 of 3');
 	});
 
 	it('shows the current position while navigating', () => {

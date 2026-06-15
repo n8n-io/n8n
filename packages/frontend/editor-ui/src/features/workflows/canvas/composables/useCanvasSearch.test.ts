@@ -178,26 +178,44 @@ describe('useCanvasSearch', () => {
 		expect(onNavigate).toHaveBeenLastCalledWith('set');
 	});
 
-	it('cycles backward starting from the last match', () => {
+	it('auto-selects the first match without navigating to it', () => {
+		const { search, onNavigate } = setup();
+		search.open();
+		search.query.value = 'status'; // matches set + if
+
+		expect(search.activeMatchIndex.value).toBe(0);
+		expect(search.activeMatchNodeId.value).toBe('set');
+		expect(onNavigate).not.toHaveBeenCalled();
+	});
+
+	it('exposes no active match while closed', () => {
+		const { search } = setup();
+		search.query.value = 'status';
+		expect(search.activeMatchNodeId.value).toBeUndefined();
+	});
+
+	it('cycles backward to the previous match', () => {
 		const { search, onNavigate } = setup();
 		search.open();
 		search.query.value = 'status';
 
-		search.goToPrevious();
+		search.goToNext(); // first navigation centers the auto-selected match (index 0)
+		search.goToPrevious(); // wraps to the last match
 		expect(search.activeMatchIndex.value).toBe(1);
 		expect(onNavigate).toHaveBeenLastCalledWith('if');
 	});
 
-	it('resets navigation when the query changes', async () => {
+	it('resets to the first match when the query changes', async () => {
 		const { search } = setup();
 		search.open();
 		search.query.value = 'status';
 		search.goToNext();
-		expect(search.activeMatchIndex.value).toBe(0);
+		search.goToNext();
+		expect(search.activeMatchIndex.value).toBe(1);
 
 		search.query.value = 'fetch';
 		await nextTick();
-		expect(search.activeMatchIndex.value).toBe(-1);
+		expect(search.activeMatchIndex.value).toBe(0);
 	});
 
 	it('clamps the active index when the match set shrinks', async () => {

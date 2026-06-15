@@ -45,6 +45,7 @@ type Props = NodeProps<CanvasNodeData> & {
 	nearbyHovered?: boolean;
 	highlighted?: boolean;
 	searchMatch?: boolean;
+	searchActiveMatch?: boolean;
 };
 
 const slots = defineSlots<{
@@ -111,6 +112,7 @@ const classes = computed(() => ({
 	hovered: props.hovered,
 	highlighted: props.highlighted,
 	searchMatch: props.searchMatch,
+	searchActiveMatch: props.searchActiveMatch,
 	selected: props.selected,
 	waiting: props.data.execution.waiting || props.data.execution.status === 'waiting',
 	running: props.data.execution.running || props.data.execution.waitingForNext,
