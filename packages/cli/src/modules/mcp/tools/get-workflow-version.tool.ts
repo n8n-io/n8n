@@ -1,7 +1,6 @@
-import type { User, WorkflowHistory } from '@n8n/db';
+import type { User } from '@n8n/db';
 import z from 'zod';
 
-import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -9,6 +8,7 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { nodeSchema } from './schemas';
+import { getMcpWorkflowVersion } from './workflow-history.utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = {
@@ -113,19 +113,7 @@ export async function getWorkflowVersion(
 	// Enforce the MCP access gate (scope + not-archived + availableInMCP) before reading the version.
 	await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
 
-	let version: WorkflowHistory;
-	try {
-		version = await workflowHistoryService.getVersion(user, workflowId, versionId, {
-			includePublishHistory: false,
-		});
-	} catch (error) {
-		if (error instanceof WorkflowHistoryVersionNotFoundError) {
-			throw new Error(
-				`Version '${versionId}' was not found for this workflow. It may have been pruned by workflow history retention.`,
-			);
-		}
-		throw error;
-	}
+	const version = await getMcpWorkflowVersion(workflowHistoryService, user, workflowId, versionId);
 
 	const nodes = (version.nodes ?? []).map(({ credentials: _credentials, ...node }) => node);
 

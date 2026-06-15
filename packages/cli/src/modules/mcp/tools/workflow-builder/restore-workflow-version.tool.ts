@@ -1,9 +1,8 @@
-import { type User, type WorkflowHistory, WorkflowEntity } from '@n8n/db';
+import { type User, WorkflowEntity } from '@n8n/db';
 import { ensureError } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -12,6 +11,7 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import { WorkflowAccessError } from '../../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { getMcpWorkflowVersion } from '../workflow-history.utils';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const inputSchema = z.object({
@@ -84,19 +84,12 @@ export const createRestoreWorkflowVersionTool = (
 
 			await collaborationService.ensureWorkflowEditable(existingWorkflow.id);
 
-			let version: WorkflowHistory;
-			try {
-				version = await workflowHistoryService.getVersion(user, workflowId, versionId, {
-					includePublishHistory: false,
-				});
-			} catch (error) {
-				if (error instanceof WorkflowHistoryVersionNotFoundError) {
-					throw new Error(
-						`Version '${versionId}' was not found for this workflow. It may have been pruned by workflow history retention.`,
-					);
-				}
-				throw error;
-			}
+			const version = await getMcpWorkflowVersion(
+				workflowHistoryService,
+				user,
+				workflowId,
+				versionId,
+			);
 
 			const workflowUpdateData = new WorkflowEntity();
 			Object.assign(workflowUpdateData, {
