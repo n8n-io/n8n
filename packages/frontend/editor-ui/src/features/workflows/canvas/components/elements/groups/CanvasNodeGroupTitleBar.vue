@@ -407,7 +407,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 	position: absolute;
 	left: 0;
 	width: 100%;
-	background: transparent;
+	background: var(--background--hover);
 	@include styles.canvas-node-border(dashed);
 	border-top: none;
 	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
