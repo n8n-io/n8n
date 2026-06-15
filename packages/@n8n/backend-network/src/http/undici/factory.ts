@@ -98,6 +98,12 @@ export interface OutboundHttpClient {
 	getNodeAgent(agentOptions?: NodeAgentOptions): { httpAgent: http.Agent; httpsAgent: https.Agent };
 }
 
+/** A client's resolved proxy + SSRF policy (after factory defaults are applied). */
+interface ResolvedClientConfig {
+	proxy: ProxyOption;
+	ssrf: SsrfOption;
+}
+
 /**
  * Factory for outbound HTTP clients.
  *
@@ -122,35 +128,36 @@ export class OutboundHttpFactory {
 		});
 	}
 
-	private buildClient(config: { proxy: ProxyOption; ssrf: SsrfOption }): OutboundHttpClient {
-		const dispatcher = buildDispatcher(config.proxy);
-		// Single SSRF enforcement point: the dispatcher. It validates every
-		// dispatched request — the initial one and each redirect hop — whether the
-		// consumer drives it through `fetch` (`asCustomFetch`) or hands it to an SDK
-		// (`getDispatcher`). Opt out explicitly via `{ ssrf: 'disabled' }`, which
-		// yields the bare dispatcher.
-		const guardedDispatcher =
-			config.ssrf === 'disabled'
-				? dispatcher
-				: dispatcher.compose(createSsrfInterceptor(config.ssrf));
-		let defaultNodeAgents: { httpAgent: http.Agent; httpsAgent: https.Agent } | undefined;
+	private buildClient(config: ResolvedClientConfig): OutboundHttpClient {
+		// Built lazily: a client used only for node agents (e.g. AWS SDK v3) never needs a dispatcher, etc.
+		const lazyDispatcher = lazy(() => buildDispatcher(config));
+		const lazyNodeAgents = lazy(() => buildNodeAgents(config.proxy, config.ssrf));
 
 		return {
 			asCustomFetch: () => async (input, init) =>
-				await dispatchedFetch(guardedDispatcher, input, init),
-			getDispatcher: () => guardedDispatcher,
-			getNodeAgent: (agentOptions) => {
-				if (agentOptions !== undefined) {
-					return buildNodeAgents(config.proxy, config.ssrf, agentOptions);
-				}
-				defaultNodeAgents ??= buildNodeAgents(config.proxy, config.ssrf);
-				return defaultNodeAgents;
-			},
+				await dispatchedFetch(lazyDispatcher(), input, init),
+			getDispatcher: () => lazyDispatcher(),
+			getNodeAgent: (agentOptions) =>
+				agentOptions !== undefined
+					? buildNodeAgents(config.proxy, config.ssrf, agentOptions)
+					: lazyNodeAgents(),
 		};
 	}
 }
 
-function buildDispatcher(proxy: ProxyOption): Dispatcher {
+function lazy<T>(factory: () => T): () => T {
+	let cached: { value: T } | undefined;
+	return () => (cached ??= { value: factory() }).value;
+}
+
+function buildDispatcher(config: ResolvedClientConfig): Dispatcher {
+	const dispatcher = buildDispatcherFromProxy(config.proxy);
+	return config.ssrf === 'disabled'
+		? dispatcher
+		: dispatcher.compose(createSsrfInterceptor(config.ssrf));
+}
+
+function buildDispatcherFromProxy(proxy: ProxyOption): Dispatcher {
 	if (proxy === false) {
 		return new Agent();
 	}
@@ -200,15 +207,24 @@ export function createSsrfInterceptor(bridge: SsrfBridge): Dispatcher.Dispatcher
 }
 
 /**
- * Signals a pre-dispatch failure to an undici dispatch handler. Mirrors undici's
- * own interceptors (e.g. the DNS interceptor), which pass a `null` controller
- * when erroring before a request reaches the socket.
+ * Declared locally so it does not depend on undici's namespaced `DispatchHandler` / `DispatchController` types,
+ * whose resolution varies across undici versions in the tree)
  */
-function failDispatch(handler: Dispatcher.DispatchHandler, error: Error): void {
-	if (typeof handler.onResponseError === 'function') {
-		handler.onResponseError(null as unknown as Dispatcher.DispatchController, error);
-	} else if (typeof handler.onError === 'function') {
-		handler.onError(error);
+interface FailableDispatchHandler {
+	onResponseError?(controller: unknown, error: Error): void;
+	onError?(error: Error): void;
+}
+
+/**
+ * Signals a pre-dispatch failure to an undici dispatch handler.
+ * Mirrors undici's own interceptors (e.g. the DNS interceptor),
+ * which pass a `null` controller when erroring before a request reaches the socket.
+ */
+function failDispatch(handler: FailableDispatchHandler, error: Error): void {
+	if (handler.onResponseError) {
+		handler.onResponseError(null, error);
+	} else {
+		handler.onError?.(error);
 	}
 }
 
