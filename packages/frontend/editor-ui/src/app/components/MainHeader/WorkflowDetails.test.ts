@@ -31,14 +31,15 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
+// No workflow route meta on purpose: the menu renders both on workflow-layout
+// routes and in host-embedded editors without a workflow route (e.g. the AI
+// artifact view), so nothing here may depend on route meta.
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: vi.fn().mockReturnValue({
 		params: { workflowId: 'test' },
 		query: { parentFolderId: '1' },
-		meta: {
-			nodeView: true,
-		},
+		meta: {},
 	}),
 	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
@@ -251,16 +252,6 @@ describe('WorkflowDetails', () => {
 	});
 
 	describe('Workflow menu', () => {
-		beforeEach(() => {
-			vi.mocked(useRoute).mockReturnValueOnce({
-				meta: {
-					nodeView: true,
-				},
-				query: { parentFolderId: '1' },
-				params: { workflowId: 'test' },
-			} as unknown as ReturnType<typeof useRoute>);
-		});
-
 		it('should not have workflow duplicate and import when branch is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 
@@ -308,10 +299,10 @@ describe('WorkflowDetails', () => {
 
 			await userEvent.click(getByTestId('workflow-menu'));
 
-			expect(getByTestId('workflow-menu-item-duplicate')).toBeInTheDocument();
-			expect(getByTestId('workflow-menu-item-import-from-url')).toBeInTheDocument();
-			expect(getByTestId('workflow-menu-item-import-from-file')).toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-share')).toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-duplicate')).not.toHaveClass('disabled');
+			expect(getByTestId('workflow-menu-item-import-from-url')).not.toHaveClass('disabled');
+			expect(getByTestId('workflow-menu-item-import-from-file')).not.toHaveClass('disabled');
+			expect(queryByTestId('workflow-menu-item-share')).not.toHaveClass('disabled');
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
@@ -321,9 +312,7 @@ describe('WorkflowDetails', () => {
 			vi.mocked(useRoute)
 				.mockReset()
 				.mockReturnValue({
-					meta: {
-						nodeView: true,
-					},
+					meta: {},
 					query: { parentFolderId: '1', new: 'true' },
 					params: { workflowId: 'test' },
 				} as unknown as ReturnType<typeof useRoute>);

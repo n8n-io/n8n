@@ -206,6 +206,19 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return await this.find(options);
 	}
 
+	async findPreExistingWorkflows(workflowIds: string[]): Promise<WorkflowEntity[]> {
+		if (workflowIds.length === 0) {
+			return [];
+		}
+
+		return await this.createQueryBuilder('workflow')
+			.select(['workflow.id', 'workflow.name', 'workflow.isArchived'])
+			.leftJoin('workflow.shared', 'shared', 'shared.role = :role', { role: 'workflow:owner' })
+			.addSelect(['shared.workflowId', 'shared.projectId', 'shared.role'])
+			.where('workflow.id IN (:...workflowIds)', { workflowIds })
+			.getMany();
+	}
+
 	async getActiveTriggerCount() {
 		const totalTriggerCount = await this.sum('triggerCount', {
 			activeVersionId: Not(IsNull()),

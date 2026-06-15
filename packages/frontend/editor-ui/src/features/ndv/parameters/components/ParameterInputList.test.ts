@@ -112,6 +112,7 @@ vi.mock('vue-router', async () => {
 let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
 
 const workflowDocumentStoreMock = {
+	documentId: createWorkflowDocumentId(''),
 	getChildNodes: vi.fn().mockReturnValue([]),
 	getParentNodes: vi.fn().mockReturnValue([]),
 	getParentNodesByDepth: vi.fn().mockReturnValue([]),
