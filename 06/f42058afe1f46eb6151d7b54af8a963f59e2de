@@ -1,0 +1,23 @@
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_cebe0f5823d4d7::t_6b5e70b9ceacbd 66-108
+packages/cli/src/active-workflow-manager.ts
+  s_cebe0f5823d4d7::t_6b5e70b9ceacbd 4,24,30,36,52,137,146-229,231-232,289,291-313,353-375,675-831,934-956,1133-1141,1143-1161,1163-1168,1170-1173
+packages/cli/test/integration/active-workflow-manager.test.ts
+  s_cebe0f5823d4d7::t_6b5e70b9ceacbd 257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "06f42058afe1f46eb6151d7b54af8a963f59e2de",
+  "prompts": {},
+  "sessions": {
+    "s_cebe0f5823d4d7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019eb7f9-01df-7a20-aa2d-c142caed6ce2",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

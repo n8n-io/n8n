@@ -1,0 +1,58 @@
+packages/@n8n/local-gateway/src/main/index.ts
+  s_0b5db297947361::t_f355943b7bfa3f 165-166
+  s_0b5db297947361::t_a3182c3b5443ff 16
+  s_0b5db297947361::t_311bcfc106d5fc 45
+  s_0b5db297947361::t_ae468a179241f1 11
+  s_0b5db297947361::t_343f78f5106074 58
+  s_0b5db297947361::t_cdb6f9cbb122a3 220-225
+  s_0b5db297947361::t_7bc7600ccd943f 38
+  s_0b5db297947361::t_2f94f2a1a933a6 187,196
+packages/@n8n/local-gateway/src/main/main-window.ts
+  s_0b5db297947361::t_4dc743ff353729 48,56-58
+  s_0b5db297947361::t_8269d0bde97c34 14-21
+  s_0b5db297947361::t_e9cd721ee0b029 1,4,7-11
+  s_0b5db297947361::t_e9445971d4481e 137-138,142-143,145-147
+  s_0b5db297947361::t_e3e679ef0b179b 84-85,98-102
+  s_0b5db297947361::t_94b1f8f35daac6 2
+  s_0b5db297947361::t_5c5684e985f0c3 121-132,139,153,156-158
+  s_0b5db297947361::t_1eb072837b3b24 91-93,95-96
+packages/@n8n/local-gateway/src/renderer/App.vue
+  s_0b5db297947361::t_b44d6f7ecb6b87 93
+  s_0b5db297947361::t_ef3b4eeb7a237d 32-35
+  s_0b5db297947361::t_633d74223182af 168-175
+packages/@n8n/local-gateway/src/main/notifications.test.ts
+  s_0b5db297947361::t_857e7e361e28c6 75-76
+  s_0b5db297947361::t_069b1736fb6129 104
+  s_0b5db297947361::t_bf5df30624c4c6 56,58,62
+  s_0b5db297947361::t_0db3ea9e1820d8 117-118
+packages/@n8n/local-gateway/src/main/notifications.ts
+  s_0b5db297947361::t_b1ccf86ebd67b6 13
+  s_0b5db297947361::t_3b3d0558f4e542 25-26,34
+packages/@n8n/local-gateway/assets/README.md
+  s_0b5db297947361::t_72bc8df09e562a 23-27,30
+packages/@n8n/local-gateway/src/main/tray.ts
+  s_0b5db297947361::t_6e0d2427ece2c2 2
+  s_0b5db297947361::t_f01523e509605e 75
+  s_0b5db297947361::t_f3c03541e0b495 53-55,59,65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "81ab5a57613870d19101628388b55e0cebc97db4",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0b5db297947361": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4721779-a53c-4c86-a982-6e4034dc057a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

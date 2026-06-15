@@ -1,0 +1,399 @@
+docs/db/postgres/public.insights_raw.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-57
+docs/db/postgres/public.shared_workflow.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-85
+docs/db/sqlite/instance_ai_mcp_registry_connections.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-104
+docs/db/postgres/public.data_table_column.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-64
+docs/db/postgres/public.mcp_registry_server.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-64
+docs/db/postgres/public.evaluation_config.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-125
+docs/db/sqlite/chat_hub_agents.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-145
+docs/db/postgres/README.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-1307
+docs/db/postgres/public.chat_hub_messages.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-158
+docs/db/sqlite/agents_messages.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-72
+docs/db/postgres/public.agent_history.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-123
+docs/db/sqlite/role_mapping_rule.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-77
+docs/db/postgres/public.invalid_auth_token.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-38
+docs/db/postgres/public.role.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-92
+docs/db/postgres/public.settings.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-41
+docs/db/sqlite/user_favorites.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-73
+docs/db/postgres/public.workflows_tags.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-71
+docs/db/postgres/public.agents_memory_entries.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-110
+docs/db/sqlite/project_secrets_provider_access.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-80
+docs/db/postgres/public.instance_ai_pending_confirmations.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-109
+docs/db/postgres/public.chat_hub_session_tools.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-68
+docs/db/postgres/public.test_case_execution.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-105
+docs/db/postgres/public.user_favorites.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-67
+docs/db/sqlite/mcp_registry_server.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-69
+docs/db/sqlite/instance_ai_checkpoints.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-89
+docs/db/postgres/public.instance_ai_observation_locks.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-61
+docs/db/postgres/public.oauth_access_tokens.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-73
+docs/db/postgres/public.agent_execution.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-104
+docs/db/postgres/public.agents_messages.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-67
+docs/db/postgres/public.chat_hub_tools.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-89
+docs/db/postgres/public.user_api_keys.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-78
+docs/db/sqlite/instance_version_history.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-47
+docs/db/sqlite/agents_observation_locks.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-88
+.tbls.sqlite.yml
+  s_8f90a48c0964aa::t_bf5c8c8cccadbc 1-16
+docs/db/postgres/public.instance_ai_messages.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-66
+docs/db/postgres/public.agent_task_definition.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-70
+docs/db/sqlite/agents_memory_entry_cursors.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-84
+docs/db/sqlite/agents_memory_entry_locks.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-82
+docs/db/sqlite/dynamic_credential_entry.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-85
+docs/db/postgres/public.auth_provider_sync_history.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-64
+docs/db/postgres/public.role_mapping_rule.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-72
+docs/db/postgres/public.user.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-291
+pnpm-lock.yaml
+  ai_agent 1549-1551
+docs/db/postgres/public.chat_hub_sessions.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-167
+docs/db/postgres/public.oauth_user_consents.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-78
+docs/db/postgres/public.tag_entity.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-56
+docs/db/postgres/public.credentials_entity.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-152
+docs/db/postgres/public.project_relation.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-94
+docs/db/sqlite/schema.json
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-13483
+docs/db/postgres/public.webhook_entity.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-73
+docs/db/sqlite/instance_ai_observational_memory.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-120
+.gitignore
+  s_8f90a48c0964aa::t_4a3e53d886704d 4
+docs/db/sqlite/test_run.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-151
+docs/db/postgres/public.evaluation_collection.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-136
+docs/db/sqlite/agent_task_snapshot.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-74
+docs/db/sqlite/instance_ai_observations.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-83
+docs/db/postgres/public.instance_ai_observations.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-79
+docs/db/postgres/public.agent_checkpoints.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-65
+docs/db/postgres/public.event_destinations.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-44
+docs/db/sqlite/instance_ai_observation_cursors.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-64
+.tbls.postgres.yml
+  s_8f90a48c0964aa::t_6948a7d54ebeb4 1-16
+packages/@n8n/db/scripts/schema-docs.mjs
+  s_8f90a48c0964aa::t_ba45e7ea70dfbc 81-84,88-90
+  s_8f90a48c0964aa::t_856b7b7e79bfc3 156,158-159
+  s_8f90a48c0964aa::t_e030ed9e02ec74 103
+  s_8f90a48c0964aa::t_7957ac991a8176 157,164-165
+  s_8f90a48c0964aa::t_71e3ec7d67a827 130-131
+  s_8f90a48c0964aa::t_72d138e08e3a64 182-184,191
+  s_8f90a48c0964aa::t_ff757a405d9152 171-174
+  s_8f90a48c0964aa::t_81aea903502ecf 1-80,85-87,91-102,104-114,119-129,132-155,160-163,166-170,175-181,185-190,192-203
+docs/db/postgres/public.agent_task_snapshot.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-69
+docs/db/postgres/public.data_table.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-72
+docs/db/postgres/public.instance_ai_mcp_registry_connections.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-98
+docs/db/postgres/public.instance_ai_iteration_logs.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-61
+docs/db/postgres/public.instance_version_history.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-47
+docs/db/postgres/public.oauth_authorization_codes.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-101
+docs/db/postgres/public.shared_credentials.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-75
+docs/db/postgres/public.scope.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-44
+docs/db/postgres/public.workflow_builder_session.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-101
+docs/db/postgres/public.execution_annotation_tags.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-58
+docs/db/postgres/public.workflow_entity.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-304
+docs/db/sqlite/instance_ai_pending_confirmations.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-114
+docs/db/postgres/public.agent_task_run_lock.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-66
+docs/db/postgres/public.instance_ai_resources.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-45
+docs/db/sqlite/workflow_history.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-110
+docs/db/postgres/public.agents_resources.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-68
+docs/db/postgres/public.workflow_publish_history.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-108
+docs/db/sqlite/agents_observation_cursors.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-84
+docs/db/sqlite/secrets_provider_connection.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-65
+docs/db/postgres/public.chat_hub_agent_tools.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-68
+docs/db/postgres/public.execution_entity.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-159
+docs/db/sqlite/chat_hub_tools.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-92
+docs/db/postgres/public.agents_memory_entry_locks.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-75
+docs/db/postgres/public.execution_annotations.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-73
+docs/db/sqlite/instance_ai_iteration_logs.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-67
+docs/db/postgres/public.agents.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-231
+docs/db/sqlite/agent_execution_threads.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-146
+packages/@n8n/db/package.json
+  s_8f90a48c0964aa::t_41cc0b5510db36 18-24
+  s_8f90a48c0964aa::t_b5280cc6e2cb09 58
+docs/db/postgres/public.ai_builder_temporary_workflow.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-79
+docs/db/README.md
+  ai_agent 1-32
+docs/db/postgres/public.folder.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-93
+docs/db/sqlite/agents_memory_entry_sources.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-124
+docs/db/sqlite/ai_builder_temporary_workflow.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-87
+docs/db/postgres/public.instance_ai_workflow_snapshots.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-52
+docs/db/sqlite/workflow_dependency.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-88
+docs/db/postgres/public.workflow_history.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-105
+docs/db/sqlite/agents_memory_entries.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-113
+docs/db/sqlite/evaluation_collection.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-142
+docs/db/sqlite/chat_hub_sessions.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-171
+docs/db/postgres/public.agent_files.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-73
+docs/db/sqlite/instance_ai_threads.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-189
+docs/db/postgres/public.deployment_key.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-58
+docs/db/postgres/public.installed_packages.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-55
+docs/db/postgres/public.instance_ai_run_snapshots.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-71
+docs/db/sqlite/agent_task_definition.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-75
+docs/db/postgres/public.instance_ai_threads.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-182
+docs/db/postgres/public.agents_observation_cursors.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-77
+docs/db/sqlite/workflow_publish_history.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-116
+docs/db/sqlite/agent_history.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-130
+docs/db/sqlite/instance_ai_messages.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-72
+docs/db/postgres/public.chat_hub_agents.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-143
+package.json
+  s_8f90a48c0964aa::t_20a218692c1936 55-56
+docs/db/sqlite/user_api_keys.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-85
+docs/db/sqlite/instance_ai_workflow_snapshots.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-60
+docs/db/postgres/public.installed_nodes.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-54
+docs/db/postgres/public.execution_metadata.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-64
+docs/db/sqlite/chat_hub_session_tools.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-79
+docs/db/sqlite/instance_ai_observation_locks.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-68
+docs/db/postgres/public.dynamic_credential_user_entry.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-96
+docs/db/sqlite/workflow_entity.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-295
+docs/db/postgres/public.agents_observations.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-111
+docs/db/postgres/public.annotation_tag_entity.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-50
+docs/db/postgres/public.dynamic_credential_resolver.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-83
+docs/db/postgres/public.instance_ai_observation_cursors.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-57
+docs/db/sqlite/chat_hub_agent_tools.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-79
+docs/db/postgres/public.agents_observation_locks.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-81
+docs/db/postgres/public.project.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-180
+docs/db/postgres/public.workflow_published_version.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-83
+docs/db/sqlite/role_mapping_rule_project.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-74
+docs/db/sqlite/execution_entity.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-163
+docs/db/postgres/public.dynamic_credential_entry.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-77
+docs/db/sqlite/agent_task_run_lock.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-73
+docs/db/sqlite/instance_ai_run_snapshots.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-79
+docs/db/sqlite/oauth_refresh_tokens.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-90
+docs/db/postgres/public.secrets_provider_connection.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-62
+docs/db/sqlite/agent_files.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-77
+docs/db/postgres/public.insights_by_period.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-59
+docs/db/postgres/public.instance_ai_checkpoints.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-81
+docs/db/postgres/public.trusted_key_source.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-61
+docs/db/sqlite/oauth_authorization_codes.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-102
+docs/db/sqlite/token_exchange_jti.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-50
+docs/db/postgres/public.agents_memory_entry_sources.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-121
+docs/db/postgres/public.binary_data.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-59
+docs/db/postgres/public.insights_metadata.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-100
+docs/db/postgres/public.role_mapping_rule_project.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-63
+docs/db/sqlite/agents_threads.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-122
+docs/db/sqlite/agent_execution.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-108
+docs/db/postgres/public.agents_threads.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-114
+docs/db/sqlite/agent_checkpoints.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-73
+docs/db/sqlite/workflow_builder_session.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-107
+docs/db/postgres/public.agents_memory_entry_cursors.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-77
+docs/db/postgres/public.token_exchange_jti.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-41
+docs/db/postgres/public.variables.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-61
+docs/db/postgres/public.workflow_publication_outbox.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-54
+docs/db/postgres/schema.json
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-18808
+docs/db/postgres/public.credential_dependency.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-65
+docs/db/sqlite/workflow_publication_outbox.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-58
+docs/db/sqlite/trusted_key.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-65
+docs/db/sqlite/deployment_key.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-64
+docs/db/postgres/public.auth_identity.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-65
+docs/db/postgres/public.instance_ai_observational_memory.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-126
+docs/db/postgres/public.execution_data.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-62
+docs/db/postgres/public.role_scope.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-57
+docs/db/postgres/public.oauth_clients.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-96
+docs/db/postgres/public.folder_tag.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-56
+docs/db/sqlite/agents_observations.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-114
+docs/db/postgres/public.workflow_statistics.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-50
+docs/db/sqlite/binary_data.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-64
+docs/db/postgres/public.workflow_dependency.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-85
+docs/db/sqlite/evaluation_config.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-126
+docs/db/postgres/public.trusted_key.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-56
+docs/db/postgres/public.agent_execution_threads.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-145
+docs/db/postgres/public.oauth_refresh_tokens.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-85
+docs/db/sqlite/project.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-186
+docs/db/sqlite/instance_ai_resources.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-54
+.github/workflows/ci-pull-requests.yml
+  s_8f90a48c0964aa::t_491b10433f346e 308-327
+  s_8f90a48c0964aa::t_4162df7e11cb71 402
+  s_8f90a48c0964aa::t_9794635d988bc3 136-138
+docs/db/sqlite/agents.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-235
+docs/db/sqlite/agents_resources.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-77
+docs/db/sqlite/trusted_key_source.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-67
+docs/db/sqlite/credential_dependency.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-70
+docs/db/sqlite/workflow_published_version.md
+  s_8f90a48c0964aa::t_4d50758b91fb05 1-95
+docs/db/postgres/public.test_run.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-143
+docs/db/postgres/public.project_secrets_provider_access.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-72
+docs/db/postgres/public.processed_data.md
+  s_8f90a48c0964aa::t_c938f0e0e34808 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe42ba69463caa24d71ff7d388da046a3639581b",
+  "prompts": {},
+  "sessions": {
+    "s_8f90a48c0964aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae791531-91f1-44f0-a6d6-d06f9af49565",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
