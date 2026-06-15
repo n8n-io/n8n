@@ -59,7 +59,6 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 export class ToolCallAbortError extends Error {
 	constructor(message?: string) {
 		super(message ?? 'Tool call aborted');
-		this.name = 'BuilderAgentAbortError';
 	}
 }
 

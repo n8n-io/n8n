@@ -1,8 +1,7 @@
 import type { AgentSseEvent } from '@n8n/api-types';
 import type { StreamChunk } from '@n8n/agents';
-import { EventEmitter } from 'node:events';
 
-import { initSseStream, pumpChunks, type FlushableResponse } from '../agent-sse-stream';
+import { pumpChunks } from '../agent-sse-stream';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -29,38 +28,6 @@ jest.mock('n8n-workflow', () => ({
 		warn: jest.fn(),
 	},
 }));
-
-function makeSseResponse() {
-	const emitter = new EventEmitter() as EventEmitter & Partial<FlushableResponse>;
-	emitter.setHeader = jest.fn();
-	emitter.flushHeaders = jest.fn();
-	emitter.write = jest.fn();
-	emitter.flush = jest.fn();
-	(emitter as any).socket = { setNoDelay: jest.fn() } as never;
-	(emitter as any).writableEnded = false;
-	return emitter as FlushableResponse & EventEmitter;
-}
-
-describe('agent-sse-stream — SSE lifecycle', () => {
-	it('aborts the returned signal when the client connection closes', () => {
-		const res = makeSseResponse();
-		const { abortSignal } = initSseStream(res);
-
-		res.emit('close');
-
-		expect(abortSignal.aborted).toBe(true);
-	});
-
-	it('cleanup removes close listeners for normal response completion', () => {
-		const res = makeSseResponse();
-		const { abortSignal, cleanup } = initSseStream(res);
-
-		cleanup();
-		res.emit('close');
-
-		expect(abortSignal.aborted).toBe(false);
-	});
-});
 
 describe('agent-sse-stream — stringifyError (via pumpChunks error chunk)', () => {
 	it('extracts .message from an Error instance', async () => {

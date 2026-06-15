@@ -58,6 +58,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 		loadHistory: loadHistoryMock,
 		sendMessage: sendMessageMock,
 		stopGenerating: stopGeneratingMock,
+		releaseStream: vi.fn(),
 		resume: vi.fn(),
 		cancelAndSteer: cancelAndSteerMock,
 		steerAgent: vi.fn(),

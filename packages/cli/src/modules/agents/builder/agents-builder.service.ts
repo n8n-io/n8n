@@ -87,7 +87,6 @@ export class AgentsBuilderService {
 		message: string,
 		credentialProvider: CredentialProvider,
 		user: User,
-		abortSignal?: AbortSignal,
 	): AsyncGenerator<StreamChunk> {
 		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
 
@@ -101,7 +100,6 @@ export class AgentsBuilderService {
 		yield* this.agentsRuntimeService.streamSteerableTurns({
 			message,
 			streamKey,
-			abortSignal,
 			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
 				const resultStream = await builder.stream(turnMessage, {
 					persistence: { threadId: builderThreadId(agentId), resourceId },
@@ -125,6 +123,17 @@ export class AgentsBuilderService {
 	}
 
 	/**
+	 * Stop the active builder stream for an agent without steering. Aborts the
+	 * current turn cleanly so the stream ends. No-op if no build stream is
+	 * currently in progress for this agent.
+	 */
+	stopBuilderAgent(agentId: string, projectId: string, userId: string): boolean {
+		return this.agentsRuntimeService.requestAgentStreamAbort(
+			builderRuntimeCacheKey({ projectId, agentId, userId }),
+		);
+	}
+
+	/**
 	 * Resume a suspended builder tool call and yield the resulting stream chunks.
 	 *
 	 * The `runId` is supplied by the caller — it originates either from the
@@ -142,7 +151,6 @@ export class AgentsBuilderService {
 		resumeData: unknown,
 		credentialProvider: CredentialProvider,
 		user: User,
-		abortSignal?: AbortSignal,
 	): AsyncGenerator<StreamChunk> {
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -163,7 +171,6 @@ export class AgentsBuilderService {
 
 		yield* this.agentsRuntimeService.streamSteerableTurns({
 			streamKey,
-			abortSignal,
 			async *initialTurn(control: AgentStreamControl | undefined) {
 				const resultStream = await builder.resume('stream', resumeData, {
 					runId,

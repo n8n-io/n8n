@@ -78,6 +78,7 @@ const {
 	loadHistory,
 	sendMessage,
 	stopGenerating,
+	releaseStream,
 	resume,
 	cancelAndSteer,
 	enqueueMessage,
@@ -241,7 +242,7 @@ onMounted(() => {
 // chat mode reset). Without this the fetch keeps running and its reader
 // accumulates bytes until the browser gc's it.
 onBeforeUnmount(() => {
-	stopGenerating();
+	releaseStream();
 });
 </script>
 

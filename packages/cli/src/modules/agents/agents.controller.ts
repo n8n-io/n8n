@@ -1,9 +1,12 @@
 import {
+	AgentBuildMessageDto,
 	AgentBuildResumeDto,
+	AgentBuildSteerDto,
 	AgentChatMessageDto,
 	AgentChatResumeDto,
 	AgentIntegrationSchema,
 	AgentSteerDto,
+	AgentStopDto,
 	type AgentBuilderMessagesResponse,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
@@ -42,7 +45,6 @@ import {
 	RestController,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 import multer from 'multer';
 
@@ -62,7 +64,7 @@ import {
 	type ToolEventCallbacks,
 } from './agent-sse-stream';
 import { AgentTaskService } from './agent-task.service';
-import { AgentsService, chatThreadId } from './agents.service';
+import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -581,23 +583,16 @@ export class AgentsController {
 			req.user,
 		);
 
-		const { send, abortSignal, cleanup } = initSseStream(res);
+		const { send } = initSseStream(res);
 
-		// If the client supplied a sessionId and a thread already exists under that id,
-		// the thread must belong to this (project, agent). Otherwise a caller could
-		// append messages to another user's thread. A non-existent id is fine —
-		// executeForChat will create the thread on first persisted message.
-		if (sessionId) {
-			const existing = await this.agentExecutionService.findThreadById(sessionId);
-			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
-				send({ type: 'error', message: 'Session not found' });
-				cleanup();
-				res.end();
-				return;
-			}
+		const existing = await this.agentExecutionService.findThreadById(sessionId);
+		if (existing && !threadBelongsTo(existing, projectId, agentId)) {
+			send({ type: 'error', message: 'Session not found' });
+			res.end();
+			return;
 		}
 
-		const threadId = sessionId ?? randomUUID();
+		const threadId = sessionId;
 
 		const { missing } = await this.agentsService.validateAgentIsRunnable(
 			agentId,
@@ -611,7 +606,6 @@ export class AgentsController {
 				errorCode: 'agent_misconfigured',
 				missing,
 			});
-			cleanup();
 			res.end();
 			return;
 		}
@@ -627,7 +621,6 @@ export class AgentsController {
 						threadId,
 						resourceId: draftChatMemoryResourceId(req.user.id),
 					},
-					abortSignal,
 				}),
 				send,
 			);
@@ -639,7 +632,6 @@ export class AgentsController {
 			send({ type: 'error', message: errorMessage });
 		}
 
-		cleanup();
 		res.end();
 	}
 
@@ -653,7 +645,7 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
-		const { send, abortSignal, cleanup } = initSseStream(res);
+		const { send } = initSseStream(res);
 
 		try {
 			const suspended = await pumpChunks(
@@ -665,7 +657,6 @@ export class AgentsController {
 					resumeData,
 					userId: req.user.id,
 					usePublishedVersion: false,
-					abortSignal,
 				}),
 				send,
 			);
@@ -677,7 +668,6 @@ export class AgentsController {
 			send({ type: 'error', message: errorMessage });
 		}
 
-		cleanup();
 		res.end();
 	}
 
@@ -774,7 +764,7 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: FlushableResponse,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentChatMessageDto,
+		@Body payload: AgentBuildMessageDto,
 	) {
 		const { projectId } = req.params;
 		const { message } = payload;
@@ -791,7 +781,7 @@ export class AgentsController {
 			req.user,
 		);
 
-		const { send, abortSignal, cleanup } = initSseStream(res);
+		const { send } = initSseStream(res);
 
 		try {
 			const suspended = await pumpChunks(
@@ -801,7 +791,6 @@ export class AgentsController {
 					message,
 					credentialProvider,
 					req.user,
-					abortSignal,
 				),
 				send,
 				makeBuilderToolEvents(send),
@@ -823,7 +812,6 @@ export class AgentsController {
 			});
 		}
 
-		cleanup();
 		res.end();
 	}
 
@@ -850,7 +838,7 @@ export class AgentsController {
 			req.user,
 		);
 
-		const { send, abortSignal, cleanup } = initSseStream(res);
+		const { send } = initSseStream(res);
 
 		try {
 			const suspended = await pumpChunks(
@@ -862,7 +850,6 @@ export class AgentsController {
 					resumeData,
 					credentialProvider,
 					req.user,
-					abortSignal,
 				),
 				send,
 				makeBuilderToolEvents(send),
@@ -876,7 +863,6 @@ export class AgentsController {
 			send({ type: 'error', message: errorMessage });
 		}
 
-		cleanup();
 		res.end();
 	}
 
@@ -886,7 +872,7 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: Response,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentSteerDto,
+		@Body payload: AgentBuildSteerDto,
 	) {
 		const { projectId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
@@ -917,10 +903,46 @@ export class AgentsController {
 			agentId,
 			projectId,
 			req.user.id,
-			payload.sessionId ?? chatThreadId(agentId, req.user.id),
+			payload.sessionId,
 			payload.message,
 		);
 		res.json({ interrupted });
+	}
+
+	@Post('/:agentId/build/stop')
+	@ProjectScope('agent:update')
+	async buildStop(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		const { projectId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const stopped = this.agentsBuilderService.stopBuilderAgent(agentId, projectId, req.user.id);
+		res.json({ stopped });
+	}
+
+	@Post('/:agentId/chat/stop')
+	@ProjectScope('agent:execute')
+	async chatStop(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentStopDto,
+	) {
+		const { projectId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const stopped = this.agentsService.stopChatAgent(
+			agentId,
+			projectId,
+			req.user.id,
+			payload.sessionId,
+		);
+		res.json({ stopped });
 	}
 
 	@Post('/:agentId/integrations/connect')

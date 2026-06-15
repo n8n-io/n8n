@@ -102,7 +102,11 @@ export class UpdateAgentSkillDto extends Z.class({
 
 export class AgentChatMessageDto extends Z.class({
 	message: z.string().min(1),
-	sessionId: z.string().min(1).optional(),
+	sessionId: z.string().min(1),
+}) {}
+
+export class AgentBuildMessageDto extends Z.class({
+	message: z.string().min(1),
 }) {}
 
 export class AgentBuildResumeDto extends Z.class({
@@ -113,7 +117,15 @@ export class AgentBuildResumeDto extends Z.class({
 
 export class AgentSteerDto extends Z.class({
 	message: z.string().min(1),
-	sessionId: z.string().min(1).optional(),
+	sessionId: z.string().min(1),
+}) {}
+
+export class AgentBuildSteerDto extends Z.class({
+	message: z.string().min(1),
+}) {}
+
+export class AgentStopDto extends Z.class({
+	sessionId: z.string().min(1),
 }) {}
 
 export class AgentChatResumeDto extends Z.class({

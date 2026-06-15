@@ -56,7 +56,6 @@ export type AgentStreamResponseConfig = {
 	taskId?: string;
 	taskVersionId?: string;
 	executionCounter: AgentExecutionCounter;
-	abortSignal?: AbortSignal;
 };
 
 export type ResumeStreamResponseConfig = {
@@ -70,7 +69,6 @@ export type ResumeStreamResponseConfig = {
 	memory: AgentStreamMemoryScope;
 	streamKey?: string;
 	executionCounter: AgentExecutionCounter;
-	abortSignal?: AbortSignal;
 };
 
 type InitialMessageTurnConfig = {
@@ -85,7 +83,6 @@ type InitialStreamTurnConfig = {
 
 export type SteerableTurnsConfig = (InitialMessageTurnConfig | InitialStreamTurnConfig) & {
 	streamKey?: string;
-	abortSignal?: AbortSignal;
 	streamTurn: (
 		message: string,
 		control: AgentStreamControl | undefined,
@@ -230,19 +227,9 @@ export class AgentsRuntimeService {
 		this.clearRuntimes(payload.agentId, { skipBroadcast: true });
 	}
 
-	createAgentStreamControl(streamKey: string, upstreamSignal?: AbortSignal): AgentStreamControl {
+	createAgentStreamControl(streamKey: string): AgentStreamControl {
 		const stream: ActiveAgentStream = { controller: new AbortController() };
 		this.activeStreams.set(streamKey, stream);
-		const abortFromUpstream = () => {
-			if (!stream.controller.signal.aborted) {
-				stream.controller.abort(upstreamSignal?.reason);
-			}
-		};
-		if (upstreamSignal?.aborted) {
-			abortFromUpstream();
-		} else {
-			upstreamSignal?.addEventListener('abort', abortFromUpstream, { once: true });
-		}
 
 		return {
 			signal: stream.controller.signal,
@@ -253,7 +240,6 @@ export class AgentsRuntimeService {
 				return pendingSteerMessage;
 			},
 			cleanup: () => {
-				upstreamSignal?.removeEventListener('abort', abortFromUpstream);
 				if (this.activeStreams.get(streamKey) === stream) {
 					this.activeStreams.delete(streamKey);
 				}
@@ -305,7 +291,7 @@ export class AgentsRuntimeService {
 
 		while (isInitialTurn || nextMessage !== undefined) {
 			const control = config.streamKey
-				? this.createAgentStreamControl(config.streamKey, config.abortSignal)
+				? this.createAgentStreamControl(config.streamKey)
 				: undefined;
 
 			try {
@@ -349,7 +335,6 @@ export class AgentsRuntimeService {
 			taskId,
 			taskVersionId,
 			executionCounter,
-			abortSignal,
 		} = config;
 		const { threadId, resourceId } = memory;
 		const { logger, agentExecutionService } = this;
@@ -357,7 +342,6 @@ export class AgentsRuntimeService {
 		yield* this.streamSteerableTurns({
 			message,
 			streamKey,
-			abortSignal,
 			async *streamTurn(turnMessage: string, control: AgentStreamControl | undefined) {
 				const recorder = new ExecutionRecorder(toolRegistry);
 				const resultStream = await agentInstance.stream(turnMessage, {
@@ -425,7 +409,6 @@ export class AgentsRuntimeService {
 			projectId,
 			streamKey,
 			executionCounter,
-			abortSignal,
 		} = config;
 		const { threadId, resourceId } = memory;
 		const { logger, agentExecutionService } = this;
@@ -469,7 +452,6 @@ export class AgentsRuntimeService {
 
 		yield* this.streamSteerableTurns({
 			streamKey,
-			abortSignal,
 			async *initialTurn(control) {
 				const resultStream = await agentInstance.resume('stream', resumeData, {
 					runId,

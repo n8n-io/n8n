@@ -14,6 +14,8 @@ import {
 	getChatMessages,
 	getTestChatMessages,
 	clearTestChatMessages,
+	steerAgent as steerAgentRequest,
+	stopAgent as stopAgentRequest,
 } from './useAgentApi';
 
 import {
@@ -160,24 +162,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * had no matching active stream, so callers can requeue or send normally.
 	 */
 	async function steerAgent(message: string): Promise<boolean> {
-		const { baseUrl } = rootStore.restApiContext;
 		const endpoint = params.endpoint.value;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/${endpoint}/steer`;
-		const browserId = localStorage.getItem('n8n-browserId') ?? '';
-		const body: Record<string, unknown> = { message };
-		if (endpoint === 'chat') {
-			body.sessionId = getChatSessionId();
-		}
 		try {
-			const response = await fetch(url, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', 'browser-id': browserId },
-				credentials: 'include',
-				body: JSON.stringify(body),
-			});
-			if (!response.ok) return false;
-			const result = (await response.json().catch(() => null)) as { interrupted?: unknown } | null;
-			return result?.interrupted === true;
+			return await steerAgentRequest(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				endpoint,
+				message,
+				endpoint === 'chat' ? getChatSessionId() : undefined,
+			);
 		} catch {
 			return false;
 		}
@@ -818,7 +812,43 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		fatalError.value = null;
 	}
 
+	/**
+	 * Call the /stop backend endpoint to halt the running generation. Returns
+	 * false when the backend had no matching active stream. The stop is keyed by
+	 * stream id (not the SSE connection), so it reliably aborts the server-side
+	 * run even though closing the connection no longer does.
+	 */
+	async function stopAgent(): Promise<boolean> {
+		const endpoint = params.endpoint.value;
+		try {
+			return await stopAgentRequest(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				endpoint,
+				endpoint === 'chat' ? getChatSessionId() : undefined,
+			);
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Explicit "stop" from the user. Tells the backend to halt the run (closing
+	 * the SSE connection no longer aborts it), then aborts the local read for
+	 * immediate UI feedback.
+	 */
 	function stopGenerating(): void {
+		void stopAgent();
+		abortController.value?.abort();
+	}
+
+	/**
+	 * Release the local stream reader without signalling the backend. Used on
+	 * unmount (route change / panel close) so the agent run keeps going and is
+	 * persisted, while the browser stops accumulating unread bytes.
+	 */
+	function releaseStream(): void {
 		abortController.value?.abort();
 	}
 
@@ -832,6 +862,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		clearHistory,
 		sendMessage,
 		stopGenerating,
+		releaseStream,
 		resume,
 		cancelAndSteer,
 		steerAgent,

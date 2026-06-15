@@ -553,3 +553,46 @@ export const listAgentIntegrations = async (
 		`/projects/${projectId}/agents/v2/catalog/integrations`,
 	);
 };
+
+export type AgentStreamEndpoint = 'build' | 'chat';
+
+/**
+ * Interrupt the active stream and steer the agent with a new message.
+ * Returns true when the backend had a matching active stream to interrupt.
+ */
+export const steerAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	endpoint: AgentStreamEndpoint,
+	message: string,
+	sessionId?: string,
+): Promise<boolean> => {
+	const result = await makeRestApiRequest<{ interrupted?: boolean }>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/${endpoint}/steer`,
+		{ message, ...(sessionId ? { sessionId } : {}) },
+	);
+	return result?.interrupted === true;
+};
+
+/**
+ * Halt the active stream without steering. Returns true when the backend had a
+ * matching active stream to stop.
+ */
+export const stopAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	endpoint: AgentStreamEndpoint,
+	sessionId?: string,
+): Promise<boolean> => {
+	const result = await makeRestApiRequest<{ stopped?: boolean }>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/${endpoint}/stop`,
+		sessionId ? { sessionId } : undefined,
+	);
+	return result?.stopped === true;
+};
