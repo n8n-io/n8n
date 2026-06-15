@@ -406,6 +406,73 @@ describe('duplicate property declarations with mutually-exclusive displayOptions
 		);
 	});
 
+	it('uses the surviving declaration displayOptions when another duplicate is fully disabled', () => {
+		const node: NodeTypeDescription = {
+			...baseNode,
+			name: 'n8n-nodes-base.singleActiveDupProp',
+			displayName: 'Single Active Dup Prop',
+			version: 1,
+			properties: [
+				{
+					displayName: 'Special Field',
+					name: 'specialField',
+					type: 'string',
+					default: '',
+					displayOptions: { show: { mode: ['legacy'] } },
+					disabledOptions: { show: { mode: ['legacy'] } },
+				},
+				{
+					displayName: 'Special Field',
+					name: 'specialField',
+					type: 'string',
+					default: '',
+					displayOptions: { show: { mode: ['modern'] } },
+				},
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					default: 'modern',
+					options: [
+						{ name: 'Legacy', value: 'legacy' },
+						{ name: 'Modern', value: 'modern' },
+					],
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).not.toContain('resolveOneOfSchemas(');
+		expect(code).toContain('displayOptions: {"show":{"mode":["modern"]}}');
+		expect(code).not.toContain('displayOptions: {"show":{"mode":["legacy","modern"]}}');
+
+		const factory = loadFactory(code);
+		const legacyParameters = { mode: 'legacy', specialField: 'value' };
+		const legacySchema = factory({
+			...schemaHelpers,
+			parameters: legacyParameters,
+			resolveSchema: (cfg: Parameters<typeof schemaHelpers.resolveSchema>[0]) =>
+				schemaHelpers.resolveSchema(cfg),
+			resolveOneOfSchemas: (cfg: Parameters<typeof schemaHelpers.resolveOneOfSchemas>[0]) =>
+				schemaHelpers.resolveOneOfSchemas(cfg),
+		});
+
+		expect(legacySchema.safeParse({ parameters: legacyParameters }).success).toBe(false);
+
+		const modernParameters = { mode: 'modern', specialField: 'value' };
+		const modernSchema = factory({
+			...schemaHelpers,
+			parameters: modernParameters,
+			resolveSchema: (cfg: Parameters<typeof schemaHelpers.resolveSchema>[0]) =>
+				schemaHelpers.resolveSchema(cfg),
+			resolveOneOfSchemas: (cfg: Parameters<typeof schemaHelpers.resolveOneOfSchemas>[0]) =>
+				schemaHelpers.resolveOneOfSchemas(cfg),
+		});
+
+		expect(modernSchema.safeParse({ parameters: modernParameters }).success).toBe(true);
+	});
+
 	it('validates a default-reliant config that relies on the default output mode', () => {
 		const code = generateSingleVersionSchemaFile(dupPropNode, 1);
 		const factory = loadFactory(code);

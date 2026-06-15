@@ -834,6 +834,14 @@ type MergeableDisplayOptions = {
 	hide?: Record<string, unknown[]>;
 };
 
+function cloneDisplayOptionsValues(values: Record<string, unknown[]>): Record<string, unknown[]> {
+	const clone: Record<string, unknown[]> = {};
+	for (const [key, optionValues] of Object.entries(values)) {
+		clone[key] = [...optionValues];
+	}
+	return clone;
+}
+
 /**
  * Merge two displayOptions objects by combining their show/hide conditions.
  * Used when multiple properties share the same name but have different visibility conditions.
@@ -846,7 +854,13 @@ export function mergeDisplayOptions(
 	existing: MergeableDisplayOptions,
 	incoming: MergeableDisplayOptions,
 ): MergeableDisplayOptions {
-	const merged: MergeableDisplayOptions = { ...existing };
+	const merged: MergeableDisplayOptions = {};
+	if (existing.show) {
+		merged.show = cloneDisplayOptionsValues(existing.show);
+	}
+	if (existing.hide) {
+		merged.hide = cloneDisplayOptionsValues(existing.hide);
+	}
 
 	// Merge 'show' conditions
 	if (incoming.show) {
@@ -1052,8 +1066,8 @@ export function generateOneOfSchemaLine(
  *
  * Each declaration's `disabledOptions` is narrowed into its displayOptions first
  * (matching the type-generation path), so the runtime visibility agrees with the
- * emitted `.d.ts`. Every other case keeps the historical single-merged-schema
- * behavior so this change stays scoped to the bug it fixes.
+ * emitted `.d.ts`. If disabledOptions leaves only one settable duplicate
+ * declaration, that declaration still owns the generated predicate.
  *
  * @param mergedProp - The merged property for this name
  * @param declarations - All raw declarations sharing this name
@@ -1090,6 +1104,14 @@ export function generateMergedSchemaLine(
 
 	if (allConditional && variants.length >= 2) {
 		const line = generateOneOfSchemaLine(variants, allProperties);
+		if (line) {
+			return line;
+		}
+	}
+
+	if (allConditional && variants.length === 1 && declarations.length > 1) {
+		const [{ prop, displayOptions }] = variants;
+		const line = generateConditionalSchemaLine({ ...prop, displayOptions }, allProperties);
 		if (line) {
 			return line;
 		}
