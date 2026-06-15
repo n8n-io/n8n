@@ -137,6 +137,10 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'breakingChanges:list',
 	'execution:reveal',
 	'apiKey:manage',
+	'apiKey:list',
+	'apiKey:create',
+	'apiKey:delete',
+	'apiKey:update',
 	'encryptionKey:manage',
 	'credentialResolver:create',
 	'credentialResolver:read',
@@ -151,6 +155,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'roleMappingRule:update',
 	'roleMappingRule:delete',
 	'roleMappingRule:list',
+	'otel:manage',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
@@ -180,7 +185,10 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'chatHubAgent:update',
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
-	'apiKey:manage',
+	'apiKey:list',
+	'apiKey:create',
+	'apiKey:delete',
+	'apiKey:update',
 	'credentialResolver:list',
 	'instanceAi:message',
 	'instanceAi:gateway',

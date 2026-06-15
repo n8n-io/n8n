@@ -45,14 +45,18 @@ export class AddSubAgentLinkageToAgentExecutionThreads1784000000022
 		escape,
 		tablePrefix,
 	}: MigrationContext) {
-		await addColumns('agent_execution_threads', [
-			column('parentThreadId')
-				.varchar(128)
-				.comment('Parent session thread id that delegated this subagent run.'),
-			column('parentAgentId')
-				.varchar(36)
-				.comment('Saved agent id of the parent that delegated this subagent run.'),
-		]);
+		await addColumns(
+			'agent_execution_threads',
+			[
+				column('parentThreadId')
+					.varchar(128)
+					.comment('Parent session thread id that delegated this subagent run.'),
+				column('parentAgentId')
+					.varchar(36)
+					.comment('Saved agent id of the parent that delegated this subagent run.'),
+			],
+			{ recreatesOnSqlite: true },
+		);
 
 		if (isPostgres) {
 			for (const { table, column: columnName } of COLUMNS_TO_WIDEN) {

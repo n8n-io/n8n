@@ -58,6 +58,22 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 	};
 });
 
+const mockInjectedRunData = { value: null as IRunData | null };
+
+vi.mock('@/app/stores/workflowExecutionState.store', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		injectWorkflowExecutionStateStore: vi.fn(() => ({
+			// Plain accessor (not `computed`) so per-test reassignment of the
+			// non-reactive holder is always picked up.
+			get value() {
+				return { activeExecutionRunData: mockInjectedRunData.value };
+			},
+		})),
+	};
+});
+
 describe('useNodeHelpers()', () => {
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
@@ -72,6 +88,7 @@ describe('useNodeHelpers()', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockInjectedRunData.value = null;
 		// Clear mock document store state
 		for (const key of Object.keys(mockDocumentStoreUsedCredentials)) {
 			delete mockDocumentStoreUsedCredentials[key];
@@ -372,7 +389,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return an empty array when runData is not available', () => {
-			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
+			mockInjectedRunData.value = null;
 			const { getNodeInputData } = useNodeHelpers();
 			const node = createTestNode({
 				name: 'test',
@@ -385,7 +402,7 @@ describe('useNodeHelpers()', () => {
 
 		it('should return an empty array when taskData is unavailable', () => {
 			const nodeName = 'Code';
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [],
 			});
 			const { getNodeInputData } = useNodeHelpers();
@@ -400,7 +417,7 @@ describe('useNodeHelpers()', () => {
 
 		it('should return an empty array when taskData.data is unavailable', () => {
 			const nodeName = 'Code';
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [{ data: undefined }],
 			});
 			const { getNodeInputData } = useNodeHelpers();
@@ -416,7 +433,7 @@ describe('useNodeHelpers()', () => {
 		it('should return input data from inputOverride', () => {
 			const nodeName = 'Code';
 			const data = [{ json: { hello: 'world' } }];
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [
 					{
 						inputOverride: {
@@ -439,7 +456,7 @@ describe('useNodeHelpers()', () => {
 			'should return input data for "%s" node name, with given connection type and output index',
 			(nodeName) => {
 				const data = [{ json: { hello: 'world' } }];
-				mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+				mockInjectedRunData.value = mock<IRunData>({
 					[nodeName]: [{ data: { main: [data] } }],
 				});
 				const { getNodeInputData } = useNodeHelpers();
@@ -460,7 +477,7 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [{ data: { main: [mockData] } }, { data: { main: [mockData] } }],
 			});
 			expect(getLastRunIndexWithData(nodeName)).toEqual(1);
@@ -470,7 +487,7 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [],
 			});
 			expect(getLastRunIndexWithData(nodeName)).toEqual(-1);
@@ -480,7 +497,7 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
+			mockInjectedRunData.value = null;
 			expect(getLastRunIndexWithData(nodeName)).toEqual(-1);
 		});
 
@@ -488,7 +505,7 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [
 					{ data: { main: [mockData, []] } },
 					{ data: { main: [mockData, []] } },
@@ -504,7 +521,7 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [
 					{ data: { main: [mockData], ai_tool: [mockData] } },
 					{ data: { ai_tool: [mockData] } },
@@ -518,7 +535,7 @@ describe('useNodeHelpers()', () => {
 	describe('hasNodeExecuted()', () => {
 		it('should return false when runData is not available', () => {
 			const nodeName = 'Test Node';
-			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
+			mockInjectedRunData.value = null;
 			const { hasNodeExecuted } = useNodeHelpers();
 			expect(hasNodeExecuted(nodeName)).toBe(false);
 		});
@@ -532,7 +549,7 @@ describe('useNodeHelpers()', () => {
 		])('should return $expected when execution status is $status', ({ status, expected }) => {
 			const nodeName = 'Test Node';
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
+			mockInjectedRunData.value = mock<IRunData>({
 				[nodeName]: [{ executionStatus: status }],
 			});
 			const { hasNodeExecuted } = useNodeHelpers();
@@ -807,6 +824,7 @@ describe('useNodeHelpers()', () => {
 		const NOTION_API = 'notionApi';
 		const MANUAL_TRIGGER = 'n8n-nodes-base.manualTrigger';
 		const MANUAL_CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.manualChatTrigger';
+		const CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.chatTrigger';
 		const WEBHOOK_TRIGGER = 'n8n-nodes-base.webhook';
 
 		const notionNodeType: INodeTypeDescription = {
@@ -863,7 +881,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		describe('not connected', () => {
-			it('emits privateNotConnected when declared-credential node has private cred not connected', () => {
+			it('emits no issue when declared-credential node has private cred not connected', () => {
 				const cred = makePrivateCred({ connectedByMe: false });
 				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
 				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
@@ -873,8 +891,9 @@ describe('useNodeHelpers()', () => {
 					'parameters',
 				]);
 
-				expect(result?.credentials?.[NOTION_API]).toBeDefined();
-				expect(result?.credentials?.[NOTION_API][0]).toContain('My Notion');
+				// An unconnected private credential is surfaced as a warning in the UI,
+				// not as a node issue.
+				expect(result?.credentials).toBeUndefined();
 			});
 
 			it('emits no issue when declared-credential node has private cred connected', () => {
@@ -890,7 +909,7 @@ describe('useNodeHelpers()', () => {
 				expect(result?.credentials).toBeUndefined();
 			});
 
-			it('emits privateNotConnected for predefined-OAuth credential (HTTP Request, not in node type credentials array)', () => {
+			it('emits no issue for predefined-OAuth private credential not connected (HTTP Request, not in node type credentials array)', () => {
 				mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(httpRequestNodeType);
 
 				const cred = makePrivateCred({ type: 'slackOAuth2Api', connectedByMe: false });
@@ -908,8 +927,7 @@ describe('useNodeHelpers()', () => {
 				const { getNodeIssues } = useNodeHelpers();
 				const result = getNodeIssues(httpRequestNodeType, node, mock<Workflow>(), ['parameters']);
 
-				expect(result?.credentials?.slackOAuth2Api).toBeDefined();
-				expect(result?.credentials?.slackOAuth2Api[0]).toContain('My Notion');
+				expect(result?.credentials?.slackOAuth2Api).toBeUndefined();
 			});
 
 			it('emits no issue for static (non-resolvable) credential regardless of connectedByMe', () => {
@@ -999,6 +1017,16 @@ describe('useNodeHelpers()', () => {
 			it('does not warn when a private credential is used under a manual chat trigger', () => {
 				mockConnectedPrivateCred(true);
 				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(MANUAL_CHAT_TRIGGER)];
+
+				const { getNodeCredentialIssues } = useNodeHelpers();
+				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+				expect(result).toBeNull();
+			});
+
+			it('does not warn when a private credential is used under a chat trigger', () => {
+				mockConnectedPrivateCred(true);
+				mockDocumentStore.workflowTriggerNodes = [buildTriggerNode(CHAT_TRIGGER)];
 
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
@@ -1199,7 +1227,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		describe('precedence', () => {
-			it('emits only privateNotConnected when both rules would fire (not-connected wins)', () => {
+			it('emits no issue for a not-connected private credential even under an incompatible trigger', () => {
 				const cred = makePrivateCred({ connectedByMe: false });
 				mockedStore(useCredentialsStore).getCredentialById = vi.fn().mockReturnValue(cred);
 				mockedStore(useCredentialsStore).getCredentialsByType = vi.fn().mockReturnValue([cred]);
@@ -1208,9 +1236,9 @@ describe('useNodeHelpers()', () => {
 				const { getNodeCredentialIssues } = useNodeHelpers();
 				const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
 
-				expect(result?.credentials?.[NOTION_API]).toHaveLength(1);
-				expect(result?.credentials?.[NOTION_API][0]).toContain('My Notion');
-				expect(result?.credentials?.[NOTION_API][0]).not.toContain('manually triggered workflows');
+				// The not-connected state is surfaced as a UI warning; the manual-trigger
+				// requirement only applies once the user has connected their account.
+				expect(result).toBeNull();
 			});
 		});
 	});

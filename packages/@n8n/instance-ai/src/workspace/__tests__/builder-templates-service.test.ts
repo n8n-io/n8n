@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import * as fsp from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import type { Mock } from 'vitest';
 
 import {
 	BuilderTemplatesService,
@@ -55,8 +56,8 @@ function isLatestArchiveUrl(url: string): boolean {
 	return url.endsWith('/latest/templates.tar.gz');
 }
 
-function installMockFetch(state: MockState): jest.Mock {
-	const mock = jest.fn((input: string | URL | Request, init?: RequestInit) => {
+function installMockFetch(state: MockState): Mock {
+	const mock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
 		state.calls.fetch++;
 		const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 		const headers = new Headers((init?.headers ?? {}) as Record<string, string>);
@@ -194,7 +195,7 @@ describe('BuilderTemplatesService', () => {
 		const state = makeState();
 		state.archiveStatus = 500;
 		installMockFetch(state);
-		const dateNow = jest.spyOn(Date, 'now');
+		const dateNow = vi.spyOn(Date, 'now');
 		dateNow.mockReturnValue(1_000);
 
 		try {
@@ -272,7 +273,7 @@ describe('BuilderTemplatesService', () => {
 		await fsp.writeFile(path.join(cacheDir, 'channel.txt'), 'exact');
 
 		// Block any network call so we know hydration came from disk.
-		globalThis.fetch = jest.fn(
+		globalThis.fetch = vi.fn(
 			() => new Response('', { status: 500 }),
 		) as unknown as typeof globalThis.fetch;
 
@@ -423,7 +424,7 @@ describe('BuilderTemplatesService', () => {
 		const cacheDir = await makeTempDir();
 		const state = makeState();
 		state.sha256Override = null; // sidecar 404
-		const logger = { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() };
+		const logger = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() };
 		installMockFetch(state);
 
 		const svc = new BuilderTemplatesService(makeOptions(cacheDir, { logger }));
@@ -547,7 +548,7 @@ describe('BuilderTemplatesService', () => {
 			await fsp.writeFile(path.join(cacheDir, 'templates.tar.gz.sha256'), sha256Hex(archive));
 			await fsp.writeFile(path.join(cacheDir, 'channel.txt'), 'latest');
 
-			globalThis.fetch = jest.fn(
+			globalThis.fetch = vi.fn(
 				() => new Response('', { status: 500 }),
 			) as unknown as typeof globalThis.fetch;
 
@@ -564,7 +565,7 @@ describe('BuilderTemplatesService', () => {
 			const cacheDir = await makeTempDir();
 			const state = makeState();
 			state.exactStatus = 404;
-			const logger = { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() };
+			const logger = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() };
 			installMockFetch(state);
 
 			const svc = new BuilderTemplatesService(
@@ -618,7 +619,7 @@ describe('builderTemplatesOptionsFromEnv', () => {
 	it('omits refreshIntervalMs and warns when refresh hours is not a number', () => {
 		clearEnv();
 		process.env.N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS = 'banana';
-		const logger = { warn: jest.fn(), info: jest.fn(), error: jest.fn(), debug: jest.fn() };
+		const logger = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() };
 		const opts = builderTemplatesOptionsFromEnv({ logger });
 		expect(opts.refreshIntervalMs).toBeUndefined();
 		expect(logger.warn).toHaveBeenCalledWith(

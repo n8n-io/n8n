@@ -1,11 +1,35 @@
 import {
 	applyBranchReadOnlyOverrides,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	InstanceAiAdminSettingsUpdateRequest,
 	isDisplayableConfirmationRequest,
+	isInstanceAiSandboxProvider,
 	type InstanceAiConfirmationInputType,
 	type InstanceAiConfirmationRequestPayload,
 	type InstanceAiPermissions,
 } from '../instance-ai.schema';
+
+describe('sandbox provider', () => {
+	it('accepts supported providers', () => {
+		expect(isInstanceAiSandboxProvider('n8n-sandbox')).toBe(true);
+		expect(isInstanceAiSandboxProvider('daytona')).toBe(true);
+	});
+
+	it('rejects unsupported or non-string providers', () => {
+		expect(isInstanceAiSandboxProvider('local')).toBe(false);
+		expect(isInstanceAiSandboxProvider('')).toBe(false);
+		expect(isInstanceAiSandboxProvider(undefined)).toBe(false);
+	});
+
+	it('rejects unsupported providers on the admin settings update request', () => {
+		expect(
+			InstanceAiAdminSettingsUpdateRequest.safeParse({ sandboxProvider: 'local' }).success,
+		).toBe(false);
+		expect(
+			InstanceAiAdminSettingsUpdateRequest.safeParse({ sandboxProvider: 'n8n-sandbox' }).success,
+		).toBe(true);
+	});
+});
 
 describe('applyBranchReadOnlyOverrides', () => {
 	it('should block all write permissions while preserving safe ones', () => {

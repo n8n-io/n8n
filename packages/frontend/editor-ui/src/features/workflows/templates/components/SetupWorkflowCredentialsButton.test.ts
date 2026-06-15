@@ -130,6 +130,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 	it('disables button when setup panel feature is enabled and setup sidebar is open', () => {
 		const workflowWithNodes = {
 			...EMPTY_WORKFLOW,
+			meta: { templateId: '2722', templateCredsSetupCompleted: false },
 			nodes: [
 				{
 					id: '1',
@@ -143,6 +144,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 		};
 		workflowsStore.workflowId = workflowWithNodes.id;
 		setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+		mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
 		setupPanelStore.isFeatureEnabled = true;
 		focusPanelStore.focusPanelActive = true;
 		focusPanelStore.selectedTab = 'setup';
@@ -154,6 +156,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 	it('does not disable button when setup panel feature is enabled but sidebar is closed', () => {
 		const workflowWithNodes = {
 			...EMPTY_WORKFLOW,
+			meta: { templateId: '2722', templateCredsSetupCompleted: false },
 			nodes: [
 				{
 					id: '1',
@@ -167,6 +170,7 @@ describe('SetupWorkflowCredentialsButton', () => {
 		};
 		workflowsStore.workflowId = workflowWithNodes.id;
 		setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+		mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
 		setupPanelStore.isFeatureEnabled = true;
 		focusPanelStore.focusPanelActive = false;
 
@@ -246,6 +250,56 @@ describe('SetupWorkflowCredentialsButton', () => {
 		expect(readyToRunStore.isReadyToRunTemplateId).toHaveBeenCalledWith(
 			'ready-to-run-ai-workflow-v5',
 		);
+	});
+
+	describe('button visibility with setup panel feature enabled', () => {
+		const workflowWithNodes = {
+			...EMPTY_WORKFLOW,
+			meta: { templateId: '2722', templateCredsSetupCompleted: false },
+			nodes: [
+				{
+					id: '1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			],
+		};
+
+		it('hides the button once all credentials are filled', () => {
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+			setupPanelStore.isFeatureEnabled = true;
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(true);
+
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('setup-credentials-button')).toBeNull();
+		});
+
+		it('hides the button when template setup is already completed', () => {
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(
+				{ templateId: '2722', templateCredsSetupCompleted: true },
+				workflowWithNodes.nodes,
+			);
+			setupPanelStore.isFeatureEnabled = true;
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('setup-credentials-button')).toBeNull();
+		});
+
+		it('shows the button while credentials are still missing', () => {
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+			setupPanelStore.isFeatureEnabled = true;
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('setup-credentials-button')).toBeVisible();
+		});
 	});
 
 	describe('modal auto-open on mount', () => {

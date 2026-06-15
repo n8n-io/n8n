@@ -50,9 +50,12 @@ Each branch's items are capped at 10 for artifact size. The full untruncated tot
    - Did a real node crash because a field is missing? → **check the request that was sent**: if the HTTP request (e.g., GraphQL query) didn't ask for that field, the mock correctly omitted it — that's a builder issue (wrong query or wrong node choice), NOT a mock issue. The mock can only return what was requested.
    - Did the mock response have the wrong shape for the endpoint? (e.g., returning a write response for a GET request) → mock issue
    - Did the mock return identical responses for multiple calls to the same endpoint with different request bodies? → mock issue
+   - Did the workflow error with n8n's pagination safety (e.g. "The returned response was identical 5x, so requests got stopped")? → builder_issue: the pagination did not terminate — it failed to stop on the empty page, or never advanced the page parameter. Identical empty pages at end-of-data are the correct stop signal (the builder must detect them), and the mock serving distinct pages in sequence to repeated requests is the testing mechanism working. Only a mock_issue if the mock repeated identical non-empty pages it should have varied.
    - Did the workflow handle an error scenario but the success criteria is ambiguous about what "graceful" means? → evaluate based on whether data was lost or the workflow crashed entirely
 
    KEY PRINCIPLE: A mock response that faithfully matches the HTTP request is NEVER a mock issue, even if downstream nodes needed different data. If the request didn't ask for a field, the mock shouldn't invent it. The fault lies with whatever built the request (the node choice or its configuration).
+
+   - Did a node fail to resolve a configured resource against a listing/lookup response (e.g. "X not found") even though the mock's response contains an entity whose name/title matches the configured value? Ask: could ANY faithful response have satisfied the lookup? When the node config holds an identifier of the wrong kind — e.g. a human-readable NAME stored in an id/list-mode resource locator value, which the node parses as a number or compares against numeric IDs — no response the real API could ever return would match, and the workflow fails identically against the real service. That is a builder_issue (wrong resource-locator mode / invented identifier), NOT a mock_issue. Conversely, when the configured mode resolves by name/title and a faithful response WOULD have matched the configured value, the failed lookup means the mock's response shape was wrong — that IS a mock_issue.
 
 4. **Be definitive, not speculative.** You have the full execution trace, node configurations, request bodies, mock responses, and node outputs. Use this data to give exact answers. Say "the expression references $json.firstName but the upstream output has the field as firstname (lowercase)" — not "likely references a field that doesn't resolve correctly." If a node errored, quote the exact error. If a field is missing, name it and trace where it should have come from. Never use "likely", "might", "probably", or "possibly" when the data in the artifact gives you a definitive answer.
 5. **Always check the "Workflow structure" section before claiming a node is missing or miswired.** The workflow structure lists ALL nodes that were built AND the connections JSON showing exactly how they are wired. The execution trace only shows nodes that actually ran. Before claiming a branch is wired to the wrong node, verify against the connections JSON. If a node exists in the structure but not in the trace, check why: was an upstream condition met unexpectedly? Was the IF/Switch node's condition misconfigured? Was the input data wrong? Don't assume miswiring — check the connections first.
@@ -64,7 +67,7 @@ Each branch's items are capped at 10 for artifact size. The full untruncated tot
 ## Failure categories
 
 When a checklist item fails, categorize the root cause:
-- **builder_issue**: The AI agent that built the workflow misconfigured a node (missing parameters, wrong settings, incomplete config, wrong routing logic, missing nodes). Evidence: configIssues flags, nodes crashing before making HTTP requests, Switch/IF nodes missing required options, workflow structure doesn't match what the prompt asked for. Also applies when a Code node receives correct input data but its connected downstream branch produces wrong output — that's wrong node logic. **For Filter / IF / Switch: an item appearing in the unmatched branch is NOT wrong output — it's correctly routed there by the predicate. Only flag a builder_issue when items that should have matched the predicate end up in the wrong branch.** **Also applies when the builder produced an empty or trivial workflow (0 nodes, or only a trigger and no action nodes) — even if the build phase appears to have completed.** A "No trigger or start node found" execution error caused by zero nodes in the saved workflow is a builder failure, not a framework failure: the builder is responsible for committing at least a trigger.
+- **builder_issue**: The AI agent that built the workflow misconfigured a node (missing parameters, wrong settings, incomplete config, wrong routing logic, missing nodes). Evidence: configIssues flags, nodes crashing before making HTTP requests, Switch/IF nodes missing required options, workflow structure doesn't match what the prompt asked for. Also applies when the configured identifier could never resolve against any faithful API response (wrong-kind resource-locator value, e.g. "Sheet with ID Reservas not found" — see the lookup bullet in step 3). Also applies when a Code node receives correct input data but its connected downstream branch produces wrong output — that's wrong node logic. **For Filter / IF / Switch: an item appearing in the unmatched branch is NOT wrong output — it's correctly routed there by the predicate. Only flag a builder_issue when items that should have matched the predicate end up in the wrong branch.** **Also applies when the builder produced an empty or trivial workflow (0 nodes, or only a trigger and no action nodes) — even if the build phase appears to have completed.** A "No trigger or start node found" execution error caused by zero nodes in the saved workflow is a builder failure, not a framework failure: the builder is responsible for committing at least a trigger.
 - **mock_issue**: The LLM mock handler returned incorrect or missing data. Evidence: _evalMockError in responses, mock response shape doesn't match what the node expects, mock data missing fields that downstream nodes reference. IMPORTANT: Trace the data flow carefully — if the mock returned correct data but a downstream filter or code node transformed it incorrectly, that is a builder_issue, not a mock_issue.
 - **legitimate_failure**: The workflow genuinely doesn't meet the success criteria and neither the builder nor mock is at fault. The test is working as designed — for example, the workflow lacks error handling that the scenario tests for.
 - **framework_issue**: The evaluation framework itself failed delivering input to an otherwise-built workflow. Evidence: a built workflow with at least a trigger node exists, but Phase 1 returned an error or the trigger output is empty (empty JSON object), causing cascading failures. Pre-analysis flags starting with "FRAMEWORK ISSUE", "Phase 1 error" warnings. DOES NOT apply when the workflow is empty (0 nodes) — that is a builder_issue, see above.
@@ -78,31 +81,39 @@ NOT failure categories:
 
 ## Output format
 
-Return ONLY a JSON array:
+Return ONLY the structured result object with a top-level \`results\` array.
+Every result object must include \`failureCategory\` and \`rootCause\`.
+Use \`null\` for both fields when the checklist item passes.
+
+For passes:
 
 \`\`\`json
-[
-  {
-    "id": 1,
-    "pass": true,
-    "reasoning": "All nodes executed without errors. The webhook data flowed through Gmail, Telegram, and Google Sheets correctly.",
-    "failureCategory": null,
-    "rootCause": null
-  }
-]
+{
+  "results": [
+    {
+      "id": 1,
+      "pass": true,
+      "reasoning": "All nodes executed without errors. The webhook data flowed through Gmail, Telegram, and Google Sheets correctly.",
+      "failureCategory": null,
+      "rootCause": null
+    }
+  ]
+}
 \`\`\`
 
 For failures:
 
 \`\`\`json
-[
-  {
-    "id": 1,
-    "pass": false,
-    "reasoning": "The Sort node crashed because the upstream Filter & Count node produced {noData: true} instead of items with a 'count' field.",
-    "failureCategory": "mock_issue",
-    "rootCause": "The Linear node's mock response didn't include creator.email, so the Filter code node filtered out all items."
-  }
-]
+{
+  "results": [
+    {
+      "id": 1,
+      "pass": false,
+      "reasoning": "The Sort node crashed because the upstream Filter & Count node produced {noData: true} instead of items with a 'count' field.",
+      "failureCategory": "mock_issue",
+      "rootCause": "The Linear node's mock response didn't include creator.email, so the Filter code node filtered out all items."
+    }
+  ]
+}
 \`\`\`
 `;

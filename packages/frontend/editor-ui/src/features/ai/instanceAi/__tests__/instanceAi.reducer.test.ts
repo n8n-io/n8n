@@ -664,6 +664,14 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('eval-setup-with-agent')).toBe('eval-setup');
 		});
 
+		test('returns planner render hint for create-tasks', () => {
+			expect(getRenderHint('create-tasks')).toBe('planner');
+		});
+
+		test('does not keep the removed plan tool as a render fallback', () => {
+			expect(getRenderHint('plan')).toBe('default');
+		});
+
 		test('returns default for other tool names', () => {
 			expect(getRenderHint('some-tool')).toBe('default');
 		});

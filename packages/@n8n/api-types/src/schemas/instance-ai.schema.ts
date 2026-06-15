@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Z } from '../zod-class';
+import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
 
 // ---------------------------------------------------------------------------
@@ -270,6 +271,7 @@ export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema
 export const taskItemSchema = z.object({
 	id: z.string().describe('Unique task identifier'),
 	description: z.string().describe('What this task accomplishes'),
+	detail: z.string().optional().describe('Secondary lifecycle state or evidence for this task'),
 	status: z.enum(['todo', 'in_progress', 'done', 'failed', 'cancelled']).describe('Current status'),
 });
 
@@ -289,6 +291,7 @@ export const plannedTaskArgSchema = z.object({
 	deps: z.array(z.string()),
 	tools: z.array(z.string()).optional(),
 	workflowId: z.string().optional(),
+	isSupportingWorkflow: z.boolean().optional(),
 });
 
 export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
@@ -515,8 +518,20 @@ const mcpImageContentSchema = z.object({
 	data: z.string(),
 	mimeType: z.string(),
 });
+
+const mcpBlobResourceContentSchema = z.object({
+	type: z.literal('resource'),
+	resource: z.object({
+		uri: z.string(),
+		mimeType: z.string().optional(),
+		blob: z.string(),
+	}),
+});
+
 export const mcpToolCallResultSchema = z.object({
-	content: z.array(z.union([mcpTextContentSchema, mcpImageContentSchema])),
+	content: z.array(
+		z.union([mcpTextContentSchema, mcpImageContentSchema, mcpBlobResourceContentSchema]),
+	),
 	structuredContent: z.record(z.string(), z.unknown()).optional(),
 	isError: z.boolean().optional(),
 });
@@ -678,6 +693,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 
 export class InstanceAiEnsureThreadRequest extends Z.class({
 	threadId: z.string().uuid().optional(),
+	projectId: z.string().min(1),
 }) {}
 
 export const instanceAiGatewayKeySchema = z.string().min(1).max(256);
@@ -785,7 +801,7 @@ export interface InstanceAiAgentNode {
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
-	/** Full planned task details — updated progressively by plan-with-agent via tasks-update. */
+	/** Full planned task details — updated by create-tasks via tasks-update. */
 	planItems?: PlannedTaskArg[];
 	result?: string;
 	error?: string;
@@ -834,6 +850,7 @@ export interface InstanceAiThreadInfo {
 	id: string;
 	title?: string;
 	resourceId: string;
+	projectId?: string;
 	createdAt: string;
 	updatedAt: string;
 	metadata?: Record<string, unknown>;
@@ -870,6 +887,7 @@ export interface InstanceAiThreadMessagesResponse {
 
 export interface InstanceAiRichMessagesResponse {
 	threadId: string;
+	projectId?: string;
 	messages: InstanceAiMessage[];
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
 	nextEventId: number;
@@ -993,13 +1011,20 @@ export function applyBranchReadOnlyOverrides(
 // Admin settings — instance-scoped, admin-only
 // ---------------------------------------------------------------------------
 
+export const instanceAiSandboxProviderSchema = z.enum(['n8n-sandbox', 'daytona']);
+export type InstanceAiSandboxProvider = z.infer<typeof instanceAiSandboxProviderSchema>;
+
+export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAiSandboxProvider {
+	return instanceAiSandboxProviderSchema.safeParse(value).success;
+}
+
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	sandboxEnabled: boolean;
-	sandboxProvider: string;
+	sandboxProvider: InstanceAiSandboxProvider;
 	sandboxImage: string;
 	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
@@ -1014,7 +1039,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	sandboxEnabled: z.boolean().optional(),
-	sandboxProvider: z.string().optional(),
+	sandboxProvider: instanceAiSandboxProviderSchema.optional(),
 	sandboxImage: z.string().optional(),
 	sandboxTimeout: z.number().int().positive().optional(),
 	daytonaCredentialId: z.string().nullable().optional(),
@@ -1048,12 +1073,34 @@ export interface InstanceAiModelCredential {
 	provider: string;
 }
 
+// ---------------------------------------------------------------------------
+// MCP registry connections — per-user
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiMcpConnectionResponse {
+	id: string;
+	serverSlug: string;
+	/** Display title from the registry server (e.g. "Notion"). Falls back to `serverSlug` if the server is no longer in the registry. */
+	serverTitle: string;
+	/**
+	 * Icons for the registry server, with optional `theme` tagging so the FE
+	 * can pick a light- or dark-mode variant. Empty if the server is no longer
+	 * in the registry.
+	 */
+	serverIcons: McpRegistryServerIconResponse[];
+	credentialId: string;
+	credentialName: string;
+	credentialType: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
-	if (toolName === 'plan') return 'planner';
+	if (toolName === 'create-tasks') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
 	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
 	return 'default';

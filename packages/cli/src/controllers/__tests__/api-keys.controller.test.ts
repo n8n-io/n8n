@@ -14,11 +14,6 @@ describe('ApiKeysController', () => {
 
 	const controller = Container.get(ApiKeysController);
 
-	let req: AuthenticatedRequest;
-	beforeAll(() => {
-		req = { user: { id: '123' } } as AuthenticatedRequest;
-	});
-
 	describe('createAPIKey', () => {
 		it('should create and save an API key', async () => {
 			// Arrange
@@ -92,35 +87,34 @@ describe('ApiKeysController', () => {
 	});
 
 	describe('getAPIKeys', () => {
-		it('forwards pagination params to the service and returns its envelope', async () => {
-			const apiKeyData = {
-				id: '123',
-				userId: '123',
-				label: 'My API Key',
-				apiKey: 'apiKey***',
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			} as ApiKey;
-
-			publicApiKeyService.getRedactedApiKeysForUser.mockResolvedValue({
-				items: [{ ...apiKeyData, expiresAt: null }],
-				count: 1,
+		it('delegates to the service with the authenticated user, pagination, ownership, label, and sortBy', async () => {
+			publicApiKeyService.getRedactedApiKeys.mockResolvedValue({
+				items: [],
+				counts: { mine: 0, all: 0 },
+				totals: { mine: 0, all: 0 },
 			});
+			const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: '123' }) });
 
-			const result = await controller.getApiKeys(req, mock(), { take: 10, skip: 5 } as never);
+			await controller.getApiKeys(req, mock(), {
+				take: 10,
+				skip: 5,
+				ownership: 'mine',
+				label: 'prod',
+				sortBy: 'label:asc',
+			} as never);
 
-			expect(result).toEqual({ items: [{ ...apiKeyData, expiresAt: null }], count: 1 });
-			expect(publicApiKeyService.getRedactedApiKeysForUser).toHaveBeenCalledWith(
-				expect.objectContaining({ id: req.user.id }),
-				{ take: 10, skip: 5 },
-			);
+			expect(publicApiKeyService.getRedactedApiKeys).toHaveBeenCalledWith(req.user, {
+				take: 10,
+				skip: 5,
+				ownership: 'mine',
+				label: 'prod',
+				sortBy: 'label:asc',
+			});
 		});
 	});
 
 	describe('deleteAPIKey', () => {
-		it('should delete the API key', async () => {
-			// Arrange
-
+		it('emits isOwn=true when the caller deletes their own key', async () => {
 			const user = mock<User>({
 				id: '123',
 				password: 'password',
@@ -131,19 +125,35 @@ describe('ApiKeysController', () => {
 
 			const req = mock<AuthenticatedRequest>({ user, params: { id: user.id } });
 
-			// Act
+			publicApiKeyService.deleteApiKey.mockResolvedValue({ isOwn: true });
 
 			await controller.deleteApiKey(req, mock(), user.id);
 
-			publicApiKeyService.deleteApiKeyForUser.mockResolvedValue();
+			expect(publicApiKeyService.deleteApiKey).toHaveBeenCalledWith(user, user.id);
+			expect(eventService.emit).toHaveBeenCalledWith('public-api-key-deleted', {
+				user,
+				publicApi: false,
+				isOwn: true,
+			});
+		});
 
-			// Assert
+		it('emits isOwn=false when an admin deletes another user’s key', async () => {
+			const admin = mock<User>({
+				id: 'admin-1',
+				role: { slug: 'global:admin' },
+			});
 
-			expect(publicApiKeyService.deleteApiKeyForUser).toHaveBeenCalledWith(user, user.id);
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'public-api-key-deleted',
-				expect.objectContaining({ user, publicApi: false }),
-			);
+			const req = mock<AuthenticatedRequest>({ user: admin, params: { id: 'key-of-other' } });
+
+			publicApiKeyService.deleteApiKey.mockResolvedValue({ isOwn: false });
+
+			await controller.deleteApiKey(req, mock(), 'key-of-other');
+
+			expect(eventService.emit).toHaveBeenCalledWith('public-api-key-deleted', {
+				user: admin,
+				publicApi: false,
+				isOwn: false,
+			});
 		});
 	});
 });

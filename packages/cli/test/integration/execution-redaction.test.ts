@@ -62,8 +62,19 @@ const BINARY_DATA = {
 
 function buildRunExecutionData(opts: {
 	policy?: 'none' | 'non-manual' | 'all';
+	channels?: { production: boolean; manual: boolean };
 	mode?: WorkflowExecuteMode;
 }): IRunExecutionData {
+	const redaction = opts.channels
+		? {
+				version: 2 as const,
+				production: opts.channels.production,
+				manual: opts.channels.manual,
+			}
+		: opts.policy
+			? { version: 1 as const, policy: opts.policy }
+			: undefined;
+
 	return createRunExecutionData({
 		resultData: {
 			runData: {
@@ -88,13 +99,13 @@ function buildRunExecutionData(opts: {
 				],
 			},
 		},
-		executionData: opts.policy
+		executionData: redaction
 			? {
 					runtimeData: {
 						version: 1 as const,
 						establishedAt: Date.now(),
 						source: opts.mode ?? 'trigger',
-						redaction: { version: 1 as const, policy: opts.policy },
+						redaction,
 					},
 				}
 			: undefined,
@@ -105,8 +116,13 @@ async function createExecutionWithRedaction(opts: {
 	workflow: IWorkflowBase;
 	mode?: WorkflowExecuteMode;
 	policy?: 'none' | 'non-manual' | 'all';
+	channels?: { production: boolean; manual: boolean };
 }) {
-	const runData = buildRunExecutionData({ policy: opts.policy, mode: opts.mode });
+	const runData = buildRunExecutionData({
+		policy: opts.policy,
+		channels: opts.channels,
+		mode: opts.mode,
+	});
 	return await createExecution(
 		{ data: stringify(runData), mode: opts.mode ?? 'trigger' },
 		opts.workflow,
@@ -295,6 +311,72 @@ describe('GET /executions/:id — Execution Redaction', () => {
 				.expect(200);
 
 			assertRedacted(parseResponseData(response.body));
+		});
+	});
+
+	describe('per-channel (V2) redaction snapshot', () => {
+		test('production channel on, trigger mode — returns redacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				channels: { production: true, manual: false },
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			assertRedacted(parseResponseData(response.body));
+		});
+
+		test('production channel on, manual mode — returns unredacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'manual',
+				channels: { production: true, manual: false },
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			assertNotRedacted(parseResponseData(response.body));
+		});
+
+		test('both channels on, manual mode — returns redacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'manual',
+				channels: { production: true, manual: true },
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			assertRedacted(parseResponseData(response.body));
+		});
+
+		test('both channels off, trigger mode — returns unredacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				channels: { production: false, manual: false },
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			assertNotRedacted(parseResponseData(response.body));
 		});
 	});
 

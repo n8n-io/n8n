@@ -197,7 +197,7 @@ export class McpController {
 		const { StreamableHTTPServerTransport } = await import(
 			'@modelcontextprotocol/sdk/server/streamableHttp.js'
 		);
-		const server = await this.mcpService.getServer(req.user, mcpAppsEnabled);
+		const server = await this.mcpService.getServer(req.user, mcpAppsEnabled, getClientInfo(req));
 		const transport = new StreamableHTTPServerTransport({
 			sessionIdGenerator: undefined,
 		});

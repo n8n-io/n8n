@@ -1,15 +1,14 @@
-import { TextEditorHandler, findDivergenceContext } from '../text-editor-handler';
 import {
-	NoMatchFoundError,
-	MultipleMatchesError,
+	FileNotFoundError,
+	InvalidPathError,
 	InvalidLineNumberError,
 	InvalidViewRangeError,
-	InvalidPathError,
-	FileExistsError,
-	FileNotFoundError,
-	BatchReplacementError,
+	MultipleMatchesError,
+	NoMatchFoundError,
 	type BatchReplaceResult,
-} from '../text-editor.types';
+} from '@n8n/ai-utilities/text-editor';
+
+import { TextEditorHandler } from '../text-editor-handler';
 
 describe('TextEditorHandler', () => {
 	let handler: TextEditorHandler;
@@ -475,65 +474,6 @@ describe('TextEditorHandler', () => {
 		});
 	});
 
-	describe('error messages', () => {
-		it('NoMatchFoundError should have descriptive message', () => {
-			const error = new NoMatchFoundError('search string');
-			expect(error.message).toContain('No exact match found');
-			expect(error.name).toBe('NoMatchFoundError');
-		});
-
-		it('MultipleMatchesError should include count', () => {
-			const error = new MultipleMatchesError(3);
-			expect(error.message).toContain('Found 3 matches');
-			expect(error.name).toBe('MultipleMatchesError');
-		});
-
-		it('InvalidLineNumberError should include line info', () => {
-			const error = new InvalidLineNumberError(10, 5);
-			expect(error.message).toContain('Invalid line number 10');
-			expect(error.message).toContain('5 lines');
-			expect(error.name).toBe('InvalidLineNumberError');
-		});
-
-		it('InvalidViewRangeError should include start, end, and maxLine', () => {
-			const error = new InvalidViewRangeError(4, 2, 10);
-			expect(error.message).toContain('end (2)');
-			expect(error.message).toContain('start (4)');
-			expect(error.message).toContain('10 lines');
-			expect(error.name).toBe('InvalidViewRangeError');
-		});
-
-		it('InvalidPathError should include path', () => {
-			const error = new InvalidPathError('/bad/path.ts');
-			expect(error.message).toContain('/bad/path.ts');
-			expect(error.message).toContain('/workflow.js');
-			expect(error.name).toBe('InvalidPathError');
-		});
-
-		it('FileExistsError should have descriptive message', () => {
-			const error = new FileExistsError();
-			expect(error.message).toContain('already exists');
-			expect(error.name).toBe('FileExistsError');
-		});
-
-		it('FileNotFoundError should have descriptive message', () => {
-			const error = new FileNotFoundError();
-			expect(error.message).toContain('No workflow code exists');
-			expect(error.name).toBe('FileNotFoundError');
-		});
-
-		it('BatchReplacementError should include failedIndex and cause', () => {
-			const cause = new NoMatchFoundError('search');
-			const error = new BatchReplacementError(2, 5, cause);
-			expect(error.message).toContain('index 2 of 5');
-			expect(error.message).toContain('rolled back');
-			expect(error.name).toBe('BatchReplacementError');
-			expect(error.failedIndex).toBe(2);
-			expect(error.totalCount).toBe(5);
-			expect(error.cause).toBe(cause);
-		});
-	});
-
 	describe('executeBatch', () => {
 		it('should apply multiple replacements successfully', () => {
 			handler.setWorkflowCode('const x = 1;\nconst y = 2;\nconst z = 3;');
@@ -677,62 +617,6 @@ describe('TextEditorHandler', () => {
 			const statuses = result as BatchReplaceResult[];
 			expect(statuses[0].old_str.length).toBeLessThanOrEqual(83); // 80 + '...'
 			expect(statuses[0].old_str).toMatch(/\.\.\.$/);
-		});
-	});
-
-	describe('findDivergenceContext', () => {
-		it('should show divergence point with file lines when prefix matches', () => {
-			const code = 'line1\nline2\nline3\nline4\nline5';
-			const searchStr = 'line1\nline2\nline3_WRONG';
-
-			const result = findDivergenceContext(code, searchStr);
-
-			expect(result).toBeDefined();
-			expect(result).toContain('line 3');
-			// Should show the actual file line
-			expect(result).toContain('line3');
-		});
-
-		it('should return undefined when prefix match is too short', () => {
-			const code = 'abcdefghij\nklmnop';
-			const searchStr = 'xyz_completely_different';
-
-			const result = findDivergenceContext(code, searchStr);
-
-			expect(result).toBeUndefined();
-		});
-
-		it('should escape whitespace characters in old_str context', () => {
-			const code = 'hello world\nfoo bar\n';
-			const searchStr = 'hello world\nfoo baz\t';
-
-			const result = findDivergenceContext(code, searchStr);
-
-			expect(result).toBeDefined();
-			// Should show escaped \t in the old_str portion
-			expect(result).toContain('\\t');
-		});
-
-		it('should include match percentage', () => {
-			const code = 'abcdefghijklmnopqrstuvwxyz';
-			const searchStr = 'abcdefghijklmnopqrstZZZZZ';
-
-			const result = findDivergenceContext(code, searchStr);
-
-			expect(result).toBeDefined();
-			expect(result).toMatch(/\d+%/);
-		});
-
-		it('should show full file lines around divergence point', () => {
-			const code = '  function foo() {\n    return 1;\n  }\n  function bar() {\n    return 2;\n  }';
-			const searchStr =
-				'  function foo() {\n    return 1;\n  }\n  function bar() {\n    return WRONG;\n  }';
-
-			const result = findDivergenceContext(code, searchStr);
-
-			expect(result).toBeDefined();
-			// Should contain the full file line with line number
-			expect(result).toContain('return 2;');
 		});
 	});
 

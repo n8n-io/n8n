@@ -63,7 +63,8 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { SsrfProtectionService } from '@n8n/backend-network';
+import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
@@ -73,9 +74,6 @@ import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
-	type INodePropertyCollection,
-	type INodePropertyMode,
-	type INodePropertyOptions,
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
@@ -99,8 +97,6 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 
-import { InstanceSettings } from 'n8n-core';
-
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -115,11 +111,11 @@ import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-descripti
 import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { FolderService } from '@/services/folder.service';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
+import { InstanceSettings } from 'n8n-core';
 import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -128,7 +124,6 @@ import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
-import { getBase } from '@/workflow-execute-additional-data';
 
 type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
@@ -220,7 +215,7 @@ export class InstanceAiAdapterService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
-		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		private readonly nodeResourceExplorerService: NodeResourceExplorerService,
 		private readonly folderService: FolderService,
 		private readonly projectService: ProjectService,
 		private readonly tagService: TagService,
@@ -246,16 +241,18 @@ export class InstanceAiAdapterService {
 			searchProxyConfig?: ServiceProxyConfig;
 			pushRef?: string;
 			threadId?: string;
+			projectId?: string;
 		},
 	): InstanceAiContext {
-		const { searchProxyConfig, pushRef, threadId } = options ?? {};
+		const { searchProxyConfig, pushRef, threadId, projectId } = options ?? {};
 		return {
 			userId: user.id,
-			workflowService: this.createWorkflowAdapter(user, threadId),
+			projectId,
+			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(user),
+			credentialService: this.createCredentialAdapter(user, projectId),
 			nodeService: this.createNodeAdapter(user),
-			dataTableService: this.createDataTableAdapter(user),
+			dataTableService: this.createDataTableAdapter(user, projectId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -300,7 +297,7 @@ export class InstanceAiAdapterService {
 		}
 	}
 
-	private createProjectScopeHelpers(user: User) {
+	private createProjectScopeHelpers(user: User, boundProjectId?: string) {
 		const { projectRepository } = this;
 		let personalProjectIdPromise: Promise<string> | null = null;
 
@@ -319,15 +316,29 @@ export class InstanceAiAdapterService {
 		};
 
 		const resolveProjectId = async (scopes: Scope[], providedProjectId?: string) => {
-			const projectId = providedProjectId ?? (await getPersonalProjectId());
+			const projectId = providedProjectId ?? boundProjectId ?? (await getPersonalProjectId());
 			await assertProjectScope(scopes, projectId);
 			return projectId;
 		};
 
-		return { getPersonalProjectId, assertProjectScope, resolveProjectId };
+		const resolveBoundProjectId = async (scopes: Scope[]) => {
+			if (!boundProjectId) {
+				throw new UnexpectedError(
+					'Cannot create a resource: this Instance AI run has no bound project.',
+				);
+			}
+			await assertProjectScope(scopes, boundProjectId);
+			return boundProjectId;
+		};
+
+		return { getPersonalProjectId, assertProjectScope, resolveProjectId, resolveBoundProjectId };
 	}
 
-	private createWorkflowAdapter(user: User, threadId?: string): InstanceAiWorkflowService {
+	private createWorkflowAdapter(
+		user: User,
+		threadId?: string,
+		boundProjectId?: string,
+	): InstanceAiWorkflowService {
 		const {
 			workflowService,
 			workflowFinderService,
@@ -337,13 +348,14 @@ export class InstanceAiAdapterService {
 			workflowHistoryService,
 			enterpriseWorkflowService,
 			executionRepository,
+			executionPersistence,
 			license,
 			allowSendingParameterValues,
 			telemetry,
 		} = this;
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
-		const { resolveProjectId } = this.createProjectScopeHelpers(user);
+		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
 		const redactParameters = !allowSendingParameterValues;
 
 		return {
@@ -351,6 +363,7 @@ export class InstanceAiAdapterService {
 				const filter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
 					...(options?.query ? { query: options.query } : {}),
+					...(options?.scope !== 'instance' && boundProjectId ? { projectId: boundProjectId } : {}),
 				};
 
 				const { workflows } = await workflowService.getMany(user, {
@@ -470,6 +483,26 @@ export class InstanceAiAdapterService {
 				return toWorkflowJSON(wf, { redactParameters });
 			},
 
+			async getWorkflowHead(workflowId: string) {
+				const head = await workflowFinderService.findWorkflowHeadForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!head) throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				return { versionId: head.versionId, updatedAt: head.updatedAt.getTime() };
+			},
+
+			async getWorkflowSnapshot(workflowId: string) {
+				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:read',
+				]);
+				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
+				return {
+					json: toWorkflowJSON(wf, { redactParameters }),
+					versionId: wf.versionId,
+					updatedAt: wf.updatedAt.getTime(),
+				};
+			},
+
 			async getLatestRunData(workflowId: string) {
 				// Caller must be able to read the workflow to see its execution history.
 				// Silent null on no-access keeps validation usable even when access was
@@ -488,7 +521,7 @@ export class InstanceAiAdapterService {
 				});
 				if (!latest) return null;
 
-				const execution = await executionRepository.findSingleExecution(latest.id, {
+				const execution = await executionPersistence.findSingleExecution(latest.id, {
 					includeData: true,
 					unflattenData: true,
 				});
@@ -500,7 +533,7 @@ export class InstanceAiAdapterService {
 				options?: { projectId?: string; markAsAiTemporary?: boolean },
 			) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectId(['workflow:create'], options?.projectId);
+				const projectId = await resolveBoundProjectId(['workflow:create']);
 
 				// Strip redactionPolicy if the user lacks the required scope —
 				// mirrors the check in WorkflowCreationService.createWorkflow().
@@ -550,9 +583,10 @@ export class InstanceAiAdapterService {
 
 				// Now update with actual nodes — this creates the WorkflowHistory entry
 				// needed for activation and publishing.
+				const nodes = sanitizeCredentialReferencesForSave(json.nodes);
 				let updateData = workflowRepository.create({
 					name: json.name,
-					nodes: json.nodes as unknown as INode[],
+					nodes: nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
@@ -637,9 +671,10 @@ export class InstanceAiAdapterService {
 					}
 				}
 
+				const nodes = sanitizeCredentialReferencesForSave(json.nodes);
 				let updateData = workflowRepository.create({
 					name: json.name,
-					nodes: json.nodes as unknown as INode[],
+					nodes: nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
@@ -962,8 +997,8 @@ export class InstanceAiAdapterService {
 					runData.pinData = basePinData;
 				}
 
+				runData.source = 'instance_ai';
 				runData.telemetryMetadata = {
-					source: 'instance_ai',
 					mockDataSources,
 				};
 
@@ -1023,11 +1058,7 @@ export class InstanceAiAdapterService {
 					}
 				}
 
-				const result = await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				const result = await extractExecutionResult(executionId, allowSendingParameterValues);
 				trackBuilderExecutedWorkflow(result.status);
 				return result;
 			},
@@ -1038,11 +1069,7 @@ export class InstanceAiAdapterService {
 				if (isRunning) {
 					return { executionId, status: 'running' } satisfies ExecutionResult;
 				}
-				return await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				return await extractExecutionResult(executionId, allowSendingParameterValues);
 			},
 
 			async getResult(executionId: string) {
@@ -1051,11 +1078,7 @@ export class InstanceAiAdapterService {
 				if (activeExecutions.has(executionId)) {
 					await activeExecutions.getPostExecutePromise(executionId);
 				}
-				return await extractExecutionResult(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-				);
+				return await extractExecutionResult(executionId, allowSendingParameterValues);
 			},
 
 			async stop(executionId: string) {
@@ -1084,12 +1107,7 @@ export class InstanceAiAdapterService {
 
 			async getDebugInfo(executionId: string) {
 				await assertExecutionAccess(executionId);
-				return await extractExecutionDebugInfo(
-					executionRepository,
-					executionId,
-					allowSendingParameterValues,
-					nodeTypes,
-				);
+				return await extractExecutionDebugInfo(executionId, allowSendingParameterValues, nodeTypes);
 			},
 
 			async getNodeOutput(executionId, nodeName, options) {
@@ -1104,7 +1122,7 @@ export class InstanceAiAdapterService {
 					} satisfies NodeOutputResult;
 				}
 
-				return await extractNodeOutput(executionRepository, executionId, nodeName, options);
+				return await extractNodeOutput(executionId, nodeName, options);
 			},
 
 			getResolvedNodeParameters: async (
@@ -1127,26 +1145,34 @@ export class InstanceAiAdapterService {
 					} satisfies ResolvedNodeParametersResult;
 				}
 
-				return await extractResolvedNodeParameters(
-					executionRepository,
-					nodeTypes,
-					executionId,
-					nodeName,
-					options,
-				);
+				return await extractResolvedNodeParameters(nodeTypes, executionId, nodeName, options);
 			},
 		};
 	}
 
-	private createCredentialAdapter(user: User): InstanceAiCredentialService {
+	private createCredentialAdapter(
+		user: User,
+		boundProjectId?: string,
+	): InstanceAiCredentialService {
 		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
 
 		return {
 			async list(options) {
-				// Setup flows scope to a workflow or project so the candidates match what
-				// the save path will accept. `preventTampering` (workflow.service.ee.ts)
-				// uses `getCredentialsAUserCanUseInAWorkflow` for the same intersection,
-				// so the editor's credential picker and the AI's setup card stay aligned.
+				// In a project-bound thread the credential list is always the bound
+				// project's usable set (project-shared + global) — the same intersection
+				// `preventTampering` (workflow.service.ee.ts) accepts. A caller-supplied
+				// workflowId/projectId must not broaden it.
+				if (boundProjectId) {
+					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						projectId: boundProjectId,
+					});
+					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
+					return filtered.map((c): CredentialSummary => ({ id: c.id, name: c.name, type: c.type }));
+				}
+
+				// Unbound runs (temporary-workflow archiving, the only caller without a
+				// bound project) scope to the caller-supplied workflow or project so the
+				// candidates still match what the save path will accept.
 				if (options?.workflowId || options?.projectId) {
 					const scoped = options.workflowId
 						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
@@ -1412,11 +1438,14 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createDataTableAdapter(user: User): InstanceAiDataTableService {
+	private createDataTableAdapter(user: User, boundProjectId?: string): InstanceAiDataTableService {
 		const { dataTableService, dataTableRepository } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('data tables');
 
-		const { resolveProjectId } = this.createProjectScopeHelpers(user);
+		const { resolveProjectId, resolveBoundProjectId } = this.createProjectScopeHelpers(
+			user,
+			boundProjectId,
+		);
 
 		const logger = this.logger;
 
@@ -1506,9 +1535,9 @@ export class InstanceAiAdapterService {
 				);
 			},
 
-			async create(name, columns, options) {
+			async create(name, columns) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectId(['dataTable:create'], options?.projectId);
+				const projectId = await resolveBoundProjectId(['dataTable:create']);
 				const result = await dataTableService.createDataTable(projectId, { name, columns });
 
 				return {
@@ -1842,8 +1871,6 @@ export class InstanceAiAdapterService {
 	}
 
 	private createNodeAdapter(user: User): InstanceAiNodeService {
-		const { dynamicNodeParametersService, projectRepository, credentialsFinderService } = this;
-
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getNodes = async () => await this.getNodesFromCache();
@@ -2229,121 +2256,8 @@ export class InstanceAiAdapterService {
 				return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
 			},
 
-			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {
-				// Validate credential ownership before using it to query external resources
-				const credential = await credentialsFinderService.findCredentialForUser(
-					params.credentialId,
-					user,
-					['credential:read'],
-				);
-				if (!credential || credential.type !== params.credentialType) {
-					throw new Error(`Credential ${params.credentialId} not found or not accessible`);
-				}
-
-				const nodeTypeAndVersion = {
-					name: params.nodeType,
-					version: params.version,
-				};
-
-				const currentNodeParameters = (params.currentNodeParameters ?? {}) as INodeParameters;
-				const credentials = {
-					[credential.type]: { id: credential.id, name: credential.name },
-				};
-
-				// Auto-detect the authentication parameter value from the credential type.
-				// Many nodes (e.g. Google Sheets) use an `authentication` parameter to switch
-				// between serviceAccount/oAuth2, and `getNodeParameter('authentication', 0)`
-				// falls back to the wrong default when it's not set.
-				if (!currentNodeParameters.authentication) {
-					const nodes = await getNodes();
-					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
-					if (nodeDesc) {
-						const authProp = nodeDesc.properties.find((p) => p.name === 'authentication');
-						if (authProp?.options) {
-							// Find the option whose credentialTypes includes our credential type
-							for (const opt of authProp.options) {
-								if (typeof opt === 'object' && 'value' in opt && typeof opt.value === 'string') {
-									const credTypes = nodeDesc.credentials
-										?.filter((c) => {
-											const show = c.displayOptions?.show?.authentication;
-											return Array.isArray(show) && show.includes(opt.value);
-										})
-										.map((c) => c.name);
-									if (credTypes?.includes(params.credentialType)) {
-										currentNodeParameters.authentication = opt.value;
-										break;
-									}
-								}
-							}
-						}
-					}
-				}
-
-				const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
-
-				const additionalData = await getBase({
-					userId: user.id,
-					projectId: personalProject.id,
-					currentNodeParameters,
-				});
-				// Look up the property's builderHint so the agent sees selection guidance
-				// alongside the raw list. This makes the hint reachable even when the
-				// agent jumps straight to explore-resources without reading type-definition.
-				let builderHint: string | undefined;
-				{
-					const nodes = await getNodes();
-					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
-					if (nodeDesc) {
-						builderHint = findBuilderHintForMethod(nodeDesc, params.methodName, params.methodType);
-					}
-				}
-
-				try {
-					if (params.methodType === 'listSearch') {
-						const result = await dynamicNodeParametersService.getResourceLocatorResults(
-							params.methodName,
-							'',
-							additionalData,
-							nodeTypeAndVersion,
-							currentNodeParameters,
-							credentials,
-							params.filter,
-							params.paginationToken,
-						);
-						return {
-							results: (result.results ?? []).map((r) => ({
-								name: String(r.name),
-								value: r.value,
-								url: r.url,
-							})),
-							paginationToken: result.paginationToken,
-							...(builderHint ? { builderHint } : {}),
-						};
-					}
-
-					const options = await dynamicNodeParametersService.getOptionsViaMethodName(
-						params.methodName,
-						'',
-						additionalData,
-						nodeTypeAndVersion,
-						currentNodeParameters,
-						credentials,
-					);
-					return {
-						results: options.map((o) => ({
-							name: String(o.name),
-							value: o.value,
-							description: o.description,
-						})),
-						...(builderHint ? { builderHint } : {}),
-					};
-				} catch (error) {
-					this.logger.error('Failed to load options for explore-resources', {
-						error: error instanceof Error ? error.message : String(error),
-					});
-					throw error;
-				}
-			},
+			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
+				await this.nodeResourceExplorerService.exploreResources(user, params),
 		};
 	}
 
@@ -2639,62 +2553,6 @@ export async function resolveDataTableByIdOrName(
 }
 
 /**
- * Find the `builderHint.propertyHint` of the property that references a given
- * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
- * Returns undefined if no matching property is found.
- *
- * Used to surface a node's per-parameter hint alongside explore-resources
- * results so agents that skip `type-definition` still see selection guidance.
- */
-function findBuilderHintForMethod(
-	nodeDesc: INodeTypeDescription,
-	methodName: string,
-	methodType: 'listSearch' | 'loadOptions',
-): string | undefined {
-	const referencesMethod = (prop: INodeProperties): boolean => {
-		switch (methodType) {
-			case 'loadOptions':
-				return prop.typeOptions?.loadOptionsMethod === methodName;
-			case 'listSearch': {
-				const modes: INodePropertyMode[] = prop.modes ?? [];
-				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
-			}
-		}
-	};
-
-	// `options` on INodeProperties is a three-way union: enum values (no nested
-	// params), INodeProperties (nested params), or INodePropertyCollection
-	// (nested params under `.values`). Discriminate instead of blind-casting.
-	const isCollection = (
-		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-	): item is INodePropertyCollection => 'values' in item;
-	const isProperty = (
-		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-	): item is INodeProperties => 'type' in item;
-
-	const searchProps = (
-		items?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
-	): string | undefined => {
-		for (const item of items ?? []) {
-			if (isCollection(item)) {
-				const nested = searchProps(item.values);
-				if (nested) return nested;
-				continue;
-			}
-			if (!isProperty(item)) continue; // plain enum value — skip
-			if (referencesMethod(item) && item.builderHint?.propertyHint) {
-				return item.builderHint.propertyHint;
-			}
-			const nested = searchProps(item.options);
-			if (nested) return nested;
-		}
-		return undefined;
-	};
-
-	return searchProps(nodeDesc.properties);
-}
-
-/**
  * Truncate execution result data to stay within context budget.
  * Keeps first item per node as a preview; replaces arrays with summary objects.
  */
@@ -2741,11 +2599,10 @@ function wrapResultDataEntries(data: Record<string, unknown>): Record<string, un
 }
 
 export async function extractExecutionResult(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
 ): Promise<ExecutionResult> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -2884,12 +2741,11 @@ const MAX_ITEM_CHARS = 50_000;
  * Each item is capped at MAX_ITEM_CHARS to prevent a single giant JSON blob from flooding context.
  */
 export async function extractNodeOutput(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	nodeName: string,
 	options?: { startIndex?: number; maxItems?: number },
 ): Promise<NodeOutputResult> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -3114,12 +2970,11 @@ function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): 
 
 /** Extract structured debug info from a completed execution. */
 export async function extractExecutionDebugInfo(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	includeOutputData = true,
 	nodeTypes?: NodeTypes,
 ): Promise<ExecutionDebugInfo> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -3132,11 +2987,7 @@ export async function extractExecutionDebugInfo(
 		};
 	}
 
-	const baseResult = await extractExecutionResult(
-		executionRepository,
-		executionId,
-		includeOutputData,
-	);
+	const baseResult = await extractExecutionResult(executionId, includeOutputData);
 
 	const runData = execution.data?.resultData?.runData;
 	const nodeTrace: ExecutionDebugInfo['nodeTrace'] = [];
@@ -3210,13 +3061,10 @@ export async function extractExecutionDebugInfo(
 				nodeName: _omitName,
 				suppressed: _omitSuppressed,
 				...bundle
-			} = await extractResolvedNodeParameters(
-				executionRepository,
-				nodeTypes,
-				executionId,
-				failedNode.name,
-				{ itemIndex: failedItemIndex, runIndex: failedRunIndex },
-			);
+			} = await extractResolvedNodeParameters(nodeTypes, executionId, failedNode.name, {
+				itemIndex: failedItemIndex,
+				runIndex: failedRunIndex,
+			});
 			failedNode.resolvedParameters = bundle;
 		} catch {
 			// debug must always succeed — silently skip the resolved-params view.
@@ -3241,6 +3089,37 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 		result[nodeName] = items.map((item) => ({ json: (item ?? {}) as IDataObject }));
 	}
 	return result;
+}
+
+function hasCredentialId(value: unknown): boolean {
+	if (typeof value !== 'object' || value === null) return false;
+	const id = Reflect.get(value, 'id');
+	return typeof id === 'string' && id.trim() !== '';
+}
+
+function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): WorkflowJSON['nodes'] {
+	return nodes.map((node) => {
+		if (!node.credentials) return node;
+
+		const credentials = Object.entries(node.credentials).reduce<
+			NonNullable<typeof node.credentials>
+		>((acc, [type, value]) => {
+			if (hasCredentialId(value)) {
+				acc[type] = value;
+			}
+			return acc;
+		}, {});
+
+		if (Object.keys(credentials).length === Object.keys(node.credentials).length) return node;
+
+		const sanitized = { ...node };
+		if (Object.keys(credentials).length > 0) {
+			sanitized.credentials = credentials;
+		} else {
+			delete sanitized.credentials;
+		}
+		return sanitized;
+	});
 }
 
 function toWorkflowJSON(

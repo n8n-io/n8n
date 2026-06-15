@@ -13,11 +13,9 @@
 			}
 		],
 		"noneOf": [
-			"plan",
 			"create-tasks",
 			"build-workflow",
 			"delegate",
-			"spawn_sub_agent:planner",
 			"spawn_sub_agent:workflow-builder",
 			"spawn_sub_agent:delegate"
 		]

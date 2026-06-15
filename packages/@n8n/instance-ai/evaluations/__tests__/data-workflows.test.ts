@@ -1,6 +1,9 @@
-jest.mock('fs', () => ({
-	readdirSync: jest.fn(),
-	readFileSync: jest.fn(),
+/* eslint-disable import-x/order */
+import { vi } from 'vitest';
+
+vi.mock('fs', () => ({
+	readdirSync: vi.fn(),
+	readFileSync: vi.fn(),
 }));
 
 import { readdirSync, readFileSync } from 'fs';
@@ -8,8 +11,8 @@ import { jsonParse } from 'n8n-workflow';
 
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 
-const mockedReaddir = jest.mocked(readdirSync);
-const mockedReadFile = jest.mocked(readFileSync);
+const mockedReaddir = vi.mocked(readdirSync);
+const mockedReadFile = vi.mocked(readFileSync);
 
 const FAKE_FILES = [
 	'contact-form-automation.json',
@@ -37,7 +40,7 @@ const STUB_TEST_CASE = JSON.stringify({
 });
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	mockedReaddir.mockReturnValue(FAKE_FILES as unknown as ReturnType<typeof readdirSync>);
 	mockedReadFile.mockReturnValue(STUB_TEST_CASE);
 });

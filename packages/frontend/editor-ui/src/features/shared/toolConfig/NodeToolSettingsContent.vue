@@ -49,6 +49,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:valid': [isValid: boolean];
 	'update:node-name': [name: string];
+	'update:node': [node: INode];
 }>();
 
 const i18n = useI18n();
@@ -94,9 +95,11 @@ const tabOptions = computed<Array<ITab<ToolSettingsTab>>>(() => {
 });
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(true, i18n.baseText.bind(i18n), settingsStore.isOtelEnabled).filter(
-		(s) => s.name !== 'notes' && s.name !== 'notesInFlow',
-	),
+	createCommonNodeSettings(
+		true,
+		i18n.baseText.bind(i18n),
+		settingsStore.isOtelCustomSpanAttributesEnabled,
+	).filter((s) => s.name !== 'notes' && s.name !== 'notesInFlow'),
 );
 
 const settingsNodeValues = computed<INodeParameters>(() => {
@@ -315,6 +318,16 @@ watch(isValid, (val) => {
 });
 
 watch(
+	node,
+	(updatedNode) => {
+		if (updatedNode) {
+			emit('update:node', updatedNode);
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
 	() => node.value?.name,
 	(name) => {
 		if (name) {
@@ -390,6 +403,9 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						@credential-selected="handleChangeCredential"
 						@value-changed="handleChangeParameter"
 					/>
+					<div v-if="$slots.commonSettings" :class="$style.commonSettings">
+						<slot name="commonSettings" />
+					</div>
 				</ParameterInputList>
 				<div v-if="showNoParametersNotice" :class="$style.noParameters">
 					<N8nText>
@@ -448,6 +464,10 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 }
 
 .noParameters {
+	margin-top: var(--spacing--xs);
+}
+
+.commonSettings {
 	margin-top: var(--spacing--xs);
 }
 </style>

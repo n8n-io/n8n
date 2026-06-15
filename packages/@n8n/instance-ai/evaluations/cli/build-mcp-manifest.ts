@@ -7,7 +7,7 @@
 import { execSync, spawn } from 'child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'fs';
 import { homedir, tmpdir } from 'os';
-import { basename, join } from 'path';
+import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
 import { prebuiltManifestSchema, type PrebuiltManifest } from '../harness/prebuilt-workflows';
@@ -241,21 +241,30 @@ const claudeConfigSchema = z.object({
 		.optional(),
 });
 
-function stageMcpConfig(serverName: string, repoRoot: string | undefined): string {
+function uniqueProjectScopes(scopes: Array<string | undefined>): string[] {
+	const uniqueScopes: string[] = [];
+	for (const scope of scopes) {
+		if (!scope || uniqueScopes.includes(scope)) continue;
+		uniqueScopes.push(scope);
+	}
+	return uniqueScopes;
+}
+
+function stageMcpConfig(serverName: string, projectScopes: readonly string[]): string {
 	const claudeConfigPath = join(homedir(), '.claude.json');
 	if (!existsSync(claudeConfigPath)) {
 		throw new Error(`${claudeConfigPath} not found`);
 	}
 	const parsed = claudeConfigSchema.parse(readJson(claudeConfigPath, 'Claude Code config'));
 
-	const projectScopedBlock = repoRoot
-		? parsed.projects?.[repoRoot]?.mcpServers?.[serverName]
-		: undefined;
+	const projectScopedBlock = projectScopes
+		.map((scope) => parsed.projects?.[scope]?.mcpServers?.[serverName])
+		.find((block) => block !== undefined);
 	const block = projectScopedBlock ?? parsed.mcpServers?.[serverName];
-	if (!block) {
-		const scope = repoRoot
-			? `project-scope under "${repoRoot}" or global`
-			: 'global (no repo root, project-scope skipped)';
+	if (block === undefined) {
+		const scope = projectScopes.length
+			? `project-scope under ${projectScopes.map((projectScope) => `"${projectScope}"`).join(', ')} or global`
+			: 'global (no project scopes)';
 		throw new Error(`MCP server "${serverName}" not configured in ${claudeConfigPath} (${scope})`);
 	}
 
@@ -582,7 +591,12 @@ async function main(): Promise<void> {
 		throw new Error('No scenarios to build');
 	}
 
-	const mcpConfigPath = stageMcpConfig(args.mcpServerName, repoRoot);
+	const projectScopes = uniqueProjectScopes([
+		args.buildCwd ? resolve(args.buildCwd) : undefined,
+		repoRoot,
+		repoRoot ? undefined : process.cwd(),
+	]);
+	const mcpConfigPath = stageMcpConfig(args.mcpServerName, projectScopes);
 	process.on('exit', () => {
 		try {
 			unlinkSync(mcpConfigPath);
