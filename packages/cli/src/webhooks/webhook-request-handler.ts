@@ -232,6 +232,45 @@ class WebhookRequestHandler {
 	}
 }
 
+function trackWebhookMetrics(
+	metricsService: PrometheusWebhookAndFormMetricsService,
+	req: express.Request,
+	res: express.Response,
+	expectedNodeType: 'form' | 'webhook',
+	path: string,
+): void {
+	const startNs = process.hrtime.bigint();
+	res.on('finish', () => {
+		try {
+			const durationSeconds = Number(process.hrtime.bigint() - startNs) / 1e9;
+			const workflowId = (res.locals as { workflowId?: string }).workflowId ?? '';
+
+			if (expectedNodeType === 'form') {
+				// Only POST requests are form submissions; GET renders the form page.
+				if (req.method === 'POST') {
+					metricsService.observeFormSubmission({
+						statusCode: res.statusCode,
+						formPath: path,
+						workflowId,
+						durationSeconds,
+					});
+				}
+			} else {
+				// webhook node type
+				metricsService.observeWebhookRequest({
+					method: req.method,
+					statusCode: res.statusCode,
+					webhookPath: path,
+					workflowId,
+					durationSeconds,
+				});
+			}
+		} catch {
+			// intentional: metrics must never break request handling
+		}
+	});
+}
+
 /**
  * Creates an Express request handler for the given webhook manager.
  *
@@ -256,32 +295,7 @@ export function createWebhookHandlerFor(
 		}
 
 		if (expectedNodeType === 'form' || expectedNodeType === 'webhook') {
-			// TODO: cosnider if we should get the prometheus config here nad return early if PrometheusWebhookAndFormMetricsService.enabled is false (also add method to check form/webhook enabled individually)
-			const startNs = process.hrtime.bigint();
-			res.on('finish', () => {
-				const durationSeconds = Number(process.hrtime.bigint() - startNs) / 1e9;
-				const workflowId = (res.locals as { workflowId?: string }).workflowId ?? '';
-
-				if (expectedNodeType === 'form') {
-					// Only POST requests are form submissions; GET renders the form page.
-					if (req.method !== 'POST') return;
-					metricsService.observeFormSubmission({
-						statusCode: res.statusCode,
-						formPath: params.path,
-						workflowId,
-						durationSeconds,
-					});
-					return;
-				}
-
-				metricsService.observeWebhookRequest({
-					method: req.method,
-					statusCode: res.statusCode,
-					webhookPath: params.path,
-					workflowId,
-					durationSeconds,
-				});
-			});
+			trackWebhookMetrics(metricsService, req, res, expectedNodeType, params.path);
 		}
 
 		await handler.handleRequest(webhookRequest, res);

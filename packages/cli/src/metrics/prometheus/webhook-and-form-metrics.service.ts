@@ -50,6 +50,9 @@ export class PrometheusWebhookAndFormMetricsService implements PrometheusMetrics
 		workflowId: string;
 		durationSeconds: number;
 	}) {
+		if (!this.config.includeWebhookMetrics) {
+			return;
+		}
 		this.webhookHistogram?.observe(
 			{
 				method: observation.method,
@@ -67,6 +70,9 @@ export class PrometheusWebhookAndFormMetricsService implements PrometheusMetrics
 		workflowId: string;
 		durationSeconds: number;
 	}) {
+		if (!this.config.includeFormMetrics) {
+			return;
+		}
 		this.formHistogram?.observe(
 			{
 				status_code: observation.statusCode,
