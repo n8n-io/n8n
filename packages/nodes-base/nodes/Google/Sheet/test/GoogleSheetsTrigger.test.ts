@@ -1,9 +1,11 @@
 import { mockDeep } from 'jest-mock-extended';
 import nock from 'nock';
+import * as XLSX from 'xlsx';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { GoogleSheetsTrigger } from '../GoogleSheetsTrigger.node';
+import { getGoogleAccessToken } from '../../GenericFunctions';
 
 // Mock only the service-account token mint so the service-account branch in the
 // shared transport does not perform real JWT signing / token network calls.
@@ -22,6 +24,13 @@ describe('GoogleSheetsTrigger', () => {
 
 	afterAll(() => {
 		nock.enableNetConnect();
+	});
+
+	beforeEach(() => {
+		// Reset call history (keeps the resolved-value implementation) so per-test
+		// assertions on getGoogleAccessToken only see the current test's calls.
+		(getGoogleAccessToken as jest.Mock).mockClear();
+		(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: 'x' });
 	});
 
 	afterEach(() => {
@@ -317,9 +326,130 @@ describe('GoogleSheetsTrigger', () => {
 
 			scope.done();
 
+			// Proves the rows were produced via the service-account auth path (not a
+			// silent fall-through to OAuth2): the rowAdded Sheets-values calls mint a
+			// token through getGoogleAccessToken with the narrower 'sheetV2' scope.
+			expect(getGoogleAccessToken).toHaveBeenCalled();
+			const rowAddedScopes = (getGoogleAccessToken as jest.Mock).mock.calls.map((call) => call[1]);
+			expect(rowAddedScopes).toContain('sheetV2');
+
 			expect(response).toEqual([
 				[{ json: { count: 14, name: 'apple' } }, { json: { count: 12, name: 'banana' } }],
 			]);
+		});
+	});
+
+	describe('anyUpdate event', () => {
+		const driveBaseUrl = 'https://www.googleapis.com';
+		const exportHost = 'https://example.com';
+		const previousExportPath = '/export/prev';
+		const previousExportUrl = `${exportHost}${previousExportPath}`;
+
+		// Build a real xlsx workbook for the previous revision so the real XLSX.read
+		// inside sheetBinaryToArrayOfArrays parses a valid file. The sheet name must
+		// match the title resolved from the spreadsheet metadata nock ('testSheetName').
+		const buildPreviousRevisionBuffer = (rows: Array<Array<string | number>>) => {
+			const worksheet = XLSX.utils.aoa_to_sheet(rows);
+			const workbook = XLSX.utils.book_new();
+			XLSX.utils.book_append_sheet(workbook, worksheet, 'testSheetName');
+			return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+		};
+
+		it('should diff revisions via service account authentication and forward per-call scopes', async () => {
+			const sheetsScope = nock(baseUrl);
+			// Spreadsheet metadata lookup (spreadsheetGetSheet) - sheetV2 scope
+			sheetsScope
+				.get('/v4/spreadsheets/testDocumentId')
+				.query({ fields: 'sheets.properties' })
+				.reply(200, {
+					sheets: [{ properties: { sheetId: 1, title: 'testSheetName' } }],
+				});
+			// Current sheet values (googleSheet.getData on A:ZZZ) - sheetV2 scope
+			sheetsScope
+				.get((uri) => uri.startsWith('/v4/spreadsheets/testDocumentId/values/testSheetName!A:ZZZ'))
+				.reply(200, {
+					values: [
+						['name', 'count'],
+						['apple', 14],
+						['banana', 99],
+					],
+				});
+
+			const driveScope = nock(driveBaseUrl);
+			// Revisions listing - sheetV2 scope. id '2' > seeded lastRevision 1 so poll()
+			// proceeds, storing the new revision link but downloading the previous one.
+			driveScope
+				.get('/drive/v3/files/testDocumentId/revisions')
+				.query(true)
+				.reply(200, {
+					revisions: [
+						{
+							id: '2',
+							exportLinks: {
+								'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+									'https://example.com/export/current',
+							},
+						},
+					],
+				});
+
+			// Previous-revision export download (getRevisionFile) - sheetV2Trigger scope.
+			// Returns a real xlsx buffer so sheetBinaryToArrayOfArrays can parse it.
+			const previousRevisionBuffer = buildPreviousRevisionBuffer([
+				['name', 'count'],
+				['apple', 14],
+				['banana', 12],
+			]);
+			const exportScope = nock(exportHost);
+			exportScope.get(previousExportPath).query(true).reply(200, previousRevisionBuffer, {
+				'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			});
+
+			const { response } = await testPollingTriggerNode(GoogleSheetsTrigger, {
+				credential: mockDeep(),
+				mode: 'trigger',
+				workflowStaticData: {
+					documentId: 'testDocumentId',
+					sheetId: 1,
+					lastRevision: 1,
+					lastRevisionLink: previousExportUrl,
+				},
+				node: {
+					parameters: {
+						authentication: 'serviceAccount',
+						documentId: 'testDocumentId',
+						sheetName: 1,
+						event: 'anyUpdate',
+						// An explicit falsy value keeps poll() on the default range
+						// (header row 1, data from row 2) without a data-location override.
+						options: { dataLocationOnSheet: null },
+					},
+				},
+			});
+
+			sheetsScope.done();
+			driveScope.done();
+			exportScope.done();
+
+			// (a) The diff reflects the only changed row (banana: 12 -> 99).
+			expect(response).toEqual([
+				[
+					{
+						json: {
+							row_number: 3,
+							change_type: 'updated',
+							name: 'banana',
+							count: 99,
+						},
+					},
+				],
+			]);
+
+			// (b) Per-call least-privilege confinement: the export download uses the
+			// broader trigger scope while the listing / values calls stay on sheetV2.
+			const scopes = (getGoogleAccessToken as jest.Mock).mock.calls.map((call) => call[1]);
+			expect(scopes).toContain('sheetV2Trigger');
+			expect(scopes).toContain('sheetV2');
 		});
 	});
 
