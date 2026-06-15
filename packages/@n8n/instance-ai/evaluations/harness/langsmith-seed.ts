@@ -264,12 +264,14 @@ async function reconstructWithClient(
 		);
 	}
 	const workflows = buildSeedWorkflows(toolRuns, boundaryMs, ref.threadId);
+	const dataTables = buildSeedDataTables(toolRuns, boundaryMs);
 
 	return {
 		seed: {
 			source: { kind: 'langsmith', threadId: ref.threadId, sourceProject },
 			messages,
 			workflows,
+			dataTables,
 		},
 		liveTurn,
 		runCount: runs.length,
@@ -403,4 +405,68 @@ function buildSeedWorkflows(
 	}
 
 	return workflows;
+}
+
+type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date';
+const DATA_TABLE_COLUMN_TYPES = new Set<string>(['string', 'number', 'boolean', 'date']);
+function isDataTableColumnType(value: string): value is DataTableColumnType {
+	return DATA_TABLE_COLUMN_TYPES.has(value);
+}
+
+/**
+ * Reconstruct the data tables the seed references, so a restored workflow's
+ * data-table node id resolves. A data table is an instance-scoped resource: the
+ * built workflow points at the id the source instance assigned, which doesn't
+ * exist on the eval instance. The trace captures enough to recreate it — a
+ * `create` run carries the schema (columns) and the assigned id, and each
+ * `insert-rows` run carries its rows — so we replay them at restore time.
+ *
+ * Detection is by shape, not tool name (a `create` returns `table.id` +
+ * `table.columns`; `insert-rows` takes `dataTableId` + `rows`), so a renamed
+ * data-table tool still reconstructs. Only tables with a `create` in the seed
+ * window are emitted — without it we lack the schema. Row mutations other than
+ * insert (update/upsert/delete) are not replayed; the common build flow is
+ * create-then-insert.
+ */
+function buildSeedDataTables(toolRuns: Run[], boundaryMs: number): ConversationSeed['dataTables'] {
+	const created = new Map<
+		string,
+		{ id: string; name: string; columns: Array<{ name: string; type: DataTableColumnType }> }
+	>();
+	const rowsByTableId = new Map<string, Array<Record<string, unknown>>>();
+
+	for (const tool of toolRuns) {
+		if (new Date(tool.start_time).getTime() >= boundaryMs) continue;
+		const out = isRecord(tool.outputs) ? tool.outputs : {};
+		const input = isRecord(tool.inputs) ? tool.inputs : {};
+
+		// A `create`: output carries the new table's id, name and columns.
+		const table = isRecord(out.table) ? out.table : undefined;
+		const tableId = table ? asString(table.id) : undefined;
+		if (table && tableId && Array.isArray(table.columns)) {
+			const columns = table.columns.flatMap((col) => {
+				if (!isRecord(col)) return [];
+				const name = asString(col.name);
+				const type = asString(col.type);
+				if (!name || !type || !isDataTableColumnType(type)) return [];
+				return [{ name, type }];
+			});
+			created.set(tableId, { id: tableId, name: asString(table.name) ?? 'data table', columns });
+			continue;
+		}
+
+		// An `insert-rows`: input carries the target id and the row objects.
+		const targetId = asString(input.dataTableId);
+		if (targetId && Array.isArray(input.rows)) {
+			const rows = input.rows.filter(isRecord);
+			const existing = rowsByTableId.get(targetId) ?? [];
+			existing.push(...rows);
+			rowsByTableId.set(targetId, existing);
+		}
+	}
+
+	return [...created.values()].map((table) => ({
+		...table,
+		rows: rowsByTableId.get(table.id) ?? [],
+	}));
 }

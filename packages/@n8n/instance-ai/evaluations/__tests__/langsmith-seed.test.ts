@@ -91,6 +91,59 @@ describe('reconstructSeedFromThread', () => {
 		expect(result.seed.workflows[0]).toMatchObject({ id: 'WF-ORIGINAL-123', name: 'Otter Digest' });
 	});
 
+	it('reconstructs data tables (schema + rows) created before the boundary', async () => {
+		const createTable: FakeRun = {
+			id: 'dt-create',
+			run_type: 'tool',
+			name: 'data-tables[create]',
+			start_time: t(4),
+			inputs: { action: 'create' },
+			outputs: {
+				table: {
+					id: 's8srkfMDKYIAjEHR',
+					name: 'Size Up Coffee FAQs',
+					columns: [
+						{ id: 'c1', name: 'keywords', type: 'string' },
+						{ id: 'c2', name: 'is_active', type: 'boolean' },
+					],
+				},
+			},
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const insertRows: FakeRun = {
+			id: 'dt-insert',
+			run_type: 'tool',
+			name: 'data-tables[insert-rows]',
+			start_time: t(5),
+			inputs: {
+				action: 'insert-rows',
+				dataTableId: 's8srkfMDKYIAjEHR',
+				rows: [{ keywords: 'price', is_active: true }],
+			},
+			outputs: { insertedCount: 1 },
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build a FAQ bot'), outputs: { response: 'Done.' } },
+			createTable,
+			insertRows,
+			turn('r2', 30, 'Now change something'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.dataTables).toEqual([
+			{
+				id: 's8srkfMDKYIAjEHR',
+				name: 'Size Up Coffee FAQs',
+				columns: [
+					{ name: 'keywords', type: 'string' },
+					{ name: 'is_active', type: 'boolean' },
+				],
+				rows: [{ keywords: 'price', is_active: true }],
+			},
+		]);
+	});
+
 	it('takes the latest successful build per workflow id before the boundary', async () => {
 		const earlyBuild: FakeRun = {
 			id: 'tool1',

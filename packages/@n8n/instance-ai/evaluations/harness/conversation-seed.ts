@@ -35,6 +35,19 @@ const SeedWorkflowSchema = z.object({
 	connections: z.record(z.unknown()),
 });
 
+const SeedDataTableSchema = z.object({
+	/** The table's id as it appears in the trace — the value baked into the
+	 *  seed workflow's data-table node. Rewritten to the recreated table's id on
+	 *  restore (the server generates a fresh id; it can't be pinned). */
+	id: z.string().min(1),
+	name: z.string().min(1),
+	columns: z.array(
+		z.object({ name: z.string().min(1), type: z.enum(['string', 'number', 'boolean', 'date']) }),
+	),
+	/** Rows to seed, keyed by column name. */
+	rows: z.array(z.record(z.unknown())).default([]),
+});
+
 export const ConversationSeedSchema = z.object({
 	/** Provenance (thread id, instance, export time) — informational only. */
 	source: z.record(z.unknown()).optional(),
@@ -42,6 +55,8 @@ export const ConversationSeedSchema = z.object({
 	messages: z.array(z.record(z.unknown())).min(1),
 	/** Workflows the history references, recreated on restore. */
 	workflows: z.array(SeedWorkflowSchema).default([]),
+	/** Data tables the history references, recreated (and id-rewritten) on restore. */
+	dataTables: z.array(SeedDataTableSchema).default([]),
 });
 
 export type ConversationSeed = z.infer<typeof ConversationSeedSchema>;
@@ -86,6 +101,7 @@ export function seedFromProse(turns: ConversationTurn[]): ConversationSeed {
 			createdAt: new Date(base + index * 1000).toISOString(),
 		})),
 		workflows: [],
+		dataTables: [],
 	};
 }
 
@@ -121,7 +137,10 @@ export function remapSeedWorkflowIds(seed: ConversationSeed): ConversationSeed {
 	}
 
 	const remapped = ConversationSeedSchema.parse(jsonParse(serialized));
-	return { ...remapped, source: seed.source };
+	// Data table ids are NOT remapped here: the restore endpoint creates each
+	// table server-side (the id is generated, not pinnable) and rewrites the
+	// workflow references to the new id. Carry them through untouched.
+	return { ...remapped, source: seed.source, dataTables: seed.dataTables };
 }
 
 // ---------------------------------------------------------------------------

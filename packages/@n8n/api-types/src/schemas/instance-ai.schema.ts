@@ -1323,6 +1323,29 @@ const instanceAiEvalSeedWorkflowSchema = z.object({
 
 export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkflowSchema>;
 
+/**
+ * A data table a conversation seed references. The seed workflow's data-table
+ * node points at `id` (the id the source instance assigned). The server can't
+ * pin a data table to a given id (it's generated), so on restore it recreates
+ * the table, then rewrites every occurrence of `id` in the seed workflows to
+ * the new id.
+ */
+const instanceAiEvalSeedDataTableSchema = z.object({
+	id: z.string().min(1).max(64),
+	name: z.string().min(1).max(128),
+	columns: z
+		.array(
+			z.object({
+				name: z.string().min(1).max(128),
+				type: z.enum(['string', 'number', 'boolean', 'date']),
+			}),
+		)
+		.max(50),
+	rows: z.array(z.record(z.unknown())).max(5000).default([]),
+});
+
+export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataTableSchema>;
+
 export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	threadId: z.string().uuid(),
 	/**
@@ -1331,6 +1354,11 @@ export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	 * the server only validates the minimal structural contract.
 	 */
 	messages: z.array(z.record(z.unknown())).min(1).max(1000),
+	/**
+	 * Data tables the seeded workflows reference, recreated before the
+	 * workflows so their ids can be rewritten to the recreated tables'.
+	 */
+	dataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
 	/**
 	 * Workflows the seeded history references, recreated before the messages
 	 * are written. Pre-attached node credentials are stripped on restore.

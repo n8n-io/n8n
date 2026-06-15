@@ -1,10 +1,17 @@
-import type { InstanceAiEvalSeedWorkflow } from '@n8n/api-types';
+import type { InstanceAiEvalSeedDataTable, InstanceAiEvalSeedWorkflow } from '@n8n/api-types';
 import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { IConnections, INode } from 'n8n-workflow';
+import {
+	jsonParse,
+	type DataTableRow,
+	type DataTableRows,
+	type IConnections,
+	type INode,
+} from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { DataTableService } from '@/modules/data-table/data-table.service';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -28,24 +35,80 @@ function isConnections(value: unknown): value is IConnections {
 	return isRecord(value);
 }
 
+/** Coerce a seed row's opaque values to the column value types the data-table
+ *  service accepts. Trace rows are JSON, so values are already primitives;
+ *  anything richer is stringified defensively rather than dropped. */
+function toDataTableRow(row: Record<string, unknown>): DataTableRow {
+	const out: DataTableRow = {};
+	for (const [key, value] of Object.entries(row)) {
+		if (
+			value === null ||
+			typeof value === 'string' ||
+			typeof value === 'number' ||
+			typeof value === 'boolean'
+		) {
+			out[key] = value;
+		} else {
+			out[key] = value === undefined ? null : JSON.stringify(value);
+		}
+	}
+	return out;
+}
+
 /**
- * Recreates the workflow artifacts a conversation seed references, so a
- * restored message history's workflow ids resolve on this instance. Used by
- * the eval restore-thread endpoint.
+ * Recreates the artifacts a conversation seed references — data tables and
+ * workflows — so a restored message history's ids resolve on this instance.
+ * Used by the eval restore-thread endpoint.
  */
 @Service()
 export class EvalThreadRestoreService {
 	constructor(
 		private readonly workflowRepo: WorkflowRepository,
 		private readonly sharedWorkflowRepo: SharedWorkflowRepository,
+		private readonly dataTableService: DataTableService,
 	) {}
+
+	/**
+	 * Recreate each seed data table in the project and return a map from the
+	 * seed's (source-instance) table id to the freshly created one. A data
+	 * table's id is server-generated (not pinnable) and its name is unique per
+	 * project, so the table is created under a uniquified name and the seed
+	 * workflows' references are rewritten to the new id by `restoreWorkflows`.
+	 */
+	async restoreDataTables(
+		dataTables: InstanceAiEvalSeedDataTable[],
+		projectId: string,
+	): Promise<{ idMap: Map<string, string>; createdIds: string[] }> {
+		const idMap = new Map<string, string>();
+		const createdIds: string[] = [];
+		for (const table of dataTables) {
+			// Keep names unique across parallel iterations sharing this project
+			// (creation rejects duplicate names). The id, not the name, is what
+			// the workflow references, so the suffix is cosmetic.
+			const suffix = ` [seed ${randomUUID().slice(0, 8)}]`;
+			const name = `${table.name.slice(0, 128 - suffix.length)}${suffix}`;
+			const created = await this.dataTableService.createDataTable(projectId, {
+				name,
+				columns: table.columns,
+			});
+			idMap.set(table.id, created.id);
+			createdIds.push(created.id);
+
+			if (table.rows.length > 0) {
+				const rows: DataTableRows = table.rows.map(toDataTableRow);
+				await this.dataTableService.insertRows(created.id, projectId, rows);
+			}
+		}
+		return { idMap, createdIds };
+	}
 
 	async restoreWorkflows(
 		workflows: InstanceAiEvalSeedWorkflow[],
 		projectId: string,
+		dataTableIdMap: Map<string, string> = new Map(),
 	): Promise<void> {
 		for (const workflow of workflows) {
-			await this.createWorkflowPinnedToId(workflow, projectId);
+			await this.createWorkflowPinnedToId(workflow, projectId, dataTableIdMap);
 		}
 	}
 
@@ -59,21 +122,44 @@ export class EvalThreadRestoreService {
 	 * `list()`, so a pre-attached credential id would bypass the thread's
 	 * pinned credential view (and dangle anyway — the source instance's
 	 * credentials don't exist here).
+	 *
+	 * Data-table references are rewritten from the seed's ids to the recreated
+	 * tables' ids (see `restoreDataTables`). The ids are long random tokens, so
+	 * a whole-document string replace can't corrupt unrelated values; the result
+	 * is re-validated as a node before persisting.
 	 */
 	private async createWorkflowPinnedToId(
 		workflow: InstanceAiEvalSeedWorkflow,
 		projectId: string,
+		dataTableIdMap: Map<string, string>,
 	): Promise<void> {
-		const nodes = workflow.nodes.map((node, index) => {
+		const remapDataTableIds = (value: unknown): unknown => {
+			if (dataTableIdMap.size === 0) return value;
+			let serialized = JSON.stringify(value);
+			for (const [oldId, newId] of dataTableIdMap) {
+				serialized = serialized.replaceAll(oldId, newId);
+			}
+			return jsonParse<unknown>(serialized);
+		};
+
+		const nodes: INode[] = workflow.nodes.map((node, index) => {
 			if (!isWorkflowNode(node)) {
 				throw new BadRequestError(
 					`Seed workflow ${workflow.id} node at index ${index} is not a valid workflow node`,
 				);
 			}
 			const { credentials: _stripped, ...rest } = node;
-			return rest;
+			const remapped = remapDataTableIds(rest);
+			if (!isWorkflowNode(remapped)) {
+				throw new BadRequestError(
+					`Seed workflow ${workflow.id} node at index ${index} became invalid after data-table id remap`,
+				);
+			}
+			return remapped;
 		});
-		if (!isConnections(workflow.connections)) {
+
+		const connections = remapDataTableIds(workflow.connections);
+		if (!isConnections(connections)) {
 			throw new BadRequestError(`Seed workflow ${workflow.id} connections must be an object`);
 		}
 
@@ -83,7 +169,7 @@ export class EvalThreadRestoreService {
 				id: workflow.id,
 				name: workflow.name,
 				nodes,
-				connections: workflow.connections,
+				connections,
 				active: false,
 				versionId: randomUUID(),
 			}),

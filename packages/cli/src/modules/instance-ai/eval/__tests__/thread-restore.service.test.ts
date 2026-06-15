@@ -2,6 +2,8 @@ import type { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { DataTable } from '@/modules/data-table/data-table.entity';
+import type { DataTableService } from '@/modules/data-table/data-table.service';
 
 import { EvalThreadRestoreService } from '../thread-restore.service';
 
@@ -20,7 +22,8 @@ function makeNode(overrides: Record<string, unknown> = {}): Record<string, unkno
 describe('EvalThreadRestoreService', () => {
 	const workflowRepo = mock<WorkflowRepository>();
 	const sharedWorkflowRepo = mock<SharedWorkflowRepository>();
-	const service = new EvalThreadRestoreService(workflowRepo, sharedWorkflowRepo);
+	const dataTableService = mock<DataTableService>();
+	const service = new EvalThreadRestoreService(workflowRepo, sharedWorkflowRepo, dataTableService);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -81,5 +84,71 @@ describe('EvalThreadRestoreService', () => {
 			),
 		).rejects.toThrow(BadRequestError);
 		expect(workflowRepo.save).not.toHaveBeenCalled();
+	});
+
+	describe('data tables', () => {
+		it('recreates each table under a unique name, inserts rows, and maps the id', async () => {
+			dataTableService.createDataTable.mockResolvedValue(mock<DataTable>({ id: 'dt-new' }));
+
+			const { idMap, createdIds } = await service.restoreDataTables(
+				[
+					{
+						id: 'dt-old',
+						name: 'Size Up Coffee FAQs',
+						columns: [
+							{ name: 'keywords', type: 'string' },
+							{ name: 'is_active', type: 'boolean' },
+						],
+						rows: [{ keywords: 'price', is_active: true }],
+					},
+				],
+				'project-1',
+			);
+
+			expect(idMap.get('dt-old')).toBe('dt-new');
+			expect(createdIds).toEqual(['dt-new']);
+
+			const [projectId, dto] = dataTableService.createDataTable.mock.calls[0];
+			expect(projectId).toBe('project-1');
+			// Original name is kept, with a unique suffix appended to dodge the
+			// per-project unique-name constraint across parallel iterations.
+			expect(dto.name).toMatch(/^Size Up Coffee FAQs \[seed [0-9a-f]{8}\]$/);
+			expect(dto.columns).toEqual([
+				{ name: 'keywords', type: 'string' },
+				{ name: 'is_active', type: 'boolean' },
+			]);
+			expect(dataTableService.insertRows).toHaveBeenCalledWith('dt-new', 'project-1', [
+				{ keywords: 'price', is_active: true },
+			]);
+		});
+
+		it('skips the row insert when a table has no rows', async () => {
+			dataTableService.createDataTable.mockResolvedValue(mock<DataTable>({ id: 'dt-new' }));
+
+			await service.restoreDataTables(
+				[{ id: 'dt-old', name: 'Empty', columns: [{ name: 'a', type: 'string' }], rows: [] }],
+				'project-1',
+			);
+
+			expect(dataTableService.insertRows).not.toHaveBeenCalled();
+		});
+
+		it('rewrites seed data-table ids in workflow nodes to the recreated ids', async () => {
+			const node = makeNode({
+				type: 'n8n-nodes-base.dataTable',
+				parameters: { dataTableId: { __rl: true, mode: 'id', value: 'dt-old' } },
+			});
+
+			await service.restoreWorkflows(
+				[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
+				'project-1',
+				new Map([['dt-old', 'dt-new']]),
+			);
+
+			const saved = workflowRepo.create.mock.calls[0][0];
+			expect(saved.nodes?.[0]?.parameters).toEqual({
+				dataTableId: { __rl: true, mode: 'id', value: 'dt-new' },
+			});
+		});
 	});
 });
