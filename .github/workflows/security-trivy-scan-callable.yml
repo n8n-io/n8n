@@ -178,3 +178,4 @@ jobs:
             --blocks trivy \
             --results trivy-results.json \
             --image-ref "$IMAGE_REF"
+
