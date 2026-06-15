@@ -1,8 +1,8 @@
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { trimItems, runQuery, MAX_ITEMS, MAX_OUTPUT_CHARS } from '../agent-data-utils';
 
-const item = (json: Record<string, unknown>): INodeExecutionData => ({ json });
+const item = (json: IDataObject): INodeExecutionData => ({ json });
 
 describe('trimItems', () => {
 	it('returns safe items untruncated when under the caps', () => {
