@@ -14,7 +14,7 @@ import type { ValidatorPlugin, ValidationIssue, PluginContext } from '../types';
 
 const XML_PAYLOAD_START_PATTERN =
 	/^\s*(?:=\s*)?(?:\{\{\s*)?['"`]?\s*(?:<\?xml|<soap:?|<s:envelope|<env:envelope)/i;
-const XML_PAYLOAD_REFERENCE_PATTERN = /\b(?:soap|xml)[\w-]*(?:body|payload|envelope|request)?\b/i;
+const XML_PAYLOAD_REFERENCE_PATTERN = /\b(?:soap|xml)[\w-]*(?:body|payload|envelope|request)\b/i;
 const XML_MEDIA_TYPE_PATTERN = /\b(?:text|application)\/(?:[\w.+-]*\+)?xml\b/i;
 
 function looksLikeXmlPayload(value: unknown): boolean {

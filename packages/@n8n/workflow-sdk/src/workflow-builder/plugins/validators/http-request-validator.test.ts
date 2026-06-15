@@ -215,6 +215,25 @@ describe('httpRequestValidator', () => {
 			);
 		});
 
+		it.each(['={{ JSON.stringify($json.xmlData) }}', '={{ $json.soapVersion }}'])(
+			'allows JSON bodies that reference non-payload XML/SOAP fields: %s',
+			(jsonBody) => {
+				const node = createMockNode('n8n-nodes-base.httpRequest', {
+					parameters: {
+						sendBody: true,
+						contentType: 'json',
+						specifyBody: 'json',
+						jsonBody,
+					},
+				});
+				const ctx = createMockPluginContext();
+
+				const issues = httpRequestValidator.validateNode(node, createGraphNode(node), ctx);
+
+				expect(issues.filter((i) => i.code === 'INVALID_PARAMETER')).toHaveLength(0);
+			},
+		);
+
 		it('allows valid JSON bodies that contain XML as a field value', () => {
 			const node = createMockNode('n8n-nodes-base.httpRequest', {
 				parameters: {
