@@ -549,11 +549,28 @@ export class CanvasPage extends BasePage {
 
 	// Actions
 
-	async waitForBlankCanvasReady(): Promise<void> {
+	/**
+	 * Wait for the workflow canvas to finish loading and become interactive.
+	 *
+	 * While the editor loads, `LoadingView` renders a full-screen overlay
+	 * (`node-view-loader`) on top of the canvas. The canvas controls (e.g.
+	 * zoom-to-fit) are already in the DOM and report as stable, but the overlay
+	 * intercepts pointer events, so clicking before it clears hangs until the
+	 * action times out. Always wait for the canvas to be ready before
+	 * interacting with it after a navigation.
+	 */
+	async waitForCanvasReady(): Promise<void> {
 		await expect(this.canvasPane()).toBeVisible();
 		await expect(this.getNodeViewLoader()).toBeHidden();
 		await expect(this.getLoadingMask()).toBeHidden();
-		await expect(this.getChoicePrompt()).toBeVisible();
+	}
+
+	async waitForBlankCanvasReady(): Promise<void> {
+		await this.waitForCanvasReady();
+		// A blank canvas shows the AI choice prompt when AI Builder is enabled,
+		// otherwise the default add-first-step button. Accept either so this works
+		// in both environments.
+		await expect(this.getChoicePrompt().or(this.getCanvasPlusButton())).toBeVisible();
 	}
 
 	async addInitialNodeToCanvas(nodeName: string): Promise<void> {
@@ -1180,6 +1197,18 @@ export class CanvasPage extends BasePage {
 		const groupId = await this.getNodeGroupByTitle(title).getAttribute('data-group-id');
 		if (!groupId) throw new Error(`Node group with title "${title}" not found`);
 		return this.page.locator(`[data-test-id="canvas-node-group"][data-group-id="${groupId}"]`);
+	}
+
+	groupToggleButton(title: string): Locator {
+		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-toggle');
+	}
+
+	getNodeGroupFrame(title: string): Locator {
+		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-frame');
+	}
+
+	async toggleNodeGroup(title: string) {
+		await this.groupToggleButton(title).click();
 	}
 
 	async selectNodes(nodeNames: string[]): Promise<void> {

@@ -14,6 +14,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:valid': [valid: boolean];
 	'update:node-name': [name: string];
+	'update:node': [node: INode];
 }>();
 
 const contentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
@@ -47,5 +48,6 @@ defineExpose({
 		:data-test-id="props.contentTestId"
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"
+		@update:node="emit('update:node', $event)"
 	/>
 </template>

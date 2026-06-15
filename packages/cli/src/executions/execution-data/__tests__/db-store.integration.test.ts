@@ -3,6 +3,7 @@ import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { DbStore } from '../db-store';
+import { MissingExecutionDataError } from '../missing-execution-data.error';
 import { createExecutionRef } from '../types';
 import type { ExecutionDataPayload } from '../types';
 import { payload, workflowId } from './mocks';
@@ -53,6 +54,19 @@ describe('write', () => {
 		expect(stored).toMatchObject(payload);
 	});
 
+	it('should return the byte size of the stored bundle', async () => {
+		const execution = await createExecution();
+		const ref = createExecutionRef(workflowId, execution.id);
+
+		const bytes = await dbStore.write(ref, payload);
+
+		const expected =
+			Buffer.byteLength(payload.data, 'utf8') +
+			Buffer.byteLength(JSON.stringify(payload.workflowData), 'utf8') +
+			Buffer.byteLength(payload.workflowVersionId ?? '', 'utf8');
+		expect(bytes).toBe(expected);
+	});
+
 	it('should overwrite on duplicate `executionId`', async () => {
 		const execution = await createExecution();
 		const ref = createExecutionRef(workflowId, execution.id);
@@ -71,6 +85,35 @@ describe('write', () => {
 
 		const stored = await repository.findOneBy({ executionId: execution.id });
 		expect(stored).toMatchObject(updatedPayload);
+	});
+});
+
+describe('overwrite', () => {
+	it('should replace data and snapshot in place and return the byte size', async () => {
+		const execution = await createExecution();
+		const ref = createExecutionRef(workflowId, execution.id);
+		await dbStore.write(ref, payload);
+
+		const updatedPayload: ExecutionDataPayload = {
+			...payload,
+			data: '[[{"json":{"updated":true}},null]]',
+		};
+		const bytes = await dbStore.overwrite(ref, updatedPayload);
+
+		const expected =
+			Buffer.byteLength(updatedPayload.data, 'utf8') +
+			Buffer.byteLength(JSON.stringify(updatedPayload.workflowData), 'utf8') +
+			Buffer.byteLength(updatedPayload.workflowVersionId ?? '', 'utf8');
+		expect(bytes).toBe(expected);
+
+		const stored = await repository.findOneBy({ executionId: execution.id });
+		expect(stored).toMatchObject(updatedPayload);
+	});
+
+	it('should throw MissingExecutionDataError when the row does not exist', async () => {
+		const ref = createExecutionRef(workflowId, '999');
+
+		await expect(dbStore.overwrite(ref, payload)).rejects.toThrow(MissingExecutionDataError);
 	});
 });
 

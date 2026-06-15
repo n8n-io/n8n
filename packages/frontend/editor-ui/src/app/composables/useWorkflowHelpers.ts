@@ -56,6 +56,8 @@ import {
 	injectWorkflowDocumentStore,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -89,10 +91,10 @@ export async function resolveParameter<T = IDataObject>(
 				}
 			: opts_;
 
-	const workflowsStore = useWorkflowsStore();
 	const workflowObject = workflowDocumentStore.getWorkflowObjectAccessorSnapshot();
 	const connections = workflowDocumentStore.connectionsBySourceNode;
-	const executionData = workflowsStore.workflowExecutionData;
+	const executionData = useWorkflowExecutionStateStore(workflowDocumentId)
+		.activeExecution as IExecutionResponse | null;
 	const pinData = workflowDocumentStore.getPinDataSnapshot();
 
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
