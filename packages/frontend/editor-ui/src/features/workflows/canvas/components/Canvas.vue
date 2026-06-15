@@ -5,11 +5,13 @@ import { useContextMenu } from '@/features/shared/contextMenu/composables/useCon
 import type { CanvasLayoutEvent } from '../composables/useCanvasLayout';
 import { useCanvasLayout } from '../composables/useCanvasLayout';
 import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
+import { useCanvasSearch } from '../composables/useCanvasSearch';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { CanvasKey, CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
@@ -49,7 +51,14 @@ import type {
 	ViewportTransform,
 	XYPosition,
 } from '@vue-flow/core';
-import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
+import {
+	getRectOfNodes,
+	MarkerType,
+	Panel,
+	PanelPosition,
+	useVueFlow,
+	VueFlow,
+} from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections } from 'n8n-workflow';
@@ -74,6 +83,7 @@ import CanvasConnectionLine from './elements/edges/CanvasConnectionLine.vue';
 import CanvasControlButtons from './elements/buttons/CanvasControlButtons.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
+import CanvasSearch from './elements/search/CanvasSearch.vue';
 import CanvasNodeGroupTitleBar from './elements/groups/CanvasNodeGroupTitleBar.vue';
 import CanvasSelectionToolbar from './elements/selection/CanvasSelectionToolbar.vue';
 import { useCanvasNodeGroupActions } from '../composables/useCanvasNodeGroupActions';
@@ -199,6 +209,23 @@ const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
 const setupPanelStore = useSetupPanelStore();
 const posthogStore = usePostHog();
+const nodeTypesStore = useNodeTypesStore();
+
+/**
+ * Cmd+F style node search. Highlights every node whose name, type or parameters
+ * match the phrase and lets the user cycle through matches.
+ */
+const canvasSearchRef = ref<InstanceType<typeof CanvasSearch>>();
+const canvasSearch = useCanvasSearch({
+	nodes: () => workflowDocumentStore.value.allNodes,
+	resolveTypeLabel: (node) => nodeTypesStore.getNodeType(node.type, node.typeVersion)?.displayName,
+	onNavigate: (id) => onSelectNodes({ ids: [id], panIntoView: true }),
+});
+
+function onOpenSearch() {
+	canvasSearch.open();
+	void nextTick(() => canvasSearchRef.value?.focusInput());
+}
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -267,6 +294,7 @@ const classes = computed(() => ({
 	[$style.ready]: !props.loading && isPaneReady.value,
 	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
 	spotlightActive: setupPanelStore.isHighlightActive,
+	searchActive: canvasSearch.isSearchActive.value,
 }));
 
 /**
@@ -409,6 +437,7 @@ function onKeyboardGroup() {
 const keyMap = computed(() => {
 	const readOnlyKeymap: KeyMap = {
 		ctrl_shift_o: emitWithLastSelectedNode((id) => emit('open:sub-workflow', id)),
+		ctrl_f: onOpenSearch,
 		ctrl_c: {
 			disabled: () => isOutsideSelected(viewportRef.value),
 			run: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
@@ -1327,6 +1356,7 @@ defineExpose({
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"
 					:highlighted="setupPanelStore.highlightedNodeIds.has(nodeProps.id)"
+					:search-match="canvasSearch.matchingNodeIds.value.has(nodeProps.id)"
 					@delete="onDeleteNode"
 					@run="onRunNode"
 					@select="onSelectNode"
@@ -1417,6 +1447,23 @@ defineExpose({
 			@toggle-zoom-mode="onToggleZoomMode"
 		/>
 
+		<Panel v-if="canvasSearch.isOpen.value" position="top-right" :class="$style.searchPanel">
+			<CanvasSearch
+				ref="canvasSearchRef"
+				v-model="canvasSearch.query.value"
+				:case-sensitive="canvasSearch.caseSensitive.value"
+				:use-regex="canvasSearch.useRegex.value"
+				:match-count="canvasSearch.matchCount.value"
+				:active-match-index="canvasSearch.activeMatchIndex.value"
+				:regex-error="canvasSearch.regexError.value"
+				@update:case-sensitive="canvasSearch.caseSensitive.value = $event"
+				@update:use-regex="canvasSearch.useRegex.value = $event"
+				@next="canvasSearch.goToNext"
+				@previous="canvasSearch.goToPrevious"
+				@close="canvasSearch.close"
+			/>
+		</Panel>
+
 		<Suspense>
 			<ContextMenu @action="onContextMenuAction" />
 		</Suspense>
@@ -1440,6 +1487,10 @@ defineExpose({
 		/* stylelint-disable-next-line @n8n/css-var-naming */
 		--canvas-zoom-compensation-factor: 0.5;
 	}
+}
+
+.searchPanel {
+	z-index: 7;
 }
 </style>
 
@@ -1468,5 +1519,30 @@ defineExpose({
 	:deep(.vue-flow__node:has(.highlighted)) {
 		opacity: 1;
 	}
+}
+
+// Cmd+F search: dim everything except matching nodes, which keep a highlight glow.
+.searchActive {
+	:deep(.vue-flow__edges) {
+		opacity: 0.2;
+		transition: opacity var(--duration--snappy) ease;
+	}
+
+	:deep(.vue-flow__node) {
+		opacity: 0.35;
+		transition: opacity var(--duration--snappy) ease;
+	}
+
+	:deep(.vue-flow__node:has(.searchMatch)) {
+		opacity: 1;
+	}
+}
+
+:deep(.vue-flow__node:has(.searchMatch)) {
+	border-radius: var(--radius--lg);
+	box-shadow:
+		0 0 0 2px var(--color--primary),
+		0 0 10px 2px var(--color--primary--tint-3);
+	transition: box-shadow var(--duration--snappy) ease;
 }
 </style>
