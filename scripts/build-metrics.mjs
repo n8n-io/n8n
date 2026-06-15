@@ -1,19 +1,8 @@
 #!/usr/bin/env node
 // @ts-check
-/**
- * Extracts machine-readable build metrics from a buildx build, so build time,
- * docker layer cache-hit ratio, turbo cache-hit count, and image size stay
- * measurable across the docker-build consolidation (DEVP-262).
- *
- *   docker buildx bake n8n --metadata-file meta.json --progress=rawjson | tee build.jsonl
- *   node scripts/build-metrics.mjs build.jsonl meta.json n8nio/n8n:local
- *
- * Writes docker-build-metrics.json and prints a summary. Sources, per the
- * research: --progress=rawjson for per-vertex timing + `cached`; the turbo
- * `Cached: N cached, M total` COUNT (never the label) from the build step's
- * log stream; --metadata-file for the image digest; `docker image inspect`
- * for local size.
- */
+// Build metrics from a buildx --progress=rawjson log + --metadata-file:
+// build time, docker layer cache-hit %, turbo cache N/M, image size.
+//   node scripts/build-metrics.mjs <build.jsonl> [meta.json] [imageTag]
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';

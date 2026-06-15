@@ -1,13 +1,24 @@
 #!/usr/bin/env node
-// Phase-1 docker build via bake: host build (compiled/ + task-runner) then the
-// parallel `ci` bake group (n8n + runner-alpine). A Node wrapper rather than a
-// shell `&&` chain so trailing args appended by setup-nodejs (e.g. --summarize,
-// meant for turbo) are ignored instead of reaching `docker buildx bake`, which
-// rejects unknown flags. Mirrors how dockerize-n8n.mjs tolerates them.
+// prepare-docker via bake: host build (compiled/ + task-runner) then the
+// parallel `ci` group (n8n + runner-alpine), with build metrics captured.
+// A wrapper so trailing args from setup-nodejs (e.g. --summarize) are ignored.
 
 import { execFileSync } from 'node:child_process';
+import { openSync } from 'node:fs';
 
-const run = (cmd, args) => execFileSync(cmd, args, { stdio: 'inherit' });
+execFileSync('node', ['scripts/build-n8n.mjs'], { stdio: 'inherit' });
 
-run('node', ['scripts/build-n8n.mjs']);
-run('docker', ['buildx', 'bake', 'ci', '--load', '--provenance=false']);
+const meta = '/tmp/bake-ci-meta.json';
+const rawlog = '/tmp/bake-ci.jsonl';
+const log = openSync(rawlog, 'w');
+try {
+	execFileSync(
+		'docker',
+		['buildx', 'bake', 'ci', '--load', '--provenance=false', '--metadata-file', meta, '--progress=rawjson'],
+		{ stdio: ['inherit', log, log] },
+	);
+} catch {
+	execFileSync('tail', ['-40', rawlog], { stdio: 'inherit' });
+	process.exit(1);
+}
+execFileSync('node', ['scripts/build-metrics.mjs', rawlog, meta], { stdio: 'inherit' });

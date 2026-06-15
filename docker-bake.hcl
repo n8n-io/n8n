@@ -1,10 +1,4 @@
-# Single source of truth for n8n image builds (Phase 1 consolidation).
-# Local: `docker buildx bake <target>`. CI: the build-image action runs the same.
-# Context-agnostic — Turbo cache coordinates + network come from the caller
-# (env / --set), so it works on Blacksmith (localhost + --network=host) and
-# locally (host.docker.internal). (Kept as HCL for matrix/conditionals; can
-# switch to docker-bake.json later once the migration is complete.)
-
+# Single source of truth for n8n image builds. Turbo coordinates come from env.
 variable "TAG"          { default = "local" }
 variable "REGISTRY"     { default = "n8nio/" }   # namespace prefix; CI sets e.g. ghcr.io/n8n-io/
 variable "NODE_VERSION" { default = "24.16.0" }
