@@ -16,15 +16,10 @@ node_modules
 *.log
 .agent-setup
 
-# Build-metrics harness output — must not enter the build context (self-busts COPY . .)
-docker-build-metrics.json
-*.jsonl
-
-# Not build inputs — keep them out of the context so editing CI/bake/docs
-# does not bust the build cache (COPY . .). NB: .github/scripts IS a build
-# input (build-n8n.mjs runs .github/scripts/trim-fe-packageJson.js), so only
-# the workflow/action config is excluded, not all of .github.
+# Not build inputs — exclude so editing CI/docs doesn't bust the COPY . . cache.
+# NB: .github/scripts IS a build input (build-n8n.mjs runs trim-fe-packageJson.js),
+# so only the workflow/action config is excluded, not all of .github.
 .github/workflows
 .github/actions
-docker-bake.hcl
 *.draft.md
+*.jsonl

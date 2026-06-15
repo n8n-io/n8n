@@ -1,46 +1,12 @@
 # syntax=docker/dockerfile:1
 #
-# In-image n8n build with a Turbo *remote* cache (DEVP-262).
-#
-# The production Dockerfile (docker/images/n8n/Dockerfile) builds n8n on the
-# host (glibc), `COPY ./compiled`s the result in, then rebuilds native addons
-# (sqlite3, isolated-vm) for musl. This variant runs the SAME production build
-# script (scripts/build-n8n.mjs, i.e. `pnpm build:docker` minus the dockerize
-# step) *inside* the alpine/musl builder, so:
-#   * there is no host build step, and
-#   * the glibc→musl native-addon fixup disappears — `pnpm install` here
-#     compiles addons against musl directly.
-#
-# Caching: each `docker build` starts from an empty filesystem, so a local
-# Turbo cache is useless — the build only comes up warm by reading task output
-# back from a *remote* cache over the network. The Dockerfile is host-agnostic;
-# the CALLER passes the cache coordinates as build args, so the same file works
-# locally and in CI:
-#
-#   Local (Docker Desktop reaches the host via host.docker.internal):
-#     node scripts/turbo-cache.mjs up
-#     eval "$(node scripts/turbo-cache.mjs env --docker)"
-#     docker buildx build -f docker/images/n8n/Dockerfile.inbuild \
-#       --add-host=host.docker.internal:host-gateway \
-#       --provenance=false --sbom=false \
-#       --build-arg TURBO_API="$TURBO_API" --build-arg TURBO_TEAM="$TURBO_TEAM" \
-#       --secret id=TURBO_TOKEN,env=TURBO_TOKEN -t n8n:inbuild .
-#
-#   CI (server on the runner, reached over the host network):
-#     docker buildx build -f docker/images/n8n/Dockerfile.inbuild \
-#       --network=host --allow network.host \
-#       --provenance=false --sbom=false \
-#       --build-arg TURBO_API=http://localhost:PORT --build-arg TURBO_TEAM=n8n-musl \
-#       --secret id=TURBO_TOKEN,env=TURBO_TOKEN -t n8n:inbuild .
-#
-# --provenance=false --sbom=false skip the attestation manifest + manifest-list
-# export (faster export, plain single image); drop them when you need the
-# attestations for a published artifact.
-#
-# The TURBO_TOKEN secret is optional (required=false): with no cache configured
-# the build still succeeds, just cold. When verifying a warm build, parse the
-# cached COUNT from Turbo's `Cached: N cached, M total` line — never grep the
-# `Cached:` label, which is printed even at 0 (a false green).
+# In-image n8n build (DEVP-262). Runs the production build (scripts/build-n8n.mjs)
+# inside the alpine/musl builder, so native addons (sqlite3, isolated-vm) compile
+# against musl directly — no glibc→musl `npm rebuild` fixup like the COPY-compiled
+# production Dockerfile. Built by scripts/dockerize-n8n.mjs, which passes the Turbo
+# remote-cache coordinates (TURBO_API/TURBO_TEAM + the TURBO_TOKEN secret) when set;
+# absent them, the build runs cold. Requires BuildKit (the sibling
+# Dockerfile.inbuild.dockerignore is a per-Dockerfile ignore).
 
 ARG NODE_VERSION=24.16.0
 

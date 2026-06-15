@@ -3,27 +3,19 @@
 /**
  * Local, persistent Turbo *remote* cache server (DEVP-262).
  *
- * Stands up a single `ducktors/turborepo-remote-cache` container backed by
- * local filesystem storage, with `--restart unless-stopped` so it survives
- * shell sessions, reboots, and — the whole point — every separate
- * `docker buildx build`. Once it's up, point any build (host or in-image)
- * at it via TURBO_API/TURBO_TOKEN/TURBO_TEAM and Turbo task output is shared
- * across worktrees and across the host↔in-docker boundary.
+ * Stands up a `ducktors/turborepo-remote-cache` container (--restart
+ * unless-stopped) so Turbo output is shared across worktrees and the
+ * host↔in-docker boundary — a content-addressed remote cache hits wherever the
+ * inputs match, which a per-worktree on-disk cache and an empty-FS in-image
+ * build can't.
  *
- * Why this matters: without a shared cache backend, each worktree writes to
- * its own `node_modules/.cache/turbo` and an in-image build starts from an
- * empty filesystem — so neither can ever reuse the other's work. A remote
- * cache is content-addressed and path-independent, so a hit lands wherever
- * the inputs match.
+ *   up      start (idempotent) + write .turbo/config.json for this worktree
+ *   status  is it up and healthy?
+ *   env     print eval-able `export ...` lines  (add --docker for the in-image build)
+ *   down    stop + remove container (keeps the cache volume)
  *
- *   node scripts/turbo-cache.mjs up        # start (idempotent) + write .turbo/config.json
- *   node scripts/turbo-cache.mjs status    # is it up and healthy?
- *   node scripts/turbo-cache.mjs env        # print `export ...` lines  (eval-able)
- *   node scripts/turbo-cache.mjs env --docker   # variant for the in-image docker build
- *   node scripts/turbo-cache.mjs down       # stop + remove container (keeps the cache volume)
- *
- * Host build, any worktree:    eval "$(node scripts/turbo-cache.mjs env)" && pnpm turbo build
- * In-image build (see Dockerfile.inbuild):  node scripts/turbo-cache.mjs env --docker
+ * Host build:   eval "$(node scripts/turbo-cache.mjs env)" && pnpm turbo build
+ * In-image:     dockerize-n8n.mjs reads TURBO_API/TURBO_TOKEN/TURBO_TEAM from env.
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';

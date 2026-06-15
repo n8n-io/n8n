@@ -31,7 +31,7 @@ runs:
       if: steps.cache-check.outputs.cache-hit != 'true'
       uses: ./.github/actions/setup-nodejs
       with:
-        build-command: ${{ inputs.build-variant == 'coverage' && 'pnpm build:docker:coverage' || 'pnpm build:docker:bake' }}
+        build-command: ${{ inputs.build-variant == 'coverage' && 'pnpm build:docker:coverage' || 'pnpm build:docker' }}
         enable-docker-cache: true
       env:
         INCLUDE_TEST_CONTROLLER: 'true'
