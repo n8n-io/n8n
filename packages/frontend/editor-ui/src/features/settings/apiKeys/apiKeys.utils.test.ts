@@ -8,7 +8,7 @@ const availableScopes: ApiKeyScope[] = [
 	'workflow:list',
 	'workflow:activate',
 	'workflow:delete',
-	'execution:get',
+	'execution:read',
 	'credential:create',
 	'variable:list',
 	'dataTable:read',
@@ -23,7 +23,7 @@ describe('classifyScope', () => {
 	test.each([
 		['workflow:read', 'read'],
 		['workflow:list', 'read'],
-		['execution:get', 'read'],
+		['execution:read', 'read'],
 		['workflow:export', 'read'],
 		['workflow:create', 'write'],
 		['workflow:update', 'write'],
@@ -45,7 +45,7 @@ describe('getReadOnlyScopes', () => {
 		expect(getReadOnlyScopes(availableScopes)).toEqual([
 			'workflow:read',
 			'workflow:list',
-			'execution:get',
+			'execution:read',
 			'variable:list',
 			'dataTable:read',
 			'folder:read',
@@ -75,7 +75,7 @@ describe('groupScopes', () => {
 			'workflow:list',
 			'workflow:activate',
 			'workflow:delete',
-			'execution:get',
+			'execution:read',
 		]);
 		expect(groups[4].scopes).toEqual(['folder:read', 'tag:read']);
 	});
