@@ -7,7 +7,7 @@
 #
 # Key differences:
 # - Uses Debian-based builders (glibc instead of musl)
-# - Final image is Google's distroless/cc-debian12
+# - Final image is Google's distroless/cc-debian13
 # - Extra runtime-prep stage to organize filesystem
 # - Uses distroless nonroot user (UID 65532)
 # ==============================================================================
@@ -170,14 +170,14 @@ RUN mkdir -p /runtime/home/runner && \
 # ==============================================================================
 # STAGE 6: Distroless Runtime
 # ==============================================================================
-# Uses Google's distroless/cc-debian12 which provides:
+# Uses Google's distroless/cc-debian13 which provides:
 # - glibc, libgcc, libstdc++
 # - CA certificates
 # - Timezone data
 # - nonroot user (UID 65532)
 # - NO shell, NO package manager, NO system utilities
 # ==============================================================================
-FROM gcr.io/distroless/cc-debian12:latest AS runtime
+FROM gcr.io/distroless/cc-debian13:latest AS runtime
 ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 
