@@ -3,14 +3,13 @@ import { Tool } from '@n8n/agents/tool';
 import type { ExecuteAgentWorkflowContext, INodeExecutionData, ITaskData } from 'n8n-workflow';
 import { z } from 'zod';
 
-const MAX_ITEMS = 20;
-const MAX_OUTPUT_CHARS = 50_000;
+import { trimItems, runQuery } from './agent-data-utils';
 
 const DESCRIPTION =
-	'Inspect the n8n workflow execution that invoked this agent. ' +
+	'Inspect data produced by OTHER earlier nodes in this workflow. ' +
 	'Call without arguments to list the nodes that have executed so far. ' +
-	'Call with a nodeName to read the output data that node produced. ' +
-	'Item counts and output data refer to the last run of each node.';
+	'Call with a nodeName to read that node output (last run). ' +
+	'Pass a JMESPath query together with a nodeName to extract a specific part of large output.';
 
 /** Items of the last run's main output, flattened across output branches. */
 function lastRunMainItems(runs: ITaskData[]): INodeExecutionData[] {
@@ -26,24 +25,13 @@ function lastRunMainItemCount(runs: ITaskData[]): number {
 	return mainBranches.reduce((count, branch) => count + (branch?.length ?? 0), 0);
 }
 
-/** Strips binary payloads down to their key names — the agent only needs to know they exist. */
-function toSafeItem(item: INodeExecutionData): Record<string, unknown> {
-	const safe: Record<string, unknown> = { json: item.json };
-	if (item.binary) {
-		safe.binary = Object.keys(item.binary);
-	}
-	return safe;
-}
-
 /**
- * Builds the per-invocation `fetch_workflow_context` tool for agents invoked
- * from a workflow (MessageAnAgent node). The handler closes over the calling
- * execution's in-memory run data; the tool's system instruction is merged into
- * the agent's prompt by the runtime (`composeEffectiveInstructions`).
+ * Builds the opt-in `fetch_workflow_context` tool: lets the agent inspect any
+ * other node's execution data in the calling workflow. Attached only when the
+ * MessageAnAgent node enables "Allow agent to access other nodes' data".
  */
 export function createWorkflowContextTool(context: ExecuteAgentWorkflowContext): BuiltTool {
-	const nodeTypesByName = new Map(context.nodes.map((node) => [node.name, node.type]));
-	const workflowLabel = context.workflowName ?? context.workflowId ?? 'unknown';
+	const nodeTypesByName = new Map((context.nodes ?? []).map((node) => [node.name, node.type]));
 
 	return (
 		new Tool('fetch_workflow_context')
@@ -56,20 +44,27 @@ export function createWorkflowContextTool(context: ExecuteAgentWorkflowContext):
 						.describe(
 							'Name of an executed node whose output data to fetch. Omit to list all executed nodes.',
 						),
+					query: z
+						.string()
+						.optional()
+						.describe('JMESPath query to extract a specific part of the node output, untrimmed.'),
 				}),
 			)
 			.systemInstruction(
-				`You were invoked from the n8n workflow '${workflowLabel}' by its node '${context.callingNodeName}'. ` +
-					'To inspect data produced by earlier workflow nodes, call fetch_workflow_context with no arguments ' +
-					'to list executed nodes, then call it with a nodeName to read that node output. ' +
-					'Use it whenever the message references data from the workflow.',
+				'To inspect data produced by OTHER earlier nodes in this workflow, call ' +
+					'fetch_workflow_context with no arguments to list executed nodes, then with a nodeName ' +
+					'to read that node output. Pass a JMESPath query with a nodeName to extract a specific ' +
+					'part of large output.',
 			)
 			// eslint-disable-next-line @typescript-eslint/require-await -- Tool.handler() expects an async callback
 			.handler(async (input) => {
-				const { nodeName } = input as { nodeName?: string };
+				const { nodeName, query } = input as { nodeName?: string; query?: string };
 				const runData = context.runExecutionData.resultData.runData;
 
 				if (!nodeName) {
+					if (query) {
+						return { error: 'Specify a nodeName to run a query against that node output.' };
+					}
 					return {
 						workflow: { id: context.workflowId ?? null, name: context.workflowName ?? null },
 						invokedBy: context.callingNodeName,
@@ -92,35 +87,26 @@ export function createWorkflowContextTool(context: ExecuteAgentWorkflowContext):
 				}
 
 				const allItems = lastRunMainItems(runs);
-				const items: Array<Record<string, unknown>> = [];
-				let itemPreviewed = false;
-				let serializedSize = 0;
-				for (const item of allItems.slice(0, MAX_ITEMS)) {
-					const safe = toSafeItem(item);
-					const safeSize = JSON.stringify(safe).length;
-					if (serializedSize + safeSize > MAX_OUTPUT_CHARS) {
-						// Substitute a bounded preview when even the first item exceeds
-						// the cap, so the agent gets something without blowing the cap.
-						if (items.length === 0) {
-							items.push({
-								jsonPreview: JSON.stringify(item.json).slice(0, MAX_OUTPUT_CHARS),
-								itemTruncated: true,
-							});
-							itemPreviewed = true;
-						}
-						break;
-					}
-					serializedSize += safeSize;
-					items.push(safe);
+
+				if (query) {
+					return {
+						nodeName,
+						query,
+						...runQuery(
+							allItems.map((item) => item.json ?? null),
+							query,
+						),
+					};
 				}
 
+				const { items, truncated } = trimItems(allItems);
 				return {
 					nodeName,
 					status: runs[runs.length - 1]?.executionStatus ?? 'unknown',
 					runs: runs.length,
 					totalItems: allItems.length,
 					items,
-					truncated: itemPreviewed || items.length < allItems.length,
+					truncated,
 				};
 			})
 			.build()

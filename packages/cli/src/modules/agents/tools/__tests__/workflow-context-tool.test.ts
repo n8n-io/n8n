@@ -43,10 +43,10 @@ describe('createWorkflowContextTool', () => {
 		expect(tool.name).toBe('fetch_workflow_context');
 	});
 
-	it('embeds workflow and calling node names in the system instruction', () => {
+	it('describes the other-nodes purpose in its system instruction', () => {
 		const tool = createWorkflowContextTool(makeContext({}));
-		expect(tool.systemInstruction).toContain('Order processing');
-		expect(tool.systemInstruction).toContain('Message an Agent');
+		expect(tool.systemInstruction).toContain('OTHER earlier nodes');
+		expect(tool.systemInstruction).toContain('fetch_workflow_context');
 	});
 
 	it('returns an overview of executed nodes when called without nodeName', async () => {
@@ -187,5 +187,28 @@ describe('createWorkflowContextTool', () => {
 			error: "No execution data found for node 'constructor'.",
 			availableNodes: ['Webhook'],
 		});
+	});
+
+	it('runs a JMESPath query against a node last-run output', async () => {
+		const tool = createWorkflowContextTool(
+			makeContext({ Webhook: [makeTaskData([{ id: 1 }, { id: 2 }])] }),
+		);
+
+		const result = await tool.handler!({ nodeName: 'Webhook', query: '[*].id' }, makeCtx());
+
+		expect(result).toEqual({
+			nodeName: 'Webhook',
+			query: '[*].id',
+			result: [1, 2],
+			truncated: false,
+		});
+	});
+
+	it('returns an error when a query is given without a nodeName', async () => {
+		const tool = createWorkflowContextTool(makeContext({ Webhook: [makeTaskData([{ a: 1 }])] }));
+
+		const result = (await tool.handler!({ query: '[*].a' }, makeCtx())) as { error: string };
+
+		expect(result.error).toContain('Specify a nodeName');
 	});
 });
