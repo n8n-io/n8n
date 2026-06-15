@@ -78,6 +78,7 @@ import {
 } from './webhook-response-headers';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
+import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
 
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {
@@ -510,6 +511,29 @@ export async function executeWebhook(
 			email: user.email,
 			firstName: user.firstName,
 			lastName: user.lastName,
+		};
+	};
+
+	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
+		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
+		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
+		if (result.user) {
+			return {
+				valid: true,
+				user: {
+					id: result.user.id,
+					email: result.user.email,
+					firstName: result.user.firstName,
+					lastName: result.user.lastName,
+				},
+			};
+		}
+		return {
+			valid: false,
+			reason:
+				result.context?.reason === 'verifier_not_registered'
+					? 'verifier_unavailable'
+					: 'invalid_token',
 		};
 	};
 

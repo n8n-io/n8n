@@ -13,6 +13,7 @@ import type {
 	IWebhookData,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
+	N8nOAuth2ValidationResult,
 	WebhookType,
 	Workflow,
 	WorkflowExecuteMode,
@@ -138,6 +139,16 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			throw new UnexpectedError('Cookie auth validation is not available');
 		}
 		return await this.additionalData.validateCookieAuth(cookieValue);
+	}
+
+	async validateN8nOAuth2Token(
+		token: string,
+		resourceUrl: string,
+	): Promise<N8nOAuth2ValidationResult> {
+		if (!this.additionalData.validateN8nOAuth2Token) {
+			throw new UnexpectedError('OAuth2 token validation is not available');
+		}
+		return await this.additionalData.validateN8nOAuth2Token(token, resourceUrl);
 	}
 
 	async getInputConnectionData(

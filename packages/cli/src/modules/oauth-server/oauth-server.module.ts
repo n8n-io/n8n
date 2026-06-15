@@ -2,6 +2,7 @@ import { ProtectedResourceRegistry } from '@/services/protected-resource.registr
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 
 /**
  * Shared OAuth 2.1 authorization server.
@@ -11,12 +12,15 @@ import { Container } from '@n8n/di';
  * documents for the protected resources registered in the
  * `ProtectedResourceRegistry` (e.g. the instance MCP server).
  */
-@BackendModule({ name: 'oauth-server', instanceTypes: ['main'] })
+@BackendModule({ name: 'oauth-server', instanceTypes: ['main', 'webhook'] })
 export class OAuthServerModule implements ModuleInterface {
 	async init() {
-		await import('./oauth.controller');
-		await import('./oauth-consent.controller');
-		await import('./oauth-clients.controller');
+		// Only import controllers in the main process, since the webhook process doesn't run an HTTP server and doesn't need them.
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			await import('./oauth.controller');
+			await import('./oauth-consent.controller');
+			await import('./oauth-clients.controller');
+		}
 
 		// Register the token service as the OAuth token verifier provider, so
 		// protected-resource modules verify bearer tokens through the core
