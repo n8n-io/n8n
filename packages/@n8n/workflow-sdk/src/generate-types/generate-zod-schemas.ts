@@ -1346,7 +1346,7 @@ export function generateSingleVersionSchemaFile(
 	if (needsResolveSchema) {
 		helpers.push('resolveSchema');
 	}
-	if (needsResolveOneOfSchema) {
+	if (needsResolveSchema || needsResolveOneOfSchema) {
 		helpers.push('resolveOneOfSchemas');
 	}
 
@@ -1447,15 +1447,12 @@ export function generateSingleVersionSchemaFile(
 	// Group properties by name, merging displayOptions and nested options for duplicates
 	const propsByName = mergePropertiesByName(filteredProperties);
 	const allPropsArray = Array.from(propsByName.values());
+	// @version is implicit in the file path, so strip it from displayOptions
 	const declarationsByName = collectDeclarationsByName(filteredProperties);
 
 	for (const prop of allPropsArray) {
-		const propLine = generateMergedSchemaLine(
-			prop,
-			declarationsByName.get(prop.name) ?? [prop],
-			allPropsArray,
-			['@version'],
-		);
+		const declarations = declarationsByName.get(prop.name) ?? [prop];
+		const propLine = generateMergedSchemaLine(prop, declarations, allPropsArray, ['@version']);
 		if (propLine) {
 			lines.push(INDENT + propLine);
 		}
@@ -1590,7 +1587,7 @@ export function generateDiscriminatorSchemaFile(
 	if (hasRemainingDisplayOptions || hasConditionalAiInputs) {
 		helpers.push('resolveSchema');
 	}
-	if (needsResolveOneOfSchema) {
+	if (hasRemainingDisplayOptions || hasConditionalAiInputs || needsResolveOneOfSchema) {
 		helpers.push('resolveOneOfSchemas');
 	}
 
@@ -1713,12 +1710,8 @@ export function generateDiscriminatorSchemaFile(
 	const allPropsArray = Array.from(propsByName.values());
 	const declarationsByName = collectDeclarationsByName(props);
 	for (const prop of allPropsArray) {
-		const propLine = generateMergedSchemaLine(
-			prop,
-			declarationsByName.get(prop.name) ?? [prop],
-			allPropsArray,
-			discriminatorKeys,
-		);
+		const declarations = declarationsByName.get(prop.name) ?? [prop];
+		const propLine = generateMergedSchemaLine(prop, declarations, allPropsArray, discriminatorKeys);
 		if (propLine) {
 			lines.push(INDENT.repeat(2) + propLine);
 		}

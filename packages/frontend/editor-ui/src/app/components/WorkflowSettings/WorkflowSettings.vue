@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, h } from 'vue';
-import { useRoute } from 'vue-router';
 import { useToast } from '@/app/composables/useToast';
 import { usePostHog } from '@/app/stores/posthog.store';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
@@ -70,7 +69,6 @@ import WorkflowCustomTelemetryTags from '@/app/components/WorkflowSettings/Workf
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
-const route = useRoute();
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
 const toast = useToast();
@@ -659,7 +657,7 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 
 const saveCustomTelemetryTags = async (customTelemetryTags: ICustomTelemetryTag[]) => {
 	try {
-		await workflowsStore.updateWorkflow(String(route.params.workflowId), {
+		await workflowsStore.updateWorkflow(workflowId.value, {
 			settings: { customTelemetryTags },
 			expectedChecksum: workflowDocumentStore.value.checksum,
 		});
@@ -747,7 +745,7 @@ const saveSettings = async () => {
 	data.expectedChecksum = workflowDocumentStore.value.checksum;
 
 	try {
-		await workflowsStore.updateWorkflow(String(route.params.workflowId), data);
+		await workflowsStore.updateWorkflow(workflowId.value, data);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
 		isLoading.value = false;
