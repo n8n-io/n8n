@@ -70,7 +70,7 @@ For XML, SOAP, CSV, or plain-text payloads, do not use JSON body parameters.
 {
   "sendBody": true,
   "contentType": "raw",
-  "body": "<?xml version=\"1.0\"?><soap:Envelope>...</soap:Envelope>",
+  "body": "<?xml version='1.0'?><soap:Envelope>...</soap:Envelope>",
   "rawContentType": "text/xml"
 }
 
