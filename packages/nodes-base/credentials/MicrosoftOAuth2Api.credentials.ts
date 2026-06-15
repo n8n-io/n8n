@@ -37,7 +37,7 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',
-			default: 'response_mode=query',
+			default: 'response_mode=query&prompt=select_account',
 		},
 		{
 			displayName: 'Authentication',

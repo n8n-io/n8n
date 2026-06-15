@@ -509,7 +509,7 @@ Team ownership mappings in `CODEOWNERS`:
 | `blacksmith-2vcpu-ubuntu-2204`      | 2    | Standard builds, E2E shards |
 | `blacksmith-4vcpu-ubuntu-2204`      | 4    | Unit tests, typecheck, lint |
 | `blacksmith-8vcpu-ubuntu-2204`      | 8    | Heavy parallel workloads    |
-| `blacksmith-4vcpu-ubuntu-2204-arm`  | 4    | ARM64 Docker builds         |
+| `blacksmith-8vcpu-ubuntu-2204-arm`  | 8    | ARM64 Docker builds         |
 
 ### Selection Guidelines
 

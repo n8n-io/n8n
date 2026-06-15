@@ -99,6 +99,7 @@ describe('WorkflowPublicationApplier', () => {
 		workflowPublishedVersionRepository.setPublishedVersion.mockResolvedValue(undefined);
 		workflowHistoryRepository.findOneBy.mockResolvedValue(newVersion);
 		workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([]);
+		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(new Set());
 		workflowTriggerActivator.activate.mockResolvedValue(undefined);
 		workflowTriggerActivator.deactivate.mockResolvedValue(undefined);
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
@@ -164,6 +165,46 @@ describe('WorkflowPublicationApplier', () => {
 			newVersion,
 			new Set(['b']),
 		);
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
+	});
+
+	test('reconciles by registering desired non-webhook triggers missing from memory', async () => {
+		// Same version on both sides: a pure version diff is empty, but a live
+		// trigger is not actually registered, so it must be re-added.
+		const trigger = triggerNode('a');
+		setTriggerSets([trigger], [{ ...trigger }]);
+		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(
+			new Set(['a']),
+		);
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({ type: 'completed' });
+		expect(workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds).toHaveBeenCalledWith(
+			'wf-1',
+			[trigger],
+		);
+		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+		expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'wf-1' }),
+			newVersion,
+			new Set(['a']),
+		);
+	});
+
+	test('is a no-op when the version is unchanged and all non-webhook triggers are registered', async () => {
+		const trigger = triggerNode('a');
+		setTriggerSets([trigger], [{ ...trigger }]);
+		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(new Set());
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({ type: 'completed' });
+		expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
