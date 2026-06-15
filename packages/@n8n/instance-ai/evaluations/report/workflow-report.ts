@@ -817,7 +817,9 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			const answerByQId = new Map<string, string>();
 			for (const a of interaction.answers ?? []) {
 				const selected = a.selectedOptions.join(', ');
-				const text = [selected, a.customText].filter(Boolean).join(' — ');
+				// A skipped answer is a real response — surface it so it's not mistaken
+				// for an unanswered question (mirrors the judge-text transcript).
+				const text = a.skipped ? '(skipped)' : [selected, a.customText].filter(Boolean).join(' — ');
 				if (text) answerByQId.set(a.questionId, text);
 			}
 			const lines = interaction.questions
