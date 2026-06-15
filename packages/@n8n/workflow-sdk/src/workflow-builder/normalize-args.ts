@@ -116,6 +116,7 @@ const RESERVED_SETTINGS_KEYS: ReadonlySet<string> = new Set([
 	'pinData',
 	'variables',
 	'registry',
+	'settings',
 ]);
 
 const DEFAULT_AI_WORKFLOW_NAME = 'AI Generated Workflow';
@@ -391,6 +392,10 @@ export function applyConnections(
 			);
 		}
 
+		function isConnectionLike(val: unknown): val is IConnection {
+			return isPlainObject(val) && typeof val.node === 'string';
+		}
+
 		for (const [connType, outputs] of Object.entries(nodeConns as Record<string, unknown>)) {
 			// Only `main` is currently supported by the builder. Other types
 			// are silently ignored to keep the surface stable.
@@ -402,9 +407,8 @@ export function applyConnections(
 				if (!Array.isArray(slot)) continue;
 
 				for (const target of slot) {
-					if (!isPlainObject(target)) continue;
-					const conn = target as unknown as IConnection;
-					if (typeof conn.node !== 'string') continue;
+					if (!isConnectionLike(target)) continue;
+					const conn = target;
 					const targetInstance = nameToInstance.get(conn.node);
 					if (!targetInstance) {
 						throw new TypeError(
