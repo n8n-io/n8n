@@ -175,7 +175,6 @@
       "yaml@<=2.8.3": "2.8.3",
       "axios": "1.16.1",
       "fast-xml-parser": "5.7.2",
-      "hono": "4.12.21",
       "postcss@<=8.5.9": "8.5.10",
       "@anthropic-ai/sdk@<=0.91.1": "0.91.1",
       "uuid@<=13.0.1": "13.0.1",
@@ -187,7 +186,8 @@
       "@tootallnate/once@2": "2.0.1",
       "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
       "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
-      "langsmith": "0.6.0"
+      "langsmith": "0.6.0",
+      "hono": "4.12.25"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
