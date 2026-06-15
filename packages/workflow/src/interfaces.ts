@@ -1929,7 +1929,7 @@ export interface INodeListSearchItems extends INodePropertyOptions {
 
 export interface INodeListSearchResult {
 	results: INodeListSearchItems[];
-	paginationToken?: unknown;
+	paginationToken?: string;
 }
 
 export interface INodePropertyCollection {
@@ -3175,8 +3175,7 @@ export interface IWorkflowExecutionDataProcess {
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
-	 * When true, forces the execution data to be present in the run data
-	 * ignores N8N_MINIMIZE_EXECUTION_DATA_FETCHING environment variable if set
+	 * When true, forces the execution data to be present in the run data.
 	 */
 	forceFullExecutionData?: boolean;
 	/**

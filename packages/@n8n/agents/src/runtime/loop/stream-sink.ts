@@ -144,6 +144,12 @@ export class StreamSink implements RunOutputSink<void> {
 	async finishComplete(emission: CompleteEmission): Promise<void> {
 		const { list, options, finishReason, usage, structuredOutput } = emission;
 		const costUsage = this.services.applyCost(usage);
+
+		await this.services.saveToMemory(list, options);
+		await this.services.maybeGenerateTitle(list, options);
+		await this.services.cleanupRun();
+		await this.services.flushTelemetry(options);
+
 		await this.guard.write({
 			type: 'finish',
 			finishReason,
@@ -151,16 +157,8 @@ export class StreamSink implements RunOutputSink<void> {
 			model: this.services.modelId,
 			...(structuredOutput !== undefined && { structuredOutput }),
 		});
-
-		try {
-			await this.services.saveToMemory(list, options);
-			await this.services.maybeGenerateTitle(list, options);
-			await this.services.cleanupRun();
-			await this.services.flushTelemetry(options);
-			this.services.updateState({ status: 'success', messageList: list.serialize() });
-			this.services.emitAgentEnd(list.responseDelta());
-		} finally {
-			await this.guard.close();
-		}
+		this.services.updateState({ status: 'success', messageList: list.serialize() });
+		this.services.emitAgentEnd(list.responseDelta());
+		await this.guard.close();
 	}
 }

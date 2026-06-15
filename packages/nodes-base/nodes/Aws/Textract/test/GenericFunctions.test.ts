@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { ICredentialTestFunctions } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 jest.mock('aws4', () => ({
 	sign: jest.fn(),
@@ -44,7 +44,7 @@ describe('AWS Textract Generic Functions', () => {
 			const credentials = { ...baseCredentials, region };
 
 			await expect(validateCredentials.call(context, credentials, 'textract')).rejects.toThrow(
-				ApplicationError,
+				UserError,
 			);
 			await expect(validateCredentials.call(context, credentials, 'textract')).rejects.toThrow(
 				'Unsupported AWS region',

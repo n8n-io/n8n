@@ -8,10 +8,15 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
+import { defineComponent, provide, shallowRef } from 'vue';
+import { createComponentRenderer } from '@/__tests__/render';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowExecutionStateStore,
 	getWorkflowExecutionStateStoreId,
 	disposeWorkflowExecutionStateStore,
+	injectWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import {
 	createWorkflowDocumentId,
@@ -1394,6 +1399,52 @@ describe('workflowExecutionState.store', () => {
 
 			expect(executionStateStore.executionRunningByNodeId.size).toBe(0);
 			expect(executionStateStore.executionWaitingForNextByNodeId.size).toBe(0);
+		});
+	});
+
+	describe('injectWorkflowExecutionStateStore', () => {
+		function renderWithInjector({ providedWorkflowId }: { providedWorkflowId?: string }) {
+			let injected!: ReturnType<typeof injectWorkflowExecutionStateStore>;
+
+			// inject() only resolves provides from ancestor components, so the
+			// provide must live in a parent component.
+			const ChildComponent = defineComponent({
+				setup() {
+					injected = injectWorkflowExecutionStateStore();
+				},
+				template: '<div />',
+			});
+
+			const ParentComponent = defineComponent({
+				components: { ChildComponent },
+				setup() {
+					if (providedWorkflowId) {
+						const scopedDocumentStore = useWorkflowDocumentStore(
+							createWorkflowDocumentId(providedWorkflowId, 'scoped'),
+						);
+						provide(WorkflowDocumentStoreKey, shallowRef(scopedDocumentStore));
+					}
+				},
+				template: '<ChildComponent />',
+			});
+
+			createComponentRenderer(ParentComponent)();
+
+			return injected;
+		}
+
+		it('resolves the execution-state store of the provided workflow document', () => {
+			const injected = renderWithInjector({ providedWorkflowId: 'scoped-workflow' });
+
+			expect(injected.value.documentId).toBe(createWorkflowDocumentId('scoped-workflow', 'scoped'));
+		});
+
+		it('falls back to the global workflow id when nothing is provided', () => {
+			useWorkflowsStore().setWorkflowId('global-workflow');
+
+			const injected = renderWithInjector({});
+
+			expect(injected.value.documentId).toBe(createWorkflowDocumentId('global-workflow'));
 		});
 	});
 });

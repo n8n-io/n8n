@@ -749,7 +749,7 @@ export class ToolCallExecutor {
 		return { outcome: 'suspended', payload: toolResult.payload, resumeSchema };
 	}
 
-	/** Emit a successful ToolExecutionEnd, apply toModelOutput/toMessage, build the success outcome. */
+	/** Apply toModelOutput, emit ToolExecutionEnd, build the success outcome. */
 	private buildSuccessOutcome(
 		params: ProcessToolCallParams,
 		builtTool: BuiltTool,
@@ -757,6 +757,17 @@ export class ToolCallExecutor {
 		toolResult: unknown,
 	): ToolCallOutcome {
 		const { toolCallId, toolName, list } = params;
+
+		// Apply toModelOutput transform before emitting the success event.
+		// If the transform throws, treat it as a tool error so processToolCall
+		// never re-throws (preserving the "never re-throws" contract).
+		let modelResult: unknown;
+		try {
+			modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
+		} catch (error) {
+			return this.toolError(params, error);
+		}
+
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
 			toolCallId,
@@ -764,10 +775,6 @@ export class ToolCallExecutor {
 			result: toolResult,
 			isError: false,
 		});
-
-		// Apply toModelOutput transform: the raw result goes to history/events,
-		// but the transformed version is what the LLM sees as the tool result.
-		const modelResult = builtTool.toModelOutput ? builtTool.toModelOutput(toolResult) : toolResult;
 
 		list.setToolCallResult(toolCallId, toJsonValue(modelResult));
 
