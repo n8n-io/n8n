@@ -1,3 +1,16 @@
+## [2.26.4](https://github.com/n8n-io/n8n/compare/n8n@2.26.3...n8n@2.26.4) (2026-06-15)
+
+
+### Bug Fixes
+
+* **core:** Prevent nodes from throwing `context.getNodeParameter is not a function` when n8n is installed via npm ([#32186](https://github.com/n8n-io/n8n/issues/32186)) ([31b9f90](https://github.com/n8n-io/n8n/commit/31b9f90701bf8402b6a2850cf88e4dd42f9e1289))
+
+
+### Features
+
+* Reduces delay in displaying AI Assistant workflow preview examples ([#32212](https://github.com/n8n-io/n8n/issues/32212)) ([e6ec246](https://github.com/n8n-io/n8n/commit/e6ec246ee48e36f268938ce055d54a1fddf2a90d))
+
+
 ## [2.26.3](https://github.com/n8n-io/n8n/compare/n8n@2.26.2...n8n@2.26.3) (2026-06-11)
 
 
