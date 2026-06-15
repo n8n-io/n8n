@@ -1,3 +1,4 @@
+import { ref } from 'vue';
 import { setActivePinia, getActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
@@ -107,7 +108,7 @@ describe('useExecutionPreviewDocument', () => {
 		await preview.load();
 
 		expect(preview.documentStore.value?.documentId).toBe(
-			createExecutionPreviewDocumentId(WORKFLOW_ID),
+			createExecutionPreviewDocumentId(WORKFLOW_ID, 'v1'),
 		);
 		expect(preview.documentStore.value?.allNodes.map((node) => node.name)).toEqual(['Node A']);
 		expect(preview.execution.value?.id).toBe(EXECUTION_ID);
@@ -130,7 +131,7 @@ describe('useExecutionPreviewDocument', () => {
 		expect(editorStateStore.activeExecution?.id).toBe('editor-execution');
 
 		const previewStateStore = useWorkflowExecutionStateStore(
-			createExecutionPreviewDocumentId(WORKFLOW_ID),
+			createExecutionPreviewDocumentId(WORKFLOW_ID, 'v1'),
 		);
 		expect(previewStateStore.displayedExecutionId).toBe(EXECUTION_ID);
 	});
@@ -190,7 +191,7 @@ describe('useExecutionPreviewDocument', () => {
 		const preview = useExecutionPreviewDocument({ executionId: () => EXECUTION_ID });
 		await preview.load();
 
-		const previewDocumentId = createExecutionPreviewDocumentId(WORKFLOW_ID);
+		const previewDocumentId = createExecutionPreviewDocumentId(WORKFLOW_ID, 'v1');
 		const pinia = getActivePinia()!;
 
 		expect(pinia.state.value[getWorkflowDocumentStoreId(previewDocumentId)]).toBeDefined();
@@ -244,5 +245,52 @@ describe('useExecutionPreviewDocument', () => {
 
 		const statesAfter = Object.keys(pinia.state.value).sort();
 		expect(statesAfter).toEqual(statesBefore);
+	});
+
+	it('gives each executed workflow version its own document store and disposes them all', async () => {
+		const pinia = getActivePinia()!;
+
+		// Two executions of the same workflow that ran against different versions
+		// — and therefore different node sets.
+		workflowsStore.getExecution = vi.fn(async (id: string) =>
+			id === 'execution-v2'
+				? createExecution({
+						id: 'execution-v2',
+						workflowData: createTestWorkflow({
+							id: WORKFLOW_ID,
+							versionId: 'v2',
+							nodes: [createTestNode({ name: 'Node B' })],
+							connections: {},
+						}),
+					})
+				: createExecution(),
+		);
+
+		const executionId = ref(EXECUTION_ID);
+		const preview = useExecutionPreviewDocument({ executionId });
+
+		await preview.load();
+		expect(preview.documentStore.value?.documentId).toBe(
+			createExecutionPreviewDocumentId(WORKFLOW_ID, 'v1'),
+		);
+
+		// Switching to an execution of a different version hydrates a distinct
+		// store rather than re-shaping the v1 one.
+		executionId.value = 'execution-v2';
+		await preview.load();
+		expect(preview.documentStore.value?.documentId).toBe(
+			createExecutionPreviewDocumentId(WORKFLOW_ID, 'v2'),
+		);
+		expect(preview.documentStore.value?.allNodes.map((node) => node.name)).toEqual(['Node B']);
+
+		const idV1 = createExecutionPreviewDocumentId(WORKFLOW_ID, 'v1');
+		const idV2 = createExecutionPreviewDocumentId(WORKFLOW_ID, 'v2');
+		expect(pinia.state.value[getWorkflowDocumentStoreId(idV1)]).toBeDefined();
+		expect(pinia.state.value[getWorkflowDocumentStoreId(idV2)]).toBeDefined();
+
+		// dispose() releases every version's document store, not just the last.
+		preview.dispose();
+		expect(pinia.state.value[getWorkflowDocumentStoreId(idV1)]).toBeUndefined();
+		expect(pinia.state.value[getWorkflowDocumentStoreId(idV2)]).toBeUndefined();
 	});
 });

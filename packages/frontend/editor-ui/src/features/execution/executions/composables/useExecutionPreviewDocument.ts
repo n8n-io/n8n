@@ -10,10 +10,11 @@ import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormaliza
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createExecutionPreviewDocumentId,
+	createExecutionPreviewDocumentVersion,
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
-	EXECUTION_PREVIEW_VERSION,
 	useWorkflowDocumentStore,
+	type WorkflowDocumentId,
 	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import {
@@ -65,6 +66,13 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 	 * `dispose()`, except ids the editor's own state store still references.
 	 */
 	const loadedExecutionIds = new Set<string>();
+
+	/**
+	 * Every preview document id this session has hydrated — one per distinct
+	 * executed workflow version (executions of the same version share a store).
+	 * All are released in `dispose()`.
+	 */
+	const loadedDocumentIds = new Set<WorkflowDocumentId>();
 	let latestLoadRequestId = 0;
 
 	/**
@@ -115,7 +123,11 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 			}
 
 			const workflowId = data.workflowData.id;
-			const documentId = createExecutionPreviewDocumentId(workflowId);
+			// Key by the executed workflow version so executions that ran against
+			// different versions (different nodes) never share — and re-shape — one
+			// document store.
+			const documentVersion = createExecutionPreviewDocumentVersion(data.workflowData.versionId);
+			const documentId = createExecutionPreviewDocumentId(workflowId, data.workflowData.versionId);
 
 			if (import.meta.env.DEV && documentId === createWorkflowDocumentId(workflowId)) {
 				throw new Error(
@@ -125,19 +137,21 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 
 			// Hydrate the scoped document from the workflow snapshot embedded in
 			// the execution (the workflow as it was when it ran — not `latest`).
-			// The synthetic versionId satisfies hydrate()'s id/version validation,
-			// same pattern as the workflow-diff feature.
+			// The synthetic versionId mirrors the document's version segment so it
+			// satisfies hydrate()'s id/version validation, same pattern as the
+			// workflow-diff feature.
 			const scopedDocumentStore = useWorkflowDocumentStore(documentId);
 			const { nodes, connections } = normalizeWorkflowData(data.workflowData);
 			scopedDocumentStore.hydrate({
 				...data.workflowData,
 				nodes,
 				connections,
-				versionId: EXECUTION_PREVIEW_VERSION,
+				versionId: documentVersion,
 			} as IWorkflowDb);
 
 			useWorkflowExecutionStateStore(documentId).setWorkflowExecutionData(data);
 			loadedExecutionIds.add(executionId);
+			loadedDocumentIds.add(documentId);
 
 			// Production executions never show pin data (parity with openExecution)
 			if (!['manual', 'evaluation'].includes(data.mode)) {
@@ -193,25 +207,29 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 	function dispose() {
 		latestLoadRequestId += 1;
 
-		const scopedDocumentStore = documentStore.value;
-		if (scopedDocumentStore) {
-			const editorReferencedIds = getEditorReferencedExecutionIds(scopedDocumentStore.workflowId);
+		// Every preview document shares the executions-tab workflow id, so any
+		// loaded store resolves the editor-referenced ids we must not release.
+		const workflowId = documentStore.value?.workflowId;
+		if (workflowId !== undefined) {
+			const editorReferencedIds = getEditorReferencedExecutionIds(workflowId);
 			for (const executionId of loadedExecutionIds) {
 				if (editorReferencedIds.has(executionId)) {
 					continue;
 				}
 				disposeExecutionDataStore(useExecutionDataStore(createExecutionDataId(executionId)));
 			}
-
-			const documentId = scopedDocumentStore.documentId;
-			// NDV store first: its setup instantiates the document and
-			// execution-state stores for its id, so disposing it afterwards
-			// would re-create what was just removed.
-			disposeNDVStore(useNDVStore(documentId));
-			disposeWorkflowExecutionStateStore(useWorkflowExecutionStateStore(documentId));
-			disposeWorkflowDocumentStore(scopedDocumentStore);
 		}
 
+		// One document scope per executed version. NDV store first: its setup
+		// instantiates the document and execution-state stores for its id, so
+		// disposing it afterwards would re-create what was just removed.
+		for (const documentId of loadedDocumentIds) {
+			disposeNDVStore(useNDVStore(documentId));
+			disposeWorkflowExecutionStateStore(useWorkflowExecutionStateStore(documentId));
+			disposeWorkflowDocumentStore(useWorkflowDocumentStore(documentId));
+		}
+
+		loadedDocumentIds.clear();
 		loadedExecutionIds.clear();
 		documentStore.value = null;
 		execution.value = null;

@@ -119,18 +119,40 @@ export function createWorkflowDocumentId(
 }
 
 /**
- * Synthetic version token for the execution preview's workflow document.
- * The preview hydrates the workflow snapshot embedded in an execution, which
- * may differ from `latest` — keying by this token guarantees the preview can
- * never collide with the editor's `{workflowId}@latest` document store.
+ * Synthetic version-token namespace for an execution preview's workflow
+ * document. The preview hydrates the workflow snapshot embedded in an
+ * execution — the workflow *as it ran* — which can differ node-for-node
+ * between executions as the workflow evolves. Keying by this namespace both
+ * guarantees the preview can never collide with the editor's
+ * `{workflowId}@latest` document, and, combined with the snapshot's own
+ * version below, gives each executed version its own document store.
  */
 export const EXECUTION_PREVIEW_VERSION = 'execution-preview';
 
 /**
+ * Builds the version token for an execution-preview document. Includes the
+ * executed workflow's version so distinct versions get distinct stores —
+ * switching between executions of different versions then never re-hydrates
+ * (and re-shapes) a shared store. Falls back to the bare namespace for legacy
+ * executions whose snapshot carries no versionId.
+ */
+export function createExecutionPreviewDocumentVersion(workflowVersionId?: string): string {
+	return workflowVersionId
+		? `${EXECUTION_PREVIEW_VERSION}/${workflowVersionId}`
+		: EXECUTION_PREVIEW_VERSION;
+}
+
+/**
  * The only sanctioned constructor for execution-preview document ids.
  */
-export function createExecutionPreviewDocumentId(workflowId: string): WorkflowDocumentId {
-	return createWorkflowDocumentId(workflowId, EXECUTION_PREVIEW_VERSION);
+export function createExecutionPreviewDocumentId(
+	workflowId: string,
+	workflowVersionId?: string,
+): WorkflowDocumentId {
+	return createWorkflowDocumentId(
+		workflowId,
+		createExecutionPreviewDocumentVersion(workflowVersionId),
+	);
 }
 
 /**
