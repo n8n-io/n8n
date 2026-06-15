@@ -360,6 +360,7 @@ describe('mapGroupsToVueFlowNodes', () => {
 			getGroupVisualOffset: () => ({ x: 50, y: 80 }),
 			isGroupCollapsed: () => false,
 			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
 		});
 
 		expect(out[0].position).toEqual({
