@@ -160,6 +160,7 @@ defineExpose({ focusInput });
 		</N8nInput>
 
 		<N8nText
+			v-if="countLabel"
 			:class="[$style.count, { [$style.countError]: !!regexError }]"
 			color="text-light"
 			size="small"

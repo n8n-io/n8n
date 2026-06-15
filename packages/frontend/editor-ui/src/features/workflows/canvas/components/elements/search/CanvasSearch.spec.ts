@@ -75,6 +75,11 @@ describe('CanvasSearch', () => {
 		expect(emitted('close')).toHaveLength(1);
 	});
 
+	it('hides the match count (so the panel can shrink) when the query is empty', () => {
+		const { queryByTestId } = renderComponent({ props: { modelValue: '' } });
+		expect(queryByTestId('canvas-search-count')).toBeNull();
+	});
+
 	it('shows "0 of N" before navigation has started', () => {
 		const { getByTestId } = renderComponent({
 			props: { modelValue: 'http', matchCount: 3, activeMatchIndex: -1 },
