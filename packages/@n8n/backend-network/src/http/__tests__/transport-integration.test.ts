@@ -2,9 +2,9 @@ import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import dns from 'node:dns';
 import http from 'node:http';
-import type { AddressInfo, LookupFunction } from 'node:net';
-import { promisify } from 'node:util';
+import type { LookupFunction } from 'node:net';
 
+import { type LocalServer, startServer } from './local-server';
 import { makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
 import { getBeforeRedirectFn, setAxiosAgents } from '../axios/utils';
 import { buildNodeAgents } from '../node-agents';
@@ -14,35 +14,6 @@ import { buildNodeAgents } from '../node-agents';
 // agents produced by `buildNodeAgents` / `setAxiosAgents` — exactly the way
 // axios uses them — so they assert observable routing behaviour rather than
 // implementation details.
-
-interface LocalServer {
-	url: string;
-	hostWithPort: string;
-	captured: string[];
-	clear: () => void;
-	close: () => Promise<void>;
-}
-
-async function startServer(handler: http.RequestListener): Promise<LocalServer> {
-	const captured: string[] = [];
-	const server = http.createServer((req, res) => {
-		captured.push(req.url ?? '');
-		handler(req, res);
-	});
-	// Proxied (non-CONNECT) HTTP requests arrive as normal requests on the proxy.
-	await new Promise<void>((resolve, reject) => {
-		server.listen(0, '127.0.0.1', resolve);
-		server.on('error', reject);
-	});
-	const { port } = server.address() as AddressInfo;
-	return {
-		url: `http://127.0.0.1:${port}`,
-		hostWithPort: `127.0.0.1:${port}`,
-		captured,
-		clear: () => (captured.length = 0),
-		close: async () => await promisify(server.close.bind(server))(),
-	};
-}
 
 async function httpGetWithAgent(url: string, agent: http.Agent): Promise<string> {
 	return await new Promise((resolve, reject) => {

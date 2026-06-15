@@ -38,7 +38,7 @@ export interface NodeHttpClient {
 	 * Performs an outbound HTTP request from an `IHttpRequestOptions` descriptor,
 	 * applying this client's SSRF policy, user-agent defaults and proxy routing.
 	 *
-	 * Returns the parsed body, or the full response when `options.returnFullResponse` is set.
+	 * @returns the parsed body, or the full response when `options.returnFullResponse` is set.
 	 */
 	request(options: IHttpRequestOptions): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
 

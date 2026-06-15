@@ -1,9 +1,8 @@
-import http from 'node:http';
-import type { AddressInfo } from 'node:net';
-import { promisify } from 'node:util';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge, SsrfProtectionService } from '../../../ssrf';
+import { makeSsrfBridge } from '../../../ssrf/__tests__/mock-ssrf-bridge';
+import { type LocalServer, startServer } from '../../__tests__/local-server';
 import { OutboundHttpFactory } from '../factory';
 
 // End-to-end redirect SSRF tests. Unlike `factory.test.ts` these do NOT mock
@@ -11,35 +10,19 @@ import { OutboundHttpFactory } from '../factory';
 // local server issues a redirect and we assert that the redirect target is
 // validated — i.e. a 30x cannot smuggle the request past SSRF protection.
 
-interface LocalServer {
-	url: string;
-	captured: string[];
-	close: () => Promise<void>;
-}
-
 async function startRedirectServer(): Promise<LocalServer> {
-	const captured: string[] = [];
-	let port = 0;
-	const server = http.createServer((req, res) => {
-		captured.push(req.url ?? '');
+	let serverUrl = '';
+	const server = await startServer((req, res) => {
 		if (req.url === '/start') {
-			res.writeHead(302, { Location: `http://127.0.0.1:${port}/internal` });
+			res.writeHead(302, { Location: `${serverUrl}/internal` });
 			res.end();
 			return;
 		}
 		res.writeHead(200, { 'content-type': 'text/plain' });
 		res.end(`reached:${req.url}`);
 	});
-	await new Promise<void>((resolve, reject) => {
-		server.listen(0, '127.0.0.1', resolve);
-		server.on('error', reject);
-	});
-	port = (server.address() as AddressInfo).port;
-	return {
-		url: `http://127.0.0.1:${port}`,
-		captured,
-		close: async () => await promisify(server.close.bind(server))(),
-	};
+	serverUrl = server.url;
+	return server;
 }
 
 /**
@@ -48,7 +31,7 @@ async function startRedirectServer(): Promise<LocalServer> {
  */
 function makeBridge(blockedPath: string): SsrfBridge {
 	const error = new Error(`SSRF: blocked ${blockedPath}`);
-	return mock<SsrfBridge>({
+	return makeSsrfBridge({
 		validateUrl: vi.fn(async (url: string | URL) => {
 			const href = typeof url === 'string' ? url : url.href;
 			return href.includes(blockedPath)
