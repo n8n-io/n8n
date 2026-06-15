@@ -231,10 +231,13 @@ export interface WorkflowTestCase {
 	 * Reproduce a real conversation: the harness fetches this thread's trace
 	 * from LangSmith at run time, restores everything up to the last user
 	 * message as the seed, and sends that last message live. The case commits
-	 * only the thread id — no conversation content lives in the repo. Supplies
-	 * the live turn itself, so `conversation` is optional — when present it
-	 * continues from the live turn (see `conversation`). Transient: runnable
-	 * only while the trace lives (~14-day base retention).
+	 * only the thread id — no conversation content lives in the repo. The
+	 * workspace holding the thread is auto-discovered (no need to say prod vs
+	 * staging, no extra env vars); `project` overrides the source project name
+	 * (defaults to `instance-ai`). Supplies the live turn itself,
+	 * so `conversation` is optional — when present it continues from the live
+	 * turn (see `conversation`). Transient: runnable only while the trace lives
+	 * (~14-day base retention).
 	 */
 	seedThread?: { threadId: string; project?: string };
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */

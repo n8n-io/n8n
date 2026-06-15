@@ -71,9 +71,10 @@ const workflowTestCaseObjectSchema = z.object({
 	 * Reproduce a real conversation from its LangSmith trace, fetched at run
 	 * time: everything up to the last user message is restored as the seed,
 	 * the last message is sent live. The case commits only the thread id — no
-	 * conversation content in the repo. Provides its own live turn, so
-	 * `conversation` must be omitted. `project` overrides the LangSmith project
-	 * the source trace lives in (default: instance-ai / SEED_LANGSMITH_PROJECT).
+	 * conversation content in the repo. The workspace is auto-discovered (no
+	 * env vars); `project` overrides the source project name (default:
+	 * instance-ai). Supplies its own live turn, so `conversation` is optional —
+	 * when present it continues after the live turn.
 	 */
 	seedThread: z
 		.object({ threadId: z.string().min(1), project: z.string().min(1).optional() })

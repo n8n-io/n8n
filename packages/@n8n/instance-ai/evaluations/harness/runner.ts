@@ -504,8 +504,11 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					(config.conversation?.length ?? 0) > 0
 						? ` + ${String(config.conversation!.length)} continuation turn(s)`
 						: '';
+				const wsLabel = reconstructed.sourceWorkspace
+					? `${reconstructed.sourceWorkspace}/${reconstructed.sourceProject}`
+					: reconstructed.sourceProject;
 				logger.info(
-					`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s)${contSuffix} [project ${reconstructed.sourceProject}]${config.laneTag ?? ''}`,
+					`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s)${contSuffix} [${wsLabel}]${config.laneTag ?? ''}`,
 				);
 			} else if (config.seedFile) {
 				seed = loadConversationSeed(config.seedFile);

@@ -16,6 +16,9 @@ vi.mock('../../src/workflow-builder/parse-validate', () => ({
 
 import { reconstructSeedFromThread } from '../harness/langsmith-seed';
 
+// Discovery test doubles return fixed, already-resolved workspace lists.
+/* eslint-disable @typescript-eslint/promise-function-async */
+
 interface FakeRun {
 	id: string;
 	run_type: 'chain' | 'tool';
@@ -199,5 +202,62 @@ describe('reconstructSeedFromThread', () => {
 		];
 		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
 		expect(result.liveTurn).toBe('Real follow-up');
+	});
+});
+
+describe('reconstructSeedFromThread — workspace auto-discovery', () => {
+	const seedableRuns: FakeRun[] = [
+		{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
+		turn('r2', 30, 'Change the schedule'),
+	];
+
+	const twoWorkspaces = [
+		{ id: 'staging-id', name: 'Staging' },
+		{ id: 'prod-id', name: 'Prod' },
+	];
+
+	it('finds the thread in whichever workspace holds it and tags the source', async () => {
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, undefined, {
+			listWorkspaces: () => Promise.resolve(twoWorkspaces),
+			// Only Prod has the thread; Staging is empty.
+			clientForWorkspace: (id: string) => fakeClient(id === 'prod-id' ? seedableRuns : []),
+			ambientClient: () => fakeClient([]),
+		});
+		expect(result.sourceWorkspace).toBe('Prod');
+		expect(result.liveTurn).toBe('Change the schedule');
+	});
+
+	it('falls back to the ambient client when no workspaces can be listed', async () => {
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, undefined, {
+			listWorkspaces: () => Promise.resolve([]),
+			clientForWorkspace: () => fakeClient([]),
+			ambientClient: () => fakeClient(seedableRuns),
+		});
+		expect(result.liveTurn).toBe('Change the schedule');
+		expect(result.sourceWorkspace).toBeUndefined();
+	});
+
+	it('throws listing the workspaces tried when the thread is in none', async () => {
+		await expect(
+			reconstructSeedFromThread({ threadId: 'gone' }, undefined, {
+				listWorkspaces: () => Promise.resolve(twoWorkspaces),
+				clientForWorkspace: () => fakeClient([]),
+				ambientClient: () => fakeClient([]),
+			}),
+		).rejects.toThrow(/not found in project .* across 2 workspace\(s\): Staging, Prod/);
+	});
+
+	it('propagates a found-but-not-seedable error instead of trying the next workspace', async () => {
+		const oneTurn: FakeRun[] = [turn('r1', 1, 'Only one user turn')];
+		await expect(
+			reconstructSeedFromThread({ threadId: 'th1' }, undefined, {
+				// Staging HAS the thread but it isn't seedable (<2 turns) — must not
+				// be masked by trying Prod.
+				listWorkspaces: () => Promise.resolve(twoWorkspaces),
+				clientForWorkspace: (id: string) =>
+					fakeClient(id === 'staging-id' ? oneTurn : seedableRuns),
+				ambientClient: () => fakeClient([]),
+			}),
+		).rejects.toThrow(/need ≥2 to seed/);
 	});
 });

@@ -2,10 +2,11 @@
 // Reconstruct a conversation seed from a LangSmith trace, at run time.
 //
 // A `seedThread` test case carries only a thread id — no conversation content
-// lives in the repo. At build time we pull that thread's runs from LangSmith,
-// rebuild the message log (user/assistant text + resolved tool-call blocks,
-// deduped across suspend/resume), and split at the LAST genuine user turn:
-// everything before it is the restorable seed, the last turn is sent live.
+// lives in the repo. At build time we find which LangSmith workspace holds the
+// thread (auto-discovered across the key's accessible workspaces), pull its
+// runs, rebuild the message log (user/assistant text + resolved tool-call
+// blocks, deduped across suspend/resume), and split at the LAST genuine user
+// turn: everything before it is the restorable seed, the last turn is sent live.
 // The seed's workflow is compiled from the build/patch tool's captured SDK
 // code as of the seed boundary — i.e. the workflow exactly as the live turn
 // first saw it (no "revert before export" step).
@@ -21,28 +22,73 @@ import type { Run } from 'langsmith/schemas';
 import type { ConversationSeed } from './conversation-seed';
 import { parseAndValidate } from '../../src/workflow-builder/parse-validate';
 
-/** LangSmith project the source thread was traced to. The n8n backend traces
- *  instance-ai conversations here regardless of the eval run's own project. */
-const DEFAULT_SOURCE_PROJECT = process.env.SEED_LANGSMITH_PROJECT ?? 'instance-ai';
+/** Default project that instance-ai conversations are traced to (same name in
+ *  every workspace). Override per case with `seedThread.project` if it differs. */
+const DEFAULT_SOURCE_PROJECT = 'instance-ai';
 
 const WORKFLOW_BUILD_TOOLS = new Set(['build-workflow', 'patch-workflow', 'submit-workflow']);
 
 /**
- * LangSmith client for READING the source trace. Deliberately separate from the
- * eval's own (ambient) tracing client: a source thread can live in a different
- * workspace than the eval writes to — e.g. seeding from a **prod** conversation
- * while the eval traces to **staging**. Set `SEED_LANGSMITH_API_KEY` (and, only
- * if that workspace is on a different LangSmith deployment/region,
- * `SEED_LANGSMITH_ENDPOINT`) to point reads at prod; the eval keeps using
- * `LANGSMITH_API_KEY` for its own traces/datasets, so nothing is ever written
- * to the source workspace. Falls back to the ambient client when unset.
+ * A source thread can live in a different LangSmith **workspace** than the eval
+ * writes to — e.g. seeding from **prod** while the eval traces to **staging**.
+ * We don't make the user declare which: a LangSmith personal access token
+ * typically spans several workspaces, so we enumerate them and find whichever
+ * holds the thread (the workspace is selected per request via the `x-tenant-id`
+ * header). Reads use the eval's ambient `LANGSMITH_API_KEY`; the eval still
+ * writes its own traces/datasets to its own workspace, so nothing is ever
+ * written to the source workspace. No extra configuration required.
  */
-function createSeedReadClient(): Client {
-	const apiKey = process.env.SEED_LANGSMITH_API_KEY;
-	if (!apiKey) return new Client();
-	const apiUrl = process.env.SEED_LANGSMITH_ENDPOINT;
-	return new Client({ apiKey, ...(apiUrl ? { apiUrl } : {}) });
+
+/** Ambient LangSmith host + key (the eval's own), used to enumerate workspaces. */
+function ambientLangSmithConfig(): { apiUrl: string; apiKey: string } {
+	const raw =
+		process.env.LANGSMITH_ENDPOINT ??
+		process.env.LANGCHAIN_ENDPOINT ??
+		'https://api.smith.langchain.com';
+	const host = raw.replace(/\/$/, '');
+	const apiUrl = host.endsWith('/api/v1') ? host : `${host}/api/v1`;
+	const apiKey = process.env.LANGSMITH_API_KEY ?? process.env.LANGCHAIN_API_KEY ?? '';
+	return { apiUrl, apiKey };
 }
+
+/** Workspaces the ambient key can access. Returns [] on any failure so the
+ *  caller falls back to the key's default workspace. */
+async function listAccessibleWorkspaces(): Promise<Array<{ id: string; name: string }>> {
+	const { apiUrl, apiKey } = ambientLangSmithConfig();
+	if (!apiKey) return [];
+	try {
+		const res = await fetch(`${apiUrl}/workspaces`, { headers: { 'x-api-key': apiKey } });
+		if (!res.ok) return [];
+		const data: unknown = await res.json();
+		if (!Array.isArray(data)) return [];
+		return data.flatMap((entry) => {
+			if (typeof entry !== 'object' || entry === null) return [];
+			const record = entry as Record<string, unknown>;
+			const id = asString(record.id);
+			const name = asString(record.display_name) ?? asString(record.name) ?? id;
+			return id ? [{ id, name: name ?? id }] : [];
+		});
+	} catch {
+		return [];
+	}
+}
+
+/** Seams for unit-testing workspace discovery without the network. */
+export interface SeedDiscoveryDeps {
+	listWorkspaces: () => Promise<Array<{ id: string; name: string }>>;
+	clientForWorkspace: (workspaceId: string) => Client;
+	ambientClient: () => Client;
+}
+
+const realDiscoveryDeps: SeedDiscoveryDeps = {
+	listWorkspaces: listAccessibleWorkspaces,
+	clientForWorkspace: (workspaceId) => new Client({ workspaceId }),
+	ambientClient: () => new Client(),
+};
+
+/** Thrown when a thread has no runs in the queried (workspace, project) — used
+ *  as control flow during discovery to advance to the next workspace. */
+class ThreadNotInWorkspaceError extends Error {}
 
 export interface SeedThreadRef {
 	threadId: string;
@@ -57,6 +103,8 @@ export interface ReconstructedSeed {
 	/** Provenance, for logging. */
 	runCount: number;
 	sourceProject: string;
+	/** Workspace the thread was found in (when auto-discovered). */
+	sourceWorkspace?: string;
 }
 
 function metadata(run: Run): Record<string, unknown> {
@@ -95,15 +143,63 @@ interface ToolCallBlock {
 }
 
 /**
- * Pull a thread's runs from LangSmith and rebuild the seed + live turn. Throws
- * when the thread is empty (trace aged out or wrong project) or has fewer than
- * two user turns (nothing to seed — use a plain conversation case instead).
+ * Reconstruct a thread's seed + live turn. The workspace holding the thread is
+ * auto-discovered (the user only supplies a thread id); pass an explicit
+ * `client` to bypass discovery (tests).
+ *
+ * Throws when the thread isn't found in any accessible workspace (trace aged out
+ * or wrong project), or when it has fewer than two user turns.
  */
 export async function reconstructSeedFromThread(
 	ref: SeedThreadRef,
-	client: Client = createSeedReadClient(),
+	client?: Client,
+	deps: SeedDiscoveryDeps = realDiscoveryDeps,
 ): Promise<ReconstructedSeed> {
-	const sourceProject = ref.project ?? DEFAULT_SOURCE_PROJECT;
+	const project = ref.project ?? DEFAULT_SOURCE_PROJECT;
+	// An explicit client (tests) reads that one source; otherwise auto-discover.
+	if (client) return await reconstructWithClient(ref, client, project);
+	return await discoverAndReconstruct(ref, project, deps);
+}
+
+/** Find the workspace holding the thread and reconstruct from it. Falls back to
+ *  the key's default workspace when workspaces can't be enumerated. */
+async function discoverAndReconstruct(
+	ref: SeedThreadRef,
+	project: string,
+	deps: SeedDiscoveryDeps,
+): Promise<ReconstructedSeed> {
+	const workspaces = await deps.listWorkspaces();
+	if (workspaces.length === 0) {
+		return await reconstructWithClient(ref, deps.ambientClient(), project);
+	}
+	const tried: string[] = [];
+	for (const workspace of workspaces) {
+		tried.push(workspace.name);
+		try {
+			const result = await reconstructWithClient(
+				ref,
+				deps.clientForWorkspace(workspace.id),
+				project,
+			);
+			return { ...result, sourceWorkspace: workspace.name };
+		} catch (error) {
+			// Not in this workspace → try the next; anything else (found but not
+			// seedable, drift) is a real problem and propagates.
+			if (error instanceof ThreadNotInWorkspaceError) continue;
+			throw error;
+		}
+	}
+	throw new Error(
+		`Thread ${ref.threadId} not found in project "${project}" across ${String(workspaces.length)} workspace(s): ${tried.join(', ')}. The trace may have aged out (~14-day base retention), or the project name differs (set seedThread.project).`,
+	);
+}
+
+/** Pull a thread's runs from one client/project and rebuild the seed + live turn. */
+async function reconstructWithClient(
+	ref: SeedThreadRef,
+	client: Client,
+	sourceProject: string,
+): Promise<ReconstructedSeed> {
 	const runs: Run[] = [];
 	for await (const run of client.listRuns({
 		projectName: sourceProject,
@@ -112,8 +208,10 @@ export async function reconstructSeedFromThread(
 		runs.push(run);
 	}
 	if (runs.length === 0) {
-		throw new Error(
-			`No runs for thread ${ref.threadId} in LangSmith project "${sourceProject}". Causes: trace aged out (~14-day base retention); wrong project (set seedThread.project or SEED_LANGSMITH_PROJECT); or wrong workspace — if the thread is in another workspace (e.g. prod while this key is staging), set SEED_LANGSMITH_API_KEY to a read key for that workspace.`,
+		// Recognised by discovery to advance to the next workspace; the message
+		// still reads well if it surfaces directly (explicit-client path).
+		throw new ThreadNotInWorkspaceError(
+			`No runs for thread ${ref.threadId} in LangSmith project "${sourceProject}" — the trace may have aged out (~14-day base retention) or the project name is wrong.`,
 		);
 	}
 
