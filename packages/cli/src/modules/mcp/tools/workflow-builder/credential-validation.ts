@@ -32,6 +32,45 @@ export type WorkflowCredentialValidationResult =
 interface NodeMeta {
 	type: string;
 	typeVersion: number;
+	/**
+	 * Node parameters, used to resolve the predefined (`nodeCredentialType`) and
+	 * generic (`genericAuthType`) credential mechanisms that nodes like HTTP
+	 * Request use instead of declaring service credentials statically.
+	 */
+	parameters?: Record<string, unknown>;
+}
+
+/**
+ * Whether a node accepts a given credential key.
+ *
+ * A node's statically-declared `credentials` only cover a subset of what some
+ * nodes can actually use. HTTP Request (and similar) attach service-specific
+ * credentials at runtime via the `nodeCredentialType` (predefined) and
+ * `genericAuthType` (generic) parameters, which never appear in
+ * `description.credentials`. This mirrors the runtime permission gate
+ * (`CredentialsPermissionChecker.getActiveCredentialTypes`) so we don't reject a
+ * credential the node genuinely uses.
+ */
+function nodeAcceptsCredentialKey(
+	description: INodeTypeDescription,
+	parameters: Record<string, unknown> | undefined,
+	credentialKey: string,
+): boolean {
+	if (description.credentials?.some((c) => c.name === credentialKey)) {
+		return true;
+	}
+
+	const nodeCredentialType = parameters?.nodeCredentialType;
+	if (typeof nodeCredentialType === 'string' && nodeCredentialType === credentialKey) {
+		return true;
+	}
+
+	const genericAuthType = parameters?.genericAuthType;
+	if (typeof genericAuthType === 'string' && genericAuthType === credentialKey) {
+		return true;
+	}
+
+	return false;
 }
 
 /**
@@ -216,7 +255,11 @@ export async function validateCredentialReferences(
 ): Promise<CredentialValidationResult> {
 	const nameToNodeMeta = new Map<string, NodeMeta>();
 	for (const node of existingWorkflow.nodes) {
-		nameToNodeMeta.set(node.name, { type: node.type, typeVersion: node.typeVersion });
+		nameToNodeMeta.set(node.name, {
+			type: node.type,
+			typeVersion: node.typeVersion,
+			parameters: node.parameters,
+		});
 	}
 
 	const getClassifier = createLazyClassifier(user, scope, credentialsService);
@@ -234,8 +277,7 @@ export async function validateCredentialReferences(
 			return null;
 		}
 
-		const accepted = description.credentials?.find((c) => c.name === credentialKey);
-		if (!accepted) {
+		if (!nodeAcceptsCredentialKey(description, nodeMeta.parameters, credentialKey)) {
 			return fail(
 				opIndex,
 				`node type '${nodeMeta.type}' does not accept credential '${credentialKey}'`,
@@ -254,7 +296,11 @@ export async function validateCredentialReferences(
 		const op = operations[i];
 
 		if (op.type === 'addNode') {
-			const nodeMeta: NodeMeta = { type: op.node.type, typeVersion: op.node.typeVersion };
+			const nodeMeta: NodeMeta = {
+				type: op.node.type,
+				typeVersion: op.node.typeVersion,
+				parameters: op.node.parameters,
+			};
 			if (op.node.credentials) {
 				for (const [key, value] of Object.entries(op.node.credentials)) {
 					if (!value.id) continue;

@@ -771,6 +771,108 @@ describe('update-workflow MCP tool', () => {
 				expect(workflowService.update).toHaveBeenCalled();
 			});
 
+			test('accepts setNodeCredential for a predefined credential type on an HTTP Request node', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {
+									authentication: 'predefinedCredentialType',
+									nodeCredentialType: 'githubApi',
+								},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('accepts addNode binding a predefined credential type on an HTTP Request node', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+				]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'addNode',
+							node: {
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {
+									authentication: 'predefinedCredentialType',
+									nodeCredentialType: 'githubApi',
+								},
+								credentials: { githubApi: { id: 'cred-github', name: 'My GitHub' } },
+							},
+						},
+					],
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('rejects a predefined credential type when the HTTP Request node is not configured for it', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(buildExistingWorkflow(), {
+						nodes: [
+							makeNode({
+								id: 'h',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								typeVersion: 4,
+								parameters: {},
+							}),
+						],
+						connections: {},
+					}),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setNodeCredential',
+							nodeName: 'HTTP Request',
+							credentialKey: 'githubApi',
+							credentialId: 'cred-github',
+							credentialName: 'My GitHub',
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("does not accept credential 'githubApi'");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
 			test('rejects setNodeCredential with a credential from another project', async () => {
 				findWorkflowMock.mockResolvedValue(
 					Object.assign(buildExistingWorkflow(), {
